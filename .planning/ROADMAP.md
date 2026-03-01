@@ -35,11 +35,11 @@ Decimal phases appear between their surrounding integers in numeric order.
 2. `uv run ruff check` and `uv run mypy` run without configuration errors
 3. Project uses `src/omnifocus_operator/` layout with a `__init__.py` that can be imported
 4. `pyproject.toml` declares `mcp>=1.26.0` as runtime dependency and dev tools (ruff, mypy, pytest, pytest-asyncio) as dev dependencies
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
 
-- 01-01: TBD
+- [ ] 01-01-PLAN.md — Scaffold Python project with uv, src/ layout, all dev tooling, pre-commit, and CI
 
 ### Phase 2: Data Models
 
