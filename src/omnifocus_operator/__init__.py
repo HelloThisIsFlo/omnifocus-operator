@@ -1,3 +1,3 @@
-"""OmniFocus Operator -- MCP server exposing OmniFocus as structured task infrastructure for AI agents."""
+"""OmniFocus Operator -- MCP server for OmniFocus task infrastructure."""
 
 __version__ = "0.1.0"
