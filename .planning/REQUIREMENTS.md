@@ -26,7 +26,7 @@ Requirements for Milestone 1 — Foundation. Each maps to roadmap phases.
 - [ ] **MODL-04**: Folder model includes all fields from bridge script dump
 - [ ] **MODL-05**: Perspective model includes id, name, and builtin flag
 - [ ] **MODL-06**: DatabaseSnapshot model aggregates all entity collections
-- [ ] **MODL-07**: All models share a base config with camelCase alias generation and `populate_by_name`
+- [x] **MODL-07**: All models share a base config with camelCase alias generation and `populate_by_name`
 
 ### Bridge
 
@@ -125,7 +125,7 @@ Deferred to future milestones. Tracked but not in current roadmap.
 | MODL-04 | Phase 2 | Pending |
 | MODL-05 | Phase 2 | Pending |
 | MODL-06 | Phase 2 | Pending |
-| MODL-07 | Phase 2 | Pending |
+| MODL-07 | Phase 2 | Complete |
 | BRDG-01 | Phase 3 | Pending |
 | BRDG-02 | Phase 3 | Pending |
 | BRDG-03 | Phase 7 | Pending |
