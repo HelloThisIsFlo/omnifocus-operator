@@ -4,6 +4,8 @@ Public API for the models package. All model classes and enums are
 re-exported here for convenient importing.
 """
 
+from pydantic import AwareDatetime
+
 from omnifocus_operator.models._base import (
     ActionableEntity,
     OmniFocusBaseModel,
@@ -11,19 +13,50 @@ from omnifocus_operator.models._base import (
 )
 from omnifocus_operator.models._common import RepetitionRule, ReviewInterval
 from omnifocus_operator.models._enums import EntityStatus, TaskStatus
+from omnifocus_operator.models._folder import Folder
+from omnifocus_operator.models._perspective import Perspective
+from omnifocus_operator.models._project import Project
+from omnifocus_operator.models._snapshot import DatabaseSnapshot
+from omnifocus_operator.models._tag import Tag
+from omnifocus_operator.models._task import Task
 
 # Resolve forward references now that all modules are imported.
-# ActionableEntity uses TYPE_CHECKING import for RepetitionRule to avoid
-# circular import (_base -> _common -> _base). Rebuild resolves the
-# string annotation to the actual class.
-ActionableEntity.model_rebuild()
+# Entity modules use TYPE_CHECKING imports for ruff TC compliance.
+# model_rebuild() with _types_namespace provides the actual types at
+# schema-build time so Pydantic can resolve string annotations.
+#
+# Order matters: base classes first, then subclasses, then aggregators.
+_ns: dict[str, type] = {
+    "AwareDatetime": AwareDatetime,
+    "RepetitionRule": RepetitionRule,
+    "ReviewInterval": ReviewInterval,
+    "EntityStatus": EntityStatus,
+    "TaskStatus": TaskStatus,
+    "Task": Task,
+    "Project": Project,
+    "Tag": Tag,
+    "Folder": Folder,
+    "Perspective": Perspective,
+}
+ActionableEntity.model_rebuild(_types_namespace=_ns)
+Task.model_rebuild(_types_namespace=_ns)
+Project.model_rebuild(_types_namespace=_ns)
+Tag.model_rebuild(_types_namespace=_ns)
+Folder.model_rebuild(_types_namespace=_ns)
+DatabaseSnapshot.model_rebuild(_types_namespace=_ns)
 
 __all__ = [
     "ActionableEntity",
+    "DatabaseSnapshot",
     "EntityStatus",
+    "Folder",
     "OmniFocusBaseModel",
     "OmniFocusEntity",
+    "Perspective",
+    "Project",
     "RepetitionRule",
     "ReviewInterval",
+    "Tag",
+    "Task",
     "TaskStatus",
 ]
