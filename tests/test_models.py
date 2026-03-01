@@ -17,6 +17,15 @@ from omnifocus_operator.models import (
     TaskStatus,
 )
 
+from .conftest import (
+    make_folder_dict,
+    make_perspective_dict,
+    make_project_dict,
+    make_snapshot_dict,
+    make_tag_dict,
+    make_task_dict,
+)
+
 
 # ---------------------------------------------------------------------------
 # Base config tests (MODL-07)
@@ -222,3 +231,57 @@ class TestInheritanceHierarchy:
         assert entity.due_date == dt
         assert entity.flagged is True
         assert entity.tags == ["errands"]
+
+
+# ---------------------------------------------------------------------------
+# Factory function tests
+# ---------------------------------------------------------------------------
+
+
+class TestFactoryFunctions:
+    """Factory functions produce valid bridge-format dicts with correct field counts."""
+
+    def test_make_task_dict_field_count(self) -> None:
+        """make_task_dict returns exactly 32 fields (all bridge task fields)."""
+        d = make_task_dict()
+        assert len(d) == 32
+
+    def test_make_task_dict_overrides(self) -> None:
+        """make_task_dict supports keyword overrides."""
+        d = make_task_dict(name="Custom Task", status="Blocked")
+        assert d["name"] == "Custom Task"
+        assert d["status"] == "Blocked"
+
+    def test_make_project_dict_field_count(self) -> None:
+        """make_project_dict returns exactly 31 fields (all bridge project fields)."""
+        d = make_project_dict()
+        assert len(d) == 31
+
+    def test_make_tag_dict_field_count(self) -> None:
+        """make_tag_dict returns exactly 9 fields (all bridge tag fields)."""
+        d = make_tag_dict()
+        assert len(d) == 9
+
+    def test_make_folder_dict_field_count(self) -> None:
+        """make_folder_dict returns exactly 8 fields (all bridge folder fields)."""
+        d = make_folder_dict()
+        assert len(d) == 8
+
+    def test_make_perspective_dict_field_count(self) -> None:
+        """make_perspective_dict returns exactly 3 fields (all bridge perspective fields)."""
+        d = make_perspective_dict()
+        assert len(d) == 3
+
+    def test_make_snapshot_dict_structure(self) -> None:
+        """make_snapshot_dict contains all 5 entity collections."""
+        d = make_snapshot_dict()
+        assert "tasks" in d
+        assert "projects" in d
+        assert "tags" in d
+        assert "folders" in d
+        assert "perspectives" in d
+        assert len(d["tasks"]) == 1
+        assert len(d["projects"]) == 1
+        assert len(d["tags"]) == 1
+        assert len(d["folders"]) == 1
+        assert len(d["perspectives"]) == 1
