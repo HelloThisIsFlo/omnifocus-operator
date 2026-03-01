@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -32,14 +32,13 @@ from .conftest import (
     make_task_dict,
 )
 
-
 # ---------------------------------------------------------------------------
 # Base config tests (MODL-07)
 # ---------------------------------------------------------------------------
 
 
 class TestBaseConfig:
-    """Verify OmniFocusBaseModel ConfigDict: alias_generator, validate_by_name, validate_by_alias."""
+    """Verify OmniFocusBaseModel ConfigDict: aliases and validation."""
 
     def test_base_config_aliases(self) -> None:
         """OmniFocusBaseModel subclass serializes snake_case fields to camelCase."""
@@ -219,7 +218,7 @@ class TestInheritanceHierarchy:
 
     def test_actionable_entity_with_dates(self) -> None:
         """ActionableEntity accepts timezone-aware dates."""
-        dt = datetime(2024, 1, 15, 10, 30, tzinfo=timezone.utc)
+        dt = datetime(2024, 1, 15, 10, 30, tzinfo=UTC)
         entity = ActionableEntity(
             id="test-1",
             name="Test",
