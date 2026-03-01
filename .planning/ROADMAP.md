@@ -52,11 +52,12 @@ Plans:
 2. `DatabaseSnapshot` model accepts a full dump payload containing tasks, projects, tags, folders, and perspectives
 3. All models use snake_case field names in Python and serialize to camelCase via aliases
 4. Models can be instantiated in tests with `populate_by_name=True` (no alias juggling in test code)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
 
-- 02-01: TBD
+- [ ] 02-01-PLAN.md — Base model hierarchy, enums, common models, test fixtures (MODL-07)
+- [ ] 02-02-PLAN.md — Entity models (Task, Project, Tag, Folder, Perspective), DatabaseSnapshot, full test suite (MODL-01 through MODL-06)
 
 ### Phase 3: Bridge Protocol and InMemoryBridge
 
