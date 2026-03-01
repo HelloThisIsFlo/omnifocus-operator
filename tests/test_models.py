@@ -148,10 +148,9 @@ class TestActionableEntityDates:
 
     def test_aware_datetime_rejects_naive(self) -> None:
         """AwareDatetime raises ValidationError on naive datetime."""
+        from pydantic import AwareDatetime
 
         class DateModel(OmniFocusBaseModel):
-            from pydantic import AwareDatetime
-
             ts: AwareDatetime
 
         with pytest.raises(ValidationError, match="timezone_aware"):
