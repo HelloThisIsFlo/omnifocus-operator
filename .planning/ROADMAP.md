@@ -69,11 +69,11 @@ Plans:
 1. Bridge protocol defines `send_command(operation, params) -> response` as a typed interface
 2. InMemoryBridge returns a realistic DatabaseSnapshot from memory when `dump_all` is called
 3. Any code accepting the bridge protocol works identically with InMemoryBridge or any future implementation (no type errors, no isinstance checks)
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
 
-- 03-01: TBD
+- [ ] 03-01-PLAN.md — Bridge protocol, error hierarchy, and InMemoryBridge (TDD)
 
 ### Phase 4: Repository and Snapshot Management
 
