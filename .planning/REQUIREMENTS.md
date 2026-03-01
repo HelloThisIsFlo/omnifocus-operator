@@ -20,12 +20,12 @@ Requirements for Milestone 1 — Foundation. Each maps to roadmap phases.
 
 ### Data Models
 
-- [ ] **MODL-01**: Task model includes all fields from bridge script dump with snake_case names and camelCase aliases
-- [ ] **MODL-02**: Project model includes all fields from bridge script dump
-- [ ] **MODL-03**: Tag model includes all fields from bridge script dump
-- [ ] **MODL-04**: Folder model includes all fields from bridge script dump
-- [ ] **MODL-05**: Perspective model includes id, name, and builtin flag
-- [ ] **MODL-06**: DatabaseSnapshot model aggregates all entity collections
+- [x] **MODL-01**: Task model includes all fields from bridge script dump with snake_case names and camelCase aliases
+- [x] **MODL-02**: Project model includes all fields from bridge script dump
+- [x] **MODL-03**: Tag model includes all fields from bridge script dump
+- [x] **MODL-04**: Folder model includes all fields from bridge script dump
+- [x] **MODL-05**: Perspective model includes id, name, and builtin flag
+- [x] **MODL-06**: DatabaseSnapshot model aggregates all entity collections
 - [x] **MODL-07**: All models share a base config with camelCase alias generation and `populate_by_name`
 
 ### Bridge
@@ -119,12 +119,12 @@ Deferred to future milestones. Tracked but not in current roadmap.
 | ARCH-01 | Phase 5 | Pending |
 | ARCH-02 | Phase 5 | Pending |
 | ARCH-03 | Phase 1 | Complete |
-| MODL-01 | Phase 2 | Pending |
-| MODL-02 | Phase 2 | Pending |
-| MODL-03 | Phase 2 | Pending |
-| MODL-04 | Phase 2 | Pending |
-| MODL-05 | Phase 2 | Pending |
-| MODL-06 | Phase 2 | Pending |
+| MODL-01 | Phase 2 | Complete |
+| MODL-02 | Phase 2 | Complete |
+| MODL-03 | Phase 2 | Complete |
+| MODL-04 | Phase 2 | Complete |
+| MODL-05 | Phase 2 | Complete |
+| MODL-06 | Phase 2 | Complete |
 | MODL-07 | Phase 2 | Complete |
 | BRDG-01 | Phase 3 | Pending |
 | BRDG-02 | Phase 3 | Pending |
