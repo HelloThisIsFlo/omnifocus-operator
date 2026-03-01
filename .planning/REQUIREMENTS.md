@@ -1,0 +1,160 @@
+# Requirements: OmniFocus Operator
+
+**Defined:** 2026-03-01
+**Core Value:** Reliable, simple, debuggable access to OmniFocus data for AI agents — executive function infrastructure that works at 7:30am.
+
+## v1 Requirements
+
+Requirements for Milestone 1 — Foundation. Each maps to roadmap phases.
+
+### Safety
+
+- [ ] **SAFE-01**: No automated test, CI pipeline, or agent execution touches the RealBridge — all automated testing uses InMemoryBridge or SimulatorBridge exclusively
+- [ ] **SAFE-02**: RealBridge interaction is manual UAT only, performed by the user against their live OmniFocus database
+
+### Architecture
+
+- [ ] **ARCH-01**: Server uses three-layer architecture (MCP Server → Service Layer → Repository) with clear separation of concerns
+- [ ] **ARCH-02**: Bridge implementation is injected at startup — no code changes in MCP or service layer to switch between InMemoryBridge and RealBridge
+- [ ] **ARCH-03**: Project uses `uv` with `src/` layout and Python 3.12
+
+### Data Models
+
+- [ ] **MODL-01**: Task model includes all fields from bridge script dump with snake_case names and camelCase aliases
+- [ ] **MODL-02**: Project model includes all fields from bridge script dump
+- [ ] **MODL-03**: Tag model includes all fields from bridge script dump
+- [ ] **MODL-04**: Folder model includes all fields from bridge script dump
+- [ ] **MODL-05**: Perspective model includes id, name, and builtin flag
+- [ ] **MODL-06**: DatabaseSnapshot model aggregates all entity collections
+- [ ] **MODL-07**: All models share a base config with camelCase alias generation and `populate_by_name`
+
+### Bridge
+
+- [ ] **BRDG-01**: Bridge protocol defines `send_command(operation, params) → response`
+- [ ] **BRDG-02**: InMemoryBridge returns test data from memory for unit testing
+- [ ] **BRDG-03**: SimulatorBridge uses file-based IPC without URL scheme trigger
+- [ ] **BRDG-04**: RealBridge uses file-based IPC with `omnifocus:///omnijs-run` URL scheme trigger
+
+### Snapshot
+
+- [ ] **SNAP-01**: Repository loads full database snapshot from bridge dump into memory
+- [ ] **SNAP-02**: Subsequent reads serve from in-memory snapshot without calling the bridge again
+- [ ] **SNAP-03**: Repository checks `.ofocus` directory mtime (`st_mtime_ns`) on each read — unchanged mtime serves cached data
+- [ ] **SNAP-04**: Changed mtime triggers fresh dump replacing the entire snapshot atomically
+- [ ] **SNAP-05**: `asyncio.Lock` prevents parallel MCP calls from each triggering separate dumps
+- [ ] **SNAP-06**: Cache is pre-warmed at startup so the first request hits warm data
+
+### File IPC
+
+- [ ] **IPC-01**: File writes use atomic pattern (write `.tmp`, then `os.replace()` to final path)
+- [ ] **IPC-02**: All file I/O in async context is non-blocking (via `asyncio.to_thread()` or anyio)
+- [ ] **IPC-03**: Dispatch protocol uses `<uuid>::::<operation>` format with UUID4 validation
+- [ ] **IPC-04**: IPC base directory defaults to OmniFocus 4 sandbox path but is configurable for dev/test
+- [ ] **IPC-05**: Response timeout at 10 seconds with actionable error message naming OmniFocus
+- [ ] **IPC-06**: Server sweeps orphaned request/response files from IPC directory on startup
+
+### MCP Tool
+
+- [ ] **TOOL-01**: `list_all` tool returns full structured database as typed Pydantic data
+- [ ] **TOOL-02**: Tool includes MCP annotations (`readOnlyHint`, `idempotentHint`)
+- [ ] **TOOL-03**: Tool exposes structured output schema from Pydantic models
+- [ ] **TOOL-04**: Server logs to stderr only (MCP spec requirement — never stdout)
+
+### Testing & Dev
+
+- [ ] **TEST-01**: Mock simulator is a standalone Python script that watches for requests and writes test responses
+- [ ] **TEST-02**: Full pipeline is testable via InMemoryBridge with no OmniFocus dependency
+- [ ] **TEST-03**: pytest + pytest-asyncio test suite with tests for each layer
+
+## v2 Requirements
+
+Deferred to future milestones. Tracked but not in current roadmap.
+
+### Filtering & Search (Milestone 2)
+
+- **FILT-01**: `list_tasks` tool with field-level filters (inbox, flagged, project, tags, dates)
+- **FILT-02**: Semantic status decomposition — availability and urgency axes from raw taskStatus
+- **FILT-03**: Fuzzy text search across task names and notes
+
+### Entity Browsing (Milestone 3)
+
+- **ENTY-01**: `list_projects`, `list_tags`, `list_folders`, `list_perspectives` tools
+- **ENTY-02**: Single-item lookups (`get_task`, `get_project`, `get_tag`)
+- **ENTY-03**: Count tools (`count_tasks`, `count_projects`)
+
+### Perspectives & Field Selection (Milestone 4)
+
+- **PERSP-01**: `show_perspective` and `get_current_perspective` UI tools
+- **PERSP-02**: `list_tasks(current_perspective_only)` reads live from OmniFocus UI
+- **PERSP-03**: Field projection (`fields` parameter) on all read tools
+
+### Writes (Milestone 5)
+
+- **WRIT-01**: `add_tasks`, `delete_tasks`, `edit_tasks` with patch semantics
+- **WRIT-02**: `add_projects`, `edit_projects` with patch semantics
+- **WRIT-03**: Snapshot invalidation after writes (lazy refresh)
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Workflow-specific logic (daily review, prioritization) | Server is a general-purpose bridge; workflow lives in the agent |
+| Custom exception hierarchy | Use standard Python exceptions; refine when real error patterns emerge |
+| Tag writes, folder writes, task reordering | Future milestones beyond M5 |
+| Mobile/iOS support | OmniFocus desktop only (macOS) |
+| TaskPaper output format | Future milestone — alternative serialization for token reduction |
+| Production hardening (retry, crash recovery, idempotency) | Future milestone |
+| MCP Prompts | Workflow-specific; server exposes primitives only |
+| WebSocket/SSE transport | stdio only — local server, not networked |
+| AppleScript/osascript bridge | File-based IPC is the differentiator |
+| Real-time file watching for snapshot | mtime check on read is sufficient |
+| Project deletion | Always manual in OmniFocus |
+
+## Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| SAFE-01 | — | Pending |
+| SAFE-02 | — | Pending |
+| ARCH-01 | — | Pending |
+| ARCH-02 | — | Pending |
+| ARCH-03 | — | Pending |
+| MODL-01 | — | Pending |
+| MODL-02 | — | Pending |
+| MODL-03 | — | Pending |
+| MODL-04 | — | Pending |
+| MODL-05 | — | Pending |
+| MODL-06 | — | Pending |
+| MODL-07 | — | Pending |
+| BRDG-01 | — | Pending |
+| BRDG-02 | — | Pending |
+| BRDG-03 | — | Pending |
+| BRDG-04 | — | Pending |
+| SNAP-01 | — | Pending |
+| SNAP-02 | — | Pending |
+| SNAP-03 | — | Pending |
+| SNAP-04 | — | Pending |
+| SNAP-05 | — | Pending |
+| SNAP-06 | — | Pending |
+| IPC-01 | — | Pending |
+| IPC-02 | — | Pending |
+| IPC-03 | — | Pending |
+| IPC-04 | — | Pending |
+| IPC-05 | — | Pending |
+| IPC-06 | — | Pending |
+| TOOL-01 | — | Pending |
+| TOOL-02 | — | Pending |
+| TOOL-03 | — | Pending |
+| TOOL-04 | — | Pending |
+| TEST-01 | — | Pending |
+| TEST-02 | — | Pending |
+| TEST-03 | — | Pending |
+
+**Coverage:**
+- v1 requirements: 35 total
+- Mapped to phases: 0
+- Unmapped: 35 ⚠️
+
+---
+*Requirements defined: 2026-03-01*
+*Last updated: 2026-03-01 after initial definition*
