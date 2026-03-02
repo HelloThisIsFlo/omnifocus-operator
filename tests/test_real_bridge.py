@@ -6,14 +6,16 @@ import asyncio
 import json
 import os
 import uuid
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from omnifocus_operator.bridge._errors import BridgeProtocolError, BridgeTimeoutError
 from omnifocus_operator.bridge._real import RealBridge
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 # ---------------------------------------------------------------------------

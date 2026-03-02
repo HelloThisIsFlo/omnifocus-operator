@@ -35,7 +35,10 @@ class BridgeTimeoutError(BridgeError):
         self.timeout_seconds = timeout_seconds
         super().__init__(
             operation,
-            f"Operation '{operation}' timed out after {timeout_seconds}s",
+            (
+                f"OmniFocus did not respond within {timeout_seconds}s "
+                f"(operation: '{operation}'). Is OmniFocus running?"
+            ),
             cause=cause,
         )
 

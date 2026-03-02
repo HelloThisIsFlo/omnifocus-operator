@@ -48,7 +48,10 @@ class TestBridgeErrors:
     def test_timeout_error_message_format(self) -> None:
         """BridgeTimeoutError formats message with operation and seconds."""
         err = BridgeTimeoutError("dump_all", timeout_seconds=10.0)
-        assert str(err) == "Operation 'dump_all' timed out after 10.0s"
+        assert str(err) == (
+            "OmniFocus did not respond within 10.0s "
+            "(operation: 'dump_all'). Is OmniFocus running?"
+        )
         assert err.operation == "dump_all"
         assert err.timeout_seconds == 10.0
 
