@@ -6,11 +6,8 @@ paired memory streams -- no network sockets or subprocesses needed.
 
 from __future__ import annotations
 
-import logging
 import sys
-from collections.abc import Awaitable, Callable
-from typing import Any
-from unittest.mock import patch
+from typing import TYPE_CHECKING, Any
 
 import anyio
 import pytest
@@ -18,10 +15,31 @@ from mcp.client.session import ClientSession
 from mcp.server.fastmcp import FastMCP
 from mcp.shared.message import SessionMessage
 
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Awaitable, Callable
+
+    from omnifocus_operator.repository._repository import OmniFocusRepository
+    from omnifocus_operator.service._service import OperatorService
+
 
 # ---------------------------------------------------------------------------
-# Helper
+# Helpers
 # ---------------------------------------------------------------------------
+
+def _build_patched_server(
+    repo: OmniFocusRepository,
+    service: OperatorService,
+) -> FastMCP:
+    """Create a FastMCP server with a patched lifespan injecting *service*."""
+    from contextlib import asynccontextmanager
+
+    @asynccontextmanager
+    async def _patched_lifespan(app: FastMCP) -> AsyncIterator[dict[str, Any]]:
+        await repo.initialize()
+        yield {"service": service}
+
+    return FastMCP("omnifocus-operator", lifespan=_patched_lifespan)
+
 
 async def run_with_client(
     server: FastMCP,
@@ -147,25 +165,29 @@ class TestTOOL01ListAllStructuredOutput:
         """Verify structuredContent uses camelCase field names for nested entities."""
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
 
-        # Populate InMemoryBridge with a task that has camelCase fields
-        from omnifocus_operator.bridge import InMemoryBridge
+        from omnifocus_operator.bridge._in_memory import InMemoryBridge
         from omnifocus_operator.repository import ConstantMtimeSource, OmniFocusRepository
+        from omnifocus_operator.server._server import _register_tools
         from omnifocus_operator.service import OperatorService
-        from omnifocus_operator.server._server import app_lifespan, create_server
-
-        server = create_server()
-
-        # We need data with recognisable camelCase fields, so we patch the
-        # bridge factory to return a bridge with a task that has dueDate set.
-        from omnifocus_operator.bridge._in_memory import InMemoryBridge as _IB
 
         task_data = {
             "id": "task-1",
             "name": "Test Task",
-            "due_date": "2026-06-01T12:00:00+00:00",
+            "note": "",
+            "completed": False,
+            "completed_by_children": False,
+            "flagged": False,
             "effective_flagged": True,
+            "sequential": False,
+            "has_children": False,
+            "should_use_floating_time_zone": False,
+            "active": True,
+            "effective_active": True,
+            "status": "Available",
+            "in_inbox": False,
+            "due_date": "2026-06-01T12:00:00+00:00",
         }
-        bridge = _IB(
+        bridge = InMemoryBridge(
             data={
                 "tasks": [task_data],
                 "projects": [],
@@ -177,19 +199,8 @@ class TestTOOL01ListAllStructuredOutput:
         repo = OmniFocusRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
-        # Patch lifespan to inject our service
-        from contextlib import asynccontextmanager
-        from collections.abc import AsyncIterator
-
-        @asynccontextmanager
-        async def _patched_lifespan(app: FastMCP) -> AsyncIterator[dict[str, Any]]:
-            await repo.initialize()
-            yield {"service": service}
-
-        patched_server = FastMCP("omnifocus-operator", lifespan=_patched_lifespan)
-        # Re-register the tool on patched server
-        from omnifocus_operator.server._server import _register_tools
-
+        # Build a server with a patched lifespan that injects our custom service
+        patched_server = _build_patched_server(repo, service)
         _register_tools(patched_server)
 
         async def _check(session: ClientSession) -> None:
@@ -309,35 +320,25 @@ class TestTOOL04StderrOnly:
     """Verify stdout redirection and logging to stderr."""
 
     def test_stdout_redirected_to_stderr(self) -> None:
-        """After calling the redirect logic in __main__, stdout should be stderr."""
+        """After applying the redirect from __main__, stdout should be stderr."""
         original_stdout = sys.stdout
         try:
-            # Import and invoke just the redirect part
-            from omnifocus_operator.__main__ import main
-
-            # We can't call main() fully (it would start the server),
-            # so we test the redirect pattern directly
+            # Replicate the redirect logic from __main__.main()
             sys.stdout = sys.stderr  # type: ignore[assignment]
             assert sys.stdout is sys.stderr
         finally:
             sys.stdout = original_stdout
 
     def test_logging_goes_to_stderr(self) -> None:
-        """Verify omnifocus_operator logger writes to stderr."""
+        """Verify omnifocus_operator logger can target stderr."""
         import logging
-        import os
 
-        # Configure logging the same way __main__.py does
-        level = os.environ.get("OMNIFOCUS_LOG_LEVEL", "INFO").upper()
         logger = logging.getLogger("omnifocus_operator")
 
-        # After main() sets up logging, handlers should target stderr
         handler = logging.StreamHandler(sys.stderr)
-        handler.setLevel(level)
         logger.addHandler(handler)
 
         try:
-            # The handler we added targets stderr
             stderr_handlers = [
                 h
                 for h in logger.handlers
