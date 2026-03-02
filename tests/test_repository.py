@@ -12,13 +12,13 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from pydantic import ValidationError
 
 from omnifocus_operator.bridge._errors import BridgeError
 from omnifocus_operator.bridge._in_memory import InMemoryBridge
-from omnifocus_operator.repository import FileMtimeSource, MtimeSource, OmniFocusRepository
+from omnifocus_operator.repository import FileMtimeSource, OmniFocusRepository
 
 from .conftest import make_snapshot_dict
-
 
 # ---------------------------------------------------------------------------
 # Test doubles
@@ -131,7 +131,7 @@ class TestSNAP02CachedReturn:
     async def test_second_call_returns_data(
         self, repo: OmniFocusRepository
     ) -> None:
-        first = await repo.get_snapshot()
+        await repo.get_snapshot()
         second = await repo.get_snapshot()
 
         assert len(second.tasks) == 1
@@ -259,7 +259,7 @@ class TestErrorPropagation:
         bridge = InMemoryBridge(data={"tasks": "not-a-list"})
         repo = OmniFocusRepository(bridge=bridge, mtime_source=mtime)
 
-        with pytest.raises(Exception):  # Pydantic ValidationError
+        with pytest.raises(ValidationError):
             await repo.get_snapshot()
 
     async def test_mtime_error_propagates(self) -> None:
