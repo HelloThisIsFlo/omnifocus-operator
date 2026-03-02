@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-03-01)
 Phase: 08.1 of 8+1 (OmniFocus Bridge Script)
 Plan: 2 of 4 in current phase (08.1-01 complete, 08.1-02 complete)
 Status: In progress -- executing phase 08.1
-Last activity: 2026-03-02 -- 08.1-02 rename dump_all to snapshot complete
+Last activity: 2026-03-02 -- 08.1-01 author JS bridge script complete
 
 Progress: [████████████████░] 84%
 
@@ -54,6 +54,7 @@ Progress: [████████████████░] 84%
 - Trend: Slight increase on 08-01 due to SAFE-01 refactoring across 5+ test files
 
 *Updated after each plan completion*
+| Phase 08.1 P01 | 3 min | 2 tasks | 5 files |
 | Phase 08.1 P02 | 1 | 2 tasks | 6 files |
 
 ## Accumulated Context
@@ -105,6 +106,7 @@ Recent decisions affecting current work:
 - [08-01]: Factory safety guard checks PYTEST_CURRENT_TEST before importing RealBridge
 - [08-01]: No trigger unit test in test files -- validated via UAT per SAFE-01
 - [Phase 08.1]: Pure mechanical rename dump_all->snapshot with no behavioral changes
+- [08.1-01]: Error handling in dispatch() not IIFE -- try/catch moved into dispatch function for self-contained error responses
 
 ### Pending Todos
 
@@ -122,5 +124,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 08.1-02-PLAN.md
+Stopped at: Completed 08.1-01-PLAN.md
 Next action: Execute 08.1-03-PLAN.md
