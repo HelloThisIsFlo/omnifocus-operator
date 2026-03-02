@@ -118,9 +118,11 @@ class TestCreateBridge:
 
         assert isinstance(bridge, InMemoryBridge)
 
-    def test_simulator_raises_not_implemented(self) -> None:
-        with pytest.raises(NotImplementedError, match="Phase 7"):
-            create_bridge("simulator")
+    def test_simulator_returns_simulator_bridge(self) -> None:
+        from omnifocus_operator.bridge._simulator import SimulatorBridge
+
+        bridge = create_bridge("simulator")
+        assert isinstance(bridge, SimulatorBridge)
 
     def test_real_returns_real_bridge(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

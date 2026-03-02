@@ -2,18 +2,18 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 
 import anyio
-import pytest
 from mcp.client.session import ClientSession
 from mcp.server.fastmcp import FastMCP
 from mcp.shared.message import SessionMessage
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from pathlib import Path
+
+    import pytest
 
 
 # ---------------------------------------------------------------------------
@@ -41,7 +41,7 @@ class TestSimulatorBridge:
 
     def test_satisfies_bridge_protocol(self, tmp_path: Path) -> None:
         """SimulatorBridge satisfies the Bridge protocol (structural typing)."""
-        from omnifocus_operator.bridge._protocol import Bridge
+        from omnifocus_operator.bridge._protocol import Bridge  # noqa: TC001
         from omnifocus_operator.bridge._simulator import SimulatorBridge
 
         bridge: Bridge = SimulatorBridge(ipc_dir=tmp_path)
@@ -186,43 +186,16 @@ class TestPackageExport:
 class TestLifespan:
     """app_lifespan handles OMNIFOCUS_BRIDGE=simulator with ConstantMtimeSource."""
 
-    async def test_lifespan_simulator_completes_without_error(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
-    ) -> None:
-        """Server lifespan completes successfully with bridge_type='simulator'."""
-        monkeypatch.setenv("OMNIFOCUS_BRIDGE", "simulator")
-        monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
-
-        from omnifocus_operator.server import create_server
-
-        server = create_server()
-
-        async def _check(session: ClientSession) -> None:
-            # If lifespan completes, we can list tools
-            result = await session.list_tools()
-            assert result.tools is not None
-
-        await _run_with_client(server, _check)
-
-    async def test_lifespan_simulator_can_serve_list_all(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
-    ) -> None:
-        """Server with simulator bridge can serve list_all tool calls.
-
-        The SimulatorBridge.send_command will time out (no simulator process),
-        but the server lifespan itself should start up fine and serve the
-        initial cache pre-warm. We need to mock the bridge's send_command
-        to provide data for the pre-warm step.
-        """
-        monkeypatch.setenv("OMNIFOCUS_BRIDGE", "simulator")
-        monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
-
-        # Patch create_bridge to return a SimulatorBridge with mocked send_command
+    @staticmethod
+    def _make_simulator_bridge_with_seed(
+        tmp_path: Path,
+    ) -> Any:
+        """Create a SimulatorBridge with mocked send_command returning seed data."""
         from omnifocus_operator.bridge._simulator import SimulatorBridge
 
         mock_bridge = SimulatorBridge(ipc_dir=tmp_path)
 
-        seed_data = {
+        seed_data: dict[str, Any] = {
             "tasks": [],
             "projects": [],
             "tags": [],
@@ -236,6 +209,41 @@ class TestLifespan:
             return seed_data
 
         mock_bridge.send_command = fake_send_command  # type: ignore[assignment]
+        return mock_bridge
+
+    async def test_lifespan_simulator_completes_without_error(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    ) -> None:
+        """Server lifespan completes successfully with bridge_type='simulator'."""
+        monkeypatch.setenv("OMNIFOCUS_BRIDGE", "simulator")
+        monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
+
+        mock_bridge = self._make_simulator_bridge_with_seed(tmp_path)
+
+        with patch(
+            "omnifocus_operator.bridge.create_bridge",
+            return_value=mock_bridge,
+        ):
+            from omnifocus_operator.server._server import _register_tools, app_lifespan
+
+            server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
+            _register_tools(server)
+
+            async def _check(session: ClientSession) -> None:
+                # If lifespan completes, we can list tools
+                result = await session.list_tools()
+                assert result.tools is not None
+
+            await _run_with_client(server, _check)
+
+    async def test_lifespan_simulator_can_serve_list_all(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    ) -> None:
+        """Server with simulator bridge can serve list_all tool calls."""
+        monkeypatch.setenv("OMNIFOCUS_BRIDGE", "simulator")
+        monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
+
+        mock_bridge = self._make_simulator_bridge_with_seed(tmp_path)
 
         with patch(
             "omnifocus_operator.bridge.create_bridge",
@@ -251,3 +259,37 @@ class TestLifespan:
                 assert result.structuredContent is not None
 
             await _run_with_client(server, _check)
+
+    async def test_lifespan_simulator_sweeps_orphaned_files(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    ) -> None:
+        """Lifespan sweeps orphaned IPC files for simulator bridge (has ipc_dir)."""
+        from unittest.mock import AsyncMock
+
+        monkeypatch.setenv("OMNIFOCUS_BRIDGE", "simulator")
+        monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
+
+        mock_bridge = self._make_simulator_bridge_with_seed(tmp_path)
+        mock_sweep = AsyncMock()
+
+        with (
+            patch(
+                "omnifocus_operator.bridge.create_bridge",
+                return_value=mock_bridge,
+            ),
+            patch(
+                "omnifocus_operator.bridge.sweep_orphaned_files",
+                mock_sweep,
+            ),
+        ):
+            from omnifocus_operator.server._server import _register_tools, app_lifespan
+
+            server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
+            _register_tools(server)
+
+            async def _check(session: ClientSession) -> None:
+                pass
+
+            await _run_with_client(server, _check)
+
+        mock_sweep.assert_called_once_with(tmp_path)

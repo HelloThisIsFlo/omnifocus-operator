@@ -34,9 +34,9 @@ async def app_lifespan(app: FastMCP) -> AsyncIterator[dict[str, object]]:
     """Create the service stack and pre-warm the repository cache.
 
     The bridge type is read from ``OMNIFOCUS_BRIDGE`` (default ``"real"``).
-    For ``"inmemory"`` a ``ConstantMtimeSource`` is used (no cache
-    invalidation).  Other bridge types require a ``FileMtimeSource`` path
-    which is not yet configured -- they raise ``NotImplementedError``.
+    For ``"inmemory"`` and ``"simulator"`` a ``ConstantMtimeSource`` is
+    used (no cache invalidation).  The ``"real"`` bridge type requires a
+    ``FileMtimeSource`` path which is not yet configured.
     """
     from omnifocus_operator.bridge import create_bridge, sweep_orphaned_files
     from omnifocus_operator.repository import ConstantMtimeSource, OmniFocusRepository
@@ -53,9 +53,9 @@ async def app_lifespan(app: FastMCP) -> AsyncIterator[dict[str, object]]:
         await sweep_orphaned_files(bridge.ipc_dir)
         logger.info("IPC sweep complete")
 
-    # ConstantMtimeSource for inmemory (no cache invalidation needed)
-    # FileMtimeSource for real/simulator (future phases)
-    if bridge_type == "inmemory":
+    # ConstantMtimeSource for inmemory/simulator (no cache invalidation needed)
+    # FileMtimeSource for real (future phases)
+    if bridge_type in ("inmemory", "simulator"):
         mtime_source = ConstantMtimeSource()
     else:
         msg = f"FileMtimeSource path not configured for bridge type: {bridge_type}"

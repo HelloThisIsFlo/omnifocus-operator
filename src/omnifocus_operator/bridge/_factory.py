@@ -30,8 +30,6 @@ def create_bridge(bridge_type: str) -> Bridge:
 
     Raises
     ------
-    NotImplementedError
-        For ``"simulator"`` (not yet available).
     ValueError
         For unknown bridge type strings.
     """
@@ -105,8 +103,14 @@ def create_bridge(bridge_type: str) -> Bridge:
                 }
             )
         case "simulator":
-            msg = "SimulatorBridge not yet implemented (Phase 7)"
-            raise NotImplementedError(msg)
+            import os
+
+            from omnifocus_operator.bridge._real import DEFAULT_IPC_DIR
+            from omnifocus_operator.bridge._simulator import SimulatorBridge
+
+            ipc_dir_str = os.environ.get("OMNIFOCUS_IPC_DIR")
+            ipc_dir = Path(ipc_dir_str) if ipc_dir_str else DEFAULT_IPC_DIR
+            return SimulatorBridge(ipc_dir=ipc_dir)
         case "real":
             import os
 
