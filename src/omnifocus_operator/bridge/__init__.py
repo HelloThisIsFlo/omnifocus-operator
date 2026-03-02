@@ -1,4 +1,4 @@
-"""OmniFocus bridge protocol and implementations."""
+"""OmniFocus bridge protocol, implementations, and factory."""
 
 from omnifocus_operator.bridge._errors import (
     BridgeConnectionError,
@@ -6,6 +6,7 @@ from omnifocus_operator.bridge._errors import (
     BridgeProtocolError,
     BridgeTimeoutError,
 )
+from omnifocus_operator.bridge._factory import create_bridge
 from omnifocus_operator.bridge._in_memory import BridgeCall, InMemoryBridge
 from omnifocus_operator.bridge._protocol import Bridge
 
@@ -17,4 +18,5 @@ __all__ = [
     "BridgeProtocolError",
     "BridgeTimeoutError",
     "InMemoryBridge",
+    "create_bridge",
 ]
