@@ -30,5 +30,8 @@ htmlcov/
 # Type checking
 .mypy_cache/
 
+# Node (bridge/ test project)
+node_modules/
+
 # OS
 .DS_Store

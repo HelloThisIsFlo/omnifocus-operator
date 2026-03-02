@@ -1,0 +1,10 @@
+{
+  "name": "omnifocus-operator-bridge-tests",
+  "private": true,
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0"
+  }
+}
