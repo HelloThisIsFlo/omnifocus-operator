@@ -30,8 +30,8 @@ Requirements for Milestone 1 — Foundation. Each maps to roadmap phases.
 
 ### Bridge
 
-- [ ] **BRDG-01**: Bridge protocol defines `send_command(operation, params) → response`
-- [ ] **BRDG-02**: InMemoryBridge returns test data from memory for unit testing
+- [x] **BRDG-01**: Bridge protocol defines `send_command(operation, params) → response`
+- [x] **BRDG-02**: InMemoryBridge returns test data from memory for unit testing
 - [ ] **BRDG-03**: SimulatorBridge uses file-based IPC without URL scheme trigger
 - [ ] **BRDG-04**: RealBridge uses file-based IPC with `omnifocus:///omnijs-run` URL scheme trigger
 
@@ -126,8 +126,8 @@ Deferred to future milestones. Tracked but not in current roadmap.
 | MODL-05 | Phase 2 | Complete |
 | MODL-06 | Phase 2 | Complete |
 | MODL-07 | Phase 2 | Complete |
-| BRDG-01 | Phase 3 | Pending |
-| BRDG-02 | Phase 3 | Pending |
+| BRDG-01 | Phase 3 | Complete |
+| BRDG-02 | Phase 3 | Complete |
 | BRDG-03 | Phase 7 | Pending |
 | BRDG-04 | Phase 8 | Pending |
 | SNAP-01 | Phase 4 | Pending |
