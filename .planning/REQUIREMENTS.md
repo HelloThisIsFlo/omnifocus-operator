@@ -37,12 +37,12 @@ Requirements for Milestone 1 — Foundation. Each maps to roadmap phases.
 
 ### Snapshot
 
-- [ ] **SNAP-01**: Repository loads full database snapshot from bridge dump into memory
-- [ ] **SNAP-02**: Subsequent reads serve from in-memory snapshot without calling the bridge again
-- [ ] **SNAP-03**: Repository checks `.ofocus` directory mtime (`st_mtime_ns`) on each read — unchanged mtime serves cached data
-- [ ] **SNAP-04**: Changed mtime triggers fresh dump replacing the entire snapshot atomically
-- [ ] **SNAP-05**: `asyncio.Lock` prevents parallel MCP calls from each triggering separate dumps
-- [ ] **SNAP-06**: Cache is pre-warmed at startup so the first request hits warm data
+- [x] **SNAP-01**: Repository loads full database snapshot from bridge dump into memory
+- [x] **SNAP-02**: Subsequent reads serve from in-memory snapshot without calling the bridge again
+- [x] **SNAP-03**: Repository checks `.ofocus` directory mtime (`st_mtime_ns`) on each read — unchanged mtime serves cached data
+- [x] **SNAP-04**: Changed mtime triggers fresh dump replacing the entire snapshot atomically
+- [x] **SNAP-05**: `asyncio.Lock` prevents parallel MCP calls from each triggering separate dumps
+- [x] **SNAP-06**: Cache is pre-warmed at startup so the first request hits warm data
 
 ### File IPC
 
@@ -130,12 +130,12 @@ Deferred to future milestones. Tracked but not in current roadmap.
 | BRDG-02 | Phase 3 | Complete |
 | BRDG-03 | Phase 7 | Pending |
 | BRDG-04 | Phase 8 | Pending |
-| SNAP-01 | Phase 4 | Pending |
-| SNAP-02 | Phase 4 | Pending |
-| SNAP-03 | Phase 4 | Pending |
-| SNAP-04 | Phase 4 | Pending |
-| SNAP-05 | Phase 4 | Pending |
-| SNAP-06 | Phase 4 | Pending |
+| SNAP-01 | Phase 4 | Complete |
+| SNAP-02 | Phase 4 | Complete |
+| SNAP-03 | Phase 4 | Complete |
+| SNAP-04 | Phase 4 | Complete |
+| SNAP-05 | Phase 4 | Complete |
+| SNAP-06 | Phase 4 | Complete |
 | IPC-01 | Phase 6 | Pending |
 | IPC-02 | Phase 6 | Pending |
 | IPC-03 | Phase 6 | Pending |
