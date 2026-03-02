@@ -109,6 +109,10 @@ Recent decisions affecting current work:
 1. **Review package structure and underscore convention** (general) — Package layout feels bloated; review before milestone end
 2. **Defer cache hydration to first read instead of server startup** (api) — Preloading freezes OmniFocus on every Claude session start; hydrate lazily on first read
 
+### Roadmap Evolution
+
+- Phase 08.1 inserted after Phase 8: OmniFocus Bridge Script — Author JS bridge, wire into RealBridge IPC, fix UAT (URGENT)
+
 ### Blockers/Concerns
 
 1. **Phase 8 UAT blocked** — `_trigger_omnifocus()` missing `script=` parameter in URL scheme, and OmniFocus-side bridge script doesn't exist. Need inserted phase (8.1) to author the bridge script, add JS tests, wire into trigger, then re-attempt UAT.
@@ -116,6 +120,6 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: 08-02 checkpoint FAILED -- OmniFocus-side bridge script doesn't exist
-Resume file: .planning/phases/08-realbridge-and-end-to-end-validation/08-02-SUMMARY.md
-Next action: Insert bridge script phase (8.1), then re-attempt UAT
+Stopped at: Phase 08.1 context gathered
+Resume file: .planning/phases/08.1-omnifocus-bridge-script-author-js-bridge-wire-into-realbridge-ipc-fix-uat/08.1-CONTEXT.md
+Next action: /gsd:plan-phase 08.1
