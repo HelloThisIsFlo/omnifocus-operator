@@ -73,7 +73,7 @@ class TestOperatorService:
 
     async def test_get_all_data_propagates_errors(self) -> None:
         bridge = InMemoryBridge()
-        bridge.set_error(BridgeError("dump_all", "connection lost"))
+        bridge.set_error(BridgeError("snapshot", "connection lost"))
         mtime = FakeMtimeSource()
         repo = OmniFocusRepository(bridge=bridge, mtime_source=mtime)
         service = OperatorService(repository=repo)

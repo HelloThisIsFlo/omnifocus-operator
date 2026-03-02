@@ -104,12 +104,12 @@ class TestSNAP01FirstCall:
 
         assert bridge.call_count == 1
 
-    async def test_first_call_uses_dump_all_operation(
+    async def test_first_call_uses_snapshot_operation(
         self, repo: OmniFocusRepository, bridge: InMemoryBridge
     ) -> None:
         await repo.get_snapshot()
 
-        assert bridge.calls[0].operation == "dump_all"
+        assert bridge.calls[0].operation == "snapshot"
 
 
 # ---------------------------------------------------------------------------
@@ -238,7 +238,7 @@ class TestErrorPropagation:
 
     async def test_bridge_error_propagates(self, mtime: FakeMtimeSource) -> None:
         bridge = InMemoryBridge()
-        bridge.set_error(BridgeError("dump_all", "connection lost"))
+        bridge.set_error(BridgeError("snapshot", "connection lost"))
         repo = OmniFocusRepository(bridge=bridge, mtime_source=mtime)
 
         with pytest.raises(BridgeError, match="connection lost"):
@@ -265,7 +265,7 @@ class TestErrorPropagation:
     async def test_failed_refresh_preserves_none_cache(self, mtime: FakeMtimeSource) -> None:
         """After failed first load, cache stays None; next call retries."""
         bridge = InMemoryBridge()
-        bridge.set_error(BridgeError("dump_all", "temporary failure"))
+        bridge.set_error(BridgeError("snapshot", "temporary failure"))
         repo = OmniFocusRepository(bridge=bridge, mtime_source=mtime)
 
         with pytest.raises(BridgeError):
@@ -291,7 +291,7 @@ class TestErrorPropagation:
 
         # Mtime changes but bridge fails
         mtime.set_mtime_ns(2)
-        bridge.set_error(BridgeError("dump_all", "temporary failure"))
+        bridge.set_error(BridgeError("snapshot", "temporary failure"))
 
         with pytest.raises(BridgeError):
             await repo.get_snapshot()
@@ -307,7 +307,7 @@ class TestErrorPropagation:
     async def test_initialize_failure_allows_retry(self, mtime: FakeMtimeSource) -> None:
         """After initialize() fails, get_snapshot() retries successfully."""
         bridge = InMemoryBridge()
-        bridge.set_error(BridgeError("dump_all", "startup failure"))
+        bridge.set_error(BridgeError("snapshot", "startup failure"))
         repo = OmniFocusRepository(bridge=bridge, mtime_source=mtime)
 
         with pytest.raises(BridgeError):

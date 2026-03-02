@@ -169,14 +169,14 @@ class TestEndToEnd:
     """Round-trip IPC tests: SimulatorBridge <-> Simulator process."""
 
     @pytest.mark.timeout(30)
-    async def test_round_trip_dump_all(
+    async def test_round_trip_snapshot(
         self,
         tmp_path: Path,
         simulator_process: subprocess.Popen[str],
     ) -> None:
-        """send_command('dump_all') returns full SIMULATOR_SNAPSHOT data."""
+        """send_command('snapshot') returns full SIMULATOR_SNAPSHOT data."""
         bridge = _make_bridge(tmp_path)
-        result = await bridge.send_command("dump_all")
+        result = await bridge.send_command("snapshot")
 
         assert "tasks" in result
         assert "projects" in result
@@ -198,10 +198,10 @@ class TestEndToEnd:
         """Two sequential requests both succeed (seen-set does not interfere)."""
         bridge = _make_bridge(tmp_path)
 
-        result1 = await bridge.send_command("dump_all")
+        result1 = await bridge.send_command("snapshot")
         assert "tasks" in result1
 
-        result2 = await bridge.send_command("dump_all")
+        result2 = await bridge.send_command("snapshot")
         assert "tasks" in result2
 
 
@@ -220,7 +220,7 @@ class TestErrorSimulation:
         try:
             bridge = _make_bridge(tmp_path)
             with pytest.raises(BridgeProtocolError, match="simulated error"):
-                await bridge.send_command("dump_all")
+                await bridge.send_command("snapshot")
         finally:
             proc.terminate()
             proc.wait(timeout=5)
@@ -232,7 +232,7 @@ class TestErrorSimulation:
         try:
             bridge = _make_bridge(tmp_path)
             with pytest.raises(json.JSONDecodeError):
-                await bridge.send_command("dump_all")
+                await bridge.send_command("snapshot")
         finally:
             proc.terminate()
             proc.wait(timeout=5)
@@ -244,7 +244,7 @@ class TestErrorSimulation:
         try:
             bridge = _make_bridge(tmp_path, timeout=2.0)
             with pytest.raises(BridgeTimeoutError):
-                await bridge.send_command("dump_all")
+                await bridge.send_command("snapshot")
         finally:
             proc.terminate()
             proc.wait(timeout=5)
@@ -266,12 +266,12 @@ class TestFailAfter:
             bridge = _make_bridge(tmp_path)
 
             # First request succeeds (within fail_after threshold)
-            result = await bridge.send_command("dump_all")
+            result = await bridge.send_command("snapshot")
             assert "tasks" in result
 
             # Second request fails (exceeds fail_after)
             with pytest.raises(BridgeProtocolError, match="simulated error"):
-                await bridge.send_command("dump_all")
+                await bridge.send_command("snapshot")
         finally:
             proc.terminate()
             proc.wait(timeout=5)
@@ -291,7 +291,7 @@ class TestDelay:
         proc = _start_simulator(tmp_path, delay=0.5)
         try:
             bridge = _make_bridge(tmp_path, timeout=5.0)
-            result = await bridge.send_command("dump_all")
+            result = await bridge.send_command("snapshot")
             assert "tasks" in result
         finally:
             proc.terminate()
