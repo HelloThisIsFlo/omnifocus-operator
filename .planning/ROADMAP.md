@@ -188,3 +188,16 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 8. RealBridge and End-to-End Validation | 0/0            | Not started | -         |
 
 
+
+### Phase 08.1: OmniFocus Bridge Script — Author JS bridge, wire into RealBridge IPC, fix UAT (INSERTED)
+
+**Goal:** A working JS bridge script inside OmniFocus that completes the end-to-end IPC pipeline, with the IPC protocol modernized (clean JSON envelopes, `snapshot` operation name), and the full pipeline validated against live OmniFocus via UAT
+**Requirements**: JS-BRIDGE-01, JS-BRIDGE-02, JS-BRIDGE-03, IPC-PROTO-01, IPC-PROTO-02, IPC-PROTO-03, RENAME-01, SIM-UPDATE-01, PKG-01, MAKEFILE-01
+**Depends on:** Phase 8
+**Plans:** 4 plans
+
+Plans:
+- [ ] 08.1-01-PLAN.md — Author JS bridge script + npm project + Vitest tests
+- [ ] 08.1-02-PLAN.md — Rename dump_all to snapshot across entire codebase
+- [ ] 08.1-03-PLAN.md — IPC protocol overhaul + bridge.js loading + simulator update
+- [ ] 08.1-04-PLAN.md — Makefile unified test command + UAT checkpoint
