@@ -212,9 +212,7 @@ class TestDispatchProtocol:
         assert str(parsed) == uuid_part
 
     @pytest.mark.asyncio
-    async def test_different_operations_produce_different_uuids(
-        self, tmp_path: Path
-    ) -> None:
+    async def test_different_operations_produce_different_uuids(self, tmp_path: Path) -> None:
         """Two send_command calls produce different request IDs."""
         bridge = RealBridge(ipc_dir=tmp_path, timeout=0.3)
         pid = os.getpid()
@@ -270,9 +268,7 @@ class TestTimeout:
         assert exc_info.value.operation == "slow_op"
 
     @pytest.mark.asyncio
-    async def test_timeout_error_message_names_omnifocus(
-        self, tmp_path: Path
-    ) -> None:
+    async def test_timeout_error_message_names_omnifocus(self, tmp_path: Path) -> None:
         """Error message includes 'OmniFocus' explicitly."""
         bridge = RealBridge(ipc_dir=tmp_path, timeout=0.2)
 
@@ -312,9 +308,7 @@ class TestSuccessfulRoundTrip:
     """Successful IPC round-trip behavior."""
 
     @pytest.mark.asyncio
-    async def test_send_command_returns_parsed_response_data(
-        self, tmp_path: Path
-    ) -> None:
+    async def test_send_command_returns_parsed_response_data(self, tmp_path: Path) -> None:
         """When response has success:true+data, send_command returns the data dict."""
         bridge = RealBridge(ipc_dir=tmp_path, timeout=1.0)
         pid = os.getpid()
@@ -325,9 +319,7 @@ class TestSuccessfulRoundTrip:
                 req = _find_request_file(tmp_path)
                 if req is not None:
                     rid = _extract_request_id_from_file(req)
-                    await _write_response_after_delay(
-                        tmp_path, pid, rid, expected_data, delay=0.02
-                    )
+                    await _write_response_after_delay(tmp_path, pid, rid, expected_data, delay=0.02)
                     return
                 await asyncio.sleep(0.01)
 
@@ -348,9 +340,7 @@ class TestSuccessfulRoundTrip:
                 req = _find_request_file(tmp_path)
                 if req is not None:
                     rid = _extract_request_id_from_file(req)
-                    await _write_response_after_delay(
-                        tmp_path, pid, rid, {"ok": True}, delay=0.02
-                    )
+                    await _write_response_after_delay(tmp_path, pid, rid, {"ok": True}, delay=0.02)
                     return
                 await asyncio.sleep(0.01)
 
@@ -410,9 +400,7 @@ class TestTriggerHook:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_trigger_called_between_write_and_wait(
-        self, tmp_path: Path
-    ) -> None:
+    async def test_trigger_called_between_write_and_wait(self, tmp_path: Path) -> None:
         """_trigger_omnifocus() called after _write_request() and before _wait_response()."""
         bridge = RealBridge(ipc_dir=tmp_path, timeout=0.3)
         call_order: list[str] = []

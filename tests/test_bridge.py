@@ -49,8 +49,7 @@ class TestBridgeErrors:
         """BridgeTimeoutError formats message with operation and seconds."""
         err = BridgeTimeoutError("dump_all", timeout_seconds=10.0)
         assert str(err) == (
-            "OmniFocus did not respond within 10.0s "
-            "(operation: 'dump_all'). Is OmniFocus running?"
+            "OmniFocus did not respond within 10.0s (operation: 'dump_all'). Is OmniFocus running?"
         )
         assert err.operation == "dump_all"
         assert err.timeout_seconds == 10.0

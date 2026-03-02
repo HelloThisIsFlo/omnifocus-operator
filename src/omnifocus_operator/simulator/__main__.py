@@ -102,9 +102,7 @@ def _handle_request(
         logger.debug("Delaying %.2fs before response", delay)
         time.sleep(delay)
 
-    should_fail = fail_mode is not None and (
-        fail_after is None or request_count > fail_after
-    )
+    should_fail = fail_mode is not None and (fail_after is None or request_count > fail_after)
 
     if should_fail:
         if fail_mode == "timeout":

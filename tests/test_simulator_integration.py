@@ -334,9 +334,7 @@ class TestMcpIntegration:
                 keys = set(result.structuredContent.keys())
                 assert keys == {"tasks", "projects", "tags", "folders", "perspectives"}
                 # Verify counts match simulator data
-                assert len(result.structuredContent["tasks"]) == len(
-                    SIMULATOR_SNAPSHOT["tasks"]
-                )
+                assert len(result.structuredContent["tasks"]) == len(SIMULATOR_SNAPSHOT["tasks"])
 
             await _run_with_client(server, _check)
         finally:

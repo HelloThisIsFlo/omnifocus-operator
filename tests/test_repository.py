@@ -128,9 +128,7 @@ class TestSNAP02CachedReturn:
 
         assert bridge.call_count == 1
 
-    async def test_second_call_returns_data(
-        self, repo: OmniFocusRepository
-    ) -> None:
+    async def test_second_call_returns_data(self, repo: OmniFocusRepository) -> None:
         await repo.get_snapshot()
         second = await repo.get_snapshot()
 
@@ -145,9 +143,7 @@ class TestSNAP02CachedReturn:
 class TestSNAP03ObjectIdentity:
     """Cached snapshot is the same object (identity via `is`)."""
 
-    async def test_same_object_returned(
-        self, repo: OmniFocusRepository
-    ) -> None:
+    async def test_same_object_returned(self, repo: OmniFocusRepository) -> None:
         first = await repo.get_snapshot()
         second = await repo.get_snapshot()
 
@@ -200,9 +196,7 @@ class TestSNAP05Concurrency:
     async def test_concurrent_reads_single_dump(
         self, repo: OmniFocusRepository, bridge: InMemoryBridge
     ) -> None:
-        results = await asyncio.gather(
-            *[repo.get_snapshot() for _ in range(10)]
-        )
+        results = await asyncio.gather(*[repo.get_snapshot() for _ in range(10)])
 
         assert bridge.call_count == 1
         # All got the same snapshot
@@ -242,9 +236,7 @@ class TestSNAP06Initialize:
 class TestErrorPropagation:
     """Errors from bridge, validation, and mtime propagate raw."""
 
-    async def test_bridge_error_propagates(
-        self, mtime: FakeMtimeSource
-    ) -> None:
+    async def test_bridge_error_propagates(self, mtime: FakeMtimeSource) -> None:
         bridge = InMemoryBridge()
         bridge.set_error(BridgeError("dump_all", "connection lost"))
         repo = OmniFocusRepository(bridge=bridge, mtime_source=mtime)
@@ -252,9 +244,7 @@ class TestErrorPropagation:
         with pytest.raises(BridgeError, match="connection lost"):
             await repo.get_snapshot()
 
-    async def test_validation_error_propagates(
-        self, mtime: FakeMtimeSource
-    ) -> None:
+    async def test_validation_error_propagates(self, mtime: FakeMtimeSource) -> None:
         """Invalid data causes Pydantic ValidationError to propagate."""
         bridge = InMemoryBridge(data={"tasks": "not-a-list"})
         repo = OmniFocusRepository(bridge=bridge, mtime_source=mtime)
@@ -272,9 +262,7 @@ class TestErrorPropagation:
         with pytest.raises(OSError, match="filesystem unavailable"):
             await repo.get_snapshot()
 
-    async def test_failed_refresh_preserves_none_cache(
-        self, mtime: FakeMtimeSource
-    ) -> None:
+    async def test_failed_refresh_preserves_none_cache(self, mtime: FakeMtimeSource) -> None:
         """After failed first load, cache stays None; next call retries."""
         bridge = InMemoryBridge()
         bridge.set_error(BridgeError("dump_all", "temporary failure"))
@@ -316,9 +304,7 @@ class TestErrorPropagation:
         third = await repo.get_snapshot()
         assert third is not first
 
-    async def test_initialize_failure_allows_retry(
-        self, mtime: FakeMtimeSource
-    ) -> None:
+    async def test_initialize_failure_allows_retry(self, mtime: FakeMtimeSource) -> None:
         """After initialize() fails, get_snapshot() retries successfully."""
         bridge = InMemoryBridge()
         bridge.set_error(BridgeError("dump_all", "startup failure"))
@@ -349,9 +335,7 @@ class TestConcurrencyEdgeCases:
         await repo.get_snapshot()  # warm up
         assert bridge.call_count == 1
 
-        results = await asyncio.gather(
-            *[repo.get_snapshot() for _ in range(10)]
-        )
+        results = await asyncio.gather(*[repo.get_snapshot() for _ in range(10)])
         assert bridge.call_count == 1
         assert all(r is results[0] for r in results)
 

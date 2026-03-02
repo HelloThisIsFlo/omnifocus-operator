@@ -6,7 +6,6 @@ paired memory streams -- no network sockets or subprocesses needed.
 
 from __future__ import annotations
 
-import sys
 from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, patch
 
@@ -26,6 +25,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _build_patched_server(
     repo: OmniFocusRepository,
@@ -80,11 +80,13 @@ async def run_with_client(
 # ARCH-01: Three-layer architecture (MCP tool -> Service -> Repository)
 # ---------------------------------------------------------------------------
 
+
 class TestARCH01ThreeLayerArchitecture:
     """Verify the MCP tool -> OperatorService -> OmniFocusRepository path."""
 
     async def test_list_all_returns_data_through_all_layers(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
         from omnifocus_operator.server import create_server
@@ -104,11 +106,13 @@ class TestARCH01ThreeLayerArchitecture:
 # ARCH-02: Bridge injection via env var
 # ---------------------------------------------------------------------------
 
+
 class TestARCH02BridgeInjection:
     """Verify bridge selection through OMNIFOCUS_BRIDGE env var."""
 
     async def test_inmemory_bridge_via_env_var(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
         from omnifocus_operator.server import create_server
@@ -122,7 +126,8 @@ class TestARCH02BridgeInjection:
         await run_with_client(server, _check)
 
     async def test_default_real_bridge_fails_at_startup(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.delenv("OMNIFOCUS_BRIDGE", raising=False)
         from omnifocus_operator.server import create_server
@@ -141,11 +146,13 @@ class TestARCH02BridgeInjection:
 # TOOL-01: list_all structured output
 # ---------------------------------------------------------------------------
 
+
 class TestTOOL01ListAllStructuredOutput:
     """Verify list_all returns structuredContent with all entity collections."""
 
     async def test_list_all_returns_structured_content(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
         from omnifocus_operator.server import create_server
@@ -161,7 +168,8 @@ class TestTOOL01ListAllStructuredOutput:
         await run_with_client(server, _check)
 
     async def test_list_all_structured_content_is_camelcase(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Verify structuredContent uses camelCase field names for nested entities."""
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
@@ -223,11 +231,13 @@ class TestTOOL01ListAllStructuredOutput:
 # TOOL-02: Annotations
 # ---------------------------------------------------------------------------
 
+
 class TestTOOL02Annotations:
     """Verify list_all tool annotations."""
 
     async def test_list_all_has_read_only_hint(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
         from omnifocus_operator.server import create_server
@@ -243,7 +253,8 @@ class TestTOOL02Annotations:
         await run_with_client(server, _check)
 
     async def test_list_all_has_idempotent_hint(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
         from omnifocus_operator.server import create_server
@@ -263,11 +274,13 @@ class TestTOOL02Annotations:
 # TOOL-03: Output schema
 # ---------------------------------------------------------------------------
 
+
 class TestTOOL03OutputSchema:
     """Verify list_all tool has outputSchema with camelCase."""
 
     async def test_list_all_has_output_schema(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
         from omnifocus_operator.server import create_server
@@ -282,7 +295,8 @@ class TestTOOL03OutputSchema:
         await run_with_client(server, _check)
 
     async def test_output_schema_uses_camelcase(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
         from omnifocus_operator.server import create_server
@@ -316,6 +330,7 @@ class TestTOOL03OutputSchema:
 # ---------------------------------------------------------------------------
 # TOOL-04: stderr only
 # ---------------------------------------------------------------------------
+
 
 class TestTOOL04StdoutClean:
     """Stdout is reserved for MCP protocol traffic.
@@ -352,7 +367,8 @@ class TestIPC06OrphanSweepWiring:
     """Verify sweep_orphaned_files is wired into the server lifespan."""
 
     async def test_lifespan_does_not_call_sweep_for_inmemory_bridge(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """InMemoryBridge has no ipc_dir attribute, so sweep is skipped."""
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
@@ -362,7 +378,8 @@ class TestIPC06OrphanSweepWiring:
         # Patch at the source module -- the lazy import inside app_lifespan
         # resolves from omnifocus_operator.bridge, so patching there intercepts it.
         with patch(
-            "omnifocus_operator.bridge.sweep_orphaned_files", mock_sweep,
+            "omnifocus_operator.bridge.sweep_orphaned_files",
+            mock_sweep,
         ):
             from omnifocus_operator.server import create_server
 
@@ -377,7 +394,9 @@ class TestIPC06OrphanSweepWiring:
         mock_sweep.assert_not_called()
 
     async def test_lifespan_calls_sweep_for_bridge_with_ipc_dir(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: "Any",
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Any,
     ) -> None:
         """When bridge has ipc_dir attribute, sweep_orphaned_files is called."""
         from pathlib import Path
@@ -391,7 +410,10 @@ class TestIPC06OrphanSweepWiring:
         from omnifocus_operator.bridge._in_memory import InMemoryBridge
 
         seed_data = {
-            "tasks": [], "projects": [], "tags": [], "folders": [],
+            "tasks": [],
+            "projects": [],
+            "tags": [],
+            "folders": [],
             "perspectives": [],
         }
         bridge_with_ipc = InMemoryBridge(data=seed_data)
@@ -400,7 +422,8 @@ class TestIPC06OrphanSweepWiring:
 
         with (
             patch(
-                "omnifocus_operator.bridge.sweep_orphaned_files", mock_sweep,
+                "omnifocus_operator.bridge.sweep_orphaned_files",
+                mock_sweep,
             ),
             patch(
                 "omnifocus_operator.bridge.create_bridge",
@@ -420,7 +443,9 @@ class TestIPC06OrphanSweepWiring:
         mock_sweep.assert_called_once_with(ipc_path)
 
     async def test_sweep_called_before_cache_prewarm(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: "Any",
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Any,
     ) -> None:
         """Sweep runs before repository.initialize() (cache pre-warm)."""
         from pathlib import Path
@@ -430,13 +455,16 @@ class TestIPC06OrphanSweepWiring:
         call_order: list[str] = []
         ipc_path = Path(str(tmp_path))
 
-        async def tracked_sweep(path: "Any") -> None:
+        async def tracked_sweep(path: Any) -> None:
             call_order.append("sweep")
 
         from omnifocus_operator.bridge._in_memory import InMemoryBridge
 
         seed_data = {
-            "tasks": [], "projects": [], "tags": [], "folders": [],
+            "tasks": [],
+            "projects": [],
+            "tags": [],
+            "folders": [],
             "perspectives": [],
         }
         bridge_with_ipc = InMemoryBridge(data=seed_data)
@@ -457,12 +485,14 @@ class TestIPC06OrphanSweepWiring:
 
             original_init = OmniFocusRepository.initialize
 
-            async def tracked_initialize(self: "Any") -> None:
+            async def tracked_initialize(self: Any) -> None:
                 call_order.append("initialize")
                 await original_init(self)
 
             with patch.object(
-                OmniFocusRepository, "initialize", tracked_initialize,
+                OmniFocusRepository,
+                "initialize",
+                tracked_initialize,
             ):
                 server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
                 _register_tools(server)

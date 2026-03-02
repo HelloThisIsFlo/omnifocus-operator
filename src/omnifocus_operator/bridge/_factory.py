@@ -120,8 +120,5 @@ def create_bridge(bridge_type: str) -> Bridge:
             ipc_dir = Path(ipc_dir_str) if ipc_dir_str else DEFAULT_IPC_DIR
             return RealBridge(ipc_dir=ipc_dir)
         case _:
-            msg = (
-                f"Unknown bridge type: {bridge_type!r}. "
-                "Use: inmemory, simulator, real"
-            )
+            msg = f"Unknown bridge type: {bridge_type!r}. Use: inmemory, simulator, real"
             raise ValueError(msg)

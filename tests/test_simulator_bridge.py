@@ -119,7 +119,8 @@ class TestFactory:
     """create_bridge('simulator') returns SimulatorBridge."""
 
     def test_create_bridge_simulator_returns_simulator_bridge(
-        self, tmp_path: Path,
+        self,
+        tmp_path: Path,
     ) -> None:
         """create_bridge('simulator') returns a SimulatorBridge instance."""
         from omnifocus_operator.bridge._factory import create_bridge
@@ -129,7 +130,9 @@ class TestFactory:
         assert isinstance(bridge, SimulatorBridge)
 
     def test_create_bridge_simulator_respects_env_var(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """create_bridge('simulator') respects OMNIFOCUS_IPC_DIR env var."""
         from omnifocus_operator.bridge._factory import create_bridge
@@ -143,7 +146,8 @@ class TestFactory:
         assert bridge.ipc_dir == custom_dir
 
     def test_create_bridge_simulator_uses_default_ipc_dir(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """create_bridge('simulator') uses DEFAULT_IPC_DIR when env var not set."""
         from omnifocus_operator.bridge._factory import create_bridge
@@ -204,7 +208,8 @@ class TestLifespan:
         }
 
         async def fake_send_command(
-            operation: str, params: dict[str, Any] | None = None,
+            operation: str,
+            params: dict[str, Any] | None = None,
         ) -> dict[str, Any]:
             return seed_data
 
@@ -212,7 +217,9 @@ class TestLifespan:
         return mock_bridge
 
     async def test_lifespan_simulator_completes_without_error(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
     ) -> None:
         """Server lifespan completes successfully with bridge_type='simulator'."""
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "simulator")
@@ -237,7 +244,9 @@ class TestLifespan:
             await _run_with_client(server, _check)
 
     async def test_lifespan_simulator_can_serve_list_all(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
     ) -> None:
         """Server with simulator bridge can serve list_all tool calls."""
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "simulator")
@@ -261,7 +270,9 @@ class TestLifespan:
             await _run_with_client(server, _check)
 
     async def test_lifespan_simulator_sweeps_orphaned_files(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
     ) -> None:
         """Lifespan sweeps orphaned IPC files for simulator bridge (has ipc_dir)."""
         from unittest.mock import AsyncMock

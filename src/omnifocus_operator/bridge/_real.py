@@ -23,9 +23,7 @@ DEFAULT_IPC_DIR: Path = (
 )
 """Default IPC directory for OmniFocus 4 (macOS sandbox path)."""
 
-_IPC_FILE_RE: re.Pattern[str] = re.compile(
-    r"^(\d+)_[0-9a-f-]+\.(request|response)\.json(\.tmp)?$"
-)
+_IPC_FILE_RE: re.Pattern[str] = re.compile(r"^(\d+)_[0-9a-f-]+\.(request|response)\.json(\.tmp)?$")
 """Matches IPC files: ``<pid>_<uuid>.(request|response).json[.tmp]``."""
 
 
@@ -125,9 +123,7 @@ class RealBridge:
     def _trigger_omnifocus(self, dispatch: str) -> None:
         """Hook for triggering OmniFocus. No-op until Phase 8."""
 
-    async def _write_request(
-        self, request_id: uuid.UUID, dispatch: str
-    ) -> None:
+    async def _write_request(self, request_id: uuid.UUID, dispatch: str) -> None:
         """Write request file atomically via .tmp + os.replace()."""
         filename = f"{self._pid}_{request_id}.request.json"
         final_path = self._ipc_dir / filename
@@ -148,16 +144,12 @@ class RealBridge:
         while True:
             exists = await asyncio.to_thread(response_path.exists)
             if exists:
-                content = await asyncio.to_thread(
-                    response_path.read_text, "utf-8"
-                )
+                content = await asyncio.to_thread(response_path.read_text, "utf-8")
                 result: dict[str, Any] = json.loads(content)
                 return result
             await asyncio.sleep(0.05)
 
-    def _validate_response(
-        self, raw: dict[str, Any], operation: str
-    ) -> dict[str, Any]:
+    def _validate_response(self, raw: dict[str, Any], operation: str) -> dict[str, Any]:
         """Validate response envelope and extract data."""
         if not isinstance(raw, dict):
             raise BridgeProtocolError(
