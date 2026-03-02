@@ -1,9 +1,9 @@
 ---
-status: complete
+status: resolved
 phase: 05-service-layer-and-mcp-server
 source: 05-01-SUMMARY.md, 05-02-SUMMARY.md
 started: 2026-03-02T14:00:00Z
-updated: 2026-03-02T14:05:00Z
+updated: 2026-03-02T15:30:00Z
 ---
 
 ## Current Test
@@ -49,10 +49,14 @@ skipped: 0
 ## Gaps
 
 - truth: "Output uses camelCase field names visible in list_all response"
-  status: failed
+  status: resolved
   reason: "User reported: InMemory bridge returns empty collections so camelCase field names cannot be verified in actual response. Need seed data in inmemory bridge."
   severity: major
   test: 4
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "Bridge factory seeds InMemoryBridge with empty lists for all 5 collections. send_command() returns data verbatim. Empty lists are valid DatabaseSnapshot but have no fields to inspect for camelCase."
+  artifacts:
+    - path: "src/omnifocus_operator/bridge/_factory.py"
+      issue: "inmemory case hardcodes empty lists — no sample data"
+  missing:
+    - "Replace empty lists with realistic sample data (1 item per collection) so camelCase keys are visible in list_all response"
+  debug_session: ".planning/debug/inmemory-empty-data.md"
