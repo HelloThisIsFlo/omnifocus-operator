@@ -144,11 +144,12 @@ Plans:
 1. SimulatorBridge sends commands via file IPC and receives responses -- full round-trip without URL scheme trigger
 2. Mock simulator script runs as a standalone Python process, watches for request files, and writes response files
 3. MCP server can be started with SimulatorBridge and the `list_all` tool returns data produced by the simulator
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
 
-- 07-01: TBD
+- [ ] 07-01-PLAN.md — SimulatorBridge class, factory wiring, lifespan update, exports, unit tests (BRDG-03)
+- [ ] 07-02-PLAN.md — Mock simulator package with realistic data, CLI entry point, integration tests (TEST-01, BRDG-03)
 
 ### Phase 8: RealBridge and End-to-End Validation
 
