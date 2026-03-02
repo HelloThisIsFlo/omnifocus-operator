@@ -58,7 +58,7 @@ async def app_lifespan(app: FastMCP) -> AsyncIterator[dict[str, object]]:
     mtime_source: MtimeSource
     if bridge_type in ("inmemory", "simulator"):
         mtime_source = ConstantMtimeSource()
-    else:
+    else:  # pragma: no cover — SAFE-01: real bridge path, tested via UAT
         from pathlib import Path
 
         from omnifocus_operator.repository import FileMtimeSource

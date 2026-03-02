@@ -126,12 +126,17 @@ class RealBridge:
         await self._cleanup_files(request_id)
         return result
 
-    def _trigger_omnifocus(self, dispatch: str) -> None:
+    def _trigger_omnifocus(self, dispatch: str) -> None:  # pragma: no cover
         """Trigger OmniFocus to process the current IPC request.
 
         Opens the ``omnifocus:///omnijs-run`` URL scheme via macOS ``open -g``
         (background, no focus steal). The bridge script inside OmniFocus reads
         the request file, executes the operation, and writes the response file.
+
+        .. note::
+
+           Excluded from coverage -- SAFE-01 prevents automated testing of
+           the production trigger.  Validated manually via UAT (Plan 08-02).
         """
         # The bridge script reads the IPC directory from a well-known location
         # and processes the dispatch argument. We pass the dispatch string

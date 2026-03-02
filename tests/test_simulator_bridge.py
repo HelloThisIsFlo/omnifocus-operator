@@ -1,4 +1,4 @@
-"""Tests for SimulatorBridge -- RealBridge subclass with no-op trigger."""
+"""Tests for SimulatorBridge -- base bridge subclass with no-op trigger."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 
 class TestSimulatorBridge:
-    """SimulatorBridge subclasses RealBridge with a no-op _trigger_omnifocus."""
+    """SimulatorBridge subclasses the base bridge with a no-op _trigger_omnifocus."""
 
     def test_trigger_omnifocus_is_noop(self, tmp_path: Path) -> None:
         """_trigger_omnifocus() is callable and returns None (no side effects)."""
@@ -51,7 +51,7 @@ class TestSimulatorBridge:
         assert callable(bridge.send_command)
 
     def test_ipc_directory_created_on_init(self, tmp_path: Path) -> None:
-        """IPC directory is created on init (inherited from RealBridge)."""
+        """IPC directory is created on init (inherited from base bridge)."""
         from omnifocus_operator.bridge._simulator import SimulatorBridge
 
         ipc_dir = tmp_path / "ipc"
@@ -59,16 +59,17 @@ class TestSimulatorBridge:
         SimulatorBridge(ipc_dir=ipc_dir)
         assert ipc_dir.exists()
 
-    def test_subclasses_real_bridge(self, tmp_path: Path) -> None:
-        """SimulatorBridge is a subclass of RealBridge."""
-        from omnifocus_operator.bridge._real import RealBridge
+    def test_has_ipc_mechanics(self, tmp_path: Path) -> None:
+        """SimulatorBridge inherits IPC mechanics (ipc_dir, send_command)."""
         from omnifocus_operator.bridge._simulator import SimulatorBridge
 
         bridge = SimulatorBridge(ipc_dir=tmp_path)
-        assert isinstance(bridge, RealBridge)
+        assert hasattr(bridge, "ipc_dir")
+        assert hasattr(bridge, "send_command")
+        assert bridge.ipc_dir == tmp_path
 
     def test_accepts_timeout_kwarg(self, tmp_path: Path) -> None:
-        """SimulatorBridge accepts timeout kwargs (inherited from RealBridge)."""
+        """SimulatorBridge accepts timeout kwargs (inherited from base bridge)."""
         from omnifocus_operator.bridge._simulator import SimulatorBridge
 
         bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=5.0)

@@ -1,4 +1,10 @@
-"""Tests for RealBridge -- file-based IPC with OmniFocus."""
+"""Tests for IPC engine -- file-based IPC mechanics via SimulatorBridge.
+
+All IPC mechanics (atomic writes, non-blocking I/O, dispatch protocol,
+timeouts, response parsing, orphan sweep) are inherited from the base
+bridge class. SimulatorBridge is used here to satisfy SAFE-01: no test
+file imports or instantiates the production bridge.
+"""
 
 from __future__ import annotations
 
@@ -15,7 +21,8 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from omnifocus_operator.bridge._errors import BridgeProtocolError, BridgeTimeoutError
-from omnifocus_operator.bridge._real import DEFAULT_IPC_DIR, RealBridge, sweep_orphaned_files
+from omnifocus_operator.bridge._real import DEFAULT_IPC_DIR, sweep_orphaned_files
+from omnifocus_operator.bridge._simulator import SimulatorBridge
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -66,7 +73,7 @@ class TestAtomicWrite:
 
     @pytest.mark.asyncio
     async def test_write_request_creates_file(self, tmp_path: Path) -> None:
-        bridge = RealBridge(ipc_dir=tmp_path, timeout=1.0)
+        bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=1.0)
         request_id = uuid.uuid4()
         dispatch = f"{request_id}::::test_op"
 
@@ -80,7 +87,7 @@ class TestAtomicWrite:
     @pytest.mark.asyncio
     async def test_write_request_is_atomic(self, tmp_path: Path) -> None:
         """Final path created via os.replace -- no .tmp file remains."""
-        bridge = RealBridge(ipc_dir=tmp_path, timeout=1.0)
+        bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=1.0)
         request_id = uuid.uuid4()
         dispatch = f"{request_id}::::test_op"
 
@@ -97,7 +104,7 @@ class TestAtomicWrite:
     @pytest.mark.asyncio
     async def test_write_request_content_format(self, tmp_path: Path) -> None:
         """Request file contains JSON with dispatch in uuid::::operation format."""
-        bridge = RealBridge(ipc_dir=tmp_path, timeout=1.0)
+        bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=1.0)
         request_id = uuid.uuid4()
         operation = "get_tasks"
         dispatch = f"{request_id}::::{operation}"
@@ -120,7 +127,7 @@ class TestNonBlockingIO:
     @pytest.mark.asyncio
     async def test_send_command_is_async(self, tmp_path: Path) -> None:
         """send_command is a coroutine that can be awaited."""
-        bridge = RealBridge(ipc_dir=tmp_path, timeout=1.0)
+        bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=1.0)
         coro = bridge.send_command("test_op")
         assert asyncio.iscoroutine(coro)
         coro.close()  # Clean up without running
@@ -128,7 +135,7 @@ class TestNonBlockingIO:
     @pytest.mark.asyncio
     async def test_file_operations_use_to_thread(self, tmp_path: Path) -> None:
         """File I/O operations are wrapped in asyncio.to_thread."""
-        bridge = RealBridge(ipc_dir=tmp_path, timeout=1.0)
+        bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=1.0)
         request_id = uuid.uuid4()
         dispatch = f"{request_id}::::test_op"
 
@@ -154,7 +161,7 @@ class TestDispatchProtocol:
     @pytest.mark.asyncio
     async def test_dispatch_string_format(self, tmp_path: Path) -> None:
         """Dispatch string matches <uuid>::::<operation> with :::: separator."""
-        bridge = RealBridge(ipc_dir=tmp_path, timeout=0.2)
+        bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=0.2)
         pid = os.getpid()
 
         # Write request then check its content for dispatch format
@@ -173,7 +180,7 @@ class TestDispatchProtocol:
     @pytest.mark.asyncio
     async def test_uuid4_in_dispatch(self, tmp_path: Path) -> None:
         """UUID portion of dispatch string is valid UUID4."""
-        bridge = RealBridge(ipc_dir=tmp_path, timeout=0.2)
+        bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=0.2)
 
         # Use send_command to let the bridge generate its own UUID
         # We'll intercept via the request file
@@ -214,7 +221,7 @@ class TestDispatchProtocol:
     @pytest.mark.asyncio
     async def test_different_operations_produce_different_uuids(self, tmp_path: Path) -> None:
         """Two send_command calls produce different request IDs."""
-        bridge = RealBridge(ipc_dir=tmp_path, timeout=0.3)
+        bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=0.3)
         pid = os.getpid()
         collected_ids: list[str] = []
 
@@ -260,7 +267,7 @@ class TestTimeout:
     @pytest.mark.asyncio
     async def test_timeout_raises_bridge_timeout_error(self, tmp_path: Path) -> None:
         """When no response file appears within timeout, raises BridgeTimeoutError."""
-        bridge = RealBridge(ipc_dir=tmp_path, timeout=0.2)
+        bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=0.2)
 
         with pytest.raises(BridgeTimeoutError) as exc_info:
             await bridge.send_command("slow_op")
@@ -270,7 +277,7 @@ class TestTimeout:
     @pytest.mark.asyncio
     async def test_timeout_error_message_names_omnifocus(self, tmp_path: Path) -> None:
         """Error message includes 'OmniFocus' explicitly."""
-        bridge = RealBridge(ipc_dir=tmp_path, timeout=0.2)
+        bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=0.2)
 
         with pytest.raises(BridgeTimeoutError) as exc_info:
             await bridge.send_command("slow_op")
@@ -280,7 +287,7 @@ class TestTimeout:
     @pytest.mark.asyncio
     async def test_timeout_cleans_up_request_file(self, tmp_path: Path) -> None:
         """After timeout, the request file is deleted."""
-        bridge = RealBridge(ipc_dir=tmp_path, timeout=0.2)
+        bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=0.2)
 
         with pytest.raises(BridgeTimeoutError):
             await bridge.send_command("slow_op")
@@ -292,10 +299,10 @@ class TestTimeout:
     @pytest.mark.asyncio
     async def test_timeout_configurable_for_testing(self, tmp_path: Path) -> None:
         """Bridge accepts a timeout parameter (default 10.0) for fast tests."""
-        bridge_default = RealBridge(ipc_dir=tmp_path)
+        bridge_default = SimulatorBridge(ipc_dir=tmp_path)
         assert bridge_default._timeout == 10.0
 
-        bridge_custom = RealBridge(ipc_dir=tmp_path, timeout=0.5)
+        bridge_custom = SimulatorBridge(ipc_dir=tmp_path, timeout=0.5)
         assert bridge_custom._timeout == 0.5
 
 
@@ -310,7 +317,7 @@ class TestSuccessfulRoundTrip:
     @pytest.mark.asyncio
     async def test_send_command_returns_parsed_response_data(self, tmp_path: Path) -> None:
         """When response has success:true+data, send_command returns the data dict."""
-        bridge = RealBridge(ipc_dir=tmp_path, timeout=1.0)
+        bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=1.0)
         pid = os.getpid()
         expected_data = {"tasks": [{"id": "t1", "name": "Buy milk"}]}
 
@@ -332,7 +339,7 @@ class TestSuccessfulRoundTrip:
     @pytest.mark.asyncio
     async def test_success_cleans_up_both_files(self, tmp_path: Path) -> None:
         """After successful round-trip, both request and response files deleted."""
-        bridge = RealBridge(ipc_dir=tmp_path, timeout=1.0)
+        bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=1.0)
         pid = os.getpid()
 
         async def respond() -> None:
@@ -355,7 +362,7 @@ class TestSuccessfulRoundTrip:
     @pytest.mark.asyncio
     async def test_protocol_error_on_bridge_failure(self, tmp_path: Path) -> None:
         """When response has success:false, raises BridgeProtocolError."""
-        bridge = RealBridge(ipc_dir=tmp_path, timeout=1.0)
+        bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=1.0)
         pid = os.getpid()
 
         async def respond_with_error() -> None:
@@ -392,17 +399,17 @@ class TestTriggerHook:
     """Template method hook for triggering OmniFocus."""
 
     @pytest.mark.asyncio
-    async def test_trigger_omnifocus_is_noop(self, tmp_path: Path) -> None:
-        """Default _trigger_omnifocus() does nothing (no-op placeholder)."""
-        bridge = RealBridge(ipc_dir=tmp_path, timeout=1.0)
+    async def test_simulator_trigger_is_noop(self, tmp_path: Path) -> None:
+        """SimulatorBridge._trigger_omnifocus() is a permanent no-op."""
+        bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=1.0)
         # Should not raise or have side effects
-        result = bridge._trigger_omnifocus("some-dispatch-string")
-        assert result is None
+        bridge._trigger_omnifocus("some-dispatch-string")
+        # No return value (None) -- just verifying it doesn't raise
 
     @pytest.mark.asyncio
     async def test_trigger_called_between_write_and_wait(self, tmp_path: Path) -> None:
         """_trigger_omnifocus() called after _write_request() and before _wait_response()."""
-        bridge = RealBridge(ipc_dir=tmp_path, timeout=0.3)
+        bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=0.3)
         call_order: list[str] = []
         pid = os.getpid()
 
@@ -426,8 +433,8 @@ class TestTriggerHook:
                 )
             original_trigger(dispatch)
 
-        bridge._write_request = tracked_write  # type: ignore[assignment]
-        bridge._trigger_omnifocus = tracked_trigger  # type: ignore[assignment]
+        bridge._write_request = tracked_write  # type: ignore[method-assign]
+        bridge._trigger_omnifocus = tracked_trigger  # type: ignore[method-assign]
 
         await bridge.send_command("test_op")
 
@@ -455,16 +462,16 @@ class TestIPCDirectory:
         assert expected == DEFAULT_IPC_DIR
 
     def test_constructor_accepts_ipc_dir(self, tmp_path: Path) -> None:
-        """RealBridge(ipc_dir=tmp_path) uses the provided path."""
-        bridge = RealBridge(ipc_dir=tmp_path)
+        """SimulatorBridge(ipc_dir=tmp_path) uses the provided path."""
+        bridge = SimulatorBridge(ipc_dir=tmp_path)
         assert bridge._ipc_dir == tmp_path
 
     def test_ipc_dir_auto_created(self, tmp_path: Path) -> None:
-        """If ipc_dir does not exist, RealBridge creates it during init."""
+        """If ipc_dir does not exist, SimulatorBridge creates it during init."""
         new_dir = tmp_path / "nonexistent" / "deep" / "ipc"
         assert not new_dir.exists()
 
-        RealBridge(ipc_dir=new_dir)
+        SimulatorBridge(ipc_dir=new_dir)
 
         assert new_dir.exists()
         assert new_dir.is_dir()
@@ -472,17 +479,7 @@ class TestIPCDirectory:
     def test_ipc_dir_already_exists_ok(self, tmp_path: Path) -> None:
         """If ipc_dir already exists, initialization does not raise."""
         assert tmp_path.exists()
-        bridge = RealBridge(ipc_dir=tmp_path)
-        assert bridge._ipc_dir == tmp_path
-
-    def test_env_var_override(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        """When OMNIFOCUS_IPC_DIR env var is set, create_bridge('real') uses that path."""
-        from omnifocus_operator.bridge._factory import create_bridge
-
-        monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
-        bridge = create_bridge("real")
-
-        assert isinstance(bridge, RealBridge)
+        bridge = SimulatorBridge(ipc_dir=tmp_path)
         assert bridge._ipc_dir == tmp_path
 
 
@@ -579,35 +576,39 @@ class TestOrphanSweep:
 
 
 # ---------------------------------------------------------------------------
-# TestFactory
+# TestSAFE01FactoryGuard
 # ---------------------------------------------------------------------------
 
 
-class TestFactory:
-    """Factory integration for RealBridge."""
+class TestSAFE01FactoryGuard:
+    """SAFE-01: create_bridge('real') refuses during automated testing."""
 
-    def test_create_bridge_real_returns_real_bridge(
+    def test_real_bridge_refused_during_pytest(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """create_bridge('real') returns a RealBridge instance."""
+        """create_bridge('real') raises RuntimeError when PYTEST_CURRENT_TEST is set."""
         from omnifocus_operator.bridge._factory import create_bridge
+
+        # PYTEST_CURRENT_TEST is automatically set by pytest -- verify it's present
+        assert os.environ.get("PYTEST_CURRENT_TEST") is not None
 
         monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
-        bridge = create_bridge("real")
-        assert isinstance(bridge, RealBridge)
+        with pytest.raises(RuntimeError, match="PYTEST_CURRENT_TEST"):
+            create_bridge("real")
 
-    def test_create_bridge_real_uses_env_var(
+    def test_real_bridge_allowed_when_not_in_pytest(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """When OMNIFOCUS_IPC_DIR is set, the returned bridge uses that directory."""
+        """create_bridge('real') succeeds when PYTEST_CURRENT_TEST is NOT set."""
         from omnifocus_operator.bridge._factory import create_bridge
 
-        custom_dir = tmp_path / "custom_ipc"
-        monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(custom_dir))
+        monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+        monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
         bridge = create_bridge("real")
 
-        assert isinstance(bridge, RealBridge)
-        assert bridge._ipc_dir == custom_dir
+        # Don't import the production bridge for isinstance -- check behavior instead
+        assert hasattr(bridge, "ipc_dir")
+        assert bridge.ipc_dir == tmp_path
 
 
 # ---------------------------------------------------------------------------
@@ -616,13 +617,13 @@ class TestFactory:
 
 
 class TestExports:
-    """Package-level exports for RealBridge and sweep_orphaned_files."""
+    """Package-level exports for SimulatorBridge and sweep_orphaned_files."""
 
-    def test_real_bridge_importable_from_package(self) -> None:
-        """from omnifocus_operator.bridge import RealBridge works."""
-        from omnifocus_operator.bridge import RealBridge as RealBridgeExport
+    def test_simulator_bridge_importable_from_package(self) -> None:
+        """from omnifocus_operator.bridge import SimulatorBridge works."""
+        from omnifocus_operator.bridge import SimulatorBridge as SimulatorBridgeExport
 
-        assert RealBridgeExport is RealBridge
+        assert SimulatorBridgeExport is SimulatorBridge
 
     def test_sweep_importable_from_package(self) -> None:
         """from omnifocus_operator.bridge import sweep_orphaned_files works."""
@@ -637,15 +638,15 @@ class TestExports:
 
 
 class TestIpcDirProperty:
-    """IPC-06: RealBridge exposes ipc_dir as a read-only property."""
+    """IPC-06: SimulatorBridge exposes ipc_dir as a read-only property."""
 
     def test_ipc_dir_property_returns_constructor_path(self, tmp_path: Path) -> None:
-        """RealBridge.ipc_dir returns the path passed to __init__."""
-        bridge = RealBridge(ipc_dir=tmp_path)
+        """SimulatorBridge.ipc_dir returns the path passed to __init__."""
+        bridge = SimulatorBridge(ipc_dir=tmp_path)
         assert bridge.ipc_dir == tmp_path
 
     def test_ipc_dir_property_with_custom_path(self, tmp_path: Path) -> None:
-        """RealBridge.ipc_dir works with a custom nested path."""
+        """SimulatorBridge.ipc_dir works with a custom nested path."""
         custom = tmp_path / "custom" / "ipc"
-        bridge = RealBridge(ipc_dir=custom)
+        bridge = SimulatorBridge(ipc_dir=custom)
         assert bridge.ipc_dir == custom

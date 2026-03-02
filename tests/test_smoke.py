@@ -19,11 +19,12 @@ def test_main_entry_point_exists() -> None:
     assert callable(main)
 
 
-def test_default_bridge_is_real(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Verify create_bridge('real') returns a RealBridge instance."""
+def test_default_bridge_refused_during_pytest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """SAFE-01: create_bridge('real') is refused during automated testing."""
     from omnifocus_operator.bridge import create_bridge
-    from omnifocus_operator.bridge._real import RealBridge
 
     monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
-    bridge = create_bridge("real")
-    assert isinstance(bridge, RealBridge)
+    with pytest.raises(RuntimeError, match="PYTEST_CURRENT_TEST"):
+        create_bridge("real")

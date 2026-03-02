@@ -129,6 +129,7 @@ class TestARCH02BridgeInjection:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        """SAFE-01: Default 'real' bridge type is refused by factory guard during pytest."""
         monkeypatch.delenv("OMNIFOCUS_BRIDGE", raising=False)
         from omnifocus_operator.server import create_server
 
@@ -137,9 +138,9 @@ class TestARCH02BridgeInjection:
         with pytest.raises(ExceptionGroup) as exc_info:
             await run_with_client(server, lambda s: s.list_tools())
 
-        # Somewhere in the exception group should be NotImplementedError
+        # SAFE-01 factory guard raises RuntimeError when PYTEST_CURRENT_TEST is set
         errors = exc_info.value.exceptions
-        assert any(isinstance(e, NotImplementedError) for e in errors)
+        assert any(isinstance(e, RuntimeError) for e in errors)
 
 
 # ---------------------------------------------------------------------------

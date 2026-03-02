@@ -124,14 +124,13 @@ class TestCreateBridge:
         bridge = create_bridge("simulator")
         assert isinstance(bridge, SimulatorBridge)
 
-    def test_real_returns_real_bridge(
+    def test_real_refused_during_pytest(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from omnifocus_operator.bridge._real import RealBridge
-
+        """SAFE-01: create_bridge('real') is refused during automated testing."""
         monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
-        bridge = create_bridge("real")
-        assert isinstance(bridge, RealBridge)
+        with pytest.raises(RuntimeError, match="PYTEST_CURRENT_TEST"):
+            create_bridge("real")
 
     def test_unknown_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="Unknown bridge type"):
