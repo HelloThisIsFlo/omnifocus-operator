@@ -46,11 +46,11 @@ Requirements for Milestone 1 — Foundation. Each maps to roadmap phases.
 
 ### File IPC
 
-- [ ] **IPC-01**: File writes use atomic pattern (write `.tmp`, then `os.replace()` to final path)
-- [ ] **IPC-02**: All file I/O in async context is non-blocking (via `asyncio.to_thread()` or anyio)
-- [ ] **IPC-03**: Dispatch protocol uses `<uuid>::::<operation>` format with UUID4 validation
+- [x] **IPC-01**: File writes use atomic pattern (write `.tmp`, then `os.replace()` to final path)
+- [x] **IPC-02**: All file I/O in async context is non-blocking (via `asyncio.to_thread()` or anyio)
+- [x] **IPC-03**: Dispatch protocol uses `<uuid>::::<operation>` format with UUID4 validation
 - [ ] **IPC-04**: IPC base directory defaults to OmniFocus 4 sandbox path but is configurable for dev/test
-- [ ] **IPC-05**: Response timeout at 10 seconds with actionable error message naming OmniFocus
+- [x] **IPC-05**: Response timeout at 10 seconds with actionable error message naming OmniFocus
 - [ ] **IPC-06**: Server sweeps orphaned request/response files from IPC directory on startup
 
 ### MCP Tool
@@ -136,11 +136,11 @@ Deferred to future milestones. Tracked but not in current roadmap.
 | SNAP-04 | Phase 4 | Complete |
 | SNAP-05 | Phase 4 | Complete |
 | SNAP-06 | Phase 4 | Complete |
-| IPC-01 | Phase 6 | Pending |
-| IPC-02 | Phase 6 | Pending |
-| IPC-03 | Phase 6 | Pending |
+| IPC-01 | Phase 6 | Complete |
+| IPC-02 | Phase 6 | Complete |
+| IPC-03 | Phase 6 | Complete |
 | IPC-04 | Phase 6 | Pending |
-| IPC-05 | Phase 6 | Pending |
+| IPC-05 | Phase 6 | Complete |
 | IPC-06 | Phase 6 | Pending |
 | TOOL-01 | Phase 5 | Complete |
 | TOOL-02 | Phase 5 | Complete |
