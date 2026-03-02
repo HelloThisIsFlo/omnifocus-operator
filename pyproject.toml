@@ -29,6 +29,7 @@ dev = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 timeout = 10
+testpaths = ["tests"]
 addopts = [
     "--strict-markers",
     "--cov=omnifocus_operator",
@@ -38,6 +39,10 @@ addopts = [
 
 [tool.coverage.run]
 source = ["omnifocus_operator"]
+omit = [
+    "*/simulator/__main__.py",
+    "*/__main__.py",
+]
 
 [tool.coverage.report]
 fail_under = 80

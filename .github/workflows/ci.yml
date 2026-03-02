@@ -31,5 +31,13 @@ jobs:
       - name: Type check
         run: uv run mypy src/
 
+      - name: Safety check (SAFE-01)
+        run: |
+          if grep -r "RealBridge" tests/ --include="*.py" -l; then
+            echo "ERROR: Test files must not reference RealBridge (SAFE-01)"
+            echo "Use InMemoryBridge or SimulatorBridge for automated testing."
+            exit 1
+          fi
+
       - name: Test
         run: uv run pytest --cov-fail-under=80
