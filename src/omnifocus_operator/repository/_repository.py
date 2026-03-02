@@ -81,7 +81,7 @@ class OmniFocusRepository:
         On success, updates ``_snapshot`` and ``_last_mtime_ns``.
         On failure, cache is **not** modified (preserves old or None).
         """
-        raw: dict[str, Any] = await self._bridge.send_command("dump_all")
+        raw: dict[str, Any] = await self._bridge.send_command("snapshot")
         snapshot = DatabaseSnapshot.model_validate(raw)
         self._last_mtime_ns = current_mtime
         return snapshot

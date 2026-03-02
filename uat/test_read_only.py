@@ -1,4 +1,4 @@
-"""Read-only UAT: validate RealBridge dump_all against live OmniFocus.
+"""Read-only UAT: validate RealBridge snapshot against live OmniFocus.
 
 This script is for HUMAN execution only. Do NOT run from CI or agents.
 See uat/README.md for details and safety rules (SAFE-01, SAFE-02).
@@ -26,9 +26,9 @@ async def main() -> int:
 
     bridge = RealBridge(ipc_dir=DEFAULT_IPC_DIR)
 
-    print("Sending dump_all command to OmniFocus...")
+    print("Sending snapshot command to OmniFocus...")
     try:
-        raw = await bridge.send_command("dump_all")
+        raw = await bridge.send_command("snapshot")
     except Exception as exc:
         print(f"\nERROR: {exc}")
         print()
