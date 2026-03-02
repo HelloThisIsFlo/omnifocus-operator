@@ -77,7 +77,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-None yet.
+1. **Review package structure and underscore convention** (general) — Package layout feels bloated; review before milestone end
 
 ### Blockers/Concerns
 
