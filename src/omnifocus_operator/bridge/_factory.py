@@ -38,11 +38,69 @@ def create_bridge(bridge_type: str) -> Bridge:
         case "inmemory":
             return InMemoryBridge(
                 data={
-                    "tasks": [],
-                    "projects": [],
-                    "tags": [],
-                    "folders": [],
-                    "perspectives": [],
+                    "tasks": [
+                        {
+                            "id": "task-001",
+                            "name": "Sample Task",
+                            "note": "",
+                            "completed": False,
+                            "completedByChildren": False,
+                            "flagged": False,
+                            "effectiveFlagged": False,
+                            "sequential": False,
+                            "hasChildren": False,
+                            "shouldUseFloatingTimeZone": False,
+                            "active": True,
+                            "effectiveActive": True,
+                            "status": "Available",
+                            "inInbox": False,
+                            "dueDate": None,
+                            "tags": [],
+                        }
+                    ],
+                    "projects": [
+                        {
+                            "id": "proj-001",
+                            "name": "Sample Project",
+                            "note": "",
+                            "completed": False,
+                            "completedByChildren": False,
+                            "flagged": False,
+                            "effectiveFlagged": False,
+                            "sequential": False,
+                            "hasChildren": True,
+                            "shouldUseFloatingTimeZone": False,
+                            "taskStatus": "Available",
+                            "containsSingletonActions": False,
+                            "status": "Active",
+                        }
+                    ],
+                    "tags": [
+                        {
+                            "id": "tag-001",
+                            "name": "work",
+                            "active": True,
+                            "effectiveActive": True,
+                            "status": "Active",
+                            "allowsNextAction": True,
+                        }
+                    ],
+                    "folders": [
+                        {
+                            "id": "folder-001",
+                            "name": "Work",
+                            "active": True,
+                            "effectiveActive": True,
+                            "status": "Active",
+                        }
+                    ],
+                    "perspectives": [
+                        {
+                            "id": None,
+                            "name": "Inbox",
+                            "builtin": True,
+                        }
+                    ],
                 }
             )
         case "simulator":
