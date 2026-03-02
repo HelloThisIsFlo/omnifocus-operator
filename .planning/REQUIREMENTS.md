@@ -55,10 +55,10 @@ Requirements for Milestone 1 — Foundation. Each maps to roadmap phases.
 
 ### MCP Tool
 
-- [ ] **TOOL-01**: `list_all` tool returns full structured database as typed Pydantic data
-- [ ] **TOOL-02**: Tool includes MCP annotations (`readOnlyHint`, `idempotentHint`)
-- [ ] **TOOL-03**: Tool exposes structured output schema from Pydantic models
-- [ ] **TOOL-04**: Server logs to stderr only (MCP spec requirement — never stdout)
+- [x] **TOOL-01**: `list_all` tool returns full structured database as typed Pydantic data
+- [x] **TOOL-02**: Tool includes MCP annotations (`readOnlyHint`, `idempotentHint`)
+- [x] **TOOL-03**: Tool exposes structured output schema from Pydantic models
+- [x] **TOOL-04**: Server logs to stderr only (MCP spec requirement — never stdout)
 
 ### Testing & Dev
 
@@ -142,10 +142,10 @@ Deferred to future milestones. Tracked but not in current roadmap.
 | IPC-04 | Phase 6 | Pending |
 | IPC-05 | Phase 6 | Pending |
 | IPC-06 | Phase 6 | Pending |
-| TOOL-01 | Phase 5 | Pending |
-| TOOL-02 | Phase 5 | Pending |
-| TOOL-03 | Phase 5 | Pending |
-| TOOL-04 | Phase 5 | Pending |
+| TOOL-01 | Phase 5 | Complete |
+| TOOL-02 | Phase 5 | Complete |
+| TOOL-03 | Phase 5 | Complete |
+| TOOL-04 | Phase 5 | Complete |
 | TEST-01 | Phase 7 | Pending |
 | TEST-02 | Phase 8 | Pending |
 | TEST-03 | Phase 8 | Pending |
