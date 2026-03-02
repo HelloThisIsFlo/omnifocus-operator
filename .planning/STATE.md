@@ -86,6 +86,7 @@ Recent decisions affecting current work:
 ### Pending Todos
 
 1. **Review package structure and underscore convention** (general) — Package layout feels bloated; review before milestone end
+2. **Defer cache hydration to first read instead of server startup** (api) — Preloading freezes OmniFocus on every Claude session start; hydrate lazily on first read
 
 ### Blockers/Concerns
 
