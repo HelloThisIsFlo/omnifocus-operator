@@ -9,7 +9,7 @@ Requirements for Milestone 1 — Foundation. Each maps to roadmap phases.
 
 ### Safety
 
-- [ ] **SAFE-01**: No automated test, CI pipeline, or agent execution touches the RealBridge — all automated testing uses InMemoryBridge or SimulatorBridge exclusively
+- [x] **SAFE-01**: No automated test, CI pipeline, or agent execution touches the RealBridge — all automated testing uses InMemoryBridge or SimulatorBridge exclusively
 - [ ] **SAFE-02**: RealBridge interaction is manual UAT only, performed by the user against their live OmniFocus database
 
 ### Architecture
@@ -33,7 +33,7 @@ Requirements for Milestone 1 — Foundation. Each maps to roadmap phases.
 - [x] **BRDG-01**: Bridge protocol defines `send_command(operation, params) → response`
 - [x] **BRDG-02**: InMemoryBridge returns test data from memory for unit testing
 - [x] **BRDG-03**: SimulatorBridge uses file-based IPC without URL scheme trigger
-- [ ] **BRDG-04**: RealBridge uses file-based IPC with `omnifocus:///omnijs-run` URL scheme trigger
+- [x] **BRDG-04**: RealBridge uses file-based IPC with `omnifocus:///omnijs-run` URL scheme trigger
 
 ### Snapshot
 
@@ -114,7 +114,7 @@ Deferred to future milestones. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SAFE-01 | Phase 8 | Pending |
+| SAFE-01 | Phase 8 | Complete |
 | SAFE-02 | Phase 8 | Pending |
 | ARCH-01 | Phase 5 | Complete |
 | ARCH-02 | Phase 5 | Complete |
@@ -129,7 +129,7 @@ Deferred to future milestones. Tracked but not in current roadmap.
 | BRDG-01 | Phase 3 | Complete |
 | BRDG-02 | Phase 3 | Complete |
 | BRDG-03 | Phase 7 | Complete |
-| BRDG-04 | Phase 8 | Pending |
+| BRDG-04 | Phase 8 | Complete |
 | SNAP-01 | Phase 4 | Complete |
 | SNAP-02 | Phase 4 | Complete |
 | SNAP-03 | Phase 4 | Complete |

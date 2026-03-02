@@ -167,7 +167,7 @@ Plans:
 
 Plans:
 
-- [ ] 08-01-PLAN.md — RealBridge URL scheme trigger, factory safety guard, FileMtimeSource wiring, test refactoring (BRDG-04, SAFE-01)
+- [x] 08-01-PLAN.md — RealBridge URL scheme trigger, factory safety guard, FileMtimeSource wiring, test refactoring (BRDG-04, SAFE-01)
 - [ ] 08-02-PLAN.md — CI safety step, UAT framework, CLAUDE.md safety rules, test coverage audit (SAFE-01, SAFE-02, TEST-02, TEST-03)
 
 ## Progress
