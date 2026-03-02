@@ -62,7 +62,7 @@ Requirements for Milestone 1 — Foundation. Each maps to roadmap phases.
 
 ### Testing & Dev
 
-- [ ] **TEST-01**: Mock simulator is a standalone Python script that watches for requests and writes test responses
+- [x] **TEST-01**: Mock simulator is a standalone Python script that watches for requests and writes test responses
 - [ ] **TEST-02**: Full pipeline is testable via InMemoryBridge with no OmniFocus dependency
 - [ ] **TEST-03**: pytest + pytest-asyncio test suite with tests for each layer
 
@@ -146,7 +146,7 @@ Deferred to future milestones. Tracked but not in current roadmap.
 | TOOL-02 | Phase 5 | Complete |
 | TOOL-03 | Phase 5 | Complete |
 | TOOL-04 | Phase 5 | Complete |
-| TEST-01 | Phase 7 | Pending |
+| TEST-01 | Phase 7 | Complete |
 | TEST-02 | Phase 8 | Pending |
 | TEST-03 | Phase 8 | Pending |
 
