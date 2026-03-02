@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in-progress
-last_updated: "2026-03-02T22:29:02.953Z"
+last_updated: "2026-03-02T22:37:41Z"
 progress:
   total_phases: 9
   completed_phases: 8
   total_plans: 19
-  completed_plans: 16
+  completed_plans: 17
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-01)
 ## Current Position
 
 Phase: 08.1 of 8+1 (OmniFocus Bridge Script)
-Plan: 2 of 4 in current phase (08.1-01 complete, 08.1-02 complete)
+Plan: 3 of 4 in current phase (08.1-01, 08.1-02, 08.1-03 complete)
 Status: In progress -- executing phase 08.1
-Last activity: 2026-03-02 -- 08.1-01 author JS bridge script complete
+Last activity: 2026-03-02 -- 08.1-03 IPC protocol overhaul complete
 
-Progress: [████████████████░] 84%
+Progress: [█████████████████░] 89%
 
 ## Performance Metrics
 
@@ -55,7 +55,8 @@ Progress: [████████████████░] 84%
 
 *Updated after each plan completion*
 | Phase 08.1 P01 | 3 min | 2 tasks | 5 files |
-| Phase 08.1 P02 | 1 | 2 tasks | 6 files |
+| Phase 08.1 P02 | 1 min | 2 tasks | 6 files |
+| Phase 08.1 P03 | 4 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -107,6 +108,9 @@ Recent decisions affecting current work:
 - [08-01]: No trigger unit test in test files -- validated via UAT per SAFE-01
 - [Phase 08.1]: Pure mechanical rename dump_all->snapshot with no behavioral changes
 - [08.1-01]: Error handling in dispatch() not IIFE -- try/catch moved into dispatch function for self-contained error responses
+- [08.1-03]: bridge.js loaded once at __init__ via importlib.resources -- PyPI-compatible, no repeated disk reads
+- [08.1-03]: _trigger_omnifocus uses "trigger" string literal for operation since dispatch no longer carries it
+- [08.1-03]: Request envelope changed from {dispatch: "uuid::::op"} to {operation, params} -- clean extensible format
 
 ### Pending Todos
 
@@ -124,5 +128,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 08.1-01-PLAN.md
-Next action: Execute 08.1-03-PLAN.md
+Stopped at: Completed 08.1-03-PLAN.md
+Next action: Execute 08.1-04-PLAN.md
