@@ -86,16 +86,12 @@ def _handle_request(
     request_path = ipc_dir / filename
     content = request_path.read_text(encoding="utf-8")
     envelope: dict[str, Any] = json.loads(content)
-    dispatch: str = envelope["dispatch"]
-    _uuid, _operation = dispatch.split("::::", 1)
+    _operation: str = envelope["operation"]
+    _params: dict[str, Any] = envelope.get("params", {})
 
-    # Extract PID from the request filename (use requester's PID, not ours)
-    match = _REQUEST_RE.match(filename)
-    assert match is not None  # caller already verified
-    pid = match.group(1)
-
-    # Build the response filename using the requester's PID
-    response_filename = f"{pid}_{_uuid}.response.json"
+    # File prefix is everything before ".request.json"
+    file_prefix = filename.replace(".request.json", "")
+    response_filename = f"{file_prefix}.response.json"
     response_path = ipc_dir / response_filename
 
     if delay > 0:

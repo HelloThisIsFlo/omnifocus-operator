@@ -1,6 +1,6 @@
 """Tests for IPC engine -- file-based IPC mechanics via SimulatorBridge.
 
-All IPC mechanics (atomic writes, non-blocking I/O, dispatch protocol,
+All IPC mechanics (atomic writes, non-blocking I/O, request envelope,
 timeouts, response parsing, orphan sweep) are inherited from the base
 bridge class. SimulatorBridge is used here to satisfy SAFE-01: no test
 file imports or instantiates the production bridge.
@@ -75,23 +75,21 @@ class TestAtomicWrite:
     async def test_write_request_creates_file(self, tmp_path: Path) -> None:
         bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=1.0)
         request_id = uuid.uuid4()
-        dispatch = f"{request_id}::::test_op"
 
-        await bridge._write_request(request_id, dispatch)
+        await bridge._write_request(request_id, "test_op")
 
         request_file = tmp_path / f"{os.getpid()}_{request_id}.request.json"
         assert request_file.exists()
         content = json.loads(request_file.read_text(encoding="utf-8"))
-        assert "dispatch" in content
+        assert "operation" in content
 
     @pytest.mark.asyncio
     async def test_write_request_is_atomic(self, tmp_path: Path) -> None:
         """Final path created via os.replace -- no .tmp file remains."""
         bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=1.0)
         request_id = uuid.uuid4()
-        dispatch = f"{request_id}::::test_op"
 
-        await bridge._write_request(request_id, dispatch)
+        await bridge._write_request(request_id, "test_op")
 
         # No .tmp files should remain
         tmp_files = list(tmp_path.glob("*.tmp"))
@@ -103,17 +101,16 @@ class TestAtomicWrite:
 
     @pytest.mark.asyncio
     async def test_write_request_content_format(self, tmp_path: Path) -> None:
-        """Request file contains JSON with dispatch in uuid::::operation format."""
+        """Request file contains JSON with operation and params envelope."""
         bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=1.0)
         request_id = uuid.uuid4()
         operation = "get_tasks"
-        dispatch = f"{request_id}::::{operation}"
 
-        await bridge._write_request(request_id, dispatch)
+        await bridge._write_request(request_id, operation)
 
         request_file = tmp_path / f"{os.getpid()}_{request_id}.request.json"
         content = json.loads(request_file.read_text(encoding="utf-8"))
-        assert content == {"dispatch": f"{request_id}::::{operation}"}
+        assert content == {"operation": "get_tasks", "params": {}}
 
 
 # ---------------------------------------------------------------------------
@@ -137,7 +134,6 @@ class TestNonBlockingIO:
         """File I/O operations are wrapped in asyncio.to_thread."""
         bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=1.0)
         request_id = uuid.uuid4()
-        dispatch = f"{request_id}::::test_op"
 
         with patch("omnifocus_operator.bridge._real.asyncio") as mock_asyncio:
             # Make to_thread actually work by delegating to real to_thread
@@ -145,7 +141,7 @@ class TestNonBlockingIO:
             mock_asyncio.sleep = asyncio.sleep
             mock_asyncio.wait_for = asyncio.wait_for
 
-            await bridge._write_request(request_id, dispatch)
+            await bridge._write_request(request_id, "test_op")
 
             mock_asyncio.to_thread.assert_called()
 
@@ -155,68 +151,50 @@ class TestNonBlockingIO:
 # ---------------------------------------------------------------------------
 
 
-class TestDispatchProtocol:
-    """IPC-03: Dispatch protocol uses uuid::::operation format."""
+class TestRequestEnvelope:
+    """IPC-03: Request envelope uses {operation, params} format."""
 
     @pytest.mark.asyncio
-    async def test_dispatch_string_format(self, tmp_path: Path) -> None:
-        """Dispatch string matches <uuid>::::<operation> with :::: separator."""
+    async def test_request_envelope_format(self, tmp_path: Path) -> None:
+        """Request envelope contains operation and params keys."""
         bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=0.2)
         pid = os.getpid()
 
-        # Write request then check its content for dispatch format
         request_id = uuid.uuid4()
-        dispatch = f"{request_id}::::list_tasks"
-        await bridge._write_request(request_id, dispatch)
+        await bridge._write_request(request_id, "list_tasks")
 
         request_file = tmp_path / f"{pid}_{request_id}.request.json"
         content = json.loads(request_file.read_text(encoding="utf-8"))
-        dispatch_str = content["dispatch"]
-
-        parts = dispatch_str.split("::::")
-        assert len(parts) == 2
-        assert parts[1] == "list_tasks"
+        assert content == {"operation": "list_tasks", "params": {}}
 
     @pytest.mark.asyncio
-    async def test_uuid4_in_dispatch(self, tmp_path: Path) -> None:
-        """UUID portion of dispatch string is valid UUID4."""
+    async def test_request_envelope_with_params(self, tmp_path: Path) -> None:
+        """Request envelope forwards params when provided."""
         bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=0.2)
-
-        # Use send_command to let the bridge generate its own UUID
-        # We'll intercept via the request file
         pid = os.getpid()
 
-        async def write_response_when_request_appears() -> None:
-            """Watch for request file and respond."""
-            for _ in range(100):
-                req = _find_request_file(tmp_path)
-                if req is not None:
-                    rid = _extract_request_id_from_file(req)
-                    resp_path = tmp_path / f"{pid}_{rid}.response.json"
-                    resp_path.write_text(
-                        json.dumps({"success": True, "data": {}}),
-                        encoding="utf-8",
-                    )
-                    return
-                await asyncio.sleep(0.01)
-
-        task = asyncio.create_task(write_response_when_request_appears())
-        await bridge.send_command("test_op")
-        await task
-
-        # Now check the dispatch string in the request file (already cleaned up,
-        # so we test via the bridge internals instead)
-        # Actually, after successful round-trip, files are cleaned up.
-        # Let's test UUID4 validity differently -- write request manually
         request_id = uuid.uuid4()
-        dispatch = f"{request_id}::::test_op"
-        await bridge._write_request(request_id, dispatch)
+        await bridge._write_request(request_id, "snapshot", {"filter": "active"})
 
         request_file = tmp_path / f"{pid}_{request_id}.request.json"
         content = json.loads(request_file.read_text(encoding="utf-8"))
-        uuid_part = content["dispatch"].split("::::")[0]
-        parsed = uuid.UUID(uuid_part, version=4)
-        assert str(parsed) == uuid_part
+        assert content == {"operation": "snapshot", "params": {"filter": "active"}}
+
+    @pytest.mark.asyncio
+    async def test_uuid_in_request_filename(self, tmp_path: Path) -> None:
+        """Request filename embeds a valid UUID4."""
+        bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=0.2)
+        pid = os.getpid()
+
+        request_id = uuid.uuid4()
+        await bridge._write_request(request_id, "test_op")
+
+        request_file = tmp_path / f"{pid}_{request_id}.request.json"
+        assert request_file.exists()
+        # Extract UUID from filename and verify it is valid UUID4
+        uuid_str = request_file.name.split("_", maxsplit=1)[1].replace(".request.json", "")
+        parsed = uuid.UUID(uuid_str, version=4)
+        assert str(parsed) == uuid_str
 
     @pytest.mark.asyncio
     async def test_different_operations_produce_different_uuids(self, tmp_path: Path) -> None:
@@ -403,7 +381,7 @@ class TestTriggerHook:
         """SimulatorBridge._trigger_omnifocus() is a permanent no-op."""
         bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=1.0)
         # Should not raise or have side effects
-        bridge._trigger_omnifocus("some-dispatch-string")
+        bridge._trigger_omnifocus("some-file-prefix")
         # No return value (None) -- just verifying it doesn't raise
 
     @pytest.mark.asyncio
@@ -416,11 +394,13 @@ class TestTriggerHook:
         original_write = bridge._write_request
         original_trigger = bridge._trigger_omnifocus
 
-        async def tracked_write(request_id: uuid.UUID, dispatch: str) -> None:
+        async def tracked_write(
+            request_id: uuid.UUID, operation: str, params: dict[str, Any] | None = None
+        ) -> None:
             call_order.append("write")
-            await original_write(request_id, dispatch)
+            await original_write(request_id, operation, params)
 
-        def tracked_trigger(dispatch: str) -> None:
+        def tracked_trigger(file_prefix: str) -> None:
             call_order.append("trigger")
             # Also write a response so send_command doesn't timeout
             req = _find_request_file(tmp_path)
@@ -431,7 +411,7 @@ class TestTriggerHook:
                     json.dumps({"success": True, "data": {}}),
                     encoding="utf-8",
                 )
-            original_trigger(dispatch)
+            original_trigger(file_prefix)
 
         bridge._write_request = tracked_write  # type: ignore[method-assign]
         bridge._trigger_omnifocus = tracked_trigger  # type: ignore[method-assign]

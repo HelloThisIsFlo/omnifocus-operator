@@ -29,7 +29,7 @@ class TestSimulatorBridge:
         from omnifocus_operator.bridge._simulator import SimulatorBridge
 
         bridge = SimulatorBridge(ipc_dir=tmp_path)
-        result = bridge._trigger_omnifocus("test-dispatch")
+        result = bridge._trigger_omnifocus("test-file-prefix")
         assert result is None
 
     def test_ipc_dir_returns_configured_path(self, tmp_path: Path) -> None:
