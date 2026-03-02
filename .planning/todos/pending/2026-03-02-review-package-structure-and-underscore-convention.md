@@ -10,6 +10,8 @@ files:
 
 The package layout feels bloated with many nested folders (bridge/, models/, repository/, service/, server/) each containing `__init__.py` + underscore-prefixed private modules (`_protocol.py`, `_repository.py`, `_mtime.py`, `_service.py`, `_server.py`, etc.). This pattern is uncommon in typical Python projects and may be over-engineered for the current codebase size.
 
+**Key context:** This is NOT a public library. No one will `pip install` this and import its modules. It's an open-source, self-standing MCP server that people deploy as a service. There are no external consumers who might accidentally import private modules — the underscore convention is solving a problem that doesn't exist here.
+
 This is a static/structural concern — it doesn't affect functionality. Worth reviewing before the milestone ends, once more code is in place and the full shape of the project is clearer. May decide to keep the current structure, simplify it, or find a middle ground.
 
 ## Solution
