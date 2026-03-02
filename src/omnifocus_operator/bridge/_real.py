@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import errno
+import importlib.resources
 import json
 import os
 import re
@@ -92,6 +93,13 @@ class RealBridge:
         self._pid = os.getpid()
         self._timeout = timeout
         ipc_dir.mkdir(parents=True, exist_ok=True)
+        # Load and cache bridge script with IPC dir injected
+        raw_script = (
+            importlib.resources.files("omnifocus_operator.bridge")
+            .joinpath("bridge.js")
+            .read_text(encoding="utf-8")
+        )
+        self._script = raw_script.replace("__IPC_DIR__", str(ipc_dir))
 
     @property
     def ipc_dir(self) -> Path:
@@ -105,10 +113,10 @@ class RealBridge:
     ) -> dict[str, Any]:
         """Send a command to OmniFocus and return the parsed response data."""
         request_id = uuid.uuid4()
-        dispatch = f"{request_id}::::{operation}"
+        file_prefix = f"{self._pid}_{request_id}"
 
-        await self._write_request(request_id, dispatch)
-        self._trigger_omnifocus(dispatch)
+        await self._write_request(request_id, operation, params)
+        self._trigger_omnifocus(file_prefix)
 
         try:
             raw = await asyncio.wait_for(
@@ -126,47 +134,48 @@ class RealBridge:
         await self._cleanup_files(request_id)
         return result
 
-    def _trigger_omnifocus(self, dispatch: str) -> None:  # pragma: no cover
+    def _trigger_omnifocus(self, file_prefix: str) -> None:  # pragma: no cover
         """Trigger OmniFocus to process the current IPC request.
 
         Opens the ``omnifocus:///omnijs-run`` URL scheme via macOS ``open -g``
-        (background, no focus steal). The bridge script inside OmniFocus reads
-        the request file, executes the operation, and writes the response file.
+        (background, no focus steal).  The full bridge script (with the IPC
+        directory already injected) is passed as the ``script=`` parameter.
+        The ``arg=`` parameter carries the file prefix so the script can
+        locate request/response files.
 
         .. note::
 
            Excluded from coverage -- SAFE-01 prevents automated testing of
            the production trigger.  Validated manually via UAT (Plan 08-02).
         """
-        # The bridge script reads the IPC directory from a well-known location
-        # and processes the dispatch argument. We pass the dispatch string
-        # as the arg parameter -- OmniFocus makes it available as `argument`.
-        encoded_arg = urllib.parse.quote(dispatch, safe="")
-        url = f"omnifocus:///omnijs-run?arg={encoded_arg}"
+        encoded_script = urllib.parse.quote(self._script, safe="")
+        encoded_arg = urllib.parse.quote(file_prefix, safe="")
+        url = f"omnifocus:///omnijs-run?script={encoded_script}&arg={encoded_arg}"
 
-        operation = dispatch.split("::::")[1] if "::::" in dispatch else "unknown"
         try:
             subprocess.run(["open", "-g", url], check=True, capture_output=True)
         except FileNotFoundError:
             raise BridgeConnectionError(
-                operation=operation,
+                operation="trigger",
                 reason="'open' command not found. This server requires macOS.",
             ) from None
         except subprocess.CalledProcessError as exc:
             raise BridgeConnectionError(
-                operation=operation,
+                operation="trigger",
                 reason=(
                     f"Failed to trigger OmniFocus (exit code {exc.returncode}). "
                     "Is OmniFocus installed?"
                 ),
             ) from None
 
-    async def _write_request(self, request_id: uuid.UUID, dispatch: str) -> None:
+    async def _write_request(
+        self, request_id: uuid.UUID, operation: str, params: dict[str, Any] | None = None
+    ) -> None:
         """Write request file atomically via .tmp + os.replace()."""
         filename = f"{self._pid}_{request_id}.request.json"
         final_path = self._ipc_dir / filename
         tmp_path = self._ipc_dir / f"{filename}.tmp"
-        content = json.dumps({"dispatch": dispatch})
+        content = json.dumps({"operation": operation, "params": params or {}})
 
         def _write() -> None:
             tmp_path.write_text(content, encoding="utf-8")

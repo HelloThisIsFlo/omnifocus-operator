@@ -23,5 +23,5 @@ class SimulatorBridge(RealBridge):
     a separate mock-simulator process to respond to request files.
     """
 
-    def _trigger_omnifocus(self, dispatch: str) -> None:
+    def _trigger_omnifocus(self, file_prefix: str) -> None:
         """No-op -- the mock simulator watches the IPC directory directly."""
