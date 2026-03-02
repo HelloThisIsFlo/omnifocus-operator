@@ -105,12 +105,13 @@ Plans:
 3. Server outputs structured schema (from Pydantic models) in the tool's output definition
 4. All server output goes to stderr; stdout is reserved exclusively for MCP protocol traffic
 5. Switching from InMemoryBridge to any other bridge requires zero code changes in MCP or service layers (configuration only)
-**Plans**: 2 plans
+**Plans**: 3 plans
 
 Plans:
 
 - [ ] 05-01-PLAN.md — OperatorService, ConstantMtimeSource, bridge factory (TDD)
 - [ ] 05-02-PLAN.md — MCP server with lifespan, list_all tool, entry point, integration tests (TDD)
+- [ ] 05-03-PLAN.md — Gap closure: seed InMemoryBridge factory with realistic sample data for camelCase UAT
 
 ### Phase 6: File IPC Engine
 
