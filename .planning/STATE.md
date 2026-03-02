@@ -18,14 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-01)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 8 in progress -- RealBridge production trigger and SAFE-01 safety guard complete, UAT next.
+**Current focus:** Phase 8 partially complete -- CI safety and UAT framework built, but UAT checkpoint FAILED because OmniFocus-side bridge script doesn't exist. Needs inserted phase for bridge script authoring.
 
 ## Current Position
 
 Phase: 8 of 8 (RealBridge and End-to-End Validation)
-Plan: 1 of 2 in current phase (08-01 complete, 08-02 UAT remaining)
-Status: Phase 8 Plan 1 complete -- ready for Plan 2 (UAT)
-Last activity: 2026-03-02 -- Completed 08-01 (RealBridge production trigger and SAFE-01)
+Plan: 2 of 2 in current phase (08-01 complete, 08-02 checkpoint FAILED)
+Status: Phase 8 blocked -- UAT checkpoint failed, bridge script phase needed
+Last activity: 2026-03-02 -- 08-02 UAT checkpoint failed (bridge script missing)
 
 Progress: [██████████████░] 93%
 
@@ -111,10 +111,11 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-None yet.
+1. **Phase 8 UAT blocked** — `_trigger_omnifocus()` missing `script=` parameter in URL scheme, and OmniFocus-side bridge script doesn't exist. Need inserted phase (8.1) to author the bridge script, add JS tests, wire into trigger, then re-attempt UAT.
 
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 08-01-PLAN.md (RealBridge production trigger and SAFE-01 safety guard)
-Resume file: .planning/phases/08-realbridge-and-end-to-end-validation/08-01-SUMMARY.md
+Stopped at: 08-02 checkpoint FAILED -- OmniFocus-side bridge script doesn't exist
+Resume file: .planning/phases/08-realbridge-and-end-to-end-validation/08-02-SUMMARY.md
+Next action: Insert bridge script phase (8.1), then re-attempt UAT
