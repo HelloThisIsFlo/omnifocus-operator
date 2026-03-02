@@ -2,25 +2,15 @@
 
 from __future__ import annotations
 
+import logging
+import os
 import sys
 
 
 def main() -> None:
-    """Run the OmniFocus Operator MCP server.
-
-    Redirects stdout to stderr (TOOL-04: stdout is reserved for MCP
-    protocol traffic), configures logging, then starts the server on
-    the stdio transport.
-    """
-    # TOOL-04: stdout is reserved for MCP protocol traffic
-    sys.stdout = sys.stderr
-
-    import logging
-    import os
-
-    level = os.environ.get("OMNIFOCUS_LOG_LEVEL", "INFO").upper()
+    """Run the OmniFocus Operator MCP server."""
     logging.basicConfig(
-        level=level,
+        level=os.environ.get("OMNIFOCUS_LOG_LEVEL", "INFO").upper(),
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         stream=sys.stderr,
     )

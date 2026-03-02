@@ -316,34 +316,27 @@ class TestTOOL03OutputSchema:
 # TOOL-04: stderr only
 # ---------------------------------------------------------------------------
 
-class TestTOOL04StderrOnly:
-    """Verify stdout redirection and logging to stderr."""
+class TestTOOL04StdoutClean:
+    """Stdout is reserved for MCP protocol traffic.
 
-    def test_stdout_redirected_to_stderr(self) -> None:
-        """After applying the redirect from __main__, stdout should be stderr."""
-        original_stdout = sys.stdout
-        try:
-            # Replicate the redirect logic from __main__.main()
-            sys.stdout = sys.stderr  # type: ignore[assignment]
-            assert sys.stdout is sys.stderr
-        finally:
-            sys.stdout = original_stdout
+    A stray ``print()`` anywhere in the source will corrupt the JSON-RPC
+    stream and break the connection.  Rather than runtime hacks, we catch
+    this statically: grep the source for ``print(`` calls.
+    """
 
-    def test_logging_goes_to_stderr(self) -> None:
-        """Verify omnifocus_operator logger can target stderr."""
-        import logging
+    def test_no_print_calls_in_source(self) -> None:
+        """Source files must not contain print() calls."""
+        from pathlib import Path
 
-        logger = logging.getLogger("omnifocus_operator")
+        src = Path(__file__).resolve().parent.parent / "src" / "omnifocus_operator"
+        violations = []
+        for py_file in sorted(src.rglob("*.py")):
+            for i, line in enumerate(py_file.read_text().splitlines(), 1):
+                stripped = line.lstrip()
+                if stripped.startswith("print(") or stripped.startswith("print ("):
+                    violations.append(f"{py_file.relative_to(src)}:{i}: {stripped}")
 
-        handler = logging.StreamHandler(sys.stderr)
-        logger.addHandler(handler)
-
-        try:
-            stderr_handlers = [
-                h
-                for h in logger.handlers
-                if isinstance(h, logging.StreamHandler) and h.stream is sys.stderr
-            ]
-            assert len(stderr_handlers) > 0
-        finally:
-            logger.removeHandler(handler)
+        assert not violations, (
+            "print() calls found in source (stdout is reserved for MCP protocol):\n"
+            + "\n".join(violations)
+        )
