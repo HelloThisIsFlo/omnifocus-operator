@@ -14,8 +14,8 @@ Requirements for Milestone 1 — Foundation. Each maps to roadmap phases.
 
 ### Architecture
 
-- [ ] **ARCH-01**: Server uses three-layer architecture (MCP Server → Service Layer → Repository) with clear separation of concerns
-- [ ] **ARCH-02**: Bridge implementation is injected at startup — no code changes in MCP or service layer to switch between InMemoryBridge and RealBridge
+- [x] **ARCH-01**: Server uses three-layer architecture (MCP Server → Service Layer → Repository) with clear separation of concerns
+- [x] **ARCH-02**: Bridge implementation is injected at startup — no code changes in MCP or service layer to switch between InMemoryBridge and RealBridge
 - [x] **ARCH-03**: Project uses `uv` with `src/` layout and Python 3.12
 
 ### Data Models
@@ -116,8 +116,8 @@ Deferred to future milestones. Tracked but not in current roadmap.
 |-------------|-------|--------|
 | SAFE-01 | Phase 8 | Pending |
 | SAFE-02 | Phase 8 | Pending |
-| ARCH-01 | Phase 5 | Pending |
-| ARCH-02 | Phase 5 | Pending |
+| ARCH-01 | Phase 5 | Complete |
+| ARCH-02 | Phase 5 | Complete |
 | ARCH-03 | Phase 1 | Complete |
 | MODL-01 | Phase 2 | Complete |
 | MODL-02 | Phase 2 | Complete |

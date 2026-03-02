@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-last_updated: "2026-03-02T01:45:52.170Z"
+status: in-progress
+last_updated: "2026-03-02T12:29:15.000Z"
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 4
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 7
+  completed_plans: 6
 ---
 
 # Project State
@@ -18,23 +18,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-01)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 4: Repository and Snapshot Management
+**Current focus:** Phase 5: Service Layer and MCP Server
 
 ## Current Position
 
-Phase: 4 of 8 (Repository and Snapshot Management) -- Complete
-Plan: 1 of 1 in current phase (all complete)
-Status: Phase 04 complete, ready for Phase 05
-Last activity: 2026-03-02 -- Completed 04-01 (OmniFocusRepository with MtimeSource)
+Phase: 5 of 8 (Service Layer and MCP Server) -- In Progress
+Plan: 1 of 2 in current phase (05-01 complete, 05-02 remaining)
+Status: 05-01 complete, ready for 05-02
+Last activity: 2026-03-02 -- Completed 05-01 (OperatorService, ConstantMtimeSource, bridge factory)
 
-Progress: [██████░░░░] 62%
+Progress: [███████░░░] 75%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
+- Total plans completed: 6
 - Average duration: 3 min
-- Total execution time: 0.25 hours
+- Total execution time: 0.28 hours
 
 **By Phase:**
 
@@ -44,9 +44,10 @@ Progress: [██████░░░░] 62%
 | 02-data-models | 2 | 8 min | 4 min |
 | 03-bridge-protocol-and-inmemorybridge | 1 | 2 min | 2 min |
 | 04-repository-and-snapshot-management | 1 | 3 min | 3 min |
+| 05-service-layer-and-mcp-server | 1 | 2 min | 2 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (2 min), 02-01 (4 min), 02-02 (4 min), 03-01 (2 min), 04-01 (3 min)
+- Last 5 plans: 02-01 (4 min), 02-02 (4 min), 03-01 (2 min), 04-01 (3 min), 05-01 (2 min)
 - Trend: Steady pace, well-researched plans execute fast
 
 *Updated after each plan completion*
@@ -74,6 +75,9 @@ Recent decisions affecting current work:
 - [04-01]: Fail-fast error propagation: bridge/validation/mtime errors propagate raw, no stale fallback
 - [04-01]: Entire get_snapshot() flow under asyncio.Lock: mtime check + conditional refresh are atomic
 - [04-01]: DatabaseSnapshot kept as runtime import (model_validate), Bridge/MtimeSource in TYPE_CHECKING
+- [05-01]: Bridge factory in bridge/_factory.py (bridge concern, not server concern)
+- [05-01]: @runtime_checkable on MtimeSource protocol for isinstance checks
+- [05-01]: create_bridge("inmemory") returns empty collections (not None/default snapshot)
 
 ### Pending Todos
 
@@ -86,5 +90,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 04-01-PLAN.md
-Resume file: .planning/phases/04-repository-and-snapshot-management/04-01-SUMMARY.md
+Stopped at: Completed 05-01-PLAN.md
+Resume file: .planning/phases/05-service-layer-and-mcp-server/05-01-SUMMARY.md
