@@ -5,17 +5,17 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import subprocess
+import sys
 import uuid
-from typing import TYPE_CHECKING, Any
+from pathlib import Path
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from omnifocus_operator.bridge._errors import BridgeProtocolError, BridgeTimeoutError
-from omnifocus_operator.bridge._real import RealBridge
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from omnifocus_operator.bridge._real import DEFAULT_IPC_DIR, RealBridge, sweep_orphaned_files
 
 
 # ---------------------------------------------------------------------------
@@ -445,3 +445,200 @@ class TestTriggerHook:
         await bridge.send_command("test_op")
 
         assert call_order.index("write") < call_order.index("trigger")
+
+
+# ---------------------------------------------------------------------------
+# TestIPCDirectory
+# ---------------------------------------------------------------------------
+
+
+class TestIPCDirectory:
+    """IPC-04: Default directory, env var override, auto-creation."""
+
+    def test_default_ipc_dir_constant(self) -> None:
+        """DEFAULT_IPC_DIR points to OmniFocus 4 sandbox IPC path."""
+        expected = (
+            Path.home()
+            / "Library"
+            / "Group Containers"
+            / "34YW5A73WQ.com.omnigroup.OmniFocus"
+            / "com.omnigroup.OmniFocus4"
+            / "ipc"
+        )
+        assert DEFAULT_IPC_DIR == expected
+
+    def test_constructor_accepts_ipc_dir(self, tmp_path: Path) -> None:
+        """RealBridge(ipc_dir=tmp_path) uses the provided path."""
+        bridge = RealBridge(ipc_dir=tmp_path)
+        assert bridge._ipc_dir == tmp_path
+
+    def test_ipc_dir_auto_created(self, tmp_path: Path) -> None:
+        """If ipc_dir does not exist, RealBridge creates it during init."""
+        new_dir = tmp_path / "nonexistent" / "deep" / "ipc"
+        assert not new_dir.exists()
+
+        RealBridge(ipc_dir=new_dir)
+
+        assert new_dir.exists()
+        assert new_dir.is_dir()
+
+    def test_ipc_dir_already_exists_ok(self, tmp_path: Path) -> None:
+        """If ipc_dir already exists, initialization does not raise."""
+        assert tmp_path.exists()
+        bridge = RealBridge(ipc_dir=tmp_path)
+        assert bridge._ipc_dir == tmp_path
+
+    def test_env_var_override(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """When OMNIFOCUS_IPC_DIR env var is set, create_bridge('real') uses that path."""
+        from omnifocus_operator.bridge._factory import create_bridge
+
+        monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
+        bridge = create_bridge("real")
+
+        assert isinstance(bridge, RealBridge)
+        assert bridge._ipc_dir == tmp_path
+
+
+# ---------------------------------------------------------------------------
+# TestOrphanSweep
+# ---------------------------------------------------------------------------
+
+
+class TestOrphanSweep:
+    """Orphaned IPC file cleanup on startup."""
+
+    def _dead_pid(self) -> int:
+        """Return a PID that is guaranteed to be dead."""
+        result = subprocess.run(
+            [sys.executable, "-c", "import os; print(os.getpid())"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return int(result.stdout.strip())
+
+    @pytest.mark.asyncio
+    async def test_sweep_removes_files_from_dead_pid(self, tmp_path: Path) -> None:
+        """Files with a dead PID prefix are deleted."""
+        dead_pid = self._dead_pid()
+        req_file = tmp_path / f"{dead_pid}_aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.request.json"
+        req_file.write_text("{}", encoding="utf-8")
+
+        await sweep_orphaned_files(tmp_path)
+
+        assert not req_file.exists()
+
+    @pytest.mark.asyncio
+    async def test_sweep_keeps_files_from_alive_pid(self, tmp_path: Path) -> None:
+        """Files with current process PID are NOT deleted."""
+        alive_pid = os.getpid()
+        req_file = tmp_path / f"{alive_pid}_aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.request.json"
+        req_file.write_text("{}", encoding="utf-8")
+
+        await sweep_orphaned_files(tmp_path)
+
+        assert req_file.exists()
+
+    @pytest.mark.asyncio
+    async def test_sweep_handles_empty_directory(self, tmp_path: Path) -> None:
+        """No error when IPC dir is empty."""
+        await sweep_orphaned_files(tmp_path)  # Should not raise
+
+    @pytest.mark.asyncio
+    async def test_sweep_handles_nonexistent_directory(self, tmp_path: Path) -> None:
+        """No error when IPC dir does not exist."""
+        nonexistent = tmp_path / "does_not_exist"
+        await sweep_orphaned_files(nonexistent)  # Should not raise
+
+    @pytest.mark.asyncio
+    async def test_sweep_ignores_non_ipc_files(self, tmp_path: Path) -> None:
+        """Files not matching IPC pattern are left alone."""
+        non_ipc = tmp_path / "config.json"
+        non_ipc.write_text("{}", encoding="utf-8")
+        readme = tmp_path / "README.md"
+        readme.write_text("# IPC", encoding="utf-8")
+
+        await sweep_orphaned_files(tmp_path)
+
+        assert non_ipc.exists()
+        assert readme.exists()
+
+    @pytest.mark.asyncio
+    async def test_sweep_removes_both_request_and_response_files(self, tmp_path: Path) -> None:
+        """Both .request.json and .response.json from dead PIDs are cleaned."""
+        dead_pid = self._dead_pid()
+        uid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+        req_file = tmp_path / f"{dead_pid}_{uid}.request.json"
+        resp_file = tmp_path / f"{dead_pid}_{uid}.response.json"
+        req_file.write_text("{}", encoding="utf-8")
+        resp_file.write_text("{}", encoding="utf-8")
+
+        await sweep_orphaned_files(tmp_path)
+
+        assert not req_file.exists()
+        assert not resp_file.exists()
+
+    @pytest.mark.asyncio
+    async def test_sweep_handles_tmp_files(self, tmp_path: Path) -> None:
+        """Leftover .tmp files are cleaned up during sweep."""
+        dead_pid = self._dead_pid()
+        uid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+        tmp_file = tmp_path / f"{dead_pid}_{uid}.request.json.tmp"
+        tmp_file.write_text("{}", encoding="utf-8")
+
+        await sweep_orphaned_files(tmp_path)
+
+        assert not tmp_file.exists()
+
+
+# ---------------------------------------------------------------------------
+# TestFactory
+# ---------------------------------------------------------------------------
+
+
+class TestFactory:
+    """Factory integration for RealBridge."""
+
+    def test_create_bridge_real_returns_real_bridge(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """create_bridge('real') returns a RealBridge instance."""
+        from omnifocus_operator.bridge._factory import create_bridge
+
+        monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
+        bridge = create_bridge("real")
+        assert isinstance(bridge, RealBridge)
+
+    def test_create_bridge_real_uses_env_var(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When OMNIFOCUS_IPC_DIR is set, the returned bridge uses that directory."""
+        from omnifocus_operator.bridge._factory import create_bridge
+
+        custom_dir = tmp_path / "custom_ipc"
+        monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(custom_dir))
+        bridge = create_bridge("real")
+
+        assert isinstance(bridge, RealBridge)
+        assert bridge._ipc_dir == custom_dir
+
+
+# ---------------------------------------------------------------------------
+# TestExports
+# ---------------------------------------------------------------------------
+
+
+class TestExports:
+    """Package-level exports for RealBridge and sweep_orphaned_files."""
+
+    def test_real_bridge_importable_from_package(self) -> None:
+        """from omnifocus_operator.bridge import RealBridge works."""
+        from omnifocus_operator.bridge import RealBridge as RB
+
+        assert RB is RealBridge
+
+    def test_sweep_importable_from_package(self) -> None:
+        """from omnifocus_operator.bridge import sweep_orphaned_files works."""
+        from omnifocus_operator.bridge import sweep_orphaned_files as sweep
+
+        assert sweep is sweep_orphaned_files
