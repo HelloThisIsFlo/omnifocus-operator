@@ -163,11 +163,12 @@ Plans:
 3. pytest suite has tests for each layer (models, bridge, repository, service, MCP server) and all pass
 4. No automated test, CI configuration, or script references RealBridge -- grep for RealBridge in test files returns zero matches
 5. RealBridge interaction is documented as manual UAT only, with clear instructions for the user to test against their live database
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
 
-- 08-01: TBD
+- [ ] 08-01-PLAN.md — RealBridge URL scheme trigger, factory safety guard, FileMtimeSource wiring, test refactoring (BRDG-04, SAFE-01)
+- [ ] 08-02-PLAN.md — CI safety step, UAT framework, CLAUDE.md safety rules, test coverage audit (SAFE-01, SAFE-02, TEST-02, TEST-03)
 
 ## Progress
 
