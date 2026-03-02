@@ -38,7 +38,7 @@ async def app_lifespan(app: FastMCP) -> AsyncIterator[dict[str, object]]:
     invalidation).  Other bridge types require a ``FileMtimeSource`` path
     which is not yet configured -- they raise ``NotImplementedError``.
     """
-    from omnifocus_operator.bridge import create_bridge
+    from omnifocus_operator.bridge import create_bridge, sweep_orphaned_files
     from omnifocus_operator.repository import ConstantMtimeSource, OmniFocusRepository
     from omnifocus_operator.service import OperatorService
 
@@ -46,6 +46,12 @@ async def app_lifespan(app: FastMCP) -> AsyncIterator[dict[str, object]]:
     logger.info("Bridge type: %s", bridge_type)
 
     bridge = create_bridge(bridge_type)
+
+    # Sweep orphaned IPC files from dead processes (only for bridge types with IPC)
+    if hasattr(bridge, "ipc_dir"):
+        logger.info("Sweeping orphaned IPC files...")
+        await sweep_orphaned_files(bridge.ipc_dir)
+        logger.info("IPC sweep complete")
 
     # ConstantMtimeSource for inmemory (no cache invalidation needed)
     # FileMtimeSource for real/simulator (future phases)

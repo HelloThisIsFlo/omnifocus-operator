@@ -359,8 +359,10 @@ class TestIPC06OrphanSweepWiring:
 
         mock_sweep = AsyncMock()
 
+        # Patch at the source module -- the lazy import inside app_lifespan
+        # resolves from omnifocus_operator.bridge, so patching there intercepts it.
         with patch(
-            "omnifocus_operator.server._server.sweep_orphaned_files", mock_sweep
+            "omnifocus_operator.bridge.sweep_orphaned_files", mock_sweep,
         ):
             from omnifocus_operator.server import create_server
 
@@ -388,16 +390,20 @@ class TestIPC06OrphanSweepWiring:
         # Patch create_bridge to return a bridge WITH ipc_dir attribute
         from omnifocus_operator.bridge._in_memory import InMemoryBridge
 
-        bridge_with_ipc = InMemoryBridge()
+        seed_data = {
+            "tasks": [], "projects": [], "tags": [], "folders": [],
+            "perspectives": [],
+        }
+        bridge_with_ipc = InMemoryBridge(data=seed_data)
         # Monkey-patch an ipc_dir attribute onto the inmemory bridge
         bridge_with_ipc.ipc_dir = ipc_path  # type: ignore[attr-defined]
 
         with (
             patch(
-                "omnifocus_operator.server._server.sweep_orphaned_files", mock_sweep,
+                "omnifocus_operator.bridge.sweep_orphaned_files", mock_sweep,
             ),
             patch(
-                "omnifocus_operator.server._server.create_bridge",
+                "omnifocus_operator.bridge.create_bridge",
                 return_value=bridge_with_ipc,
             ),
         ):
@@ -429,27 +435,34 @@ class TestIPC06OrphanSweepWiring:
 
         from omnifocus_operator.bridge._in_memory import InMemoryBridge
 
-        bridge_with_ipc = InMemoryBridge()
+        seed_data = {
+            "tasks": [], "projects": [], "tags": [], "folders": [],
+            "perspectives": [],
+        }
+        bridge_with_ipc = InMemoryBridge(data=seed_data)
         bridge_with_ipc.ipc_dir = ipc_path  # type: ignore[attr-defined]
-
-        original_initialize = None
 
         with (
             patch(
-                "omnifocus_operator.server._server.sweep_orphaned_files",
+                "omnifocus_operator.bridge.sweep_orphaned_files",
                 side_effect=tracked_sweep,
             ),
             patch(
-                "omnifocus_operator.server._server.create_bridge",
+                "omnifocus_operator.bridge.create_bridge",
                 return_value=bridge_with_ipc,
             ),
         ):
+            from omnifocus_operator.repository._repository import OmniFocusRepository
             from omnifocus_operator.server._server import _register_tools, app_lifespan
 
-            # Patch OmniFocusRepository.initialize to track call order
-            with patch(
-                "omnifocus_operator.repository._repository.OmniFocusRepository.initialize",
-                side_effect=lambda self_: call_order.append("initialize"),
+            original_init = OmniFocusRepository.initialize
+
+            async def tracked_initialize(self: "Any") -> None:
+                call_order.append("initialize")
+                await original_init(self)
+
+            with patch.object(
+                OmniFocusRepository, "initialize", tracked_initialize,
             ):
                 server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
                 _register_tools(server)

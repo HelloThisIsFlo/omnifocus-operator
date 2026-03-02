@@ -89,6 +89,11 @@ class RealBridge:
         self._timeout = timeout
         ipc_dir.mkdir(parents=True, exist_ok=True)
 
+    @property
+    def ipc_dir(self) -> Path:
+        """IPC directory path (read-only)."""
+        return self._ipc_dir
+
     async def send_command(
         self,
         operation: str,
