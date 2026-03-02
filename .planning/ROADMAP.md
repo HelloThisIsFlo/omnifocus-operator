@@ -126,11 +126,12 @@ Plans:
 4. IPC base directory is configurable (defaults to OmniFocus 4 sandbox path, overridable for dev/test)
 5. Timeout at 10 seconds produces an actionable error message that names OmniFocus explicitly
 6. Server startup sweeps orphaned request/response files from IPC directory
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
 
-- 06-01: TBD
+- [ ] 06-01-PLAN.md — RealBridge core IPC mechanics: atomic writes, async polling, dispatch protocol, timeout handling (TDD)
+- [ ] 06-02-PLAN.md — IPC directory config, PID-based orphan sweep, factory wiring, package exports (TDD)
 
 ### Phase 7: SimulatorBridge and Mock Simulator
 
