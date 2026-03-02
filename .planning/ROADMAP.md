@@ -87,11 +87,11 @@ Plans:
 3. When the mtime source changes, the next read triggers a fresh dump that atomically replaces the cached snapshot
 4. Concurrent reads while a dump is in progress do not trigger additional dumps (lock prevents parallel storms)
 5. Repository pre-warms the cache at startup so the first external request hits warm data
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
 
-- 04-01: TBD
+- [ ] 04-01-PLAN.md — OmniFocusRepository with MtimeSource, caching, concurrency lock, pre-warm (TDD)
 
 ### Phase 5: Service Layer and MCP Server
 
