@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in-progress
-last_updated: "2026-03-02T15:50:04Z"
+last_updated: "2026-03-02T15:57:46Z"
 progress:
   total_phases: 8
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 10
-  completed_plans: 9
+  completed_plans: 10
 ---
 
 # Project State
@@ -18,23 +18,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-01)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 6 in progress -- File IPC Engine. Plan 06-01 complete, 06-02 remaining.
+**Current focus:** Phase 6 complete -- File IPC Engine. Ready for Phase 7 (Simulator Bridge).
 
 ## Current Position
 
-Phase: 6 of 8 (File IPC Engine) -- In Progress
-Plan: 1 of 2 in current phase (06-01 complete)
-Status: Plan 06-01 complete, ready for 06-02
-Last activity: 2026-03-02 -- Completed 06-01 (RealBridge core IPC mechanics)
+Phase: 6 of 8 (File IPC Engine) -- Complete
+Plan: 2 of 2 in current phase (all complete)
+Status: Phase 6 complete, ready for Phase 7
+Last activity: 2026-03-02 -- Completed 06-02 (IPC directory config, orphan sweep, factory wiring)
 
-Progress: [█████████░] 90%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
+- Total plans completed: 10
 - Average duration: 3 min
-- Total execution time: 0.50 hours
+- Total execution time: 0.57 hours
 
 **By Phase:**
 
@@ -45,10 +45,10 @@ Progress: [█████████░] 90%
 | 03-bridge-protocol-and-inmemorybridge | 1 | 2 min | 2 min |
 | 04-repository-and-snapshot-management | 1 | 3 min | 3 min |
 | 05-service-layer-and-mcp-server | 3 | 11 min | 4 min |
-| 06-file-ipc-engine | 1 | 4 min | 4 min |
+| 06-file-ipc-engine | 2 | 8 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-01 (3 min), 05-01 (2 min), 05-02 (8 min), 05-03 (1 min), 06-01 (4 min)
+- Last 5 plans: 05-01 (2 min), 05-02 (8 min), 05-03 (1 min), 06-01 (4 min), 06-02 (4 min)
 - Trend: Steady pace, TDD plans averaging ~4 min
 
 *Updated after each plan completion*
@@ -86,6 +86,10 @@ Recent decisions affecting current work:
 - [06-01]: BridgeTimeoutError message updated to include OmniFocus for user-actionability (IPC-05)
 - [06-01]: 50ms polling interval for response detection (balances responsiveness vs CPU)
 - [06-01]: JSON envelope {"dispatch": "uuid::::op"} for request files (extensible for write payloads)
+- [06-02]: sweep_orphaned_files is standalone async function, not RealBridge method -- called during server lifespan
+- [06-02]: Factory imports RealBridge lazily (inside match case) to avoid importing when only InMemoryBridge needed
+- [06-02]: _is_pid_alive uses os.kill(pid, 0) with errno.ESRCH/EPERM for cross-user PID detection
+- [06-02]: IPC directory auto-created synchronously in __init__ (one-time startup cost, not hot path)
 
 ### Pending Todos
 
@@ -99,5 +103,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 06-01-PLAN.md (RealBridge core IPC mechanics)
-Resume file: .planning/phases/06-file-ipc-engine/06-01-SUMMARY.md
+Stopped at: Completed 06-02-PLAN.md (IPC directory config, orphan sweep, factory wiring)
+Resume file: .planning/phases/06-file-ipc-engine/06-02-SUMMARY.md
