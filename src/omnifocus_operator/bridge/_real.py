@@ -3,15 +3,75 @@
 from __future__ import annotations
 
 import asyncio
+import errno
 import json
 import os
+import re
 import uuid
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+from typing import Any
 
 from omnifocus_operator.bridge._errors import BridgeProtocolError, BridgeTimeoutError
+
+DEFAULT_IPC_DIR: Path = (
+    Path.home()
+    / "Library"
+    / "Group Containers"
+    / "34YW5A73WQ.com.omnigroup.OmniFocus"
+    / "com.omnigroup.OmniFocus4"
+    / "ipc"
+)
+"""Default IPC directory for OmniFocus 4 (macOS sandbox path)."""
+
+_IPC_FILE_RE: re.Pattern[str] = re.compile(
+    r"^(\d+)_[0-9a-f-]+\.(request|response)\.json(\.tmp)?$"
+)
+"""Matches IPC files: ``<pid>_<uuid>.(request|response).json[.tmp]``."""
+
+
+def _is_pid_alive(pid: int) -> bool:
+    """Check whether a process with the given *pid* is alive.
+
+    Uses ``os.kill(pid, 0)`` to probe without sending a signal.
+    Returns ``False`` for *pid* <= 0 or if the process does not exist.
+    Returns ``True`` if the process exists (even if owned by another user).
+    """
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except OSError as exc:
+        if exc.errno == errno.ESRCH:
+            return False
+        if exc.errno == errno.EPERM:
+            return True
+        raise
+    return True
+
+
+async def sweep_orphaned_files(ipc_dir: Path) -> None:
+    """Remove IPC files left behind by dead processes.
+
+    Iterates *ipc_dir*, matches filenames against :data:`_IPC_FILE_RE`,
+    extracts the PID, and deletes files whose owning process is no longer
+    alive.  Files that do not match the IPC naming convention are left
+    untouched.
+
+    Safe to call when *ipc_dir* does not exist or is empty.
+    """
+
+    def _sweep() -> None:
+        if not ipc_dir.exists():
+            return
+        for entry in ipc_dir.iterdir():
+            match = _IPC_FILE_RE.match(entry.name)
+            if match is None:
+                continue
+            pid = int(match.group(1))
+            if not _is_pid_alive(pid):
+                entry.unlink(missing_ok=True)
+
+    await asyncio.to_thread(_sweep)
 
 
 class RealBridge:
@@ -27,6 +87,7 @@ class RealBridge:
         self._ipc_dir = ipc_dir
         self._pid = os.getpid()
         self._timeout = timeout
+        ipc_dir.mkdir(parents=True, exist_ok=True)
 
     async def send_command(
         self,

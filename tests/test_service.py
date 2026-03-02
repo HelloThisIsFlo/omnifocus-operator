@@ -7,7 +7,12 @@ factory function (creates the appropriate bridge implementation).
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 from omnifocus_operator.bridge import BridgeError, InMemoryBridge, create_bridge
 from omnifocus_operator.repository import (
@@ -117,13 +122,14 @@ class TestCreateBridge:
         with pytest.raises(NotImplementedError, match="Phase 7"):
             create_bridge("simulator")
 
-    def test_real_raises_not_implemented(self) -> None:
-        with pytest.raises(NotImplementedError, match="Phase 8"):
-            create_bridge("real")
+    def test_real_returns_real_bridge(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from omnifocus_operator.bridge._real import RealBridge
 
-    def test_real_suggests_inmemory(self) -> None:
-        with pytest.raises(NotImplementedError, match="OMNIFOCUS_BRIDGE=inmemory"):
-            create_bridge("real")
+        monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
+        bridge = create_bridge("real")
+        assert isinstance(bridge, RealBridge)
 
     def test_unknown_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="Unknown bridge type"):

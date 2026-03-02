@@ -17,7 +17,6 @@ import pytest
 from omnifocus_operator.bridge._errors import BridgeProtocolError, BridgeTimeoutError
 from omnifocus_operator.bridge._real import DEFAULT_IPC_DIR, RealBridge, sweep_orphaned_files
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -465,7 +464,7 @@ class TestIPCDirectory:
             / "com.omnigroup.OmniFocus4"
             / "ipc"
         )
-        assert DEFAULT_IPC_DIR == expected
+        assert expected == DEFAULT_IPC_DIR
 
     def test_constructor_accepts_ipc_dir(self, tmp_path: Path) -> None:
         """RealBridge(ipc_dir=tmp_path) uses the provided path."""
@@ -633,9 +632,9 @@ class TestExports:
 
     def test_real_bridge_importable_from_package(self) -> None:
         """from omnifocus_operator.bridge import RealBridge works."""
-        from omnifocus_operator.bridge import RealBridge as RB
+        from omnifocus_operator.bridge import RealBridge as RealBridgeExport
 
-        assert RB is RealBridge
+        assert RealBridgeExport is RealBridge
 
     def test_sweep_importable_from_package(self) -> None:
         """from omnifocus_operator.bridge import sweep_orphaned_files works."""

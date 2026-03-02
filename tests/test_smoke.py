@@ -1,5 +1,7 @@
 """Smoke test: verify the package can be imported."""
 
+from pathlib import Path
+
 import pytest
 
 
@@ -17,18 +19,11 @@ def test_main_entry_point_exists() -> None:
     assert callable(main)
 
 
-def test_default_bridge_is_real() -> None:
-    """Verify create_server defaults to 'real' bridge which fails cleanly.
-
-    Uses the in-process pattern rather than calling main() directly,
-    which avoids pytest capture teardown issues from stdout redirection.
-    """
-    import os
-
+def test_default_bridge_is_real(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify create_bridge('real') returns a RealBridge instance."""
     from omnifocus_operator.bridge import create_bridge
+    from omnifocus_operator.bridge._real import RealBridge
 
-    # Without OMNIFOCUS_BRIDGE set, factory should attempt "real"
-    bridge_type = os.environ.get("OMNIFOCUS_BRIDGE", "real")
-    if bridge_type == "real":
-        with pytest.raises(NotImplementedError, match="RealBridge"):
-            create_bridge("real")
+    monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
+    bridge = create_bridge("real")
+    assert isinstance(bridge, RealBridge)
