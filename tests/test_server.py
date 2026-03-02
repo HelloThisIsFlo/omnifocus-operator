@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import sys
 from typing import TYPE_CHECKING, Any
+from unittest.mock import AsyncMock, patch
 
 import anyio
 import pytest
@@ -340,3 +341,124 @@ class TestTOOL04StdoutClean:
             "print() calls found in source (stdout is reserved for MCP protocol):\n"
             + "\n".join(violations)
         )
+
+
+# ---------------------------------------------------------------------------
+# IPC-06: Orphan sweep wiring in app_lifespan
+# ---------------------------------------------------------------------------
+
+
+class TestIPC06OrphanSweepWiring:
+    """Verify sweep_orphaned_files is wired into the server lifespan."""
+
+    async def test_lifespan_does_not_call_sweep_for_inmemory_bridge(
+        self, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """InMemoryBridge has no ipc_dir attribute, so sweep is skipped."""
+        monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
+
+        mock_sweep = AsyncMock()
+
+        with patch(
+            "omnifocus_operator.server._server.sweep_orphaned_files", mock_sweep
+        ):
+            from omnifocus_operator.server import create_server
+
+            server = create_server()
+
+            async def _check(session: ClientSession) -> None:
+                # If we get here, lifespan ran successfully without calling sweep
+                pass
+
+            await run_with_client(server, _check)
+
+        mock_sweep.assert_not_called()
+
+    async def test_lifespan_calls_sweep_for_bridge_with_ipc_dir(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: "Any",
+    ) -> None:
+        """When bridge has ipc_dir attribute, sweep_orphaned_files is called."""
+        from pathlib import Path
+
+        monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
+
+        mock_sweep = AsyncMock()
+        ipc_path = Path(str(tmp_path))
+
+        # Patch create_bridge to return a bridge WITH ipc_dir attribute
+        from omnifocus_operator.bridge._in_memory import InMemoryBridge
+
+        bridge_with_ipc = InMemoryBridge()
+        # Monkey-patch an ipc_dir attribute onto the inmemory bridge
+        bridge_with_ipc.ipc_dir = ipc_path  # type: ignore[attr-defined]
+
+        with (
+            patch(
+                "omnifocus_operator.server._server.sweep_orphaned_files", mock_sweep,
+            ),
+            patch(
+                "omnifocus_operator.server._server.create_bridge",
+                return_value=bridge_with_ipc,
+            ),
+        ):
+            from omnifocus_operator.server._server import _register_tools, app_lifespan
+
+            server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
+            _register_tools(server)
+
+            async def _check(session: ClientSession) -> None:
+                pass
+
+            await run_with_client(server, _check)
+
+        mock_sweep.assert_called_once_with(ipc_path)
+
+    async def test_sweep_called_before_cache_prewarm(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: "Any",
+    ) -> None:
+        """Sweep runs before repository.initialize() (cache pre-warm)."""
+        from pathlib import Path
+
+        monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
+
+        call_order: list[str] = []
+        ipc_path = Path(str(tmp_path))
+
+        async def tracked_sweep(path: "Any") -> None:
+            call_order.append("sweep")
+
+        from omnifocus_operator.bridge._in_memory import InMemoryBridge
+
+        bridge_with_ipc = InMemoryBridge()
+        bridge_with_ipc.ipc_dir = ipc_path  # type: ignore[attr-defined]
+
+        original_initialize = None
+
+        with (
+            patch(
+                "omnifocus_operator.server._server.sweep_orphaned_files",
+                side_effect=tracked_sweep,
+            ),
+            patch(
+                "omnifocus_operator.server._server.create_bridge",
+                return_value=bridge_with_ipc,
+            ),
+        ):
+            from omnifocus_operator.server._server import _register_tools, app_lifespan
+
+            # Patch OmniFocusRepository.initialize to track call order
+            with patch(
+                "omnifocus_operator.repository._repository.OmniFocusRepository.initialize",
+                side_effect=lambda self_: call_order.append("initialize"),
+            ):
+                server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
+                _register_tools(server)
+
+                async def _check(session: ClientSession) -> None:
+                    pass
+
+                await run_with_client(server, _check)
+
+        assert "sweep" in call_order
+        assert "initialize" in call_order
+        assert call_order.index("sweep") < call_order.index("initialize")

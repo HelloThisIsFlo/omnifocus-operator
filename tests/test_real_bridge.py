@@ -641,3 +641,23 @@ class TestExports:
         from omnifocus_operator.bridge import sweep_orphaned_files as sweep
 
         assert sweep is sweep_orphaned_files
+
+
+# ---------------------------------------------------------------------------
+# TestIpcDirProperty
+# ---------------------------------------------------------------------------
+
+
+class TestIpcDirProperty:
+    """IPC-06: RealBridge exposes ipc_dir as a read-only property."""
+
+    def test_ipc_dir_property_returns_constructor_path(self, tmp_path: Path) -> None:
+        """RealBridge.ipc_dir returns the path passed to __init__."""
+        bridge = RealBridge(ipc_dir=tmp_path)
+        assert bridge.ipc_dir == tmp_path
+
+    def test_ipc_dir_property_with_custom_path(self, tmp_path: Path) -> None:
+        """RealBridge.ipc_dir works with a custom nested path."""
+        custom = tmp_path / "custom" / "ipc"
+        bridge = RealBridge(ipc_dir=custom)
+        assert bridge.ipc_dir == custom
