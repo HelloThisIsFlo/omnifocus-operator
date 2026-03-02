@@ -1,0 +1,130 @@
+"""Tests for OperatorService, ConstantMtimeSource, and bridge factory.
+
+Covers the service layer (thin passthrough to repository), the constant
+mtime source (always returns 0 for InMemoryBridge usage), and the bridge
+factory function (creates the appropriate bridge implementation).
+"""
+
+from __future__ import annotations
+
+import pytest
+
+from omnifocus_operator.bridge import BridgeError, InMemoryBridge, create_bridge
+from omnifocus_operator.repository import (
+    ConstantMtimeSource,
+    MtimeSource,
+    OmniFocusRepository,
+)
+from omnifocus_operator.service import OperatorService
+
+from .conftest import make_snapshot_dict
+
+# ---------------------------------------------------------------------------
+# Test doubles
+# ---------------------------------------------------------------------------
+
+
+class FakeMtimeSource:
+    """Controllable mtime source for tests."""
+
+    def __init__(self, mtime_ns: int = 0) -> None:
+        self._mtime_ns = mtime_ns
+
+    async def get_mtime_ns(self) -> int:
+        return self._mtime_ns
+
+
+# ---------------------------------------------------------------------------
+# OperatorService
+# ---------------------------------------------------------------------------
+
+
+class TestOperatorService:
+    """OperatorService delegates to repository and passes through results."""
+
+    async def test_get_all_data_returns_snapshot(self) -> None:
+        bridge = InMemoryBridge(data=make_snapshot_dict())
+        mtime = FakeMtimeSource()
+        repo = OmniFocusRepository(bridge=bridge, mtime_source=mtime)
+        service = OperatorService(repository=repo)
+
+        snapshot = await service.get_all_data()
+
+        assert len(snapshot.tasks) == 1
+        assert len(snapshot.projects) == 1
+        assert len(snapshot.tags) == 1
+        assert len(snapshot.folders) == 1
+        assert len(snapshot.perspectives) == 1
+
+    async def test_get_all_data_delegates_to_repository(self) -> None:
+        bridge = InMemoryBridge(data=make_snapshot_dict())
+        mtime = FakeMtimeSource()
+        repo = OmniFocusRepository(bridge=bridge, mtime_source=mtime)
+        service = OperatorService(repository=repo)
+
+        await service.get_all_data()
+
+        assert bridge.call_count == 1
+
+    async def test_get_all_data_propagates_errors(self) -> None:
+        bridge = InMemoryBridge()
+        bridge.set_error(BridgeError("dump_all", "connection lost"))
+        mtime = FakeMtimeSource()
+        repo = OmniFocusRepository(bridge=bridge, mtime_source=mtime)
+        service = OperatorService(repository=repo)
+
+        with pytest.raises(BridgeError, match="connection lost"):
+            await service.get_all_data()
+
+
+# ---------------------------------------------------------------------------
+# ConstantMtimeSource
+# ---------------------------------------------------------------------------
+
+
+class TestConstantMtimeSource:
+    """ConstantMtimeSource always returns 0 and satisfies MtimeSource."""
+
+    async def test_always_returns_zero(self) -> None:
+        source = ConstantMtimeSource()
+
+        first = await source.get_mtime_ns()
+        second = await source.get_mtime_ns()
+
+        assert first == 0
+        assert second == 0
+
+    async def test_satisfies_mtime_protocol(self) -> None:
+        source = ConstantMtimeSource()
+
+        assert isinstance(source, MtimeSource)
+
+
+# ---------------------------------------------------------------------------
+# Bridge factory (create_bridge)
+# ---------------------------------------------------------------------------
+
+
+class TestCreateBridge:
+    """create_bridge() factory returns the correct bridge or raises."""
+
+    def test_inmemory_returns_inmemory_bridge(self) -> None:
+        bridge = create_bridge("inmemory")
+
+        assert isinstance(bridge, InMemoryBridge)
+
+    def test_simulator_raises_not_implemented(self) -> None:
+        with pytest.raises(NotImplementedError, match="Phase 7"):
+            create_bridge("simulator")
+
+    def test_real_raises_not_implemented(self) -> None:
+        with pytest.raises(NotImplementedError, match="Phase 8"):
+            create_bridge("real")
+
+    def test_real_suggests_inmemory(self) -> None:
+        with pytest.raises(NotImplementedError, match="OMNIFOCUS_BRIDGE=inmemory"):
+            create_bridge("real")
+
+    def test_unknown_raises_value_error(self) -> None:
+        with pytest.raises(ValueError, match="Unknown bridge type"):
+            create_bridge("something_else")
