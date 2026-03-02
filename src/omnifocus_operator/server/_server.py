@@ -36,10 +36,10 @@ async def app_lifespan(app: FastMCP) -> AsyncIterator[dict[str, object]]:
     The bridge type is read from ``OMNIFOCUS_BRIDGE`` (default ``"real"``).
     For ``"inmemory"`` and ``"simulator"`` a ``ConstantMtimeSource`` is
     used (no cache invalidation).  The ``"real"`` bridge type requires a
-    ``FileMtimeSource`` path which is not yet configured.
+    ``FileMtimeSource`` which watches the ``.ofocus`` bundle mtime.
     """
     from omnifocus_operator.bridge import create_bridge, sweep_orphaned_files
-    from omnifocus_operator.repository import ConstantMtimeSource, OmniFocusRepository
+    from omnifocus_operator.repository import ConstantMtimeSource, MtimeSource, OmniFocusRepository
     from omnifocus_operator.service import OperatorService
 
     bridge_type = os.environ.get("OMNIFOCUS_BRIDGE", "real")
@@ -54,12 +54,25 @@ async def app_lifespan(app: FastMCP) -> AsyncIterator[dict[str, object]]:
         logger.info("IPC sweep complete")
 
     # ConstantMtimeSource for inmemory/simulator (no cache invalidation needed)
-    # FileMtimeSource for real (future phases)
+    # FileMtimeSource for real (watches .ofocus bundle mtime)
+    mtime_source: MtimeSource
     if bridge_type in ("inmemory", "simulator"):
         mtime_source = ConstantMtimeSource()
     else:
-        msg = f"FileMtimeSource path not configured for bridge type: {bridge_type}"
-        raise NotImplementedError(msg)
+        from pathlib import Path
+
+        from omnifocus_operator.repository import FileMtimeSource
+
+        default_ofocus = str(
+            Path.home()
+            / "Library"
+            / "Group Containers"
+            / "34YW5A73WQ.com.omnigroup.OmniFocus"
+            / "com.omnigroup.OmniFocus4"
+            / "OmniFocus.ofocus"
+        )
+        ofocus_path = os.environ.get("OMNIFOCUS_OFOCUS_PATH", default_ofocus)
+        mtime_source = FileMtimeSource(path=ofocus_path)
 
     repository = OmniFocusRepository(bridge=bridge, mtime_source=mtime_source)
     service = OperatorService(repository=repository)

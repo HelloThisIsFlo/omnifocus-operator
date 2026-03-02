@@ -114,6 +114,14 @@ def create_bridge(bridge_type: str) -> Bridge:
         case "real":
             import os
 
+            if os.environ.get("PYTEST_CURRENT_TEST"):
+                msg = (
+                    "RealBridge is not available during automated testing "
+                    "(PYTEST_CURRENT_TEST is set). "
+                    "Use OMNIFOCUS_BRIDGE=inmemory or OMNIFOCUS_BRIDGE=simulator instead."
+                )
+                raise RuntimeError(msg)
+
             from omnifocus_operator.bridge._real import DEFAULT_IPC_DIR, RealBridge
 
             ipc_dir_str = os.environ.get("OMNIFOCUS_IPC_DIR")

@@ -7,11 +7,17 @@ import errno
 import json
 import os
 import re
+import subprocess
+import urllib.parse
 import uuid
 from pathlib import Path
 from typing import Any
 
-from omnifocus_operator.bridge._errors import BridgeProtocolError, BridgeTimeoutError
+from omnifocus_operator.bridge._errors import (
+    BridgeConnectionError,
+    BridgeProtocolError,
+    BridgeTimeoutError,
+)
 
 DEFAULT_IPC_DIR: Path = (
     Path.home()
@@ -76,7 +82,7 @@ class RealBridge:
     """File-based IPC bridge to OmniFocus.
 
     Communicates with OmniFocus via the filesystem: writes a request file,
-    triggers OmniFocus (no-op until Phase 8), and polls for a response file.
+    triggers OmniFocus via URL scheme, and polls for a response file.
 
     Satisfies the ``Bridge`` protocol via structural typing -- no inheritance.
     """
@@ -121,7 +127,34 @@ class RealBridge:
         return result
 
     def _trigger_omnifocus(self, dispatch: str) -> None:
-        """Hook for triggering OmniFocus. No-op until Phase 8."""
+        """Trigger OmniFocus to process the current IPC request.
+
+        Opens the ``omnifocus:///omnijs-run`` URL scheme via macOS ``open -g``
+        (background, no focus steal). The bridge script inside OmniFocus reads
+        the request file, executes the operation, and writes the response file.
+        """
+        # The bridge script reads the IPC directory from a well-known location
+        # and processes the dispatch argument. We pass the dispatch string
+        # as the arg parameter -- OmniFocus makes it available as `argument`.
+        encoded_arg = urllib.parse.quote(dispatch, safe="")
+        url = f"omnifocus:///omnijs-run?arg={encoded_arg}"
+
+        operation = dispatch.split("::::")[1] if "::::" in dispatch else "unknown"
+        try:
+            subprocess.run(["open", "-g", url], check=True, capture_output=True)
+        except FileNotFoundError:
+            raise BridgeConnectionError(
+                operation=operation,
+                reason="'open' command not found. This server requires macOS.",
+            ) from None
+        except subprocess.CalledProcessError as exc:
+            raise BridgeConnectionError(
+                operation=operation,
+                reason=(
+                    f"Failed to trigger OmniFocus (exit code {exc.returncode}). "
+                    "Is OmniFocus installed?"
+                ),
+            ) from None
 
     async def _write_request(self, request_id: uuid.UUID, dispatch: str) -> None:
         """Write request file atomically via .tmp + os.replace()."""
