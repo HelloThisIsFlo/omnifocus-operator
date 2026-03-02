@@ -130,9 +130,9 @@ Plans:
 
 Plans:
 
-- [ ] 06-01-PLAN.md — RealBridge core IPC mechanics: atomic writes, async polling, dispatch protocol, timeout handling (TDD)
-- [ ] 06-02-PLAN.md — IPC directory config, PID-based orphan sweep, factory wiring, package exports (TDD)
-- [ ] 06-03-PLAN.md — Gap closure: wire sweep_orphaned_files into server startup lifespan (IPC-06 UAT fix)
+- [x] 06-01-PLAN.md — RealBridge core IPC mechanics: atomic writes, async polling, dispatch protocol, timeout handling (TDD)
+- [x] 06-02-PLAN.md — IPC directory config, PID-based orphan sweep, factory wiring, package exports (TDD)
+- [x] 06-03-PLAN.md — Gap closure: wire sweep_orphaned_files into server startup lifespan (IPC-06 UAT fix)
 
 ### Phase 7: SimulatorBridge and Mock Simulator
 
