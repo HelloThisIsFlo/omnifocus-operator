@@ -198,6 +198,22 @@ describe("helper functions", function () {
     expect(bridge.rr(null)).toBeNull();
   });
 
+  it("rr() handles missing scheduleType gracefully", function () {
+    var rule = { ruleString: "FREQ=DAILY" };
+    expect(bridge.rr(rule)).toEqual({
+      ruleString: "FREQ=DAILY",
+      scheduleType: null,
+    });
+  });
+
+  it("rr() handles scheduleType without name property", function () {
+    var rule = { ruleString: "FREQ=WEEKLY", scheduleType: {} };
+    expect(bridge.rr(rule)).toEqual({
+      ruleString: "FREQ=WEEKLY",
+      scheduleType: null,
+    });
+  });
+
   it("ri() extracts review interval", function () {
     var interval = { steps: 7, unit: "days" };
     expect(bridge.ri(interval)).toEqual({ steps: 7, unit: "days" });

@@ -24,9 +24,12 @@ function pk(v) {
 }
 
 function rr(v) {
-    return v
-        ? { ruleString: v.ruleString, scheduleType: v.scheduleType.name }
-        : null;
+    if (!v) return null;
+    var st = v.scheduleType;
+    return {
+        ruleString: v.ruleString,
+        scheduleType: st && st.name ? st.name : null,
+    };
 }
 
 function ri(v) {

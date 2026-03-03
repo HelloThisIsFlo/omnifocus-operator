@@ -137,6 +137,20 @@ class TestRepetitionRule:
         assert dumped["ruleString"] == "FREQ=DAILY"
         assert dumped["scheduleType"] == "DueAgainAfterCompletion"
 
+    def test_repetition_rule_without_schedule_type(self) -> None:
+        """RepetitionRule accepts missing scheduleType (OmniFocus may omit it)."""
+        data = {"ruleString": "FREQ=WEEKLY;BYDAY=MO,WE,FR"}
+        rule = RepetitionRule.model_validate(data)
+        assert rule.rule_string == "FREQ=WEEKLY;BYDAY=MO,WE,FR"
+        assert rule.schedule_type is None
+
+    def test_repetition_rule_with_null_schedule_type(self) -> None:
+        """RepetitionRule accepts explicit null scheduleType."""
+        data = {"ruleString": "FREQ=DAILY", "scheduleType": None}
+        rule = RepetitionRule.model_validate(data)
+        assert rule.rule_string == "FREQ=DAILY"
+        assert rule.schedule_type is None
+
 
 class TestReviewInterval:
     """ReviewInterval parses and serializes correctly."""

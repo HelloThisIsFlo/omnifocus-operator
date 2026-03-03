@@ -13,11 +13,15 @@ from omnifocus_operator.models._base import OmniFocusBaseModel
 class RepetitionRule(OmniFocusBaseModel):
     """Repetition rule for recurring tasks and projects.
 
-    Serializes to: {"ruleString": "...", "scheduleType": "..."}
+    # TEMPORARY: This model is incomplete. OmniFocus exposes 4 fields on
+    # RepetitionRule (ruleString, scheduleType, fixedInterval, unit) but we
+    # only capture 2 here with scheduleType optional. A follow-up phase will
+    # redesign this model based on .research/Deep Dives/Repetition Rule/.
+    # See: .planning/debug/repetition-rule-validation-failure.md
     """
 
     rule_string: str
-    schedule_type: str
+    schedule_type: str | None = None
 
 
 class ReviewInterval(OmniFocusBaseModel):
