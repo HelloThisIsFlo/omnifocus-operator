@@ -24,6 +24,34 @@ The Python models mirror this defensiveness with `| None = None`. But in many ca
 possibility. For those fields, the model should be required so Pydantic blows up immediately
 if something unexpected happens.
 
+### Critical Discovery: OmniFocus Enum Objects Are Opaque
+
+**Validated against live OmniFocus database (2026-03-03).**
+
+OmniFocus Automation enum objects (e.g. `Task.Status.Available`, `Project.Status.Active`) are
+opaque native objects with **no accessible properties**:
+
+```javascript
+Object.getOwnPropertyNames(Task.Status.Available)  // → []
+Task.Status.Available.name       // → undefined
+String(Task.Status.Available)    // → undefined
+Task.Status.Available.toString() // → undefined
+JSON.stringify(Task.Status.Available) // → undefined
+```
+
+This means `.name` **cannot be used** to convert any OmniFocus enum to a string. The only
+working approach is manual `===` comparison against enum constants (switch-style), as the
+existing `ts()` function already does for `TaskStatus`.
+
+**Impact:** The inline `x.status ? x.status.name : null` pattern on projects, tags, and
+folders is **actively broken** — it always produces `undefined`, which `JSON.stringify`
+silently drops, causing Pydantic to default to `None`. This is an existing bug masked by the
+nullable type annotation.
+
+> **Note:** The 02-CONTEXT.md requirement to "remove the `ts()` switch function, use `.name`
+> property instead" is **invalidated** by this finding. Update that doc when executing this
+> todo.
+
 ---
 
 ## Verdict: Legitimately Nullable (24 fields)
@@ -144,16 +172,26 @@ status: EntityStatus
 - Tags: Active, Dropped
 - Folders: Active, Dropped
 
-The bridge checks `p.status ? p.status.name : null` — but `p.status` is an Omni Automation
-enum object, which is always truthy. There is no "statusless" entity in OmniFocus. A null
-status would indicate data corruption or a bridge bug and should fail loudly.
+**ACTIVE BUG:** The bridge uses `p.status ? p.status.name : null` — but `.name` returns
+`undefined` on OmniFocus enum objects (see "Critical Discovery" above). Since `p.status` is
+truthy, the expression evaluates to `undefined`, which `JSON.stringify` silently drops. The
+Pydantic model then defaults to `None`. **Every entity's status is currently `None` in the
+parsed models.** The nullable `| None = None` annotation is hiding this bug.
+
+**Fix order:** Fix the bridge first (add an `es()` switch function like `ts()`), then make
+the model field required.
 
 ---
 
 ## Bridge Script Audit
 
 The bridge (`bridge.js`) uses 5 helper functions plus inline patterns to serialize OmniFocus
-objects. This section audits each one for consistency with the fail-fast model changes above.
+objects. This section audits each one, incorporating the opaque enum discovery.
+
+**Fail-fast rule for switch functions:** All enum switch functions should **throw** on unknown
+values instead of returning `null`. The `dispatch()` function's global try-catch (lines 187-208)
+catches the error and writes a structured `{success: false, error: "..."}` response, so
+throwing is safe and gives immediate, clear error messages.
 
 ### `d(v)` — Date helper (line 18)
 
@@ -163,10 +201,9 @@ function d(v) { return v ? v.toISOString() : null; }
 
 **Used by:** All date fields on tasks, projects, tags, folders (20+ call sites).
 
-**Verdict: Keep as-is.** The function itself is fine — it correctly returns null for absent dates.
-The issue isn't the helper; it's that the Python model was nullable for fields where `d()` never
-actually returns null (i.e. `added`/`modified`). Tightening the Python model is sufficient; if
-`d()` ever returns null for `added`/`modified`, Pydantic catches it.
+**Verdict: Keep as-is.** Correctly returns null for absent dates. Date objects are not enums —
+`.toISOString()` works fine. Confirmed by live testing: `added`/`modified` always return valid
+dates.
 
 ### `pk(v)` — Primary key helper (line 22)
 
@@ -174,10 +211,9 @@ actually returns null (i.e. `added`/`modified`). Tightening the Python model is 
 function pk(v) { return v ? v.id.primaryKey : null; }
 ```
 
-**Used by:** `project`, `parent`, `assignedContainer`, `nextTask`, `folder`, tag `parent`,
-folder `parent`.
+**Used by:** `project`, `parent`, `assignedContainer`, `nextTask`, `folder`, tag/folder `parent`.
 
-**Verdict: Keep as-is.** All relationship fields are legitimately nullable. The helper is correct.
+**Verdict: Keep as-is.** All relationship fields are legitimately nullable.
 
 ### `ts(s)` — Task status helper (line 39)
 
@@ -186,33 +222,61 @@ function ts(s) {
     if (s === Task.Status.Available) return "Available";
     if (s === Task.Status.Blocked) return "Blocked";
     // ... 5 more cases ...
-    return null;
+    return null;  // ← should throw instead
 }
 ```
 
 **Used by:** `status` on tasks (line 80), `taskStatus` on projects (line 116).
 
-**Verdict: Should be simplified.** This redundant if-chain manually maps every `Task.Status`
-enum value to the exact string that `.name` already produces. The documented requirement
-(02-CONTEXT.md) says:
+**Verdict: Keep the switch, change fallback to throw.** The switch is the only working way to
+convert `Task.Status` enums to strings (`.name` returns `undefined`). However, the `return null`
+fallback should become `throw new Error("Unknown TaskStatus: " + s)` for fail-fast. An unknown
+status is either a bug or a new OmniFocus version — either way we want to know immediately.
 
-> Bridge script simplification: remove the `ts()` switch function, use `.name` property
-> instead — deferred to Phase 8 but confirms models should validate against the same string
-> values `.name` produces
+The 02-CONTEXT.md requirement to "remove `ts()` and use `.name`" is **invalidated** — `.name`
+does not work on OmniFocus enum objects.
 
-Replace with:
+**Values (7):**
+
+| OmniFocus Constant | String | Python `TaskStatus` |
+|---|---|---|
+| `Task.Status.Available` | `"Available"` | `AVAILABLE` |
+| `Task.Status.Blocked` | `"Blocked"` | `BLOCKED` |
+| `Task.Status.Completed` | `"Completed"` | `COMPLETED` |
+| `Task.Status.Dropped` | `"Dropped"` | `DROPPED` |
+| `Task.Status.DueSoon` | `"DueSoon"` | `DUE_SOON` |
+| `Task.Status.Next` | `"Next"` | `NEXT` |
+| `Task.Status.Overdue` | `"Overdue"` | `OVERDUE` |
+
+### NEW: `es(s)` — Entity status helper (to be created)
+
+**Replaces:** Broken inline `x.status ? x.status.name : null` on lines 115, 156, 170.
 
 ```javascript
-// Task status — just pass the string, let Pydantic validate via TaskStatus enum
-status: t.taskStatus.name,        // tasks (line 80)
-taskStatus: p.taskStatus.name,    // projects (line 116)
+function es(s) {
+    if (s === Project.Status.Active) return "Active";
+    if (s === Project.Status.Done) return "Done";
+    if (s === Project.Status.Dropped) return "Dropped";
+    throw new Error("Unknown EntityStatus: " + s);
+}
 ```
 
-This is better for fail-fast: if OmniFocus ever adds a new `Task.Status` value, the current
-`ts()` silently returns `null` (line 47), which would pass Python validation since `Task.status`
-is required — causing a confusing Pydantic error about null on a required field. With `.name`,
-the bridge passes the new string through and Pydantic rejects it with a clear "value is not a
-valid enumeration member" error naming the unexpected value.
+**Will be used by:**
+- `status: es(p.status)` on projects (line 115)
+- `status: es(g.status)` on tags (line 156)
+- `status: es(f.status)` on folders (line 170)
+
+**Note:** Uses `Project.Status.*` constants. Need to verify via UAT whether Tag and Folder
+status enums use the same constants or have their own (e.g. `Tag.Status.Active`). If they
+differ, may need separate helpers or additional comparisons.
+
+**Values (3):**
+
+| OmniFocus Constant | String | Python `EntityStatus` |
+|---|---|---|
+| `Project.Status.Active` | `"Active"` | `ACTIVE` |
+| `Project.Status.Done` | `"Done"` | `DONE` |
+| `Project.Status.Dropped` | `"Dropped"` | `DROPPED` |
 
 ### `rr(v)` — Repetition rule helper (line 26)
 
@@ -222,18 +286,27 @@ function rr(v) {
     var st = v.scheduleType;
     return {
         ruleString: v.ruleString,
-        scheduleType: st && st.name ? st.name : null,
+        scheduleType: st && st.name ? st.name : null,  // BROKEN: .name → undefined
     };
 }
 ```
 
 **Used by:** `repetitionRule` on tasks (line 100) and projects (line 136).
 
-**Verdict: Will change in RepetitionRule redesign.** The null check (`if (!v) return null`) is
-correct — not all items repeat. The internal `scheduleType` extraction is a known workaround
-(see `.research/Deep Dives/Repetition Rule/` and debug session
-`repetition-rule-validation-failure.md`). This entire helper will be rewritten when the
-RepetitionRule model is redesigned. Leave as-is for now.
+**Verdict: Deferred to RepetitionRule redesign.** The `scheduleType` extraction is broken for
+the same reason (`.name` returns `undefined` on enum objects). Will need its own switch function
+when the RepetitionRule model is redesigned. The `scheduleType` field is currently always `None`
+in parsed models — same hidden bug as EntityStatus.
+
+See `.research/Deep Dives/Repetition Rule/` and debug session
+`repetition-rule-validation-failure.md`.
+
+**Known values for future `sst()` switch:**
+
+| OmniFocus Constant | String | Notes |
+|---|---|---|
+| `Task.RepetitionScheduleType.Regularly` | `"Regularly"` | Fixed calendar schedule |
+| `Task.RepetitionScheduleType.FromCompletion` | `"FromCompletion"` | Relative to completion |
 
 ### `ri(v)` — Review interval helper (line 35)
 
@@ -243,38 +316,32 @@ function ri(v) { return v ? { steps: v.steps, unit: v.unit } : null; }
 
 **Used by:** `reviewInterval` on projects (line 139).
 
-**Verdict: Keep as-is.** ReviewInterval is legitimately nullable.
-
-### Inline status: `x.status ? x.status.name : null` (lines 115, 156, 170)
-
-```javascript
-status: p.status ? p.status.name : null,   // Project (line 115)
-status: g.status ? g.status.name : null,   // Tag (line 156)
-status: f.status ? f.status.name : null,   // Folder (line 170)
-```
-
-**Verdict: Simplify to `.status.name`.** Since we're making `status: EntityStatus` required on
-the Python models, the bridge should match. OmniFocus always provides a status on projects, tags,
-and folders — the ternary is defensive JS that masks potential issues. Replace with:
-
-```javascript
-status: p.status.name,   // Project
-status: g.status.name,   // Tag
-status: f.status.name,   // Folder
-```
-
-If `.status` is ever null (data corruption), crashing in the bridge is better than propagating
-null to Python. Fail-fast at the earliest possible point.
+**Verdict: Keep as-is.** ReviewInterval is legitimately nullable. The `steps` and `unit`
+properties are plain numbers/strings, not enum objects.
 
 ### Perspective: `p.identifier || null` (line 177)
 
 ```javascript
 id: p.identifier || null,
-name: p.name,
-builtin: !p.identifier,
 ```
 
-**Verdict: Keep as-is.** Builtin perspectives genuinely have no identifier.
+**Verdict: Keep as-is.** Builtin perspectives genuinely have no identifier. `identifier` is a
+plain string, not an enum.
+
+---
+
+## Enum Switch Inventory
+
+All OmniFocus Automation enum types that need manual switch functions in bridge.js:
+
+| Enum Type | Switch Function | Status | Values | Used On |
+|-----------|----------------|--------|--------|---------|
+| `Task.Status` | `ts()` | Exists (fix fallback) | 7 | Task.status, Project.taskStatus |
+| `Project.Status` | `es()` | **Needs creation** | 3 | Project.status, Tag.status, Folder.status |
+| `Task.RepetitionScheduleType` | `sst()` | Deferred | 2 | RepetitionRule.scheduleType |
+
+**Common rule for all switch functions:** Throw on unknown values instead of returning null.
+The `dispatch()` try-catch handles errors gracefully.
 
 ---
 
@@ -284,34 +351,38 @@ builtin: !p.identifier,
 |-----------------|-------|--------|
 | `d(v)` | 18-20 | Keep as-is |
 | `pk(v)` | 22-24 | Keep as-is |
-| `ts(s)` | 39-48 | **Remove.** Replace calls with `.taskStatus.name` / `.name` |
-| `rr(v)` | 26-33 | Leave for now — will change in RepetitionRule redesign |
+| `ts(s)` | 39-48 | **Keep switch, change `return null` → `throw`** |
+| `rr(v)` | 26-33 | Deferred — will be rewritten in RepetitionRule redesign |
 | `ri(v)` | 35-37 | Keep as-is |
-| `x.status ? x.status.name : null` | 115, 156, 170 | **Simplify to `.status.name`** |
+| `x.status ? x.status.name : null` | 115, 156, 170 | **Replace with `es()` switch function** |
 | `p.identifier \|\| null` | 177 | Keep as-is |
 
 ---
 
 ## Action Items
 
-### Model changes (Python)
+### Bridge changes (JavaScript) — do first
 
-1. **Make 8 fields required** — Remove `| None = None` from the 6 timestamp fields and 3
-   status fields listed above.
-2. **Update tests** — Any test that explicitly sets `added=None`, `modified=None`, or
-   `status=None` for these models is testing a scenario that doesn't exist in the real domain.
-   Remove those test cases or replace them with valid values.
+1. **Create `es()` function** — EntityStatus switch using `Project.Status.*` constants, with
+   `throw` on unknown values. Replace broken inline `.status.name` on projects (line 115),
+   tags (line 156), and folders (line 170).
+2. **Fix `ts()` fallback** — Change `return null` to `throw new Error("Unknown TaskStatus: " + s)`.
+3. **Verify `Project.Status.*` constants work for tags and folders** — Need UAT to confirm
+   whether `g.status === Project.Status.Active` works, or if tags/folders use different
+   constants (e.g. `Tag.Status.Active`).
 
-### Bridge changes (JavaScript)
+### Model changes (Python) — after bridge is fixed
 
-3. **Remove `ts()` function** — Replace `ts(t.taskStatus)` with `t.taskStatus.name` on tasks
-   (line 80) and `ts(p.taskStatus)` with `p.taskStatus.name` on projects (line 116). Delete
-   the `ts` function definition (lines 39-48) and its test export.
-4. **Simplify inline status** — Replace `x.status ? x.status.name : null` with `x.status.name`
-   on projects (line 115), tags (line 156), and folders (line 170).
+4. **Make 6 timestamp fields required** — Remove `| None = None` from `added`/`modified` on
+   Task, Tag, Folder. These are confirmed always-present by live testing.
+5. **Make 3 status fields required** — Remove `| None = None` from `status: EntityStatus` on
+   Project, Tag, Folder. Only do this AFTER the bridge `es()` function is working.
+6. **Update tests** — Remove test cases that set `added=None`, `modified=None`, or
+   `status=None` — those scenarios don't exist in the real domain.
 
 ### Deferred
 
-5. **RepetitionRule.schedule_type** — Will be addressed separately when the RepetitionRule
-   model is redesigned (see `.research/Deep Dives/Repetition Rule/`).
-6. **`rr()` helper** — Will be rewritten as part of the same RepetitionRule redesign.
+7. **RepetitionRule.schedule_type** — Will be addressed in RepetitionRule model redesign.
+   The `rr()` helper's `.name` access is broken for the same reason; needs its own switch.
+8. **Update 02-CONTEXT.md** — Remove the invalidated requirement about replacing `ts()`
+   with `.name`.
