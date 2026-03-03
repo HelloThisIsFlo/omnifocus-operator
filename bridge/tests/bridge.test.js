@@ -3,10 +3,21 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Mock OmniFocus globals before requiring bridge.js
 var mockWrite = vi.fn();
 
+var mockFromURL = vi.fn(function () {
+  return {
+    contents: {
+      toString: function () {
+        return '{"operation": "snapshot", "params": {}}';
+      },
+    },
+  };
+});
+
 vi.stubGlobal("FileWrapper", {
   withContents: vi.fn(function (name, data) {
     return { write: mockWrite };
   }),
+  fromURL: mockFromURL,
   WritingOptions: { Atomic: "atomic" },
 });
 
@@ -19,14 +30,6 @@ vi.stubGlobal("URL", {
 vi.stubGlobal("Data", {
   fromString: vi.fn(function (s) {
     return "data:" + s;
-  }),
-  fromURL: vi.fn(function (url) {
-    // Default: return a Data object with toString()
-    return {
-      toString: function () {
-        return '{"operation": "snapshot", "params": {}}';
-      },
-    };
   }),
 });
 
@@ -225,9 +228,11 @@ describe("readRequest", function () {
   });
 
   it("reads and parses request JSON from IPC directory", function () {
-    Data.fromURL.mockReturnValueOnce({
-      toString: function () {
-        return '{"operation": "snapshot", "params": {}}';
+    mockFromURL.mockReturnValueOnce({
+      contents: {
+        toString: function () {
+          return '{"operation": "snapshot", "params": {}}';
+        },
       },
     });
 
@@ -236,7 +241,7 @@ describe("readRequest", function () {
       "/tmp/ipc/123_uuid.request.json",
       false,
     );
-    expect(Data.fromURL).toHaveBeenCalled();
+    expect(mockFromURL).toHaveBeenCalled();
     expect(result).toEqual({ operation: "snapshot", params: {} });
   });
 });
@@ -252,8 +257,12 @@ describe("writeResponse", function () {
 
     expect(Data.fromString).toHaveBeenCalledWith(JSON.stringify(responseObj));
     expect(FileWrapper.withContents).toHaveBeenCalledWith(
-      "123_uuid.response.json",
+      null,
       "data:" + JSON.stringify(responseObj),
+    );
+    expect(URL.fromPath).toHaveBeenCalledWith(
+      "/tmp/ipc/123_uuid.response.json",
+      false,
     );
     expect(mockWrite).toHaveBeenCalledWith(
       "url:/tmp/ipc/123_uuid.response.json",
@@ -300,9 +309,11 @@ describe("dispatch", function () {
   beforeEach(function () {
     vi.clearAllMocks();
     // Default: readRequest returns snapshot operation
-    Data.fromURL.mockReturnValue({
-      toString: function () {
-        return '{"operation": "snapshot", "params": {}}';
+    mockFromURL.mockReturnValue({
+      contents: {
+        toString: function () {
+          return '{"operation": "snapshot", "params": {}}';
+        },
       },
     });
   });
@@ -312,8 +323,9 @@ describe("dispatch", function () {
 
     // Should have written a response via FileWrapper
     expect(FileWrapper.withContents).toHaveBeenCalled();
+    // withContents is called with null (no filename) in the new pattern
     var call = FileWrapper.withContents.mock.calls.find(function (c) {
-      return c[0] === "123_uuid.response.json";
+      return c[0] === null && typeof c[1] === "string" && c[1].startsWith("data:");
     });
     expect(call).toBeDefined();
 
@@ -329,16 +341,18 @@ describe("dispatch", function () {
   });
 
   it("writes error response for unknown operation", function () {
-    Data.fromURL.mockReturnValueOnce({
-      toString: function () {
-        return '{"operation": "unknown_op", "params": {}}';
+    mockFromURL.mockReturnValueOnce({
+      contents: {
+        toString: function () {
+          return '{"operation": "unknown_op", "params": {}}';
+        },
       },
     });
 
     bridge.dispatch("/tmp/ipc", "123_uuid");
 
     var call = FileWrapper.withContents.mock.calls.find(function (c) {
-      return c[0] === "123_uuid.response.json";
+      return c[0] === null && typeof c[1] === "string" && c[1].startsWith("data:");
     });
     expect(call).toBeDefined();
 
@@ -349,10 +363,11 @@ describe("dispatch", function () {
   });
 
   it("writes error response and logs on OmniFocus API exception", function () {
-    // Make flattenedTasks throw when accessed during handleSnapshot
-    Data.fromURL.mockReturnValueOnce({
-      toString: function () {
-        return '{"operation": "snapshot", "params": {}}';
+    mockFromURL.mockReturnValueOnce({
+      contents: {
+        toString: function () {
+          return '{"operation": "snapshot", "params": {}}';
+        },
       },
     });
 
@@ -375,7 +390,7 @@ describe("dispatch", function () {
     });
 
     var call = FileWrapper.withContents.mock.calls.find(function (c) {
-      return c[0] === "123_uuid.response.json";
+      return c[0] === null && typeof c[1] === "string" && c[1].startsWith("data:");
     });
     expect(call).toBeDefined();
 

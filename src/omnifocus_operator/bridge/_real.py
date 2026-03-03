@@ -23,12 +23,20 @@ from omnifocus_operator.bridge._errors import (
 DEFAULT_IPC_DIR: Path = (
     Path.home()
     / "Library"
-    / "Group Containers"
-    / "34YW5A73WQ.com.omnigroup.OmniFocus"
+    / "Containers"
     / "com.omnigroup.OmniFocus4"
+    / "Data"
+    / "Documents"
+    / "omnifocus-operator"
     / "ipc"
 )
-"""Default IPC directory for OmniFocus 4 (macOS sandbox path)."""
+"""Default IPC directory for OmniFocus 4.
+
+This path must be under OmniFocus's ``URL.documentsDirectory``
+(``~/Library/Containers/com.omnigroup.OmniFocus4/Data/Documents/``)
+because URL scheme scripts can only write files within that sandbox
+location via ``FileWrapper.write()``.
+"""
 
 _IPC_FILE_RE: re.Pattern[str] = re.compile(r"^(\d+)_[0-9a-f-]+\.(request|response)\.json(\.tmp)?$")
 """Matches IPC files: ``<pid>_<uuid>.(request|response).json[.tmp]``."""
@@ -93,13 +101,13 @@ class RealBridge:
         self._pid = os.getpid()
         self._timeout = timeout
         ipc_dir.mkdir(parents=True, exist_ok=True)
-        # Load and cache bridge script with IPC dir injected
-        raw_script = (
+        # Load and cache bridge script (no placeholder replacement needed;
+        # bridge.js derives IPC dir from URL.documentsDirectory at runtime)
+        self._script = (
             importlib.resources.files("omnifocus_operator.bridge")
             .joinpath("bridge.js")
             .read_text(encoding="utf-8")
         )
-        self._script = raw_script.replace("__IPC_DIR__", str(ipc_dir))
 
     @property
     def ipc_dir(self) -> Path:
@@ -138,10 +146,15 @@ class RealBridge:
         """Trigger OmniFocus to process the current IPC request.
 
         Opens the ``omnifocus:///omnijs-run`` URL scheme via macOS ``open -g``
-        (background, no focus steal).  The full bridge script (with the IPC
-        directory already injected) is passed as the ``script=`` parameter.
-        The ``arg=`` parameter carries the file prefix so the script can
-        locate request/response files.
+        (background, no focus steal).  The full bridge script is passed as the
+        ``script=`` parameter.  The script derives its IPC directory from
+        ``URL.documentsDirectory`` at runtime.  The ``arg=`` parameter carries
+        the file prefix so the script can locate request/response files.
+
+        The ``arg`` value is JSON-encoded (``json.dumps``) because OmniFocus
+        JSON-parses the ``&arg=`` URL parameter before making it available as
+        ``argument`` in the script.  Without JSON encoding, bare strings like
+        ``123_uuid`` cause a ``SyntaxError: JSON Parse error``.
 
         .. note::
 
@@ -149,7 +162,7 @@ class RealBridge:
            the production trigger.  Validated manually via UAT (Plan 08-02).
         """
         encoded_script = urllib.parse.quote(self._script, safe="")
-        encoded_arg = urllib.parse.quote(file_prefix, safe="")
+        encoded_arg = urllib.parse.quote(json.dumps(file_prefix), safe="")
         url = f"omnifocus:///omnijs-run?script={encoded_script}&arg={encoded_arg}"
 
         try:

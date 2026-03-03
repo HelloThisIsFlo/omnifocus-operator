@@ -1,6 +1,6 @@
 // OmniFocus Operator Bridge Script
 // Runs inside OmniFocus's Omni Automation (JavaScriptCore) runtime.
-// Python replaces __IPC_DIR__ with the actual IPC directory path at load time.
+// IPC dir is derived from URL.documentsDirectory at runtime (sandbox-safe).
 //
 // Protocol:
 //   Request:  {IPC_DIR}/{argument}.request.json  -> {"operation": "snapshot", "params": {}}
@@ -9,7 +9,9 @@
 // Uses only OmniFocus globals: FileWrapper, URL, Data, flattenedTasks, etc.
 // No require(), import/export, fs, path, or process.
 
-var __IPC_DIR__ = "__IPC_DIR__";
+// IPC_DIR is computed at runtime in the production IIFE below.
+// In test mode, functions receive ipcDir as a parameter.
+var IPC_DIR_SUFFIX = "omnifocus-operator/ipc";
 
 // --- Helper functions ---
 
@@ -47,21 +49,16 @@ function ts(s) {
 function readRequest(ipcDir, filePrefix) {
     var requestPath = ipcDir + "/" + filePrefix + ".request.json";
     var url = URL.fromPath(requestPath, false);
-    var data = Data.fromURL(url);
-    var jsonStr = data.toString();
-    return JSON.parse(jsonStr);
+    var wrapper = FileWrapper.fromURL(url);
+    return JSON.parse(wrapper.contents.toString());
 }
 
 function writeResponse(ipcDir, filePrefix, responseObj) {
-    var fileName = filePrefix + ".response.json";
-    var filePath = ipcDir + "/" + fileName;
+    var filePath = ipcDir + "/" + filePrefix + ".response.json";
+    var url = URL.fromPath(filePath, false);
     var data = Data.fromString(JSON.stringify(responseObj));
-    var fw = FileWrapper.withContents(fileName, data);
-    fw.write(
-        URL.fromPath(filePath, false),
-        [FileWrapper.WritingOptions.Atomic],
-        null
-    );
+    var fw = FileWrapper.withContents(null, data);
+    fw.write(url, [FileWrapper.WritingOptions.Atomic], null);
 }
 
 // --- Operation handlers ---
@@ -209,10 +206,16 @@ function dispatch(ipcDir, filePrefix) {
 
 // --- Entry points ---
 
-// Production entry: IIFE that runs in OmniFocus
+// Production entry: IIFE that runs in OmniFocus.
+// The full script is passed inline via the omnifocus:///omnijs-run URL scheme.
+// `argument` is OmniFocus's special variable containing the decoded &arg= value.
+// IPC dir is derived from URL.documentsDirectory so that FileWrapper.write() has
+// sandbox permission to write response files.
 if (typeof module === "undefined") {
     (function () {
-        dispatch(__IPC_DIR__, argument);
+        var docsDir = URL.documentsDirectory.string.replace("file://", "");
+        var ipcDir = docsDir + IPC_DIR_SUFFIX;
+        dispatch(ipcDir, argument);
     })();
 }
 

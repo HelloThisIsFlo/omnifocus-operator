@@ -430,13 +430,15 @@ class TestIPCDirectory:
     """IPC-04: Default directory, env var override, auto-creation."""
 
     def test_default_ipc_dir_constant(self) -> None:
-        """DEFAULT_IPC_DIR points to OmniFocus 4 sandbox IPC path."""
+        """DEFAULT_IPC_DIR points to OmniFocus 4 documentsDirectory IPC path."""
         expected = (
             Path.home()
             / "Library"
-            / "Group Containers"
-            / "34YW5A73WQ.com.omnigroup.OmniFocus"
+            / "Containers"
             / "com.omnigroup.OmniFocus4"
+            / "Data"
+            / "Documents"
+            / "omnifocus-operator"
             / "ipc"
         )
         assert expected == DEFAULT_IPC_DIR
