@@ -117,6 +117,7 @@ Recent decisions affecting current work:
 1. **Review package structure and underscore convention** (general) — Package layout feels bloated; review before milestone end
 2. **Defer cache hydration to first read instead of server startup** (api) — Preloading freezes OmniFocus on every Claude session start; hydrate lazily on first read
 3. **Redesign RepetitionRule model with full OmniFocus fields** (models) — Current 2-field model is temporary; OmniFocus exposes 4 fields per deep dive research
+4. **Enforce fail-fast on model nullable fields and simplify bridge status helpers** (models) — 8 fields incorrectly nullable; remove ts() switch; simplify status ternaries
 
 ### Roadmap Evolution
 
