@@ -96,11 +96,14 @@ Before running any scripts:
 the current one's output has been analyzed and its findings recorded.
 
 1. **Explain** what the script checks and why it matters (1-2 sentences)
-2. **Read** the script file and present it in a fenced code block (`javascript`)
-   so the user can copy it
+2. **Direct the user to the script file** — give them the file path so they can
+   open it and copy the contents. **Do NOT read the script file or paste its
+   contents into the conversation.** This wastes context window. The user will
+   open the file themselves (in their editor or Finder) and copy-paste into the
+   OmniFocus console. If the IDE supports it, open the file in the editor for them.
 3. **Instruct** the user: Open OmniFocus, go to **Automation > Show Console**,
-   paste the entire script, then press **Cmd+Enter** (or click Run) to run it. The output will appear
-   in the console — copy and paste it back here.
+   paste the entire script, then press **Cmd+Enter** (or click Run) to run it.
+   The output will appear in the console — copy and paste it back here.
 4. **Wait** for the user to paste the output
 5. **Analyze** the output:
    - Confirm expected results
