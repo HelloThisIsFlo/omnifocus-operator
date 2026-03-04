@@ -1,20 +1,19 @@
 // 02 — Project Effective Fields
 // READ-ONLY — no modifications to OmniFocus data
+// Runtime: Omni Automation (OmniFocus Automation Console)
 //
 // Checks ALL 6 "effective*" fields for the undefined-on-project bug.
-// Determines whether effectiveCompletionDate is the ONLY broken field,
+// Determines whether effectiveCompletedDate is the ONLY broken field,
 // or if others have the same issue.
 
 (() => {
-  const app = Application("OmniFocus");
-  const doc = app.defaultDocument;
-  const projects = doc.flattenedProjects();
+  const projects = flattenedProjects;
   const total = projects.length;
 
   const fields = [
     "effectiveDueDate",
     "effectiveDeferDate",
-    "effectiveCompletionDate",
+    "effectiveCompletedDate",
     "effectivePlannedDate",
     "effectiveDropDate",
     "effectiveFlagged"
@@ -36,11 +35,11 @@
 
   for (let i = 0; i < total; i++) {
     const p = projects[i];
-    const t = p.task();
+    const t = p.task;
 
     for (const f of fields) {
-      const pv = p[f]();
-      const tv = t[f]();
+      const pv = p[f];
+      const tv = t[f];
       const c = counters[f];
 
       const pvMissing = (pv === undefined || pv === null);
@@ -52,7 +51,7 @@
       } else if (pvIsUndef && !tvMissing) {
         c.pUndef_tValue++;
         if (examples[f].length < 3) {
-          examples[f].push({ name: p.name(), tValue: String(tv) });
+          examples[f].push({ name: p.name, tValue: String(tv) });
         }
       } else if (pvMissing && tvMissing) {
         c.bothNull++;

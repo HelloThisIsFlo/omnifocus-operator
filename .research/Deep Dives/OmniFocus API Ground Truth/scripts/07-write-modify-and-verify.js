@@ -1,5 +1,6 @@
 // 07 — [WRITE] Modify and Verify
 // ⚠️ WRITES TO OMNIFOCUS DATABASE (modifies test project created by Script 05)
+// Runtime: Omni Automation (OmniFocus Automation Console)
 //
 // Tests property write proxying between p.* and p.task.*:
 // 1. Set p.dueDate → check p.task.dueDate (project→task proxy?)
@@ -9,16 +10,13 @@
 // 5. Un-complete project → verify everything reverts
 
 (() => {
-  const app = Application("OmniFocus");
-  const doc = app.defaultDocument;
-
   let r = `=== 07: [WRITE] Modify and Verify ===\n\n`;
 
   // Find test project
-  const allProjects = doc.flattenedProjects();
+  const allProjects = flattenedProjects;
   let project = null;
   for (let i = 0; i < allProjects.length; i++) {
-    if (allProjects[i].name() === "🧪 API Audit Test Project") {
+    if (allProjects[i].name === "🧪 API Audit Test Project") {
       project = allProjects[i];
       break;
     }
@@ -29,7 +27,7 @@
   }
 
   const p = project;
-  const t = p.task();
+  const t = p.task;
 
   function matchProjectStatus(val) {
     if (val === null || val === undefined) return "null/undefined";
@@ -61,18 +59,18 @@
 
   function snapshot() {
     return {
-      pDueDate: fmt(p.dueDate()),
-      tDueDate: fmt(t.dueDate()),
-      pFlagged: p.flagged(),
-      tFlagged: t.flagged(),
-      pEffFlagged: p.effectiveFlagged(),
-      tEffFlagged: t.effectiveFlagged(),
-      pCompleted: p.completed(),
-      tCompleted: t.completed(),
-      tActive: t.active(),
-      tEffActive: t.effectiveActive(),
-      pStatus: matchProjectStatus(p.status()),
-      tStatus: matchTaskStatus(t.status()),
+      pDueDate: fmt(p.dueDate),
+      tDueDate: fmt(t.dueDate),
+      pFlagged: p.flagged,
+      tFlagged: t.flagged,
+      pEffFlagged: p.effectiveFlagged,
+      tEffFlagged: t.effectiveFlagged,
+      pCompleted: p.completed,
+      tCompleted: t.completed,
+      tActive: t.active,
+      tEffActive: t.effectiveActive,
+      pStatus: matchProjectStatus(p.status),
+      tStatus: matchTaskStatus(t.taskStatus),
     };
   }
 
@@ -89,7 +87,7 @@
     out += `    t.active:           ${s.tActive}\n`;
     out += `    t.effectiveActive:  ${s.tEffActive}\n`;
     out += `    p.status:           ${s.pStatus}\n`;
-    out += `    t.status:           ${s.tStatus}\n`;
+    out += `    t.taskStatus:       ${s.tStatus}\n`;
     return out;
   }
 
@@ -102,20 +100,20 @@
   const newDue = new Date(2026, 5, 15, 12, 0, 0);  // June 15, 2026 noon
   p.dueDate = newDue;
   r += `  Set p.dueDate = ${newDue.toISOString()}\n`;
-  r += `  p.dueDate after:   ${fmt(p.dueDate())}\n`;
-  r += `  t.dueDate after:   ${fmt(t.dueDate())}\n`;
-  const dueDatesMatch = p.dueDate() instanceof Date && t.dueDate() instanceof Date &&
-    p.dueDate().getTime() === t.dueDate().getTime();
+  r += `  p.dueDate after:   ${fmt(p.dueDate)}\n`;
+  r += `  t.dueDate after:   ${fmt(t.dueDate)}\n`;
+  const dueDatesMatch = p.dueDate instanceof Date && t.dueDate instanceof Date &&
+    p.dueDate.getTime() === t.dueDate.getTime();
   r += `  ➜ Proxied p→t: ${dueDatesMatch ? "YES ✅" : "NO ⚠️"}\n`;
 
   // --- Test 2: Clear p.dueDate = null → check t.dueDate ---
   r += `\n--- Test 2: Clear p.dueDate = null → check t.dueDate ---\n`;
   p.dueDate = null;
   r += `  Set p.dueDate = null\n`;
-  r += `  p.dueDate after:   ${fmt(p.dueDate())}\n`;
-  r += `  t.dueDate after:   ${fmt(t.dueDate())}\n`;
-  const bothCleared = (p.dueDate() === null || p.dueDate() === undefined) &&
-    (t.dueDate() === null || t.dueDate() === undefined);
+  r += `  p.dueDate after:   ${fmt(p.dueDate)}\n`;
+  r += `  t.dueDate after:   ${fmt(t.dueDate)}\n`;
+  const bothCleared = (p.dueDate === null || p.dueDate === undefined) &&
+    (t.dueDate === null || t.dueDate === undefined);
   r += `  ➜ Clear proxied p→t: ${bothCleared ? "YES ✅" : "NO ⚠️"}\n`;
 
   // Restore due date
@@ -123,12 +121,12 @@
 
   // --- Test 3: Set t.flagged = true → check p.flagged ---
   r += `\n--- Test 3: Set t.flagged = true → check p.flagged ---\n`;
-  r += `  Before: p.flagged=${p.flagged()}, t.flagged=${t.flagged()}\n`;
+  r += `  Before: p.flagged=${p.flagged}, t.flagged=${t.flagged}\n`;
   t.flagged = true;
   r += `  Set t.flagged = true\n`;
-  r += `  p.flagged after:   ${p.flagged()}\n`;
-  r += `  t.flagged after:   ${t.flagged()}\n`;
-  r += `  ➜ Proxied t→p: ${p.flagged() === true ? "YES ✅" : "NO ⚠️"}\n`;
+  r += `  p.flagged after:   ${p.flagged}\n`;
+  r += `  t.flagged after:   ${t.flagged}\n`;
+  r += `  ➜ Proxied t→p: ${p.flagged === true ? "YES ✅" : "NO ⚠️"}\n`;
 
   // Reset flagged
   t.flagged = false;
@@ -136,13 +134,13 @@
   // --- Test 4: Mark project complete ---
   r += `\n--- Test 4: Mark project complete ---\n`;
   r += logSnapshot("Before completion", snapshot());
-  p.completed = true;
-  r += logSnapshot("After p.completed = true", snapshot());
+  p.markComplete();
+  r += logSnapshot("After p.markComplete()", snapshot());
 
   // --- Test 5: Un-complete project ---
   r += `\n--- Test 5: Un-complete project ---\n`;
-  p.completed = false;
-  r += logSnapshot("After p.completed = false", snapshot());
+  p.markIncomplete();
+  r += logSnapshot("After p.markIncomplete()", snapshot());
 
   // --- Test 6: Set p.status to OnHold ---
   r += `\n--- Test 6: Set p.status to OnHold ---\n`;

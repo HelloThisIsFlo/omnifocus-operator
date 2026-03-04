@@ -1,5 +1,6 @@
 // 04 — Project Status Cross-Reference
 // READ-ONLY — no modifications to OmniFocus data
+// Runtime: Omni Automation (OmniFocus Automation Console)
 //
 // Maps the relationship between the three status systems on projects:
 // 1. Project.Status (Active, OnHold, Done, Dropped)
@@ -9,9 +10,7 @@
 // Answers: "When a project is OnHold, what are active and effectiveActive?"
 
 (() => {
-  const app = Application("OmniFocus");
-  const doc = app.defaultDocument;
-  const projects = doc.flattenedProjects();
+  const projects = flattenedProjects;
   const total = projects.length;
 
   // === matching functions ===
@@ -43,12 +42,12 @@
 
   for (let i = 0; i < total; i++) {
     const p = projects[i];
-    const t = p.task();
+    const t = p.task;
 
-    const ps = matchProjectStatus(p.status());
-    const ts = matchTaskStatus(t.status());
-    const active = t.active();
-    const effActive = t.effectiveActive();
+    const ps = matchProjectStatus(p.status);
+    const ts = matchTaskStatus(t.taskStatus);
+    const active = t.active;
+    const effActive = t.effectiveActive;
 
     // Task status distribution per project status
     if (!groups[ps]) groups[ps] = {};
@@ -61,7 +60,7 @@
 
     // Examples
     if (!examples[ps]) examples[ps] = [];
-    if (examples[ps].length < 2) examples[ps].push(p.name());
+    if (examples[ps].length < 2) examples[ps].push(p.name);
   }
 
   // --- Report ---
@@ -94,7 +93,7 @@
 
   // Summary table
   r += `=== Summary: Project.Status → Root Task Behavior ===\n`;
-  r += `  Active   → task.active=?, task.effectiveActive=?, task.status=?\n`;
+  r += `  Active   → task.active=?, task.effectiveActive=?, task.taskStatus=?\n`;
   for (const ps of statusOrder) {
     if (!groups[ps]) continue;
     // Most common active pattern

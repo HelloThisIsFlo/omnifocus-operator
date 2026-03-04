@@ -1,14 +1,13 @@
 // 11 — Folder Audit
 // READ-ONLY — no modifications to OmniFocus data
+// Runtime: Omni Automation (OmniFocus Automation Console)
 //
 // Scans ALL flattenedFolders with counter-based approach.
 // Covers: added/modified, active/effectiveActive, status distribution,
 // status enum matching, parent relationships.
 
 (() => {
-  const app = Application("OmniFocus");
-  const doc = app.defaultDocument;
-  const folders = doc.flattenedFolders();
+  const folders = flattenedFolders;
   const total = folders.length;
 
   let r = `=== 11: Folder Audit ===\n`;
@@ -48,32 +47,30 @@
 
     // id
     try {
-      const fid = folder.id();
+      const fid = folder.id.primaryKey;
       if (fid && fid.length > 0) idPresent++; else idMissing++;
     } catch(e) { idMissing++; }
 
     // added/modified
-    const a = folder.added();
-    const m = folder.modified();
+    const a = folder.added;
+    const m = folder.modified;
     if (a instanceof Date) added.present++; else added.missing++;
     if (m instanceof Date) modified.present++; else modified.missing++;
 
     // active/effectiveActive
-    const act = folder.active();
+    const act = folder.active;
     if (act === true) active.true++; else if (act === false) active.false++; else active.other++;
-    const ea = folder.effectiveActive();
+    const ea = folder.effectiveActive;
     if (ea === true) effActive.true++; else if (ea === false) effActive.false++; else effActive.other++;
 
     // status
-    const s = matchFolderStatus(folder.status());
+    const s = matchFolderStatus(folder.status);
     statusDist[s] = (statusDist[s] || 0) + 1;
 
-    // parent
+    // parent — use instanceof to check type instead of .class()
     try {
-      const par = folder.parent();
-      // Folder.parent might return the document for top-level folders
-      // Check if it's actually a folder
-      if (par && par.class && par.class() === "folder") {
+      const par = folder.parent;
+      if (par && par instanceof Folder) {
         parentPresent++;
       } else {
         parentNull++;
@@ -81,12 +78,12 @@
     } catch(e) { parentNull++; }
 
     // name
-    const n = folder.name();
+    const n = folder.name;
     if (n && n.length > 0) hasName++; else nameMissing++;
 
     // note (3 categories: null/undefined, empty string, non-empty)
     try {
-      const note = folder.note();
+      const note = folder.note;
       if (note === null || note === undefined) noteNullUndef++;
       else if (note.length === 0) noteEmptyStr++;
       else noteNonEmpty++;
@@ -94,12 +91,12 @@
 
     // hierarchy: projects and subfolders
     try {
-      const pc = folder.projects().length;
+      const pc = folder.projects.length;
       projectsTotal += pc;
       if (pc > 0) hasProjects++;
     } catch(e) {}
     try {
-      const sc = folder.folders().length;
+      const sc = folder.folders.length;
       subfoldersTotal += sc;
       if (sc > 0) hasSubfolders++;
     } catch(e) {}

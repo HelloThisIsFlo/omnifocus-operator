@@ -1,21 +1,33 @@
 // 09 — Task Field Audit
 // READ-ONLY — no modifications to OmniFocus data
+// Runtime: Omni Automation (OmniFocus Automation Console)
 //
 // Scans ALL flattenedTasks with counter-based approach.
 // Covers: name, added/modified, active/effectiveActive, inInbox, status distribution,
 // project/parent/assignedContainer relationships, estimatedMinutes (3 categories),
 // flags, tags, sequential, completedByChildren, hasChildren, repetitionRule
 // (deep inspection), collections (linkedFileURLs, notifications, attachments),
-// accessor equivalence (project vs containingProject, parentTask vs parent),
+// accessor equivalence (project vs containingProject),
 // shouldUseFloatingTimeZone, notes.
 
 (() => {
-  const app = Application("OmniFocus");
-  const doc = app.defaultDocument;
-  const tasks = doc.flattenedTasks();
+  const tasks = flattenedTasks;
   const total = tasks.length;
 
   const COLLECTION_SAMPLE = 500;
+
+  // Enum-to-string helper
+  function matchTaskStatus(val) {
+    if (val === null || val === undefined) return "null";
+    try { if (val === Task.Status.Available) return "Available"; } catch(e) {}
+    try { if (val === Task.Status.Blocked) return "Blocked"; } catch(e) {}
+    try { if (val === Task.Status.Completed) return "Completed"; } catch(e) {}
+    try { if (val === Task.Status.Dropped) return "Dropped"; } catch(e) {}
+    try { if (val === Task.Status.DueSoon) return "DueSoon"; } catch(e) {}
+    try { if (val === Task.Status.Next) return "Next"; } catch(e) {}
+    try { if (val === Task.Status.Overdue) return "Overdue"; } catch(e) {}
+    return "UNKNOWN";
+  }
 
   let r = `=== 09: Task Field Audit ===\n`;
   r += `Total tasks: ${total}\n\n`;
@@ -28,18 +40,6 @@
   let inInbox = { true: 0, false: 0, other: 0 };
   let completed = { true: 0, false: 0 };
 
-  // Status distribution
-  function matchTaskStatus(val) {
-    if (val === null || val === undefined) return "null";
-    try { if (val === Task.Status.Available) return "Available"; } catch(e) {}
-    try { if (val === Task.Status.Blocked) return "Blocked"; } catch(e) {}
-    try { if (val === Task.Status.Completed) return "Completed"; } catch(e) {}
-    try { if (val === Task.Status.Dropped) return "Dropped"; } catch(e) {}
-    try { if (val === Task.Status.DueSoon) return "DueSoon"; } catch(e) {}
-    try { if (val === Task.Status.Next) return "Next"; } catch(e) {}
-    try { if (val === Task.Status.Overdue) return "Overdue"; } catch(e) {}
-    return "UNKNOWN";
-  }
   let statusDist = {};
 
   // Relationships
@@ -50,7 +50,7 @@
   // Dates
   let dateCounts = {};
   const dateFields = ["dueDate", "deferDate", "completionDate", "plannedDate", "dropDate",
-                      "effectiveDueDate", "effectiveDeferDate", "effectiveCompletionDate",
+                      "effectiveDueDate", "effectiveDeferDate", "effectiveCompletedDate",
                       "effectivePlannedDate", "effectiveDropDate"];
   for (const f of dateFields) dateCounts[f] = { present: 0, missing: 0 };
 
@@ -95,72 +95,72 @@
 
   // Accessor equivalence (first 10)
   let accessorChecks = [];
-  let accessorSummary = { projectMatch: 0, projectDiffer: 0, parentMatch: 0, parentDiffer: 0 };
+  let accessorSummary = { projectMatch: 0, projectDiffer: 0 };
 
   for (let i = 0; i < total; i++) {
     const t = tasks[i];
 
     // added/modified
-    const a = t.added();
-    const m = t.modified();
+    const a = t.added;
+    const m = t.modified;
     if (a instanceof Date) added.present++; else added.missing++;
     if (m instanceof Date) modified.present++; else modified.missing++;
 
     // active/effectiveActive
-    const act = t.active();
+    const act = t.active;
     if (act === true) active.true++; else if (act === false) active.false++; else active.other++;
-    const ea = t.effectiveActive();
+    const ea = t.effectiveActive;
     if (ea === true) effActive.true++; else if (ea === false) effActive.false++; else effActive.other++;
 
     // inInbox
-    const inbox = t.inInbox();
+    const inbox = t.inInbox;
     if (inbox === true) inInbox.true++; else if (inbox === false) inInbox.false++; else inInbox.other++;
 
     // completed
-    if (t.completed()) completed.true++; else completed.false++;
+    if (t.completed) completed.true++; else completed.false++;
 
     // status
-    const s = matchTaskStatus(t.status());
+    const s = matchTaskStatus(t.taskStatus);
     statusDist[s] = (statusDist[s] || 0) + 1;
 
     // relationships
     try {
-      const proj = t.project();
+      const proj = t.containingProject;
       if (proj) projectPresent++; else projectNull++;
     } catch(e) { projectNull++; }
 
     try {
-      const par = t.parentTask();
+      const par = t.parent;
       if (par) parentPresent++; else parentNull++;
     } catch(e) { parentNull++; }
 
     try {
-      const ac = t.assignedContainer();
+      const ac = t.assignedContainer;
       if (ac) assignedContainerPresent++; else assignedContainerNull++;
     } catch(e) { assignedContainerNull++; }
 
     // dates
     for (const f of dateFields) {
-      const v = t[f]();
+      const v = t[f];
       if (v instanceof Date) dateCounts[f].present++;
       else dateCounts[f].missing++;
     }
 
     // estimatedMinutes (3 categories)
-    const em = t.estimatedMinutes();
+    const em = t.estimatedMinutes;
     if (em === null || em === undefined) estMin.null_or_undefined++;
     else if (em === 0) estMin.zero++;
     else estMin.positive++;
 
     // flags
-    const fl = t.flagged();
-    const efl = t.effectiveFlagged();
+    const fl = t.flagged;
+    const efl = t.effectiveFlagged;
     if (fl) flagged.true++; else flagged.false++;
     if (efl) effFlagged.true++; else effFlagged.false++;
     if (fl !== efl) flagDiverge++;
 
     // tags
-    const tagList = t.tags();
+    const tagList = t.tags;
     const tc = tagList.length;
     if (tc === 0) tagCounts.zero++;
     else if (tc === 1) tagCounts.one++;
@@ -168,34 +168,38 @@
     if (tc > maxTags) maxTags = tc;
 
     // sequential, completedByChildren, hasChildren
-    if (t.sequential()) sequential.true++; else sequential.false++;
-    if (t.completedByChildren()) completedByChildren.true++; else completedByChildren.false++;
-    if (t.hasChildren()) hasChildren.true++; else hasChildren.false++;
+    if (t.sequential) sequential.true++; else sequential.false++;
+    if (t.completedByChildren) completedByChildren.true++; else completedByChildren.false++;
+    if (t.hasChildren) hasChildren.true++; else hasChildren.false++;
 
     // repetitionRule
-    const rr = t.repetitionRule();
-    if (rr) repRule.present++; else repRule.missing++;
+    const rrVal = t.repetitionRule;
+    if (rrVal) repRule.present++; else repRule.missing++;
 
     // floatingTZ
-    if (t.shouldUseFloatingTimeZone()) floatingTZ.true++; else floatingTZ.false++;
+    if (t.shouldUseFloatingTimeZone) floatingTZ.true++; else floatingTZ.false++;
 
     // note (3 categories: null/undefined, empty string, non-empty)
-    const note = t.note();
+    const note = t.note;
     if (note === null || note === undefined) noteNullUndef++;
     else if (note.length === 0) noteEmptyStr++;
     else noteNonEmpty++;
 
     // name
-    const nm = t.name();
+    const nm = t.name;
     if (nm && nm.length > 0) namePresent++; else nameEmpty++;
 
     // RepetitionRule deep inspection (first 5 that have one)
-    if (rr && repRuleDeep.length < 5) {
+    if (rrVal && repRuleDeep.length < 5) {
       let deep = { index: i, name: nm };
-      try { deep.ruleString = rr.ruleString(); deep.ruleStringType = typeof deep.ruleString; } catch(e) { deep.ruleString = "ERROR: " + e.message; }
-      try { deep.scheduleType = rr.scheduleType(); deep.scheduleTypeType = typeof deep.scheduleType; } catch(e) { deep.scheduleType = "ERROR: " + e.message; }
-      try { deep.fixedInterval = rr.fixedInterval(); deep.fixedIntervalType = typeof deep.fixedInterval; } catch(e) { deep.fixedInterval = "ERROR: " + e.message; }
-      try { deep.unit = rr.unit(); deep.unitType = typeof deep.unit; } catch(e) { deep.unit = "ERROR: " + e.message; }
+      try { deep.ruleString = rrVal.ruleString; deep.ruleStringType = typeof deep.ruleString; } catch(e) { deep.ruleString = "ERROR: " + e.message; }
+      try {
+        const st = rrVal.scheduleType;
+        deep.scheduleType = st && st.name ? st.name : String(st);
+        deep.scheduleTypeType = typeof st;
+      } catch(e) { deep.scheduleType = "ERROR: " + e.message; }
+      try { deep.fixedInterval = rrVal.fixedInterval; deep.fixedIntervalType = typeof deep.fixedInterval; } catch(e) { deep.fixedInterval = "ERROR: " + e.message; }
+      try { deep.unit = rrVal.unit; deep.unitType = typeof deep.unit; } catch(e) { deep.unit = "ERROR: " + e.message; }
       repRuleDeep.push(deep);
     }
 
@@ -203,43 +207,29 @@
     if (i < COLLECTION_SAMPLE) {
       for (const col of ["linkedFileURLs", "notifications", "attachments"]) {
         try {
-          const arr = t[col]();
+          const arr = t[col];
           if (arr && arr.length > 0) collections[col].nonEmpty++;
           else collections[col].empty++;
         } catch(e) { collections[col].error++; }
       }
     }
 
-    // Accessor equivalence (first 10)
+    // Accessor equivalence: project vs containingProject (first 10)
     if (accessorChecks.length < 10) {
       let check = { index: i };
       try {
-        const projFunc = t.project();
-        const projProp = t.containingProject();
-        const projFuncId = projFunc ? projFunc.id() : null;
-        let projPropId = null;
-        try { projPropId = projProp ? projProp.id() : null; } catch(e2) { projPropId = "ERROR"; }
-        check.projectFuncId = projFuncId;
-        check.projectPropId = projPropId;
-        if (projFuncId === projPropId) accessorSummary.projectMatch++;
+        const projDirect = t.project;
+        const projContaining = t.containingProject;
+        const projDirectId = projDirect ? projDirect.id.primaryKey : null;
+        let projContainingId = null;
+        try { projContainingId = projContaining ? projContaining.id.primaryKey : null; } catch(e2) { projContainingId = "ERROR"; }
+        check.projectDirectId = projDirectId;
+        check.projectContainingId = projContainingId;
+        if (projDirectId === projContainingId) accessorSummary.projectMatch++;
         else accessorSummary.projectDiffer++;
       } catch(e) {
         check.projectError = e.message;
         accessorSummary.projectDiffer++;
-      }
-      try {
-        const parFunc = t.parentTask();
-        const parProp = t.parent();
-        const parFuncId = parFunc ? parFunc.id() : null;
-        let parPropId = null;
-        try { parPropId = parProp ? parProp.id() : null; } catch(e2) { parPropId = "ERROR"; }
-        check.parentFuncId = parFuncId;
-        check.parentPropId = parPropId;
-        if (parFuncId === parPropId) accessorSummary.parentMatch++;
-        else accessorSummary.parentDiffer++;
-      } catch(e) {
-        check.parentError = e.message;
-        accessorSummary.parentDiffer++;
       }
       accessorChecks.push(check);
     }
@@ -272,8 +262,8 @@
   r += `  Sum check: ${statusSum}/${total} ${statusSum === total ? "✅" : "❌ MISMATCH"}\n`;
 
   r += `\n--- Relationships ---\n`;
-  r += `  project:           present=${projectPresent}, null=${projectNull}\n`;
-  r += `  parentTask:        present=${parentPresent}, null=${parentNull} (top-level)\n`;
+  r += `  containingProject: present=${projectPresent}, null=${projectNull}\n`;
+  r += `  parent:            present=${parentPresent}, null=${parentNull} (top-level)\n`;
   r += `  assignedContainer: present=${assignedContainerPresent}, null=${assignedContainerNull}\n`;
 
   r += `\n--- Date Fields ---\n`;
@@ -309,15 +299,13 @@
   }
 
   r += `\n--- Accessor Equivalence (first 10) ---\n`;
-  r += `  project() vs containingProject: match=${accessorSummary.projectMatch}, differ=${accessorSummary.projectDiffer}\n`;
-  r += `  parentTask() vs parent:         match=${accessorSummary.parentMatch}, differ=${accessorSummary.parentDiffer}\n`;
+  r += `  project vs containingProject: match=${accessorSummary.projectMatch}, differ=${accessorSummary.projectDiffer}\n`;
+  r += `  (In Omni Automation, parent is the only parent accessor — parentTask does not exist)\n`;
   if (accessorChecks.length > 0) {
     r += `  Sample details:\n`;
     for (const c of accessorChecks.slice(0, 3)) {
-      r += `    [${c.index}] project: func=${c.projectFuncId}, prop=${c.projectPropId}`;
+      r += `    [${c.index}] project=${c.projectDirectId}, containingProject=${c.projectContainingId}`;
       if (c.projectError) r += ` ERROR=${c.projectError}`;
-      r += ` | parent: func=${c.parentFuncId}, prop=${c.parentPropId}`;
-      if (c.parentError) r += ` ERROR=${c.parentError}`;
       r += `\n`;
     }
   }

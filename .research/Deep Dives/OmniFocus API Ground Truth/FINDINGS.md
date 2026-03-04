@@ -4,8 +4,8 @@
 > Each section is filled in during the guided audit session (`/omnifocus-api-ground-truth-audit`).
 > Every finding below is backed by script output — not documentation, not assumptions.
 
-**Audit date:** _TO BE FILLED_
-**OmniFocus version:** _TO BE FILLED_
+**Audit date:** 2026-03-04
+**OmniFocus version:** 4.8.8 (v185.9.1)
 **Database size:** _TO BE FILLED_ (projects, tasks, tags, folders)
 
 ---
@@ -71,7 +71,7 @@ _Can one switch function handle all entity types?_
 > Source: Scripts 01, 02, 04, 06, 07
 
 ### Root Task Relationship
-_TO BE FILLED — confirm p.id() === p.task.id()_
+_TO BE FILLED — confirm p.id.primaryKey === p.task.id.primaryKey_
 
 ### Task-Only Fields (undefined on p.*, defined on p.task.*)
 _TO BE FILLED — list fields, confirm always present_
@@ -90,7 +90,7 @@ _TO BE FILLED — which effective* fields are broken on p.*?_
 |-------------------------|-----------|-------------|---------|
 | effectiveDueDate        |           |             |         |
 | effectiveDeferDate      |           |             |         |
-| effectiveCompletionDate |           |             |         |
+| effectiveCompletedDate  |           |             |         |
 | effectivePlannedDate    |           |             |         |
 | effectiveDropDate       |           |             |         |
 | effectiveFlagged        |           |             |         |

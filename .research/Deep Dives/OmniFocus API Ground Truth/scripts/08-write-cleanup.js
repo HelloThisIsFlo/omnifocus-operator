@@ -1,21 +1,19 @@
 // 08 — [WRITE] Cleanup
 // ⚠️ WRITES TO OMNIFOCUS DATABASE (deletes test data)
+// Runtime: Omni Automation (OmniFocus Automation Console)
 //
 // Finds all entities tagged "🧪 API Audit" and deletes them.
 // Deletes: tasks first, then project, then tag.
 // Verifies: nothing tagged "🧪 API Audit" remains.
 
 (() => {
-  const app = Application("OmniFocus");
-  const doc = app.defaultDocument;
-
   let r = `=== 08: [WRITE] Cleanup ===\n\n`;
 
   // Find the audit tag
-  const allTags = doc.flattenedTags();
+  const allTags = flattenedTags;
   let auditTag = null;
   for (let i = 0; i < allTags.length; i++) {
-    if (allTags[i].name() === "🧪 API Audit") {
+    if (allTags[i].name === "🧪 API Audit") {
       auditTag = allTags[i];
       break;
     }
@@ -24,15 +22,15 @@
   if (!auditTag) {
     return r + `Tag "🧪 API Audit" not found — nothing to clean up. ✅\n`;
   }
-  r += `Found tag: "${auditTag.name()}" (id: ${auditTag.id()})\n\n`;
+  r += `Found tag: "${auditTag.name}" (id: ${auditTag.id.primaryKey})\n\n`;
 
   // Find all tasks with this tag
-  const allTasks = doc.flattenedTasks();
+  const allTasks = flattenedTasks;
   let tasksToDelete = [];
   for (let i = 0; i < allTasks.length; i++) {
-    const taskTags = allTasks[i].tags();
+    const taskTags = allTasks[i].tags;
     for (let j = 0; j < taskTags.length; j++) {
-      if (taskTags[j].id() === auditTag.id()) {
+      if (taskTags[j].id.primaryKey === auditTag.id.primaryKey) {
         tasksToDelete.push(allTasks[i]);
         break;
       }
@@ -41,10 +39,10 @@
   r += `Found ${tasksToDelete.length} tasks with audit tag.\n`;
 
   // Find test project
-  const allProjects = doc.flattenedProjects();
+  const allProjects = flattenedProjects;
   let testProject = null;
   for (let i = 0; i < allProjects.length; i++) {
-    if (allProjects[i].name() === "🧪 API Audit Test Project") {
+    if (allProjects[i].name === "🧪 API Audit Test Project") {
       testProject = allProjects[i];
       break;
     }
@@ -54,8 +52,8 @@
   for (let i = 0; i < tasksToDelete.length; i++) {
     const t = tasksToDelete[i];
     try {
-      r += `  Deleting task: "${t.name()}" (id: ${t.id()})...\n`;
-      app.delete(t);
+      r += `  Deleting task: "${t.name}" (id: ${t.id.primaryKey})...\n`;
+      deleteObject(t);
       r += `    ✅ Deleted\n`;
     } catch(e) {
       r += `    ⚠️ Error: ${e.message}\n`;
@@ -64,9 +62,9 @@
 
   // Delete project
   if (testProject) {
-    r += `\nDeleting project: "${testProject.name()}" (id: ${testProject.id()})...\n`;
+    r += `\nDeleting project: "${testProject.name}" (id: ${testProject.id.primaryKey})...\n`;
     try {
-      app.delete(testProject);
+      deleteObject(testProject);
       r += `  ✅ Deleted\n`;
     } catch(e) {
       r += `  ⚠️ Error: ${e.message}\n`;
@@ -76,9 +74,9 @@
   }
 
   // Delete tag
-  r += `\nDeleting tag: "${auditTag.name()}" (id: ${auditTag.id()})...\n`;
+  r += `\nDeleting tag: "${auditTag.name}" (id: ${auditTag.id.primaryKey})...\n`;
   try {
-    app.delete(auditTag);
+    deleteObject(auditTag);
     r += `  ✅ Deleted\n`;
   } catch(e) {
     r += `  ⚠️ Error: ${e.message}\n`;
@@ -88,10 +86,10 @@
   r += `\n--- Verification ---\n`;
 
   // Check tag is gone
-  const tagsAfter = doc.flattenedTags();
+  const tagsAfter = flattenedTags;
   let tagFound = false;
   for (let i = 0; i < tagsAfter.length; i++) {
-    if (tagsAfter[i].name() === "🧪 API Audit") {
+    if (tagsAfter[i].name === "🧪 API Audit") {
       tagFound = true;
       break;
     }
@@ -99,10 +97,10 @@
   r += `Tag "🧪 API Audit" still exists: ${tagFound ? "YES ⚠️" : "NO ✅"}\n`;
 
   // Check project is gone
-  const projectsAfter = doc.flattenedProjects();
+  const projectsAfter = flattenedProjects;
   let projFound = false;
   for (let i = 0; i < projectsAfter.length; i++) {
-    if (projectsAfter[i].name() === "🧪 API Audit Test Project") {
+    if (projectsAfter[i].name === "🧪 API Audit Test Project") {
       projFound = true;
       break;
     }

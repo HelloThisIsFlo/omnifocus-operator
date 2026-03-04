@@ -1,49 +1,63 @@
 // 12 — Perspective Audit
 // READ-ONLY — no modifications to OmniFocus data
+// Runtime: Omni Automation (OmniFocus Automation Console)
 //
-// Scans ALL perspectives via both access paths (Perspective.all and doc.perspectives()).
-// Covers: dual access path comparison, identifier (null for builtin vs present for
-// custom), name, and probes for any additional accessible properties.
+// Scans ALL perspectives via multiple access paths.
+// Covers: Perspective.all vs BuiltIn/Custom split, identifier (null for builtin
+// vs present for custom), name, and probes for any additional accessible properties.
 
 (() => {
-  const app = Application("OmniFocus");
-  const doc = app.defaultDocument;
-
   let r = `=== 12: Perspective Audit ===\n\n`;
 
-  // --- Dual Access Path Comparison ---
+  // --- Access Path Comparison ---
   r += `--- Access Paths ---\n`;
-  let perspAll = null, perspDoc = null;
+
+  let perspAll = null, perspBuiltIn = null, perspCustom = null;
+
+  // Try Perspective.all (used by bridge.js)
   try {
     perspAll = Perspective.all;
     r += `  Perspective.all count: ${perspAll.length}\n`;
   } catch(e) {
     r += `  Perspective.all: ERROR — ${e.message}\n`;
   }
+
+  // Try Perspective.BuiltIn.all + Perspective.Custom.all
   try {
-    perspDoc = doc.perspectives();
-    r += `  doc.perspectives() count: ${perspDoc.length}\n`;
+    perspBuiltIn = Perspective.BuiltIn.all;
+    r += `  Perspective.BuiltIn.all count: ${perspBuiltIn.length}\n`;
   } catch(e) {
-    r += `  doc.perspectives(): ERROR — ${e.message}\n`;
+    r += `  Perspective.BuiltIn.all: ERROR — ${e.message}\n`;
   }
-  if (perspAll && perspDoc) {
-    r += `  Counts match: ${perspAll.length === perspDoc.length}\n`;
+
+  try {
+    perspCustom = Perspective.Custom.all;
+    r += `  Perspective.Custom.all count: ${perspCustom.length}\n`;
+  } catch(e) {
+    r += `  Perspective.Custom.all: ERROR — ${e.message}\n`;
+  }
+
+  if (perspBuiltIn && perspCustom) {
+    r += `  BuiltIn + Custom total: ${perspBuiltIn.length + perspCustom.length}\n`;
+    if (perspAll) {
+      r += `  Matches Perspective.all: ${perspAll.length === perspBuiltIn.length + perspCustom.length}\n`;
+    }
   }
   r += `\n`;
 
-  // Use whichever is more complete, prefer perspAll, fallback to perspDoc
+  // Use whichever is available — prefer Perspective.all, fallback to BuiltIn+Custom concat
   let perspectives;
-  if (perspAll && perspDoc) {
-    perspectives = perspAll.length >= perspDoc.length ? perspAll : perspDoc;
-    r += `Using: ${perspAll.length >= perspDoc.length ? "Perspective.all" : "doc.perspectives()"}\n\n`;
-  } else if (perspAll) {
+  if (perspAll) {
     perspectives = perspAll;
-    r += `Using: Perspective.all (doc.perspectives() failed)\n\n`;
-  } else if (perspDoc) {
-    perspectives = perspDoc;
-    r += `Using: doc.perspectives() (Perspective.all failed)\n\n`;
+    r += `Using: Perspective.all\n\n`;
+  } else if (perspBuiltIn && perspCustom) {
+    perspectives = perspBuiltIn.concat(perspCustom);
+    r += `Using: Perspective.BuiltIn.all + Perspective.Custom.all (concatenated)\n\n`;
+  } else if (perspCustom) {
+    perspectives = perspCustom;
+    r += `Using: Perspective.Custom.all only (BuiltIn failed)\n\n`;
   } else {
-    return r + `ERROR: Both access paths failed\n`;
+    return r + `ERROR: All access paths failed\n`;
   }
 
   r += `Total perspectives: ${perspectives.length}\n\n`;
@@ -67,7 +81,7 @@
     // identifier
     let ident;
     try {
-      ident = persp.identifier();
+      ident = persp.identifier;
       if (ident && ident.length > 0) {
         identifierPresent++;
       } else {
@@ -81,18 +95,12 @@
     // name
     let name;
     try {
-      name = persp.name();
+      name = persp.name;
       if (name && name.length > 0) namePresent++; else nameMissing++;
     } catch(e) {
       nameMissing++;
       name = "(error)";
     }
-
-    // builtin — try the property, it may not exist
-    try {
-      const b = persp.id();  // built-in perspectives might use id differently
-      // We'll classify by identifier presence instead
-    } catch(e) {}
 
     // Classify
     if (ident && ident.length > 0) {
@@ -104,7 +112,7 @@
     // Probe additional fields
     for (const f of probeFields) {
       try {
-        const val = persp[f]();
+        const val = persp[f];
         if (val !== undefined) probeResults[f].exists++;
         else probeResults[f].missing++;
       } catch(e) {
@@ -152,7 +160,7 @@
                          "sorting", "layout", "containerType", "customFilterFormula"];
     for (const f of extraFields) {
       try {
-        const val = sample[f]();
+        const val = sample[f];
         r += `  ${f}: ${val !== undefined ? `accessible (=${typeof val === "string" ? `"${val}"` : val})` : "undefined"}\n`;
       } catch(e) {
         r += `  ${f}: not a property\n`;

@@ -1,14 +1,13 @@
 // 10 — Tag Audit
 // READ-ONLY — no modifications to OmniFocus data
+// Runtime: Omni Automation (OmniFocus Automation Console)
 //
 // Scans ALL flattenedTags with counter-based approach.
 // Covers: added/modified, active/effectiveActive, status distribution,
 // status enum matching, allowsNextAction, parent relationships.
 
 (() => {
-  const app = Application("OmniFocus");
-  const doc = app.defaultDocument;
-  const tags = doc.flattenedTags();
+  const tags = flattenedTags;
   const total = tags.length;
 
   let r = `=== 10: Tag Audit ===\n`;
@@ -47,51 +46,51 @@
 
     // id
     try {
-      const tid = tag.id();
+      const tid = tag.id.primaryKey;
       if (tid && tid.length > 0) idPresent++; else idMissing++;
     } catch(e) { idMissing++; }
 
     // added/modified
-    const a = tag.added();
-    const m = tag.modified();
+    const a = tag.added;
+    const m = tag.modified;
     if (a instanceof Date) added.present++; else added.missing++;
     if (m instanceof Date) modified.present++; else modified.missing++;
 
     // active/effectiveActive
-    const act = tag.active();
+    const act = tag.active;
     if (act === true) active.true++; else if (act === false) active.false++; else active.other++;
-    const ea = tag.effectiveActive();
+    const ea = tag.effectiveActive;
     if (ea === true) effActive.true++; else if (ea === false) effActive.false++; else effActive.other++;
 
     // status
-    const s = matchTagStatus(tag.status());
+    const s = matchTagStatus(tag.status);
     statusDist[s] = (statusDist[s] || 0) + 1;
 
     // allowsNextAction
-    const ana = tag.allowsNextAction();
+    const ana = tag.allowsNextAction;
     if (ana === true) allowsNextAction.true++;
     else if (ana === false) allowsNextAction.false++;
     else allowsNextAction.other++;
 
     // parent
     try {
-      const par = tag.parent();
+      const par = tag.parent;
       if (par) parentPresent++; else parentNull++;
     } catch(e) { parentNull++; }
 
-    // children (tag.tags())
+    // children (tag.tags or tag.children)
     try {
-      if (tag.tags().length > 0) childrenNonZero++;
+      if (tag.tags.length > 0) childrenNonZero++;
       else childrenZero++;
     } catch(e) { childrenZero++; }
 
     // name
-    const n = tag.name();
+    const n = tag.name;
     if (n && n.length > 0) hasName++; else nameMissing++;
 
     // note (3 categories: null/undefined, empty string, non-empty)
     try {
-      const note = tag.note();
+      const note = tag.note;
       if (note === null || note === undefined) noteNullUndef++;
       else if (note.length === 0) noteEmptyStr++;
       else noteNonEmpty++;
@@ -101,7 +100,7 @@
   // --- Name Uniqueness Check ---
   let nameCountMap = {};
   for (let i = 0; i < total; i++) {
-    const n = tags[i].name();
+    const n = tags[i].name;
     if (n) nameCountMap[n] = (nameCountMap[n] || 0) + 1;
   }
   const uniqueNames = Object.keys(nameCountMap).length;
@@ -131,7 +130,7 @@
 
   r += `\n--- Relationships ---\n`;
   r += `  parent: present=${parentPresent} (nested), null=${parentNull} (top-level)\n`;
-  r += `  children (tag.tags()): hasChildren=${childrenNonZero}, leaf=${childrenZero}\n`;
+  r += `  children (tag.tags): hasChildren=${childrenNonZero}, leaf=${childrenZero}\n`;
 
   r += `\n--- Other Fields ---\n`;
   r += `  id: present=${idPresent}, missing=${idMissing}\n`;
