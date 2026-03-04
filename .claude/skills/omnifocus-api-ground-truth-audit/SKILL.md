@@ -100,7 +100,9 @@ the current one's output has been analyzed and its findings recorded.
    open it and copy the contents. **Do NOT read the script file or paste its
    contents into the conversation.** This wastes context window. The user will
    open the file themselves (in their editor or Finder) and copy-paste into the
-   OmniFocus console. If the IDE supports it, open the file in the editor for them.
+   OmniFocus console. Open the file in Cursor for the user using
+   `open -a "Cursor" "<file-path>"` (NOT `cursor <path>` — that breaks on
+   paths with spaces and opens an empty file instead).
 3. **Instruct** the user: Open OmniFocus, go to **Automation > Show Console**,
    paste the entire script, then press **Cmd+Enter** (or click Run) to run it.
    The output will appear in the console — copy and paste it back here.
