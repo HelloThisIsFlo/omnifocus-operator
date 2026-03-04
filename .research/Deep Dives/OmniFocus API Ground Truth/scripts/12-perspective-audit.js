@@ -1,9 +1,9 @@
 // 12 — Perspective Audit
 // READ-ONLY — no modifications to OmniFocus data
 //
-// Scans ALL perspectives (Perspective.all).
-// Covers: identifier (null for builtin vs present for custom), name,
-// and probes for any additional accessible properties.
+// Scans ALL perspectives via both access paths (Perspective.all and doc.perspectives()).
+// Covers: dual access path comparison, identifier (null for builtin vs present for
+// custom), name, and probes for any additional accessible properties.
 
 (() => {
   const app = Application("OmniFocus");
@@ -11,14 +11,42 @@
 
   let r = `=== 12: Perspective Audit ===\n\n`;
 
-  // Get all perspectives
-  let perspectives;
+  // --- Dual Access Path Comparison ---
+  r += `--- Access Paths ---\n`;
+  let perspAll = null, perspDoc = null;
   try {
-    perspectives = doc.perspectives();
-    r += `Total perspectives: ${perspectives.length}\n\n`;
+    perspAll = Perspective.all;
+    r += `  Perspective.all count: ${perspAll.length}\n`;
   } catch(e) {
-    return r + `ERROR getting perspectives: ${e.message}\n`;
+    r += `  Perspective.all: ERROR — ${e.message}\n`;
   }
+  try {
+    perspDoc = doc.perspectives();
+    r += `  doc.perspectives() count: ${perspDoc.length}\n`;
+  } catch(e) {
+    r += `  doc.perspectives(): ERROR — ${e.message}\n`;
+  }
+  if (perspAll && perspDoc) {
+    r += `  Counts match: ${perspAll.length === perspDoc.length}\n`;
+  }
+  r += `\n`;
+
+  // Use whichever is more complete, prefer perspAll, fallback to perspDoc
+  let perspectives;
+  if (perspAll && perspDoc) {
+    perspectives = perspAll.length >= perspDoc.length ? perspAll : perspDoc;
+    r += `Using: ${perspAll.length >= perspDoc.length ? "Perspective.all" : "doc.perspectives()"}\n\n`;
+  } else if (perspAll) {
+    perspectives = perspAll;
+    r += `Using: Perspective.all (doc.perspectives() failed)\n\n`;
+  } else if (perspDoc) {
+    perspectives = perspDoc;
+    r += `Using: doc.perspectives() (Perspective.all failed)\n\n`;
+  } else {
+    return r + `ERROR: Both access paths failed\n`;
+  }
+
+  r += `Total perspectives: ${perspectives.length}\n\n`;
 
   // --- Counters ---
   let identifierPresent = 0, identifierNull = 0;

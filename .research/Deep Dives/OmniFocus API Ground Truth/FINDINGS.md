@@ -1,7 +1,7 @@
 # OmniFocus API Ground Truth — Findings
 
 > Empirical findings from running audit scripts against a live OmniFocus database.
-> Each section is filled in during the guided audit session (`/omnifocus-api-audit`).
+> Each section is filled in during the guided audit session (`/omnifocus-api-ground-truth-audit`).
 > Every finding below is backed by script output — not documentation, not assumptions.
 
 **Audit date:** _TO BE FILLED_
@@ -111,6 +111,19 @@ _TO BE FILLED — from Script 04_
 ### Nullable Fields
 _TO BE FILLED — which fields are legitimately nullable?_
 
+### Project-Specific Fields
+_TO BE FILLED — distributions for project-only fields_
+
+| Field                    | Present | Null | Notes |
+|--------------------------|---------|------|-------|
+| containsSingletonActions |         |      |       |
+| lastReviewDate           |         |      |       |
+| nextReviewDate           |         |      |       |
+| reviewInterval           |         |      |       |
+| nextTask                 |         |      |       |
+| folder                   |         |      |       |
+| repetitionRule           |         |      |       |
+
 ### Bridge Action Items
 - [ ] _TO BE FILLED_
 
@@ -135,6 +148,15 @@ _TO BE FILLED_
 ### Relationship Fields
 _TO BE FILLED — project, parentTask, assignedContainer_
 
+### RepetitionRule Deep Inspection
+_TO BE FILLED — sub-field types and values_
+
+### Collections (linkedFileURLs, notifications, attachments)
+_TO BE FILLED — existence and population_
+
+### Accessor Equivalence
+_TO BE FILLED — project() vs containingProject, parentTask() vs parent_
+
 ### Bridge Action Items
 - [ ] _TO BE FILLED_
 
@@ -152,6 +174,9 @@ _TO BE FILLED — Tag.Status constants and their meanings_
 
 ### Relationship to Project Status
 _TO BE FILLED — cross-type comparison results_
+
+### Name Uniqueness
+_TO BE FILLED — are tag names unique? Duplicates found?_
 
 ### Bridge Action Items
 - [ ] _TO BE FILLED_
@@ -182,6 +207,9 @@ _TO BE FILLED — which properties exist beyond id/name_
 
 ### Built-in vs Custom
 _TO BE FILLED — how to distinguish, identifier behavior_
+
+### Access Paths
+_TO BE FILLED — Perspective.all vs doc.perspectives() comparison_
 
 ### Bridge Action Items
 - [ ] _TO BE FILLED_

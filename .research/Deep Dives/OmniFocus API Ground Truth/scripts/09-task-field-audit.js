@@ -2,9 +2,12 @@
 // READ-ONLY — no modifications to OmniFocus data
 //
 // Scans ALL flattenedTasks with counter-based approach.
-// Covers: added/modified, active/effectiveActive, inInbox, status distribution,
-// project/parent/assignedContainer relationships, estimatedMinutes, flags,
-// tags, collections (linkedFileURLs, notifications, attachments).
+// Covers: name, added/modified, active/effectiveActive, inInbox, status distribution,
+// project/parent/assignedContainer relationships, estimatedMinutes (3 categories),
+// flags, tags, sequential, completedByChildren, hasChildren, repetitionRule
+// (deep inspection), collections (linkedFileURLs, notifications, attachments),
+// accessor equivalence (project vs containingProject, parentTask vs parent),
+// shouldUseFloatingTimeZone, notes.
 
 (() => {
   const app = Application("OmniFocus");
@@ -49,8 +52,8 @@
                       "effectivePlannedDate", "effectiveDropDate"];
   for (const f of dateFields) dateCounts[f] = { present: 0, missing: 0 };
 
-  // Estimated minutes
-  let estMin = { present: 0, missing: 0 };
+  // Estimated minutes (3 categories)
+  let estMin = { null_or_undefined: 0, zero: 0, positive: 0 };
 
   // Flags
   let flagged = { true: 0, false: 0 };
@@ -74,6 +77,23 @@
 
   // Note presence
   let notePresent = 0, noteEmpty = 0;
+
+  // Name field
+  let namePresent = 0, nameEmpty = 0;
+
+  // RepetitionRule deep inspection (first 5)
+  let repRuleDeep = [];
+
+  // Collections probing
+  let collections = {
+    linkedFileURLs: { nonEmpty: 0, empty: 0, error: 0 },
+    notifications: { nonEmpty: 0, empty: 0, error: 0 },
+    attachments: { nonEmpty: 0, empty: 0, error: 0 }
+  };
+
+  // Accessor equivalence (first 10)
+  let accessorChecks = [];
+  let accessorSummary = { projectMatch: 0, projectDiffer: 0, parentMatch: 0, parentDiffer: 0 };
 
   for (let i = 0; i < total; i++) {
     const t = tasks[i];
@@ -124,10 +144,11 @@
       else dateCounts[f].missing++;
     }
 
-    // estimatedMinutes
+    // estimatedMinutes (3 categories)
     const em = t.estimatedMinutes();
-    if (em !== null && em !== undefined && em !== 0) estMin.present++;
-    else estMin.missing++;
+    if (em === null || em === undefined) estMin.null_or_undefined++;
+    else if (em === 0) estMin.zero++;
+    else estMin.positive++;
 
     // flags
     const fl = t.flagged();
@@ -159,6 +180,63 @@
     // note
     const note = t.note();
     if (note && note.length > 0) notePresent++; else noteEmpty++;
+
+    // name
+    const nm = t.name();
+    if (nm && nm.length > 0) namePresent++; else nameEmpty++;
+
+    // RepetitionRule deep inspection (first 5 that have one)
+    if (rr && repRuleDeep.length < 5) {
+      let deep = { index: i, name: nm };
+      try { deep.ruleString = rr.ruleString(); deep.ruleStringType = typeof deep.ruleString; } catch(e) { deep.ruleString = "ERROR: " + e.message; }
+      try { deep.scheduleType = rr.scheduleType(); deep.scheduleTypeType = typeof deep.scheduleType; } catch(e) { deep.scheduleType = "ERROR: " + e.message; }
+      try { deep.fixedInterval = rr.fixedInterval(); deep.fixedIntervalType = typeof deep.fixedInterval; } catch(e) { deep.fixedInterval = "ERROR: " + e.message; }
+      try { deep.unit = rr.unit(); deep.unitType = typeof deep.unit; } catch(e) { deep.unit = "ERROR: " + e.message; }
+      repRuleDeep.push(deep);
+    }
+
+    // Collections probing
+    for (const col of ["linkedFileURLs", "notifications", "attachments"]) {
+      try {
+        const arr = t[col]();
+        if (arr && arr.length > 0) collections[col].nonEmpty++;
+        else collections[col].empty++;
+      } catch(e) { collections[col].error++; }
+    }
+
+    // Accessor equivalence (first 10)
+    if (accessorChecks.length < 10) {
+      let check = { index: i };
+      try {
+        const projFunc = t.project();
+        const projProp = t.containingProject;
+        const projFuncId = projFunc ? projFunc.id() : null;
+        let projPropId = null;
+        try { projPropId = projProp ? projProp.id() : null; } catch(e2) { projPropId = "ERROR"; }
+        check.projectFuncId = projFuncId;
+        check.projectPropId = projPropId;
+        if (projFuncId === projPropId) accessorSummary.projectMatch++;
+        else accessorSummary.projectDiffer++;
+      } catch(e) {
+        check.projectError = e.message;
+        accessorSummary.projectDiffer++;
+      }
+      try {
+        const parFunc = t.parentTask();
+        const parProp = t.parent;
+        const parFuncId = parFunc ? parFunc.id() : null;
+        let parPropId = null;
+        try { parPropId = parProp ? parProp.id() : null; } catch(e2) { parPropId = "ERROR"; }
+        check.parentFuncId = parFuncId;
+        check.parentPropId = parPropId;
+        if (parFuncId === parPropId) accessorSummary.parentMatch++;
+        else accessorSummary.parentDiffer++;
+      } catch(e) {
+        check.parentError = e.message;
+        accessorSummary.parentDiffer++;
+      }
+      accessorChecks.push(check);
+    }
   }
 
   // --- Report ---
@@ -196,10 +274,44 @@
   }
 
   r += `\n--- Other Fields ---\n`;
-  r += `  estimatedMinutes: set=${estMin.present}, unset=${estMin.missing}\n`;
+  r += `  name: present=${namePresent}, empty=${nameEmpty}\n`;
+  r += `  estimatedMinutes: null/undefined=${estMin.null_or_undefined}, zero=${estMin.zero}, positive=${estMin.positive}\n`;
   r += `  note: non-empty=${notePresent}, empty=${noteEmpty}\n`;
   r += `  repetitionRule: present=${repRule.present}, missing=${repRule.missing}\n`;
   r += `  tags: zero=${tagCounts.zero}, one=${tagCounts.one}, multi=${tagCounts.multi}, max=${maxTags}\n`;
+
+  r += `\n--- RepetitionRule Deep Inspection (first ${repRuleDeep.length}) ---\n`;
+  if (repRuleDeep.length === 0) {
+    r += `  No tasks with repetitionRule found\n`;
+  } else {
+    for (const d of repRuleDeep) {
+      r += `  Task "${d.name}" (index ${d.index}):\n`;
+      r += `    ruleString: [${d.ruleStringType}] ${d.ruleString}\n`;
+      r += `    scheduleType: [${d.scheduleTypeType}] ${d.scheduleType}\n`;
+      r += `    fixedInterval: [${d.fixedIntervalType}] ${d.fixedInterval}\n`;
+      r += `    unit: [${d.unitType}] ${d.unit}\n`;
+    }
+  }
+
+  r += `\n--- Collections ---\n`;
+  for (const col of ["linkedFileURLs", "notifications", "attachments"]) {
+    const c = collections[col];
+    r += `  ${col}: nonEmpty=${c.nonEmpty}, empty=${c.empty}, error=${c.error}\n`;
+  }
+
+  r += `\n--- Accessor Equivalence (first 10) ---\n`;
+  r += `  project() vs containingProject: match=${accessorSummary.projectMatch}, differ=${accessorSummary.projectDiffer}\n`;
+  r += `  parentTask() vs parent:         match=${accessorSummary.parentMatch}, differ=${accessorSummary.parentDiffer}\n`;
+  if (accessorChecks.length > 0) {
+    r += `  Sample details:\n`;
+    for (const c of accessorChecks.slice(0, 3)) {
+      r += `    [${c.index}] project: func=${c.projectFuncId}, prop=${c.projectPropId}`;
+      if (c.projectError) r += ` ERROR=${c.projectError}`;
+      r += ` | parent: func=${c.parentFuncId}, prop=${c.parentPropId}`;
+      if (c.parentError) r += ` ERROR=${c.parentError}`;
+      r += `\n`;
+    }
+  }
 
   return r;
 })();

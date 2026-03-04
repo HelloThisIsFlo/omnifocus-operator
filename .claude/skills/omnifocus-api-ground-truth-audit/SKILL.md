@@ -52,6 +52,13 @@ The README explains what each script checks:
 - `Project.Status` has 4 values (Active, OnHold, Done, Dropped) but our
   `EntityStatus` enum only has 3 (missing OnHold).
 
+## Safety
+
+**NEVER run JXA scripts via `osascript`, Bash, or any automated method.** The
+user must manually paste each script into the OmniFocus Automation Console and
+run it themselves. This ensures the human is always in control of what touches
+their live database.
+
 ## Workflow
 
 ### Starting the Audit
@@ -60,11 +67,22 @@ The README explains what each script checks:
 2. Check FINDINGS.md for any already-completed sections (if resuming)
 3. Determine which script to run next
 
+### Session Start
+
+Before running any scripts:
+1. Ask the user for their OmniFocus version (OmniFocus > About OmniFocus)
+2. Fill in the "Audit date" and "OmniFocus version" fields in FINDINGS.md
+3. Database size (projects, tasks, tags, folders) will be filled as scripts
+   report entity counts
+
 ### For Each Script
 
 1. **Explain** what the script checks and why it matters (1-2 sentences)
-2. **Read** the script file and present it to the user
-3. **Instruct** the user to paste it into OmniFocus > Automation > Show Console
+2. **Read** the script file and present it in a fenced code block (`javascript`)
+   so the user can copy it
+3. **Instruct** the user: Open OmniFocus, go to **Automation > Show Console**,
+   paste the entire script, then press **Enter** to run it. The output will appear
+   in the console — copy and paste it back here.
 4. **Wait** for the user to paste the output
 5. **Analyze** the output:
    - Confirm expected results
@@ -80,6 +98,11 @@ Before running scripts 05, 07, or 08, **warn clearly**:
 > test entities tagged "🧪 API Audit". This is safe and reversible — Script 08
 > cleans everything up. Proceed?
 
+**Interrupted session:** If the session is interrupted between Scripts 05 and 08,
+test entities tagged "🧪 API Audit" remain in the user's database. They can paste
+Script 08 at any time to clean up. If Script 05 needs to be re-run, always run
+Script 08 first to avoid duplicate test data.
+
 ### Script Sequence
 
 **Part 1 — Project Discovery (READ-ONLY)**
@@ -90,7 +113,7 @@ Before running scripts 05, 07, or 08, **warn clearly**:
 
 **Part 2 — Write-Side Verification**
 - Script 05: [WRITE] Create Test Data
-- Script 06: Read-Back Verify
+- Script 06: Read-Back Verify (READ-ONLY, but requires Script 05 data)
 - Script 07: [WRITE] Modify and Verify
 - Script 08: [WRITE] Cleanup
 
@@ -99,6 +122,21 @@ Before running scripts 05, 07, or 08, **warn clearly**:
 - Script 10: Tag Audit
 - Script 11: Folder Audit
 - Script 12: Perspective Audit
+
+### Script → FINDINGS.md Mapping
+
+| Script(s) | FINDINGS Section | Notes |
+|-----------|------------------|-------|
+| 03        | 1. Enum System   | Fill completely from Script 03 output |
+| 01, 02    | 2. Project Type  | Start with 01, refine with 02 |
+| 04        | 2. Project Type (Status Cross-Reference) | Add the mapping table |
+| 06, 07    | 2. Project Type + 7. Write Behavior | 06 confirms, 07 adds write data |
+| 09        | 3. Task Type     | Fill completely from Script 09 output |
+| 10        | 4. Tag Type      | Fill completely from Script 10 output |
+| 11        | 5. Folder Type   | Fill completely from Script 11 output |
+| 12        | 6. Perspective   | Fill completely from Script 12 output |
+| 05-08     | 7. Write Behavior | Accumulated across the write sequence |
+| All       | 8. Bridge Implications | Synthesize at the very end |
 
 ## What to Verify (Per Script)
 
@@ -118,6 +156,8 @@ Before running scripts 05, 07, or 08, **warn clearly**:
 - Complete list of constants per entity type
 - Cross-type compatibility: can one switch function work for all?
 - Any UNKNOWN values = potential missing constants
+- Note: Script 03 samples only the first 500 tasks for speed. Script 09
+  provides the definitive full-database task status distribution.
 
 ### Script 04
 - Full mapping table: Project.Status → task.active, task.effectiveActive, task.Status
@@ -155,6 +195,9 @@ Before running scripts 05, 07, or 08, **warn clearly**:
   opaque enums, calling methods without `()`, property name typos.
 - **UNKNOWN status values:** The entity has a status value not covered by our
   switch. Add new constants to probe.
+- **Truncated output:** If output is very long and the user can only paste a
+  portion, ask for the missing sections by name (e.g., "Can you paste the
+  '--- Status Distribution ---' section?").
 
 ## Recording Findings
 
@@ -175,3 +218,10 @@ The audit is complete when:
 - [ ] All tables have verified values
 - [ ] The Bridge Implications section (Section 8) has a concrete action list
 - [ ] No "TO BE FILLED" placeholders remain in FINDINGS.md
+
+### Section 8 Workflow
+
+After all 12 scripts are analyzed, review every "Bridge Action Items" subsection
+across Sections 1-7. Consolidate into Section 8 by category: Critical Fixes,
+Improvements, Model Changes, Enum Changes. Section 8 is the final deliverable —
+a developer reading only Section 8 should know every change needed.

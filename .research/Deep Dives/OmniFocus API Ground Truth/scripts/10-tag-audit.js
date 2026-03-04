@@ -80,6 +80,18 @@
     } catch(e) { noteEmpty++; }
   }
 
+  // --- Name Uniqueness Check ---
+  let nameCountMap = {};
+  for (let i = 0; i < total; i++) {
+    const n = tags[i].name();
+    if (n) nameCountMap[n] = (nameCountMap[n] || 0) + 1;
+  }
+  const uniqueNames = Object.keys(nameCountMap).length;
+  let duplicateNames = [];
+  for (const [name, count] of Object.entries(nameCountMap)) {
+    if (count > 1) duplicateNames.push({ name, count });
+  }
+
   // --- Report ---
   r += `--- Timestamp Fields ---\n`;
   r += `  added:    present=${added.present}, missing=${added.missing}\n`;
@@ -102,6 +114,18 @@
   r += `\n--- Other Fields ---\n`;
   r += `  name: present=${hasName}, missing=${nameMissing}\n`;
   r += `  note: non-empty=${notePresent}, empty=${noteEmpty}\n`;
+
+  r += `\n--- Name Uniqueness ---\n`;
+  r += `  Total tags: ${total}, unique names: ${uniqueNames}\n`;
+  if (duplicateNames.length === 0) {
+    r += `  ✅ All tag names are unique\n`;
+  } else {
+    r += `  ⚠️ Duplicate names found: ${duplicateNames.length}\n`;
+    for (const d of duplicateNames.slice(0, 10)) {
+      r += `    "${d.name}": ${d.count} occurrences\n`;
+    }
+    if (duplicateNames.length > 10) r += `    ... and ${duplicateNames.length - 10} more\n`;
+  }
 
   // --- Status enum comparison with Project.Status ---
   r += `\n--- Tag.Status Constants ---\n`;

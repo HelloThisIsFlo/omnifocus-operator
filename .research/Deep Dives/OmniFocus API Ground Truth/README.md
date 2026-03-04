@@ -28,9 +28,11 @@ that can be re-run to verify.
 
 #### 01 — Project vs Root Task Scan ◻️
 **What it checks:** Every field on `p.*` vs `p.task.*` across all projects.
-Verifies task-only fields (added, modified, active, effectiveActive), tracks
-effectiveCompletionDate behavior, measures status distributions, checks all
-shared fields for divergence, and verifies id matching.
+Verifies task-only fields (added, modified, active, effectiveActive), scans
+project-specific fields (containsSingletonActions, lastReviewDate, nextReviewDate,
+reviewInterval, nextTask, folder, repetitionRule), tracks effectiveCompletionDate
+behavior, measures status distributions, checks all shared fields for divergence,
+tags divergence (p vs p.task), and verifies id matching.
 **What to look for:** Zero divergences on shared fields. Task-only fields should
 be undefined on `p.*` and always defined on `p.task.*`. IDs should always match.
 
@@ -89,16 +91,21 @@ Verifies relationships (project, parent, assignedContainer on tasks).
 
 #### 09 — Task Field Audit ◻️
 **What it checks:** ALL fields on every `flattenedTask`. Distributions for
-boolean fields, status, dates, relationships, tags, estimatedMinutes,
-repetitionRule, notes.
+boolean fields, status, dates, relationships, tags, estimatedMinutes (3 categories),
+repetitionRule (deep inspection of sub-properties for first 5), notes, name.
+Probes collections (linkedFileURLs, notifications, attachments). Tests accessor
+equivalence (project() vs containingProject, parentTask() vs parent).
 **What to look for:** Are `added`/`modified` always present? What % of tasks
-are in inbox? Status distribution. Any fields that are unexpectedly null.
+are in inbox? Status distribution. RepetitionRule sub-field types. Collection
+existence. Whether accessor pairs return the same objects.
 
 #### 10 — Tag Audit ◻️
 **What it checks:** ALL fields on every `flattenedTag`. Status enum constants
-and cross-type comparison with `Project.Status`.
+and cross-type comparison with `Project.Status`. Tag name uniqueness check
+(important because the bridge serializes by name, not ID).
 **What to look for:** `Tag.Status` constants (Active, OnHold, Dropped).
 Whether `Tag.Status.Active === Project.Status.Active`. `allowsNextAction` distribution.
+Whether any tag names are duplicated across the hierarchy.
 
 #### 11 — Folder Audit ◻️
 **What it checks:** ALL fields on every `flattenedFolder`. Status enum constants
@@ -107,14 +114,16 @@ and cross-type comparison.
 status enum as projects/tags or a different set.
 
 #### 12 — Perspective Audit ◻️
-**What it checks:** ALL perspectives (built-in and custom). Identifier presence,
-name, and probes for any additional accessible properties.
-**What to look for:** Which properties exist on perspectives beyond id/name.
-Whether built-in perspectives have identifiers.
+**What it checks:** ALL perspectives via both access paths (`Perspective.all` and
+`doc.perspectives()`). Compares counts and uses the more complete set. Tests
+identifier presence, name, and probes for any additional accessible properties.
+**What to look for:** Whether the two access paths return different counts.
+Which properties exist on perspectives beyond id/name. Whether built-in
+perspectives have identifiers.
 
 ## Using the Audit Skill
 
-Run `/omnifocus-api-audit` in Claude Code to start a guided audit session.
+Run `/omnifocus-api-ground-truth-audit` in Claude Code to start a guided audit session.
 The skill walks through each script in order, explains what to look for,
 and records findings in FINDINGS.md.
 

@@ -2,7 +2,8 @@
 // READ-ONLY — no modifications to OmniFocus data
 //
 // Definitive scan of ALL fields on p.* vs p.task.* across every flattenedProject.
-// Reports: task-only fields, effectiveCompletionDate tracking, status distributions,
+// Reports: task-only fields, project-specific fields (review, folder, singleton,
+// repetitionRule), effectiveCompletionDate tracking, status distributions,
 // shared field divergence, inInbox distribution, id match verification.
 
 (() => {
@@ -17,7 +18,7 @@
   let taskOnlyDefined = { added: 0, modified: 0, active: 0, effectiveActive: 0 };
 
   // effectiveCompletionDate special tracking
-  let ecd = { pUndef_tNull: 0, pUndef_tDate: 0, pNull_tNull: 0, pDate_tDate_match: 0, pDate_tDate_diverge: 0, pDate_tNull: 0, pNull_tDate: 0 };
+  let ecd = { pUndef_tNull: 0, pUndef_tDate: 0, pUndef_tUndef: 0, pNull_tNull: 0, pDate_tDate_match: 0, pDate_tDate_diverge: 0, pDate_tNull: 0, pNull_tDate: 0 };
 
   // Status distributions
   let projectStatus = {};  // String(p.status) → count
@@ -44,6 +45,20 @@
   // active/effectiveActive distributions (on p.task)
   let activeTrue = 0, activeFalse = 0;
   let effActiveTrue = 0, effActiveFalse = 0;
+
+  // --- Project-Specific Field Counters ---
+  let projSpecific = {
+    containsSingletonActions: { true: 0, false: 0, error: 0 },
+    lastReviewDate: { present: 0, missing: 0, error: 0 },
+    nextReviewDate: { present: 0, missing: 0, error: 0 },
+    reviewInterval: { present: 0, missing: 0, error: 0 },
+    nextTask: { present: 0, missing: 0, error: 0 },
+    folder: { present: 0, missing: 0, error: 0 },
+    repetitionRule: { present: 0, missing: 0, error: 0 }
+  };
+  let reviewIntervalValues = {};  // "steps:unit" → count
+  let repRuleExamples = [];       // first 3 with repetitionRule
+  let tagsDiverge = 0, tagsMatch = 0;
 
   // Examples collectors (first 3)
   let ecdExamples = [];  // p=undefined, t=Date
@@ -74,7 +89,8 @@
     const tecd = t.effectiveCompletionDate();
     const pecdIsDate = pecd instanceof Date;
     const tecdIsDate = tecd instanceof Date;
-    if (pecd === undefined && tecd === null) ecd.pUndef_tNull++;
+    if (pecd === undefined && tecd === undefined) ecd.pUndef_tUndef++;
+    else if (pecd === undefined && tecd === null) ecd.pUndef_tNull++;
     else if (pecd === undefined && tecdIsDate) {
       ecd.pUndef_tDate++;
       if (ecdExamples.length < 3) ecdExamples.push(p.name());
@@ -157,6 +173,75 @@
     if (inbox === true) inInboxTrue++;
     else if (inbox === false) inInboxFalse++;
     else inInboxUndef++;
+
+    // --- Project-Specific Fields ---
+    try {
+      const csa = p.containsSingletonActions();
+      if (csa === true) projSpecific.containsSingletonActions.true++;
+      else projSpecific.containsSingletonActions.false++;
+    } catch(e) { projSpecific.containsSingletonActions.error++; }
+
+    try {
+      const lrd = p.lastReviewDate();
+      if (lrd instanceof Date) projSpecific.lastReviewDate.present++;
+      else projSpecific.lastReviewDate.missing++;
+    } catch(e) { projSpecific.lastReviewDate.error++; }
+
+    try {
+      const nrd = p.nextReviewDate();
+      if (nrd instanceof Date) projSpecific.nextReviewDate.present++;
+      else projSpecific.nextReviewDate.missing++;
+    } catch(e) { projSpecific.nextReviewDate.error++; }
+
+    try {
+      const ri = p.reviewInterval();
+      if (ri) {
+        projSpecific.reviewInterval.present++;
+        try {
+          const steps = ri.steps();
+          const unit = ri.unit();
+          const key = `${steps}:${unit}`;
+          reviewIntervalValues[key] = (reviewIntervalValues[key] || 0) + 1;
+        } catch(e2) { /* sub-property probe failed */ }
+      } else {
+        projSpecific.reviewInterval.missing++;
+      }
+    } catch(e) { projSpecific.reviewInterval.error++; }
+
+    try {
+      const nt = p.nextTask();
+      if (nt) projSpecific.nextTask.present++;
+      else projSpecific.nextTask.missing++;
+    } catch(e) { projSpecific.nextTask.error++; }
+
+    try {
+      const fol = p.folder();
+      if (fol) projSpecific.folder.present++;
+      else projSpecific.folder.missing++;
+    } catch(e) { projSpecific.folder.error++; }
+
+    try {
+      const rr = p.repetitionRule();
+      if (rr) {
+        projSpecific.repetitionRule.present++;
+        if (repRuleExamples.length < 3) {
+          let ex = { name: p.name() };
+          try { ex.ruleString = rr.ruleString(); } catch(e2) { ex.ruleString = "ERROR"; }
+          try { ex.scheduleType = String(rr.scheduleType()); } catch(e2) { ex.scheduleType = "ERROR"; }
+          repRuleExamples.push(ex);
+        }
+      } else {
+        projSpecific.repetitionRule.missing++;
+      }
+    } catch(e) { projSpecific.repetitionRule.error++; }
+
+    // tags divergence: p.tags() vs p.task().tags()
+    try {
+      const pTags = p.tags().length;
+      const tTags = t.tags().length;
+      if (pTags === tTags) tagsMatch++;
+      else tagsDiverge++;
+    } catch(e) { /* skip */ }
   }
 
   // --- Report ---
@@ -174,6 +259,7 @@
   r += `  Divergence (active but not effectiveActive): ${activeTrue - effActiveTrue}\n`;
 
   r += `\n--- effectiveCompletionDate ---\n`;
+  r += `  p=undefined, t=undefined: ${ecd.pUndef_tUndef}\n`;
   r += `  p=undefined, t=null: ${ecd.pUndef_tNull}\n`;
   r += `  p=undefined, t=Date: ${ecd.pUndef_tDate}\n`;
   r += `  p=null, t=null: ${ecd.pNull_tNull}\n`;
@@ -182,6 +268,8 @@
   r += `  p=Date, t=null: ${ecd.pDate_tNull}\n`;
   r += `  p=null, t=Date: ${ecd.pNull_tDate}\n`;
   if (ecdExamples.length > 0) r += `  Examples (p=undef,t=Date): ${ecdExamples.join(", ")}\n`;
+  const ecdSum = ecd.pUndef_tUndef + ecd.pUndef_tNull + ecd.pUndef_tDate + ecd.pNull_tNull + ecd.pDate_tDate_match + ecd.pDate_tDate_diverge + ecd.pDate_tNull + ecd.pNull_tDate;
+  r += `  Sum check: ${ecdSum}/${total} ${ecdSum === total ? "✅" : "❌ MISMATCH"}\n`;
 
   r += `\n--- Project.Status Distribution (String()) ---\n`;
   for (const [k, v] of Object.entries(projectStatus)) r += `  "${k}": ${v}\n`;
@@ -203,6 +291,28 @@
     }
   }
   if (!anyDiverge) r += `  ✅ ZERO divergences on all shared fields\n`;
+
+  r += `\n--- Project-Specific Fields ---\n`;
+  r += `  containsSingletonActions: true=${projSpecific.containsSingletonActions.true}, false=${projSpecific.containsSingletonActions.false}, error=${projSpecific.containsSingletonActions.error}\n`;
+  r += `  lastReviewDate: present=${projSpecific.lastReviewDate.present}, missing=${projSpecific.lastReviewDate.missing}, error=${projSpecific.lastReviewDate.error}\n`;
+  r += `  nextReviewDate: present=${projSpecific.nextReviewDate.present}, missing=${projSpecific.nextReviewDate.missing}, error=${projSpecific.nextReviewDate.error}\n`;
+  r += `  reviewInterval: present=${projSpecific.reviewInterval.present}, missing=${projSpecific.reviewInterval.missing}, error=${projSpecific.reviewInterval.error}\n`;
+  if (Object.keys(reviewIntervalValues).length > 0) {
+    r += `  reviewInterval values:\n`;
+    for (const [k, v] of Object.entries(reviewIntervalValues).sort((a, b) => b[1] - a[1])) {
+      r += `    "${k}": ${v}\n`;
+    }
+  }
+  r += `  nextTask: present=${projSpecific.nextTask.present}, missing=${projSpecific.nextTask.missing}, error=${projSpecific.nextTask.error}\n`;
+  r += `  folder: present=${projSpecific.folder.present}, missing=${projSpecific.folder.missing} (top-level), error=${projSpecific.folder.error}\n`;
+  r += `  repetitionRule: present=${projSpecific.repetitionRule.present}, missing=${projSpecific.repetitionRule.missing}, error=${projSpecific.repetitionRule.error}\n`;
+  if (repRuleExamples.length > 0) {
+    r += `  repetitionRule examples:\n`;
+    for (const ex of repRuleExamples) {
+      r += `    "${ex.name}": ruleString=${ex.ruleString}, scheduleType=${ex.scheduleType}\n`;
+    }
+  }
+  r += `  tags (p vs p.task): match=${tagsMatch}, diverge=${tagsDiverge}\n`;
 
   r += `\n--- inInbox on p.task ---\n`;
   r += `  true: ${inInboxTrue}, false: ${inInboxFalse}, undefined: ${inInboxUndef}\n`;
