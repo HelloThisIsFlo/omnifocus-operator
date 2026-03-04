@@ -235,11 +235,11 @@
       }
     } catch(e) { projSpecific.repetitionRule.error++; }
 
-    // tags divergence: p.tags() vs p.task().tags()
+    // tags divergence: p.tags() vs p.task().tags() — compare sorted names
     try {
-      const pTags = p.tags().length;
-      const tTags = t.tags().length;
-      if (pTags === tTags) tagsMatch++;
+      const pNames = p.tags().map(tg => tg.name()).sort().join(",");
+      const tNames = t.tags().map(tg => tg.name()).sort().join(",");
+      if (pNames === tNames) tagsMatch++;
       else tagsDiverge++;
     } catch(e) { /* skip */ }
   }
@@ -273,9 +273,13 @@
 
   r += `\n--- Project.Status Distribution (String()) ---\n`;
   for (const [k, v] of Object.entries(projectStatus)) r += `  "${k}": ${v}\n`;
+  const projStatusSum = Object.values(projectStatus).reduce((a, b) => a + b, 0);
+  r += `  Sum check: ${projStatusSum}/${total} ${projStatusSum === total ? "✅" : "❌ MISMATCH"}\n`;
 
   r += `\n--- Task.Status Distribution (String() on p.task) ---\n`;
   for (const [k, v] of Object.entries(taskStatus)) r += `  "${k}": ${v}\n`;
+  const taskStatusSum = Object.values(taskStatus).reduce((a, b) => a + b, 0);
+  r += `  Sum check: ${taskStatusSum}/${total} ${taskStatusSum === total ? "✅" : "❌ MISMATCH"}\n`;
 
   r += `\n--- ID Match (p.id === p.task.id) ---\n`;
   r += `  Match: ${idMatch}, Mismatch: ${idMismatch}\n`;

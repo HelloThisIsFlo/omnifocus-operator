@@ -23,6 +23,11 @@ OmniFocus Operator project** — the bridge layer that everything else is built 
   or documentation. OmniFocus docs are sparse and sometimes wrong.
 - **Record everything in FINDINGS.md.** If it's not written down, it didn't happen.
 
+**The output goal:** For every field on every entity type, determine the
+canonical JXA access path (e.g., `p.task.added()` not `p.added()`). These
+scripts define the best way to access each field; the bridge will be updated
+afterwards to match. Every finding should point toward a concrete bridge change.
+
 ## Context
 
 The audit scripts live in:
@@ -75,13 +80,26 @@ Before running any scripts:
 3. Database size (projects, tasks, tags, folders) will be filled as scripts
    report entity counts
 
+### Resuming a Session
+1. Read FINDINGS.md — sections already filled indicate completed scripts
+2. Skip the version/date prompt if already filled
+3. If FINDINGS Section 7 (Write Behavior) is empty but read-side sections have
+   data, check whether test data from Script 05 still exists (ask user). If so,
+   run Script 08 first to clean up. Then clear any Script 06 findings (they
+   reference old test entity IDs) and re-run the full write sequence (Scripts
+   05→06→07→08) from scratch.
+4. Pick up at the next unfilled script
+
 ### For Each Script
+
+**Process scripts strictly one at a time.** Never present the next script until
+the current one's output has been analyzed and its findings recorded.
 
 1. **Explain** what the script checks and why it matters (1-2 sentences)
 2. **Read** the script file and present it in a fenced code block (`javascript`)
    so the user can copy it
 3. **Instruct** the user: Open OmniFocus, go to **Automation > Show Console**,
-   paste the entire script, then press **Enter** to run it. The output will appear
+   paste the entire script, then press **Cmd+Enter** (or click Run) to run it. The output will appear
    in the console — copy and paste it back here.
 4. **Wait** for the user to paste the output
 5. **Analyze** the output:
@@ -89,6 +107,9 @@ Before running any scripts:
    - Flag any surprises or UNKNOWN values
    - Note any divergences from preliminary findings
 6. **Record** findings in FINDINGS.md (update the relevant section)
+7. **Bridge implication:** For each confirmed finding, note the bridge
+   implication in the section's "Bridge Action Items" list. Don't wait until
+   the end — capture implications as you go.
 
 ### Write Scripts (05, 07, 08)
 
@@ -181,8 +202,12 @@ Script 08 first to avoid duplicate test data.
 - Whether tags/folders have all the same fields as expected
 
 ### Script 12
-- Which properties exist on Perspective beyond id/name
-- Built-in vs custom perspective distinction
+- Two access paths: do `Perspective.all` and `doc.perspectives()` return the same count?
+- Complete list of built-in perspective names
+- Custom perspective names and identifiers
+- Standard property probes: which of added/modified/active/status/etc. exist on perspectives?
+- Perspective-specific property probes: which of color/iconName/filter/sorting/etc. exist?
+- Classification: built-in = no identifier, custom = has identifier
 
 ## Handling Problems
 
@@ -204,11 +229,20 @@ Script 08 first to avoid duplicate test data.
 After analyzing each script's output:
 
 1. Open FINDINGS.md
-2. Find the relevant section
-3. Replace "TO BE FILLED" with actual findings
-4. Include specific numbers from the output
-5. Fill in the tables with verified data
-6. Add any action items discovered
+2. Find the relevant section (use the Script→FINDINGS mapping table)
+3. Replace "TO BE FILLED" with actual findings using the formats below
+4. Add bridge action items as you go (don't wait until the end)
+
+**Tables:** Fill every cell. Use "Yes"/"No" for boolean columns. Use actual
+counts for numeric columns. Never leave a cell empty.
+
+**Prose sections:** Write 2-4 sentences summarizing the empirical observation.
+Always cite specific numbers (e.g., "345/368 projects had…"). Note any
+surprises or deviations from expectations.
+
+**Bridge Action Items:** Convert each finding that implies a bridge change into
+a concrete, actionable checkbox. Format: `- [ ] [verb] [what] — [why]`.
+Example: `- [ ] Read added/modified from p.task.* not p.* — undefined on project object`
 
 ## Endgame
 
@@ -225,3 +259,13 @@ After all 12 scripts are analyzed, review every "Bridge Action Items" subsection
 across Sections 1-7. Consolidate into Section 8 by category: Critical Fixes,
 Improvements, Model Changes, Enum Changes. Section 8 is the final deliverable —
 a developer reading only Section 8 should know every change needed.
+
+**Category definitions:**
+- **Critical Fixes**: Correctness bugs — the bridge currently returns wrong
+  data (e.g., status always null, reading from wrong object path)
+- **Improvements**: Data quality — the bridge works but could return richer
+  or more accurate data (e.g., new fields to expose)
+- **Model Changes**: Python model additions/removals — new fields, renamed
+  fields, type changes
+- **Enum Changes**: EntityStatus enum modifications — new values, removed
+  values, mapping changes

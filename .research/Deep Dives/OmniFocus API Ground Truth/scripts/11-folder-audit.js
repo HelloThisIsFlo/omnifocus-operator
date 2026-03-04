@@ -33,11 +33,24 @@
   }
   let statusDist = {};
 
+  // id presence
+  let idPresent = 0, idMissing = 0;
+
   let hasName = 0, nameMissing = 0;
-  let notePresent = 0, noteEmpty = 0;
+  let noteNullUndef = 0, noteEmptyStr = 0, noteNonEmpty = 0;
+
+  // Hierarchy probing
+  let projectsTotal = 0, subfoldersTotal = 0;
+  let hasProjects = 0, hasSubfolders = 0;
 
   for (let i = 0; i < total; i++) {
     const folder = folders[i];
+
+    // id
+    try {
+      const fid = folder.id();
+      if (fid && fid.length > 0) idPresent++; else idMissing++;
+    } catch(e) { idMissing++; }
 
     // added/modified
     const a = folder.added();
@@ -71,11 +84,25 @@
     const n = folder.name();
     if (n && n.length > 0) hasName++; else nameMissing++;
 
-    // note (check if folders have notes)
+    // note (3 categories: null/undefined, empty string, non-empty)
     try {
       const note = folder.note();
-      if (note && note.length > 0) notePresent++; else noteEmpty++;
-    } catch(e) { noteEmpty++; }
+      if (note === null || note === undefined) noteNullUndef++;
+      else if (note.length === 0) noteEmptyStr++;
+      else noteNonEmpty++;
+    } catch(e) { noteNullUndef++; }
+
+    // hierarchy: projects and subfolders
+    try {
+      const pc = folder.projects().length;
+      projectsTotal += pc;
+      if (pc > 0) hasProjects++;
+    } catch(e) {}
+    try {
+      const sc = folder.folders().length;
+      subfoldersTotal += sc;
+      if (sc > 0) hasSubfolders++;
+    } catch(e) {}
   }
 
   // --- Report ---
@@ -93,12 +120,20 @@
     r += `  ${k}: ${v}\n`;
   }
 
+  const statusSum = Object.values(statusDist).reduce((a, b) => a + b, 0);
+  r += `  Sum check: ${statusSum}/${total} ${statusSum === total ? "✅" : "❌ MISMATCH"}\n`;
+
   r += `\n--- Relationships ---\n`;
   r += `  parent: present=${parentPresent} (nested), null=${parentNull} (top-level)\n`;
 
   r += `\n--- Other Fields ---\n`;
+  r += `  id: present=${idPresent}, missing=${idMissing}\n`;
   r += `  name: present=${hasName}, missing=${nameMissing}\n`;
-  r += `  note: non-empty=${notePresent}, empty=${noteEmpty}\n`;
+  r += `  note: null/undefined=${noteNullUndef}, empty_string=${noteEmptyStr}, non_empty=${noteNonEmpty}\n`;
+
+  r += `\n--- Hierarchy ---\n`;
+  r += `  folders with projects: ${hasProjects}/${total}, total projects: ${projectsTotal}\n`;
+  r += `  folders with subfolders: ${hasSubfolders}/${total}, total subfolders: ${subfoldersTotal}\n`;
 
   // --- Folder.Status Constants ---
   r += `\n--- Folder.Status Constants ---\n`;

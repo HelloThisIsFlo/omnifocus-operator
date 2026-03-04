@@ -24,7 +24,7 @@
   }
   r += `Project.status() types: ${JSON.stringify(projStatuses)}\n`;
 
-  // Task statuses (sample first 100 for speed)
+  // Task statuses (sample first 500 for speed)
   const tasks = doc.flattenedTasks();
   let taskStatuses = {};
   const taskSample = Math.min(tasks.length, 500);

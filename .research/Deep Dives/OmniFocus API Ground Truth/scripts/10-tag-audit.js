@@ -21,6 +21,7 @@
   let effActive = { true: 0, false: 0, other: 0 };
   let allowsNextAction = { true: 0, false: 0, other: 0 };
   let parentPresent = 0, parentNull = 0;
+  let childrenZero = 0, childrenNonZero = 0;
 
   // Status distribution via === matching
   function matchTagStatus(val) {
@@ -32,14 +33,23 @@
   }
   let statusDist = {};
 
-  // Note presence
-  let notePresent = 0, noteEmpty = 0;
+  // Note presence (3 categories)
+  let noteNullUndef = 0, noteEmptyStr = 0, noteNonEmpty = 0;
+
+  // id presence
+  let idPresent = 0, idMissing = 0;
 
   // Also try accessing other properties that might exist
   let hasName = 0, nameMissing = 0;
 
   for (let i = 0; i < total; i++) {
     const tag = tags[i];
+
+    // id
+    try {
+      const tid = tag.id();
+      if (tid && tid.length > 0) idPresent++; else idMissing++;
+    } catch(e) { idMissing++; }
 
     // added/modified
     const a = tag.added();
@@ -69,15 +79,23 @@
       if (par) parentPresent++; else parentNull++;
     } catch(e) { parentNull++; }
 
+    // children (tag.tags())
+    try {
+      if (tag.tags().length > 0) childrenNonZero++;
+      else childrenZero++;
+    } catch(e) { childrenZero++; }
+
     // name
     const n = tag.name();
     if (n && n.length > 0) hasName++; else nameMissing++;
 
-    // note (check if tags have notes)
+    // note (3 categories: null/undefined, empty string, non-empty)
     try {
       const note = tag.note();
-      if (note && note.length > 0) notePresent++; else noteEmpty++;
-    } catch(e) { noteEmpty++; }
+      if (note === null || note === undefined) noteNullUndef++;
+      else if (note.length === 0) noteEmptyStr++;
+      else noteNonEmpty++;
+    } catch(e) { noteNullUndef++; }
   }
 
   // --- Name Uniqueness Check ---
@@ -108,12 +126,17 @@
     r += `  ${k}: ${v}\n`;
   }
 
+  const statusSum = Object.values(statusDist).reduce((a, b) => a + b, 0);
+  r += `  Sum check: ${statusSum}/${total} ${statusSum === total ? "✅" : "❌ MISMATCH"}\n`;
+
   r += `\n--- Relationships ---\n`;
   r += `  parent: present=${parentPresent} (nested), null=${parentNull} (top-level)\n`;
+  r += `  children (tag.tags()): hasChildren=${childrenNonZero}, leaf=${childrenZero}\n`;
 
   r += `\n--- Other Fields ---\n`;
+  r += `  id: present=${idPresent}, missing=${idMissing}\n`;
   r += `  name: present=${hasName}, missing=${nameMissing}\n`;
-  r += `  note: non-empty=${notePresent}, empty=${noteEmpty}\n`;
+  r += `  note: null/undefined=${noteNullUndef}, empty_string=${noteEmptyStr}, non_empty=${noteNonEmpty}\n`;
 
   r += `\n--- Name Uniqueness ---\n`;
   r += `  Total tags: ${total}, unique names: ${uniqueNames}\n`;

@@ -15,6 +15,8 @@
   const tasks = doc.flattenedTasks();
   const total = tasks.length;
 
+  const COLLECTION_SAMPLE = 500;
+
   let r = `=== 09: Task Field Audit ===\n`;
   r += `Total tasks: ${total}\n\n`;
 
@@ -75,8 +77,8 @@
   // shouldUseFloatingTimeZone
   let floatingTZ = { true: 0, false: 0 };
 
-  // Note presence
-  let notePresent = 0, noteEmpty = 0;
+  // Note presence (3 categories)
+  let noteNullUndef = 0, noteEmptyStr = 0, noteNonEmpty = 0;
 
   // Name field
   let namePresent = 0, nameEmpty = 0;
@@ -177,9 +179,11 @@
     // floatingTZ
     if (t.shouldUseFloatingTimeZone()) floatingTZ.true++; else floatingTZ.false++;
 
-    // note
+    // note (3 categories: null/undefined, empty string, non-empty)
     const note = t.note();
-    if (note && note.length > 0) notePresent++; else noteEmpty++;
+    if (note === null || note === undefined) noteNullUndef++;
+    else if (note.length === 0) noteEmptyStr++;
+    else noteNonEmpty++;
 
     // name
     const nm = t.name();
@@ -195,13 +199,15 @@
       repRuleDeep.push(deep);
     }
 
-    // Collections probing
-    for (const col of ["linkedFileURLs", "notifications", "attachments"]) {
-      try {
-        const arr = t[col]();
-        if (arr && arr.length > 0) collections[col].nonEmpty++;
-        else collections[col].empty++;
-      } catch(e) { collections[col].error++; }
+    // Collections probing (sampled for performance)
+    if (i < COLLECTION_SAMPLE) {
+      for (const col of ["linkedFileURLs", "notifications", "attachments"]) {
+        try {
+          const arr = t[col]();
+          if (arr && arr.length > 0) collections[col].nonEmpty++;
+          else collections[col].empty++;
+        } catch(e) { collections[col].error++; }
+      }
     }
 
     // Accessor equivalence (first 10)
@@ -209,7 +215,7 @@
       let check = { index: i };
       try {
         const projFunc = t.project();
-        const projProp = t.containingProject;
+        const projProp = t.containingProject();
         const projFuncId = projFunc ? projFunc.id() : null;
         let projPropId = null;
         try { projPropId = projProp ? projProp.id() : null; } catch(e2) { projPropId = "ERROR"; }
@@ -223,7 +229,7 @@
       }
       try {
         const parFunc = t.parentTask();
-        const parProp = t.parent;
+        const parProp = t.parent();
         const parFuncId = parFunc ? parFunc.id() : null;
         let parPropId = null;
         try { parPropId = parProp ? parProp.id() : null; } catch(e2) { parPropId = "ERROR"; }
@@ -262,6 +268,8 @@
   for (const [k, v] of Object.entries(statusDist).sort((a, b) => b[1] - a[1])) {
     r += `  ${k}: ${v}\n`;
   }
+  const statusSum = Object.values(statusDist).reduce((a, b) => a + b, 0);
+  r += `  Sum check: ${statusSum}/${total} ${statusSum === total ? "✅" : "❌ MISMATCH"}\n`;
 
   r += `\n--- Relationships ---\n`;
   r += `  project:           present=${projectPresent}, null=${projectNull}\n`;
@@ -276,7 +284,7 @@
   r += `\n--- Other Fields ---\n`;
   r += `  name: present=${namePresent}, empty=${nameEmpty}\n`;
   r += `  estimatedMinutes: null/undefined=${estMin.null_or_undefined}, zero=${estMin.zero}, positive=${estMin.positive}\n`;
-  r += `  note: non-empty=${notePresent}, empty=${noteEmpty}\n`;
+  r += `  note: null/undefined=${noteNullUndef}, empty_string=${noteEmptyStr}, non_empty=${noteNonEmpty}\n`;
   r += `  repetitionRule: present=${repRule.present}, missing=${repRule.missing}\n`;
   r += `  tags: zero=${tagCounts.zero}, one=${tagCounts.one}, multi=${tagCounts.multi}, max=${maxTags}\n`;
 
@@ -293,7 +301,8 @@
     }
   }
 
-  r += `\n--- Collections ---\n`;
+  const collSampled = Math.min(total, COLLECTION_SAMPLE);
+  r += `\n--- Collections (sampled first ${collSampled}/${total}) ---\n`;
   for (const col of ["linkedFileURLs", "notifications", "attachments"]) {
     const c = collections[col];
     r += `  ${col}: nonEmpty=${c.nonEmpty}, empty=${c.empty}, error=${c.error}\n`;

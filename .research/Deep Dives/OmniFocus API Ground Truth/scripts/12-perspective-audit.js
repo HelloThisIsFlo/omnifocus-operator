@@ -51,8 +51,6 @@
   // --- Counters ---
   let identifierPresent = 0, identifierNull = 0;
   let namePresent = 0, nameMissing = 0;
-  let builtinTrue = 0, builtinFalse = 0, builtinUndef = 0;
-
   // Track all perspectives for listing
   let builtinList = [];
   let customList = [];
@@ -118,6 +116,8 @@
   // --- Report ---
   r += `--- Core Fields ---\n`;
   r += `  identifier: present=${identifierPresent} (custom), null/empty=${identifierNull} (builtin)\n`;
+  const identSum = identifierPresent + identifierNull;
+  r += `  Sum check: ${identSum}/${perspectives.length} ${identSum === perspectives.length ? "✅" : "❌ MISMATCH"}\n`;
   r += `  name: present=${namePresent}, missing=${nameMissing}\n`;
 
   r += `\n--- Built-in Perspectives (no identifier) ---\n`;

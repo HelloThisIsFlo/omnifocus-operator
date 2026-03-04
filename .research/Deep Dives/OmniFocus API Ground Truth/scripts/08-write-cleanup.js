@@ -50,8 +50,7 @@
     }
   }
 
-  // Delete tasks first (children before parents)
-  // Sort by depth (deepest first) — approximate by checking if parent is in our list
+  // Delete tasks first — project deletion below will catch any remaining children
   for (let i = 0; i < tasksToDelete.length; i++) {
     const t = tasksToDelete[i];
     try {
