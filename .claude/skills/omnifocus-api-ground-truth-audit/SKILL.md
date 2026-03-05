@@ -36,11 +36,38 @@ OmniFocus Operator project** — the bridge layer that everything else is built 
   explore it fully. If the user wants to dig into edge cases, dig in. The
   user will say when they're ready for the next script. Until then, stay in
   the current topic.
-- **Every field is a first-class citizen.** Never deprioritize a field or
-  feature because it appears infrequently in the database. A field used by 1
-  task deserves the same care and correct handling as one used by 2822. Do not
-  say "rare — consider deferring" or "fun curiosity." Frequency in one
-  database says nothing about importance.
+- **FREQUENCY IS IRRELEVANT. EVERY SCENARIO IS A FIRST-CLASS CITIZEN.**
+  This is the single most important rule in this skill. The user has had to
+  repeat this dozens of times — do NOT make them say it again.
+
+  Never deprioritize a field, behavior, scenario, or edge case because it
+  appears infrequently in the user's database. A field used by 1 task deserves
+  the same care and correct handling as one used by 2822. A behavior that
+  occurs in 3 tasks matters exactly as much as one that occurs in 3000.
+
+  **Banned phrases** — if you catch yourself writing any of these, stop and
+  delete them:
+  - "rare" / "uncommon" / "infrequent" / "edge case" (when used to deprioritize)
+  - "consider deferring" / "fun curiosity" / "nice to know"
+  - "how often this happens in real data" / "quantify how common"
+  - "whether this is worth handling" (based on frequency)
+  - "in practice, most tasks/projects won't…"
+
+  **Why this matters:** This MCP server is workflow-agnostic. It exposes what
+  OmniFocus exposes, correctly, for ANY user's database — not just this one.
+  Frequency in one database says nothing about importance. A behavior that
+  exists in OmniFocus WILL be encountered by some user, and the server must
+  handle it correctly.
+
+  **This applies to everything:** fields, enum values, status combinations,
+  blocking mechanisms, masking behaviors, date inheritance patterns,
+  collection types. If OmniFocus can produce it, we handle it. Period.
+
+  **Only the user defers.** The user may choose to defer certain features to
+  later milestones based on their own reasoning. That's their prerogative —
+  record their decision faithfully (e.g., "deferred to later milestone (user
+  decision)"). But the AGENT never suggests deferring based on frequency or
+  perceived importance. Present the facts. The user decides what to build when.
 
 **The output goal:** For every field on every entity type, determine the
 canonical Omni Automation access path (e.g., `p.task.added()` not `p.added()`). These
@@ -148,6 +175,11 @@ the current one's output has been analyzed and its findings recorded.
      how we think about the bridge design?
    - **Highlight surprises** — anything unexpected deserves a thoughtful
      explanation, not just a bullet point
+   - **NEVER use frequency to assess importance.** Do not say "this only
+     affects N tasks so…" or "let's see how common this is before deciding
+     how to handle it." If OmniFocus exhibits a behavior, we handle it.
+     Counts are useful for UNDERSTANDING the data (e.g., confirming all
+     entities are accounted for) — never for PRIORITIZING what to implement.
    - **Answer the user's questions fully.** If a finding sparks a design
      question (e.g., "should we parse RRULE or store raw?"), explore it
      right there. Don't defer it. Don't say "we'll decide later." Think it
@@ -305,8 +337,9 @@ Script 08 first to avoid duplicate test data.
 - This directly impacts Milestone 2 recovery logic
 
 ### Script 16
-- Any "Overdue masks Blocked" instances? (Overdue tasks that are NOT the first incomplete in a sequential project)
-- How many sequential action groups exist?
+- Confirm "Overdue masks Blocked" behavior in real data (Overdue tasks that are NOT the first incomplete in a sequential project)
+- Sequential action groups: do they exist and how does ordering work?
+- What does the task ordering look like inside sequential projects?
 
 ### Script 21
 Before running: warn about writes (same as Scripts 05/07/08).
@@ -348,8 +381,10 @@ After analyzing each script's output:
 counts for numeric columns. Never leave a cell empty.
 
 **Prose sections:** Write 2-4 sentences summarizing the empirical observation.
-Always cite specific numbers (e.g., "345/368 projects had…"). Note any
-surprises or deviations from expectations.
+Cite specific numbers to confirm completeness (e.g., "345/368 projects had…"
+— this proves all entities were accounted for). Never use counts to imply
+something is unimportant. Do not write "only N tasks" or "rare" — just state
+the count and the behavior.
 
 **Bridge Action Items:** Convert each finding that implies a bridge change into
 a concrete, actionable checkbox. Format: `- [ ] [verb] [what] — [why]`.

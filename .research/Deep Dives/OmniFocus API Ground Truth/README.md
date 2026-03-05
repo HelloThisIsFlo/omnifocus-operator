@@ -183,6 +183,14 @@ perspectives have identifiers.
 **What it checks:** Uses JavaScript reflection to enumerate ALL properties and methods on every entity type (Task, Project, Tag, Folder, Perspective, RepetitionRule, Document, Application). Probes prototype chains, classifies each as method/getter/property, and tests no-arg methods for return types. Also enumerates static/class-level members.
 **What to look for:** Callable methods we haven't tested in earlier scripts. Query methods (like `firstDateAfterDate`) that compute values. Static methods on class constructors. Any hidden API surface.
 
+#### 25b — Completion Date Alias Test ◻️
+**What it checks:** Whether `effectiveCompletionDate` and `effectiveCompletedDate` are aliases returning the same value. Tests all completed tasks for exact match.
+**What to look for:** 100% match confirms they're aliases. Use `effectiveCompletionDate` as canonical (matches `completionDate` naming). Whether `completedDate` (non-effective) exists.
+
+#### 25c — Perspective Filters & Enum Properties ◻️
+**What it checks:** Perspective `archivedFilterRules` (recursive filter tree), `archivedTopLevelFilterAggregation`, `iconColor`. Also probes every enum namespace's structure (`name`, `prototype`, `all`, named constants) and tests `String()` on enum values.
+**What to look for:** Full filter query language structure. Whether `String()` on enum values returns parseable type+name. Whether every enum has an `.all` array. Enum namespace structure patterns.
+
 ## Using the Audit Skill
 
 Run `/omnifocus-api-ground-truth-audit` in Claude Code to start a guided audit session.

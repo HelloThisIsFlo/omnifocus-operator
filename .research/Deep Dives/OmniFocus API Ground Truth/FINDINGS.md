@@ -86,7 +86,7 @@ Both constants confirmed. Sum = 79/79.
 - [ ] Fix status resolution — current `.name` approach is broken (always null). Must use `===` against known constants
 - [ ] Implement per-entity-type status resolution (no cross-type sharing)
 - [ ] Add `OnHold` to EntityStatus enum — currently missing from the Python model
-- [ ] Add `DueSoon` to task status handling — constant exists even if rare
+- [ ] Add `DueSoon` to task status handling — confirmed constant, OmniFocus computes it based on threshold
 - [ ] Consider a combined resolver that tests value against all 4 entity type constants and returns a string
 
 ---
@@ -155,7 +155,7 @@ All distributions from 368 projects.
 | reviewInterval           | 368     | 0    | Format: "N:unit" (e.g., "2:weeks", "1:months"). 26 distinct values. |
 | nextTask                 | 266     | 102  | Nullable — but when non-null, may return the root task itself (same ID as project) for OnHold/Dropped/Done projects. Don't treat non-null as "has actionable work." |
 | folder                   | 368     | 0    | All projects are inside folders (none top-level in this DB) |
-| repetitionRule           | 9       | 359  | Rare. Format: ruleString=RRULE (e.g., FREQ=DAILY;INTERVAL=26), scheduleType=opaque enum |
+| repetitionRule           | 9       | 359  | Format: ruleString=RRULE (e.g., FREQ=DAILY;INTERVAL=26), scheduleType=opaque enum |
 
 ### Bridge Action Items
 - [ ] Read added/modified/active/effectiveActive from `p.task.*` not `p.*` — undefined on project object
@@ -193,7 +193,7 @@ Total tasks: 2822
 | dueDate | Date/null | 284 | 2538 null | 10.1% have a due date |
 | deferDate | Date/null | 392 | 2430 null | 13.9% have a defer date |
 | completionDate | Date/null | 203 | 2619 null | Matches completed=true count |
-| plannedDate | Date/null | 24 | 2798 null | Rare (0.9%) |
+| plannedDate | Date/null | 24 | 2798 null | 0.9% have a planned date |
 | dropDate | Date/null | 136 | 2686 null | Matches active=false count |
 | effectiveDueDate | Date/null | 724 | 2098 null | 25.7% — more than dueDate due to inheritance |
 | effectiveDeferDate | Date/null | 468 | 2354 null | 16.6% — more than deferDate due to inheritance |
@@ -214,7 +214,7 @@ All boolean fields and timestamps are always present (never null/undefined): `ad
 | dueDate | 89.9% | Most tasks have no direct due date |
 | deferDate | 86.1% | Most tasks have no defer date |
 | completionDate | 92.8% | Only set for completed tasks |
-| plannedDate | 99.1% | Very rare |
+| plannedDate | 99.1% | v4.7+ feature |
 | dropDate | 95.2% | Only set for self-dropped tasks |
 | effectiveDueDate | 74.3% | 440 tasks inherit due dates from parents |
 | effectiveDeferDate | 83.4% | 76 tasks inherit defer dates |
@@ -299,7 +299,7 @@ Sampled first 500 tasks:
 | notifications | 0 | 500 | 0 |
 | attachments | 0 | 500 | 0 |
 
-All three collections exist as empty arrays on every task. None populated in this database's sample. They are valid fields but rarely used.
+All three collections exist as empty arrays on every task. None populated in this database's sample. They are valid fields that must be handled.
 
 ### Accessor Equivalence
 Tested first 10 tasks:
@@ -316,7 +316,7 @@ Tested first 10 tasks:
 - [ ] RepetitionRule: serialize all 4 properties (`ruleString`, `scheduleType`, `anchorDateKey`, `catchUpAutomatically`) — `fixedInterval`/`unit` don't exist. Full details in Section 9.1
 - [ ] `scheduleType` is an opaque enum — needs `===` comparison against `Task.RepetitionScheduleType.Regularly`, `.FromCompletion`, `.None`
 - [ ] `anchorDateKey` is an opaque enum — needs `===` comparison against `Task.AnchorDateKey.DueDate`, `.DeferDate`, `.PlannedDate`
-- [ ] Collections (linkedFileURLs, notifications, attachments) exist but are rarely populated — consider deferring to a later milestone
+- [ ] Collections (linkedFileURLs, notifications, attachments) exist as empty arrays — valid fields, deferred to later milestone (user decision)
 - [ ] 4 tasks have empty names — bridge should handle gracefully (empty string, not null)
 - [ ] `effectiveActive=false` reliably indicates "in inactive container" — can be used to distinguish inherited-drop from self-drop without hierarchy walking
 - [ ] `shouldUseFloatingTimeZone` is always true — can be omitted from the model or hardcoded
@@ -477,7 +477,7 @@ Three access paths tested:
 **Mismatch analysis:** `BuiltIn.all` returns 8 perspectives but only 7 appear in `Perspective.all` with null identifiers. One built-in perspective is in `BuiltIn.all` but not in `Perspective.all`, or it has an identifier that makes it look custom. The bridge should use `Perspective.all` as the canonical source (57 perspectives).
 
 ### Duplicate Names
-OmniFocus allows creating multiple perspectives with identical names (even exact same case). This is an edge case but means name alone is not a unique key.
+OmniFocus allows creating multiple perspectives with identical names (even exact same case). Name alone is not a unique key.
 
 ### Bridge Action Items
 - [ ] Use `Perspective.all` as the canonical access path — it returns the most consistent count
@@ -595,7 +595,7 @@ Empirically confirmed with controlled test hierarchy (8 projects, 56 tasks):
 - [ ] **`Perspective.all` is the canonical perspective access path** — BuiltIn+Custom counts don't match Perspective.all (Section 6)
 - [ ] **Perspective filter config is accessible** — `archivedFilterRules` (full query language), `archivedTopLevelFilterAggregation`, `iconColor` exist (Sections 6, 9.13). **Decision: document but do NOT implement in bridge for now** — too complex for current milestone. Future potential.
 - [ ] **Tag/folder `note` is always null** — unlike task/project where note is always a string (empty or non-empty). Bridge must handle both patterns (Sections 4, 5)
-- [ ] **Collections (linkedFileURLs, notifications, attachments)** exist as empty arrays on tasks — valid fields but rarely populated. Defer to later milestone (Section 3)
+- [ ] **Collections (linkedFileURLs, notifications, attachments)** exist as empty arrays on tasks — valid fields, deferred to later milestone (user decision) (Section 3)
 
 ### Model Changes
 - [ ] **Model hierarchy redesign:** All 4 entity types share `id`, `name`, `added`, `modified`, `active`, `effectiveActive` → extract `BaseEntity`. Tasks and projects share dates, flags, tags, notes, estimates, repetition → extract `ActionableEntity(BaseEntity)`. Tags and folders are thin organizational types extending `BaseEntity` directly.
@@ -716,7 +716,37 @@ RRULE strings follow RFC 5545 standard. The bridge should store `ruleString` as-
 - [ ] Update repetition-rule-guide: `.name` accessor claims are empirically wrong — must use `===` comparison
 
 ### 9.2 Tag-Based Blocking (Script 14)
-_TO BE FILLED — does OnHold tag affect taskStatus? Critical for M2 recovery logic_
+
+**OnHold tags DO cause task blocking.** This is empirically confirmed with 100% correlation.
+
+**Test:** 5 OnHold tags found in the database. 73 tasks carry at least one OnHold tag.
+
+| Status | Tasks WITH OnHold Tag | Tasks WITHOUT OnHold Tag |
+|--------|----------------------|--------------------------|
+| Available | 0 | 600 |
+| Next | 0 | 204 |
+| Overdue | 0 | 255 |
+| Blocked | 73 | 764 |
+| Completed | 0 | 265 |
+| Dropped | 0 | 664 |
+
+All 73 OnHold-tagged tasks are Blocked — zero exceptions. All have `active=true, effectiveActive=true`, confirming the blocking comes from the tag, not from the project container (all projects are Active).
+
+**Mechanism differs from container blocking:** OnHold tag blocking forces `status=Blocked` but does NOT change `active` or `effectiveActive`. This is distinct from OnHold/Dropped project blocking, which can affect `effectiveActive`. So `effectiveActive=false` still exclusively means "inside an inactive container" — OnHold tag blocking is a separate mechanism.
+
+**Four confirmed sources of task blocking:**
+1. Sequential project position (not the first incomplete task)
+2. Parent task has incomplete children
+3. Future defer date
+4. **OnHold tag** (any tag with `Tag.Status=OnHold` assigned to the task)
+
+**Common OnHold tag patterns:** someday/maybe tags, location-gated tags, explicit hold/blocked tags. Setting a tag to OnHold is an effective way to park all associated tasks without modifying each task's project.
+
+#### Bridge Action Items
+- [ ] OnHold tags block tasks — the bridge reports `Blocked` status faithfully (no bridge change needed, this is OmniFocus behavior)
+- [ ] Service layer (M2) must be aware that `Blocked` status can come from OnHold tags, not just sequential position or container state
+- [ ] `effectiveActive` remains `true` for OnHold-tag-blocked tasks — cannot use `effectiveActive` to detect tag-based blocking
+- [ ] To determine if a task is blocked by a tag, check if any of the task's tags have `Tag.Status === Tag.Status.OnHold` — this is the only reliable indicator
 
 ### 9.3 Tag Hierarchy Inheritance (Script 15)
 _TO BE FILLED — does OnHold/Dropped propagate to child tags via effectiveActive?_
