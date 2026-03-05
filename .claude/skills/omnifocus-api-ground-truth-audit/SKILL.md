@@ -22,6 +22,11 @@ OmniFocus Operator project** — the bridge layer that everything else is built 
 - **Every finding must be empirical.** Backed by script output, not assumptions
   or documentation. OmniFocus docs are sparse and sometimes wrong.
 - **Record everything in FINDINGS.md.** If it's not written down, it didn't happen.
+- **FINDINGS.md is the source of truth, not memory.** All findings, design
+  decisions, and bridge action items go in FINDINGS.md (committed to the repo).
+  Auto-memory (`MEMORY.md`) is only for lightweight session-resume pointers
+  (e.g., "Script 07 is next"). If you could delete the memory file and still
+  pick up where you left off from FINDINGS.md alone, you're doing it right.
 - **The user controls the pace.** The user has 10+ years of OmniFocus
   experience. They know what's worth exploring. NEVER suggest moving to the
   next script, NEVER say "want to move on?", NEVER frame discussion as a
