@@ -836,25 +836,241 @@ Inbox, Projects, Tags, Forecast, Flagged, Nearby, Review — plus Search (BuiltI
 - [ ] Update Section 6 field map: `id` is NOT always present (7 built-ins have `undefined` id)
 
 ### 9.6 Collections Full Scan (Script 18)
-_TO BE FILLED — linkedFileURLs/notifications/attachments across all tasks_
+Full scan of all 2825 tasks for the three collection properties.
+
+| Collection | Non-empty | Total | Notes |
+|-----------|-----------|-------|-------|
+| `linkedFileURLs` | 0 | 2825 | Empty across entire database |
+| `notifications` | 18 | 2825 | Up to 4 per task (recurring reminder patterns) |
+| `attachments` | 6 | 2825 | Up to 2 per task (embedded images/files) |
+
+**`linkedFileURLs`:** Zero across all tasks. This collection exists on the API but is unused in this database.
+
+All three collections are valid arrays — no errors during scan. Zero scan errors across 2825 tasks.
+
+#### Notification Object Structure
+
+`Task.Notification` — 13 own properties, no prototype methods (only `constructor`).
+
+| Property | Type | Notes |
+|----------|------|-------|
+| `id` | ObjectIdentifier | Unique per notification |
+| `kind` | `Task.Notification.Kind` enum | Two values observed: `Absolute`, `DueRelative` |
+| `absoluteFireDate` | Date | Absolute-only — **errors** when accessed on DueRelative |
+| `relativeFireOffset` | number (seconds) | DueRelative-only — **errors** when accessed on Absolute. Negative = before due |
+| `initialFireDate` | Date | Original schedule time |
+| `nextFireDate` | Date or null | null for past/snoozed notifications |
+| `isSnoozed` | boolean | Whether user snoozed this notification |
+| `repeatInterval` | number | 0 for all 10 samples (no repeating notifications observed) |
+| `usesFloatingTimeZone` | boolean | true on observed Absolute notification |
+| `task` | Task reference | Back-reference to owning task |
+| `added` | Date | Creation timestamp |
+| `modified` | Date | Last modification timestamp |
+| `url` | URL | URL scheme reference |
+
+**`kind` is mutually exclusive:** Absolute notifications have `absoluteFireDate` but throw on `relativeFireOffset`. DueRelative notifications have `relativeFireOffset` but throw on `absoluteFireDate`. Bridge must check `kind` before accessing fire date/offset.
+
+**Observed DueRelative offsets:** -900 (15min before), -1800 (30min), -3600 (1hr), -7200 (2hrs) — all relative to due date.
+
+#### Attachment Object Structure
+
+Attachments are `FileWrapper` objects (Omni's standard file wrapper class), not a custom type.
+
+| Property | Type | Notes |
+|----------|------|-------|
+| `type` | `FileWrapper.Type` enum | `File` observed (likely also `Directory`, `Link`) |
+| `preferredFilename` | string | The filename |
+| `filename` | string | Another filename accessor |
+| `contents` | Data | Raw file data |
+| `children` | array | For directory-type wrappers |
+| `destination` | unknown | Purpose unclear |
+
+Prototype methods: `childNamed()`, `filenameForChild()`, `write()`.
+
+**Note:** Standard property names (`name`, `size`, `url`) are all `undefined` on FileWrapper. Use `preferredFilename`/`filename` for the name. No direct size accessor — would need to check `contents.length` if `contents` is accessible.
+
+#### Bridge Action Items
+- [ ] `notifications`: bridge must check `kind` before accessing `absoluteFireDate` vs `relativeFireOffset` — wrong access throws
+- [ ] `notifications`: serialize `kind`, fire date/offset (based on kind), `isSnoozed`, `repeatInterval`, `usesFloatingTimeZone`
+- [ ] `attachments`: these are `FileWrapper` objects — use `preferredFilename`/`filename` for name, `type` for file vs directory
+- [ ] `attachments`: serializing `contents` (raw file data) may be impractical — consider exposing metadata only (filename, type)
+- [ ] `linkedFileURLs`: valid collection, empty in this database — bridge should handle it (deferred to later milestone, user decision)
+- [ ] `Task.Notification.Kind` is another opaque enum — `String()` returns parseable `[object Task.Notification.Kind: Absolute]`. Need to discover all constants (at minimum: Absolute, DueRelative)
+- [ ] `FileWrapper.Type` is another opaque enum — `String()` returns `[object FileWrapper.Type: File]`. Need to discover all constants
 
 ### 9.7 completedByChildren Semantics (Script 19)
-_TO BE FILLED — does completedByChildren control auto-completion?_
+**`completedByChildren` controls auto-completion.** When `cbc=true` and all children are complete, OmniFocus auto-completes the parent.
+
+**Total parent tasks:** 795 (out of 2825 total tasks)
+
+| Scenario | Count | Parent Completed | Parent NOT Completed |
+|----------|-------|-----------------|---------------------|
+| `cbc=true` + all children complete | 29 | 28 (96.6%) | 1 |
+| `cbc=false` + all children complete | 5 | 2 | 3 (60%) |
+| `cbc=true` total | 478 | 57 completed overall | — |
+| `cbc=false` total | 317 | 3 completed overall | — |
+
+**Interpretation:** With `cbc=true`, 28/29 parents auto-completed — the single exception is likely a timing edge case or manual override. With `cbc=false`, 3/5 parents stayed incomplete despite all children being done — the 2 that completed were likely manually marked complete.
+
+**Distribution:** 478/795 parents (60%) have `cbc=true`, 317 (40%) have `cbc=false`. This is a deliberate per-task setting configured by the user, not a universal default.
+
+**Implication:** `completedByChildren` is a semantic property, not just a UI hint. When the bridge reports this field, it tells the service layer whether completing the last child will cascade to the parent.
+
+#### Bridge Action Items
+- [ ] Serialize `completedByChildren` as a boolean field on tasks — straightforward mapping
 
 ### 9.8 Inbox Tasks (Script 20)
-_TO BE FILLED — inbox-specific field patterns_
+**50 inbox tasks** (out of 2825 total). Inbox tasks are raw captures with minimal metadata.
+
+#### Relationships
+All null for all 50 inbox tasks:
+- `containingProject`: null (50/50)
+- `parent`: null (50/50)
+- `assignedContainer`: null (50/50)
+
+Inbox tasks belong to no project, have no parent, and no assigned container. This is the defining characteristic: `inInbox=true` ↔ no project assignment.
+
+#### Status Distribution
+
+| Status | Count | Notes |
+|--------|-------|-------|
+| Available | 45 | Standard actionable state |
+| Blocked | 5 | All 5 are parent tasks (`hasChildren=true`) |
+
+Only 2 of the 7 possible task statuses appear. The 5 Blocked tasks perfectly correlate with the 5 parent tasks — parent tasks (action groups) show Blocked because you work on their children, not the parent directly.
+
+#### Boolean Fields
+
+| Field | true | false | Notes |
+|-------|------|-------|-------|
+| `active` | 50 | 0 | Always true — inbox tasks are never inactive |
+| `effectiveActive` | 50 | 0 | Always true — no container to inherit from |
+| `flagged` | 0 | 50 | None flagged |
+| `sequential` | 0 | 50 | None sequential |
+| `hasChildren` | 5 | 45 | 5 are action groups |
+| `completedByChildren` | 50 | 0 | Default is true for all tasks |
+
+**`completedByChildren` default:** All 50 inbox tasks have `cbc=true`, confirming this is the default value for newly created tasks. The 40% with `cbc=false` seen in Script 19 are tasks where the user explicitly changed it.
+
+#### Date Fields
+All null for all 50 inbox tasks:
+- `dueDate`: null (50/50)
+- `deferDate`: null (50/50)
+- `effectiveDueDate`: null (50/50)
+- `effectiveDeferDate`: null (50/50)
+
+No dates at all — consistent with unprocessed captures.
+
+#### Tags
+- Zero tags: 47/50
+- One tag: 3/50
+- Multiple tags: 0/50
+
+Almost entirely untagged. The 3 tagged tasks suggest partial processing (tag added but not yet moved to a project).
+
+#### Bridge Action Items
+- [ ] Inbox tasks are identifiable by `inInbox=true` — all relationship fields are null, no need to check them separately
+- [ ] `completedByChildren=true` is the default for new tasks — bridge just maps the field as-is
 
 ### 9.9 Task-Level Writes (Script 21)
-_TO BE FILLED — task complete/drop/defer/flag write behavior_
+Self-cleaning write script. Created project + 3 tasks, ran 9 tests, cleaned up successfully.
+
+#### Status Transitions
+
+| Test | Operation | Before | After | Notes |
+|------|-----------|--------|-------|-------|
+| 1 | `markComplete()` | Next | Completed | `active` stays true, `completed=true`, `completionDate` set |
+| 2 | `markIncomplete()` | Completed | Next | Reverts cleanly, `completionDate=null` |
+| 3 | `deferDate = future` | Available | Blocked | Future defer blocks the task |
+| 4 | `deferDate = null` | Blocked | Available | Clearing defer unblocks |
+| 5 | `dueDate = past` | Available | Overdue | Past due date makes task overdue |
+| 6 | `deferDate = future` on Overdue | Overdue | **Overdue** | Overdue wins — deferral does NOT override urgency |
+| 7 | `drop(true)` | Available | Dropped | `active=false`, `effActive=false`, `dropDate` set |
+| 8 | `markIncomplete()` on Dropped | Dropped | **Dropped** | Silent no-op — does NOT throw, does NOT un-drop |
+| 9 | `flagged = true/false` | — | — | Straightforward, `effectiveFlagged` tracks `flagged` |
+
+#### Key Findings
+
+**Overdue beats deferred (Test 6):** Confirms Section 7 finding — setting a future `deferDate` on an Overdue task does NOT change status to Blocked. Consistent with the established urgency priority rule: Overdue/DueSoon override all forms of blocking.
+
+**Cannot un-drop via markIncomplete() (Test 8):** `markIncomplete()` on a Dropped task silently does nothing — no error thrown, but status stays Dropped, `active=false`, `dropDate` unchanged. To un-drop, a different mechanism is needed (possibly setting `status` directly on a project, but no equivalent exists for standalone tasks).
+
+**Completed tasks retain `active=true` (Test 1):** `markComplete()` sets `completed=true` and `completionDate`, but `active` stays `true`. This confirms that `active` is about the container's state (project OnHold/Active), not the task's completion state.
+
+**Self-cleanup worked:** `deleteObject(project)` cascades to all child tasks, then `deleteObject(tag)` removes the audit tag.
+
+#### Bridge Action Items
+- [ ] Overdue + deferred = still Overdue — bridge reports `taskStatus` faithfully, but service layer must know that deferral doesn't suppress urgency
+- [ ] `markIncomplete()` cannot un-drop tasks — bridge/service layer should not attempt this; dropping is effectively permanent for tasks
+- [ ] `active` stays true after completion — do not use `active` to detect completed tasks, use `completed` or `taskStatus`
 
 ### 9.10 Application Settings (Script 22)
-_TO BE FILLED — accessible configuration, DueSoon threshold_
+**DueSoon threshold is NOT accessible via the API.**
+
+#### Accessible Properties
+
+| Object | Property | Value | Useful? |
+|--------|----------|-------|---------|
+| `app` | `name` | "OmniFocus" | Diagnostics |
+| `app` | `version` | "185.9.1" | Diagnostics |
+| `app` | `platformName` | "macOS" | Diagnostics |
+| `document` | `name` | "OmniFocus" | No |
+| `document` | `canUndo` / `canRedo` | boolean | No |
+| `Calendar.current` | — | gregorian | Standard JS |
+| `TimeZone.abbreviations` | — | 51 timezone codes | Standard JS |
+
+#### Inaccessible (all undefined or errored)
+
+Every probe for DueSoon threshold returned `undefined`:
+- `app.dueSoonInterval`, `app.dueSoonThreshold`, `app.dueSoonDays`
+- `doc.dueSoonInterval`, `doc.dueSoonThreshold`, `doc.dueSoonDays`
+- `Settings.dueSoon`, `Settings.dueSoonInterval`
+
+`Preferences` object exists but has no `.read()` method in OmniFocus (unlike OmniGraffle/OmniPlan). All `Preferences.read()` calls error with "p.read is not a function."
+
+No other user-configurable settings (default defer/due date style, review frequency, completed task retention) are accessible either.
+
+#### Bridge Action Items
+- [ ] DueSoon threshold must be a user-configurable parameter in the bridge/service layer — cannot be read from OmniFocus API
+- [ ] `app.version` and `app.platformName` could be included in bridge metadata for diagnostics
 
 ### 9.11 Estimated Minutes Distribution (Script 23)
-_TO BE FILLED — min/max/mean/median/buckets_
+1067/2825 tasks (37.8%) have an estimate. Straightforward nullable number field.
+
+| Stat | Value |
+|------|-------|
+| Min | 1 min |
+| Max | 300 min |
+| Mean | 25.8 min |
+| Median | 16 min |
+| Zero used | No — 0 never appears |
+| Distinct values | 23 |
+
+**Distribution:** Concentrated in 1-60 min range (1014/1067, 95%). Most common values: 30, 15, 5, 20, 10 min. Largest bucket: 16-30 min (306 tasks).
+
+**For the bridge:** `estimatedMinutes` is a simple nullable number. Null = no estimate, never zero. No special handling needed — map as-is.
+
+#### Bridge Action Items
+- [ ] `estimatedMinutes` — straightforward nullable number mapping, no special handling
 
 ### 9.12 Date Inheritance Patterns (Script 24)
-_TO BE FILLED — inheritance tracing for due/defer dates_
+**Inheritance is fully traceable — zero unknown sources.**
+
+| Category | Due Dates | Defer Dates |
+|----------|-----------|-------------|
+| No effective date | 2100 | 2357 |
+| Direct (own) | 285 | 392 |
+| Inherited from project | 402 | 65 |
+| Inherited from parent task | 38 | 11 |
+| Unknown source | 0 | 0 |
+| **Total with effective date** | **725** | **468** |
+
+Due dates inherit more heavily than defer dates (440 inherited vs 76). Projects tend to have deadlines that cascade to all children; defer dates are more task-specific.
+
+**For the bridge:** No special handling needed. OmniFocus computes `effectiveDueDate` and `effectiveDeferDate` internally — the bridge reads them as-is. The bridge does not need to trace inheritance sources.
+
+#### Bridge Action Items
+- [ ] `effectiveDueDate` and `effectiveDeferDate` — read as-is, OmniFocus handles inheritance computation
 
 ### 9.13 Method Enumeration (Script 25)
 
