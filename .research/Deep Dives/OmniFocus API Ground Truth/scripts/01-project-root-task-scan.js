@@ -63,9 +63,10 @@
   // inInbox on task
   let inInboxTrue = 0, inInboxFalse = 0, inInboxUndef = 0;
 
-  // active/effectiveActive distributions (on p.task)
+  // active/effectiveActive/effectiveFlagged distributions (on p.task)
   let activeTrue = 0, activeFalse = 0;
   let effActiveTrue = 0, effActiveFalse = 0;
+  let effFlaggedTrue = 0, effFlaggedFalse = 0;
 
   // --- Project-Specific Field Counters ---
   let projSpecific = {
@@ -104,6 +105,9 @@
     else if (tActive === false) activeFalse++;
     if (tEffActive === true) effActiveTrue++;
     else if (tEffActive === false) effActiveFalse++;
+    const tEffFlagged = t.effectiveFlagged;
+    if (tEffFlagged === true) effFlaggedTrue++;
+    else if (tEffFlagged === false) effFlaggedFalse++;
 
     // --- effectiveCompletedDate special tracking ---
     const pecd = p.effectiveCompletedDate;
@@ -281,6 +285,7 @@
   r += `  active: true=${activeTrue}, false=${activeFalse}\n`;
   r += `  effectiveActive: true=${effActiveTrue}, false=${effActiveFalse}\n`;
   r += `  Divergence (active but not effectiveActive): ${activeTrue - effActiveTrue}\n`;
+  r += `  effectiveFlagged: true=${effFlaggedTrue}, false=${effFlaggedFalse}\n`;
 
   r += `\n--- effectiveCompletedDate ---\n`;
   r += `  p=undefined, t=undefined: ${ecd.pUndef_tUndef}\n`;

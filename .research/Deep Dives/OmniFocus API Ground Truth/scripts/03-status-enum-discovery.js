@@ -59,10 +59,10 @@
   }
   r += `Project.status types: ${JSON.stringify(projStatuses)}\n`;
 
-  // Task statuses (sample first 500 for speed)
+  // Task statuses (all tasks)
   const tasks = flattenedTasks;
   let taskStatuses = {};
-  const taskSample = Math.min(tasks.length, 500);
+  const taskSample = tasks.length;
   for (let i = 0; i < taskSample; i++) {
     const s = tasks[i].taskStatus;
     const key = (s === null || s === undefined) ? "null" : `[object: ${typeof s}]`;

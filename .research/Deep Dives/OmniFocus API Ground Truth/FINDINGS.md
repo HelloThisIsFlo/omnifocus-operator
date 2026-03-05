@@ -241,7 +241,12 @@ Note: DueSoon has 0 tasks despite the constant existing. This is database-specif
 - **ALL Overdue tasks (253/253) have effectiveActive=true.** OmniFocus forces tasks in inactive containers to Dropped status, never Overdue. The service layer does NOT need to check container state for Overdue tasks.
 - **active=false only occurs for Dropped tasks** (136/136). No other status has active=false.
 - **effectiveActive=false only occurs for Dropped tasks** (528+136=664). Container inheritance is fully captured by the Dropped status override.
-- **The "Overdue masks Blocked" problem is NOT solved by active/effectiveActive.** Task-level blocking conditions (future defer date, sequential predecessor, incomplete children) do not affect these fields. The Milestone 2 recovery logic is still required for those three checks.
+- **"Overdue masks Blocked" is OmniFocus's deliberate design.** Empirically confirmed: a sequentially-blocked task with a past due date reports `Task.Status.Overdue`, not Blocked. Same for DueSoon. OmniFocus prioritizes urgency over availability in the status field. The bridge should faithfully report the status OmniFocus returns. A service layer `isActionable` computation is needed to determine if a task is actually workable (checking sequential position, defer date, children).
+- **Status override hierarchy (empirically confirmed):**
+  - Dropped project → all children forced to Dropped (overrides everything)
+  - OnHold project → all children forced to Blocked (suppresses Overdue/DueSoon)
+  - For Active projects: Overdue/DueSoon > sequential blocking / defer blocking / has-children blocking
+  - Future defer does NOT suppress Overdue (Overdue + future defer → Overdue)
 - **Two flavors of Dropped:** `active=false` (136) = task itself dropped; `active=true, effectiveActive=false` (528) = task OK but container inactive. Useful for distinguishing user action from inheritance.
 
 ### Inbox Tasks
@@ -496,12 +501,48 @@ From Script 08: deletion order matters due to cascading.
 - After deletion, `flattenedTasks`/`flattenedProjects` immediately reflect the removal — no refresh needed.
 - Tags survive project/task deletion (they're independent entities).
 
+### Status Masking Behavior (Comprehensive Test — Script 05 v2)
+Empirically confirmed with controlled test hierarchy (8 projects, 56 tasks):
+
+**Project-level overrides:**
+- **Dropped project:** All children forced to `Dropped`, `effectiveActive=false`. Overrides everything including Overdue.
+- **OnHold project:** All children forced to `Blocked`, but `active=true, effectiveActive=true`. Suppresses Overdue — an overdue task in an OnHold project shows Blocked.
+
+**Task-level status (Active projects):**
+- **Overdue masks sequential blocking:** Task 3 (third in sequential project, past due) → Overdue, not Blocked
+- **DueSoon masks sequential blocking:** Task 4 (fourth in sequential project, due soon) → DueSoon, not Blocked
+- **Overdue + future defer → Overdue:** Future defer does NOT suppress Overdue
+- **Overdue + past defer → Overdue:** Past defer is irrelevant
+
+**Next is project-level only:**
+- First incomplete task in a sequential project → Next
+- First incomplete task in a sequential action group → Available (not Next)
+- First task in a parallel project → Next (OmniFocus picks one)
+
+**completedByChildren behavior:**
+- `completedByChildren=true` (default) + all children complete → parent auto-completes
+- `completedByChildren=false` + all children complete → parent stays Available (not auto-completed)
+
+**Parent tasks with children:**
+- Parent with incomplete children → Blocked (regardless of parallel/sequential)
+- Overdue parent with incomplete children → Overdue (urgency overrides has-children blocking)
+
+### Date Inheritance (effectiveDueDate)
+**Soonest wins, not "own value wins."** Empirically confirmed:
+- Child with `dueDate=Mar 25`, parent with `dueDate=Mar 12` → child's `effectiveDueDate=Mar 12` (parent's earlier date wins)
+- Child with `dueDate=Mar 8`, parent with `dueDate=Mar 12` → child's `effectiveDueDate=Mar 8` (own earlier date wins)
+- Child with no `dueDate`, parent with `dueDate=Mar 12` → child's `effectiveDueDate=Mar 12` (inherited)
+- Rule: `effectiveDueDate = min(own dueDate, parent's effectiveDueDate)` — earliest deadline in the ancestry chain
+
 ### Bridge Action Items
 - [ ] Writes can go through either `p.*` or `p.task.*` — both directions proxy. Bridge can use whichever is more convenient
 - [ ] Use `markComplete()`/`markIncomplete()` for completion toggling, not direct property assignment
 - [ ] Use `p.status = Project.Status.OnHold` (etc.) for status changes — these are the only way to set status
 - [ ] When deleting a project, delete via the project object, not the root task — avoids cascade surprises
 - [ ] `containingProject` is the correct task→project accessor (not `project`, which returns null for child tasks)
+- [ ] Bridge reports `taskStatus` as OmniFocus returns it — masking is OmniFocus's design, not a bug to fix
+- [ ] Service layer (M2) needs `isActionable` logic: check sequential position, defer date, children status — cannot rely on taskStatus alone
+- [ ] `effectiveDueDate` uses min() semantics — document that it's the earliest deadline in the ancestry, not just inheritance
 - [ ] `assignedContainer` returns null for tasks inside projects — do not rely on it for project membership
 
 ---
@@ -529,24 +570,25 @@ From Script 08: deletion order matters due to cascading.
 - [ ] **Collections (linkedFileURLs, notifications, attachments)** exist as empty arrays on tasks — valid fields but rarely populated. Defer to later milestone (Section 3)
 
 ### Model Changes
+- [ ] **Model hierarchy redesign:** All 4 entity types share `id`, `name`, `added`, `modified`, `active`, `effectiveActive` → extract `BaseEntity`. Tasks and projects share dates, flags, tags, notes, estimates, repetition → extract `ActionableEntity(BaseEntity)`. Tags and folders are thin organizational types extending `BaseEntity` directly.
 - [ ] **Project model:** Add `reviewInterval` (string "N:unit"), `nextTask` (nullable), `repetitionRule` (ruleString + scheduleType). `containsSingletonActions`, `lastReviewDate`, `nextReviewDate` always present (Section 2)
 - [ ] **Task model:** `note` is non-nullable string (never null, can be empty). `estimatedMinutes` is null or positive (never zero). `name` can be empty (4 tasks). `shouldUseFloatingTimeZone` always true — omit or hardcode (Section 3)
 - [ ] **Task RepetitionRule:** Only 2 sub-fields exist: `ruleString` (RRULE string) and `scheduleType` (opaque enum: Regularly, FromCompletion). `fixedInterval`/`unit` do not exist (Section 3)
 - [ ] **Tag model:** Minimal — id, name, status, active, effectiveActive, allowsNextAction, parent. No dates, flags, or completion (Section 4)
 - [ ] **Folder model:** Minimal — id, name, status, active, effectiveActive, parent. No dates, flags, completion, or OnHold status (Section 5)
 - [ ] **Perspective model:** id, name, identifier (null for built-in), added/modified (only for custom). No status, active, configuration, or filter fields accessible (Section 6)
+- [ ] **`active`/`effectiveActive` are low-signal for most agent use cases** — include in model but flag as secondary. `status` is the primary field agents should use. `effectiveActive=false` mainly indicates "inside inactive container" (e.g., template projects in dropped folders). Useful for filtering, not for decision-making.
 - [ ] **`inInbox` on tasks:** 49/2822 tasks (1.7%) are inbox tasks. Always false on project root tasks (Section 3)
 - [ ] **`completedByChildren`:** true for 1505/2822 tasks. Defaults to true on new projects (Section 3)
 
 ### Enum Changes
-- [ ] **Add `OnHold` to EntityStatus** — currently missing. Needed for projects (21 OnHold) and tags (5 OnHold) (Section 1)
-- [ ] **Add `DueSoon` to task status handling** — constant exists, 0 instances in this DB but valid in others (Section 1)
-- [ ] **Status constants per entity type:**
-  - Project.Status: Active, OnHold, Done, Dropped (4 values)
-  - Task.Status: Available, Blocked, Completed, Dropped, DueSoon, Next, Overdue (7 values)
-  - Tag.Status: Active, OnHold, Dropped (3 values)
-  - Folder.Status: Active, Dropped (2 values — NO OnHold)
-- [ ] **RepetitionRule scheduleType** is an opaque enum — needs `===` comparison. Known values: `Task.RepetitionScheduleType.Regularly`, `Task.RepetitionScheduleType.FromCompletion` (Section 3)
+- [ ] **Replace single `EntityStatus` with separate enums per entity type** — `ProjectStatus` (4 values), `TaskStatus` (7 values), `TagStatus` (3 values), `FolderStatus` (2 values). No hierarchy — flat, independent enums. Duplication of shared values (Active, Dropped) is intentional for type safety. Each entity's `status` field uses its own enum type, so invalid assignments are caught by the type checker.
+  - ProjectStatus: Active, OnHold, Done, Dropped
+  - TaskStatus: Available, Blocked, Completed, Dropped, DueSoon, Next, Overdue
+  - TagStatus: Active, OnHold, Dropped
+  - FolderStatus: Active, Dropped
+- [ ] **DueSoon empirically confirmed** — 1 instance in DB after creating a task with a near-future due date. Threshold-based (computed by OmniFocus, not user-set).
+- [ ] **RepetitionRule scheduleType** is an opaque enum — needs `===` comparison. Known values: `Task.RepetitionScheduleType.Regularly`, `.FromCompletion`, `.None` (Section 9.1)
 - [ ] **`allowsNextAction` on tags** perfectly correlates with OnHold status (false=OnHold, true=Active) — can derive one from other but safer to serialize both (Section 4)
 
 ---

@@ -1,123 +1,129 @@
 // 08 — [WRITE] Cleanup
-// ⚠️ WRITES TO OMNIFOCUS DATABASE (deletes test data)
+// WRITES TO OMNIFOCUS DATABASE (deletes test data)
 // Runtime: Omni Automation (OmniFocus Automation Console)
 //
-// Finds all entities tagged "🧪 API Audit" and deletes them.
-// Deletes: tasks first, then project, then tag.
-// Verifies: nothing tagged "🧪 API Audit" remains.
+// Finds all entities tagged "API Audit" and deletes them.
+// Strategy: delete projects first (cascades to their tasks), then orphan tasks, then the tag.
 
 (() => {
   let r = `=== 08: [WRITE] Cleanup ===\n\n`;
 
   // Find the audit tag
+  const TAG_NAME = "API Audit";
   const allTags = flattenedTags;
   let auditTag = null;
   for (let i = 0; i < allTags.length; i++) {
-    if (allTags[i].name === "🧪 API Audit") {
+    if (allTags[i].name === TAG_NAME) {
       auditTag = allTags[i];
       break;
     }
   }
 
   if (!auditTag) {
-    return r + `Tag "🧪 API Audit" not found — nothing to clean up. ✅\n`;
+    return r + `Tag "${TAG_NAME}" not found — nothing to clean up.\n`;
   }
   r += `Found tag: "${auditTag.name}" (id: ${auditTag.id.primaryKey})\n\n`;
 
+  function hasAuditTag(entity) {
+    const tags = entity.tags;
+    for (let i = 0; i < tags.length; i++) {
+      if (tags[i].id.primaryKey === auditTag.id.primaryKey) return true;
+    }
+    return false;
+  }
+
+  // Find all projects with this tag (check project-level tags)
+  const allProjects = flattenedProjects;
+  let projectsToDelete = [];
+  for (let i = 0; i < allProjects.length; i++) {
+    if (hasAuditTag(allProjects[i])) {
+      projectsToDelete.push(allProjects[i]);
+    }
+  }
+  r += `Found ${projectsToDelete.length} projects with audit tag.\n`;
+
   // Find all tasks with this tag
   const allTasks = flattenedTasks;
-  let tasksToDelete = [];
+  let tasksWithTag = [];
   for (let i = 0; i < allTasks.length; i++) {
-    const taskTags = allTasks[i].tags;
-    for (let j = 0; j < taskTags.length; j++) {
-      if (taskTags[j].id.primaryKey === auditTag.id.primaryKey) {
-        tasksToDelete.push(allTasks[i]);
-        break;
-      }
+    if (hasAuditTag(allTasks[i])) {
+      tasksWithTag.push(allTasks[i]);
     }
   }
-  r += `Found ${tasksToDelete.length} tasks with audit tag.\n`;
+  r += `Found ${tasksWithTag.length} tasks with audit tag.\n`;
 
-  // Find test project
-  const allProjects = flattenedProjects;
-  let testProject = null;
-  for (let i = 0; i < allProjects.length; i++) {
-    if (allProjects[i].name === "🧪 API Audit Test Project") {
-      testProject = allProjects[i];
-      break;
-    }
-  }
-
-  // Capture names/IDs before deletion (objects become invalid after deleteObject)
-  const taskInfo = tasksToDelete.map(t => ({ name: t.name, id: t.id.primaryKey }));
-  const projectName = testProject ? testProject.name : null;
-  const projectId = testProject ? testProject.id.primaryKey : null;
-  const tagName = auditTag.name;
-  const tagId = auditTag.id.primaryKey;
-
-  // Delete project first (removes root task and children together)
-  if (testProject) {
-    r += `\nDeleting project: "${projectName}" (id: ${projectId})...\n`;
+  // Delete projects first (cascades to their tasks)
+  r += `\n--- Deleting Projects ---\n`;
+  for (const p of projectsToDelete) {
+    const name = p.name;
+    const id = p.id.primaryKey;
     try {
-      deleteObject(testProject);
-      r += `  ✅ Deleted\n`;
+      deleteObject(p);
+      r += `  Deleted project: "${name}" (${id})\n`;
     } catch(e) {
-      r += `  ⚠️ Error: ${e.message}\n`;
+      r += `  Error deleting "${name}": ${e.message}\n`;
     }
-  } else {
-    r += `\nProject "🧪 API Audit Test Project" not found.\n`;
   }
 
-  // Delete any remaining tasks not owned by the project
-  for (let i = 0; i < tasksToDelete.length; i++) {
-    const t = tasksToDelete[i];
+  // Delete any remaining orphan tasks (not owned by a deleted project)
+  r += `\n--- Deleting Orphan Tasks ---\n`;
+  let orphanCount = 0;
+  for (const t of tasksWithTag) {
     try {
-      // Check if still valid (may have been deleted with project)
-      const n = t.name;
-      r += `  Deleting orphan task: "${n}" (id: ${t.id.primaryKey})...\n`;
+      const name = t.name;
+      const id = t.id.primaryKey;
       deleteObject(t);
-      r += `    ✅ Deleted\n`;
+      r += `  Deleted task: "${name}" (${id})\n`;
+      orphanCount++;
     } catch(e) {
-      // Expected — task was already deleted with the project
-      r += `  Task "${taskInfo[i].name}" (id: ${taskInfo[i].id}) — already deleted with project ✅\n`;
+      // Expected — task was already deleted with its project
     }
   }
+  r += `  ${orphanCount} orphan tasks deleted (rest were deleted with projects).\n`;
 
   // Delete tag
-  r += `\nDeleting tag: "${tagName}" (id: ${tagId})...\n`;
+  r += `\n--- Deleting Tag ---\n`;
   try {
     deleteObject(auditTag);
-    r += `  ✅ Deleted\n`;
+    r += `  Deleted tag: "${TAG_NAME}"\n`;
   } catch(e) {
-    r += `  ⚠️ Error: ${e.message}\n`;
+    r += `  Error: ${e.message}\n`;
   }
 
   // --- Verification ---
   r += `\n--- Verification ---\n`;
 
-  // Check tag is gone
+  let tagStillExists = false;
   const tagsAfter = flattenedTags;
-  let tagFound = false;
   for (let i = 0; i < tagsAfter.length; i++) {
-    if (tagsAfter[i].name === "🧪 API Audit") {
-      tagFound = true;
+    if (tagsAfter[i].name === TAG_NAME) {
+      tagStillExists = true;
       break;
     }
   }
-  r += `Tag "🧪 API Audit" still exists: ${tagFound ? "YES ⚠️" : "NO ✅"}\n`;
+  r += `Tag "${TAG_NAME}" still exists: ${tagStillExists ? "YES" : "NO"}\n`;
 
-  // Check project is gone
+  let auditProjectsRemain = 0;
   const projectsAfter = flattenedProjects;
-  let projFound = false;
   for (let i = 0; i < projectsAfter.length; i++) {
-    if (projectsAfter[i].name === "🧪 API Audit Test Project") {
-      projFound = true;
-      break;
+    if (projectsAfter[i].name.startsWith("Audit:")) auditProjectsRemain++;
+  }
+  r += `"Audit:" projects remaining: ${auditProjectsRemain}\n`;
+
+  let auditTasksRemain = 0;
+  // Re-check by scanning for any task whose name starts with common test prefixes
+  const tasksAfter = flattenedTasks;
+  for (let i = 0; i < tasksAfter.length; i++) {
+    const tags = tasksAfter[i].tags;
+    for (let j = 0; j < tags.length; j++) {
+      if (tags[j].name === TAG_NAME) {
+        auditTasksRemain++;
+        break;
+      }
     }
   }
-  r += `Project "🧪 API Audit Test Project" still exists: ${projFound ? "YES ⚠️" : "NO ✅"}\n`;
+  r += `Tasks with "${TAG_NAME}" tag remaining: ${auditTasksRemain}\n`;
 
   r += `\nCleanup complete.\n`;
-
   return r;
 })();
