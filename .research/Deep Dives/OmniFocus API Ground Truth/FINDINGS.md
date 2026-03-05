@@ -749,13 +749,91 @@ All 73 OnHold-tagged tasks are Blocked — zero exceptions. All have `active=tru
 - [ ] To determine if a task is blocked by a tag, check if any of the task's tags have `Tag.Status === Tag.Status.OnHold` — this is the only reliable indicator
 
 ### 9.3 Tag Hierarchy Inheritance (Script 15)
-_TO BE FILLED — does OnHold/Dropped propagate to child tags via effectiveActive?_
+
+**OnHold does NOT propagate to child tags.** This is the opposite of folder/project behavior.
+
+**Tag hierarchy:** 65 total tags — 27 top-level, 38 nested. 5 OnHold tags found (same as Script 14). 3 Active child tags exist inside OnHold parents.
+
+| Child Tag | Child Status | Child effActive | Parent Tag | Parent Status |
+|-----------|-------------|----------------|------------|---------------|
+| (child 1) | Active | true | (OnHold parent) | OnHold |
+| (child 2) | Active | true | (OnHold parent) | OnHold |
+| (child 3) | Active | true | (OnHold parent) | OnHold |
+
+All 3 children retain `active=true, effectiveActive=true, allowsNextAction=true` despite their parent being OnHold. Zero inheritance.
+
+**OnHold tags themselves:** All 5 OnHold tags have `active=true, effectiveActive=true`. OnHold on a tag does not change `active` or `effectiveActive` — it only sets `allowsNextAction=false` and forces tasks with that tag to `Blocked` status (Script 14).
+
+**Contrast with folders/projects:** Dropped folders set `effectiveActive=false` on all nested projects (Section 5). OnHold projects force children to `Blocked` (Section 7). Tags do neither — OnHold is purely a per-tag property that affects directly-tagged tasks only.
+
+**`allowsNextAction` inheritance:** Does NOT inherit. OnHold parent has `allowsNextAction=false`, but Active children have `allowsNextAction=true`. Each tag's `allowsNextAction` tracks only its own status.
+
+#### Bridge Action Items
+- [ ] Tag-based blocking is per-tag only — no need to walk the tag hierarchy to determine if a task is blocked
+- [ ] `effectiveActive` on tags does not encode parent state (unlike folders/projects) — it's always `true` for Active and OnHold tags
+- [ ] `allowsNextAction` is per-tag, not inherited — safe to use as a direct indicator of the tag's own OnHold status
 
 ### 9.4 Sequential Projects (Script 16)
-_TO BE FILLED — task ordering patterns, Overdue-masks-Blocked instances_
+
+**37 sequential projects, 331 parallel.** 60 sequential action groups (tasks with `sequential=true` and children — mini-sequential projects nested inside other projects).
+
+#### First Incomplete Task Pattern
+In every Active sequential project, the first incomplete task has status `Next` (no urgency) or `Overdue` (past due). It is never `Blocked`. Subsequent incomplete tasks are `Blocked` unless urgency overrides (see below).
+
+#### Overdue-Masks-Blocked — Confirmed in Real Data
+12 Overdue tasks found across all sequential projects. Of those:
+- 4 are the first incomplete task → genuinely Overdue and actionable
+- **8 are NOT the first incomplete → Overdue masks Blocked**
+
+**Critical finding: masking happens through date inheritance, not just direct due dates.** In multiple cases, the sequentially-blocked tasks have `due=null` — they have no direct due date. They show Overdue because they inherit `effectiveDueDate` from the project or a parent task. The inherited urgency overrides their sequential blocking in OmniFocus's status computation.
+
+Example pattern (anonymized):
+```
+Sequential project (Active, effectiveDueDate inherited):
+  [0] Task A | Overdue | due=null  ← first incomplete, genuinely overdue (inherited date)
+  [1] Task B | Overdue | due=null  ← sequentially blocked, but Overdue masks it
+  [2] Task C | Overdue | due=null  ← same — Overdue masks Blocked
+  [3] Task D | Overdue | due=null  ← same
+```
+
+All four tasks show Overdue, but only task [0] is actionable. Tasks [1]-[3] cannot be worked on until their predecessors complete.
+
+#### OnHold Sequential Project
+One OnHold sequential project with 47 tasks — all show `Blocked`. Confirms OnHold project suppresses Overdue (consistent with Section 7 Script 05 findings).
+
+#### Implications for Service Layer
+`taskStatus = Overdue` does NOT guarantee actionability. To determine if an Overdue task is truly actionable, the service layer must check whether the task is the first incomplete in its sequential container (project or action group). This requires knowing:
+1. The task's position among siblings
+2. Whether the container is sequential
+3. Whether any preceding sibling is incomplete
+
+This is the **only case** where `taskStatus` alone is insufficient — all other statuses (Available, Next, Blocked, Completed, Dropped, DueSoon) can be taken at face value. DueSoon exhibits the same masking behavior (confirmed in Script 05).
+
+#### Bridge Action Items
+- [ ] Bridge reports `taskStatus` faithfully — no bridge-level change needed for masking
+- [ ] Service layer must implement sequential position check for Overdue and DueSoon tasks to determine true actionability
+- [ ] 60 sequential action groups exist — sequential blocking applies at both project and action group level, not just projects
+- [ ] Tasks can be Overdue via inherited `effectiveDueDate` with `dueDate=null` — the masking doesn't require a direct due date
 
 ### 9.5 Perspective Mismatch (Script 17)
-_TO BE FILLED — which perspective differs between collections_
+
+**The mismatch is "Search."** `BuiltIn.all` returns 8 perspectives, but `Perspective.all` returns 57. The difference: "Search" is in `BuiltIn.all` but excluded from `Perspective.all`. All 50 custom perspectives and the other 7 built-ins match across both collections.
+
+**Built-in perspectives have no `id`.** Not just no `identifier` — `id` itself is `undefined`. Custom perspectives have both `id` (ObjectIdentifier) and `identifier` (string). This means `id` is NOT a universal key for perspectives — built-ins must be keyed by name.
+
+| Collection | Count | Notes |
+|------------|-------|-------|
+| `Perspective.all` | 57 | 7 built-in + 50 custom — canonical source |
+| `Perspective.BuiltIn.all` | 8 | Includes "Search" (not in `.all`) |
+| `Perspective.Custom.all` | 50 | Matches custom count in `.all` |
+
+**Built-in perspectives (7 in `.all`, 8 in `BuiltIn.all`):**
+Inbox, Projects, Tags, Forecast, Flagged, Nearby, Review — plus Search (BuiltIn-only).
+
+#### Bridge Action Items
+- [ ] Use `Perspective.all` as canonical source — confirmed, "Search" is an internal perspective not meant for general use
+- [ ] Built-in perspectives have no `id` — bridge must handle `undefined` id for built-ins (key by name instead)
+- [ ] Update Section 6 field map: `id` is NOT always present (7 built-ins have `undefined` id)
 
 ### 9.6 Collections Full Scan (Script 18)
 _TO BE FILLED — linkedFileURLs/notifications/attachments across all tasks_

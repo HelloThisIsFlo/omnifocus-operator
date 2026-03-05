@@ -19,19 +19,27 @@
   r += `BuiltIn + Custom: ${builtIn.length + custom.length}\n`;
   r += `Match: ${all.length === builtIn.length + custom.length}\n\n`;
 
+  // Helper: get a stable key for a perspective (id.primaryKey if available, else name)
+  function pKey(p) {
+    try { return p.id.primaryKey; } catch(e) { return "NAME:" + p.name; }
+  }
+
   // Build ID lookup from Perspective.all
   const allIds = {};
   for (let i = 0; i < all.length; i++) {
-    allIds[all[i].id.primaryKey] = all[i];
+    const k = pKey(all[i]);
+    allIds[k] = all[i];
   }
 
   // Check BuiltIn perspectives
   r += `--- BuiltIn Perspectives ---\n`;
   for (let i = 0; i < builtIn.length; i++) {
     const p = builtIn[i];
-    const inAll = allIds[p.id.primaryKey] ? "in .all" : "NOT in .all";
+    const k = pKey(p);
+    const inAll = allIds[k] ? "in .all" : "NOT in .all";
     const hasId = p.identifier ? p.identifier : "(no identifier)";
-    r += `  "${p.name}" | id=${p.id.primaryKey} | identifier=${hasId} | ${inAll}\n`;
+    const idStr = (p.id !== undefined) ? k : "(no id)";
+    r += `  "${p.name}" | id=${idStr} | identifier=${hasId} | ${inAll}\n`;
   }
 
   // Check Custom perspectives
@@ -39,9 +47,9 @@
   let customMissing = 0;
   for (let i = 0; i < custom.length; i++) {
     const p = custom[i];
-    if (!allIds[p.id.primaryKey]) {
+    if (!allIds[pKey(p)]) {
       customMissing++;
-      r += `  "${p.name}" | id=${p.id.primaryKey} | identifier=${p.identifier}\n`;
+      r += `  "${p.name}" | id=${pKey(p)} | identifier=${p.identifier}\n`;
     }
   }
   if (customMissing === 0) {
@@ -52,18 +60,19 @@
   r += `\n--- Perspectives in .all but not in BuiltIn or Custom ---\n`;
   const builtInIds = {};
   for (let i = 0; i < builtIn.length; i++) {
-    builtInIds[builtIn[i].id.primaryKey] = true;
+    builtInIds[pKey(builtIn[i])] = true;
   }
   const customIds = {};
   for (let i = 0; i < custom.length; i++) {
-    customIds[custom[i].id.primaryKey] = true;
+    customIds[pKey(custom[i])] = true;
   }
   let orphans = 0;
   for (let i = 0; i < all.length; i++) {
     const p = all[i];
-    if (!builtInIds[p.id.primaryKey] && !customIds[p.id.primaryKey]) {
+    const k = pKey(p);
+    if (!builtInIds[k] && !customIds[k]) {
       orphans++;
-      r += `  "${p.name}" | id=${p.id.primaryKey}\n`;
+      r += `  "${p.name}" | id=${k}\n`;
     }
   }
   if (orphans === 0) {
