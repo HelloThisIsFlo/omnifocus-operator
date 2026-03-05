@@ -77,6 +77,10 @@
   // shouldUseFloatingTimeZone
   let floatingTZ = { true: 0, false: 0 };
 
+  // Status × active × effectiveActive cross-reference
+  // Key: "StatusName|active|effActive" → count
+  let statusActiveCross = {};
+
   // Note presence (3 categories)
   let noteNullUndef = 0, noteEmptyStr = 0, noteNonEmpty = 0;
 
@@ -122,6 +126,10 @@
     // status
     const s = matchTaskStatus(t.taskStatus);
     statusDist[s] = (statusDist[s] || 0) + 1;
+
+    // Status × active × effectiveActive cross-reference
+    const crossKey = `${s}|active=${act}|effActive=${ea}`;
+    statusActiveCross[crossKey] = (statusActiveCross[crossKey] || 0) + 1;
 
     // relationships
     try {
@@ -260,6 +268,11 @@
   }
   const statusSum = Object.values(statusDist).reduce((a, b) => a + b, 0);
   r += `  Sum check: ${statusSum}/${total} ${statusSum === total ? "✅" : "❌ MISMATCH"}\n`;
+
+  r += `\n--- Status × Active × EffectiveActive Cross-Reference ---\n`;
+  for (const [k, v] of Object.entries(statusActiveCross).sort((a, b) => b[1] - a[1])) {
+    r += `  ${k}: ${v}\n`;
+  }
 
   r += `\n--- Relationships ---\n`;
   r += `  containingProject: present=${projectPresent}, null=${projectNull}\n`;

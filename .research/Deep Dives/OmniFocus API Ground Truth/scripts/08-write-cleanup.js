@@ -48,21 +48,16 @@
     }
   }
 
-  // Delete tasks first — project deletion below will catch any remaining children
-  for (let i = 0; i < tasksToDelete.length; i++) {
-    const t = tasksToDelete[i];
-    try {
-      r += `  Deleting task: "${t.name}" (id: ${t.id.primaryKey})...\n`;
-      deleteObject(t);
-      r += `    ✅ Deleted\n`;
-    } catch(e) {
-      r += `    ⚠️ Error: ${e.message}\n`;
-    }
-  }
+  // Capture names/IDs before deletion (objects become invalid after deleteObject)
+  const taskInfo = tasksToDelete.map(t => ({ name: t.name, id: t.id.primaryKey }));
+  const projectName = testProject ? testProject.name : null;
+  const projectId = testProject ? testProject.id.primaryKey : null;
+  const tagName = auditTag.name;
+  const tagId = auditTag.id.primaryKey;
 
-  // Delete project
+  // Delete project first (removes root task and children together)
   if (testProject) {
-    r += `\nDeleting project: "${testProject.name}" (id: ${testProject.id.primaryKey})...\n`;
+    r += `\nDeleting project: "${projectName}" (id: ${projectId})...\n`;
     try {
       deleteObject(testProject);
       r += `  ✅ Deleted\n`;
@@ -70,11 +65,26 @@
       r += `  ⚠️ Error: ${e.message}\n`;
     }
   } else {
-    r += `\nProject "🧪 API Audit Test Project" not found — may have been deleted with tasks.\n`;
+    r += `\nProject "🧪 API Audit Test Project" not found.\n`;
+  }
+
+  // Delete any remaining tasks not owned by the project
+  for (let i = 0; i < tasksToDelete.length; i++) {
+    const t = tasksToDelete[i];
+    try {
+      // Check if still valid (may have been deleted with project)
+      const n = t.name;
+      r += `  Deleting orphan task: "${n}" (id: ${t.id.primaryKey})...\n`;
+      deleteObject(t);
+      r += `    ✅ Deleted\n`;
+    } catch(e) {
+      // Expected — task was already deleted with the project
+      r += `  Task "${taskInfo[i].name}" (id: ${taskInfo[i].id}) — already deleted with project ✅\n`;
+    }
   }
 
   // Delete tag
-  r += `\nDeleting tag: "${auditTag.name}" (id: ${auditTag.id.primaryKey})...\n`;
+  r += `\nDeleting tag: "${tagName}" (id: ${tagId})...\n`;
   try {
     deleteObject(auditTag);
     r += `  ✅ Deleted\n`;
