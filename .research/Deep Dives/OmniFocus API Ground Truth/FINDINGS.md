@@ -8,6 +8,20 @@
 **OmniFocus version:** 4.8.8 (v185.9.1)
 **Database size:** 368 projects, 2822 tasks, 65 tags, 79 folders
 
+## Design Principle: Dumb Bridge, Smart Python
+
+The bridge (OmniJS running inside OmniFocus) is **untestable** — no unit tests, no TDD, no CI. Every line of logic in the bridge is a line we can't verify automatically. So the bridge should be as thin as possible:
+
+- **Bridge responsibility:** Extract raw data faithfully. Read from the correct accessors, resolve opaque enums to strings (because we must — `===` only works inside OmniJS), serialize to JSON. That's it.
+- **Python responsibility:** All interpretation, deduplication, validation, model mapping, and business logic. This is where we have TDD, type checking, and full control.
+- **Rule of thumb:** If there's ambiguity about where logic belongs, it belongs in Python. The bridge only does what *cannot* be done elsewhere (accessing OmniFocus objects, comparing opaque enums).
+
+Examples:
+- Enum → string resolution: **bridge** (opaque enums only work with `===` inside OmniJS)
+- Perspective deduplication: **Python** (policy decision, not data extraction)
+- `effectiveActive` interpretation (self-drop vs inherited-drop): **Python**
+- Reading `p.task.added` instead of `p.added`: **bridge** (accessor choice)
+
 ---
 
 ## 1. OmniFocus Enum System
@@ -15,7 +29,9 @@
 > Source: Script 03 (Status Enum Discovery)
 
 ### Opaque Enum Behavior
-Confirmed: all status values show as `[object: object]`. No string conversion works — `.name`, `String()`, `.toString()` all return useless output. Only `===` comparison against known constants works.
+Confirmed: `.name` on individual enum values returns `undefined`. However, `String()` returns a parseable format: `"[object Task.Status: Active]"` (discovered in Script 25c). This could be used for diagnostics but is NOT suitable for production enum resolution (performance concern — OmniFocus freezes on large datasets). The bridge should use `===` comparison against hardcoded known constants and throw on unknown values.
+
+Every enum namespace has an `.all` array (e.g., `Task.Status.all` returns all 7 constants). Useful for reference but do NOT iterate at runtime for the same performance reason.
 
 ### Project.Status Constants
 All 4 constants confirmed. Sum = 368/368.
@@ -137,7 +153,7 @@ All distributions from 368 projects.
 | lastReviewDate           | 368     | 0    | Always present |
 | nextReviewDate           | 368     | 0    | Always present |
 | reviewInterval           | 368     | 0    | Format: "N:unit" (e.g., "2:weeks", "1:months"). 26 distinct values. |
-| nextTask                 | 266     | 102  | Nullable — null when project has no available next action |
+| nextTask                 | 266     | 102  | Nullable — but when non-null, may return the root task itself (same ID as project) for OnHold/Dropped/Done projects. Don't treat non-null as "has actionable work." |
 | folder                   | 368     | 0    | All projects are inside folders (none top-level in this DB) |
 | repetitionRule           | 9       | 359  | Rare. Format: ruleString=RRULE (e.g., FREQ=DAILY;INTERVAL=26), scheduleType=opaque enum |
 
@@ -272,7 +288,7 @@ Note: DueSoon has 0 tasks despite the constant existing. This is database-specif
 | fixedInterval | undefined | — | No (does not exist) |
 | unit | undefined | — | No (does not exist) |
 
-RepetitionRule has exactly 2 useful sub-fields: `ruleString` (RRULE format) and `scheduleType` (opaque enum with at least Regularly and FromCompletion values). The `fixedInterval` and `unit` fields do not exist — they were likely confused with project `reviewInterval`.
+RepetitionRule has 4 readable properties: `ruleString` (RRULE format), `scheduleType` (opaque enum: Regularly, FromCompletion, None), `anchorDateKey` (opaque enum: DueDate, DeferDate, PlannedDate), and `catchUpAutomatically` (boolean). Plus `firstDateAfterDate(date)` method. The `fixedInterval` and `unit` fields do not exist — they were likely confused with project `reviewInterval`. Full details in Section 9.1.
 
 ### Collections (linkedFileURLs, notifications, attachments)
 Sampled first 500 tasks:
@@ -297,8 +313,9 @@ Tested first 10 tasks:
 - [ ] Use `parent` (not `parentTask`) for task→parent — `parentTask` does not exist in Omni Automation
 - [ ] `note` is never null, always a string (empty or non-empty) — bridge can treat as non-nullable string
 - [ ] `estimatedMinutes` is null or positive, never zero — bridge can use null for "no estimate"
-- [ ] RepetitionRule: serialize `ruleString` and `scheduleType` only — `fixedInterval`/`unit` don't exist
-- [ ] `scheduleType` is an opaque enum — needs `===` comparison against `Task.RepetitionScheduleType.Regularly` and `.FromCompletion` (at minimum)
+- [ ] RepetitionRule: serialize all 4 properties (`ruleString`, `scheduleType`, `anchorDateKey`, `catchUpAutomatically`) — `fixedInterval`/`unit` don't exist. Full details in Section 9.1
+- [ ] `scheduleType` is an opaque enum — needs `===` comparison against `Task.RepetitionScheduleType.Regularly`, `.FromCompletion`, `.None`
+- [ ] `anchorDateKey` is an opaque enum — needs `===` comparison against `Task.AnchorDateKey.DueDate`, `.DeferDate`, `.PlannedDate`
 - [ ] Collections (linkedFileURLs, notifications, attachments) exist but are rarely populated — consider deferring to a later milestone
 - [ ] 4 tasks have empty names — bridge should handle gracefully (empty string, not null)
 - [ ] `effectiveActive=false` reliably indicates "in inactive container" — can be used to distinguish inherited-drop from self-drop without hierarchy walking
@@ -428,8 +445,15 @@ Total perspectives: 57 (via `Perspective.all`)
 | completed | undefined | 0 | 57 | Always undefined |
 | flagged | undefined | 0 | 57 | Always undefined |
 
-**Perspective-specific properties — ALL undefined:**
-`fileURL`, `color`, `iconName`, `window`, `originalIconName`, `sidebar`, `contents`, `filter`, `focus`, `grouping`, `sorting`, `layout`, `containerType`, `customFilterFormula` — none accessible via Omni Automation. The API exposes perspective identity (name, id, identifier) but not configuration.
+**Perspective-specific properties — probed names ALL undefined:**
+`fileURL`, `color`, `iconName`, `window`, `originalIconName`, `sidebar`, `contents`, `filter`, `focus`, `grouping`, `sorting`, `layout`, `containerType`, `customFilterFormula` — none accessible via Omni Automation under these names.
+
+**However, Script 25 (reflection) found filter config under different names:**
+- `archivedFilterRules` (Array) — filter rules are accessible
+- `archivedTopLevelFilterAggregation` (string) — filter aggregation type
+- `iconColor` (object) — perspective color
+
+The API does expose some perspective configuration — the earlier probes just used wrong property names.
 
 ### Built-in vs Custom
 **Distinguishing rule:** Built-in perspectives have `identifier=null`, custom perspectives have a non-null identifier string.
@@ -452,13 +476,16 @@ Three access paths tested:
 
 **Mismatch analysis:** `BuiltIn.all` returns 8 perspectives but only 7 appear in `Perspective.all` with null identifiers. One built-in perspective is in `BuiltIn.all` but not in `Perspective.all`, or it has an identifier that makes it look custom. The bridge should use `Perspective.all` as the canonical source (57 perspectives).
 
+### Duplicate Names
+OmniFocus allows creating multiple perspectives with identical names (even exact same case). This is an edge case but means name alone is not a unique key.
+
 ### Bridge Action Items
 - [ ] Use `Perspective.all` as the canonical access path — it returns the most consistent count
-- [ ] Distinguish built-in vs custom via `identifier` (null = built-in, non-null = custom)
-- [ ] Perspective model is minimal: `id`, `name`, `identifier`, `added`, `modified` (last two only for custom)
+- [ ] Bridge exposes `name` and `id` (identifier) — keep bridge dumb, handle deduplication in Python
+- [ ] Built-in vs custom: `identifier === null` means built-in — expose as `isBuiltIn` flag in Python model
 - [ ] No status, active, or configuration fields exist on perspectives — do not attempt to read them
 - [ ] `added`/`modified` are undefined for built-in perspectives — bridge must handle null for these
-- [ ] Perspective filter/sorting/grouping configuration is NOT accessible via Omni Automation — cannot expose "what does this perspective show"
+- [ ] Perspective filter config IS partially accessible: `archivedFilterRules`, `archivedTopLevelFilterAggregation`, `iconColor` — found via reflection (Script 25, Section 9.13). Earlier probes used wrong property names.
 
 ---
 
@@ -506,7 +533,7 @@ Empirically confirmed with controlled test hierarchy (8 projects, 56 tasks):
 
 **Project-level overrides:**
 - **Dropped project:** All children forced to `Dropped`, `effectiveActive=false`. Overrides everything including Overdue.
-- **OnHold project:** All children forced to `Blocked`, but `active=true, effectiveActive=true`. Suppresses Overdue — an overdue task in an OnHold project shows Blocked.
+- **OnHold project:** Active incomplete children forced to `Blocked`, but `active=true, effectiveActive=true`. Suppresses Overdue — an overdue task in an OnHold project shows Blocked. Exception: Completed tasks stay `Completed`, Dropped tasks stay `Dropped`.
 
 **Task-level status (Active projects):**
 - **Overdue masks sequential blocking:** Task 3 (third in sequential project, past due) → Overdue, not Blocked
@@ -566,6 +593,7 @@ Empirically confirmed with controlled test hierarchy (8 projects, 56 tasks):
 - [ ] **Delete projects via project object, not root task** — root task deletion cascades and invalidates the project object (Section 7)
 - [ ] **Tags survive entity deletion** — independent lifecycle, must be deleted separately (Section 7)
 - [ ] **`Perspective.all` is the canonical perspective access path** — BuiltIn+Custom counts don't match Perspective.all (Section 6)
+- [ ] **Perspective filter config is accessible** — `archivedFilterRules` (full query language), `archivedTopLevelFilterAggregation`, `iconColor` exist (Sections 6, 9.13). **Decision: document but do NOT implement in bridge for now** — too complex for current milestone. Future potential.
 - [ ] **Tag/folder `note` is always null** — unlike task/project where note is always a string (empty or non-empty). Bridge must handle both patterns (Sections 4, 5)
 - [ ] **Collections (linkedFileURLs, notifications, attachments)** exist as empty arrays on tasks — valid fields but rarely populated. Defer to later milestone (Section 3)
 
@@ -573,10 +601,10 @@ Empirically confirmed with controlled test hierarchy (8 projects, 56 tasks):
 - [ ] **Model hierarchy redesign:** All 4 entity types share `id`, `name`, `added`, `modified`, `active`, `effectiveActive` → extract `BaseEntity`. Tasks and projects share dates, flags, tags, notes, estimates, repetition → extract `ActionableEntity(BaseEntity)`. Tags and folders are thin organizational types extending `BaseEntity` directly.
 - [ ] **Project model:** Add `reviewInterval` (string "N:unit"), `nextTask` (nullable), `repetitionRule` (ruleString + scheduleType). `containsSingletonActions`, `lastReviewDate`, `nextReviewDate` always present (Section 2)
 - [ ] **Task model:** `note` is non-nullable string (never null, can be empty). `estimatedMinutes` is null or positive (never zero). `name` can be empty (4 tasks). `shouldUseFloatingTimeZone` always true — omit or hardcode (Section 3)
-- [ ] **Task RepetitionRule:** Only 2 sub-fields exist: `ruleString` (RRULE string) and `scheduleType` (opaque enum: Regularly, FromCompletion). `fixedInterval`/`unit` do not exist (Section 3)
+- [ ] **Task RepetitionRule:** 4 readable properties: `ruleString` (RRULE string), `scheduleType` (opaque enum: Regularly, FromCompletion, None), `anchorDateKey` (opaque enum: DueDate, DeferDate, PlannedDate), `catchUpAutomatically` (boolean). Plus `firstDateAfterDate(date)` method for forecasting. `fixedInterval`/`unit` do not exist. RepetitionRule is immutable — modify by creating new and reassigning. (Sections 3, 9.1)
 - [ ] **Tag model:** Minimal — id, name, status, active, effectiveActive, allowsNextAction, parent. No dates, flags, or completion (Section 4)
 - [ ] **Folder model:** Minimal — id, name, status, active, effectiveActive, parent. No dates, flags, completion, or OnHold status (Section 5)
-- [ ] **Perspective model:** id, name, identifier (null for built-in), added/modified (only for custom). No status, active, configuration, or filter fields accessible (Section 6)
+- [ ] **Perspective model:** id, name, identifier (null for built-in), added/modified (only for custom). Filter config is accessible (`archivedFilterRules`) but not included in bridge for now (Section 6, 9.13)
 - [ ] **`active`/`effectiveActive` are low-signal for most agent use cases** — include in model but flag as secondary. `status` is the primary field agents should use. `effectiveActive=false` mainly indicates "inside inactive container" (e.g., template projects in dropped folders). Useful for filtering, not for decision-making.
 - [ ] **`inInbox` on tasks:** 49/2822 tasks (1.7%) are inbox tasks. Always false on project root tasks (Section 3)
 - [ ] **`completedByChildren`:** true for 1505/2822 tasks. Defaults to true on new projects (Section 3)
@@ -588,7 +616,8 @@ Empirically confirmed with controlled test hierarchy (8 projects, 56 tasks):
   - TagStatus: Active, OnHold, Dropped
   - FolderStatus: Active, Dropped
 - [ ] **DueSoon empirically confirmed** — 1 instance in DB after creating a task with a near-future due date. Threshold-based (computed by OmniFocus, not user-set).
-- [ ] **RepetitionRule scheduleType** is an opaque enum — needs `===` comparison. Known values: `Task.RepetitionScheduleType.Regularly`, `.FromCompletion`, `.None` (Section 9.1)
+- [ ] **RepetitionRule scheduleType** is an opaque enum — needs `===` comparison. Known values: `Task.RepetitionScheduleType.Regularly`, `.FromCompletion`, `.None`. `.name` returns `undefined` (Section 9.1)
+- [ ] **RepetitionRule anchorDateKey** is an opaque enum — needs `===` comparison. Known values: `Task.AnchorDateKey.DueDate`, `.DeferDate`, `.PlannedDate`. `.name` returns `undefined` (Section 9.1)
 - [ ] **`allowsNextAction` on tags** perfectly correlates with OnHold status (false=OnHold, true=Active) — can derive one from other but safer to serialize both (Section 4)
 
 ---
@@ -601,6 +630,17 @@ Empirically confirmed with controlled test hierarchy (8 projects, 56 tasks):
 
 **Total tasks with repetitionRule:** 352/2822 (12.5%)
 
+**RepetitionRule has 4 readable properties + 1 method** (not 2 as previously recorded):
+- `ruleString` — RRULE string (RFC 5545)
+- `scheduleType` — opaque enum (`Task.RepetitionScheduleType`)
+- `anchorDateKey` — opaque enum (`Task.AnchorDateKey`) — which date is updated on repetition
+- `catchUpAutomatically` — boolean — whether missed occurrences are auto-skipped
+- `firstDateAfterDate(date)` — method (function) — computes next occurrence after given date
+
+**`.name` accessor is broken on RepetitionRule enums too.** Both `scheduleType.name` and `anchorDateKey.name` return `undefined`. The repetition-rule-guide's claim that `.name` works is empirically wrong. The bridge must use `===` comparison, consistent with all other OmniFocus opaque enums (Section 1).
+
+**RepetitionRule is immutable** — all properties are read-only. To modify, create a new `Task.RepetitionRule` and reassign to `task.repetitionRule`. Constructor takes 5 params: `(ruleString, null, scheduleType, anchorDateKey, catchUpAutomatically)` — 2nd param is deprecated (always null).
+
 #### ScheduleType Constants
 3 constants exist (not 2 as previously assumed):
 
@@ -611,6 +651,35 @@ Empirically confirmed with controlled test hierarchy (8 projects, 56 tasks):
 | None | Yes | 0 | Constant exists but no tasks use it — likely internal default/placeholder |
 
 Sum: 352/352. Zero UNKNOWN values. All other probed names (DeferAnother, DueAnother, Fixed, DeferUntil, DueDate, Daily, Weekly, Monthly, Yearly, EveryNDays, EveryNWeeks, EveryNMonths, AfterCompletion, RepeatEvery, DeferAnotherFromCompletion, DueAgainAfterCompletion) are `undefined`.
+
+#### AnchorDateKey Constants
+3 constants exist:
+
+| Constant | Exists? | Count in DB | Notes |
+|----------|---------|-------------|-------|
+| DueDate | Yes | 149 | Repetition updates the due date |
+| DeferDate | Yes | 203 | Repetition updates the defer/start date |
+| PlannedDate | Yes | 0 | Constant exists, no tasks use it (v4.7+ feature) |
+
+Sum: 352/352. Zero UNKNOWN values. Probed names CompletionDate, DropDate, StartDate, EndDate, None are all `undefined`.
+
+#### ScheduleType × AnchorDateKey Cross-Tabulation
+All 4 combinations of scheduleType × anchorDateKey are valid and occur in the database:
+
+| Combination | Count |
+|-------------|-------|
+| FromCompletion × DeferDate | 178 |
+| Regularly × DueDate | 138 |
+| Regularly × DeferDate | 25 |
+| FromCompletion × DueDate | 11 |
+
+The bridge must support all combinations — scheduleType and anchorDateKey are independent axes.
+
+#### catchUpAutomatically
+Always a boolean (true or false), never null/undefined. Both values present in the database (true=5, false=347). For `Regularly` tasks, controls whether missed occurrences are auto-skipped. For `FromCompletion`, catch-up is not meaningful since the next occurrence is relative to the completion moment — but the property is still present and readable.
+
+#### firstDateAfterDate Method
+Present as a function on all 352/352 rules. Can be used for forecasting (computing next occurrence without parsing RRULE in Python). Runs inside OmniJS — the bridge would need to call it and return the result.
 
 #### FREQ Pattern Distribution
 5 distinct FREQ values found:
@@ -635,10 +704,16 @@ Sum: 352/352. Zero UNKNOWN values. All other probed names (DeferAnother, DueAnot
 RRULE strings follow RFC 5545 standard. The bridge should store `ruleString` as-is and let consumers parse it with standard RRULE libraries (e.g., `python-dateutil`).
 
 #### Bridge Action Items
+- [ ] RepetitionRule has 4 properties to serialize, not 2: `ruleString`, `scheduleType`, `anchorDateKey`, `catchUpAutomatically`
+- [ ] Add `AnchorDateKey` enum with 3 values: DueDate, DeferDate, PlannedDate
+- [ ] `anchorDateKey` resolver needs `===` against `Task.AnchorDateKey.DueDate`, `.DeferDate`, `.PlannedDate` — `.name` does NOT work
 - [ ] Add `None` to `RepetitionScheduleType` enum — third constant exists alongside Regularly and FromCompletion
+- [ ] `scheduleType` resolver needs `===` against `Task.RepetitionScheduleType.Regularly`, `.FromCompletion`, `.None` — `.name` does NOT work
+- [ ] `catchUpAutomatically` is always a boolean (never null) — serialize directly
+- [ ] `firstDateAfterDate(date)` exists on all rules — consider exposing as a bridge capability for next-occurrence forecasting
 - [ ] Store `ruleString` as raw RRULE string — 49 distinct patterns are too varied to decompose; use standard parsers
 - [ ] Handle `FREQ=HOURLY` — unexpected but valid (1 task in this DB)
-- [ ] `scheduleType` resolver needs 3 constants: `Task.RepetitionScheduleType.Regularly`, `.FromCompletion`, `.None`
+- [ ] Update repetition-rule-guide: `.name` accessor claims are empirically wrong — must use `===` comparison
 
 ### 9.2 Tag-Based Blocking (Script 14)
 _TO BE FILLED — does OnHold tag affect taskStatus? Critical for M2 recovery logic_
@@ -672,3 +747,176 @@ _TO BE FILLED — min/max/mean/median/buckets_
 
 ### 9.12 Date Inheritance Patterns (Script 24)
 _TO BE FILLED — inheritance tracing for due/defer dates_
+
+### 9.13 Method Enumeration (Script 25)
+
+JavaScript reflection (`Object.getOwnPropertyNames` + prototype chain walking) used to enumerate all properties and methods on every entity type. This script was added to close a gap: earlier scripts only tested known properties and never systematically probed for callable methods.
+
+#### Summary by Entity Type
+
+| Entity | Methods | Getters | Notes |
+|--------|---------|---------|-------|
+| Task | 22 | 49 | Richest API surface |
+| Project | 15 | 46 | No `active`/`effectiveActive`/`added`/`modified` getters (confirms Section 2) |
+| Tag | 7 | 25 | Has `availableTasks`, `remainingTasks` query getters |
+| Folder | 5 | 21 | Simplest — named lookup methods only |
+| Perspective | 2 | 9 | Filter config IS accessible (contradicts Section 6 partially) |
+| RepetitionRule | 1 | 5 | Confirms Section 9.1 — `firstDateAfterDate()` + 4 properties + deprecated `method` |
+| Document | 11 | 8 | `sync()`, `undo()`, `redo()`, `createOmniLinkURL()` |
+| Application | 1 | 9 | `openDocument()`, version info, key state |
+
+#### New Discoveries — Previously Unknown Getters
+
+**Task:**
+- `effectiveCompletionDate` AND `effectiveCompletedDate` both exist — two getters with near-identical names. Needs testing: are they aliases returning the same value?
+- `noteText` (object) — rich text representation, distinct from `note` (plain string)
+- `url` — OmniFocus URL scheme link for the task. Useful for deep linking in agent responses.
+- `after`, `before`, `beginning`, `ending` — insertion location objects (for ordering)
+- `beginningOfTags`, `endingOfTags` — tag insertion location objects
+
+**Project:**
+- `defaultSingletonActionHolder` (boolean) — different from `containsSingletonActions`. Needs investigation.
+- `parentFolder` — the folder containing this project. Alternative to navigating the folder hierarchy.
+- `url` — OmniFocus URL scheme link.
+- `taskStatus` — project exposes the root task's status directly as a getter.
+
+**Tag:**
+- `availableTasks` — returns available tasks for this tag (query getter, not a method)
+- `remainingTasks` — returns remaining tasks for this tag
+- `projects` — projects associated with this tag
+- `childrenAreMutuallyExclusive` (boolean) — e.g., energy levels where only one applies
+- `url` — OmniFocus URL scheme link.
+
+**Folder:**
+- `folders`, `projects`, `sections` — child collections
+- `flattenedFolders`, `flattenedProjects`, `flattenedSections`, `flattenedChildren` — deep recursive collections
+- `url` — OmniFocus URL scheme link.
+
+**Perspective:**
+- `archivedFilterRules` (Array) — filter rules ARE accessible! Section 6 said filter config was inaccessible — it probed for `filter`/`sorting`/`grouping` but the actual property names are different.
+- `archivedTopLevelFilterAggregation` (string) — top-level filter aggregation type.
+- `iconColor` (object) — perspective color.
+
+**Document:**
+- `sync()` — trigger OmniFocus sync programmatically
+- `undo()` / `redo()` — undo/redo support. Potentially useful for "cancel that" scenarios.
+- `createOmniLinkURL()` — create OmniFocus links
+- `canRedo`, `canUndo` — check if undo/redo is available
+- `fileURL`, `writableTypes` — document metadata
+
+#### New Discoveries — Methods
+
+**Mutator methods (known from write scripts):**
+- `markComplete()`, `markIncomplete()`, `drop()` on Task
+- `markComplete()`, `markIncomplete()` on Project
+- `addTag()`, `addTags()`, `removeTag()`, `removeTags()`, `clearTags()` on Task and Project
+- `addAttachment()`, `removeAttachmentAtIndex()`, `addLinkedFileURL()`, `removeLinkedFileWithURL()` on Task and Project
+- `addNotification()`, `removeNotification()` on Task and Project
+- `appendStringToNote()` on Task and Project
+
+**Ordering/insertion methods:**
+- Task: `afterTag()`, `beforeTag()`, `moveTag()`, `moveTags()` — tag ordering within a task
+- Tag: `afterTask()`, `beforeTask()`, `moveTask()`, `moveTasks()` — task ordering within a tag
+
+**Named lookup methods:**
+- Task: `childNamed()`, `taskNamed()`
+- Tag: `childNamed()`, `tagNamed()`
+- Folder: `childNamed()`, `folderNamed()`, `projectNamed()`, `sectionNamed()`
+
+**`apply()` method** on Task, Tag, Folder — purpose unclear from reflection alone.
+
+**Perspective:** `fileWrapper()`, `writeFileRepresentationIntoDirectory()` — export/backup.
+
+#### Static / Class-Level Members
+
+**Lookup by ID (all entity types):**
+- `Task.byIdentifier()`, `Project.byIdentifier()`, `Tag.byIdentifier()`, `Folder.byIdentifier()` — direct ID-based lookup. In the current architecture (full snapshot), these aren't the primary access pattern, but useful to know they exist.
+
+**Task creation from text:**
+- `Task.byParsingTransportText()` — create tasks from text, likely TaskPaper format. Powerful for batch creation with hierarchy. Worth exploring for future write operations.
+
+**Special objects:**
+- `Tag.forecastTag` — the special Forecast tag as a static property (full Tag instance with 25 props)
+- `Perspective.favorites` — 17 favorite perspectives. Could derive `isFavorite` boolean by scanning this collection.
+
+**Enum object structure (confirmed via Script 25c):**
+
+Every enum object follows the same pattern: `name` (string — the enum's full name), `prototype` (prototype object), the named constants, and `all` (Array of all constant values).
+
+| Enum Object | Props | Structure |
+|-------------|-------|-----------|
+| Task.Status | 10 | name + prototype + 7 constants + all(7) |
+| Task.RepetitionScheduleType | 6 | name + prototype + 3 constants + all(3) |
+| Task.AnchorDateKey | 6 | name + prototype + 3 constants + all(3) |
+| Task.RepetitionMethod | 7 | name + prototype + 4 constants + all(4) — deprecated |
+| Project.Status | 7 | name + prototype + 4 constants + all(4) |
+| Tag.Status | 6 | name + prototype + 3 constants + all(3) |
+| Folder.Status | 5 | name + prototype + 2 constants + all(2) |
+| Task.TagInsertionLocation | 2 | name + prototype only (no named constants) |
+| Task.ChildInsertionLocation | 2 | name + prototype only |
+| Tag.ChildInsertionLocation | 2 | name + prototype only |
+| Tag.TaskInsertionLocation | 2 | name + prototype only |
+| Folder.ChildInsertionLocation | 2 | name + prototype only |
+| Project.ReviewInterval | 2 | name + prototype only |
+| Task.Notification | 3 | name + prototype + Kind sub-namespace |
+
+**`String()` on enum values reveals the name.** `String(Task.Status.Active)` returns `"[object Task.Status: Active]"`. This contradicts the Section 1 finding that `.toString()` returns "useless output" — the output actually contains the type and value name. `.name` on individual values is still `undefined`, but the string representation is parseable. The bridge could use this as a fallback for unknown enum values.
+
+**`all` array on every status enum.** The bridge can iterate `Task.Status.all` (etc.) instead of maintaining hardcoded constant lists. This is forward-compatible: if OmniFocus adds a new status, `all` will include it, and the bridge can use `String()` to extract its name.
+
+**Deprecated enum: `Task.RepetitionMethod`** — the old pre-4.7 API. 4 constants: None, Fixed, DeferUntilDate, DueDate. Still exists for backward compatibility but should be ignored in favor of `scheduleType` + `anchorDateKey`.
+
+**InsertionLocation and ReviewInterval** — have only `name` + `prototype`, no named constants. These are constructor types (e.g., used for `task.beginning`, `task.ending`), not enumerations.
+
+**Perspective filter config (confirmed via Script 25c):**
+
+`archivedFilterRules` is a recursive tree structure forming a complete query language. Rule types found:
+
+| Rule Type | Value Type | Example Values |
+|-----------|-----------|----------------|
+| `actionAvailability` | string | `"available"`, `"remaining"`, `"completed"`, `"dropped"` |
+| `actionStatus` | string | `"flagged"`, `"due"` |
+| `actionHasAnyOfTags` | array of tag IDs | `["d56-9LNYh_w"]` |
+| `actionWithinFocus` | array of IDs | `["hc4DsZJoueT"]` |
+| `actionHasProjectWithStatus` | string | `"active"`, `"onHold"`, `"stalled"` |
+| `actionHasNoProject` | boolean | `true` |
+| `actionMatchingSearch` | array of strings | `["brag"]` |
+| `actionWithinDuration` | number (minutes) | `15` |
+| `actionHasDueDate` | boolean | `true` |
+| `actionHasDeferDate` | boolean | `true` |
+| `actionHasDuration` | boolean | `true` |
+| `actionIsLeaf` | boolean | `true` |
+| `actionDateField` | string | `"defer"`, `"due"`, `"planned"`, `"modified"` |
+| `actionDateIsInThePast` | object | (date spec) |
+| `actionDateIsAfterDateSpec` | object | (date spec) |
+| `actionDateIsBeforeDateSpec` | object | (date spec) |
+| `actionDateIsInTheNext` | object | (date spec) |
+| `disabledRule` | object | (disabled rule, kept but inactive) |
+| `comment` | string | User-visible comment embedded in filter |
+| `aggregateRules` + `aggregateType` | array + string | Nested groups: `"all"` (AND), `"any"` (OR), `"none"` (NOT) |
+
+`archivedTopLevelFilterAggregation`: `"all"` (AND logic) or `null` (separator perspectives).
+`iconColor`: object with `colorSpace`, `red/green/blue`, `hue/saturation/brightness`, `alpha`, `hex` — or `null`.
+Built-in perspectives return `undefined` for all three properties.
+
+#### Corrections to Earlier Findings
+
+- **Section 6 (Perspectives):** "Perspective filter/sorting/grouping configuration is NOT accessible" is partially wrong. `archivedFilterRules` and `archivedTopLevelFilterAggregation` exist and are readable. The earlier probes used wrong property names.
+- **Section 3 (Tasks):** `effectiveCompletedDate` and `effectiveCompletionDate` are aliases returning identical values (265/265 match, Script 25b). Use `effectiveCompletionDate` as canonical. `completedDate` (non-effective) is `undefined` — does not exist.
+- **Section 1 (Enums):** `.toString()` / `String()` on enum values is NOT useless — it returns `"[object Task.Status: Active]"` format, which contains the type and value name. `.name` on individual values is still `undefined`. The `all` property on every enum namespace provides the complete list of valid constants.
+
+#### Bridge Action Items
+- [ ] `url` getter exists on Task, Project, Tag, Folder, Perspective — expose in model for deep linking in agent responses
+- [ ] `Task.byParsingTransportText()` — explore for batch task creation with hierarchy (TaskPaper format)
+- [ ] `Perspective.favorites` — can derive `isFavorite` boolean by checking membership
+- [ ] `Tag.forecastTag` — document as special static tag
+- [ ] `tag.childrenAreMutuallyExclusive` — expose in tag model
+- [ ] `tag.availableTasks` / `tag.remainingTasks` — query getters available on tags (not needed for snapshot architecture but good to document)
+- [ ] `document.sync()` — can trigger sync programmatically
+- [ ] `document.undo()` / `document.redo()` — available for reverting operations
+- [ ] `effectiveCompletionDate` and `effectiveCompletedDate` are aliases (265/265 match, Script 25b). Use `effectiveCompletionDate` as canonical — matches `completionDate` at the non-effective level. `completedDate` (non-effective) is `undefined` and does not exist.
+- [ ] Investigate `project.defaultSingletonActionHolder` vs `containsSingletonActions`
+- [ ] `noteText` (rich text object) exists alongside `note` (plain string) — bridge uses `note` for now
+- [ ] Every enum has an `.all` array containing all valid constants — documented for reference but do NOT iterate at runtime (OmniFocus performance is poor — freezes for seconds on 2000+ tasks). Bridge should use hardcoded `===` checks and throw an error on unknown values so they can be added manually.
+- [ ] `String()` on enum values returns `"[object Type: Value]"` — documented for reference. Could be used as a diagnostic tool when debugging unknown enum values, but not for production enum resolution.
+- [ ] Perspective filter rules (`archivedFilterRules`) expose a complete query language — documented in Section 9.13 but NOT implementing in bridge for now (too complex). Future milestone potential.

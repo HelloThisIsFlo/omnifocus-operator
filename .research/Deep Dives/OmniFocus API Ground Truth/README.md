@@ -179,6 +179,10 @@ perspectives have identifiers.
 **What it checks:** How effective* dates are inherited. For tasks with effectiveDueDate but no direct dueDate, traces the source (project, parent task, or unknown). Same for defer dates.
 **What to look for:** Is inheritance fully traceable to project or parent task? Any unknown sources?
 
+#### 25 — Method Enumeration ◻️
+**What it checks:** Uses JavaScript reflection to enumerate ALL properties and methods on every entity type (Task, Project, Tag, Folder, Perspective, RepetitionRule, Document, Application). Probes prototype chains, classifies each as method/getter/property, and tests no-arg methods for return types. Also enumerates static/class-level members.
+**What to look for:** Callable methods we haven't tested in earlier scripts. Query methods (like `firstDateAfterDate`) that compute values. Static methods on class constructors. Any hidden API surface.
+
 ## Using the Audit Skill
 
 Run `/omnifocus-api-ground-truth-audit` in Claude Code to start a guided audit session.
