@@ -78,17 +78,17 @@ afterwards to match. Every finding should point toward a concrete bridge change.
 
 The audit scripts live in:
 ```
-.research/Deep Dives/OmniFocus API Ground Truth/scripts/
+.research/deep-dives/omnifocus-api-ground-truth/scripts/
 ```
 
 Findings are recorded in:
 ```
-.research/Deep Dives/OmniFocus API Ground Truth/FINDINGS.md
+.research/deep-dives/omnifocus-api-ground-truth/FINDINGS.md
 ```
 
 The README explains what each script checks:
 ```
-.research/Deep Dives/OmniFocus API Ground Truth/README.md
+.research/deep-dives/omnifocus-api-ground-truth/README.md
 ```
 
 ## Key Background

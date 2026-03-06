@@ -5,7 +5,7 @@ Isolates where the ~3s `handleSnapshot()` bottleneck lives in bridge.js.
 ## Usage
 
 ```bash
-uv run python .research/Benchmark/run.py [--runs 5] [--warmup 2]
+uv run python .research/benchmark/run.py [--runs 5] [--warmup 2]
 ```
 
 Each variant triggers OmniFocus via URL scheme — you'll need to accept the

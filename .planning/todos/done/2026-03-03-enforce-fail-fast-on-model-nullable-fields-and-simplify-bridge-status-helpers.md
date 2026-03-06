@@ -9,7 +9,7 @@ files:
   - src/omnifocus_operator/models/_project.py:31
   - src/omnifocus_operator/bridge/bridge.js:39-48,80,115-116,156,170
   - src/omnifocus_operator/models/_enums.py
-  - .research/Deep Dives/OmniFocus API Ground Truth/BRIDGE-SPEC.md
+  - .research/deep-dives/omnifocus-api-ground-truth/BRIDGE-SPEC.md
 ---
 
 ## Problem
@@ -31,7 +31,7 @@ therefore **actively broken**, always producing `None`. The nullable type annota
 - Project is **missing 4 fields** that BRIDGE-SPEC marks required: `active`, `effectiveActive`,
   `added`, `modified`. These are undefined on `p.*` and MUST be read from `p.task.*`.
 
-**Source of truth:** `.research/Deep Dives/OmniFocus API Ground Truth/BRIDGE-SPEC.md`
+**Source of truth:** `.research/deep-dives/omnifocus-api-ground-truth/BRIDGE-SPEC.md`
 
 ## Solution
 

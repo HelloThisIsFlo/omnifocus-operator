@@ -3,7 +3,7 @@
 Runs variant scripts with progressively more fields to isolate
 where the ~3s handleSnapshot() bottleneck lives.
 
-Usage: uv run python .research/Benchmark/run.py [--runs 5] [--warmup 2]
+Usage: uv run python .research/benchmark/run.py [--runs 5] [--warmup 2]
 """
 
 from __future__ import annotations

@@ -6,8 +6,8 @@ files:
   - src/omnifocus_operator/models/_common.py:13-25
   - src/omnifocus_operator/bridge/bridge.js:26-33
   - src/omnifocus_operator/models/_enums.py
-  - .research/Deep Dives/OmniFocus API Ground Truth/BRIDGE-SPEC.md
-  - .research/Deep Dives/Repetition Rule/repetition-rule-guide.md
+  - .research/deep-dives/omnifocus-api-ground-truth/BRIDGE-SPEC.md
+  - .research/deep-dives/repetition-rule/repetition-rule-guide.md
   - .planning/debug/repetition-rule-validation-failure.md
 ---
 
@@ -30,7 +30,7 @@ status enum bug in todo 3.
 `r.scheduleType.name`). This is **incorrect per BRIDGE-SPEC** — BRIDGE-SPEC is the source of
 truth (empirically verified with live scripts).
 
-**Source of truth:** `.research/Deep Dives/OmniFocus API Ground Truth/BRIDGE-SPEC.md` Section 2.6
+**Source of truth:** `.research/deep-dives/omnifocus-api-ground-truth/BRIDGE-SPEC.md` Section 2.6
 
 ## Solution
 
@@ -113,8 +113,8 @@ exact environment.
 
 ### Key references
 
-- BRIDGE-SPEC (authoritative): `.research/Deep Dives/OmniFocus API Ground Truth/BRIDGE-SPEC.md`
-- Deep dive research (useful context, but .name examples are wrong): `.research/Deep Dives/Repetition Rule/repetition-rule-guide.md`
+- BRIDGE-SPEC (authoritative): `.research/deep-dives/omnifocus-api-ground-truth/BRIDGE-SPEC.md`
+- Deep dive research (useful context, but .name examples are wrong): `.research/deep-dives/repetition-rule/repetition-rule-guide.md`
 - Debug session (root cause): `.planning/debug/repetition-rule-validation-failure.md`
 - Temporary fix commit: `8c79c1f`
 - TEMPORARY marker in code: `src/omnifocus_operator/models/_common.py:15-19`
