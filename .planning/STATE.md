@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-03-01)
 Phase: 08.2 of 10 (Enforce fail-fast model fields, fix bridge status helpers, redesign RepetitionRule)
 Plan: 3 of 3 in current phase (08.2-03 complete -- phase 08.2 done)
 Status: Phase 08.2 complete
-Last activity: 2026-03-06 -- 08.2-03 Test infrastructure BRIDGE-SPEC alignment complete
+Last activity: 2026-03-06 - Completed quick task 1: Remove eager cache hydration on startup
 
 Progress: [██████████] 95%
 
@@ -144,6 +144,12 @@ Recent decisions affecting current work:
 ### Blockers/Concerns
 
 1. **Phase 8 UAT blocked** — `_trigger_omnifocus()` missing `script=` parameter in URL scheme, and OmniFocus-side bridge script doesn't exist. Need inserted phase (8.1) to author the bridge script, add JS tests, wire into trigger, then re-attempt UAT.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 1 | Remove eager cache hydration on startup, lazy populate on first tool call | 2026-03-06 | bab6ae6 | [1-remove-eager-cache-hydration-on-startup-](./quick/1-remove-eager-cache-hydration-on-startup-/) |
 
 ## Session Continuity
 
