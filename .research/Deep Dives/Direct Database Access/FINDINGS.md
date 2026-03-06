@@ -405,6 +405,62 @@ Compared direct-parse output against bridge sample (`snapshot-sample.json`):
 
 ---
 
+## 7. Pydantic Model Impact Assessment
+
+**Verdict: No breaking changes. Minor additions only.**
+
+The existing Pydantic models (`src/omnifocus_operator/models/`) are well-architected
+for this transition. The "Dumb Bridge, Smart Python" principle means the models don't
+care *where* data comes from — bridge JSON or XML parsing produce the same fields.
+
+### What stays the same (65+ fields)
+
+All fields across Task, Project, Folder, Tag, Perspective map directly or via
+trivial aliasing. Enums (`TaskStatus`, `ProjectStatus`, `TagStatus`, `FolderStatus`,
+`ScheduleType`, `AnchorDateKey`) are unchanged. Base models (`OmniFocusEntity`,
+`ActionableEntity`) need no modifications.
+
+### What's new (4 optional fields, non-breaking)
+
+Independent status flags on Task and Project:
+
+```python
+blocked: bool = False
+blocked_by_future_start_date: bool = False
+overdue: bool = False
+due_soon: bool = False
+```
+
+These complement (not replace) the existing `status: TaskStatus` enum. Agents get
+richer information without any breaking change. The 173 tasks that are both blocked
+AND overdue become visible for the first time.
+
+### What changes in architecture (not models)
+
+The heavy lifting happens in a **new XML parser/adapter layer**:
+
+1. Parse `.ofocus` XML → raw dataclass instances
+2. Build relationship indices (parent chains, tag lookups)
+3. Compute effective fields (walk parent chains for inherited dates, flags, status)
+4. Compute independent status flags (blocked, overdue, etc.)
+5. Construct Pydantic models from enriched data
+
+This is a new `XMLBridge` (or similar) that implements the same interface as
+`RealBridge`, keeping all existing code working unchanged.
+
+### Field aliasing (1 case)
+
+XML uses `<start>` for what the model calls `defer_date`. Handled in the
+parser layer, not in the model.
+
+### Computed fields (~20)
+
+All `effective*` fields, `hasChildren`, `active`, `status`, `url`, `project`
+containment — computed in post-processing. Same logic the bridge already implements,
+now in Python (testable without OmniFocus).
+
+---
+
 ## Open Questions
 
 1. **Should we use XML or SQLite for reads?** (Recommendation: XML for stability)
