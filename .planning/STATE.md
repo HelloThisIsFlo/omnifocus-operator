@@ -154,9 +154,10 @@ Recent decisions affecting current work:
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 1 | Remove eager cache hydration on startup, lazy populate on first tool call | 2026-03-06 | bab6ae6 | [1-remove-eager-cache-hydration-on-startup-](./quick/1-remove-eager-cache-hydration-on-startup-/) |
+| 2 | Drop _ prefix from models/ and repository/mtime modules (10 renames) | 2026-03-06 | 24a1d52 | [2-simplify-file-layout-drop-prefixes-colla](./quick/2-simplify-file-layout-drop-prefixes-colla/) |
 
 ## Session Continuity
 
-Last session: 2026-03-06T19:55:44.729Z
-Stopped at: Completed 09-01-PLAN.md
+Last session: 2026-03-06T23:51:53Z
+Stopped at: Completed quick task 2
 Next action: Phase 08.2 complete -- proceed to next phase or milestone wrap-up
