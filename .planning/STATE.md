@@ -2,13 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: in-progress
-last_updated: "2026-03-02T22:37:41Z"
+status: executing
+stopped_at: Phase 8.2 context gathered
+last_updated: "2026-03-06T01:17:11.684Z"
+last_activity: 2026-03-02 -- 08.1-03 IPC protocol overhaul complete
 progress:
-  total_phases: 9
+  total_phases: 10
   completed_phases: 8
   total_plans: 19
-  completed_plans: 17
+  completed_plans: 18
+  percent: 89
 ---
 
 # Project State
@@ -117,11 +120,12 @@ Recent decisions affecting current work:
 1. **Review package structure and underscore convention** (general) — Package layout feels bloated; review before milestone end
 2. **Defer cache hydration to first read instead of server startup** (api) — Preloading freezes OmniFocus on every Claude session start; hydrate lazily on first read
 3. **Redesign RepetitionRule model with full OmniFocus fields** (models) — Current 2-field model is temporary; OmniFocus exposes 4 fields per deep dive research
-4. **Enforce fail-fast on model nullable fields and simplify bridge status helpers** (models) — 8 fields incorrectly nullable; remove ts() switch; simplify status ternaries
+4. **Enforce fail-fast on model nullable fields and simplify bridge status helpers** (models) — 8 fields incorrectly nullable; create es() switch for EntityStatus; fix ts() fallback to throw
 
 ### Roadmap Evolution
 
 - Phase 08.1 inserted after Phase 8: OmniFocus Bridge Script — Author JS bridge, wire into RealBridge IPC, fix UAT (URGENT)
+- Phase 08.2 inserted after Phase 8: Enforce fail-fast model fields, fix bridge status helpers, and redesign RepetitionRule (URGENT)
 
 ### Blockers/Concerns
 
@@ -129,6 +133,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-02
-Stopped at: Completed 08.1-03-PLAN.md
+Last session: 2026-03-06T01:17:11.669Z
+Stopped at: Phase 8.2 context gathered
 Next action: Execute 08.1-04-PLAN.md
