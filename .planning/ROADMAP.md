@@ -219,7 +219,7 @@ Plans:
 **Goal:** Fatal startup errors are caught and served as actionable tool responses instead of crashing the headless MCP server -- the agent discovers the error on first tool call with a clear message and restart instruction
 **Requirements**: ERR-01, ERR-02, ERR-03, ERR-04, ERR-05, ERR-06, ERR-07
 **Depends on:** Phase 8
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [ ] 09-01-PLAN.md — ErrorOperatorService, lifespan try/except, simplified __main__.py, full test coverage
