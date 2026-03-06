@@ -189,6 +189,18 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 
 
 
+### Phase 08.2: Enforce fail-fast model fields, fix bridge status helpers, and redesign RepetitionRule (INSERTED)
+
+**Goal:** Full alignment of the bridge script (JS) and Python models/enums with the empirically-verified BRIDGE-SPEC -- per-entity status resolvers, RepetitionRule redesign with 4 fields, fail-fast on all required fields, TagRef format, url fields, and model hierarchy restructuring
+**Requirements**: B1-B14, P1-P17, T1-T11
+**Depends on:** Phase 08.1
+**Plans:** 3 plans
+
+Plans:
+- [ ] 08.2-01-PLAN.md — Bridge JS: per-entity status resolvers, RepetitionRule resolvers, field updates, Vitest tests
+- [ ] 08.2-02-PLAN.md — Python: per-entity enums, model hierarchy restructuring, entity model updates, namespace rebuild
+- [ ] 08.2-03-PLAN.md — Test infrastructure: conftest factories, test_models.py, seed data alignment
+
 ### Phase 08.1: OmniFocus Bridge Script — Author JS bridge, wire into RealBridge IPC, fix UAT (INSERTED)
 
 **Goal:** A working JS bridge script inside OmniFocus that completes the end-to-end IPC pipeline, with the IPC protocol modernized (clean JSON envelopes, `snapshot` operation name), and the full pipeline validated against live OmniFocus via UAT
