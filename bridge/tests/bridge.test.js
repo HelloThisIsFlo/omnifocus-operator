@@ -38,6 +38,11 @@ vi.stubGlobal("flattenedTasks", [
   {
     id: { primaryKey: "task-001" },
     name: "Test Task",
+    url: {
+      toString: function () {
+        return "omnifocus:///task/task-001";
+      },
+    },
     note: "A note",
     added: new Date("2026-01-01T00:00:00Z"),
     modified: new Date("2026-01-02T00:00:00Z"),
@@ -66,8 +71,7 @@ vi.stubGlobal("flattenedTasks", [
     repetitionRule: null,
     containingProject: { id: { primaryKey: "proj-001" } },
     parent: null,
-    assignedContainer: null,
-    tags: [{ name: "tag1" }],
+    tags: [{ id: { primaryKey: "tag-001" }, name: "tag1" }],
   },
 ]);
 
@@ -75,9 +79,20 @@ vi.stubGlobal("flattenedProjects", [
   {
     id: { primaryKey: "proj-001" },
     name: "Test Project",
+    url: {
+      toString: function () {
+        return "omnifocus:///project/proj-001";
+      },
+    },
     note: "",
-    status: { name: "Active" },
-    taskStatus: "Available",
+    status: "PS_Active",
+    task: {
+      taskStatus: "Available",
+      active: true,
+      effectiveActive: true,
+      added: new Date("2026-01-01T00:00:00Z"),
+      modified: new Date("2026-01-02T00:00:00Z"),
+    },
     completed: false,
     completedByChildren: false,
     completionDate: null,
@@ -111,12 +126,18 @@ vi.stubGlobal("flattenedTags", [
   {
     id: { primaryKey: "tag-001" },
     name: "tag1",
+    url: {
+      toString: function () {
+        return "omnifocus:///tag/tag-001";
+      },
+    },
     added: new Date("2026-01-01T00:00:00Z"),
     modified: new Date("2026-01-02T00:00:00Z"),
     active: true,
     effectiveActive: true,
-    status: { name: "Active" },
+    status: "TS_Active",
     allowsNextAction: true,
+    childrenAreMutuallyExclusive: false,
     parent: null,
   },
 ]);
@@ -125,11 +146,16 @@ vi.stubGlobal("flattenedFolders", [
   {
     id: { primaryKey: "folder-001" },
     name: "Test Folder",
+    url: {
+      toString: function () {
+        return "omnifocus:///folder/folder-001";
+      },
+    },
     added: new Date("2026-01-01T00:00:00Z"),
     modified: new Date("2026-01-02T00:00:00Z"),
     active: true,
     effectiveActive: true,
-    status: { name: "Active" },
+    status: "FS_Active",
     parent: null,
   },
 ]);
@@ -137,13 +163,13 @@ vi.stubGlobal("flattenedFolders", [
 vi.stubGlobal("Perspective", {
   all: [
     {
-      identifier: "perspective-001",
+      id: { primaryKey: "perspective-001" },
       name: "Forecast",
     },
   ],
 });
 
-// Mock Task.Status for ts() helper
+// Mock Task.Status + RepetitionScheduleType + AnchorDateKey
 vi.stubGlobal("Task", {
   Status: {
     Available: "Available",
@@ -153,6 +179,43 @@ vi.stubGlobal("Task", {
     DueSoon: "DueSoon",
     Next: "Next",
     Overdue: "Overdue",
+  },
+  RepetitionScheduleType: {
+    Regularly: "RST_Regularly",
+    FromCompletion: "RST_FromCompletion",
+    None: "RST_None",
+  },
+  AnchorDateKey: {
+    DueDate: "ADK_DueDate",
+    DeferDate: "ADK_DeferDate",
+    PlannedDate: "ADK_PlannedDate",
+  },
+});
+
+// Mock Project.Status
+vi.stubGlobal("Project", {
+  Status: {
+    Active: "PS_Active",
+    OnHold: "PS_OnHold",
+    Done: "PS_Done",
+    Dropped: "PS_Dropped",
+  },
+});
+
+// Mock Tag.Status
+vi.stubGlobal("Tag", {
+  Status: {
+    Active: "TS_Active",
+    OnHold: "TS_OnHold",
+    Dropped: "TS_Dropped",
+  },
+});
+
+// Mock Folder.Status
+vi.stubGlobal("Folder", {
+  Status: {
+    Active: "FS_Active",
+    Dropped: "FS_Dropped",
   },
 });
 
@@ -186,32 +249,23 @@ describe("helper functions", function () {
     expect(bridge.pk(undefined)).toBeNull();
   });
 
-  it("rr() extracts repetition rule", function () {
-    var rule = { ruleString: "FREQ=DAILY", scheduleType: { name: "Due" } };
+  it("rr() extracts all 4 repetition rule fields", function () {
+    var rule = {
+      ruleString: "FREQ=DAILY",
+      scheduleType: "RST_Regularly",
+      anchorDateKey: "ADK_DueDate",
+      catchUpAutomatically: true,
+    };
     expect(bridge.rr(rule)).toEqual({
       ruleString: "FREQ=DAILY",
-      scheduleType: "Due",
+      scheduleType: "Regularly",
+      anchorDateKey: "DueDate",
+      catchUpAutomatically: true,
     });
   });
 
   it("rr() returns null for falsy values", function () {
     expect(bridge.rr(null)).toBeNull();
-  });
-
-  it("rr() handles missing scheduleType gracefully", function () {
-    var rule = { ruleString: "FREQ=DAILY" };
-    expect(bridge.rr(rule)).toEqual({
-      ruleString: "FREQ=DAILY",
-      scheduleType: null,
-    });
-  });
-
-  it("rr() handles scheduleType without name property", function () {
-    var rule = { ruleString: "FREQ=WEEKLY", scheduleType: {} };
-    expect(bridge.rr(rule)).toEqual({
-      ruleString: "FREQ=WEEKLY",
-      scheduleType: null,
-    });
   });
 
   it("ri() extracts review interval", function () {
@@ -233,8 +287,74 @@ describe("helper functions", function () {
     expect(bridge.ts("Overdue")).toBe("Overdue");
   });
 
-  it("ts() returns null for unknown status", function () {
-    expect(bridge.ts("Unknown")).toBeNull();
+  it("ts() throws on unknown status", function () {
+    expect(function () {
+      bridge.ts("Unknown");
+    }).toThrow("Unknown TaskStatus: Unknown");
+  });
+});
+
+describe("per-entity status resolvers", function () {
+  it("ps() returns correct strings for all Project.Status values", function () {
+    expect(bridge.ps("PS_Active")).toBe("Active");
+    expect(bridge.ps("PS_OnHold")).toBe("OnHold");
+    expect(bridge.ps("PS_Done")).toBe("Done");
+    expect(bridge.ps("PS_Dropped")).toBe("Dropped");
+  });
+
+  it("ps() throws on unknown value", function () {
+    expect(function () {
+      bridge.ps("Unknown");
+    }).toThrow("Unknown ProjectStatus: Unknown");
+  });
+
+  it("gs() returns correct strings for all Tag.Status values", function () {
+    expect(bridge.gs("TS_Active")).toBe("Active");
+    expect(bridge.gs("TS_OnHold")).toBe("OnHold");
+    expect(bridge.gs("TS_Dropped")).toBe("Dropped");
+  });
+
+  it("gs() throws on unknown value", function () {
+    expect(function () {
+      bridge.gs("Unknown");
+    }).toThrow("Unknown TagStatus: Unknown");
+  });
+
+  it("fs() returns correct strings for both Folder.Status values", function () {
+    expect(bridge.fs("FS_Active")).toBe("Active");
+    expect(bridge.fs("FS_Dropped")).toBe("Dropped");
+  });
+
+  it("fs() throws on unknown value", function () {
+    expect(function () {
+      bridge.fs("Unknown");
+    }).toThrow("Unknown FolderStatus: Unknown");
+  });
+});
+
+describe("repetition resolvers", function () {
+  it("rst() returns correct strings for all RepetitionScheduleType values", function () {
+    expect(bridge.rst("RST_Regularly")).toBe("Regularly");
+    expect(bridge.rst("RST_FromCompletion")).toBe("FromCompletion");
+    expect(bridge.rst("RST_None")).toBe("None");
+  });
+
+  it("rst() throws on unknown value", function () {
+    expect(function () {
+      bridge.rst("Unknown");
+    }).toThrow("Unknown RepetitionScheduleType: Unknown");
+  });
+
+  it("adk() returns correct strings for all AnchorDateKey values", function () {
+    expect(bridge.adk("ADK_DueDate")).toBe("DueDate");
+    expect(bridge.adk("ADK_DeferDate")).toBe("DeferDate");
+    expect(bridge.adk("ADK_PlannedDate")).toBe("PlannedDate");
+  });
+
+  it("adk() throws on unknown value", function () {
+    expect(function () {
+      bridge.adk("Unknown");
+    }).toThrow("Unknown AnchorDateKey: Unknown");
   });
 });
 
@@ -296,28 +416,43 @@ describe("handleSnapshot", function () {
     expect(result.tasks).toHaveLength(1);
     expect(result.tasks[0].id).toBe("task-001");
     expect(result.tasks[0].name).toBe("Test Task");
+    expect(result.tasks[0].url).toBe("omnifocus:///task/task-001");
     expect(result.tasks[0].project).toBe("proj-001");
-    expect(result.tasks[0].tags).toEqual(["tag1"]);
+    expect(result.tasks[0].tags).toEqual([{ id: "tag-001", name: "tag1" }]);
+    expect(result.tasks[0]).not.toHaveProperty("assignedContainer");
 
     // Projects
     expect(result.projects).toHaveLength(1);
     expect(result.projects[0].id).toBe("proj-001");
     expect(result.projects[0].name).toBe("Test Project");
+    expect(result.projects[0].url).toBe("omnifocus:///project/proj-001");
+    expect(result.projects[0].status).toBe("Active");
+    expect(result.projects[0].taskStatus).toBe("Available");
+    expect(result.projects[0].active).toBe(true);
+    expect(result.projects[0].effectiveActive).toBe(true);
+    expect(result.projects[0].added).toBe("2026-01-01T00:00:00.000Z");
+    expect(result.projects[0].modified).toBe("2026-01-02T00:00:00.000Z");
 
     // Tags
     expect(result.tags).toHaveLength(1);
     expect(result.tags[0].id).toBe("tag-001");
     expect(result.tags[0].name).toBe("tag1");
+    expect(result.tags[0].url).toBe("omnifocus:///tag/tag-001");
+    expect(result.tags[0].status).toBe("Active");
+    expect(result.tags[0].childrenAreMutuallyExclusive).toBe(false);
 
     // Folders
     expect(result.folders).toHaveLength(1);
     expect(result.folders[0].id).toBe("folder-001");
     expect(result.folders[0].name).toBe("Test Folder");
+    expect(result.folders[0].url).toBe("omnifocus:///folder/folder-001");
+    expect(result.folders[0].status).toBe("Active");
 
     // Perspectives
     expect(result.perspectives).toHaveLength(1);
     expect(result.perspectives[0].id).toBe("perspective-001");
     expect(result.perspectives[0].name).toBe("Forecast");
+    expect(result.perspectives[0]).not.toHaveProperty("builtin");
   });
 });
 
