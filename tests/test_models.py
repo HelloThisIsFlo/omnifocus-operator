@@ -9,16 +9,21 @@ from pydantic import ValidationError
 
 from omnifocus_operator.models import (
     ActionableEntity,
+    AnchorDateKey,
     DatabaseSnapshot,
-    EntityStatus,
     Folder,
+    FolderStatus,
     OmniFocusBaseModel,
     OmniFocusEntity,
     Perspective,
     Project,
+    ProjectStatus,
     RepetitionRule,
     ReviewInterval,
+    ScheduleType,
     Tag,
+    TagRef,
+    TagStatus,
     Task,
     TaskStatus,
 )
@@ -94,16 +99,64 @@ class TestTaskStatus:
         assert len(TaskStatus) == 7
 
 
-class TestEntityStatus:
-    """EntityStatus enum has exactly 3 members matching bridge .status.name values."""
+class TestProjectStatus:
+    """ProjectStatus enum has exactly 4 members matching bridge ps() resolver."""
 
-    def test_entity_status_values(self) -> None:
-        assert EntityStatus.ACTIVE == "Active"
-        assert EntityStatus.DONE == "Done"
-        assert EntityStatus.DROPPED == "Dropped"
+    def test_project_status_values(self) -> None:
+        assert ProjectStatus.ACTIVE == "Active"
+        assert ProjectStatus.ON_HOLD == "OnHold"
+        assert ProjectStatus.DONE == "Done"
+        assert ProjectStatus.DROPPED == "Dropped"
 
-    def test_entity_status_member_count(self) -> None:
-        assert len(EntityStatus) == 3
+    def test_project_status_member_count(self) -> None:
+        assert len(ProjectStatus) == 4
+
+
+class TestTagStatus:
+    """TagStatus enum has exactly 3 members matching bridge gs() resolver."""
+
+    def test_tag_status_values(self) -> None:
+        assert TagStatus.ACTIVE == "Active"
+        assert TagStatus.ON_HOLD == "OnHold"
+        assert TagStatus.DROPPED == "Dropped"
+
+    def test_tag_status_member_count(self) -> None:
+        assert len(TagStatus) == 3
+
+
+class TestFolderStatus:
+    """FolderStatus enum has exactly 2 members matching bridge fs() resolver."""
+
+    def test_folder_status_values(self) -> None:
+        assert FolderStatus.ACTIVE == "Active"
+        assert FolderStatus.DROPPED == "Dropped"
+
+    def test_folder_status_member_count(self) -> None:
+        assert len(FolderStatus) == 2
+
+
+class TestScheduleType:
+    """ScheduleType enum has exactly 3 members matching bridge rst() resolver."""
+
+    def test_schedule_type_values(self) -> None:
+        assert ScheduleType.REGULARLY == "Regularly"
+        assert ScheduleType.FROM_COMPLETION == "FromCompletion"
+        assert ScheduleType.NONE == "None"
+
+    def test_schedule_type_member_count(self) -> None:
+        assert len(ScheduleType) == 3
+
+
+class TestAnchorDateKey:
+    """AnchorDateKey enum has exactly 3 members matching bridge adk() resolver."""
+
+    def test_anchor_date_key_values(self) -> None:
+        assert AnchorDateKey.DUE_DATE == "DueDate"
+        assert AnchorDateKey.DEFER_DATE == "DeferDate"
+        assert AnchorDateKey.PLANNED_DATE == "PlannedDate"
+
+    def test_anchor_date_key_member_count(self) -> None:
+        assert len(AnchorDateKey) == 3
 
 
 class TestEnumValidation:
@@ -124,32 +177,49 @@ class TestEnumValidation:
 # ---------------------------------------------------------------------------
 
 
+class TestTagRef:
+    """TagRef model with id and name for tag serialization."""
+
+    def test_tag_ref_round_trip(self) -> None:
+        data = {"id": "tag-001", "name": "errands"}
+        ref = TagRef.model_validate(data)
+        assert ref.id == "tag-001"
+        assert ref.name == "errands"
+        dumped = ref.model_dump(by_alias=True)
+        assert dumped == {"id": "tag-001", "name": "errands"}
+
+
 class TestRepetitionRule:
-    """RepetitionRule parses camelCase JSON and serializes back."""
+    """RepetitionRule has 4 required typed fields."""
 
-    def test_repetition_rule_camel_case_round_trip(self) -> None:
-        data = {"ruleString": "FREQ=DAILY", "scheduleType": "DueAgainAfterCompletion"}
+    def test_repetition_rule_full_round_trip(self) -> None:
+        data = {
+            "ruleString": "FREQ=DAILY",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": True,
+        }
         rule = RepetitionRule.model_validate(data)
         assert rule.rule_string == "FREQ=DAILY"
-        assert rule.schedule_type == "DueAgainAfterCompletion"
+        assert rule.schedule_type == ScheduleType.REGULARLY
+        assert rule.anchor_date_key == AnchorDateKey.DUE_DATE
+        assert rule.catch_up_automatically is True
 
-        dumped = rule.model_dump(by_alias=True)
-        assert dumped["ruleString"] == "FREQ=DAILY"
-        assert dumped["scheduleType"] == "DueAgainAfterCompletion"
+    def test_repetition_rule_missing_field_rejected(self) -> None:
+        """All 4 fields are required."""
+        data = {"ruleString": "FREQ=DAILY"}
+        with pytest.raises(ValidationError):
+            RepetitionRule.model_validate(data)
 
-    def test_repetition_rule_without_schedule_type(self) -> None:
-        """RepetitionRule accepts missing scheduleType (OmniFocus may omit it)."""
-        data = {"ruleString": "FREQ=WEEKLY;BYDAY=MO,WE,FR"}
-        rule = RepetitionRule.model_validate(data)
-        assert rule.rule_string == "FREQ=WEEKLY;BYDAY=MO,WE,FR"
-        assert rule.schedule_type is None
-
-    def test_repetition_rule_with_null_schedule_type(self) -> None:
-        """RepetitionRule accepts explicit null scheduleType."""
-        data = {"ruleString": "FREQ=DAILY", "scheduleType": None}
-        rule = RepetitionRule.model_validate(data)
-        assert rule.rule_string == "FREQ=DAILY"
-        assert rule.schedule_type is None
+    def test_repetition_rule_invalid_schedule_type_rejected(self) -> None:
+        data = {
+            "ruleString": "FREQ=DAILY",
+            "scheduleType": "InvalidType",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": False,
+        }
+        with pytest.raises(ValidationError):
+            RepetitionRule.model_validate(data)
 
 
 class TestReviewInterval:
@@ -189,6 +259,11 @@ class TestActionableEntityDates:
         entity = ActionableEntity(
             id="test-1",
             name="Test",
+            url="omnifocus:///test/test-1",
+            added=datetime(2024, 1, 15, 10, 30, tzinfo=UTC),
+            modified=datetime(2024, 1, 15, 10, 30, tzinfo=UTC),
+            active=True,
+            effective_active=True,
             note="",
             completed=False,
             completed_by_children=False,
@@ -222,7 +297,15 @@ class TestInheritanceHierarchy:
     """OmniFocusBaseModel -> OmniFocusEntity -> ActionableEntity."""
 
     def test_omnifocus_entity_has_id_and_name(self) -> None:
-        entity = OmniFocusEntity(id="abc", name="Test")
+        entity = OmniFocusEntity(
+            id="abc",
+            name="Test",
+            url="omnifocus:///test/abc",
+            added=datetime(2024, 1, 15, 10, 30, tzinfo=UTC),
+            modified=datetime(2024, 1, 15, 10, 30, tzinfo=UTC),
+            active=True,
+            effective_active=True,
+        )
         assert entity.id == "abc"
         assert entity.name == "Test"
 
@@ -236,6 +319,11 @@ class TestInheritanceHierarchy:
         entity = ActionableEntity(
             id="test-1",
             name="Test",
+            url="omnifocus:///test/test-1",
+            added=dt,
+            modified=dt,
+            active=True,
+            effective_active=True,
             note="A note",
             completed=False,
             completed_by_children=False,
@@ -245,11 +333,13 @@ class TestInheritanceHierarchy:
             due_date=dt,
             has_children=False,
             should_use_floating_time_zone=False,
-            tags=["errands"],
+            tags=[TagRef(id="tag-001", name="errands")],
         )
         assert entity.due_date == dt
         assert entity.flagged is True
-        assert entity.tags == ["errands"]
+        assert len(entity.tags) == 1
+        assert isinstance(entity.tags[0], TagRef)
+        assert entity.tags[0].name == "errands"
 
 
 # ---------------------------------------------------------------------------
@@ -272,24 +362,24 @@ class TestFactoryFunctions:
         assert d["status"] == "Blocked"
 
     def test_make_project_dict_field_count(self) -> None:
-        """make_project_dict returns exactly 31 fields (all bridge project fields)."""
+        """make_project_dict returns exactly 36 fields (all bridge project fields)."""
         d = make_project_dict()
-        assert len(d) == 31
+        assert len(d) == 36
 
     def test_make_tag_dict_field_count(self) -> None:
-        """make_tag_dict returns exactly 9 fields (all bridge tag fields)."""
+        """make_tag_dict returns exactly 11 fields (all bridge tag fields)."""
         d = make_tag_dict()
-        assert len(d) == 9
+        assert len(d) == 11
 
     def test_make_folder_dict_field_count(self) -> None:
-        """make_folder_dict returns exactly 8 fields (all bridge folder fields)."""
+        """make_folder_dict returns exactly 9 fields (all bridge folder fields)."""
         d = make_folder_dict()
-        assert len(d) == 8
+        assert len(d) == 9
 
     def test_make_perspective_dict_field_count(self) -> None:
-        """make_perspective_dict returns exactly 3 fields (all bridge perspective fields)."""
+        """make_perspective_dict returns exactly 2 fields (id and name only)."""
         d = make_perspective_dict()
-        assert len(d) == 3
+        assert len(d) == 2
 
     def test_make_snapshot_dict_structure(self) -> None:
         """make_snapshot_dict contains all 5 entity collections."""
@@ -318,16 +408,17 @@ class TestTaskModel:
         """Parse make_task_dict() via Task.model_validate(), verify all 32 fields."""
         data = make_task_dict(
             dueDate="2024-06-15T09:00:00.000Z",
-            tags=["errands", "morning"],
+            tags=[{"id": "t1", "name": "errands"}, {"id": "t2", "name": "morning"}],
         )
         task = Task.model_validate(data)
 
         # Identity
         assert task.id == "task-001"
         assert task.name == "Test Task"
+        assert task.url == "omnifocus:///task/task-001"
         assert task.note == ""
 
-        # Lifecycle (Task-specific)
+        # Lifecycle (inherited from OmniFocusEntity)
         assert task.added is not None
         assert task.modified is not None
         assert task.active is True
@@ -365,8 +456,13 @@ class TestTaskModel:
         assert task.repetition_rule is None
         assert task.project is None
         assert task.parent is None
-        assert task.assigned_container is None
-        assert task.tags == ["errands", "morning"]
+
+        # Tags are TagRef objects
+        assert len(task.tags) == 2
+        assert isinstance(task.tags[0], TagRef)
+        assert task.tags[0].name == "errands"
+        assert task.tags[0].id == "t1"
+        assert task.tags[1].name == "morning"
 
         # Verify total field count
         assert len(Task.model_fields) == 32
@@ -376,13 +472,14 @@ class TestTaskModel:
         assert "dueDate" in dumped
         assert "effectiveFlagged" in dumped
         assert "inInbox" in dumped
-        assert "assignedContainer" in dumped
+        assert "url" in dumped
 
         # Re-parse and compare
         task2 = Task.model_validate(dumped)
         assert task.id == task2.id
         assert task.due_date == task2.due_date
-        assert task.tags == task2.tags
+        assert len(task2.tags) == 2
+        assert task2.tags[0].name == "errands"
 
     def test_task_status_required(self) -> None:
         """Task without status raises ValidationError."""
@@ -391,20 +488,23 @@ class TestTaskModel:
         with pytest.raises(ValidationError):
             Task.model_validate(data)
 
-    def test_task_tags_are_names(self) -> None:
-        """tags field contains string names (not IDs)."""
-        data = make_task_dict(tags=["errands", "morning"])
+    def test_task_tags_are_tag_refs(self) -> None:
+        """tags field contains TagRef objects with id and name."""
+        data = make_task_dict(
+            tags=[{"id": "t1", "name": "errands"}, {"id": "t2", "name": "morning"}],
+        )
         task = Task.model_validate(data)
-        assert task.tags == ["errands", "morning"]
-        assert all(isinstance(t, str) for t in task.tags)
+        assert len(task.tags) == 2
+        assert isinstance(task.tags[0], TagRef)
+        assert task.tags[0].name == "errands"
+        assert task.tags[0].id == "t1"
 
     def test_task_optional_relationships_default_none(self) -> None:
-        """Optional relationship fields (project, parent, assignedContainer) default to None."""
+        """Optional relationship fields (project, parent) default to None."""
         data = make_task_dict()
         task = Task.model_validate(data)
         assert task.project is None
         assert task.parent is None
-        assert task.assigned_container is None
 
 
 # ---------------------------------------------------------------------------
@@ -413,20 +513,25 @@ class TestTaskModel:
 
 
 class TestProjectModel:
-    """Project model parses all 31 bridge fields including nested objects."""
+    """Project model parses all 36 bridge fields including nested objects."""
 
     def test_project_from_bridge_json(self) -> None:
-        """Parse make_project_dict(), verify all 31 fields, both status fields present."""
+        """Parse make_project_dict(), verify all 36 fields, both status fields present."""
         data = make_project_dict()
         project = Project.model_validate(data)
 
-        # Identity
+        # Identity + lifecycle from OmniFocusEntity
         assert project.id == "proj-001"
         assert project.name == "Test Project"
+        assert project.url == "omnifocus:///project/proj-001"
         assert project.note == ""
+        assert project.active is True
+        assert project.effective_active is True
+        assert project.added is not None
+        assert project.modified is not None
 
         # Dual status
-        assert project.status == EntityStatus.ACTIVE
+        assert project.status == ProjectStatus.ACTIVE
         assert project.task_status == TaskStatus.AVAILABLE
 
         # Structure
@@ -436,7 +541,7 @@ class TestProjectModel:
         assert project.completed is False
         assert project.completed_by_children is False
 
-        # Review
+        # Review (required per BRIDGE-SPEC)
         assert project.last_review_date is not None
         assert project.next_review_date is not None
         assert project.review_interval is not None
@@ -449,7 +554,7 @@ class TestProjectModel:
         assert project.tags == []
 
         # Verify total field count
-        assert len(Project.model_fields) == 31
+        assert len(Project.model_fields) == 36
 
         # Serialize back and verify camelCase keys
         dumped = project.model_dump(mode="json", by_alias=True)
@@ -458,23 +563,31 @@ class TestProjectModel:
         assert "lastReviewDate" in dumped
         assert "reviewInterval" in dumped
         assert "nextTask" in dumped
+        assert "url" in dumped
 
     def test_project_dual_status_fields(self) -> None:
-        """Project has both status (EntityStatus) and task_status (TaskStatus)."""
+        """Project has both status (ProjectStatus) and task_status (TaskStatus)."""
         data = make_project_dict(status="Dropped", taskStatus="Blocked")
         project = Project.model_validate(data)
-        assert project.status == EntityStatus.DROPPED
+        assert project.status == ProjectStatus.DROPPED
         assert project.task_status == TaskStatus.BLOCKED
 
     def test_project_nested_repetition_rule(self) -> None:
         """Project with repetitionRule object parses correctly."""
         data = make_project_dict(
-            repetitionRule={"ruleString": "FREQ=WEEKLY", "scheduleType": "DueAgainAfterCompletion"},
+            repetitionRule={
+                "ruleString": "FREQ=WEEKLY",
+                "scheduleType": "Regularly",
+                "anchorDateKey": "DueDate",
+                "catchUpAutomatically": False,
+            },
         )
         project = Project.model_validate(data)
         assert project.repetition_rule is not None
         assert project.repetition_rule.rule_string == "FREQ=WEEKLY"
-        assert project.repetition_rule.schedule_type == "DueAgainAfterCompletion"
+        assert project.repetition_rule.schedule_type == ScheduleType.REGULARLY
+        assert project.repetition_rule.anchor_date_key == AnchorDateKey.DUE_DATE
+        assert project.repetition_rule.catch_up_automatically is False
 
     def test_project_nested_review_interval(self) -> None:
         """Project with reviewInterval object parses correctly."""
@@ -491,38 +604,42 @@ class TestProjectModel:
 
 
 class TestTagModel:
-    """Tag model parses all 9 bridge fields."""
+    """Tag model parses all 11 bridge fields."""
 
     def test_tag_from_bridge_json(self) -> None:
-        """Parse make_tag_dict(), verify all 9 fields."""
+        """Parse make_tag_dict(), verify all 11 fields."""
         data = make_tag_dict()
         tag = Tag.model_validate(data)
 
         assert tag.id == "tag-001"
         assert tag.name == "Test Tag"
+        assert tag.url == "omnifocus:///tag/tag-001"
         assert tag.added is not None
         assert tag.modified is not None
         assert tag.active is True
         assert tag.effective_active is True
-        assert tag.status == EntityStatus.ACTIVE
+        assert tag.status == TagStatus.ACTIVE
         assert tag.allows_next_action is True
+        assert tag.children_are_mutually_exclusive is False
         assert tag.parent is None
 
         # Verify total field count
-        assert len(Tag.model_fields) == 9
+        assert len(Tag.model_fields) == 11
 
         # Round-trip
         dumped = tag.model_dump(mode="json", by_alias=True)
         assert "allowsNextAction" in dumped
         assert "effectiveActive" in dumped
+        assert "childrenAreMutuallyExclusive" in dumped
         tag2 = Tag.model_validate(dumped)
         assert tag.id == tag2.id
 
-    def test_tag_nullable_status(self) -> None:
-        """Tag with status=None parses correctly."""
-        data = make_tag_dict(status=None)
-        tag = Tag.model_validate(data)
-        assert tag.status is None
+    def test_tag_status_required(self) -> None:
+        """Tag without status raises ValidationError."""
+        data = make_tag_dict()
+        del data["status"]
+        with pytest.raises(ValidationError):
+            Tag.model_validate(data)
 
 
 # ---------------------------------------------------------------------------
@@ -531,24 +648,25 @@ class TestTagModel:
 
 
 class TestFolderModel:
-    """Folder model parses all 8 bridge fields."""
+    """Folder model parses all 9 bridge fields."""
 
     def test_folder_from_bridge_json(self) -> None:
-        """Parse make_folder_dict(), verify all 8 fields."""
+        """Parse make_folder_dict(), verify all 9 fields."""
         data = make_folder_dict()
         folder = Folder.model_validate(data)
 
         assert folder.id == "folder-001"
         assert folder.name == "Test Folder"
+        assert folder.url == "omnifocus:///folder/folder-001"
         assert folder.added is not None
         assert folder.modified is not None
         assert folder.active is True
         assert folder.effective_active is True
-        assert folder.status == EntityStatus.ACTIVE
+        assert folder.status == FolderStatus.ACTIVE
         assert folder.parent is None
 
         # Verify total field count
-        assert len(Folder.model_fields) == 8
+        assert len(Folder.model_fields) == 9
 
         # Round-trip
         dumped = folder.model_dump(mode="json", by_alias=True)
@@ -556,11 +674,12 @@ class TestFolderModel:
         folder2 = Folder.model_validate(dumped)
         assert folder.id == folder2.id
 
-    def test_folder_nullable_status(self) -> None:
-        """Folder with status=None parses correctly."""
-        data = make_folder_dict(status=None)
-        folder = Folder.model_validate(data)
-        assert folder.status is None
+    def test_folder_status_required(self) -> None:
+        """Folder without status raises ValidationError."""
+        data = make_folder_dict()
+        del data["status"]
+        with pytest.raises(ValidationError):
+            Folder.model_validate(data)
 
 
 # ---------------------------------------------------------------------------
@@ -569,10 +688,10 @@ class TestFolderModel:
 
 
 class TestPerspectiveModel:
-    """Perspective model has id: str | None, name: str, builtin: bool."""
+    """Perspective model has id: str | None, name: str, builtin: computed."""
 
     def test_perspective_from_bridge_json(self) -> None:
-        """Parse make_perspective_dict(), verify 3 fields."""
+        """Parse make_perspective_dict(), verify 2 stored + 1 computed fields."""
         data = make_perspective_dict()
         perspective = Perspective.model_validate(data)
 
@@ -580,8 +699,10 @@ class TestPerspectiveModel:
         assert perspective.name == "Test Perspective"
         assert perspective.builtin is False
 
-        # Verify total field count
-        assert len(Perspective.model_fields) == 3
+        # Verify stored field count (builtin is computed, not in model_fields)
+        assert len(Perspective.model_fields) == 2
+        assert len(Perspective.model_computed_fields) == 1
+        assert "builtin" in Perspective.model_computed_fields
 
         # Round-trip
         dumped = perspective.model_dump(mode="json", by_alias=True)
@@ -589,8 +710,8 @@ class TestPerspectiveModel:
         assert perspective.id == perspective2.id
 
     def test_perspective_builtin_null_id(self) -> None:
-        """Perspective with id=null parses correctly (builtin perspectives)."""
-        data = make_perspective_dict(id=None, builtin=True, name="Inbox")
+        """Perspective with id=null is computed as builtin."""
+        data = make_perspective_dict(id=None, name="Inbox")
         perspective = Perspective.model_validate(data)
         assert perspective.id is None
         assert perspective.builtin is True
@@ -649,7 +770,7 @@ class TestDatabaseSnapshot:
                     name="Task 2",
                     status="Blocked",
                     dueDate="2024-06-15T09:00:00.000Z",
-                    tags=["errands"],
+                    tags=[{"id": "tref1", "name": "errands"}],
                     project="proj-001",
                 ),
                 make_task_dict(id="t3", name="Task 3", status="Completed", completed=True),
@@ -673,7 +794,7 @@ class TestDatabaseSnapshot:
             ],
             "perspectives": [
                 make_perspective_dict(id="ps1", name="Custom View"),
-                make_perspective_dict(id=None, name="Inbox", builtin=True),
+                make_perspective_dict(id=None, name="Inbox"),
             ],
         }
 
@@ -690,9 +811,10 @@ class TestDatabaseSnapshot:
 
         # Verify data fidelity
         assert snapshot2.tasks[1].due_date is not None
-        assert snapshot2.tasks[1].tags == ["errands"]
+        assert len(snapshot2.tasks[1].tags) == 1
+        assert snapshot2.tasks[1].tags[0].name == "errands"
         assert snapshot2.tasks[1].project == "proj-001"
-        assert snapshot2.projects[1].status == EntityStatus.DROPPED
+        assert snapshot2.projects[1].status == ProjectStatus.DROPPED
         assert snapshot2.perspectives[1].id is None
         assert snapshot2.perspectives[1].builtin is True
 

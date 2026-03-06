@@ -183,7 +183,10 @@ class TestTOOL01ListAllStructuredOutput:
         task_data = {
             "id": "task-1",
             "name": "Test Task",
+            "url": "omnifocus:///task/task-1",
             "note": "",
+            "added": "2024-01-15T10:30:00.000Z",
+            "modified": "2024-01-15T10:30:00.000Z",
             "completed": False,
             "completed_by_children": False,
             "flagged": False,
