@@ -204,31 +204,6 @@ class TestSNAP05Concurrency:
 
 
 # ---------------------------------------------------------------------------
-# SNAP-06: initialize() pre-warms cache
-# ---------------------------------------------------------------------------
-
-
-class TestSNAP06Initialize:
-    """initialize() pre-warms cache so next get_snapshot() is free."""
-
-    async def test_initialize_populates_cache(
-        self, repo: OmniFocusRepository, bridge: InMemoryBridge
-    ) -> None:
-        await repo.initialize()
-
-        assert bridge.call_count == 1
-
-    async def test_get_snapshot_after_initialize_uses_cache(
-        self, repo: OmniFocusRepository, bridge: InMemoryBridge
-    ) -> None:
-        await repo.initialize()
-        snapshot = await repo.get_snapshot()
-
-        assert bridge.call_count == 1
-        assert len(snapshot.tasks) == 1
-
-
-# ---------------------------------------------------------------------------
 # Error propagation: fail-fast, no stale fallback
 # ---------------------------------------------------------------------------
 
@@ -304,14 +279,14 @@ class TestErrorPropagation:
         third = await repo.get_snapshot()
         assert third is not first
 
-    async def test_initialize_failure_allows_retry(self, mtime: FakeMtimeSource) -> None:
-        """After initialize() fails, get_snapshot() retries successfully."""
+    async def test_failed_first_load_allows_retry(self, mtime: FakeMtimeSource) -> None:
+        """After first get_snapshot() fails, next call retries successfully."""
         bridge = InMemoryBridge()
         bridge.set_error(BridgeError("snapshot", "startup failure"))
         repo = OmniFocusRepository(bridge=bridge, mtime_source=mtime)
 
         with pytest.raises(BridgeError):
-            await repo.initialize()
+            await repo.get_snapshot()
 
         # Fix and retry
         bridge.clear_error()
