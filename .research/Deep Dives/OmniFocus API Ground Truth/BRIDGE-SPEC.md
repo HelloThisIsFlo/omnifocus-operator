@@ -12,11 +12,20 @@
 ### Dumb Bridge, Smart Python
 The bridge runs inside OmniFocus as Omni Automation (OmniJS). It is **untestable** — no unit tests, no TDD, no CI. Every line of logic in the bridge is a line we can't verify automatically.
 
-**Bridge responsibility:** Extract raw data. Read from the correct accessors, resolve opaque enums to strings (because `===` comparison only works inside OmniJS), serialize to JSON.
+**But testability is only half the reason.** OmniJS is catastrophically slow — roughly **1ms per task per operation**. A simple boolean lookup across 2800 tasks takes 1.2 seconds, during which the entire OmniFocus UI is frozen. Benchmarked on a live database (2825 tasks, 368 projects):
+- Building a project ID index from 368 projects: **172ms**
+- Scanning 2825 tasks with a single property lookup per task: **1,264ms**
 
-**Python responsibility:** All interpretation, validation, model mapping, and business logic. This is where we have TDD, type checking, and full control.
+This is not premature optimization — it's a hard constraint. Every line of logic added to the bridge has a measurable, user-visible cost. The bridge must do the absolute minimum: read fields, resolve enums (because `===` only works inside OmniJS), serialize to JSON. Everything else belongs in Python where it's instantaneous.
+
+**Bridge responsibility:** Extract raw data. Read from the correct accessors, resolve opaque enums to strings, serialize to JSON. No filtering, no transformation, no derived computations beyond enum resolution.
+
+**Python responsibility:** All interpretation, validation, model mapping, filtering, and business logic. This is where we have TDD, type checking, and full control — and where operations on 2800 tasks take microseconds, not seconds.
 
 **Rule of thumb:** If there's ambiguity about where logic belongs, it belongs in Python.
+
+### Date Serialization
+All OmniJS `Date` objects must be serialized via `.toISOString()` — ISO 8601 format with UTC timezone (e.g., `"2024-01-15T10:30:00.000Z"`). Nullable date fields serialize as `null`.
 
 ### Fail Fast on Nulls
 Every field is classified as **required** or **nullable**. If a required field returns `null`/`undefined`, the bridge must throw — not silently propagate a null that causes downstream bugs. The nullable/required classification for every field is specified in the entity sections below.
@@ -32,7 +41,7 @@ If the bridge encounters an unknown enum value, it must **throw an error** with 
 
 ### 2.1 Task
 
-The richest entity type. 22 methods, 49 getters.
+The richest entity type. OmniJS exposes 49 getters total; the bridge extracts the ~30 listed below. The remainder are either deferred (Section 7), deprecated (Section 3), or explicitly excluded ("Do NOT use" list).
 
 #### Fields
 
@@ -133,7 +142,7 @@ A project wraps a "root task" (`p.task`). They share the same `id`. Some fields 
 | `nextReviewDate` | `p.nextReviewDate` | Date | ✅ | Always present |
 | `reviewInterval` | `p.reviewInterval` | object | ✅ | Has `steps` (number) and `unit` (string, e.g., "weeks", "months") |
 | `nextTask` | `p.nextTask` | Task ref → id | nullable | May return root task itself for non-Active projects |
-| `folder` | `p.folder` | Folder ref → id | nullable | Parent folder (all projects had folders in observed data) |
+| `folder` | `p.parentFolder` | Folder ref → id | nullable | OmniJS accessor is `parentFolder`, not `folder`. All projects had folders in observed data |
 | `tags` | `p.tags` | array of Tag refs → ids | ✅ | Proxied — `p.tags === p.task.tags` |
 | `repetitionRule` | `p.repetitionRule` | object | nullable | See RepetitionRule section |
 | `url` | `p.url` | URL | ✅ | OmniFocus URL scheme link |
@@ -175,12 +184,13 @@ Minimal entity — no dates, flags, or completion.
 | `allowsNextAction` | `t.allowsNextAction` | boolean | ✅ | `false` = OnHold, `true` = Active. Per-tag, not inherited |
 | `added` | `t.added` | Date | ✅ | Always present |
 | `modified` | `t.modified` | Date | ✅ | Always present |
-| `note` | `t.note` | string \| null | nullable | **Always null in practice** — OmniFocus may return null even if UI allows notes on tags |
 | `parent` | `t.parent` | Tag ref → id | nullable | Null for top-level tags (27/65) |
 | `childrenAreMutuallyExclusive` | `t.childrenAreMutuallyExclusive` | boolean | ✅ | E.g., energy levels where only one applies |
 | `url` | `t.url` | URL | ✅ | OmniFocus URL scheme link |
 
 **Dropped tags:** Zero Dropped tags were observed in the database — `active`/`effectiveActive` behavior for Dropped tags is unconfirmed (presumably `false` by analogy with folders, but not empirically verified).
+
+**Tag notes excluded (design decision):** `t.note` exists in OmniJS but returns null on all 65 observed tags. Even if OmniFocus allows tag notes in some edge case, this is niche enough to ignore. The bridge does NOT extract tag notes.
 
 **Tag hierarchy:** OnHold does NOT propagate to child tags. A child tag inside an OnHold parent retains `Active` status, `effectiveActive=true`, `allowsNextAction=true`. Tag-based blocking is purely per-tag — no need to walk the hierarchy.
 
@@ -209,9 +219,10 @@ Simplest entity type — organizational container only.
 | `effectiveActive` | `f.effectiveActive` | boolean | ✅ | Inherits — active folders inside dropped folders get `false` |
 | `added` | `f.added` | Date | ✅ | Always present |
 | `modified` | `f.modified` | Date | ✅ | Always present |
-| `note` | `f.note` | string \| null | nullable | **Always null in practice** (same as tags) |
 | `parent` | `f.parent` | Folder ref → id | nullable | Null for top-level folders (7/79) |
 | `url` | `f.url` | URL | ✅ | OmniFocus URL scheme link |
+
+**Folder notes excluded (design decision):** `f.note` exists in OmniJS but returns null on all 79 observed folders (same as tags). The bridge does NOT extract folder notes.
 
 #### Folder Status Enum
 
@@ -230,16 +241,17 @@ Perspectives have split behavior: built-in vs custom.
 
 | Field | Access Path | Type | Required | Notes |
 |-------|------------|------|----------|-------|
-| `id` | `p.id.primaryKey` | string | **nullable** | ⚠️ Built-in perspectives have `undefined` id (not `null` — use truthiness check, not `=== null`) |
+| `id` | `p.id.primaryKey` | string | **undefined for built-in** | ⚠️ Built-in perspectives have `undefined` id in OmniJS (not `null`). Bridge serializes as `null` in JSON. Use truthiness check, not `=== null` |
 | `name` | `p.name` | string | ✅ | Always present |
 | `identifier` | `p.identifier` | string | nullable | Null for built-in, present for custom |
-| `added` | `p.added` | Date | nullable | Only on custom perspectives |
-| `modified` | `p.modified` | Date | nullable | Only on custom perspectives |
+| `builtin` | `!p.identifier` | boolean | ✅ | **Derived field.** `true` when `identifier` is null/undefined. Convenience for Python — avoids re-deriving from `identifier` |
+| `added` | `p.added` | Date | nullable | Only on custom perspectives (undefined for built-in → null in JSON) |
+| `modified` | `p.modified` | Date | nullable | Only on custom perspectives (undefined for built-in → null in JSON) |
 | `url` | `p.url` | URL | ✅ | OmniFocus URL scheme link |
 
 **Access path:** Use `Perspective.all` (57 perspectives = 7 built-in + 50 custom). Do NOT use `BuiltIn.all + Custom.all` — they sum to 58 ("Search" is in BuiltIn but excluded from `.all`).
 
-**Built-in vs custom:** `identifier === null` → built-in. Built-in perspectives have no `id` (undefined) — must be keyed by name.
+**Built-in vs custom:** `identifier === null` → built-in. Built-in perspectives have no `id` (undefined in OmniJS, null in JSON) — must be keyed by name.
 
 **Built-in perspectives (7):** Inbox, Projects, Tags, Forecast, Flagged, Nearby, Review.
 
@@ -298,6 +310,14 @@ All enums are opaque — `.name` returns `undefined`. Resolve with `===` only. E
 | `Task.AnchorDateKey` | DueDate, DeferDate, PlannedDate | RepetitionRule |
 
 **On unknown values:** Throw an error. Include `String(value)` in the error message — it returns `"[object Type: Value]"` which reveals the type and name for diagnostics. Do NOT iterate `.all` arrays at runtime (OmniFocus freezes on large datasets).
+
+**Per-entity resolvers (bridge):** Each entity type has its own isolated enum namespace — `Project.Status.Active !== Tag.Status.Active`. The bridge MUST use separate resolver functions per entity type (e.g., `resolveProjectStatus()`, `resolveTagStatus()`, `resolveFolderStatus()`). A single shared resolver will not work.
+
+**Per-entity status enums (Python):** The valid status values differ per entity type. Python models MUST use separate enum types — not a shared `EntityStatus`:
+- `ProjectStatus`: Active, OnHold, Done, Dropped
+- `TagStatus`: Active, OnHold, Dropped
+- `FolderStatus`: Active, Dropped
+- `TaskStatus`: Available, Blocked, Completed, Dropped, DueSoon, Next, Overdue
 
 **Deprecated:** `Task.RepetitionMethod` (4 values: None, Fixed, DeferUntilDate, DueDate) — old pre-4.7 API. Ignore in favor of `scheduleType` + `anchorDateKey`.
 
@@ -479,7 +499,7 @@ Too complex for initial bridge implementation. Fully documented in FINDINGS.md S
 ### Listing All Entities
 | Entity | Access Path | Notes |
 |--------|-----------|-------|
-| Tasks | `flattenedTasks` | All tasks in database (2825) — **includes project root tasks**. Bridge must decide: exclude root tasks (they duplicate project data) or mark them |
+| Tasks | `flattenedTasks` | All tasks in database (2825) — **includes project root tasks**. Bridge extracts all of them without filtering (OmniJS iteration is expensive). Python filters root tasks using the project ID set — root tasks share `id.primaryKey` with their project |
 | Projects | `flattenedProjects` | All projects (368) |
 | Tags | `flattenedTags` | All tags (65) |
 | Folders | `flattenedFolders` | All folders (79) |

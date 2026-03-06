@@ -26,10 +26,9 @@
     d.setHours(17, 0, 0, 0);
     return d;
   }
-  function hoursFromNow(n) {
+  function minutesFromNow(n) {
     const d = new Date();
-    d.setHours(d.getHours() + n);
-    d.setMinutes(0, 0, 0);
+    d.setTime(d.getTime() + n * 60 * 1000);
     return d;
   }
 
@@ -88,10 +87,10 @@
   tOverdue.note = "Should be Overdue — due 3 days ago.";
   tagIt(tOverdue);
 
-  // DueSoon: due date today (within threshold)
+  // DueSoon: due date very soon (within threshold — OmniFocus "due soon" = today)
   const tDueSoon = new Task("DueSoon Task", pp);
-  tDueSoon.dueDate = hoursFromNow(6);
-  tDueSoon.note = "Should be DueSoon — due in 6 hours.";
+  tDueSoon.dueDate = minutesFromNow(30);
+  tDueSoon.note = "Should be DueSoon — due in 30 minutes.";
   tagIt(tDueSoon);
 
   // Blocked by defer: future defer date
@@ -166,8 +165,8 @@
   tagIt(sTask3);
 
   const sTask4 = new Task("Seq Task 4 (due soon, fourth)", sp);
-  sTask4.dueDate = hoursFromNow(4);
-  sTask4.note = "Past due soon threshold + sequential blocked. DueSoon or Blocked?";
+  sTask4.dueDate = minutesFromNow(20);
+  sTask4.note = "Due in 20 min + sequential blocked. DueSoon or Blocked?";
   tagIt(sTask4);
 
   r += `  Project: ${sp.name} (id=${sp.id.primaryKey}, sequential=${sp.sequential})\n`;
