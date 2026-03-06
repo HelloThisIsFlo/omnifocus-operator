@@ -10,7 +10,7 @@ Requirements for Milestone 1 — Foundation. Each maps to roadmap phases.
 ### Safety
 
 - [x] **SAFE-01**: No automated test, CI pipeline, or agent execution touches the RealBridge — all automated testing uses InMemoryBridge or SimulatorBridge exclusively
-- [ ] **SAFE-02**: RealBridge interaction is manual UAT only, performed by the user against their live OmniFocus database
+- [x] **SAFE-02**: RealBridge interaction is manual UAT only, performed by the user against their live OmniFocus database
 
 ### Architecture
 
@@ -42,13 +42,13 @@ Requirements for Milestone 1 — Foundation. Each maps to roadmap phases.
 - [x] **SNAP-03**: Repository checks `.ofocus` directory mtime (`st_mtime_ns`) on each read — unchanged mtime serves cached data
 - [x] **SNAP-04**: Changed mtime triggers fresh dump replacing the entire snapshot atomically
 - [x] **SNAP-05**: `asyncio.Lock` prevents parallel MCP calls from each triggering separate dumps
-- [x] **SNAP-06**: Cache is pre-warmed at startup so the first request hits warm data
+- [x] **SNAP-06**: Cache is lazily populated on first tool call (no eager startup hydration)
 
 ### File IPC
 
 - [x] **IPC-01**: File writes use atomic pattern (write `.tmp`, then `os.replace()` to final path)
 - [x] **IPC-02**: All file I/O in async context is non-blocking (via `asyncio.to_thread()` or anyio)
-- [x] **IPC-03**: Dispatch protocol uses `<uuid>::::<operation>` format with UUID4 validation
+- [x] **IPC-03**: Request envelope uses `{operation, params}` JSON format with UUID4 request IDs for file naming
 - [x] **IPC-04**: IPC base directory defaults to OmniFocus 4 sandbox path but is configurable for dev/test
 - [x] **IPC-05**: Response timeout at 10 seconds with actionable error message naming OmniFocus
 - [x] **IPC-06**: Server sweeps orphaned request/response files from IPC directory on startup
@@ -63,8 +63,8 @@ Requirements for Milestone 1 — Foundation. Each maps to roadmap phases.
 ### Testing & Dev
 
 - [x] **TEST-01**: Mock simulator is a standalone Python script that watches for requests and writes test responses
-- [ ] **TEST-02**: Full pipeline is testable via InMemoryBridge with no OmniFocus dependency
-- [ ] **TEST-03**: pytest + pytest-asyncio test suite with tests for each layer
+- [x] **TEST-02**: Full pipeline is testable via InMemoryBridge with no OmniFocus dependency
+- [x] **TEST-03**: pytest + pytest-asyncio test suite with tests for each layer
 
 ## v2 Requirements
 
@@ -115,7 +115,7 @@ Deferred to future milestones. Tracked but not in current roadmap.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | SAFE-01 | Phase 8 | Complete |
-| SAFE-02 | Phase 8 | Pending |
+| SAFE-02 | Phase 8 | Complete |
 | ARCH-01 | Phase 5 | Complete |
 | ARCH-02 | Phase 5 | Complete |
 | ARCH-03 | Phase 1 | Complete |
@@ -147,8 +147,8 @@ Deferred to future milestones. Tracked but not in current roadmap.
 | TOOL-03 | Phase 5 | Complete |
 | TOOL-04 | Phase 5 | Complete |
 | TEST-01 | Phase 7 | Complete |
-| TEST-02 | Phase 8 | Pending |
-| TEST-03 | Phase 8 | Pending |
+| TEST-02 | Phase 8 | Complete |
+| TEST-03 | Phase 8 | Complete |
 
 **Coverage:**
 - v1 requirements: 35 total
@@ -157,4 +157,4 @@ Deferred to future milestones. Tracked but not in current roadmap.
 
 ---
 *Requirements defined: 2026-03-01*
-*Last updated: 2026-03-01 after roadmap creation*
+*Last updated: 2026-03-06 after milestone audit gap closure*
