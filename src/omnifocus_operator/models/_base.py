@@ -2,8 +2,8 @@
 
 Inheritance chain:
     OmniFocusBaseModel  -- ConfigDict with camelCase aliases
-    +-- OmniFocusEntity -- id + name (Tag, Folder inherit directly)
-        +-- ActionableEntity -- shared dates, flags, status (Task, Project inherit)
+    +-- OmniFocusEntity -- id, name, url, added, modified, active, effective_active
+        +-- ActionableEntity -- shared dates, flags, tags, repetition (Task, Project inherit)
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
 if TYPE_CHECKING:
-    from omnifocus_operator.models._common import RepetitionRule
+    from omnifocus_operator.models._common import RepetitionRule, TagRef
 
 
 class OmniFocusBaseModel(BaseModel):
@@ -33,10 +33,19 @@ class OmniFocusBaseModel(BaseModel):
 
 
 class OmniFocusEntity(OmniFocusBaseModel):
-    """Entity with identity fields shared by all OmniFocus object types."""
+    """Entity with identity and universal fields shared by all OmniFocus object types.
+
+    All four entity types (Task, Project, Tag, Folder) have these fields.
+    Perspective does NOT inherit from this class (nullable id, no lifecycle fields).
+    """
 
     id: str
     name: str
+    url: str
+    added: AwareDatetime
+    modified: AwareDatetime
+    active: bool
+    effective_active: bool
 
 
 class ActionableEntity(OmniFocusEntity):
@@ -75,5 +84,5 @@ class ActionableEntity(OmniFocusEntity):
     should_use_floating_time_zone: bool
 
     # Relationships
-    tags: list[str] = []  # Tag names, not IDs (bridge maps g.name)
+    tags: list[TagRef] = []  # Tag references (id + name objects), not bare strings
     repetition_rule: RepetitionRule | None = None

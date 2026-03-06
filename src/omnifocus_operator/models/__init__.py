@@ -11,8 +11,15 @@ from omnifocus_operator.models._base import (
     OmniFocusBaseModel,
     OmniFocusEntity,
 )
-from omnifocus_operator.models._common import RepetitionRule, ReviewInterval
-from omnifocus_operator.models._enums import EntityStatus, TaskStatus
+from omnifocus_operator.models._common import RepetitionRule, ReviewInterval, TagRef
+from omnifocus_operator.models._enums import (
+    AnchorDateKey,
+    FolderStatus,
+    ProjectStatus,
+    ScheduleType,
+    TagStatus,
+    TaskStatus,
+)
 from omnifocus_operator.models._folder import Folder
 from omnifocus_operator.models._perspective import Perspective
 from omnifocus_operator.models._project import Project
@@ -30,7 +37,12 @@ _ns: dict[str, type] = {
     "AwareDatetime": AwareDatetime,
     "RepetitionRule": RepetitionRule,
     "ReviewInterval": ReviewInterval,
-    "EntityStatus": EntityStatus,
+    "TagRef": TagRef,
+    "ProjectStatus": ProjectStatus,
+    "TagStatus": TagStatus,
+    "FolderStatus": FolderStatus,
+    "ScheduleType": ScheduleType,
+    "AnchorDateKey": AnchorDateKey,
     "TaskStatus": TaskStatus,
     "Task": Task,
     "Project": Project,
@@ -38,6 +50,7 @@ _ns: dict[str, type] = {
     "Folder": Folder,
     "Perspective": Perspective,
 }
+RepetitionRule.model_rebuild(_types_namespace=_ns)
 ActionableEntity.model_rebuild(_types_namespace=_ns)
 Task.model_rebuild(_types_namespace=_ns)
 Project.model_rebuild(_types_namespace=_ns)
@@ -47,16 +60,21 @@ DatabaseSnapshot.model_rebuild(_types_namespace=_ns)
 
 __all__ = [
     "ActionableEntity",
+    "AnchorDateKey",
     "DatabaseSnapshot",
-    "EntityStatus",
     "Folder",
+    "FolderStatus",
     "OmniFocusBaseModel",
     "OmniFocusEntity",
     "Perspective",
     "Project",
+    "ProjectStatus",
     "RepetitionRule",
     "ReviewInterval",
+    "ScheduleType",
     "Tag",
+    "TagRef",
+    "TagStatus",
     "Task",
     "TaskStatus",
 ]

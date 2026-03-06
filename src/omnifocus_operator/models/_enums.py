@@ -2,7 +2,11 @@
 
 Values match the exact strings produced by the bridge script:
 - TaskStatus: from the ts() function mapping Task.Status values
-- EntityStatus: from .status.name property on Project, Tag, Folder
+- ProjectStatus: from the bridge ps() resolver
+- TagStatus: from the bridge gs() resolver
+- FolderStatus: from the bridge fs() resolver
+- ScheduleType: from the bridge rst() resolver
+- AnchorDateKey: from the bridge adk() resolver
 """
 
 from enum import StrEnum
@@ -20,9 +24,41 @@ class TaskStatus(StrEnum):
     OVERDUE = "Overdue"
 
 
-class EntityStatus(StrEnum):
-    """Lifecycle status for projects, tags, and folders (from .status.name)."""
+class ProjectStatus(StrEnum):
+    """Lifecycle status for projects (from bridge ps() resolver)."""
 
     ACTIVE = "Active"
+    ON_HOLD = "OnHold"
     DONE = "Done"
     DROPPED = "Dropped"
+
+
+class TagStatus(StrEnum):
+    """Lifecycle status for tags (from bridge gs() resolver)."""
+
+    ACTIVE = "Active"
+    ON_HOLD = "OnHold"
+    DROPPED = "Dropped"
+
+
+class FolderStatus(StrEnum):
+    """Lifecycle status for folders (from bridge fs() resolver)."""
+
+    ACTIVE = "Active"
+    DROPPED = "Dropped"
+
+
+class ScheduleType(StrEnum):
+    """Repetition schedule type (from bridge rst() resolver)."""
+
+    REGULARLY = "Regularly"
+    FROM_COMPLETION = "FromCompletion"
+    NONE = "None"
+
+
+class AnchorDateKey(StrEnum):
+    """Anchor date key for repetition rules (from bridge adk() resolver)."""
+
+    DUE_DATE = "DueDate"
+    DEFER_DATE = "DeferDate"
+    PLANNED_DATE = "PlannedDate"
