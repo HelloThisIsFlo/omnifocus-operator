@@ -10,13 +10,14 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, patch
 
 import anyio
-import pytest
 from mcp.client.session import ClientSession
 from mcp.server.fastmcp import FastMCP
 from mcp.shared.message import SessionMessage
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Awaitable, Callable
+
+    import pytest
 
     from omnifocus_operator.repository._repository import OmniFocusRepository
     from omnifocus_operator.service._service import OperatorService
@@ -128,18 +129,19 @@ class TestARCH02BridgeInjection:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """SAFE-01: Default 'real' bridge type is refused by factory guard during pytest."""
+        """SAFE-01: Default 'real' bridge enters degraded mode during pytest."""
         monkeypatch.delenv("OMNIFOCUS_BRIDGE", raising=False)
         from omnifocus_operator.server import create_server
 
         server = create_server()
 
-        with pytest.raises(ExceptionGroup) as exc_info:
-            await run_with_client(server, lambda s: s.list_tools())
+        async def _check(session: ClientSession) -> None:
+            result = await session.call_tool("list_all")
+            assert result.isError is True
+            text = result.content[0].text  # type: ignore[union-attr]
+            assert "failed to start" in text.lower()
 
-        # SAFE-01 factory guard raises RuntimeError when PYTEST_CURRENT_TEST is set
-        errors = exc_info.value.exceptions
-        assert any(isinstance(e, RuntimeError) for e in errors)
+        await run_with_client(server, _check)
 
 
 # ---------------------------------------------------------------------------
@@ -444,3 +446,92 @@ class TestIPC06OrphanSweepWiring:
             await run_with_client(server, _check)
 
         mock_sweep.assert_called_once_with(ipc_path)
+
+
+# ---------------------------------------------------------------------------
+# ERR: Degraded mode (error-serving)
+# ---------------------------------------------------------------------------
+
+
+class TestDegradedMode:
+    """Verify the server enters degraded mode on fatal startup errors."""
+
+    async def test_tool_call_returns_error_when_lifespan_fails(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Tool calls return isError=True with actionable message when startup fails."""
+        monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
+
+        with patch(
+            "omnifocus_operator.bridge.create_bridge",
+            side_effect=RuntimeError("bridge exploded"),
+        ):
+            from omnifocus_operator.server._server import _register_tools, app_lifespan
+
+            server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
+            _register_tools(server)
+
+            async def _check(session: ClientSession) -> None:
+                result = await session.call_tool("list_all")
+                assert result.isError is True
+                text = result.content[0].text  # type: ignore[union-attr]
+                assert "failed to start" in text.lower()
+
+            await run_with_client(server, _check)
+
+    async def test_degraded_mode_logs_traceback_at_error_level(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Full traceback is logged at ERROR level when startup fails."""
+        import logging
+
+        monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
+
+        with patch(
+            "omnifocus_operator.bridge.create_bridge",
+            side_effect=RuntimeError("bridge exploded"),
+        ):
+            from omnifocus_operator.server._server import _register_tools, app_lifespan
+
+            server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
+            _register_tools(server)
+
+            with caplog.at_level(logging.ERROR):
+
+                async def _check(session: ClientSession) -> None:
+                    await session.call_tool("list_all")
+
+                await run_with_client(server, _check)
+
+        assert any("Fatal error during startup" in r.message for r in caplog.records)
+
+    async def test_degraded_mode_logs_warning_on_tool_call(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """WARNING is logged for each tool call in degraded mode."""
+        import logging
+
+        monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
+
+        with patch(
+            "omnifocus_operator.bridge.create_bridge",
+            side_effect=RuntimeError("bridge exploded"),
+        ):
+            from omnifocus_operator.server._server import _register_tools, app_lifespan
+
+            server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
+            _register_tools(server)
+
+            with caplog.at_level(logging.WARNING):
+
+                async def _check(session: ClientSession) -> None:
+                    await session.call_tool("list_all")
+
+                await run_with_client(server, _check)
+
+        assert any("error mode" in r.message.lower() for r in caplog.records)

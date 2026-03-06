@@ -135,3 +135,55 @@ class TestCreateBridge:
     def test_unknown_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="Unknown bridge type"):
             create_bridge("something_else")
+
+
+# ---------------------------------------------------------------------------
+# ErrorOperatorService
+# ---------------------------------------------------------------------------
+
+
+class TestErrorOperatorService:
+    """ErrorOperatorService serves startup errors through tool responses."""
+
+    def test_getattr_raises_runtime_error(self) -> None:
+        from omnifocus_operator.service import ErrorOperatorService
+
+        service = ErrorOperatorService(ValueError("bad config"))
+
+        with pytest.raises(RuntimeError, match="OmniFocus Operator failed to start"):
+            _ = service._repository
+
+    def test_getattr_raises_for_arbitrary_attribute(self) -> None:
+        from omnifocus_operator.service import ErrorOperatorService
+
+        service = ErrorOperatorService(ValueError("bad config"))
+
+        with pytest.raises(RuntimeError, match="bad config"):
+            _ = service.some_future_method
+
+    def test_error_message_includes_restart_instruction(self) -> None:
+        from omnifocus_operator.service import ErrorOperatorService
+
+        service = ErrorOperatorService(ValueError("bad config"))
+
+        with pytest.raises(RuntimeError, match="Restart the server after fixing"):
+            _ = service._repository
+
+    def test_getattr_logs_warning(self, caplog: pytest.LogCaptureFixture) -> None:
+        import logging
+
+        from omnifocus_operator.service import ErrorOperatorService
+
+        service = ErrorOperatorService(ValueError("bad config"))
+
+        with caplog.at_level(logging.WARNING), pytest.raises(RuntimeError):
+            _ = service._repository
+
+        assert any("error mode" in r.message.lower() for r in caplog.records)
+
+    def test_does_not_call_super_init(self) -> None:
+        from omnifocus_operator.service import ErrorOperatorService
+
+        service = ErrorOperatorService(ValueError("x"))
+
+        assert not hasattr(service, "_repository")
