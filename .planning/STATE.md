@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 08.2-01-PLAN.md
-last_updated: "2026-03-06T02:00:45.325Z"
-last_activity: 2026-03-06 -- 08.2-01 bridge JS BRIDGE-SPEC alignment complete
+stopped_at: Completed 08.2-02-PLAN.md
+last_updated: "2026-03-06T02:06:14.759Z"
+last_activity: 2026-03-06 -- 08.2-02 Python models BRIDGE-SPEC alignment complete
 progress:
   total_phases: 10
   completed_phases: 8
   total_plans: 22
-  completed_plans: 19
-  percent: 86
+  completed_plans: 20
+  percent: 91
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-01)
 ## Current Position
 
 Phase: 08.2 of 10 (Enforce fail-fast model fields, fix bridge status helpers, redesign RepetitionRule)
-Plan: 1 of 3 in current phase (08.2-01 complete)
+Plan: 2 of 3 in current phase (08.2-02 complete)
 Status: In progress -- executing phase 08.2
-Last activity: 2026-03-06 -- 08.2-01 bridge JS BRIDGE-SPEC alignment complete
+Last activity: 2026-03-06 -- 08.2-02 Python models BRIDGE-SPEC alignment complete
 
-Progress: [█████████░] 86%
+Progress: [█████████░] 91%
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ Progress: [█████████░] 86%
 | Phase 08.1 P02 | 1 min | 2 tasks | 6 files |
 | Phase 08.1 P03 | 4 min | 2 tasks | 5 files |
 | Phase 08.2 P01 | 3 | 2 tasks | 2 files |
+| Phase 08.2 P02 | 2 | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -119,6 +120,10 @@ Recent decisions affecting current work:
 - [Phase 08.2]: Tags serialized as {id, name} objects instead of bare name strings
 - [Phase 08.2]: Perspective builtin field removed from bridge (derived in Python from id is None)
 - [Phase 08.2]: Project active/effectiveActive/added/modified read from p.task.* (undefined on p.*)
+- [Phase 08.2]: Tasks 1+2 committed atomically because mypy pre-commit hook checks the full models package
+- [Phase 08.2]: OmniFocusEntity.added and .modified are required (non-nullable) per BRIDGE-SPEC
+- [Phase 08.2]: Project review fields (last_review_date, next_review_date, review_interval) made required per BRIDGE-SPEC
+- [Phase 08.2]: Tag gains children_are_mutually_exclusive field per BRIDGE-SPEC
 
 ### Pending Todos
 
@@ -138,6 +143,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-06T02:00:45.322Z
-Stopped at: Completed 08.2-01-PLAN.md
+Last session: 2026-03-06T02:06:14.756Z
+Stopped at: Completed 08.2-02-PLAN.md
 Next action: Execute 08.1-04-PLAN.md
