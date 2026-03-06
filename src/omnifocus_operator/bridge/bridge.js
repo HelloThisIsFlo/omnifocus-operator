@@ -23,18 +23,10 @@ function pk(v) {
     return v ? v.id.primaryKey : null;
 }
 
-function rr(v) {
-    if (!v) return null;
-    var st = v.scheduleType;
-    return {
-        ruleString: v.ruleString,
-        scheduleType: st && st.name ? st.name : null,
-    };
-}
-
-function ri(v) {
-    return v ? { steps: v.steps, unit: v.unit } : null;
-}
+// --- Enum resolvers ---
+// OmniFocus enums are opaque objects. .name returns undefined.
+// Only === comparison against known constants works.
+// All resolvers throw on unknown values (fail-fast at bridge boundary).
 
 function ts(s) {
     if (s === Task.Status.Available) return "Available";
@@ -44,7 +36,56 @@ function ts(s) {
     if (s === Task.Status.DueSoon) return "DueSoon";
     if (s === Task.Status.Next) return "Next";
     if (s === Task.Status.Overdue) return "Overdue";
-    return null;
+    throw new Error("Unknown TaskStatus: " + String(s));
+}
+
+function ps(s) {
+    if (s === Project.Status.Active) return "Active";
+    if (s === Project.Status.OnHold) return "OnHold";
+    if (s === Project.Status.Done) return "Done";
+    if (s === Project.Status.Dropped) return "Dropped";
+    throw new Error("Unknown ProjectStatus: " + String(s));
+}
+
+function gs(s) {
+    if (s === Tag.Status.Active) return "Active";
+    if (s === Tag.Status.OnHold) return "OnHold";
+    if (s === Tag.Status.Dropped) return "Dropped";
+    throw new Error("Unknown TagStatus: " + String(s));
+}
+
+function fs(s) {
+    if (s === Folder.Status.Active) return "Active";
+    if (s === Folder.Status.Dropped) return "Dropped";
+    throw new Error("Unknown FolderStatus: " + String(s));
+}
+
+function rst(s) {
+    if (s === Task.RepetitionScheduleType.Regularly) return "Regularly";
+    if (s === Task.RepetitionScheduleType.FromCompletion) return "FromCompletion";
+    if (s === Task.RepetitionScheduleType.None) return "None";
+    throw new Error("Unknown RepetitionScheduleType: " + String(s));
+}
+
+function adk(s) {
+    if (s === Task.AnchorDateKey.DueDate) return "DueDate";
+    if (s === Task.AnchorDateKey.DeferDate) return "DeferDate";
+    if (s === Task.AnchorDateKey.PlannedDate) return "PlannedDate";
+    throw new Error("Unknown AnchorDateKey: " + String(s));
+}
+
+function rr(v) {
+    if (!v) return null;
+    return {
+        ruleString: v.ruleString,
+        scheduleType: rst(v.scheduleType),
+        anchorDateKey: adk(v.anchorDateKey),
+        catchUpAutomatically: v.catchUpAutomatically,
+    };
+}
+
+function ri(v) {
+    return v ? { steps: v.steps, unit: v.unit } : null;
 }
 
 // --- IPC functions ---
@@ -72,6 +113,7 @@ function handleSnapshot() {
             return {
                 id: t.id.primaryKey,
                 name: t.name,
+                url: t.url.toString(),
                 note: t.note,
                 added: d(t.added),
                 modified: d(t.modified),
@@ -100,9 +142,8 @@ function handleSnapshot() {
                 repetitionRule: rr(t.repetitionRule),
                 project: pk(t.containingProject),
                 parent: pk(t.parent),
-                assignedContainer: pk(t.assignedContainer),
                 tags: t.tags.map(function (g) {
-                    return g.name;
+                    return { id: g.id.primaryKey, name: g.name };
                 }),
             };
         }),
@@ -111,9 +152,14 @@ function handleSnapshot() {
             return {
                 id: p.id.primaryKey,
                 name: p.name,
+                url: p.url.toString(),
                 note: p.note,
-                status: p.status ? p.status.name : null,
-                taskStatus: ts(p.taskStatus),
+                status: ps(p.status),
+                taskStatus: ts(p.task.taskStatus),
+                active: p.task.active,
+                effectiveActive: p.task.effectiveActive,
+                added: d(p.task.added),
+                modified: d(p.task.modified),
                 completed: p.completed,
                 completedByChildren: p.completedByChildren,
                 completionDate: d(p.completionDate),
@@ -140,7 +186,7 @@ function handleSnapshot() {
                 nextTask: pk(p.nextTask),
                 folder: pk(p.parentFolder),
                 tags: p.tags.map(function (g) {
-                    return g.name;
+                    return { id: g.id.primaryKey, name: g.name };
                 }),
             };
         }),
@@ -149,12 +195,14 @@ function handleSnapshot() {
             return {
                 id: g.id.primaryKey,
                 name: g.name,
+                url: g.url.toString(),
                 added: d(g.added),
                 modified: d(g.modified),
                 active: g.active,
                 effectiveActive: g.effectiveActive,
-                status: g.status ? g.status.name : null,
+                status: gs(g.status),
                 allowsNextAction: g.allowsNextAction,
+                childrenAreMutuallyExclusive: g.childrenAreMutuallyExclusive,
                 parent: pk(g.parent),
             };
         }),
@@ -163,20 +211,20 @@ function handleSnapshot() {
             return {
                 id: f.id.primaryKey,
                 name: f.name,
+                url: f.url.toString(),
                 added: d(f.added),
                 modified: d(f.modified),
                 active: f.active,
                 effectiveActive: f.effectiveActive,
-                status: f.status ? f.status.name : null,
+                status: fs(f.status),
                 parent: pk(f.parent),
             };
         }),
 
         perspectives: Perspective.all.map(function (p) {
             return {
-                id: p.identifier || null,
+                id: p.id ? p.id.primaryKey : null,
                 name: p.name,
-                builtin: !p.identifier,
             };
         }),
     };
@@ -234,5 +282,10 @@ if (typeof module !== "undefined") {
         rr: rr,
         ri: ri,
         ts: ts,
+        ps: ps,
+        gs: gs,
+        fs: fs,
+        rst: rst,
+        adk: adk,
     };
 }
