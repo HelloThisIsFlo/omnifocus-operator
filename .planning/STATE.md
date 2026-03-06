@@ -135,6 +135,9 @@ Recent decisions affecting current work:
 2. **Defer cache hydration to first read instead of server startup** (api) — Preloading freezes OmniFocus on every Claude session start; hydrate lazily on first read
 3. **Redesign RepetitionRule model with full OmniFocus fields** (models) — Current 2-field model is temporary; OmniFocus exposes 4 fields per deep dive research
 4. **Enforce fail-fast on model nullable fields and simplify bridge status helpers** (models) — 8 fields incorrectly nullable; create es() switch for EntityStatus; fix ts() fallback to throw
+5. **Add retry logic for OmniFocus bridge timeouts** (bridge) — Potential reliability improvement; single timeout = immediate failure currently
+6. **Investigate macOS App Nap impact on OmniFocus responsiveness** (bridge) — OmniFocus may hang when backgrounded; needs reproduction and investigation
+7. **Make UAT folder discoverable for verification agents** (docs) — `uat/` not documented; verification agents can't find UAT scripts
 
 ### Roadmap Evolution
 
