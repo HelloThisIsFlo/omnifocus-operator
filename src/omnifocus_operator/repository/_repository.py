@@ -67,14 +67,6 @@ class OmniFocusRepository:
 
             return self._snapshot
 
-    async def initialize(self) -> None:
-        """Pre-warm the cache by fetching the first snapshot.
-
-        Call this at startup so the first external request hits warm data.
-        Errors propagate to the caller (fail-fast).
-        """
-        await self.get_snapshot()
-
     async def _refresh(self, current_mtime: int) -> DatabaseSnapshot:
         """Fetch a fresh snapshot from the bridge and update cache state.
 

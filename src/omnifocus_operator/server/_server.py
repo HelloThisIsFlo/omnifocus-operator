@@ -31,7 +31,7 @@ logger = logging.getLogger("omnifocus_operator")
 
 @asynccontextmanager
 async def app_lifespan(app: FastMCP) -> AsyncIterator[dict[str, object]]:
-    """Create the service stack and pre-warm the repository cache.
+    """Create the service stack and yield it for tool handlers.
 
     The bridge type is read from ``OMNIFOCUS_BRIDGE`` (default ``"real"``).
     For ``"inmemory"`` and ``"simulator"`` a ``ConstantMtimeSource`` is
@@ -74,14 +74,6 @@ async def app_lifespan(app: FastMCP) -> AsyncIterator[dict[str, object]]:
 
     repository = OmniFocusRepository(bridge=bridge, mtime_source=mtime_source)
     service = OperatorService(repository=repository)
-
-    logger.info("Pre-warming repository cache...")
-    try:
-        await repository.initialize()
-    except Exception:
-        logger.exception("Failed to pre-warm repository cache")
-        raise
-    logger.info("Cache pre-warmed successfully")
 
     yield {"service": service}
 
