@@ -14,7 +14,7 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
 if TYPE_CHECKING:
-    from omnifocus_operator.models._common import RepetitionRule, TagRef
+    from omnifocus_operator.models.common import RepetitionRule, TagRef
 
 
 class OmniFocusBaseModel(BaseModel):

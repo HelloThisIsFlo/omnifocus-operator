@@ -8,13 +8,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from omnifocus_operator.models._base import ActionableEntity
+from omnifocus_operator.models.base import ActionableEntity
 
 if TYPE_CHECKING:
     from pydantic import AwareDatetime
 
-    from omnifocus_operator.models._common import ReviewInterval
-    from omnifocus_operator.models._enums import ProjectStatus, TaskStatus
+    from omnifocus_operator.models.common import ReviewInterval
+    from omnifocus_operator.models.enums import ProjectStatus, TaskStatus
 
 
 class Project(ActionableEntity):

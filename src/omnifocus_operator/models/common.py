@@ -10,10 +10,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from omnifocus_operator.models._base import OmniFocusBaseModel
+from omnifocus_operator.models.base import OmniFocusBaseModel
 
 if TYPE_CHECKING:
-    from omnifocus_operator.models._enums import AnchorDateKey, ScheduleType
+    from omnifocus_operator.models.enums import AnchorDateKey, ScheduleType
 
 
 class TagRef(OmniFocusBaseModel):

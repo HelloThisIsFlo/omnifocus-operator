@@ -15,12 +15,12 @@ ConstantMtimeSource
 
 from __future__ import annotations
 
-from omnifocus_operator.repository._mtime import (
+from omnifocus_operator.repository._repository import OmniFocusRepository
+from omnifocus_operator.repository.mtime import (
     ConstantMtimeSource,
     FileMtimeSource,
     MtimeSource,
 )
-from omnifocus_operator.repository._repository import OmniFocusRepository
 
 __all__ = [
     "ConstantMtimeSource",

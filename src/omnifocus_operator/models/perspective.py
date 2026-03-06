@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from pydantic import computed_field
 
-from omnifocus_operator.models._base import OmniFocusBaseModel
+from omnifocus_operator.models.base import OmniFocusBaseModel
 
 
 class Perspective(OmniFocusBaseModel):

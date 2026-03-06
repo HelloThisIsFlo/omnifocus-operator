@@ -16,11 +16,11 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any
 
-from omnifocus_operator.models._snapshot import DatabaseSnapshot
+from omnifocus_operator.models.snapshot import DatabaseSnapshot
 
 if TYPE_CHECKING:
     from omnifocus_operator.bridge._protocol import Bridge
-    from omnifocus_operator.repository._mtime import MtimeSource
+    from omnifocus_operator.repository.mtime import MtimeSource
 
 
 class OmniFocusRepository:

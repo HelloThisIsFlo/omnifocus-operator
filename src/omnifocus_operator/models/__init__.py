@@ -6,13 +6,13 @@ re-exported here for convenient importing.
 
 from pydantic import AwareDatetime
 
-from omnifocus_operator.models._base import (
+from omnifocus_operator.models.base import (
     ActionableEntity,
     OmniFocusBaseModel,
     OmniFocusEntity,
 )
-from omnifocus_operator.models._common import RepetitionRule, ReviewInterval, TagRef
-from omnifocus_operator.models._enums import (
+from omnifocus_operator.models.common import RepetitionRule, ReviewInterval, TagRef
+from omnifocus_operator.models.enums import (
     AnchorDateKey,
     FolderStatus,
     ProjectStatus,
@@ -20,12 +20,12 @@ from omnifocus_operator.models._enums import (
     TagStatus,
     TaskStatus,
 )
-from omnifocus_operator.models._folder import Folder
-from omnifocus_operator.models._perspective import Perspective
-from omnifocus_operator.models._project import Project
-from omnifocus_operator.models._snapshot import DatabaseSnapshot
-from omnifocus_operator.models._tag import Tag
-from omnifocus_operator.models._task import Task
+from omnifocus_operator.models.folder import Folder
+from omnifocus_operator.models.perspective import Perspective
+from omnifocus_operator.models.project import Project
+from omnifocus_operator.models.snapshot import DatabaseSnapshot
+from omnifocus_operator.models.tag import Tag
+from omnifocus_operator.models.task import Task
 
 # Resolve forward references now that all modules are imported.
 # Entity modules use TYPE_CHECKING imports for ruff TC compliance.

@@ -8,10 +8,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from omnifocus_operator.models._base import OmniFocusEntity
+from omnifocus_operator.models.base import OmniFocusEntity
 
 if TYPE_CHECKING:
-    from omnifocus_operator.models._enums import TagStatus
+    from omnifocus_operator.models.enums import TagStatus
 
 
 class Tag(OmniFocusEntity):

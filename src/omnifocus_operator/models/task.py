@@ -8,10 +8,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from omnifocus_operator.models._base import ActionableEntity
+from omnifocus_operator.models.base import ActionableEntity
 
 if TYPE_CHECKING:
-    from omnifocus_operator.models._enums import TaskStatus
+    from omnifocus_operator.models.enums import TaskStatus
 
 
 class Task(ActionableEntity):

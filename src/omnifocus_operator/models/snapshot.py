@@ -8,14 +8,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from omnifocus_operator.models._base import OmniFocusBaseModel
+from omnifocus_operator.models.base import OmniFocusBaseModel
 
 if TYPE_CHECKING:
-    from omnifocus_operator.models._folder import Folder
-    from omnifocus_operator.models._perspective import Perspective
-    from omnifocus_operator.models._project import Project
-    from omnifocus_operator.models._tag import Tag
-    from omnifocus_operator.models._task import Task
+    from omnifocus_operator.models.folder import Folder
+    from omnifocus_operator.models.perspective import Perspective
+    from omnifocus_operator.models.project import Project
+    from omnifocus_operator.models.tag import Tag
+    from omnifocus_operator.models.task import Task
 
 
 class DatabaseSnapshot(OmniFocusBaseModel):
