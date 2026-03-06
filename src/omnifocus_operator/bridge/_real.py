@@ -20,22 +20,35 @@ from omnifocus_operator.bridge._errors import (
     BridgeTimeoutError,
 )
 
-DEFAULT_IPC_DIR: Path = (
-    Path.home()
-    / "Library"
-    / "Containers"
-    / "com.omnigroup.OmniFocus4"
-    / "Data"
-    / "Documents"
-    / "omnifocus-operator"
-    / "ipc"
-)
+OMNIFOCUS_CONTAINER: Path = Path.home() / "Library" / "Containers" / "com.omnigroup.OmniFocus4"
+"""Root of the OmniFocus 4 sandboxed container on macOS.
+
+Both the IPC directory and the ``.ofocus`` database bundle live under
+this container.  A single shared root means path changes only need
+updating in one place.
+"""
+
+DEFAULT_IPC_DIR: Path = OMNIFOCUS_CONTAINER / "Data" / "Documents" / "omnifocus-operator" / "ipc"
 """Default IPC directory for OmniFocus 4.
 
 This path must be under OmniFocus's ``URL.documentsDirectory``
 (``~/Library/Containers/com.omnigroup.OmniFocus4/Data/Documents/``)
 because URL scheme scripts can only write files within that sandbox
 location via ``FileWrapper.write()``.
+"""
+
+DEFAULT_OFOCUS_PATH: Path = (
+    OMNIFOCUS_CONTAINER
+    / "Data"
+    / "Library"
+    / "Application Support"
+    / "OmniFocus"
+    / "OmniFocus.ofocus"
+)
+"""Default path to the OmniFocus 4 ``.ofocus`` database bundle.
+
+Used by ``FileMtimeSource`` to detect when the database has changed.
+Override via the ``OMNIFOCUS_OFOCUS_PATH`` environment variable.
 """
 
 _IPC_FILE_RE: re.Pattern[str] = re.compile(r"^(\d+)_[0-9a-f-]+\.(request|response)\.json(\.tmp)?$")

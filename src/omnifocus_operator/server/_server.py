@@ -59,26 +59,28 @@ async def app_lifespan(app: FastMCP) -> AsyncIterator[dict[str, object]]:
     if bridge_type in ("inmemory", "simulator"):
         mtime_source = ConstantMtimeSource()
     else:  # pragma: no cover — SAFE-01: real bridge path, tested via UAT
-        from pathlib import Path
-
+        from omnifocus_operator.bridge._real import DEFAULT_OFOCUS_PATH
         from omnifocus_operator.repository import FileMtimeSource
 
-        default_ofocus = str(
-            Path.home()
-            / "Library"
-            / "Group Containers"
-            / "34YW5A73WQ.com.omnigroup.OmniFocus"
-            / "com.omnigroup.OmniFocus4"
-            / "OmniFocus.ofocus"
-        )
-        ofocus_path = os.environ.get("OMNIFOCUS_OFOCUS_PATH", default_ofocus)
+        ofocus_path = os.environ.get("OMNIFOCUS_OFOCUS_PATH", str(DEFAULT_OFOCUS_PATH))
+        if not os.path.exists(ofocus_path):
+            logger.error(
+                "OmniFocus database not found at: %s — "
+                "set OMNIFOCUS_OFOCUS_PATH or verify OmniFocus 4 is installed.",
+                ofocus_path,
+            )
+            raise FileNotFoundError(f"OmniFocus database not found: {ofocus_path}")
         mtime_source = FileMtimeSource(path=ofocus_path)
 
     repository = OmniFocusRepository(bridge=bridge, mtime_source=mtime_source)
     service = OperatorService(repository=repository)
 
     logger.info("Pre-warming repository cache...")
-    await repository.initialize()
+    try:
+        await repository.initialize()
+    except Exception:
+        logger.exception("Failed to pre-warm repository cache")
+        raise
     logger.info("Cache pre-warmed successfully")
 
     yield {"service": service}

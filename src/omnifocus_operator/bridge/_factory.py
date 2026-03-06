@@ -173,7 +173,8 @@ def create_bridge(bridge_type: str) -> Bridge:
 
             ipc_dir_str = os.environ.get("OMNIFOCUS_IPC_DIR")
             ipc_dir = Path(ipc_dir_str) if ipc_dir_str else DEFAULT_IPC_DIR
-            return RealBridge(ipc_dir=ipc_dir)
+            timeout = float(os.environ.get("OMNIFOCUS_BRIDGE_TIMEOUT", "10"))
+            return RealBridge(ipc_dir=ipc_dir, timeout=timeout)
         case _:
             msg = f"Unknown bridge type: {bridge_type!r}. Use: inmemory, simulator, real"
             raise ValueError(msg)

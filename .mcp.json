@@ -4,11 +4,15 @@
       "command": "/Users/flo/.local/bin/uv",
       "args": [
         "run",
-        "--directory", "/Users/flo/Work/Private/Dev/MCP/omnifocus-operator",
-        "python", "-m", "omnifocus_operator"
+        "--directory",
+        "/Users/flo/Work/Private/Dev/MCP/omnifocus-operator",
+        "python",
+        "-m",
+        "omnifocus_operator"
       ],
       "env": {
-        "OMNIFOCUS_BRIDGE": "inmemory"
+        "OMNIFOCUS_BRIDGE": "real",
+        "OMNIFOCUS_BRIDGE_TIMEOUT": "30"
       }
     }
   }
