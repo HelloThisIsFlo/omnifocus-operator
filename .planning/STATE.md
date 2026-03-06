@@ -135,6 +135,7 @@ Recent decisions affecting current work:
 2. **Add retry logic for OmniFocus bridge timeouts** (bridge) — Potential reliability improvement; single timeout = immediate failure currently
 3. **Investigate macOS App Nap impact on OmniFocus responsiveness** (bridge) — OmniFocus may hang when backgrounded; needs reproduction and investigation
 4. **Make UAT folder discoverable for verification agents** (docs) — `uat/` not documented; verification agents can't find UAT scripts
+5. **Implement error-serving degraded mode instead of crashing on fatal startup errors** (server) — MCP servers are headless; crashes are invisible. Serve errors through tool responses instead.
 
 ### Roadmap Evolution
 
