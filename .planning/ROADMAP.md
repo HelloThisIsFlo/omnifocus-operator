@@ -213,3 +213,13 @@ Plans:
 - [ ] 08.1-02-PLAN.md — Rename dump_all to snapshot across entire codebase
 - [ ] 08.1-03-PLAN.md — IPC protocol overhaul + bridge.js loading + simulator update
 - [ ] 08.1-04-PLAN.md — Makefile unified test command + UAT checkpoint
+
+### Phase 9: Error-Serving Degraded Mode
+
+**Goal:** Fatal startup errors are caught and served as actionable tool responses instead of crashing the headless MCP server -- the agent discovers the error on first tool call with a clear message and restart instruction
+**Requirements**: ERR-01, ERR-02, ERR-03, ERR-04, ERR-05, ERR-06, ERR-07
+**Depends on:** Phase 8
+**Plans:** 1 plan
+
+Plans:
+- [ ] 09-01-PLAN.md — ErrorOperatorService, lifespan try/except, simplified __main__.py, full test coverage
