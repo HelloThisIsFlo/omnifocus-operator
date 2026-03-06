@@ -38,46 +38,58 @@ async def app_lifespan(app: FastMCP) -> AsyncIterator[dict[str, object]]:
     used (no cache invalidation).  The ``"real"`` bridge type requires a
     ``FileMtimeSource`` which watches the ``.ofocus`` bundle mtime.
     """
-    from omnifocus_operator.bridge import create_bridge, sweep_orphaned_files
-    from omnifocus_operator.repository import ConstantMtimeSource, MtimeSource, OmniFocusRepository
-    from omnifocus_operator.service import OperatorService
+    try:
+        from omnifocus_operator.bridge import create_bridge, sweep_orphaned_files
+        from omnifocus_operator.repository import (
+            ConstantMtimeSource,
+            MtimeSource,
+            OmniFocusRepository,
+        )
+        from omnifocus_operator.service import OperatorService
 
-    bridge_type = os.environ.get("OMNIFOCUS_BRIDGE", "real")
-    logger.info("Bridge type: %s", bridge_type)
+        bridge_type = os.environ.get("OMNIFOCUS_BRIDGE", "real")
+        logger.info("Bridge type: %s", bridge_type)
 
-    bridge = create_bridge(bridge_type)
+        bridge = create_bridge(bridge_type)
 
-    # Sweep orphaned IPC files from dead processes (only for bridge types with IPC)
-    if hasattr(bridge, "ipc_dir"):
-        logger.info("Sweeping orphaned IPC files...")
-        await sweep_orphaned_files(bridge.ipc_dir)
-        logger.info("IPC sweep complete")
+        # Sweep orphaned IPC files from dead processes (only for bridge types with IPC)
+        if hasattr(bridge, "ipc_dir"):
+            logger.info("Sweeping orphaned IPC files...")
+            await sweep_orphaned_files(bridge.ipc_dir)
+            logger.info("IPC sweep complete")
 
-    # ConstantMtimeSource for inmemory/simulator (no cache invalidation needed)
-    # FileMtimeSource for real (watches .ofocus bundle mtime)
-    mtime_source: MtimeSource
-    if bridge_type in ("inmemory", "simulator"):
-        mtime_source = ConstantMtimeSource()
-    else:  # pragma: no cover — SAFE-01: real bridge path, tested via UAT
-        from omnifocus_operator.bridge._real import DEFAULT_OFOCUS_PATH
-        from omnifocus_operator.repository import FileMtimeSource
+        # ConstantMtimeSource for inmemory/simulator (no cache invalidation needed)
+        # FileMtimeSource for real (watches .ofocus bundle mtime)
+        mtime_source: MtimeSource
+        if bridge_type in ("inmemory", "simulator"):
+            mtime_source = ConstantMtimeSource()
+        else:  # pragma: no cover — SAFE-01: real bridge path, tested via UAT
+            from omnifocus_operator.bridge._real import DEFAULT_OFOCUS_PATH
+            from omnifocus_operator.repository import FileMtimeSource
 
-        ofocus_path = os.environ.get("OMNIFOCUS_OFOCUS_PATH", str(DEFAULT_OFOCUS_PATH))
-        if not os.path.exists(ofocus_path):
-            logger.error(
-                "OmniFocus database not found at: %s — "
-                "set OMNIFOCUS_OFOCUS_PATH or verify OmniFocus 4 is installed.",
-                ofocus_path,
-            )
-            raise FileNotFoundError(f"OmniFocus database not found: {ofocus_path}")
-        mtime_source = FileMtimeSource(path=ofocus_path)
+            ofocus_path = os.environ.get("OMNIFOCUS_OFOCUS_PATH", str(DEFAULT_OFOCUS_PATH))
+            if not os.path.exists(ofocus_path):
+                logger.error(
+                    "OmniFocus database not found at: %s — "
+                    "set OMNIFOCUS_OFOCUS_PATH or verify OmniFocus 4 is installed.",
+                    ofocus_path,
+                )
+                raise FileNotFoundError(f"OmniFocus database not found: {ofocus_path}")
+            mtime_source = FileMtimeSource(path=ofocus_path)
 
-    repository = OmniFocusRepository(bridge=bridge, mtime_source=mtime_source)
-    service = OperatorService(repository=repository)
+        repository = OmniFocusRepository(bridge=bridge, mtime_source=mtime_source)
+        service = OperatorService(repository=repository)
 
-    yield {"service": service}
+        yield {"service": service}
 
-    logger.info("Server shutting down")
+        logger.info("Server shutting down")
+    except Exception as exc:
+        logger.exception("Fatal error during startup")
+        from omnifocus_operator.service import ErrorOperatorService
+
+        error_service = ErrorOperatorService(exc)
+        yield {"service": error_service}
+        logger.info("Error-mode server shutting down")
 
 
 def _register_tools(mcp: FastMCP) -> None:

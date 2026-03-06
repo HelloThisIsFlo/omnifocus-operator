@@ -186,4 +186,4 @@ class TestErrorOperatorService:
 
         service = ErrorOperatorService(ValueError("x"))
 
-        assert not hasattr(service, "_repository")
+        assert "_repository" not in service.__dict__

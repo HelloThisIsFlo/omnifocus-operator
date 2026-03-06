@@ -9,6 +9,6 @@ OperatorService
 
 from __future__ import annotations
 
-from omnifocus_operator.service._service import OperatorService
+from omnifocus_operator.service._service import ErrorOperatorService, OperatorService
 
-__all__ = ["OperatorService"]
+__all__ = ["ErrorOperatorService", "OperatorService"]
