@@ -1,7 +1,7 @@
 """Shared test fixtures and factory functions for bridge-format JSON dicts.
 
 Factory functions return dicts with camelCase keys matching the exact shape
-produced by the bridge script (operatorBridgeScript.js). These are reused
+produced by the bridge script (bridge.js). These are reused
 across all test modules for model validation, parsing, and round-trip tests.
 """
 
@@ -19,6 +19,7 @@ def make_task_dict(**overrides: Any) -> dict[str, Any]:
         # Identity (3)
         "id": "task-001",
         "name": "Test Task",
+        "url": "omnifocus:///task/task-001",
         "note": "",
         # Lifecycle (5)
         "added": "2024-01-15T10:30:00.000Z",
@@ -48,12 +49,12 @@ def make_task_dict(**overrides: Any) -> dict[str, Any]:
         "estimatedMinutes": None,
         "hasChildren": False,
         "shouldUseFloatingTimeZone": False,
-        # Relationships (5)
+        # Relationships (4)
         "inInbox": True,
         "repetitionRule": None,
         "project": None,
         "parent": None,
-        "assignedContainer": None,
+        # Tags -- list of TagRef objects {id, name}
         "tags": [],
     }
     return {**defaults, **overrides}
@@ -62,13 +63,19 @@ def make_task_dict(**overrides: Any) -> dict[str, Any]:
 def make_project_dict(**overrides: Any) -> dict[str, Any]:
     """Factory for bridge-format project JSON (camelCase keys).
 
-    Returns a complete project dict with all 31 bridge fields.
+    Returns a complete project dict with all 36 bridge fields.
     """
     defaults: dict[str, Any] = {
-        # Identity (3)
+        # Identity (3) + lifecycle from OmniFocusEntity
         "id": "proj-001",
         "name": "Test Project",
+        "url": "omnifocus:///project/proj-001",
         "note": "",
+        # Lifecycle fields (from p.task.*)
+        "added": "2024-01-15T10:30:00.000Z",
+        "modified": "2024-01-15T10:30:00.000Z",
+        "active": True,
+        "effectiveActive": True,
         # Status (2)
         "status": "Active",
         "taskStatus": "Available",
@@ -107,6 +114,7 @@ def make_project_dict(**overrides: Any) -> dict[str, Any]:
         # Relationships (3)
         "nextTask": None,
         "folder": None,
+        # Tags -- list of TagRef objects {id, name}
         "tags": [],
     }
     return {**defaults, **overrides}
@@ -115,17 +123,19 @@ def make_project_dict(**overrides: Any) -> dict[str, Any]:
 def make_tag_dict(**overrides: Any) -> dict[str, Any]:
     """Factory for bridge-format tag JSON (camelCase keys).
 
-    Returns a complete tag dict with all 9 bridge fields.
+    Returns a complete tag dict with all 11 bridge fields.
     """
     defaults: dict[str, Any] = {
         "id": "tag-001",
         "name": "Test Tag",
+        "url": "omnifocus:///tag/tag-001",
         "added": "2024-01-15T10:30:00.000Z",
         "modified": "2024-01-15T10:30:00.000Z",
         "active": True,
         "effectiveActive": True,
         "status": "Active",
         "allowsNextAction": True,
+        "childrenAreMutuallyExclusive": False,
         "parent": None,
     }
     return {**defaults, **overrides}
@@ -134,11 +144,12 @@ def make_tag_dict(**overrides: Any) -> dict[str, Any]:
 def make_folder_dict(**overrides: Any) -> dict[str, Any]:
     """Factory for bridge-format folder JSON (camelCase keys).
 
-    Returns a complete folder dict with all 8 bridge fields.
+    Returns a complete folder dict with all 9 bridge fields.
     """
     defaults: dict[str, Any] = {
         "id": "folder-001",
         "name": "Test Folder",
+        "url": "omnifocus:///folder/folder-001",
         "added": "2024-01-15T10:30:00.000Z",
         "modified": "2024-01-15T10:30:00.000Z",
         "active": True,
@@ -152,12 +163,12 @@ def make_folder_dict(**overrides: Any) -> dict[str, Any]:
 def make_perspective_dict(**overrides: Any) -> dict[str, Any]:
     """Factory for bridge-format perspective JSON (camelCase keys).
 
-    Returns a complete perspective dict with all 3 bridge fields.
+    Returns a complete perspective dict with all 2 bridge fields.
+    (builtin is a computed field in Python, not sent from bridge.)
     """
     defaults: dict[str, Any] = {
         "id": "persp-001",
         "name": "Test Perspective",
-        "builtin": False,
     }
     return {**defaults, **overrides}
 
