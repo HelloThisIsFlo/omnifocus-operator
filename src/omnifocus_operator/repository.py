@@ -26,6 +26,7 @@ import asyncio
 import os
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
+from omnifocus_operator.bridge.adapter import adapt_snapshot
 from omnifocus_operator.models.snapshot import DatabaseSnapshot
 
 if TYPE_CHECKING:
@@ -142,6 +143,8 @@ class OmniFocusRepository:
         On failure, cache is **not** modified (preserves old or None).
         """
         raw: dict[str, Any] = await self._bridge.send_command("snapshot")
+        # Transform bridge-format -> new model shape (no-op if already new shape)
+        adapt_snapshot(raw)
         snapshot = DatabaseSnapshot.model_validate(raw)
         self._last_mtime_ns = current_mtime
         return snapshot

@@ -3,7 +3,8 @@
 Transforms raw bridge snapshot dicts in-place before Pydantic validation.
 Uses dict-based lookup tables (not if/elif chains) for all status mappings.
 
-This module is NOT wired into the repository yet -- that happens in Plan 03.
+The adapter is safe to call on already-adapted data: entities without
+old-format markers (e.g. no ``status`` key on tasks) are skipped.
 """
 
 from __future__ import annotations
@@ -76,6 +77,10 @@ _TAG_DEAD_FIELDS = ("allowsNextAction", "active", "effectiveActive")
 
 _FOLDER_DEAD_FIELDS = ("active", "effectiveActive")
 
+# Value sets for idempotency checks (already-adapted values)
+_TAG_STATUS_VALUES = frozenset(_TAG_STATUS_MAP.values())
+_FOLDER_STATUS_VALUES = frozenset(_FOLDER_STATUS_MAP.values())
+
 
 # ---------------------------------------------------------------------------
 # Per-entity adapters
@@ -103,7 +108,12 @@ def _adapt_repetition_rule(rule: dict[str, Any] | None) -> None:
 
 
 def _adapt_task(raw: dict[str, Any]) -> None:
-    """Map old TaskStatus -> urgency + availability, remove dead fields."""
+    """Map old TaskStatus -> urgency + availability, remove dead fields.
+
+    No-op if ``status`` key is absent (already adapted or new-shape data).
+    """
+    if "status" not in raw:
+        return
     old_status = raw.pop("status")
     mapping = _TASK_STATUS_MAP.get(old_status)
     if mapping is None:
@@ -118,7 +128,12 @@ def _adapt_task(raw: dict[str, Any]) -> None:
 
 
 def _adapt_project(raw: dict[str, Any]) -> None:
-    """Map ProjectStatus -> availability, TaskStatus -> urgency, remove dead fields."""
+    """Map ProjectStatus -> availability, TaskStatus -> urgency, remove dead fields.
+
+    No-op if ``status`` key is absent (already adapted or new-shape data).
+    """
+    if "status" not in raw:
+        return
     old_status = raw.pop("status")
     availability = _PROJECT_STATUS_MAP.get(old_status)
     if availability is None:
@@ -142,8 +157,13 @@ def _adapt_project(raw: dict[str, Any]) -> None:
 
 
 def _adapt_tag(raw: dict[str, Any]) -> None:
-    """Map TagStatus -> snake_case, remove dead fields."""
+    """Map TagStatus -> snake_case, remove dead fields.
+
+    No-op if status is already snake_case (already adapted or new-shape data).
+    """
     old_status = raw.get("status")
+    if old_status in _TAG_STATUS_VALUES:
+        return  # Already adapted
     new_status = _TAG_STATUS_MAP.get(old_status)  # type: ignore[arg-type]
     if new_status is None:
         msg = f"Unknown tag status: {old_status!r}"
@@ -155,8 +175,13 @@ def _adapt_tag(raw: dict[str, Any]) -> None:
 
 
 def _adapt_folder(raw: dict[str, Any]) -> None:
-    """Map FolderStatus -> snake_case, remove dead fields."""
+    """Map FolderStatus -> snake_case, remove dead fields.
+
+    No-op if status is already snake_case (already adapted or new-shape data).
+    """
     old_status = raw.get("status")
+    if old_status in _FOLDER_STATUS_VALUES:
+        return  # Already adapted
     new_status = _FOLDER_STATUS_MAP.get(old_status)  # type: ignore[arg-type]
     if new_status is None:
         msg = f"Unknown folder status: {old_status!r}"
@@ -178,7 +203,8 @@ def adapt_snapshot(raw: dict[str, Any]) -> dict[str, Any]:
     Modifies the dict in place and returns it. Handles all entity types:
     tasks, projects, tags, and folders.
 
-    Not wired into repository yet -- that happens in Plan 03.
+    Safe to call on already-adapted data (no-op for entities that are
+    already in new-shape format).
     """
     for task in raw.get("tasks", []):
         _adapt_task(task)
