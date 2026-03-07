@@ -59,7 +59,7 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 - Two-axis status model: Urgency (overdue/due_soon/none) + Availability (available/blocked/completed/dropped)
 - WAL-based read-after-write consistency (~500ms delay, `st_mtime_ns` polling)
 - Pydantic model overhaul aligned with RESULTS_pydantic-model.md
-- Error-serving when SQLite unavailable, manual OmniJS fallback via `OMNIFOCUS_BRIDGE=omnijs`
+- Error-serving when SQLite unavailable, manual OmniJS fallback via `OMNIFOCUS_REPOSITORY=bridge`
 
 **Research:** `.research/deep-dives/direct-database-access/RESULTS.md` (source of truth)
 

@@ -91,9 +91,9 @@ Plans:
 **Depends on**: Phase 12
 **Requirements**: FALL-01, FALL-02, FALL-03
 **Success Criteria** (what must be TRUE):
-  1. Setting `OMNIFOCUS_BRIDGE=omnijs` env var switches the read path from SQLite to the OmniJS bridge
+  1. Setting `OMNIFOCUS_REPOSITORY=bridge` env var switches the read path from SQLite to the OmniJS bridge
   2. In OmniJS fallback mode, urgency is fully populated but availability is reduced to available/completed/dropped (no `blocked`)
-  3. When SQLite database is not found and no fallback is configured, server enters error-serving mode with an actionable message showing the expected path and fallback instructions
+  3. When SQLite database is not found and no fallback is configured, server enters error-serving mode with an actionable message showing the expected path and instructions to set `OMNIFOCUS_REPOSITORY=bridge`
 **Plans**: TBD
 
 Plans:

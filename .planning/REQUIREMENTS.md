@@ -32,15 +32,15 @@ Requirements for v1.1 HUGE Performance Upgrade. Each maps to roadmap phases.
 
 ### Fallback
 
-- [ ] **FALL-01**: Setting `OMNIFOCUS_BRIDGE=omnijs` env var switches read path from SQLite to OmniJS bridge
+- [ ] **FALL-01**: Setting `OMNIFOCUS_REPOSITORY=bridge` env var switches read path from SQLite to OmniJS bridge
 - [ ] **FALL-02**: In OmniJS fallback mode, urgency is fully populated; availability is reduced to `available` / `completed` / `dropped` (no `blocked`)
-- [ ] **FALL-03**: When SQLite database is not found, server enters error-serving mode with actionable message including the expected path and instructions to set `OMNIFOCUS_BRIDGE=omnijs` as a quick fallback
+- [ ] **FALL-03**: When SQLite database is not found, server enters error-serving mode with actionable message including the expected path and instructions to set `OMNIFOCUS_REPOSITORY=bridge` as a quick fallback
 
 ### Architecture
 
-- [x] **ARCH-01**: DataSource protocol abstracts the read path so SQLite and Bridge implementations are swappable
-- [x] **ARCH-02**: Repository layer consumes DataSource protocol instead of Bridge + MtimeSource directly
-- [x] **ARCH-03**: InMemoryDataSource implementation exists for testing
+- [x] **ARCH-01**: Repository protocol abstracts the read path so SQLite and Bridge implementations are swappable
+- [x] **ARCH-02**: Service layer consumes Repository protocol instead of concrete implementation
+- [x] **ARCH-03**: InMemoryRepository implementation exists for testing
 
 ## Future Requirements
 
