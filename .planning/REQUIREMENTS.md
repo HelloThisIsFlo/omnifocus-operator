@@ -13,10 +13,10 @@ Requirements for Writes & Lookups milestone. Each maps to roadmap phases.
 
 ### Lookups
 
-- [ ] **LOOK-01**: Agent can look up a single task by ID and receive the full Task object (including urgency/availability)
-- [ ] **LOOK-02**: Agent can look up a single project by ID and receive the full Project object
-- [ ] **LOOK-03**: Agent can look up a single tag by ID and receive the full Tag object
-- [ ] **LOOK-04**: Looking up a non-existent ID returns a clear "not found" error message
+- [x] **LOOK-01**: Agent can look up a single task by ID and receive the full Task object (including urgency/availability)
+- [x] **LOOK-02**: Agent can look up a single project by ID and receive the full Project object
+- [x] **LOOK-03**: Agent can look up a single tag by ID and receive the full Tag object
+- [x] **LOOK-04**: Looking up a non-existent ID returns a clear "not found" error message
 
 ### Models
 
@@ -96,10 +96,10 @@ Requirements for Writes & Lookups milestone. Each maps to roadmap phases.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | NAME-01 | Phase 14 | Complete |
-| LOOK-01 | Phase 14 | Pending |
-| LOOK-02 | Phase 14 | Pending |
-| LOOK-03 | Phase 14 | Pending |
-| LOOK-04 | Phase 14 | Pending |
+| LOOK-01 | Phase 14 | Complete |
+| LOOK-02 | Phase 14 | Complete |
+| LOOK-03 | Phase 14 | Complete |
+| LOOK-04 | Phase 14 | Complete |
 | MODL-01 | Phase 14 | Complete |
 | MODL-02 | Phase 14 | Complete |
 | CREA-01 | Phase 15 | Pending |

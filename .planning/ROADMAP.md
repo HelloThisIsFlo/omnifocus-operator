@@ -39,7 +39,7 @@
 
 **Milestone Goal:** Enable agents to look up individual entities by ID and create/edit tasks in OmniFocus, validating the write pipeline end-to-end.
 
-- [ ] **Phase 14: Model Refactor & Lookups** - Unified parent field, rename list_all to get_all, and get-by-ID tools
+- [x] **Phase 14: Model Refactor & Lookups** - Unified parent field, rename list_all to get_all, and get-by-ID tools (completed 2026-03-07)
 - [ ] **Phase 15: Write Pipeline & Task Creation** - Full write pipeline through bridge with add_tasks tool
 - [ ] **Phase 16: Task Editing** - Patch semantics, tag modes, and task movement via edit_tasks
 - [ ] **Phase 17: Task Lifecycle** - Complete, drop, and reactivate tasks via edit_tasks
@@ -132,7 +132,7 @@ Phases execute in numeric order: 14 -> 15 -> 16 -> 17
 | 11. DataSource Protocol | v1.1 | 3/3 | Complete | 2026-03-07 |
 | 12. SQLite Reader | v1.1 | 2/2 | Complete | 2026-03-07 |
 | 13. Fallback and Integration | v1.1 | 2/2 | Complete | 2026-03-07 |
-| 14. Model Refactor & Lookups | 1/2 | In Progress|  | - |
+| 14. Model Refactor & Lookups | 2/2 | Complete   | 2026-03-07 | - |
 | 15. Write Pipeline & Task Creation | v1.2 | 0/? | Not started | - |
 | 16. Task Editing | v1.2 | 0/? | Not started | - |
 | 17. Task Lifecycle | v1.2 | 0/? | Not started | - |

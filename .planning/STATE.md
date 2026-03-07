@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Writes & Lookups
-status: executing
-stopped_at: Completed 14-01-PLAN.md
-last_updated: "2026-03-07T23:19:13Z"
+status: completed
+stopped_at: Completed 14-02-PLAN.md
+last_updated: "2026-03-07T23:27:28.520Z"
 last_activity: 2026-03-07 -- Plan 14-01 complete
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
   percent: 12
 ---
 
@@ -44,6 +44,7 @@ Progress: [█░░░░░░░░░] 12%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 14 | 1/2 | 5min | 5min |
+| Phase 14 P02 | 5min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -55,6 +56,8 @@ Progress: [█░░░░░░░░░] 12%
 - NAME-01 bundled with Phase 14 (model changes + lookups)
 - Parent task takes precedence over containing project in ParentRef (subtask case)
 - Bridge adapter uses empty string for name when bridge doesn't send name fields
+- [Phase 14]: HybridRepository uses dedicated single-entity SQLite queries for get-by-ID (not filtering _read_all)
+- [Phase 14]: Not-found raises ValueError -> MCP SDK wraps as isError: true response
 
 ### Pending Todos
 
@@ -77,6 +80,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-07T23:19:13Z
-Stopped at: Completed 14-01-PLAN.md
+Last session: 2026-03-07T23:27:28.517Z
+Stopped at: Completed 14-02-PLAN.md
 Next action: Execute 14-02-PLAN.md (get-by-ID tools)
