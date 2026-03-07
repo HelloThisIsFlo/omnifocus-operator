@@ -120,12 +120,19 @@ The analysis script lives at:
 - `analyze_snapshot.py <file> --full-db <full.json>` — analyze with uncoverable detection
 - `analyze_snapshot.py <full.json> --build-cover --output <out.json>` — build minimal covering set
 
-**How enum detection works:** A string field is classified as an "enum" only if
-it has <= 20 distinct values AND a low uniqueness ratio (< 5%). This prevents
-dates and IDs from being treated as enums — only fields like `status`,
-`urgency`, `availability` qualify.
+**How enum detection works:** Two sources, combined:
+1. **Schema-based** — the script imports `omnifocus_operator.models.enums` at
+   runtime to get the authoritative enum values (Urgency, Availability,
+   TagStatus, FolderStatus). This catches values that don't happen to exist in
+   the current database (e.g., `due_soon` when no tasks are due soon).
+2. **Data heuristic** — a string field with <= 20 distinct values AND a low
+   uniqueness ratio (< 5%) is also treated as an enum. This catches enum-like
+   fields not in the registry.
+
+If the source import fails (e.g., running outside the repo), the script falls
+back to data-only heuristics with a warning.
 
 **How the covering algorithm works:**
 1. Greedy null coverage — repeatedly pick the item that covers the most remaining null fields
 2. Boolean coverage — for each boolean field, ensure both true and false appear
-3. Enum coverage — for each enum field, ensure every distinct value appears
+3. Enum coverage — for each enum field, ensure every value from the schema and DB appears
