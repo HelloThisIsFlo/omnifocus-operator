@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: HUGE Performance Upgrade
-status: in_progress
-stopped_at: Completed 13-01-PLAN.md
-last_updated: "2026-03-07T18:56:29.168Z"
-last_activity: "2026-03-07 -- Completed 12-02: WAL freshness detection + UAT script"
+status: completed
+stopped_at: Completed 13-02-PLAN.md (all plans complete)
+last_updated: "2026-03-07T19:21:14.220Z"
+last_activity: "2026-03-07 -- Completed 13-02: FALL-02 availability test + configuration docs"
 progress:
   total_phases: 4
-  completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
+  completed_phases: 4
+  total_plans: 11
+  completed_plans: 11
   percent: 100
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 12 complete -- Phase 13 next (Fallback & Integration)
+**Current focus:** v1.1 milestone complete -- all 4 phases done
 
 ## Current Position
 
 Phase: 13 (4 of 4 in v1.1)
-Plan: 1 of 2 complete
-Status: Executing Phase 13 (Fallback & Integration)
-Last activity: 2026-03-07 -- Completed 13-01: Repository factory + server lifespan restructure
+Plan: 2 of 2 complete
+Status: v1.1 milestone complete
+Last activity: 2026-03-07 -- Completed 13-02: FALL-02 availability test + configuration docs
 
-Progress: [█████████░] 91% (10/11 plans)
+Progress: [██████████] 100% (11/11 plans)
 
 ## Accumulated Context
 
@@ -64,6 +64,8 @@ Progress: [█████████░] 91% (10/11 plans)
 - [Phase 13]: Repository factory duplicates _DEFAULT_DB_PATH (avoids coupling to hybrid.py private constant)
 - [Phase 13]: IPC sweep always runs unconditionally before factory call (sweep handles missing dirs)
 - [Phase 13]: Bridge mode warning mentions blocked-unavailability and speed tradeoffs
+- [Phase 13]: Bridge-reachable statuses defined as explicit constant tuples for FALL-02 regression testing
+- [Phase 13]: OMNIFOCUS_SQLITE_PATH documented with auto-detection default path
 
 ### Pending Todos
 
@@ -86,6 +88,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-07T19:16:00Z
-Stopped at: Completed 13-01-PLAN.md
-Next action: Execute 13-02-PLAN.md
+Last session: 2026-03-07T19:21:14.217Z
+Stopped at: Completed 13-02-PLAN.md (all plans complete)
+Next action: v1.1 milestone wrap-up
