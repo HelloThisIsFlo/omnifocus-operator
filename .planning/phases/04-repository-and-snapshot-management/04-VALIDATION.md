@@ -1,10 +1,11 @@
 ---
 phase: 4
 slug: repository-and-snapshot-management
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-02
+validated: 2026-03-07
 ---
 
 # Phase 4 — Validation Strategy
@@ -21,7 +22,7 @@ created: 2026-03-02
 | **Config file** | `pyproject.toml` `[tool.pytest.ini_options]` |
 | **Quick run command** | `uv run pytest tests/test_repository.py -x` |
 | **Full suite command** | `uv run pytest` |
-| **Estimated runtime** | ~2 seconds |
+| **Estimated runtime** | ~0.2 seconds |
 
 ---
 
@@ -36,25 +37,30 @@ created: 2026-03-02
 
 ## Per-Task Verification Map
 
-| Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
-|---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 04-01-01 | 01 | 1 | SNAP-01 | unit | `uv run pytest tests/test_repository.py::TestRepository::test_first_call_triggers_dump -x` | ❌ W0 | ⬜ pending |
-| 04-01-02 | 01 | 1 | SNAP-02 | unit | `uv run pytest tests/test_repository.py::TestRepository::test_cached_read_no_bridge_call -x` | ❌ W0 | ⬜ pending |
-| 04-01-03 | 01 | 1 | SNAP-03 | unit | `uv run pytest tests/test_repository.py::TestRepository::test_unchanged_mtime_serves_cache -x` | ❌ W0 | ⬜ pending |
-| 04-01-04 | 01 | 1 | SNAP-04 | unit | `uv run pytest tests/test_repository.py::TestRepository::test_changed_mtime_triggers_refresh -x` | ❌ W0 | ⬜ pending |
-| 04-01-05 | 01 | 1 | SNAP-05 | unit | `uv run pytest tests/test_repository.py::TestRepository::test_concurrent_reads_single_dump -x` | ❌ W0 | ⬜ pending |
-| 04-01-06 | 01 | 1 | SNAP-06 | unit | `uv run pytest tests/test_repository.py::TestRepository::test_initialize_prewarms_cache -x` | ❌ W0 | ⬜ pending |
+| Task ID | Plan | Wave | Requirement | Test Type | Automated Command | Status |
+|---------|------|------|-------------|-----------|-------------------|--------|
+| 04-01-01 | 01 | 1 | SNAP-01 | unit | `uv run pytest tests/test_repository.py::TestSNAP01FirstCall -x` | COVERED |
+| 04-01-02 | 01 | 1 | SNAP-02 | unit | `uv run pytest tests/test_repository.py::TestSNAP02CachedReturn -x` | COVERED |
+| 04-01-03 | 01 | 1 | SNAP-03 | unit | `uv run pytest tests/test_repository.py::TestSNAP03ObjectIdentity -x` | COVERED |
+| 04-01-04 | 01 | 1 | SNAP-04 | unit | `uv run pytest tests/test_repository.py::TestSNAP04MtimeRefresh -x` | COVERED |
+| 04-01-05 | 01 | 1 | SNAP-05 | unit | `uv run pytest tests/test_repository.py::TestSNAP05Concurrency -x` | COVERED |
+| 04-01-06 | 01 | 1 | SNAP-06 | unit | `uv run pytest tests/test_repository.py::TestSNAP01FirstCall -x` | COVERED |
 
-*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+*SNAP-06 was revised to "lazy population on first call" (quick/1). Covered by SNAP-01 first-call tests.*
+
+*Status: COVERED · PARTIAL · MISSING*
 
 ---
 
-## Wave 0 Requirements
+## Additional Coverage (beyond SNAP requirements)
 
-- [ ] `tests/test_repository.py` — stubs for SNAP-01 through SNAP-06 + error propagation
-- [ ] `tests/conftest.py` or test module — `FakeMtimeSource` fixture and snapshot dict helper
+| Area | Tests | Count |
+|------|-------|-------|
+| Error propagation | `TestErrorPropagation` | 6 |
+| Concurrency edge cases | `TestConcurrencyEdgeCases` | 1 |
+| FileMtimeSource integration | `TestFileMtimeSource` | 3 |
 
-*Existing infrastructure covers framework install (pytest + pytest-asyncio already configured).*
+**Total: 19 tests, all green.**
 
 ---
 
@@ -68,11 +74,23 @@ created: 2026-03-02
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 5s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have automated verification
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] All SNAP requirements covered by tests
+- [x] No watch-mode flags
+- [x] Feedback latency < 5s (0.2s actual)
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** validated
+
+---
+
+## Validation Audit 2026-03-07
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+| Total tests | 19 |
+| All green | yes |
