@@ -69,12 +69,13 @@ class ActionableEntity(OmniFocusEntity):
     # Dates (all optional, timezone-aware)
     due_date: AwareDatetime | None = None
     defer_date: AwareDatetime | None = None
+    planned_date: AwareDatetime | None = None
+    completion_date: AwareDatetime | None = None
+    drop_date: AwareDatetime | None = None
     effective_due_date: AwareDatetime | None = None
     effective_defer_date: AwareDatetime | None = None
-    completion_date: AwareDatetime | None = None
-    planned_date: AwareDatetime | None = None
     effective_planned_date: AwareDatetime | None = None
-    drop_date: AwareDatetime | None = None
+    # effective_completion_date is only present on Task, not Project
     effective_drop_date: AwareDatetime | None = None
 
     # Metadata
