@@ -33,8 +33,8 @@ def create_repository(repo_type: str | None = None) -> Repository:
     Parameters
     ----------
     repo_type:
-        One of ``"sqlite"``, ``"hybrid"``, or ``"bridge"``.
-        If *None*, reads ``OMNIFOCUS_REPOSITORY`` env var (default ``"sqlite"``).
+        One of ``"hybrid"`` or ``"bridge-only"``.
+        If *None*, reads ``OMNIFOCUS_REPOSITORY`` env var (default ``"hybrid"``).
 
     Returns
     -------
@@ -46,22 +46,22 @@ def create_repository(repo_type: str | None = None) -> Repository:
     ValueError
         For unknown repository type strings.
     FileNotFoundError
-        When sqlite/hybrid mode is selected but the database file is missing.
+        When hybrid mode is selected but the database file is missing.
     """
     if repo_type is None:
-        repo_type = os.environ.get("OMNIFOCUS_REPOSITORY", "sqlite")
+        repo_type = os.environ.get("OMNIFOCUS_REPOSITORY", "hybrid")
 
     match repo_type:
-        case "sqlite" | "hybrid":
-            return _create_sqlite_repository()
-        case "bridge":
+        case "hybrid":
+            return _create_hybrid_repository()
+        case "bridge-only":
             return _create_bridge_repository()
         case _:
-            msg = f"Unknown repository type: {repo_type!r}. Use: sqlite, hybrid, bridge"
+            msg = f"Unknown repository type: {repo_type!r}. Use: hybrid, bridge-only"
             raise ValueError(msg)
 
 
-def _create_sqlite_repository() -> Repository:
+def _create_hybrid_repository() -> Repository:
     """Create a HybridRepository with path validation."""
     from omnifocus_operator.repository.hybrid import HybridRepository
 
@@ -76,7 +76,7 @@ def _create_sqlite_repository() -> Repository:
             f"  Set OMNIFOCUS_SQLITE_PATH to the correct database location.\n"
             f"\n"
             f"As a temporary workaround:\n"
-            f"  Set OMNIFOCUS_REPOSITORY=bridge to use the OmniJS bridge\n"
+            f"  Set OMNIFOCUS_REPOSITORY=bridge-only to use the OmniJS bridge\n"
             f"  (slower, no 'blocked' availability)."
         )
         raise FileNotFoundError(msg)
@@ -113,7 +113,7 @@ def _create_bridge_repository() -> Repository:
     logger.warning(
         "Running in bridge mode — 'blocked' availability is not available, "
         "and reads are slower (~500ms vs ~50ms). "
-        "Set OMNIFOCUS_REPOSITORY=sqlite for full functionality."
+        "Set OMNIFOCUS_REPOSITORY=hybrid for full functionality."
     )
 
     return BridgeRepository(bridge=bridge, mtime_source=mtime_source)

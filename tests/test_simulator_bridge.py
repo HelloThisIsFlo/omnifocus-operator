@@ -223,7 +223,7 @@ class TestLifespan:
         tmp_path: Path,
     ) -> None:
         """Server lifespan completes successfully with bridge_type='simulator'."""
-        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge")
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge-only")
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "simulator")
         monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
 
@@ -251,7 +251,7 @@ class TestLifespan:
         tmp_path: Path,
     ) -> None:
         """Server with simulator bridge can serve list_all tool calls."""
-        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge")
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge-only")
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "simulator")
         monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
 
@@ -280,7 +280,7 @@ class TestLifespan:
         """Lifespan always sweeps orphaned IPC files (DEFAULT_IPC_DIR)."""
         from unittest.mock import AsyncMock
 
-        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge")
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge-only")
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "simulator")
         monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
 

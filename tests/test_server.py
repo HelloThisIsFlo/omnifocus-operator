@@ -88,7 +88,7 @@ class TestARCH01ThreeLayerArchitecture:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge")
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge-only")
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
         from omnifocus_operator.server import create_server
 
@@ -115,7 +115,7 @@ class TestARCH02RepositoryInjection:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge")
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge-only")
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
         from omnifocus_operator.server import create_server
 
@@ -133,7 +133,7 @@ class TestARCH02RepositoryInjection:
         tmp_path: Any,
     ) -> None:
         """FALL-03: SQLite not found -> error-serving mode with actionable message."""
-        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "sqlite")
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "hybrid")
         monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(tmp_path / "missing.db"))
         from omnifocus_operator.server import create_server
 
@@ -145,7 +145,7 @@ class TestARCH02RepositoryInjection:
             text = result.content[0].text  # type: ignore[union-attr]
             assert "failed to start" in text.lower()
             assert "OMNIFOCUS_SQLITE_PATH" in text
-            assert "OMNIFOCUS_REPOSITORY=bridge" in text
+            assert "OMNIFOCUS_REPOSITORY=bridge-only" in text
 
         await run_with_client(server, _check)
 
@@ -162,7 +162,7 @@ class TestTOOL01ListAllStructuredOutput:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge")
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge-only")
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
         from omnifocus_operator.server import create_server
 
@@ -181,7 +181,7 @@ class TestTOOL01ListAllStructuredOutput:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Verify structuredContent uses camelCase field names for nested entities."""
-        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge")
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge-only")
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
 
         from omnifocus_operator.bridge.in_memory import InMemoryBridge
@@ -248,7 +248,7 @@ class TestTOOL02Annotations:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge")
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge-only")
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
         from omnifocus_operator.server import create_server
 
@@ -266,7 +266,7 @@ class TestTOOL02Annotations:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge")
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge-only")
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
         from omnifocus_operator.server import create_server
 
@@ -293,7 +293,7 @@ class TestTOOL03OutputSchema:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge")
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge-only")
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
         from omnifocus_operator.server import create_server
 
@@ -310,7 +310,7 @@ class TestTOOL03OutputSchema:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge")
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge-only")
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
         from omnifocus_operator.server import create_server
 
@@ -384,7 +384,7 @@ class TestIPC06OrphanSweepWiring:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """IPC sweep runs regardless of OMNIFOCUS_REPOSITORY setting."""
-        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge")
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge-only")
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
 
         mock_sweep = AsyncMock()
@@ -413,7 +413,7 @@ class TestIPC06OrphanSweepWiring:
         """IPC sweep runs even when using sqlite repository mode."""
         db_file = tmp_path / "OmniFocusDatabase.db"
         db_file.touch()
-        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "sqlite")
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "hybrid")
         monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(db_file))
 
         mock_sweep = AsyncMock()

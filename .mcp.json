@@ -11,6 +11,7 @@
         "omnifocus_operator"
       ],
       "env": {
+        "OMNIFOCUS_REPOSITORY": "hybrid",
         "OMNIFOCUS_BRIDGE": "real",
         "OMNIFOCUS_BRIDGE_TIMEOUT": "30"
       }
