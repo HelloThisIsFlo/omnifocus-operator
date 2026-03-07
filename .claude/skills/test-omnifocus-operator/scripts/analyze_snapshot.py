@@ -67,10 +67,10 @@ def _load_known_enums() -> dict[str, dict[str, list[str]]]:
                 **rep_rule_enums,
             },
             "tags": {
-                "status": values(enums.TagStatus),
+                "availability": values(enums.TagAvailability),
             },
             "folders": {
-                "status": values(enums.FolderStatus),
+                "availability": values(enums.FolderAvailability),
             },
         }
     except Exception as e:

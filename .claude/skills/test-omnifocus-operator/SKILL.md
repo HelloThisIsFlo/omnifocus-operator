@@ -123,7 +123,7 @@ The analysis script lives at:
 **How enum detection works:** Two sources, combined:
 1. **Schema-based** — the script imports `omnifocus_operator.models.enums` at
    runtime to get the authoritative enum values (Urgency, Availability,
-   TagStatus, FolderStatus). This catches values that don't happen to exist in
+   TagAvailability, FolderAvailability). This catches values that don't happen to exist in
    the current database (e.g., `due_soon` when no tasks are due soon).
 2. **Data heuristic** — a string field with <= 20 distinct values AND a low
    uniqueness ratio (< 5%) is also treated as an enum. This catches enum-like
