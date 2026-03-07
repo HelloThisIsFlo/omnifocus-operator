@@ -15,6 +15,7 @@ import os
 import plistlib
 import re
 import sqlite3
+import time
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
@@ -362,11 +363,54 @@ class HybridRepository:
             self._db_path = str(db_path)
         else:
             self._db_path = os.environ.get("OMNIFOCUS_SQLITE_PATH", _DEFAULT_DB_PATH)
+        self._stale: bool = False
+        self._last_wal_mtime_ns: int = 0
+
+    def TEMPORARY_simulate_write(self) -> None:  # noqa: N802
+        """Mark data as stale so next get_all() waits for fresh data.
+
+        Captures current WAL (or DB) mtime as baseline for change detection.
+        Delete this method when real writes are implemented.
+        """
+        wal_path = self._db_path + "-wal"
+        try:
+            self._last_wal_mtime_ns = os.stat(wal_path).st_mtime_ns
+        except FileNotFoundError:
+            self._last_wal_mtime_ns = os.stat(self._db_path).st_mtime_ns
+        self._stale = True
 
     async def get_all(self) -> AllEntities:
         """Return all OmniFocus entities from the SQLite cache."""
+        if self._stale:
+            await self._wait_for_fresh_data()
+            self._stale = False
         result = await asyncio.to_thread(self._read_all)
+        # Update mtime tracking after read
+        self._last_wal_mtime_ns = await self._get_current_mtime_ns()
         return AllEntities.model_validate(result)
+
+    async def _get_current_mtime_ns(self) -> int:
+        """Get current WAL or DB file mtime in nanoseconds."""
+        wal_path = self._db_path + "-wal"
+        try:
+            stat_result = await asyncio.to_thread(os.stat, wal_path)
+            return stat_result.st_mtime_ns
+        except FileNotFoundError:
+            stat_result = await asyncio.to_thread(os.stat, self._db_path)
+            return stat_result.st_mtime_ns
+
+    async def _wait_for_fresh_data(self) -> None:
+        """Poll WAL/DB mtime until it changes or timeout (2s).
+
+        If the WAL file doesn't exist, falls back to the main DB file mtime.
+        On timeout, returns anyway -- slightly stale data is better than error.
+        """
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            current_mtime = await self._get_current_mtime_ns()
+            if current_mtime != self._last_wal_mtime_ns:
+                return
+            await asyncio.sleep(0.05)
 
     def _read_all(self) -> dict[str, Any]:
         """Synchronous read of all entities from SQLite.
