@@ -61,14 +61,15 @@ Plans:
 **Depends on**: Phase 10
 **Requirements**: ARCH-01, ARCH-02, ARCH-03
 **Success Criteria** (what must be TRUE):
-  1. A `Repository` protocol exists with `get_snapshot()` method, and both BridgeRepository and InMemoryRepository satisfy it
+  1. A `Repository` protocol exists with `get_all()` method returning `AllEntities`, and both BridgeRepository and InMemoryRepository satisfy it
   2. Service layer accepts `Repository` protocol instead of concrete `OmniFocusRepository`
   3. An `InMemoryRepository` exists and all repository-level and service-level tests use it (no direct Bridge dependency in repository/service tests)
-**Plans**: 2 plans
+**Plans**: 3 plans
 
 Plans:
-- [ ] 11-01-PLAN.md -- Create repository package with protocol, BridgeRepository, InMemoryRepository, relocate MtimeSource
-- [ ] 11-02-PLAN.md -- Update consumers (service, server, tests), create architecture doc
+- [x] 11-01-PLAN.md -- Create repository package with protocol, BridgeRepository, InMemoryRepository, relocate MtimeSource
+- [x] 11-02-PLAN.md -- Update consumers (service, server, tests), create architecture doc
+- [ ] 11-03-PLAN.md -- GAP CLOSURE: Rename DatabaseSnapshot to AllEntities and get_snapshot() to get_all()
 
 ### Phase 12: SQLite Reader
 **Goal**: Server reads OmniFocus data directly from SQLite cache with WAL-based freshness detection, no OmniFocus process required
@@ -118,6 +119,6 @@ Phases execute in numeric order: 10 -> 11 -> 12 -> 13
 | 8.2. Model Alignment (BRIDGE-SPEC) | v1.0 | 3/3 | Complete | 2026-03-06 |
 | 9. Error-Serving Degraded Mode | v1.0 | 1/1 | Complete | 2026-03-06 |
 | 10. Model Overhaul | 4/4 | Complete    | 2026-03-07 | - |
-| 11. DataSource Protocol | 2/2 | Complete    | 2026-03-07 | - |
+| 11. DataSource Protocol | 2/3 | Gap closure | 2026-03-07 | - |
 | 12. SQLite Reader | v1.1 | 0/? | Not started | - |
 | 13. Fallback and Integration | v1.1 | 0/? | Not started | - |
