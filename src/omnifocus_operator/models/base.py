@@ -2,8 +2,8 @@
 
 Inheritance chain:
     OmniFocusBaseModel  -- ConfigDict with camelCase aliases
-    +-- OmniFocusEntity -- id, name, url, added, modified, active, effective_active
-        +-- ActionableEntity -- shared dates, flags, tags, repetition (Task, Project inherit)
+    +-- OmniFocusEntity -- id, name, url, added, modified
+        +-- ActionableEntity -- urgency, availability, dates, flags, tags, repetition
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ from pydantic.alias_generators import to_camel
 
 if TYPE_CHECKING:
     from omnifocus_operator.models.common import RepetitionRule, TagRef
+    from omnifocus_operator.models.enums import Availability, Urgency
 
 
 class OmniFocusBaseModel(BaseModel):
@@ -44,27 +45,26 @@ class OmniFocusEntity(OmniFocusBaseModel):
     url: str
     added: AwareDatetime
     modified: AwareDatetime
-    active: bool
-    effective_active: bool
 
 
 class ActionableEntity(OmniFocusEntity):
-    """Shared fields for Task and Project (dates, flags, relationships).
+    """Shared fields for Task and Project (status axes, dates, flags, relationships).
 
-    Fields here are present on BOTH tasks and projects in the bridge script output.
+    Fields here are present on BOTH tasks and projects.
     Entity-specific fields (e.g. inInbox for Task, folder for Project) live on
     the concrete model classes.
     """
 
-    # Lifecycle
+    # Two-axis status model
+    urgency: Urgency
+    availability: Availability
+
+    # Content
     note: str
-    completed: bool
-    completed_by_children: bool
 
     # Flags
     flagged: bool
     effective_flagged: bool
-    sequential: bool
 
     # Dates (all optional, timezone-aware)
     due_date: AwareDatetime | None = None
@@ -81,7 +81,6 @@ class ActionableEntity(OmniFocusEntity):
     # Metadata
     estimated_minutes: float | None = None
     has_children: bool
-    should_use_floating_time_zone: bool
 
     # Relationships
     tags: list[TagRef] = []  # Tag references (id + name objects), not bare strings

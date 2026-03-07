@@ -1,7 +1,7 @@
 """Tag model -- represents a single OmniFocus tag.
 
 Maps to the flattenedTags.map() output in the bridge script.
-Tag has 4 own fields + inherited from OmniFocusEntity.
+Tag has 3 own fields + inherited from OmniFocusEntity.
 """
 
 from __future__ import annotations
@@ -15,13 +15,11 @@ if TYPE_CHECKING:
 
 
 class Tag(OmniFocusEntity):
-    """A single OmniFocus tag with all bridge fields.
+    """A single OmniFocus tag with all fields.
 
-    Inherits id, name, url, added, modified, active, effective_active
-    from OmniFocusEntity.
+    Inherits id, name, url, added, modified from OmniFocusEntity.
     """
 
-    status: TagStatus  # Lifecycle status (Active/OnHold/Dropped)
-    allows_next_action: bool
+    status: TagStatus  # Lifecycle status (active/on_hold/dropped)
     children_are_mutually_exclusive: bool
     parent: str | None = None

@@ -1,8 +1,8 @@
-"""Shared test fixtures and factory functions for bridge-format JSON dicts.
+"""Shared test fixtures and factory functions for new-shape model dicts.
 
-Factory functions return dicts with camelCase keys matching the exact shape
-produced by the bridge script (bridge.js). These are reused
-across all test modules for model validation, parsing, and round-trip tests.
+Factory functions return dicts with camelCase keys matching the new model shape
+(after adapter transformation). These use the two-axis status model
+(urgency + availability) and snake_case enum values.
 """
 
 from __future__ import annotations
@@ -11,9 +11,9 @@ from typing import Any
 
 
 def make_task_dict(**overrides: Any) -> dict[str, Any]:
-    """Factory for bridge-format task JSON (camelCase keys).
+    """Factory for new-shape task dict (camelCase keys).
 
-    Returns a complete task dict with all 32 bridge fields.
+    Returns a complete task dict with all 27 model fields.
     """
     defaults: dict[str, Any] = {
         # Identity (3)
@@ -21,19 +21,15 @@ def make_task_dict(**overrides: Any) -> dict[str, Any]:
         "name": "Test Task",
         "url": "omnifocus:///task/task-001",
         "note": "",
-        # Lifecycle (5)
+        # Lifecycle (2)
         "added": "2024-01-15T10:30:00.000Z",
         "modified": "2024-01-15T10:30:00.000Z",
-        "active": True,
-        "effectiveActive": True,
-        "status": "Available",
-        # Completion (2)
-        "completed": False,
-        "completedByChildren": False,
-        # Flags (3)
+        # Two-axis status (2)
+        "urgency": "none",
+        "availability": "available",
+        # Flags (2)
         "flagged": False,
         "effectiveFlagged": False,
-        "sequential": False,
         # Dates (10)
         "dueDate": None,
         "deferDate": None,
@@ -45,10 +41,9 @@ def make_task_dict(**overrides: Any) -> dict[str, Any]:
         "effectivePlannedDate": None,
         "dropDate": None,
         "effectiveDropDate": None,
-        # Metadata (3)
+        # Metadata (2)
         "estimatedMinutes": None,
         "hasChildren": False,
-        "shouldUseFloatingTimeZone": False,
         # Relationships (4)
         "inInbox": True,
         "repetitionRule": None,
@@ -61,9 +56,9 @@ def make_task_dict(**overrides: Any) -> dict[str, Any]:
 
 
 def make_project_dict(**overrides: Any) -> dict[str, Any]:
-    """Factory for bridge-format project JSON (camelCase keys).
+    """Factory for new-shape project dict (camelCase keys).
 
-    Returns a complete project dict with all 36 bridge fields.
+    Returns a complete project dict with all 29 model fields.
     """
     defaults: dict[str, Any] = {
         # Identity (3) + lifecycle from OmniFocusEntity
@@ -71,26 +66,18 @@ def make_project_dict(**overrides: Any) -> dict[str, Any]:
         "name": "Test Project",
         "url": "omnifocus:///project/proj-001",
         "note": "",
-        # Lifecycle fields (from p.task.*)
+        # Lifecycle fields
         "added": "2024-01-15T10:30:00.000Z",
         "modified": "2024-01-15T10:30:00.000Z",
-        "active": True,
-        "effectiveActive": True,
-        # Status (2)
-        "status": "Active",
-        "taskStatus": "Available",
-        # Completion (2)
-        "completed": False,
-        "completedByChildren": False,
+        # Two-axis status (2)
+        "urgency": "none",
+        "availability": "available",
         # Completion dates (2)
         "completionDate": None,
         "effectiveCompletionDate": None,
-        # Flags (3)
+        # Flags (2)
         "flagged": False,
         "effectiveFlagged": False,
-        "sequential": False,
-        # Structure (1)
-        "containsSingletonActions": False,
         # Dates (8)
         "dueDate": None,
         "deferDate": None,
@@ -103,8 +90,6 @@ def make_project_dict(**overrides: Any) -> dict[str, Any]:
         # Metadata (2)
         "estimatedMinutes": None,
         "hasChildren": True,
-        # Time zone (1)
-        "shouldUseFloatingTimeZone": False,
         # Repetition (1)
         "repetitionRule": None,
         # Review (3)
@@ -121,9 +106,9 @@ def make_project_dict(**overrides: Any) -> dict[str, Any]:
 
 
 def make_tag_dict(**overrides: Any) -> dict[str, Any]:
-    """Factory for bridge-format tag JSON (camelCase keys).
+    """Factory for new-shape tag dict (camelCase keys).
 
-    Returns a complete tag dict with all 11 bridge fields.
+    Returns a complete tag dict with all 8 model fields.
     """
     defaults: dict[str, Any] = {
         "id": "tag-001",
@@ -131,10 +116,7 @@ def make_tag_dict(**overrides: Any) -> dict[str, Any]:
         "url": "omnifocus:///tag/tag-001",
         "added": "2024-01-15T10:30:00.000Z",
         "modified": "2024-01-15T10:30:00.000Z",
-        "active": True,
-        "effectiveActive": True,
-        "status": "Active",
-        "allowsNextAction": True,
+        "status": "active",
         "childrenAreMutuallyExclusive": False,
         "parent": None,
     }
@@ -142,9 +124,9 @@ def make_tag_dict(**overrides: Any) -> dict[str, Any]:
 
 
 def make_folder_dict(**overrides: Any) -> dict[str, Any]:
-    """Factory for bridge-format folder JSON (camelCase keys).
+    """Factory for new-shape folder dict (camelCase keys).
 
-    Returns a complete folder dict with all 9 bridge fields.
+    Returns a complete folder dict with all 7 model fields.
     """
     defaults: dict[str, Any] = {
         "id": "folder-001",
@@ -152,9 +134,7 @@ def make_folder_dict(**overrides: Any) -> dict[str, Any]:
         "url": "omnifocus:///folder/folder-001",
         "added": "2024-01-15T10:30:00.000Z",
         "modified": "2024-01-15T10:30:00.000Z",
-        "active": True,
-        "effectiveActive": True,
-        "status": "Active",
+        "status": "active",
         "parent": None,
     }
     return {**defaults, **overrides}
@@ -174,7 +154,7 @@ def make_perspective_dict(**overrides: Any) -> dict[str, Any]:
 
 
 def make_snapshot_dict(**overrides: Any) -> dict[str, Any]:
-    """Factory for bridge-format DatabaseSnapshot JSON (camelCase keys).
+    """Factory for new-shape DatabaseSnapshot dict (camelCase keys).
 
     Returns a complete snapshot dict with 1 of each entity type by default.
     Override individual collections or use empty lists.

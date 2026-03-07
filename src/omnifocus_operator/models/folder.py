@@ -15,10 +15,9 @@ if TYPE_CHECKING:
 
 
 class Folder(OmniFocusEntity):
-    """A single OmniFocus folder with all bridge fields.
+    """A single OmniFocus folder with all fields.
 
-    Inherits id, name, url, added, modified, active, effective_active
-    from OmniFocusEntity.
+    Inherits id, name, url, added, modified from OmniFocusEntity.
     """
 
     status: FolderStatus  # Lifecycle status (Active/Dropped)

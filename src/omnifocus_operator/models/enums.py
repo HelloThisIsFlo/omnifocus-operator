@@ -1,12 +1,12 @@
 """Status enumerations for OmniFocus entities.
 
-Values match the exact strings produced by the bridge script:
-- TaskStatus: from the ts() function mapping Task.Status values
-- ProjectStatus: from the bridge ps() resolver
-- TagStatus: from the bridge gs() resolver
-- FolderStatus: from the bridge fs() resolver
-- ScheduleType: from the bridge rst() resolver
-- AnchorDateKey: from the bridge adk() resolver
+Values use snake_case strings matching the new two-axis model:
+- Urgency: time pressure axis (overdue, due_soon, none)
+- Availability: work readiness axis (available, blocked, completed, dropped)
+- TagStatus: tag lifecycle (active, on_hold, dropped)
+- FolderStatus: folder lifecycle (active, dropped)
+- ScheduleType: repetition schedule type (regularly, from_completion, none)
+- AnchorDateKey: anchor date for repetition rules (due_date, defer_date, planned_date)
 """
 
 from enum import StrEnum
@@ -29,53 +29,32 @@ class Availability(StrEnum):
     DROPPED = "dropped"
 
 
-class TaskStatus(StrEnum):
-    """Computed availability status for tasks (from bridge ts() function)."""
-
-    AVAILABLE = "Available"
-    BLOCKED = "Blocked"
-    COMPLETED = "Completed"
-    DROPPED = "Dropped"
-    DUE_SOON = "DueSoon"
-    NEXT = "Next"
-    OVERDUE = "Overdue"
-
-
-class ProjectStatus(StrEnum):
-    """Lifecycle status for projects (from bridge ps() resolver)."""
-
-    ACTIVE = "Active"
-    ON_HOLD = "OnHold"
-    DONE = "Done"
-    DROPPED = "Dropped"
-
-
 class TagStatus(StrEnum):
-    """Lifecycle status for tags (from bridge gs() resolver)."""
+    """Lifecycle status for tags."""
 
-    ACTIVE = "Active"
-    ON_HOLD = "OnHold"
-    DROPPED = "Dropped"
+    ACTIVE = "active"
+    ON_HOLD = "on_hold"
+    DROPPED = "dropped"
 
 
 class FolderStatus(StrEnum):
-    """Lifecycle status for folders (from bridge fs() resolver)."""
+    """Lifecycle status for folders."""
 
-    ACTIVE = "Active"
-    DROPPED = "Dropped"
+    ACTIVE = "active"
+    DROPPED = "dropped"
 
 
 class ScheduleType(StrEnum):
-    """Repetition schedule type (from bridge rst() resolver)."""
+    """Repetition schedule type."""
 
-    REGULARLY = "Regularly"
-    FROM_COMPLETION = "FromCompletion"
-    NONE = "None"
+    REGULARLY = "regularly"
+    FROM_COMPLETION = "from_completion"
+    NONE = "none"
 
 
 class AnchorDateKey(StrEnum):
-    """Anchor date key for repetition rules (from bridge adk() resolver)."""
+    """Anchor date key for repetition rules."""
 
-    DUE_DATE = "DueDate"
-    DEFER_DATE = "DeferDate"
-    PLANNED_DATE = "PlannedDate"
+    DUE_DATE = "due_date"
+    DEFER_DATE = "defer_date"
+    PLANNED_DATE = "planned_date"
