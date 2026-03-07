@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Writes & Lookups
-status: planning
-stopped_at: Phase 14 context gathered
-last_updated: "2026-03-07T22:56:05.870Z"
-last_activity: 2026-03-07 -- Roadmap created
+status: executing
+stopped_at: Completed 14-01-PLAN.md
+last_updated: "2026-03-07T23:19:13Z"
+last_activity: 2026-03-07 -- Plan 14-01 complete
 progress:
   total_phases: 4
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_plans: 2
+  completed_plans: 1
+  percent: 12
 ---
 
 # Project State
@@ -26,24 +26,24 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 ## Current Position
 
 Phase: 14 of 17 (Model Refactor & Lookups) -- first of 4 v1.2 phases
-Plan: --
-Status: Ready to plan
-Last activity: 2026-03-07 -- Roadmap created
+Plan: 1 of 2
+Status: Plan 14-01 complete, ready for 14-02
+Last activity: 2026-03-07 -- Plan 14-01 complete
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 12%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0 (v1.2)
-- Average duration: --
-- Total execution time: --
+- Total plans completed: 1 (v1.2)
+- Average duration: 5min
+- Total execution time: 5min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 14 | 1/2 | 5min | 5min |
 
 ## Accumulated Context
 
@@ -53,6 +53,8 @@ Progress: [░░░░░░░░░░] 0%
 - Write model takes plain ID for parent (server resolves type), null = move to inbox
 - CQRS split: rich read model, simple write model
 - NAME-01 bundled with Phase 14 (model changes + lookups)
+- Parent task takes precedence over containing project in ParentRef (subtask case)
+- Bridge adapter uses empty string for name when bridge doesn't send name fields
 
 ### Pending Todos
 
@@ -75,6 +77,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-07T22:56:05.865Z
-Stopped at: Phase 14 context gathered
-Next action: Plan Phase 14 (Model Refactor & Lookups)
+Last session: 2026-03-07T23:19:13Z
+Stopped at: Completed 14-01-PLAN.md
+Next action: Execute 14-02-PLAN.md (get-by-ID tools)

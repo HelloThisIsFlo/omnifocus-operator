@@ -9,7 +9,7 @@ Requirements for Writes & Lookups milestone. Each maps to roadmap phases.
 
 ### Naming
 
-- [ ] **NAME-01**: MCP tool renamed from `list_all` to `get_all` to match repository/service nomenclature (`getAll` = single composite entity, not a flat list)
+- [x] **NAME-01**: MCP tool renamed from `list_all` to `get_all` to match repository/service nomenclature (`getAll` = single composite entity, not a flat list)
 
 ### Lookups
 
@@ -20,8 +20,8 @@ Requirements for Writes & Lookups milestone. Each maps to roadmap phases.
 
 ### Models
 
-- [ ] **MODL-01**: Task read model replaces `project` + `parent` fields with unified `parent: { type, id } | null` (type = project or task; null = inbox)
-- [ ] **MODL-02**: All existing Pydantic models, adapters, and serialization updated for the new parent structure
+- [x] **MODL-01**: Task read model replaces `project` + `parent` fields with unified `parent: { type, id } | null` (type = project or task; null = inbox)
+- [x] **MODL-02**: All existing Pydantic models, adapters, and serialization updated for the new parent structure
 
 ### Task Creation
 
@@ -95,13 +95,13 @@ Requirements for Writes & Lookups milestone. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| NAME-01 | Phase 14 | Pending |
+| NAME-01 | Phase 14 | Complete |
 | LOOK-01 | Phase 14 | Pending |
 | LOOK-02 | Phase 14 | Pending |
 | LOOK-03 | Phase 14 | Pending |
 | LOOK-04 | Phase 14 | Pending |
-| MODL-01 | Phase 14 | Pending |
-| MODL-02 | Phase 14 | Pending |
+| MODL-01 | Phase 14 | Complete |
+| MODL-02 | Phase 14 | Complete |
 | CREA-01 | Phase 15 | Pending |
 | CREA-02 | Phase 15 | Pending |
 | CREA-03 | Phase 15 | Pending |
