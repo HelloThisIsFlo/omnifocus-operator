@@ -1,21 +1,21 @@
 ---
 name: test-omnifocus-operator
 description: >
-  Test the OmniFocus Operator MCP server end-to-end. Calls list_all against the
+  Test the OmniFocus Operator MCP server end-to-end. Calls get_all against the
   live database, builds a minimal coverage snapshot in .sandbox/, and reports
   field/boolean/enum gaps. Use this after any model change, bridge change, or
   schema migration to confirm the live output matches expectations. Also use when
-  the user says "test the operator", "check if list_all works", "update the
+  the user says "test the operator", "check if get_all works", "update the
   snapshot", or "verify the MCP server".
 disable-model-invocation: true
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, mcp__omnifocus-operator__list_all
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, mcp__omnifocus-operator__get_all
 ---
 
 # Test OmniFocus Operator
 
 ## What this skill does
 
-Tests the `list_all` MCP tool against the user's live OmniFocus database, then
+Tests the `get_all` MCP tool against the user's live OmniFocus database, then
 builds a minimal snapshot file that covers every field value at least once. The
 snapshot serves as a compact reference for what the real data looks like — useful
 for debugging, testing model changes, and verifying schema migrations.
@@ -28,13 +28,13 @@ doesn't exist anywhere in the database) are flagged for manual investigation.
 ## Prerequisites
 
 - OmniFocus must be running
-- The `mcp__omnifocus-operator__list_all` MCP tool must be available
+- The `mcp__omnifocus-operator__get_all` MCP tool must be available
 
 ## Workflow
 
-### Step 1 — Call list_all and report counts
+### Step 1 — Call get_all and report counts
 
-Call `mcp__omnifocus-operator__list_all` with no arguments. The result will be
+Call `mcp__omnifocus-operator__get_all` with no arguments. The result will be
 large (millions of characters) and gets saved to a temp file automatically. Note
 the file path — it's the input for subsequent steps.
 
