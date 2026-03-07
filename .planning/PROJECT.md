@@ -33,7 +33,14 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 ### Active
 
-(None -- next milestone not yet planned)
+<!-- Current milestone: v1.2 Writes & Lookups -->
+
+- [ ] Get-by-ID tools: `get_task`, `get_project`, `get_tag` -- single-entity lookup by primary key
+- [ ] Write pipeline: MCP -> Service -> Repository -> Bridge -> invalidate snapshot
+- [ ] Task creation: `add_tasks` -- create tasks with project/parent/tags/dates/flags
+- [ ] Task editing: `edit_tasks` -- patch semantics (omit/null/value), tag modes, task movement
+- [ ] Lifecycle changes: complete/drop/reactivate tasks via `edit_tasks`
+- [ ] Bridge script: new commands (get_task, get_project, get_tag, add_task, edit_task) with request file payloads
 
 ### Out of Scope
 
@@ -88,4 +95,16 @@ Two read paths: SQLite (default, ~46ms) and OmniJS bridge (fallback, ~1.5MB JSON
 | Manual bridge fallback via env var | Silent automatic failover hides broken state; user must know which path is active | Good -- explicit is better than implicit |
 
 ---
-*Last updated: 2026-03-07 after v1.1 milestone*
+## Current Milestone: v1.2 Writes & Lookups
+
+**Goal:** Enable agents to look up individual entities by ID and create/edit tasks in OmniFocus, validating the write pipeline end-to-end.
+
+**Target features:**
+- Get-by-ID tools (get_task, get_project, get_tag)
+- Task creation (add_tasks)
+- Task editing with patch semantics (edit_tasks)
+- Lifecycle changes (complete, drop, reactivate)
+- Bridge script write commands with request file payloads
+
+---
+*Last updated: 2026-03-07 after v1.2 milestone started*

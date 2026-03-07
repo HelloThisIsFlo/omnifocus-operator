@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: HUGE Performance Upgrade
-status: shipped
-stopped_at: Milestone complete and archived
+milestone: v1.2
+milestone_name: Writes & Lookups
+status: defining_requirements
+stopped_at: null
 last_updated: "2026-03-07"
-last_activity: "2026-03-07 -- v1.1 milestone archived"
+last_activity: "2026-03-07 -- Milestone v1.2 started"
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 11
-  completed_plans: 11
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,19 +21,20 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Planning next milestone
+**Current focus:** v1.2 Writes & Lookups
 
 ## Current Position
 
-Phase: -- (between milestones)
-Status: v1.1 shipped, next milestone not yet planned
-Last activity: 2026-03-07 -- v1.1 milestone archived
+Phase: Not started (defining requirements)
+Plan: --
+Status: Defining requirements
+Last activity: 2026-03-07 -- Milestone v1.2 started
 
 ## Accumulated Context
 
 ### Decisions
 
-Cleared at milestone boundary. Full decision log in PROJECT.md Key Decisions table.
+(None yet for v1.2)
 
 ### Pending Todos
 
@@ -57,5 +58,5 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: v1.1 milestone archived
-Next action: /gsd:new-milestone
+Stopped at: Defining requirements for v1.2
+Next action: Define requirements and create roadmap
