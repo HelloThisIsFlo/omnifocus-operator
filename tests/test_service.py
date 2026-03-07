@@ -119,7 +119,7 @@ class TestCreateBridge:
         assert isinstance(bridge, InMemoryBridge)
 
     def test_simulator_returns_simulator_bridge(self) -> None:
-        from omnifocus_operator.bridge._simulator import SimulatorBridge
+        from omnifocus_operator.bridge.simulator import SimulatorBridge
 
         bridge = create_bridge("simulator")
         assert isinstance(bridge, SimulatorBridge)

@@ -14,8 +14,8 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from omnifocus_operator.bridge._errors import BridgeError
-from omnifocus_operator.bridge._in_memory import InMemoryBridge
+from omnifocus_operator.bridge.errors import BridgeError
+from omnifocus_operator.bridge.in_memory import InMemoryBridge
 from omnifocus_operator.repository import FileMtimeSource, OmniFocusRepository
 
 from .conftest import make_snapshot_dict

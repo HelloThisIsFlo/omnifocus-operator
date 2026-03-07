@@ -10,7 +10,7 @@ with realistic OmniFocus data from :data:`SIMULATOR_SNAPSHOT`.
 
 CLI flags allow injecting failures (``--fail-mode``) and delays
 (``--delay``) to exercise error-handling paths in
-:class:`~omnifocus_operator.bridge._simulator.SimulatorBridge`.
+:class:`~omnifocus_operator.bridge.simulator.SimulatorBridge`.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from omnifocus_operator.simulator._data import SIMULATOR_SNAPSHOT
+from omnifocus_operator.simulator.data import SIMULATOR_SNAPSHOT
 
 logger = logging.getLogger("omnifocus_operator.simulator")
 

@@ -14,7 +14,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from omnifocus_operator.bridge._errors import (
+from omnifocus_operator.bridge.errors import (
     BridgeConnectionError,
     BridgeProtocolError,
     BridgeTimeoutError,

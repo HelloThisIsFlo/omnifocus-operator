@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, NoReturn
 
 if TYPE_CHECKING:
     from omnifocus_operator.models.snapshot import DatabaseSnapshot
-    from omnifocus_operator.repository._repository import OmniFocusRepository
+    from omnifocus_operator.repository import OmniFocusRepository
 
 logger = logging.getLogger("omnifocus_operator")
 

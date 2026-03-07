@@ -20,9 +20,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from omnifocus_operator.bridge._errors import BridgeProtocolError, BridgeTimeoutError
-from omnifocus_operator.bridge._real import DEFAULT_IPC_DIR, sweep_orphaned_files
-from omnifocus_operator.bridge._simulator import SimulatorBridge
+from omnifocus_operator.bridge.errors import BridgeProtocolError, BridgeTimeoutError
+from omnifocus_operator.bridge.real import DEFAULT_IPC_DIR, sweep_orphaned_files
+from omnifocus_operator.bridge.simulator import SimulatorBridge
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -135,7 +135,7 @@ class TestNonBlockingIO:
         bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=1.0)
         request_id = uuid.uuid4()
 
-        with patch("omnifocus_operator.bridge._real.asyncio") as mock_asyncio:
+        with patch("omnifocus_operator.bridge.real.asyncio") as mock_asyncio:
             # Make to_thread actually work by delegating to real to_thread
             mock_asyncio.to_thread = AsyncMock(side_effect=asyncio.to_thread)
             mock_asyncio.sleep = asyncio.sleep
@@ -569,7 +569,7 @@ class TestSAFE01FactoryGuard:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """create_bridge('real') raises RuntimeError when PYTEST_CURRENT_TEST is set."""
-        from omnifocus_operator.bridge._factory import create_bridge
+        from omnifocus_operator.bridge.factory import create_bridge
 
         # PYTEST_CURRENT_TEST is automatically set by pytest -- verify it's present
         assert os.environ.get("PYTEST_CURRENT_TEST") is not None
@@ -582,7 +582,7 @@ class TestSAFE01FactoryGuard:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """create_bridge('real') succeeds when PYTEST_CURRENT_TEST is NOT set."""
-        from omnifocus_operator.bridge._factory import create_bridge
+        from omnifocus_operator.bridge.factory import create_bridge
 
         monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
         monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))

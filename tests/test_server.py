@@ -19,8 +19,8 @@ if TYPE_CHECKING:
 
     import pytest
 
-    from omnifocus_operator.repository._repository import OmniFocusRepository
-    from omnifocus_operator.service._service import OperatorService
+    from omnifocus_operator.repository import OmniFocusRepository
+    from omnifocus_operator.service import OperatorService
 
 
 # ---------------------------------------------------------------------------
@@ -176,7 +176,7 @@ class TestTOOL01ListAllStructuredOutput:
         """Verify structuredContent uses camelCase field names for nested entities."""
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
 
-        from omnifocus_operator.bridge._in_memory import InMemoryBridge
+        from omnifocus_operator.bridge.in_memory import InMemoryBridge
         from omnifocus_operator.repository import ConstantMtimeSource, OmniFocusRepository
         from omnifocus_operator.server._server import _register_tools
         from omnifocus_operator.service import OperatorService
@@ -412,7 +412,7 @@ class TestIPC06OrphanSweepWiring:
         ipc_path = Path(str(tmp_path))
 
         # Patch create_bridge to return a bridge WITH ipc_dir attribute
-        from omnifocus_operator.bridge._in_memory import InMemoryBridge
+        from omnifocus_operator.bridge.in_memory import InMemoryBridge
 
         seed_data = {
             "tasks": [],

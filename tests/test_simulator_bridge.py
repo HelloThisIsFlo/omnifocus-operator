@@ -26,7 +26,7 @@ class TestSimulatorBridge:
 
     def test_trigger_omnifocus_is_noop(self, tmp_path: Path) -> None:
         """_trigger_omnifocus() is callable and returns None (no side effects)."""
-        from omnifocus_operator.bridge._simulator import SimulatorBridge
+        from omnifocus_operator.bridge.simulator import SimulatorBridge
 
         bridge = SimulatorBridge(ipc_dir=tmp_path)
         result = bridge._trigger_omnifocus("test-file-prefix")
@@ -34,15 +34,15 @@ class TestSimulatorBridge:
 
     def test_ipc_dir_returns_configured_path(self, tmp_path: Path) -> None:
         """ipc_dir property returns the configured path."""
-        from omnifocus_operator.bridge._simulator import SimulatorBridge
+        from omnifocus_operator.bridge.simulator import SimulatorBridge
 
         bridge = SimulatorBridge(ipc_dir=tmp_path)
         assert bridge.ipc_dir == tmp_path
 
     def test_satisfies_bridge_protocol(self, tmp_path: Path) -> None:
         """SimulatorBridge satisfies the Bridge protocol (structural typing)."""
-        from omnifocus_operator.bridge._protocol import Bridge  # noqa: TC001
-        from omnifocus_operator.bridge._simulator import SimulatorBridge
+        from omnifocus_operator.bridge.protocol import Bridge  # noqa: TC001
+        from omnifocus_operator.bridge.simulator import SimulatorBridge
 
         bridge: Bridge = SimulatorBridge(ipc_dir=tmp_path)
         assert bridge is not None
@@ -52,7 +52,7 @@ class TestSimulatorBridge:
 
     def test_ipc_directory_created_on_init(self, tmp_path: Path) -> None:
         """IPC directory is created on init (inherited from base bridge)."""
-        from omnifocus_operator.bridge._simulator import SimulatorBridge
+        from omnifocus_operator.bridge.simulator import SimulatorBridge
 
         ipc_dir = tmp_path / "ipc"
         assert not ipc_dir.exists()
@@ -61,7 +61,7 @@ class TestSimulatorBridge:
 
     def test_has_ipc_mechanics(self, tmp_path: Path) -> None:
         """SimulatorBridge inherits IPC mechanics (ipc_dir, send_command)."""
-        from omnifocus_operator.bridge._simulator import SimulatorBridge
+        from omnifocus_operator.bridge.simulator import SimulatorBridge
 
         bridge = SimulatorBridge(ipc_dir=tmp_path)
         assert hasattr(bridge, "ipc_dir")
@@ -70,7 +70,7 @@ class TestSimulatorBridge:
 
     def test_accepts_timeout_kwarg(self, tmp_path: Path) -> None:
         """SimulatorBridge accepts timeout kwargs (inherited from base bridge)."""
-        from omnifocus_operator.bridge._simulator import SimulatorBridge
+        from omnifocus_operator.bridge.simulator import SimulatorBridge
 
         bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=5.0)
         assert bridge._timeout == 5.0
@@ -124,8 +124,8 @@ class TestFactory:
         tmp_path: Path,
     ) -> None:
         """create_bridge('simulator') returns a SimulatorBridge instance."""
-        from omnifocus_operator.bridge._factory import create_bridge
-        from omnifocus_operator.bridge._simulator import SimulatorBridge
+        from omnifocus_operator.bridge.factory import create_bridge
+        from omnifocus_operator.bridge.simulator import SimulatorBridge
 
         bridge = create_bridge("simulator")
         assert isinstance(bridge, SimulatorBridge)
@@ -136,8 +136,8 @@ class TestFactory:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """create_bridge('simulator') respects OMNIFOCUS_IPC_DIR env var."""
-        from omnifocus_operator.bridge._factory import create_bridge
-        from omnifocus_operator.bridge._simulator import SimulatorBridge
+        from omnifocus_operator.bridge.factory import create_bridge
+        from omnifocus_operator.bridge.simulator import SimulatorBridge
 
         custom_dir = tmp_path / "custom-ipc"
         monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(custom_dir))
@@ -151,9 +151,9 @@ class TestFactory:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """create_bridge('simulator') uses DEFAULT_IPC_DIR when env var not set."""
-        from omnifocus_operator.bridge._factory import create_bridge
-        from omnifocus_operator.bridge._real import DEFAULT_IPC_DIR
-        from omnifocus_operator.bridge._simulator import SimulatorBridge
+        from omnifocus_operator.bridge.factory import create_bridge
+        from omnifocus_operator.bridge.real import DEFAULT_IPC_DIR
+        from omnifocus_operator.bridge.simulator import SimulatorBridge
 
         monkeypatch.delenv("OMNIFOCUS_IPC_DIR", raising=False)
 
@@ -196,7 +196,7 @@ class TestLifespan:
         tmp_path: Path,
     ) -> Any:
         """Create a SimulatorBridge with mocked send_command returning seed data."""
-        from omnifocus_operator.bridge._simulator import SimulatorBridge
+        from omnifocus_operator.bridge.simulator import SimulatorBridge
 
         mock_bridge = SimulatorBridge(ipc_dir=tmp_path)
 

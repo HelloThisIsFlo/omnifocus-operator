@@ -12,7 +12,7 @@ scheme trigger needed.
 
 from __future__ import annotations
 
-from omnifocus_operator.bridge._real import RealBridge
+from omnifocus_operator.bridge.real import RealBridge
 
 
 class SimulatorBridge(RealBridge):

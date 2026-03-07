@@ -9,10 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from omnifocus_operator.bridge._in_memory import InMemoryBridge
+from omnifocus_operator.bridge.in_memory import InMemoryBridge
 
 if TYPE_CHECKING:
-    from omnifocus_operator.bridge._protocol import Bridge
+    from omnifocus_operator.bridge.protocol import Bridge
 
 
 def create_bridge(bridge_type: str) -> Bridge:
@@ -152,8 +152,8 @@ def create_bridge(bridge_type: str) -> Bridge:
         case "simulator":
             import os
 
-            from omnifocus_operator.bridge._real import DEFAULT_IPC_DIR
-            from omnifocus_operator.bridge._simulator import SimulatorBridge
+            from omnifocus_operator.bridge.real import DEFAULT_IPC_DIR
+            from omnifocus_operator.bridge.simulator import SimulatorBridge
 
             ipc_dir_str = os.environ.get("OMNIFOCUS_IPC_DIR")
             ipc_dir = Path(ipc_dir_str) if ipc_dir_str else DEFAULT_IPC_DIR
@@ -169,7 +169,7 @@ def create_bridge(bridge_type: str) -> Bridge:
                 )
                 raise RuntimeError(msg)
 
-            from omnifocus_operator.bridge._real import DEFAULT_IPC_DIR, RealBridge
+            from omnifocus_operator.bridge.real import DEFAULT_IPC_DIR, RealBridge
 
             ipc_dir_str = os.environ.get("OMNIFOCUS_IPC_DIR")
             ipc_dir = Path(ipc_dir_str) if ipc_dir_str else DEFAULT_IPC_DIR

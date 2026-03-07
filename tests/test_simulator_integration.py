@@ -19,9 +19,9 @@ import pytest
 from mcp.client.session import ClientSession
 from mcp.shared.message import SessionMessage
 
-from omnifocus_operator.bridge._errors import BridgeProtocolError, BridgeTimeoutError
-from omnifocus_operator.bridge._simulator import SimulatorBridge
-from omnifocus_operator.simulator._data import SIMULATOR_SNAPSHOT
+from omnifocus_operator.bridge.errors import BridgeProtocolError, BridgeTimeoutError
+from omnifocus_operator.bridge.simulator import SimulatorBridge
+from omnifocus_operator.simulator.data import SIMULATOR_SNAPSHOT
 
 if TYPE_CHECKING:
     from collections.abc import Generator
