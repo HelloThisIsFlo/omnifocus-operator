@@ -33,7 +33,7 @@
 - Decimal phases (e.g., 10.1): Urgent insertions (marked with INSERTED)
 
 - [x] **Phase 10: Model Overhaul** - Replace single-winner status enums with two-axis model, remove deprecated fields, update all tests (gap closure in progress) (completed 2026-03-07)
-- [ ] **Phase 11: DataSource Protocol** - Abstract read path behind DataSource protocol, refactor Repository, create test infrastructure
+- [ ] **Phase 11: DataSource Protocol** - Abstract read path behind Repository protocol, refactor Repository into package, create test infrastructure
 - [ ] **Phase 12: SQLite Reader** - Implement SQLiteDataSource with read-only access, row-to-model mapping, and WAL-based freshness detection
 - [ ] **Phase 13: Fallback and Integration** - Bridge fallback mode via env var, error-serving when SQLite unavailable, server wiring
 
@@ -57,17 +57,18 @@ Plans:
 - [ ] 10-04-PLAN.md -- GAP CLOSURE: Remove dead effectiveCompletionDate from Project, remove ScheduleType.none, unify Tag/Folder availability
 
 ### Phase 11: DataSource Protocol
-**Goal**: Repository layer consumes a unified DataSource protocol instead of Bridge + MtimeSource, with InMemoryDataSource for testing
+**Goal**: Repository layer consumes a Repository protocol instead of being a single concrete class, with BridgeRepository and InMemoryRepository implementations
 **Depends on**: Phase 10
 **Requirements**: ARCH-01, ARCH-02, ARCH-03
 **Success Criteria** (what must be TRUE):
-  1. A `DataSource` protocol exists with methods for fetching snapshot data and mtime, and both SQLite and Bridge implementations can satisfy it
-  2. `OmniFocusRepository` accepts a DataSource instead of Bridge + MtimeSource directly
-  3. An `InMemoryDataSource` exists and all repository-level tests use it (no direct Bridge dependency in repository tests)
-**Plans**: TBD
+  1. A `Repository` protocol exists with `get_snapshot()` method, and both BridgeRepository and InMemoryRepository satisfy it
+  2. Service layer accepts `Repository` protocol instead of concrete `OmniFocusRepository`
+  3. An `InMemoryRepository` exists and all repository-level and service-level tests use it (no direct Bridge dependency in repository/service tests)
+**Plans**: 2 plans
 
 Plans:
-- [ ] 11-01: TBD
+- [ ] 11-01-PLAN.md -- Create repository package with protocol, BridgeRepository, InMemoryRepository, relocate MtimeSource
+- [ ] 11-02-PLAN.md -- Update consumers (service, server, tests), create architecture doc
 
 ### Phase 12: SQLite Reader
 **Goal**: Server reads OmniFocus data directly from SQLite cache with WAL-based freshness detection, no OmniFocus process required
@@ -117,6 +118,6 @@ Phases execute in numeric order: 10 -> 11 -> 12 -> 13
 | 8.2. Model Alignment (BRIDGE-SPEC) | v1.0 | 3/3 | Complete | 2026-03-06 |
 | 9. Error-Serving Degraded Mode | v1.0 | 1/1 | Complete | 2026-03-06 |
 | 10. Model Overhaul | 4/4 | Complete    | 2026-03-07 | - |
-| 11. DataSource Protocol | v1.1 | 0/? | Not started | - |
+| 11. DataSource Protocol | v1.1 | 0/2 | Not started | - |
 | 12. SQLite Reader | v1.1 | 0/? | Not started | - |
 | 13. Fallback and Integration | v1.1 | 0/? | Not started | - |
