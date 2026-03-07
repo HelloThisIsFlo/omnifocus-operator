@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: HUGE Performance Upgrade
 status: active
-stopped_at: Defining requirements
+stopped_at: Roadmap created, ready to plan Phase 10
 last_updated: "2026-03-07"
-last_activity: "2026-03-07 - Milestone v1.1 started"
+last_activity: "2026-03-07 - v1.1 roadmap created"
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,26 +21,30 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** v1.1 HUGE Performance Upgrade
+**Current focus:** Phase 10 - Model Overhaul
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-07 — Milestone v1.1 started
+Phase: 10 (1 of 4 in v1.1)
+Plan: --
+Status: Ready to plan
+Last activity: 2026-03-07 -- v1.1 roadmap created (4 phases, 18 requirements)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
+- v1.1 roadmap: Model overhaul first (dependency root), then protocol, then SQLite, then fallback
+- Research recommends incremental model migration (not big-bang) to keep 177+ tests green at each step
 
 ### Pending Todos
 
-1. **Add retry logic for OmniFocus bridge timeouts** (bridge) -- Potential reliability improvement; single timeout = immediate failure currently
-2. **Investigate macOS App Nap impact on OmniFocus responsiveness** (bridge) -- OmniFocus may hang when backgrounded; needs reproduction and investigation
-3. **Make UAT folder discoverable for verification agents** (docs) -- `uat/` not documented; verification agents can't find UAT scripts
+Carried from v1.0:
+1. Add retry logic for OmniFocus bridge timeouts
+2. Investigate macOS App Nap impact on OmniFocus responsiveness
+3. Make UAT folder discoverable for verification agents
 
 ### Quick Tasks Completed
 
@@ -49,8 +53,13 @@ Decisions are logged in PROJECT.md Key Decisions table.
 | 1 | Remove eager cache hydration on startup, lazy populate on first tool call | 2026-03-06 | bab6ae6 | [1-remove-eager-cache-hydration-on-startup-](./quick/1-remove-eager-cache-hydration-on-startup-/) |
 | 2 | Simplify file layout: drop _ prefixes, collapse server/service/repository packages | 2026-03-07 | b15b42b | [2-simplify-file-layout-drop-prefixes-colla](./quick/2-simplify-file-layout-drop-prefixes-colla/) |
 
+### Blockers/Concerns
+
+- Phase 10 (Model Overhaul) is highest risk -- 177+ tests break if done as big-bang. Needs `/gsd:research-phase` for incremental migration strategy.
+- Phase 12 (SQLite Reader) needs `/gsd:research-phase` -- column-to-field mapping, timestamp formats, NULL edge cases.
+
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Milestone v1.1 started — defining requirements
-Next action: Define requirements, then create roadmap
+Stopped at: v1.1 roadmap created, ready to plan Phase 10
+Next action: `/gsd:plan-phase 10`

@@ -75,30 +75,30 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MODEL-01 | — | Pending |
-| MODEL-02 | — | Pending |
-| MODEL-03 | — | Pending |
-| MODEL-04 | — | Pending |
-| MODEL-05 | — | Pending |
-| MODEL-06 | — | Pending |
-| SQLITE-01 | — | Pending |
-| SQLITE-02 | — | Pending |
-| SQLITE-03 | — | Pending |
-| SQLITE-04 | — | Pending |
-| FRESH-01 | — | Pending |
-| FRESH-02 | — | Pending |
-| FALL-01 | — | Pending |
-| FALL-02 | — | Pending |
-| FALL-03 | — | Pending |
-| ARCH-01 | — | Pending |
-| ARCH-02 | — | Pending |
-| ARCH-03 | — | Pending |
+| MODEL-01 | Phase 10 | Pending |
+| MODEL-02 | Phase 10 | Pending |
+| MODEL-03 | Phase 10 | Pending |
+| MODEL-04 | Phase 10 | Pending |
+| MODEL-05 | Phase 10 | Pending |
+| MODEL-06 | Phase 10 | Pending |
+| SQLITE-01 | Phase 12 | Pending |
+| SQLITE-02 | Phase 12 | Pending |
+| SQLITE-03 | Phase 12 | Pending |
+| SQLITE-04 | Phase 12 | Pending |
+| FRESH-01 | Phase 12 | Pending |
+| FRESH-02 | Phase 12 | Pending |
+| FALL-01 | Phase 13 | Pending |
+| FALL-02 | Phase 13 | Pending |
+| FALL-03 | Phase 13 | Pending |
+| ARCH-01 | Phase 11 | Pending |
+| ARCH-02 | Phase 11 | Pending |
+| ARCH-03 | Phase 11 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 18 total
-- Mapped to phases: 0
-- Unmapped: 18
+- Mapped to phases: 18
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-07*
-*Last updated: 2026-03-07 after initial definition*
+*Last updated: 2026-03-07 after roadmap creation*
