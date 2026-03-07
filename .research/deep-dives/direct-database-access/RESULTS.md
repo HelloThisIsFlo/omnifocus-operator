@@ -7,6 +7,7 @@
 - **Status model:** Two independent axes (Urgency + Availability) replace the single `status` enum
 - **Read-after-write:** Poll WAL file mtime for freshness (~500ms delay)
 - **Fallback:** Manual switch to OmniJS bridge via env var when SQLite is unavailable
+- **Field coverage:** All model fields verified against SQLite schema ([Pydantic model](RESULTS_pydantic-model.md))
 
 ---
 
@@ -87,7 +88,15 @@ When SQLite is not found (e.g., OmniFocus version changed the path), the server 
 
 ---
 
-## 5. Deep-Dive References
+## 5. Updated Pydantic Model
+
+The two-axis status model drives significant changes to the Pydantic models. `TaskStatus`, `ProjectStatus`, `active`, `effective_active`, and `completed` (bool) are all replaced by `urgency: Urgency` + `availability: Availability` on `ActionableEntity`.
+
+Full field listing, mapping tables, removed fields with rationales, and fallback mode behavior: [`RESULTS_pydantic-model.md`](RESULTS_pydantic-model.md)
+
+---
+
+## 6. Deep-Dive References
 
 For investigation details, methodology, and raw data:
 
@@ -99,3 +108,4 @@ For investigation details, methodology, and raw data:
 | TODO 2: Enum Priority | Confirmed Overdue always beats Blocked; degraded mode preserves urgency | [`3-validation-todos/todo2_enum_priority/FINDINGS.md`](3-validation-todos/todo2_enum_priority/FINDINGS.md) |
 | TODO 3: SQLite Benchmark | Full snapshot 46ms, filtered <6ms — no caching layer needed | [`3-validation-todos/todo3_sqlite_benchmark/FINDINGS.md`](3-validation-todos/todo3_sqlite_benchmark/FINDINGS.md) |
 | TODO 4: Freshness Detection | WAL `st_mtime_ns` is the best zero-cost freshness signal; ~500ms delay | [`3-validation-todos/todo4_sqlite_freshness/FINDINGS.md`](3-validation-todos/todo4_sqlite_freshness/FINDINGS.md) |
+| Final Checks: Field Coverage | 51/52 fields from SQLite; verified column mappings for all 6 failures | [`4-final-checks/FINDINGS.md`](4-final-checks/FINDINGS.md) |
