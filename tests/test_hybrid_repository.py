@@ -17,9 +17,9 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 import pytest
-from omnifocus_operator.repository.hybrid import HybridRepository
 
 from omnifocus_operator.models.snapshot import AllEntities
+from omnifocus_operator.repository.hybrid import HybridRepository
 from omnifocus_operator.repository.protocol import Repository
 
 # Core Foundation epoch: Jan 1, 2001 00:00:00 UTC
