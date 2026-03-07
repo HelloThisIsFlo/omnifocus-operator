@@ -32,9 +32,9 @@ Requirements for v1.1 HUGE Performance Upgrade. Each maps to roadmap phases.
 
 ### Fallback
 
-- [ ] **FALL-01**: Setting `OMNIFOCUS_REPOSITORY=bridge` env var switches read path from SQLite to OmniJS bridge
+- [x] **FALL-01**: Setting `OMNIFOCUS_REPOSITORY=bridge` env var switches read path from SQLite to OmniJS bridge
 - [ ] **FALL-02**: In OmniJS fallback mode, urgency is fully populated; availability is reduced to `available` / `completed` / `dropped` (no `blocked`)
-- [ ] **FALL-03**: When SQLite database is not found, server enters error-serving mode with actionable message including the expected path and instructions to set `OMNIFOCUS_REPOSITORY=bridge` as a quick fallback
+- [x] **FALL-03**: When SQLite database is not found, server enters error-serving mode with actionable message including the expected path and instructions to set `OMNIFOCUS_REPOSITORY=bridge` as a quick fallback
 
 ### Architecture
 
@@ -87,9 +87,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SQLITE-04 | Phase 12 | Complete |
 | FRESH-01 | Phase 12 | Complete |
 | FRESH-02 | Phase 12 | Complete |
-| FALL-01 | Phase 13 | Pending |
+| FALL-01 | Phase 13 | Complete |
 | FALL-02 | Phase 13 | Pending |
-| FALL-03 | Phase 13 | Pending |
+| FALL-03 | Phase 13 | Complete |
 | ARCH-01 | Phase 11 | Complete |
 | ARCH-02 | Phase 11 | Complete |
 | ARCH-03 | Phase 11 | Complete |

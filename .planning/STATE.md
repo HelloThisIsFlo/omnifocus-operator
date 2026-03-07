@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: HUGE Performance Upgrade
-status: completed
-stopped_at: Phase 13 context gathered
+status: in_progress
+stopped_at: Completed 13-01-PLAN.md
 last_updated: "2026-03-07T18:56:29.168Z"
 last_activity: "2026-03-07 -- Completed 12-02: WAL freshness detection + UAT script"
 progress:
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 ## Current Position
 
 Phase: 13 (4 of 4 in v1.1)
-Plan: 0 of ? complete
-Status: Phase 12 complete, Phase 13 next (Fallback & Integration)
-Last activity: 2026-03-07 -- Completed 12-02: WAL freshness detection + UAT script
+Plan: 1 of 2 complete
+Status: Executing Phase 13 (Fallback & Integration)
+Last activity: 2026-03-07 -- Completed 13-01: Repository factory + server lifespan restructure
 
-Progress: [██████████] 100% (Phase 12 complete, 9/9 plans)
+Progress: [█████████░] 91% (10/11 plans)
 
 ## Accumulated Context
 
@@ -61,6 +61,9 @@ Progress: [██████████] 100% (Phase 12 complete, 9/9 plans)
 - HybridRepository: projects excluded from task query via LEFT JOIN + WHERE NULL
 - [Phase 12]: TEMPORARY_simulate_write() uses uppercase prefix to signal temporary API, noqa N802 for ruff
 - [Phase 12]: Freshness polls WAL mtime via asyncio.to_thread(os.stat) at 50ms with 2s graceful timeout
+- [Phase 13]: Repository factory duplicates _DEFAULT_DB_PATH (avoids coupling to hybrid.py private constant)
+- [Phase 13]: IPC sweep always runs unconditionally before factory call (sweep handles missing dirs)
+- [Phase 13]: Bridge mode warning mentions blocked-unavailability and speed tradeoffs
 
 ### Pending Todos
 
@@ -83,6 +86,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-07T18:56:29.156Z
-Stopped at: Phase 13 context gathered
-Next action: `/gsd:plan-phase 13` (Fallback & Integration)
+Last session: 2026-03-07T19:16:00Z
+Stopped at: Completed 13-01-PLAN.md
+Next action: Execute 13-02-PLAN.md
