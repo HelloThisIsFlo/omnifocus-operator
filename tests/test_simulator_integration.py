@@ -315,6 +315,7 @@ class TestMcpIntegration:
         """MCP list_all tool returns simulator data via full stack."""
         proc = _start_simulator(tmp_path)
         try:
+            monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge")
             monkeypatch.setenv("OMNIFOCUS_BRIDGE", "simulator")
             monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
 

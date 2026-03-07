@@ -223,6 +223,7 @@ class TestLifespan:
         tmp_path: Path,
     ) -> None:
         """Server lifespan completes successfully with bridge_type='simulator'."""
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge")
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "simulator")
         monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
 
@@ -250,6 +251,7 @@ class TestLifespan:
         tmp_path: Path,
     ) -> None:
         """Server with simulator bridge can serve list_all tool calls."""
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge")
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "simulator")
         monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
 
@@ -275,9 +277,10 @@ class TestLifespan:
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
     ) -> None:
-        """Lifespan sweeps orphaned IPC files for simulator bridge (has ipc_dir)."""
+        """Lifespan always sweeps orphaned IPC files (DEFAULT_IPC_DIR)."""
         from unittest.mock import AsyncMock
 
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge")
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "simulator")
         monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
 
@@ -290,7 +293,7 @@ class TestLifespan:
                 return_value=mock_bridge,
             ),
             patch(
-                "omnifocus_operator.bridge.sweep_orphaned_files",
+                "omnifocus_operator.bridge.real.sweep_orphaned_files",
                 mock_sweep,
             ),
         ):
@@ -304,4 +307,5 @@ class TestLifespan:
 
             await _run_with_client(server, _check)
 
-        mock_sweep.assert_called_once_with(tmp_path)
+        # Sweep is called with DEFAULT_IPC_DIR (always), not bridge.ipc_dir
+        mock_sweep.assert_called_once()

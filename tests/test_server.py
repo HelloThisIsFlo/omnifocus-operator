@@ -88,6 +88,7 @@ class TestARCH01ThreeLayerArchitecture:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge")
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
         from omnifocus_operator.server import create_server
 
@@ -103,17 +104,18 @@ class TestARCH01ThreeLayerArchitecture:
 
 
 # ---------------------------------------------------------------------------
-# ARCH-02: Bridge injection via env var
+# ARCH-02: Repository injection via env var
 # ---------------------------------------------------------------------------
 
 
-class TestARCH02BridgeInjection:
-    """Verify bridge selection through OMNIFOCUS_BRIDGE env var."""
+class TestARCH02RepositoryInjection:
+    """Verify repository selection through OMNIFOCUS_REPOSITORY env var."""
 
-    async def test_inmemory_bridge_via_env_var(
+    async def test_bridge_mode_via_env_var(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge")
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
         from omnifocus_operator.server import create_server
 
@@ -125,12 +127,14 @@ class TestARCH02BridgeInjection:
 
         await run_with_client(server, _check)
 
-    async def test_default_real_bridge_fails_at_startup(
+    async def test_sqlite_mode_missing_db_enters_error_mode(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Any,
     ) -> None:
-        """SAFE-01: Default 'real' bridge enters degraded mode during pytest."""
-        monkeypatch.delenv("OMNIFOCUS_BRIDGE", raising=False)
+        """FALL-03: SQLite not found -> error-serving mode with actionable message."""
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "sqlite")
+        monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(tmp_path / "missing.db"))
         from omnifocus_operator.server import create_server
 
         server = create_server()
@@ -140,6 +144,8 @@ class TestARCH02BridgeInjection:
             assert result.isError is True
             text = result.content[0].text  # type: ignore[union-attr]
             assert "failed to start" in text.lower()
+            assert "OMNIFOCUS_SQLITE_PATH" in text
+            assert "OMNIFOCUS_REPOSITORY=bridge" in text
 
         await run_with_client(server, _check)
 
@@ -156,6 +162,7 @@ class TestTOOL01ListAllStructuredOutput:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge")
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
         from omnifocus_operator.server import create_server
 
@@ -174,6 +181,7 @@ class TestTOOL01ListAllStructuredOutput:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Verify structuredContent uses camelCase field names for nested entities."""
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge")
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
 
         from omnifocus_operator.bridge.in_memory import InMemoryBridge
@@ -240,6 +248,7 @@ class TestTOOL02Annotations:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge")
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
         from omnifocus_operator.server import create_server
 
@@ -257,6 +266,7 @@ class TestTOOL02Annotations:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge")
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
         from omnifocus_operator.server import create_server
 
@@ -283,6 +293,7 @@ class TestTOOL03OutputSchema:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge")
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
         from omnifocus_operator.server import create_server
 
@@ -299,6 +310,7 @@ class TestTOOL03OutputSchema:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge")
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
         from omnifocus_operator.server import create_server
 
@@ -360,76 +372,26 @@ class TestTOOL04StdoutClean:
 
 
 # ---------------------------------------------------------------------------
-# IPC-06: Orphan sweep wiring in app_lifespan
+# IPC-06: Orphan sweep always runs in app_lifespan
 # ---------------------------------------------------------------------------
 
 
 class TestIPC06OrphanSweepWiring:
-    """Verify sweep_orphaned_files is wired into the server lifespan."""
+    """Verify sweep_orphaned_files always runs in the server lifespan."""
 
-    async def test_lifespan_does_not_call_sweep_for_inmemory_bridge(
+    async def test_sweep_always_runs_even_in_bridge_mode(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """InMemoryBridge has no ipc_dir attribute, so sweep is skipped."""
+        """IPC sweep runs regardless of OMNIFOCUS_REPOSITORY setting."""
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge")
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
 
         mock_sweep = AsyncMock()
 
-        # Patch at the source module -- the lazy import inside app_lifespan
-        # resolves from omnifocus_operator.bridge, so patching there intercepts it.
         with patch(
-            "omnifocus_operator.bridge.sweep_orphaned_files",
+            "omnifocus_operator.bridge.real.sweep_orphaned_files",
             mock_sweep,
-        ):
-            from omnifocus_operator.server import create_server
-
-            server = create_server()
-
-            async def _check(session: ClientSession) -> None:
-                # If we get here, lifespan ran successfully without calling sweep
-                pass
-
-            await run_with_client(server, _check)
-
-        mock_sweep.assert_not_called()
-
-    async def test_lifespan_calls_sweep_for_bridge_with_ipc_dir(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        tmp_path: Any,
-    ) -> None:
-        """When bridge has ipc_dir attribute, sweep_orphaned_files is called."""
-        from pathlib import Path
-
-        monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
-
-        mock_sweep = AsyncMock()
-        ipc_path = Path(str(tmp_path))
-
-        # Patch create_bridge to return a bridge WITH ipc_dir attribute
-        from omnifocus_operator.bridge.in_memory import InMemoryBridge
-
-        seed_data = {
-            "tasks": [],
-            "projects": [],
-            "tags": [],
-            "folders": [],
-            "perspectives": [],
-        }
-        bridge_with_ipc = InMemoryBridge(data=seed_data)
-        # Monkey-patch an ipc_dir attribute onto the inmemory bridge
-        bridge_with_ipc.ipc_dir = ipc_path  # type: ignore[attr-defined]
-
-        with (
-            patch(
-                "omnifocus_operator.bridge.sweep_orphaned_files",
-                mock_sweep,
-            ),
-            patch(
-                "omnifocus_operator.bridge.create_bridge",
-                return_value=bridge_with_ipc,
-            ),
         ):
             from omnifocus_operator.server import _register_tools, app_lifespan
 
@@ -441,7 +403,36 @@ class TestIPC06OrphanSweepWiring:
 
             await run_with_client(server, _check)
 
-        mock_sweep.assert_called_once_with(ipc_path)
+        mock_sweep.assert_called_once()
+
+    async def test_sweep_runs_in_sqlite_mode(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Any,
+    ) -> None:
+        """IPC sweep runs even when using sqlite repository mode."""
+        db_file = tmp_path / "OmniFocusDatabase.db"
+        db_file.touch()
+        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "sqlite")
+        monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(db_file))
+
+        mock_sweep = AsyncMock()
+
+        with patch(
+            "omnifocus_operator.bridge.real.sweep_orphaned_files",
+            mock_sweep,
+        ):
+            from omnifocus_operator.server import _register_tools, app_lifespan
+
+            server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
+            _register_tools(server)
+
+            async def _check(session: ClientSession) -> None:
+                pass
+
+            await run_with_client(server, _check)
+
+        mock_sweep.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -457,11 +448,9 @@ class TestDegradedMode:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Tool calls return isError=True with actionable message when startup fails."""
-        monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
-
         with patch(
-            "omnifocus_operator.bridge.create_bridge",
-            side_effect=RuntimeError("bridge exploded"),
+            "omnifocus_operator.repository.create_repository",
+            side_effect=RuntimeError("repository exploded"),
         ):
             from omnifocus_operator.server import _register_tools, app_lifespan
 
@@ -484,11 +473,9 @@ class TestDegradedMode:
         """Full traceback is logged at ERROR level when startup fails."""
         import logging
 
-        monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
-
         with patch(
-            "omnifocus_operator.bridge.create_bridge",
-            side_effect=RuntimeError("bridge exploded"),
+            "omnifocus_operator.repository.create_repository",
+            side_effect=RuntimeError("repository exploded"),
         ):
             from omnifocus_operator.server import _register_tools, app_lifespan
 
@@ -512,11 +499,9 @@ class TestDegradedMode:
         """WARNING is logged for each tool call in degraded mode."""
         import logging
 
-        monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
-
         with patch(
-            "omnifocus_operator.bridge.create_bridge",
-            side_effect=RuntimeError("bridge exploded"),
+            "omnifocus_operator.repository.create_repository",
+            side_effect=RuntimeError("repository exploded"),
         ):
             from omnifocus_operator.server import _register_tools, app_lifespan
 
