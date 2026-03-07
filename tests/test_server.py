@@ -516,3 +516,133 @@ class TestDegradedMode:
                 await run_with_client(server, _check)
 
         assert any("error mode" in r.message.lower() for r in caplog.records)
+
+
+# ---------------------------------------------------------------------------
+# LOOK: get-by-ID tools (get_task, get_project, get_tag)
+# ---------------------------------------------------------------------------
+
+
+class TestGetByIdTools:
+    """Verify get_task, get_project, get_tag MCP tools."""
+
+    async def _make_server_with_data(self) -> FastMCP:
+        """Build a test server with known snapshot data."""
+        from omnifocus_operator.repository import InMemoryRepository
+        from omnifocus_operator.server import _register_tools
+        from omnifocus_operator.service import OperatorService
+
+        from .conftest import make_snapshot
+
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        server = _build_patched_server(repo, service)
+        _register_tools(server)
+        return server
+
+    async def test_get_task_returns_task(self) -> None:
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            result = await session.call_tool("get_task", {"id": "task-001"})
+            assert result.isError is not True
+            assert result.structuredContent is not None
+            assert result.structuredContent["id"] == "task-001"
+            assert result.structuredContent["name"] == "Test Task"
+
+        await run_with_client(server, _check)
+
+    async def test_get_task_not_found_returns_error(self) -> None:
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            result = await session.call_tool("get_task", {"id": "nonexistent"})
+            assert result.isError is True
+            text = result.content[0].text  # type: ignore[union-attr]
+            assert "Task not found: nonexistent" in text
+
+        await run_with_client(server, _check)
+
+    async def test_get_project_returns_project(self) -> None:
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            result = await session.call_tool("get_project", {"id": "proj-001"})
+            assert result.isError is not True
+            assert result.structuredContent is not None
+            assert result.structuredContent["id"] == "proj-001"
+            assert result.structuredContent["name"] == "Test Project"
+
+        await run_with_client(server, _check)
+
+    async def test_get_project_not_found_returns_error(self) -> None:
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            result = await session.call_tool("get_project", {"id": "nonexistent"})
+            assert result.isError is True
+            text = result.content[0].text  # type: ignore[union-attr]
+            assert "Project not found: nonexistent" in text
+
+        await run_with_client(server, _check)
+
+    async def test_get_tag_returns_tag(self) -> None:
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            result = await session.call_tool("get_tag", {"id": "tag-001"})
+            assert result.isError is not True
+            assert result.structuredContent is not None
+            assert result.structuredContent["id"] == "tag-001"
+            assert result.structuredContent["name"] == "Test Tag"
+
+        await run_with_client(server, _check)
+
+    async def test_get_tag_not_found_returns_error(self) -> None:
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            result = await session.call_tool("get_tag", {"id": "nonexistent"})
+            assert result.isError is True
+            text = result.content[0].text  # type: ignore[union-attr]
+            assert "Tag not found: nonexistent" in text
+
+        await run_with_client(server, _check)
+
+    async def test_get_task_has_annotations(self) -> None:
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            tools_result = await session.list_tools()
+            tool = next(t for t in tools_result.tools if t.name == "get_task")
+            assert tool.annotations is not None
+            assert tool.annotations.readOnlyHint is True
+            assert tool.annotations.idempotentHint is True
+
+        await run_with_client(server, _check)
+
+    async def test_get_project_has_annotations(self) -> None:
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            tools_result = await session.list_tools()
+            tool = next(t for t in tools_result.tools if t.name == "get_project")
+            assert tool.annotations is not None
+            assert tool.annotations.readOnlyHint is True
+            assert tool.annotations.idempotentHint is True
+
+        await run_with_client(server, _check)
+
+    async def test_get_tag_has_annotations(self) -> None:
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            tools_result = await session.list_tools()
+            tool = next(t for t in tools_result.tools if t.name == "get_tag")
+            assert tool.annotations is not None
+            assert tool.annotations.readOnlyHint is True
+            assert tool.annotations.idempotentHint is True
+
+        await run_with_client(server, _check)

@@ -63,6 +63,58 @@ class TestOperatorService:
         with pytest.raises(BridgeError, match="connection lost"):
             await service.get_all_data()
 
+    async def test_get_task_delegates_to_repository(self) -> None:
+        """Service.get_task delegates to repository and returns result."""
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.get_task("task-001")
+        assert result is not None
+        assert result.id == "task-001"
+
+    async def test_get_task_returns_none_when_not_found(self) -> None:
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.get_task("nonexistent")
+        assert result is None
+
+    async def test_get_project_delegates_to_repository(self) -> None:
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.get_project("proj-001")
+        assert result is not None
+        assert result.id == "proj-001"
+
+    async def test_get_project_returns_none_when_not_found(self) -> None:
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.get_project("nonexistent")
+        assert result is None
+
+    async def test_get_tag_delegates_to_repository(self) -> None:
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.get_tag("tag-001")
+        assert result is not None
+        assert result.id == "tag-001"
+
+    async def test_get_tag_returns_none_when_not_found(self) -> None:
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.get_tag("nonexistent")
+        assert result is None
+
 
 # ---------------------------------------------------------------------------
 # ConstantMtimeSource
