@@ -15,7 +15,8 @@ from omnifocus_operator.models.snapshot import AllEntities
 def make_task_dict(**overrides: Any) -> dict[str, Any]:
     """Factory for new-shape task dict (camelCase keys).
 
-    Returns a complete task dict with all 27 model fields.
+    Returns a complete task dict with all 26 model fields.
+    Uses unified parent field: None (inbox) or {type, id, name} (ParentRef).
     """
     defaults: dict[str, Any] = {
         # Identity (3)
@@ -46,10 +47,9 @@ def make_task_dict(**overrides: Any) -> dict[str, Any]:
         # Metadata (2)
         "estimatedMinutes": None,
         "hasChildren": False,
-        # Relationships (4)
+        # Relationships (3)
         "inInbox": True,
         "repetitionRule": None,
-        "project": None,
         "parent": None,
         # Tags -- list of TagRef objects {id, name}
         "tags": [],

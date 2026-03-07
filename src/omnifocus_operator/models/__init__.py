@@ -11,7 +11,7 @@ from omnifocus_operator.models.base import (
     OmniFocusBaseModel,
     OmniFocusEntity,
 )
-from omnifocus_operator.models.common import RepetitionRule, ReviewInterval, TagRef
+from omnifocus_operator.models.common import ParentRef, RepetitionRule, ReviewInterval, TagRef
 from omnifocus_operator.models.enums import (
     AnchorDateKey,
     Availability,
@@ -35,6 +35,7 @@ from omnifocus_operator.models.task import Task
 # Order matters: base classes first, then subclasses, then aggregators.
 _ns: dict[str, type] = {
     "AwareDatetime": AwareDatetime,
+    "ParentRef": ParentRef,
     "RepetitionRule": RepetitionRule,
     "ReviewInterval": ReviewInterval,
     "TagRef": TagRef,
@@ -50,6 +51,7 @@ _ns: dict[str, type] = {
     "Folder": Folder,
     "Perspective": Perspective,
 }
+ParentRef.model_rebuild(_types_namespace=_ns)
 RepetitionRule.model_rebuild(_types_namespace=_ns)
 ActionableEntity.model_rebuild(_types_namespace=_ns)
 Task.model_rebuild(_types_namespace=_ns)
@@ -67,6 +69,7 @@ __all__ = [
     "FolderAvailability",
     "OmniFocusBaseModel",
     "OmniFocusEntity",
+    "ParentRef",
     "Perspective",
     "Project",
     "RepetitionRule",

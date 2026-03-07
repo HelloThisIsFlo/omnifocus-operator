@@ -117,8 +117,41 @@ def _adapt_repetition_rule(raw: dict[str, Any]) -> None:
         rule["anchorDateKey"] = _ANCHOR_DATE_KEY_MAP[anchor_key]
 
 
+def _adapt_parent_ref(raw: dict[str, Any]) -> None:
+    """Transform bridge project/parent string fields into unified ParentRef dict.
+
+    Priority: parent task > containing project > None (inbox).
+    Bridge sends project as project ID and parent as parent task ID (strings).
+    Name fields (projectName, parentName) are used if present, else empty string.
+    """
+    parent_task_id = raw.get("parent")
+    project_id = raw.get("project")
+
+    if parent_task_id is not None:
+        raw["parent"] = {
+            "type": "task",
+            "id": parent_task_id,
+            "name": raw.get("parentName", ""),
+        }
+        raw.pop("project", None)
+    elif project_id is not None:
+        raw["parent"] = {
+            "type": "project",
+            "id": project_id,
+            "name": raw.get("projectName", ""),
+        }
+        raw.pop("project", None)
+    else:
+        raw["parent"] = None
+        raw.pop("project", None)
+
+    # Clean up convenience name fields if present
+    raw.pop("parentName", None)
+    raw.pop("projectName", None)
+
+
 def _adapt_task(raw: dict[str, Any]) -> None:
-    """Map old TaskStatus -> urgency + availability, remove dead fields.
+    """Map old TaskStatus -> urgency + availability, transform parent, remove dead fields.
 
     No-op if ``status`` key is absent (already adapted or new-shape data).
     """
@@ -135,6 +168,7 @@ def _adapt_task(raw: dict[str, Any]) -> None:
         raw.pop(key, None)
 
     _adapt_repetition_rule(raw)
+    _adapt_parent_ref(raw)
 
 
 def _adapt_project(raw: dict[str, Any]) -> None:

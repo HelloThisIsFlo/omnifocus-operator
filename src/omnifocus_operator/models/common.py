@@ -23,6 +23,18 @@ class TagRef(OmniFocusBaseModel):
     name: str
 
 
+class ParentRef(OmniFocusBaseModel):
+    """Reference to a parent entity (project or task) with type, id, and name.
+
+    type is "project" for tasks directly in a project, "task" for subtasks.
+    Inbox tasks have no ParentRef (represented as None at the Task level).
+    """
+
+    type: str
+    id: str
+    name: str
+
+
 class RepetitionRule(OmniFocusBaseModel):
     """Repetition rule for recurring tasks and projects.
 

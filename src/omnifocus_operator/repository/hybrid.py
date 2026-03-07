@@ -210,12 +210,47 @@ def _parse_review_interval(raw: str | None) -> dict[str, Any]:
     return {"steps": count, "unit": unit_map.get(unit_char, unit_char)}
 
 
+# -- Parent reference --
+
+
+def _build_parent_ref(
+    row: sqlite3.Row,
+    project_info_lookup: dict[str, dict[str, str]],
+    task_name_lookup: dict[str, str],
+) -> dict[str, str] | None:
+    """Build a ParentRef dict from SQLite row data.
+
+    Priority: parent task > containing project > None (inbox).
+    """
+    parent_task_id = row["parent"]
+    if parent_task_id is not None:
+        return {
+            "type": "task",
+            "id": parent_task_id,
+            "name": task_name_lookup.get(parent_task_id, ""),
+        }
+
+    containing_project_pk = row["containingProjectInfo"]
+    if containing_project_pk is not None:
+        info = project_info_lookup.get(containing_project_pk)
+        if info is not None:
+            return {
+                "type": "project",
+                "id": info["id"],
+                "name": info["name"],
+            }
+
+    return None
+
+
 # -- Row mapping --
 
 
 def _map_task_row(
     row: sqlite3.Row,
     tag_lookup: dict[str, list[dict[str, str]]],
+    project_info_lookup: dict[str, dict[str, str]],
+    task_name_lookup: dict[str, str],
 ) -> dict[str, Any]:
     """Map a Task SQLite row to a dict matching the Task Pydantic model."""
     task_id = row["persistentIdentifier"]
@@ -241,8 +276,7 @@ def _map_task_row(
         "estimated_minutes": row["estimatedMinutes"],
         "has_children": (row["childrenCount"] or 0) > 0,
         "in_inbox": bool(row["inInbox"]),
-        "project": row["containingProjectInfo"],
-        "parent": row["parent"],
+        "parent": _build_parent_ref(row, project_info_lookup, task_name_lookup),
         "urgency": _map_urgency(
             overdue=row["overdue"] or 0,
             due_soon=row["dueSoon"] or 0,
@@ -439,9 +473,28 @@ class HybridRepository:
                     task_tag_map[task_id] = []
                 task_tag_map[task_id].append({"id": tag_id, "name": tag_name})
 
-            # 3. Read all entity types
+            # 3. Build project info lookup: ProjectInfo.pk -> {id, name}
+            project_info_lookup: dict[str, dict[str, str]] = {}
+            pi_rows = conn.execute(
+                "SELECT pi.pk, pi.task, t.name FROM ProjectInfo pi "
+                "JOIN Task t ON pi.task = t.persistentIdentifier"
+            ).fetchall()
+            for pi_row in pi_rows:
+                project_info_lookup[pi_row["pk"]] = {
+                    "id": pi_row["task"],
+                    "name": pi_row["name"],
+                }
+
+            # 4. Build task name lookup: persistentIdentifier -> name
+            task_name_rows = conn.execute("SELECT persistentIdentifier, name FROM Task").fetchall()
+            task_name_lookup: dict[str, str] = {
+                r["persistentIdentifier"]: r["name"] for r in task_name_rows
+            }
+
+            # 5. Read all entity types
             tasks = [
-                _map_task_row(row, task_tag_map) for row in conn.execute(_TASKS_SQL).fetchall()
+                _map_task_row(row, task_tag_map, project_info_lookup, task_name_lookup)
+                for row in conn.execute(_TASKS_SQL).fetchall()
             ]
             projects = [
                 _map_project_row(row, task_tag_map)
