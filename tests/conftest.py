@@ -116,7 +116,7 @@ def make_tag_dict(**overrides: Any) -> dict[str, Any]:
         "url": "omnifocus:///tag/tag-001",
         "added": "2024-01-15T10:30:00.000Z",
         "modified": "2024-01-15T10:30:00.000Z",
-        "status": "active",
+        "availability": "available",
         "childrenAreMutuallyExclusive": False,
         "parent": None,
     }
@@ -134,7 +134,7 @@ def make_folder_dict(**overrides: Any) -> dict[str, Any]:
         "url": "omnifocus:///folder/folder-001",
         "added": "2024-01-15T10:30:00.000Z",
         "modified": "2024-01-15T10:30:00.000Z",
-        "status": "active",
+        "availability": "available",
         "parent": None,
     }
     return {**defaults, **overrides}

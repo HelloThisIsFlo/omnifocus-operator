@@ -15,9 +15,9 @@ from omnifocus_operator.models.common import RepetitionRule, ReviewInterval, Tag
 from omnifocus_operator.models.enums import (
     AnchorDateKey,
     Availability,
-    FolderStatus,
+    FolderAvailability,
     ScheduleType,
-    TagStatus,
+    TagAvailability,
     Urgency,
 )
 from omnifocus_operator.models.folder import Folder
@@ -40,8 +40,8 @@ _ns: dict[str, type] = {
     "TagRef": TagRef,
     "Urgency": Urgency,
     "Availability": Availability,
-    "TagStatus": TagStatus,
-    "FolderStatus": FolderStatus,
+    "TagAvailability": TagAvailability,
+    "FolderAvailability": FolderAvailability,
     "ScheduleType": ScheduleType,
     "AnchorDateKey": AnchorDateKey,
     "Task": Task,
@@ -64,7 +64,7 @@ __all__ = [
     "Availability",
     "DatabaseSnapshot",
     "Folder",
-    "FolderStatus",
+    "FolderAvailability",
     "OmniFocusBaseModel",
     "OmniFocusEntity",
     "Perspective",
@@ -73,8 +73,8 @@ __all__ = [
     "ReviewInterval",
     "ScheduleType",
     "Tag",
+    "TagAvailability",
     "TagRef",
-    "TagStatus",
     "Task",
     "Urgency",
 ]

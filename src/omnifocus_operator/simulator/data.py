@@ -8,7 +8,7 @@ All entities include the full field set required by the updated models:
 - url, added, modified on all entity types
 - Tags as TagRef objects {id, name}
 - Two-axis status (urgency, availability) on tasks and projects
-- Per-entity status enums (TagStatus, FolderStatus) with snake_case values
+- Per-entity availability enums (TagAvailability, FolderAvailability)
 - Perspective without builtin (computed in Python from id is None)
 """
 
@@ -406,7 +406,7 @@ SIMULATOR_SNAPSHOT: dict[str, object] = {
             "url": "omnifocus:///tag/tag-sim-001",
             "added": "2026-01-01T08:00:00+00:00",
             "modified": "2026-01-01T08:00:00+00:00",
-            "status": "active",
+            "availability": "available",
             "childrenAreMutuallyExclusive": False,
             "parent": None,
         },
@@ -416,7 +416,7 @@ SIMULATOR_SNAPSHOT: dict[str, object] = {
             "url": "omnifocus:///tag/tag-sim-002",
             "added": "2026-01-01T08:00:00+00:00",
             "modified": "2026-01-01T08:00:00+00:00",
-            "status": "active",
+            "availability": "available",
             "childrenAreMutuallyExclusive": False,
             "parent": None,
         },
@@ -426,7 +426,7 @@ SIMULATOR_SNAPSHOT: dict[str, object] = {
             "url": "omnifocus:///tag/tag-sim-003",
             "added": "2026-01-01T08:00:00+00:00",
             "modified": "2026-01-01T08:00:00+00:00",
-            "status": "active",
+            "availability": "available",
             "childrenAreMutuallyExclusive": False,
             "parent": None,
         },
@@ -436,7 +436,7 @@ SIMULATOR_SNAPSHOT: dict[str, object] = {
             "url": "omnifocus:///tag/tag-sim-004",
             "added": "2026-01-01T08:00:00+00:00",
             "modified": "2026-01-01T08:00:00+00:00",
-            "status": "active",
+            "availability": "available",
             "childrenAreMutuallyExclusive": False,
             "parent": None,
         },
@@ -448,7 +448,7 @@ SIMULATOR_SNAPSHOT: dict[str, object] = {
             "url": "omnifocus:///folder/folder-sim-001",
             "added": "2026-01-01T08:00:00+00:00",
             "modified": "2026-01-01T08:00:00+00:00",
-            "status": "active",
+            "availability": "available",
             "parent": None,
         },
         {
@@ -457,7 +457,7 @@ SIMULATOR_SNAPSHOT: dict[str, object] = {
             "url": "omnifocus:///folder/folder-sim-002",
             "added": "2026-01-01T08:00:00+00:00",
             "modified": "2026-01-01T08:00:00+00:00",
-            "status": "active",
+            "availability": "available",
             "parent": None,
         },
     ],

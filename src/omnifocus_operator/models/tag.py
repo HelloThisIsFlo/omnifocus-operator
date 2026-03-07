@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from omnifocus_operator.models.base import OmniFocusEntity
 
 if TYPE_CHECKING:
-    from omnifocus_operator.models.enums import TagStatus
+    from omnifocus_operator.models.enums import TagAvailability
 
 
 class Tag(OmniFocusEntity):
@@ -20,6 +20,6 @@ class Tag(OmniFocusEntity):
     Inherits id, name, url, added, modified from OmniFocusEntity.
     """
 
-    status: TagStatus  # Lifecycle status (active/on_hold/dropped)
+    availability: TagAvailability  # Tag availability (available/blocked/dropped)
     children_are_mutually_exclusive: bool
     parent: str | None = None

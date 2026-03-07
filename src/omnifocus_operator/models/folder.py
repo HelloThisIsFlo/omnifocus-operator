@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from omnifocus_operator.models.base import OmniFocusEntity
 
 if TYPE_CHECKING:
-    from omnifocus_operator.models.enums import FolderStatus
+    from omnifocus_operator.models.enums import FolderAvailability
 
 
 class Folder(OmniFocusEntity):
@@ -20,5 +20,5 @@ class Folder(OmniFocusEntity):
     Inherits id, name, url, added, modified from OmniFocusEntity.
     """
 
-    status: FolderStatus  # Lifecycle status (Active/Dropped)
+    availability: FolderAvailability  # Folder availability (available/dropped)
     parent: str | None = None

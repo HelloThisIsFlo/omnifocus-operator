@@ -34,16 +34,16 @@ _PROJECT_STATUS_MAP: dict[str, str] = {
     "Dropped": "dropped",
 }
 
-# TagStatus -> snake_case
-_TAG_STATUS_MAP: dict[str, str] = {
-    "Active": "active",
-    "OnHold": "on_hold",
+# TagStatus -> TagAvailability (bridge "status" field -> model "availability" field)
+_TAG_AVAILABILITY_MAP: dict[str, str] = {
+    "Active": "available",
+    "OnHold": "blocked",
     "Dropped": "dropped",
 }
 
-# FolderStatus -> snake_case
-_FOLDER_STATUS_MAP: dict[str, str] = {
-    "Active": "active",
+# FolderStatus -> FolderAvailability (bridge "status" field -> model "availability" field)
+_FOLDER_AVAILABILITY_MAP: dict[str, str] = {
+    "Active": "available",
     "Dropped": "dropped",
 }
 
@@ -80,8 +80,8 @@ _TAG_DEAD_FIELDS = ("allowsNextAction", "active", "effectiveActive")
 _FOLDER_DEAD_FIELDS = ("active", "effectiveActive")
 
 # Value sets for idempotency checks (already-adapted values)
-_TAG_STATUS_VALUES = frozenset(_TAG_STATUS_MAP.values())
-_FOLDER_STATUS_VALUES = frozenset(_FOLDER_STATUS_MAP.values())
+_TAG_AVAILABILITY_VALUES = frozenset(_TAG_AVAILABILITY_MAP.values())
+_FOLDER_AVAILABILITY_VALUES = frozenset(_FOLDER_AVAILABILITY_MAP.values())
 
 
 # ---------------------------------------------------------------------------
@@ -167,36 +167,40 @@ def _adapt_project(raw: dict[str, Any]) -> None:
 
 
 def _adapt_tag(raw: dict[str, Any]) -> None:
-    """Map TagStatus -> snake_case, remove dead fields.
+    """Map bridge ``status`` -> model ``availability``, remove dead fields.
 
-    No-op if status is already snake_case (already adapted or new-shape data).
+    No-op if ``availability`` key already exists with a valid value
+    (already adapted or new-shape data).
     """
-    old_status = raw.get("status")
-    if old_status in _TAG_STATUS_VALUES:
+    existing = raw.get("availability")
+    if existing in _TAG_AVAILABILITY_VALUES:
         return  # Already adapted
-    new_status = _TAG_STATUS_MAP.get(old_status)  # type: ignore[arg-type]
-    if new_status is None:
+    old_status = raw.pop("status", None)
+    new_availability = _TAG_AVAILABILITY_MAP.get(old_status)
+    if new_availability is None:
         msg = f"Unknown tag status: {old_status!r}"
         raise ValueError(msg)
-    raw["status"] = new_status
+    raw["availability"] = new_availability
 
     for key in _TAG_DEAD_FIELDS:
         raw.pop(key, None)
 
 
 def _adapt_folder(raw: dict[str, Any]) -> None:
-    """Map FolderStatus -> snake_case, remove dead fields.
+    """Map bridge ``status`` -> model ``availability``, remove dead fields.
 
-    No-op if status is already snake_case (already adapted or new-shape data).
+    No-op if ``availability`` key already exists with a valid value
+    (already adapted or new-shape data).
     """
-    old_status = raw.get("status")
-    if old_status in _FOLDER_STATUS_VALUES:
+    existing = raw.get("availability")
+    if existing in _FOLDER_AVAILABILITY_VALUES:
         return  # Already adapted
-    new_status = _FOLDER_STATUS_MAP.get(old_status)  # type: ignore[arg-type]
-    if new_status is None:
+    old_status = raw.pop("status", None)
+    new_availability = _FOLDER_AVAILABILITY_MAP.get(old_status)
+    if new_availability is None:
         msg = f"Unknown folder status: {old_status!r}"
         raise ValueError(msg)
-    raw["status"] = new_status
+    raw["availability"] = new_availability
 
     for key in _FOLDER_DEAD_FIELDS:
         raw.pop(key, None)

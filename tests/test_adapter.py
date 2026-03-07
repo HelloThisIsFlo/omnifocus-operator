@@ -289,21 +289,22 @@ class TestAdaptProject:
 
 
 class TestAdaptTag:
-    """Tag adapter maps TagStatus -> snake_case and removes dead fields."""
+    """Tag adapter maps bridge status -> model availability and removes dead fields."""
 
     @pytest.mark.parametrize(
-        ("old_status", "expected_status"),
+        ("old_status", "expected_availability"),
         [
-            ("Active", "active"),
-            ("OnHold", "on_hold"),
+            ("Active", "available"),
+            ("OnHold", "blocked"),
             ("Dropped", "dropped"),
         ],
     )
-    def test_tag_status_mapping(self, old_status: str, expected_status: str) -> None:
+    def test_tag_status_to_availability(self, old_status: str, expected_availability: str) -> None:
         raw = _old_tag(status=old_status)
         snapshot = {"tasks": [], "projects": [], "tags": [raw], "folders": []}
         adapt_snapshot(snapshot)
-        assert raw["status"] == expected_status
+        assert raw["availability"] == expected_availability
+        assert "status" not in raw
 
     def test_tag_dead_fields_removed(self) -> None:
         raw = _old_tag()
@@ -325,20 +326,23 @@ class TestAdaptTag:
 
 
 class TestAdaptFolder:
-    """Folder adapter maps FolderStatus -> snake_case and removes dead fields."""
+    """Folder adapter maps bridge status -> model availability and removes dead fields."""
 
     @pytest.mark.parametrize(
-        ("old_status", "expected_status"),
+        ("old_status", "expected_availability"),
         [
-            ("Active", "active"),
+            ("Active", "available"),
             ("Dropped", "dropped"),
         ],
     )
-    def test_folder_status_mapping(self, old_status: str, expected_status: str) -> None:
+    def test_folder_status_to_availability(
+        self, old_status: str, expected_availability: str
+    ) -> None:
         raw = _old_folder(status=old_status)
         snapshot = {"tasks": [], "projects": [], "tags": [], "folders": [raw]}
         adapt_snapshot(snapshot)
-        assert raw["status"] == expected_status
+        assert raw["availability"] == expected_availability
+        assert "status" not in raw
 
     def test_folder_dead_fields_removed(self) -> None:
         raw = _old_folder()
@@ -473,34 +477,34 @@ class TestAdapterIdempotency:
         adapt_snapshot(snapshot)
         assert raw == original
 
-    def test_tag_with_snake_case_status_is_noop(self) -> None:
-        """Tag dict with snake_case status values is untouched."""
-        for status in ("active", "on_hold", "dropped"):
+    def test_tag_with_availability_is_noop(self) -> None:
+        """Tag dict with availability values is untouched."""
+        for avail in ("available", "blocked", "dropped"):
             raw = {
                 "id": "tag-001",
                 "name": "Already Adapted Tag",
-                "status": status,
+                "availability": avail,
                 "childrenAreMutuallyExclusive": False,
                 "parent": None,
             }
             original = dict(raw)
             snapshot = {"tasks": [], "projects": [], "tags": [raw], "folders": []}
             adapt_snapshot(snapshot)
-            assert raw == original, f"Tag with status={status!r} should be a no-op"
+            assert raw == original, f"Tag with availability={avail!r} should be a no-op"
 
-    def test_folder_with_snake_case_status_is_noop(self) -> None:
-        """Folder dict with snake_case status values is untouched."""
-        for status in ("active", "dropped"):
+    def test_folder_with_availability_is_noop(self) -> None:
+        """Folder dict with availability values is untouched."""
+        for avail in ("available", "dropped"):
             raw = {
                 "id": "folder-001",
                 "name": "Already Adapted Folder",
-                "status": status,
+                "availability": avail,
                 "parent": None,
             }
             original = dict(raw)
             snapshot = {"tasks": [], "projects": [], "tags": [], "folders": [raw]}
             adapt_snapshot(snapshot)
-            assert raw == original, f"Folder with status={status!r} should be a no-op"
+            assert raw == original, f"Folder with availability={avail!r} should be a no-op"
 
 
 # ---------------------------------------------------------------------------
@@ -529,11 +533,13 @@ class TestAdaptSnapshot:
         assert "taskStatus" not in project
         # Tag adapted
         tag = result["tags"][0]
-        assert tag["status"] == "active"
+        assert tag["availability"] == "available"
+        assert "status" not in tag
         assert "allowsNextAction" not in tag
         # Folder adapted
         folder = result["folders"][0]
-        assert folder["status"] == "active"
+        assert folder["availability"] == "available"
+        assert "status" not in folder
 
     def test_empty_collections(self) -> None:
         snapshot: dict[str, Any] = {

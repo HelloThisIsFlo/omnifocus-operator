@@ -3,8 +3,8 @@
 Values use snake_case strings matching the new two-axis model:
 - Urgency: time pressure axis (overdue, due_soon, none)
 - Availability: work readiness axis (available, blocked, completed, dropped)
-- TagStatus: tag lifecycle (active, on_hold, dropped)
-- FolderStatus: folder lifecycle (active, dropped)
+- TagAvailability: tag availability (available, blocked, dropped)
+- FolderAvailability: folder availability (available, dropped)
 - ScheduleType: repetition schedule type (regularly, from_completion)
 - AnchorDateKey: anchor date for repetition rules (due_date, defer_date, planned_date)
 """
@@ -29,18 +29,18 @@ class Availability(StrEnum):
     DROPPED = "dropped"
 
 
-class TagStatus(StrEnum):
-    """Lifecycle status for tags."""
+class TagAvailability(StrEnum):
+    """Availability status for tags."""
 
-    ACTIVE = "active"
-    ON_HOLD = "on_hold"
+    AVAILABLE = "available"
+    BLOCKED = "blocked"
     DROPPED = "dropped"
 
 
-class FolderStatus(StrEnum):
-    """Lifecycle status for folders."""
+class FolderAvailability(StrEnum):
+    """Availability status for folders."""
 
-    ACTIVE = "active"
+    AVAILABLE = "available"
     DROPPED = "dropped"
 
 

@@ -13,7 +13,7 @@ from omnifocus_operator.models import (
     Availability,
     DatabaseSnapshot,
     Folder,
-    FolderStatus,
+    FolderAvailability,
     OmniFocusBaseModel,
     OmniFocusEntity,
     Perspective,
@@ -22,8 +22,8 @@ from omnifocus_operator.models import (
     ReviewInterval,
     ScheduleType,
     Tag,
+    TagAvailability,
     TagRef,
-    TagStatus,
     Task,
     Urgency,
 )
@@ -114,27 +114,27 @@ class TestAvailability:
         assert isinstance(Availability.AVAILABLE, str)
 
 
-class TestTagStatus:
-    """TagStatus enum has exactly 3 members with snake_case values."""
+class TestTagAvailability:
+    """TagAvailability enum has exactly 3 members."""
 
-    def test_tag_status_values(self) -> None:
-        assert TagStatus.ACTIVE == "active"
-        assert TagStatus.ON_HOLD == "on_hold"
-        assert TagStatus.DROPPED == "dropped"
+    def test_tag_availability_values(self) -> None:
+        assert TagAvailability.AVAILABLE == "available"
+        assert TagAvailability.BLOCKED == "blocked"
+        assert TagAvailability.DROPPED == "dropped"
 
-    def test_tag_status_member_count(self) -> None:
-        assert len(TagStatus) == 3
+    def test_tag_availability_member_count(self) -> None:
+        assert len(TagAvailability) == 3
 
 
-class TestFolderStatus:
-    """FolderStatus enum has exactly 2 members with snake_case values."""
+class TestFolderAvailability:
+    """FolderAvailability enum has exactly 2 members."""
 
-    def test_folder_status_values(self) -> None:
-        assert FolderStatus.ACTIVE == "active"
-        assert FolderStatus.DROPPED == "dropped"
+    def test_folder_availability_values(self) -> None:
+        assert FolderAvailability.AVAILABLE == "available"
+        assert FolderAvailability.DROPPED == "dropped"
 
-    def test_folder_status_member_count(self) -> None:
-        assert len(FolderStatus) == 2
+    def test_folder_availability_member_count(self) -> None:
+        assert len(FolderAvailability) == 2
 
 
 class TestScheduleType:
@@ -601,7 +601,7 @@ class TestTagModel:
         assert tag.url == "omnifocus:///tag/tag-001"
         assert tag.added is not None
         assert tag.modified is not None
-        assert tag.status == TagStatus.ACTIVE
+        assert tag.availability == TagAvailability.AVAILABLE
         assert tag.children_are_mutually_exclusive is False
         assert tag.parent is None
 
@@ -614,10 +614,10 @@ class TestTagModel:
         tag2 = Tag.model_validate(dumped)
         assert tag.id == tag2.id
 
-    def test_tag_status_required(self) -> None:
-        """Tag without status raises ValidationError."""
+    def test_tag_availability_required(self) -> None:
+        """Tag without availability raises ValidationError."""
         data = make_tag_dict()
-        del data["status"]
+        del data["availability"]
         with pytest.raises(ValidationError):
             Tag.model_validate(data)
 
@@ -640,7 +640,7 @@ class TestFolderModel:
         assert folder.url == "omnifocus:///folder/folder-001"
         assert folder.added is not None
         assert folder.modified is not None
-        assert folder.status == FolderStatus.ACTIVE
+        assert folder.availability == FolderAvailability.AVAILABLE
         assert folder.parent is None
 
         # Verify total field count
@@ -651,10 +651,10 @@ class TestFolderModel:
         folder2 = Folder.model_validate(dumped)
         assert folder.id == folder2.id
 
-    def test_folder_status_required(self) -> None:
-        """Folder without status raises ValidationError."""
+    def test_folder_availability_required(self) -> None:
+        """Folder without availability raises ValidationError."""
         data = make_folder_dict()
-        del data["status"]
+        del data["availability"]
         with pytest.raises(ValidationError):
             Folder.model_validate(data)
 
