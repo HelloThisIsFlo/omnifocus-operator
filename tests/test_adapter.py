@@ -555,3 +555,74 @@ class TestAdaptSnapshot:
         snapshot: dict[str, Any] = {}
         result = adapt_snapshot(snapshot)
         assert result == {}
+
+
+# ---------------------------------------------------------------------------
+# FALL-02: Bridge mode availability limitation
+# ---------------------------------------------------------------------------
+
+
+class TestFall02BridgeAvailabilityLimitation:
+    """FALL-02: Bridge mode never produces 'blocked' availability for tasks or projects.
+
+    The OmniJS bridge cannot determine sequential/dependency information, so it
+    never sends "Blocked" task status or "OnHold" project status. In bridge mode,
+    task and project availability is limited to: available, completed, dropped.
+
+    Urgency remains fully populated: overdue, due_soon, none.
+    """
+
+    # The statuses that the OmniJS bridge actually sends for tasks.
+    # "Blocked" is NOT in this set -- OmniJS can't detect blocking.
+    BRIDGE_TASK_STATUSES = ("Available", "Next", "DueSoon", "Overdue", "Completed", "Dropped")
+
+    # The statuses that the OmniJS bridge actually sends for projects.
+    # "OnHold" is NOT in this set -- OmniJS can't detect on-hold.
+    BRIDGE_PROJECT_STATUSES = ("Active", "Done", "Dropped")
+
+    ALLOWED_TASK_AVAILABILITY = frozenset({"available", "completed", "dropped"})
+    ALLOWED_TASK_URGENCY = frozenset({"overdue", "due_soon", "none"})
+
+    ALLOWED_PROJECT_AVAILABILITY = frozenset({"available", "completed", "dropped"})
+
+    @pytest.mark.parametrize("bridge_status", BRIDGE_TASK_STATUSES)
+    def test_task_never_produces_blocked(self, bridge_status: str) -> None:
+        raw = _old_task(status=bridge_status)
+        snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        assert raw["availability"] != "blocked", (
+            f"Bridge task status {bridge_status!r} must not produce 'blocked' availability"
+        )
+        assert raw["availability"] in self.ALLOWED_TASK_AVAILABILITY
+
+    @pytest.mark.parametrize("bridge_status", BRIDGE_TASK_STATUSES)
+    def test_task_urgency_fully_populated(self, bridge_status: str) -> None:
+        raw = _old_task(status=bridge_status)
+        snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        assert raw["urgency"] in self.ALLOWED_TASK_URGENCY
+
+    @pytest.mark.parametrize("bridge_status", BRIDGE_PROJECT_STATUSES)
+    def test_project_never_produces_blocked(self, bridge_status: str) -> None:
+        raw = _old_project(status=bridge_status)
+        snapshot = {"tasks": [], "projects": [raw], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        assert raw["availability"] != "blocked", (
+            f"Bridge project status {bridge_status!r} must not produce 'blocked' availability"
+        )
+        assert raw["availability"] in self.ALLOWED_PROJECT_AVAILABILITY
+
+    def test_full_bridge_snapshot_no_blocked(self) -> None:
+        """A snapshot with all bridge-reachable statuses produces no 'blocked' values."""
+        tasks = [_old_task(id=f"t-{i}", status=s) for i, s in enumerate(self.BRIDGE_TASK_STATUSES)]
+        projects = [
+            _old_project(id=f"p-{i}", status=s) for i, s in enumerate(self.BRIDGE_PROJECT_STATUSES)
+        ]
+        snapshot = {"tasks": tasks, "projects": projects, "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+
+        for task in snapshot["tasks"]:
+            assert task["availability"] in self.ALLOWED_TASK_AVAILABILITY
+            assert task["urgency"] in self.ALLOWED_TASK_URGENCY
+        for project in snapshot["projects"]:
+            assert project["availability"] in self.ALLOWED_PROJECT_AVAILABILITY
