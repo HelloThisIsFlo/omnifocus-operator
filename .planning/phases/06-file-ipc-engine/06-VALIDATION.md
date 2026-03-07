@@ -1,10 +1,10 @@
 ---
 phase: 6
 slug: file-ipc-engine
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
 created: 2026-03-02
+validated: 2026-03-07
 ---
 
 # Phase 6 — Validation Strategy
@@ -19,7 +19,7 @@ created: 2026-03-02
 |----------|-------|
 | **Framework** | pytest 9.x + pytest-asyncio 1.3+ |
 | **Config file** | `pyproject.toml` ([tool.pytest.ini_options]) |
-| **Quick run command** | `uv run pytest tests/test_real_bridge.py -x` |
+| **Quick run command** | `uv run pytest tests/test_ipc_engine.py -x` |
 | **Full suite command** | `uv run pytest` |
 | **Estimated runtime** | ~3 seconds |
 
@@ -27,7 +27,7 @@ created: 2026-03-02
 
 ## Sampling Rate
 
-- **After every task commit:** Run `uv run pytest tests/test_real_bridge.py -x`
+- **After every task commit:** Run `uv run pytest tests/test_ipc_engine.py -x`
 - **After every plan wave:** Run `uv run pytest`
 - **Before `/gsd:verify-work`:** Full suite must be green
 - **Max feedback latency:** 5 seconds
@@ -38,28 +38,28 @@ created: 2026-03-02
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 06-01-01 | 01 | 1 | IPC-01 | unit | `uv run pytest tests/test_real_bridge.py::TestAtomicWrite -x` | ❌ W0 | ⬜ pending |
-| 06-01-02 | 01 | 1 | IPC-02 | unit | `uv run pytest tests/test_real_bridge.py::TestNonBlockingIO -x` | ❌ W0 | ⬜ pending |
-| 06-01-03 | 01 | 1 | IPC-03 | unit | `uv run pytest tests/test_real_bridge.py::TestDispatchProtocol -x` | ❌ W0 | ⬜ pending |
-| 06-01-04 | 01 | 1 | IPC-04 | unit | `uv run pytest tests/test_real_bridge.py::TestIPCDirectory -x` | ❌ W0 | ⬜ pending |
-| 06-01-05 | 01 | 1 | IPC-05 | unit | `uv run pytest tests/test_real_bridge.py::TestTimeout -x` | ❌ W0 | ⬜ pending |
-| 06-01-06 | 01 | 1 | IPC-06 | unit | `uv run pytest tests/test_real_bridge.py::TestOrphanSweep -x` | ❌ W0 | ⬜ pending |
+| 06-01-01 | 01 | 1 | IPC-01 | unit | `uv run pytest tests/test_ipc_engine.py::TestAtomicWrite -x` | tests/test_ipc_engine.py | COVERED |
+| 06-01-02 | 01 | 1 | IPC-02 | unit | `uv run pytest tests/test_ipc_engine.py::TestNonBlockingIO -x` | tests/test_ipc_engine.py | COVERED |
+| 06-01-03 | 01 | 1 | IPC-03 | unit | `uv run pytest tests/test_ipc_engine.py::TestRequestEnvelope -x` | tests/test_ipc_engine.py | COVERED |
+| 06-01-04 | 02 | 2 | IPC-04 | unit | `uv run pytest tests/test_ipc_engine.py::TestIPCDirectory -x` | tests/test_ipc_engine.py | COVERED |
+| 06-01-05 | 01 | 1 | IPC-05 | unit | `uv run pytest tests/test_ipc_engine.py::TestTimeout -x` | tests/test_ipc_engine.py | COVERED |
+| 06-01-06 | 02/03 | 2/1 | IPC-06 | unit+integration | `uv run pytest tests/test_ipc_engine.py::TestOrphanSweep tests/test_server.py::TestIPC06OrphanSweepWiring -x` | tests/test_ipc_engine.py, tests/test_server.py | COVERED |
 
-*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+*Status: COVERED · PARTIAL · MISSING*
 
 ---
 
-## Wave 0 Requirements
+## Additional Test Coverage
 
-- [ ] `tests/test_real_bridge.py` — test stubs for IPC-01 through IPC-06
-- [ ] Test fixtures for tmp IPC directory (`tmp_path` from pytest)
-- [ ] Test helper for creating fake IPC files with specific PID prefixes (for sweep tests)
+Tests beyond the minimum validation map:
 
-*Testing strategy notes:*
-- All tests use `tmp_path` (pytest fixture) as IPC directory — never real OmniFocus sandbox path
-- Timeout tests use short timeout (0.2s) and no response file to avoid 10s waits
-- PID liveness tests use `os.getpid()` (alive) and known-dead PID from exited subprocess
-- SAFE-01/SAFE-02: No test touches RealBridge with actual OmniFocus trigger. Phase 6's `_trigger_omnifocus()` is a no-op.
+| Test Class | File | What it covers |
+|-----------|------|----------------|
+| TestSuccessfulRoundTrip | test_ipc_engine.py | End-to-end IPC round-trip: response parsing, file cleanup, protocol errors |
+| TestTriggerHook | test_ipc_engine.py | _trigger_omnifocus() no-op behavior and call ordering |
+| TestSAFE01FactoryGuard | test_ipc_engine.py | SAFE-01: create_bridge("real") raises RuntimeError in pytest |
+| TestExports | test_ipc_engine.py | Package exports: RealBridge, sweep_orphaned_files |
+| TestIpcDirProperty | test_ipc_engine.py | RealBridge.ipc_dir read-only property |
 
 ---
 
@@ -73,11 +73,23 @@ created: 2026-03-02
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 5s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have automated verify commands
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] All requirements covered by passing tests
+- [x] No watch-mode flags
+- [x] Feedback latency < 5s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** validated
+
+---
+
+## Validation Audit 2026-03-07
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+All 6 IPC requirements (IPC-01 through IPC-06) have automated test coverage across 50 passing tests in `test_ipc_engine.py` (35 tests) and `test_server.py` (15 tests, including 3 sweep-wiring tests). Test suite runs in ~2.7s at 93.57% coverage.
