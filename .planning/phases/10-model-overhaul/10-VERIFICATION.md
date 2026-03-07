@@ -83,7 +83,7 @@ gaps: []
 
 | File | Line | Pattern | Severity | Impact |
 |------|------|---------|----------|--------|
-| `.claude/skills/.../analyze_snapshot.py` | 70, 73 | References `TagStatus`/`FolderStatus` (removed enums) | Info | Deferred item -- skill script out of Phase 10 scope, logged in `deferred-items.md` |
+None found.
 
 No TODOs, FIXMEs, placeholders, or stub implementations found in phase source artifacts.
 
@@ -99,7 +99,7 @@ No TODOs, FIXMEs, placeholders, or stub implementations found in phase source ar
 
 No gaps found. All 4 success criteria verified, all 6 requirements satisfied, all 3 UAT gaps from plan 10-04 confirmed closed. 233 Python tests + 26 Vitest tests pass at 98.52% coverage.
 
-The skill script (`analyze_snapshot.py`) still references old enum names (TagStatus/FolderStatus) but this is correctly tracked as a deferred item outside Phase 10 scope.
+The skill script (`analyze_snapshot.py`) enum references were fixed in quick task 3.
 
 ---
 
