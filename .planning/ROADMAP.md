@@ -4,6 +4,7 @@
 
 - v1.0 Foundation -- Phases 1-9 (shipped 2026-03-07)
 - v1.1 HUGE Performance Upgrade -- Phases 10-13 (shipped 2026-03-07)
+- v1.2 Writes & Lookups -- Phases 14-17 (in progress)
 
 ## Phases
 
@@ -34,7 +35,85 @@
 
 </details>
 
+### v1.2 Writes & Lookups (In Progress)
+
+**Milestone Goal:** Enable agents to look up individual entities by ID and create/edit tasks in OmniFocus, validating the write pipeline end-to-end.
+
+- [ ] **Phase 14: Model Refactor & Lookups** - Unified parent field, rename list_all to get_all, and get-by-ID tools
+- [ ] **Phase 15: Write Pipeline & Task Creation** - Full write pipeline through bridge with add_tasks tool
+- [ ] **Phase 16: Task Editing** - Patch semantics, tag modes, and task movement via edit_tasks
+- [ ] **Phase 17: Task Lifecycle** - Complete, drop, and reactivate tasks via edit_tasks
+
+## Phase Details
+
+### Phase 14: Model Refactor & Lookups
+**Goal**: Agents can inspect individual entities by ID using updated models with a unified parent structure
+**Depends on**: Phase 13
+**Requirements**: NAME-01, MODL-01, MODL-02, LOOK-01, LOOK-02, LOOK-03, LOOK-04
+**Success Criteria** (what must be TRUE):
+  1. Agent calling `get_all` (not `list_all`) receives the full database snapshot with tasks showing `parent: { type, id }` or `parent: null` instead of separate project/parent fields
+  2. Agent can call `get_task` with an ID and receive the complete Task object including urgency and availability
+  3. Agent can call `get_project` or `get_tag` with an ID and receive the complete object
+  4. Agent calling any get-by-ID tool with a non-existent ID receives a clear "not found" error message (not a crash or empty response)
+**Plans**: TBD
+
+Plans:
+- [ ] 14-01: TBD
+- [ ] 14-02: TBD
+
+### Phase 15: Write Pipeline & Task Creation
+**Goal**: Agents can create tasks in OmniFocus through the full write pipeline (MCP -> Service -> Repository -> Bridge -> invalidate snapshot)
+**Depends on**: Phase 14
+**Requirements**: CREA-01, CREA-02, CREA-03, CREA-04, CREA-05, CREA-06, CREA-07, CREA-08
+**Success Criteria** (what must be TRUE):
+  1. Agent can call `add_tasks` with just a name and the task appears in OmniFocus inbox
+  2. Agent can call `add_tasks` with a parent ID (project or task) and the task appears under that parent -- without the agent specifying whether the ID is a project or task
+  3. Agent can set tags, dates, flag, estimated_minutes, and note on creation and they all persist correctly in OmniFocus
+  4. After creating a task, the agent's next `get_all` or `get_task` call returns fresh data reflecting the write
+  5. Invalid inputs (missing name, non-existent parent, non-existent tags) return clear validation errors before anything is written
+**Plans**: TBD
+
+Plans:
+- [ ] 15-01: TBD
+- [ ] 15-02: TBD
+- [ ] 15-03: TBD
+
+### Phase 16: Task Editing
+**Goal**: Agents can modify existing tasks using patch semantics -- changing fields, managing tags, and moving tasks between parents
+**Depends on**: Phase 15
+**Requirements**: EDIT-01, EDIT-02, EDIT-03, EDIT-04, EDIT-05, EDIT-06, EDIT-07, EDIT-08, EDIT-09
+**Success Criteria** (what must be TRUE):
+  1. Agent can call `edit_tasks` omitting fields to leave them unchanged, setting fields to null to clear them, or setting values to update them
+  2. Agent can replace all tags, add tags without removing existing, or remove specific tags -- and mixing replace with add/remove is rejected with a clear error
+  3. Agent can move a task to a different project, to a different parent task, or to inbox by setting parent to null
+  4. After editing a task, the agent's next read call returns the updated data
+**Plans**: TBD
+
+Plans:
+- [ ] 16-01: TBD
+- [ ] 16-02: TBD
+- [ ] 16-03: TBD
+
+### Phase 17: Task Lifecycle
+**Goal**: Agents can change task lifecycle state -- completing, dropping, and reactivating tasks
+**Depends on**: Phase 15
+**Requirements**: LIFE-01, LIFE-02, LIFE-03, LIFE-04, LIFE-05
+**Success Criteria** (what must be TRUE):
+  1. Agent can mark a task as complete via `edit_tasks` and the task's availability changes to `completed`
+  2. Agent can drop a task via `edit_tasks` and the task's availability changes to `dropped`
+  3. Agent can reactivate a completed task via `edit_tasks` and the task becomes available again
+  4. Edge cases for repeating tasks and dropped task reactivation are documented and handled with clear errors or documented behavior
+**Plans**: TBD
+
+Plans:
+- [ ] 17-01: TBD
+- [ ] 17-02: TBD
+
 ## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 14 -> 15 -> 16 -> 17
+(Phases 16 and 17 both depend on 15 but execute sequentially)
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -53,3 +132,7 @@
 | 11. DataSource Protocol | v1.1 | 3/3 | Complete | 2026-03-07 |
 | 12. SQLite Reader | v1.1 | 2/2 | Complete | 2026-03-07 |
 | 13. Fallback and Integration | v1.1 | 2/2 | Complete | 2026-03-07 |
+| 14. Model Refactor & Lookups | v1.2 | 0/? | Not started | - |
+| 15. Write Pipeline & Task Creation | v1.2 | 0/? | Not started | - |
+| 16. Task Editing | v1.2 | 0/? | Not started | - |
+| 17. Task Lifecycle | v1.2 | 0/? | Not started | - |

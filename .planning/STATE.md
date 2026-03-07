@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Writes & Lookups
-status: defining_requirements
+status: ready_to_plan
 stopped_at: null
 last_updated: "2026-03-07"
-last_activity: "2026-03-07 -- Milestone v1.2 started"
+last_activity: "2026-03-07 -- Roadmap created (4 phases, 29 requirements)"
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,26 +21,44 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** v1.2 Writes & Lookups
+**Current focus:** Phase 14 - Model Refactor & Lookups
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 14 of 17 (Model Refactor & Lookups) -- first of 4 v1.2 phases
 Plan: --
-Status: Defining requirements
-Last activity: 2026-03-07 -- Milestone v1.2 started
+Status: Ready to plan
+Last activity: 2026-03-07 -- Roadmap created
+
+Progress: [░░░░░░░░░░] 0%
+
+## Performance Metrics
+
+**Velocity:**
+- Total plans completed: 0 (v1.2)
+- Average duration: --
+- Total execution time: --
+
+**By Phase:**
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| - | - | - | - |
 
 ## Accumulated Context
 
 ### Decisions
 
-(None yet for v1.2)
+- Unified `parent` field on read model (ParentRef with type + id, null = inbox) replaces separate project + parent fields
+- Write model takes plain ID for parent (server resolves type), null = move to inbox
+- CQRS split: rich read model, simple write model
+- NAME-01 bundled with Phase 14 (model changes + lookups)
 
 ### Pending Todos
 
 Carried from v1.0:
-1. Add retry logic for OmniFocus bridge timeouts
-2. Investigate macOS App Nap impact on OmniFocus responsiveness
+1. Add retry logic for OmniFocus bridge timeouts (v1.5)
+2. Investigate macOS App Nap impact on OmniFocus responsiveness (v1.5)
 3. Make UAT folder discoverable for verification agents
 
 ### Quick Tasks Completed
@@ -58,5 +76,5 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Defining requirements for v1.2
-Next action: Define requirements and create roadmap
+Stopped at: Roadmap created for v1.2
+Next action: Plan Phase 14 (Model Refactor & Lookups)

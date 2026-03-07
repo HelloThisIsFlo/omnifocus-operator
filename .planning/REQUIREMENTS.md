@@ -95,41 +95,41 @@ Requirements for Writes & Lookups milestone. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| NAME-01 | -- | Pending |
-| LOOK-01 | -- | Pending |
-| LOOK-02 | -- | Pending |
-| LOOK-03 | -- | Pending |
-| LOOK-04 | -- | Pending |
-| MODL-01 | -- | Pending |
-| MODL-02 | -- | Pending |
-| CREA-01 | -- | Pending |
-| CREA-02 | -- | Pending |
-| CREA-03 | -- | Pending |
-| CREA-04 | -- | Pending |
-| CREA-05 | -- | Pending |
-| CREA-06 | -- | Pending |
-| CREA-07 | -- | Pending |
-| CREA-08 | -- | Pending |
-| EDIT-01 | -- | Pending |
-| EDIT-02 | -- | Pending |
-| EDIT-03 | -- | Pending |
-| EDIT-04 | -- | Pending |
-| EDIT-05 | -- | Pending |
-| EDIT-06 | -- | Pending |
-| EDIT-07 | -- | Pending |
-| EDIT-08 | -- | Pending |
-| EDIT-09 | -- | Pending |
-| LIFE-01 | -- | Pending |
-| LIFE-02 | -- | Pending |
-| LIFE-03 | -- | Pending |
-| LIFE-04 | -- | Pending |
-| LIFE-05 | -- | Pending |
+| NAME-01 | Phase 14 | Pending |
+| LOOK-01 | Phase 14 | Pending |
+| LOOK-02 | Phase 14 | Pending |
+| LOOK-03 | Phase 14 | Pending |
+| LOOK-04 | Phase 14 | Pending |
+| MODL-01 | Phase 14 | Pending |
+| MODL-02 | Phase 14 | Pending |
+| CREA-01 | Phase 15 | Pending |
+| CREA-02 | Phase 15 | Pending |
+| CREA-03 | Phase 15 | Pending |
+| CREA-04 | Phase 15 | Pending |
+| CREA-05 | Phase 15 | Pending |
+| CREA-06 | Phase 15 | Pending |
+| CREA-07 | Phase 15 | Pending |
+| CREA-08 | Phase 15 | Pending |
+| EDIT-01 | Phase 16 | Pending |
+| EDIT-02 | Phase 16 | Pending |
+| EDIT-03 | Phase 16 | Pending |
+| EDIT-04 | Phase 16 | Pending |
+| EDIT-05 | Phase 16 | Pending |
+| EDIT-06 | Phase 16 | Pending |
+| EDIT-07 | Phase 16 | Pending |
+| EDIT-08 | Phase 16 | Pending |
+| EDIT-09 | Phase 16 | Pending |
+| LIFE-01 | Phase 17 | Pending |
+| LIFE-02 | Phase 17 | Pending |
+| LIFE-03 | Phase 17 | Pending |
+| LIFE-04 | Phase 17 | Pending |
+| LIFE-05 | Phase 17 | Pending |
 
 **Coverage:**
 - v1.2 requirements: 29 total
-- Mapped to phases: 0
-- Unmapped: 29
+- Mapped to phases: 29
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-07*
-*Last updated: 2026-03-07 after initial definition*
+*Last updated: 2026-03-07 after roadmap creation*
