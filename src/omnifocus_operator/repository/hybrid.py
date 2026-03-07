@@ -59,7 +59,7 @@ _FOLDERS_SQL = "SELECT * FROM Folder"
 
 _PERSPECTIVES_SQL = "SELECT * FROM Perspective"
 
-_TASK_TO_TAG_SQL = "SELECT task, context FROM TaskToTag"
+_TASK_TO_TAG_SQL = "SELECT task, tag FROM TaskToTag"
 
 
 # -- Timestamp parsing --
@@ -167,8 +167,10 @@ def _map_folder_availability(*, date_hidden: object) -> str:
 
 _SCHEDULE_TYPE_MAP = {
     "fixed": "regularly",
+    "from-assigned": "regularly",
     "due-after-completion": "from_completion",
     "start-after-completion": "from_completion",
+    "from-completion": "from_completion",
 }
 
 _ANCHOR_DATE_MAP = {
@@ -431,7 +433,7 @@ class HybridRepository:
             task_tag_map: dict[str, list[dict[str, str]]] = {}
             for row in task_tag_rows:
                 task_id = row["task"]
-                tag_id = row["context"]
+                tag_id = row["tag"]
                 tag_name = tag_name_lookup.get(tag_id, "")
                 if task_id not in task_tag_map:
                     task_tag_map[task_id] = []

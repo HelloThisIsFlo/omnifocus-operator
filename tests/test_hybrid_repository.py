@@ -141,7 +141,7 @@ def create_test_db(
 
             CREATE TABLE TaskToTag (
                 task TEXT,
-                context TEXT
+                tag TEXT
             );
         """)
 
@@ -203,8 +203,8 @@ def create_test_db(
 
         for tt in task_tags or []:
             conn.execute(
-                "INSERT INTO TaskToTag (task, context) VALUES (?, ?)",
-                [tt["task"], tt["context"]],
+                "INSERT INTO TaskToTag (task, tag) VALUES (?, ?)",
+                [tt["task"], tt["tag"]],
             )
 
         conn.commit()
@@ -574,8 +574,8 @@ class TestTaskTags:
                 _minimal_tag({"persistentIdentifier": "tag-b", "name": "Home"}),
             ],
             task_tags=[
-                {"task": "t1", "context": "tag-a"},
-                {"task": "t1", "context": "tag-b"},
+                {"task": "t1", "tag": "tag-a"},
+                {"task": "t1", "tag": "tag-b"},
             ],
         )
         repo = HybridRepository(db_path=db_path)
