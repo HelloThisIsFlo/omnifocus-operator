@@ -13,6 +13,7 @@ import asyncio
 import sys
 
 from omnifocus_operator.bridge._real import DEFAULT_IPC_DIR, RealBridge
+
 from omnifocus_operator.models import DatabaseSnapshot
 
 
