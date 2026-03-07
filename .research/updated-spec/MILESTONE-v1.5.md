@@ -1,0 +1,69 @@
+# Milestone v1.5 -- Production Hardening
+
+## Goal
+
+Reliability and polish. No new tools -- the full 18-tool API surface is complete from v1.4. This milestone makes the server robust enough for daily use without supervision.
+
+## What to Build
+
+### Retry Logic for Bridge Timeouts
+- Configurable retry count and backoff for bridge operations
+- Clear error messages when retries are exhausted
+- Distinguish between "OmniFocus not running" and "OmniFocus slow to respond"
+
+### OmniFocus Launch Detection
+- Detect whether OmniFocus is running before attempting bridge operations
+- Provide actionable error if not running (for write operations that need it)
+- Note: reads via SQLite don't need OmniFocus running (already handled in v1.1)
+
+### Crash Recovery
+- Handle partial write failures gracefully
+- Clean up orphaned IPC files from crashed processes (basic version exists from v1.0 -- extend if needed)
+- Ensure server can recover from unexpected states without restart
+
+### Idempotency
+- Define idempotency guarantees for write operations
+- Handle duplicate requests gracefully (e.g., agent retries after timeout)
+
+### Startup Validation
+- Validate OmniFocus installation and configuration on server startup
+- Check SQLite database accessibility
+- Verify bridge script compatibility
+- Report issues via error-serving mode (already exists -- extend with specific checks)
+
+### Fuzzy Search (Deferred from v1.3)
+- Index-based fuzzy matching for task names and notes
+- Catches typos and partial recall
+- Substring (SQL LIKE) matches rank higher than fuzzy
+- In-memory index built from snapshot, refreshed on snapshot change
+- Edge cases: emoji in task names, unicode normalization, accented characters
+
+### App Nap Investigation
+- Investigate macOS App Nap impact on OmniFocus responsiveness
+- Determine if App Nap causes bridge timeouts
+- Implement mitigation if needed (e.g., NSProcessInfo assertions)
+
+### Configurable Timeout
+- Note: basic timeout may already exist from v1.0 (10s hardcoded). Evaluate whether it needs to be configurable or if the current value is sufficient.
+
+## Unknowns
+
+Scope is intentionally light. When we get here, evaluate:
+- Which of these items have become pain points in daily use?
+- Are there new issues discovered during v1.2-v1.4 that need hardening?
+- Is fuzzy search actually needed, or is substring search sufficient in practice?
+- What's the actual failure rate of bridge operations?
+
+Prioritize based on real-world usage data, not hypothetical concerns.
+
+## Key Acceptance Criteria
+
+- Server recovers gracefully from OmniFocus crashes/restarts
+- Bridge timeouts produce actionable error messages with retry information
+- Fuzzy search finds tasks despite typos (if implemented)
+- Server can run a full daily review session without manual intervention
+- No new tools -- same 18-tool API surface as v1.4
+
+## Tools After This Milestone
+
+Eighteen (unchanged from v1.4).
