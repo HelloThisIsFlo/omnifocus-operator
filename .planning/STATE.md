@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: HUGE Performance Upgrade
 status: completed
-stopped_at: Completed 10-03-PLAN.md (Phase 10 complete)
-last_updated: "2026-03-07T03:31:13.785Z"
-last_activity: 2026-03-07 -- Completed 10-03 (pipeline wiring + bridge cleanup + UAT)
+stopped_at: Completed 10-04-PLAN.md (Phase 10 UAT gaps closed)
+last_updated: "2026-03-07T13:24:24.468Z"
+last_activity: 2026-03-07 -- Completed 10-04 (UAT gap closure -- model accuracy fixes)
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 4
+  completed_plans: 4
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 10 complete -- ready for Phase 11
+**Current focus:** Phase 10 complete (including UAT gap closure) -- ready for Phase 11
 
 ## Current Position
 
 Phase: 10 (1 of 4 in v1.1) -- COMPLETE
-Plan: 03 of 3 (all complete)
+Plan: 04 of 4 (all complete, plan 04 = UAT gap closure)
 Status: Phase 10 complete
-Last activity: 2026-03-07 -- Completed 10-03 (pipeline wiring + bridge cleanup + UAT)
+Last activity: 2026-03-07 -- Completed 10-04 (UAT gap closure -- model accuracy fixes)
 
 Progress: [██████████] 100% (Phase 10)
 
@@ -46,6 +46,9 @@ Progress: [██████████] 100% (Phase 10)
 - Adapter made idempotent: tasks/projects skip if no status key, tags/folders skip if already snake_case
 - Simulator data stays in new-shape (adapter is no-op for it)
 - UAT validates read-only pipeline (snapshot -> adapter -> Pydantic) rather than creating test entities
+- effective_completion_date moved from ActionableEntity to Task (Project never uses it)
+- Adapter nullifies entire repetitionRule when bridge sends scheduleType "None"
+- Availability vocabulary unified: TagAvailability/FolderAvailability with available/blocked/dropped values
 
 ### Pending Todos
 
@@ -67,6 +70,6 @@ Carried from v1.0:
 
 ## Session Continuity
 
-Last session: 2026-03-07T03:27:00.000Z
-Stopped at: Completed 10-03-PLAN.md (Phase 10 complete)
+Last session: 2026-03-07T13:24:24.466Z
+Stopped at: Completed 10-04-PLAN.md (Phase 10 UAT gaps closed)
 Next action: `/gsd:plan-phase 11` or `/gsd:research-phase 11`
