@@ -29,7 +29,13 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 ### Active
 
-(None -- next milestone not yet scoped)
+<!-- Current scope: v1.1 HUGE Performance Upgrade -->
+
+- [ ] SQLite cache as primary read path (~46ms full snapshot, OmniFocus doesn't need to be running)
+- [ ] Two-axis status model (Urgency + Availability) replacing single-winner enums
+- [ ] Pydantic model overhaul (field additions, removals, enum replacements)
+- [ ] WAL-based read-after-write freshness detection
+- [ ] Error-serving degraded mode when SQLite unavailable (manual fallback via env var)
 
 ### Out of Scope
 
@@ -43,6 +49,19 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 - WebSocket/SSE transport -- stdio only, local server
 - AppleScript/osascript bridge -- file-based IPC is the differentiator
 - Real-time file watching for snapshot -- mtime check on read is sufficient
+
+## Current Milestone: v1.1 HUGE Performance Upgrade
+
+**Goal:** Replace OmniJS bridge read path with direct SQLite cache access for dramatically faster, more accurate data retrieval.
+
+**Target features:**
+- SQLite cache reader (~46ms full snapshot, <6ms filtered, no OmniFocus process needed)
+- Two-axis status model: Urgency (overdue/due_soon/none) + Availability (available/blocked/completed/dropped)
+- WAL-based read-after-write consistency (~500ms delay, `st_mtime_ns` polling)
+- Pydantic model overhaul aligned with RESULTS_pydantic-model.md
+- Error-serving when SQLite unavailable, manual OmniJS fallback via `OMNIFOCUS_BRIDGE=omnijs`
+
+**Research:** `.research/deep-dives/direct-database-access/RESULTS.md` (source of truth)
 
 ## Context
 
@@ -75,4 +94,4 @@ Five milestones planned (Foundation -> Filtering -> Entity Browsing -> Perspecti
 | SimulatorBridge inherits RealBridge, overrides trigger only | Minimal code duplication; full IPC pipeline tested without OmniFocus | Good -- single IPC implementation, two behaviors |
 
 ---
-*Last updated: 2026-03-07 after v1.0 milestone*
+*Last updated: 2026-03-07 after v1.1 milestone start*
