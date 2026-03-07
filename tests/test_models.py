@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from omnifocus_operator.models import (
     ActionableEntity,
     AnchorDateKey,
+    Availability,
     DatabaseSnapshot,
     Folder,
     FolderStatus,
@@ -26,6 +27,7 @@ from omnifocus_operator.models import (
     TagStatus,
     Task,
     TaskStatus,
+    Urgency,
 )
 
 from .conftest import (
@@ -81,6 +83,37 @@ class TestBaseConfig:
 # ---------------------------------------------------------------------------
 # Enum tests
 # ---------------------------------------------------------------------------
+
+
+class TestUrgency:
+    """Urgency enum has exactly 3 members with snake_case values."""
+
+    def test_urgency_values(self) -> None:
+        assert Urgency.OVERDUE == "overdue"
+        assert Urgency.DUE_SOON == "due_soon"
+        assert Urgency.NONE == "none"
+
+    def test_urgency_member_count(self) -> None:
+        assert len(Urgency) == 3
+
+    def test_urgency_is_str_enum(self) -> None:
+        assert isinstance(Urgency.OVERDUE, str)
+
+
+class TestAvailability:
+    """Availability enum has exactly 4 members with snake_case values."""
+
+    def test_availability_values(self) -> None:
+        assert Availability.AVAILABLE == "available"
+        assert Availability.BLOCKED == "blocked"
+        assert Availability.COMPLETED == "completed"
+        assert Availability.DROPPED == "dropped"
+
+    def test_availability_member_count(self) -> None:
+        assert len(Availability) == 4
+
+    def test_availability_is_str_enum(self) -> None:
+        assert isinstance(Availability.AVAILABLE, str)
 
 
 class TestTaskStatus:

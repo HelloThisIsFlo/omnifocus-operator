@@ -14,11 +14,13 @@ from omnifocus_operator.models.base import (
 from omnifocus_operator.models.common import RepetitionRule, ReviewInterval, TagRef
 from omnifocus_operator.models.enums import (
     AnchorDateKey,
+    Availability,
     FolderStatus,
     ProjectStatus,
     ScheduleType,
     TagStatus,
     TaskStatus,
+    Urgency,
 )
 from omnifocus_operator.models.folder import Folder
 from omnifocus_operator.models.perspective import Perspective
@@ -61,6 +63,7 @@ DatabaseSnapshot.model_rebuild(_types_namespace=_ns)
 __all__ = [
     "ActionableEntity",
     "AnchorDateKey",
+    "Availability",
     "DatabaseSnapshot",
     "Folder",
     "FolderStatus",
@@ -77,4 +80,5 @@ __all__ = [
     "TagStatus",
     "Task",
     "TaskStatus",
+    "Urgency",
 ]

@@ -12,6 +12,23 @@ Values match the exact strings produced by the bridge script:
 from enum import StrEnum
 
 
+class Urgency(StrEnum):
+    """Time pressure axis -- is this task/project pressing?"""
+
+    OVERDUE = "overdue"
+    DUE_SOON = "due_soon"
+    NONE = "none"
+
+
+class Availability(StrEnum):
+    """Work readiness axis -- can this be worked on?"""
+
+    AVAILABLE = "available"
+    BLOCKED = "blocked"
+    COMPLETED = "completed"
+    DROPPED = "dropped"
+
+
 class TaskStatus(StrEnum):
     """Computed availability status for tasks (from bridge ts() function)."""
 
