@@ -1,157 +1,166 @@
 # Project Research Summary
 
-**Project:** OmniFocus Operator v1.1
-**Domain:** SQLite cache reading + two-axis status model for existing Python MCP server
+**Project:** OmniFocus Operator v1.2 -- Writes & Lookups
+**Domain:** MCP server write pipeline for local macOS task management app
 **Researched:** 2026-03-07
 **Confidence:** HIGH
 
 ## Executive Summary
 
-v1.1 replaces the OmniJS bridge as the primary read path with direct SQLite cache reading, cutting snapshot latency from 2-5s to ~46ms and eliminating the requirement for OmniFocus to be running. Simultaneously, the single-winner status enum (where "overdue" masks "blocked") is replaced with a two-axis model: `Urgency` (overdue/due_soon/none) and `Availability` (available/blocked/completed/dropped). Zero new runtime dependencies -- Python 3.12 stdlib `sqlite3` covers everything.
+v1.2 adds write capabilities (task creation, editing, lifecycle) and get-by-ID lookups to an existing read-only MCP server. The critical insight: **zero new dependencies are needed.** The existing stack (Python 3.12, Pydantic v2 via MCP SDK, OmniJS bridge IPC) handles everything. Writes flow through the OmniJS bridge exclusively -- SQLite remains read-only because OmniFocus owns its database. Get-by-ID is implemented as a filter on the already-cached snapshot, not as new bridge commands (sub-ms vs multi-second).
 
-The recommended approach is a strict bottom-up build: Pydantic models first (everything imports them), then the DataSource protocol abstraction, then SQLite reader, then bridge fallback wrapper, then server wiring. The model migration is the riskiest phase -- 177+ tests break simultaneously if done as a big bang. Research strongly recommends incremental migration: add new fields alongside old, migrate consumers, then remove old fields.
+The recommended approach is a 4-phase incremental build: get-by-ID (warmup, zero risk) -> add_tasks (proves full write pipeline) -> edit_tasks fields (adds patch semantics) -> edit_tasks lifecycle (needs research spike). Each phase proves one new capability before the next adds complexity. The write pipeline follows asymmetric read/write paths -- reads from SQLite cache, writes through OmniJS bridge, with WAL-based invalidation connecting them.
 
-Key risks: (1) SQLite connection mode must be `mode=ro` from day one or risk corrupting OmniFocus data; (2) reusing SQLite connections across WAL changes serves stale data due to snapshot isolation; (3) big-bang model migration creates an undebuggable wall of test failures. All three have clear prevention strategies documented in PITFALLS.md.
+Key risks center on OmniJS constraints: no transactions (partial writes are permanent), 1ms/task/property-access cost (never iterate in bridge.js), and unverified APIs for task movement and lifecycle edge cases. Mitigation: validate everything in Python before touching OmniJS, start with single-item arrays (no batch), and run research spikes before implementing movement and lifecycle operations.
 
 ## Key Findings
 
 ### Recommended Stack
 
-Zero new dependencies. The existing single-dep architecture (`mcp>=1.26.0`) is preserved.
+No new dependencies. The entire v1.2 scope is covered by what's already installed.
 
-**Core technologies:**
-- `sqlite3` (stdlib): Read-only access to OmniFocus SQLite cache -- `mode=ro` URI connections, WAL-aware, 46ms reads
-- `os.stat()` (stdlib): WAL file mtime polling for freshness detection -- nanosecond precision on APFS
-- `pathlib.Path` (stdlib): Database path resolution -- handles `~/Library/Group Containers/...` with spaces
-- `enum.StrEnum` (existing): New `Urgency` and `Availability` enums -- same pattern as v1.0
+**Core technologies (all existing):**
+- **Python 3.12 + Pydantic v2** -- new input models (AddTaskRequest, EditTaskChanges, WriteResult) use standard Pydantic validators for patch semantics, mutual exclusivity, ISO8601 dates
+- **OmniJS bridge (bridge.js)** -- new `add_task` and `edit_task` operation handlers using request file payloads
+- **SQLite (stdlib)** -- read-only path unchanged; get-by-ID can use single-row queries in HybridRepository
+- **MCP SDK (FastMCP)** -- 5 new tool registrations, same patterns as existing tools
 
-**Explicitly rejected:** aiosqlite (no benefit for stdio), SQLAlchemy (overkill for read-only), watchdog (overkill for mtime polling), apsw (unnecessary for simple reads)
+**Key technical decisions:**
+- HybridRepository gains an optional bridge dependency (constructor injection) for writes
+- `TEMPORARY_simulate_write()` replaced with real `_mark_stale()` using same WAL pattern
+- Patch semantics via Pydantic optional fields + None sentinel (no jsonschema/json-patch)
+- Get-by-ID implemented as snapshot filter, not new bridge commands
 
 ### Expected Features
 
 **Must have (table stakes):**
-- SQLite cache reader with 46ms snapshots, no OmniFocus process required
-- Two-axis status enums (`Urgency` + `Availability`) fixing the single-winner masking bug
-- Pydantic model overhaul (6 fields removed, 2 enums replaced, hierarchy restructured)
-- WAL-based read-after-write freshness detection
-- Error-serving when SQLite unavailable (existing pattern)
-- OmniJS bridge fallback via `OMNIFOCUS_BRIDGE=omnijs` env var
-- Status mapping in fallback mode with documented limitations (`blocked` never returned)
+- Get-by-ID for tasks, projects, tags -- agents need single-entity inspection after writes
+- Task creation (add_tasks) -- core write primitive, project/inbox/subtask placement
+- Task field editing (edit_tasks) -- name, dates, flags, notes, estimated_minutes
+- Tag management -- three modes: replace (tags), add (add_tags), remove (remove_tags)
+- Task completion and dropping -- most common lifecycle operations
+- Snapshot invalidation after writes -- stale reads after mutations break agent trust
+- Service-layer validation with clear error messages -- catch errors in Python, not OmniJS
+- Batch-shaped API (array in/out) -- even if single-item initially, forward-compatible shape
+- Patch semantics (omit/null/value) -- industry standard for partial updates
 
 **Should have (differentiators):**
-- `active`/`effective_active` removal from OmniFocusEntity -- cleaner API
-- Field removals (`sequential`, `completed_by_children`, etc.) -- leaner surface
-- New date fields (`planned_date`, `drop_date`, etc.) -- SQLite-only data
-- Repository layer abstraction (DataSource protocol)
+- Task reactivation (markIncomplete) -- undo wrong completion
+- Three tag edit modes -- avoids read-then-write for tag changes
+- Move to inbox (project: null) -- distinct from "leave project unchanged"
+- Rich LLM-optimized tool descriptions
+- Per-item result reporting
 
-**Anti-features (do NOT build):**
-- Automatic SQLite-to-OmniJS silent failover -- hides broken state
-- SQLite write path -- OmniFocus owns the database
-- Caching layer on top of SQLite -- 46ms is fast enough
-- Partial/incremental reads -- full snapshot is cheap enough
+**Defer (v1.4+):**
+- delete_tasks (drop covers most intent)
+- Project/tag/folder writes (unverified APIs)
+- True batch execution (no transactions = partial failure risk)
+- Retry/resilience (v1.5)
+- Dry run / preview mode
 
 ### Architecture Approach
 
-The existing three-layer architecture (MCP Server -> Service -> Repository) stays intact. The change is below the Repository: Bridge + MtimeSource are unified into a single `DataSource` protocol with two methods (`get_mtime_ns()` and `get_raw_snapshot()`). Three implementations: `SQLiteDataSource` (primary), `BridgeDataSource` (fallback wrapping existing bridge), `InMemoryDataSource` (testing). Repository caching and lock logic are unchanged.
+Asymmetric read/write paths. Reads stay on SQLite cache (46ms). Writes go through OmniJS bridge, then mark the snapshot stale for lazy invalidation. Get-by-ID filters the cached snapshot (sub-ms). Validation lives in the service layer; the bridge receives pre-validated payloads ("dumb bridge, smart Python").
 
-**Major components:**
-1. `DataSource` protocol -- unified interface replacing Bridge + MtimeSource; each implementation owns both data fetching and freshness
-2. `SQLiteDataSource` -- SQL queries, row-to-model mapping, WAL mtime; fresh connection per read
-3. `BridgeDataSource` -- wraps existing Bridge + MtimeSource, maps old single-winner enums to two-axis with reduced Availability
-4. `InMemoryDataSource` -- testing replacement for InMemoryBridge, returns fixture data
+**Major components (modified/new):**
+1. **MCP tools (server.py)** -- 5 new tool registrations (get_task, get_project, get_tag, add_tasks, edit_tasks)
+2. **OperatorService (service.py)** -- validation against snapshot, tag name-to-ID resolution, write delegation
+3. **Repository protocol** -- extended with add_tasks(), edit_tasks() signatures; all 3 implementations updated
+4. **HybridRepository** -- gains optional bridge dependency for writes, replaces TEMPORARY_simulate_write
+5. **bridge.js** -- new add_task/edit_task handlers with request file payloads and hasOwnProperty patch semantics
 
-**Key architectural patterns:**
-- Fresh SQLite connection per read (prevents stale WAL reads + connection leaks)
-- Read-only URI mode (`mode=ro`) -- engine-level write prevention
-- Column-to-field mapping in DataSource, not in models -- each source translates to the Pydantic contract
-- No automatic fallback -- error-serving if SQLite unavailable, manual env var switch
+**Key patterns:**
+- Field name translation (snake_case -> camelCase) at repository boundary via dict mapping
+- Tag name resolution in Python (microsecond lookup from cached snapshot vs 2.8s OmniJS iteration)
+- Per-item WriteResult for batch-shaped operations
+- Optional bridge in HybridRepository (None = read-only mode for tests)
 
 ### Critical Pitfalls
 
-1. **Wrong SQLite connection mode** -- Must use `mode=ro` URI; default read-write causes SQLITE_BUSY or corruption risk. Non-negotiable from first implementation.
-2. **Stale reads from connection reuse** -- WAL snapshot isolation means reused connections miss new writes. Fix: fresh connection per read (46ms makes this free).
-3. **Big-bang model migration** -- 177+ tests break simultaneously. Fix: incremental migration -- add new fields alongside old, migrate consumers, remove old fields. Green suite at every step.
-4. **InMemoryBridge fixture rot** -- Test fixtures shaped for bridge output don't match new two-axis model. Fix: create typed fixture factories or new InMemoryDataSource that produces the target model shape.
-5. **model_rebuild namespace breakage** -- Deleting enums while `_ns` dict still references them crashes the entire module. Fix: atomic updates to `_ns`, `__all__`, and `model_rebuild()` calls together.
+1. **Snapshot invalidation race** -- OmniJS write completes before SQLite flush. Prevention: return bridge response as source of truth, don't re-read to confirm. WAL polling handles next-read freshness.
+2. **No transactions in OmniJS** -- partial writes are permanent. Prevention: validate everything in Python first, enforce single-item arrays in v1.2.
+3. **`assignedContainer` always null** -- task movement API is unverified. Prevention: research spike before implementing movement; test `moveTasks()`, `containingProject` assignment, and `task.parent` in OmniJS.
+4. **Repeating task completion spawns new ID** -- agent loses reference to successor. Prevention: check `repetitionRule` before completion, return successor_id in response.
+5. **`markIncomplete()` silent no-op on dropped tasks** -- agent thinks reactivation succeeded. Prevention: service-layer pre-check of task availability, explicit error for dropped tasks.
+6. **Tag name ambiguity** -- OmniFocus allows duplicate tag names. Prevention: service-layer duplicate check, error with disambiguation info.
+7. **`flattenedTasks` iteration in bridge.js** -- 2.8s frozen UI. Prevention: use `Task.byIdentifier(id)` for O(1) lookups, never iterate.
 
 ## Implications for Roadmap
 
-### Phase 1: Pydantic Model Overhaul
-**Rationale:** Everything imports the models -- SQLite reader, fallback mapper, tests. Must land first.
-**Delivers:** New `Urgency`/`Availability` enums, field removals, updated `ActionableEntity`/`Task`/`Project`/`Tag`
-**Addresses:** Two-axis status enums, field removals, model cleanup
-**Avoids:** Big-bang breakage (P3) -- do incrementally: add new alongside old, migrate, remove old. Namespace breakage (P6) -- atomic updates.
+### Phase 1: Get-by-ID Tools
+**Rationale:** Zero write risk, validates new service methods, enables write verification in later phases
+**Delivers:** get_task, get_project, get_tag MCP tools
+**Addresses:** Single-entity inspection (table stakes feature)
+**Avoids:** flattenedTasks scan pitfall (use byIdentifier or snapshot filter)
+**Complexity:** Low. Pure Python filtering on cached snapshot. No bridge changes, no protocol changes, no new models.
 
-### Phase 2: DataSource Protocol + InMemoryDataSource
-**Rationale:** Need the abstraction layer and test infrastructure before implementing concrete data sources. Repository refactored to accept DataSource instead of Bridge + MtimeSource.
-**Delivers:** `DataSource` protocol, `InMemoryDataSource`, updated `OmniFocusRepository`, all existing tests green with new test infra
-**Addresses:** Repository layer abstraction
-**Avoids:** Two freshness signals confusion (P9) -- DataSource couples reader + freshness as a pair
+### Phase 2: Write Pipeline + add_tasks
+**Rationale:** Establishes the entire write pattern. Creation is simpler than editing (no patch semantics). Proves the full stack end-to-end.
+**Delivers:** Pydantic write models, repository protocol extension, HybridRepository bridge injection, bridge add_task handler, add_tasks MCP tool, snapshot invalidation (_mark_stale replacing TEMPORARY_simulate_write)
+**Addresses:** Task creation, service validation, tag name resolution, snapshot invalidation (all table stakes)
+**Avoids:** No-transaction pitfall (single-item constraint), snapshot race (return bridge response), tag ambiguity (duplicate check)
+**Complexity:** Medium. Highest-risk phase -- first real write through the full stack.
 
-### Phase 3: SQLite Cache Reader
-**Rationale:** Primary read path. Depends on models (Phase 1) and DataSource protocol (Phase 2).
-**Delivers:** `SQLiteDataSource` with SQL queries, row-to-model mapping, WAL freshness, error handling
-**Uses:** `sqlite3` stdlib, `os.stat()` for WAL mtime
-**Avoids:** Connection mode wrong (P1), stale reads (P2), unclosed connections (P11), column mismatch (P7), schema edge cases (P15), real DB in tests (P13)
+### Phase 3: edit_tasks -- Fields, Tags, Movement
+**Rationale:** Field editing reuses the proven write pipeline. Movement needs a research spike at phase start.
+**Delivers:** edit_tasks MCP tool for name, note, dates, flags, estimated_minutes, tags (3 modes), project/parent movement
+**Addresses:** Task editing, tag management, task movement (table stakes + differentiators)
+**Avoids:** assignedContainer pitfall (research spike first), tag mode conflicts (mutual exclusion validation)
+**Complexity:** Medium-high. Patch semantics + tag modes + movement = most fields to handle.
 
-### Phase 4: Bridge Fallback + Server Wiring
-**Rationale:** Fallback wraps existing bridge with new mapping; server wiring integrates everything. Both depend on all prior phases.
-**Delivers:** `BridgeDataSource` with old-to-new enum mapping, `OMNIFOCUS_BRIDGE` env var routing, error-serving when SQLite not found, UAT validation
-**Addresses:** OmniJS fallback, error-serving, env var wiring, MCP output schema update
-**Avoids:** Blocked leaking through fallback (P8), silent automatic failover (anti-pattern)
+### Phase 4: edit_tasks -- Lifecycle Changes
+**Rationale:** Lifecycle operations have open questions (repeating tasks, drop permanence) requiring a research spike before implementation
+**Delivers:** complete, drop, reactivate via edit_tasks
+**Addresses:** Task completion and dropping (table stakes), reactivation (differentiator)
+**Avoids:** markIncomplete no-op pitfall (pre-check availability), repeating task ID pitfall (return successor_id)
+**Complexity:** Medium. Fewer fields than Phase 3, but requires research spike for OmniJS lifecycle behavior.
 
 ### Phase Ordering Rationale
 
-- Models first: imported by every other component; dependency root of the entire milestone
-- Protocol + test infra second: need InMemoryDataSource to validate the Repository refactor before adding real implementations
-- SQLite reader third: primary path, most complex new code, benefits from stable models and protocol
-- Fallback + wiring last: adapts existing code, integration-level concerns, needs everything below to exist
-- This order keeps the test suite green at every phase boundary
+- **Dependency chain:** Get-by-ID (Phase 1) enables write verification. add_tasks (Phase 2) proves the full write pipeline. edit_tasks fields (Phase 3) reuses that pipeline with patch semantics. Lifecycle (Phase 4) adds OmniJS quirks on top.
+- **Risk escalation:** Each phase adds one new capability. Phase 1 is pure Python. Phase 2 is first bridge write. Phase 3 adds patch semantics. Phase 4 adds lifecycle edge cases.
+- **Research spikes isolated:** Movement API research gates only Phase 3. Lifecycle research gates only Phase 4. Neither blocks earlier phases.
 
 ### Research Flags
 
-Phases likely needing deeper research during planning:
-- **Phase 1 (Model Overhaul):** Needs `/gsd:research-phase` -- incremental migration strategy across 177+ tests is nuanced; exact step-by-step order matters to avoid breakage
-- **Phase 3 (SQLite Reader):** Needs `/gsd:research-phase` -- column-to-field mapping for every entity type, timestamp format handling, NULL edge cases in real DB
+**Phases needing deeper research during planning:**
+- **Phase 3 (movement):** Task movement API is unverified. Must empirically test `moveTasks()`, `containingProject` setter, and `task.parent` assignment before implementing.
+- **Phase 4 (lifecycle):** `markComplete()` on repeating tasks, `drop(false)` vs `drop(true)`, `markIncomplete()` on dropped tasks -- all need OmniJS verification.
 
-Phases with standard patterns (skip research-phase):
-- **Phase 2 (DataSource Protocol):** Standard Protocol + DI refactor; well-documented Python pattern
-- **Phase 4 (Fallback + Wiring):** Wrapping existing code + env var routing; straightforward integration
+**Phases with standard patterns (skip research-phase):**
+- **Phase 1 (get-by-ID):** Snapshot filtering is trivial. Well-understood pattern.
+- **Phase 2 (add_tasks):** Bridge IPC, Pydantic models, service validation -- all established patterns. Only novelty is wiring them for writes.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Zero new deps; all stdlib, verified locally (SQLite 3.51.0) |
-| Features | HIGH | Scope defined in PROJECT.md; field-level contract validated against live DB |
-| Architecture | HIGH | All integration points verified against existing codebase; DataSource pattern is a clean evolution |
-| Pitfalls | HIGH | Empirical -- WAL timing, connection scoping, mtime behavior all validated in deep-dive research |
+| Stack | HIGH | Zero new deps. All technologies already in use and proven in v1.0-v1.1. |
+| Features | HIGH | Spec is detailed (MILESTONE-v1.2.md). Feature scope well-defined with clear defer decisions. |
+| Architecture | HIGH | Extends existing patterns. Asymmetric read/write is the only viable approach given OmniFocus owns SQLite. |
+| Pitfalls | HIGH | BRIDGE-SPEC is empirically verified against live OmniFocus v4.8.8. Pitfalls are concrete, not speculative. |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **Incremental model migration exact steps:** Research recommends incremental but doesn't prescribe the exact commit-by-commit sequence. Phase 1 planning needs to work this out.
-- **SQLite timestamp formats:** Known to differ from bridge JSON, but exact format for every date field not fully documented. Phase 3 planning should include a mapping spike.
-- **NULL handling in real DB:** Edge cases (tasks with no project, NULL dates, empty strings) identified as risk but not catalogued. Phase 3 tests should include pessimistic fixtures.
-- **macOS App Nap impact:** Carried from v1.0 todos -- less relevant now (SQLite reads don't need OmniFocus running) but still affects write path.
+- **Task movement API:** `assignedContainer` confirmed broken. `containingProject` setter and `moveTasks()` unverified. Resolve via research spike at Phase 3 start.
+- **Repeating task completion semantics:** Successor ID behavior, `drop(false)` vs `drop(true)` -- needs empirical verification. Resolve via research spike at Phase 4 start.
+- **`markIncomplete()` on dropped tasks:** Confirmed no-op but no recovery strategy defined. Decide during Phase 4: error out or attempt `document.undo()`.
+- **Partial failure strategy:** Moot with single-item constraint in v1.2 but needs a decision before batch is enabled.
+- **Tag name ambiguity UX:** Accept both names and IDs? Qualified paths like "Work/Meeting"? Decide during Phase 2 implementation.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- `.research/deep-dives/direct-database-access/RESULTS.md` -- benchmarks (46ms), WAL timing, schema stability
-- `.research/deep-dives/direct-database-access/RESULTS_pydantic-model.md` -- field mapping, enum design, removal rationale
-- Python 3.12 `sqlite3` stdlib docs -- URI mode, `mode=ro`, WAL support
-- SQLite WAL documentation (sqlite.org/wal.html) -- design guarantees, checkpoint behavior
-- SQLite URI filenames (sqlite.org/uri.html) -- `?mode=ro` parameter
+- `.research/deep-dives/omnifocus-api-ground-truth/BRIDGE-SPEC.md` -- empirical spec from 27 audit scripts against OmniFocus v4.8.8
+- `.research/updated-spec/MILESTONE-v1.2.md` -- detailed v1.2 spec with field tables and open questions
+- Existing codebase (v1.1) -- direct inspection of bridge.js, hybrid.py, bridge.py, protocol.py, service.py, server.py
 
 ### Secondary (MEDIUM confidence)
-- `.planning/PROJECT.md` -- milestone scope and requirements
-- Existing codebase verification (`src/omnifocus_operator/`) -- all integration points checked
-- `todo4_sqlite_freshness/FINDINGS.md` -- WAL mtime freshness validation
-
-### Tertiary (LOW confidence)
-- macOS App Nap impact on OmniFocus responsiveness -- not yet investigated for v1.1
+- [OmniFocus Tasks - Omni Automation](https://www.omni-automation.com/omnifocus/task.html) -- OmniJS task API reference
+- [MCP Tools Specification](https://modelcontextprotocol.io/specification/2025-06-18/server/tools) -- official MCP tools spec
+- [54 Patterns for Building Better MCP Tools](https://www.arcade.dev/blog/mcp-tool-patterns) -- MCP tool design patterns
 
 ---
 *Research completed: 2026-03-07*

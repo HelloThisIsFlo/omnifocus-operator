@@ -1,203 +1,259 @@
-# Domain Pitfalls
+# Pitfalls Research
 
-**Domain:** Adding SQLite cache reading + two-axis status model to existing MCP server
+**Domain:** Adding write capabilities (task creation, editing, lifecycle) to an existing read-only OmniFocus MCP server
 **Researched:** 2026-03-07
-**Scope:** v1.1 milestone -- pitfalls specific to adding SQLite reader, model migration, WAL freshness, and fallback mode to the shipped v1.0 codebase
-
----
+**Confidence:** HIGH (based on codebase analysis, BRIDGE-SPEC empirical data, and OmniJS constraints)
 
 ## Critical Pitfalls
 
-Mistakes that cause rewrites, data corruption, or broken consumers.
+### Pitfall 1: Snapshot Invalidation Race -- Write Completes Before OmniFocus Flushes to SQLite
 
-### Pitfall 1: Opening SQLite with wrong mode causes OmniFocus corruption or SQLITE_BUSY
+**What goes wrong:**
+Write goes through OmniJS bridge (modifies OmniFocus in-memory state), Python marks snapshot stale, next `get_all()` reads from SQLite -- but OmniFocus hasn't flushed to the SQLite cache yet. The "fresh" read returns pre-write data.
 
-**What goes wrong:** Opening the OmniFocus database in read-write mode (the default) or with `immutable=1` while OmniFocus is actively writing causes either lock contention (SQLITE_BUSY) or silent read inconsistency.
-**Why it happens:** Python's `sqlite3.connect()` defaults to read-write. `immutable=1` skips all locking -- fast but assumes no other writer exists (OmniFocus IS a writer). Both are wrong for this use case.
-**Consequences:**
-- Read-write mode: potential SQLITE_BUSY errors during OmniFocus checkpoints
-- `immutable=1`: reads stale/inconsistent data, possible crashes if OmniFocus checkpoints mid-read
-**Prevention:**
-- Always open with `sqlite3.connect('file:...?mode=ro', uri=True)` -- read-only WITH proper locking
-- Set `timeout=5` (default) to handle brief checkpoint locks gracefully
-- Never use `immutable=1` -- OmniFocus writes continuously
-**Detection:** SQLITE_BUSY errors in logs; stale data that doesn't match OmniFocus UI
-**Phase:** Must be correct from the first SQLite implementation phase
+**Why it happens:**
+Write path: Python -> bridge.js -> OmniFocus (in-memory) -> SQLite cache (async flush). The SQLite cache is a read-only mirror updated on OmniFocus's schedule. WAL mtime polling (50ms intervals, 2s timeout) was designed for external changes, not for changes the server triggered via bridge.
 
-### Pitfall 2: Stale reads from reusing SQLite connections across WAL changes
+**How to avoid:**
+- After a successful bridge write, use the bridge's return value (created/edited entity ID) as source of truth -- don't immediately re-read from SQLite to "confirm"
+- For `add_tasks`, return the ID from bridge response directly
+- `TEMPORARY_simulate_write()` on HybridRepository already has the right invalidation pattern -- replace with real call
+- Add a UAT test that does write-then-read to measure actual flush latency
 
-**What goes wrong:** A long-lived SQLite connection sees a snapshot frozen at its last read transaction start. New data written to the WAL after the connection opened is invisible until a new transaction begins.
-**Why it happens:** SQLite WAL provides snapshot isolation per-transaction. A connection that opened before a write will read from the WAL state at its transaction start, not the latest state. The freshness research (TODO #4) confirmed this: `PRAGMA data_version` is connection-scoped, not absolute.
-**Consequences:** Cache reports data as "fresh" (WAL mtime changed) but serves stale results because the same connection is reused.
-**Prevention:**
-- Open a **fresh connection for every read** (46ms query time makes this trivially cheap)
-- Or explicitly start a new transaction before each query
-- Never pool/reuse connections across freshness boundaries
-**Detection:** Data doesn't match OmniFocus after edits despite mtime changing
-**Phase:** SQLite reader implementation -- must be baked into the reader protocol
+**Warning signs:**
+- UAT tests doing `add_tasks` then `get_task` intermittently return stale data
+- WAL mtime doesn't change within 2s timeout after a bridge write
 
-### Pitfall 3: Big-bang model migration breaks all 177+ tests simultaneously
-
-**What goes wrong:** Changing `OmniFocusEntity` (remove `active`, `effective_active`), `ActionableEntity` (remove `completed`, `sequential`, `completed_by_children`, `should_use_floating_time_zone`; add `urgency`, `availability`), `Task` (remove `status: TaskStatus`), and `Project` (remove `status`, `task_status`, `contains_singleton_actions`) in one commit. Every test fixture, every model factory, every assertion breaks at once.
-**Why it happens:** Natural instinct is "change models to match target design, then fix everything." With 177+ tests, 27 direct `TaskStatus`/`ProjectStatus` references in test_models.py, and 14 in simulator data, this creates an undebuggable wall of red.
-**Consequences:** Multi-day merge confusion; can't tell if failures are from model changes vs SQLite integration vs test fixture issues
-**Prevention:**
-- Phase 1: Add SQLite reader as new code path alongside existing bridge (models unchanged)
-- Phase 2: Add `urgency`/`availability` as NEW fields (computed from old fields), keeping old fields
-- Phase 3: Migrate consumers to new fields
-- Phase 4: Remove old fields + enums
-- Each phase has a green test suite
-**Detection:** If you're fixing more than ~20 test failures in one commit, you went too fast
-**Phase:** Model migration should be its own phase, separate from SQLite reader
-
-### Pitfall 4: InMemoryBridge test fixtures don't produce two-axis status data
-
-**What goes wrong:** All 177+ tests use `InMemoryBridge` with fixture data shaped like the OmniJS bridge output (single `status` enum, `active` booleans). After model changes, every fixture needs updating -- but the new fields (`urgency`, `availability`) come from SQLite columns that InMemoryBridge doesn't know about.
-**Why it happens:** The bridge interface returns `dict[str, Any]` which gets `model_validate`d. InMemoryBridge fixtures are hand-written dicts matching the bridge shape. The new shape is fundamentally different.
-**Consequences:**
-- Tests pass with wrong data shape (dict keys don't match new model)
-- Or tests fail because Pydantic validation rejects missing `urgency`/`availability`
-- Simulator data (14 references to old enums) also breaks
-**Prevention:**
-- Create typed fixture factories (not raw dicts) that enforce the current model shape
-- When adding SQLite reader, have it produce the SAME dict shape as the bridge initially (translate SQL columns to expected dict format)
-- Alternatively: have the repository layer normalize both sources into the Pydantic model, not the raw dict
-**Detection:** `ValidationError` on `urgency` or `availability` fields in tests
-**Phase:** Test infrastructure update should precede or accompany model changes
+**Phase to address:**
+Phase 2 (add_tasks) -- first write, must validate invalidation flow end-to-end in UAT
 
 ---
 
-## Moderate Pitfalls
+### Pitfall 2: OmniJS Has No Transactions -- Partial Writes Are Permanent
 
-### Pitfall 5: WAL file doesn't exist when OmniFocus hasn't been opened recently
+**What goes wrong:**
+Batch `edit_tasks` modifies items 1-2 successfully, throws on item 3 (invalid tag). Items 1-2 are already modified in OmniFocus -- no rollback. Bridge returns error, Python reports failure, but 2/5 items are silently changed.
 
-**What goes wrong:** The freshness detection strategy assumes `{db_path}-wal` exists for mtime polling. If OmniFocus checkpointed and closed cleanly, the WAL file may not exist (SQLite can delete it after a clean checkpoint).
-**Prevention:**
-- Handle `FileNotFoundError` on WAL stat gracefully -- treat as "database is current" (main .db IS the latest state)
-- Fall back to main `.db` file mtime when WAL is absent
-- Don't treat missing WAL as an error condition
-**Phase:** SQLite freshness detection implementation
+**Why it happens:**
+BRIDGE-SPEC Section 4: "OmniJS applies changes immediately. If a script throws partway through, already-applied changes persist." `document.undo()` undoes only the last discrete action, not a sequence.
 
-### Pitfall 6: `model_rebuild()` namespace breaks when enums are renamed/deleted
+**How to avoid:**
+- **Validate everything before touching OmniFocus.** Service layer checks all IDs exist, tag names resolve, mutually-exclusive constraints pass. Bridge receives a fully-validated payload.
+- **Start with single-item constraint.** v1.2 spec: "Start with single-item constraint (array of exactly one)." Eliminates partial failure entirely.
+- **Never rely on `document.undo()` for programmatic rollback.**
 
-**What goes wrong:** The `__init__.py` model_rebuild chain with `_types_namespace` is fragile. Deleting `TaskStatus`/`ProjectStatus` from enums.py while `_ns` dict still references them (or vice versa) causes `PydanticUserError` at import time -- the entire module fails to load, meaning ALL tools break, not just the changed ones.
-**Prevention:**
-- Update `_ns` dict, `__all__`, and `model_rebuild()` calls atomically when changing enums
-- Add a simple import smoke test: `from omnifocus_operator.models import Task` should be the first test to run
-- The rebuild order matters: base classes first, then subclasses
-**Phase:** Every model change commit
+**Warning signs:**
+- Service layer passes unvalidated data to bridge
+- Bridge.js processes items in a loop without per-item error handling
+- Tests only cover the happy path
 
-### Pitfall 7: camelCase alias mismatch between bridge JSON and SQLite column names
-
-**What goes wrong:** Existing models use `alias_generator=to_camel` because the OmniJS bridge returns camelCase JSON (`dueDate`, `effectiveActive`). SQLite column names are different (e.g., `dateDue`, `effectiveDateOfDeferral`). If the SQLite reader produces dicts with SQLite column names, `model_validate` fails or silently drops fields.
-**Prevention:**
-- Map SQLite column names to the expected model field names in the SQLite reader layer, not in the models
-- Keep Pydantic models as the contract; let each data source (bridge, SQLite) translate to that contract
-- Write explicit column-to-field mapping tests for every entity type
-**Phase:** SQLite reader implementation
-
-### Pitfall 8: Fallback mode accidentally produces `blocked` availability value
-
-**What goes wrong:** In OmniJS fallback mode, `blocked` is not reliably derivable (bridge's single-winner enum masks it). If fallback code accidentally returns `availability=blocked`, downstream agents make wrong decisions about task workability.
-**Prevention:**
-- Test-assert that OmniJS path NEVER produces `Availability.blocked`
-- Explicit validation in the fallback mapper: if source is OmniJS, `blocked` is an error
-- Document the reduced availability in fallback mode clearly
-**Detection:** Test that iterates all tasks from OmniJS path and asserts `availability != blocked`
-**Phase:** Fallback mode implementation
-
-### Pitfall 9: Two freshness signals create confusion during migration
-
-**What goes wrong:** v1.0 uses `FileMtimeSource` on the `.ofocus` directory to invalidate the bridge cache. v1.1 needs WAL mtime for SQLite freshness. If both exist simultaneously during migration, the wrong mtime source gets wired to the wrong reader.
-**Prevention:**
-- Each reader (bridge, SQLite) owns its own freshness signal -- make this explicit
-- The repository constructor should take `reader + its_mtime_source` as a coupled pair
-- Don't try to share a single `MtimeSource` between both paths
-**Phase:** Repository refactor when adding SQLite reader
-
-### Pitfall 10: SQLite path hardcoded or not validated at startup
-
-**What goes wrong:** The SQLite path (`~/Library/Group Containers/34YW5XSRB7.com.omnigroup.OmniFocus/...`) contains a group container ID that could change across OmniFocus versions. Hardcoding it means silent failure on version changes.
-**Prevention:**
-- Validate path exists at startup (not first query) -- enter error-serving mode immediately if missing
-- Make path configurable via env var (`OMNIFOCUS_SQLITE_PATH`) with the known default
-- Log the resolved path at startup for debuggability
-**Detection:** Error-serving mode with clear message naming the expected path
-**Phase:** SQLite reader initialization
-
-### Pitfall 11: Connection left open blocks OmniFocus WAL checkpointing
-
-**What goes wrong:** An unclosed SQLite connection (from an exception path) holds a shared lock that prevents OmniFocus from truncating the WAL file. Over time, the WAL grows unbounded, degrading OmniFocus performance.
-**Prevention:**
-- Always use context manager: `with sqlite3.connect(...) as conn:`
-- Or explicit `try/finally` with `conn.close()`
-- Keep connection lifetime to a single query (open, query, close)
-- Fresh-connection-per-read pattern (Pitfall 2 prevention) also solves this
-**Phase:** SQLite reader implementation
+**Phase to address:**
+Phase 2 (add_tasks) -- enforce single-item. Phase 3 (edit_tasks) -- same.
 
 ---
 
-## Minor Pitfalls
+### Pitfall 3: `markIncomplete()` Is a Silent No-Op on Dropped Tasks
 
-### Pitfall 12: `st_mtime_ns` granularity varies by filesystem
+**What goes wrong:**
+Agent reactivates a dropped task via `markIncomplete()`. No error thrown, but task remains dropped. Agent assumes success.
 
-**What goes wrong:** APFS (macOS default) has nanosecond mtime precision. But if someone runs on a non-APFS volume, mtime granularity could be 1 second, making rapid writes invisible.
-**Prevention:** This is macOS-only software on APFS; document the assumption. Don't over-engineer.
-**Phase:** Documentation only
+**Why it happens:**
+BRIDGE-SPEC Section 4: "`markIncomplete()` on Dropped task: Silent no-op. No error, no state change. Dropping is permanent for standalone tasks."
 
-### Pitfall 13: Test safety -- automated tests must never touch the real SQLite cache
+**How to avoid:**
+- Service layer must check task's current availability before lifecycle operations
+- Bridge must verify post-operation state and error if unchanged
+- Consider making "reactivate dropped task" an explicit unsupported operation with clear error
+- Research spike: test whether `document.undo()` immediately after `drop()` can reverse it
 
-**What goes wrong:** A test accidentally reads from `~/Library/Group Containers/...` instead of a test fixture database. Violates SAFE-01 spirit (real data access in automated tests) and makes tests environment-dependent.
-**Prevention:**
-- SQLite reader accepts path as constructor parameter (DI)
-- Test fixtures use in-memory SQLite or temp file with known schema
-- Add guard similar to SAFE-01: if `PYTEST_CURRENT_TEST` is set, reject the real database path
-**Phase:** SQLite reader design -- bake in testability from day one
+**Warning signs:**
+- Lifecycle tests that mock bridge responses without testing real OmniFocus behavior
+- No UAT test for drop-then-reactivate flow
 
-### Pitfall 14: Snapshot model loses backward compatibility for MCP consumers
-
-**What goes wrong:** MCP tool output changes shape (fields renamed/removed, enums replaced). AI agents with cached context about the old schema send wrong queries or misinterpret results.
-**Prevention:**
-- This is a breaking change -- own it. Bump version to v1.1
-- Document migration clearly (old field -> new field mapping)
-- MCP tool descriptions should describe the output schema so agents adapt
-**Phase:** Final integration phase
-
-### Pitfall 15: SQLite reader tested only with happy-path schema
-
-**What goes wrong:** Tests use a perfectly shaped in-memory SQLite database. Real OmniFocus database has NULL values in unexpected columns, empty strings where None is expected, or timestamp formats that differ from what the reader assumes.
-**Prevention:**
-- Test with edge cases: NULL dates, empty names, zero-length notes, tasks with no project
-- If possible, create a sanitized export of the real database schema for integration tests
-- Pydantic's fail-fast validation catches most of these, but the error messages need to be actionable
-**Phase:** SQLite reader testing
+**Phase to address:**
+Phase 4 (lifecycle changes) -- requires research spike before implementation
 
 ---
 
-## Phase-Specific Warnings
+### Pitfall 4: `assignedContainer` Is Always Null -- Task Movement API Is Unverified
 
-| Phase Topic | Likely Pitfall | Mitigation |
-|---|---|---|
-| SQLite reader implementation | Connection mode wrong (P1), stale reads (P2), unclosed connections (P11) | Read-only URI mode, fresh connection per read, context managers |
-| SQLite reader implementation | Column name mapping (P7), schema edge cases (P15) | Explicit mapping layer, column-to-field tests |
-| WAL freshness detection | Missing WAL file (P5), two mtime sources (P9) | Graceful fallback to .db mtime, pair reader+source |
-| Model migration | Big-bang breakage (P3), fixture rot (P4) | Incremental multi-phase migration, typed fixture factories |
-| Model migration | model_rebuild breakage (P6) | Atomic namespace updates, import smoke test |
-| Fallback mode | Blocked leaking through (P8) | Test-assert no `blocked` from OmniJS path |
-| Test infrastructure | Real DB in tests (P13) | DI path param, PYTEST_CURRENT_TEST guard |
-| Final integration | MCP output shape change (P14) | Version bump, schema in tool descriptions |
+**What goes wrong:**
+Developer uses `task.assignedContainer = project` to move tasks. Returns null on all 2,825 tasks -- it's a read-only property that never had a value.
+
+**Why it happens:**
+BRIDGE-SPEC Section 2.1 "Do NOT use" list: "`t.assignedContainer` -- always null on all tasks (2825/2825)." Actual task movement API is an open question in the v1.2 spec.
+
+**How to avoid:**
+- **Research spike required before implementing task movement.** Test in OmniJS:
+  1. `moveTasks([task], project)` (document-level method)
+  2. Direct `task.containingProject` assignment (may not be writable)
+  3. Re-creating task in target project (nuclear option, loses history)
+- Do NOT implement until empirically verified
+
+**Warning signs:**
+- Bridge.js using `assignedContainer` for writes
+- Task movement implemented without UAT
+
+**Phase to address:**
+Phase 3 (edit_tasks movement) -- research spike at phase start
 
 ---
+
+### Pitfall 5: Repeating Task Completion Creates New Instance with New ID
+
+**What goes wrong:**
+Agent completes a repeating task. OmniFocus marks current instance complete and spawns a successor with a new ID. Agent's reference to the original ID now points to the completed instance. Subsequent edits hit the wrong task.
+
+**Why it happens:**
+OmniFocus repeating tasks are individual tasks that spawn successors. `markComplete()` completes the instance; new instance gets a fresh `id.primaryKey`. v1.2 spec identifies this as an open question.
+
+**How to avoid:**
+- Check `task.repetitionRule` before completion -- if non-null, return supplementary data
+- Bridge response for repeating task completion should include `{completed_id, successor_id}`
+- `drop(false)` skips one occurrence; `drop(true)` drops all -- expose distinction clearly
+- Test: "complete repeating task, look up old ID" must return completed task, not the new one
+
+**Warning signs:**
+- Bridge `edit_task` handler doesn't check repetition rules before lifecycle changes
+- Tests use only non-repeating tasks
+- No test for post-completion ID behavior
+
+**Phase to address:**
+Phase 4 (lifecycle) -- requires research spike
+
+---
+
+### Pitfall 6: `flattenedTasks` Scan for Get-by-ID Operations Freezes OmniFocus UI
+
+**What goes wrong:**
+`get_task(id)` is implemented by iterating `flattenedTasks` in bridge.js to find the matching ID. 2,800 tasks * 1ms/task = 2.8 seconds of frozen OmniFocus UI.
+
+**Why it happens:**
+BRIDGE-SPEC Section 1: "1ms per task per operation" -- every property access in OmniJS is expensive. The snapshot pattern works because it's a single bulk read. Per-entity lookups via iteration are prohibitively slow.
+
+**How to avoid:**
+- Use `Task.byIdentifier(id)` for direct lookup (documented in BRIDGE-SPEC Section 7 as available API)
+- Similarly `Project.byIdentifier(id)`, `Tag.byIdentifier(id)` for other entity types
+- Verify these APIs exist and work in UAT before relying on them
+- For the bridge-based get-by-ID path, consider falling back to the cached snapshot dict lookup (already loaded in memory for BridgeRepository)
+
+**Warning signs:**
+- Bridge.js get_task handler using `.filter()` or `.find()` on `flattenedTasks`
+- UAT showing multi-second response times for single entity lookups
+
+**Phase to address:**
+Phase 1 (get-by-ID tools) -- use `byIdentifier()` from day one
+
+---
+
+### Pitfall 7: Tag Name Ambiguity -- OmniFocus Allows Duplicate Tag Names
+
+**What goes wrong:**
+`add_tasks` with `tags: ["Meeting"]` when two tags named "Meeting" exist (under "Work" and "Personal"). Bridge picks first match silently.
+
+**Why it happens:**
+BRIDGE-SPEC Section 2.3: "Unique in observed data but OmniFocus allows duplicates." v1.2 spec uses tag names (not IDs) for agent ergonomics.
+
+**How to avoid:**
+- Service layer must check for duplicate tag names during validation
+- If ambiguous, return error listing duplicates with IDs and parent paths
+- Accept both tag names and IDs (detect by format -- IDs are UUIDs/alphanumeric strings)
+- Consider qualified names like "Work/Meeting" for disambiguation
+
+**Warning signs:**
+- Tag lookup using `next(t for t in tags if t.name == name)` without duplicate check
+- Tests using only unique tag names
+
+**Phase to address:**
+Phase 2 (add_tasks) -- tag validation is part of service-layer input validation
+
+---
+
+## Technical Debt Patterns
+
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
+|----------|-------------------|----------------|-----------------|
+| Single-item arrays only (no batch) | Eliminates partial failure complexity | Must add batch later for agent productivity | v1.2 -- extend when pipeline proven |
+| Return bridge response without re-reading full entity | Fast, avoids SQLite flush race | Returned object may lack computed fields (urgency, availability) | v1.2 -- agent can `get_task` for full state |
+| No retry on bridge write timeout | Simpler error handling | Timed-out write may have succeeded | v1.2 -- retry is v1.5 scope |
+| Lifecycle deferred to phase 4 | Avoids research spike blocking simple edits | Later phases depend on lifecycle understanding | Always acceptable -- spec already plans this |
+
+## Integration Gotchas
+
+| Integration | Common Mistake | Correct Approach |
+|-------------|----------------|------------------|
+| OmniJS writes | Using `task.parentTask` for re-parenting | `task.parent` -- `parentTask` does not exist in Omni Automation |
+| OmniJS writes | Using `task.project` to set project | `task.containingProject` -- `task.project` returns null for child tasks |
+| OmniJS dates | Passing ISO8601 strings to date fields | OmniJS needs `Date` objects: `new Date("2024-01-15T10:30:00Z")` |
+| OmniJS tags | Assigning tag names to `task.tags` | `task.addTag(tagObject)` -- must look up `Tag` object first via `flattenedTags` or `Tag.byIdentifier()` |
+| OmniJS notes | Setting `task.note = null` to clear | `task.note` is never null -- set to `""` instead |
+| File IPC | Writing JSON without atomic rename | Use `.tmp` + `os.replace()` (already established in `_write_request`) |
+| Repository protocol | Adding write methods without updating all implementations | `InMemoryRepository`, `BridgeRepository`, `HybridRepository` all need write methods |
+| SQLite path | Expecting writes through SQLite | SQLite is read-only (`?mode=ro`). All writes go through OmniJS bridge |
+
+## Performance Traps
+
+| Trap | Symptoms | Prevention | When It Breaks |
+|------|----------|------------|----------------|
+| Iterating `flattenedTags` in OmniJS per task in a batch | Multi-second freeze per batch item | Resolve all tag names to Tag objects once upfront | Any batch > 5 items with tags |
+| Full snapshot reload after every write | 46ms (SQLite) or multi-second (bridge) per write | Invalidate only; let next read trigger reload | Rapid sequential writes |
+| `flattenedTasks` scan for lookups | 2.8s freeze for one task lookup | `Task.byIdentifier(id)` for O(1) lookup | Every get-by-ID call |
+
+## UX Pitfalls
+
+| Pitfall | User Impact | Better Approach |
+|---------|-------------|-----------------|
+| Silent success when write did nothing (e.g., `markIncomplete` on dropped) | Agent reports success, task unchanged | Bridge verifies post-state; errors if unchanged |
+| Returning only `{success, id}` without task state | Agent needs second call to see what was created | Return `{success, id, name}` minimum (spec requirement) |
+| Confusing error when project + parent_task_id both set | Agent doesn't know which to remove | Message: "project and parent_task_id are mutually exclusive" |
+| Tag errors showing IDs instead of names | Agent sees "Unknown tag: jK4x..." | Error messages must include tag names |
+| `null` vs `omit` confusion in edit payloads | Agent clears fields by accident | Tool description must clearly explain patch semantics: omit=no change, null=clear, value=set |
+
+## "Looks Done But Isn't" Checklist
+
+- [ ] **add_tasks:** Task with no project AND no parent goes to Inbox (`inInbox: true`)
+- [ ] **add_tasks:** `planned_date` is v4.7+ -- older OmniFocus silently ignores it
+- [ ] **edit_tasks tags:** `tags` with `add_tags` is a validation error; `add_tags` + `remove_tags` is allowed
+- [ ] **edit_tasks null:** Every nullable field can actually be cleared via OmniJS (some may not accept null)
+- [ ] **edit_tasks movement:** Task disappears from old project's task list, not just re-pointed
+- [ ] **Snapshot invalidation:** Next `list_all` after write returns updated data
+- [ ] **Bridge errors:** OmniJS errors surface as clear MCP messages, not raw stack traces
+- [ ] **InMemoryRepository:** Write methods added -- tests fail silently if missing
+- [ ] **Repository protocol:** Extended with write methods; all 3 implementations satisfy it
+- [ ] **Bridge response:** `add_task` returns the new task's `id.primaryKey`, not some other identifier
+
+## Recovery Strategies
+
+| Pitfall | Recovery Cost | Recovery Steps |
+|---------|---------------|----------------|
+| Partial batch write (1-2 applied, 3-5 failed) | LOW | Report per-item results. Agent retries failed items. |
+| Write succeeded but snapshot stale | LOW | Force invalidation + re-read. WAL mtime catches up. |
+| Task moved to wrong project | LOW | Edit again with correct project ID. No data lost. |
+| Repeating task completed, lost successor ID | MEDIUM | Query by name/project to find new instance. Return successor ID to prevent. |
+| Dropped task cannot be reactivated | HIGH | `document.undo()` only works if nothing else happened since. Otherwise recreate task. History lost. |
+| Tag assigned incorrectly (name ambiguity) | LOW | Remove wrong tag, add correct one. Implement disambiguation. |
+
+## Pitfall-to-Phase Mapping
+
+| Pitfall | Prevention Phase | Verification |
+|---------|------------------|--------------|
+| Snapshot invalidation race | Phase 2 (add_tasks) | UAT: create task, immediately get_task -- data is fresh |
+| No transactions / partial failure | Phase 2 (add_tasks) | Enforce single-item. Test invalid input caught before bridge |
+| `markIncomplete()` no-op on dropped | Phase 4 (lifecycle) | Research spike + UAT: drop, attempt reactivate, verify error |
+| `assignedContainer` always null | Phase 3 (edit_tasks movement) | Research spike + UAT: move task between projects |
+| Repeating task ID changes | Phase 4 (lifecycle) | Research spike. Bridge returns successor ID |
+| `flattenedTasks` scan for lookup | Phase 1 (get-by-ID) | Use `Task.byIdentifier(id)`. UAT: verify < 200ms |
+| Tag name ambiguity | Phase 2 (add_tasks) | Test: two tags with same name, verify disambiguation error |
+| OmniJS date objects | Phase 2 (add_tasks) | Bridge.js must `new Date()` from ISO strings. UAT: verify dates round-trip |
+| Repository protocol extension | Phase 1 (get-by-ID) | All 3 implementations satisfy updated protocol |
 
 ## Sources
 
-- [SQLite WAL documentation](https://sqlite.org/wal.html) -- WAL mode design guarantees, checkpoint behavior
-- [SQLite URI filenames](https://sqlite.org/uri.html) -- `?mode=ro` parameter documentation
-- [Python sqlite3 docs](https://docs.python.org/3/library/sqlite3.html) -- URI mode, timeout parameter
-- [SQLite file locking](https://sqlite.org/lockingv3.html) -- concurrent access behavior
-- [SQLite BUSY in WAL mode](https://sqlite.org/forum/forumpost/c4dbf6ca17) -- edge cases for SQLITE_BUSY
-- [SQLite BUSY debugging](https://sqlite.org/forum/info/518620caf1be1bbfc5b12a12114e29da91d07aabbcc85dab8f704f1f3af0b48f) -- checkpoint-related BUSY
-- Project: `.research/deep-dives/direct-database-access/RESULTS.md` -- architecture decisions
-- Project: `todo4_sqlite_freshness/FINDINGS.md` -- WAL mtime freshness validation, connection scoping
-- Project: `todo1_cache_timing/FINDINGS.md` -- propagation delay measurements
-- Project: `RESULTS_pydantic-model.md` -- model migration design, field removal rationale
+- BRIDGE-SPEC.md -- empirical spec from 27 audit scripts against live OmniFocus v4.8.8
+- MILESTONE-v1.2.md -- spec with open questions and phasing hints
+- Codebase: bridge.js (IPC protocol), real.py (trigger mechanism), hybrid.py (SQLite reader + WAL freshness), bridge.py (BridgeRepository caching), service.py, protocol.py
+- OmniJS performance constraint: 1ms/task/operation (BRIDGE-SPEC Section 1)
+
+---
+*Pitfalls research for: v1.2 Writes & Lookups*
+*Researched: 2026-03-07*
