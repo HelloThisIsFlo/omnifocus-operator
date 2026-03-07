@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from omnifocus_operator.models.snapshot import DatabaseSnapshot
+
 
 def make_task_dict(**overrides: Any) -> dict[str, Any]:
     """Factory for new-shape task dict (camelCase keys).
@@ -167,3 +169,11 @@ def make_snapshot_dict(**overrides: Any) -> dict[str, Any]:
         "perspectives": [make_perspective_dict()],
     }
     return {**defaults, **overrides}
+
+
+def make_snapshot(**overrides: Any) -> DatabaseSnapshot:
+    """Factory for a validated ``DatabaseSnapshot`` model instance.
+
+    Delegates to ``make_snapshot_dict()`` and validates through Pydantic.
+    """
+    return DatabaseSnapshot.model_validate(make_snapshot_dict(**overrides))

@@ -1,8 +1,8 @@
 """Service module -- primary API surface for the MCP server.
 
 The service layer provides the primary API surface for the MCP server.
-Currently a simple delegation to ``OmniFocusRepository``; future phases
-may add orchestration, caching policies, or multi-repository coordination.
+Currently a simple delegation to ``Repository``; future phases may add
+orchestration, caching policies, or multi-repository coordination.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, NoReturn
 
 if TYPE_CHECKING:
     from omnifocus_operator.models.snapshot import DatabaseSnapshot
-    from omnifocus_operator.repository import OmniFocusRepository
+    from omnifocus_operator.repository import Repository
 
 __all__ = ["ErrorOperatorService", "OperatorService"]
 
@@ -20,16 +20,16 @@ logger = logging.getLogger("omnifocus_operator")
 
 
 class OperatorService:
-    """Service layer that delegates to the OmniFocus repository.
+    """Service layer that delegates to the Repository protocol.
 
     Parameters
     ----------
     repository:
-        The underlying ``OmniFocusRepository`` that fetches and caches
-        ``DatabaseSnapshot`` instances from the bridge.
+        Any ``Repository`` implementation (e.g. ``BridgeRepository``,
+        ``InMemoryRepository``) that provides ``get_snapshot()``.
     """
 
-    def __init__(self, repository: OmniFocusRepository) -> None:
+    def __init__(self, repository: Repository) -> None:
         self._repository = repository
 
     async def get_all_data(self) -> DatabaseSnapshot:

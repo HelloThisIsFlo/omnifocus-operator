@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
     import pytest
 
-    from omnifocus_operator.repository import OmniFocusRepository
+    from omnifocus_operator.repository import Repository
     from omnifocus_operator.service import OperatorService
 
 
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 
 def _build_patched_server(
-    repo: OmniFocusRepository,
+    repo: Repository,
     service: OperatorService,
 ) -> FastMCP:
     """Create a FastMCP server with a patched lifespan injecting *service*."""
@@ -82,7 +82,7 @@ async def run_with_client(
 
 
 class TestARCH01ThreeLayerArchitecture:
-    """Verify the MCP tool -> OperatorService -> OmniFocusRepository path."""
+    """Verify the MCP tool -> OperatorService -> Repository path."""
 
     async def test_list_all_returns_data_through_all_layers(
         self,
@@ -177,7 +177,8 @@ class TestTOOL01ListAllStructuredOutput:
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
 
         from omnifocus_operator.bridge.in_memory import InMemoryBridge
-        from omnifocus_operator.repository import ConstantMtimeSource, OmniFocusRepository
+        from omnifocus_operator.bridge.mtime import ConstantMtimeSource
+        from omnifocus_operator.repository import BridgeRepository
         from omnifocus_operator.server import _register_tools
         from omnifocus_operator.service import OperatorService
 
@@ -205,7 +206,7 @@ class TestTOOL01ListAllStructuredOutput:
                 "perspectives": [],
             }
         )
-        repo = OmniFocusRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
+        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
         # Build a server with a patched lifespan that injects our custom service

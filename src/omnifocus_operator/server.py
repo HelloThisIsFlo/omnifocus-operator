@@ -1,7 +1,7 @@
 """Server module -- FastMCP server for OmniFocus Operator.
 
 The server uses a lifespan context manager to wire the three-layer
-architecture: ``FastMCP tool -> OperatorService -> OmniFocusRepository``.
+architecture: ``FastMCP tool -> OperatorService -> Repository``.
 The bridge implementation is selected via the ``OMNIFOCUS_BRIDGE`` env
 var (defaulting to ``"real"``).
 """
@@ -42,11 +42,8 @@ async def app_lifespan(app: FastMCP) -> AsyncIterator[dict[str, object]]:
     """
     try:
         from omnifocus_operator.bridge import create_bridge, sweep_orphaned_files
-        from omnifocus_operator.repository import (
-            ConstantMtimeSource,
-            MtimeSource,
-            OmniFocusRepository,
-        )
+        from omnifocus_operator.bridge.mtime import ConstantMtimeSource, MtimeSource
+        from omnifocus_operator.repository import BridgeRepository
         from omnifocus_operator.service import OperatorService
 
         bridge_type = os.environ.get("OMNIFOCUS_BRIDGE", "real")
@@ -66,8 +63,8 @@ async def app_lifespan(app: FastMCP) -> AsyncIterator[dict[str, object]]:
         if bridge_type in ("inmemory", "simulator"):
             mtime_source = ConstantMtimeSource()
         else:  # pragma: no cover — SAFE-01: real bridge path, tested via UAT
+            from omnifocus_operator.bridge.mtime import FileMtimeSource
             from omnifocus_operator.bridge.real import DEFAULT_OFOCUS_PATH
-            from omnifocus_operator.repository import FileMtimeSource
 
             ofocus_path = os.environ.get("OMNIFOCUS_OFOCUS_PATH", str(DEFAULT_OFOCUS_PATH))
             if not os.path.exists(ofocus_path):
@@ -79,7 +76,7 @@ async def app_lifespan(app: FastMCP) -> AsyncIterator[dict[str, object]]:
                 raise FileNotFoundError(f"OmniFocus database not found: {ofocus_path}")
             mtime_source = FileMtimeSource(path=ofocus_path)
 
-        repository = OmniFocusRepository(bridge=bridge, mtime_source=mtime_source)
+        repository = BridgeRepository(bridge=bridge, mtime_source=mtime_source)
         service = OperatorService(repository=repository)
 
         yield {"service": service}

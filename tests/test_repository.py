@@ -1,4 +1,4 @@
-"""Tests for OmniFocusRepository with MtimeSource.
+"""Tests for BridgeRepository with MtimeSource.
 
 Covers SNAP-01 through SNAP-06 plus error propagation,
 concurrency edge cases, and FileMtimeSource integration.
@@ -16,7 +16,8 @@ from pydantic import ValidationError
 
 from omnifocus_operator.bridge.errors import BridgeError
 from omnifocus_operator.bridge.in_memory import InMemoryBridge
-from omnifocus_operator.repository import FileMtimeSource, OmniFocusRepository
+from omnifocus_operator.bridge.mtime import FileMtimeSource
+from omnifocus_operator.repository import BridgeRepository, InMemoryRepository, Repository
 
 from .conftest import make_snapshot_dict
 
@@ -72,9 +73,9 @@ def mtime() -> FakeMtimeSource:
 
 
 @pytest.fixture
-def repo(bridge: InMemoryBridge, mtime: FakeMtimeSource) -> OmniFocusRepository:
+def repo(bridge: InMemoryBridge, mtime: FakeMtimeSource) -> BridgeRepository:
     """Repository wired to test bridge and fake mtime source."""
-    return OmniFocusRepository(bridge=bridge, mtime_source=mtime)
+    return BridgeRepository(bridge=bridge, mtime_source=mtime)
 
 
 # ---------------------------------------------------------------------------
@@ -86,7 +87,7 @@ class TestSNAP01FirstCall:
     """First get_snapshot() call triggers bridge dump."""
 
     async def test_first_call_returns_snapshot(
-        self, repo: OmniFocusRepository, bridge: InMemoryBridge
+        self, repo: BridgeRepository, bridge: InMemoryBridge
     ) -> None:
         snapshot = await repo.get_snapshot()
 
@@ -98,14 +99,14 @@ class TestSNAP01FirstCall:
         assert len(snapshot.perspectives) == 1
 
     async def test_first_call_invokes_bridge(
-        self, repo: OmniFocusRepository, bridge: InMemoryBridge
+        self, repo: BridgeRepository, bridge: InMemoryBridge
     ) -> None:
         await repo.get_snapshot()
 
         assert bridge.call_count == 1
 
     async def test_first_call_uses_snapshot_operation(
-        self, repo: OmniFocusRepository, bridge: InMemoryBridge
+        self, repo: BridgeRepository, bridge: InMemoryBridge
     ) -> None:
         await repo.get_snapshot()
 
@@ -121,14 +122,14 @@ class TestSNAP02CachedReturn:
     """Subsequent calls with same mtime return cached snapshot."""
 
     async def test_second_call_no_bridge_invocation(
-        self, repo: OmniFocusRepository, bridge: InMemoryBridge
+        self, repo: BridgeRepository, bridge: InMemoryBridge
     ) -> None:
         await repo.get_snapshot()
         await repo.get_snapshot()
 
         assert bridge.call_count == 1
 
-    async def test_second_call_returns_data(self, repo: OmniFocusRepository) -> None:
+    async def test_second_call_returns_data(self, repo: BridgeRepository) -> None:
         await repo.get_snapshot()
         second = await repo.get_snapshot()
 
@@ -143,7 +144,7 @@ class TestSNAP02CachedReturn:
 class TestSNAP03ObjectIdentity:
     """Cached snapshot is the same object (identity via `is`)."""
 
-    async def test_same_object_returned(self, repo: OmniFocusRepository) -> None:
+    async def test_same_object_returned(self, repo: BridgeRepository) -> None:
         first = await repo.get_snapshot()
         second = await repo.get_snapshot()
 
@@ -160,7 +161,7 @@ class TestSNAP04MtimeRefresh:
 
     async def test_mtime_change_triggers_new_dump(
         self,
-        repo: OmniFocusRepository,
+        repo: BridgeRepository,
         bridge: InMemoryBridge,
         mtime: FakeMtimeSource,
     ) -> None:
@@ -174,7 +175,7 @@ class TestSNAP04MtimeRefresh:
 
     async def test_mtime_change_returns_new_snapshot(
         self,
-        repo: OmniFocusRepository,
+        repo: BridgeRepository,
         mtime: FakeMtimeSource,
     ) -> None:
         first = await repo.get_snapshot()
@@ -194,7 +195,7 @@ class TestSNAP05Concurrency:
     """10 concurrent reads trigger only 1 bridge dump."""
 
     async def test_concurrent_reads_single_dump(
-        self, repo: OmniFocusRepository, bridge: InMemoryBridge
+        self, repo: BridgeRepository, bridge: InMemoryBridge
     ) -> None:
         results = await asyncio.gather(*[repo.get_snapshot() for _ in range(10)])
 
@@ -214,7 +215,7 @@ class TestErrorPropagation:
     async def test_bridge_error_propagates(self, mtime: FakeMtimeSource) -> None:
         bridge = InMemoryBridge()
         bridge.set_error(BridgeError("snapshot", "connection lost"))
-        repo = OmniFocusRepository(bridge=bridge, mtime_source=mtime)
+        repo = BridgeRepository(bridge=bridge, mtime_source=mtime)
 
         with pytest.raises(BridgeError, match="connection lost"):
             await repo.get_snapshot()
@@ -222,7 +223,7 @@ class TestErrorPropagation:
     async def test_validation_error_propagates(self, mtime: FakeMtimeSource) -> None:
         """Invalid data causes Pydantic ValidationError to propagate."""
         bridge = InMemoryBridge(data={"tasks": "not-a-list"})
-        repo = OmniFocusRepository(bridge=bridge, mtime_source=mtime)
+        repo = BridgeRepository(bridge=bridge, mtime_source=mtime)
 
         with pytest.raises(ValidationError):
             await repo.get_snapshot()
@@ -232,7 +233,7 @@ class TestErrorPropagation:
         bridge = InMemoryBridge(data=make_snapshot_dict())
         error = OSError("filesystem unavailable")
         mtime = FailingMtimeSource(error)
-        repo = OmniFocusRepository(bridge=bridge, mtime_source=mtime)
+        repo = BridgeRepository(bridge=bridge, mtime_source=mtime)
 
         with pytest.raises(OSError, match="filesystem unavailable"):
             await repo.get_snapshot()
@@ -241,7 +242,7 @@ class TestErrorPropagation:
         """After failed first load, cache stays None; next call retries."""
         bridge = InMemoryBridge()
         bridge.set_error(BridgeError("snapshot", "temporary failure"))
-        repo = OmniFocusRepository(bridge=bridge, mtime_source=mtime)
+        repo = BridgeRepository(bridge=bridge, mtime_source=mtime)
 
         with pytest.raises(BridgeError):
             await repo.get_snapshot()
@@ -259,7 +260,7 @@ class TestErrorPropagation:
     ) -> None:
         """After failed refresh, old cached snapshot is preserved."""
         bridge = InMemoryBridge(data=snapshot_data)
-        repo = OmniFocusRepository(bridge=bridge, mtime_source=mtime)
+        repo = BridgeRepository(bridge=bridge, mtime_source=mtime)
 
         # First call succeeds
         first = await repo.get_snapshot()
@@ -283,7 +284,7 @@ class TestErrorPropagation:
         """After first get_snapshot() fails, next call retries successfully."""
         bridge = InMemoryBridge()
         bridge.set_error(BridgeError("snapshot", "startup failure"))
-        repo = OmniFocusRepository(bridge=bridge, mtime_source=mtime)
+        repo = BridgeRepository(bridge=bridge, mtime_source=mtime)
 
         with pytest.raises(BridgeError):
             await repo.get_snapshot()
@@ -304,7 +305,7 @@ class TestConcurrencyEdgeCases:
     """Additional concurrency scenarios."""
 
     async def test_concurrent_reads_warm_cache(
-        self, repo: OmniFocusRepository, bridge: InMemoryBridge
+        self, repo: BridgeRepository, bridge: InMemoryBridge
     ) -> None:
         """Concurrent reads on warm cache are fast and don't re-dump."""
         await repo.get_snapshot()  # warm up
@@ -347,3 +348,37 @@ class TestFileMtimeSource:
 
         with pytest.raises(OSError):
             await source.get_mtime_ns()
+
+
+# ---------------------------------------------------------------------------
+# InMemoryRepository
+# ---------------------------------------------------------------------------
+
+
+class TestInMemoryRepository:
+    """InMemoryRepository returns pre-built snapshots and satisfies protocol."""
+
+    async def test_satisfies_repository_protocol(self) -> None:
+        from .conftest import make_snapshot
+
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
+
+        assert isinstance(repo, Repository)
+
+    async def test_returns_snapshot(self) -> None:
+        from .conftest import make_snapshot
+
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
+
+        result = await repo.get_snapshot()
+
+        assert result is snapshot
+
+    async def test_bridge_repository_satisfies_protocol(self) -> None:
+        bridge = InMemoryBridge(data=make_snapshot_dict())
+        mtime = FakeMtimeSource(mtime_ns=1)
+        repo = BridgeRepository(bridge=bridge, mtime_source=mtime)
+
+        assert isinstance(repo, Repository)

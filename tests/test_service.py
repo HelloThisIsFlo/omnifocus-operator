@@ -15,29 +15,11 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 from omnifocus_operator.bridge import BridgeError, InMemoryBridge, create_bridge
-from omnifocus_operator.repository import (
-    ConstantMtimeSource,
-    MtimeSource,
-    OmniFocusRepository,
-)
+from omnifocus_operator.bridge.mtime import ConstantMtimeSource, MtimeSource
+from omnifocus_operator.repository import InMemoryRepository
 from omnifocus_operator.service import OperatorService
 
-from .conftest import make_snapshot_dict
-
-# ---------------------------------------------------------------------------
-# Test doubles
-# ---------------------------------------------------------------------------
-
-
-class FakeMtimeSource:
-    """Controllable mtime source for tests."""
-
-    def __init__(self, mtime_ns: int = 0) -> None:
-        self._mtime_ns = mtime_ns
-
-    async def get_mtime_ns(self) -> int:
-        return self._mtime_ns
-
+from .conftest import make_snapshot
 
 # ---------------------------------------------------------------------------
 # OperatorService
@@ -48,35 +30,35 @@ class TestOperatorService:
     """OperatorService delegates to repository and passes through results."""
 
     async def test_get_all_data_returns_snapshot(self) -> None:
-        bridge = InMemoryBridge(data=make_snapshot_dict())
-        mtime = FakeMtimeSource()
-        repo = OmniFocusRepository(bridge=bridge, mtime_source=mtime)
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
         service = OperatorService(repository=repo)
 
-        snapshot = await service.get_all_data()
+        result = await service.get_all_data()
 
-        assert len(snapshot.tasks) == 1
-        assert len(snapshot.projects) == 1
-        assert len(snapshot.tags) == 1
-        assert len(snapshot.folders) == 1
-        assert len(snapshot.perspectives) == 1
+        assert len(result.tasks) == 1
+        assert len(result.projects) == 1
+        assert len(result.tags) == 1
+        assert len(result.folders) == 1
+        assert len(result.perspectives) == 1
 
     async def test_get_all_data_delegates_to_repository(self) -> None:
-        bridge = InMemoryBridge(data=make_snapshot_dict())
-        mtime = FakeMtimeSource()
-        repo = OmniFocusRepository(bridge=bridge, mtime_source=mtime)
+        """Service returns the exact snapshot from the repository."""
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
         service = OperatorService(repository=repo)
 
-        await service.get_all_data()
+        result = await service.get_all_data()
 
-        assert bridge.call_count == 1
+        assert result is snapshot
 
     async def test_get_all_data_propagates_errors(self) -> None:
-        bridge = InMemoryBridge()
-        bridge.set_error(BridgeError("snapshot", "connection lost"))
-        mtime = FakeMtimeSource()
-        repo = OmniFocusRepository(bridge=bridge, mtime_source=mtime)
-        service = OperatorService(repository=repo)
+        """Service propagates errors from the repository unchanged."""
+        from unittest.mock import AsyncMock
+
+        mock_repo = AsyncMock()
+        mock_repo.get_snapshot.side_effect = BridgeError("snapshot", "connection lost")
+        service = OperatorService(repository=mock_repo)
 
         with pytest.raises(BridgeError, match="connection lost"):
             await service.get_all_data()
