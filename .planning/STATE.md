@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: HUGE Performance Upgrade
 status: completed
-stopped_at: Completed 11-02-PLAN.md
-last_updated: "2026-03-07T15:39:04.541Z"
-last_activity: "2026-03-07 -- Completed 11-02: Consumer migration and architecture doc"
+stopped_at: Completed 11-03-PLAN.md
+last_updated: "2026-03-07T17:28:05Z"
+last_activity: "2026-03-07 -- Completed 11-03: Rename DatabaseSnapshot->AllEntities, get_snapshot()->get_all()"
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 7
+  completed_plans: 7
   percent: 100
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 11 complete -- Repository protocol abstraction done
+**Current focus:** Phase 11 complete -- Repository protocol abstraction with clean naming
 
 ## Current Position
 
 Phase: 11 (2 of 4 in v1.1) -- COMPLETE
-Plan: 02 of 2 complete
-Status: Phase 11 complete, Phase 12 next
-Last activity: 2026-03-07 -- Completed 11-02: Consumer migration and architecture doc
+Plan: 03 of 3 complete
+Status: Phase 11 complete (including gap-closure plan 03), Phase 12 next
+Last activity: 2026-03-07 -- Completed 11-03: Rename DatabaseSnapshot->AllEntities, get_snapshot()->get_all()
 
-Progress: [██████████] 100% (Phase 11, Plan 2/2)
+Progress: [██████████] 100% (Phase 11, Plan 3/3)
 
 ## Accumulated Context
 
@@ -53,6 +53,9 @@ Progress: [██████████] 100% (Phase 11, Plan 2/2)
 - MtimeSource canonical home is bridge/mtime.py (bridge-internal concern)
 - Service error propagation tested via mock repository (not BridgeRepository+InMemoryBridge)
 - test_server.py helper uses Repository protocol type hint (not concrete BridgeRepository)
+- Tasks 1+2 committed together for 11-03 (mypy requires atomic rename across all consumers)
+- BridgeRepository internal _snapshot field renamed to _cached for semantic clarity
+- Kept make_snapshot/make_snapshot_dict test helper names (test-level naming is fine)
 
 ### Pending Todos
 
@@ -75,6 +78,6 @@ Carried from v1.0:
 
 ## Session Continuity
 
-Last session: 2026-03-07T15:35:30Z
-Stopped at: Completed 11-02-PLAN.md
+Last session: 2026-03-07T17:28:05Z
+Stopped at: Completed 11-03-PLAN.md
 Next action: `/gsd:research-phase 12` (SQLite Reader)
