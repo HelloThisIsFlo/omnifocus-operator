@@ -39,7 +39,7 @@ Requirements for v1.1 HUGE Performance Upgrade. Each maps to roadmap phases.
 ### Architecture
 
 - [x] **ARCH-01**: DataSource protocol abstracts the read path so SQLite and Bridge implementations are swappable
-- [ ] **ARCH-02**: Repository layer consumes DataSource protocol instead of Bridge + MtimeSource directly
+- [x] **ARCH-02**: Repository layer consumes DataSource protocol instead of Bridge + MtimeSource directly
 - [x] **ARCH-03**: InMemoryDataSource implementation exists for testing
 
 ## Future Requirements
@@ -91,7 +91,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FALL-02 | Phase 13 | Pending |
 | FALL-03 | Phase 13 | Pending |
 | ARCH-01 | Phase 11 | Complete |
-| ARCH-02 | Phase 11 | Pending |
+| ARCH-02 | Phase 11 | Complete |
 | ARCH-03 | Phase 11 | Complete |
 
 **Coverage:**
