@@ -55,11 +55,11 @@
   2. Agent can call `get_task` with an ID and receive the complete Task object including urgency and availability
   3. Agent can call `get_project` or `get_tag` with an ID and receive the complete object
   4. Agent calling any get-by-ID tool with a non-existent ID receives a clear "not found" error message (not a crash or empty response)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 14-01: TBD
-- [ ] 14-02: TBD
+- [ ] 14-01-PLAN.md -- Model refactor (ParentRef, Task parent field, adapter, repo mapper) + rename list_all to get_all
+- [ ] 14-02-PLAN.md -- Get-by-ID tools (get_task, get_project, get_tag) across all layers
 
 ### Phase 15: Write Pipeline & Task Creation
 **Goal**: Agents can create tasks in OmniFocus through the full write pipeline (MCP -> Service -> Repository -> Bridge -> invalidate snapshot)
@@ -132,7 +132,7 @@ Phases execute in numeric order: 14 -> 15 -> 16 -> 17
 | 11. DataSource Protocol | v1.1 | 3/3 | Complete | 2026-03-07 |
 | 12. SQLite Reader | v1.1 | 2/2 | Complete | 2026-03-07 |
 | 13. Fallback and Integration | v1.1 | 2/2 | Complete | 2026-03-07 |
-| 14. Model Refactor & Lookups | v1.2 | 0/? | Not started | - |
+| 14. Model Refactor & Lookups | v1.2 | 0/2 | Not started | - |
 | 15. Write Pipeline & Task Creation | v1.2 | 0/? | Not started | - |
 | 16. Task Editing | v1.2 | 0/? | Not started | - |
 | 17. Task Lifecycle | v1.2 | 0/? | Not started | - |
