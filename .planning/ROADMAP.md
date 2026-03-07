@@ -95,10 +95,11 @@ Plans:
   1. Setting `OMNIFOCUS_REPOSITORY=bridge` env var switches the read path from SQLite to the OmniJS bridge
   2. In OmniJS fallback mode, urgency is fully populated but availability is reduced to available/completed/dropped (no `blocked`)
   3. When SQLite database is not found and no fallback is configured, server enters error-serving mode with an actionable message showing the expected path and instructions to set `OMNIFOCUS_REPOSITORY=bridge`
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 13-01: TBD
+- [ ] 13-01-PLAN.md -- Repository factory, server lifespan restructuring, error-serving for SQLite-not-found
+- [ ] 13-02-PLAN.md -- Bridge availability limitation test (FALL-02), configuration docs update
 
 ## Progress
 
@@ -121,4 +122,4 @@ Phases execute in numeric order: 10 -> 11 -> 12 -> 13
 | 10. Model Overhaul | 4/4 | Complete    | 2026-03-07 | - |
 | 11. DataSource Protocol | 3/3 | Complete    | 2026-03-07 | - |
 | 12. SQLite Reader | 2/2 | Complete    | 2026-03-07 | - |
-| 13. Fallback and Integration | v1.1 | 0/? | Not started | - |
+| 13. Fallback and Integration | v1.1 | 0/2 | Not started | - |
