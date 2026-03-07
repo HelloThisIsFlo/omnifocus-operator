@@ -7,8 +7,10 @@ XML note extraction, plist perspective parsing, and connection semantics.
 
 from __future__ import annotations
 
+import asyncio
 import plistlib
 import sqlite3
+import time
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
@@ -973,3 +975,162 @@ class TestEdgeCases:
         result = await repo.get_all()
         assert len(result.tasks) == 1
         assert len(result.tags) == 1
+
+
+class TestFreshness:
+    """Tests for WAL-based freshness detection after TEMPORARY_simulate_write."""
+
+    @pytest.mark.asyncio
+    async def test_freshness_wal_polling(self, tmp_path: Path) -> None:
+        """After simulate_write(), get_all() polls WAL mtime; fresh data after change."""
+        db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
+        # Create a WAL file to simulate WAL presence
+        wal_path = db_path.parent / (db_path.name + "-wal")
+        wal_path.touch()
+
+        repo = HybridRepository(db_path=db_path)
+        # First read to establish baseline
+        await repo.get_all()
+
+        # Simulate write -- captures current mtime
+        repo.TEMPORARY_simulate_write()
+
+        # Schedule a WAL mtime change after a short delay
+        async def modify_wal() -> None:
+            await asyncio.sleep(0.15)
+            # Force a visible mtime change by writing to the file
+            wal_path.write_bytes(b"changed")
+
+        task = asyncio.create_task(modify_wal())
+        # get_all() should poll and detect the change
+        result = await repo.get_all()
+        await task
+        assert isinstance(result, AllEntities)
+        assert len(result.tasks) == 1
+
+    @pytest.mark.asyncio
+    async def test_freshness_db_fallback(self, tmp_path: Path) -> None:
+        """When WAL file does not exist, freshness uses main .db file mtime."""
+        db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
+        # Ensure no WAL file
+        wal_path = db_path.parent / (db_path.name + "-wal")
+        if wal_path.exists():
+            wal_path.unlink()
+
+        repo = HybridRepository(db_path=db_path)
+        await repo.get_all()
+        repo.TEMPORARY_simulate_write()
+
+        # Modify DB file mtime after short delay
+        async def modify_db() -> None:
+            await asyncio.sleep(0.15)
+            db_path.write_bytes(db_path.read_bytes() + b"\x00")
+
+        task = asyncio.create_task(modify_db())
+        result = await repo.get_all()
+        await task
+        assert isinstance(result, AllEntities)
+
+    @pytest.mark.asyncio
+    async def test_freshness_timeout(self, tmp_path: Path) -> None:
+        """If WAL mtime never changes within timeout, get_all() returns anyway."""
+        db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
+        wal_path = db_path.parent / (db_path.name + "-wal")
+        wal_path.touch()
+
+        repo = HybridRepository(db_path=db_path)
+        await repo.get_all()
+        repo.TEMPORARY_simulate_write()
+
+        # Don't modify WAL -- should timeout and return data anyway
+        start = time.monotonic()
+        result = await repo.get_all()
+        elapsed = time.monotonic() - start
+
+        # Should complete in ~2s (timeout), not immediately
+        assert elapsed >= 1.5
+        # But not much longer than 2s
+        assert elapsed < 3.0
+        # Data returned despite timeout
+        assert isinstance(result, AllEntities)
+        assert len(result.tasks) == 1
+
+    @pytest.mark.asyncio
+    async def test_freshness_poll_interval(self, tmp_path: Path) -> None:
+        """Polling occurs at ~50ms intervals."""
+        db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
+        wal_path = db_path.parent / (db_path.name + "-wal")
+        wal_path.touch()
+
+        repo = HybridRepository(db_path=db_path)
+        await repo.get_all()
+        repo.TEMPORARY_simulate_write()
+
+        sleep_calls: list[float] = []
+        original_sleep = asyncio.sleep
+
+        async def tracking_sleep(duration: float) -> None:
+            sleep_calls.append(duration)
+            await original_sleep(duration)
+
+        # Modify WAL after a few polls
+        async def modify_wal() -> None:
+            await original_sleep(0.2)
+            wal_path.write_bytes(b"changed")
+
+        task = asyncio.create_task(modify_wal())
+        with patch(
+            "omnifocus_operator.repository.hybrid.asyncio.sleep", side_effect=tracking_sleep
+        ):
+            await repo.get_all()
+        await task
+
+        # All sleep calls should be 0.05 (50ms)
+        assert len(sleep_calls) > 0
+        for call in sleep_calls:
+            assert call == pytest.approx(0.05)
+
+    @pytest.mark.asyncio
+    async def test_freshness_no_stale_flag_normal_read(self, tmp_path: Path) -> None:
+        """Normal get_all() (no simulate_write) does NOT trigger freshness polling."""
+        db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
+        repo = HybridRepository(db_path=db_path)
+
+        sleep_calls: list[float] = []
+        original_sleep = asyncio.sleep
+
+        async def tracking_sleep(duration: float) -> None:
+            sleep_calls.append(duration)
+            await original_sleep(duration)
+
+        with patch(
+            "omnifocus_operator.repository.hybrid.asyncio.sleep", side_effect=tracking_sleep
+        ):
+            result = await repo.get_all()
+
+        assert isinstance(result, AllEntities)
+        # No polling should have occurred
+        assert len(sleep_calls) == 0
+
+    @pytest.mark.asyncio
+    async def test_simulate_write_marks_stale(self, tmp_path: Path) -> None:
+        """TEMPORARY_simulate_write() sets stale flag; next get_all() clears it."""
+        db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
+        wal_path = db_path.parent / (db_path.name + "-wal")
+        wal_path.touch()
+
+        repo = HybridRepository(db_path=db_path)
+        await repo.get_all()
+
+        assert repo._stale is False
+        repo.TEMPORARY_simulate_write()
+        assert repo._stale is True
+
+        # Modify WAL so freshness check passes quickly
+        wal_path.write_bytes(b"modified")
+        await repo.get_all()
+        assert repo._stale is False
+
+    def test_simulate_write_not_on_protocol(self) -> None:
+        """TEMPORARY_simulate_write is on HybridRepository only, not on Repository protocol."""
+        assert not hasattr(Repository, "TEMPORARY_simulate_write")
