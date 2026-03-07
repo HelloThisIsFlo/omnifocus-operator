@@ -46,14 +46,9 @@ vi.stubGlobal("flattenedTasks", [
     note: "A note",
     added: new Date("2026-01-01T00:00:00Z"),
     modified: new Date("2026-01-02T00:00:00Z"),
-    active: true,
-    effectiveActive: true,
     taskStatus: "Available",
-    completed: false,
-    completedByChildren: false,
     flagged: false,
     effectiveFlagged: false,
-    sequential: false,
     dueDate: null,
     deferDate: null,
     effectiveDueDate: null,
@@ -67,7 +62,6 @@ vi.stubGlobal("flattenedTasks", [
     estimatedMinutes: null,
     hasChildren: false,
     inInbox: false,
-    shouldUseFloatingTimeZone: false,
     repetitionRule: null,
     containingProject: { id: { primaryKey: "proj-001" } },
     parent: null,
@@ -88,19 +82,13 @@ vi.stubGlobal("flattenedProjects", [
     status: "PS_Active",
     task: {
       taskStatus: "Available",
-      active: true,
-      effectiveActive: true,
       added: new Date("2026-01-01T00:00:00Z"),
       modified: new Date("2026-01-02T00:00:00Z"),
     },
-    completed: false,
-    completedByChildren: false,
     completionDate: null,
     effectiveCompletionDate: null,
     flagged: false,
     effectiveFlagged: false,
-    sequential: false,
-    containsSingletonActions: false,
     dueDate: null,
     deferDate: null,
     effectiveDueDate: null,
@@ -111,7 +99,6 @@ vi.stubGlobal("flattenedProjects", [
     effectiveDropDate: null,
     estimatedMinutes: null,
     hasChildren: true,
-    shouldUseFloatingTimeZone: false,
     repetitionRule: null,
     lastReviewDate: null,
     nextReviewDate: null,
@@ -133,10 +120,7 @@ vi.stubGlobal("flattenedTags", [
     },
     added: new Date("2026-01-01T00:00:00Z"),
     modified: new Date("2026-01-02T00:00:00Z"),
-    active: true,
-    effectiveActive: true,
     status: "TS_Active",
-    allowsNextAction: true,
     childrenAreMutuallyExclusive: false,
     parent: null,
   },
@@ -153,8 +137,6 @@ vi.stubGlobal("flattenedFolders", [
     },
     added: new Date("2026-01-01T00:00:00Z"),
     modified: new Date("2026-01-02T00:00:00Z"),
-    active: true,
-    effectiveActive: true,
     status: "FS_Active",
     parent: null,
   },
@@ -420,6 +402,12 @@ describe("handleSnapshot", function () {
     expect(result.tasks[0].project).toBe("proj-001");
     expect(result.tasks[0].tags).toEqual([{ id: "tag-001", name: "tag1" }]);
     expect(result.tasks[0]).not.toHaveProperty("assignedContainer");
+    expect(result.tasks[0]).not.toHaveProperty("active");
+    expect(result.tasks[0]).not.toHaveProperty("effectiveActive");
+    expect(result.tasks[0]).not.toHaveProperty("completed");
+    expect(result.tasks[0]).not.toHaveProperty("completedByChildren");
+    expect(result.tasks[0]).not.toHaveProperty("sequential");
+    expect(result.tasks[0]).not.toHaveProperty("shouldUseFloatingTimeZone");
 
     // Projects
     expect(result.projects).toHaveLength(1);
@@ -428,8 +416,13 @@ describe("handleSnapshot", function () {
     expect(result.projects[0].url).toBe("omnifocus:///project/proj-001");
     expect(result.projects[0].status).toBe("Active");
     expect(result.projects[0].taskStatus).toBe("Available");
-    expect(result.projects[0].active).toBe(true);
-    expect(result.projects[0].effectiveActive).toBe(true);
+    expect(result.projects[0]).not.toHaveProperty("active");
+    expect(result.projects[0]).not.toHaveProperty("effectiveActive");
+    expect(result.projects[0]).not.toHaveProperty("completed");
+    expect(result.projects[0]).not.toHaveProperty("completedByChildren");
+    expect(result.projects[0]).not.toHaveProperty("sequential");
+    expect(result.projects[0]).not.toHaveProperty("containsSingletonActions");
+    expect(result.projects[0]).not.toHaveProperty("shouldUseFloatingTimeZone");
     expect(result.projects[0].added).toBe("2026-01-01T00:00:00.000Z");
     expect(result.projects[0].modified).toBe("2026-01-02T00:00:00.000Z");
 
@@ -439,6 +432,9 @@ describe("handleSnapshot", function () {
     expect(result.tags[0].name).toBe("tag1");
     expect(result.tags[0].url).toBe("omnifocus:///tag/tag-001");
     expect(result.tags[0].status).toBe("Active");
+    expect(result.tags[0]).not.toHaveProperty("active");
+    expect(result.tags[0]).not.toHaveProperty("effectiveActive");
+    expect(result.tags[0]).not.toHaveProperty("allowsNextAction");
     expect(result.tags[0].childrenAreMutuallyExclusive).toBe(false);
 
     // Folders
@@ -447,6 +443,8 @@ describe("handleSnapshot", function () {
     expect(result.folders[0].name).toBe("Test Folder");
     expect(result.folders[0].url).toBe("omnifocus:///folder/folder-001");
     expect(result.folders[0].status).toBe("Active");
+    expect(result.folders[0]).not.toHaveProperty("active");
+    expect(result.folders[0]).not.toHaveProperty("effectiveActive");
 
     // Perspectives
     expect(result.perspectives).toHaveLength(1);
