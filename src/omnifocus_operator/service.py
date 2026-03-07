@@ -11,7 +11,10 @@ import logging
 from typing import TYPE_CHECKING, NoReturn
 
 if TYPE_CHECKING:
+    from omnifocus_operator.models.project import Project
     from omnifocus_operator.models.snapshot import AllEntities
+    from omnifocus_operator.models.tag import Tag
+    from omnifocus_operator.models.task import Task
     from omnifocus_operator.repository import Repository
 
 __all__ = ["ErrorOperatorService", "OperatorService"]
@@ -40,6 +43,18 @@ class OperatorService:
         errors) propagate to the caller unchanged.
         """
         return await self._repository.get_all()
+
+    async def get_task(self, task_id: str) -> Task | None:
+        """Return a single task by ID, or None if not found."""
+        return await self._repository.get_task(task_id)
+
+    async def get_project(self, project_id: str) -> Project | None:
+        """Return a single project by ID, or None if not found."""
+        return await self._repository.get_project(project_id)
+
+    async def get_tag(self, tag_id: str) -> Tag | None:
+        """Return a single tag by ID, or None if not found."""
+        return await self._repository.get_tag(tag_id)
 
 
 class ErrorOperatorService(OperatorService):

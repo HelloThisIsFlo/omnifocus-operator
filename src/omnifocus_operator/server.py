@@ -21,7 +21,7 @@ from mcp.types import ToolAnnotations
 # generate outputSchema.  With `from __future__ import annotations` the
 # annotation is a string; FastMCP resolves it via get_type_hints() which
 # needs the name in the module namespace.
-from omnifocus_operator.models import AllEntities  # noqa: TC001
+from omnifocus_operator.models import AllEntities, Project, Tag, Task  # noqa: TC001
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -90,6 +90,48 @@ def _register_tools(mcp: FastMCP) -> None:
 
         service: OperatorService = ctx.request_context.lifespan_context["service"]
         return await service.get_all_data()
+
+    @mcp.tool(
+        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    )
+    async def get_task(id: str, ctx: Context[Any, Any, Any]) -> Task:
+        """Look up a single task by its ID. Returns the full Task object."""
+        from omnifocus_operator.service import OperatorService  # noqa: TC001
+
+        service: OperatorService = ctx.request_context.lifespan_context["service"]
+        result = await service.get_task(id)
+        if result is None:
+            msg = f"Task not found: {id}"
+            raise ValueError(msg)
+        return result
+
+    @mcp.tool(
+        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    )
+    async def get_project(id: str, ctx: Context[Any, Any, Any]) -> Project:
+        """Look up a single project by its ID. Returns the full Project object."""
+        from omnifocus_operator.service import OperatorService  # noqa: TC001
+
+        service: OperatorService = ctx.request_context.lifespan_context["service"]
+        result = await service.get_project(id)
+        if result is None:
+            msg = f"Project not found: {id}"
+            raise ValueError(msg)
+        return result
+
+    @mcp.tool(
+        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    )
+    async def get_tag(id: str, ctx: Context[Any, Any, Any]) -> Tag:
+        """Look up a single tag by its ID. Returns the full Tag object."""
+        from omnifocus_operator.service import OperatorService  # noqa: TC001
+
+        service: OperatorService = ctx.request_context.lifespan_context["service"]
+        result = await service.get_tag(id)
+        if result is None:
+            msg = f"Tag not found: {id}"
+            raise ValueError(msg)
+        return result
 
 
 def create_server() -> FastMCP:
