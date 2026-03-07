@@ -103,7 +103,12 @@ def _load_expected_fields() -> dict[str, list[str]] | None:
         common_mod = importlib.import_module("omnifocus_operator.models.common")
 
         def field_aliases(cls):
-            return [fi.alias or name for name, fi in cls.model_fields.items()]
+            aliases = [fi.alias or name for name, fi in cls.model_fields.items()]
+            # Include @computed_field properties (e.g. Perspective.builtin)
+            if hasattr(cls, "model_computed_fields"):
+                for name, cfi in cls.model_computed_fields.items():
+                    aliases.append(cfi.alias or name)
+            return aliases
 
         # Nested object field expectations: {parent_field: [expected_sub_fields]}
         global EXPECTED_NESTED_FIELDS
