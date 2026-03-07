@@ -6,8 +6,8 @@ See uat/README.md for details and safety rules (SAFE-01, SAFE-02).
 What this validates:
   - RealBridge snapshot goes through adapt_snapshot correctly
   - Tasks/projects have urgency + availability (not old status field)
-  - Tags/folders have snake_case status values
-  - No dead fields remain (active, effectiveActive, etc.)
+  - Tags/folders have availability (not old status field)
+  - No dead fields remain (active, effectiveActive, status, etc.)
   - Snapshot validates against Pydantic models
 
 Usage:
@@ -42,20 +42,22 @@ _PROJECT_DEAD_FIELDS = {
     "effectiveActive",
     "completed",
     "completedByChildren",
+    "effectiveCompletionDate",
     "sequential",
     "shouldUseFloatingTimeZone",
     "containsSingletonActions",
 }
 
-_TAG_DEAD_FIELDS = {"active", "effectiveActive", "allowsNextAction"}
+_TAG_DEAD_FIELDS = {"status", "active", "effectiveActive", "allowsNextAction"}
 
-_FOLDER_DEAD_FIELDS = {"active", "effectiveActive"}
+_FOLDER_DEAD_FIELDS = {"status", "active", "effectiveActive"}
 
 # Valid enum values after adapter transformation
 _VALID_URGENCY = {"none", "due_soon", "overdue"}
 _VALID_AVAILABILITY = {"available", "blocked", "completed", "dropped"}
-_VALID_TAG_STATUS = {"active", "on_hold", "dropped"}
-_VALID_FOLDER_STATUS = {"active", "dropped"}
+_VALID_TAG_AVAILABILITY = {"available", "blocked", "dropped"}
+_VALID_FOLDER_AVAILABILITY = {"available", "dropped"}
+_VALID_SCHEDULE_TYPE = {"regularly", "from_completion"}
 
 
 def _check_no_dead_fields(
@@ -107,6 +109,15 @@ def _validate_adapted_snapshot(raw: dict[str, Any]) -> tuple[int, int]:
         if not dead_errs:
             passed += 1
 
+        # repetitionRule must be null or have a valid scheduleType (never "none")
+        rule = task.get("repetitionRule")
+        if rule is not None:
+            st = rule.get("scheduleType") if isinstance(rule, dict) else None
+            if st not in _VALID_SCHEDULE_TYPE:
+                errors.append(f"  FAIL: Task {tid} invalid scheduleType: {st!r}")
+            else:
+                passed += 1
+
     # --- Projects ---
     for proj in raw.get("projects", []):
         pid = proj.get("id", "???")
@@ -130,14 +141,23 @@ def _validate_adapted_snapshot(raw: dict[str, Any]) -> tuple[int, int]:
         if not dead_errs:
             passed += 1
 
+        # repetitionRule must be null or have a valid scheduleType (never "none")
+        rule = proj.get("repetitionRule")
+        if rule is not None:
+            st = rule.get("scheduleType") if isinstance(rule, dict) else None
+            if st not in _VALID_SCHEDULE_TYPE:
+                errors.append(f"  FAIL: Project {pid} invalid scheduleType: {st!r}")
+            else:
+                passed += 1
+
     # --- Tags ---
     for tag in raw.get("tags", []):
         gid = tag.get("id", "???")
 
-        if "status" not in tag:
-            errors.append(f"  FAIL: Tag {gid} missing 'status'")
-        elif tag["status"] not in _VALID_TAG_STATUS:
-            errors.append(f"  FAIL: Tag {gid} invalid status: {tag['status']!r}")
+        if "availability" not in tag:
+            errors.append(f"  FAIL: Tag {gid} missing 'availability'")
+        elif tag["availability"] not in _VALID_TAG_AVAILABILITY:
+            errors.append(f"  FAIL: Tag {gid} invalid availability: {tag['availability']!r}")
         else:
             passed += 1
 
@@ -150,10 +170,10 @@ def _validate_adapted_snapshot(raw: dict[str, Any]) -> tuple[int, int]:
     for folder in raw.get("folders", []):
         fid = folder.get("id", "???")
 
-        if "status" not in folder:
-            errors.append(f"  FAIL: Folder {fid} missing 'status'")
-        elif folder["status"] not in _VALID_FOLDER_STATUS:
-            errors.append(f"  FAIL: Folder {fid} invalid status: {folder['status']!r}")
+        if "availability" not in folder:
+            errors.append(f"  FAIL: Folder {fid} missing 'availability'")
+        elif folder["availability"] not in _VALID_FOLDER_AVAILABILITY:
+            errors.append(f"  FAIL: Folder {fid} invalid availability: {folder['availability']!r}")
         else:
             passed += 1
 
@@ -244,10 +264,10 @@ async def main() -> int:
         print(f"  Project '{p.name}': urgency={p.urgency}, availability={p.availability}")
     if snapshot.tags:
         g = snapshot.tags[0]
-        print(f"  Tag '{g.name}': status={g.status}")
+        print(f"  Tag '{g.name}': availability={g.availability}")
     if snapshot.folders:
         f = snapshot.folders[0]
-        print(f"  Folder '{f.name}': status={f.status}")
+        print(f"  Folder '{f.name}': availability={f.availability}")
 
     print("\nUAT PASSED")
     return 0
