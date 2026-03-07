@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: HUGE Performance Upgrade
-status: completed
-stopped_at: Phase 12 context gathered
-last_updated: "2026-03-07T17:51:17.257Z"
-last_activity: "2026-03-07 -- Completed 11-03: Rename DatabaseSnapshot->AllEntities, get_snapshot()->get_all()"
+status: in_progress
+stopped_at: Completed 12-01-PLAN.md
+last_updated: "2026-03-07T18:12:00.000Z"
+last_activity: "2026-03-07 -- Completed 12-01: HybridRepository SQLite reader"
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 7
-  completed_plans: 7
-  percent: 100
+  total_plans: 9
+  completed_plans: 8
+  percent: 89
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 11 complete -- Repository protocol abstraction with clean naming
+**Current focus:** Phase 12 in progress -- SQLite reader implementation
 
 ## Current Position
 
-Phase: 11 (2 of 4 in v1.1) -- COMPLETE
-Plan: 03 of 3 complete
-Status: Phase 11 complete (including gap-closure plan 03), Phase 12 next
-Last activity: 2026-03-07 -- Completed 11-03: Rename DatabaseSnapshot->AllEntities, get_snapshot()->get_all()
+Phase: 12 (3 of 4 in v1.1)
+Plan: 01 of 2 complete
+Status: Plan 12-01 complete (HybridRepository SQLite reader), Plan 12-02 next (freshness)
+Last activity: 2026-03-07 -- Completed 12-01: HybridRepository SQLite reader
 
-Progress: [██████████] 100% (Phase 11, Plan 3/3)
+Progress: [████████░░] 89% (Phase 12, Plan 1/2)
 
 ## Accumulated Context
 
@@ -56,6 +56,9 @@ Progress: [██████████] 100% (Phase 11, Plan 3/3)
 - Tasks 1+2 committed together for 11-03 (mypy requires atomic rename across all consumers)
 - BridgeRepository internal _snapshot field renamed to _cached for semantic clarity
 - Kept make_snapshot/make_snapshot_dict test helper names (test-level naming is fine)
+- HybridRepository: numeric string detection in _parse_timestamp handles SQLite TEXT column affinity
+- HybridRepository: tag name lookup built upfront, TaskToTag join populates TagRef objects
+- HybridRepository: projects excluded from task query via LEFT JOIN + WHERE NULL
 
 ### Pending Todos
 
@@ -74,10 +77,10 @@ Carried from v1.0:
 
 ### Blockers/Concerns
 
-- Phase 12 (SQLite Reader) needs `/gsd:research-phase` -- column-to-field mapping, timestamp formats, NULL edge cases.
+None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-07T17:51:17.255Z
-Stopped at: Phase 12 context gathered
-Next action: `/gsd:research-phase 12` (SQLite Reader)
+Last session: 2026-03-07T18:12:00.000Z
+Stopped at: Completed 12-01-PLAN.md
+Next action: `/gsd:execute-phase 12` (Plan 12-02: WAL freshness detection)

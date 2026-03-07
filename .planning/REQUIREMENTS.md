@@ -20,10 +20,10 @@ Requirements for v1.1 HUGE Performance Upgrade. Each maps to roadmap phases.
 
 ### SQLite Read Path
 
-- [ ] **SQLITE-01**: Server reads OmniFocus data from SQLite cache at the documented path (~46ms full snapshot)
-- [ ] **SQLITE-02**: SQLite reader opens connections in read-only mode (`?mode=ro`) and creates a fresh connection per read
-- [ ] **SQLITE-03**: SQLite reader maps database rows to Pydantic models with two-axis status (urgency + availability from pre-computed columns)
-- [ ] **SQLITE-04**: OmniFocus does not need to be running for reads to succeed
+- [x] **SQLITE-01**: Server reads OmniFocus data from SQLite cache at the documented path (~46ms full snapshot)
+- [x] **SQLITE-02**: SQLite reader opens connections in read-only mode (`?mode=ro`) and creates a fresh connection per read
+- [x] **SQLITE-03**: SQLite reader maps database rows to Pydantic models with two-axis status (urgency + availability from pre-computed columns)
+- [x] **SQLITE-04**: OmniFocus does not need to be running for reads to succeed
 
 ### Freshness
 
@@ -81,10 +81,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MODEL-04 | Phase 10 | Complete |
 | MODEL-05 | Phase 10 | Complete |
 | MODEL-06 | Phase 10 | Complete |
-| SQLITE-01 | Phase 12 | Pending |
-| SQLITE-02 | Phase 12 | Pending |
-| SQLITE-03 | Phase 12 | Pending |
-| SQLITE-04 | Phase 12 | Pending |
+| SQLITE-01 | Phase 12 | Complete |
+| SQLITE-02 | Phase 12 | Complete |
+| SQLITE-03 | Phase 12 | Complete |
+| SQLITE-04 | Phase 12 | Complete |
 | FRESH-01 | Phase 12 | Pending |
 | FRESH-02 | Phase 12 | Pending |
 | FALL-01 | Phase 13 | Pending |

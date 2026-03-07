@@ -120,5 +120,5 @@ Phases execute in numeric order: 10 -> 11 -> 12 -> 13
 | 9. Error-Serving Degraded Mode | v1.0 | 1/1 | Complete | 2026-03-06 |
 | 10. Model Overhaul | 4/4 | Complete    | 2026-03-07 | - |
 | 11. DataSource Protocol | 3/3 | Complete    | 2026-03-07 | - |
-| 12. SQLite Reader | v1.1 | 0/2 | Not started | - |
+| 12. SQLite Reader | 1/2 | In Progress|  | - |
 | 13. Fallback and Integration | v1.1 | 0/? | Not started | - |
