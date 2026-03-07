@@ -359,6 +359,46 @@ class TestAdaptFolder:
 
 
 # ---------------------------------------------------------------------------
+# Task parent ref transformation
+# ---------------------------------------------------------------------------
+
+
+class TestAdaptTaskParentRef:
+    """Adapter transforms bridge project/parent strings into ParentRef dict."""
+
+    def test_inbox_task_parent_null(self) -> None:
+        """Task with no project and no parent has parent=None."""
+        raw = _old_task(project=None, parent=None)
+        snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        assert raw["parent"] is None
+
+    def test_task_in_project(self) -> None:
+        """Task with project ID gets parent={type:'project', id, name}."""
+        raw = _old_task(project="proj-001", parent=None)
+        snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        assert raw["parent"] == {"type": "project", "id": "proj-001", "name": ""}
+        assert "project" not in raw
+
+    def test_subtask_with_parent_task(self) -> None:
+        """Task with parent task ID gets parent={type:'task', id, name}."""
+        raw = _old_task(project="proj-001", parent="task-parent-001")
+        snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        assert raw["parent"] == {"type": "task", "id": "task-parent-001", "name": ""}
+        assert "project" not in raw
+
+    def test_parent_task_takes_precedence_over_project(self) -> None:
+        """When both parent and project are set, parent task wins."""
+        raw = _old_task(project="proj-001", parent="parent-task")
+        snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        assert raw["parent"]["type"] == "task"
+        assert raw["parent"]["id"] == "parent-task"
+
+
+# ---------------------------------------------------------------------------
 # Repetition rule enum mapping
 # ---------------------------------------------------------------------------
 

@@ -16,6 +16,7 @@ from omnifocus_operator.models import (
     FolderAvailability,
     OmniFocusBaseModel,
     OmniFocusEntity,
+    ParentRef,
     Perspective,
     Project,
     RepetitionRule,
@@ -190,6 +191,26 @@ class TestTagRef:
         assert dumped == {"id": "tag-001", "name": "errands"}
 
 
+class TestParentRef:
+    """ParentRef model with type, id, and name."""
+
+    def test_parent_ref_round_trip(self) -> None:
+        data = {"type": "project", "id": "proj-001", "name": "My Project"}
+        ref = ParentRef.model_validate(data)
+        assert ref.type == "project"
+        assert ref.id == "proj-001"
+        assert ref.name == "My Project"
+        dumped = ref.model_dump(by_alias=True)
+        assert dumped == {"type": "project", "id": "proj-001", "name": "My Project"}
+
+    def test_parent_ref_task_type(self) -> None:
+        data = {"type": "task", "id": "task-parent-001", "name": "Parent Task"}
+        ref = ParentRef.model_validate(data)
+        assert ref.type == "task"
+        assert ref.id == "task-parent-001"
+        assert ref.name == "Parent Task"
+
+
 class TestRepetitionRule:
     """RepetitionRule has 4 required typed fields."""
 
@@ -341,9 +362,9 @@ class TestFactoryFunctions:
     """Factory functions produce valid new-shape dicts with correct field counts."""
 
     def test_make_task_dict_field_count(self) -> None:
-        """make_task_dict returns exactly 27 fields (new model shape)."""
+        """make_task_dict returns exactly 26 fields (new model shape with unified parent)."""
         d = make_task_dict()
-        assert len(d) == 27
+        assert len(d) == 26
 
     def test_make_task_dict_overrides(self) -> None:
         """make_task_dict supports keyword overrides."""
@@ -392,10 +413,10 @@ class TestFactoryFunctions:
 
 
 class TestTaskModel:
-    """Task model parses all 27 fields with snake_case names and camelCase aliases."""
+    """Task model parses all 26 fields with snake_case names and camelCase aliases."""
 
     def test_task_from_bridge_json(self) -> None:
-        """Parse make_task_dict() via Task.model_validate(), verify all 27 fields."""
+        """Parse make_task_dict() via Task.model_validate(), verify all 26 fields."""
         data = make_task_dict(
             dueDate="2024-06-15T09:00:00.000Z",
             tags=[{"id": "t1", "name": "errands"}, {"id": "t2", "name": "morning"}],
@@ -439,7 +460,6 @@ class TestTaskModel:
         # Relationships
         assert task.in_inbox is True
         assert task.repetition_rule is None
-        assert task.project is None
         assert task.parent is None
 
         # Tags are TagRef objects
@@ -449,8 +469,8 @@ class TestTaskModel:
         assert task.tags[0].id == "t1"
         assert task.tags[1].name == "morning"
 
-        # Verify total field count
-        assert len(Task.model_fields) == 27
+        # Verify total field count (26 after merging project+parent into single parent)
+        assert len(Task.model_fields) == 26
 
         # Serialize back to camelCase and verify round-trip
         dumped = task.model_dump(mode="json", by_alias=True)
@@ -493,12 +513,30 @@ class TestTaskModel:
         assert task.tags[0].name == "errands"
         assert task.tags[0].id == "t1"
 
-    def test_task_optional_relationships_default_none(self) -> None:
-        """Optional relationship fields (project, parent) default to None."""
+    def test_task_parent_none_for_inbox(self) -> None:
+        """Inbox task has parent=None."""
         data = make_task_dict()
         task = Task.model_validate(data)
-        assert task.project is None
         assert task.parent is None
+
+    def test_task_parent_ref_project(self) -> None:
+        """Task in project has parent as ParentRef with type='project'."""
+        data = make_task_dict(parent={"type": "project", "id": "proj-001", "name": "My Project"})
+        task = Task.model_validate(data)
+        assert task.parent is not None
+        assert isinstance(task.parent, ParentRef)
+        assert task.parent.type == "project"
+        assert task.parent.id == "proj-001"
+        assert task.parent.name == "My Project"
+
+    def test_task_parent_ref_task(self) -> None:
+        """Subtask has parent as ParentRef with type='task'."""
+        data = make_task_dict(parent={"type": "task", "id": "task-parent", "name": "Parent Task"})
+        task = Task.model_validate(data)
+        assert task.parent is not None
+        assert isinstance(task.parent, ParentRef)
+        assert task.parent.type == "task"
+        assert task.parent.id == "task-parent"
 
 
 # ---------------------------------------------------------------------------
@@ -749,7 +787,7 @@ class TestAllEntities:
                     availability="available",
                     dueDate="2024-06-15T09:00:00.000Z",
                     tags=[{"id": "tref1", "name": "errands"}],
-                    project="proj-001",
+                    parent={"type": "project", "id": "proj-001", "name": "Project A"},
                 ),
                 make_task_dict(
                     id="t3",
@@ -796,7 +834,9 @@ class TestAllEntities:
         assert snapshot2.tasks[1].due_date is not None
         assert len(snapshot2.tasks[1].tags) == 1
         assert snapshot2.tasks[1].tags[0].name == "errands"
-        assert snapshot2.tasks[1].project == "proj-001"
+        assert snapshot2.tasks[1].parent is not None
+        assert snapshot2.tasks[1].parent.type == "project"
+        assert snapshot2.tasks[1].parent.id == "proj-001"
         assert snapshot2.projects[1].availability == Availability.DROPPED
         assert snapshot2.perspectives[1].id is None
         assert snapshot2.perspectives[1].builtin is True

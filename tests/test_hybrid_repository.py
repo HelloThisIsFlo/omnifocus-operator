@@ -654,14 +654,26 @@ class TestTaskNotes:
 
 class TestTaskRelationships:
     @pytest.mark.asyncio
-    async def test_task_relationships(self, tmp_path: Path) -> None:
+    async def test_inbox_task_parent_null(self, tmp_path: Path) -> None:
+        """Task with no project and no parent has parent=None."""
+        db_path = create_test_db(
+            tmp_path,
+            tasks=[_minimal_task()],
+        )
+        repo = HybridRepository(db_path=db_path)
+        result = await repo.get_all()
+        task = result.tasks[0]
+        assert task.parent is None
+
+    @pytest.mark.asyncio
+    async def test_task_in_project_parent_ref(self, tmp_path: Path) -> None:
+        """Task in a project gets parent={type:'project', id, name}."""
         db_path = create_test_db(
             tmp_path,
             tasks=[
                 _minimal_task(
                     {
-                        "containingProjectInfo": "proj-001",
-                        "parent": "parent-task-001",
+                        "containingProjectInfo": "pi-proj-001",
                     }
                 )
             ],
@@ -670,8 +682,42 @@ class TestTaskRelationships:
         repo = HybridRepository(db_path=db_path)
         result = await repo.get_all()
         task = result.tasks[0]
-        assert task.project == "proj-001"
-        assert task.parent == "parent-task-001"
+        assert task.parent is not None
+        assert task.parent.type == "project"
+        assert task.parent.id == "proj-001"
+        assert task.parent.name == "Test Project"
+
+    @pytest.mark.asyncio
+    async def test_subtask_parent_ref(self, tmp_path: Path) -> None:
+        """Subtask gets parent={type:'task', id, name} using parent task."""
+        db_path = create_test_db(
+            tmp_path,
+            tasks=[
+                _minimal_task(
+                    {
+                        "persistentIdentifier": "subtask-001",
+                        "name": "Subtask",
+                        "parent": "parent-task-001",
+                        "containingProjectInfo": "pi-proj-001",
+                    }
+                ),
+                _minimal_task(
+                    {
+                        "persistentIdentifier": "parent-task-001",
+                        "name": "Parent Task",
+                        "containingProjectInfo": "pi-proj-001",
+                    }
+                ),
+            ],
+            projects=[_minimal_project()],
+        )
+        repo = HybridRepository(db_path=db_path)
+        result = await repo.get_all()
+        subtask = next(t for t in result.tasks if t.id == "subtask-001")
+        assert subtask.parent is not None
+        assert subtask.parent.type == "task"
+        assert subtask.parent.id == "parent-task-001"
+        assert subtask.parent.name == "Parent Task"
 
 
 class TestProjectFields:
