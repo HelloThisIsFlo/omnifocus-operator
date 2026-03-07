@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: HUGE Performance Upgrade
 status: executing
-stopped_at: Completed 10-01-PLAN.md
-last_updated: "2026-03-07T03:07:38.933Z"
-last_activity: 2026-03-07 -- Completed 10-01 (enums + adapter)
+stopped_at: Completed 10-02-PLAN.md
+last_updated: "2026-03-07T03:19:00.000Z"
+last_activity: 2026-03-07 -- Completed 10-02 (model migration to two-axis status)
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
-  percent: 33
+  completed_plans: 2
+  percent: 67
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 ## Current Position
 
 Phase: 10 (1 of 4 in v1.1)
-Plan: 02 of 3
+Plan: 03 of 3
 Status: Executing
-Last activity: 2026-03-07 -- Completed 10-01 (enums + adapter)
+Last activity: 2026-03-07 -- Completed 10-02 (model migration to two-axis status)
 
-Progress: [███░░░░░░░] 33%
+Progress: [██████░░░░] 67%
 
 ## Accumulated Context
 
@@ -40,6 +40,9 @@ Progress: [███░░░░░░░] 33%
 - Research recommends incremental model migration (not big-bang) to keep 177+ tests green at each step
 - Adapter uses dict lookup tables (not if/elif) for all status mappings
 - Adapter modifies dicts in-place for zero-copy performance
+- Tasks 1+2 committed together to keep tests green at every commit
+- Adapter tests decoupled from shared conftest factories (use local old-format helpers)
+- InMemoryBridge seed data and simulator data updated to new shape pre-adapter-wiring
 
 ### Pending Todos
 
@@ -62,6 +65,6 @@ Carried from v1.0:
 
 ## Session Continuity
 
-Last session: 2026-03-07T03:07:00.000Z
-Stopped at: Completed 10-01-PLAN.md
-Next action: `/gsd:execute-phase 10` (plan 02)
+Last session: 2026-03-07T03:19:00.000Z
+Stopped at: Completed 10-02-PLAN.md
+Next action: `/gsd:execute-phase 10` (plan 03)

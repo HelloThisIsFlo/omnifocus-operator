@@ -14,9 +14,9 @@ Requirements for v1.1 HUGE Performance Upgrade. Each maps to roadmap phases.
 - [x] **MODEL-01**: Task and Project expose `urgency` field (overdue / due_soon / none) instead of single-winner status enum
 - [x] **MODEL-02**: Task and Project expose `availability` field (available / blocked / completed / dropped) instead of single-winner status enum
 - [x] **MODEL-03**: `TaskStatus` and `ProjectStatus` enums are removed and replaced by shared `Urgency` and `Availability` enums
-- [ ] **MODEL-04**: Fields `active`, `effective_active`, `completed` (bool), `sequential`, `completed_by_children`, `should_use_floating_time_zone` are removed from entity models
-- [ ] **MODEL-05**: `contains_singleton_actions` removed from Project, `allows_next_action` removed from Tag
-- [ ] **MODEL-06**: All existing tests and fixtures updated to reflect new model shape
+- [x] **MODEL-04**: Fields `active`, `effective_active`, `completed` (bool), `sequential`, `completed_by_children`, `should_use_floating_time_zone` are removed from entity models
+- [x] **MODEL-05**: `contains_singleton_actions` removed from Project, `allows_next_action` removed from Tag
+- [x] **MODEL-06**: All existing tests and fixtures updated to reflect new model shape
 
 ### SQLite Read Path
 
@@ -78,9 +78,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MODEL-01 | Phase 10 | Complete |
 | MODEL-02 | Phase 10 | Complete |
 | MODEL-03 | Phase 10 | Complete |
-| MODEL-04 | Phase 10 | Pending |
-| MODEL-05 | Phase 10 | Pending |
-| MODEL-06 | Phase 10 | Pending |
+| MODEL-04 | Phase 10 | Complete |
+| MODEL-05 | Phase 10 | Complete |
+| MODEL-06 | Phase 10 | Complete |
 | SQLITE-01 | Phase 12 | Pending |
 | SQLITE-02 | Phase 12 | Pending |
 | SQLITE-03 | Phase 12 | Pending |
