@@ -20,9 +20,8 @@ import asyncio
 import sys
 from typing import Any
 
-from omnifocus_operator.bridge._real import DEFAULT_IPC_DIR, RealBridge
-
 from omnifocus_operator.bridge.adapter import adapt_snapshot
+from omnifocus_operator.bridge.real import DEFAULT_IPC_DIR, RealBridge
 from omnifocus_operator.models import DatabaseSnapshot
 
 # Dead fields that should NOT appear after adapter transformation
