@@ -32,7 +32,7 @@
 - Integer phases (10, 11, 12, 13): Planned milestone work
 - Decimal phases (e.g., 10.1): Urgent insertions (marked with INSERTED)
 
-- [x] **Phase 10: Model Overhaul** - Replace single-winner status enums with two-axis model, remove deprecated fields, update all tests (completed 2026-03-07)
+- [ ] **Phase 10: Model Overhaul** - Replace single-winner status enums with two-axis model, remove deprecated fields, update all tests (gap closure in progress)
 - [ ] **Phase 11: DataSource Protocol** - Abstract read path behind DataSource protocol, refactor Repository, create test infrastructure
 - [ ] **Phase 12: SQLite Reader** - Implement SQLiteDataSource with read-only access, row-to-model mapping, and WAL-based freshness detection
 - [ ] **Phase 13: Fallback and Integration** - Bridge fallback mode via env var, error-serving when SQLite unavailable, server wiring
@@ -48,12 +48,13 @@
   2. `TaskStatus` and `ProjectStatus` enums no longer exist in the codebase; `Urgency` and `Availability` enums are used everywhere
   3. Fields `active`, `effective_active`, `completed` (bool), `sequential`, `completed_by_children`, `should_use_floating_time_zone`, `contains_singleton_actions`, and `allows_next_action` are removed from their respective models
   4. All existing tests pass with the new model shape (no test left referencing removed fields or old enums)
-**Plans**: 3 plans
+**Plans**: 4 plans
 
 Plans:
-- [ ] 10-01-PLAN.md -- Add Urgency/Availability enums and bridge adapter module
-- [ ] 10-02-PLAN.md -- Migrate all models to two-axis status, update tests and factories
-- [ ] 10-03-PLAN.md -- Wire adapter into repository, clean up bridge.js, create UAT script
+- [x] 10-01-PLAN.md -- Add Urgency/Availability enums and bridge adapter module
+- [x] 10-02-PLAN.md -- Migrate all models to two-axis status, update tests and factories
+- [x] 10-03-PLAN.md -- Wire adapter into repository, clean up bridge.js, create UAT script
+- [ ] 10-04-PLAN.md -- GAP CLOSURE: Remove dead effectiveCompletionDate from Project, remove ScheduleType.none, unify Tag/Folder availability
 
 ### Phase 11: DataSource Protocol
 **Goal**: Repository layer consumes a unified DataSource protocol instead of Bridge + MtimeSource, with InMemoryDataSource for testing
@@ -115,7 +116,7 @@ Phases execute in numeric order: 10 -> 11 -> 12 -> 13
 | 8.1. JS Bridge Script and IPC Overhaul | v1.0 | 3/4 | Complete | 2026-03-05 |
 | 8.2. Model Alignment (BRIDGE-SPEC) | v1.0 | 3/3 | Complete | 2026-03-06 |
 | 9. Error-Serving Degraded Mode | v1.0 | 1/1 | Complete | 2026-03-06 |
-| 10. Model Overhaul | 3/3 | Complete    | 2026-03-07 | - |
+| 10. Model Overhaul | v1.1 | 3/4 | Gap closure | - |
 | 11. DataSource Protocol | v1.1 | 0/? | Not started | - |
 | 12. SQLite Reader | v1.1 | 0/? | Not started | - |
 | 13. Fallback and Integration | v1.1 | 0/? | Not started | - |
