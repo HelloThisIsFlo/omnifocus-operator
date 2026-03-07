@@ -7,7 +7,7 @@ MCP Tool (list_all)
     |
 OperatorService          -- orchestration, future caching policies
     |
-Repository (protocol)    -- async get_snapshot() -> DatabaseSnapshot
+Repository (protocol)    -- async get_all() -> AllEntities
     |
     +-- BridgeRepository    (production: Bridge + MtimeSource + adapter, with caching)
     +-- InMemoryRepository  (testing: returns pre-built snapshot)
@@ -30,6 +30,13 @@ omnifocus_operator/
 - Repository implies querying/filtering -- future `get_tasks(filters)` (v1.2+)
 - DataSource implies raw data access -- too thin an abstraction
 - Repository is the richer contract for how consumers interact with data
+
+## Method Naming Convention
+
+- `get_all()` -> `AllEntities`: structured container with all entity types (tasks, projects, folders, tags)
+- `list_*(filters)` -> flat list of one entity type (e.g., `list_tasks(status=...)`)
+- `get_*` = heterogeneous structured return; `list_*` = homogeneous filtered collection
+- `DatabaseSnapshot` renamed to `AllEntities` -- no caching/snapshot semantics at the protocol level
 
 ## Why Flat Packages (bridge/ and repository/ as peers)
 
