@@ -16,12 +16,12 @@ from typing import TYPE_CHECKING, Any
 from mcp.server.fastmcp import Context, FastMCP
 from mcp.types import ToolAnnotations
 
-# NOTE: DatabaseSnapshot MUST be a runtime import (not TYPE_CHECKING) because
+# NOTE: AllEntities MUST be a runtime import (not TYPE_CHECKING) because
 # FastMCP introspects the return type annotation at registration time to
 # generate outputSchema.  With `from __future__ import annotations` the
 # annotation is a string; FastMCP resolves it via get_type_hints() which
 # needs the name in the module namespace.
-from omnifocus_operator.models import DatabaseSnapshot  # noqa: TC001
+from omnifocus_operator.models import AllEntities  # noqa: TC001
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -101,7 +101,7 @@ def _register_tools(mcp: FastMCP) -> None:
     @mcp.tool(
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
-    async def list_all(ctx: Context[Any, Any, Any]) -> DatabaseSnapshot:
+    async def list_all(ctx: Context[Any, Any, Any]) -> AllEntities:
         """Return the full OmniFocus database as structured data.
 
         Returns all tasks, projects, tags, folders, and perspectives as a

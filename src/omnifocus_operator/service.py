@@ -11,7 +11,7 @@ import logging
 from typing import TYPE_CHECKING, NoReturn
 
 if TYPE_CHECKING:
-    from omnifocus_operator.models.snapshot import DatabaseSnapshot
+    from omnifocus_operator.models.snapshot import AllEntities
     from omnifocus_operator.repository import Repository
 
 __all__ = ["ErrorOperatorService", "OperatorService"]
@@ -26,20 +26,20 @@ class OperatorService:
     ----------
     repository:
         Any ``Repository`` implementation (e.g. ``BridgeRepository``,
-        ``InMemoryRepository``) that provides ``get_snapshot()``.
+        ``InMemoryRepository``) that provides ``get_all()``.
     """
 
     def __init__(self, repository: Repository) -> None:
         self._repository = repository
 
-    async def get_all_data(self) -> DatabaseSnapshot:
-        """Return the current ``DatabaseSnapshot`` from the repository.
+    async def get_all_data(self) -> AllEntities:
+        """Return all OmniFocus entities from the repository.
 
-        Delegates directly to ``repository.get_snapshot()``.  Any errors
+        Delegates directly to ``repository.get_all()``.  Any errors
         from the repository (bridge errors, validation errors, mtime
         errors) propagate to the caller unchanged.
         """
-        return await self._repository.get_snapshot()
+        return await self._repository.get_all()
 
 
 class ErrorOperatorService(OperatorService):

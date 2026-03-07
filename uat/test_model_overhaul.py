@@ -22,7 +22,7 @@ from typing import Any
 
 from omnifocus_operator.bridge.adapter import adapt_snapshot
 from omnifocus_operator.bridge.real import DEFAULT_IPC_DIR, RealBridge
-from omnifocus_operator.models import DatabaseSnapshot
+from omnifocus_operator.models import AllEntities
 
 # Dead fields that should NOT appear after adapter transformation
 _TASK_DEAD_FIELDS = {
@@ -241,9 +241,9 @@ async def main() -> int:
         return 1
 
     # Step 4: Validate against Pydantic models
-    print("\nValidating against Pydantic DatabaseSnapshot model...")
+    print("\nValidating against Pydantic AllEntities model...")
     try:
-        snapshot = DatabaseSnapshot.model_validate(raw)
+        snapshot = AllEntities.model_validate(raw)
     except Exception as exc:
         print(f"\nERROR: Pydantic validation failed: {exc}")
         return 1

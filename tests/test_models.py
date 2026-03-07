@@ -9,9 +9,9 @@ from pydantic import ValidationError
 
 from omnifocus_operator.models import (
     ActionableEntity,
+    AllEntities,
     AnchorDateKey,
     Availability,
-    DatabaseSnapshot,
     Folder,
     FolderAvailability,
     OmniFocusBaseModel,
@@ -696,17 +696,17 @@ class TestPerspectiveModel:
 
 
 # ---------------------------------------------------------------------------
-# DatabaseSnapshot tests (MODL-06)
+# AllEntities tests (MODL-06)
 # ---------------------------------------------------------------------------
 
 
-class TestDatabaseSnapshot:
-    """DatabaseSnapshot aggregates tasks, projects, tags, folders, perspectives lists."""
+class TestAllEntities:
+    """AllEntities aggregates tasks, projects, tags, folders, perspectives lists."""
 
-    def test_database_snapshot_round_trip(self) -> None:
+    def test_all_entities_round_trip(self) -> None:
         """Parse make_snapshot_dict(), verify collections, serialize and re-parse."""
         data = make_snapshot_dict()
-        snapshot = DatabaseSnapshot.model_validate(data)
+        snapshot = AllEntities.model_validate(data)
 
         assert len(snapshot.tasks) == 1
         assert len(snapshot.projects) == 1
@@ -723,14 +723,14 @@ class TestDatabaseSnapshot:
 
         # Serialize and re-parse
         dumped = snapshot.model_dump(mode="json", by_alias=True)
-        snapshot2 = DatabaseSnapshot.model_validate(dumped)
+        snapshot2 = AllEntities.model_validate(dumped)
         assert len(snapshot2.tasks) == 1
         assert snapshot2.tasks[0].id == snapshot.tasks[0].id
 
-    def test_database_snapshot_empty_collections(self) -> None:
-        """DatabaseSnapshot with empty lists is valid."""
+    def test_all_entities_empty_collections(self) -> None:
+        """AllEntities with empty lists is valid."""
         data = make_snapshot_dict(tasks=[], projects=[], tags=[], folders=[], perspectives=[])
-        snapshot = DatabaseSnapshot.model_validate(data)
+        snapshot = AllEntities.model_validate(data)
         assert len(snapshot.tasks) == 0
         assert len(snapshot.projects) == 0
         assert len(snapshot.tags) == 0
@@ -781,7 +781,7 @@ class TestDatabaseSnapshot:
             ],
         }
 
-        snapshot = DatabaseSnapshot.model_validate(data)
+        snapshot = AllEntities.model_validate(data)
         assert len(snapshot.tasks) == 3
         assert len(snapshot.projects) == 2
         assert len(snapshot.tags) == 2
@@ -790,7 +790,7 @@ class TestDatabaseSnapshot:
 
         # Full round-trip
         dumped = snapshot.model_dump(mode="json", by_alias=True)
-        snapshot2 = DatabaseSnapshot.model_validate(dumped)
+        snapshot2 = AllEntities.model_validate(dumped)
 
         # Verify data fidelity
         assert snapshot2.tasks[1].due_date is not None

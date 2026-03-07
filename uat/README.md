@@ -12,7 +12,7 @@ This directory contains **human-only** test scripts for validating OmniFocus Ope
 
 ### `test_read_only.py` (Phase 8)
 
-A read-only validation script that connects to real OmniFocus via `RealBridge`, calls `dump_all`, and validates the response parses into a `DatabaseSnapshot`.
+A read-only validation script that connects to real OmniFocus via `RealBridge`, calls `dump_all`, and validates the response parses into a `AllEntities`.
 
 **Prerequisites:**
 
@@ -29,7 +29,7 @@ uv run python uat/test_read_only.py
 
 - Creates a `RealBridge` instance pointed at the default IPC directory.
 - Sends a `dump_all` command to OmniFocus.
-- Validates the raw response via `DatabaseSnapshot.model_validate()`.
+- Validates the raw response via `AllEntities.model_validate()`.
 - Prints entity counts (tasks, projects, tags, folders, perspectives).
 - Exits 0 on success, 1 on failure.
 

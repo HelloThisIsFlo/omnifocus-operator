@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from omnifocus_operator.models.snapshot import DatabaseSnapshot
+from omnifocus_operator.models.snapshot import AllEntities
 
 
 def make_task_dict(**overrides: Any) -> dict[str, Any]:
@@ -156,9 +156,9 @@ def make_perspective_dict(**overrides: Any) -> dict[str, Any]:
 
 
 def make_snapshot_dict(**overrides: Any) -> dict[str, Any]:
-    """Factory for new-shape DatabaseSnapshot dict (camelCase keys).
+    """Factory for new-shape AllEntities dict (camelCase keys).
 
-    Returns a complete snapshot dict with 1 of each entity type by default.
+    Returns a complete entity dict with 1 of each entity type by default.
     Override individual collections or use empty lists.
     """
     defaults: dict[str, Any] = {
@@ -171,9 +171,9 @@ def make_snapshot_dict(**overrides: Any) -> dict[str, Any]:
     return {**defaults, **overrides}
 
 
-def make_snapshot(**overrides: Any) -> DatabaseSnapshot:
-    """Factory for a validated ``DatabaseSnapshot`` model instance.
+def make_snapshot(**overrides: Any) -> AllEntities:
+    """Factory for a validated ``AllEntities`` model instance.
 
     Delegates to ``make_snapshot_dict()`` and validates through Pydantic.
     """
-    return DatabaseSnapshot.model_validate(make_snapshot_dict(**overrides))
+    return AllEntities.model_validate(make_snapshot_dict(**overrides))

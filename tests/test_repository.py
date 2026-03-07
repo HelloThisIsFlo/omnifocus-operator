@@ -84,12 +84,12 @@ def repo(bridge: InMemoryBridge, mtime: FakeMtimeSource) -> BridgeRepository:
 
 
 class TestSNAP01FirstCall:
-    """First get_snapshot() call triggers bridge dump."""
+    """First get_all() call triggers bridge dump."""
 
     async def test_first_call_returns_snapshot(
         self, repo: BridgeRepository, bridge: InMemoryBridge
     ) -> None:
-        snapshot = await repo.get_snapshot()
+        snapshot = await repo.get_all()
 
         assert snapshot is not None
         assert len(snapshot.tasks) == 1
@@ -101,14 +101,14 @@ class TestSNAP01FirstCall:
     async def test_first_call_invokes_bridge(
         self, repo: BridgeRepository, bridge: InMemoryBridge
     ) -> None:
-        await repo.get_snapshot()
+        await repo.get_all()
 
         assert bridge.call_count == 1
 
     async def test_first_call_uses_snapshot_operation(
         self, repo: BridgeRepository, bridge: InMemoryBridge
     ) -> None:
-        await repo.get_snapshot()
+        await repo.get_all()
 
         assert bridge.calls[0].operation == "snapshot"
 
@@ -124,14 +124,14 @@ class TestSNAP02CachedReturn:
     async def test_second_call_no_bridge_invocation(
         self, repo: BridgeRepository, bridge: InMemoryBridge
     ) -> None:
-        await repo.get_snapshot()
-        await repo.get_snapshot()
+        await repo.get_all()
+        await repo.get_all()
 
         assert bridge.call_count == 1
 
     async def test_second_call_returns_data(self, repo: BridgeRepository) -> None:
-        await repo.get_snapshot()
-        second = await repo.get_snapshot()
+        await repo.get_all()
+        second = await repo.get_all()
 
         assert len(second.tasks) == 1
 
@@ -145,8 +145,8 @@ class TestSNAP03ObjectIdentity:
     """Cached snapshot is the same object (identity via `is`)."""
 
     async def test_same_object_returned(self, repo: BridgeRepository) -> None:
-        first = await repo.get_snapshot()
-        second = await repo.get_snapshot()
+        first = await repo.get_all()
+        second = await repo.get_all()
 
         assert first is second
 
@@ -165,11 +165,11 @@ class TestSNAP04MtimeRefresh:
         bridge: InMemoryBridge,
         mtime: FakeMtimeSource,
     ) -> None:
-        await repo.get_snapshot()
+        await repo.get_all()
         assert bridge.call_count == 1
 
         mtime.set_mtime_ns(2)
-        await repo.get_snapshot()
+        await repo.get_all()
 
         assert bridge.call_count == 2
 
@@ -178,10 +178,10 @@ class TestSNAP04MtimeRefresh:
         repo: BridgeRepository,
         mtime: FakeMtimeSource,
     ) -> None:
-        first = await repo.get_snapshot()
+        first = await repo.get_all()
 
         mtime.set_mtime_ns(2)
-        second = await repo.get_snapshot()
+        second = await repo.get_all()
 
         assert first is not second
 
@@ -197,7 +197,7 @@ class TestSNAP05Concurrency:
     async def test_concurrent_reads_single_dump(
         self, repo: BridgeRepository, bridge: InMemoryBridge
     ) -> None:
-        results = await asyncio.gather(*[repo.get_snapshot() for _ in range(10)])
+        results = await asyncio.gather(*[repo.get_all() for _ in range(10)])
 
         assert bridge.call_count == 1
         # All got the same snapshot
@@ -218,7 +218,7 @@ class TestErrorPropagation:
         repo = BridgeRepository(bridge=bridge, mtime_source=mtime)
 
         with pytest.raises(BridgeError, match="connection lost"):
-            await repo.get_snapshot()
+            await repo.get_all()
 
     async def test_validation_error_propagates(self, mtime: FakeMtimeSource) -> None:
         """Invalid data causes Pydantic ValidationError to propagate."""
@@ -226,7 +226,7 @@ class TestErrorPropagation:
         repo = BridgeRepository(bridge=bridge, mtime_source=mtime)
 
         with pytest.raises(ValidationError):
-            await repo.get_snapshot()
+            await repo.get_all()
 
     async def test_mtime_error_propagates(self) -> None:
         """MtimeSource errors propagate raw."""
@@ -236,7 +236,7 @@ class TestErrorPropagation:
         repo = BridgeRepository(bridge=bridge, mtime_source=mtime)
 
         with pytest.raises(OSError, match="filesystem unavailable"):
-            await repo.get_snapshot()
+            await repo.get_all()
 
     async def test_failed_refresh_preserves_none_cache(self, mtime: FakeMtimeSource) -> None:
         """After failed first load, cache stays None; next call retries."""
@@ -245,12 +245,12 @@ class TestErrorPropagation:
         repo = BridgeRepository(bridge=bridge, mtime_source=mtime)
 
         with pytest.raises(BridgeError):
-            await repo.get_snapshot()
+            await repo.get_all()
 
         # Fix the bridge and retry
         bridge.clear_error()
         bridge._data = make_snapshot_dict()
-        snapshot = await repo.get_snapshot()
+        snapshot = await repo.get_all()
         assert len(snapshot.tasks) == 1
 
     async def test_failed_refresh_preserves_old_cache(
@@ -263,36 +263,36 @@ class TestErrorPropagation:
         repo = BridgeRepository(bridge=bridge, mtime_source=mtime)
 
         # First call succeeds
-        first = await repo.get_snapshot()
+        first = await repo.get_all()
 
         # Mtime changes but bridge fails
         mtime.set_mtime_ns(2)
         bridge.set_error(BridgeError("snapshot", "temporary failure"))
 
         with pytest.raises(BridgeError):
-            await repo.get_snapshot()
+            await repo.get_all()
 
         # Mtime changes again, bridge works again
         mtime.set_mtime_ns(3)
         bridge.clear_error()
 
         # Should get a new snapshot (not the old one, since mtime changed)
-        third = await repo.get_snapshot()
+        third = await repo.get_all()
         assert third is not first
 
     async def test_failed_first_load_allows_retry(self, mtime: FakeMtimeSource) -> None:
-        """After first get_snapshot() fails, next call retries successfully."""
+        """After first get_all() fails, next call retries successfully."""
         bridge = InMemoryBridge()
         bridge.set_error(BridgeError("snapshot", "startup failure"))
         repo = BridgeRepository(bridge=bridge, mtime_source=mtime)
 
         with pytest.raises(BridgeError):
-            await repo.get_snapshot()
+            await repo.get_all()
 
         # Fix and retry
         bridge.clear_error()
         bridge._data = make_snapshot_dict()
-        snapshot = await repo.get_snapshot()
+        snapshot = await repo.get_all()
         assert len(snapshot.tasks) == 1
 
 
@@ -308,10 +308,10 @@ class TestConcurrencyEdgeCases:
         self, repo: BridgeRepository, bridge: InMemoryBridge
     ) -> None:
         """Concurrent reads on warm cache are fast and don't re-dump."""
-        await repo.get_snapshot()  # warm up
+        await repo.get_all()  # warm up
         assert bridge.call_count == 1
 
-        results = await asyncio.gather(*[repo.get_snapshot() for _ in range(10)])
+        results = await asyncio.gather(*[repo.get_all() for _ in range(10)])
         assert bridge.call_count == 1
         assert all(r is results[0] for r in results)
 
@@ -372,7 +372,7 @@ class TestInMemoryRepository:
         snapshot = make_snapshot()
         repo = InMemoryRepository(snapshot=snapshot)
 
-        result = await repo.get_snapshot()
+        result = await repo.get_all()
 
         assert result is snapshot
 

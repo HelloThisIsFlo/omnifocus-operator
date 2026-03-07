@@ -1,7 +1,7 @@
-"""DatabaseSnapshot model -- aggregates all OmniFocus entity collections.
+"""AllEntities model -- aggregates all OmniFocus entity collections.
 
-Represents the complete output of the bridge script, containing
-lists of all entity types.
+Container for the complete set of OmniFocus entities returned by
+any repository implementation.
 """
 
 from __future__ import annotations
@@ -18,11 +18,11 @@ if TYPE_CHECKING:
     from omnifocus_operator.models.task import Task
 
 
-class DatabaseSnapshot(OmniFocusBaseModel):
-    """Complete snapshot of OmniFocus database from bridge script.
+class AllEntities(OmniFocusBaseModel):
+    """All OmniFocus entities from a repository.
 
-    Aggregates all five entity collection lists produced by the
-    bridge script's JSON output.
+    Aggregates all five entity collection lists: tasks, projects,
+    tags, folders, and perspectives.
     """
 
     tasks: list[Task]

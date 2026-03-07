@@ -23,7 +23,7 @@ from omnifocus_operator.models.enums import (
 from omnifocus_operator.models.folder import Folder
 from omnifocus_operator.models.perspective import Perspective
 from omnifocus_operator.models.project import Project
-from omnifocus_operator.models.snapshot import DatabaseSnapshot
+from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.models.tag import Tag
 from omnifocus_operator.models.task import Task
 
@@ -56,13 +56,13 @@ Task.model_rebuild(_types_namespace=_ns)
 Project.model_rebuild(_types_namespace=_ns)
 Tag.model_rebuild(_types_namespace=_ns)
 Folder.model_rebuild(_types_namespace=_ns)
-DatabaseSnapshot.model_rebuild(_types_namespace=_ns)
+AllEntities.model_rebuild(_types_namespace=_ns)
 
 __all__ = [
     "ActionableEntity",
+    "AllEntities",
     "AnchorDateKey",
     "Availability",
-    "DatabaseSnapshot",
     "Folder",
     "FolderAvailability",
     "OmniFocusBaseModel",

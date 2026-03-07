@@ -14,7 +14,7 @@ import sys
 
 from omnifocus_operator.bridge._real import DEFAULT_IPC_DIR, RealBridge
 
-from omnifocus_operator.models import DatabaseSnapshot
+from omnifocus_operator.models import AllEntities
 
 
 async def main() -> int:
@@ -42,9 +42,9 @@ async def main() -> int:
 
     print("Response received. Validating snapshot...")
     try:
-        snapshot = DatabaseSnapshot.model_validate(raw)
+        snapshot = AllEntities.model_validate(raw)
     except Exception as exc:
-        print(f"\nERROR: Failed to validate response as DatabaseSnapshot: {exc}")
+        print(f"\nERROR: Failed to validate response as AllEntities: {exc}")
         return 1
 
     print()

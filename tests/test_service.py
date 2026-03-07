@@ -57,7 +57,7 @@ class TestOperatorService:
         from unittest.mock import AsyncMock
 
         mock_repo = AsyncMock()
-        mock_repo.get_snapshot.side_effect = BridgeError("snapshot", "connection lost")
+        mock_repo.get_all.side_effect = BridgeError("snapshot", "connection lost")
         service = OperatorService(repository=mock_repo)
 
         with pytest.raises(BridgeError, match="connection lost"):
