@@ -27,8 +27,8 @@ Requirements for v1.1 HUGE Performance Upgrade. Each maps to roadmap phases.
 
 ### Freshness
 
-- [ ] **FRESH-01**: After a bridge write, server detects SQLite staleness via WAL file `st_mtime_ns` and waits for fresh data (poll every 50ms, 2s timeout)
-- [ ] **FRESH-02**: When WAL file does not exist (clean OmniFocus shutdown), freshness detection falls back to main `.db` file mtime
+- [x] **FRESH-01**: After a bridge write, server detects SQLite staleness via WAL file `st_mtime_ns` and waits for fresh data (poll every 50ms, 2s timeout)
+- [x] **FRESH-02**: When WAL file does not exist (clean OmniFocus shutdown), freshness detection falls back to main `.db` file mtime
 
 ### Fallback
 
@@ -85,8 +85,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SQLITE-02 | Phase 12 | Complete |
 | SQLITE-03 | Phase 12 | Complete |
 | SQLITE-04 | Phase 12 | Complete |
-| FRESH-01 | Phase 12 | Pending |
-| FRESH-02 | Phase 12 | Pending |
+| FRESH-01 | Phase 12 | Complete |
+| FRESH-02 | Phase 12 | Complete |
 | FALL-01 | Phase 13 | Pending |
 | FALL-02 | Phase 13 | Pending |
 | FALL-03 | Phase 13 | Pending |

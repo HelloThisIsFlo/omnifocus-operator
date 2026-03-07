@@ -34,7 +34,7 @@
 
 - [x] **Phase 10: Model Overhaul** - Replace single-winner status enums with two-axis model, remove deprecated fields, update all tests (gap closure in progress) (completed 2026-03-07)
 - [x] **Phase 11: DataSource Protocol** - Abstract read path behind Repository protocol, refactor Repository into package, create test infrastructure (completed 2026-03-07)
-- [ ] **Phase 12: SQLite Reader** - Implement HybridRepository with read-only SQLite access, row-to-model mapping, and WAL-based freshness detection
+- [x] **Phase 12: SQLite Reader** - Implement HybridRepository with read-only SQLite access, row-to-model mapping, and WAL-based freshness detection (completed 2026-03-07)
 - [ ] **Phase 13: Fallback and Integration** - Bridge fallback mode via env var, error-serving when SQLite unavailable, server wiring
 
 ## Phase Details
@@ -120,5 +120,5 @@ Phases execute in numeric order: 10 -> 11 -> 12 -> 13
 | 9. Error-Serving Degraded Mode | v1.0 | 1/1 | Complete | 2026-03-06 |
 | 10. Model Overhaul | 4/4 | Complete    | 2026-03-07 | - |
 | 11. DataSource Protocol | 3/3 | Complete    | 2026-03-07 | - |
-| 12. SQLite Reader | 1/2 | In Progress|  | - |
+| 12. SQLite Reader | 2/2 | Complete   | 2026-03-07 | - |
 | 13. Fallback and Integration | v1.1 | 0/? | Not started | - |
