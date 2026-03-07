@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: HUGE Performance Upgrade
 status: executing
-stopped_at: Completed 10-02-PLAN.md
-last_updated: "2026-03-07T03:19:00.000Z"
-last_activity: 2026-03-07 -- Completed 10-02 (model migration to two-axis status)
+stopped_at: Completed 10-03-PLAN.md (Phase 10 complete)
+last_updated: "2026-03-07T03:27:00.000Z"
+last_activity: 2026-03-07 -- Completed 10-03 (pipeline wiring + bridge cleanup + UAT)
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
-  percent: 67
+  completed_plans: 3
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 10 - Model Overhaul
+**Current focus:** Phase 10 complete -- ready for Phase 11
 
 ## Current Position
 
-Phase: 10 (1 of 4 in v1.1)
-Plan: 03 of 3
-Status: Executing
-Last activity: 2026-03-07 -- Completed 10-02 (model migration to two-axis status)
+Phase: 10 (1 of 4 in v1.1) -- COMPLETE
+Plan: 03 of 3 (all complete)
+Status: Phase 10 complete
+Last activity: 2026-03-07 -- Completed 10-03 (pipeline wiring + bridge cleanup + UAT)
 
-Progress: [██████░░░░] 67%
+Progress: [██████████] 100% (Phase 10)
 
 ## Accumulated Context
 
@@ -43,6 +43,9 @@ Progress: [██████░░░░] 67%
 - Tasks 1+2 committed together to keep tests green at every commit
 - Adapter tests decoupled from shared conftest factories (use local old-format helpers)
 - InMemoryBridge seed data and simulator data updated to new shape pre-adapter-wiring
+- Adapter made idempotent: tasks/projects skip if no status key, tags/folders skip if already snake_case
+- Simulator data stays in new-shape (adapter is no-op for it)
+- UAT validates read-only pipeline (snapshot -> adapter -> Pydantic) rather than creating test entities
 
 ### Pending Todos
 
@@ -60,11 +63,10 @@ Carried from v1.0:
 
 ### Blockers/Concerns
 
-- Phase 10 (Model Overhaul) is highest risk -- 177+ tests break if done as big-bang. Needs `/gsd:research-phase` for incremental migration strategy.
 - Phase 12 (SQLite Reader) needs `/gsd:research-phase` -- column-to-field mapping, timestamp formats, NULL edge cases.
 
 ## Session Continuity
 
-Last session: 2026-03-07T03:19:00.000Z
-Stopped at: Completed 10-02-PLAN.md
-Next action: `/gsd:execute-phase 10` (plan 03)
+Last session: 2026-03-07T03:27:00.000Z
+Stopped at: Completed 10-03-PLAN.md (Phase 10 complete)
+Next action: `/gsd:plan-phase 11` or `/gsd:research-phase 11`

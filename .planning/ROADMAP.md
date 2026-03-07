@@ -32,7 +32,7 @@
 - Integer phases (10, 11, 12, 13): Planned milestone work
 - Decimal phases (e.g., 10.1): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 10: Model Overhaul** - Replace single-winner status enums with two-axis model, remove deprecated fields, update all tests
+- [x] **Phase 10: Model Overhaul** - Replace single-winner status enums with two-axis model, remove deprecated fields, update all tests (completed 2026-03-07)
 - [ ] **Phase 11: DataSource Protocol** - Abstract read path behind DataSource protocol, refactor Repository, create test infrastructure
 - [ ] **Phase 12: SQLite Reader** - Implement SQLiteDataSource with read-only access, row-to-model mapping, and WAL-based freshness detection
 - [ ] **Phase 13: Fallback and Integration** - Bridge fallback mode via env var, error-serving when SQLite unavailable, server wiring
@@ -115,7 +115,7 @@ Phases execute in numeric order: 10 -> 11 -> 12 -> 13
 | 8.1. JS Bridge Script and IPC Overhaul | v1.0 | 3/4 | Complete | 2026-03-05 |
 | 8.2. Model Alignment (BRIDGE-SPEC) | v1.0 | 3/3 | Complete | 2026-03-06 |
 | 9. Error-Serving Degraded Mode | v1.0 | 1/1 | Complete | 2026-03-06 |
-| 10. Model Overhaul | 2/3 | In Progress|  | - |
+| 10. Model Overhaul | 3/3 | Complete   | 2026-03-07 | - |
 | 11. DataSource Protocol | v1.1 | 0/? | Not started | - |
 | 12. SQLite Reader | v1.1 | 0/? | Not started | - |
 | 13. Fallback and Integration | v1.1 | 0/? | Not started | - |
