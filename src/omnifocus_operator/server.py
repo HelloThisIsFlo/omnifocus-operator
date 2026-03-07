@@ -1,4 +1,4 @@
-"""FastMCP server setup, lifespan, and tool registration.
+"""Server module -- FastMCP server for OmniFocus Operator.
 
 The server uses a lifespan context manager to wire the three-layer
 architecture: ``FastMCP tool -> OperatorService -> OmniFocusRepository``.
@@ -25,6 +25,8 @@ from omnifocus_operator.models import DatabaseSnapshot  # noqa: TC001
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
+
+__all__ = ["create_server"]
 
 logger = logging.getLogger("omnifocus_operator")
 

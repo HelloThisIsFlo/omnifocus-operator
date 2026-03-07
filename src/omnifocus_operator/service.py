@@ -1,4 +1,4 @@
-"""OperatorService -- thin passthrough to the repository layer.
+"""Service module -- primary API surface for the MCP server.
 
 The service layer provides the primary API surface for the MCP server.
 Currently a simple delegation to ``OmniFocusRepository``; future phases
@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING, NoReturn
 if TYPE_CHECKING:
     from omnifocus_operator.models.snapshot import DatabaseSnapshot
     from omnifocus_operator.repository import OmniFocusRepository
+
+__all__ = ["ErrorOperatorService", "OperatorService"]
 
 logger = logging.getLogger("omnifocus_operator")
 

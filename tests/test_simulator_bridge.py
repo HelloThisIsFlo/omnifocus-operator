@@ -232,7 +232,7 @@ class TestLifespan:
             "omnifocus_operator.bridge.create_bridge",
             return_value=mock_bridge,
         ):
-            from omnifocus_operator.server._server import _register_tools, app_lifespan
+            from omnifocus_operator.server import _register_tools, app_lifespan
 
             server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
             _register_tools(server)
@@ -259,7 +259,7 @@ class TestLifespan:
             "omnifocus_operator.bridge.create_bridge",
             return_value=mock_bridge,
         ):
-            from omnifocus_operator.server._server import _register_tools, app_lifespan
+            from omnifocus_operator.server import _register_tools, app_lifespan
 
             server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
             _register_tools(server)
@@ -294,7 +294,7 @@ class TestLifespan:
                 mock_sweep,
             ),
         ):
-            from omnifocus_operator.server._server import _register_tools, app_lifespan
+            from omnifocus_operator.server import _register_tools, app_lifespan
 
             server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
             _register_tools(server)

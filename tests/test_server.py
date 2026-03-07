@@ -178,7 +178,7 @@ class TestTOOL01ListAllStructuredOutput:
 
         from omnifocus_operator.bridge.in_memory import InMemoryBridge
         from omnifocus_operator.repository import ConstantMtimeSource, OmniFocusRepository
-        from omnifocus_operator.server._server import _register_tools
+        from omnifocus_operator.server import _register_tools
         from omnifocus_operator.service import OperatorService
 
         task_data = {
@@ -435,7 +435,7 @@ class TestIPC06OrphanSweepWiring:
                 return_value=bridge_with_ipc,
             ),
         ):
-            from omnifocus_operator.server._server import _register_tools, app_lifespan
+            from omnifocus_operator.server import _register_tools, app_lifespan
 
             server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
             _register_tools(server)
@@ -467,7 +467,7 @@ class TestDegradedMode:
             "omnifocus_operator.bridge.create_bridge",
             side_effect=RuntimeError("bridge exploded"),
         ):
-            from omnifocus_operator.server._server import _register_tools, app_lifespan
+            from omnifocus_operator.server import _register_tools, app_lifespan
 
             server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
             _register_tools(server)
@@ -494,7 +494,7 @@ class TestDegradedMode:
             "omnifocus_operator.bridge.create_bridge",
             side_effect=RuntimeError("bridge exploded"),
         ):
-            from omnifocus_operator.server._server import _register_tools, app_lifespan
+            from omnifocus_operator.server import _register_tools, app_lifespan
 
             server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
             _register_tools(server)
@@ -522,7 +522,7 @@ class TestDegradedMode:
             "omnifocus_operator.bridge.create_bridge",
             side_effect=RuntimeError("bridge exploded"),
         ):
-            from omnifocus_operator.server._server import _register_tools, app_lifespan
+            from omnifocus_operator.server import _register_tools, app_lifespan
 
             server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
             _register_tools(server)
