@@ -409,6 +409,98 @@ class TestAdaptRepetitionRule:
         adapt_snapshot(snapshot)
         assert raw["repetitionRule"] is None
 
+    def test_unknown_schedule_type_raises(self) -> None:
+        raw = _old_task(
+            repetitionRule={
+                "scheduleType": "BogusScheduleType",
+                "anchorDateKey": "DueDate",
+                "interval": 7,
+                "steps": 1,
+            }
+        )
+        snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
+        with pytest.raises(ValueError, match="BogusScheduleType"):
+            adapt_snapshot(snapshot)
+
+    def test_unknown_anchor_date_key_raises(self) -> None:
+        raw = _old_task(
+            repetitionRule={
+                "scheduleType": "Regularly",
+                "anchorDateKey": "BogusAnchorKey",
+                "interval": 7,
+                "steps": 1,
+            }
+        )
+        snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
+        with pytest.raises(ValueError, match="BogusAnchorKey"):
+            adapt_snapshot(snapshot)
+
+
+# ---------------------------------------------------------------------------
+# Idempotency -- adapter is no-op on already-adapted data
+# ---------------------------------------------------------------------------
+
+
+class TestAdapterIdempotency:
+    """Adapter is safe to call on already-adapted (new-shape) data."""
+
+    def test_task_without_status_key_is_noop(self) -> None:
+        """Task dict with urgency/availability and no status key is untouched."""
+        raw = {
+            "id": "task-001",
+            "name": "Already Adapted Task",
+            "urgency": "due_soon",
+            "availability": "available",
+            "flagged": True,
+        }
+        original = dict(raw)
+        snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        assert raw == original
+
+    def test_project_without_status_key_is_noop(self) -> None:
+        """Project dict with urgency/availability and no status key is untouched."""
+        raw = {
+            "id": "proj-001",
+            "name": "Already Adapted Project",
+            "urgency": "none",
+            "availability": "blocked",
+            "folder": None,
+        }
+        original = dict(raw)
+        snapshot = {"tasks": [], "projects": [raw], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        assert raw == original
+
+    def test_tag_with_snake_case_status_is_noop(self) -> None:
+        """Tag dict with snake_case status values is untouched."""
+        for status in ("active", "on_hold", "dropped"):
+            raw = {
+                "id": "tag-001",
+                "name": "Already Adapted Tag",
+                "status": status,
+                "childrenAreMutuallyExclusive": False,
+                "parent": None,
+            }
+            original = dict(raw)
+            snapshot = {"tasks": [], "projects": [], "tags": [raw], "folders": []}
+            adapt_snapshot(snapshot)
+            assert raw == original, f"Tag with status={status!r} should be a no-op"
+
+    def test_folder_with_snake_case_status_is_noop(self) -> None:
+        """Folder dict with snake_case status values is untouched."""
+        for status in ("active", "dropped"):
+            raw = {
+                "id": "folder-001",
+                "name": "Already Adapted Folder",
+                "status": status,
+                "parent": None,
+            }
+            original = dict(raw)
+            snapshot = {"tasks": [], "projects": [], "tags": [], "folders": [raw]}
+            adapt_snapshot(snapshot)
+            assert raw == original, f"Folder with status={status!r} should be a no-op"
+
 
 # ---------------------------------------------------------------------------
 # Full snapshot
