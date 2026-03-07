@@ -1180,3 +1180,243 @@ class TestFreshness:
     def test_simulate_write_not_on_protocol(self) -> None:
         """TEMPORARY_simulate_write is on HybridRepository only, not on Repository protocol."""
         assert not hasattr(Repository, "TEMPORARY_simulate_write")
+
+
+# ============================================================================
+# GET-BY-ID TESTS
+# ============================================================================
+
+
+class TestGetTask:
+    """Tests for HybridRepository.get_task() -- single task lookup by ID."""
+
+    @pytest.mark.asyncio
+    async def test_found_returns_task_with_all_fields(self, tmp_path: Path) -> None:
+        """Found task returns a complete Task model with all fields populated."""
+        db_path = create_test_db(
+            tmp_path,
+            tasks=[
+                _minimal_task(
+                    {
+                        "persistentIdentifier": "task-abc",
+                        "name": "Buy milk",
+                        "noteXMLData": _make_note_xml("Oat milk"),
+                        "flagged": 1,
+                        "effectiveFlagged": 1,
+                        "inInbox": 0,
+                        "childrenCount": 2,
+                        "overdue": 1,
+                    }
+                )
+            ],
+            projects=[_minimal_project()],
+        )
+        repo = HybridRepository(db_path=db_path)
+        task = await repo.get_task("task-abc")
+
+        assert task is not None
+        assert task.id == "task-abc"
+        assert task.name == "Buy milk"
+        assert task.note == "Oat milk"
+        assert task.flagged is True
+        assert task.effective_flagged is True
+        assert task.has_children is True
+        assert task.urgency == "overdue"
+        assert task.availability == "available"
+        assert task.added is not None
+        assert task.modified is not None
+
+    @pytest.mark.asyncio
+    async def test_not_found_returns_none(self, tmp_path: Path) -> None:
+        db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
+        repo = HybridRepository(db_path=db_path)
+        result = await repo.get_task("nonexistent-id")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_task_with_project_parent_ref(self, tmp_path: Path) -> None:
+        """Task in a project gets ParentRef with type='project'."""
+        db_path = create_test_db(
+            tmp_path,
+            tasks=[
+                _minimal_task(
+                    {
+                        "persistentIdentifier": "task-in-proj",
+                        "containingProjectInfo": "pi-proj-001",
+                    }
+                )
+            ],
+            projects=[_minimal_project()],
+        )
+        repo = HybridRepository(db_path=db_path)
+        task = await repo.get_task("task-in-proj")
+
+        assert task is not None
+        assert task.parent is not None
+        assert task.parent.type == "project"
+        assert task.parent.id == "proj-001"
+        assert task.parent.name == "Test Project"
+
+    @pytest.mark.asyncio
+    async def test_task_with_task_parent_ref(self, tmp_path: Path) -> None:
+        """Subtask gets ParentRef with type='task'."""
+        db_path = create_test_db(
+            tmp_path,
+            tasks=[
+                _minimal_task(
+                    {
+                        "persistentIdentifier": "subtask-1",
+                        "name": "Subtask",
+                        "parent": "parent-task-1",
+                        "containingProjectInfo": "pi-proj-001",
+                    }
+                ),
+                _minimal_task(
+                    {
+                        "persistentIdentifier": "parent-task-1",
+                        "name": "Parent Task",
+                        "containingProjectInfo": "pi-proj-001",
+                    }
+                ),
+            ],
+            projects=[_minimal_project()],
+        )
+        repo = HybridRepository(db_path=db_path)
+        task = await repo.get_task("subtask-1")
+
+        assert task is not None
+        assert task.parent is not None
+        assert task.parent.type == "task"
+        assert task.parent.id == "parent-task-1"
+        assert task.parent.name == "Parent Task"
+
+    @pytest.mark.asyncio
+    async def test_inbox_task_parent_none(self, tmp_path: Path) -> None:
+        """Inbox task (no project, no parent) has parent=None."""
+        db_path = create_test_db(
+            tmp_path,
+            tasks=[_minimal_task({"persistentIdentifier": "inbox-task", "inInbox": 1})],
+        )
+        repo = HybridRepository(db_path=db_path)
+        task = await repo.get_task("inbox-task")
+
+        assert task is not None
+        assert task.parent is None
+
+    @pytest.mark.asyncio
+    async def test_task_with_tags(self, tmp_path: Path) -> None:
+        """Task tags are included in get_task result."""
+        db_path = create_test_db(
+            tmp_path,
+            tasks=[_minimal_task({"persistentIdentifier": "tagged-task"})],
+            tags=[
+                _minimal_tag({"persistentIdentifier": "tag-a", "name": "Errand"}),
+                _minimal_tag({"persistentIdentifier": "tag-b", "name": "Home"}),
+            ],
+            task_tags=[
+                {"task": "tagged-task", "tag": "tag-a"},
+                {"task": "tagged-task", "tag": "tag-b"},
+            ],
+        )
+        repo = HybridRepository(db_path=db_path)
+        task = await repo.get_task("tagged-task")
+
+        assert task is not None
+        assert len(task.tags) == 2
+        tag_names = {t.name for t in task.tags}
+        assert tag_names == {"Errand", "Home"}
+
+    @pytest.mark.asyncio
+    async def test_does_not_return_project_as_task(self, tmp_path: Path) -> None:
+        """A project's task row is excluded from get_task (has ProjectInfo)."""
+        db_path = create_test_db(
+            tmp_path,
+            projects=[_minimal_project({"persistentIdentifier": "proj-as-task"})],
+        )
+        repo = HybridRepository(db_path=db_path)
+        result = await repo.get_task("proj-as-task")
+        assert result is None
+
+
+class TestGetProject:
+    """Tests for HybridRepository.get_project() -- single project lookup by ID."""
+
+    @pytest.mark.asyncio
+    async def test_found_returns_project_with_all_fields(self, tmp_path: Path) -> None:
+        db_path = create_test_db(
+            tmp_path,
+            projects=[
+                _minimal_project(
+                    {
+                        "persistentIdentifier": "proj-xyz",
+                        "name": "My Project",
+                        "project_info": {
+                            "pk": "pi-proj-xyz",
+                            "task": "proj-xyz",
+                            "lastReviewDate": _EARLIER_CF,
+                            "nextReviewDate": _NOW_CF,
+                            "reviewRepetitionString": "@2w",
+                            "nextTask": "next-1",
+                            "folder": "fold-1",
+                            "effectiveStatus": "active",
+                        },
+                    }
+                )
+            ],
+        )
+        repo = HybridRepository(db_path=db_path)
+        proj = await repo.get_project("proj-xyz")
+
+        assert proj is not None
+        assert proj.id == "proj-xyz"
+        assert proj.name == "My Project"
+        assert proj.url == "omnifocus:///project/proj-xyz"
+        assert proj.review_interval.steps == 2
+        assert proj.review_interval.unit == "weeks"
+        assert proj.next_task == "next-1"
+        assert proj.folder == "fold-1"
+
+    @pytest.mark.asyncio
+    async def test_not_found_returns_none(self, tmp_path: Path) -> None:
+        db_path = create_test_db(tmp_path, projects=[_minimal_project()])
+        repo = HybridRepository(db_path=db_path)
+        result = await repo.get_project("nonexistent-id")
+        assert result is None
+
+
+class TestGetTag:
+    """Tests for HybridRepository.get_tag() -- single tag lookup by ID."""
+
+    @pytest.mark.asyncio
+    async def test_found_returns_tag_with_all_fields(self, tmp_path: Path) -> None:
+        db_path = create_test_db(
+            tmp_path,
+            tags=[
+                _minimal_tag(
+                    {
+                        "persistentIdentifier": "tag-xyz",
+                        "name": "Errands",
+                        "childrenAreMutuallyExclusive": 1,
+                        "parent": "tag-parent",
+                    }
+                )
+            ],
+        )
+        repo = HybridRepository(db_path=db_path)
+        tag = await repo.get_tag("tag-xyz")
+
+        assert tag is not None
+        assert tag.id == "tag-xyz"
+        assert tag.name == "Errands"
+        assert tag.url == "omnifocus:///tag/tag-xyz"
+        assert tag.children_are_mutually_exclusive is True
+        assert tag.parent == "tag-parent"
+        assert tag.added is not None
+        assert tag.modified is not None
+
+    @pytest.mark.asyncio
+    async def test_not_found_returns_none(self, tmp_path: Path) -> None:
+        db_path = create_test_db(tmp_path, tags=[_minimal_tag()])
+        repo = HybridRepository(db_path=db_path)
+        result = await repo.get_tag("nonexistent-id")
+        assert result is None
