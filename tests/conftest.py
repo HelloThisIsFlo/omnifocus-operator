@@ -58,7 +58,8 @@ def make_task_dict(**overrides: Any) -> dict[str, Any]:
 def make_project_dict(**overrides: Any) -> dict[str, Any]:
     """Factory for new-shape project dict (camelCase keys).
 
-    Returns a complete project dict with all 29 model fields.
+    Returns a complete project dict with all 28 model fields.
+    (Project does NOT have effectiveCompletionDate -- that's Task-only.)
     """
     defaults: dict[str, Any] = {
         # Identity (3) + lifecycle from OmniFocusEntity
@@ -72,9 +73,8 @@ def make_project_dict(**overrides: Any) -> dict[str, Any]:
         # Two-axis status (2)
         "urgency": "none",
         "availability": "available",
-        # Completion dates (2)
+        # Completion date (1 -- effectiveCompletionDate is Task-only)
         "completionDate": None,
-        "effectiveCompletionDate": None,
         # Flags (2)
         "flagged": False,
         "effectiveFlagged": False,

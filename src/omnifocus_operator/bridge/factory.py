@@ -85,7 +85,6 @@ def create_bridge(bridge_type: str) -> Bridge:
                             "effectiveDueDate": None,
                             "effectiveDeferDate": None,
                             "completionDate": None,
-                            "effectiveCompletionDate": None,
                             "plannedDate": None,
                             "effectivePlannedDate": None,
                             "dropDate": None,

@@ -138,15 +138,14 @@ class TestFolderStatus:
 
 
 class TestScheduleType:
-    """ScheduleType enum has exactly 3 members with snake_case values."""
+    """ScheduleType enum has exactly 2 members with snake_case values."""
 
     def test_schedule_type_values(self) -> None:
         assert ScheduleType.REGULARLY == "regularly"
         assert ScheduleType.FROM_COMPLETION == "from_completion"
-        assert ScheduleType.NONE == "none"
 
     def test_schedule_type_member_count(self) -> None:
-        assert len(ScheduleType) == 3
+        assert len(ScheduleType) == 2
 
 
 class TestAnchorDateKey:
@@ -277,7 +276,6 @@ class TestActionableEntityDates:
         assert entity.effective_due_date is None
         assert entity.effective_defer_date is None
         assert entity.completion_date is None
-        assert entity.effective_completion_date is None
         assert entity.planned_date is None
         assert entity.effective_planned_date is None
         assert entity.drop_date is None
@@ -354,9 +352,9 @@ class TestFactoryFunctions:
         assert d["urgency"] == "overdue"
 
     def test_make_project_dict_field_count(self) -> None:
-        """make_project_dict returns exactly 29 fields (new model shape)."""
+        """make_project_dict returns exactly 28 fields (no effectiveCompletionDate)."""
         d = make_project_dict()
-        assert len(d) == 29
+        assert len(d) == 28
 
     def test_make_tag_dict_field_count(self) -> None:
         """make_tag_dict returns exactly 8 fields (new model shape)."""
@@ -509,10 +507,10 @@ class TestTaskModel:
 
 
 class TestProjectModel:
-    """Project model parses all 29 fields including nested objects."""
+    """Project model parses all 28 fields including nested objects."""
 
     def test_project_from_bridge_json(self) -> None:
-        """Parse make_project_dict(), verify all 29 fields."""
+        """Parse make_project_dict(), verify all 28 fields."""
         data = make_project_dict()
         project = Project.model_validate(data)
 
@@ -540,8 +538,8 @@ class TestProjectModel:
         assert project.folder is None
         assert project.tags == []
 
-        # Verify total field count
-        assert len(Project.model_fields) == 29
+        # Verify total field count (no effectiveCompletionDate -- Task-only)
+        assert len(Project.model_fields) == 28
 
         # Serialize back and verify camelCase keys
         dumped = project.model_dump(mode="json", by_alias=True)

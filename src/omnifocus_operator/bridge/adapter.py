@@ -47,12 +47,14 @@ _FOLDER_STATUS_MAP: dict[str, str] = {
     "Dropped": "dropped",
 }
 
-# ScheduleType -> snake_case
+# ScheduleType -> snake_case (bridge "None" means no repetition -- nullify the rule)
 _SCHEDULE_TYPE_MAP: dict[str, str] = {
     "Regularly": "regularly",
     "FromCompletion": "from_completion",
-    "None": "none",
 }
+
+# Sentinel for bridge scheduleType "None" -- means no real repetition
+_SCHEDULE_TYPE_NONE = "None"
 
 # AnchorDateKey -> snake_case
 _ANCHOR_DATE_KEY_MAP: dict[str, str] = {
@@ -71,7 +73,7 @@ _TASK_DEAD_FIELDS = (
     "shouldUseFloatingTimeZone",
 )
 
-_PROJECT_EXTRA_DEAD_FIELDS = ("containsSingletonActions",)
+_PROJECT_EXTRA_DEAD_FIELDS = ("containsSingletonActions", "effectiveCompletionDate")
 
 _TAG_DEAD_FIELDS = ("allowsNextAction", "active", "effectiveActive")
 
@@ -87,13 +89,21 @@ _FOLDER_STATUS_VALUES = frozenset(_FOLDER_STATUS_MAP.values())
 # ---------------------------------------------------------------------------
 
 
-def _adapt_repetition_rule(rule: dict[str, Any] | None) -> None:
-    """Map ScheduleType and AnchorDateKey to snake_case in a repetition rule dict."""
+def _adapt_repetition_rule(raw: dict[str, Any]) -> None:
+    """Map ScheduleType and AnchorDateKey to snake_case in an entity's repetition rule.
+
+    If the bridge sends scheduleType ``"None"``, the entire ``repetitionRule``
+    is nullified (OmniFocus uses this to indicate no real repetition).
+    """
+    rule = raw.get("repetitionRule")
     if rule is None:
         return
 
     schedule_type = rule.get("scheduleType")
     if schedule_type is not None:
+        if schedule_type == _SCHEDULE_TYPE_NONE:
+            raw["repetitionRule"] = None
+            return
         if schedule_type not in _SCHEDULE_TYPE_MAP:
             msg = f"Unknown scheduleType: {schedule_type!r}"
             raise ValueError(msg)
@@ -124,7 +134,7 @@ def _adapt_task(raw: dict[str, Any]) -> None:
     for key in _TASK_DEAD_FIELDS:
         raw.pop(key, None)
 
-    _adapt_repetition_rule(raw.get("repetitionRule"))
+    _adapt_repetition_rule(raw)
 
 
 def _adapt_project(raw: dict[str, Any]) -> None:
@@ -153,7 +163,7 @@ def _adapt_project(raw: dict[str, Any]) -> None:
     for key in _PROJECT_EXTRA_DEAD_FIELDS:
         raw.pop(key, None)
 
-    _adapt_repetition_rule(raw.get("repetitionRule"))
+    _adapt_repetition_rule(raw)
 
 
 def _adapt_tag(raw: dict[str, Any]) -> None:

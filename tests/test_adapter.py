@@ -266,6 +266,7 @@ class TestAdaptProject:
             "sequential",
             "shouldUseFloatingTimeZone",
             "containsSingletonActions",
+            "effectiveCompletionDate",
         ):
             assert field not in raw, f"Dead field '{field}' should be removed"
 
@@ -389,7 +390,8 @@ class TestAdaptRepetitionRule:
         assert raw["repetitionRule"]["scheduleType"] == "from_completion"
         assert raw["repetitionRule"]["anchorDateKey"] == "defer_date"
 
-    def test_none_schedule_type(self) -> None:
+    def test_none_schedule_type_nullifies_rule(self) -> None:
+        """scheduleType "None" from bridge means no real repetition -- nullify the rule."""
         raw = _old_task(
             repetitionRule={
                 "scheduleType": "None",
@@ -400,8 +402,7 @@ class TestAdaptRepetitionRule:
         )
         snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
         adapt_snapshot(snapshot)
-        assert raw["repetitionRule"]["scheduleType"] == "none"
-        assert raw["repetitionRule"]["anchorDateKey"] == "planned_date"
+        assert raw["repetitionRule"] is None
 
     def test_null_repetition_rule_ignored(self) -> None:
         raw = _old_task(repetitionRule=None)

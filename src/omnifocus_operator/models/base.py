@@ -72,7 +72,6 @@ class ActionableEntity(OmniFocusEntity):
     effective_due_date: AwareDatetime | None = None
     effective_defer_date: AwareDatetime | None = None
     completion_date: AwareDatetime | None = None
-    effective_completion_date: AwareDatetime | None = None
     planned_date: AwareDatetime | None = None
     effective_planned_date: AwareDatetime | None = None
     drop_date: AwareDatetime | None = None

@@ -5,7 +5,7 @@ Values use snake_case strings matching the new two-axis model:
 - Availability: work readiness axis (available, blocked, completed, dropped)
 - TagStatus: tag lifecycle (active, on_hold, dropped)
 - FolderStatus: folder lifecycle (active, dropped)
-- ScheduleType: repetition schedule type (regularly, from_completion, none)
+- ScheduleType: repetition schedule type (regularly, from_completion)
 - AnchorDateKey: anchor date for repetition rules (due_date, defer_date, planned_date)
 """
 
@@ -49,7 +49,6 @@ class ScheduleType(StrEnum):
 
     REGULARLY = "regularly"
     FROM_COMPLETION = "from_completion"
-    NONE = "none"
 
 
 class AnchorDateKey(StrEnum):
