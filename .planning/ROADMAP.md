@@ -34,7 +34,7 @@
 
 - [x] **Phase 10: Model Overhaul** - Replace single-winner status enums with two-axis model, remove deprecated fields, update all tests (gap closure in progress) (completed 2026-03-07)
 - [x] **Phase 11: DataSource Protocol** - Abstract read path behind Repository protocol, refactor Repository into package, create test infrastructure (completed 2026-03-07)
-- [ ] **Phase 12: SQLite Reader** - Implement SQLiteDataSource with read-only access, row-to-model mapping, and WAL-based freshness detection
+- [ ] **Phase 12: SQLite Reader** - Implement HybridRepository with read-only SQLite access, row-to-model mapping, and WAL-based freshness detection
 - [ ] **Phase 13: Fallback and Integration** - Bridge fallback mode via env var, error-serving when SQLite unavailable, server wiring
 
 ## Phase Details
@@ -81,11 +81,11 @@ Plans:
   3. Server returns valid data when OmniFocus is not running
   4. After a bridge write, the server detects WAL file mtime change and waits for fresh data before responding (poll every 50ms, 2s timeout)
   5. When WAL file does not exist, freshness falls back to main `.db` file mtime
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 12-01: TBD
-- [ ] 12-02: TBD
+- [ ] 12-01-PLAN.md -- HybridRepository core: SQLite queries, row-to-model mapping, test fixtures
+- [ ] 12-02-PLAN.md -- WAL-based freshness detection, repository wiring, UAT script
 
 ### Phase 13: Fallback and Integration
 **Goal**: OmniJS bridge remains available as a manual fallback, and server enters error-serving mode when SQLite is unavailable
@@ -120,5 +120,5 @@ Phases execute in numeric order: 10 -> 11 -> 12 -> 13
 | 9. Error-Serving Degraded Mode | v1.0 | 1/1 | Complete | 2026-03-06 |
 | 10. Model Overhaul | 4/4 | Complete    | 2026-03-07 | - |
 | 11. DataSource Protocol | 3/3 | Complete    | 2026-03-07 | - |
-| 12. SQLite Reader | v1.1 | 0/? | Not started | - |
+| 12. SQLite Reader | v1.1 | 0/2 | Not started | - |
 | 13. Fallback and Integration | v1.1 | 0/? | Not started | - |
