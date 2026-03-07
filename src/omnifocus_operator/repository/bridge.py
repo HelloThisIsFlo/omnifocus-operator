@@ -21,6 +21,9 @@ from omnifocus_operator.models.snapshot import AllEntities
 if TYPE_CHECKING:
     from omnifocus_operator.bridge.mtime import MtimeSource
     from omnifocus_operator.bridge.protocol import Bridge
+    from omnifocus_operator.models.project import Project
+    from omnifocus_operator.models.tag import Tag
+    from omnifocus_operator.models.task import Task
 
 __all__ = ["BridgeRepository"]
 
@@ -68,6 +71,21 @@ class BridgeRepository:
                 self._cached = await self._refresh(current_mtime)
 
             return self._cached
+
+    async def get_task(self, task_id: str) -> Task | None:
+        """Return a single task by ID, or None if not found."""
+        all_entities = await self.get_all()
+        return next((t for t in all_entities.tasks if t.id == task_id), None)
+
+    async def get_project(self, project_id: str) -> Project | None:
+        """Return a single project by ID, or None if not found."""
+        all_entities = await self.get_all()
+        return next((p for p in all_entities.projects if p.id == project_id), None)
+
+    async def get_tag(self, tag_id: str) -> Tag | None:
+        """Return a single tag by ID, or None if not found."""
+        all_entities = await self.get_all()
+        return next((t for t in all_entities.tags if t.id == tag_id), None)
 
     async def _refresh(self, current_mtime: int) -> AllEntities:
         """Fetch fresh data from the bridge and update cache state.

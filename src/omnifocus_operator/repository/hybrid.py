@@ -22,7 +22,10 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from pathlib import Path
 
+from omnifocus_operator.models.project import Project
 from omnifocus_operator.models.snapshot import AllEntities
+from omnifocus_operator.models.tag import Tag
+from omnifocus_operator.models.task import Task
 
 __all__ = ["HybridRepository"]
 
@@ -515,3 +518,126 @@ class HybridRepository:
             }
         finally:
             conn.close()
+
+    # -- Single-entity reads --
+
+    def _read_task(self, task_id: str) -> dict[str, Any] | None:
+        """Read a single task by ID from SQLite. Returns None if not found."""
+        conn = sqlite3.connect(f"file:{self._db_path}?mode=ro", uri=True)
+        conn.row_factory = sqlite3.Row
+        try:
+            row = conn.execute(
+                _TASKS_SQL + " AND t.persistentIdentifier = ?",
+                (task_id,),
+            ).fetchone()
+            if row is None:
+                return None
+
+            # Build tag lookup for this task
+            tag_name_lookup: dict[str, str] = {}
+            for tr in conn.execute(_TAGS_SQL).fetchall():
+                tag_name_lookup[tr["persistentIdentifier"]] = tr["name"]
+
+            tag_rows = conn.execute(
+                "SELECT tag FROM TaskToTag WHERE task = ?", (task_id,)
+            ).fetchall()
+            tag_list: list[dict[str, str]] = [
+                {"id": tr["tag"], "name": tag_name_lookup.get(tr["tag"], "")} for tr in tag_rows
+            ]
+            task_tag_map: dict[str, list[dict[str, str]]] = {task_id: tag_list}
+
+            # Build project_info lookup for parent resolution
+            project_info_lookup: dict[str, dict[str, str]] = {}
+            containing_pi = row["containingProjectInfo"]
+            if containing_pi is not None:
+                pi_row = conn.execute(
+                    "SELECT pi.pk, pi.task, t.name FROM ProjectInfo pi "
+                    "JOIN Task t ON pi.task = t.persistentIdentifier "
+                    "WHERE pi.pk = ?",
+                    (containing_pi,),
+                ).fetchone()
+                if pi_row is not None:
+                    project_info_lookup[pi_row["pk"]] = {
+                        "id": pi_row["task"],
+                        "name": pi_row["name"],
+                    }
+
+            # Build task_name lookup for parent task resolution
+            task_name_lookup: dict[str, str] = {}
+            parent_task_id = row["parent"]
+            if parent_task_id is not None:
+                name_row = conn.execute(
+                    "SELECT name FROM Task WHERE persistentIdentifier = ?",
+                    (parent_task_id,),
+                ).fetchone()
+                if name_row is not None:
+                    task_name_lookup[parent_task_id] = name_row["name"]
+
+            return _map_task_row(row, task_tag_map, project_info_lookup, task_name_lookup)
+        finally:
+            conn.close()
+
+    def _read_project(self, project_id: str) -> dict[str, Any] | None:
+        """Read a single project by ID from SQLite. Returns None if not found."""
+        conn = sqlite3.connect(f"file:{self._db_path}?mode=ro", uri=True)
+        conn.row_factory = sqlite3.Row
+        try:
+            row = conn.execute(
+                _PROJECTS_SQL + " WHERE t.persistentIdentifier = ?",
+                (project_id,),
+            ).fetchone()
+            if row is None:
+                return None
+
+            # Build tag lookup for this project's task ID
+            tag_name_lookup: dict[str, str] = {}
+            for tr in conn.execute(_TAGS_SQL).fetchall():
+                tag_name_lookup[tr["persistentIdentifier"]] = tr["name"]
+
+            tag_rows = conn.execute(
+                "SELECT tag FROM TaskToTag WHERE task = ?", (project_id,)
+            ).fetchall()
+            tag_list: list[dict[str, str]] = [
+                {"id": tr["tag"], "name": tag_name_lookup.get(tr["tag"], "")} for tr in tag_rows
+            ]
+            task_tag_map: dict[str, list[dict[str, str]]] = {project_id: tag_list}
+
+            return _map_project_row(row, task_tag_map)
+        finally:
+            conn.close()
+
+    def _read_tag(self, tag_id: str) -> dict[str, Any] | None:
+        """Read a single tag by ID from SQLite. Returns None if not found."""
+        conn = sqlite3.connect(f"file:{self._db_path}?mode=ro", uri=True)
+        conn.row_factory = sqlite3.Row
+        try:
+            row = conn.execute(
+                "SELECT * FROM Context WHERE persistentIdentifier = ?",
+                (tag_id,),
+            ).fetchone()
+            if row is None:
+                return None
+            return _map_tag_row(row)
+        finally:
+            conn.close()
+
+    async def get_task(self, task_id: str) -> Task | None:
+        """Return a single task by ID, or None if not found."""
+        result = await asyncio.to_thread(self._read_task, task_id)
+        if result is None:
+            return None
+        return Task.model_validate(result)
+
+    async def get_project(self, project_id: str) -> Project | None:
+        """Return a single project by ID, or None if not found."""
+        result = await asyncio.to_thread(self._read_project, project_id)
+        if result is None:
+            return None
+        return Project.model_validate(result)
+
+    async def get_tag(self, tag_id: str) -> Tag | None:
+        """Return a single tag by ID, or None if not found."""
+        result = await asyncio.to_thread(self._read_tag, tag_id)
+        if result is None:
+            return None
+        return Tag.model_validate(result)
