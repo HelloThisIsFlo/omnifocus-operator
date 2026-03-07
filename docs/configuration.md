@@ -15,9 +15,7 @@ Which data access strategy to use for reads.
 | `sqlite` | **Default.** Direct SQLite cache read (~46ms). OmniFocus does not need to be running. Full availability model including `blocked` status. |
 | `bridge` | Fallback. Uses OmniJS bridge via IPC. Slower (~2-5s) and degraded: `availability` is reduced to `available`/`completed`/`dropped` (no `blocked` — OmniJS doesn't expose sequential/dependency information). |
 
-Use `bridge` when the SQLite cache path changes after an OmniFocus update, or when a new OmniFocus version breaks the cache format.
-
-**Status:** Coming in Phase 13. Currently all reads go through the bridge.
+Use `bridge` as a temporary workaround when the SQLite cache path changes after an OmniFocus update, or when a new OmniFocus version breaks the cache format. Switch back to `sqlite` once you've set the correct path via `OMNIFOCUS_SQLITE_PATH`.
 
 ### `OMNIFOCUS_LOG_LEVEL`
 
@@ -34,6 +32,12 @@ You'd almost never touch these. They exist for non-standard setups and debugging
 Path to the OmniFocus `.ofocus` database directory. Auto-detected from the default OmniFocus location. Only set this if your OmniFocus data lives somewhere unusual (e.g., synced to a custom location).
 
 **Default:** `~/Library/Group Containers/34YW5A73Q8.com.omnigroup.OmniFocus/com.omnigroup.OmniFocus/OmniFocus.ofocus`
+
+### `OMNIFOCUS_SQLITE_PATH`
+
+Path to the OmniFocus SQLite cache database file. Auto-detected from the default location. Only set this if auto-detection fails (e.g., after an OmniFocus update changes the cache path).
+
+**Default:** `~/Library/Group Containers/34YW5A73Q8.com.omnigroup.OmniFocus/com.omnigroup.OmniFocus/OmniFocus.ofocus/OmniFocusDatabase.db`
 
 ### `OMNIFOCUS_BRIDGE`
 
