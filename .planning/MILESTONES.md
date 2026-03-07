@@ -1,5 +1,26 @@
 # Milestones
 
+## v1.1 HUGE Performance Upgrade (Shipped: 2026-03-07)
+
+**Phases:** 4 (10-13) | **Plans:** 11 executed
+**Requirements:** 18/18 satisfied
+**Tests:** 313 pytest, 26 Vitest, UAT passed (all phases)
+**Timeline:** 1 day (2026-03-07) | 88 commits
+**LOC:** ~14,144 Python (+13,192 / -2,252 vs v1.0)
+**Git range:** `v1.0..v1.1`
+
+**Key accomplishments:**
+1. Two-axis status model (Urgency + Availability) replacing single-winner TaskStatus/ProjectStatus enums across all entities
+2. Repository protocol abstracting read path -- BridgeRepository, InMemoryRepository, and HybridRepository are swappable
+3. HybridRepository reading all 5 entity types directly from OmniFocus SQLite cache (~46ms full snapshot)
+4. WAL-based read-after-write freshness detection (50ms poll, 2s timeout, fallback to .db mtime)
+5. Repository factory with OMNIFOCUS_REPOSITORY env var routing (sqlite default, bridge fallback)
+6. Error-serving degraded mode when SQLite unavailable with actionable fix instructions
+
+**Delivered:** Direct SQLite cache access as primary read path, eliminating OmniFocus process dependency for reads and providing dramatically faster, more accurate data retrieval with a richer status model.
+
+---
+
 ## v1.0 Foundation (Shipped: 2026-03-07)
 
 **Phases:** 11 (1-9 including 8.1, 8.2) | **Plans:** 22 executed (1 skipped)

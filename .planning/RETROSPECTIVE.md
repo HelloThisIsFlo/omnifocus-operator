@@ -49,6 +49,52 @@
 
 ---
 
+## Milestone: v1.1 -- HUGE Performance Upgrade
+
+**Shipped:** 2026-03-07
+**Phases:** 4 | **Plans:** 11 executed
+
+### What Was Built
+- Two-axis status model (Urgency + Availability) replacing single-winner enums across all entities
+- Repository protocol with structural typing -- BridgeRepository, InMemoryRepository, HybridRepository
+- HybridRepository reading all 5 entity types from OmniFocus SQLite cache (~46ms)
+- WAL-based freshness detection (50ms poll, 2s timeout, .db mtime fallback)
+- Repository factory with env-var routing and error-serving for missing SQLite
+- Bridge adapter mapping old bridge format to new model shape (dict lookup tables, in-place mutation)
+
+### What Worked
+- Incremental model migration (not big-bang) kept 177+ tests green at every step -- Phase 10's 4-plan approach proved correct
+- Research from v1.0 (RESULTS.md, RESULTS_pydantic-model.md) was exhaustive enough that SQLite implementation had zero schema surprises
+- Gap closure plans (10-04, 11-03) caught integration issues that would have been painful later -- Nyquist validation forced them early
+- Adapter idempotency decision (tasks/projects skip if no status key) let simulator data pass through unchanged
+- Entire milestone completed in a single day (88 commits) -- tight scope + solid research = fast execution
+
+### What Was Inefficient
+- Gap closure plans could have been folded into original planning if requirements had been more precise upfront
+- Some SUMMARY.md files lack `requirements_completed` frontmatter -- gsd-tools couldn't auto-extract accomplishments
+- Progress table in ROADMAP.md had misaligned columns for v1.1 phases (missing milestone column)
+
+### Patterns Established
+- Repository protocol with `@runtime_checkable` for isinstance checks in tests
+- Dict-based adapter mapping tables for all enum transformations
+- HybridRepository: numeric string detection for SQLite TEXT column affinity timestamps
+- Factory pattern with env-var routing for repository selection
+- TEMPORARY_ method prefix (uppercase) to signal unstable API surfaces
+- Bridge-reachable status constants as explicit tuples for regression testing
+
+### Key Lessons
+1. **Incremental migration > big-bang** -- the 4-plan Phase 10 approach kept tests green at every commit and made debugging trivial
+2. **Research-first approach continues to pay off** -- zero SQLite schema surprises because RESULTS.md was thorough
+3. **Gap closure is a feature, not a bug** -- Nyquist validation caught real integration gaps early
+4. **Adapter idempotency is essential** -- making the adapter safe to run on already-transformed data prevented a whole class of bugs
+
+### Cost Observations
+- Model mix: ~80% opus (research, planning, complex phases), ~20% sonnet (execution, validation)
+- Sessions: ~5-8 across 1 day
+- Notable: 88 commits in a single day -- fastest milestone yet, driven by excellent research artifacts from v1.0
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -56,14 +102,18 @@
 | Milestone | Phases | Plans | Key Change |
 |-----------|--------|-------|------------|
 | v1.0 | 11 | 22 | First milestone -- established GSD + TDD workflow |
+| v1.1 | 4 | 11 | Fastest milestone -- research artifacts enabled single-day execution |
 
 ### Cumulative Quality
 
 | Milestone | Tests | Coverage | Tech Debt Items |
 |-----------|-------|----------|-----------------|
 | v1.0 | 203+ (177 pytest + 26 vitest) | ~98% | 4 (all low severity) |
+| v1.1 | 339 (313 pytest + 26 vitest) | ~98% | 0 |
 
 ### Top Lessons (Verified Across Milestones)
 
-1. Research-first approach prevents rework (verified by zero model surprises in v1.0)
+1. Research-first approach prevents rework (verified in v1.0 and v1.1 -- zero surprises both times)
 2. Fine-grained plans (~4 min avg) keep momentum and reduce context-switching cost
+3. Incremental migration beats big-bang (verified in v1.1 Phase 10 -- tests green at every commit)
+4. Gap closure plans catch integration issues early when forced by validation (verified in v1.1)
