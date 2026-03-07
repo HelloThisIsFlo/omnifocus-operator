@@ -245,12 +245,12 @@ class TestLifespan:
 
             await _run_with_client(server, _check)
 
-    async def test_lifespan_simulator_can_serve_list_all(
+    async def test_lifespan_simulator_can_serve_get_all(
         self,
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
     ) -> None:
-        """Server with simulator bridge can serve list_all tool calls."""
+        """Server with simulator bridge can serve get_all tool calls."""
         monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge-only")
         monkeypatch.setenv("OMNIFOCUS_BRIDGE", "simulator")
         monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
@@ -267,7 +267,7 @@ class TestLifespan:
             _register_tools(server)
 
             async def _check(session: ClientSession) -> None:
-                result = await session.call_tool("list_all")
+                result = await session.call_tool("get_all")
                 assert result.structuredContent is not None
 
             await _run_with_client(server, _check)

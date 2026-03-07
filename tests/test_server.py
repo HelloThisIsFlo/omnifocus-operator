@@ -84,7 +84,7 @@ async def run_with_client(
 class TestARCH01ThreeLayerArchitecture:
     """Verify the MCP tool -> OperatorService -> Repository path."""
 
-    async def test_list_all_returns_data_through_all_layers(
+    async def test_get_all_returns_data_through_all_layers(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -95,7 +95,7 @@ class TestARCH01ThreeLayerArchitecture:
         server = create_server()
 
         async def _check(session: ClientSession) -> None:
-            result = await session.call_tool("list_all")
+            result = await session.call_tool("get_all")
             assert result.structuredContent is not None
             keys = set(result.structuredContent.keys())
             assert keys == {"tasks", "projects", "tags", "folders", "perspectives"}
@@ -122,7 +122,7 @@ class TestARCH02RepositoryInjection:
         server = create_server()
 
         async def _check(session: ClientSession) -> None:
-            result = await session.call_tool("list_all")
+            result = await session.call_tool("get_all")
             assert result.structuredContent is not None
 
         await run_with_client(server, _check)
@@ -140,7 +140,7 @@ class TestARCH02RepositoryInjection:
         server = create_server()
 
         async def _check(session: ClientSession) -> None:
-            result = await session.call_tool("list_all")
+            result = await session.call_tool("get_all")
             assert result.isError is True
             text = result.content[0].text  # type: ignore[union-attr]
             assert "failed to start" in text.lower()
@@ -151,14 +151,14 @@ class TestARCH02RepositoryInjection:
 
 
 # ---------------------------------------------------------------------------
-# TOOL-01: list_all structured output
+# TOOL-01: get_all structured output
 # ---------------------------------------------------------------------------
 
 
 class TestTOOL01ListAllStructuredOutput:
-    """Verify list_all returns structuredContent with all entity collections."""
+    """Verify get_all returns structuredContent with all entity collections."""
 
-    async def test_list_all_returns_structured_content(
+    async def test_get_all_returns_structured_content(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -169,14 +169,14 @@ class TestTOOL01ListAllStructuredOutput:
         server = create_server()
 
         async def _check(session: ClientSession) -> None:
-            result = await session.call_tool("list_all")
+            result = await session.call_tool("get_all")
             assert result.structuredContent is not None
             expected_keys = {"tasks", "projects", "tags", "folders", "perspectives"}
             assert set(result.structuredContent.keys()) == expected_keys
 
         await run_with_client(server, _check)
 
-    async def test_list_all_structured_content_is_camelcase(
+    async def test_get_all_structured_content_is_camelcase(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -222,7 +222,7 @@ class TestTOOL01ListAllStructuredOutput:
         _register_tools(patched_server)
 
         async def _check(session: ClientSession) -> None:
-            result = await session.call_tool("list_all")
+            result = await session.call_tool("get_all")
             assert result.structuredContent is not None
             tasks = result.structuredContent["tasks"]
             assert len(tasks) == 1
@@ -242,9 +242,9 @@ class TestTOOL01ListAllStructuredOutput:
 
 
 class TestTOOL02Annotations:
-    """Verify list_all tool annotations."""
+    """Verify get_all tool annotations."""
 
-    async def test_list_all_has_read_only_hint(
+    async def test_get_all_has_read_only_hint(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -256,13 +256,13 @@ class TestTOOL02Annotations:
 
         async def _check(session: ClientSession) -> None:
             tools_result = await session.list_tools()
-            list_all = next(t for t in tools_result.tools if t.name == "list_all")
-            assert list_all.annotations is not None
-            assert list_all.annotations.readOnlyHint is True
+            get_all = next(t for t in tools_result.tools if t.name == "get_all")
+            assert get_all.annotations is not None
+            assert get_all.annotations.readOnlyHint is True
 
         await run_with_client(server, _check)
 
-    async def test_list_all_has_idempotent_hint(
+    async def test_get_all_has_idempotent_hint(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -274,9 +274,9 @@ class TestTOOL02Annotations:
 
         async def _check(session: ClientSession) -> None:
             tools_result = await session.list_tools()
-            list_all = next(t for t in tools_result.tools if t.name == "list_all")
-            assert list_all.annotations is not None
-            assert list_all.annotations.idempotentHint is True
+            get_all = next(t for t in tools_result.tools if t.name == "get_all")
+            assert get_all.annotations is not None
+            assert get_all.annotations.idempotentHint is True
 
         await run_with_client(server, _check)
 
@@ -287,9 +287,9 @@ class TestTOOL02Annotations:
 
 
 class TestTOOL03OutputSchema:
-    """Verify list_all tool has outputSchema with camelCase."""
+    """Verify get_all tool has outputSchema with camelCase."""
 
-    async def test_list_all_has_output_schema(
+    async def test_get_all_has_output_schema(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -301,8 +301,8 @@ class TestTOOL03OutputSchema:
 
         async def _check(session: ClientSession) -> None:
             tools_result = await session.list_tools()
-            list_all = next(t for t in tools_result.tools if t.name == "list_all")
-            assert list_all.outputSchema is not None
+            get_all = next(t for t in tools_result.tools if t.name == "get_all")
+            assert get_all.outputSchema is not None
 
         await run_with_client(server, _check)
 
@@ -318,8 +318,8 @@ class TestTOOL03OutputSchema:
 
         async def _check(session: ClientSession) -> None:
             tools_result = await session.list_tools()
-            list_all = next(t for t in tools_result.tools if t.name == "list_all")
-            schema = list_all.outputSchema
+            get_all = next(t for t in tools_result.tools if t.name == "get_all")
+            schema = get_all.outputSchema
             assert schema is not None
 
             # Top-level properties should have the 5 collection names
@@ -458,7 +458,7 @@ class TestDegradedMode:
             _register_tools(server)
 
             async def _check(session: ClientSession) -> None:
-                result = await session.call_tool("list_all")
+                result = await session.call_tool("get_all")
                 assert result.isError is True
                 text = result.content[0].text  # type: ignore[union-attr]
                 assert "failed to start" in text.lower()
@@ -485,7 +485,7 @@ class TestDegradedMode:
             with caplog.at_level(logging.ERROR):
 
                 async def _check(session: ClientSession) -> None:
-                    await session.call_tool("list_all")
+                    await session.call_tool("get_all")
 
                 await run_with_client(server, _check)
 
@@ -511,7 +511,7 @@ class TestDegradedMode:
             with caplog.at_level(logging.WARNING):
 
                 async def _check(session: ClientSession) -> None:
-                    await session.call_tool("list_all")
+                    await session.call_tool("get_all")
 
                 await run_with_client(server, _check)
 

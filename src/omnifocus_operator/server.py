@@ -80,7 +80,7 @@ def _register_tools(mcp: FastMCP) -> None:
     @mcp.tool(
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
-    async def list_all(ctx: Context[Any, Any, Any]) -> AllEntities:
+    async def get_all(ctx: Context[Any, Any, Any]) -> AllEntities:
         """Return the full OmniFocus database as structured data.
 
         Returns all tasks, projects, tags, folders, and perspectives as a

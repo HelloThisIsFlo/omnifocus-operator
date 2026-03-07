@@ -307,12 +307,12 @@ class TestMcpIntegration:
     """MCP server integration with SimulatorBridge + live simulator."""
 
     @pytest.mark.timeout(30)
-    async def test_list_all_with_simulator(
+    async def test_get_all_with_simulator(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """MCP list_all tool returns simulator data via full stack."""
+        """MCP get_all tool returns simulator data via full stack."""
         proc = _start_simulator(tmp_path)
         try:
             monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge-only")
@@ -324,13 +324,13 @@ class TestMcpIntegration:
             server = create_server()
 
             async def _check(session: ClientSession) -> None:
-                # Verify list_all tool is available
+                # Verify get_all tool is available
                 tools_result = await session.list_tools()
                 tool_names = [t.name for t in tools_result.tools]
-                assert "list_all" in tool_names
+                assert "get_all" in tool_names
 
-                # Call list_all and verify simulator data comes through
-                result = await session.call_tool("list_all")
+                # Call get_all and verify simulator data comes through
+                result = await session.call_tool("get_all")
                 assert result.structuredContent is not None
                 keys = set(result.structuredContent.keys())
                 assert keys == {"tasks", "projects", "tags", "folders", "perspectives"}
