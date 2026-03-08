@@ -25,14 +25,14 @@ Requirements for Writes & Lookups milestone. Each maps to roadmap phases.
 
 ### Task Creation
 
-- [ ] **CREA-01**: Agent can create a task with a name (minimum required field)
-- [ ] **CREA-02**: Agent can assign a task to a parent (project ID or task ID); server resolves the type
-- [ ] **CREA-03**: Agent can set tags, due_date, defer_date, planned_date, flagged, estimated_minutes, note on creation
-- [ ] **CREA-04**: Task with no parent (or parent omitted) goes to inbox
-- [ ] **CREA-05**: Service validates inputs before bridge execution (name required, parent ID exists, tags exist)
+- [x] **CREA-01**: Agent can create a task with a name (minimum required field)
+- [x] **CREA-02**: Agent can assign a task to a parent (project ID or task ID); server resolves the type
+- [x] **CREA-03**: Agent can set tags, due_date, defer_date, planned_date, flagged, estimated_minutes, note on creation
+- [x] **CREA-04**: Task with no parent (or parent omitted) goes to inbox
+- [x] **CREA-05**: Service validates inputs before bridge execution (name required, parent ID exists, tags exist)
 - [x] **CREA-06**: Tool returns per-item result with success status, created ID, and name
 - [x] **CREA-07**: API accepts arrays (`add_tasks([...])`) with single-item constraint initially
-- [ ] **CREA-08**: Snapshot is invalidated after successful write; next read returns fresh data
+- [x] **CREA-08**: Snapshot is invalidated after successful write; next read returns fresh data
 
 ### Task Editing
 
@@ -102,14 +102,14 @@ Requirements for Writes & Lookups milestone. Each maps to roadmap phases.
 | LOOK-04 | Phase 14 | Complete |
 | MODL-01 | Phase 14 | Complete |
 | MODL-02 | Phase 14 | Complete |
-| CREA-01 | Phase 15 | Pending |
-| CREA-02 | Phase 15 | Pending |
-| CREA-03 | Phase 15 | Pending |
-| CREA-04 | Phase 15 | Pending |
-| CREA-05 | Phase 15 | Pending |
+| CREA-01 | Phase 15 | Complete |
+| CREA-02 | Phase 15 | Complete |
+| CREA-03 | Phase 15 | Complete |
+| CREA-04 | Phase 15 | Complete |
+| CREA-05 | Phase 15 | Complete |
 | CREA-06 | Phase 15 | Complete |
 | CREA-07 | Phase 15 | Complete |
-| CREA-08 | Phase 15 | Pending |
+| CREA-08 | Phase 15 | Complete |
 | EDIT-01 | Phase 16 | Pending |
 | EDIT-02 | Phase 16 | Pending |
 | EDIT-03 | Phase 16 | Pending |

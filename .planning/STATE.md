@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Writes & Lookups
 status: in_progress
-stopped_at: Plan 15-01 complete
-last_updated: "2026-03-08T00:17:29Z"
-last_activity: 2026-03-08 -- Plan 15-01 complete
+stopped_at: Plan 15-02 complete
+last_updated: "2026-03-08T00:27:00Z"
+last_activity: 2026-03-08 -- Plan 15-02 complete
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 5
-  completed_plans: 3
-  percent: 37
+  completed_plans: 4
+  percent: 50
 ---
 
 # Project State
@@ -26,25 +26,25 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 ## Current Position
 
 Phase: 15 of 17 (Write Pipeline & Task Creation) -- second of 4 v1.2 phases
-Plan: 1 of 3
-Status: Plan 15-01 complete, ready for 15-02
-Last activity: 2026-03-08 -- Plan 15-01 complete
+Plan: 2 of 3
+Status: Plan 15-02 complete, ready for 15-03
+Last activity: 2026-03-08 -- Plan 15-02 complete
 
-Progress: [███░░░░░░░] 37%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3 (v1.2)
+- Total plans completed: 4 (v1.2)
 - Average duration: 5min
-- Total execution time: 14min
+- Total execution time: 21min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 14 | 2/2 | 10min | 5min |
-| 15 | 1/3 | 4min | 4min |
+| 15 | 2/3 | 11min | 5.5min |
 
 ## Accumulated Context
 
@@ -60,6 +60,9 @@ Progress: [███░░░░░░░] 37%
 - [Phase 14]: Not-found raises ValueError -> MCP SDK wraps as isError: true response
 - [Phase 15]: Write models inherit OmniFocusBaseModel for consistent camelCase serialization
 - [Phase 15]: Bridge.js handleAddTask receives tag IDs (not names) -- resolution stays in Python service layer
+- [Phase 15]: Repository.add_task takes resolved_tag_ids kwarg -- tag resolution in service layer
+- [Phase 15]: Factory uses create_bridge() for SAFE-01 compliance in hybrid mode
+- [Phase 15]: BridgeRepository invalidates cache (sets _cached=None) on write
 
 ### Pending Todos
 
@@ -82,6 +85,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-08T00:17:29Z
-Stopped at: Completed 15-01-PLAN.md
-Next action: Execute 15-02-PLAN.md (repository + service layer)
+Last session: 2026-03-08T00:27:00Z
+Stopped at: Completed 15-02-PLAN.md
+Next action: Execute 15-03-PLAN.md (MCP tool registration)
