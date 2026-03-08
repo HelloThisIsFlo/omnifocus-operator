@@ -693,6 +693,151 @@ class TestEditTask:
         result = await service.edit_task(TaskEditSpec(id="task-001", name="Updated"))
         assert result.warnings is None
 
+    async def test_note_null_clears_note(self) -> None:
+        """note=None maps to empty string (null-means-clear)."""
+        from omnifocus_operator.models.write import TaskEditSpec
+
+        snapshot = make_snapshot(
+            tasks=[make_task_dict(id="task-001", name="Task", note="Some note")]
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(TaskEditSpec(id="task-001", note=None))
+        assert result.success is True
+        task = await repo.get_task("task-001")
+        assert task is not None
+        assert task.note == ""
+
+    async def test_tags_null_clears_all_tags(self) -> None:
+        """tags=None clears all tags (null-means-clear)."""
+        from omnifocus_operator.models.write import TaskEditSpec
+
+        from .conftest import make_tag_dict
+
+        snapshot = make_snapshot(
+            tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])],
+            tags=[make_tag_dict(id="tag-a", name="A")],
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(TaskEditSpec(id="task-001", tags=None))
+        assert result.success is True
+        task = await repo.get_task("task-001")
+        assert task is not None
+        assert task.tags == []
+
+    async def test_warning_edit_completed_task(self) -> None:
+        """Editing a completed task produces a warm warning."""
+        from omnifocus_operator.models.write import TaskEditSpec
+
+        snapshot = make_snapshot(
+            tasks=[make_task_dict(id="task-001", name="Done Task", availability="completed")]
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(TaskEditSpec(id="task-001", name="Renamed"))
+        assert result.warnings is not None
+        assert any("completed" in w and "confirm with the user" in w for w in result.warnings)
+
+    async def test_warning_edit_dropped_task(self) -> None:
+        """Editing a dropped task produces a warm warning."""
+        from omnifocus_operator.models.write import TaskEditSpec
+
+        snapshot = make_snapshot(
+            tasks=[make_task_dict(id="task-001", name="Dropped Task", availability="dropped")]
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(TaskEditSpec(id="task-001", name="Renamed"))
+        assert result.warnings is not None
+        assert any("dropped" in w and "confirm with the user" in w for w in result.warnings)
+
+    async def test_warning_addtags_duplicate(self) -> None:
+        """Adding a tag already on the task produces a warning."""
+        from omnifocus_operator.models.write import TaskEditSpec
+
+        from .conftest import make_tag_dict
+
+        snapshot = make_snapshot(
+            tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])],
+            tags=[make_tag_dict(id="tag-a", name="A")],
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(TaskEditSpec(id="task-001", add_tags=["A"]))
+        assert result.warnings is not None
+        assert any("already on this task" in w for w in result.warnings)
+        # Tag is still present (operation still succeeds)
+        task = await repo.get_task("task-001")
+        assert task is not None
+        assert any(t.id == "tag-a" for t in task.tags)
+
+    async def test_warning_addtags_duplicate_in_add_remove(self) -> None:
+        """Adding a tag already present in add_remove mode produces a warning."""
+        from omnifocus_operator.models.write import TaskEditSpec
+
+        from .conftest import make_tag_dict
+
+        snapshot = make_snapshot(
+            tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])],
+            tags=[
+                make_tag_dict(id="tag-a", name="A"),
+                make_tag_dict(id="tag-b", name="B"),
+            ],
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(
+            TaskEditSpec(id="task-001", add_tags=["A"], remove_tags=["A"])
+        )
+        assert result.warnings is not None
+        assert any("already on this task" in w for w in result.warnings)
+        # Should NOT warn "was not on this task" for A since A IS on the task
+        assert not any("was not on this task" in w for w in result.warnings)
+
+    async def test_warning_empty_edit(self) -> None:
+        """Empty edit (only id, no fields) returns warning without calling bridge."""
+        from omnifocus_operator.models.write import TaskEditSpec
+
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(TaskEditSpec(id="task-001"))
+        assert result.success is True
+        assert result.warnings is not None
+        assert any("No changes specified" in w for w in result.warnings)
+
+    async def test_noop_detection_same_name(self) -> None:
+        """Editing name to same value triggers no-op detection."""
+        from omnifocus_operator.models.write import TaskEditSpec
+
+        snapshot = make_snapshot(tasks=[make_task_dict(id="task-001", name="Foo")])
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(TaskEditSpec(id="task-001", name="Foo"))
+        assert result.success is True
+        assert result.warnings is not None
+        assert any("No changes detected" in w for w in result.warnings)
+
+    async def test_noop_detection_different_name(self) -> None:
+        """Editing name to different value does not trigger no-op warning."""
+        from omnifocus_operator.models.write import TaskEditSpec
+
+        snapshot = make_snapshot(tasks=[make_task_dict(id="task-001", name="Foo")])
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(TaskEditSpec(id="task-001", name="Bar"))
+        assert result.warnings is None
+
 
 # ---------------------------------------------------------------------------
 # ConstantMtimeSource
