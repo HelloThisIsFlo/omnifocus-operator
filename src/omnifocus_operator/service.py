@@ -15,7 +15,13 @@ if TYPE_CHECKING:
     from omnifocus_operator.models.snapshot import AllEntities
     from omnifocus_operator.models.tag import Tag
     from omnifocus_operator.models.task import Task
-    from omnifocus_operator.models.write import TaskCreateResult, TaskCreateSpec
+    from omnifocus_operator.models.write import (
+        MoveToSpec,
+        TaskCreateResult,
+        TaskCreateSpec,
+        TaskEditResult,
+        TaskEditSpec,
+    )
     from omnifocus_operator.repository import Repository
 
 __all__ = ["ErrorOperatorService", "OperatorService"]
@@ -83,6 +89,175 @@ class OperatorService:
             resolved_tag_ids = await self._resolve_tags(spec.tags)
 
         return await self._repository.add_task(spec, resolved_tag_ids=resolved_tag_ids)
+
+    async def edit_task(self, spec: TaskEditSpec) -> TaskEditResult:
+        """Edit a task with validation and delegation to repository.
+
+        Validates task existence, name, resolves tags and parent/moveTo,
+        checks for cycles, builds minimal payload, and delegates to
+        repository.edit_task.
+
+        Raises
+        ------
+        ValueError
+            If task not found, name empty, parent not found, anchor not
+            found, or move would create a cycle.
+        """
+        from omnifocus_operator.models.write import TaskEditResult, _Unset
+
+        # 1. Verify task exists
+        task = await self._repository.get_task(spec.id)
+        if task is None:
+            msg = f"Task not found: {spec.id}"
+            raise ValueError(msg)
+
+        # 2. Validate name (if provided)
+        if not isinstance(spec.name, _Unset) and (not spec.name or not spec.name.strip()):
+            msg = "Task name cannot be empty"
+            raise ValueError(msg)
+
+        # 3. Build payload with only non-UNSET fields
+        payload: dict[str, object] = {"id": spec.id}
+
+        # Simple fields: (spec_attr, payload_key)
+        _simple_fields = [
+            ("name", "name"),
+            ("note", "note"),
+            ("flagged", "flagged"),
+            ("estimated_minutes", "estimatedMinutes"),
+        ]
+        for attr, key in _simple_fields:
+            value = getattr(spec, attr)
+            if not isinstance(value, _Unset):
+                payload[key] = value
+
+        # Date fields: serialize to ISO string if not None
+        _date_fields = [
+            ("due_date", "dueDate"),
+            ("defer_date", "deferDate"),
+            ("planned_date", "plannedDate"),
+        ]
+        for attr, key in _date_fields:
+            value = getattr(spec, attr)
+            if not isinstance(value, _Unset):
+                payload[key] = value.isoformat() if value is not None else None
+
+        # 4. Handle tags
+        warnings: list[str] = []
+
+        has_replace = not isinstance(spec.tags, _Unset)
+        has_add = not isinstance(spec.add_tags, _Unset)
+        has_remove = not isinstance(spec.remove_tags, _Unset)
+
+        if has_replace:
+            # Replace mode -- tags is list[str] here (not _Unset)
+            assert isinstance(spec.tags, list)
+            resolved_ids = await self._resolve_tags(spec.tags) if spec.tags else []
+            payload["tagMode"] = "replace"
+            payload["tagIds"] = resolved_ids
+        elif has_add and has_remove:
+            # Add + remove mode
+            assert isinstance(spec.add_tags, list)
+            assert isinstance(spec.remove_tags, list)
+            add_ids = await self._resolve_tags(spec.add_tags) if spec.add_tags else []
+            remove_ids = await self._resolve_tags(spec.remove_tags) if spec.remove_tags else []
+            # Warnings for removing tags not on task
+            current_tag_ids = {t.id for t in task.tags}
+            for i, tag_name in enumerate(spec.remove_tags):
+                if remove_ids[i] not in current_tag_ids:
+                    warnings.append(
+                        f"Tag '{tag_name}' was not on this task"
+                        " -- to skip tag changes, omit removeTags"
+                    )
+            payload["tagMode"] = "add_remove"
+            payload["addTagIds"] = add_ids
+            payload["removeTagIds"] = remove_ids
+        elif has_add:
+            # Add-only mode
+            assert isinstance(spec.add_tags, list)
+            add_ids = await self._resolve_tags(spec.add_tags) if spec.add_tags else []
+            payload["tagMode"] = "add"
+            payload["tagIds"] = add_ids
+        elif has_remove:
+            # Remove-only mode
+            assert isinstance(spec.remove_tags, list)
+            remove_ids = await self._resolve_tags(spec.remove_tags) if spec.remove_tags else []
+            # Warnings for removing tags not on task
+            current_tag_ids = {t.id for t in task.tags}
+            for i, tag_name in enumerate(spec.remove_tags):
+                if remove_ids[i] not in current_tag_ids:
+                    warnings.append(
+                        f"Tag '{tag_name}' was not on this task"
+                        " -- to skip tag changes, omit removeTags"
+                    )
+            payload["tagMode"] = "remove"
+            payload["removeTagIds"] = remove_ids
+
+        # 5. Handle moveTo
+        if not isinstance(spec.move_to, _Unset):
+            move_to_spec: MoveToSpec = spec.move_to
+            move_to_dict: dict[str, object] = {}
+
+            # Find which key is set
+            for position_key in ("beginning", "ending"):
+                value = getattr(move_to_spec, position_key)
+                if not isinstance(value, _Unset):
+                    if value is None:
+                        # Move to inbox
+                        move_to_dict = {"position": position_key, "containerId": None}
+                    else:
+                        # Resolve container
+                        await self._resolve_parent(value)
+                        move_to_dict = {"position": position_key, "containerId": value}
+
+                        # Cycle detection: check if container is a task
+                        container_task = await self._repository.get_task(value)
+                        if container_task is not None:
+                            await self._check_cycle(spec.id, value)
+
+            for position_key in ("before", "after"):
+                value = getattr(move_to_spec, position_key)
+                if not isinstance(value, _Unset):
+                    # Validate anchor exists
+                    anchor = await self._repository.get_task(value)
+                    if anchor is None:
+                        msg = f"Anchor task not found: {value}"
+                        raise ValueError(msg)
+                    move_to_dict = {"position": position_key, "anchorId": value}
+
+            payload["moveTo"] = move_to_dict
+
+        # 6. Delegate to repository
+        result = await self._repository.edit_task(payload)
+
+        # 7. Return result
+        return TaskEditResult(
+            success=True,
+            id=result["id"],
+            name=result["name"],
+            warnings=warnings or None,
+        )
+
+    async def _check_cycle(self, task_id: str, container_id: str) -> None:
+        """Check if moving task_id under container_id creates a cycle.
+
+        Walks the parent chain from container_id upward. If task_id is
+        found, the move would create a circular reference.
+        """
+        all_data = await self._repository.get_all()
+        task_map = {t.id: t for t in all_data.tasks}
+
+        current = container_id
+        while current is not None:
+            if current == task_id:
+                msg = "Cannot move task: would create circular reference"
+                raise ValueError(msg)
+            t = task_map.get(current)
+            if t is None or t.parent is None:
+                break
+            if t.parent.type != "task":
+                break
+            current = t.parent.id
 
     async def _resolve_parent(self, parent_id: str) -> str:
         """Resolve parent ID to project or task. Raises ValueError if neither found."""
