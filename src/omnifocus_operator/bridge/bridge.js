@@ -247,6 +247,103 @@ function handleAddTask(params) {
     return { id: task.id.primaryKey, name: task.name };
 }
 
+function handleEditTask(params) {
+    var task = Task.byIdentifier(params.id);
+    if (!task) {
+        throw new Error("Task not found: " + params.id);
+    }
+
+    // Field updates -- hasOwnProperty for falsy-safe checks
+    if (params.hasOwnProperty("name")) task.name = params.name;
+    if (params.hasOwnProperty("note")) task.note = params.note;
+    if (params.hasOwnProperty("flagged")) task.flagged = params.flagged;
+    if (params.hasOwnProperty("estimatedMinutes"))
+        task.estimatedMinutes = params.estimatedMinutes;
+    if (params.hasOwnProperty("dueDate"))
+        task.dueDate = params.dueDate ? new Date(params.dueDate) : null;
+    if (params.hasOwnProperty("deferDate"))
+        task.deferDate = params.deferDate ? new Date(params.deferDate) : null;
+    if (params.hasOwnProperty("plannedDate"))
+        task.plannedDate = params.plannedDate
+            ? new Date(params.plannedDate)
+            : null;
+
+    // Tag management
+    if (params.hasOwnProperty("tagMode")) {
+        if (params.tagMode === "replace") {
+            task.clearTags();
+            if (params.tagIds && params.tagIds.length > 0) {
+                var replaceObjs = params.tagIds.map(function (id) {
+                    var tag = Tag.byIdentifier(id);
+                    if (!tag) throw new Error("Tag not found: " + id);
+                    return tag;
+                });
+                task.addTags(replaceObjs);
+            }
+        } else if (params.tagMode === "add") {
+            var addObjs = params.tagIds.map(function (id) {
+                var tag = Tag.byIdentifier(id);
+                if (!tag) throw new Error("Tag not found: " + id);
+                return tag;
+            });
+            task.addTags(addObjs);
+        } else if (params.tagMode === "remove") {
+            var removeObjs = params.tagIds.map(function (id) {
+                var tag = Tag.byIdentifier(id);
+                if (!tag) throw new Error("Tag not found: " + id);
+                return tag;
+            });
+            task.removeTags(removeObjs);
+        } else if (params.tagMode === "add_remove") {
+            // Process removals first, then additions
+            if (params.removeTagIds && params.removeTagIds.length > 0) {
+                var rmObjs = params.removeTagIds.map(function (id) {
+                    var tag = Tag.byIdentifier(id);
+                    if (!tag) throw new Error("Tag not found: " + id);
+                    return tag;
+                });
+                task.removeTags(rmObjs);
+            }
+            if (params.addTagIds && params.addTagIds.length > 0) {
+                var addObjs2 = params.addTagIds.map(function (id) {
+                    var tag = Tag.byIdentifier(id);
+                    if (!tag) throw new Error("Tag not found: " + id);
+                    return tag;
+                });
+                task.addTags(addObjs2);
+            }
+        }
+    }
+
+    // Movement
+    if (params.hasOwnProperty("moveTo")) {
+        var mv = params.moveTo;
+        var location;
+        if (mv.position === "beginning" || mv.position === "ending") {
+            if (mv.containerId === null) {
+                location = inbox[mv.position];
+            } else {
+                var container =
+                    Project.byIdentifier(mv.containerId) ||
+                    Task.byIdentifier(mv.containerId);
+                if (!container) {
+                    throw new Error("Container not found: " + mv.containerId);
+                }
+                location = container[mv.position];
+            }
+        } else if (mv.position === "before" || mv.position === "after") {
+            var anchor = Task.byIdentifier(mv.anchorId);
+            if (!anchor) {
+                throw new Error("Anchor task not found: " + mv.anchorId);
+            }
+            location = anchor[mv.position];
+        }
+        moveTasks([task], location);
+    }
+
+    return { id: task.id.primaryKey, name: task.name };
+}
+
 // --- Dispatch ---
 
 function dispatch(ipcDir, filePrefix) {
@@ -260,6 +357,12 @@ function dispatch(ipcDir, filePrefix) {
         } else if (operation === "add_task") {
             var result = handleAddTask(request.params);
             writeResponse(ipcDir, filePrefix, { success: true, data: result });
+        } else if (operation === "edit_task") {
+            var editResult = handleEditTask(request.params);
+            writeResponse(ipcDir, filePrefix, {
+                success: true,
+                data: editResult,
+            });
         } else {
             writeResponse(ipcDir, filePrefix, {
                 success: false,
@@ -297,6 +400,7 @@ if (typeof module !== "undefined") {
         writeResponse: writeResponse,
         handleGetAll: handleGetAll,
         handleAddTask: handleAddTask,
+        handleEditTask: handleEditTask,
         dispatch: dispatch,
         d: d,
         pk: pk,
