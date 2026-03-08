@@ -3,15 +3,15 @@
 ## Layer Diagram
 
 ```
-MCP Tool (list_all)
+MCP Tools (get_all, get_task, get_project, get_tag, add_tasks, edit_tasks)
     |
-OperatorService          -- orchestration, future caching policies
+OperatorService              -- validation, parent/tag resolution, delegation
     |
-Repository (protocol)    -- async get_all() -> AllEntities
+Repository (protocol)        -- async reads + writes -> AllEntities, Task, etc.
     |
-    +-- BridgeRepository    (production: Bridge + MtimeSource + adapter, with caching)
-    +-- InMemoryRepository  (testing: returns pre-built snapshot)
-    +-- SQLiteRepository    (Phase 12: direct DB read, ~46ms)
+    +-- HybridRepository     (production: SQLite reads + Bridge writes)
+    +-- BridgeRepository     (fallback: Bridge for both reads and writes)
+    +-- InMemoryRepository   (testing: in-memory snapshot, synthetic writes)
 ```
 
 ## Package Structure
@@ -19,61 +19,70 @@ Repository (protocol)    -- async get_all() -> AllEntities
 ```
 omnifocus_operator/
     bridge/          -- OmniFocus communication (IPC, in-memory, simulator)
-    repository/      -- Data access protocol + implementations
-    models/          -- Pydantic models (snapshot, entities, enums)
-    server.py        -- FastMCP wiring (concrete implementation selection)
-    service.py       -- Service layer (depends on Repository protocol only)
+    repository/      -- Data access protocol + implementations + factory
+    models/          -- Pydantic models (entities, enums, read/write specs)
+    simulator/       -- Mock OmniFocus simulator for IPC testing
+    server.py        -- FastMCP tool registration + wiring
+    service.py       -- Validation, resolution, delegation to repository
 ```
 
-## Why Repository, Not DataSource
+## Repository Protocol
 
-- Repository implies querying/filtering -- future `get_tasks(filters)` (v1.2+)
-- DataSource implies raw data access -- too thin an abstraction
-- Repository is the richer contract for how consumers interact with data
+Structural typing (no inheritance required). Current contract:
+
+- `get_all()` -> `AllEntities` -- full snapshot (tasks, projects, folders, tags)
+- `get_task(id)` / `get_project(id)` / `get_tag(id)` -> single entity or None
+- `add_task(spec, resolved_tag_ids)` -> `TaskCreateResult`
+- `edit_task(spec, ...)` -> `TaskEditResult` (Phase 16, planned)
+
+Three implementations: HybridRepository (production), BridgeRepository (fallback), InMemoryRepository (tests).
 
 ## Method Naming Convention
 
-- `get_all()` -> `AllEntities`: structured container with all entity types (tasks, projects, folders, tags)
-- `list_*(filters)` -> flat list of one entity type (e.g., `list_tasks(status=...)`)
-- `get_*` = heterogeneous structured return; `list_*` = homogeneous filtered collection
+- `get_all()` -> `AllEntities`: structured container with all entity types
+- `get_*` by ID -> single entity lookup
+- `add_*` / `edit_*` -> write operations
 - `AllEntities` (not `DatabaseSnapshot`) -- no caching/snapshot semantics at the protocol level
 
 ## Why Flat Packages (bridge/ and repository/ as peers)
 
 - Bridge is a general OmniFocus communication channel, not just data access
-- Future milestones: perspective switching, UI actions, write operations -- all via Bridge directly
+- Write operations go through Bridge (repository delegates)
 - `repository/` depends on `bridge/` (never reverse)
-- Keeping them as siblings avoids false nesting (`repository/bridge/` would imply ownership)
+- Keeping them as siblings avoids false nesting
 
 ## Dependency Direction
 
 - `service.py` -> `Repository` protocol (never concrete implementations)
-- `server.py` -> concrete `BridgeRepository` + `Bridge` + `MtimeSource` (wiring only)
-- `repository/bridge.py` -> `bridge/` package (Bridge protocol, MtimeSource, adapter)
+- `server.py` -> concrete implementations + factory (wiring only)
+- `repository/hybrid.py` -> `bridge/` package (Bridge for writes, SQLite for reads)
+- `repository/bridge.py` -> `bridge/` package (Bridge for everything)
 - `repository/in_memory.py` -> `models/` only (zero bridge dependency)
 
-## Caching Strategy
+## Read Path
 
-- **BridgeRepository**: mtime-based cache invalidation (fallback mode)
-  - Checks file mtime before each read; serves cached snapshot if unchanged
-  - Concurrent reads coalesce into a single bridge dump
-- **InMemoryRepository**: no caching (returns constructor snapshot as-is)
-- **SQLiteRepository** (Phase 12): no caching (SQLite ~46ms is fast enough)
-- **Primary read path** (Phase 12+): SQLite direct, no cache layer needed
+- **HybridRepository** (default): SQLite cache (~46ms full snapshot, OmniFocus not required)
+  - WAL-based freshness detection: 50ms poll, 2s timeout after writes
+  - Marks stale after writes; next read waits for fresh WAL mtime
+- **BridgeRepository** (fallback via `OMNIFOCUS_REPOSITORY=bridge`): OmniJS bridge dump
+  - mtime-based cache invalidation, concurrent reads coalesce
+- **InMemoryRepository** (tests): returns constructor snapshot, no I/O
 
 ## Write Pipeline (v1.2)
 
-- Writes go through Repository protocol -> Bridge (service validates, bridge executes)
-- **HybridRepository**: reads from SQLite, writes via Bridge, marks stale after writes
-- Service layer validates before bridge execution: parent exists, tags exist, name non-empty
+- Writes flow: MCP Tool -> Service (validate) -> Repository -> Bridge (execute) -> invalidate cache
+- Service validates before bridge execution: task/parent exists, tags exist, name non-empty
 - Tag resolution in service: case-insensitive name match, ID fallback, ambiguity error with IDs
 - Parent resolution in service: try `get_project` first, then `get_task` -- **project takes precedence** (intentional, deterministic)
+- Bridge returns minimal result; service wraps into typed result model
+- HybridRepository marks stale after write; BridgeRepository clears cache
 
 ## Patch Semantics (edit_tasks)
 
 - Three-way field distinction: omit = no change, null = clear, value = set
 - Pydantic sentinel pattern (UNSET) distinguishes "not provided" from "explicitly null"
 - Clearable fields: dates, note, estimated_minutes. Value-only: name, flagged
+- Bridge payload only includes non-UNSET fields; bridge.js uses `hasOwnProperty()` to detect presence
 
 ## Task Movement (moveTo)
 
@@ -96,6 +105,12 @@ omnifocus_operator/
 - Write results include optional `warnings` array for no-ops
 - Hints teach agents patch semantics: "Tag 'X' was not on this task -- omit remove_tags to skip"
 - Design principle: LLMs learn in-context from tool responses, so warnings serve as runtime documentation
+
+## Two-Axis Status Model
+
+- Urgency: `overdue`, `due_soon`, `none` -- time-based, computed from dates
+- Availability: `available`, `blocked`, `completed`, `dropped` -- lifecycle state
+- Replaces single-winner status enum from v1.0; matches OmniFocus internal representation
 
 ## Deferred Decisions
 
