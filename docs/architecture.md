@@ -61,8 +61,42 @@ omnifocus_operator/
 - **SQLiteRepository** (Phase 12): no caching (SQLite ~46ms is fast enough)
 - **Primary read path** (Phase 12+): SQLite direct, no cache layer needed
 
+## Write Pipeline (v1.2)
+
+- Writes go through Repository protocol -> Bridge (service validates, bridge executes)
+- **HybridRepository**: reads from SQLite, writes via Bridge, marks stale after writes
+- Service layer validates before bridge execution: parent exists, tags exist, name non-empty
+- Tag resolution in service: case-insensitive name match, ID fallback, ambiguity error with IDs
+- Parent resolution in service: try `get_project` first, then `get_task` -- **project takes precedence** (intentional, deterministic)
+
+## Patch Semantics (edit_tasks)
+
+- Three-way field distinction: omit = no change, null = clear, value = set
+- Pydantic sentinel pattern (UNSET) distinguishes "not provided" from "explicitly null"
+- Clearable fields: dates, note, estimated_minutes. Value-only: name, flagged
+
+## Task Movement (moveTo)
+
+"Key IS the position" design -- `moveTo` object has exactly one key:
+
+```
+{"moveTo": {"ending": "proj-123"}}       -- last child of container
+{"moveTo": {"beginning": "proj-123"}}    -- first child of container
+{"moveTo": {"after": "task-sibling"}}    -- after this sibling (parent inferred)
+{"moveTo": {"before": "task-sibling"}}   -- before this sibling (parent inferred)
+{"moveTo": {"beginning": null}}          -- move to inbox
+```
+
+- One key = one position + one reference. Invalid combos are structurally impossible.
+- Maps directly to OmniJS position API: `container.beginning`, `container.ending`, `task.before`, `task.after`
+- Full cycle validation via SQLite parent chain walk before bridge call
+
+## Educational Warnings
+
+- Write results include optional `warnings` array for no-ops
+- Hints teach agents patch semantics: "Tag 'X' was not on this task -- omit remove_tags to skip"
+- Design principle: LLMs learn in-context from tool responses, so warnings serve as runtime documentation
+
 ## Deferred Decisions
 
-- Whether writes go through Repository or Bridge directly (future milestone)
-- SQLiteRepository naming may change based on Phase 12 implementation
 - Multi-repository coordination in OperatorService (if needed)
