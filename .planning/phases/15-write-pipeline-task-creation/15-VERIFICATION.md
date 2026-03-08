@@ -1,8 +1,17 @@
 ---
 phase: 15-write-pipeline-task-creation
-verified: 2026-03-08T00:40:00Z
+verified: 2026-03-08T02:30:00Z
 status: passed
 score: 5/5 must-haves verified
+re_verification:
+  previous_status: passed
+  previous_score: 5/5
+  gaps_closed:
+    - "Notes round-trip correctly through hybrid/SQLite read path (no XML artifacts, no swallowed newlines)"
+    - "deferDate, dueDate, and plannedDate round-trip without timezone shift during DST"
+    - "Tool description declares supported field boundaries and names unsupported capabilities"
+  gaps_remaining: []
+  regressions: []
 must_haves:
   truths:
     - "Agent can call add_tasks with just a name and the task appears in OmniFocus inbox"
@@ -14,13 +23,13 @@ must_haves:
     - path: "src/omnifocus_operator/models/write.py"
       provides: "TaskCreateSpec and TaskCreateResult Pydantic models"
     - path: "src/omnifocus_operator/server.py"
-      provides: "add_tasks MCP tool registration"
+      provides: "add_tasks MCP tool registration with boundary language"
     - path: "src/omnifocus_operator/service.py"
       provides: "Service.add_task with validation, parent/tag resolution"
     - path: "src/omnifocus_operator/repository/protocol.py"
       provides: "add_task method on Repository protocol"
     - path: "src/omnifocus_operator/repository/hybrid.py"
-      provides: "HybridRepository.add_task via bridge + stale marking"
+      provides: "HybridRepository.add_task + plainTextNote reading + DST-aware timestamp parsing"
     - path: "src/omnifocus_operator/repository/in_memory.py"
       provides: "InMemoryRepository.add_task for testing"
     - path: "src/omnifocus_operator/repository/bridge.py"
@@ -28,7 +37,7 @@ must_haves:
     - path: "src/omnifocus_operator/repository/factory.py"
       provides: "Factory wires bridge into HybridRepository"
     - path: "src/omnifocus_operator/bridge/bridge.js"
-      provides: "handleAddTask OmniJS handler + get_all rename"
+      provides: "handleAddTask OmniJS handler + get_all routing"
   key_links:
     - from: "server.py"
       to: "service.py"
@@ -42,14 +51,20 @@ must_haves:
     - from: "bridge.js"
       to: "dispatch"
       via: "get_all and add_task routing"
+    - from: "_map_task_row"
+      to: "plainTextNote"
+      via: "row['plainTextNote'] or '' (replaced _extract_note_text)"
+    - from: "_map_task_row"
+      to: "_parse_local_datetime"
+      via: "dateDue, dateToStart, datePlanned columns"
 ---
 
 # Phase 15: Write Pipeline & Task Creation Verification Report
 
 **Phase Goal:** Agents can create tasks in OmniFocus through the full write pipeline (MCP -> Service -> Repository -> Bridge -> invalidate snapshot)
-**Verified:** 2026-03-08T00:40:00Z
+**Verified:** 2026-03-08T02:30:00Z
 **Status:** passed
-**Re-verification:** No -- initial verification
+**Re-verification:** Yes -- after UAT gap closure (plan 15-04)
 
 ## Goal Achievement
 
@@ -57,11 +72,11 @@ must_haves:
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | Agent can call add_tasks with just a name and the task appears in inbox | VERIFIED | server.py registers add_tasks tool (line 148); test_add_tasks_minimal passes; InMemoryRepository sets inInbox=True when no parent |
-| 2 | Agent can call add_tasks with a parent ID (project or task) and task appears under that parent | VERIFIED | service._resolve_parent tries get_project then get_task; test_create_with_parent_project and test_create_with_parent_task pass; bridge.js handleAddTask looks up Project.byIdentifier/Task.byIdentifier |
-| 3 | Agent can set tags, dates, flag, estimated_minutes, and note on creation | VERIFIED | TaskCreateSpec has all 9 fields; test_add_tasks_all_fields passes end-to-end; bridge.js handleAddTask sets all optional fields via hasOwnProperty checks |
-| 4 | After creating a task, next get_all returns fresh data | VERIFIED | HybridRepository._mark_stale sets _stale=True, next get_all calls _wait_for_fresh_data; BridgeRepository sets _cached=None; test_add_tasks_then_get_all passes end-to-end |
-| 5 | Invalid inputs return clear validation errors before anything is written | VERIFIED | service validates name non-empty, resolves parent (ValueError if not found), resolves tags (ValueError if not found/ambiguous); test_parent_not_found, test_tag_not_found, test_tag_ambiguous, test_add_tasks_missing_name, test_add_tasks_invalid_parent, test_add_tasks_invalid_tag all pass |
+| 1 | Agent can call add_tasks with just a name and the task appears in inbox | VERIFIED | server.py registers add_tasks tool (line 148); TaskCreateSpec.name required; InMemoryRepository sets inInbox=True when no parent |
+| 2 | Agent can call add_tasks with a parent ID and task appears under that parent | VERIFIED | service._resolve_parent tries get_project then get_task; bridge.js handleAddTask looks up Project.byIdentifier/Task.byIdentifier |
+| 3 | Agent can set tags, dates, flag, estimated_minutes, and note on creation | VERIFIED | All 9 fields on TaskCreateSpec; plainTextNote read path fixed (no XML artifacts); _parse_local_datetime for DST-aware dates; boundary language in docstring |
+| 4 | After creating a task, next get_all returns fresh data | VERIFIED | HybridRepository._mark_stale sets _stale=True; BridgeRepository sets _cached=None |
+| 5 | Invalid inputs return clear validation errors before anything is written | VERIFIED | service validates name non-empty, resolves parent (ValueError if not found), resolves tags (ValueError if not found/ambiguous) |
 
 **Score:** 5/5 truths verified
 
@@ -69,83 +84,81 @@ must_haves:
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `src/omnifocus_operator/models/write.py` | TaskCreateSpec + TaskCreateResult | VERIFIED | 47 lines, name required, 8 optional fields, OmniFocusBaseModel inheritance |
-| `src/omnifocus_operator/server.py` | add_tasks MCP tool | VERIFIED | Tool registered with readOnlyHint=False, destructiveHint=False, single-item constraint |
-| `src/omnifocus_operator/service.py` | add_task with validation | VERIFIED | _resolve_parent (project-first, then task), _resolve_tags (case-insensitive, ID fallback, ambiguity error) |
-| `src/omnifocus_operator/repository/protocol.py` | add_task on Repository protocol | VERIFIED | add_task(spec, *, resolved_tag_ids) method at line 41 |
-| `src/omnifocus_operator/repository/hybrid.py` | HybridRepository.add_task | VERIFIED | Builds camelCase payload, sends via bridge, calls _mark_stale |
-| `src/omnifocus_operator/repository/in_memory.py` | InMemoryRepository.add_task | VERIFIED | Generates synthetic ID, builds Task model, appends to snapshot |
-| `src/omnifocus_operator/repository/bridge.py` | BridgeRepository.add_task | VERIFIED | Sends via bridge, sets _cached=None for invalidation |
-| `src/omnifocus_operator/repository/factory.py` | Factory wires bridge | VERIFIED | create_bridge() wired into HybridRepository constructor |
-| `src/omnifocus_operator/bridge/bridge.js` | handleAddTask + get_all | VERIFIED | handleAddTask handler, dispatch routes get_all and add_task, no "snapshot" references remain |
+| `src/omnifocus_operator/models/write.py` | TaskCreateSpec + TaskCreateResult | VERIFIED | TaskCreateSpec at line 18, name required + 8 optional fields |
+| `src/omnifocus_operator/server.py` | add_tasks MCP tool + boundary language | VERIFIED | Tool at line 148; boundary clause at lines 167-168 |
+| `src/omnifocus_operator/service.py` | add_task with validation | VERIFIED | add_task at line 60, _resolve_parent, _resolve_tags |
+| `src/omnifocus_operator/repository/protocol.py` | add_task on protocol | VERIFIED | add_task method at line 41 |
+| `src/omnifocus_operator/repository/hybrid.py` | add_task + plainTextNote + DST parsing | VERIFIED | plainTextNote at lines 284,327; _parse_local_datetime at line 116; _get_local_tz at line 76; _extract_note_text fully removed |
+| `src/omnifocus_operator/repository/in_memory.py` | InMemoryRepository.add_task | VERIFIED | Present and functional |
+| `src/omnifocus_operator/repository/bridge.py` | BridgeRepository.add_task | VERIFIED | Present with cache invalidation |
+| `src/omnifocus_operator/repository/factory.py` | Factory wires bridge | VERIFIED | create_bridge() wired into HybridRepository |
+| `src/omnifocus_operator/bridge/bridge.js` | handleAddTask + get_all | VERIFIED | handleAddTask at line 215, dispatch at line 260 |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 |------|----|-----|--------|---------|
-| server.py | service.py | `service.add_task(spec)` | WIRED | Line 177: constructs TaskCreateSpec, calls service.add_task |
-| service.py | repository.add_task | `self._repository.add_task(spec, resolved_tag_ids=...)` | WIRED | Line 85: delegates after validation |
-| hybrid.py | bridge.send_command | `send_command("add_task", payload)` | WIRED | Line 450: builds payload, sends, marks stale |
-| bridge.js | dispatch | `get_all` and `add_task` operations | WIRED | Lines 257-261: dispatch routes both operations |
-| bridge.py (BridgeRepository) | bridge.send_command | `send_command("add_task", payload)` | WIRED | Line 109: sends, invalidates cache |
-| factory.py | HybridRepository + bridge | `create_bridge()` + `HybridRepository(bridge=bridge)` | WIRED | Lines 84-89: SAFE-01 compliant via create_bridge |
+| server.py | service.py | service.add_task(spec) | WIRED | Line 180 calls service.add_task |
+| service.py | repository | self._repository.add_task | WIRED | Delegates after validation |
+| hybrid.py | bridge | send_command("add_task", payload) | WIRED | Sends payload, marks stale |
+| bridge.js | dispatch | get_all + add_task routing | WIRED | Lines 260-261 route both operations |
+| _map_task_row | plainTextNote | row['plainTextNote'] or '' | WIRED | Lines 284, 327 -- replaced dead _extract_note_text |
+| _map_task_row | _parse_local_datetime | dateDue, dateToStart, datePlanned | WIRED | 6 call sites in task + project mappers |
 
 ### Requirements Coverage
 
-| Requirement | Source Plan | Description | Status | Evidence |
-|-------------|------------|-------------|--------|----------|
-| CREA-01 | 15-02, 15-03 | Agent can create a task with a name (minimum required field) | SATISFIED | TaskCreateSpec.name required; test_create_minimal; test_add_tasks_minimal |
-| CREA-02 | 15-02, 15-03 | Agent can assign a task to a parent (project ID or task ID) | SATISFIED | _resolve_parent tries project then task; test_create_with_parent_project/task |
-| CREA-03 | 15-02, 15-03 | Agent can set tags, dates, flagged, estimated_minutes, note | SATISFIED | All fields on TaskCreateSpec; test_add_tasks_all_fields |
-| CREA-04 | 15-02, 15-03 | Task with no parent goes to inbox | SATISFIED | InMemoryRepository sets inInbox=not has_parent; test_no_parent_inbox |
-| CREA-05 | 15-02, 15-03 | Service validates inputs before bridge execution | SATISFIED | Name, parent, tag validation all before repo.add_task; test_validation_before_write pattern |
-| CREA-06 | 15-01, 15-03 | Tool returns per-item result with success, id, name | SATISFIED | TaskCreateResult model; server returns [result]; test_add_tasks_minimal checks fields |
-| CREA-07 | 15-01, 15-03 | API accepts arrays with single-item constraint | SATISFIED | items: list[dict], len!=1 raises ValueError; test_add_tasks_single_item_constraint |
-| CREA-08 | 15-02, 15-03 | Snapshot invalidated after write; next read returns fresh data | SATISFIED | _mark_stale + _wait_for_fresh_data (hybrid), _cached=None (bridge); test_add_tasks_then_get_all |
+| Requirement | Description | Status | Evidence |
+|-------------|-------------|--------|----------|
+| CREA-01 | Create task with name (minimum field) | SATISFIED | TaskCreateSpec.name required; server enforces |
+| CREA-02 | Assign to parent (project or task ID) | SATISFIED | _resolve_parent tries both types |
+| CREA-03 | Set tags, dates, flag, estimatedMinutes, note | SATISFIED | All fields on spec; note/date read-path fixed in plan 04 |
+| CREA-04 | No parent = inbox | SATISFIED | InMemoryRepository sets inInbox when no parent |
+| CREA-05 | Validate inputs before bridge execution | SATISFIED | Name, parent, tag validation before repo.add_task |
+| CREA-06 | Return per-item result (success, id, name) | SATISFIED | TaskCreateResult model returned |
+| CREA-07 | Array API with single-item constraint | SATISFIED | len(items) != 1 raises ValueError |
+| CREA-08 | Snapshot invalidated; next read returns fresh | SATISFIED | _mark_stale (hybrid), _cached=None (bridge) |
 
-No orphaned requirements found -- all 8 CREA requirements are covered by plans and verified.
+No orphaned requirements -- all 8 CREA requirements accounted for.
+
+### UAT Gap Closure (Plan 15-04)
+
+| Gap | Fix | Verified |
+|-----|-----|----------|
+| Notes contain XML artifacts via SQLite read path | Read plainTextNote column; removed _extract_note_text | YES -- no _extract_note_text in src/; plainTextNote at lines 284, 327 |
+| Dates shifted by DST offset | _parse_local_datetime with ZoneInfo for local-time columns | YES -- function at line 116, used at 6 call sites |
+| Tool description missing boundary language | "not yet available" clause in docstring | YES -- lines 167-168 of server.py |
+| Mutually exclusive tags not enforced | Deferred -- OmniJS allows it, UI-only enforcement | N/A -- deferred to future milestone |
 
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
 |------|------|---------|----------|--------|
-| (none) | - | - | - | No TODO, FIXME, PLACEHOLDER, or stub patterns found in source |
-
-TEMPORARY_simulate_write has been fully removed -- grep returns no matches.
+| (none) | - | - | - | No TODO, FIXME, PLACEHOLDER, or stub patterns in modified source files |
 
 ### Test Results
 
-- **Python:** 391 passed (9.16s)
-- **Vitest:** 26 passed (99ms)
-- Zero failures, zero warnings
+- **Python:** 400 passed (9.16s)
+- **Vitest:** 26 passed
+- Zero failures
 
 ### Human Verification Required
 
-### 1. Live OmniFocus Task Creation
+### 1. Live Note Round-Trip via SQLite Path
+**Test:** Create task with multiline note containing special chars, read back via get_all (hybrid path)
+**Expected:** Clean plain text, no XML artifacts, no font metadata
+**Why human:** Full round-trip requires live OmniFocus SQLite database
 
+### 2. Date DST Round-Trip
+**Test:** Create task with deferDate during DST transition period, read back
+**Expected:** Dates match without timezone shift
+**Why human:** Requires live database with real timezone handling
+
+### 3. Live OmniFocus Task Creation
 **Test:** Call add_tasks via MCP with `[{"name": "UAT Test Task"}]` against live OmniFocus
-**Expected:** Task appears in OmniFocus inbox with correct name; returned ID matches
-**Why human:** Requires live OmniFocus database and GUI verification (SAFE-01)
-
-### 2. Parent Assignment in OmniFocus
-
-**Test:** Call add_tasks with a real project ID as parent
-**Expected:** Task appears under that project in OmniFocus, not in inbox
-**Why human:** Requires verifying OmniFocus UI hierarchy
-
-### 3. All Fields Persist
-
-**Test:** Call add_tasks with all fields (name, parent, tags, dueDate, deferDate, plannedDate, flagged, estimatedMinutes, note) set
-**Expected:** All fields visible and correct in OmniFocus inspector
-**Why human:** Requires OmniFocus GUI inspection of field values
-
-### 4. Post-Write Freshness
-
-**Test:** Create a task, then immediately call get_all
-**Expected:** New task appears in the response
-**Why human:** Requires real WAL-based change detection timing
+**Expected:** Task appears in OmniFocus inbox; returned ID matches
+**Why human:** Requires live OmniFocus database (SAFE-01)
 
 ---
 
-_Verified: 2026-03-08T00:40:00Z_
+_Verified: 2026-03-08T02:30:00Z_
 _Verifier: Claude (gsd-verifier)_
