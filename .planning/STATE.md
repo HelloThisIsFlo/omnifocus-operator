@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Writes & Lookups
-status: in_progress
-stopped_at: Plan 15-02 complete
-last_updated: "2026-03-08T00:27:00Z"
+status: completed
+stopped_at: Completed 15-03-PLAN.md
+last_updated: "2026-03-08T00:33:11.661Z"
 last_activity: 2026-03-08 -- Plan 15-02 complete
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
   percent: 50
 ---
 
@@ -26,25 +26,26 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 ## Current Position
 
 Phase: 15 of 17 (Write Pipeline & Task Creation) -- second of 4 v1.2 phases
-Plan: 2 of 3
-Status: Plan 15-02 complete, ready for 15-03
-Last activity: 2026-03-08 -- Plan 15-02 complete
+Plan: 3 of 3 (complete)
+Status: Phase 15 complete, ready for phase 16
+Last activity: 2026-03-08 -- Plan 15-03 complete
 
-Progress: [█████░░░░░] 50%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4 (v1.2)
+- Total plans completed: 5 (v1.2)
 - Average duration: 5min
-- Total execution time: 21min
+- Total execution time: 24min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 14 | 2/2 | 10min | 5min |
-| 15 | 2/3 | 11min | 5.5min |
+| 15 | 3/3 | 14min | 4.7min |
+| Phase 15 P03 | 3min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -63,6 +64,7 @@ Progress: [█████░░░░░] 50%
 - [Phase 15]: Repository.add_task takes resolved_tag_ids kwarg -- tag resolution in service layer
 - [Phase 15]: Factory uses create_bridge() for SAFE-01 compliance in hybrid mode
 - [Phase 15]: BridgeRepository invalidates cache (sets _cached=None) on write
+- [Phase 15]: items parameter is list[dict] not list[TaskCreateSpec] -- MCP clients send raw JSON, model_validate handles camelCase
 
 ### Pending Todos
 
@@ -85,6 +87,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-08T00:27:00Z
-Stopped at: Completed 15-02-PLAN.md
-Next action: Execute 15-03-PLAN.md (MCP tool registration)
+Last session: 2026-03-08T00:33:11.659Z
+Stopped at: Completed 15-03-PLAN.md
+Next action: Execute phase 16 (next v1.2 phase)
