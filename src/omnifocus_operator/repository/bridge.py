@@ -93,7 +93,7 @@ class BridgeRepository:
         On success, updates ``_cached`` and ``_last_mtime_ns``.
         On failure, cache is **not** modified (preserves old or None).
         """
-        raw: dict[str, Any] = await self._bridge.send_command("snapshot")
+        raw: dict[str, Any] = await self._bridge.send_command("get_all")
         # Transform bridge-format -> new model shape (no-op if already new shape)
         adapt_snapshot(raw)
         result = AllEntities.model_validate(raw)

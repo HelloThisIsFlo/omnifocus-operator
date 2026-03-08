@@ -105,12 +105,12 @@ class TestSNAP01FirstCall:
 
         assert bridge.call_count == 1
 
-    async def test_first_call_uses_snapshot_operation(
+    async def test_first_call_uses_get_all_operation(
         self, repo: BridgeRepository, bridge: InMemoryBridge
     ) -> None:
         await repo.get_all()
 
-        assert bridge.calls[0].operation == "snapshot"
+        assert bridge.calls[0].operation == "get_all"
 
 
 # ---------------------------------------------------------------------------

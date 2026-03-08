@@ -3,7 +3,7 @@
 // IPC dir is derived from URL.documentsDirectory at runtime (sandbox-safe).
 //
 // Protocol:
-//   Request:  {IPC_DIR}/{argument}.request.json  -> {"operation": "snapshot", "params": {}}
+//   Request:  {IPC_DIR}/{argument}.request.json  -> {"operation": "get_all", "params": {}}
 //   Response: {IPC_DIR}/{argument}.response.json  -> {"success": true, "data": {...}}
 //
 // Uses only OmniFocus globals: FileWrapper, URL, Data, flattenedTasks, etc.
@@ -107,7 +107,7 @@ function writeResponse(ipcDir, filePrefix, responseObj) {
 
 // --- Operation handlers ---
 
-function handleSnapshot() {
+function handleGetAll() {
     return {
         tasks: flattenedTasks.map(function (t) {
             return {
@@ -212,6 +212,41 @@ function handleSnapshot() {
     };
 }
 
+function handleAddTask(params) {
+    var task;
+    if (params.parent) {
+        var container = Project.byIdentifier(params.parent)
+            || Task.byIdentifier(params.parent);
+        if (!container) {
+            throw new Error("Parent not found: " + params.parent);
+        }
+        task = new Task(params.name, container);
+    } else {
+        task = new Task(params.name);
+    }
+
+    // Set optional fields (hasOwnProperty for booleans/numbers that can be falsy)
+    if (params.dueDate) task.dueDate = new Date(params.dueDate);
+    if (params.deferDate) task.deferDate = new Date(params.deferDate);
+    if (params.plannedDate) task.plannedDate = new Date(params.plannedDate);
+    if (params.hasOwnProperty("flagged")) task.flagged = params.flagged;
+    if (params.hasOwnProperty("estimatedMinutes"))
+        task.estimatedMinutes = params.estimatedMinutes;
+    if (params.hasOwnProperty("note")) task.note = params.note;
+
+    // Tags -- resolved by ID (service already validated and resolved names to IDs)
+    if (params.tagIds && params.tagIds.length > 0) {
+        var tags = params.tagIds.map(function(id) {
+            var tag = Tag.byIdentifier(id);
+            if (!tag) throw new Error("Tag not found: " + id);
+            return tag;
+        });
+        task.addTags(tags);
+    }
+
+    return { id: task.id.primaryKey, name: task.name };
+}
+
 // --- Dispatch ---
 
 function dispatch(ipcDir, filePrefix) {
@@ -219,9 +254,12 @@ function dispatch(ipcDir, filePrefix) {
         var request = readRequest(ipcDir, filePrefix);
         var operation = request.operation;
 
-        if (operation === "snapshot") {
-            var data = handleSnapshot();
+        if (operation === "get_all") {
+            var data = handleGetAll();
             writeResponse(ipcDir, filePrefix, { success: true, data: data });
+        } else if (operation === "add_task") {
+            var result = handleAddTask(request.params);
+            writeResponse(ipcDir, filePrefix, { success: true, data: result });
         } else {
             writeResponse(ipcDir, filePrefix, {
                 success: false,
@@ -257,7 +295,8 @@ if (typeof module !== "undefined") {
     module.exports = {
         readRequest: readRequest,
         writeResponse: writeResponse,
-        handleSnapshot: handleSnapshot,
+        handleGetAll: handleGetAll,
+        handleAddTask: handleAddTask,
         dispatch: dispatch,
         d: d,
         pk: pk,

@@ -7,7 +7,7 @@ var mockFromURL = vi.fn(function () {
   return {
     contents: {
       toString: function () {
-        return '{"operation": "snapshot", "params": {}}';
+        return '{"operation": "get_all", "params": {}}';
       },
     },
   };
@@ -349,7 +349,7 @@ describe("readRequest", function () {
     mockFromURL.mockReturnValueOnce({
       contents: {
         toString: function () {
-          return '{"operation": "snapshot", "params": {}}';
+          return '{"operation": "get_all", "params": {}}';
         },
       },
     });
@@ -360,7 +360,7 @@ describe("readRequest", function () {
       false,
     );
     expect(mockFromURL).toHaveBeenCalled();
-    expect(result).toEqual({ operation: "snapshot", params: {} });
+    expect(result).toEqual({ operation: "get_all", params: {} });
   });
 });
 
@@ -390,9 +390,9 @@ describe("writeResponse", function () {
   });
 });
 
-describe("handleSnapshot", function () {
+describe("handleGetAll", function () {
   it("collects all 5 entity types and returns structured data", function () {
-    var result = bridge.handleSnapshot();
+    var result = bridge.handleGetAll();
 
     // Tasks
     expect(result.tasks).toHaveLength(1);
@@ -457,17 +457,17 @@ describe("handleSnapshot", function () {
 describe("dispatch", function () {
   beforeEach(function () {
     vi.clearAllMocks();
-    // Default: readRequest returns snapshot operation
+    // Default: readRequest returns get_all operation
     mockFromURL.mockReturnValue({
       contents: {
         toString: function () {
-          return '{"operation": "snapshot", "params": {}}';
+          return '{"operation": "get_all", "params": {}}';
         },
       },
     });
   });
 
-  it("routes snapshot operation to handleSnapshot and writes success response", function () {
+  it("routes get_all operation to handleGetAll and writes success response", function () {
     bridge.dispatch("/tmp/ipc", "123_uuid");
 
     // Should have written a response via FileWrapper
@@ -515,7 +515,7 @@ describe("dispatch", function () {
     mockFromURL.mockReturnValueOnce({
       contents: {
         toString: function () {
-          return '{"operation": "snapshot", "params": {}}';
+          return '{"operation": "get_all", "params": {}}';
         },
       },
     });
