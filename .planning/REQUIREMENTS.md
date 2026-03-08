@@ -44,7 +44,7 @@ Requirements for Writes & Lookups milestone. Each maps to roadmap phases.
 - [x] **EDIT-06**: Mutually exclusive tag modes are validated (`tags` vs `add_tags`/`remove_tags`)
 - [x] **EDIT-07**: Agent can move a task to a different parent (`parent: id` -- project or task, server resolves)
 - [x] **EDIT-08**: Agent can move a task to inbox (`parent: null`)
-- [ ] **EDIT-09**: API accepts arrays (`edit_tasks([...])`) with single-item constraint initially
+- [x] **EDIT-09**: API accepts arrays (`edit_tasks([...])`) with single-item constraint initially
 
 ### Task Lifecycle
 
@@ -118,7 +118,7 @@ Requirements for Writes & Lookups milestone. Each maps to roadmap phases.
 | EDIT-06 | Phase 16 | Complete |
 | EDIT-07 | Phase 16 | Complete |
 | EDIT-08 | Phase 16 | Complete |
-| EDIT-09 | Phase 16 | Pending |
+| EDIT-09 | Phase 16 | Complete |
 | LIFE-01 | Phase 17 | Pending |
 | LIFE-02 | Phase 17 | Pending |
 | LIFE-03 | Phase 17 | Pending |

@@ -41,7 +41,7 @@
 
 - [x] **Phase 14: Model Refactor & Lookups** - Unified parent field, rename list_all to get_all, and get-by-ID tools (completed 2026-03-07)
 - [x] **Phase 15: Write Pipeline & Task Creation** - Full write pipeline through bridge with add_tasks tool (completed 2026-03-08)
-- [ ] **Phase 16: Task Editing** - Patch semantics, tag modes, and task movement via edit_tasks
+- [x] **Phase 16: Task Editing** - Patch semantics, tag modes, and task movement via edit_tasks (completed 2026-03-08)
 - [ ] **Phase 17: Task Lifecycle** - Complete, drop, and reactivate tasks via edit_tasks
 
 ## Phase Details
@@ -134,5 +134,5 @@ Phases execute in numeric order: 14 -> 15 -> 16 -> 17
 | 13. Fallback and Integration | v1.1 | 2/2 | Complete | 2026-03-07 |
 | 14. Model Refactor & Lookups | 2/2 | Complete    | 2026-03-07 | - |
 | 15. Write Pipeline & Task Creation | 4/4 | Complete    | 2026-03-08 | - |
-| 16. Task Editing | 2/3 | In Progress|  | - |
+| 16. Task Editing | 3/3 | Complete   | 2026-03-08 | - |
 | 17. Task Lifecycle | v1.2 | 0/? | Not started | - |
