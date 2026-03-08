@@ -1,5 +1,5 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "Missing no-op warnings (ISSUE-4, ISSUE-5, ISSUE-6)"
 created: 2026-03-08T00:00:00Z
 updated: 2026-03-08T00:00:00Z

@@ -1,5 +1,5 @@
 ---
-status: investigating
+status: resolved
 trigger: "note: null rejected by OmniFocus (ISSUE-2)"
 created: 2026-03-08T00:00:00Z
 updated: 2026-03-08T00:00:00Z

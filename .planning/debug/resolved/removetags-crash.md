@@ -1,5 +1,5 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "removeTags alone crashes with undefined is not an object (evaluating 'params.tagIds.map')"
 created: 2026-03-08T00:00:00Z
 updated: 2026-03-08T00:00:00Z

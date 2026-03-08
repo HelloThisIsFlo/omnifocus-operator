@@ -1,5 +1,5 @@
 ---
-status: investigating
+status: resolved
 trigger: "Pydantic validation errors leak raw noise for tags+addTags mutual exclusion and moveTo multiple keys"
 created: 2026-03-08T00:00:00Z
 updated: 2026-03-08T00:00:00Z
