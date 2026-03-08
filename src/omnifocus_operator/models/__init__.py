@@ -26,6 +26,7 @@ from omnifocus_operator.models.project import Project
 from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.models.tag import Tag
 from omnifocus_operator.models.task import Task
+from omnifocus_operator.models.write import TaskCreateResult, TaskCreateSpec
 
 # Resolve forward references now that all modules are imported.
 # Entity modules use TYPE_CHECKING imports for ruff TC compliance.
@@ -50,6 +51,8 @@ _ns: dict[str, type] = {
     "Tag": Tag,
     "Folder": Folder,
     "Perspective": Perspective,
+    "TaskCreateSpec": TaskCreateSpec,
+    "TaskCreateResult": TaskCreateResult,
 }
 ParentRef.model_rebuild(_types_namespace=_ns)
 RepetitionRule.model_rebuild(_types_namespace=_ns)
@@ -59,6 +62,8 @@ Project.model_rebuild(_types_namespace=_ns)
 Tag.model_rebuild(_types_namespace=_ns)
 Folder.model_rebuild(_types_namespace=_ns)
 AllEntities.model_rebuild(_types_namespace=_ns)
+TaskCreateSpec.model_rebuild(_types_namespace=_ns)
+TaskCreateResult.model_rebuild(_types_namespace=_ns)
 
 __all__ = [
     "ActionableEntity",
@@ -79,5 +84,7 @@ __all__ = [
     "TagAvailability",
     "TagRef",
     "Task",
+    "TaskCreateResult",
+    "TaskCreateSpec",
     "Urgency",
 ]

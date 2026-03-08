@@ -26,6 +26,8 @@ from omnifocus_operator.models import (
     TagAvailability,
     TagRef,
     Task,
+    TaskCreateResult,
+    TaskCreateSpec,
     Urgency,
 )
 
@@ -845,3 +847,87 @@ class TestAllEntities:
         original_task_ids = [t["id"] for t in data["tasks"]]
         parsed_task_ids = [t.id for t in snapshot2.tasks]
         assert original_task_ids == parsed_task_ids
+
+
+# ---------------------------------------------------------------------------
+# Write model tests
+# ---------------------------------------------------------------------------
+
+
+class TestWriteModels:
+    """TaskCreateSpec and TaskCreateResult write models."""
+
+    def test_task_create_spec_minimal(self) -> None:
+        """TaskCreateSpec with only name (required) creates valid instance."""
+        spec = TaskCreateSpec(name="Buy groceries")
+        assert spec.name == "Buy groceries"
+        assert spec.parent is None
+        assert spec.tags is None
+        assert spec.due_date is None
+        assert spec.defer_date is None
+        assert spec.planned_date is None
+        assert spec.flagged is None
+        assert spec.estimated_minutes is None
+        assert spec.note is None
+
+    def test_task_create_spec_all_fields(self) -> None:
+        """TaskCreateSpec with all fields populated."""
+        dt = datetime(2024, 6, 15, 9, 0, tzinfo=UTC)
+        spec = TaskCreateSpec(
+            name="Full task",
+            parent="proj-001",
+            tags=["errands", "morning"],
+            due_date=dt,
+            defer_date=dt,
+            planned_date=dt,
+            flagged=True,
+            estimated_minutes=30.0,
+            note="A note",
+        )
+        assert spec.name == "Full task"
+        assert spec.parent == "proj-001"
+        assert spec.tags == ["errands", "morning"]
+        assert spec.due_date == dt
+        assert spec.defer_date == dt
+        assert spec.planned_date == dt
+        assert spec.flagged is True
+        assert spec.estimated_minutes == 30.0
+        assert spec.note == "A note"
+
+    def test_task_create_spec_rejects_missing_name(self) -> None:
+        """TaskCreateSpec without name raises ValidationError."""
+        with pytest.raises(ValidationError):
+            TaskCreateSpec()  # type: ignore[call-arg]
+
+    def test_task_create_spec_camel_case_serialization(self) -> None:
+        """TaskCreateSpec serializes to camelCase via OmniFocusBaseModel."""
+        dt = datetime(2024, 6, 15, 9, 0, tzinfo=UTC)
+        spec = TaskCreateSpec(
+            name="Test",
+            due_date=dt,
+            defer_date=dt,
+            planned_date=dt,
+            estimated_minutes=15.0,
+        )
+        dumped = spec.model_dump(by_alias=True)
+        assert "dueDate" in dumped
+        assert "deferDate" in dumped
+        assert "plannedDate" in dumped
+        assert "estimatedMinutes" in dumped
+        # snake_case keys should NOT be present
+        assert "due_date" not in dumped
+        assert "defer_date" not in dumped
+
+    def test_task_create_result_round_trip(self) -> None:
+        """TaskCreateResult parses and serializes correctly."""
+        result = TaskCreateResult(success=True, id="task-new-001", name="New Task")
+        assert result.success is True
+        assert result.id == "task-new-001"
+        assert result.name == "New Task"
+
+        # camelCase round-trip (fields are already camelCase-friendly)
+        dumped = result.model_dump(by_alias=True)
+        result2 = TaskCreateResult.model_validate(dumped)
+        assert result2.success is True
+        assert result2.id == "task-new-001"
+        assert result2.name == "New Task"
