@@ -55,26 +55,29 @@ Three implementations: HybridRepository (production), BridgeRepository (fallback
 ## Why Flat Packages (bridge/ and repository/ as peers)
 
 - Bridge is a general OmniFocus communication channel, not just data access
+- Future milestones: perspective switching, UI actions -- all via Bridge directly
 - Write operations go through Bridge (repository delegates)
 - `repository/` depends on `bridge/` (never reverse)
-- Keeping them as siblings avoids false nesting
+- Keeping them as siblings avoids false nesting (`repository/bridge/` would imply ownership)
 
 ## Dependency Direction
 
 - `service.py` -> `Repository` protocol (never concrete implementations)
-- `server.py` -> concrete implementations + factory (wiring only)
+- `server.py` -> concrete `HybridRepository` + `BridgeRepository` + `Bridge` + `MtimeSource` (wiring only)
 - `repository/hybrid.py` -> `bridge/` package (Bridge for writes, SQLite for reads)
-- `repository/bridge.py` -> `bridge/` package (Bridge for everything)
+- `repository/bridge.py` -> `bridge/` package (Bridge protocol, MtimeSource, adapter)
 - `repository/in_memory.py` -> `models/` only (zero bridge dependency)
 
-## Read Path
+## Caching & Read Path
 
-- **HybridRepository** (default): SQLite cache (~46ms full snapshot, OmniFocus not required)
+- **HybridRepository** (default, primary read path): SQLite cache (~46ms full snapshot, OmniFocus not required)
   - WAL-based freshness detection: 50ms poll, 2s timeout after writes
+  - No caching layer on top -- 46ms is fast enough
   - Marks stale after writes; next read waits for fresh WAL mtime
 - **BridgeRepository** (fallback via `OMNIFOCUS_REPOSITORY=bridge`): OmniJS bridge dump
-  - mtime-based cache invalidation, concurrent reads coalesce
-- **InMemoryRepository** (tests): returns constructor snapshot, no I/O
+  - mtime-based cache invalidation; checks file mtime before each read, serves cached snapshot if unchanged
+  - Concurrent reads coalesce into a single bridge dump
+- **InMemoryRepository** (tests): no caching (returns constructor snapshot as-is)
 
 ## Write Pipeline (v1.2)
 
