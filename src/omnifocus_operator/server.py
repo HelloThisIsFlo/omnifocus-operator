@@ -21,7 +21,14 @@ from mcp.types import ToolAnnotations
 # generate outputSchema.  With `from __future__ import annotations` the
 # annotation is a string; FastMCP resolves it via get_type_hints() which
 # needs the name in the module namespace.
-from omnifocus_operator.models import AllEntities, Project, Tag, Task  # noqa: TC001
+from omnifocus_operator.models import (
+    AllEntities,
+    Project,
+    Tag,
+    Task,
+    TaskCreateResult,
+    TaskCreateSpec,
+)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -132,6 +139,43 @@ def _register_tools(mcp: FastMCP) -> None:
             msg = f"Tag not found: {id}"
             raise ValueError(msg)
         return result
+
+    @mcp.tool(
+        annotations=ToolAnnotations(
+            readOnlyHint=False, destructiveHint=False, idempotentHint=False
+        ),
+    )
+    async def add_tasks(
+        items: list[dict[str, Any]],
+        ctx: Context[Any, Any, Any],
+    ) -> list[TaskCreateResult]:
+        """Create tasks in OmniFocus.
+
+        Accepts an array of task objects. Currently limited to 1 item per call.
+
+        Each item accepts:
+        - name (required): Task name
+        - parent: Project or task ID to place task under (omit for inbox)
+        - tags: List of tag names (case-insensitive) or tag IDs
+        - dueDate: Due date (ISO 8601)
+        - deferDate: Defer/start date (ISO 8601)
+        - plannedDate: Planned date (ISO 8601)
+        - flagged: Boolean flag
+        - estimatedMinutes: Estimated duration in minutes
+        - note: Task note text
+
+        Returns array of results: [{success, id, name}]
+        """
+        if len(items) != 1:
+            msg = f"add_tasks currently accepts exactly 1 item, got {len(items)}"
+            raise ValueError(msg)
+
+        from omnifocus_operator.service import OperatorService  # noqa: TC001
+
+        service: OperatorService = ctx.request_context.lifespan_context["service"]
+        spec = TaskCreateSpec.model_validate(items[0])
+        result = await service.add_task(spec)
+        return [result]
 
 
 def create_server() -> FastMCP:

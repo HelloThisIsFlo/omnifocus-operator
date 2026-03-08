@@ -720,8 +720,8 @@ class TestAddTasks:
             result = await session.call_tool("add_tasks", {"items": [{"name": "Buy milk"}]})
             assert result.isError is not True
             assert result.structuredContent is not None
-            # Returns list of results
-            items = result.structuredContent
+            # FastMCP wraps list return in {"result": [...]}
+            items = result.structuredContent["result"]
             assert isinstance(items, list)
             assert len(items) == 1
             assert items[0]["success"] is True
@@ -740,8 +740,7 @@ class TestAddTasks:
                 {"items": [{"name": "Sub task", "parent": "proj-001"}]},
             )
             assert result.isError is not True
-            assert result.structuredContent is not None
-            items = result.structuredContent
+            items = result.structuredContent["result"]
             assert items[0]["success"] is True
 
         await run_with_client(server, _check)
@@ -756,8 +755,7 @@ class TestAddTasks:
                 {"items": [{"name": "Tagged task", "tags": ["Test Tag"]}]},
             )
             assert result.isError is not True
-            assert result.structuredContent is not None
-            items = result.structuredContent
+            items = result.structuredContent["result"]
             assert items[0]["success"] is True
 
         await run_with_client(server, _check)
@@ -786,8 +784,7 @@ class TestAddTasks:
                 },
             )
             assert result.isError is not True
-            assert result.structuredContent is not None
-            items = result.structuredContent
+            items = result.structuredContent["result"]
             assert items[0]["success"] is True
             assert items[0]["name"] == "Full task"
 
@@ -877,7 +874,7 @@ class TestAddTasks:
                 {"items": [{"name": "Fresh task"}]},
             )
             assert add_result.isError is not True
-            new_id = add_result.structuredContent[0]["id"]  # type: ignore[index]
+            new_id = add_result.structuredContent["result"][0]["id"]  # type: ignore[index]
 
             # Fetch all and verify the new task appears
             get_result = await session.call_tool("get_all")
