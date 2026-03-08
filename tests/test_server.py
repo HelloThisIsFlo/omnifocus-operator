@@ -646,3 +646,243 @@ class TestGetByIdTools:
             assert tool.annotations.idempotentHint is True
 
         await run_with_client(server, _check)
+
+
+# ---------------------------------------------------------------------------
+# CREA: add_tasks tool
+# ---------------------------------------------------------------------------
+
+
+class TestAddTasks:
+    """Verify add_tasks MCP tool registration and behaviour."""
+
+    async def _make_server_with_data(
+        self,
+        *,
+        extra_projects: list[dict[str, Any]] | None = None,
+        extra_tags: list[dict[str, Any]] | None = None,
+    ) -> FastMCP:
+        """Build a test server with InMemoryRepository and known data."""
+        from omnifocus_operator.repository import InMemoryRepository
+        from omnifocus_operator.server import _register_tools
+        from omnifocus_operator.service import OperatorService
+
+        from .conftest import make_project_dict, make_snapshot, make_tag_dict
+
+        projects = [make_project_dict()]
+        if extra_projects:
+            projects.extend(extra_projects)
+
+        tags = [make_tag_dict()]
+        if extra_tags:
+            tags.extend(extra_tags)
+
+        snapshot = make_snapshot(projects=projects, tags=tags)
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        server = _build_patched_server(repo, service)
+        _register_tools(server)
+        return server
+
+    # -- Registration & annotations --
+
+    async def test_add_tasks_registered(self) -> None:
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            tools_result = await session.list_tools()
+            names = [t.name for t in tools_result.tools]
+            assert "add_tasks" in names
+
+        await run_with_client(server, _check)
+
+    async def test_add_tasks_has_write_annotations(self) -> None:
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            tools_result = await session.list_tools()
+            tool = next(t for t in tools_result.tools if t.name == "add_tasks")
+            assert tool.annotations is not None
+            assert tool.annotations.readOnlyHint is False
+            assert tool.annotations.destructiveHint is False
+            assert tool.annotations.idempotentHint is False
+
+        await run_with_client(server, _check)
+
+    # -- Happy path --
+
+    async def test_add_tasks_minimal(self) -> None:
+        """Create a task with only a name."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            result = await session.call_tool("add_tasks", {"items": [{"name": "Buy milk"}]})
+            assert result.isError is not True
+            assert result.structuredContent is not None
+            # Returns list of results
+            items = result.structuredContent
+            assert isinstance(items, list)
+            assert len(items) == 1
+            assert items[0]["success"] is True
+            assert items[0]["name"] == "Buy milk"
+            assert "id" in items[0]
+
+        await run_with_client(server, _check)
+
+    async def test_add_tasks_with_parent(self) -> None:
+        """Create a task under an existing project."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            result = await session.call_tool(
+                "add_tasks",
+                {"items": [{"name": "Sub task", "parent": "proj-001"}]},
+            )
+            assert result.isError is not True
+            assert result.structuredContent is not None
+            items = result.structuredContent
+            assert items[0]["success"] is True
+
+        await run_with_client(server, _check)
+
+    async def test_add_tasks_with_tags(self) -> None:
+        """Create a task with tag names resolved."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            result = await session.call_tool(
+                "add_tasks",
+                {"items": [{"name": "Tagged task", "tags": ["Test Tag"]}]},
+            )
+            assert result.isError is not True
+            assert result.structuredContent is not None
+            items = result.structuredContent
+            assert items[0]["success"] is True
+
+        await run_with_client(server, _check)
+
+    async def test_add_tasks_all_fields(self) -> None:
+        """Create a task with all optional fields set."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            result = await session.call_tool(
+                "add_tasks",
+                {
+                    "items": [
+                        {
+                            "name": "Full task",
+                            "parent": "proj-001",
+                            "tags": ["Test Tag"],
+                            "dueDate": "2026-06-01T12:00:00+00:00",
+                            "deferDate": "2026-05-01T08:00:00+00:00",
+                            "plannedDate": "2026-05-15T09:00:00+00:00",
+                            "flagged": True,
+                            "estimatedMinutes": 30,
+                            "note": "Important note",
+                        }
+                    ]
+                },
+            )
+            assert result.isError is not True
+            assert result.structuredContent is not None
+            items = result.structuredContent
+            assert items[0]["success"] is True
+            assert items[0]["name"] == "Full task"
+
+        await run_with_client(server, _check)
+
+    # -- Constraint enforcement --
+
+    async def test_add_tasks_single_item_constraint(self) -> None:
+        """Passing 2 items returns an error."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            result = await session.call_tool(
+                "add_tasks",
+                {"items": [{"name": "A"}, {"name": "B"}]},
+            )
+            assert result.isError is True
+            text = result.content[0].text  # type: ignore[union-attr]
+            assert "exactly 1 item" in text
+
+        await run_with_client(server, _check)
+
+    async def test_add_tasks_empty_array(self) -> None:
+        """Passing 0 items returns an error."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            result = await session.call_tool("add_tasks", {"items": []})
+            assert result.isError is True
+            text = result.content[0].text  # type: ignore[union-attr]
+            assert "exactly 1 item" in text
+
+        await run_with_client(server, _check)
+
+    # -- Validation errors --
+
+    async def test_add_tasks_missing_name(self) -> None:
+        """Item without name returns error."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            result = await session.call_tool("add_tasks", {"items": [{"note": "no name"}]})
+            assert result.isError is True
+
+        await run_with_client(server, _check)
+
+    async def test_add_tasks_invalid_parent(self) -> None:
+        """Non-existent parent returns error."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            result = await session.call_tool(
+                "add_tasks",
+                {"items": [{"name": "Orphan", "parent": "nonexistent-id"}]},
+            )
+            assert result.isError is True
+            text = result.content[0].text  # type: ignore[union-attr]
+            assert "nonexistent-id" in text
+
+        await run_with_client(server, _check)
+
+    async def test_add_tasks_invalid_tag(self) -> None:
+        """Non-existent tag returns error."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            result = await session.call_tool(
+                "add_tasks",
+                {"items": [{"name": "Bad tag", "tags": ["Nonexistent Tag"]}]},
+            )
+            assert result.isError is True
+            text = result.content[0].text  # type: ignore[union-attr]
+            assert "Nonexistent Tag" in text
+
+        await run_with_client(server, _check)
+
+    # -- Post-write freshness --
+
+    async def test_add_tasks_then_get_all(self) -> None:
+        """After add_tasks, get_all includes the newly created task."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            # Create a task
+            add_result = await session.call_tool(
+                "add_tasks",
+                {"items": [{"name": "Fresh task"}]},
+            )
+            assert add_result.isError is not True
+            new_id = add_result.structuredContent[0]["id"]  # type: ignore[index]
+
+            # Fetch all and verify the new task appears
+            get_result = await session.call_tool("get_all")
+            assert get_result.structuredContent is not None
+            task_ids = [t["id"] for t in get_result.structuredContent["tasks"]]
+            assert new_id in task_ids
+
+        await run_with_client(server, _check)
