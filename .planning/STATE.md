@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Writes & Lookups
-status: completed
-stopped_at: Phase 16 context gathered
-last_updated: "2026-03-08T02:40:36.109Z"
-last_activity: 2026-03-08 -- Plan 15-04 complete (gap closure)
+status: in-progress
+stopped_at: "Plan 16-01 complete"
+last_updated: "2026-03-08T03:15:00Z"
+last_activity: 2026-03-08 -- Plan 16-01 complete (models & bridge handler)
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
-  percent: 100
+  total_plans: 9
+  completed_plans: 7
+  percent: 78
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 15 - Write Pipeline & Task Creation
+**Current focus:** Phase 16 - Task Editing
 
 ## Current Position
 
-Phase: 15 of 17 (Write Pipeline & Task Creation) -- second of 4 v1.2 phases
-Plan: 4 of 4 (complete)
-Status: Phase 15 complete (including gap closure), ready for phase 16
-Last activity: 2026-03-08 -- Plan 15-04 complete (gap closure)
+Phase: 16 of 17 (Task Editing) -- third of 4 v1.2 phases
+Plan: 1 of 3 (complete)
+Status: Plan 16-01 complete (models & bridge handler), ready for plan 16-02
+Last activity: 2026-03-08 -- Plan 16-01 complete (models & bridge handler)
 
-Progress: [██████████] 100%
+Progress: [███████░░░] 78%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6 (v1.2)
+- Total plans completed: 7 (v1.2)
 - Average duration: 5min
-- Total execution time: 29min
+- Total execution time: 34min
 
 **By Phase:**
 
@@ -45,7 +45,7 @@ Progress: [██████████] 100%
 |-------|-------|-------|----------|
 | 14 | 2/2 | 10min | 5min |
 | 15 | 4/4 | 19min | 4.8min |
-| Phase 15 P04 | 5min | 2 tasks | 3 files |
+| 16 | 1/3 | 5min | 5min |
 
 ## Accumulated Context
 
@@ -66,6 +66,10 @@ Progress: [██████████] 100%
 - [Phase 15]: BridgeRepository invalidates cache (sets _cached=None) on write
 - [Phase 15]: items parameter is list[dict] not list[TaskCreateSpec] -- MCP clients send raw JSON, model_validate handles camelCase
 - [Phase 15]: plainTextNote column for notes, _parse_local_datetime with ZoneInfo for DST-aware date columns
+- [Phase 16]: UNSET sentinel with __get_pydantic_core_schema__ (is_instance_schema) for Pydantic v2 union types
+- [Phase 16]: model_json_schema override strips _Unset from JSON schema for clean MCP tool schemas
+- [Phase 16]: Bridge tagMode dispatch: replace/add/remove/add_remove with removals-first ordering
+- [Phase 16]: Bridge moveTo shape: {position, containerId, anchorId} -- service translates from MoveToSpec
 
 ### Pending Todos
 
@@ -88,6 +92,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-08T02:40:36.098Z
-Stopped at: Phase 16 context gathered
-Next action: Execute phase 16 (next v1.2 phase)
+Last session: 2026-03-08T03:15:00Z
+Stopped at: Plan 16-01 complete
+Next action: Execute plan 16-02 (service layer & repository)

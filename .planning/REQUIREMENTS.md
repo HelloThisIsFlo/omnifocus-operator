@@ -36,14 +36,14 @@ Requirements for Writes & Lookups milestone. Each maps to roadmap phases.
 
 ### Task Editing
 
-- [ ] **EDIT-01**: Agent can edit task fields using patch semantics (omit = no change, null = clear, value = set)
-- [ ] **EDIT-02**: Agent can edit: name, note, due_date, defer_date, planned_date, flagged, estimated_minutes
-- [ ] **EDIT-03**: Agent can replace all tags on a task (`tags: [...]`)
-- [ ] **EDIT-04**: Agent can add tags without removing existing (`add_tags: [...]`)
-- [ ] **EDIT-05**: Agent can remove specific tags (`remove_tags: [...]`)
-- [ ] **EDIT-06**: Mutually exclusive tag modes are validated (`tags` vs `add_tags`/`remove_tags`)
+- [x] **EDIT-01**: Agent can edit task fields using patch semantics (omit = no change, null = clear, value = set)
+- [x] **EDIT-02**: Agent can edit: name, note, due_date, defer_date, planned_date, flagged, estimated_minutes
+- [x] **EDIT-03**: Agent can replace all tags on a task (`tags: [...]`)
+- [x] **EDIT-04**: Agent can add tags without removing existing (`add_tags: [...]`)
+- [x] **EDIT-05**: Agent can remove specific tags (`remove_tags: [...]`)
+- [x] **EDIT-06**: Mutually exclusive tag modes are validated (`tags` vs `add_tags`/`remove_tags`)
 - [ ] **EDIT-07**: Agent can move a task to a different parent (`parent: id` -- project or task, server resolves)
-- [ ] **EDIT-08**: Agent can move a task to inbox (`parent: null`)
+- [x] **EDIT-08**: Agent can move a task to inbox (`parent: null`)
 - [ ] **EDIT-09**: API accepts arrays (`edit_tasks([...])`) with single-item constraint initially
 
 ### Task Lifecycle
@@ -110,14 +110,14 @@ Requirements for Writes & Lookups milestone. Each maps to roadmap phases.
 | CREA-06 | Phase 15 | Complete |
 | CREA-07 | Phase 15 | Complete |
 | CREA-08 | Phase 15 | Complete |
-| EDIT-01 | Phase 16 | Pending |
-| EDIT-02 | Phase 16 | Pending |
-| EDIT-03 | Phase 16 | Pending |
-| EDIT-04 | Phase 16 | Pending |
-| EDIT-05 | Phase 16 | Pending |
-| EDIT-06 | Phase 16 | Pending |
+| EDIT-01 | Phase 16 | Complete |
+| EDIT-02 | Phase 16 | Complete |
+| EDIT-03 | Phase 16 | Complete |
+| EDIT-04 | Phase 16 | Complete |
+| EDIT-05 | Phase 16 | Complete |
+| EDIT-06 | Phase 16 | Complete |
 | EDIT-07 | Phase 16 | Pending |
-| EDIT-08 | Phase 16 | Pending |
+| EDIT-08 | Phase 16 | Complete |
 | EDIT-09 | Phase 16 | Pending |
 | LIFE-01 | Phase 17 | Pending |
 | LIFE-02 | Phase 17 | Pending |
