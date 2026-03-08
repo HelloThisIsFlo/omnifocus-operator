@@ -28,6 +28,8 @@ from omnifocus_operator.models import (
     Task,
     TaskCreateResult,
     TaskCreateSpec,
+    TaskEditResult,
+    TaskEditSpec,
 )
 
 if TYPE_CHECKING:
@@ -178,6 +180,57 @@ def _register_tools(mcp: FastMCP) -> None:
         service: OperatorService = ctx.request_context.lifespan_context["service"]
         spec = TaskCreateSpec.model_validate(items[0])
         result = await service.add_task(spec)
+        return [result]
+
+    @mcp.tool(
+        annotations=ToolAnnotations(
+            readOnlyHint=False, destructiveHint=False, idempotentHint=False
+        ),
+    )
+    async def edit_tasks(
+        items: list[dict[str, Any]],
+        ctx: Context[Any, Any, Any],
+    ) -> list[TaskEditResult]:
+        """Edit existing tasks in OmniFocus using patch semantics.
+
+        Accepts an array of edit objects. Currently limited to 1 item per call.
+
+        Each item requires:
+        - id (required): Task ID to edit
+
+        Optional fields (omit to leave unchanged, set null to clear):
+        - name: New task name (cannot be empty)
+        - note: Task note text (null to clear)
+        - dueDate: Due date ISO 8601 (null to clear)
+        - deferDate: Defer/start date ISO 8601 (null to clear)
+        - plannedDate: Planned date ISO 8601 (null to clear)
+        - flagged: Boolean flag
+        - estimatedMinutes: Estimated duration (null to clear)
+
+        Tag editing (mutually exclusive modes):
+        - tags: Replace all tags with this list ([] to clear all)
+        - addTags: Add these tags without removing existing
+        - removeTags: Remove specific tags (addTags + removeTags together is allowed)
+
+        Task movement (omit moveTo entirely to skip):
+        - moveTo: Position object with exactly one key:
+          - {"ending": "<parentId>"} -- move to end of project/task
+          - {"beginning": "<parentId>"} -- move to start of project/task
+          - {"before": "<taskId>"} -- move before sibling task
+          - {"after": "<taskId>"} -- move after sibling task
+          - {"ending": null} / {"beginning": null} -- move to inbox
+
+        Returns array of results: [{success, id, name, warnings?}]
+        """
+        if len(items) != 1:
+            msg = f"edit_tasks currently accepts exactly 1 item, got {len(items)}"
+            raise ValueError(msg)
+
+        from omnifocus_operator.service import OperatorService  # noqa: TC001
+
+        service: OperatorService = ctx.request_context.lifespan_context["service"]
+        spec = TaskEditSpec.model_validate(items[0])
+        result = await service.edit_task(spec)
         return [result]
 
 
