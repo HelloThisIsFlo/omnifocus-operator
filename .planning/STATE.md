@@ -4,13 +4,13 @@ milestone: v1.2
 milestone_name: Writes & Lookups
 status: completed
 stopped_at: Phase 16 complete
-last_updated: "2026-03-08T03:33:05.684Z"
-last_activity: 2026-03-08 -- Plan 16-03 complete (MCP tool registration + integration tests)
+last_updated: "2026-03-08T12:46:02.332Z"
+last_activity: 2026-03-08 -- Plan 16-04 complete (gap closure: bridge crash, validation noise, tags type)
 progress:
   total_phases: 4
-  completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
+  completed_phases: 2
+  total_plans: 11
+  completed_plans: 10
   percent: 100
 ---
 
@@ -26,18 +26,18 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 ## Current Position
 
 Phase: 16 of 17 (Task Editing) -- third of 4 v1.2 phases
-Plan: 3 of 3 (complete)
-Status: Phase 16 complete (all plans done), ready for phase 17
-Last activity: 2026-03-08 -- Plan 16-03 complete (MCP tool registration + integration tests)
+Plan: 4 of 4 (complete, includes gap closure)
+Status: Phase 16 gap closure complete, ready for phase 17
+Last activity: 2026-03-08 -- Plan 16-04 complete (gap closure: bridge crash fix, validation noise, tags type)
 
 Progress: [█████████░] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7 (v1.2)
+- Total plans completed: 8 (v1.2)
 - Average duration: 5min
-- Total execution time: 34min
+- Total execution time: 37min
 
 **By Phase:**
 
@@ -45,7 +45,7 @@ Progress: [█████████░] 100%
 |-------|-------|-------|----------|
 | 14 | 2/2 | 10min | 5min |
 | 15 | 4/4 | 19min | 4.8min |
-| 16 | 3/3 | 13min | 4.3min |
+| 16 | 4/4 | 16min | 4.0min |
 
 ## Accumulated Context
 
@@ -73,6 +73,7 @@ Progress: [█████████░] 100%
 - [Phase 16]: Repository.edit_task takes pre-built dict payload -- service does intelligence, repo does transport
 - [Phase 16]: Cycle detection walks parent chain via get_all task map
 - [Phase 16]: Assert isinstance for mypy type narrowing after boolean UNSET checks
+- [Phase 16]: ValidationError caught at model_validate boundaries, re-raised as clean ValueError
 
 ### Pending Todos
 
@@ -95,6 +96,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-08T03:28:38Z
-Stopped at: Phase 16 complete
-Next action: Execute phase 17
+Last session: 2026-03-08T12:41:44Z
+Stopped at: Completed 16-04-PLAN.md
+Next action: Execute remaining gap closure plans or phase 17
