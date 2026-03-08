@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 if TYPE_CHECKING:
@@ -87,3 +87,84 @@ class InMemoryRepository:
         self._snapshot.tasks.append(task)
 
         return TaskCreateResult(success=True, id=task_id, name=spec.name)
+
+    async def edit_task(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Edit a task in-memory by mutating the snapshot.
+
+        Simplified mutation for testing -- maps camelCase payload keys to
+        snake_case model attributes and updates tags/parent as needed.
+        """
+        from omnifocus_operator.models.common import ParentRef, TagRef
+
+        task_id = payload["id"]
+        task = next((t for t in self._snapshot.tasks if t.id == task_id), None)
+        if task is None:
+            msg = f"Task not found: {task_id}"
+            raise ValueError(msg)
+
+        # camelCase payload key -> snake_case attribute
+        _key_map: dict[str, str] = {
+            "name": "name",
+            "note": "note",
+            "flagged": "flagged",
+            "dueDate": "due_date",
+            "deferDate": "defer_date",
+            "plannedDate": "planned_date",
+            "estimatedMinutes": "estimated_minutes",
+        }
+
+        skip_keys = {"id", "tagMode", "tagIds", "addTagIds", "removeTagIds", "moveTo"}
+        for key, value in payload.items():
+            if key in skip_keys:
+                continue
+            attr = _key_map.get(key)
+            if attr is not None:
+                setattr(task, attr, value)
+
+        # Handle tag operations
+        tag_mode = payload.get("tagMode")
+        if tag_mode == "replace":
+            tag_ids = payload.get("tagIds", [])
+            task.tags = [TagRef(id=tid, name=tid) for tid in tag_ids]
+        elif tag_mode == "add":
+            tag_ids = payload.get("tagIds", [])
+            existing_ids = {t.id for t in task.tags}
+            for tid in tag_ids:
+                if tid not in existing_ids:
+                    task.tags.append(TagRef(id=tid, name=tid))
+        elif tag_mode == "remove":
+            remove_ids = set(payload.get("removeTagIds", []))
+            task.tags = [t for t in task.tags if t.id not in remove_ids]
+        elif tag_mode == "add_remove":
+            # Remove first, then add
+            remove_ids = set(payload.get("removeTagIds", []))
+            task.tags = [t for t in task.tags if t.id not in remove_ids]
+            add_ids = payload.get("addTagIds", [])
+            existing_ids = {t.id for t in task.tags}
+            for tid in add_ids:
+                if tid not in existing_ids:
+                    task.tags.append(TagRef(id=tid, name=tid))
+
+        # Handle moveTo (simplified -- just update parent)
+        move_to = payload.get("moveTo")
+        if move_to is not None:
+            container_id = move_to.get("containerId")
+            if container_id is None:
+                # Moving to inbox
+                task.parent = None
+                task.in_inbox = True
+            else:
+                # Check if container is a project or task
+                project = next((p for p in self._snapshot.projects if p.id == container_id), None)
+                if project is not None:
+                    task.parent = ParentRef(type="project", id=container_id, name=project.name)
+                    task.in_inbox = False
+                else:
+                    parent_task = next(
+                        (t for t in self._snapshot.tasks if t.id == container_id), None
+                    )
+                    name = parent_task.name if parent_task else ""
+                    task.parent = ParentRef(type="task", id=container_id, name=name)
+                    task.in_inbox = False
+
+        return {"id": task.id, "name": task.name}

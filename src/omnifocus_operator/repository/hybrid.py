@@ -467,6 +467,15 @@ class HybridRepository:
 
         return TaskCreateResult(success=True, id=result["id"], name=result["name"])
 
+    async def edit_task(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Edit a task via bridge and mark snapshot stale."""
+        if self._bridge is None:
+            msg = "HybridRepository requires a bridge for write operations"
+            raise RuntimeError(msg)
+        result = await self._bridge.send_command("edit_task", payload)
+        self._mark_stale()
+        return result
+
     async def get_all(self) -> AllEntities:
         """Return all OmniFocus entities from the SQLite cache."""
         if self._stale:

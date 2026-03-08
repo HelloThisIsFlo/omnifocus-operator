@@ -112,6 +112,12 @@ class BridgeRepository:
 
         return TaskCreateResult(success=True, id=result["id"], name=result["name"])
 
+    async def edit_task(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Edit a task via bridge and invalidate cache."""
+        result = await self._bridge.send_command("edit_task", payload)
+        self._cached = None
+        return result
+
     async def _refresh(self, current_mtime: int) -> AllEntities:
         """Fetch fresh data from the bridge and update cache state.
 

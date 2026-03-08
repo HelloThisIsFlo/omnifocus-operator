@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
+    from typing import Any
+
     from omnifocus_operator.models.project import Project
     from omnifocus_operator.models.snapshot import AllEntities
     from omnifocus_operator.models.tag import Tag
@@ -45,4 +47,8 @@ class Repository(Protocol):
         resolved_tag_ids: list[str] | None = None,
     ) -> TaskCreateResult:
         """Create a task and return the result."""
+        ...
+
+    async def edit_task(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Edit a task and return {id, name}."""
         ...
