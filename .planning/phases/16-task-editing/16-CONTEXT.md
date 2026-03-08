@@ -33,11 +33,21 @@ Patch-based task editing via `edit_tasks` tool. Agents can modify fields, manage
 - Removing a tag the task doesn't have: silently ignored (no-op), but included in response warnings
 
 ### Task movement
-- `parent` field on edit model uses same sentinel pattern: UNSET = don't move, null = move to inbox, value = move to parent
+- Dedicated `moveTo` object field on edit spec (not flat fields). Omit `moveTo` entirely = don't move
+- **"Key IS the position" design:** `moveTo` has exactly one key, which doubles as position and reference:
+  - `{"beginning": "<parentId>"}` -- first child of container (project/task ID)
+  - `{"ending": "<parentId>"}` -- last child of container (project/task ID)
+  - `{"before": "<siblingTaskId>"}` -- before this sibling (parent inferred from sibling)
+  - `{"after": "<siblingTaskId>"}` -- after this sibling (parent inferred from sibling)
+  - `{"beginning": null}` / `{"ending": null}` -- move to inbox (beginning or end)
+- Exactly one key required in `moveTo` -- invalid if zero or multiple keys
+- For `before`/`after`: parent is inferred from the anchor task's current parent, so reordering within the same container works naturally
+- Default when agent just wants to move without caring about position: `{"ending": "<parentId>"}` (idiomatic)
 - Parent resolution: same Phase 15 pattern -- try project first, then task, error if neither found
 - **Document project-first resolution as an architecture decision** (project takes precedence when ID matches both)
-- Moving to current parent: silently accepted (no-op), with educational warning in response
+- Moving to current position: silently accepted (no-op), with educational warning in response
 - **Full cycle validation:** walk parent chain via SQLite before bridge call; reject if moving task under itself or any of its descendants. Clear error: "Cannot move task: would create circular reference"
+- OmniJS position API: `container.beginning`, `container.ending`, `task.before`, `task.after` -- maps directly to our key names
 
 ### Validation
 - Pre-validate task ID exists via `get_task()` in service layer before bridge call (consistent with Phase 15 parent validation)
@@ -50,7 +60,7 @@ Patch-based task editing via `edit_tasks` tool. Agents can modify fields, manage
 - `warnings` is an optional list of strings for no-op situations
 - **Educational warnings on all no-ops** with hints about omitting fields:
   - Tag not present: "Tag 'X' was not on this task -- to skip tag changes, omit remove_tags"
-  - Same parent: "Task is already under this parent -- omit parent to skip movement"
+  - Same position: "Task is already at this position -- omit moveTo to skip movement"
   - Field set to current value: similar pattern
 - Consistent with add_tasks minimal result shape (plus warnings extension)
 
@@ -73,9 +83,10 @@ Patch-based task editing via `edit_tasks` tool. Agents can modify fields, manage
 <specifics>
 ## Specific Ideas
 
-- Educational warnings that teach the agent patch semantics: "Parent unchanged -- omit the parent field to skip this." The idea is that LLMs learn in-context from tool responses, so warnings serve as runtime documentation
+- Educational warnings that teach the agent patch semantics: "Task already at this position -- omit moveTo to skip movement." The idea is that LLMs learn in-context from tool responses, so warnings serve as runtime documentation
 - Project-first parent resolution should be documented as an architecture decision, not just an implementation detail
 - Cycle validation is cheap since we read from SQLite cache (~46ms full snapshot, single-row queries faster)
+- The `moveTo` "key IS the position" design makes illegal states unrepresentable -- you can't have `before` + `parent` because only one key is allowed. The type structure itself prevents invalid combinations
 
 </specifics>
 
@@ -114,7 +125,7 @@ Patch-based task editing via `edit_tasks` tool. Agents can modify fields, manage
 <deferred>
 ## Deferred Ideas
 
-None -- discussion stayed within phase scope
+- **Positioning for add_tasks** -- The same `moveTo` / position API could be added to task creation (Phase 15's `add_tasks` currently places at default position). Not in scope for Phase 16 (editing only), but the moveTo model could be reused. Add to backlog.
 
 </deferred>
 
