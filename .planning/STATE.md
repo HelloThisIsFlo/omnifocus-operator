@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Writes & Lookups
 status: in-progress
-stopped_at: "Plan 16-01 complete"
-last_updated: "2026-03-08T03:15:00Z"
-last_activity: 2026-03-08 -- Plan 16-01 complete (models & bridge handler)
+stopped_at: "Plan 16-02 complete"
+last_updated: "2026-03-08T03:22:40Z"
+last_activity: 2026-03-08 -- Plan 16-02 complete (service & repository edit_task)
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 9
-  completed_plans: 7
-  percent: 78
+  completed_plans: 8
+  percent: 89
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 ## Current Position
 
 Phase: 16 of 17 (Task Editing) -- third of 4 v1.2 phases
-Plan: 1 of 3 (complete)
-Status: Plan 16-01 complete (models & bridge handler), ready for plan 16-02
-Last activity: 2026-03-08 -- Plan 16-01 complete (models & bridge handler)
+Plan: 2 of 3 (complete)
+Status: Plan 16-02 complete (service & repository edit_task), ready for plan 16-03
+Last activity: 2026-03-08 -- Plan 16-02 complete (service & repository edit_task)
 
-Progress: [███████░░░] 78%
+Progress: [████████░░] 89%
 
 ## Performance Metrics
 
@@ -45,7 +45,7 @@ Progress: [███████░░░] 78%
 |-------|-------|-------|----------|
 | 14 | 2/2 | 10min | 5min |
 | 15 | 4/4 | 19min | 4.8min |
-| 16 | 1/3 | 5min | 5min |
+| 16 | 2/3 | 10min | 5min |
 
 ## Accumulated Context
 
@@ -70,6 +70,9 @@ Progress: [███████░░░] 78%
 - [Phase 16]: model_json_schema override strips _Unset from JSON schema for clean MCP tool schemas
 - [Phase 16]: Bridge tagMode dispatch: replace/add/remove/add_remove with removals-first ordering
 - [Phase 16]: Bridge moveTo shape: {position, containerId, anchorId} -- service translates from MoveToSpec
+- [Phase 16]: Repository.edit_task takes pre-built dict payload -- service does intelligence, repo does transport
+- [Phase 16]: Cycle detection walks parent chain via get_all task map
+- [Phase 16]: Assert isinstance for mypy type narrowing after boolean UNSET checks
 
 ### Pending Todos
 
@@ -92,6 +95,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-08T03:15:00Z
-Stopped at: Plan 16-01 complete
-Next action: Execute plan 16-02 (service layer & repository)
+Last session: 2026-03-08T03:22:40Z
+Stopped at: Plan 16-02 complete
+Next action: Execute plan 16-03 (MCP tool registration)
