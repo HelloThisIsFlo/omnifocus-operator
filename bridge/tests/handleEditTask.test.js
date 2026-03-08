@@ -287,7 +287,7 @@ describe("handleEditTask", function () {
     bridge.handleEditTask({
       id: "task-edit-001",
       tagMode: "remove",
-      tagIds: ["tag-a"],
+      removeTagIds: ["tag-a"],
     });
 
     expect(mockTask.removeTags).toHaveBeenCalledWith([tag1]);

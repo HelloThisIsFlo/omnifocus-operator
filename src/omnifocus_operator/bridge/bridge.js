@@ -288,7 +288,7 @@ function handleEditTask(params) {
             });
             task.addTags(addObjs);
         } else if (params.tagMode === "remove") {
-            var removeObjs = params.tagIds.map(function (id) {
+            var removeObjs = params.removeTagIds.map(function (id) {
                 var tag = Tag.byIdentifier(id);
                 if (!tag) throw new Error("Tag not found: " + id);
                 return tag;

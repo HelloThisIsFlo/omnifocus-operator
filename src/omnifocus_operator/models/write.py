@@ -163,7 +163,7 @@ class TaskEditSpec(OmniFocusBaseModel):
     estimated_minutes: float | None | _Unset = UNSET
 
     # Tag fields -- mutually exclusive modes
-    tags: list[str] | _Unset = UNSET
+    tags: list[str] | None | _Unset = UNSET
     add_tags: list[str] | _Unset = UNSET
     remove_tags: list[str] | _Unset = UNSET
 
