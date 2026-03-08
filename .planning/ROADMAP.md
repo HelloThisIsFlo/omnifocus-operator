@@ -71,12 +71,12 @@ Plans:
   3. Agent can set tags, dates, flag, estimated_minutes, and note on creation and they all persist correctly in OmniFocus
   4. After creating a task, the agent's next `get_all` or `get_task` call returns fresh data reflecting the write
   5. Invalid inputs (missing name, non-existent parent, non-existent tags) return clear validation errors before anything is written
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 15-01: TBD
-- [ ] 15-02: TBD
-- [ ] 15-03: TBD
+- [ ] 15-01-PLAN.md -- Write models (TaskCreateSpec, TaskCreateResult) + bridge.js add_task handler + snapshot->get_all rename
+- [ ] 15-02-PLAN.md -- Repository + service layer (protocol, validation, parent/tag resolution, factory wiring)
+- [ ] 15-03-PLAN.md -- MCP add_tasks tool registration + end-to-end integration tests
 
 ### Phase 16: Task Editing
 **Goal**: Agents can modify existing tasks using patch semantics -- changing fields, managing tags, and moving tasks between parents
@@ -133,6 +133,6 @@ Phases execute in numeric order: 14 -> 15 -> 16 -> 17
 | 12. SQLite Reader | v1.1 | 2/2 | Complete | 2026-03-07 |
 | 13. Fallback and Integration | v1.1 | 2/2 | Complete | 2026-03-07 |
 | 14. Model Refactor & Lookups | 2/2 | Complete    | 2026-03-07 | - |
-| 15. Write Pipeline & Task Creation | v1.2 | 0/? | Not started | - |
+| 15. Write Pipeline & Task Creation | v1.2 | 0/3 | Not started | - |
 | 16. Task Editing | v1.2 | 0/? | Not started | - |
 | 17. Task Lifecycle | v1.2 | 0/? | Not started | - |
