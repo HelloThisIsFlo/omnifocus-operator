@@ -87,12 +87,12 @@ Plans:
   2. Agent can replace all tags, add tags without removing existing, or remove specific tags -- and mixing replace with add/remove is rejected with a clear error
   3. Agent can move a task to a different project, to a different parent task, or to inbox by setting parent to null
   4. After editing a task, the agent's next read call returns the updated data
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 16-01: TBD
-- [ ] 16-02: TBD
-- [ ] 16-03: TBD
+- [ ] 16-01-PLAN.md -- Write models (UNSET sentinel, TaskEditSpec, MoveToSpec, TaskEditResult) + bridge.js handleEditTask
+- [ ] 16-02-PLAN.md -- Repository protocol extension + service layer (validation, cycle detection, tag modes, moveTo resolution)
+- [ ] 16-03-PLAN.md -- MCP edit_tasks tool registration + end-to-end integration tests
 
 ### Phase 17: Task Lifecycle
 **Goal**: Agents can change task lifecycle state -- completing, dropping, and reactivating tasks
@@ -134,5 +134,5 @@ Phases execute in numeric order: 14 -> 15 -> 16 -> 17
 | 13. Fallback and Integration | v1.1 | 2/2 | Complete | 2026-03-07 |
 | 14. Model Refactor & Lookups | 2/2 | Complete    | 2026-03-07 | - |
 | 15. Write Pipeline & Task Creation | 4/4 | Complete    | 2026-03-08 | - |
-| 16. Task Editing | v1.2 | 0/? | Not started | - |
+| 16. Task Editing | v1.2 | 0/3 | Not started | - |
 | 17. Task Lifecycle | v1.2 | 0/? | Not started | - |
