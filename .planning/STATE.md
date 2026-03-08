@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Writes & Lookups
 status: completed
-stopped_at: Completed 15-03-PLAN.md
-last_updated: "2026-03-08T00:36:27.867Z"
-last_activity: 2026-03-08 -- Plan 15-03 complete
+stopped_at: Completed 15-04-PLAN.md
+last_updated: "2026-03-08T02:07:46.612Z"
+last_activity: 2026-03-08 -- Plan 15-04 complete (gap closure)
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 6
+  completed_plans: 6
   percent: 100
 ---
 
@@ -26,26 +26,26 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 ## Current Position
 
 Phase: 15 of 17 (Write Pipeline & Task Creation) -- second of 4 v1.2 phases
-Plan: 3 of 3 (complete)
-Status: Phase 15 complete, ready for phase 16
-Last activity: 2026-03-08 -- Plan 15-03 complete
+Plan: 4 of 4 (complete)
+Status: Phase 15 complete (including gap closure), ready for phase 16
+Last activity: 2026-03-08 -- Plan 15-04 complete (gap closure)
 
 Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5 (v1.2)
+- Total plans completed: 6 (v1.2)
 - Average duration: 5min
-- Total execution time: 24min
+- Total execution time: 29min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 14 | 2/2 | 10min | 5min |
-| 15 | 3/3 | 14min | 4.7min |
-| Phase 15 P03 | 3min | 2 tasks | 2 files |
+| 15 | 4/4 | 19min | 4.8min |
+| Phase 15 P04 | 5min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -65,6 +65,7 @@ Progress: [██████████] 100%
 - [Phase 15]: Factory uses create_bridge() for SAFE-01 compliance in hybrid mode
 - [Phase 15]: BridgeRepository invalidates cache (sets _cached=None) on write
 - [Phase 15]: items parameter is list[dict] not list[TaskCreateSpec] -- MCP clients send raw JSON, model_validate handles camelCase
+- [Phase 15]: plainTextNote column for notes, _parse_local_datetime with ZoneInfo for DST-aware date columns
 
 ### Pending Todos
 
@@ -87,6 +88,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-08T00:33:11.659Z
-Stopped at: Completed 15-03-PLAN.md
+Last session: 2026-03-08T02:07:46.610Z
+Stopped at: Completed 15-04-PLAN.md
 Next action: Execute phase 16 (next v1.2 phase)
