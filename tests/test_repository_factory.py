@@ -20,6 +20,7 @@ class TestCreateRepositoryHybridMode:
         db_file = tmp_path / "OmniFocusDatabase.db"
         db_file.touch()
         monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(db_file))
+        monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
 
         from omnifocus_operator.repository import HybridRepository
         from omnifocus_operator.repository.factory import create_repository
@@ -31,6 +32,7 @@ class TestCreateRepositoryHybridMode:
         db_file = tmp_path / "OmniFocusDatabase.db"
         db_file.touch()
         monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(db_file))
+        monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
         monkeypatch.delenv("OMNIFOCUS_REPOSITORY", raising=False)
 
         from omnifocus_operator.repository import HybridRepository
@@ -58,6 +60,7 @@ class TestCreateRepositoryHybridMode:
         custom_db = tmp_path / "custom.db"
         custom_db.touch()
         monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(custom_db))
+        monkeypatch.setenv("OMNIFOCUS_BRIDGE", "inmemory")
 
         from omnifocus_operator.repository.factory import create_repository
 

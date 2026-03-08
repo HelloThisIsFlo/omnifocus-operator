@@ -1024,11 +1024,11 @@ class TestEdgeCases:
 
 
 class TestFreshness:
-    """Tests for WAL-based freshness detection after TEMPORARY_simulate_write."""
+    """Tests for WAL-based freshness detection after _mark_stale."""
 
     @pytest.mark.asyncio
     async def test_freshness_wal_polling(self, tmp_path: Path) -> None:
-        """After simulate_write(), get_all() polls WAL mtime; fresh data after change."""
+        """After _mark_stale(), get_all() polls WAL mtime; fresh data after change."""
         db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
         # Create a WAL file to simulate WAL presence
         wal_path = db_path.parent / (db_path.name + "-wal")
@@ -1039,7 +1039,7 @@ class TestFreshness:
         await repo.get_all()
 
         # Simulate write -- captures current mtime
-        repo.TEMPORARY_simulate_write()
+        repo._mark_stale()
 
         # Schedule a WAL mtime change after a short delay
         async def modify_wal() -> None:
@@ -1065,7 +1065,7 @@ class TestFreshness:
 
         repo = HybridRepository(db_path=db_path)
         await repo.get_all()
-        repo.TEMPORARY_simulate_write()
+        repo._mark_stale()
 
         # Modify DB file mtime after short delay
         async def modify_db() -> None:
@@ -1086,7 +1086,7 @@ class TestFreshness:
 
         repo = HybridRepository(db_path=db_path)
         await repo.get_all()
-        repo.TEMPORARY_simulate_write()
+        repo._mark_stale()
 
         # Don't modify WAL -- should timeout and return data anyway
         start = time.monotonic()
@@ -1110,7 +1110,7 @@ class TestFreshness:
 
         repo = HybridRepository(db_path=db_path)
         await repo.get_all()
-        repo.TEMPORARY_simulate_write()
+        repo._mark_stale()
 
         sleep_calls: list[float] = []
         original_sleep = asyncio.sleep
@@ -1160,7 +1160,7 @@ class TestFreshness:
 
     @pytest.mark.asyncio
     async def test_simulate_write_marks_stale(self, tmp_path: Path) -> None:
-        """TEMPORARY_simulate_write() sets stale flag; next get_all() clears it."""
+        """_mark_stale() sets stale flag; next get_all() clears it."""
         db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
         wal_path = db_path.parent / (db_path.name + "-wal")
         wal_path.touch()
@@ -1169,7 +1169,7 @@ class TestFreshness:
         await repo.get_all()
 
         assert repo._stale is False
-        repo.TEMPORARY_simulate_write()
+        repo._mark_stale()
         assert repo._stale is True
 
         # Modify WAL so freshness check passes quickly
@@ -1177,9 +1177,9 @@ class TestFreshness:
         await repo.get_all()
         assert repo._stale is False
 
-    def test_simulate_write_not_on_protocol(self) -> None:
-        """TEMPORARY_simulate_write is on HybridRepository only, not on Repository protocol."""
-        assert not hasattr(Repository, "TEMPORARY_simulate_write")
+    def test_mark_stale_not_on_protocol(self) -> None:
+        """_mark_stale is on HybridRepository only, not on Repository protocol."""
+        assert not hasattr(Repository, "_mark_stale")
 
 
 class TestAddTask:

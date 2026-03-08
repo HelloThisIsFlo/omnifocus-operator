@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from omnifocus_operator.models.project import Project
     from omnifocus_operator.models.tag import Tag
     from omnifocus_operator.models.task import Task
+    from omnifocus_operator.models.write import TaskCreateResult, TaskCreateSpec
 
 __all__ = ["BridgeRepository"]
 
@@ -86,6 +87,30 @@ class BridgeRepository:
         """Return a single tag by ID, or None if not found."""
         all_entities = await self.get_all()
         return next((t for t in all_entities.tags if t.id == tag_id), None)
+
+    async def add_task(
+        self,
+        spec: TaskCreateSpec,
+        *,
+        resolved_tag_ids: list[str] | None = None,
+    ) -> TaskCreateResult:
+        """Create a task via bridge and invalidate cache.
+
+        Builds a camelCase payload from the spec, replaces tag names with
+        resolved tag IDs, sends via bridge, and invalidates the cache.
+        """
+        from omnifocus_operator.models.write import TaskCreateResult
+
+        payload = spec.model_dump(by_alias=True, exclude_none=True, mode="json")
+        payload.pop("tags", None)
+        if resolved_tag_ids is not None:
+            payload["tagIds"] = resolved_tag_ids
+
+        result = await self._bridge.send_command("add_task", payload)
+        # Invalidate cache so next get_all fetches fresh data
+        self._cached = None
+
+        return TaskCreateResult(success=True, id=result["id"], name=result["name"])
 
     async def _refresh(self, current_mtime: int) -> AllEntities:
         """Fetch fresh data from the bridge and update cache state.

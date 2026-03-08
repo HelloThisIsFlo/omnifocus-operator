@@ -81,7 +81,12 @@ def _create_hybrid_repository() -> Repository:
         )
         raise FileNotFoundError(msg)
 
-    return HybridRepository(db_path=Path(db_path))
+    from omnifocus_operator.bridge.factory import create_bridge
+
+    bridge_type = os.environ.get("OMNIFOCUS_BRIDGE", "real")
+    bridge = create_bridge(bridge_type)
+
+    return HybridRepository(db_path=Path(db_path), bridge=bridge)
 
 
 def _create_bridge_repository() -> Repository:

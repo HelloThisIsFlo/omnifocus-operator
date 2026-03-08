@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from omnifocus_operator.models.snapshot import AllEntities
     from omnifocus_operator.models.tag import Tag
     from omnifocus_operator.models.task import Task
+    from omnifocus_operator.models.write import TaskCreateResult, TaskCreateSpec
 
 __all__ = ["Repository"]
 
@@ -35,4 +36,13 @@ class Repository(Protocol):
 
     async def get_tag(self, tag_id: str) -> Tag | None:
         """Return a single tag by ID, or None if not found."""
+        ...
+
+    async def add_task(
+        self,
+        spec: TaskCreateSpec,
+        *,
+        resolved_tag_ids: list[str] | None = None,
+    ) -> TaskCreateResult:
+        """Create a task and return the result."""
         ...

@@ -22,6 +22,9 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from omnifocus_operator.bridge.protocol import Bridge
+    from omnifocus_operator.models.write import TaskCreateResult, TaskCreateSpec
+
 from omnifocus_operator.models.project import Project
 from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.models.tag import Tag
@@ -397,19 +400,19 @@ class HybridRepository:
     Blocking SQLite I/O is wrapped in asyncio.to_thread.
     """
 
-    def __init__(self, db_path: Path | None = None) -> None:
+    def __init__(self, db_path: Path | None = None, bridge: Bridge | None = None) -> None:
         if db_path is not None:
             self._db_path = str(db_path)
         else:
             self._db_path = os.environ.get("OMNIFOCUS_SQLITE_PATH", _DEFAULT_DB_PATH)
+        self._bridge = bridge
         self._stale: bool = False
         self._last_wal_mtime_ns: int = 0
 
-    def TEMPORARY_simulate_write(self) -> None:  # noqa: N802
+    def _mark_stale(self) -> None:
         """Mark data as stale so next get_all() waits for fresh data.
 
         Captures current WAL (or DB) mtime as baseline for change detection.
-        Delete this method when real writes are implemented.
         """
         wal_path = self._db_path + "-wal"
         try:
@@ -417,6 +420,37 @@ class HybridRepository:
         except FileNotFoundError:
             self._last_wal_mtime_ns = os.stat(self._db_path).st_mtime_ns
         self._stale = True
+
+    async def add_task(
+        self,
+        spec: TaskCreateSpec,
+        *,
+        resolved_tag_ids: list[str] | None = None,
+    ) -> TaskCreateResult:
+        """Create a task via bridge and mark snapshot stale.
+
+        Builds a camelCase payload from the spec, replaces tag names with
+        resolved tag IDs, sends via bridge, and marks data as stale so the
+        next get_all() will wait for fresh data from OmniFocus.
+        """
+        from omnifocus_operator.models.write import TaskCreateResult
+
+        if self._bridge is None:
+            msg = "HybridRepository requires a bridge for write operations"
+            raise RuntimeError(msg)
+
+        # Build payload: camelCase keys, exclude None fields
+        payload = spec.model_dump(by_alias=True, exclude_none=True, mode="json")
+
+        # Replace tag names with resolved tag IDs for bridge
+        payload.pop("tags", None)
+        if resolved_tag_ids is not None:
+            payload["tagIds"] = resolved_tag_ids
+
+        result = await self._bridge.send_command("add_task", payload)
+        self._mark_stale()
+
+        return TaskCreateResult(success=True, id=result["id"], name=result["name"])
 
     async def get_all(self) -> AllEntities:
         """Return all OmniFocus entities from the SQLite cache."""
