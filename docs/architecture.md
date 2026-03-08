@@ -41,8 +41,16 @@ Three implementations: HybridRepository (production), BridgeRepository (fallback
 
 - `get_all()` -> `AllEntities`: structured container with all entity types
 - `get_*` by ID -> single entity lookup
+- `list_*(filters)` -> flat list of one entity type (e.g., `list_tasks(status=...)`) -- planned for v1.3
 - `add_*` / `edit_*` -> write operations
+- `get_*` = heterogeneous structured return; `list_*` = homogeneous filtered collection
 - `AllEntities` (not `DatabaseSnapshot`) -- no caching/snapshot semantics at the protocol level
+
+## Why Repository, Not DataSource
+
+- Repository implies querying/filtering -- `list_tasks(filters)` in v1.3
+- DataSource implies raw data access -- too thin an abstraction
+- Repository is the richer contract for how consumers interact with data
 
 ## Why Flat Packages (bridge/ and repository/ as peers)
 
