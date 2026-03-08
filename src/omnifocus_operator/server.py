@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any
 
 from mcp.server.fastmcp import Context, FastMCP
 from mcp.types import ToolAnnotations
+from pydantic import ValidationError
 
 # NOTE: AllEntities MUST be a runtime import (not TYPE_CHECKING) because
 # FastMCP introspects the return type annotation at registration time to
@@ -178,7 +179,11 @@ def _register_tools(mcp: FastMCP) -> None:
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
         service: OperatorService = ctx.request_context.lifespan_context["service"]
-        spec = TaskCreateSpec.model_validate(items[0])
+        try:
+            spec = TaskCreateSpec.model_validate(items[0])
+        except ValidationError as exc:
+            messages = "; ".join(e["msg"] for e in exc.errors())
+            raise ValueError(messages) from None
         result = await service.add_task(spec)
         return [result]
 
@@ -229,7 +234,11 @@ def _register_tools(mcp: FastMCP) -> None:
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
         service: OperatorService = ctx.request_context.lifespan_context["service"]
-        spec = TaskEditSpec.model_validate(items[0])
+        try:
+            spec = TaskEditSpec.model_validate(items[0])
+        except ValidationError as exc:
+            messages = "; ".join(e["msg"] for e in exc.errors())
+            raise ValueError(messages) from None
         result = await service.edit_task(spec)
         return [result]
 

@@ -1190,3 +1190,48 @@ class TestEditTasks:
             assert tool.annotations.idempotentHint is False
 
         await run_with_client(server, _check)
+
+    # -- Clean validation error messages --
+
+    async def test_edit_tasks_tags_plus_addtags_clean_error(self) -> None:
+        """Pydantic error for tag mutual exclusion is clean (no type=/input/URL noise)."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            result = await session.call_tool(
+                "edit_tasks",
+                {"items": [{"id": "task-001", "tags": ["a"], "addTags": ["b"]}]},
+            )
+            assert result.isError is True
+            text = result.content[0].text  # type: ignore[union-attr]
+            assert "Cannot use 'tags'" in text
+            assert "type=" not in text
+            assert "pydantic" not in text.lower()
+            assert "input_value" not in text
+
+        await run_with_client(server, _check)
+
+    async def test_edit_tasks_moveto_multiple_keys_clean_error(self) -> None:
+        """Pydantic error for moveTo multi-key is clean (no type=/input/URL noise)."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            result = await session.call_tool(
+                "edit_tasks",
+                {
+                    "items": [
+                        {
+                            "id": "task-001",
+                            "moveTo": {"beginning": "proj-1", "ending": "proj-1"},
+                        }
+                    ]
+                },
+            )
+            assert result.isError is True
+            text = result.content[0].text  # type: ignore[union-attr]
+            assert "exactly one key" in text
+            assert "type=" not in text
+            assert "pydantic" not in text.lower()
+            assert "input_value" not in text
+
+        await run_with_client(server, _check)
