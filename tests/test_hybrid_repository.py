@@ -74,6 +74,7 @@ def create_test_db(
                 dateAdded REAL,
                 dateModified REAL,
                 noteXMLData BLOB,
+                plainTextNote TEXT,
                 flagged INTEGER DEFAULT 0,
                 effectiveFlagged INTEGER DEFAULT 0,
                 dateDue TEXT,
@@ -1546,3 +1547,235 @@ class TestGetTag:
         repo = HybridRepository(db_path=db_path)
         result = await repo.get_tag("nonexistent-id")
         assert result is None
+
+
+# ============================================================================
+# GAP CLOSURE: Note encoding via plainTextNote
+# ============================================================================
+
+
+class TestPlainTextNoteEncoding:
+    """Notes should be read from plainTextNote column, not noteXMLData."""
+
+    @pytest.mark.asyncio
+    async def test_task_reads_plain_text_note(self, tmp_path: Path) -> None:
+        """Task with plainTextNote reads as clean text (no XML artifacts).
+
+        Crucially, noteXMLData is NOT set -- proves we read from plainTextNote.
+        """
+        db_path = create_test_db(
+            tmp_path,
+            tasks=[
+                _minimal_task(
+                    {
+                        "plainTextNote": "Remember oat milk\nAnd eggs",
+                    }
+                )
+            ],
+        )
+        repo = HybridRepository(db_path=db_path)
+        result = await repo.get_all()
+        assert result.tasks[0].note == "Remember oat milk\nAnd eggs"
+
+    @pytest.mark.asyncio
+    async def test_task_null_plain_text_note(self, tmp_path: Path) -> None:
+        """Task with NULL plainTextNote reads as empty string."""
+        db_path = create_test_db(
+            tmp_path,
+            tasks=[_minimal_task()],
+        )
+        repo = HybridRepository(db_path=db_path)
+        result = await repo.get_all()
+        assert result.tasks[0].note == ""
+
+    @pytest.mark.asyncio
+    async def test_project_reads_plain_text_note(self, tmp_path: Path) -> None:
+        """Project with plainTextNote reads as clean text."""
+        db_path = create_test_db(
+            tmp_path,
+            projects=[
+                _minimal_project(
+                    {
+                        "plainTextNote": "Project notes here",
+                    }
+                )
+            ],
+        )
+        repo = HybridRepository(db_path=db_path)
+        result = await repo.get_all()
+        assert result.projects[0].note == "Project notes here"
+
+
+# ============================================================================
+# GAP CLOSURE: Local datetime parsing (DST-aware)
+# ============================================================================
+
+
+class TestLocalDatetimeParsing:
+    """dateDue, dateToStart, datePlanned should be parsed as local time with DST."""
+
+    @pytest.mark.asyncio
+    async def test_due_date_local_time_winter(self, tmp_path: Path) -> None:
+        """dateDue as local-time ISO string in winter converts to UTC correctly."""
+        from zoneinfo import ZoneInfo
+
+        # London winter: UTC+0, so local 10:00 = UTC 10:00
+        db_path = create_test_db(
+            tmp_path,
+            tasks=[
+                _minimal_task(
+                    {
+                        "dateDue": "2026-01-15T10:00:00.000",
+                    }
+                )
+            ],
+        )
+        repo = HybridRepository(db_path=db_path)
+        with patch(
+            "omnifocus_operator.repository.hybrid._LOCAL_TZ",
+            ZoneInfo("Europe/London"),
+        ):
+            result = await repo.get_all()
+        task = result.tasks[0]
+
+        assert task.due_date is not None
+        assert task.due_date.year == 2026
+        assert task.due_date.month == 1
+        assert task.due_date.day == 15
+        assert task.due_date.hour == 10  # UTC+0 in winter
+        assert task.due_date.minute == 0
+
+    @pytest.mark.asyncio
+    async def test_due_date_local_time_summer_dst(self, tmp_path: Path) -> None:
+        """dateDue as local-time ISO string in summer (BST) converts to UTC correctly."""
+        from zoneinfo import ZoneInfo
+
+        # London summer (BST): UTC+1, so local 10:00 = UTC 09:00
+        db_path = create_test_db(
+            tmp_path,
+            tasks=[
+                _minimal_task(
+                    {
+                        "dateDue": "2026-07-15T10:00:00.000",
+                    }
+                )
+            ],
+        )
+        repo = HybridRepository(db_path=db_path)
+        with patch(
+            "omnifocus_operator.repository.hybrid._LOCAL_TZ",
+            ZoneInfo("Europe/London"),
+        ):
+            result = await repo.get_all()
+        task = result.tasks[0]
+
+        assert task.due_date is not None
+        assert task.due_date.hour == 9  # BST is UTC+1, so 10:00 BST = 09:00 UTC
+
+    @pytest.mark.asyncio
+    async def test_defer_date_local_time(self, tmp_path: Path) -> None:
+        """dateToStart stored as local-time ISO text converts to UTC correctly."""
+        from zoneinfo import ZoneInfo
+
+        db_path = create_test_db(
+            tmp_path,
+            tasks=[
+                _minimal_task(
+                    {
+                        "dateToStart": "2026-07-15T14:00:00.000",
+                    }
+                )
+            ],
+        )
+        repo = HybridRepository(db_path=db_path)
+        with patch(
+            "omnifocus_operator.repository.hybrid._LOCAL_TZ",
+            ZoneInfo("Europe/London"),
+        ):
+            result = await repo.get_all()
+        task = result.tasks[0]
+
+        assert task.defer_date is not None
+        assert task.defer_date.hour == 13  # 14:00 BST = 13:00 UTC
+
+    @pytest.mark.asyncio
+    async def test_planned_date_local_time(self, tmp_path: Path) -> None:
+        """datePlanned stored as local-time ISO text converts to UTC correctly."""
+        from zoneinfo import ZoneInfo
+
+        db_path = create_test_db(
+            tmp_path,
+            tasks=[
+                _minimal_task(
+                    {
+                        "datePlanned": "2026-01-20T08:00:00.000",
+                    }
+                )
+            ],
+        )
+        repo = HybridRepository(db_path=db_path)
+        with patch(
+            "omnifocus_operator.repository.hybrid._LOCAL_TZ",
+            ZoneInfo("Europe/London"),
+        ):
+            result = await repo.get_all()
+        task = result.tasks[0]
+
+        assert task.planned_date is not None
+        assert task.planned_date.hour == 8  # UTC+0 in winter
+        assert task.planned_date.day == 20
+
+    @pytest.mark.asyncio
+    async def test_effective_dates_still_use_cf_epoch(self, tmp_path: Path) -> None:
+        """effectiveDateDue stored as CF epoch integer still parses correctly (regression)."""
+        target_dt = datetime(2026, 2, 20, 15, 0, 0, tzinfo=UTC)
+        cf_value = _cf_epoch(target_dt)
+        db_path = create_test_db(
+            tmp_path,
+            tasks=[
+                _minimal_task(
+                    {
+                        "effectiveDateDue": cf_value,
+                        "effectiveDateToStart": cf_value,
+                    }
+                )
+            ],
+        )
+        repo = HybridRepository(db_path=db_path)
+        result = await repo.get_all()
+        task = result.tasks[0]
+
+        assert task.effective_due_date is not None
+        assert task.effective_due_date.year == 2026
+        assert task.effective_due_date.month == 2
+        assert task.effective_due_date.day == 20
+        assert task.effective_due_date.hour == 15
+        assert task.effective_defer_date is not None
+
+    @pytest.mark.asyncio
+    async def test_date_added_modified_cf_epoch_regression(self, tmp_path: Path) -> None:
+        """dateAdded/dateModified as CF epoch float still parse correctly (regression)."""
+        target_dt = datetime(2026, 3, 1, 12, 30, 0, tzinfo=UTC)
+        cf_value = _cf_epoch(target_dt)
+        db_path = create_test_db(
+            tmp_path,
+            tasks=[
+                _minimal_task(
+                    {
+                        "dateAdded": cf_value,
+                        "dateModified": cf_value,
+                    }
+                )
+            ],
+        )
+        repo = HybridRepository(db_path=db_path)
+        result = await repo.get_all()
+        task = result.tasks[0]
+
+        assert task.added is not None
+        assert task.added.year == 2026
+        assert task.added.month == 3
+        assert task.added.day == 1
+        assert task.added.hour == 12
+        assert task.modified is not None
+        assert task.modified.hour == 12
