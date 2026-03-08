@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: resolved
 phase: 15-write-pipeline-task-creation
 source: 15-01-SUMMARY.md, 15-02-SUMMARY.md, 15-03-SUMMARY.md
 started: 2026-03-08T01:00:00Z
-updated: 2026-03-08T01:20:00Z
+updated: 2026-03-08T02:00:00Z
 ---
 
 ## Current Test
@@ -138,7 +138,7 @@ skipped: 0
 ## Gaps
 
 - truth: "Notes round-trip correctly through hybrid/SQLite read path"
-  status: failed
+  status: resolved
   reason: "User reported: Notes via SQLite contain .AppleSystemUIFont artifacts, swallowed newlines, HTML-encoded & and >. Bridge path returns clean plain text."
   severity: major
   test: 2
@@ -159,7 +159,7 @@ skipped: 0
   deferred_to: "milestone gap — needs tag hierarchy awareness and exclusivity metadata"
 
 - truth: "deferDate round-trips without timezone shift"
-  status: failed
+  status: resolved
   reason: "User reported: Sent deferDate 09:00Z, got back 10:00Z (+1h DST shift). effectiveDeferDate was correct."
   severity: minor
   test: 17
@@ -173,7 +173,7 @@ skipped: 0
   debug_session: ".planning/debug/deferdate-timezone.md"
 
 - truth: "Tool description declares which fields are supported and which are not"
-  status: failed
+  status: resolved
   reason: "User reported: Agent can't know repetition rules, notifications, sequential/parallel aren't available without probing."
   severity: minor
   test: 20
