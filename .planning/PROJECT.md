@@ -93,6 +93,10 @@ Two read paths: SQLite (default, ~46ms) and OmniJS bridge (fallback, ~1.5MB JSON
 | Dict-based adapter mapping tables | Static mapping = dict lookup, not if/elif; in-place modification for zero-copy | Good -- fast, readable, easily extensible |
 | WAL mtime for freshness detection | WAL updates on every write; mtime_ns gives nanosecond precision | Good -- reliable read-after-write consistency |
 | Manual bridge fallback via env var | Silent automatic failover hides broken state; user must know which path is active | Good -- explicit is better than implicit |
+| Project-first parent resolution | When resolving a parent ID, try `get_project` before `get_task`. Project takes precedence. In practice IDs don't collide, but the order is intentional and deterministic | Decided in Phase 15, documented in Phase 16 |
+| Patch semantics via sentinel pattern | Edit models use UNSET sentinel to distinguish "not provided" from "null" (clear) from "value" (set). Pydantic can't distinguish omitted from None natively, sentinel solves the three-way | Phase 16 -- first partial-update API |
+| moveTo "key IS the position" design | Task movement expressed as `{"moveTo": {"ending": "parentId"}}` -- the key (beginning/ending/before/after) IS the position, the value IS the reference. Exactly one key allowed. Makes illegal states unrepresentable -- no runtime validation needed for invalid position+reference combos | Phase 16 -- maps directly to OmniJS position API |
+| Educational warnings in write responses | Write results include optional `warnings` array for no-ops (e.g., removing a tag not present, moving to same position) with hints like "omit moveTo to skip movement". Teaches agents patch semantics in-context | Phase 16 -- LLMs learn from tool responses |
 
 ---
 ## Current Milestone: v1.2 Writes & Lookups
