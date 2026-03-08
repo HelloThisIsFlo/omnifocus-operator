@@ -14,6 +14,8 @@ import pytest
 if TYPE_CHECKING:
     from pathlib import Path
 
+from datetime import UTC
+
 from omnifocus_operator.bridge import BridgeError, InMemoryBridge, create_bridge
 from omnifocus_operator.bridge.mtime import ConstantMtimeSource, MtimeSource
 from omnifocus_operator.repository import InMemoryRepository
@@ -114,6 +116,210 @@ class TestOperatorService:
 
         result = await service.get_tag("nonexistent")
         assert result is None
+
+
+# ---------------------------------------------------------------------------
+# OperatorService.add_task
+# ---------------------------------------------------------------------------
+
+
+class TestAddTask:
+    """Service.add_task validates inputs and delegates to repository."""
+
+    async def test_create_minimal(self) -> None:
+        """Name-only spec creates task and returns TaskCreateResult."""
+        from omnifocus_operator.models.write import TaskCreateResult, TaskCreateSpec
+
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.add_task(TaskCreateSpec(name="Buy milk"))
+
+        assert isinstance(result, TaskCreateResult)
+        assert result.success is True
+        assert result.name == "Buy milk"
+
+    async def test_create_with_parent_project(self) -> None:
+        """Parent ID matching a project resolves successfully."""
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        snapshot = make_snapshot()  # has proj-001
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.add_task(TaskCreateSpec(name="Sub task", parent="proj-001"))
+        assert result.success is True
+
+    async def test_create_with_parent_task(self) -> None:
+        """Parent ID matching a task (not project) resolves successfully."""
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        snapshot = make_snapshot()  # has task-001
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.add_task(TaskCreateSpec(name="Sub task", parent="task-001"))
+        assert result.success is True
+
+    async def test_no_parent_inbox(self) -> None:
+        """No parent -> task goes to inbox."""
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.add_task(TaskCreateSpec(name="Inbox task"))
+        assert result.success is True
+
+    async def test_parent_not_found(self) -> None:
+        """Non-existent parent raises ValueError."""
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        with pytest.raises(ValueError, match="Parent not found: nonexistent-id"):
+            await service.add_task(TaskCreateSpec(name="Task", parent="nonexistent-id"))
+
+    async def test_tags_by_name(self) -> None:
+        """Case-insensitive tag name resolution."""
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        from .conftest import make_tag_dict
+
+        snapshot = make_snapshot(
+            tags=[
+                make_tag_dict(id="tag-work", name="Work"),
+            ]
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        # "work" (lowercase) should match "Work"
+        result = await service.add_task(TaskCreateSpec(name="Task", tags=["work"]))
+        assert result.success is True
+
+    async def test_tags_by_id_fallback(self) -> None:
+        """Tag name that doesn't match tries ID fallback."""
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        from .conftest import make_tag_dict
+
+        snapshot = make_snapshot(
+            tags=[
+                make_tag_dict(id="tag-work", name="Work"),
+            ]
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        # "tag-work" as name doesn't match, but as ID it does
+        result = await service.add_task(TaskCreateSpec(name="Task", tags=["tag-work"]))
+        assert result.success is True
+
+    async def test_tag_not_found(self) -> None:
+        """Non-existent tag raises ValueError."""
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        with pytest.raises(ValueError, match="Tag not found"):
+            await service.add_task(TaskCreateSpec(name="Task", tags=["nonexistent"]))
+
+    async def test_tag_ambiguous(self) -> None:
+        """Multiple tags with same name raises ValueError with IDs listed."""
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        from .conftest import make_tag_dict
+
+        snapshot = make_snapshot(
+            tags=[
+                make_tag_dict(id="tag-a", name="Work"),
+                make_tag_dict(id="tag-b", name="Work"),
+            ]
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        with pytest.raises(ValueError, match="Ambiguous tag") as exc_info:
+            await service.add_task(TaskCreateSpec(name="Task", tags=["Work"]))
+        # Error should include both IDs
+        assert "tag-a" in str(exc_info.value)
+        assert "tag-b" in str(exc_info.value)
+
+    async def test_all_fields(self) -> None:
+        """Spec with all fields creates task successfully."""
+
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        from .conftest import make_tag_dict
+
+        snapshot = make_snapshot(
+            tags=[
+                make_tag_dict(id="tag-work", name="Work"),
+            ]
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        from datetime import datetime
+
+        spec = TaskCreateSpec(
+            name="Full task",
+            parent="proj-001",
+            tags=["Work"],
+            due_date=datetime(2026, 3, 15, 10, 0, tzinfo=UTC),
+            defer_date=datetime(2026, 3, 10, 8, 0, tzinfo=UTC),
+            planned_date=datetime(2026, 3, 12, 9, 0, tzinfo=UTC),
+            flagged=True,
+            estimated_minutes=45.0,
+            note="Some note",
+        )
+        result = await service.add_task(spec)
+        assert result.success is True
+
+    async def test_empty_name(self) -> None:
+        """Empty string name raises ValueError."""
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        with pytest.raises(ValueError, match="Task name is required"):
+            await service.add_task(TaskCreateSpec(name=""))
+
+    async def test_whitespace_name(self) -> None:
+        """Whitespace-only name raises ValueError."""
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        with pytest.raises(ValueError, match="Task name is required"):
+            await service.add_task(TaskCreateSpec(name="   "))
+
+    async def test_validation_before_write(self) -> None:
+        """Validation error prevents repository.add_task from being called."""
+        from unittest.mock import AsyncMock
+
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        mock_repo = AsyncMock()
+        mock_repo.get_project.return_value = None
+        mock_repo.get_task.return_value = None
+        service = OperatorService(repository=mock_repo)
+
+        with pytest.raises(ValueError, match="Parent not found"):
+            await service.add_task(TaskCreateSpec(name="Task", parent="bad-id"))
+
+        mock_repo.add_task.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
