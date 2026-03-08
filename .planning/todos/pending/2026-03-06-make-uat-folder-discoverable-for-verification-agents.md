@@ -2,6 +2,7 @@
 created: 2026-03-06T18:22:21.118Z
 title: Make UAT folder discoverable for verification agents
 area: docs
+priority: low
 files:
   - uat/
 ---

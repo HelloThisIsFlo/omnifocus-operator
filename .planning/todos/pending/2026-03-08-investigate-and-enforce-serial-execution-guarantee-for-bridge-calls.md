@@ -2,6 +2,7 @@
 created: 2026-03-08T11:51:37.290Z
 title: Investigate and enforce serial execution guarantee for bridge calls
 area: bridge
+priority: high
 files:
   - src/omnifocus_operator/bridge/
   - src/omnifocus_operator/bridge/real_bridge.py

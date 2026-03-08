@@ -2,6 +2,7 @@
 created: 2026-03-08T11:51:37.290Z
 title: Add position field to expose child task ordering
 area: models
+priority: high
 files:
   - src/omnifocus_operator/models/
   - src/omnifocus_operator/service/

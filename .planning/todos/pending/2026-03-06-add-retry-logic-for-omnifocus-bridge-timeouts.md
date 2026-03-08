@@ -2,6 +2,7 @@
 created: 2026-03-06T18:22:21.118Z
 title: Add retry logic for OmniFocus bridge timeouts
 area: bridge
+priority: low
 files:
   - src/omnifocus_operator/bridge/_real.py:140-158
   - src/omnifocus_operator/bridge/_errors.py:31-39

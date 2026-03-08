@@ -1,7 +1,8 @@
 ---
 created: 2026-03-08T11:51:37.290Z
-title: Unify position concept across create edit get APIs
+title: Consider unified position concept across create edit get APIs
 area: api-design
+priority: high
 files:
   - src/omnifocus_operator/models/
   - src/omnifocus_operator/service/

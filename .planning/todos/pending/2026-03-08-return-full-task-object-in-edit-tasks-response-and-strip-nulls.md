@@ -1,7 +1,8 @@
 ---
 created: 2026-03-08T11:51:37.290Z
-title: Return full task object in edit_tasks response and strip nulls
+title: Consider returning full task object in edit_tasks response and stripping nulls
 area: service
+priority: high
 files:
   - src/omnifocus_operator/service/
   - src/omnifocus_operator/models/

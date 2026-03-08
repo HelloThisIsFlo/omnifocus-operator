@@ -2,6 +2,7 @@
 created: 2026-03-06T18:22:21.118Z
 title: Investigate macOS App Nap impact on OmniFocus responsiveness
 area: bridge
+priority: low
 files:
   - src/omnifocus_operator/bridge/_real.py:158
 ---
