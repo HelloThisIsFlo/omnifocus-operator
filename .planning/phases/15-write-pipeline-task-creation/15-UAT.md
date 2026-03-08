@@ -3,7 +3,7 @@ status: complete
 phase: 15-write-pipeline-task-creation
 source: 15-01-SUMMARY.md, 15-02-SUMMARY.md, 15-03-SUMMARY.md
 started: 2026-03-08T01:00:00Z
-updated: 2026-03-08T01:15:00Z
+updated: 2026-03-08T01:20:00Z
 ---
 
 ## Current Test
@@ -12,98 +12,167 @@ updated: 2026-03-08T01:15:00Z
 
 ## Tests
 
-### 1. Create Task with Name Only
-expected: `add_tasks` with name-only creates task in OmniFocus Inbox, returns ID and name.
+### 1. Create Task — Name Only
+expected: `add_tasks` with `[{"name": "..."}]` creates task in OmniFocus Inbox, returns ID.
 result: pass
-coverage: Report #1
 
-### 2. Create Task with Optional Fields
+### 2. Create Task — All Optional Fields
 expected: Setting note, dueDate, deferDate, plannedDate, flagged, estimatedMinutes all persist correctly.
-result: pass
-coverage: Report #2, #11, #12, #19 (dates, fractional estimates)
+result: issue
+reported: "Notes read via SQLite/hybrid path contain .AppleSystemUIFont artifacts, swallowed newlines, HTML-encoded & and >. Bridge path returns clean plain text."
+severity: major
 
 ### 3. Create Task Under a Project
 expected: parentId pointing to project nests task under that project, not Inbox.
 result: pass
-coverage: Report #3 (project), #4 (nested 3-level), #5 (50-task hierarchy)
 
-### 4. Create Task with Tags
-expected: tagNames associates tags with task. Tags appear in OmniFocus.
+### 4. Create Nested Child Under Project Task
+expected: Task created under another task that's under a project (3 levels deep).
 result: pass
-coverage: Report #6 (single), #7 (multiple), #8 (by ID), #9 (nonexistent error), #10 (mutual exclusivity)
 
-### 5. Post-Write Freshness
-expected: After add_tasks, immediately calling get_all/get_task returns the new task. Cache invalidation works.
+### 5. Create Task Hierarchy in Inbox
+expected: Parent task with subtasks, multiple levels deep, all in Inbox.
 result: pass
-coverage: Bridge mode via get_task + get_all, Hybrid mode via get_task (_mark_stale confirmed)
 
-### 6. Validation Error — Empty Name
-expected: name="" returns clear error, no task created.
+### 6. Tags — Single Tag by Name
+expected: Tag assigned by exact name.
 result: pass
-coverage: Report #21
 
-### 7. Validation Error — Invalid Parent
+### 7. Tags — Multiple Tags
+expected: Multiple tags assigned in one call.
+result: pass
+
+### 8. Tags — By ID
+expected: Tag assigned using OmniFocus tag ID instead of name.
+result: pass
+
+### 9. Tags — Nonexistent Tag
+expected: Clear error when tag doesn't exist.
+result: pass
+
+### 10. Tags — Mutually Exclusive
+expected: Assigning two mutually exclusive sibling tags — behavior unclear.
+result: issue
+reported: "OmniJS allows assigning multiple mutually exclusive tags. OmniFocus only enforces exclusivity via UI. Agents can create tasks in states the UI wouldn't allow."
+severity: minor
+
+### 11. Dates — plannedDate Only
+expected: plannedDate sets the forecast/planned date.
+result: pass
+
+### 12. Dates — All Three Dates Combined
+expected: deferDate, dueDate, plannedDate all set independently.
+result: pass
+
+### 13. Dates — Timezone Requirement
+expected: Naive datetime (no timezone) rejected.
+result: pass
+
+### 14. Flagged — Effective Inheritance
+expected: Child with flagged:false under flagged parent shows effectiveFlagged:true.
+result: pass
+
+### 15. Urgency — Overdue
+expected: Task with past due date shows urgency:"overdue".
+result: pass
+
+### 16. Urgency — Due Soon
+expected: Task due later today shows urgency:"due_soon".
+result: pass
+
+### 17. Availability — Blocked by Defer Date
+expected: Task deferred to future shows availability:"blocked".
+result: issue
+reported: "Sent deferDate 09:00Z, got back 10:00Z (+1h DST shift) while effectiveDeferDate was correct at 09:00Z. Inconsistent timezone handling between deferDate and effectiveDeferDate."
+severity: minor
+
+### 18. Edge Cases — Emoji, Special Chars, Long Names
+expected: Unicode, quotes, angle brackets, long names all handled.
+result: pass
+
+### 19. Edge Cases — Fractional Estimate
+expected: estimatedMinutes:150.5 accepted.
+result: pass
+
+### 20. Edge Cases — Extra Unknown Fields
+expected: Unknown fields like priority, color, assignee silently ignored.
+result: issue
+reported: "Tool description doesn't declare field boundaries. Agent can't know which fields are unsupported (repetition rules, notifications, sequential/parallel) without probing or reading source."
+severity: minor
+
+### 21. Validation Error — Empty Name
+expected: name:"" returns clear error, no task created.
+result: pass
+
+### 22. Validation Error — Invalid Parent
 expected: Fake parentId returns clear error, no task created.
 result: pass
-coverage: Report #22
 
-## Additional Coverage (beyond planned tests)
+### 23. Post-Write Freshness
+expected: After add_tasks, immediately calling get_all/get_task returns the new task.
+result: pass
 
-### Dates & Scheduling
-- #11 plannedDate only → Forecast view ✓
-- #12 All three dates combined → round-tripped ✓
-- #13 Naive datetime rejected → Pydantic validation ✓
+### 24. Parallel Performance — 10 Concurrent Calls
+expected: 10 simultaneous add_tasks calls all succeed.
+result: pass
 
-### Status Model
-- #14 Flagged inheritance (effectiveFlagged) ✓
-- #15 Urgency: overdue ✓
-- #16 Urgency: due_soon ✓
-- #17 Availability: blocked by defer date ✓
-
-### Edge Cases
-- #18 Emoji, special chars, long names ✓
-- #19 Fractional estimatedMinutes ✓
-- #20 Unknown fields silently ignored ✓
-
-### Parallel Performance
-- #23 10 concurrent calls → 10/10 success, ~1s/task ✓
-- #24 32 concurrent calls → 32/32 success ✓
-- 50-task hierarchy in ~50 seconds ✓
+### 25. Parallel Performance — 32 Concurrent Calls
+expected: Large fan-out of sibling tasks in one wave.
+result: pass
 
 ## Summary
 
-total: 7
-passed: 7
-issues: 0
+total: 25
+passed: 21
+issues: 4
 pending: 0
 skipped: 0
 
 ## Observations
 
-- 24 total test scenarios executed (7 planned + 17 additional)
-- All 24 passed (20 clean pass, 4 with informational issues logged below)
 - Parallel cancellation: Claude Code client cancels sibling calls on error — argues against lifting 1-item limit
 - Single-item constraint validated as sufficient for real-world agent workflows
-
-## Issues (informational — not phase 15 regressions)
-
-### ISSUE-1: Note field encoding in hybrid/SQLite mode (medium)
-- Notes via SQLite contain .AppleSystemUIFont artifacts, swallowed newlines, HTML-encoded & and >
-- Bridge path returns clean plain text
-- Action: Investigate alternative SQLite column or strip artifacts in hybrid layer
-
-### ISSUE-2: Timezone discrepancy on deferDate vs effectiveDeferDate (low)
-- Sent deferDate 09:00Z, got back 10:00Z (+1h DST shift) but effectiveDeferDate correct at 09:00Z
-- Action: Investigate timezone handling difference between the two fields
-
-### ISSUE-3: Mutually exclusive tags not enforced via API (low)
-- OmniJS allows assigning multiple exclusive tags; UI-only enforcement
-- Action: Consider service-layer validation in future version
-
-### ISSUE-4: Tool description doesn't declare field boundaries (low, DX)
-- Agent can't know which fields are unsupported without probing
-- Action: Add "only these fields supported" line to tool description
+- ~1s/task throughput including all overhead; 50-task hierarchy in ~50 seconds
+- Error messages clear and actionable: "Tag not found: X", "Parent not found: X", "Task name is required"
 
 ## Gaps
 
-[none — all tests passed]
+- truth: "Notes round-trip correctly through hybrid/SQLite read path"
+  status: failed
+  reason: "User reported: Notes via SQLite contain .AppleSystemUIFont artifacts, swallowed newlines, HTML-encoded & and >. Bridge path returns clean plain text."
+  severity: major
+  test: 2
+  root_cause: ""
+  artifacts: []
+  missing: []
+  debug_session: ""
+
+- truth: "Mutually exclusive tags are enforced when assigned via API"
+  status: failed
+  reason: "User reported: OmniJS allows assigning multiple mutually exclusive tags. UI-only enforcement. Agents can create invalid tag states."
+  severity: minor
+  test: 10
+  root_cause: ""
+  artifacts: []
+  missing: []
+  debug_session: ""
+
+- truth: "deferDate round-trips without timezone shift"
+  status: failed
+  reason: "User reported: Sent deferDate 09:00Z, got back 10:00Z (+1h DST shift). effectiveDeferDate was correct."
+  severity: minor
+  test: 17
+  root_cause: ""
+  artifacts: []
+  missing: []
+  debug_session: ""
+
+- truth: "Tool description declares which fields are supported and which are not"
+  status: failed
+  reason: "User reported: Agent can't know repetition rules, notifications, sequential/parallel aren't available without probing."
+  severity: minor
+  test: 20
+  root_cause: ""
+  artifacts: []
+  missing: []
+  debug_session: ""
