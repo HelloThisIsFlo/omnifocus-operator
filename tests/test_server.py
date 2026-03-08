@@ -883,3 +883,310 @@ class TestAddTasks:
             assert new_id in task_ids
 
         await run_with_client(server, _check)
+
+
+# ---------------------------------------------------------------------------
+# EDIT: edit_tasks tool
+# ---------------------------------------------------------------------------
+
+
+class TestEditTasks:
+    """Verify edit_tasks MCP tool registration and behaviour."""
+
+    async def _make_server_with_data(
+        self,
+        *,
+        extra_tasks: list[dict[str, Any]] | None = None,
+        extra_projects: list[dict[str, Any]] | None = None,
+        extra_tags: list[dict[str, Any]] | None = None,
+    ) -> FastMCP:
+        """Build a test server with InMemoryRepository and known data."""
+        from omnifocus_operator.repository import InMemoryRepository
+        from omnifocus_operator.server import _register_tools
+        from omnifocus_operator.service import OperatorService
+
+        from .conftest import make_project_dict, make_snapshot, make_tag_dict, make_task_dict
+
+        tasks = [make_task_dict()]
+        if extra_tasks:
+            tasks.extend(extra_tasks)
+
+        projects = [make_project_dict()]
+        if extra_projects:
+            projects.extend(extra_projects)
+
+        tags = [make_tag_dict()]
+        if extra_tags:
+            tags.extend(extra_tags)
+
+        snapshot = make_snapshot(tasks=tasks, projects=projects, tags=tags)
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        server = _build_patched_server(repo, service)
+        _register_tools(server)
+        return server
+
+    # -- Single-item constraint (EDIT-09) --
+
+    async def test_edit_tasks_rejects_empty_array(self) -> None:
+        """Passing 0 items returns an error."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            result = await session.call_tool("edit_tasks", {"items": []})
+            assert result.isError is True
+            text = result.content[0].text  # type: ignore[union-attr]
+            assert "exactly 1 item" in text
+
+        await run_with_client(server, _check)
+
+    async def test_edit_tasks_rejects_multi_item_array(self) -> None:
+        """Passing 2+ items returns an error."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            result = await session.call_tool(
+                "edit_tasks",
+                {"items": [{"id": "a"}, {"id": "b"}]},
+            )
+            assert result.isError is True
+            text = result.content[0].text  # type: ignore[union-attr]
+            assert "exactly 1 item" in text
+
+        await run_with_client(server, _check)
+
+    # -- Basic field edit --
+
+    async def test_edit_tasks_basic_name_change(self) -> None:
+        """Create a task, edit its name, verify result and persistence."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            # Create a task
+            add_result = await session.call_tool("add_tasks", {"items": [{"name": "Original"}]})
+            assert add_result.isError is not True
+            task_id = add_result.structuredContent["result"][0]["id"]  # type: ignore[index]
+
+            # Edit the name
+            edit_result = await session.call_tool(
+                "edit_tasks",
+                {"items": [{"id": task_id, "name": "Updated"}]},
+            )
+            assert edit_result.isError is not True
+            items = edit_result.structuredContent["result"]  # type: ignore[index]
+            assert items[0]["success"] is True
+            assert items[0]["name"] == "Updated"
+
+            # Verify via get_task
+            get_result = await session.call_tool("get_task", {"id": task_id})
+            assert get_result.isError is not True
+            assert get_result.structuredContent["name"] == "Updated"  # type: ignore[index]
+
+        await run_with_client(server, _check)
+
+    # -- Clear a field --
+
+    async def test_edit_tasks_clear_field(self) -> None:
+        """Create task with due date, edit with dueDate=null, verify cleared."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            # Create task with due date
+            add_result = await session.call_tool(
+                "add_tasks",
+                {"items": [{"name": "Has due", "dueDate": "2026-06-01T12:00:00+00:00"}]},
+            )
+            assert add_result.isError is not True
+            task_id = add_result.structuredContent["result"][0]["id"]  # type: ignore[index]
+
+            # Clear due date
+            edit_result = await session.call_tool(
+                "edit_tasks",
+                {"items": [{"id": task_id, "dueDate": None}]},
+            )
+            assert edit_result.isError is not True
+            assert edit_result.structuredContent["result"][0]["success"] is True  # type: ignore[index]
+
+            # Verify due date is cleared
+            get_result = await session.call_tool("get_task", {"id": task_id})
+            assert get_result.isError is not True
+            assert get_result.structuredContent["dueDate"] is None  # type: ignore[index]
+
+        await run_with_client(server, _check)
+
+    # -- Tag replace --
+
+    async def test_edit_tasks_tag_replace(self) -> None:
+        """Create task with tags, replace tags via edit."""
+        server = await self._make_server_with_data(
+            extra_tags=[
+                {
+                    "id": "tag-new",
+                    "name": "New Tag",
+                    "url": "omnifocus:///tag/tag-new",
+                    "added": "2024-01-15T10:30:00.000Z",
+                    "modified": "2024-01-15T10:30:00.000Z",
+                    "availability": "available",
+                    "childrenAreMutuallyExclusive": False,
+                    "parent": None,
+                },
+            ],
+        )
+
+        async def _check(session: ClientSession) -> None:
+            # Create task with original tag
+            add_result = await session.call_tool(
+                "add_tasks",
+                {"items": [{"name": "Tagged", "tags": ["Test Tag"]}]},
+            )
+            assert add_result.isError is not True
+            task_id = add_result.structuredContent["result"][0]["id"]  # type: ignore[index]
+
+            # Replace tags
+            edit_result = await session.call_tool(
+                "edit_tasks",
+                {"items": [{"id": task_id, "tags": ["New Tag"]}]},
+            )
+            assert edit_result.isError is not True
+            assert edit_result.structuredContent["result"][0]["success"] is True  # type: ignore[index]
+
+            # Verify tags replaced
+            get_result = await session.call_tool("get_task", {"id": task_id})
+            assert get_result.isError is not True
+            tag_names = [t["name"] for t in get_result.structuredContent["tags"]]  # type: ignore[index]
+            assert "tag-new" in tag_names or "New Tag" in tag_names
+            # Original tag should be gone
+            assert "tag-001" not in [t["id"] for t in get_result.structuredContent["tags"]]  # type: ignore[index]
+
+        await run_with_client(server, _check)
+
+    # -- Move to project --
+
+    async def test_edit_tasks_move_to_project(self) -> None:
+        """Create task in inbox, move to project via edit."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            # Create task in inbox (no parent)
+            add_result = await session.call_tool("add_tasks", {"items": [{"name": "Inbox task"}]})
+            assert add_result.isError is not True
+            task_id = add_result.structuredContent["result"][0]["id"]  # type: ignore[index]
+
+            # Move to project
+            edit_result = await session.call_tool(
+                "edit_tasks",
+                {"items": [{"id": task_id, "moveTo": {"ending": "proj-001"}}]},
+            )
+            assert edit_result.isError is not True
+            assert edit_result.structuredContent["result"][0]["success"] is True  # type: ignore[index]
+
+            # Verify parent changed
+            get_result = await session.call_tool("get_task", {"id": task_id})
+            assert get_result.isError is not True
+            parent = get_result.structuredContent["parent"]  # type: ignore[index]
+            assert parent is not None
+            assert parent["id"] == "proj-001"
+
+        await run_with_client(server, _check)
+
+    # -- Move to inbox --
+
+    async def test_edit_tasks_move_to_inbox(self) -> None:
+        """Create task under project, move to inbox via edit."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            # Create task under project
+            add_result = await session.call_tool(
+                "add_tasks",
+                {"items": [{"name": "Project task", "parent": "proj-001"}]},
+            )
+            assert add_result.isError is not True
+            task_id = add_result.structuredContent["result"][0]["id"]  # type: ignore[index]
+
+            # Move to inbox
+            edit_result = await session.call_tool(
+                "edit_tasks",
+                {"items": [{"id": task_id, "moveTo": {"ending": None}}]},
+            )
+            assert edit_result.isError is not True
+            assert edit_result.structuredContent["result"][0]["success"] is True  # type: ignore[index]
+
+            # Verify parent is null (inbox)
+            get_result = await session.call_tool("get_task", {"id": task_id})
+            assert get_result.isError is not True
+            assert get_result.structuredContent["parent"] is None  # type: ignore[index]
+
+        await run_with_client(server, _check)
+
+    # -- Task not found --
+
+    async def test_edit_tasks_not_found(self) -> None:
+        """Edit with non-existent ID returns error."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            result = await session.call_tool(
+                "edit_tasks",
+                {"items": [{"id": "nonexistent-id", "name": "Nope"}]},
+            )
+            assert result.isError is True
+            text = result.content[0].text  # type: ignore[union-attr]
+            assert "nonexistent-id" in text
+
+        await run_with_client(server, _check)
+
+    # -- Full roundtrip freshness --
+
+    async def test_edit_tasks_then_get_all_reflects_change(self) -> None:
+        """After edit, get_all returns updated data."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            # Create a task
+            add_result = await session.call_tool("add_tasks", {"items": [{"name": "Before edit"}]})
+            assert add_result.isError is not True
+            task_id = add_result.structuredContent["result"][0]["id"]  # type: ignore[index]
+
+            # Edit its name
+            edit_result = await session.call_tool(
+                "edit_tasks",
+                {"items": [{"id": task_id, "name": "After edit"}]},
+            )
+            assert edit_result.isError is not True
+
+            # Verify via get_all
+            get_result = await session.call_tool("get_all")
+            assert get_result.structuredContent is not None
+            task = next(t for t in get_result.structuredContent["tasks"] if t["id"] == task_id)
+            assert task["name"] == "After edit"
+
+        await run_with_client(server, _check)
+
+    # -- Registration & annotations --
+
+    async def test_edit_tasks_registered(self) -> None:
+        """edit_tasks tool is registered."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            tools_result = await session.list_tools()
+            names = [t.name for t in tools_result.tools]
+            assert "edit_tasks" in names
+
+        await run_with_client(server, _check)
+
+    async def test_edit_tasks_has_write_annotations(self) -> None:
+        """edit_tasks has correct write annotations."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            tools_result = await session.list_tools()
+            tool = next(t for t in tools_result.tools if t.name == "edit_tasks")
+            assert tool.annotations is not None
+            assert tool.annotations.readOnlyHint is False
+            assert tool.annotations.destructiveHint is False
+            assert tool.annotations.idempotentHint is False
+
+        await run_with_client(server, _check)
