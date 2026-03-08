@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from omnifocus_operator.models.snapshot import AllEntities
     from omnifocus_operator.models.tag import Tag
     from omnifocus_operator.models.task import Task
+    from omnifocus_operator.models.write import TaskCreateResult, TaskCreateSpec
     from omnifocus_operator.repository import Repository
 
 __all__ = ["ErrorOperatorService", "OperatorService"]
@@ -55,6 +56,72 @@ class OperatorService:
     async def get_tag(self, tag_id: str) -> Tag | None:
         """Return a single tag by ID, or None if not found."""
         return await self._repository.get_tag(tag_id)
+
+    async def add_task(self, spec: TaskCreateSpec) -> TaskCreateResult:
+        """Create a task with validation and delegation to repository.
+
+        Validates name, resolves parent (project or task), resolves tag
+        names to IDs, then delegates to repository.add_task.
+
+        Raises
+        ------
+        ValueError
+            If name is empty, parent not found, or tag resolution fails.
+        """
+        # Validate name
+        if not spec.name or not spec.name.strip():
+            msg = "Task name is required"
+            raise ValueError(msg)
+
+        # Resolve parent
+        if spec.parent is not None:
+            await self._resolve_parent(spec.parent)
+
+        # Resolve tags
+        resolved_tag_ids: list[str] | None = None
+        if spec.tags is not None:
+            resolved_tag_ids = await self._resolve_tags(spec.tags)
+
+        return await self._repository.add_task(spec, resolved_tag_ids=resolved_tag_ids)
+
+    async def _resolve_parent(self, parent_id: str) -> str:
+        """Resolve parent ID to project or task. Raises ValueError if neither found."""
+        project = await self._repository.get_project(parent_id)
+        if project is not None:
+            return parent_id
+
+        task = await self._repository.get_task(parent_id)
+        if task is not None:
+            return parent_id
+
+        msg = f"Parent not found: {parent_id}"
+        raise ValueError(msg)
+
+    async def _resolve_tags(self, tag_names: list[str]) -> list[str]:
+        """Resolve tag names to IDs case-insensitively. Falls back to ID lookup."""
+        all_data = await self._repository.get_all()
+        resolved: list[str] = []
+
+        for name in tag_names:
+            # Case-insensitive name match
+            matches = [t for t in all_data.tags if t.name.lower() == name.lower()]
+
+            if len(matches) == 1:
+                resolved.append(matches[0].id)
+            elif len(matches) > 1:
+                ids = ", ".join(m.id for m in matches)
+                msg = f"Ambiguous tag '{name}': multiple matches ({ids})"
+                raise ValueError(msg)
+            else:
+                # No name match -- try as ID fallback
+                tag = await self._repository.get_tag(name)
+                if tag is not None:
+                    resolved.append(tag.id)
+                else:
+                    msg = f"Tag not found: {name}"
+                    raise ValueError(msg)
+
+        return resolved
 
 
 class ErrorOperatorService(OperatorService):
