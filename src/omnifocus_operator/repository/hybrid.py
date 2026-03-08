@@ -12,12 +12,14 @@ from __future__ import annotations
 
 import asyncio
 import os
+import pathlib
 import plistlib
 import re
 import sqlite3
 import time
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
+from zoneinfo import ZoneInfo
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -68,6 +70,19 @@ _PERSPECTIVES_SQL = "SELECT * FROM Perspective"
 _TASK_TO_TAG_SQL = "SELECT task, tag FROM TaskToTag"
 
 
+# -- Timezone --
+
+
+def _get_local_tz() -> ZoneInfo:
+    """Get system timezone as ZoneInfo from /etc/localtime symlink (macOS)."""
+    tz_path = pathlib.Path("/etc/localtime").resolve()
+    tz_name = str(tz_path).split("zoneinfo/")[-1]
+    return ZoneInfo(tz_name)
+
+
+_LOCAL_TZ = _get_local_tz()
+
+
 # -- Timestamp parsing --
 
 
@@ -98,20 +113,20 @@ def _parse_timestamp(value: float | str | None) -> str | None:
     raise ValueError(msg)
 
 
-# -- Note extraction --
+def _parse_local_datetime(value: str | None) -> str | None:
+    """Parse timezone-naive ISO string as local time, return UTC ISO 8601.
 
-
-def _extract_note_text(xml_data: bytes | None) -> str:
-    """Extract plain text from OmniFocus note XML.
-
-    Notes are stored as XML: <text><p><run><lit>content</lit></run></p></text>
-    Return empty string for None or empty notes.
+    OmniFocus stores dateDue, dateToStart, datePlanned as naive local-time
+    strings (e.g. "2026-04-01T10:00:00.000"). This function attaches the
+    system timezone (handling DST based on the date itself) and converts
+    to UTC.
     """
-    if not xml_data:
-        return ""
-    text = xml_data.decode("utf-8", errors="replace")
-    text = re.sub(r"<[^>]+>", "", text)
-    return text.strip()
+    if value is None:
+        return None
+    naive = datetime.fromisoformat(value)
+    local_dt = naive.replace(tzinfo=_LOCAL_TZ)
+    utc_dt = local_dt.astimezone(UTC)
+    return utc_dt.isoformat()
 
 
 # -- Status mapping --
@@ -266,18 +281,18 @@ def _map_task_row(
         "url": f"omnifocus:///task/{task_id}",
         "added": _parse_timestamp(row["dateAdded"]),
         "modified": _parse_timestamp(row["dateModified"]),
-        "note": _extract_note_text(row["noteXMLData"]),
+        "note": row["plainTextNote"] or "",
         "flagged": bool(row["flagged"]),
         "effective_flagged": bool(row["effectiveFlagged"]),
-        "due_date": _parse_timestamp(row["dateDue"]),
-        "defer_date": _parse_timestamp(row["dateToStart"]),
+        "due_date": _parse_local_datetime(row["dateDue"]),
+        "defer_date": _parse_local_datetime(row["dateToStart"]),
         "effective_due_date": _parse_timestamp(row["effectiveDateDue"]),
         "effective_defer_date": _parse_timestamp(row["effectiveDateToStart"]),
         "completion_date": _parse_timestamp(row["dateCompleted"]),
         "effective_completion_date": _parse_timestamp(row["effectiveDateCompleted"]),
         "drop_date": _parse_timestamp(row["dateHidden"]),
         "effective_drop_date": _parse_timestamp(row["effectiveDateHidden"]),
-        "planned_date": _parse_timestamp(row["datePlanned"]),
+        "planned_date": _parse_local_datetime(row["datePlanned"]),
         "effective_planned_date": _parse_timestamp(row["effectiveDatePlanned"]),
         "estimated_minutes": row["estimatedMinutes"],
         "has_children": (row["childrenCount"] or 0) > 0,
@@ -309,17 +324,17 @@ def _map_project_row(
         "url": f"omnifocus:///project/{task_id}",
         "added": _parse_timestamp(row["dateAdded"]),
         "modified": _parse_timestamp(row["dateModified"]),
-        "note": _extract_note_text(row["noteXMLData"]),
+        "note": row["plainTextNote"] or "",
         "flagged": bool(row["flagged"]),
         "effective_flagged": bool(row["effectiveFlagged"]),
-        "due_date": _parse_timestamp(row["dateDue"]),
-        "defer_date": _parse_timestamp(row["dateToStart"]),
+        "due_date": _parse_local_datetime(row["dateDue"]),
+        "defer_date": _parse_local_datetime(row["dateToStart"]),
         "effective_due_date": _parse_timestamp(row["effectiveDateDue"]),
         "effective_defer_date": _parse_timestamp(row["effectiveDateToStart"]),
         "completion_date": _parse_timestamp(row["dateCompleted"]),
         "drop_date": _parse_timestamp(row["dateHidden"]),
         "effective_drop_date": _parse_timestamp(row["effectiveDateHidden"]),
-        "planned_date": _parse_timestamp(row["datePlanned"]),
+        "planned_date": _parse_local_datetime(row["datePlanned"]),
         "effective_planned_date": _parse_timestamp(row["effectiveDatePlanned"]),
         "estimated_minutes": row["estimatedMinutes"],
         "has_children": (row["childrenCount"] or 0) > 0,

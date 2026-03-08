@@ -386,7 +386,7 @@ class TestTaskBasicFields:
                     {
                         "persistentIdentifier": "abc123",
                         "name": "Buy milk",
-                        "noteXMLData": _make_note_xml("Remember oat milk"),
+                        "plainTextNote": "Remember oat milk",
                         "flagged": 1,
                         "effectiveFlagged": 1,
                         "inInbox": 1,
@@ -413,23 +413,28 @@ class TestTaskBasicFields:
 
 class TestTaskTimestamps:
     @pytest.mark.asyncio
-    async def test_task_dates_cf_epoch(self, tmp_path: Path) -> None:
-        """CF epoch float timestamps parse to correct AwareDatetime."""
-        target_dt = datetime(2026, 2, 20, 15, 15, 16, tzinfo=UTC)
-        cf_value = _cf_epoch(target_dt)
+    async def test_task_dates_local_time_string(self, tmp_path: Path) -> None:
+        """dateDue/dateToStart as local-time ISO strings parse correctly."""
+        from zoneinfo import ZoneInfo
+
         db_path = create_test_db(
             tmp_path,
             tasks=[
                 _minimal_task(
                     {
-                        "dateDue": cf_value,
-                        "dateToStart": cf_value,
+                        "dateDue": "2026-02-20T15:15:16.000",
+                        "dateToStart": "2026-02-20T15:15:16.000",
                     }
                 )
             ],
         )
         repo = HybridRepository(db_path=db_path)
-        result = await repo.get_all()
+        # Use UTC timezone so local time == UTC for predictable assertions
+        with patch(
+            "omnifocus_operator.repository.hybrid._LOCAL_TZ",
+            ZoneInfo("UTC"),
+        ):
+            result = await repo.get_all()
         task = result.tasks[0]
 
         assert task.due_date is not None
@@ -440,15 +445,17 @@ class TestTaskTimestamps:
         assert task.defer_date.year == 2026
 
     @pytest.mark.asyncio
-    async def test_task_dates_iso8601(self, tmp_path: Path) -> None:
-        """ISO 8601 string timestamps parse to correct AwareDatetime."""
+    async def test_effective_dates_cf_epoch(self, tmp_path: Path) -> None:
+        """effectiveDateDue/effectiveDateToStart as CF epoch floats parse correctly."""
+        target_dt = datetime(2026, 2, 16, 22, 0, 0, tzinfo=UTC)
+        cf_value = _cf_epoch(target_dt)
         db_path = create_test_db(
             tmp_path,
             tasks=[
                 _minimal_task(
                     {
-                        "dateDue": "2026-02-16T22:00:00.000Z",
-                        "dateToStart": "2026-01-10T09:00:00.000+00:00",
+                        "effectiveDateDue": cf_value,
+                        "effectiveDateToStart": cf_value,
                     }
                 )
             ],
@@ -457,11 +464,11 @@ class TestTaskTimestamps:
         result = await repo.get_all()
         task = result.tasks[0]
 
-        assert task.due_date is not None
-        assert task.due_date.year == 2026
-        assert task.due_date.month == 2
-        assert task.due_date.day == 16
-        assert task.defer_date is not None
+        assert task.effective_due_date is not None
+        assert task.effective_due_date.year == 2026
+        assert task.effective_due_date.month == 2
+        assert task.effective_due_date.day == 16
+        assert task.effective_defer_date is not None
 
     @pytest.mark.asyncio
     async def test_task_null_dates(self, tmp_path: Path) -> None:
@@ -627,13 +634,14 @@ class TestTaskRepetition:
 
 class TestTaskNotes:
     @pytest.mark.asyncio
-    async def test_task_note_xml_extraction(self, tmp_path: Path) -> None:
+    async def test_task_note_plain_text(self, tmp_path: Path) -> None:
+        """Notes are read from plainTextNote column (not noteXMLData)."""
         db_path = create_test_db(
             tmp_path,
             tasks=[
                 _minimal_task(
                     {
-                        "noteXMLData": _make_note_xml("Buy oat milk and eggs"),
+                        "plainTextNote": "Buy oat milk and eggs",
                     }
                 )
             ],
@@ -1327,7 +1335,7 @@ class TestGetTask:
                     {
                         "persistentIdentifier": "task-abc",
                         "name": "Buy milk",
-                        "noteXMLData": _make_note_xml("Oat milk"),
+                        "plainTextNote": "Oat milk",
                         "flagged": 1,
                         "effectiveFlagged": 1,
                         "inInbox": 0,
