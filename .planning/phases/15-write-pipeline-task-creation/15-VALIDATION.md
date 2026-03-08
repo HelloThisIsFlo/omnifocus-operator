@@ -1,10 +1,11 @@
 ---
 phase: 15
 slug: write-pipeline-task-creation
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-08
+validated: 2026-03-08
 ---
 
 # Phase 15 — Validation Strategy
@@ -21,6 +22,7 @@ created: 2026-03-08
 | **Config file** | `pyproject.toml` [tool.pytest.ini_options], `vitest.config.js` |
 | **Quick run command** | `uv run pytest tests/ -x --no-cov -q` |
 | **Full suite command** | `uv run pytest tests/ --cov` |
+| **Bridge tests** | `npx vitest run bridge/tests/bridge.test.js` |
 | **Estimated runtime** | ~15 seconds |
 
 ---
@@ -38,14 +40,15 @@ created: 2026-03-08
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 15-01-01 | 01 | 1 | CREA-01 | unit | `uv run pytest tests/test_service.py::TestAddTask::test_create_minimal -x` | ❌ W0 | ⬜ pending |
-| 15-01-02 | 01 | 1 | CREA-02 | unit | `uv run pytest tests/test_service.py::TestAddTask::test_parent_resolution -x` | ❌ W0 | ⬜ pending |
-| 15-01-03 | 01 | 1 | CREA-03 | unit | `uv run pytest tests/test_service.py::TestAddTask::test_all_fields -x` | ❌ W0 | ⬜ pending |
-| 15-01-04 | 01 | 1 | CREA-04 | unit | `uv run pytest tests/test_service.py::TestAddTask::test_no_parent_inbox -x` | ❌ W0 | ⬜ pending |
-| 15-01-05 | 01 | 1 | CREA-05 | unit | `uv run pytest tests/test_service.py::TestAddTask::test_validation -x` | ❌ W0 | ⬜ pending |
-| 15-02-01 | 02 | 1 | CREA-06 | integration | `uv run pytest tests/test_server.py::TestAddTasks -x` | ❌ W0 | ⬜ pending |
-| 15-02-02 | 02 | 1 | CREA-07 | unit | `uv run pytest tests/test_server.py::TestAddTasks::test_single_item_constraint -x` | ❌ W0 | ⬜ pending |
-| 15-02-03 | 02 | 1 | CREA-08 | unit | `uv run pytest tests/test_hybrid_repository.py::TestAddTask -x` | ❌ W0 | ⬜ pending |
+| 15-01-01 | 01 | 1 | CREA-01 | unit | `uv run pytest tests/test_service.py::TestAddTask::test_create_minimal -x` | ✅ | ✅ green |
+| 15-01-02 | 01 | 1 | CREA-02 | unit | `uv run pytest tests/test_service.py::TestAddTask::test_create_with_parent_project -x` | ✅ | ✅ green |
+| 15-01-03 | 01 | 1 | CREA-03 | unit | `uv run pytest tests/test_service.py::TestAddTask::test_all_fields -x` | ✅ | ✅ green |
+| 15-01-04 | 01 | 1 | CREA-04 | unit | `uv run pytest tests/test_service.py::TestAddTask::test_no_parent_inbox -x` | ✅ | ✅ green |
+| 15-01-05 | 01 | 1 | CREA-05 | unit | `uv run pytest tests/test_service.py::TestAddTask::test_empty_name -x` | ✅ | ✅ green |
+| 15-02-01 | 02 | 1 | CREA-06 | integration | `uv run pytest tests/test_server.py::TestAddTasks -x` | ✅ | ✅ green |
+| 15-02-02 | 02 | 1 | CREA-07 | unit | `uv run pytest tests/test_server.py::TestAddTasks::test_add_tasks_single_item_constraint -x` | ✅ | ✅ green |
+| 15-02-03 | 02 | 1 | CREA-08 | unit | `uv run pytest tests/test_hybrid_repository.py::TestAddTask -x` | ✅ | ✅ green |
+| 15-bridge | 01 | 1 | CREA-06 | unit | `npx vitest run bridge/tests/bridge.test.js` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -53,11 +56,12 @@ created: 2026-03-08
 
 ## Wave 0 Requirements
 
-- [ ] `tests/test_service.py::TestAddTask` — service-level add_task tests (validation, parent/tag resolution)
-- [ ] `tests/test_server.py::TestAddTasks` — MCP tool integration tests
-- [ ] `tests/test_hybrid_repository.py::TestAddTask` — repository write + staleness tests
-- [ ] `tests/test_bridge.py` — bridge.js `handleAddTask` vitest tests
-- [ ] Write model classes (TaskCreateSpec, TaskCreateResult) — needed before tests
+- [x] `tests/test_service.py::TestAddTask` — 13 service-level add_task tests (validation, parent/tag resolution)
+- [x] `tests/test_server.py::TestAddTasks` — 12 MCP tool integration tests
+- [x] `tests/test_hybrid_repository.py::TestAddTask` — 8 repository write + staleness tests
+- [x] `bridge/tests/bridge.test.js::handleAddTask` — 9 vitest tests + 1 dispatch routing test
+- [x] `tests/test_models.py::TestWriteModels` — 5 write model tests
+- [x] `tests/test_repository.py::TestInMemoryAddTask` — 5 in-memory repository tests
 
 ---
 
@@ -74,11 +78,26 @@ created: 2026-03-08
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** validated
+
+---
+
+## Validation Audit 2026-03-08
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 1 |
+| Resolved | 1 |
+| Escalated | 0 |
+
+**Details:**
+- GAP: bridge.js `handleAddTask` had zero vitest tests
+- FIX: Added 10 tests (9 unit + 1 dispatch) to `bridge/tests/bridge.test.js`
+- All 391 Python tests + 36 vitest tests passing
