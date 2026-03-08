@@ -10,6 +10,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, NoReturn
 
+from omnifocus_operator.models.enums import Availability
+
 if TYPE_CHECKING:
     from omnifocus_operator.models.project import Project
     from omnifocus_operator.models.snapshot import AllEntities
@@ -111,6 +113,16 @@ class OperatorService:
             msg = f"Task not found: {spec.id}"
             raise ValueError(msg)
 
+        warnings: list[str] = []
+
+        # Warn about editing completed/dropped tasks
+        if task.availability in (Availability.COMPLETED, Availability.DROPPED):
+            status = task.availability.value
+            warnings.append(
+                f"This task is {status} -- your changes were applied, "
+                f"but please confirm with the user that they intended to edit a {status} task."
+            )
+
         # 2. Validate name (if provided)
         if not isinstance(spec.name, _Unset) and (not spec.name or not spec.name.strip()):
             msg = "Task name cannot be empty"
@@ -131,6 +143,10 @@ class OperatorService:
             if not isinstance(value, _Unset):
                 payload[key] = value
 
+        # null-means-clear: note=None -> "" (OmniFocus rejects null notes)
+        if "note" in payload and payload["note"] is None:
+            payload["note"] = ""
+
         # Date fields: serialize to ISO string if not None
         _date_fields = [
             ("due_date", "dueDate"),
@@ -143,16 +159,14 @@ class OperatorService:
                 payload[key] = value.isoformat() if value is not None else None
 
         # 4. Handle tags
-        warnings: list[str] = []
-
         has_replace = not isinstance(spec.tags, _Unset)
         has_add = not isinstance(spec.add_tags, _Unset)
         has_remove = not isinstance(spec.remove_tags, _Unset)
 
         if has_replace:
-            # Replace mode -- tags is list[str] here (not _Unset)
-            assert isinstance(spec.tags, list)
-            resolved_ids = await self._resolve_tags(spec.tags) if spec.tags else []
+            # tags: null means clear all (same as tags: [])
+            tag_list = spec.tags if isinstance(spec.tags, list) else []
+            resolved_ids = await self._resolve_tags(tag_list) if tag_list else []
             payload["tagMode"] = "replace"
             payload["tagIds"] = resolved_ids
         elif has_add and has_remove:
@@ -161,8 +175,12 @@ class OperatorService:
             assert isinstance(spec.remove_tags, list)
             add_ids = await self._resolve_tags(spec.add_tags) if spec.add_tags else []
             remove_ids = await self._resolve_tags(spec.remove_tags) if spec.remove_tags else []
-            # Warnings for removing tags not on task
+            # Warnings for tags already on task (add duplicates)
             current_tag_ids = {t.id for t in task.tags}
+            for i, tag_name in enumerate(spec.add_tags):
+                if i < len(add_ids) and add_ids[i] in current_tag_ids:
+                    warnings.append(f"Tag '{tag_name}' is already on this task")
+            # Warnings for removing tags not on task
             for i, tag_name in enumerate(spec.remove_tags):
                 if remove_ids[i] not in current_tag_ids:
                     warnings.append(
@@ -176,6 +194,11 @@ class OperatorService:
             # Add-only mode
             assert isinstance(spec.add_tags, list)
             add_ids = await self._resolve_tags(spec.add_tags) if spec.add_tags else []
+            # Warn about tags already present
+            current_tag_ids = {t.id for t in task.tags}
+            for i, tag_name in enumerate(spec.add_tags):
+                if i < len(add_ids) and add_ids[i] in current_tag_ids:
+                    warnings.append(f"Tag '{tag_name}' is already on this task")
             payload["tagMode"] = "add"
             payload["tagIds"] = add_ids
         elif has_remove:
@@ -227,10 +250,67 @@ class OperatorService:
 
             payload["moveTo"] = move_to_dict
 
-        # 6. Delegate to repository
+        # 6. Early return for completely empty edit (no fields, no tags, no move)
+        if len(payload) == 1:  # Only "id" key
+            return TaskEditResult(
+                success=True,
+                id=spec.id,
+                name=task.name,
+                warnings=(warnings or [])
+                + [
+                    "No changes specified -- if you intended to change fields, "
+                    "include them in the request"
+                ],
+            )
+
+        # 7. Generic no-op detection: compare payload against current task state
+        is_noop = True
+        field_comparisons: dict[str, object] = {
+            "name": task.name,
+            "note": task.note,
+            "flagged": task.flagged,
+            "estimatedMinutes": task.estimated_minutes,
+            "dueDate": task.due_date.isoformat() if task.due_date else None,
+            "deferDate": task.defer_date.isoformat() if task.defer_date else None,
+            "plannedDate": task.planned_date.isoformat() if task.planned_date else None,
+        }
+        for key, current_value in field_comparisons.items():
+            if key in payload and payload[key] != current_value:
+                is_noop = False
+                break
+
+        # Check tag changes if no field changes detected yet
+        if is_noop and "tagMode" in payload:
+            sorted_current_tag_ids = sorted(t.id for t in task.tags)
+            if payload.get("tagMode") == "replace":
+                raw_ids = payload.get("tagIds")
+                new_tag_ids = sorted(raw_ids) if isinstance(raw_ids, list) else []
+                if new_tag_ids != sorted_current_tag_ids:
+                    is_noop = False
+            else:
+                # add/remove/add_remove modes always represent intentional changes
+                is_noop = False
+
+        # Check moveTo
+        if is_noop and "moveTo" in payload:
+            is_noop = False
+
+        if is_noop and len(payload) > 1:
+            return TaskEditResult(
+                success=True,
+                id=spec.id,
+                name=task.name,
+                warnings=(warnings or [])
+                + [
+                    "No changes detected -- the task already has these values. "
+                    "If you don't want to change a field, omit it from the request."
+                ],
+            )
+
+        # 8. Delegate to repository
         result = await self._repository.edit_task(payload)
 
-        # 7. Return result
+        # 9. Return result
         return TaskEditResult(
             success=True,
             id=result["id"],
