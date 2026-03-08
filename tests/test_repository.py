@@ -382,3 +382,93 @@ class TestInMemoryRepository:
         repo = BridgeRepository(bridge=bridge, mtime_source=mtime)
 
         assert isinstance(repo, Repository)
+
+
+# ---------------------------------------------------------------------------
+# InMemoryRepository -- add_task
+# ---------------------------------------------------------------------------
+
+
+class TestInMemoryAddTask:
+    """Tests for InMemoryRepository.add_task (in-memory write for testing)."""
+
+    async def test_add_task_returns_result(self) -> None:
+        """add_task returns TaskCreateResult with success=True."""
+        from omnifocus_operator.models.write import TaskCreateResult, TaskCreateSpec
+
+        from .conftest import make_snapshot
+
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
+
+        spec = TaskCreateSpec(name="New task")
+        result = await repo.add_task(spec)
+
+        assert isinstance(result, TaskCreateResult)
+        assert result.success is True
+        assert result.name == "New task"
+        assert result.id.startswith("mem-")
+
+    async def test_add_task_appends_to_snapshot(self) -> None:
+        """add_task appends the new task to the snapshot."""
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        from .conftest import make_snapshot
+
+        snapshot = make_snapshot()
+        initial_count = len(snapshot.tasks)
+        repo = InMemoryRepository(snapshot=snapshot)
+
+        spec = TaskCreateSpec(name="New task")
+        await repo.add_task(spec)
+
+        updated_snapshot = await repo.get_all()
+        assert len(updated_snapshot.tasks) == initial_count + 1
+        new_task = updated_snapshot.tasks[-1]
+        assert new_task.name == "New task"
+
+    async def test_add_task_inbox_when_no_parent(self) -> None:
+        """Task with no parent goes to inbox (in_inbox=True)."""
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        from .conftest import make_snapshot
+
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
+
+        spec = TaskCreateSpec(name="Inbox task")
+        result = await repo.add_task(spec)
+
+        updated = await repo.get_all()
+        new_task = next(t for t in updated.tasks if t.id == result.id)
+        assert new_task.in_inbox is True
+
+    async def test_add_task_with_parent(self) -> None:
+        """Task with parent sets in_inbox=False."""
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        from .conftest import make_snapshot
+
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
+
+        spec = TaskCreateSpec(name="Child task", parent="proj-001")
+        result = await repo.add_task(spec)
+
+        updated = await repo.get_all()
+        new_task = next(t for t in updated.tasks if t.id == result.id)
+        assert new_task.in_inbox is False
+
+    async def test_add_task_generates_unique_ids(self) -> None:
+        """Each add_task generates a unique ID."""
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        from .conftest import make_snapshot
+
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
+
+        r1 = await repo.add_task(TaskCreateSpec(name="Task 1"))
+        r2 = await repo.add_task(TaskCreateSpec(name="Task 2"))
+
+        assert r1.id != r2.id

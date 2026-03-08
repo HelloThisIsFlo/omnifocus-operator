@@ -1182,6 +1182,132 @@ class TestFreshness:
         assert not hasattr(Repository, "TEMPORARY_simulate_write")
 
 
+class TestAddTask:
+    """Tests for HybridRepository.add_task -- write-through-bridge."""
+
+    @pytest.mark.asyncio
+    async def test_add_task_calls_bridge(self, tmp_path: Path) -> None:
+        """add_task sends add_task command to bridge with correct payload."""
+        from omnifocus_operator.bridge.in_memory import InMemoryBridge
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
+        bridge = InMemoryBridge(data={"id": "new-task-1", "name": "Buy milk"})
+        repo = HybridRepository(db_path=db_path, bridge=bridge)
+
+        spec = TaskCreateSpec(name="Buy milk")
+        await repo.add_task(spec)
+
+        assert bridge.call_count == 1
+        call = bridge.calls[0]
+        assert call.operation == "add_task"
+        assert call.params["name"] == "Buy milk"
+
+    @pytest.mark.asyncio
+    async def test_add_task_returns_result(self, tmp_path: Path) -> None:
+        """add_task returns TaskCreateResult with bridge response data."""
+        from omnifocus_operator.bridge.in_memory import InMemoryBridge
+        from omnifocus_operator.models.write import TaskCreateResult, TaskCreateSpec
+
+        db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
+        bridge = InMemoryBridge(data={"id": "new-task-1", "name": "Buy milk"})
+        repo = HybridRepository(db_path=db_path, bridge=bridge)
+
+        spec = TaskCreateSpec(name="Buy milk")
+        result = await repo.add_task(spec)
+
+        assert isinstance(result, TaskCreateResult)
+        assert result.success is True
+        assert result.id == "new-task-1"
+        assert result.name == "Buy milk"
+
+    @pytest.mark.asyncio
+    async def test_add_task_marks_stale(self, tmp_path: Path) -> None:
+        """add_task sets _stale=True for next get_all freshness check."""
+        from omnifocus_operator.bridge.in_memory import InMemoryBridge
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
+        bridge = InMemoryBridge(data={"id": "new-task-1", "name": "Test"})
+        repo = HybridRepository(db_path=db_path, bridge=bridge)
+
+        assert repo._stale is False
+        spec = TaskCreateSpec(name="Test")
+        await repo.add_task(spec)
+        assert repo._stale is True
+
+    @pytest.mark.asyncio
+    async def test_add_task_excludes_none_fields(self, tmp_path: Path) -> None:
+        """add_task only sends non-None fields in payload."""
+        from omnifocus_operator.bridge.in_memory import InMemoryBridge
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
+        bridge = InMemoryBridge(data={"id": "t1", "name": "Test"})
+        repo = HybridRepository(db_path=db_path, bridge=bridge)
+
+        spec = TaskCreateSpec(name="Test")
+        await repo.add_task(spec)
+
+        params = bridge.calls[0].params
+        assert "name" in params
+        # None fields should not be in payload
+        assert "dueDate" not in params
+        assert "deferDate" not in params
+        assert "parent" not in params
+
+    @pytest.mark.asyncio
+    async def test_add_task_with_resolved_tag_ids(self, tmp_path: Path) -> None:
+        """add_task includes tagIds in payload when resolved_tag_ids provided."""
+        from omnifocus_operator.bridge.in_memory import InMemoryBridge
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
+        bridge = InMemoryBridge(data={"id": "t1", "name": "Test"})
+        repo = HybridRepository(db_path=db_path, bridge=bridge)
+
+        spec = TaskCreateSpec(name="Test", tags=["Work"])
+        await repo.add_task(spec, resolved_tag_ids=["tag-001", "tag-002"])
+
+        params = bridge.calls[0].params
+        assert params["tagIds"] == ["tag-001", "tag-002"]
+        # tags (names) should NOT be in the payload sent to bridge
+        assert "tags" not in params
+
+    @pytest.mark.asyncio
+    async def test_add_task_uses_camel_case_keys(self, tmp_path: Path) -> None:
+        """add_task payload uses camelCase keys for bridge protocol."""
+
+        from omnifocus_operator.bridge.in_memory import InMemoryBridge
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
+        bridge = InMemoryBridge(data={"id": "t1", "name": "Test"})
+        repo = HybridRepository(db_path=db_path, bridge=bridge)
+
+        spec = TaskCreateSpec(
+            name="Test",
+            due_date=datetime(2026, 3, 15, 10, 0, tzinfo=UTC),
+            estimated_minutes=30.0,
+        )
+        await repo.add_task(spec)
+
+        params = bridge.calls[0].params
+        assert "dueDate" in params
+        assert "estimatedMinutes" in params
+        # Should NOT have snake_case keys
+        assert "due_date" not in params
+        assert "estimated_minutes" not in params
+
+    def test_protocol_has_add_task(self) -> None:
+        """Repository protocol defines add_task method."""
+        assert hasattr(Repository, "add_task")
+
+    def test_temporary_simulate_write_removed(self, tmp_path: Path) -> None:
+        """TEMPORARY_simulate_write is removed from HybridRepository."""
+        assert not hasattr(HybridRepository, "TEMPORARY_simulate_write")
+
+
 # ============================================================================
 # GET-BY-ID TESTS
 # ============================================================================
