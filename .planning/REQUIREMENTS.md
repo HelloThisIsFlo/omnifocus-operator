@@ -30,8 +30,8 @@ Requirements for Writes & Lookups milestone. Each maps to roadmap phases.
 - [ ] **CREA-03**: Agent can set tags, due_date, defer_date, planned_date, flagged, estimated_minutes, note on creation
 - [ ] **CREA-04**: Task with no parent (or parent omitted) goes to inbox
 - [ ] **CREA-05**: Service validates inputs before bridge execution (name required, parent ID exists, tags exist)
-- [ ] **CREA-06**: Tool returns per-item result with success status, created ID, and name
-- [ ] **CREA-07**: API accepts arrays (`add_tasks([...])`) with single-item constraint initially
+- [x] **CREA-06**: Tool returns per-item result with success status, created ID, and name
+- [x] **CREA-07**: API accepts arrays (`add_tasks([...])`) with single-item constraint initially
 - [ ] **CREA-08**: Snapshot is invalidated after successful write; next read returns fresh data
 
 ### Task Editing
@@ -107,8 +107,8 @@ Requirements for Writes & Lookups milestone. Each maps to roadmap phases.
 | CREA-03 | Phase 15 | Pending |
 | CREA-04 | Phase 15 | Pending |
 | CREA-05 | Phase 15 | Pending |
-| CREA-06 | Phase 15 | Pending |
-| CREA-07 | Phase 15 | Pending |
+| CREA-06 | Phase 15 | Complete |
+| CREA-07 | Phase 15 | Complete |
 | CREA-08 | Phase 15 | Pending |
 | EDIT-01 | Phase 16 | Pending |
 | EDIT-02 | Phase 16 | Pending |

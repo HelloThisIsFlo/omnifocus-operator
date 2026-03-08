@@ -74,7 +74,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 15-01-PLAN.md -- Write models (TaskCreateSpec, TaskCreateResult) + bridge.js add_task handler + snapshot->get_all rename
+- [x] 15-01-PLAN.md -- Write models (TaskCreateSpec, TaskCreateResult) + bridge.js add_task handler + snapshot->get_all rename
 - [ ] 15-02-PLAN.md -- Repository + service layer (protocol, validation, parent/tag resolution, factory wiring)
 - [ ] 15-03-PLAN.md -- MCP add_tasks tool registration + end-to-end integration tests
 
@@ -133,6 +133,6 @@ Phases execute in numeric order: 14 -> 15 -> 16 -> 17
 | 12. SQLite Reader | v1.1 | 2/2 | Complete | 2026-03-07 |
 | 13. Fallback and Integration | v1.1 | 2/2 | Complete | 2026-03-07 |
 | 14. Model Refactor & Lookups | 2/2 | Complete    | 2026-03-07 | - |
-| 15. Write Pipeline & Task Creation | v1.2 | 0/3 | Not started | - |
+| 15. Write Pipeline & Task Creation | v1.2 | 1/3 | In progress | - |
 | 16. Task Editing | v1.2 | 0/? | Not started | - |
 | 17. Task Lifecycle | v1.2 | 0/? | Not started | - |

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Writes & Lookups
-status: completed
-stopped_at: Phase 15 context gathered
-last_updated: "2026-03-08T00:00:33.330Z"
-last_activity: 2026-03-07 -- Plan 14-01 complete
+status: in_progress
+stopped_at: Plan 15-01 complete
+last_updated: "2026-03-08T00:17:29Z"
+last_activity: 2026-03-08 -- Plan 15-01 complete
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
-  percent: 12
+  total_plans: 5
+  completed_plans: 3
+  percent: 37
 ---
 
 # Project State
@@ -21,30 +21,30 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 14 - Model Refactor & Lookups
+**Current focus:** Phase 15 - Write Pipeline & Task Creation
 
 ## Current Position
 
-Phase: 14 of 17 (Model Refactor & Lookups) -- first of 4 v1.2 phases
-Plan: 1 of 2
-Status: Plan 14-01 complete, ready for 14-02
-Last activity: 2026-03-07 -- Plan 14-01 complete
+Phase: 15 of 17 (Write Pipeline & Task Creation) -- second of 4 v1.2 phases
+Plan: 1 of 3
+Status: Plan 15-01 complete, ready for 15-02
+Last activity: 2026-03-08 -- Plan 15-01 complete
 
-Progress: [█░░░░░░░░░] 12%
+Progress: [███░░░░░░░] 37%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1 (v1.2)
+- Total plans completed: 3 (v1.2)
 - Average duration: 5min
-- Total execution time: 5min
+- Total execution time: 14min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 14 | 1/2 | 5min | 5min |
-| Phase 14 P02 | 5min | 2 tasks | 9 files |
+| 14 | 2/2 | 10min | 5min |
+| 15 | 1/3 | 4min | 4min |
 
 ## Accumulated Context
 
@@ -58,6 +58,8 @@ Progress: [█░░░░░░░░░] 12%
 - Bridge adapter uses empty string for name when bridge doesn't send name fields
 - [Phase 14]: HybridRepository uses dedicated single-entity SQLite queries for get-by-ID (not filtering _read_all)
 - [Phase 14]: Not-found raises ValueError -> MCP SDK wraps as isError: true response
+- [Phase 15]: Write models inherit OmniFocusBaseModel for consistent camelCase serialization
+- [Phase 15]: Bridge.js handleAddTask receives tag IDs (not names) -- resolution stays in Python service layer
 
 ### Pending Todos
 
@@ -80,6 +82,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-08T00:00:33.320Z
-Stopped at: Phase 15 context gathered
-Next action: Execute 14-02-PLAN.md (get-by-ID tools)
+Last session: 2026-03-08T00:17:29Z
+Stopped at: Completed 15-01-PLAN.md
+Next action: Execute 15-02-PLAN.md (repository + service layer)
