@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Writes & Lookups
 status: completed
-stopped_at: Phase 16 complete
-last_updated: "2026-03-08T12:46:02.332Z"
-last_activity: 2026-03-08 -- Plan 16-04 complete (gap closure: bridge crash, validation noise, tags type)
+stopped_at: Completed 16-05-PLAN.md
+last_updated: "2026-03-08T12:45:00.000Z"
+last_activity: 2026-03-08 -- Plan 16-05 complete (gap closure: null-clear, warnings, no-op detection)
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 11
-  completed_plans: 10
+  completed_plans: 11
   percent: 100
 ---
 
@@ -26,18 +26,18 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 ## Current Position
 
 Phase: 16 of 17 (Task Editing) -- third of 4 v1.2 phases
-Plan: 4 of 4 (complete, includes gap closure)
+Plan: 5 of 5 (complete, includes gap closure)
 Status: Phase 16 gap closure complete, ready for phase 17
-Last activity: 2026-03-08 -- Plan 16-04 complete (gap closure: bridge crash fix, validation noise, tags type)
+Last activity: 2026-03-08 -- Plan 16-05 complete (gap closure: null-clear, warnings, no-op detection)
 
 Progress: [█████████░] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8 (v1.2)
-- Average duration: 5min
-- Total execution time: 37min
+- Total plans completed: 9 (v1.2)
+- Average duration: 4.4min
+- Total execution time: 40min
 
 **By Phase:**
 
@@ -45,7 +45,7 @@ Progress: [█████████░] 100%
 |-------|-------|-------|----------|
 | 14 | 2/2 | 10min | 5min |
 | 15 | 4/4 | 19min | 4.8min |
-| 16 | 4/4 | 16min | 4.0min |
+| 16 | 5/5 | 19min | 3.8min |
 
 ## Accumulated Context
 
@@ -74,6 +74,9 @@ Progress: [█████████░] 100%
 - [Phase 16]: Cycle detection walks parent chain via get_all task map
 - [Phase 16]: Assert isinstance for mypy type narrowing after boolean UNSET checks
 - [Phase 16]: ValidationError caught at model_validate boundaries, re-raised as clean ValueError
+- [Phase 16]: null-means-clear mapping in Python service layer (not bridge.js) -- business logic belongs in Python
+- [Phase 16]: Generic no-op detection via field_comparisons dict before bridge delegation
+- [Phase 16]: Tag architecture simplification DEFERRED (keep 4-mode approach per user decision)
 
 ### Pending Todos
 
@@ -96,6 +99,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-08T12:41:44Z
-Stopped at: Completed 16-04-PLAN.md
-Next action: Execute remaining gap closure plans or phase 17
+Last session: 2026-03-08T12:45:00Z
+Stopped at: Completed 16-05-PLAN.md
+Next action: Execute phase 17
