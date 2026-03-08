@@ -164,6 +164,9 @@ def _register_tools(mcp: FastMCP) -> None:
         - estimatedMinutes: Estimated duration in minutes
         - note: Task note text
 
+        These are the only supported fields. Repetition rules, notifications,
+        and sequential/parallel settings are not yet available.
+
         Returns array of results: [{success, id, name}]
         """
         if len(items) != 1:
