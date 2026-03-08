@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Mock OmniFocus globals before requiring bridge.js
 var mockWrite = vi.fn();
@@ -454,6 +454,163 @@ describe("handleGetAll", function () {
   });
 });
 
+describe("handleAddTask", function () {
+  var originalTask;
+  var originalProject;
+  var originalTag;
+  var createdTasks;
+
+  beforeEach(function () {
+    createdTasks = [];
+    originalTask = globalThis.Task;
+    originalProject = globalThis.Project;
+    originalTag = globalThis.Tag;
+
+    // Task constructor mock: new Task(name) or new Task(name, container)
+    var TaskConstructor = function (name, container) {
+      var t = {
+        id: { primaryKey: "new-task-001" },
+        name: name,
+        container: container || null,
+        dueDate: null,
+        deferDate: null,
+        plannedDate: null,
+        flagged: false,
+        estimatedMinutes: null,
+        note: null,
+        addTags: vi.fn(),
+      };
+      createdTasks.push(t);
+      return t;
+    };
+    TaskConstructor.Status = originalTask.Status;
+    TaskConstructor.RepetitionScheduleType = originalTask.RepetitionScheduleType;
+    TaskConstructor.AnchorDateKey = originalTask.AnchorDateKey;
+    TaskConstructor.byIdentifier = vi.fn(function () {
+      return null;
+    });
+    globalThis.Task = TaskConstructor;
+
+    // Project mock with byIdentifier
+    globalThis.Project = {
+      Status: originalProject.Status,
+      byIdentifier: vi.fn(function () {
+        return null;
+      }),
+    };
+
+    // Tag mock with byIdentifier
+    globalThis.Tag = {
+      Status: originalTag.Status,
+      byIdentifier: vi.fn(function () {
+        return null;
+      }),
+    };
+  });
+
+  afterEach(function () {
+    globalThis.Task = originalTask;
+    globalThis.Project = originalProject;
+    globalThis.Tag = originalTag;
+  });
+
+  it("creates task with just name and returns id and name", function () {
+    var result = bridge.handleAddTask({ name: "Buy milk" });
+
+    expect(result).toEqual({ id: "new-task-001", name: "Buy milk" });
+    expect(createdTasks).toHaveLength(1);
+    expect(createdTasks[0].container).toBeNull();
+  });
+
+  it("creates task under project when parent found via Project.byIdentifier", function () {
+    var mockProject = { id: { primaryKey: "proj-abc" }, name: "My Project" };
+    Project.byIdentifier.mockReturnValueOnce(mockProject);
+
+    var result = bridge.handleAddTask({ name: "Sub task", parent: "proj-abc" });
+
+    expect(Project.byIdentifier).toHaveBeenCalledWith("proj-abc");
+    expect(result).toEqual({ id: "new-task-001", name: "Sub task" });
+    expect(createdTasks[0].container).toBe(mockProject);
+  });
+
+  it("creates task under task when parent found via Task.byIdentifier fallback", function () {
+    var mockParentTask = { id: { primaryKey: "task-parent" }, name: "Parent" };
+    Project.byIdentifier.mockReturnValueOnce(null);
+    Task.byIdentifier.mockReturnValueOnce(mockParentTask);
+
+    var result = bridge.handleAddTask({ name: "Child task", parent: "task-parent" });
+
+    expect(Project.byIdentifier).toHaveBeenCalledWith("task-parent");
+    expect(Task.byIdentifier).toHaveBeenCalledWith("task-parent");
+    expect(createdTasks[0].container).toBe(mockParentTask);
+  });
+
+  it("throws error when parent not found in projects or tasks", function () {
+    Project.byIdentifier.mockReturnValueOnce(null);
+    Task.byIdentifier.mockReturnValueOnce(null);
+
+    expect(function () {
+      bridge.handleAddTask({ name: "Orphan", parent: "nonexistent-id" });
+    }).toThrow("Parent not found: nonexistent-id");
+  });
+
+  it("sets optional date fields via new Date()", function () {
+    var result = bridge.handleAddTask({
+      name: "Dated task",
+      dueDate: "2026-06-15T10:00:00Z",
+      deferDate: "2026-06-10T08:00:00Z",
+      plannedDate: "2026-06-12T09:00:00Z",
+    });
+
+    var task = createdTasks[0];
+    expect(task.dueDate).toEqual(new Date("2026-06-15T10:00:00Z"));
+    expect(task.deferDate).toEqual(new Date("2026-06-10T08:00:00Z"));
+    expect(task.plannedDate).toEqual(new Date("2026-06-12T09:00:00Z"));
+  });
+
+  it("sets flagged and estimatedMinutes using hasOwnProperty (falsy-safe)", function () {
+    var result = bridge.handleAddTask({
+      name: "Falsy fields",
+      flagged: false,
+      estimatedMinutes: 0,
+    });
+
+    var task = createdTasks[0];
+    expect(task.flagged).toBe(false);
+    expect(task.estimatedMinutes).toBe(0);
+  });
+
+  it("sets note field", function () {
+    bridge.handleAddTask({ name: "Noted", note: "Some details" });
+    expect(createdTasks[0].note).toBe("Some details");
+  });
+
+  it("resolves tags by ID via Tag.byIdentifier and calls addTags", function () {
+    var mockTag1 = { id: { primaryKey: "tag-a" }, name: "urgent" };
+    var mockTag2 = { id: { primaryKey: "tag-b" }, name: "work" };
+    Tag.byIdentifier
+      .mockReturnValueOnce(mockTag1)
+      .mockReturnValueOnce(mockTag2);
+
+    bridge.handleAddTask({
+      name: "Tagged task",
+      tagIds: ["tag-a", "tag-b"],
+    });
+
+    expect(Tag.byIdentifier).toHaveBeenCalledWith("tag-a");
+    expect(Tag.byIdentifier).toHaveBeenCalledWith("tag-b");
+    expect(createdTasks[0].addTags).toHaveBeenCalledWith([mockTag1, mockTag2]);
+  });
+
+  it("throws error when tag not found by ID", function () {
+    Tag.byIdentifier.mockReturnValueOnce(null);
+
+    expect(function () {
+      bridge.handleAddTask({ name: "Bad tags", tagIds: ["missing-tag"] });
+    }).toThrow("Tag not found: missing-tag");
+  });
+});
+
 describe("dispatch", function () {
   beforeEach(function () {
     vi.clearAllMocks();
@@ -550,5 +707,52 @@ describe("dispatch", function () {
     expect(console.error).toHaveBeenCalledWith(
       "Bridge error: OmniFocus API unavailable",
     );
+  });
+
+  it("routes add_task operation to handleAddTask and writes success response", function () {
+    // Save and replace Task/Project/Tag with constructable mocks
+    var origTask = globalThis.Task;
+    var origProject = globalThis.Project;
+    var origTag = globalThis.Tag;
+
+    var TaskCtor = function (name) {
+      return {
+        id: { primaryKey: "dispatch-task-001" },
+        name: name,
+        addTags: vi.fn(),
+      };
+    };
+    TaskCtor.Status = origTask.Status;
+    TaskCtor.RepetitionScheduleType = origTask.RepetitionScheduleType;
+    TaskCtor.AnchorDateKey = origTask.AnchorDateKey;
+    TaskCtor.byIdentifier = vi.fn();
+    globalThis.Task = TaskCtor;
+    globalThis.Project = { Status: origProject.Status, byIdentifier: vi.fn() };
+    globalThis.Tag = { Status: origTag.Status, byIdentifier: vi.fn() };
+
+    mockFromURL.mockReturnValueOnce({
+      contents: {
+        toString: function () {
+          return '{"operation": "add_task", "params": {"name": "Dispatch test"}}';
+        },
+      },
+    });
+
+    bridge.dispatch("/tmp/ipc", "456_uuid");
+
+    var call = FileWrapper.withContents.mock.calls.find(function (c) {
+      return c[0] === null && typeof c[1] === "string" && c[1].startsWith("data:");
+    });
+    expect(call).toBeDefined();
+
+    var writtenJson = call[1].replace("data:", "");
+    var response = JSON.parse(writtenJson);
+    expect(response.success).toBe(true);
+    expect(response.data).toEqual({ id: "dispatch-task-001", name: "Dispatch test" });
+
+    // Restore
+    globalThis.Task = origTask;
+    globalThis.Project = origProject;
+    globalThis.Tag = origTag;
   });
 });
