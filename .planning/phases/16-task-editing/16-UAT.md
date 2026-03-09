@@ -253,9 +253,8 @@ note: "Test 10d"
 
 ### 47. moveTo with multiple keys
 expected: moveTo with e.g. both beginning and ending. Clean validation error (no Pydantic noise).
-result: issue
-reported: "Error message contains '_Unset' — Pydantic internal type leaked. Got: 'moveTo must have exactly one key (beginning, ending, before, or after); Input should be an instance of _Unset'"
-severity: minor
+result: pass
+note: "Fixed — no more _Unset leak"
 
 ### 48. Deleted task
 expected: Edit a deleted task. Clean "Task not found: ..." error.
@@ -357,9 +356,8 @@ note: "Test 4e"
 
 ### 66. No-op: same date
 expected: Setting dueDate to the same value returns a warning.
-result: issue
-reported: "No warning returned when setting dueDate to same value. Timezone normalization issue — input +01:00 stored as UTC, string comparison fails."
-severity: minor
+result: pass
+note: "Fixed — timezone normalization works"
 
 ### 67. No-op: same estimatedMinutes
 expected: Setting estimatedMinutes to its current value returns a warning.
@@ -368,29 +366,48 @@ note: "Test 4g"
 
 ### --- Warning Message Quality ---
 
-### 68. Tag warning format: duplicate add
+### 68. Tag warning format: duplicate add (by name)
 expected: Warning reads "Tag 'Sandbox' (g4nu27m-aF_) is already on this task" — name first, ID in parens.
-result: issue
-reported: "Current format is 'Tag 'Sandbox' is already on this task' — missing tag ID for disambiguation/debugging"
-severity: minor
+result: pass
+note: "Fixed — Test N5"
 
 ### 69. Tag warning format: absent remove
 expected: Warning reads "Tag 'Sandbox' (g4nu27m-aF_) is not on this task" — no API tutoring advice.
-result: issue
-reported: "Current format is 'Tag 'Sandbox' was not on this task -- to skip tag changes, omit removeTags' — includes unnecessary API advice and says 'was' instead of 'is'"
-severity: minor
+result: pass
+note: "Fixed — advice removed, tense corrected"
 
 ### 70. Move warning: same position
 expected: Warning reads "Task is already in this position" — concise, no redundant detail.
-result: issue
-reported: "No same-position move warning exists at all — moveTo presence always sets is_noop=False, skipping no-op detection entirely"
-severity: minor
+result: pass
+note: "Fixed — Test N4, returns 'Task is already in this location'"
+
+### 71. Tag warning format: duplicate add (by ID)
+expected: When caller passes tag ID directly, warning resolves to name — "Tag 'Sandbox' (g4nu27m-aF_) is already on this task".
+result: pass
+note: "Fixed — name resolution works for both addTags and removeTags"
+
+### --- Retest: New Coverage (round 2 retest) ---
+
+### 72. No-op: same deferDate
+expected: Setting deferDate to same value returns a warning.
+result: pass
+note: "Test N1"
+
+### 73. No-op: same plannedDate
+expected: Setting plannedDate to same value returns a warning.
+result: pass
+note: "Test N2"
+
+### 74. No-op: note null on empty note
+expected: Setting note to null when note is already empty returns a warning.
+result: pass
+note: "Test N3"
 
 ## Summary
 
-total: 70
-passed: 65
-issues: 5
+total: 74
+passed: 74
+issues: 0
 pending: 0
 skipped: 0
 
@@ -462,3 +479,16 @@ skipped: 0
     - "For before/after: compare moveTo anchorId against current siblings"
     - "If same position, append warning 'Task is already in this position' instead of breaking no-op"
     - "Note: full position detection may not be feasible (we don't have sibling order). At minimum, same-container for beginning/ending can be detected."
+
+- truth: "Tag warnings resolve name when caller passes an ID"
+  status: resolved
+  reason: "When caller uses tag ID directly (e.g. addTags: ['g4nu27m-aF_']), warning shows raw ID as both name and ID: Tag 'g4nu27m-aF_' (g4nu27m-aF_). Should resolve to Tag 'Sandbox' (g4nu27m-aF_)."
+  severity: minor
+  test: 71
+  root_cause: "Warning f-strings use spec.add_tags[i] (the raw input) as the display name. When input is an ID, _resolve_tags returns the same ID, so both positions show the ID. Need to look up the actual tag name when input == resolved ID."
+  artifacts:
+    - path: "src/omnifocus_operator/service.py"
+      issue: "Lines 192-194, 196-198, 208-210, 219-221: warning uses raw input as display name without checking if it's an ID"
+  missing:
+    - "When tag_name == resolved_id, look up actual name from task.tags (for duplicates) or via get_tag (for absent removes)"
+    - "Add test: addTags by ID on already-present tag, assert warning contains tag name not raw ID"
