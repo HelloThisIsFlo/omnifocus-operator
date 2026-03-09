@@ -1382,7 +1382,7 @@ class TestEditTask:
         )
         assert result.success is True
         assert result.warnings is not None
-        assert any("already in this location" in w for w in result.warnings)
+        assert any("already a child of this parent" in w for w in result.warnings)
 
     async def test_lifecycle_rejection(self) -> None:
         """Lifecycle actions are rejected with Phase 17 message."""
@@ -1437,9 +1437,9 @@ class TestEditTask:
             )
         )
         assert result.success is True
-        # No "already in this location" warning
+        # No "already a child of this parent" warning
         if result.warnings:
-            assert not any("already in this location" in w for w in result.warnings)
+            assert not any("already a child of this parent" in w for w in result.warnings)
 
 
 # ---------------------------------------------------------------------------

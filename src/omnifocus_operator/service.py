@@ -346,7 +346,11 @@ class OperatorService:
                 container_id = move_data.get("containerId")
                 current_parent_id = task.parent.id if task.parent else None
                 if container_id == current_parent_id:
-                    warnings.append("Task is already in this location")
+                    warnings.append(
+                        "Task is already a child of this parent. "
+                        "Note: this check verifies the container, not "
+                        "ordinal position (first vs last child)."
+                    )
                     # is_noop stays True -- same container
                 else:
                     is_noop = False
@@ -355,15 +359,16 @@ class OperatorService:
                 is_noop = False
 
         if is_noop and len(payload) > 1:
+            if not warnings:
+                warnings = [
+                    "No changes detected -- the task already has these values. "
+                    "If you don't want to change a field, omit it from the request."
+                ]
             return TaskEditResult(
                 success=True,
                 id=spec.id,
                 name=task.name,
-                warnings=(warnings or [])
-                + [
-                    "No changes detected -- the task already has these values. "
-                    "If you don't want to change a field, omit it from the request."
-                ],
+                warnings=warnings,
             )
 
         # 8. Delegate to repository
