@@ -94,6 +94,26 @@ Plans:
 - [ ] 16-02-PLAN.md -- Repository protocol extension + service layer (validation, cycle detection, tag modes, moveTo resolution)
 - [ ] 16-03-PLAN.md -- MCP edit_tasks tool registration + end-to-end integration tests
 
+### Phase 16.2: Simplify bridge tag handling to diff-based approach (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 16
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 16.2 to break down)
+
+### Phase 16.1: Introduce actions grouping to edit_tasks (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 16
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 16.1 to break down)
+
 ### Phase 17: Task Lifecycle
 **Goal**: Agents can change task lifecycle state -- completing, dropping, and reactivating tasks
 **Depends on**: Phase 15

@@ -83,6 +83,7 @@ Progress: [█████████░] 100%
 ### Roadmap Evolution
 
 - Phase 16.1 inserted after Phase 16: Introduce actions grouping to edit_tasks (URGENT)
+- Phase 16.2 inserted after Phase 16: Simplify bridge tag handling to diff-based approach (URGENT)
 
 ### Pending Todos
 
