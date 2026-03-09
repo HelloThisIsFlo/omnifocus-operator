@@ -94,6 +94,7 @@ Carried from v1.0:
 | 1 | Remove eager cache hydration on startup, lazy populate on first tool call | 2026-03-06 | bab6ae6 | [1-remove-eager-cache-hydration-on-startup-](./quick/1-remove-eager-cache-hydration-on-startup-/) |
 | 2 | Simplify file layout: drop _ prefixes, collapse server/service/repository packages | 2026-03-07 | b15b42b | [2-simplify-file-layout-drop-prefixes-colla](./quick/2-simplify-file-layout-drop-prefixes-colla/) |
 | 3 | Fix skill script enum references (TagStatus->TagAvailability, FolderStatus->FolderAvailability) | 2026-03-07 | c98da9a | [3-fix-deferred-items-from-phase-10-update-](./quick/3-fix-deferred-items-from-phase-10-update-/) |
+| 4 | Fix tag warnings to resolve display name when caller passes raw ID | 2026-03-09 | 40eb18b | [4-fix-tag-warning-to-resolve-name-when-cal](./quick/4-fix-tag-warning-to-resolve-name-when-cal/) |
 
 ### Blockers/Concerns
 
@@ -101,6 +102,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-09T18:33:57.079Z
-Stopped at: Completed 16-06-PLAN.md
+Last session: 2026-03-09T19:02:17Z
+Stopped at: Completed quick task 4
 Next action: Execute phase 17
