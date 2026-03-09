@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 Phase: 16 of 17 (Task Editing) -- third of 4 v1.2 phases
 Plan: 6 of 6 (complete, includes 2 rounds of gap closure)
 Status: Phase 16 fully complete (all UAT gaps closed), ready for phase 17
-Last activity: 2026-03-09 -- Plan 16-06 complete (UAT gap closure round 2: _Unset filtering, tz no-op, tag IDs, same-container move)
+Last activity: 2026-03-09 - Completed quick task 4: Fix tag warning to resolve name when caller passes an ID (UAT test 71)
 
 Progress: [█████████░] 100%
 
@@ -94,7 +94,7 @@ Carried from v1.0:
 | 1 | Remove eager cache hydration on startup, lazy populate on first tool call | 2026-03-06 | bab6ae6 | [1-remove-eager-cache-hydration-on-startup-](./quick/1-remove-eager-cache-hydration-on-startup-/) |
 | 2 | Simplify file layout: drop _ prefixes, collapse server/service/repository packages | 2026-03-07 | b15b42b | [2-simplify-file-layout-drop-prefixes-colla](./quick/2-simplify-file-layout-drop-prefixes-colla/) |
 | 3 | Fix skill script enum references (TagStatus->TagAvailability, FolderStatus->FolderAvailability) | 2026-03-07 | c98da9a | [3-fix-deferred-items-from-phase-10-update-](./quick/3-fix-deferred-items-from-phase-10-update-/) |
-| 4 | Fix tag warnings to resolve display name when caller passes raw ID | 2026-03-09 | 40eb18b | [4-fix-tag-warning-to-resolve-name-when-cal](./quick/4-fix-tag-warning-to-resolve-name-when-cal/) |
+| 4 | Fix tag warning to resolve name when caller passes an ID (UAT test 71) | 2026-03-09 | 298a704 | [4-fix-tag-warning-to-resolve-name-when-cal](./quick/4-fix-tag-warning-to-resolve-name-when-cal/) |
 
 ### Blockers/Concerns
 
