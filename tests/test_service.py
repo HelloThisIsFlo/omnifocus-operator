@@ -21,7 +21,7 @@ from omnifocus_operator.bridge.mtime import ConstantMtimeSource, MtimeSource
 from omnifocus_operator.repository import InMemoryRepository
 from omnifocus_operator.service import OperatorService
 
-from .conftest import make_snapshot, make_task_dict
+from .conftest import make_project_dict, make_snapshot, make_task_dict
 
 # ---------------------------------------------------------------------------
 # OperatorService
@@ -320,6 +320,117 @@ class TestAddTask:
             await service.add_task(TaskCreateSpec(name="Task", parent="bad-id"))
 
         mock_repo.add_task.assert_not_called()
+
+    async def test_create_hierarchy_in_inbox(self) -> None:
+        """Parent task in inbox, then child under that parent (UAT #5)."""
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        # Create parent in inbox (no parent field)
+        parent_result = await service.add_task(TaskCreateSpec(name="Parent task"))
+        assert parent_result.success is True
+
+        # Create child under that parent
+        child_result = await service.add_task(
+            TaskCreateSpec(name="Child task", parent=parent_result.id)
+        )
+        assert child_result.success is True
+
+        # Verify child exists in repo
+        child = await repo.get_task(child_result.id)
+        assert child is not None
+        assert child.name == "Child task"
+
+    async def test_multiple_tags(self) -> None:
+        """Task with three tags resolves all successfully (UAT #7)."""
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        from .conftest import make_tag_dict
+
+        snapshot = make_snapshot(
+            tags=[
+                make_tag_dict(id="tag-a", name="Urgent"),
+                make_tag_dict(id="tag-b", name="Work"),
+                make_tag_dict(id="tag-c", name="Home"),
+            ]
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.add_task(
+            TaskCreateSpec(name="Multi-tag task", tags=["Urgent", "Work", "Home"])
+        )
+        assert result.success is True
+
+    async def test_planned_date_only(self) -> None:
+        """Task with only plannedDate set (no due/defer) succeeds (UAT #11)."""
+        from datetime import datetime
+
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.add_task(
+            TaskCreateSpec(
+                name="Planned-only task",
+                planned_date=datetime(2026, 3, 12, 9, 0, tzinfo=UTC),
+            )
+        )
+        assert result.success is True
+
+    async def test_emoji_and_special_chars(self) -> None:
+        """Task name with emoji and special characters round-trips (UAT #18)."""
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        name = '🎯 Buy <milk> & "eggs"'
+        result = await service.add_task(TaskCreateSpec(name=name))
+
+        assert result.success is True
+        assert result.name == name
+
+    async def test_fractional_estimated_minutes(self) -> None:
+        """Fractional estimatedMinutes preserved through round-trip (UAT #19)."""
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.add_task(
+            TaskCreateSpec(name="Fractional estimate", estimated_minutes=150.5)
+        )
+        assert result.success is True
+
+        task = await repo.get_task(result.id)
+        assert task is not None
+        assert task.estimated_minutes == 150.5
+
+    async def test_unknown_fields_ignored(self) -> None:
+        """Extra fields in model_validate are silently dropped (UAT #20)."""
+        from omnifocus_operator.models.write import TaskCreateSpec
+
+        # OmniFocusBaseModel does not set extra="forbid", so unknown fields
+        # are silently ignored (Pydantic default behavior).
+        spec = TaskCreateSpec.model_validate({"name": "Task", "bogus_field": "should be ignored"})
+        assert spec.name == "Task"
+        assert not hasattr(spec, "bogus_field")
+
+        # Also verify it works end-to-end through the service
+        snapshot = make_snapshot()
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.add_task(spec)
+        assert result.success is True
 
 
 # ---------------------------------------------------------------------------
@@ -680,7 +791,8 @@ class TestEditTask:
         result = await service.edit_task(TaskEditSpec(id="task-001", remove_tags=["X"]))
         assert result.success is True
         assert result.warnings is not None
-        assert any("was not on this task" in w for w in result.warnings)
+        assert any("is not on this task" in w for w in result.warnings)
+        assert any("(tag-x)" in w for w in result.warnings)
 
     async def test_no_warnings_when_none(self) -> None:
         """No warnings when edit is clean."""
@@ -772,6 +884,7 @@ class TestEditTask:
         result = await service.edit_task(TaskEditSpec(id="task-001", add_tags=["A"]))
         assert result.warnings is not None
         assert any("already on this task" in w for w in result.warnings)
+        assert any("(tag-a)" in w for w in result.warnings)
         # Tag is still present (operation still succeeds)
         task = await repo.get_task("task-001")
         assert task is not None
@@ -798,8 +911,9 @@ class TestEditTask:
         )
         assert result.warnings is not None
         assert any("already on this task" in w for w in result.warnings)
-        # Should NOT warn "was not on this task" for A since A IS on the task
-        assert not any("was not on this task" in w for w in result.warnings)
+        assert any("(tag-a)" in w for w in result.warnings)
+        # Should NOT warn "is not on this task" for A since A IS on the task
+        assert not any("is not on this task" in w for w in result.warnings)
 
     async def test_warning_empty_edit(self) -> None:
         """Empty edit (only id, no fields) returns warning without calling bridge."""
@@ -837,6 +951,310 @@ class TestEditTask:
 
         result = await service.edit_task(TaskEditSpec(id="task-001", name="Bar"))
         assert result.warnings is None
+
+    async def test_set_estimate_and_flag_together(self) -> None:
+        """Edit task with both estimated_minutes and flagged (UAT #3)."""
+        from omnifocus_operator.models.write import TaskEditSpec
+
+        snapshot = make_snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(
+            TaskEditSpec(id="task-001", estimated_minutes=45.0, flagged=True)
+        )
+        assert result.success is True
+        task = await repo.get_task("task-001")
+        assert task is not None
+        assert task.estimated_minutes == 45.0
+        assert task.flagged is True
+
+    async def test_set_defer_and_planned_dates(self) -> None:
+        """Edit task setting defer_date and planned_date (UAT #4)."""
+        from datetime import datetime
+
+        from omnifocus_operator.models.write import TaskEditSpec
+
+        snapshot = make_snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(
+            TaskEditSpec(
+                id="task-001",
+                defer_date=datetime(2026, 3, 10, 8, 0, tzinfo=UTC),
+                planned_date=datetime(2026, 3, 12, 9, 0, tzinfo=UTC),
+            )
+        )
+        assert result.success is True
+        task = await repo.get_task("task-001")
+        assert task is not None
+        assert str(task.defer_date) == "2026-03-10T08:00:00+00:00"
+        assert str(task.planned_date) == "2026-03-12T09:00:00+00:00"
+
+    async def test_multi_field_edit(self) -> None:
+        """Edit task changing name, note, flagged, and estimated_minutes (UAT #5)."""
+        from omnifocus_operator.models.write import TaskEditSpec
+
+        snapshot = make_snapshot(tasks=[make_task_dict(id="task-001", name="Old")])
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(
+            TaskEditSpec(
+                id="task-001",
+                name="New Name",
+                note="New note",
+                flagged=True,
+                estimated_minutes=60.0,
+            )
+        )
+        assert result.success is True
+        task = await repo.get_task("task-001")
+        assert task is not None
+        assert task.name == "New Name"
+        assert task.note == "New note"
+        assert task.flagged is True
+        assert task.estimated_minutes == 60.0
+
+    async def test_unflag(self) -> None:
+        """Start with flagged=True, edit to flagged=False (UAT #6)."""
+        from omnifocus_operator.models.write import TaskEditSpec
+
+        snapshot = make_snapshot(tasks=[make_task_dict(id="task-001", name="Task", flagged=True)])
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(TaskEditSpec(id="task-001", flagged=False))
+        assert result.success is True
+        task = await repo.get_task("task-001")
+        assert task is not None
+        assert task.flagged is False
+
+    async def test_clear_note_with_empty_string(self) -> None:
+        """Edit task with note='' clears note (UAT #9)."""
+        from omnifocus_operator.models.write import TaskEditSpec
+
+        snapshot = make_snapshot(
+            tasks=[make_task_dict(id="task-001", name="Task", note="Some note")]
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(TaskEditSpec(id="task-001", note=""))
+        assert result.success is True
+        task = await repo.get_task("task-001")
+        assert task is not None
+        assert task.note == ""
+
+    async def test_clear_estimated_minutes(self) -> None:
+        """Set estimated_minutes=None clears the estimate (UAT #10)."""
+        from omnifocus_operator.models.write import TaskEditSpec
+
+        snapshot = make_snapshot(
+            tasks=[make_task_dict(id="task-001", name="Task", estimatedMinutes=30.0)]
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(TaskEditSpec(id="task-001", estimated_minutes=None))
+        assert result.success is True
+        task = await repo.get_task("task-001")
+        assert task is not None
+        assert task.estimated_minutes is None
+
+    async def test_patch_preserves_untouched_fields(self) -> None:
+        """Editing only name preserves note, flagged, estimatedMinutes (UAT #11)."""
+        from omnifocus_operator.models.write import TaskEditSpec
+
+        snapshot = make_snapshot(
+            tasks=[
+                make_task_dict(
+                    id="task-001",
+                    name="Original",
+                    note="Keep me",
+                    flagged=True,
+                    estimatedMinutes=45.0,
+                )
+            ]
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(TaskEditSpec(id="task-001", name="Updated"))
+        assert result.success is True
+        task = await repo.get_task("task-001")
+        assert task is not None
+        assert task.name == "Updated"
+        assert task.note == "Keep me"
+        assert task.flagged is True
+        assert task.estimated_minutes == 45.0
+
+    async def test_move_after_sibling(self) -> None:
+        """Move task after a sibling task (UAT #28)."""
+        from omnifocus_operator.models.write import MoveToSpec, TaskEditSpec
+
+        snapshot = make_snapshot(
+            tasks=[
+                make_task_dict(id="task-001", name="Task A"),
+                make_task_dict(id="task-002", name="Task B"),
+            ],
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(
+            TaskEditSpec(id="task-001", move_to=MoveToSpec(after="task-002"))
+        )
+        assert result.success is True
+
+    async def test_move_before_sibling(self) -> None:
+        """Move task before a sibling task (UAT #29)."""
+        from omnifocus_operator.models.write import MoveToSpec, TaskEditSpec
+
+        snapshot = make_snapshot(
+            tasks=[
+                make_task_dict(id="task-001", name="Task A"),
+                make_task_dict(id="task-002", name="Task B"),
+            ],
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(
+            TaskEditSpec(id="task-001", move_to=MoveToSpec(before="task-002"))
+        )
+        assert result.success is True
+
+    async def test_cycle_self_reference(self) -> None:
+        """Moving task under itself raises circular reference (UAT #38)."""
+        from omnifocus_operator.models.write import MoveToSpec, TaskEditSpec
+
+        snapshot = make_snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        with pytest.raises(ValueError, match="circular reference"):
+            await service.edit_task(
+                TaskEditSpec(id="task-001", move_to=MoveToSpec(beginning="task-001"))
+            )
+
+    async def test_moveto_anchor_not_found(self) -> None:
+        """MoveToSpec with nonexistent anchor raises ValueError (UAT #46)."""
+        from omnifocus_operator.models.write import MoveToSpec, TaskEditSpec
+
+        snapshot = make_snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        with pytest.raises(ValueError, match="Anchor task not found"):
+            await service.edit_task(
+                TaskEditSpec(id="task-001", move_to=MoveToSpec(after="nonexistent-id"))
+            )
+
+    async def test_move_and_edit_combined(self) -> None:
+        """Edit task with both move_to and field changes (UAT #39)."""
+        from omnifocus_operator.models.write import MoveToSpec, TaskEditSpec
+
+        snapshot = make_snapshot(
+            tasks=[make_task_dict(id="task-001", name="Old Name", inInbox=True)],
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(
+            TaskEditSpec(
+                id="task-001",
+                name="Renamed",
+                move_to=MoveToSpec(ending="proj-001"),
+            )
+        )
+        assert result.success is True
+        task = await repo.get_task("task-001")
+        assert task is not None
+        assert task.name == "Renamed"
+        assert task.parent is not None
+        assert task.parent.id == "proj-001"
+
+    async def test_noop_detection_same_date_different_timezone(self) -> None:
+        """Same absolute time in different timezone triggers no-op (UAT #47)."""
+        from datetime import datetime
+
+        from omnifocus_operator.models.write import TaskEditSpec
+
+        snapshot = make_snapshot(
+            tasks=[
+                make_task_dict(
+                    id="task-001",
+                    name="Task",
+                    dueDate="2026-03-10T07:00:00+00:00",
+                )
+            ]
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        # Same absolute time but expressed as +01:00
+        result = await service.edit_task(
+            TaskEditSpec(
+                id="task-001",
+                due_date=datetime.fromisoformat("2026-03-10T08:00:00+01:00"),
+            )
+        )
+        assert result.success is True
+        assert result.warnings is not None
+        assert any("No changes detected" in w for w in result.warnings)
+
+    async def test_same_container_move_warning(self) -> None:
+        """Moving task to same container (ending) produces location warning (UAT #70)."""
+        from omnifocus_operator.models.write import MoveToSpec, TaskEditSpec
+
+        snapshot = make_snapshot(
+            tasks=[
+                make_task_dict(
+                    id="task-001",
+                    name="Task",
+                    parent={"type": "project", "id": "proj-001", "name": "Test Project"},
+                )
+            ],
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(
+            TaskEditSpec(id="task-001", move_to=MoveToSpec(ending="proj-001"))
+        )
+        assert result.success is True
+        assert result.warnings is not None
+        assert any("already in this location" in w for w in result.warnings)
+
+    async def test_different_container_move_no_warning(self) -> None:
+        """Moving task to different container has no location warning."""
+        from omnifocus_operator.models.write import MoveToSpec, TaskEditSpec
+
+        snapshot = make_snapshot(
+            tasks=[
+                make_task_dict(
+                    id="task-001",
+                    name="Task",
+                    parent={"type": "project", "id": "proj-001", "name": "Test Project"},
+                )
+            ],
+            projects=[
+                make_project_dict(id="proj-001", name="Test Project"),
+                make_project_dict(id="proj-002", name="Other Project"),
+            ],
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(
+            TaskEditSpec(id="task-001", move_to=MoveToSpec(ending="proj-002"))
+        )
+        assert result.success is True
+        # No "already in this location" warning
+        if result.warnings:
+            assert not any("already in this location" in w for w in result.warnings)
 
 
 # ---------------------------------------------------------------------------

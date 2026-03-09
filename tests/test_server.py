@@ -1230,6 +1230,7 @@ class TestEditTasks:
             assert result.isError is True
             text = result.content[0].text  # type: ignore[union-attr]
             assert "exactly one key" in text
+            assert "_Unset" not in text
             assert "type=" not in text
             assert "pydantic" not in text.lower()
             assert "input_value" not in text
