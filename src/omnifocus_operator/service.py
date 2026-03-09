@@ -175,6 +175,13 @@ class OperatorService:
         has_add = not isinstance(spec.add_tags, _Unset)
         has_remove = not isinstance(spec.remove_tags, _Unset)
 
+        # Build tag ID -> name map for warning display names
+        # (resolves human-readable names when caller passes raw IDs)
+        all_tag_names: dict[str, str] = {}
+        if has_add or has_remove:
+            all_data = await self._repository.get_all()
+            all_tag_names = {t.id: t.name for t in all_data.tags}
+
         if has_replace:
             # tags: null means clear all (same as tags: [])
             tag_list = spec.tags if isinstance(spec.tags, list) else []
@@ -191,11 +198,13 @@ class OperatorService:
             current_tag_ids = {t.id for t in task.tags}
             for i, tag_name in enumerate(spec.add_tags):
                 if i < len(add_ids) and add_ids[i] in current_tag_ids:
-                    warnings.append(f"Tag '{tag_name}' ({add_ids[i]}) is already on this task")
+                    display = all_tag_names.get(add_ids[i], tag_name)
+                    warnings.append(f"Tag '{display}' ({add_ids[i]}) is already on this task")
             # Warnings for removing tags not on task
             for i, tag_name in enumerate(spec.remove_tags):
                 if remove_ids[i] not in current_tag_ids:
-                    warnings.append(f"Tag '{tag_name}' ({remove_ids[i]}) is not on this task")
+                    display = all_tag_names.get(remove_ids[i], tag_name)
+                    warnings.append(f"Tag '{display}' ({remove_ids[i]}) is not on this task")
             payload["tagMode"] = "add_remove"
             payload["addTagIds"] = add_ids
             payload["removeTagIds"] = remove_ids
@@ -207,7 +216,8 @@ class OperatorService:
             current_tag_ids = {t.id for t in task.tags}
             for i, tag_name in enumerate(spec.add_tags):
                 if i < len(add_ids) and add_ids[i] in current_tag_ids:
-                    warnings.append(f"Tag '{tag_name}' ({add_ids[i]}) is already on this task")
+                    display = all_tag_names.get(add_ids[i], tag_name)
+                    warnings.append(f"Tag '{display}' ({add_ids[i]}) is already on this task")
             payload["tagMode"] = "add"
             payload["tagIds"] = add_ids
         elif has_remove:
@@ -218,7 +228,8 @@ class OperatorService:
             current_tag_ids = {t.id for t in task.tags}
             for i, tag_name in enumerate(spec.remove_tags):
                 if remove_ids[i] not in current_tag_ids:
-                    warnings.append(f"Tag '{tag_name}' ({remove_ids[i]}) is not on this task")
+                    display = all_tag_names.get(remove_ids[i], tag_name)
+                    warnings.append(f"Tag '{display}' ({remove_ids[i]}) is not on this task")
             payload["tagMode"] = "remove"
             payload["removeTagIds"] = remove_ids
 
