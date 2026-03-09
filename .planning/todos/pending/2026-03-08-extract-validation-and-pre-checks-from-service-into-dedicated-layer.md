@@ -2,7 +2,7 @@
 created: 2026-03-08T11:51:37.290Z
 title: Extract validation and pre-checks from service into dedicated layer
 area: service
-priority: high
+priority: medium
 files:
   - src/omnifocus_operator/service.py
 ---

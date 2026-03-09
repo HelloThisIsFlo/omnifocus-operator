@@ -2,7 +2,7 @@
 created: 2026-03-08T01:51:46.055Z
 title: Discuss extra=forbid strict validation on write models
 area: models
-priority: high
+priority: medium
 files:
   - src/omnifocus_operator/models/base.py:29-33
   - src/omnifocus_operator/models/write.py:18-34
