@@ -29,7 +29,7 @@ Call `get_all` and extract the tags list. Pick 3 tags that:
 - Have unique names (no ambiguity)
 - Are simple/safe to add and remove
 
-Store their IDs and names. Also identify one tag name that IS ambiguous (maps to multiple IDs) for the ambiguity test. If none are ambiguous, skip test 8g.
+Store their IDs and names. Also check if any tag name maps to 2+ tag IDs (for test 8g). Store the ambiguous name if found.
 
 ### Step 1.2 — Create Test Hierarchy
 
@@ -61,10 +61,11 @@ Ask the user to perform these manual actions in OmniFocus:
 
 1. **Complete** T5-StatusWarning (check it off)
 2. **Drop** T6a-Child1 (right-click > Drop, or however they prefer)
+3. **If no ambiguous tag name was found in Step 1.1**: Ask the user to create two tags with the same name (e.g., create a tag named "TestDupe" under two different parent tags in OmniFocus). This enables test 8g (ambiguous tag resolution). If the user declines, test 8g will be SKIPPED.
 
-Tell them: "Please complete T5-StatusWarning and drop T6a-Child1 in OmniFocus, then let me know when done."
+Tell them: "Please complete T5-StatusWarning and drop T6a-Child1 in OmniFocus. Also, if you'd like to test ambiguous tag handling (test 8g), create two tags with the same name (e.g., 'TestDupe') under different parent tags. Otherwise that test will be skipped. Let me know when done."
 
-**Wait for user confirmation before proceeding to Phase 2.**
+**Wait for user confirmation before proceeding to Phase 2.** If user created the duplicate tag, re-fetch tags via `get_all` and store the ambiguous name.
 
 Once confirmed, tell them: "Running all tests now. I'll report results when done."
 
@@ -88,10 +89,16 @@ These verify that specific bugs from Phase 16 UAT are fixed.
 2. `removeTags: [<tag-a>]` on T1 — NO addTags in the call
 3. PASS if: success, no crash, tag removed
 
-#### Test 2: note: null clears the note
+#### Test 2a: note: null clears the note
 1. `note: "hello"` on T2
 2. `note: null` on T2
 3. PASS if: success, no error (note becomes empty string internally)
+
+#### Test 2b: note: "" (empty string) clears the note
+1. `note: "some text"` on T2
+2. `note: ""` on T2
+3. `get_task` T2 and verify note is empty
+4. PASS if: success, note cleared (empty string accepted as a way to clear notes)
 
 #### Test 3a: Clean error — tags + addTags
 1. `tags: [<tag-a>], addTags: [<tag-b>]` on T3
@@ -134,6 +141,23 @@ These verify that specific bugs from Phase 16 UAT are fixed.
 2. `estimatedMinutes: 15` again on T4
 3. PASS if: second call returns warning about no changes detected
 4. Clean up: `estimatedMinutes: null` on T4
+
+#### Test 4h: No-op warning — same deferDate
+1. `deferDate: "2026-04-01T09:00:00+01:00"` on T4
+2. `deferDate: "2026-04-01T09:00:00+01:00"` again on T4
+3. PASS if: second call returns warning about no changes detected
+4. Clean up: `deferDate: null` on T4
+
+#### Test 4i: No-op warning — same plannedDate
+1. `plannedDate: "2026-04-01T10:00:00+01:00"` on T4
+2. `plannedDate: "2026-04-01T10:00:00+01:00"` again on T4
+3. PASS if: second call returns warning about no changes detected
+4. Clean up: `plannedDate: null` on T4
+
+#### Test 4j: No-op warning — note null on already-empty note
+1. Ensure T4 has no note (it shouldn't at this point, but `note: null` first if needed)
+2. `note: null` on T4
+3. PASS if: warning about no changes detected (note is already empty)
 
 #### Test 5a: Status warning — completed task
 1. `flagged: true` on T5 (which user completed in Step 1.3)
@@ -210,11 +234,10 @@ Use tag IDs from Step 1.1. Call them tag-a, tag-b, tag-c below.
 2. PASS if: both resolved and added
 
 #### Test 8g: Ambiguous tag name
-1. Check if any tag name maps to 2+ tag IDs in the database
-2. If none found: ask the user to create two tags with the same name (e.g., create a tag named "TestDupe" under two different parent tags in OmniFocus), then re-fetch tags via `get_all`. If the user declines, SKIP.
-3. `addTags: ["<ambiguous-name>"]` on T8
-4. PASS if: error mentioning "ambiguous" with multiple IDs
-5. SKIP if: user declined to create duplicate tags
+1. Use the ambiguous tag name found in Step 1.1, or the one the user created in Step 1.3
+2. `addTags: ["<ambiguous-name>"]` on T8
+3. PASS if: error mentioning "ambiguous" with multiple IDs
+4. SKIP if: no ambiguous tag exists (user declined in Step 1.3)
 
 #### Test 8h: add + remove combo
 1. Clean T8 tags first, then `addTags: [<tag-b>]`
@@ -267,6 +290,11 @@ Run each INDIVIDUALLY (they will error):
 5. Clean up: `removeTags: [<tag-a>]` on T6
 6. PASS if: tag preserved through move
 
+#### Test 9g: No-op move — same position
+1. Ensure T6 is the last child of UAT-Regression (it should be after previous tests restored it)
+2. `moveTo: {"ending": "<UAT-id>"}` on T6 (already the last child)
+3. PASS if: success with warning about no change in position (task is already there)
+
 ### Section E — Error Handling
 
 Run each INDIVIDUALLY (they will error):
@@ -315,59 +343,110 @@ Run each INDIVIDUALLY (they will error):
 
 ## Phase 3: Report
 
-After all tests complete, present a summary table:
+After all tests complete, output TWO clearly separated sections. Each section MUST be inside a markdown code block (triple backticks) so the user can easily copy-paste them independently.
 
+### Section 1: UAT Report (inside a code block)
+
+Output the entire UAT report inside a single code block. The table must include a "Description" column that briefly explains what each test verifies — the test name alone is not enough for someone unfamiliar with the codebase.
+
+Every test gets its own row (no grouping like "8a-8h"). Use this format:
+
+````
 ```
 ## UAT Regression Results — edit_tasks
 
-| # | Category | Test | Result |
-|---|----------|------|--------|
-| 1 | Fix | removeTags alone | PASS/FAIL |
-| 2 | Fix | note: null | PASS/FAIL |
-| 3a | Fix | Clean error — tags + addTags | PASS/FAIL |
-| 3b | Fix | Clean error — moveTo multi-key | PASS/FAIL |
-| 4a | No-op | addTags duplicate | PASS/FAIL |
-| 4b | No-op | removeTags absent | PASS/FAIL |
-| 4c | No-op | empty edit | PASS/FAIL |
-| 4d | No-op | same field value | PASS/FAIL |
-| 4e | No-op | same name | PASS/FAIL |
-| 4f | No-op | same date | PASS/FAIL |
-| 4g | No-op | same estimatedMinutes | PASS/FAIL |
-| 5a | Status | completed task | PASS/FAIL |
-| 5b | Status | dropped task | PASS/FAIL |
-| 7a | Field | patch semantics | PASS/FAIL |
-| 7b | Field | date set + clear | PASS/FAIL |
-| 7c | Field | estimatedMinutes set + clear | PASS/FAIL |
-| 7d | Field | name change | PASS/FAIL |
-| 7e | Field | multi-field single call | PASS/FAIL |
-| 7f | Field | plannedDate set + clear | PASS/FAIL |
-| 8a-8h | Tags | (8 tag operation tests) | PASS/FAIL |
-| 9a | Move | all 5 moveTo modes | PASS/FAIL |
-| 9b | Move | move carries children | PASS/FAIL |
-| 9c | Move | cross-level move | PASS/FAIL |
-| 9d | Move | circular reference (3 cases) | PASS/FAIL |
-| 9e | Move | move + edit combo | PASS/FAIL |
-| 9f | Move | tags survive movement | PASS/FAIL |
-| 10a-d | Error | (4 error handling tests) | PASS/FAIL |
-| 11a-e | Combo | (5 combination tests) | PASS/FAIL |
-...
+| # | Test | Description | Result |
+|---|------|-------------|--------|
+| 1 | removeTags alone | Calling removeTags without addTags doesn't crash the server | PASS/FAIL |
+| 2a | note: null | Setting note to null clears the note without error | PASS/FAIL |
+| 2b | note: "" | Setting note to empty string also clears the note | PASS/FAIL |
+| 3a | Clean error: tags + addTags | Using replace mode (tags) and incremental mode (addTags) together returns a clean error, not Pydantic internals | PASS/FAIL |
+| 3b | Clean error: moveTo multi-key | Providing multiple keys in moveTo returns a clean error, not Pydantic internals or _Unset | PASS/FAIL |
+| 4a | No-op: addTags duplicate | Adding a tag that's already on the task returns a warning | PASS/FAIL |
+| 4b | No-op: removeTags absent | Removing a tag that's not on the task returns a warning | PASS/FAIL |
+| 4c | No-op: empty edit | Sending only an ID with no fields returns a "no changes specified" warning | PASS/FAIL |
+| 4d | No-op: same flagged | Setting flagged to its current value returns a "no changes detected" warning | PASS/FAIL |
+| 4e | No-op: same name | Setting name to its current value returns a "no changes detected" warning | PASS/FAIL |
+| 4f | No-op: same dueDate | Setting dueDate to the same value (possibly different timezone repr) returns a warning | PASS/FAIL |
+| 4g | No-op: same estimatedMinutes | Setting estimatedMinutes to its current value returns a warning | PASS/FAIL |
+| 4h | No-op: same deferDate | Setting deferDate to the same value returns a warning | PASS/FAIL |
+| 4i | No-op: same plannedDate | Setting plannedDate to the same value returns a warning | PASS/FAIL |
+| 4j | No-op: note null on empty | Setting note to null when note is already empty returns a warning | PASS/FAIL |
+| 5a | Status: completed task | Editing a completed task succeeds but returns a warning mentioning "completed" | PASS/FAIL |
+| 5b | Status: dropped task | Editing a dropped task succeeds but returns a warning mentioning "dropped" | PASS/FAIL |
+| 7a | Patch semantics | Editing one field preserves all other fields (name, note, estimatedMinutes unchanged) | PASS/FAIL |
+| 7b | Date set + clear | Setting dueDate and deferDate, then clearing both with null | PASS/FAIL |
+| 7c | estimatedMinutes set + clear | Setting estimatedMinutes, then clearing with null | PASS/FAIL |
+| 7d | Name change | Renaming a task and verifying the response reflects the new name | PASS/FAIL |
+| 7e | Multi-field single call | Setting flagged, note, estimatedMinutes, and dueDate in one call; all applied | PASS/FAIL |
+| 7f | plannedDate set + clear | Setting plannedDate, then clearing with null | PASS/FAIL |
+| 8a | Tags: replace | Replace all tags using the tags field | PASS/FAIL |
+| 8b | Tags: replace with different | Replace tags with a different set; verify old tags gone | PASS/FAIL |
+| 8c | Tags: clear all | Set tags to [] to remove all tags | PASS/FAIL |
+| 8d | Tags: add incremental | Add tags one at a time with addTags | PASS/FAIL |
+| 8e | Tags: remove selective | Remove one tag with removeTags (also confirms removeTags-alone works) | PASS/FAIL |
+| 8f | Tags: mixed ID and name | Add tags using a mix of tag IDs and tag names in one call | PASS/FAIL |
+| 8g | Tags: ambiguous name | Adding a tag by name when multiple tags share that name returns an ambiguity error | PASS/FAIL/SKIP |
+| 8h | Tags: add + remove combo | addTags and removeTags in the same call; verify both applied | PASS/FAIL |
+| 9a | Move: all 5 modes | Test after, before, beginning, ending, and ending:null (inbox) movements | PASS/FAIL |
+| 9b | Move: carries children | Moving a parent task preserves its children (hasChildren still true) | PASS/FAIL |
+| 9c | Move: cross-level | Moving a grandchild to a different nesting level and back | PASS/FAIL |
+| 9d | Move: circular ref (3 cases) | Parent into child, ancestor into descendant, self into self — all blocked | PASS/FAIL |
+| 9e | Move: + edit combo | Renaming and moving a task in the same call; both applied | PASS/FAIL |
+| 9f | Move: tags survive | Tags are preserved when a task is moved to a different location | PASS/FAIL |
+| 9g | Move: no-op same position | Moving a task to its current position returns a no-op warning | PASS/FAIL |
+| 10a | Error: nonexistent task | Editing a fake task ID returns "not found" | PASS/FAIL |
+| 10b | Error: empty name | Setting name to "" returns a validation error | PASS/FAIL |
+| 10c | Error: nonexistent tag | Adding a fake tag name returns "tag not found" | PASS/FAIL |
+| 10d | Error: nonexistent moveTo | Moving to a fake anchor ID returns "anchor not found" | PASS/FAIL |
+| 11a | Combo: dup add + absent remove | addTags duplicate + removeTags absent in one call; both warnings present | PASS/FAIL |
+| 11b | Combo: note null + field | Clearing note and changing flagged in one call; both applied | PASS/FAIL |
+| 11c | Combo: stacked warnings | Editing a completed task with no actual changes; TWO warnings (completed + no-op) | PASS/FAIL |
+| 11d | Combo: batch limit | Sending 3 items returns the 1-item limit error (expected) | PASS/FAIL |
+| 11e | Combo: edit + move | Changing flagged and moving in one call; both applied | PASS/FAIL |
+
+**Total: X PASS, Y FAIL, Z SKIP**
+
+### Failures
+- (What happened vs what was expected, for each failure)
+
+### Skipped Tests
+- (Why they were skipped)
+
+### Observations
+- (Warning tone, error message quality, anything noteworthy)
+
+Cleanup: Please manually delete UAT-Regression and all its children in OmniFocus when ready. (delete_tasks is not yet implemented.)
+```
+````
+
+### Separator
+
+After the UAT code block, output this visual separator (NOT inside any code block):
+
+```
+⠀
+⠀
+⠀
+═══════════════════════════════════════════════════════════════
+═══════════════════════════════════════════════════════════════
+⠀
+  ▲ UAT REPORT (above) — copy-paste to share with reviewer
+⠀
+  ▼ NICE-TO-HAVES (below) — internal improvement notes
+⠀
+═══════════════════════════════════════════════════════════════
+═══════════════════════════════════════════════════════════════
+⠀
+⠀
+⠀
 ```
 
-Below the table, list:
-- **Failures**: What happened vs what was expected
-- **Observations**: Any interesting behaviors noticed (warning tone inconsistencies, error message quality, etc.)
-- **Skipped tests**: Why they were skipped
+### Section 2: Nice-to-Haves (inside a separate code block)
 
-Then remind the user to manually delete UAT-Regression and all its children in OmniFocus when they're ready. (`delete_tasks` is not yet implemented — this step will be automated once it is.)
+Output improvement suggestions in a SEPARATE code block. This is for the user's own consumption (not part of the UAT report they may forward).
 
----
-
-## Phase 4: Nice-to-Haves
-
-After the UAT report, present a **separate** section with improvement suggestions. This is for the user's own consumption (not part of the UAT report they may forward).
-
-Structure it as:
-
+````
 ```
 ## Nice-to-Haves
 
@@ -380,5 +459,6 @@ Structure it as:
 ### Other Observations
 - (UX patterns, warning message tone, anything else noteworthy)
 ```
+````
 
 Only include items you actually observed during the run — don't pad with generic suggestions. If a section would be empty, omit it.
