@@ -534,8 +534,8 @@ class TestEditTask:
         assert task.estimated_minutes == 30.0
 
     async def test_tag_replace(self) -> None:
-        """tags=["tag1"] replaces all tags (EDIT-03)."""
-        from omnifocus_operator.models.write import TaskEditSpec
+        """actions.tags.replace=["tag1"] replaces all tags (EDIT-03)."""
+        from omnifocus_operator.models.write import ActionsSpec, TagActionSpec, TaskEditSpec
 
         from .conftest import make_tag_dict
 
@@ -548,7 +548,12 @@ class TestEditTask:
         repo = InMemoryRepository(snapshot=snapshot)
         service = OperatorService(repository=repo)
 
-        result = await service.edit_task(TaskEditSpec(id="task-001", tags=["NewTag"]))
+        result = await service.edit_task(
+            TaskEditSpec(
+                id="task-001",
+                actions=ActionsSpec(tags=TagActionSpec(replace=["NewTag"])),
+            )
+        )
         assert result.success is True
         task = await repo.get_task("task-001")
         assert task is not None
@@ -556,8 +561,8 @@ class TestEditTask:
         assert task.tags[0].id == "tag-new"
 
     async def test_tag_add(self) -> None:
-        """add_tags=["tag2"] adds without removing (EDIT-04)."""
-        from omnifocus_operator.models.write import TaskEditSpec
+        """actions.tags.add=["tag2"] adds without removing (EDIT-04)."""
+        from omnifocus_operator.models.write import ActionsSpec, TagActionSpec, TaskEditSpec
 
         from .conftest import make_tag_dict
 
@@ -571,7 +576,12 @@ class TestEditTask:
         repo = InMemoryRepository(snapshot=snapshot)
         service = OperatorService(repository=repo)
 
-        result = await service.edit_task(TaskEditSpec(id="task-001", add_tags=["B"]))
+        result = await service.edit_task(
+            TaskEditSpec(
+                id="task-001",
+                actions=ActionsSpec(tags=TagActionSpec(add=["B"])),
+            )
+        )
         assert result.success is True
         task = await repo.get_task("task-001")
         assert task is not None
@@ -581,8 +591,8 @@ class TestEditTask:
         assert "tag-b" in tag_ids
 
     async def test_tag_remove(self) -> None:
-        """remove_tags=["tag1"] removes specific tag (EDIT-05)."""
-        from omnifocus_operator.models.write import TaskEditSpec
+        """actions.tags.remove=["tag1"] removes specific tag (EDIT-05)."""
+        from omnifocus_operator.models.write import ActionsSpec, TagActionSpec, TaskEditSpec
 
         from .conftest import make_tag_dict
 
@@ -602,25 +612,48 @@ class TestEditTask:
         repo = InMemoryRepository(snapshot=snapshot)
         service = OperatorService(repository=repo)
 
-        result = await service.edit_task(TaskEditSpec(id="task-001", remove_tags=["A"]))
+        result = await service.edit_task(
+            TaskEditSpec(
+                id="task-001",
+                actions=ActionsSpec(tags=TagActionSpec(remove=["A"])),
+            )
+        )
         assert result.success is True
         task = await repo.get_task("task-001")
         assert task is not None
         assert len(task.tags) == 1
         assert task.tags[0].id == "tag-b"
 
-    async def test_tag_mutual_exclusivity(self) -> None:
-        """tags + add_tags raises ValueError (EDIT-06)."""
+    async def test_tag_mutual_exclusivity_replace_with_add(self) -> None:
+        """TagActionSpec(replace=..., add=...) raises ValueError (EDIT-06)."""
         from pydantic import ValidationError
 
-        from omnifocus_operator.models.write import TaskEditSpec
+        from omnifocus_operator.models.write import TagActionSpec
 
-        with pytest.raises(ValidationError, match="Cannot use 'tags'"):
-            TaskEditSpec(id="task-001", tags=["a"], add_tags=["b"])
+        with pytest.raises(ValidationError, match="Cannot use 'replace' with 'add' or 'remove'"):
+            TagActionSpec(replace=["a"], add=["b"])
+
+    async def test_tag_mutual_exclusivity_replace_with_remove(self) -> None:
+        """TagActionSpec(replace=..., remove=...) raises ValueError."""
+        from pydantic import ValidationError
+
+        from omnifocus_operator.models.write import TagActionSpec
+
+        with pytest.raises(ValidationError, match="Cannot use 'replace' with 'add' or 'remove'"):
+            TagActionSpec(replace=["a"], remove=["b"])
+
+    async def test_tag_mutual_exclusivity_empty(self) -> None:
+        """TagActionSpec() with no fields raises ValueError."""
+        from pydantic import ValidationError
+
+        from omnifocus_operator.models.write import TagActionSpec
+
+        with pytest.raises(ValidationError, match="tags must specify at least one of"):
+            TagActionSpec()
 
     async def test_add_and_remove_tags_together(self) -> None:
-        """add_tags + remove_tags together is allowed (EDIT-06)."""
-        from omnifocus_operator.models.write import TaskEditSpec
+        """actions.tags with add + remove together is allowed (EDIT-06)."""
+        from omnifocus_operator.models.write import ActionsSpec, TagActionSpec, TaskEditSpec
 
         from .conftest import make_tag_dict
 
@@ -641,7 +674,10 @@ class TestEditTask:
         service = OperatorService(repository=repo)
 
         result = await service.edit_task(
-            TaskEditSpec(id="task-001", add_tags=["B"], remove_tags=["A"])
+            TaskEditSpec(
+                id="task-001",
+                actions=ActionsSpec(tags=TagActionSpec(add=["B"], remove=["A"])),
+            )
         )
         assert result.success is True
         task = await repo.get_task("task-001")
@@ -651,7 +687,7 @@ class TestEditTask:
 
     async def test_move_to_project_ending(self) -> None:
         """Move task to project via ending (EDIT-07)."""
-        from omnifocus_operator.models.write import MoveToSpec, TaskEditSpec
+        from omnifocus_operator.models.write import ActionsSpec, MoveToSpec, TaskEditSpec
 
         snapshot = make_snapshot(
             tasks=[make_task_dict(id="task-001", name="Task", inInbox=True)],
@@ -660,7 +696,10 @@ class TestEditTask:
         service = OperatorService(repository=repo)
 
         result = await service.edit_task(
-            TaskEditSpec(id="task-001", move_to=MoveToSpec(ending="proj-001"))
+            TaskEditSpec(
+                id="task-001",
+                actions=ActionsSpec(move=MoveToSpec(ending="proj-001")),
+            )
         )
         assert result.success is True
         task = await repo.get_task("task-001")
@@ -672,7 +711,7 @@ class TestEditTask:
 
     async def test_move_to_task_beginning(self) -> None:
         """Move task under another task via beginning (EDIT-07)."""
-        from omnifocus_operator.models.write import MoveToSpec, TaskEditSpec
+        from omnifocus_operator.models.write import ActionsSpec, MoveToSpec, TaskEditSpec
 
         snapshot = make_snapshot(
             tasks=[
@@ -684,7 +723,10 @@ class TestEditTask:
         service = OperatorService(repository=repo)
 
         result = await service.edit_task(
-            TaskEditSpec(id="task-001", move_to=MoveToSpec(beginning="task-parent"))
+            TaskEditSpec(
+                id="task-001",
+                actions=ActionsSpec(move=MoveToSpec(beginning="task-parent")),
+            )
         )
         assert result.success is True
         task = await repo.get_task("task-001")
@@ -695,7 +737,7 @@ class TestEditTask:
 
     async def test_move_to_inbox(self) -> None:
         """Move task to inbox via ending=null (EDIT-08)."""
-        from omnifocus_operator.models.write import MoveToSpec, TaskEditSpec
+        from omnifocus_operator.models.write import ActionsSpec, MoveToSpec, TaskEditSpec
 
         snapshot = make_snapshot(
             tasks=[
@@ -711,7 +753,10 @@ class TestEditTask:
         service = OperatorService(repository=repo)
 
         result = await service.edit_task(
-            TaskEditSpec(id="task-001", move_to=MoveToSpec(ending=None))
+            TaskEditSpec(
+                id="task-001",
+                actions=ActionsSpec(move=MoveToSpec(ending=None)),
+            )
         )
         assert result.success is True
         task = await repo.get_task("task-001")
@@ -721,7 +766,7 @@ class TestEditTask:
 
     async def test_cycle_detection(self) -> None:
         """Moving task under its own child raises ValueError."""
-        from omnifocus_operator.models.write import MoveToSpec, TaskEditSpec
+        from omnifocus_operator.models.write import ActionsSpec, MoveToSpec, TaskEditSpec
 
         # task-parent -> task-child (child's parent is task-parent)
         snapshot = make_snapshot(
@@ -739,7 +784,10 @@ class TestEditTask:
 
         with pytest.raises(ValueError, match="circular reference"):
             await service.edit_task(
-                TaskEditSpec(id="task-parent", move_to=MoveToSpec(beginning="task-child"))
+                TaskEditSpec(
+                    id="task-parent",
+                    actions=ActionsSpec(move=MoveToSpec(beginning="task-child")),
+                )
             )
 
     async def test_task_not_found(self) -> None:
@@ -777,7 +825,7 @@ class TestEditTask:
 
     async def test_warning_remove_tag_not_on_task(self) -> None:
         """Removing a tag the task doesn't have produces a warning."""
-        from omnifocus_operator.models.write import TaskEditSpec
+        from omnifocus_operator.models.write import ActionsSpec, TagActionSpec, TaskEditSpec
 
         from .conftest import make_tag_dict
 
@@ -788,7 +836,12 @@ class TestEditTask:
         repo = InMemoryRepository(snapshot=snapshot)
         service = OperatorService(repository=repo)
 
-        result = await service.edit_task(TaskEditSpec(id="task-001", remove_tags=["X"]))
+        result = await service.edit_task(
+            TaskEditSpec(
+                id="task-001",
+                actions=ActionsSpec(tags=TagActionSpec(remove=["X"])),
+            )
+        )
         assert result.success is True
         assert result.warnings is not None
         assert any("is not on this task" in w for w in result.warnings)
@@ -822,8 +875,8 @@ class TestEditTask:
         assert task.note == ""
 
     async def test_tags_null_clears_all_tags(self) -> None:
-        """tags=None clears all tags (null-means-clear)."""
-        from omnifocus_operator.models.write import TaskEditSpec
+        """actions.tags.replace=None clears all tags (null-means-clear)."""
+        from omnifocus_operator.models.write import ActionsSpec, TagActionSpec, TaskEditSpec
 
         from .conftest import make_tag_dict
 
@@ -834,7 +887,12 @@ class TestEditTask:
         repo = InMemoryRepository(snapshot=snapshot)
         service = OperatorService(repository=repo)
 
-        result = await service.edit_task(TaskEditSpec(id="task-001", tags=None))
+        result = await service.edit_task(
+            TaskEditSpec(
+                id="task-001",
+                actions=ActionsSpec(tags=TagActionSpec(replace=None)),
+            )
+        )
         assert result.success is True
         task = await repo.get_task("task-001")
         assert task is not None
@@ -870,7 +928,7 @@ class TestEditTask:
 
     async def test_warning_addtags_duplicate(self) -> None:
         """Adding a tag already on the task produces a warning."""
-        from omnifocus_operator.models.write import TaskEditSpec
+        from omnifocus_operator.models.write import ActionsSpec, TagActionSpec, TaskEditSpec
 
         from .conftest import make_tag_dict
 
@@ -881,7 +939,12 @@ class TestEditTask:
         repo = InMemoryRepository(snapshot=snapshot)
         service = OperatorService(repository=repo)
 
-        result = await service.edit_task(TaskEditSpec(id="task-001", add_tags=["A"]))
+        result = await service.edit_task(
+            TaskEditSpec(
+                id="task-001",
+                actions=ActionsSpec(tags=TagActionSpec(add=["A"])),
+            )
+        )
         assert result.warnings is not None
         assert any("already on this task" in w for w in result.warnings)
         assert any("(tag-a)" in w for w in result.warnings)
@@ -892,7 +955,7 @@ class TestEditTask:
 
     async def test_warning_addtags_duplicate_in_add_remove(self) -> None:
         """Adding a tag already present in add_remove mode produces a warning."""
-        from omnifocus_operator.models.write import TaskEditSpec
+        from omnifocus_operator.models.write import ActionsSpec, TagActionSpec, TaskEditSpec
 
         from .conftest import make_tag_dict
 
@@ -907,7 +970,10 @@ class TestEditTask:
         service = OperatorService(repository=repo)
 
         result = await service.edit_task(
-            TaskEditSpec(id="task-001", add_tags=["A"], remove_tags=["A"])
+            TaskEditSpec(
+                id="task-001",
+                actions=ActionsSpec(tags=TagActionSpec(add=["A"], remove=["A"])),
+            )
         )
         assert result.warnings is not None
         assert any("already on this task" in w for w in result.warnings)
@@ -916,8 +982,8 @@ class TestEditTask:
         assert not any("is not on this task" in w for w in result.warnings)
 
     async def test_add_tag_warning_resolves_name_from_id(self) -> None:
-        """add_tags with raw ID for tag already on task shows resolved name, not ID."""
-        from omnifocus_operator.models.write import TaskEditSpec
+        """add tags with raw ID for tag already on task shows resolved name, not ID."""
+        from omnifocus_operator.models.write import ActionsSpec, TagActionSpec, TaskEditSpec
 
         from .conftest import make_tag_dict
 
@@ -929,15 +995,20 @@ class TestEditTask:
         service = OperatorService(repository=repo)
 
         # Pass raw ID instead of name
-        result = await service.edit_task(TaskEditSpec(id="task-001", add_tags=["tag-x"]))
+        result = await service.edit_task(
+            TaskEditSpec(
+                id="task-001",
+                actions=ActionsSpec(tags=TagActionSpec(add=["tag-x"])),
+            )
+        )
         assert result.warnings is not None
         # Warning should show resolved name "X", not the raw ID "tag-x"
         assert any("Tag 'X'" in w and "(tag-x)" in w for w in result.warnings)
         assert not any("Tag 'tag-x'" in w for w in result.warnings)
 
     async def test_remove_tag_warning_resolves_name_from_id(self) -> None:
-        """remove_tags with raw ID for tag NOT on task shows resolved name, not ID."""
-        from omnifocus_operator.models.write import TaskEditSpec
+        """remove tags with raw ID for tag NOT on task shows resolved name, not ID."""
+        from omnifocus_operator.models.write import ActionsSpec, TagActionSpec, TaskEditSpec
 
         from .conftest import make_tag_dict
 
@@ -949,7 +1020,12 @@ class TestEditTask:
         service = OperatorService(repository=repo)
 
         # Pass raw ID instead of name
-        result = await service.edit_task(TaskEditSpec(id="task-001", remove_tags=["tag-x"]))
+        result = await service.edit_task(
+            TaskEditSpec(
+                id="task-001",
+                actions=ActionsSpec(tags=TagActionSpec(remove=["tag-x"])),
+            )
+        )
         assert result.success is True
         assert result.warnings is not None
         # Warning should show resolved name "X", not the raw ID "tag-x"
@@ -957,8 +1033,8 @@ class TestEditTask:
         assert not any("Tag 'tag-x'" in w for w in result.warnings)
 
     async def test_add_tag_warning_with_name_still_works(self) -> None:
-        """add_tags with name string still shows name correctly (regression guard)."""
-        from omnifocus_operator.models.write import TaskEditSpec
+        """add tags with name string still shows name correctly (regression guard)."""
+        from omnifocus_operator.models.write import ActionsSpec, TagActionSpec, TaskEditSpec
 
         from .conftest import make_tag_dict
 
@@ -971,7 +1047,12 @@ class TestEditTask:
         repo = InMemoryRepository(snapshot=snapshot)
         service = OperatorService(repository=repo)
 
-        result = await service.edit_task(TaskEditSpec(id="task-001", add_tags=["Alpha"]))
+        result = await service.edit_task(
+            TaskEditSpec(
+                id="task-001",
+                actions=ActionsSpec(tags=TagActionSpec(add=["Alpha"])),
+            )
+        )
         assert result.warnings is not None
         assert any("Tag 'Alpha'" in w and "(tag-a)" in w for w in result.warnings)
 
@@ -1152,7 +1233,7 @@ class TestEditTask:
 
     async def test_move_after_sibling(self) -> None:
         """Move task after a sibling task (UAT #28)."""
-        from omnifocus_operator.models.write import MoveToSpec, TaskEditSpec
+        from omnifocus_operator.models.write import ActionsSpec, MoveToSpec, TaskEditSpec
 
         snapshot = make_snapshot(
             tasks=[
@@ -1164,13 +1245,16 @@ class TestEditTask:
         service = OperatorService(repository=repo)
 
         result = await service.edit_task(
-            TaskEditSpec(id="task-001", move_to=MoveToSpec(after="task-002"))
+            TaskEditSpec(
+                id="task-001",
+                actions=ActionsSpec(move=MoveToSpec(after="task-002")),
+            )
         )
         assert result.success is True
 
     async def test_move_before_sibling(self) -> None:
         """Move task before a sibling task (UAT #29)."""
-        from omnifocus_operator.models.write import MoveToSpec, TaskEditSpec
+        from omnifocus_operator.models.write import ActionsSpec, MoveToSpec, TaskEditSpec
 
         snapshot = make_snapshot(
             tasks=[
@@ -1182,13 +1266,16 @@ class TestEditTask:
         service = OperatorService(repository=repo)
 
         result = await service.edit_task(
-            TaskEditSpec(id="task-001", move_to=MoveToSpec(before="task-002"))
+            TaskEditSpec(
+                id="task-001",
+                actions=ActionsSpec(move=MoveToSpec(before="task-002")),
+            )
         )
         assert result.success is True
 
     async def test_cycle_self_reference(self) -> None:
         """Moving task under itself raises circular reference (UAT #38)."""
-        from omnifocus_operator.models.write import MoveToSpec, TaskEditSpec
+        from omnifocus_operator.models.write import ActionsSpec, MoveToSpec, TaskEditSpec
 
         snapshot = make_snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
         repo = InMemoryRepository(snapshot=snapshot)
@@ -1196,12 +1283,15 @@ class TestEditTask:
 
         with pytest.raises(ValueError, match="circular reference"):
             await service.edit_task(
-                TaskEditSpec(id="task-001", move_to=MoveToSpec(beginning="task-001"))
+                TaskEditSpec(
+                    id="task-001",
+                    actions=ActionsSpec(move=MoveToSpec(beginning="task-001")),
+                )
             )
 
     async def test_moveto_anchor_not_found(self) -> None:
         """MoveToSpec with nonexistent anchor raises ValueError (UAT #46)."""
-        from omnifocus_operator.models.write import MoveToSpec, TaskEditSpec
+        from omnifocus_operator.models.write import ActionsSpec, MoveToSpec, TaskEditSpec
 
         snapshot = make_snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
         repo = InMemoryRepository(snapshot=snapshot)
@@ -1209,12 +1299,15 @@ class TestEditTask:
 
         with pytest.raises(ValueError, match="Anchor task not found"):
             await service.edit_task(
-                TaskEditSpec(id="task-001", move_to=MoveToSpec(after="nonexistent-id"))
+                TaskEditSpec(
+                    id="task-001",
+                    actions=ActionsSpec(move=MoveToSpec(after="nonexistent-id")),
+                )
             )
 
     async def test_move_and_edit_combined(self) -> None:
-        """Edit task with both move_to and field changes (UAT #39)."""
-        from omnifocus_operator.models.write import MoveToSpec, TaskEditSpec
+        """Edit task with both move and field changes (UAT #39)."""
+        from omnifocus_operator.models.write import ActionsSpec, MoveToSpec, TaskEditSpec
 
         snapshot = make_snapshot(
             tasks=[make_task_dict(id="task-001", name="Old Name", inInbox=True)],
@@ -1226,7 +1319,7 @@ class TestEditTask:
             TaskEditSpec(
                 id="task-001",
                 name="Renamed",
-                move_to=MoveToSpec(ending="proj-001"),
+                actions=ActionsSpec(move=MoveToSpec(ending="proj-001")),
             )
         )
         assert result.success is True
@@ -1267,7 +1360,7 @@ class TestEditTask:
 
     async def test_same_container_move_warning(self) -> None:
         """Moving task to same container (ending) produces location warning (UAT #70)."""
-        from omnifocus_operator.models.write import MoveToSpec, TaskEditSpec
+        from omnifocus_operator.models.write import ActionsSpec, MoveToSpec, TaskEditSpec
 
         snapshot = make_snapshot(
             tasks=[
@@ -1282,15 +1375,44 @@ class TestEditTask:
         service = OperatorService(repository=repo)
 
         result = await service.edit_task(
-            TaskEditSpec(id="task-001", move_to=MoveToSpec(ending="proj-001"))
+            TaskEditSpec(
+                id="task-001",
+                actions=ActionsSpec(move=MoveToSpec(ending="proj-001")),
+            )
         )
         assert result.success is True
         assert result.warnings is not None
         assert any("already in this location" in w for w in result.warnings)
 
+    async def test_lifecycle_rejection(self) -> None:
+        """Lifecycle actions are rejected with Phase 17 message."""
+        from omnifocus_operator.models.write import ActionsSpec, TaskEditSpec
+
+        snapshot = make_snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        with pytest.raises(ValueError, match=r"not yet implemented.*Phase 17"):
+            await service.edit_task(
+                TaskEditSpec(id="task-001", actions=ActionsSpec(lifecycle="complete"))
+            )
+
+    async def test_empty_actions_block(self) -> None:
+        """ActionsSpec() with all UNSET fields behaves like empty edit."""
+        from omnifocus_operator.models.write import ActionsSpec, TaskEditSpec
+
+        snapshot = make_snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(TaskEditSpec(id="task-001", actions=ActionsSpec()))
+        assert result.success is True
+        assert result.warnings is not None
+        assert any("No changes" in w for w in result.warnings)
+
     async def test_different_container_move_no_warning(self) -> None:
         """Moving task to different container has no location warning."""
-        from omnifocus_operator.models.write import MoveToSpec, TaskEditSpec
+        from omnifocus_operator.models.write import ActionsSpec, MoveToSpec, TaskEditSpec
 
         snapshot = make_snapshot(
             tasks=[
@@ -1309,7 +1431,10 @@ class TestEditTask:
         service = OperatorService(repository=repo)
 
         result = await service.edit_task(
-            TaskEditSpec(id="task-001", move_to=MoveToSpec(ending="proj-002"))
+            TaskEditSpec(
+                id="task-001",
+                actions=ActionsSpec(move=MoveToSpec(ending="proj-002")),
+            )
         )
         assert result.success is True
         # No "already in this location" warning
