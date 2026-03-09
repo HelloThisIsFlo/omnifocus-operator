@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Writes & Lookups
 status: completed
-stopped_at: Completed 16-05-PLAN.md
-last_updated: "2026-03-08T12:50:09.449Z"
-last_activity: "2026-03-08 -- Plan 16-05 complete (gap closure: null-clear, warnings, no-op detection)"
+stopped_at: Completed 16-06-PLAN.md
+last_updated: "2026-03-09T18:33:57.082Z"
+last_activity: "2026-03-09 -- Plan 16-06 complete (UAT gap closure round 2: _Unset filtering, tz no-op, tag IDs, same-container move)"
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 11
-  completed_plans: 11
+  total_plans: 12
+  completed_plans: 12
   percent: 100
 ---
 
@@ -26,18 +26,18 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 ## Current Position
 
 Phase: 16 of 17 (Task Editing) -- third of 4 v1.2 phases
-Plan: 5 of 5 (complete, includes gap closure)
-Status: Phase 16 gap closure complete, ready for phase 17
-Last activity: 2026-03-08 -- Plan 16-05 complete (gap closure: null-clear, warnings, no-op detection)
+Plan: 6 of 6 (complete, includes 2 rounds of gap closure)
+Status: Phase 16 fully complete (all UAT gaps closed), ready for phase 17
+Last activity: 2026-03-09 -- Plan 16-06 complete (UAT gap closure round 2: _Unset filtering, tz no-op, tag IDs, same-container move)
 
 Progress: [█████████░] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9 (v1.2)
-- Average duration: 4.4min
-- Total execution time: 40min
+- Total plans completed: 12 (v1.2)
+- Average duration: 4.3min
+- Total execution time: 43min
 
 **By Phase:**
 
@@ -45,7 +45,7 @@ Progress: [█████████░] 100%
 |-------|-------|-------|----------|
 | 14 | 2/2 | 10min | 5min |
 | 15 | 4/4 | 19min | 4.8min |
-| 16 | 5/5 | 19min | 3.8min |
+| 16 | 6/6 | 22min | 3.7min |
 
 ## Accumulated Context
 
@@ -77,6 +77,8 @@ Progress: [█████████░] 100%
 - [Phase 16]: null-means-clear mapping in Python service layer (not bridge.js) -- business logic belongs in Python
 - [Phase 16]: Generic no-op detection via field_comparisons dict before bridge delegation
 - [Phase 16]: Tag architecture simplification DEFERRED (keep 4-mode approach per user decision)
+- [Phase 16]: UTC timestamp comparison for timezone-aware date no-op detection
+- [Phase 16]: Same-container move detection limited to beginning/ending positions
 
 ### Pending Todos
 
@@ -99,6 +101,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-08T12:45:00Z
-Stopped at: Completed 16-05-PLAN.md
+Last session: 2026-03-09T18:33:57.079Z
+Stopped at: Completed 16-06-PLAN.md
 Next action: Execute phase 17
