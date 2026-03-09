@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: resolved
 phase: 16-task-editing
 source: [16-01-SUMMARY.md, 16-02-SUMMARY.md, 16-03-SUMMARY.md, 16-04-SUMMARY.md, 16-05-SUMMARY.md]
 started: 2026-03-09T10:00:00Z
-updated: 2026-03-09T10:30:00Z
+updated: 2026-03-09T12:00:00Z
 round: 2
 ---
 
@@ -397,7 +397,7 @@ skipped: 0
 ## Gaps
 
 - truth: "moveTo multi-key error shows clean message without Pydantic internals"
-  status: failed
+  status: resolved
   reason: "Error message contains '_Unset' — Pydantic internal type leaked into user-facing error via ValidationError field-level errors for _Unset union members"
   severity: minor
   test: 47
@@ -410,7 +410,7 @@ skipped: 0
     - "Update test_edit_tasks_moveto_multikey_error_is_clean to assert '_Unset' not in message"
 
 - truth: "No-op detection works for date fields with different timezone representations"
-  status: failed
+  status: resolved
   reason: "Setting dueDate to the same absolute time but different timezone offset (e.g. +01:00 vs UTC) bypasses no-op detection because ISO string comparison fails"
   severity: minor
   test: 66
@@ -423,7 +423,7 @@ skipped: 0
     - "Add test for no-op detection with timezone-mismatched dates"
 
 - truth: "Tag duplicate-add warning includes tag ID for disambiguation"
-  status: failed
+  status: resolved
   reason: "Current format 'Tag 'X' is already on this task' omits tag ID. Should be 'Tag 'X' (id) is already on this task'"
   severity: minor
   test: 68
@@ -436,7 +436,7 @@ skipped: 0
     - "Update tests to match new format"
 
 - truth: "Tag absent-remove warning includes tag ID and no API advice"
-  status: failed
+  status: resolved
   reason: "Current format includes '-- to skip tag changes, omit removeTags' advice and says 'was not' instead of 'is not'"
   severity: minor
   test: 69
@@ -449,7 +449,7 @@ skipped: 0
     - "Update tests to match new format"
 
 - truth: "Same-position move returns a warning"
-  status: failed
+  status: resolved
   reason: "moveTo presence always sets is_noop=False, so no-op detection is skipped entirely for moves"
   severity: minor
   test: 70
