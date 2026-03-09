@@ -1046,7 +1046,7 @@ class TestEditTasks:
             # Replace tags
             edit_result = await session.call_tool(
                 "edit_tasks",
-                {"items": [{"id": task_id, "tags": ["New Tag"]}]},
+                {"items": [{"id": task_id, "actions": {"tags": {"replace": ["New Tag"]}}}]},
             )
             assert edit_result.isError is not True
             assert edit_result.structuredContent["result"][0]["success"] is True  # type: ignore[index]
@@ -1076,7 +1076,7 @@ class TestEditTasks:
             # Move to project
             edit_result = await session.call_tool(
                 "edit_tasks",
-                {"items": [{"id": task_id, "moveTo": {"ending": "proj-001"}}]},
+                {"items": [{"id": task_id, "actions": {"move": {"ending": "proj-001"}}}]},
             )
             assert edit_result.isError is not True
             assert edit_result.structuredContent["result"][0]["success"] is True  # type: ignore[index]
@@ -1108,7 +1108,7 @@ class TestEditTasks:
             # Move to inbox
             edit_result = await session.call_tool(
                 "edit_tasks",
-                {"items": [{"id": task_id, "moveTo": {"ending": None}}]},
+                {"items": [{"id": task_id, "actions": {"move": {"ending": None}}}]},
             )
             assert edit_result.isError is not True
             assert edit_result.structuredContent["result"][0]["success"] is True  # type: ignore[index]
@@ -1193,26 +1193,30 @@ class TestEditTasks:
 
     # -- Clean validation error messages --
 
-    async def test_edit_tasks_tags_plus_addtags_clean_error(self) -> None:
+    async def test_edit_tasks_replace_plus_add_clean_error(self) -> None:
         """Pydantic error for tag mutual exclusion is clean (no type=/input/URL noise)."""
         server = await self._make_server_with_data()
 
         async def _check(session: ClientSession) -> None:
             result = await session.call_tool(
                 "edit_tasks",
-                {"items": [{"id": "task-001", "tags": ["a"], "addTags": ["b"]}]},
+                {
+                    "items": [
+                        {"id": "task-001", "actions": {"tags": {"replace": ["a"], "add": ["b"]}}}
+                    ]
+                },
             )
             assert result.isError is True
             text = result.content[0].text  # type: ignore[union-attr]
-            assert "Cannot use 'tags'" in text
+            assert "Cannot use 'replace'" in text
             assert "type=" not in text
             assert "pydantic" not in text.lower()
             assert "input_value" not in text
 
         await run_with_client(server, _check)
 
-    async def test_edit_tasks_moveto_multiple_keys_clean_error(self) -> None:
-        """Pydantic error for moveTo multi-key is clean (no type=/input/URL noise)."""
+    async def test_edit_tasks_move_multiple_keys_clean_error(self) -> None:
+        """Pydantic error for move multi-key is clean (no type=/input/URL noise)."""
         server = await self._make_server_with_data()
 
         async def _check(session: ClientSession) -> None:
@@ -1222,7 +1226,7 @@ class TestEditTasks:
                     "items": [
                         {
                             "id": "task-001",
-                            "moveTo": {"beginning": "proj-1", "ending": "proj-1"},
+                            "actions": {"move": {"beginning": "proj-1", "ending": "proj-1"}},
                         }
                     ]
                 },

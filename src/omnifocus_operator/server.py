@@ -212,18 +212,16 @@ def _register_tools(mcp: FastMCP) -> None:
         - flagged: Boolean flag
         - estimatedMinutes: Estimated duration (null to clear)
 
-        Tag editing (mutually exclusive modes):
-        - tags: Replace all tags with this list ([] to clear all)
-        - addTags: Add these tags without removing existing
-        - removeTags: Remove specific tags (addTags + removeTags together is allowed)
-
-        Task movement (omit moveTo entirely to skip):
-        - moveTo: Position object with exactly one key:
-          - {"ending": "<parentId>"} -- move to end of project/task
-          - {"beginning": "<parentId>"} -- move to start of project/task
-          - {"before": "<taskId>"} -- move before sibling task
-          - {"after": "<taskId>"} -- move after sibling task
+        Actions block (omit to skip, groups stateful operations):
+        - actions.tags: Tag operations
+          - {"replace": ["tag1"]} -- replace all tags (null or [] to clear)
+          - {"add": ["tag1"], "remove": ["tag2"]} -- incremental (combinable)
+          - {"add": ["tag1"]} or {"remove": ["tag1"]} -- add-only or remove-only
+        - actions.move: Task movement (exactly one key)
+          - {"ending": "<parentId>"} / {"beginning": "<parentId>"}
+          - {"before": "<taskId>"} / {"after": "<taskId>"}
           - {"ending": null} / {"beginning": null} -- move to inbox
+        - actions.lifecycle: Reserved (not yet implemented)
 
         Returns array of results: [{success, id, name, warnings?}]
         """
