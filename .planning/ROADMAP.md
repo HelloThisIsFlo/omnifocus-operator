@@ -134,5 +134,5 @@ Phases execute in numeric order: 14 -> 15 -> 16 -> 17
 | 13. Fallback and Integration | v1.1 | 2/2 | Complete | 2026-03-07 |
 | 14. Model Refactor & Lookups | 2/2 | Complete    | 2026-03-07 | - |
 | 15. Write Pipeline & Task Creation | 4/4 | Complete    | 2026-03-08 | - |
-| 16. Task Editing | 6/6 | Complete   | 2026-03-09 | - |
+| 16. Task Editing | 6/6 | Complete    | 2026-03-09 | - |
 | 17. Task Lifecycle | v1.2 | 0/? | Not started | - |

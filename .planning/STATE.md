@@ -4,7 +4,7 @@ milestone: v1.2
 milestone_name: Writes & Lookups
 status: completed
 stopped_at: Completed 16-06-PLAN.md
-last_updated: "2026-03-09T18:33:57.082Z"
+last_updated: "2026-03-09T18:38:36.364Z"
 last_activity: "2026-03-09 -- Plan 16-06 complete (UAT gap closure round 2: _Unset filtering, tz no-op, tag IDs, same-container move)"
 progress:
   total_phases: 4
