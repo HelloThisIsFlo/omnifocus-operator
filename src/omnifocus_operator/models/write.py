@@ -140,12 +140,93 @@ class MoveToSpec(OmniFocusBaseModel):
         return _clean_unset_from_schema(schema)
 
 
+class TagActionSpec(OmniFocusBaseModel):
+    """Tag operations for task editing.
+
+    Either ``replace`` (standalone) or ``add``/``remove`` (combinable).
+    Mutual exclusivity is enforced by the model validator.
+    """
+
+    add: list[str] | _Unset = UNSET
+    remove: list[str] | _Unset = UNSET
+    replace: list[str] | None | _Unset = UNSET
+
+    @model_validator(mode="after")
+    def _tag_mutual_exclusivity(self) -> TagActionSpec:
+        has_replace = not isinstance(self.replace, _Unset)
+        has_add = not isinstance(self.add, _Unset)
+        has_remove = not isinstance(self.remove, _Unset)
+        if has_replace and (has_add or has_remove):
+            msg = (
+                "Cannot use 'replace' with 'add' or 'remove' "
+                "-- use either replace mode or add/remove mode"
+            )
+            raise ValueError(msg)
+        if not has_replace and not has_add and not has_remove:
+            msg = "tags must specify at least one of: add, remove, replace"
+            raise ValueError(msg)
+        return self
+
+    @classmethod
+    def model_json_schema(
+        cls,
+        by_alias: bool = True,
+        ref_template: str = "{model}",
+        schema_generator: type[GenerateJsonSchema] = GenerateJsonSchema,
+        mode: Literal["validation", "serialization"] = "validation",
+        *,
+        union_format: Literal["any_of", "primitive_type_array"] = "any_of",
+    ) -> dict[str, Any]:
+        """Override to produce a clean JSON schema without _Unset type."""
+        schema = super().model_json_schema(
+            by_alias=by_alias,
+            ref_template=ref_template,
+            schema_generator=schema_generator,
+            mode=mode,
+            union_format=union_format,
+        )
+        return _clean_unset_from_schema(schema)
+
+
+class ActionsSpec(OmniFocusBaseModel):
+    """Stateful operations grouped under the actions block.
+
+    Contains tag operations, movement, and lifecycle (reserved).
+    """
+
+    tags: TagActionSpec | _Unset = UNSET
+    move: MoveToSpec | _Unset = UNSET
+    lifecycle: str | _Unset = UNSET
+
+    @classmethod
+    def model_json_schema(
+        cls,
+        by_alias: bool = True,
+        ref_template: str = "{model}",
+        schema_generator: type[GenerateJsonSchema] = GenerateJsonSchema,
+        mode: Literal["validation", "serialization"] = "validation",
+        *,
+        union_format: Literal["any_of", "primitive_type_array"] = "any_of",
+    ) -> dict[str, Any]:
+        """Override to produce a clean JSON schema without _Unset type."""
+        schema = super().model_json_schema(
+            by_alias=by_alias,
+            ref_template=ref_template,
+            schema_generator=schema_generator,
+            mode=mode,
+            union_format=union_format,
+        )
+        return _clean_unset_from_schema(schema)
+
+
 class TaskEditSpec(OmniFocusBaseModel):
     """Patch model for task editing.
 
     Only ``id`` is required. All other fields default to ``UNSET``
     (omitted = no change). Setting a clearable field to ``None``
     clears it. Setting a value updates it.
+
+    Stateful operations (tags, move, lifecycle) live under ``actions``.
     """
 
     # Required -- which task to edit
@@ -162,26 +243,8 @@ class TaskEditSpec(OmniFocusBaseModel):
     planned_date: AwareDatetime | None | _Unset = UNSET
     estimated_minutes: float | None | _Unset = UNSET
 
-    # Tag fields -- mutually exclusive modes
-    tags: list[str] | None | _Unset = UNSET
-    add_tags: list[str] | _Unset = UNSET
-    remove_tags: list[str] | _Unset = UNSET
-
-    # Movement
-    move_to: MoveToSpec | _Unset = UNSET
-
-    @model_validator(mode="after")
-    def _tag_mutual_exclusivity(self) -> TaskEditSpec:
-        has_replace = not isinstance(self.tags, _Unset)
-        has_add = not isinstance(self.add_tags, _Unset)
-        has_remove = not isinstance(self.remove_tags, _Unset)
-        if has_replace and (has_add or has_remove):
-            msg = (
-                "Cannot use 'tags' with 'addTags' or 'removeTags' "
-                "-- use either replace mode (tags) or incremental mode (addTags/removeTags)"
-            )
-            raise ValueError(msg)
-        return self
+    # Stateful operations
+    actions: ActionsSpec | _Unset = UNSET
 
     @classmethod
     def model_json_schema(

@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from omnifocus_operator.models.task import Task
     from omnifocus_operator.models.write import (
         MoveToSpec,
+        TagActionSpec,
         TaskCreateResult,
         TaskCreateSpec,
         TaskEditResult,
@@ -170,72 +171,92 @@ class OperatorService:
             if not isinstance(value, _Unset):
                 payload[key] = value.isoformat() if value is not None else None
 
-        # 4. Handle tags
-        has_replace = not isinstance(spec.tags, _Unset)
-        has_add = not isinstance(spec.add_tags, _Unset)
-        has_remove = not isinstance(spec.remove_tags, _Unset)
+        # 4. Handle actions block (tags, move, lifecycle)
+        has_actions = not isinstance(spec.actions, _Unset)
 
-        # Build tag ID -> name map for warning display names
-        # (resolves human-readable names when caller passes raw IDs)
-        all_tag_names: dict[str, str] = {}
-        if has_add or has_remove:
-            all_data = await self._repository.get_all()
-            all_tag_names = {t.id: t.name for t in all_data.tags}
+        # 4a. Lifecycle fail-fast
+        if has_actions:
+            assert not isinstance(spec.actions, _Unset)
+            if not isinstance(spec.actions.lifecycle, _Unset):
+                msg = "Lifecycle actions are not yet implemented (coming in Phase 17)"
+                raise ValueError(msg)
 
-        if has_replace:
-            # tags: null means clear all (same as tags: [])
-            tag_list = spec.tags if isinstance(spec.tags, list) else []
-            resolved_ids = await self._resolve_tags(tag_list) if tag_list else []
-            payload["tagMode"] = "replace"
-            payload["tagIds"] = resolved_ids
-        elif has_add and has_remove:
-            # Add + remove mode
-            assert isinstance(spec.add_tags, list)
-            assert isinstance(spec.remove_tags, list)
-            add_ids = await self._resolve_tags(spec.add_tags) if spec.add_tags else []
-            remove_ids = await self._resolve_tags(spec.remove_tags) if spec.remove_tags else []
-            # Warnings for tags already on task (add duplicates)
-            current_tag_ids = {t.id for t in task.tags}
-            for i, tag_name in enumerate(spec.add_tags):
-                if i < len(add_ids) and add_ids[i] in current_tag_ids:
-                    display = all_tag_names.get(add_ids[i], tag_name)
-                    warnings.append(f"Tag '{display}' ({add_ids[i]}) is already on this task")
-            # Warnings for removing tags not on task
-            for i, tag_name in enumerate(spec.remove_tags):
-                if remove_ids[i] not in current_tag_ids:
-                    display = all_tag_names.get(remove_ids[i], tag_name)
-                    warnings.append(f"Tag '{display}' ({remove_ids[i]}) is not on this task")
-            payload["tagMode"] = "add_remove"
-            payload["addTagIds"] = add_ids
-            payload["removeTagIds"] = remove_ids
-        elif has_add:
-            # Add-only mode
-            assert isinstance(spec.add_tags, list)
-            add_ids = await self._resolve_tags(spec.add_tags) if spec.add_tags else []
-            # Warn about tags already present
-            current_tag_ids = {t.id for t in task.tags}
-            for i, tag_name in enumerate(spec.add_tags):
-                if i < len(add_ids) and add_ids[i] in current_tag_ids:
-                    display = all_tag_names.get(add_ids[i], tag_name)
-                    warnings.append(f"Tag '{display}' ({add_ids[i]}) is already on this task")
-            payload["tagMode"] = "add"
-            payload["tagIds"] = add_ids
-        elif has_remove:
-            # Remove-only mode
-            assert isinstance(spec.remove_tags, list)
-            remove_ids = await self._resolve_tags(spec.remove_tags) if spec.remove_tags else []
-            # Warnings for removing tags not on task
-            current_tag_ids = {t.id for t in task.tags}
-            for i, tag_name in enumerate(spec.remove_tags):
-                if remove_ids[i] not in current_tag_ids:
-                    display = all_tag_names.get(remove_ids[i], tag_name)
-                    warnings.append(f"Tag '{display}' ({remove_ids[i]}) is not on this task")
-            payload["tagMode"] = "remove"
-            payload["removeTagIds"] = remove_ids
+        # 4b. Handle tags
+        has_tag_actions = (
+            has_actions
+            and not isinstance(spec.actions, _Unset)
+            and not isinstance(spec.actions.tags, _Unset)
+        )
+        if has_tag_actions:
+            assert not isinstance(spec.actions, _Unset)
+            tag_actions: TagActionSpec = spec.actions.tags  # type: ignore[assignment]
+            has_replace = not isinstance(tag_actions.replace, _Unset)
+            has_add = not isinstance(tag_actions.add, _Unset)
+            has_remove = not isinstance(tag_actions.remove, _Unset)
+
+            # Build tag ID -> name map for warning display names
+            all_tag_names: dict[str, str] = {}
+            if has_add or has_remove:
+                all_data = await self._repository.get_all()
+                all_tag_names = {t.id: t.name for t in all_data.tags}
+
+            if has_replace:
+                # replace: null means clear all (same as replace: [])
+                tag_list = tag_actions.replace if isinstance(tag_actions.replace, list) else []
+                resolved_ids = await self._resolve_tags(tag_list) if tag_list else []
+                payload["tagMode"] = "replace"
+                payload["tagIds"] = resolved_ids
+            elif has_add and has_remove:
+                assert isinstance(tag_actions.add, list)
+                assert isinstance(tag_actions.remove, list)
+                add_ids = await self._resolve_tags(tag_actions.add) if tag_actions.add else []
+                remove_ids = (
+                    await self._resolve_tags(tag_actions.remove) if tag_actions.remove else []
+                )
+                current_tag_ids = {t.id for t in task.tags}
+                for i, tag_name in enumerate(tag_actions.add):
+                    if i < len(add_ids) and add_ids[i] in current_tag_ids:
+                        display = all_tag_names.get(add_ids[i], tag_name)
+                        warnings.append(f"Tag '{display}' ({add_ids[i]}) is already on this task")
+                for i, tag_name in enumerate(tag_actions.remove):
+                    if remove_ids[i] not in current_tag_ids:
+                        display = all_tag_names.get(remove_ids[i], tag_name)
+                        warnings.append(f"Tag '{display}' ({remove_ids[i]}) is not on this task")
+                payload["tagMode"] = "add_remove"
+                payload["addTagIds"] = add_ids
+                payload["removeTagIds"] = remove_ids
+            elif has_add:
+                assert isinstance(tag_actions.add, list)
+                add_ids = await self._resolve_tags(tag_actions.add) if tag_actions.add else []
+                current_tag_ids = {t.id for t in task.tags}
+                for i, tag_name in enumerate(tag_actions.add):
+                    if i < len(add_ids) and add_ids[i] in current_tag_ids:
+                        display = all_tag_names.get(add_ids[i], tag_name)
+                        warnings.append(f"Tag '{display}' ({add_ids[i]}) is already on this task")
+                payload["tagMode"] = "add"
+                payload["tagIds"] = add_ids
+            elif has_remove:
+                assert isinstance(tag_actions.remove, list)
+                remove_ids = (
+                    await self._resolve_tags(tag_actions.remove) if tag_actions.remove else []
+                )
+                current_tag_ids = {t.id for t in task.tags}
+                for i, tag_name in enumerate(tag_actions.remove):
+                    if remove_ids[i] not in current_tag_ids:
+                        display = all_tag_names.get(remove_ids[i], tag_name)
+                        warnings.append(f"Tag '{display}' ({remove_ids[i]}) is not on this task")
+                payload["tagMode"] = "remove"
+                payload["removeTagIds"] = remove_ids
 
         # 5. Handle moveTo
-        if not isinstance(spec.move_to, _Unset):
-            move_to_spec: MoveToSpec = spec.move_to
+        has_move = (
+            has_actions
+            and not isinstance(spec.actions, _Unset)
+            and not isinstance(spec.actions.move, _Unset)
+        )
+        if has_move:
+            assert not isinstance(spec.actions, _Unset)
+            move_to_spec: MoveToSpec = spec.actions.move  # type: ignore[assignment]
             move_to_dict: dict[str, object] = {}
 
             # Find which key is set

@@ -28,7 +28,9 @@ from omnifocus_operator.models.tag import Tag
 from omnifocus_operator.models.task import Task
 from omnifocus_operator.models.write import (
     UNSET,
+    ActionsSpec,
     MoveToSpec,
+    TagActionSpec,
     TaskCreateResult,
     TaskCreateSpec,
     TaskEditResult,
@@ -63,6 +65,8 @@ _ns: dict[str, type] = {
     "TaskEditSpec": TaskEditSpec,
     "TaskEditResult": TaskEditResult,
     "MoveToSpec": MoveToSpec,
+    "ActionsSpec": ActionsSpec,
+    "TagActionSpec": TagActionSpec,
 }
 ParentRef.model_rebuild(_types_namespace=_ns)
 RepetitionRule.model_rebuild(_types_namespace=_ns)
@@ -74,6 +78,8 @@ Folder.model_rebuild(_types_namespace=_ns)
 AllEntities.model_rebuild(_types_namespace=_ns)
 TaskCreateSpec.model_rebuild(_types_namespace=_ns)
 TaskCreateResult.model_rebuild(_types_namespace=_ns)
+TagActionSpec.model_rebuild(_types_namespace=_ns)
+ActionsSpec.model_rebuild(_types_namespace=_ns)
 TaskEditSpec.model_rebuild(_types_namespace=_ns)
 TaskEditResult.model_rebuild(_types_namespace=_ns)
 MoveToSpec.model_rebuild(_types_namespace=_ns)
@@ -81,6 +87,7 @@ MoveToSpec.model_rebuild(_types_namespace=_ns)
 __all__ = [
     "UNSET",
     "ActionableEntity",
+    "ActionsSpec",
     "AllEntities",
     "AnchorDateKey",
     "Availability",
@@ -96,6 +103,7 @@ __all__ = [
     "ReviewInterval",
     "ScheduleType",
     "Tag",
+    "TagActionSpec",
     "TagAvailability",
     "TagRef",
     "Task",
