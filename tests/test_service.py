@@ -915,6 +915,66 @@ class TestEditTask:
         # Should NOT warn "is not on this task" for A since A IS on the task
         assert not any("is not on this task" in w for w in result.warnings)
 
+    async def test_add_tag_warning_resolves_name_from_id(self) -> None:
+        """add_tags with raw ID for tag already on task shows resolved name, not ID."""
+        from omnifocus_operator.models.write import TaskEditSpec
+
+        from .conftest import make_tag_dict
+
+        snapshot = make_snapshot(
+            tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-x", "name": "X"}])],
+            tags=[make_tag_dict(id="tag-x", name="X")],
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        # Pass raw ID instead of name
+        result = await service.edit_task(TaskEditSpec(id="task-001", add_tags=["tag-x"]))
+        assert result.warnings is not None
+        # Warning should show resolved name "X", not the raw ID "tag-x"
+        assert any("Tag 'X'" in w and "(tag-x)" in w for w in result.warnings)
+        assert not any("Tag 'tag-x'" in w for w in result.warnings)
+
+    async def test_remove_tag_warning_resolves_name_from_id(self) -> None:
+        """remove_tags with raw ID for tag NOT on task shows resolved name, not ID."""
+        from omnifocus_operator.models.write import TaskEditSpec
+
+        from .conftest import make_tag_dict
+
+        snapshot = make_snapshot(
+            tasks=[make_task_dict(id="task-001", name="Task", tags=[])],
+            tags=[make_tag_dict(id="tag-x", name="X")],
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        # Pass raw ID instead of name
+        result = await service.edit_task(TaskEditSpec(id="task-001", remove_tags=["tag-x"]))
+        assert result.success is True
+        assert result.warnings is not None
+        # Warning should show resolved name "X", not the raw ID "tag-x"
+        assert any("Tag 'X'" in w and "(tag-x)" in w for w in result.warnings)
+        assert not any("Tag 'tag-x'" in w for w in result.warnings)
+
+    async def test_add_tag_warning_with_name_still_works(self) -> None:
+        """add_tags with name string still shows name correctly (regression guard)."""
+        from omnifocus_operator.models.write import TaskEditSpec
+
+        from .conftest import make_tag_dict
+
+        snapshot = make_snapshot(
+            tasks=[
+                make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "Alpha"}])
+            ],
+            tags=[make_tag_dict(id="tag-a", name="Alpha")],
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(TaskEditSpec(id="task-001", add_tags=["Alpha"]))
+        assert result.warnings is not None
+        assert any("Tag 'Alpha'" in w and "(tag-a)" in w for w in result.warnings)
+
     async def test_warning_empty_edit(self) -> None:
         """Empty edit (only id, no fields) returns warning without calling bridge."""
         from omnifocus_operator.models.write import TaskEditSpec
