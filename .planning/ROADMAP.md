@@ -94,6 +94,18 @@ Plans:
 - [ ] 16-02-PLAN.md -- Repository protocol extension + service layer (validation, cycle detection, tag modes, moveTo resolution)
 - [ ] 16-03-PLAN.md -- MCP edit_tasks tool registration + end-to-end integration tests
 
+### Phase 16.1: Introduce actions grouping to edit_tasks (INSERTED)
+
+**Goal:** Restructure edit_tasks API to separate idempotent field setters (top-level) from stateful operations (actions block) -- tags and moveTo graduate into actions, lifecycle slot reserved
+**Requirements**: ACT-01, ACT-02, ACT-03, ACT-04, ACT-05, ACT-06, ACT-07
+**Depends on:** Phase 16
+**Plans:** 3 plans
+
+Plans:
+- [ ] 16.1-01-PLAN.md -- New models (TagActionSpec, ActionsSpec) + TaskEditSpec update + service refactor
+- [ ] 16.1-02-PLAN.md -- Rewrite service edit tests to new actions shape
+- [ ] 16.1-03-PLAN.md -- Rewrite server edit tests + update docstring + UAT skill
+
 ### Phase 16.2: Simplify bridge tag handling to diff-based approach (INSERTED)
 
 **Goal:** [Urgent work - to be planned]
@@ -103,16 +115,6 @@ Plans:
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 16.2 to break down)
-
-### Phase 16.1: Introduce actions grouping to edit_tasks (INSERTED)
-
-**Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
-**Depends on:** Phase 16
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd:plan-phase 16.1 to break down)
 
 ### Phase 17: Task Lifecycle
 **Goal**: Agents can change task lifecycle state -- completing, dropping, and reactivating tasks
@@ -155,4 +157,5 @@ Phases execute in numeric order: 14 -> 15 -> 16 -> 17
 | 14. Model Refactor & Lookups | 2/2 | Complete    | 2026-03-07 | - |
 | 15. Write Pipeline & Task Creation | 4/4 | Complete    | 2026-03-08 | - |
 | 16. Task Editing | 6/6 | Complete    | 2026-03-09 | - |
+| 16.1. Actions Grouping | v1.2 | 0/3 | Not started | - |
 | 17. Task Lifecycle | v1.2 | 0/? | Not started | - |
