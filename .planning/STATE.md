@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Writes & Lookups
-status: completed
-stopped_at: Phase 16.1 context gathered
-last_updated: "2026-03-09T20:54:48.168Z"
-last_activity: "2026-03-09 - Completed quick task 4: Fix tag warning to resolve name when caller passes an ID (UAT test 71)"
+status: in-progress
+stopped_at: Completed 16.1-01-PLAN.md
+last_updated: "2026-03-09T21:12:54Z"
+last_activity: "2026-03-09 - Completed plan 16.1-01: actions grouping models + service refactor"
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 12
-  completed_plans: 12
-  percent: 100
+  total_plans: 15
+  completed_plans: 13
+  percent: 87
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 16 - Task Editing
+**Current focus:** Phase 16.1 - Introduce actions grouping to edit_tasks
 
 ## Current Position
 
-Phase: 16 of 17 (Task Editing) -- third of 4 v1.2 phases
-Plan: 6 of 6 (complete, includes 2 rounds of gap closure)
-Status: Phase 16 fully complete (all UAT gaps closed), ready for phase 17
-Last activity: 2026-03-09 - Completed quick task 4: Fix tag warning to resolve name when caller passes an ID (UAT test 71)
+Phase: 16.1 (Actions Grouping) -- inserted after Phase 16
+Plan: 1 of 3 (complete)
+Status: Plan 01 complete (models + service), plans 02-03 remaining (test rewrites)
+Last activity: 2026-03-09 - Completed plan 16.1-01: actions grouping models + service refactor
 
-Progress: [█████████░] 100%
+Progress: [████████░░] 87%
 
 ## Performance Metrics
 
@@ -46,6 +46,7 @@ Progress: [█████████░] 100%
 | 14 | 2/2 | 10min | 5min |
 | 15 | 4/4 | 19min | 4.8min |
 | 16 | 6/6 | 22min | 3.7min |
+| 16.1 | 1/3 | 3min | 3min |
 
 ## Accumulated Context
 
@@ -79,6 +80,9 @@ Progress: [█████████░] 100%
 - [Phase 16]: Tag architecture simplification DEFERRED (keep 4-mode approach per user decision)
 - [Phase 16]: UTC timestamp comparison for timezone-aware date no-op detection
 - [Phase 16]: Same-container move detection limited to beginning/ending positions
+- [Phase 16.1]: TagActionSpec/ActionsSpec nested models with field graduation pattern
+- [Phase 16.1]: Lifecycle fail-fast before any tag/move resolution work
+- [Phase 16.1]: Tasks 1+2 committed together due to mypy requiring consistent model+service state
 
 ### Roadmap Evolution
 
@@ -107,6 +111,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-09T20:54:48.154Z
-Stopped at: Phase 16.1 context gathered
-Next action: Execute phase 17
+Last session: 2026-03-09T21:12:54Z
+Stopped at: Completed 16.1-01-PLAN.md
+Next action: Execute 16.1-02-PLAN.md (test rewrites)

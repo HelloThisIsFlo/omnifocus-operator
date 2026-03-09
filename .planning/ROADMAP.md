@@ -99,7 +99,7 @@ Plans:
 **Goal:** Restructure edit_tasks API to separate idempotent field setters (top-level) from stateful operations (actions block) -- tags and moveTo graduate into actions, lifecycle slot reserved
 **Requirements**: ACT-01, ACT-02, ACT-03, ACT-04, ACT-05, ACT-06, ACT-07
 **Depends on:** Phase 16
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
 - [ ] 16.1-01-PLAN.md -- New models (TagActionSpec, ActionsSpec) + TaskEditSpec update + service refactor
@@ -157,5 +157,5 @@ Phases execute in numeric order: 14 -> 15 -> 16 -> 17
 | 14. Model Refactor & Lookups | 2/2 | Complete    | 2026-03-07 | - |
 | 15. Write Pipeline & Task Creation | 4/4 | Complete    | 2026-03-08 | - |
 | 16. Task Editing | 6/6 | Complete    | 2026-03-09 | - |
-| 16.1. Actions Grouping | v1.2 | 0/3 | Not started | - |
+| 16.1. Actions Grouping | 1/3 | In Progress|  | - |
 | 17. Task Lifecycle | v1.2 | 0/? | Not started | - |
