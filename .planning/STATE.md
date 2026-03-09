@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Writes & Lookups
 status: completed
-stopped_at: Completed 16-06-PLAN.md
-last_updated: "2026-03-09T18:38:36.364Z"
-last_activity: "2026-03-09 -- Plan 16-06 complete (UAT gap closure round 2: _Unset filtering, tz no-op, tag IDs, same-container move)"
+stopped_at: Phase 16.1 context gathered
+last_updated: "2026-03-09T20:54:48.168Z"
+last_activity: "2026-03-09 - Completed quick task 4: Fix tag warning to resolve name when caller passes an ID (UAT test 71)"
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 3
   total_plans: 12
   completed_plans: 12
@@ -80,6 +80,10 @@ Progress: [█████████░] 100%
 - [Phase 16]: UTC timestamp comparison for timezone-aware date no-op detection
 - [Phase 16]: Same-container move detection limited to beginning/ending positions
 
+### Roadmap Evolution
+
+- Phase 16.1 inserted after Phase 16: Introduce actions grouping to edit_tasks (URGENT)
+
 ### Pending Todos
 
 Carried from v1.0:
@@ -102,6 +106,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-09T19:02:17Z
-Stopped at: Completed quick task 4
+Last session: 2026-03-09T20:54:48.154Z
+Stopped at: Phase 16.1 context gathered
 Next action: Execute phase 17
