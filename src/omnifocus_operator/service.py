@@ -8,6 +8,7 @@ orchestration, caching policies, or multi-repository coordination.
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, NoReturn
 
 from omnifocus_operator.models.enums import Availability
@@ -29,6 +30,17 @@ if TYPE_CHECKING:
 __all__ = ["ErrorOperatorService", "OperatorService"]
 
 logger = logging.getLogger("omnifocus_operator")
+
+
+def _to_utc_ts(val: object) -> object:
+    """Normalize a date value to UTC timestamp for comparison, or return as-is."""
+    if val is None:
+        return None
+    if isinstance(val, datetime):
+        return val.astimezone(UTC).timestamp()
+    if isinstance(val, str):
+        return datetime.fromisoformat(val).astimezone(UTC).timestamp()
+    return val
 
 
 class OperatorService:
@@ -179,14 +191,11 @@ class OperatorService:
             current_tag_ids = {t.id for t in task.tags}
             for i, tag_name in enumerate(spec.add_tags):
                 if i < len(add_ids) and add_ids[i] in current_tag_ids:
-                    warnings.append(f"Tag '{tag_name}' is already on this task")
+                    warnings.append(f"Tag '{tag_name}' ({add_ids[i]}) is already on this task")
             # Warnings for removing tags not on task
             for i, tag_name in enumerate(spec.remove_tags):
                 if remove_ids[i] not in current_tag_ids:
-                    warnings.append(
-                        f"Tag '{tag_name}' was not on this task"
-                        " -- to skip tag changes, omit removeTags"
-                    )
+                    warnings.append(f"Tag '{tag_name}' ({remove_ids[i]}) is not on this task")
             payload["tagMode"] = "add_remove"
             payload["addTagIds"] = add_ids
             payload["removeTagIds"] = remove_ids
@@ -198,7 +207,7 @@ class OperatorService:
             current_tag_ids = {t.id for t in task.tags}
             for i, tag_name in enumerate(spec.add_tags):
                 if i < len(add_ids) and add_ids[i] in current_tag_ids:
-                    warnings.append(f"Tag '{tag_name}' is already on this task")
+                    warnings.append(f"Tag '{tag_name}' ({add_ids[i]}) is already on this task")
             payload["tagMode"] = "add"
             payload["tagIds"] = add_ids
         elif has_remove:
@@ -209,10 +218,7 @@ class OperatorService:
             current_tag_ids = {t.id for t in task.tags}
             for i, tag_name in enumerate(spec.remove_tags):
                 if remove_ids[i] not in current_tag_ids:
-                    warnings.append(
-                        f"Tag '{tag_name}' was not on this task"
-                        " -- to skip tag changes, omit removeTags"
-                    )
+                    warnings.append(f"Tag '{tag_name}' ({remove_ids[i]}) is not on this task")
             payload["tagMode"] = "remove"
             payload["removeTagIds"] = remove_ids
 
@@ -265,19 +271,27 @@ class OperatorService:
 
         # 7. Generic no-op detection: compare payload against current task state
         is_noop = True
+        _date_keys = {"dueDate", "deferDate", "plannedDate"}
         field_comparisons: dict[str, object] = {
             "name": task.name,
             "note": task.note,
             "flagged": task.flagged,
             "estimatedMinutes": task.estimated_minutes,
-            "dueDate": task.due_date.isoformat() if task.due_date else None,
-            "deferDate": task.defer_date.isoformat() if task.defer_date else None,
-            "plannedDate": task.planned_date.isoformat() if task.planned_date else None,
+            "dueDate": task.due_date,
+            "deferDate": task.defer_date,
+            "plannedDate": task.planned_date,
         }
         for key, current_value in field_comparisons.items():
-            if key in payload and payload[key] != current_value:
-                is_noop = False
-                break
+            if key in payload:
+                payload_val = payload[key]
+                if key in _date_keys:
+                    # Normalize both sides to UTC timestamp for tz-aware comparison
+                    if _to_utc_ts(payload_val) != _to_utc_ts(current_value):
+                        is_noop = False
+                        break
+                elif payload_val != current_value:
+                    is_noop = False
+                    break
 
         # Check tag changes if no field changes detected yet
         if is_noop and "tagMode" in payload:
@@ -293,7 +307,20 @@ class OperatorService:
 
         # Check moveTo
         if is_noop and "moveTo" in payload:
-            is_noop = False
+            move_data = payload["moveTo"]
+            assert isinstance(move_data, dict)
+            position = move_data.get("position")
+            if position in ("beginning", "ending"):
+                container_id = move_data.get("containerId")
+                current_parent_id = task.parent.id if task.parent else None
+                if container_id == current_parent_id:
+                    warnings.append("Task is already in this location")
+                    # is_noop stays True -- same container
+                else:
+                    is_noop = False
+            else:
+                # before/after -- can't detect same position
+                is_noop = False
 
         if is_noop and len(payload) > 1:
             return TaskEditResult(

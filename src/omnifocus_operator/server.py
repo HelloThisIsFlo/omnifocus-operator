@@ -182,8 +182,8 @@ def _register_tools(mcp: FastMCP) -> None:
         try:
             spec = TaskCreateSpec.model_validate(items[0])
         except ValidationError as exc:
-            messages = "; ".join(e["msg"] for e in exc.errors())
-            raise ValueError(messages) from None
+            messages = "; ".join(e["msg"] for e in exc.errors() if "_Unset" not in e["msg"])
+            raise ValueError(messages or "Invalid input") from None
         result = await service.add_task(spec)
         return [result]
 
@@ -237,8 +237,8 @@ def _register_tools(mcp: FastMCP) -> None:
         try:
             spec = TaskEditSpec.model_validate(items[0])
         except ValidationError as exc:
-            messages = "; ".join(e["msg"] for e in exc.errors())
-            raise ValueError(messages) from None
+            messages = "; ".join(e["msg"] for e in exc.errors() if "_Unset" not in e["msg"])
+            raise ValueError(messages or "Invalid input") from None
         result = await service.edit_task(spec)
         return [result]
 
