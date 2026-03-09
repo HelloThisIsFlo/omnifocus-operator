@@ -18,7 +18,7 @@ The session has three phases:
 - **Tags by ID.** Some tag names are ambiguous (multiple tags share a name). Always discover tags first via `get_all`, then use IDs for tags where the name might be ambiguous. Pick 3 distinct, unambiguous tags for testing. If all tag names risk ambiguity, use IDs exclusively.
 - **No parallel error calls.** Claude Code cancels all sibling calls when one errors. Never mix calls that might fail (nonexistent IDs, validation errors) with calls that must succeed. Run error-expecting calls individually.
 - **Timezone required.** Date fields need timezone info in ISO 8601 (e.g., `+01:00` or `Z`). Without it, Pydantic rejects the value.
-- **Inbox move syntax.** To move a task to inbox, use `{"ending": null}` or `{"beginning": null}` — NOT `moveTo: null` (that means "don't move").
+- **Inbox move syntax.** To move a task to inbox, use `{"actions": {"move": {"ending": null}}}` or `{"actions": {"move": {"beginning": null}}}` — NOT `actions: null` (that means "no actions").
 - **1-item limit.** `edit_tasks` currently accepts exactly 1 item per call. Batch tests should expect this limitation.
 
 ## Phase 1: Interactive Setup
@@ -84,9 +84,9 @@ After a test that modifies state, clean up if the task is reused later (e.g., re
 
 These verify that specific bugs from Phase 16 UAT are fixed.
 
-#### Test 1: removeTags alone (no crash)
-1. `addTags: [<tag-a>]` on T1
-2. `removeTags: [<tag-a>]` on T1 — NO addTags in the call
+#### Test 1: remove tags alone (no crash)
+1. `actions: { tags: { add: [<tag-a>] } }` on T1
+2. `actions: { tags: { remove: [<tag-a>] } }` on T1 — NO add in the call
 3. PASS if: success, no crash, tag removed
 
 #### Test 2a: note: null clears the note
@@ -100,21 +100,21 @@ These verify that specific bugs from Phase 16 UAT are fixed.
 3. `get_task` T2 and verify note is empty
 4. PASS if: success, note cleared (empty string accepted as a way to clear notes)
 
-#### Test 3a: Clean error — tags + addTags
-1. `tags: [<tag-a>], addTags: [<tag-b>]` on T3
+#### Test 3a: Clean error — replace + add
+1. `actions: { tags: { replace: [<tag-a>], add: [<tag-b>] } }` on T3
 2. PASS if: error message does NOT contain "type=", "pydantic", or "input_value"
 
-#### Test 3b: Clean error — moveTo multi-key
-1. `moveTo: {"beginning": "x", "ending": "y"}` on T3
+#### Test 3b: Clean error — move multi-key
+1. `actions: { move: {"beginning": "x", "ending": "y"} }` on T3
 2. PASS if: error message does NOT contain "type=", "pydantic", "input_value", or "_Unset"
 
-#### Test 4a: No-op warning — addTags duplicate
-1. `addTags: [<tag-a>]` on T4
-2. `addTags: [<tag-a>]` again on T4
+#### Test 4a: No-op warning — add duplicate tag
+1. `actions: { tags: { add: [<tag-a>] } }` on T4
+2. `actions: { tags: { add: [<tag-a>] } }` again on T4
 3. PASS if: second call returns success with a warning about tag already on task
 
-#### Test 4b: No-op warning — removeTags absent
-1. `removeTags: [<tag-b>]` on T4 (T4 doesn't have tag-b). Use `addTags: [], removeTags: [<tag-b>]` if removeTags-alone is broken.
+#### Test 4b: No-op warning — remove absent tag
+1. `actions: { tags: { remove: [<tag-b>] } }` on T4 (T4 doesn't have tag-b)
 2. PASS if: success with warning about tag not on task
 
 #### Test 4c: No-op warning — empty edit
@@ -207,92 +207,92 @@ These verify that specific bugs from Phase 16 UAT are fixed.
 
 Use tag IDs from Step 1.1. Call them tag-a, tag-b, tag-c below.
 
-#### Test 8a: Replace (tags field)
-1. `tags: [<tag-a>, <tag-b>]` on T8
+#### Test 8a: Replace tags
+1. `actions: { tags: { replace: [<tag-a>, <tag-b>] } }` on T8
 2. PASS if: success
 
 #### Test 8b: Replace with different
-1. `tags: [<tag-c>]` on T8
+1. `actions: { tags: { replace: [<tag-c>] } }` on T8
 2. `get_task` to verify only tag-c remains
 3. PASS if: tag-a and tag-b gone, only tag-c
 
 #### Test 8c: Clear all tags
-1. `tags: []` on T8
+1. `actions: { tags: { replace: [] } }` on T8
 2. PASS if: success, task has no tags
 
 #### Test 8d: Add incremental
-1. `addTags: [<tag-a>]` on T8
-2. `addTags: [<tag-b>]` on T8
+1. `actions: { tags: { add: [<tag-a>] } }` on T8
+2. `actions: { tags: { add: [<tag-b>] } }` on T8
 3. PASS if: both succeed
 
 #### Test 8e: Remove selective
-1. `removeTags: [<tag-a>]` on T8
+1. `actions: { tags: { remove: [<tag-a>] } }` on T8
 2. PASS if: success (also confirms Fix 1 works in this context)
 
 #### Test 8f: Mixed ID and name
-1. `addTags: [<tag-a-id>, <tag-c-name>]` on T8 (one by ID, one by name)
+1. `actions: { tags: { add: [<tag-a-id>, <tag-c-name>] } }` on T8 (one by ID, one by name)
 2. PASS if: both resolved and added
 
 #### Test 8g: Ambiguous tag name
 1. Use the ambiguous tag name found in Step 1.1, or the one the user created in Step 1.3
-2. `addTags: ["<ambiguous-name>"]` on T8
+2. `actions: { tags: { add: ["<ambiguous-name>"] } }` on T8
 3. PASS if: error mentioning "ambiguous" with multiple IDs
 4. SKIP if: no ambiguous tag exists (user declined in Step 1.3)
 
 #### Test 8h: add + remove combo
-1. Clean T8 tags first, then `addTags: [<tag-b>]`
-2. `addTags: [<tag-a>], removeTags: [<tag-b>]` on T8
+1. Clean T8 tags first, then `actions: { tags: { add: [<tag-b>] } }`
+2. `actions: { tags: { add: [<tag-a>], remove: [<tag-b>] } }` on T8
 3. PASS if: success, tag-a added, tag-b removed
 
 ### Section D — Movement
 
-#### Test 9a: All 5 moveTo modes
+#### Test 9a: All 5 move modes
 Run these sequentially on T6:
-1. `moveTo: {"after": "<T7-id>"}` — PASS if success
-2. `moveTo: {"before": "<T7-id>"}` — PASS if success
-3. `moveTo: {"beginning": "<UAT-id>"}` — PASS if success
-4. `moveTo: {"ending": "<UAT-id>"}` — PASS if success
-5. `moveTo: {"ending": null}` — PASS if success (moves to inbox)
-6. `moveTo: {"beginning": "<UAT-id>"}` — move back (restore)
+1. `actions: { move: {"after": "<T7-id>"} }` — PASS if success
+2. `actions: { move: {"before": "<T7-id>"} }` — PASS if success
+3. `actions: { move: {"beginning": "<UAT-id>"} }` — PASS if success
+4. `actions: { move: {"ending": "<UAT-id>"} }` — PASS if success
+5. `actions: { move: {"ending": null} }` — PASS if success (moves to inbox)
+6. `actions: { move: {"beginning": "<UAT-id>"} }` — move back (restore)
 7. PASS if: all 6 calls succeed
 
 #### Test 9b: Move carries children
-1. `moveTo: {"ending": null}` on T6 (to inbox)
+1. `actions: { move: {"ending": null} }` on T6 (to inbox)
 2. `get_task` T6, verify `hasChildren: true`
-3. `moveTo: {"beginning": "<UAT-id>"}` (move back)
+3. `actions: { move: {"beginning": "<UAT-id>"} }` (move back)
 4. PASS if: children preserved
 
 #### Test 9c: Cross-level move
-1. `moveTo: {"ending": "<UAT-id>"}` on T6b1 (grandchild → direct child of root)
+1. `actions: { move: {"ending": "<UAT-id>"} }` on T6b1 (grandchild -> direct child of root)
 2. Verify success
-3. `moveTo: {"ending": "<T6b-id>"}` on T6b1 (move back)
+3. `actions: { move: {"ending": "<T6b-id>"} }` on T6b1 (move back)
 4. PASS if: both succeed
 
 #### Test 9d: Circular reference detection (3 cases)
 Run each INDIVIDUALLY (they will error):
-1. Move UAT-Regression inside T6: `moveTo: {"beginning": "<T6-id>"}` on UAT-Regression
+1. Move UAT-Regression inside T6: `actions: { move: {"beginning": "<T6-id>"} }` on UAT-Regression
    - PASS if: error about circular reference
-2. Move T6 inside T6b1 (multi-level): `moveTo: {"beginning": "<T6b1-id>"}` on T6
+2. Move T6 inside T6b1 (multi-level): `actions: { move: {"beginning": "<T6b1-id>"} }` on T6
    - PASS if: error about circular reference
-3. Move T6 inside itself: `moveTo: {"beginning": "<T6-id>"}` on T6
+3. Move T6 inside itself: `actions: { move: {"beginning": "<T6-id>"} }` on T6
    - PASS if: error about circular reference
 
 #### Test 9e: Move + edit combo
-1. `name: "T6-Moved", moveTo: {"ending": "<UAT-id>"}` on T6
+1. `name: "T6-Moved", actions: { move: {"ending": "<UAT-id>"} }` on T6
 2. PASS if: success, name changed AND movement applied
 3. Restore: `name: "T6-Movement"` on T6
 
 #### Test 9f: Tags survive movement
-1. `addTags: [<tag-a>]` on T6
-2. `moveTo: {"ending": null}` on T6 (move to inbox)
+1. `actions: { tags: { add: [<tag-a>] } }` on T6
+2. `actions: { move: {"ending": null} }` on T6 (move to inbox)
 3. `get_task` T6 and verify tag-a is still present
-4. `moveTo: {"beginning": "<UAT-id>"}` on T6 (move back)
-5. Clean up: `removeTags: [<tag-a>]` on T6
+4. `actions: { move: {"beginning": "<UAT-id>"} }` on T6 (move back)
+5. Clean up: `actions: { tags: { remove: [<tag-a>] } }` on T6
 6. PASS if: tag preserved through move
 
 #### Test 9g: No-op move — same position
 1. Ensure T6 is the last child of UAT-Regression (it should be after previous tests restored it)
-2. `moveTo: {"ending": "<UAT-id>"}` on T6 (already the last child)
+2. `actions: { move: {"ending": "<UAT-id>"} }` on T6 (already the last child)
 3. PASS if: success with warning about no change in position (task is already there)
 
 ### Section E — Error Handling
@@ -308,18 +308,18 @@ Run each INDIVIDUALLY (they will error):
 2. PASS if: error about name cannot be empty
 
 #### Test 10c: Nonexistent tag
-1. `addTags: ["definitely-not-a-real-tag-xyz"]` on T9
+1. `actions: { tags: { add: ["definitely-not-a-real-tag-xyz"] } }` on T9
 2. PASS if: error about tag not found
 
-#### Test 10d: Nonexistent moveTo target
-1. `moveTo: {"after": "nonexistent-id-12345"}` on T9
+#### Test 10d: Nonexistent move target
+1. `actions: { move: {"after": "nonexistent-id-12345"} }` on T9
 2. PASS if: error about task/anchor not found
 
 ### Section F — Combinations & Edge Cases
 
-#### Test 11a: addTags duplicate + removeTags warnings
+#### Test 11a: add duplicate + remove absent warnings
 1. Ensure T1 has tag-a (re-add if needed)
-2. `addTags: [<tag-a>], removeTags: [<tag-b>]` on T1
+2. `actions: { tags: { add: [<tag-a>], remove: [<tag-b>] } }` on T1
 3. PASS if: success with warnings for BOTH (duplicate add AND absent remove)
 
 #### Test 11b: note null + field change
@@ -336,7 +336,7 @@ Run each INDIVIDUALLY (they will error):
 2. PASS if: error about 1-item limit (expected limitation, confirms guard works)
 
 #### Test 11e: Edit + move in same call
-1. `flagged: true, moveTo: {"ending": "<UAT-id>"}` on T9
+1. `flagged: true, actions: { move: {"ending": "<UAT-id>"} }` on T9
 2. PASS if: success, both applied
 
 ---
@@ -357,13 +357,13 @@ Every test gets its own row (no grouping like "8a-8h"). Use this format:
 
 | # | Test | Description | Result |
 |---|------|-------------|--------|
-| 1 | removeTags alone | Calling removeTags without addTags doesn't crash the server | PASS/FAIL |
+| 1 | remove tags alone | Calling actions.tags.remove without add doesn't crash the server | PASS/FAIL |
 | 2a | note: null | Setting note to null clears the note without error | PASS/FAIL |
 | 2b | note: "" | Setting note to empty string also clears the note | PASS/FAIL |
-| 3a | Clean error: tags + addTags | Using replace mode (tags) and incremental mode (addTags) together returns a clean error, not Pydantic internals | PASS/FAIL |
-| 3b | Clean error: moveTo multi-key | Providing multiple keys in moveTo returns a clean error, not Pydantic internals or _Unset | PASS/FAIL |
-| 4a | No-op: addTags duplicate | Adding a tag that's already on the task returns a warning | PASS/FAIL |
-| 4b | No-op: removeTags absent | Removing a tag that's not on the task returns a warning | PASS/FAIL |
+| 3a | Clean error: replace + add | Using replace and add together in actions.tags returns a clean error, not Pydantic internals | PASS/FAIL |
+| 3b | Clean error: move multi-key | Providing multiple keys in actions.move returns a clean error, not Pydantic internals or _Unset | PASS/FAIL |
+| 4a | No-op: add duplicate tag | Adding a tag that's already on the task returns a warning | PASS/FAIL |
+| 4b | No-op: remove absent tag | Removing a tag that's not on the task returns a warning | PASS/FAIL |
 | 4c | No-op: empty edit | Sending only an ID with no fields returns a "no changes specified" warning | PASS/FAIL |
 | 4d | No-op: same flagged | Setting flagged to its current value returns a "no changes detected" warning | PASS/FAIL |
 | 4e | No-op: same name | Setting name to its current value returns a "no changes detected" warning | PASS/FAIL |
@@ -380,14 +380,14 @@ Every test gets its own row (no grouping like "8a-8h"). Use this format:
 | 7d | Name change | Renaming a task and verifying the response reflects the new name | PASS/FAIL |
 | 7e | Multi-field single call | Setting flagged, note, estimatedMinutes, and dueDate in one call; all applied | PASS/FAIL |
 | 7f | plannedDate set + clear | Setting plannedDate, then clearing with null | PASS/FAIL |
-| 8a | Tags: replace | Replace all tags using the tags field | PASS/FAIL |
+| 8a | Tags: replace | Replace all tags using actions.tags.replace | PASS/FAIL |
 | 8b | Tags: replace with different | Replace tags with a different set; verify old tags gone | PASS/FAIL |
-| 8c | Tags: clear all | Set tags to [] to remove all tags | PASS/FAIL |
-| 8d | Tags: add incremental | Add tags one at a time with addTags | PASS/FAIL |
-| 8e | Tags: remove selective | Remove one tag with removeTags (also confirms removeTags-alone works) | PASS/FAIL |
+| 8c | Tags: clear all | Set actions.tags.replace to [] to remove all tags | PASS/FAIL |
+| 8d | Tags: add incremental | Add tags one at a time with actions.tags.add | PASS/FAIL |
+| 8e | Tags: remove selective | Remove one tag with actions.tags.remove (also confirms remove-alone works) | PASS/FAIL |
 | 8f | Tags: mixed ID and name | Add tags using a mix of tag IDs and tag names in one call | PASS/FAIL |
 | 8g | Tags: ambiguous name | Adding a tag by name when multiple tags share that name returns an ambiguity error | PASS/FAIL/SKIP |
-| 8h | Tags: add + remove combo | addTags and removeTags in the same call; verify both applied | PASS/FAIL |
+| 8h | Tags: add + remove combo | actions.tags.add and actions.tags.remove in the same call; verify both applied | PASS/FAIL |
 | 9a | Move: all 5 modes | Test after, before, beginning, ending, and ending:null (inbox) movements | PASS/FAIL |
 | 9b | Move: carries children | Moving a parent task preserves its children (hasChildren still true) | PASS/FAIL |
 | 9c | Move: cross-level | Moving a grandchild to a different nesting level and back | PASS/FAIL |
@@ -398,8 +398,8 @@ Every test gets its own row (no grouping like "8a-8h"). Use this format:
 | 10a | Error: nonexistent task | Editing a fake task ID returns "not found" | PASS/FAIL |
 | 10b | Error: empty name | Setting name to "" returns a validation error | PASS/FAIL |
 | 10c | Error: nonexistent tag | Adding a fake tag name returns "tag not found" | PASS/FAIL |
-| 10d | Error: nonexistent moveTo | Moving to a fake anchor ID returns "anchor not found" | PASS/FAIL |
-| 11a | Combo: dup add + absent remove | addTags duplicate + removeTags absent in one call; both warnings present | PASS/FAIL |
+| 10d | Error: nonexistent move target | Moving to a fake anchor ID returns "anchor not found" | PASS/FAIL |
+| 11a | Combo: dup add + absent remove | actions.tags.add duplicate + actions.tags.remove absent in one call; both warnings present | PASS/FAIL |
 | 11b | Combo: note null + field | Clearing note and changing flagged in one call; both applied | PASS/FAIL |
 | 11c | Combo: stacked warnings | Editing a completed task with no actual changes; TWO warnings (completed + no-op) | PASS/FAIL |
 | 11d | Combo: batch limit | Sending 3 items returns the 1-item limit error (expected) | PASS/FAIL |
