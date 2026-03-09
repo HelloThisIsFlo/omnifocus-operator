@@ -48,6 +48,8 @@ Alternative serialization format offering ~5x token reduction. Same data, differ
 
 **Configuration:** Server-level setting (env var or config flag -- TBD). When active, all read tools return TaskPaper-formatted strings instead of JSON.
 
+**Important:** TaskPaper must carry hierarchy information by default. The format naturally does this via indentation — ensure this is preserved so agents can see parent/child structure without extra queries. This complements the `order` integer field (v1.3) which provides programmatic ordering.
+
 **Note:** Existing research on TaskPaper format lives in the co-work folder. Refer to that research during planning -- do not re-spec from scratch.
 
 **Unknowns:**

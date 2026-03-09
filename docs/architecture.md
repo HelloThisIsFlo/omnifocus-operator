@@ -117,6 +117,34 @@ Three implementations: HybridRepository (production), BridgeRepository (fallback
 - Hints teach agents patch semantics: "Tag 'X' was not on this task -- omit remove_tags to skip"
 - Design principle: LLMs learn in-context from tool responses, so warnings serve as runtime documentation
 
+## Field Graduation Pattern
+
+The edit API separates **setters** (top-level fields) from **actions** (operations that modify state):
+
+```
+{
+  "id": "xyz",
+  "name": "Renamed",        // setter -- simple field replacement
+  "flagged": true,           // setter
+  "actions": {               // actions -- operations with richer semantics
+    "tags": { "add": [...], "remove": [...] },   // or "replace": [...]
+    "move": { "after": "sibling-id" },
+    "lifecycle": "complete"
+  }
+}
+```
+
+Design principles:
+- **Setters** are idempotent field replacements (top-level). Generic no-op warning when value unchanged.
+- **Actions** are operations that modify relative to current state (nested under `actions`). Action-specific warnings (e.g., "Tag 'X' is already on this task").
+- **Any field can graduate** from setter to action group when it needs more than simple replacement.
+  - Migration path:
+    1. Remove the field from top-level setters
+    2. Add it as an action group under `actions` with `replace` + new operations
+  - Example: `note` could graduate to `actions.note: { replace: "...", append: "..." }` when append-note is needed.
+- **Tags are the first graduated field** — top-level `tags` (replace-only) becomes `actions.tags` with `add`/`remove`/`replace` modes.
+- **Each graduation is independent** — migrate one field at a time as use cases emerge.
+
 ## Two-Axis Status Model
 
 - Urgency: `overdue`, `due_soon`, `none` -- time-based, computed from dates

@@ -14,13 +14,13 @@ The agent has no way to see child ordering — `get_task` shows the parent but n
 
 ## Solution
 
-**Near-term (v1.3 — list/filter tools)**:
-- Add an explicit `position` integer field to task responses
-- When listing children of a parent, return them in display order with position
-- Example: `[{"id": "abc", "name": "Design", "position": 0, "parent": "xyz"}, ...]`
+- Add an `order` integer field to task responses so agents can see sibling ordering
+- `parent` stays as-is (object with id and name) — this is purely read-only, informational
+- When listing children of a parent, return them in display order with `order`
+- Example: `[{"id": "abc", "name": "Design", "order": 0, "parent": {"id": "xyz", "name": "..."}}, ...]`
+- Independent of the `actions.move` restructuring (see "Introduce actions grouping" todo). Can be implemented at any time.
 
-**Later (v1.4 — TaskPaper format)**:
-- TaskPaper output naturally shows hierarchy and order via indentation
-- Gives the agent a complete structural snapshot without multiple queries
+## Extra Context
 
-Both approaches are complementary: position field for programmatic use, TaskPaper for full-hierarchy comprehension.
+- TaskPaper output (v1.4) naturally shows hierarchy and order via indentation — complementary to `order` field
+- `order` is for programmatic use, TaskPaper for full-hierarchy comprehension
