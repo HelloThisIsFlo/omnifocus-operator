@@ -24,3 +24,7 @@ The agent has no way to see child ordering — `get_task` shows the parent but n
 
 - TaskPaper output (v1.4) naturally shows hierarchy and order via indentation — complementary to `order` field
 - `order` is for programmatic use, TaskPaper for full-hierarchy comprehension
+
+## Related
+
+- **Move no-op warning check ordinal position not just container** — the no-op detection for same-container moves needs ordering data to distinguish beginning vs ending. Exposing the position field here would provide the data that fix consumes.

@@ -15,4 +15,6 @@ The edit_tasks move no-op detection only checks if the task is already a child o
 - Query sibling order (SQLite rank column or snapshot children list) to determine current ordinal position
 - Compare requested position (beginning/ending) against actual position before flagging no-op
 - Low priority — the warning is transparent about the limitation
-- Related: "Add position field to expose child task ordering" todo (provides the ordering data this fix would consume)
+## Related
+
+- **Add position field to expose child task ordering** — exposing an `order` field on task responses would provide the sibling ordering data this fix needs. Consider implementing together.
