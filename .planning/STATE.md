@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Writes & Lookups
 status: in-progress
-stopped_at: Completed 16.1-01-PLAN.md
-last_updated: "2026-03-09T21:12:54Z"
-last_activity: "2026-03-09 - Completed plan 16.1-01: actions grouping models + service refactor"
+stopped_at: Completed 16.1-03-PLAN.md
+last_updated: "2026-03-09T21:19:15Z"
+last_activity: "2026-03-09 - Completed plan 16.1-03: server tests, docstring, UAT skill rewrite"
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 15
-  completed_plans: 13
-  percent: 87
+  completed_plans: 15
+  percent: 100
 ---
 
 # Project State
@@ -26,18 +26,18 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 ## Current Position
 
 Phase: 16.1 (Actions Grouping) -- inserted after Phase 16
-Plan: 1 of 3 (complete)
-Status: Plan 01 complete (models + service), plans 02-03 remaining (test rewrites)
-Last activity: 2026-03-09 - Completed plan 16.1-01: actions grouping models + service refactor
+Plan: 3 of 3 (complete)
+Status: Phase 16.1 complete -- all 3 plans done (models+service, service tests, server tests+docs)
+Last activity: 2026-03-09 - Completed plan 16.1-03: server tests, docstring, UAT skill rewrite
 
-Progress: [████████░░] 87%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12 (v1.2)
-- Average duration: 4.3min
-- Total execution time: 43min
+- Total plans completed: 15 (v1.2)
+- Average duration: 3.8min
+- Total execution time: 51min
 
 **By Phase:**
 
@@ -46,7 +46,7 @@ Progress: [████████░░] 87%
 | 14 | 2/2 | 10min | 5min |
 | 15 | 4/4 | 19min | 4.8min |
 | 16 | 6/6 | 22min | 3.7min |
-| 16.1 | 1/3 | 3min | 3min |
+| 16.1 | 3/3 | 11min | 3.7min |
 
 ## Accumulated Context
 
@@ -83,6 +83,7 @@ Progress: [████████░░] 87%
 - [Phase 16.1]: TagActionSpec/ActionsSpec nested models with field graduation pattern
 - [Phase 16.1]: Lifecycle fail-fast before any tag/move resolution work
 - [Phase 16.1]: Tasks 1+2 committed together due to mypy requiring consistent model+service state
+- [Phase 16.1]: Error assertion: 'Cannot use tags' -> 'Cannot use replace' to match TagActionSpec validator message
 
 ### Roadmap Evolution
 
@@ -111,6 +112,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-09T21:12:54Z
-Stopped at: Completed 16.1-01-PLAN.md
-Next action: Execute 16.1-02-PLAN.md (test rewrites)
+Last session: 2026-03-09T21:19:15Z
+Stopped at: Completed 16.1-03-PLAN.md
+Next action: Phase 16.1 complete. Next: Phase 16.2 (bridge tag simplification) or UAT verification
