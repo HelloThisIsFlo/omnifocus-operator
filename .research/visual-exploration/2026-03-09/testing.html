@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OmniFocus Operator — Testing Trust Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Azeret+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-mono: 'Azeret Mono', 'SF Mono', Consolas, monospace;
+
+    --bg: #faf7f5;
+    --surface: #ffffff;
+    --surface2: #f5f0ec;
+    --surface-elevated: #fffcfa;
+    --border: rgba(0, 0, 0, 0.07);
+    --border-bright: rgba(0, 0, 0, 0.13);
+    --text: #2c2420;
+    --text-dim: #8a7e76;
+
+    --terra: #c2410c;
+    --terra-dim: rgba(194, 65, 12, 0.07);
+    --sage: #3f6212;
+    --sage-dim: rgba(63, 98, 18, 0.07);
+    --ocean: #0c4a6e;
+    --ocean-dim: rgba(12, 74, 110, 0.07);
+    --amber: #92400e;
+    --amber-dim: rgba(146, 64, 14, 0.07);
+    --plum: #6b21a8;
+    --plum-dim: rgba(107, 33, 168, 0.07);
+    --slate: #57534e;
+    --slate-dim: rgba(87, 83, 78, 0.07);
+    --rose: #9f1239;
+    --rose-dim: rgba(159, 18, 57, 0.07);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #171311;
+      --surface: #221d19;
+      --surface2: #1c1814;
+      --surface-elevated: #2a2420;
+      --border: rgba(255, 255, 255, 0.06);
+      --border-bright: rgba(255, 255, 255, 0.11);
+      --text: #e8e0d8;
+      --text-dim: #9e938a;
+
+      --terra: #fb923c;
+      --terra-dim: rgba(251, 146, 60, 0.1);
+      --sage: #a3e635;
+      --sage-dim: rgba(163, 230, 53, 0.1);
+      --ocean: #38bdf8;
+      --ocean-dim: rgba(56, 189, 248, 0.1);
+      --amber: #fbbf24;
+      --amber-dim: rgba(251, 191, 36, 0.1);
+      --plum: #c084fc;
+      --plum-dim: rgba(192, 132, 252, 0.1);
+      --slate: #a8a29e;
+      --slate-dim: rgba(168, 162, 158, 0.1);
+      --rose: #fb7185;
+      --rose-dim: rgba(251, 113, 133, 0.1);
+    }
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    background-image:
+      radial-gradient(ellipse at 20% 0%, var(--sage-dim) 0%, transparent 45%),
+      radial-gradient(ellipse at 80% 100%, var(--terra-dim) 0%, transparent 40%);
+    color: var(--text); font-family: var(--font-body);
+    padding: 40px; min-height: 100vh;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .anim { animation: fadeUp 0.45s ease-out both; animation-delay: calc(var(--i, 0) * 0.06s); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-delay: 0ms !important; }
+  }
+
+  /* === NAV === */
+  .wrap {
+    margin: 0 auto;
+    display: grid; grid-template-columns: 175px 1fr; gap: 0 40px;
+  }
+  .main { min-width: 0; }
+
+  .toc {
+    position: sticky; top: 24px; align-self: start;
+    padding: 14px 0; grid-row: 1 / -1;
+    max-height: calc(100dvh - 48px); overflow-y: auto;
+  }
+  .toc::-webkit-scrollbar { width: 3px; }
+  .toc::-webkit-scrollbar-thumb { background: var(--surface-elevated); border-radius: 2px; }
+  .toc-title {
+    font-family: var(--font-mono); font-size: 9px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 2px; color: var(--text-dim);
+    padding: 0 0 10px; margin-bottom: 8px; border-bottom: 1px solid var(--border);
+  }
+  .toc a {
+    display: block; font-size: 11px; color: var(--text-dim); text-decoration: none;
+    padding: 4px 8px; border-radius: 5px; border-left: 2px solid transparent;
+    transition: all 0.15s; line-height: 1.4; margin-bottom: 1px;
+  }
+  .toc a:hover { color: var(--text); background: var(--surface2); }
+  .toc a.active { color: var(--text); border-left-color: var(--terra); }
+
+  @media (max-width: 1060px) {
+    .wrap { grid-template-columns: 1fr; }
+    body { padding: 16px; padding-top: 0; }
+    .toc {
+      position: sticky; top: 0; z-index: 200;
+      max-height: none; display: flex; gap: 4px; align-items: center;
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+      background: var(--bg); border-bottom: 1px solid var(--border);
+      padding: 10px 0; margin: 0 -16px; padding-left: 16px; padding-right: 16px;
+      grid-row: auto;
+    }
+    .toc::-webkit-scrollbar { display: none; }
+    .toc-title { display: none; }
+    .toc a {
+      white-space: nowrap; flex-shrink: 0; border-left: none;
+      border-bottom: 2px solid transparent; border-radius: 4px 4px 0 0;
+      padding: 6px 10px; font-size: 10px;
+    }
+    .toc a.active { border-left: none; border-bottom-color: var(--terra); background: var(--surface); }
+    .main { padding-top: 20px; }
+    .sec-head { scroll-margin-top: 52px; }
+  }
+
+  /* === TYPOGRAPHY === */
+  h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.7px; margin-bottom: 4px; }
+  .subtitle { color: var(--text-dim); font-size: 12px; font-family: var(--font-mono); margin-bottom: 8px; }
+  .lead { font-size: 15px; line-height: 1.65; color: var(--text-dim); margin-bottom: 32px; max-width: 740px; }
+
+  .sec-head {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1.5px;
+    padding: 10px 0 14px; margin-top: 36px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .sec-head .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+  /* section subtitle */
+  .sec-sub {
+    color: var(--text-dim); font-size: 12px; line-height: 1.6;
+    margin-bottom: 12px; max-width: 700px;
+  }
+
+  code {
+    font-family: var(--font-mono); font-size: 11px;
+    padding: 1px 5px; border-radius: 3px;
+  }
+
+  /* === LEGEND === */
+  .legend {
+    display: flex; gap: 16px; flex-wrap: wrap;
+    font-size: 11px; margin-bottom: 16px;
+    padding: 10px 14px; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 8px;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 6px;
+  }
+  .legend-dot {
+    width: 10px; height: 10px; border-radius: 3px; border: 1.5px solid;
+    flex-shrink: 0;
+  }
+
+  /* === MERMAID === */
+  .mermaid-wrap {
+    position: relative; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 12px;
+    padding: 24px; overflow: hidden; cursor: default; margin-bottom: 12px;
+  }
+  .mermaid-wrap.zoomed { cursor: grab; overflow: auto; }
+  .mermaid-wrap.dragging { cursor: grabbing; }
+  .mermaid-controls {
+    position: absolute; top: 10px; right: 10px;
+    display: flex; gap: 4px; z-index: 10;
+  }
+  .mermaid-controls button {
+    width: 28px; height: 28px; border: 1px solid var(--border);
+    border-radius: 6px; background: var(--surface); color: var(--text-dim);
+    font-family: var(--font-mono); font-size: 14px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+  }
+  .mermaid-controls button:hover { background: var(--surface2); color: var(--text); }
+  .mermaid {
+    display: flex; justify-content: center;
+    transform-origin: center center; transition: transform 0.2s ease;
+  }
+
+  /* Mermaid label overrides */
+  .mermaid .nodeLabel { font-family: var(--font-body) !important; }
+  .mermaid .edgeLabel { font-family: var(--font-mono) !important; font-size: 11px !important; }
+
+  /* === DIAGRAM PAIR (two side by side) === */
+  .diagram-pair {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  }
+  .diagram-pair .mermaid-wrap { margin-bottom: 0; }
+
+  /* === CALLOUT (minimal, for 1-2 sentence context) === */
+  .callout {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 0 8px 8px 0; padding: 12px 16px;
+    font-size: 12px; line-height: 1.6; color: var(--text-dim); margin-bottom: 12px;
+  }
+  .callout strong { color: var(--text); }
+
+  @media (max-width: 900px) {
+    .diagram-pair { grid-template-columns: 1fr; }
+    h1 { font-size: 26px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="toc" id="toc">
+  <div class="toc-title">Trust Map</div>
+  <a href="#s1">Big Picture</a>
+  <a href="#s2">Unit Tests</a>
+  <a href="#s3">Integration Tests</a>
+  <a href="#s4">Trust Boundary</a>
+  <a href="#s5">What Can Break</a>
+  <a href="#s6">Safety Net</a>
+</nav>
+
+<div class="main">
+
+<h1 class="anim" style="--i:0">Testing Trust Map</h1>
+<p class="subtitle anim" style="--i:1">What's real, what's faked, and where to put your trust</p>
+<p class="lead anim" style="--i:2">Every test proves something different. The <strong style="color: #16a34a">green nodes</strong> are real code running for real. The <strong style="color: #d97706">orange nodes</strong> are controlled stand-ins. The <strong style="color: #dc2626">red nodes</strong> are blocked or untested. Read the diagrams to understand exactly what each test exercises.</p>
+
+<div class="legend anim" style="--i:3">
+  <div class="legend-item"><div class="legend-dot" style="background: rgba(22,163,74,0.25); border-color: #16a34a;"></div> Real &mdash; actual code running</div>
+  <div class="legend-item"><div class="legend-dot" style="background: rgba(217,119,6,0.25); border-color: #d97706;"></div> Fake &mdash; controlled test double</div>
+  <div class="legend-item"><div class="legend-dot" style="background: rgba(220,38,38,0.25); border-color: #dc2626;"></div> Blocked &mdash; never runs in tests</div>
+  <div class="legend-item"><div class="legend-dot" style="background: rgba(37,99,235,0.25); border-color: #2563eb;"></div> Manual UAT only</div>
+</div>
+
+<!-- ====== S1: BIG PICTURE ====== -->
+<div id="s1" class="sec-head anim" style="--i:4; color: var(--terra)">
+  <span class="dot" style="background: var(--terra)"></span> Big Picture
+</div>
+<p class="sec-sub anim" style="--i:5">Every test file, which doubles it uses, and what real system it exercises. Follow the arrows to see what's actually running.</p>
+
+<div class="mermaid-wrap anim" style="--i:6">
+  <div class="mermaid-controls">
+    <button onclick="zoomMermaid(this, 1)">+</button>
+    <button onclick="zoomMermaid(this, -1)">&minus;</button>
+    <button onclick="zoomMermaid(this, 0)" style="font-size:10px">R</button>
+  </div>
+  <pre class="mermaid">
+flowchart LR
+    subgraph TESTS ["Test Files"]
+        T_MOD["test_models"]
+        T_ADP["test_adapter"]
+        T_BRG["test_bridge"]
+        T_SVC["test_service"]
+        T_SRV["test_server"]
+        T_REP["test_repository"]
+        T_HYB["test_hybrid_repository"]
+        T_IPC["test_ipc_engine"]
+        T_SIM["test_simulator_integration"]
+        T_SMK["test_smoke"]
+    end
+
+    subgraph DOUBLES ["Test Doubles"]
+        IMB["InMemoryBridge"]
+        IMR["InMemoryRepository"]
+        FMT["FakeMtimeSource"]
+        SIM_B["SimulatorBridge"]
+        SIM_P["simulator subprocess"]
+        TMP_DB["temp SQLite file"]
+    end
+
+    subgraph REAL ["Real Code Exercised"]
+        PYDANTIC["Pydantic models<br/>+ enum validation"]
+        ADAPTER["adapter mapping<br/>tables"]
+        ERRORS["error type<br/>hierarchy"]
+        SERVICE["OperatorService<br/>validation + resolution"]
+        MCP["FastMCP protocol<br/>+ memory streams"]
+        CACHE["BridgeRepository<br/>cache + freshness"]
+        SQL["HybridRepository<br/>SQL queries"]
+        IPC["file-based IPC<br/>atomic writes + polling"]
+        SAFE["SAFE-01 guard<br/>factory block"]
+    end
+
+    T_MOD --> PYDANTIC
+    T_ADP --> ADAPTER
+    T_BRG --> ERRORS
+    T_BRG --> IMB
+
+    T_SVC --> IMR --> SERVICE
+    T_SRV --> MCP
+    T_REP --> IMB --> CACHE
+    T_REP --> FMT --> CACHE
+    T_HYB --> TMP_DB --> SQL
+    T_HYB --> IMB
+
+    T_IPC --> SIM_B --> IPC
+    T_SIM --> SIM_B
+    T_SIM --> SIM_P --> IPC
+
+    T_SMK --> SAFE
+
+    classDef test fill:#0c4a6e18,stroke:#0c4a6e,stroke-width:1.5px
+    classDef double fill:#d9770630,stroke:#d97706,stroke-width:1.5px,stroke-dasharray: 5 3
+    classDef real fill:#16a34a30,stroke:#16a34a,stroke-width:2px
+
+    class T_MOD,T_ADP,T_BRG,T_SVC,T_SRV,T_REP,T_HYB,T_IPC,T_SIM,T_SMK test
+    class IMB,IMR,FMT,SIM_B,SIM_P,TMP_DB double
+    class PYDANTIC,ADAPTER,ERRORS,SERVICE,MCP,CACHE,SQL,IPC,SAFE real
+  </pre>
+</div>
+
+<!-- ====== S2: UNIT TESTS ====== -->
+<div id="s2" class="sec-head anim" style="--i:7; color: var(--sage)">
+  <span class="dot" style="background: var(--sage)"></span> Unit Tests &mdash; What's Real Inside Each
+</div>
+<p class="sec-sub anim" style="--i:8">Each diagram shows a single test file's execution path. Green = real code running. Amber dashed = test double.</p>
+
+<div class="diagram-pair anim" style="--i:9">
+  <div class="mermaid-wrap">
+    <div class="mermaid-controls">
+      <button onclick="zoomMermaid(this, 1)">+</button>
+      <button onclick="zoomMermaid(this, -1)">&minus;</button>
+      <button onclick="zoomMermaid(this, 0)" style="font-size:10px">R</button>
+    </div>
+    <pre class="mermaid">
+flowchart TD
+    TITLE["test_service.py"]
+    FACT["conftest factories<br/>make_snapshot()"]
+    IMR["InMemoryRepository<br/>(pre-built snapshot)"]
+    SVC["OperatorService"]
+    VAL["name validation"]
+    TAG["tag resolution<br/>(case-insensitive + ID fallback)"]
+    PAR["parent resolution<br/>(project-first, then task)"]
+    CYC["cycle detection<br/>(walk parent chain)"]
+    NOOP["no-op detection"]
+    WARN["completed/dropped warnings"]
+
+    TITLE ~~~ FACT
+    FACT -->|"builds"| IMR
+    IMR -->|"injected into"| SVC
+    SVC --> VAL
+    SVC --> TAG
+    SVC --> PAR
+    SVC --> CYC
+    SVC --> NOOP
+    SVC --> WARN
+
+    classDef title fill:none,stroke:none,font-size:16px,font-weight:700
+    classDef fake fill:#d9770630,stroke:#d97706,stroke-width:1.5px,stroke-dasharray: 5 3
+    classDef real fill:#16a34a30,stroke:#16a34a,stroke-width:2px
+
+    class TITLE title
+    class FACT,IMR fake
+    class SVC,VAL,TAG,PAR,CYC,NOOP,WARN real
+    </pre>
+  </div>
+
+  <div class="mermaid-wrap">
+    <div class="mermaid-controls">
+      <button onclick="zoomMermaid(this, 1)">+</button>
+      <button onclick="zoomMermaid(this, -1)">&minus;</button>
+      <button onclick="zoomMermaid(this, 0)" style="font-size:10px">R</button>
+    </div>
+    <pre class="mermaid">
+flowchart TD
+    TITLE["test_server.py"]
+    PATCH["patched lifespan<br/>(service injection)"]
+    FMCP["FastMCP server"]
+    MEM["memory object streams<br/>(no network socket)"]
+    CLIENT["MCP ClientSession"]
+    REG["tool registration"]
+    CALL["tool call + JSON response"]
+    LIFE["lifespan context"]
+
+    TITLE ~~~ PATCH
+    PATCH -->|"injects service"| FMCP
+    FMCP <-->|"communicates via"| MEM
+    MEM <--> CLIENT
+    FMCP --> REG
+    CLIENT --> CALL
+    FMCP --> LIFE
+
+    classDef title fill:none,stroke:none,font-size:16px,font-weight:700
+    classDef fake fill:#d9770630,stroke:#d97706,stroke-width:1.5px,stroke-dasharray: 5 3
+    classDef real fill:#16a34a30,stroke:#16a34a,stroke-width:2px
+
+    class TITLE title
+    class PATCH fake
+    class FMCP,MEM,CLIENT,REG,CALL,LIFE real
+    </pre>
+  </div>
+</div>
+
+<div class="diagram-pair anim" style="--i:10">
+  <div class="mermaid-wrap">
+    <div class="mermaid-controls">
+      <button onclick="zoomMermaid(this, 1)">+</button>
+      <button onclick="zoomMermaid(this, -1)">&minus;</button>
+      <button onclick="zoomMermaid(this, 0)" style="font-size:10px">R</button>
+    </div>
+    <pre class="mermaid">
+flowchart TD
+    TITLE["test_repository.py"]
+    IMB["InMemoryBridge<br/>(returns dict data)"]
+    FMT["FakeMtimeSource<br/>(controlled timestamps)"]
+    BREP["BridgeRepository"]
+    CACHE["cache layer"]
+    FRESH["freshness detection<br/>(mtime comparison)"]
+    COAL["concurrent coalescing<br/>(asyncio.gather x10 → 1 call)"]
+    ERR["error propagation<br/>(fail-fast, no stale)"]
+
+    TITLE ~~~ IMB
+    IMB --> BREP
+    FMT --> BREP
+    BREP --> CACHE
+    BREP --> FRESH
+    BREP --> COAL
+    BREP --> ERR
+
+    classDef title fill:none,stroke:none,font-size:16px,font-weight:700
+    classDef fake fill:#d9770630,stroke:#d97706,stroke-width:1.5px,stroke-dasharray: 5 3
+    classDef real fill:#16a34a30,stroke:#16a34a,stroke-width:2px
+
+    class TITLE title
+    class IMB,FMT fake
+    class BREP,CACHE,FRESH,COAL,ERR real
+    </pre>
+  </div>
+
+  <div class="mermaid-wrap">
+    <div class="mermaid-controls">
+      <button onclick="zoomMermaid(this, 1)">+</button>
+      <button onclick="zoomMermaid(this, -1)">&minus;</button>
+      <button onclick="zoomMermaid(this, 0)" style="font-size:10px">R</button>
+    </div>
+    <pre class="mermaid">
+flowchart TD
+    TITLE["test_hybrid_repository.py"]
+    TMP["temp SQLite file<br/>(hand-built schema)"]
+    IMB["InMemoryBridge<br/>(for writes only)"]
+    HREP["HybridRepository"]
+    SQL["real SQL queries<br/>(joins, WHERE, ORDER BY)"]
+    TS["CF-epoch → datetime<br/>timezone conversion"]
+    XML["XML note parsing"]
+    PLIST["plist perspective<br/>parsing"]
+    STATUS["status mapping<br/>via lookup tables"]
+
+    TITLE ~~~ TMP
+    TMP --> HREP
+    IMB --> HREP
+    HREP --> SQL
+    HREP --> TS
+    HREP --> XML
+    HREP --> PLIST
+    HREP --> STATUS
+
+    classDef title fill:none,stroke:none,font-size:16px,font-weight:700
+    classDef fake fill:#d9770630,stroke:#d97706,stroke-width:1.5px,stroke-dasharray: 5 3
+    classDef real fill:#16a34a30,stroke:#16a34a,stroke-width:2px
+    classDef risky fill:#dc262630,stroke:#dc2626,stroke-width:1.5px,stroke-dasharray: 5 3
+
+    class TITLE title
+    class TMP risky
+    class IMB fake
+    class HREP,SQL,TS,XML,PLIST,STATUS real
+    </pre>
+  </div>
+</div>
+
+<div class="callout anim" style="--i:11; border-left: 3px solid var(--rose)">
+  <strong>Note the red dashed node</strong> in test_hybrid_repository: the temp SQLite file uses a <strong>hand-built schema matching OmniFocus</strong>. If Apple changes the DB structure, these tests still pass but production breaks. This is the suite's biggest trust gap.
+</div>
+
+<div class="diagram-pair anim" style="--i:12">
+  <div class="mermaid-wrap">
+    <div class="mermaid-controls">
+      <button onclick="zoomMermaid(this, 1)">+</button>
+      <button onclick="zoomMermaid(this, -1)">&minus;</button>
+      <button onclick="zoomMermaid(this, 0)" style="font-size:10px">R</button>
+    </div>
+    <pre class="mermaid">
+flowchart TD
+    TITLE["test_models.py"]
+    DATA["hand-built dicts<br/>(camelCase JSON)"]
+    PYD["Pydantic validation"]
+    ALIAS["snake ↔ camelCase<br/>alias round-trip"]
+    ENUM["enum membership<br/>(rejects unknown)"]
+    FIELDS["field count<br/>verification"]
+    NESTED["nested objects<br/>TagRef, ParentRef,<br/>RepetitionRule"]
+
+    TITLE ~~~ DATA
+    DATA --> PYD
+    PYD --> ALIAS
+    PYD --> ENUM
+    PYD --> FIELDS
+    PYD --> NESTED
+
+    classDef title fill:none,stroke:none,font-size:16px,font-weight:700
+    classDef real fill:#16a34a30,stroke:#16a34a,stroke-width:2px
+
+    class TITLE title
+    class DATA,PYD,ALIAS,ENUM,FIELDS,NESTED real
+    </pre>
+  </div>
+
+  <div class="mermaid-wrap">
+    <div class="mermaid-controls">
+      <button onclick="zoomMermaid(this, 1)">+</button>
+      <button onclick="zoomMermaid(this, -1)">&minus;</button>
+      <button onclick="zoomMermaid(this, 0)" style="font-size:10px">R</button>
+    </div>
+    <pre class="mermaid">
+flowchart TD
+    TITLE["test_adapter.py"]
+    OLD["old bridge format dicts<br/>(PascalCase enums)"]
+    ADAPT["adapt_snapshot()"]
+    TASKMAP["TaskStatus →<br/>urgency + availability"]
+    PROJMAP["ProjectStatus →<br/>availability"]
+    TAGMAP["TagStatus →<br/>availability"]
+    IDEM["idempotency check<br/>(double-adapt = no-op)"]
+
+    TITLE ~~~ OLD
+    OLD --> ADAPT
+    ADAPT --> TASKMAP
+    ADAPT --> PROJMAP
+    ADAPT --> TAGMAP
+    ADAPT --> IDEM
+
+    classDef title fill:none,stroke:none,font-size:16px,font-weight:700
+    classDef real fill:#16a34a30,stroke:#16a34a,stroke-width:2px
+
+    class TITLE title
+    class OLD,ADAPT,TASKMAP,PROJMAP,TAGMAP,IDEM real
+    </pre>
+  </div>
+</div>
+
+<div class="callout anim" style="--i:13; border-left: 3px solid var(--sage)">
+  <strong>test_models and test_adapter are 100% real</strong> &mdash; pure logic on pure data. No doubles needed. If these pass, model validation and enum mapping are provably correct.
+</div>
+
+<!-- ====== S3: INTEGRATION ====== -->
+<div id="s3" class="sec-head anim" style="--i:14; color: var(--amber)">
+  <span class="dot" style="background: var(--amber)"></span> Integration Tests &mdash; Real IPC, Fake OmniFocus
+</div>
+<p class="sec-sub anim" style="--i:15">The simulator tests exercise the full IPC round-trip with real files, real subprocess, real polling &mdash; just not real OmniFocus.</p>
+
+<div class="mermaid-wrap anim" style="--i:16">
+  <div class="mermaid-controls">
+    <button onclick="zoomMermaid(this, 1)">+</button>
+    <button onclick="zoomMermaid(this, -1)">&minus;</button>
+    <button onclick="zoomMermaid(this, 0)" style="font-size:10px">R</button>
+  </div>
+  <pre class="mermaid">
+flowchart TD
+    subgraph TEST ["test_simulator_integration.py"]
+        START["test starts"]
+        SPAWN["spawn subprocess<br/>(python -m simulator)"]
+        WAIT["wait for 'ready'<br/>on stderr"]
+    end
+
+    subgraph IPC ["Real File-Based IPC"]
+        REQ["write request JSON<br/>to temp IPC dir"]
+        ATOMIC["atomic write<br/>(.tmp + os.replace)"]
+        POLL["poll for response<br/>(50ms sleep, 10s timeout)"]
+        RESP["read + parse<br/>response JSON"]
+        CLEAN["cleanup files"]
+    end
+
+    subgraph SIM_BRIDGE ["SimulatorBridge (extends RealBridge)"]
+        INHERIT["inherits all IPC<br/>mechanics from RealBridge"]
+        NOOP["_trigger_omnifocus()<br/>= no-op"]
+        TIMEOUT["timeout handling"]
+        ENVELOPE["request envelope<br/>validation"]
+    end
+
+    subgraph SIM_PROC ["simulator subprocess"]
+        WATCH["watches IPC dir"]
+        READ["reads request file"]
+        PROCESS["generates response<br/>(fake OmniFocus data)"]
+        WRITE["writes response file"]
+    end
+
+    START --> SPAWN --> WAIT
+    WAIT --> REQ
+    REQ --> ATOMIC --> NOOP
+    NOOP -.->|"would trigger OmniFocus<br/>(skipped)"| SIM_PROC
+    WATCH --> READ --> PROCESS --> WRITE
+    WRITE -.-> POLL
+    POLL --> RESP --> CLEAN
+
+    INHERIT --> TIMEOUT
+    INHERIT --> ENVELOPE
+
+    classDef test fill:#0c4a6e18,stroke:#0c4a6e,stroke-width:1.5px
+    classDef real fill:#16a34a30,stroke:#16a34a,stroke-width:2px
+    classDef fake fill:#d9770630,stroke:#d97706,stroke-width:1.5px,stroke-dasharray: 5 3
+    classDef blocked fill:#dc262630,stroke:#dc2626,stroke-width:1.5px,stroke-dasharray: 5 3
+
+    class START,SPAWN,WAIT test
+    class REQ,ATOMIC,POLL,RESP,CLEAN real
+    class INHERIT,TIMEOUT,ENVELOPE real
+    class WATCH,READ,PROCESS,WRITE real
+    class NOOP fake
+  </pre>
+</div>
+
+<div class="callout anim" style="--i:17; border-left: 3px solid var(--amber)">
+  <strong>Almost everything is real here.</strong> The only fake is the OmniFocus trigger (no-op). File I/O, subprocess management, JSON serialization, polling, timeout &mdash; all exercised for real. This is why you can trust that IPC works, even though you can't test against actual OmniFocus in CI.
+</div>
+
+<!-- ====== S4: TRUST BOUNDARY ====== -->
+<div id="s4" class="sec-head anim" style="--i:18; color: var(--plum)">
+  <span class="dot" style="background: var(--plum)"></span> Trust Boundary
+</div>
+<p class="sec-sub anim" style="--i:19">Where automated testing ends and manual UAT begins. Everything to the left of the boundary is proven by CI. Everything to the right requires a human with a real OmniFocus database.</p>
+
+<div class="mermaid-wrap anim" style="--i:20">
+  <div class="mermaid-controls">
+    <button onclick="zoomMermaid(this, 1)">+</button>
+    <button onclick="zoomMermaid(this, -1)">&minus;</button>
+    <button onclick="zoomMermaid(this, 0)" style="font-size:10px">R</button>
+  </div>
+  <pre class="mermaid">
+flowchart LR
+    subgraph AUTO ["Automated (CI)"]
+        direction TB
+        M["Model validation<br/>+ serialization"]
+        A["Adapter enum<br/>mapping"]
+        S["Service validation<br/>+ resolution"]
+        P["MCP protocol<br/>+ tool registration"]
+        C["Repository caching<br/>+ freshness"]
+        Q["SQL query<br/>correctness"]
+        I["IPC mechanics<br/>+ atomicity"]
+        F["Factory routing<br/>+ safety guard"]
+    end
+
+    subgraph BOUNDARY [" "]
+        direction TB
+        B1["Schema matches<br/>real OmniFocus DB?"]
+        B2["Bridge.js JXA calls<br/>work correctly?"]
+        B3["OmniFocus responds<br/>in time?"]
+        B4["Writes actually<br/>persist?"]
+    end
+
+    subgraph MANUAL ["Manual UAT"]
+        direction TB
+        U1["Real OmniFocus<br/>database reads"]
+        U2["Real JXA execution<br/>via bridge.js"]
+        U3["App responsiveness<br/>+ App Nap"]
+        U4["Write persistence<br/>+ sync"]
+    end
+
+    M --> B1
+    A --> B2
+    Q --> B1
+    I --> B3
+
+    B1 --> U1
+    B2 --> U2
+    B3 --> U3
+    B4 --> U4
+
+    classDef auto fill:#16a34a30,stroke:#16a34a,stroke-width:2px
+    classDef boundary fill:#2563eb30,stroke:#2563eb,stroke-width:2px
+    classDef manual fill:#dc262630,stroke:#dc2626,stroke-width:1.5px
+
+    class M,A,S,P,C,Q,I,F auto
+    class B1,B2,B3,B4 boundary
+    class U1,U2,U3,U4 manual
+  </pre>
+</div>
+
+<!-- ====== S5: WHAT CAN BREAK ====== -->
+<div id="s5" class="sec-head anim" style="--i:21; color: var(--rose)">
+  <span class="dot" style="background: var(--rose)"></span> What Can Break Despite Green Tests
+</div>
+<p class="sec-sub anim" style="--i:22">Even with ~98% coverage, these scenarios can fail in production. The diagram shows each risk, what triggers it, and what would catch it.</p>
+
+<div class="mermaid-wrap anim" style="--i:23">
+  <div class="mermaid-controls">
+    <button onclick="zoomMermaid(this, 1)">+</button>
+    <button onclick="zoomMermaid(this, -1)">&minus;</button>
+    <button onclick="zoomMermaid(this, 0)" style="font-size:10px">R</button>
+  </div>
+  <pre class="mermaid">
+flowchart TD
+    subgraph RISK1 ["Schema Drift — HIGHEST RISK"]
+        R1_CAUSE["OmniFocus update<br/>changes DB schema"]
+        R1_WHY["hand-built test schema<br/>doesn't match anymore"]
+        R1_EFFECT["HybridRepository reads<br/>crash or return wrong data"]
+        R1_CATCH["Only UAT catches this"]
+    end
+
+    subgraph RISK2 ["Bridge.js Mismatch"]
+        R2_CAUSE["OmniFocus API changes<br/>enum values or fields"]
+        R2_WHY["Vitest covers mappers<br/>but not OmniJS runtime"]
+        R2_EFFECT["adapter fail-fast<br/>on unknown enum"]
+        R2_CATCH["Fail-fast design<br/>= loud error in production"]
+    end
+
+    subgraph RISK3 ["App Nap / Timeout"]
+        R3_CAUSE["macOS suspends<br/>OmniFocus process"]
+        R3_WHY["simulator always<br/>responds quickly"]
+        R3_EFFECT["BridgeTimeoutError<br/>in production"]
+        R3_CATCH["Retry logic planned<br/>for v1.5"]
+    end
+
+    subgraph RISK4 ["Write Persistence"]
+        R4_CAUSE["OmniFocus accepts command<br/>but doesn't persist"]
+        R4_WHY["InMemoryRepository<br/>always 'succeeds'"]
+        R4_EFFECT["task appears created<br/>but vanishes"]
+        R4_CATCH["Only UAT catches this"]
+    end
+
+    R1_CAUSE --> R1_WHY --> R1_EFFECT --> R1_CATCH
+    R2_CAUSE --> R2_WHY --> R2_EFFECT --> R2_CATCH
+    R3_CAUSE --> R3_WHY --> R3_EFFECT --> R3_CATCH
+    R4_CAUSE --> R4_WHY --> R4_EFFECT --> R4_CATCH
+
+    classDef high fill:#dc262630,stroke:#dc2626,stroke-width:2px
+    classDef medium fill:#d9770630,stroke:#d97706,stroke-width:1.5px
+    classDef mitigated fill:#16a34a30,stroke:#16a34a,stroke-width:1.5px
+    classDef planned fill:#0c4a6e18,stroke:#0c4a6e,stroke-width:1.5px
+
+    class R1_CAUSE,R1_WHY,R1_EFFECT high
+    class R1_CATCH high
+    class R2_CAUSE,R2_WHY medium
+    class R2_EFFECT,R2_CATCH mitigated
+    class R3_CAUSE,R3_WHY medium
+    class R3_EFFECT,R3_CATCH planned
+    class R4_CAUSE,R4_WHY medium
+    class R4_CATCH high
+    class R4_EFFECT high
+  </pre>
+</div>
+
+<!-- ====== S6: SAFETY NET ====== -->
+<div id="s6" class="sec-head anim" style="--i:24; color: var(--terra)">
+  <span class="dot" style="background: var(--terra)"></span> Safety Net
+</div>
+<p class="sec-sub anim" style="--i:25">Two runtime guards ensure tests never touch real OmniFocus data.</p>
+
+<div class="mermaid-wrap anim" style="--i:26">
+  <div class="mermaid-controls">
+    <button onclick="zoomMermaid(this, 1)">+</button>
+    <button onclick="zoomMermaid(this, -1)">&minus;</button>
+    <button onclick="zoomMermaid(this, 0)" style="font-size:10px">R</button>
+  </div>
+  <pre class="mermaid">
+flowchart TD
+    subgraph SAFE1 ["SAFE-01: RealBridge Blocked"]
+        PYTEST["pytest starts"]
+        ENV["sets PYTEST_CURRENT_TEST"]
+        FACTORY["create_bridge('real') called"]
+        GUARD{"env var<br/>detected?"}
+        BLOCK["RuntimeError raised<br/>before any JXA"]
+        CANARY["test_smoke.py<br/>confirms guard works"]
+    end
+
+    subgraph SAFE2 ["SAFE-02: UAT Excluded"]
+        UAT["uat/ directory"]
+        DISC["pytest discovery"]
+        PATHS{"testpaths =<br/>['tests']"}
+        SKIP["uat/ never collected"]
+        CI["CI also greps for<br/>accidental RealBridge refs"]
+    end
+
+    PYTEST --> ENV --> FACTORY --> GUARD
+    GUARD -->|"yes"| BLOCK
+    CANARY -.->|"canary test"| GUARD
+
+    UAT --> DISC --> PATHS
+    PATHS --> SKIP
+    SKIP --> CI
+
+    classDef safe fill:#16a34a30,stroke:#16a34a,stroke-width:2px
+    classDef flow fill:#0c4a6e18,stroke:#0c4a6e,stroke-width:1.5px
+    classDef canary fill:#d9770630,stroke:#d97706,stroke-width:1.5px
+
+    class PYTEST,ENV,FACTORY,UAT,DISC flow
+    class GUARD,PATHS flow
+    class BLOCK,SKIP,CI safe
+    class CANARY canary
+  </pre>
+</div>
+
+<div class="callout anim" style="--i:27; border-left: 3px solid var(--terra); margin-bottom: 48px;">
+  <strong>Bottom line:</strong> The automated suite proves that all logic &mdash; validation, caching, IPC, protocol, mapping &mdash; works correctly. The one thing it <em>can't</em> prove is whether OmniFocus itself behaves the way the code assumes. That's an inherently manual question, and that's what UAT is for.
+</div>
+
+</div><!-- /main -->
+</div><!-- /wrap -->
+
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    look: 'classic',
+    flowchart: { useMaxWidth: true, htmlLabels: true, padding: 16 },
+    themeVariables: {
+      primaryColor: isDark ? '#2a2420' : '#faf7f5',
+      primaryBorderColor: isDark ? '#fb923c' : '#c2410c',
+      primaryTextColor: isDark ? '#e8e0d8' : '#2c2420',
+      secondaryColor: isDark ? '#1c2418' : '#f5faf0',
+      secondaryBorderColor: isDark ? '#a3e635' : '#3f6212',
+      secondaryTextColor: isDark ? '#e8e0d8' : '#2c2420',
+      tertiaryColor: isDark ? '#1a1520' : '#fef8f8',
+      tertiaryBorderColor: isDark ? '#fb7185' : '#9f1239',
+      tertiaryTextColor: isDark ? '#e8e0d8' : '#2c2420',
+      lineColor: isDark ? '#57534e' : '#a8a29e',
+      fontSize: '14px',
+      fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+    }
+  });
+</script>
+
+<script>
+function zoomMermaid(btn, dir) {
+  const wrap = btn.closest('.mermaid-wrap');
+  const diagram = wrap.querySelector('.mermaid');
+  if (!diagram) return;
+  const current = parseFloat(diagram.dataset.zoom || '1');
+  let next;
+  if (dir === 0) next = 1;
+  else next = Math.max(0.3, Math.min(3, current + dir * 0.3));
+  diagram.dataset.zoom = next;
+  diagram.style.transform = `scale(${next})`;
+  wrap.classList.toggle('zoomed', next !== 1);
+}
+
+document.querySelectorAll('.mermaid-wrap').forEach(wrap => {
+  let isDragging = false, startX, startY, scrollLeft, scrollTop;
+  wrap.addEventListener('mousedown', e => {
+    if (!wrap.classList.contains('zoomed')) return;
+    isDragging = true; wrap.classList.add('dragging');
+    startX = e.pageX - wrap.offsetLeft; startY = e.pageY - wrap.offsetTop;
+    scrollLeft = wrap.scrollLeft; scrollTop = wrap.scrollTop;
+  });
+  document.addEventListener('mouseup', () => { isDragging = false; wrap.classList.remove('dragging'); });
+  wrap.addEventListener('mousemove', e => {
+    if (!isDragging) return; e.preventDefault();
+    wrap.scrollLeft = scrollLeft - (e.pageX - wrap.offsetLeft - startX);
+    wrap.scrollTop = scrollTop - (e.pageY - wrap.offsetTop - startY);
+  });
+  wrap.addEventListener('wheel', e => {
+    if (!e.ctrlKey && !e.metaKey) return; e.preventDefault();
+    const diagram = wrap.querySelector('.mermaid');
+    const current = parseFloat(diagram.dataset.zoom || '1');
+    const next = Math.max(0.3, Math.min(3, current - e.deltaY * 0.003));
+    diagram.dataset.zoom = next; diagram.style.transform = `scale(${next})`;
+    wrap.classList.toggle('zoomed', next !== 1);
+  }, { passive: false });
+});
+
+(function() {
+  const toc = document.getElementById('toc');
+  const links = toc.querySelectorAll('a');
+  const sections = [];
+  links.forEach(link => {
+    const id = link.getAttribute('href').slice(1);
+    const el = document.getElementById(id);
+    if (el) sections.push({ id, el, link });
+  });
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const match = sections.find(s => s.el === entry.target);
+        if (match) {
+          match.link.classList.add('active');
+          if (window.innerWidth <= 1060) match.link.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+      }
+    });
+  }, { rootMargin: '-10% 0px -80% 0px' });
+  sections.forEach(s => observer.observe(s.el));
+  links.forEach(link => {
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      const id = link.getAttribute('href').slice(1);
+      const el = document.getElementById(id);
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); history.replaceState(null, '', '#' + id); }
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
