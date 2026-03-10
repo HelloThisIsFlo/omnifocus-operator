@@ -25,3 +25,4 @@ Target: **FastMCP v3** (standalone `fastmcp` package from PyPI).
 - Review FastMCP v3 migration guide for any API changes (lifespan, tool registration, settings)
 - Update tests that import from `mcp.server.fastmcp`
 - Current file-based logging (`~/Library/Logs/omnifocus-operator.log`) is a temporary workaround until this migration
+- Update "single runtime dependency" messaging in README.md and landing page (docs site) — currently advertises `mcp>=1.26.0` as the only dep; after migration the dep becomes `fastmcp>=3`
