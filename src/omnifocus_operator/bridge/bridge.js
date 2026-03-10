@@ -268,52 +268,18 @@ function handleEditTask(params) {
             ? new Date(params.plannedDate)
             : null;
 
-    // Tag management
-    if (params.hasOwnProperty("tagMode")) {
-        if (params.tagMode === "replace") {
-            task.clearTags();
-            if (params.tagIds && params.tagIds.length > 0) {
-                var replaceObjs = params.tagIds.map(function (id) {
-                    var tag = Tag.byIdentifier(id);
-                    if (!tag) throw new Error("Tag not found: " + id);
-                    return tag;
-                });
-                task.addTags(replaceObjs);
-            }
-        } else if (params.tagMode === "add") {
-            var addObjs = params.tagIds.map(function (id) {
-                var tag = Tag.byIdentifier(id);
-                if (!tag) throw new Error("Tag not found: " + id);
-                return tag;
-            });
-            task.addTags(addObjs);
-        } else if (params.tagMode === "remove") {
-            var removeObjs = params.removeTagIds.map(function (id) {
-                var tag = Tag.byIdentifier(id);
-                if (!tag) throw new Error("Tag not found: " + id);
-                return tag;
-            });
-            task.removeTags(removeObjs);
-        } else if (params.tagMode === "add_remove") {
-            // Process removals first, then additions
-            if (params.removeTagIds && params.removeTagIds.length > 0) {
-                var rmObjs = params.removeTagIds.map(function (id) {
-                    var tag = Tag.byIdentifier(id);
-                    if (!tag) throw new Error("Tag not found: " + id);
-                    return tag;
-                });
-                task.removeTags(rmObjs);
-            }
-            if (params.addTagIds && params.addTagIds.length > 0) {
-                var addObjs2 = params.addTagIds.map(function (id) {
-                    var tag = Tag.byIdentifier(id);
-                    if (!tag) throw new Error("Tag not found: " + id);
-                    return tag;
-                });
-                task.addTags(addObjs2);
-            }
-        }
+    // Tag management (diff-based: service computes add/remove sets)
+    function resolveTagIds(ids) {
+        return ids.map(function(id) {
+            var tag = Tag.byIdentifier(id);
+            if (!tag) throw new Error("Tag not found: " + id);
+            return tag;
+        });
     }
+    if (params.hasOwnProperty("removeTagIds"))
+        task.removeTags(resolveTagIds(params.removeTagIds));
+    if (params.hasOwnProperty("addTagIds"))
+        task.addTags(resolveTagIds(params.addTagIds));
 
     // Movement
     if (params.hasOwnProperty("moveTo")) {
