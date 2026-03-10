@@ -1190,6 +1190,82 @@ class TestFreshness:
         """_mark_stale is on HybridRepository only, not on Repository protocol."""
         assert not hasattr(Repository, "_mark_stale")
 
+    @pytest.mark.asyncio
+    async def test_get_task_waits_for_fresh_data_when_stale(self, tmp_path: Path) -> None:
+        """get_task() calls _wait_for_fresh_data when _stale is True."""
+        db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
+        wal_path = db_path.parent / (db_path.name + "-wal")
+        wal_path.touch()
+
+        repo = HybridRepository(db_path=db_path)
+        await repo.get_all()  # baseline read
+        repo._mark_stale()
+        assert repo._stale is True
+
+        # Modify WAL so freshness check passes quickly
+        wal_path.write_bytes(b"modified")
+        result = await repo.get_task("task-001")
+        assert result is not None
+        assert result.id == "task-001"
+        assert repo._stale is False
+
+    @pytest.mark.asyncio
+    async def test_get_project_waits_for_fresh_data_when_stale(self, tmp_path: Path) -> None:
+        """get_project() calls _wait_for_fresh_data when _stale is True."""
+        db_path = create_test_db(tmp_path, projects=[_minimal_project()])
+        wal_path = db_path.parent / (db_path.name + "-wal")
+        wal_path.touch()
+
+        repo = HybridRepository(db_path=db_path)
+        await repo.get_all()  # baseline read
+        repo._mark_stale()
+        assert repo._stale is True
+
+        wal_path.write_bytes(b"modified")
+        result = await repo.get_project("proj-001")
+        assert result is not None
+        assert result.id == "proj-001"
+        assert repo._stale is False
+
+    @pytest.mark.asyncio
+    async def test_get_tag_waits_for_fresh_data_when_stale(self, tmp_path: Path) -> None:
+        """get_tag() calls _wait_for_fresh_data when _stale is True."""
+        db_path = create_test_db(tmp_path, tags=[_minimal_tag()])
+        wal_path = db_path.parent / (db_path.name + "-wal")
+        wal_path.touch()
+
+        repo = HybridRepository(db_path=db_path)
+        await repo.get_all()  # baseline read
+        repo._mark_stale()
+        assert repo._stale is True
+
+        wal_path.write_bytes(b"modified")
+        result = await repo.get_tag("tag-001")
+        assert result is not None
+        assert result.id == "tag-001"
+        assert repo._stale is False
+
+    @pytest.mark.asyncio
+    async def test_get_task_no_stale_check_when_clean(self, tmp_path: Path) -> None:
+        """get_task() does NOT poll when _stale is False."""
+        db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
+        repo = HybridRepository(db_path=db_path)
+
+        sleep_calls: list[float] = []
+        original_sleep = asyncio.sleep
+
+        async def tracking_sleep(duration: float) -> None:
+            sleep_calls.append(duration)
+            await original_sleep(duration)
+
+        with patch(
+            "omnifocus_operator.repository.hybrid.asyncio.sleep", side_effect=tracking_sleep
+        ):
+            result = await repo.get_task("task-001")
+
+        assert result is not None
+        assert len(sleep_calls) == 0
+
 
 class TestAddTask:
     """Tests for HybridRepository.add_task -- write-through-bridge."""
