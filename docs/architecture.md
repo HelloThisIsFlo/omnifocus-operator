@@ -99,7 +99,7 @@ Three implementations: HybridRepository (production), BridgeRepository (fallback
 
 "Key IS the position" design -- `moveTo` object has exactly one key:
 
-```
+```json
 {"moveTo": {"ending": "proj-123"}}       -- last child of container
 {"moveTo": {"beginning": "proj-123"}}    -- first child of container
 {"moveTo": {"after": "task-sibling"}}    -- after this sibling (parent inferred)
@@ -121,7 +121,7 @@ Three implementations: HybridRepository (production), BridgeRepository (fallback
 
 The edit API separates **setters** (top-level fields) from **actions** (operations that modify state):
 
-```
+```json
 {
   "id": "xyz",
   "name": "Renamed",        // setter -- simple field replacement
@@ -150,6 +150,68 @@ Design principles:
 - Urgency: `overdue`, `due_soon`, `none` -- time-based, computed from dates
 - Availability: `available`, `blocked`, `completed`, `dropped` -- lifecycle state
 - Replaces single-winner status enum from v1.0; matches OmniFocus internal representation
+
+## Repetition Rule: Structured Fields, Not RRULE Strings
+
+The read and write models expose repetition as decomposed structured fields — not the raw ICS RRULE string.
+
+```python
+RepetitionRule:
+  freq: "daily" | "weekly" | "monthly" | "yearly"
+  interval: int | None
+  byday: list[str] | None          # ["MO", "WE", "FR"]
+  bymonthday: int | None           # 1-31 or negative
+  bysetpos: int | None             # nth weekday (requires byday)
+  count: int | None
+  until: str | None                # "20261231T000000Z"
+  schedule_type: "regularly" | "from_completion"
+  anchor_date_key: "due_date" | "defer_date" | "planned_date"
+  catch_up_automatically: bool
+```
+
+**Read model** — agent reads a task and gets structured fields:
+```json
+{
+  "repetitionRule": {
+    "freq": "monthly",
+    "bymonthday": 1,
+    "count": 12,
+    "scheduleType": "regularly",
+    "anchorDateKey": "due_date",
+    "catchUpAutomatically": false
+  }
+}
+```
+
+**Edit model** — agent sends back the same shape (modified or as-is):
+```json
+{
+  "id": "task-123",
+  "repetitionRule": {
+    "freq": "weekly",
+    "interval": 2,
+    "byday": ["TU", "TH"],
+    "until": "20261231T000000Z",
+    "scheduleType": "from_completion",
+    "anchorDateKey": "defer_date",
+    "catchUpAutomatically": true
+  }
+}
+```
+
+**Clear** — standard patch semantics: `"repetitionRule": null`
+
+Why structured fields instead of raw RRULE strings:
+- Agents shouldn't need to know ICS RRULE syntax (`FREQ=WEEKLY;BYDAY=MO,WE,FR`) — structured fields are discoverable via JSON schema and natural to work with
+- Read and write use the same shape — agents can read a repetition rule, modify a field, and send it back without format conversion
+- Validation happens server-side with a zero-dep parser/builder — we don't trust OmniFocus to reject bad input gracefully or return clear errors
+- The RRULE string becomes an internal serialization detail between the service layer and bridge
+
+Why top-level (not inside `actions`):
+- Setting a repetition rule is idempotent — same input always produces the same result, regardless of current state
+- Follows the same pattern as `due_date`, `note` — set, clear, or leave unchanged
+
+Research spike: `.research/deep-dives/rrule-validator/` (parser + builder + 79 tests)
 
 ## Deferred Decisions
 

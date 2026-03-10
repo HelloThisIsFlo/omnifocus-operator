@@ -89,6 +89,7 @@ Progress: [██████████] 100%
 
 - Phase 16.1 inserted after Phase 16: Introduce actions grouping to edit_tasks (URGENT)
 - Phase 16.2 inserted after Phase 16: Simplify bridge tag handling to diff-based approach (URGENT)
+- Phase 18 added: Repetition rule write support: structured fields, not RRULE strings
 
 ### Pending Todos (11)
 
