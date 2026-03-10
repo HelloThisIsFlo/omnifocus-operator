@@ -1410,6 +1410,60 @@ class TestEditTask:
         assert result.warnings is not None
         assert any("No changes" in w for w in result.warnings)
 
+    async def test_tag_replace_noop_same_tags(self) -> None:
+        """Replace with same tags produces warning, no bridge tag keys."""
+        from omnifocus_operator.models.write import ActionsSpec, TagActionSpec, TaskEditSpec
+
+        from .conftest import make_tag_dict
+
+        snapshot = make_snapshot(
+            tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])],
+            tags=[make_tag_dict(id="tag-a", name="A")],
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(
+            TaskEditSpec(
+                id="task-001",
+                actions=ActionsSpec(tags=TagActionSpec(replace=["A"])),
+            )
+        )
+        assert result.success is True
+        assert result.warnings is not None
+        assert any("Tags already match" in w for w in result.warnings)
+        # Tags unchanged
+        task = await repo.get_task("task-001")
+        assert task is not None
+        assert len(task.tags) == 1
+        assert task.tags[0].id == "tag-a"
+
+    async def test_tag_only_noop_produces_warning(self) -> None:
+        """Tag action that produces empty diff triggers no-op warning."""
+        from omnifocus_operator.models.write import ActionsSpec, TagActionSpec, TaskEditSpec
+
+        from .conftest import make_tag_dict
+
+        snapshot = make_snapshot(
+            tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])],
+            tags=[make_tag_dict(id="tag-a", name="A")],
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        # Add a tag that's already there -- diff is empty
+        result = await service.edit_task(
+            TaskEditSpec(
+                id="task-001",
+                actions=ActionsSpec(tags=TagActionSpec(add=["A"])),
+            )
+        )
+        assert result.success is True
+        assert result.warnings is not None
+        # Should have per-tag warning AND empty-edit warning
+        assert any("already on this task" in w for w in result.warnings)
+        assert any("No changes" in w for w in result.warnings)
+
     async def test_different_container_move_no_warning(self) -> None:
         """Moving task to different container has no location warning."""
         from omnifocus_operator.models.write import ActionsSpec, MoveToSpec, TaskEditSpec
