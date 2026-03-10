@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Writes & Lookups
 status: completed
-stopped_at: Completed 16.2-02-PLAN.md
-last_updated: "2026-03-10T01:06:03.183Z"
-last_activity: "2026-03-10 - Completed plan 16.2-02: simplified bridge.js tag handling to diff-based"
+stopped_at: Completed 16.2-03-PLAN.md
+last_updated: "2026-03-10T01:56:00.094Z"
+last_activity: "2026-03-10 - Completed plan 16.2-03: UAT gap fixes (stale-check + stacked warnings)"
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 17
-  completed_plans: 17
+  total_plans: 18
+  completed_plans: 18
   percent: 100
 ---
 
@@ -26,17 +26,17 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 ## Current Position
 
 Phase: 16.2 (Bridge Tag Simplification) -- inserted after Phase 16.1
-Plan: 2 of 2
-Status: Phase 16.2 complete (bridge tag simplification done)
-Last activity: 2026-03-10 - Completed quick task 5: Update move same-parent warning wording
+Plan: 3 of 3
+Status: Phase 16.2 complete (all UAT gaps closed)
+Last activity: 2026-03-10 - Completed plan 16.2-03: UAT gap fixes (stale-check + stacked warnings)
 
 Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 16 (v1.2)
-- Average duration: 3.8min
+- Total plans completed: 18 (v1.2)
+- Average duration: 3.6min
 - Total execution time: 55min
 
 **By Phase:**
@@ -47,8 +47,7 @@ Progress: [██████████] 100%
 | 15 | 4/4 | 19min | 4.8min |
 | 16 | 6/6 | 22min | 3.7min |
 | 16.1 | 3/3 | 11min | 3.7min |
-| 16.2 | 1/2 | 4min | 4min |
-| Phase 16.2 P02 | 2min | 1 tasks | 2 files |
+| 16.2 | 3/3 | 9min | 3min |
 
 ## Accumulated Context
 
@@ -90,6 +89,8 @@ Progress: [██████████] 100%
 - [Phase 16.2]: No tagMode in payload -- empty diff = no tag keys = implicit no-op via len(payload) check
 - [Phase 16.2]: Replace no-op warning when replace produces empty diff (tags already match)
 - [Phase 16.2]: resolveTagIds helper inside handleEditTask scope for locality
+- [Phase 16.2]: Stale-check pattern applied to all get-by-ID methods (get_task, get_project, get_tag)
+- [Phase 16.2]: No-op warning uses append instead of conditional assignment for proper stacking
 
 ### Roadmap Evolution
 
@@ -120,6 +121,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-10T01:02:36.818Z
-Stopped at: Completed 16.2-02-PLAN.md
+Last session: 2026-03-10T01:56:00.092Z
+Stopped at: Completed 16.2-03-PLAN.md
 Next action: Phase 16.2 Plan 02 (bridge.js simplification)
