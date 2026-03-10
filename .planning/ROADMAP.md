@@ -111,11 +111,12 @@ Plans:
 **Goal:** Move tag set computation from bridge.js (4-branch dispatch) to Python service layer (_compute_tag_diff). Bridge receives only addTagIds/removeTagIds. Pure internal refactor -- API surface unchanged.
 **Requirements**: BTAG-01, BTAG-02, BTAG-03, BTAG-04, BTAG-05
 **Depends on:** Phase 16.1
-**Plans:** 2/2 plans complete
+**Plans:** 3 plans
 
 Plans:
 - [ ] 16.2-01-PLAN.md -- Python diff computation (_compute_tag_diff helper) + InMemoryRepository adaptation + service test rewrite
 - [ ] 16.2-02-PLAN.md -- Bridge.js tag simplification (~4 lines replacing ~45) + bridge test rewrite
+- [ ] 16.2-03-PLAN.md -- Gap closure: stale-check on get-by-ID + no-op warning stacking fix
 
 ### Phase 17: Task Lifecycle
 **Goal**: Agents can change task lifecycle state -- completing, dropping, and reactivating tasks
@@ -159,7 +160,7 @@ Phases execute in numeric order: 14 -> 15 -> 16 -> 17
 | 15. Write Pipeline & Task Creation | 4/4 | Complete    | 2026-03-08 | - |
 | 16. Task Editing | 6/6 | Complete    | 2026-03-09 | - |
 | 16.1. Actions Grouping | 3/3 | Complete    | 2026-03-09 | - |
-| 16.2. Bridge Tag Simplification | 2/2 | Complete    | 2026-03-10 | - |
+| 16.2. Bridge Tag Simplification | 2/3 | In Progress | 2026-03-10 | - |
 | 17. Task Lifecycle | v1.2 | 0/? | Not started | - |
 
 ### Phase 18: Repetition rule write support: structured fields, not RRULE strings
