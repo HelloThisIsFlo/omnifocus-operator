@@ -641,6 +641,222 @@ nav.scrolled {
   background: rgba(52, 211, 153, 0.08);
 }
 
+/* ─── Task Arrangement Section ───────────────────── */
+.arrangement {
+  padding-bottom: var(--section-gap);
+}
+.arrangement-demo {
+  margin-top: 48px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.arrangement-demo-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 380px;
+}
+.arrangement-tasklist {
+  padding: 28px;
+  border-right: 1px solid var(--border-subtle);
+  position: relative;
+  overflow: hidden;
+}
+.arrangement-tasklist-header {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+.arr-task {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text-primary);
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 0.35s ease,
+              background 0.3s ease,
+              padding-left 0.4s ease;
+  position: relative;
+  will-change: transform;
+}
+.arr-task.highlight {
+  background: var(--accent-gold-soft);
+}
+.arr-task.nested {
+  padding-left: 32px;
+}
+.arr-task-check {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-muted);
+  flex-shrink: 0;
+}
+.arr-task-name {
+  flex: 1;
+  transition: opacity 0.3s ease;
+}
+.arr-task-flag {
+  font-size: 12px;
+  color: var(--accent-gold);
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.arr-task-flag.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+.arr-task-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: var(--accent-red);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  background: rgba(248, 113, 113, 0.08);
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.35s ease 0.1s, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s;
+}
+.arr-task-tag.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+.arr-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+.arr-group::before,
+.arr-group::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-subtle);
+}
+.arrangement-prompt {
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.arrangement-prompt-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.arrangement-prompt-text {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-style: italic;
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 52px;
+  position: relative;
+}
+.arrangement-prompt-text .prompt-fade {
+  transition: opacity 0.3s ease;
+}
+.arrangement-json {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--accent-teal);
+  overflow: auto;
+  position: relative;
+}
+.arrangement-json .json-fade {
+  transition: opacity 0.3s ease;
+}
+.arrangement-json .json-key { color: var(--text-secondary); }
+.arrangement-json .json-str { color: var(--accent-teal); }
+.arrangement-json .json-bool { color: var(--accent-gold); }
+.arrangement-json .json-arr { color: var(--accent-green); }
+.arrangement-dots {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+.arrangement-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--border-medium);
+  border: none;
+  cursor: pointer;
+  transition: background 0.3s ease, transform 0.2s ease;
+  padding: 0;
+}
+.arrangement-dot:hover {
+  background: var(--text-muted);
+  transform: scale(1.2);
+}
+.arrangement-dot.active {
+  background: var(--accent-gold);
+}
+.position-modes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 32px;
+}
+.position-mode {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 22px 20px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+.position-mode:hover {
+  border-color: var(--border-medium);
+  background: var(--bg-card-hover);
+}
+.position-mode-icon {
+  font-size: 22px;
+  margin-bottom: 10px;
+  display: block;
+}
+.position-mode-name {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-gold);
+  margin-bottom: 6px;
+}
+.position-mode-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
 /* ─── Reliability Section ────────────────────────── */
 .reliability {
   padding-bottom: var(--section-gap);
@@ -1216,6 +1432,9 @@ footer p {
   .examples,
   .speed-grid,
   .status-axes { grid-template-columns: 1fr; }
+  .arrangement-demo-inner { grid-template-columns: 1fr; }
+  .arrangement-tasklist { border-right: none; border-bottom: 1px solid var(--border-subtle); }
+  .position-modes { grid-template-columns: 1fr 1fr; }
   .testing-stats { grid-template-columns: repeat(2, 1fr); }
   .stats-inner { gap: 32px; }
   .stat-item:not(:last-child)::after { display: none; }
@@ -1239,6 +1458,7 @@ footer p {
     <ul class="nav-links">
       <li><a href="#speed">Speed</a></li>
       <li><a href="#agent-first">Agent-First</a></li>
+      <li><a href="#arrangement">Arrangement</a></li>
       <li><a href="#tools">Tools</a></li>
       <li><a href="#architecture">Architecture</a></li>
       <li><a href="#testing">Testing</a></li>
@@ -1445,6 +1665,66 @@ footer p {
             <span class="status-tag availability">dropped</span>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ Task Arrangement ═══ -->
+<section class="arrangement" id="arrangement">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-label">Task Arrangement</div>
+      <h2 class="section-title">Say it. Watch it happen.</h2>
+      <p class="section-subtitle">Four position modes give your agent pixel-perfect control over task order. No other OmniFocus MCP server can do this.</p>
+    </div>
+
+    <div class="arrangement-demo reveal">
+      <div class="arrangement-demo-inner">
+        <div class="arrangement-tasklist">
+          <div class="arrangement-tasklist-header">Work Project</div>
+          <div id="arr-list">
+            <!-- Tasks populated by JS -->
+          </div>
+        </div>
+        <div class="arrangement-prompt">
+          <div>
+            <div class="arrangement-prompt-label">Prompt</div>
+            <div class="arrangement-prompt-text">
+              <span class="prompt-fade" id="arr-prompt"></span>
+            </div>
+          </div>
+          <div>
+            <div class="arrangement-prompt-label">API Call</div>
+            <div class="arrangement-json">
+              <span class="json-fade" id="arr-json"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="arrangement-dots" id="arr-dots"></div>
+    </div>
+
+    <div class="position-modes reveal" style="transition-delay: 0.1s">
+      <div class="position-mode">
+        <span class="position-mode-icon">&#x2B06;</span>
+        <div class="position-mode-name">beginning</div>
+        <div class="position-mode-desc">First position in any project or action group</div>
+      </div>
+      <div class="position-mode">
+        <span class="position-mode-icon">&#x2B07;</span>
+        <div class="position-mode-name">ending</div>
+        <div class="position-mode-desc">Last position &mdash; or <code>null</code> to send to inbox</div>
+      </div>
+      <div class="position-mode">
+        <span class="position-mode-icon">&#x2191;</span>
+        <div class="position-mode-name">before</div>
+        <div class="position-mode-desc">Immediately before a specific sibling</div>
+      </div>
+      <div class="position-mode">
+        <span class="position-mode-icon">&#x2193;</span>
+        <div class="position-mode-name">after</div>
+        <div class="position-mode-desc">Immediately after a specific sibling</div>
       </div>
     </div>
   </div>
@@ -1858,6 +2138,215 @@ const speedObserver = new IntersectionObserver((entries) => {
 
 const speedSection = document.querySelector('.speed-visual');
 if (speedSection) speedObserver.observe(speedSection);
+
+// ─── Task Arrangement Demo ──────────────────────────
+(function() {
+  const TASKS = [
+    { id: 'roadmap', name: 'Review Q3 roadmap', type: 'task' },
+    { id: 'offsite', name: 'Book team offsite', type: 'task' },
+    { id: 'retro', name: 'Sprint retro notes', type: 'task' },
+    { id: 'spec', name: 'Draft feature spec', type: 'task' },
+    { id: 'q2', name: 'Q2 Planning', type: 'group' },
+    { id: 'invoice', name: 'Send vendor invoice', type: 'task' },
+  ];
+
+  const scenarios = [
+    {
+      prompt: '\u201CMove \u2018Send vendor invoice\u2019 to the top of my Work project\u201D',
+      json: '<span class="json-key">"id"</span>: <span class="json-str">"task_invoice"</span>,\n<span class="json-key">"actions"</span>: {\n  <span class="json-key">"move"</span>: {\n    <span class="json-str">"beginning"</span>: <span class="json-str">"proj_work"</span>\n  }\n}',
+      order: ['invoice', 'roadmap', 'offsite', 'retro', 'spec', 'q2'],
+      highlight: 'invoice',
+      nested: [],
+      flag: null,
+      tag: null,
+      rename: null,
+    },
+    {
+      prompt: '\u201CPut the sprint retro right after the Q3 roadmap review\u201D',
+      json: '<span class="json-key">"id"</span>: <span class="json-str">"task_retro"</span>,\n<span class="json-key">"actions"</span>: {\n  <span class="json-key">"move"</span>: {\n    <span class="json-str">"after"</span>: <span class="json-str">"task_roadmap"</span>\n  }\n}',
+      order: ['roadmap', 'retro', 'offsite', 'spec', 'q2', 'invoice'],
+      highlight: 'retro',
+      nested: [],
+      flag: null,
+      tag: null,
+      rename: null,
+    },
+    {
+      prompt: '\u201CMove the feature spec under Q2 Planning\u201D',
+      json: '<span class="json-key">"id"</span>: <span class="json-str">"task_spec"</span>,\n<span class="json-key">"actions"</span>: {\n  <span class="json-key">"move"</span>: {\n    <span class="json-str">"ending"</span>: <span class="json-str">"task_q2planning"</span>\n  }\n}',
+      order: ['roadmap', 'offsite', 'retro', 'q2', 'spec', 'invoice'],
+      highlight: 'spec',
+      nested: ['spec'],
+      flag: null,
+      tag: null,
+      rename: null,
+    },
+    {
+      prompt: '\u201CRename it to \u2018Q3 Roadmap \u2014 Final\u2019, flag it, add Urgent tag, move to top\u201D',
+      json: '<span class="json-key">"id"</span>: <span class="json-str">"task_roadmap"</span>,\n<span class="json-key">"name"</span>: <span class="json-str">"Q3 Roadmap \u2014 Final"</span>,\n<span class="json-key">"flagged"</span>: <span class="json-bool">true</span>,\n<span class="json-key">"actions"</span>: {\n  <span class="json-key">"tags"</span>: { <span class="json-key">"add"</span>: <span class="json-arr">["Urgent"]</span> },\n  <span class="json-key">"move"</span>: {\n    <span class="json-str">"beginning"</span>: <span class="json-str">"proj_work"</span>\n  }\n}',
+      order: ['roadmap', 'offsite', 'retro', 'spec', 'q2', 'invoice'],
+      highlight: 'roadmap',
+      nested: [],
+      flag: 'roadmap',
+      tag: 'roadmap',
+      rename: { id: 'roadmap', to: 'Q3 Roadmap \u2014 Final' },
+    },
+  ];
+
+  let current = 0;
+  let intervalId = null;
+  let isVisible = false;
+  const listEl = document.getElementById('arr-list');
+  const promptEl = document.getElementById('arr-prompt');
+  const jsonEl = document.getElementById('arr-json');
+  const dotsEl = document.getElementById('arr-dots');
+
+  // Build dots
+  scenarios.forEach((_, i) => {
+    const dot = document.createElement('button');
+    dot.className = 'arrangement-dot' + (i === 0 ? ' active' : '');
+    dot.setAttribute('aria-label', 'Scenario ' + (i + 1));
+    dot.addEventListener('click', () => goTo(i));
+    dotsEl.appendChild(dot);
+  });
+
+  function renderList(order, highlight, nested, flag, tag, rename) {
+    // Get current positions for FLIP
+    const oldRects = {};
+    listEl.querySelectorAll('[data-id]').forEach(el => {
+      oldRects[el.dataset.id] = el.getBoundingClientRect();
+    });
+
+    const hasOld = Object.keys(oldRects).length > 0;
+
+    // Rebuild DOM in new order
+    const fragment = document.createDocumentFragment();
+    order.forEach(id => {
+      const task = TASKS.find(t => t.id === id);
+      const el = document.createElement('div');
+      el.dataset.id = id;
+
+      if (task.type === 'group') {
+        el.className = 'arr-group';
+        el.textContent = task.name;
+      } else {
+        const isNested = nested.includes(id);
+        const isHighlight = id === highlight;
+        el.className = 'arr-task' + (isHighlight ? ' highlight' : '') + (isNested ? ' nested' : '');
+
+        let displayName = task.name;
+        if (rename && rename.id === id) displayName = rename.to;
+
+        el.innerHTML = '<div class="arr-task-check"></div>' +
+          '<span class="arr-task-name">' + displayName + '</span>' +
+          (flag === id ? '<span class="arr-task-flag' + (hasOld ? '' : ' visible') + '">\u2691</span>' : '') +
+          (tag === id ? '<span class="arr-task-tag' + (hasOld ? '' : ' visible') + '">Urgent</span>' : '');
+      }
+      fragment.appendChild(el);
+    });
+
+    listEl.innerHTML = '';
+    listEl.appendChild(fragment);
+
+    // FLIP animation
+    if (hasOld) {
+      listEl.querySelectorAll('[data-id]').forEach(el => {
+        const newRect = el.getBoundingClientRect();
+        const oldRect = oldRects[el.dataset.id];
+        if (oldRect) {
+          const dx = oldRect.left - newRect.left;
+          const dy = oldRect.top - newRect.top;
+          if (Math.abs(dy) > 1 || Math.abs(dx) > 1) {
+            el.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
+            el.style.transition = 'none';
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                el.style.transform = '';
+                el.style.transition = '';
+              });
+            });
+          }
+        }
+      });
+
+      // Animate in flag & tag after movement
+      setTimeout(() => {
+        listEl.querySelectorAll('.arr-task-flag, .arr-task-tag').forEach(el => {
+          el.classList.add('visible');
+        });
+      }, 350);
+    }
+  }
+
+  function updateText(scenario) {
+    // Crossfade prompt
+    promptEl.style.opacity = '0';
+    jsonEl.style.opacity = '0';
+    setTimeout(() => {
+      promptEl.innerHTML = scenario.prompt;
+      jsonEl.innerHTML = scenario.json;
+      promptEl.style.opacity = '1';
+      jsonEl.style.opacity = '1';
+    }, 250);
+  }
+
+  function goTo(index) {
+    current = index;
+    const sc = scenarios[current];
+
+    // Update dots
+    dotsEl.querySelectorAll('.arrangement-dot').forEach((d, i) => {
+      d.classList.toggle('active', i === current);
+    });
+
+    updateText(sc);
+
+    // Delay the list update slightly so text starts fading first
+    setTimeout(() => {
+      renderList(sc.order, sc.highlight, sc.nested, sc.flag, sc.tag, sc.rename);
+    }, 200);
+
+    // Reset interval
+    if (intervalId) clearInterval(intervalId);
+    if (isVisible) startAutoplay();
+  }
+
+  function advance() {
+    goTo((current + 1) % scenarios.length);
+  }
+
+  function startAutoplay() {
+    if (intervalId) clearInterval(intervalId);
+    intervalId = setInterval(advance, 5000);
+  }
+
+  function stopAutoplay() {
+    if (intervalId) { clearInterval(intervalId); intervalId = null; }
+  }
+
+  // Initial render (no animation)
+  const sc0 = scenarios[0];
+  promptEl.innerHTML = sc0.prompt;
+  jsonEl.innerHTML = sc0.json;
+  renderList(sc0.order, sc0.highlight, sc0.nested, sc0.flag, sc0.tag, sc0.rename);
+
+  // IntersectionObserver for auto-play
+  const arrSection = document.querySelector('.arrangement-demo');
+  if (arrSection) {
+    const arrObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          isVisible = true;
+          startAutoplay();
+        } else {
+          isVisible = false;
+          stopAutoplay();
+        }
+      });
+    }, { threshold: 0.2 });
+    arrObserver.observe(arrSection);
+  }
+})();
 
 // ─── Smooth anchor scroll ───────────────────────────
 document.querySelectorAll('a[href^="#"]').forEach(a => {
