@@ -428,7 +428,10 @@ class HybridRepository:
             self._db_path = str(db_path)
         else:
             self._db_path = os.environ.get("OMNIFOCUS_SQLITE_PATH", _DEFAULT_DB_PATH)
-        self._bridge = bridge
+        if bridge is None:
+            msg = "HybridRepository requires a bridge"
+            raise ValueError(msg)
+        self._bridge: Bridge = bridge
         self._stale: bool = False
         self._last_wal_mtime_ns: int = 0
 
@@ -458,10 +461,6 @@ class HybridRepository:
         """
         from omnifocus_operator.models.write import TaskCreateResult
 
-        if self._bridge is None:
-            msg = "HybridRepository requires a bridge for write operations"
-            raise RuntimeError(msg)
-
         # Build payload: camelCase keys, exclude None fields
         payload = spec.model_dump(by_alias=True, exclude_none=True, mode="json")
 
@@ -485,9 +484,6 @@ class HybridRepository:
 
     async def edit_task(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Edit a task via bridge and mark snapshot stale."""
-        if self._bridge is None:
-            msg = "HybridRepository requires a bridge for write operations"
-            raise RuntimeError(msg)
         logger.debug(
             "HybridRepository.edit_task: sending to bridge, payload keys=%s",
             list(payload.keys()),
