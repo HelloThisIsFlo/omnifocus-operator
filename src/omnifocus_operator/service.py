@@ -290,8 +290,8 @@ class OperatorService:
                 if container_id == current_parent_id:
                     warnings.append(
                         "Task is already a child of this parent. "
-                        "Note: this check verifies the container, not "
-                        "ordinal position (first vs last child)."
+                        "The move was applied, but the server cannot yet confirm "
+                        "whether the task's position within the parent changed."
                     )
                     # is_noop stays True -- same container
                 else:
