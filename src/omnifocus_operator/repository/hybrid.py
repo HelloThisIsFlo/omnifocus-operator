@@ -681,6 +681,9 @@ class HybridRepository:
 
     async def get_task(self, task_id: str) -> Task | None:
         """Return a single task by ID, or None if not found."""
+        if self._stale:
+            await self._wait_for_fresh_data()
+            self._stale = False
         result = await asyncio.to_thread(self._read_task, task_id)
         if result is None:
             return None
@@ -688,6 +691,9 @@ class HybridRepository:
 
     async def get_project(self, project_id: str) -> Project | None:
         """Return a single project by ID, or None if not found."""
+        if self._stale:
+            await self._wait_for_fresh_data()
+            self._stale = False
         result = await asyncio.to_thread(self._read_project, project_id)
         if result is None:
             return None
@@ -695,6 +701,9 @@ class HybridRepository:
 
     async def get_tag(self, tag_id: str) -> Tag | None:
         """Return a single tag by ID, or None if not found."""
+        if self._stale:
+            await self._wait_for_fresh_data()
+            self._stale = False
         result = await asyncio.to_thread(self._read_tag, tag_id)
         if result is None:
             return None
