@@ -13,7 +13,8 @@
       "env": {
         "OMNIFOCUS_REPOSITORY": "hybrid",
         "OMNIFOCUS_BRIDGE": "real",
-        "OMNIFOCUS_BRIDGE_TIMEOUT": "30"
+        "OMNIFOCUS_BRIDGE_TIMEOUT": "30",
+        "OMNIFOCUS_LOG_LEVEL": "DEBUG"
       }
     }
   }
