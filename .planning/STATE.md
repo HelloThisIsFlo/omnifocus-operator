@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 Phase: 16.2 (Bridge Tag Simplification) -- inserted after Phase 16.1
 Plan: 2 of 2
 Status: Phase 16.2 complete (bridge tag simplification done)
-Last activity: 2026-03-10 - Completed plan 16.2-02: simplified bridge.js tag handling to diff-based
+Last activity: 2026-03-10 - Completed quick task 5: Update move same-parent warning wording
 
 Progress: [██████████] 100%
 
@@ -112,6 +112,7 @@ Carried from v1.0:
 | 2 | Simplify file layout: drop _ prefixes, collapse server/service/repository packages | 2026-03-07 | b15b42b | [2-simplify-file-layout-drop-prefixes-colla](./quick/2-simplify-file-layout-drop-prefixes-colla/) |
 | 3 | Fix skill script enum references (TagStatus->TagAvailability, FolderStatus->FolderAvailability) | 2026-03-07 | c98da9a | [3-fix-deferred-items-from-phase-10-update-](./quick/3-fix-deferred-items-from-phase-10-update-/) |
 | 4 | Fix tag warning to resolve name when caller passes an ID (UAT test 71) | 2026-03-09 | 298a704 | [4-fix-tag-warning-to-resolve-name-when-cal](./quick/4-fix-tag-warning-to-resolve-name-when-cal/) |
+| 5 | Update move same-parent warning wording | 2026-03-10 | dc1c60f | [5-update-move-same-parent-warning-wording](./quick/5-update-move-same-parent-warning-wording/) |
 
 ### Blockers/Concerns
 
