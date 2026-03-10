@@ -680,18 +680,24 @@ nav.scrolled {
   border-radius: 8px;
   font-size: 14px;
   color: var(--text-primary);
-  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+  transition: transform 1.5s cubic-bezier(0.22, 1, 0.36, 1),
               opacity 0.35s ease,
               background 0.3s ease,
-              padding-left 0.4s ease;
+              padding-left 1.5s cubic-bezier(0.22, 1, 0.36, 1);
   position: relative;
   will-change: transform;
 }
 .arr-task.highlight {
   background: var(--accent-gold-soft);
 }
-.arr-task.nested {
+.arr-task.nested-1 {
   padding-left: 32px;
+}
+.arr-task.nested-2 {
+  padding-left: 52px;
+}
+.arr-task.parent .arr-task-name {
+  font-weight: 600;
 }
 .arr-task-check {
   width: 16px;
@@ -704,58 +710,16 @@ nav.scrolled {
   flex: 1;
   transition: opacity 0.3s ease;
 }
-.arr-task-flag {
-  font-size: 12px;
-  color: var(--accent-gold);
-  opacity: 0;
-  transform: scale(0.5);
-  transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.arr-task-flag.visible {
-  opacity: 1;
-  transform: scale(1);
-}
-.arr-task-tag {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  padding: 2px 8px;
+.arr-task.parent .arr-task-check {
   border-radius: 4px;
-  color: var(--accent-red);
-  border: 1px solid rgba(248, 113, 113, 0.25);
-  background: rgba(248, 113, 113, 0.08);
-  opacity: 0;
-  transform: scale(0.5);
-  transition: opacity 0.35s ease 0.1s, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s;
-}
-.arr-task-tag.visible {
-  opacity: 1;
-  transform: scale(1);
-}
-.arr-group {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-  letter-spacing: 0.5px;
-  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: transform;
-}
-.arr-group::before,
-.arr-group::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--border-subtle);
+  border-width: 2px;
 }
 .arrangement-prompt {
   padding: 28px;
   display: flex;
   flex-direction: column;
   gap: 20px;
+  justify-content: center;
 }
 .arrangement-prompt-label {
   font-family: var(--font-mono);
@@ -774,58 +738,47 @@ nav.scrolled {
   min-height: 52px;
   position: relative;
 }
-.arrangement-prompt-text .prompt-fade {
-  transition: opacity 0.3s ease;
-}
-.arrangement-json {
-  flex: 1;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid var(--border-subtle);
-  border-radius: 10px;
-  padding: 16px;
+.json-key { color: var(--text-secondary); }
+.json-str { color: var(--accent-teal); }
+.arrangement-calls {
   font-family: var(--font-mono);
   font-size: 12px;
-  line-height: 1.7;
-  color: var(--accent-teal);
-  overflow: auto;
-  position: relative;
+  color: var(--text-muted);
+  margin-top: 12px;
+  opacity: 0;
+  transition: opacity 0.5s ease;
 }
-.arrangement-json .json-fade {
-  transition: opacity 0.3s ease;
+.arrangement-calls.visible {
+  opacity: 1;
 }
-.arrangement-json .json-key { color: var(--text-secondary); }
-.arrangement-json .json-str { color: var(--accent-teal); }
-.arrangement-json .json-bool { color: var(--accent-gold); }
-.arrangement-json .json-arr { color: var(--accent-green); }
-.arrangement-dots {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  padding: 16px;
-  border-top: 1px solid var(--border-subtle);
+.arrangement-prompt-content {
+  opacity: 0;
+  transition: opacity 0.5s ease;
 }
-.arrangement-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--border-medium);
-  border: none;
-  cursor: pointer;
-  transition: background 0.3s ease, transform 0.2s ease;
-  padding: 0;
+.arrangement-prompt-content.visible {
+  opacity: 1;
 }
-.arrangement-dot:hover {
-  background: var(--text-muted);
-  transform: scale(1.2);
+.whatjusthappened {
+  margin-top: 56px;
+  text-align: center;
 }
-.arrangement-dot.active {
-  background: var(--accent-gold);
+.whatjusthappened h3 {
+  font-family: var(--font-display);
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+.whatjusthappened p {
+  font-size: 15px;
+  color: var(--text-secondary);
+  margin-bottom: 32px;
 }
 .position-modes {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
-  margin-top: 32px;
+  margin-top: 0;
 }
 .position-mode {
   background: var(--bg-card);
@@ -854,6 +807,18 @@ nav.scrolled {
 .position-mode-desc {
   font-size: 13px;
   color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+.position-mode-json {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--accent-teal);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 6px 10px;
+  text-align: left;
   line-height: 1.5;
 }
 
@@ -1435,6 +1400,7 @@ footer p {
   .arrangement-demo-inner { grid-template-columns: 1fr; }
   .arrangement-tasklist { border-right: none; border-bottom: 1px solid var(--border-subtle); }
   .position-modes { grid-template-columns: 1fr 1fr; }
+  .whatjusthappened { margin-top: 40px; }
   .testing-stats { grid-template-columns: repeat(2, 1fr); }
   .stats-inner { gap: 32px; }
   .stat-item:not(:last-child)::after { display: none; }
@@ -1688,43 +1654,45 @@ footer p {
           </div>
         </div>
         <div class="arrangement-prompt">
-          <div>
+          <div class="arrangement-prompt-content" id="arr-prompt-content">
             <div class="arrangement-prompt-label">Prompt</div>
             <div class="arrangement-prompt-text">
-              <span class="prompt-fade" id="arr-prompt"></span>
+              <span id="arr-prompt">&ldquo;Organize my project &mdash; Q1 Wrap-up first with the retro and budget, Q2 Planning next with goals before the kickoff, feature spec at the end&rdquo;</span>
             </div>
-          </div>
-          <div>
-            <div class="arrangement-prompt-label">API Call</div>
-            <div class="arrangement-json">
-              <span class="json-fade" id="arr-json"></span>
-            </div>
+            <div class="arrangement-calls" id="arr-calls">&rarr; 7 edit_tasks calls</div>
           </div>
         </div>
       </div>
-      <div class="arrangement-dots" id="arr-dots"></div>
     </div>
 
-    <div class="position-modes reveal" style="transition-delay: 0.1s">
+    <div class="whatjusthappened reveal" style="transition-delay: 0.1s">
+      <h3>What just happened?</h3>
+      <p>One sentence. Four position modes. Seven API calls.</p>
+    </div>
+    <div class="position-modes reveal" style="transition-delay: 0.15s">
       <div class="position-mode">
         <span class="position-mode-icon">&#x2B06;</span>
         <div class="position-mode-name">beginning</div>
-        <div class="position-mode-desc">First position in any project or action group</div>
+        <div class="position-mode-desc">Q1 Wrap-up &rarr; first in project</div>
+        <div class="position-mode-json"><span class="json-key">"beginning"</span>: <span class="json-str">"proj_work"</span></div>
       </div>
       <div class="position-mode">
         <span class="position-mode-icon">&#x2B07;</span>
         <div class="position-mode-name">ending</div>
-        <div class="position-mode-desc">Last position &mdash; or <code>null</code> to send to inbox</div>
-      </div>
-      <div class="position-mode">
-        <span class="position-mode-icon">&#x2191;</span>
-        <div class="position-mode-name">before</div>
-        <div class="position-mode-desc">Immediately before a specific sibling</div>
+        <div class="position-mode-desc">Retro, room, budget &rarr; under Q1 Wrap-up</div>
+        <div class="position-mode-json"><span class="json-key">"ending"</span>: <span class="json-str">"task_q1"</span></div>
       </div>
       <div class="position-mode">
         <span class="position-mode-icon">&#x2193;</span>
         <div class="position-mode-name">after</div>
-        <div class="position-mode-desc">Immediately after a specific sibling</div>
+        <div class="position-mode-desc">Q2 Planning &rarr; right after Q1 Wrap-up</div>
+        <div class="position-mode-json"><span class="json-key">"after"</span>: <span class="json-str">"task_q1"</span></div>
+      </div>
+      <div class="position-mode">
+        <span class="position-mode-icon">&#x2191;</span>
+        <div class="position-mode-name">before</div>
+        <div class="position-mode-desc">Goals &rarr; right before kickoff slides</div>
+        <div class="position-mode-json"><span class="json-key">"before"</span>: <span class="json-str">"task_kickoff"</span></div>
       </div>
     </div>
   </div>
@@ -2141,107 +2109,60 @@ if (speedSection) speedObserver.observe(speedSection);
 
 // ─── Task Arrangement Demo ──────────────────────────
 (function() {
+  // Task data — messy flat list with empty action groups
   const TASKS = [
-    { id: 'roadmap', name: 'Review Q3 roadmap', type: 'task' },
-    { id: 'offsite', name: 'Book team offsite', type: 'task' },
-    { id: 'retro', name: 'Sprint retro notes', type: 'task' },
-    { id: 'spec', name: 'Draft feature spec', type: 'task' },
-    { id: 'q2', name: 'Q2 Planning', type: 'group' },
-    { id: 'invoice', name: 'Send vendor invoice', type: 'task' },
+    { id: 'retro_room', name: 'Book retro room' },
+    { id: 'q2', name: 'Q2 Planning', parent: true },
+    { id: 'spec', name: 'Draft feature spec' },
+    { id: 'retro', name: 'Sprint retro notes' },
+    { id: 'goals', name: 'Set Q2 goals' },
+    { id: 'budget', name: 'Review Q1 budget' },
+    { id: 'q1', name: 'Q1 Wrap-up', parent: true },
+    { id: 'kickoff', name: 'Prepare kickoff slides' },
   ];
 
-  const scenarios = [
-    {
-      prompt: '\u201CMove \u2018Send vendor invoice\u2019 to the top of my Work project\u201D',
-      json: '<span class="json-key">"id"</span>: <span class="json-str">"task_invoice"</span>,\n<span class="json-key">"actions"</span>: {\n  <span class="json-key">"move"</span>: {\n    <span class="json-str">"beginning"</span>: <span class="json-str">"proj_work"</span>\n  }\n}',
-      order: ['invoice', 'roadmap', 'offsite', 'retro', 'spec', 'q2'],
-      highlight: 'invoice',
-      nested: [],
-      flag: null,
-      tag: null,
-      rename: null,
-    },
-    {
-      prompt: '\u201CPut the sprint retro right after the Q3 roadmap review\u201D',
-      json: '<span class="json-key">"id"</span>: <span class="json-str">"task_retro"</span>,\n<span class="json-key">"actions"</span>: {\n  <span class="json-key">"move"</span>: {\n    <span class="json-str">"after"</span>: <span class="json-str">"task_roadmap"</span>\n  }\n}',
-      order: ['roadmap', 'retro', 'offsite', 'spec', 'q2', 'invoice'],
-      highlight: 'retro',
-      nested: [],
-      flag: null,
-      tag: null,
-      rename: null,
-    },
-    {
-      prompt: '\u201CMove the feature spec under Q2 Planning\u201D',
-      json: '<span class="json-key">"id"</span>: <span class="json-str">"task_spec"</span>,\n<span class="json-key">"actions"</span>: {\n  <span class="json-key">"move"</span>: {\n    <span class="json-str">"ending"</span>: <span class="json-str">"task_q2planning"</span>\n  }\n}',
-      order: ['roadmap', 'offsite', 'retro', 'q2', 'spec', 'invoice'],
-      highlight: 'spec',
-      nested: ['spec'],
-      flag: null,
-      tag: null,
-      rename: null,
-    },
-    {
-      prompt: '\u201CRename it to \u2018Q3 Roadmap \u2014 Final\u2019, flag it, add Urgent tag, move to top\u201D',
-      json: '<span class="json-key">"id"</span>: <span class="json-str">"task_roadmap"</span>,\n<span class="json-key">"name"</span>: <span class="json-str">"Q3 Roadmap \u2014 Final"</span>,\n<span class="json-key">"flagged"</span>: <span class="json-bool">true</span>,\n<span class="json-key">"actions"</span>: {\n  <span class="json-key">"tags"</span>: { <span class="json-key">"add"</span>: <span class="json-arr">["Urgent"]</span> },\n  <span class="json-key">"move"</span>: {\n    <span class="json-str">"beginning"</span>: <span class="json-str">"proj_work"</span>\n  }\n}',
-      order: ['roadmap', 'offsite', 'retro', 'spec', 'q2', 'invoice'],
-      highlight: 'roadmap',
-      nested: [],
-      flag: 'roadmap',
-      tag: 'roadmap',
-      rename: { id: 'roadmap', to: 'Q3 Roadmap \u2014 Final' },
-    },
-  ];
+  // Messy: everything flat, action groups scattered and empty
+  const MESSY_STATE = {
+    order: ['retro_room', 'q2', 'spec', 'retro', 'goals', 'budget', 'q1', 'kickoff'],
+    depths: {},
+  };
 
-  let current = 0;
-  let intervalId = null;
+  // Organized: clean 2-level hierarchy
+  const ORGANIZED_STATE = {
+    order: ['q1', 'retro', 'retro_room', 'budget', 'q2', 'goals', 'kickoff', 'spec'],
+    depths: { retro: 1, retro_room: 1, budget: 1, goals: 1, kickoff: 1 },
+  };
+
+  let loopTimer = null;
   let isVisible = false;
+  let phase = 'messy';
   const listEl = document.getElementById('arr-list');
-  const promptEl = document.getElementById('arr-prompt');
-  const jsonEl = document.getElementById('arr-json');
-  const dotsEl = document.getElementById('arr-dots');
+  const promptContent = document.getElementById('arr-prompt-content');
+  const callsEl = document.getElementById('arr-calls');
 
-  // Build dots
-  scenarios.forEach((_, i) => {
-    const dot = document.createElement('button');
-    dot.className = 'arrangement-dot' + (i === 0 ? ' active' : '');
-    dot.setAttribute('aria-label', 'Scenario ' + (i + 1));
-    dot.addEventListener('click', () => goTo(i));
-    dotsEl.appendChild(dot);
-  });
+  function buildList(state, animate) {
+    const { order, depths } = state;
 
-  function renderList(order, highlight, nested, flag, tag, rename) {
-    // Get current positions for FLIP
+    // Capture old positions for FLIP
     const oldRects = {};
     listEl.querySelectorAll('[data-id]').forEach(el => {
       oldRects[el.dataset.id] = el.getBoundingClientRect();
     });
-
-    const hasOld = Object.keys(oldRects).length > 0;
+    const hasOld = Object.keys(oldRects).length > 0 && animate;
 
     // Rebuild DOM in new order
     const fragment = document.createDocumentFragment();
     order.forEach(id => {
       const task = TASKS.find(t => t.id === id);
+      const depth = (depths && depths[id]) || 0;
       const el = document.createElement('div');
       el.dataset.id = id;
-
-      if (task.type === 'group') {
-        el.className = 'arr-group';
-        el.textContent = task.name;
-      } else {
-        const isNested = nested.includes(id);
-        const isHighlight = id === highlight;
-        el.className = 'arr-task' + (isHighlight ? ' highlight' : '') + (isNested ? ' nested' : '');
-
-        let displayName = task.name;
-        if (rename && rename.id === id) displayName = rename.to;
-
-        el.innerHTML = '<div class="arr-task-check"></div>' +
-          '<span class="arr-task-name">' + displayName + '</span>' +
-          (flag === id ? '<span class="arr-task-flag' + (hasOld ? '' : ' visible') + '">\u2691</span>' : '') +
-          (tag === id ? '<span class="arr-task-tag' + (hasOld ? '' : ' visible') + '">Urgent</span>' : '');
-      }
+      let cls = 'arr-task';
+      if (depth > 0) cls += ' nested-' + depth;
+      if (task.parent) cls += ' parent';
+      el.className = cls;
+      el.innerHTML = '<div class="arr-task-check"></div>' +
+        '<span class="arr-task-name">' + task.name + '</span>';
       fragment.appendChild(el);
     });
 
@@ -2268,79 +2189,72 @@ if (speedSection) speedObserver.observe(speedSection);
           }
         }
       });
-
-      // Animate in flag & tag after movement
-      setTimeout(() => {
-        listEl.querySelectorAll('.arr-task-flag, .arr-task-tag').forEach(el => {
-          el.classList.add('visible');
-        });
-      }, 350);
     }
   }
 
-  function updateText(scenario) {
-    // Crossfade prompt
-    promptEl.style.opacity = '0';
-    jsonEl.style.opacity = '0';
-    setTimeout(() => {
-      promptEl.innerHTML = scenario.prompt;
-      jsonEl.innerHTML = scenario.json;
-      promptEl.style.opacity = '1';
-      jsonEl.style.opacity = '1';
-    }, 250);
+  // Animation loop: messy -> prompt fade in -> FLIP animate -> hold -> reset
+  function runLoop() {
+    if (!isVisible) return;
+
+    switch (phase) {
+      case 'messy':
+        promptContent.classList.remove('visible');
+        callsEl.classList.remove('visible');
+        buildList(MESSY_STATE, false);
+        phase = 'prompt';
+        loopTimer = setTimeout(runLoop, 2500);
+        break;
+
+      case 'prompt':
+        promptContent.classList.add('visible');
+        phase = 'animate';
+        loopTimer = setTimeout(runLoop, 1500);
+        break;
+
+      case 'animate':
+        buildList(ORGANIZED_STATE, true);
+        setTimeout(() => { callsEl.classList.add('visible'); }, 1600);
+        phase = 'organized';
+        loopTimer = setTimeout(runLoop, 5500);
+        break;
+
+      case 'organized':
+        phase = 'reset';
+        promptContent.classList.remove('visible');
+        callsEl.classList.remove('visible');
+        loopTimer = setTimeout(() => {
+          buildList(MESSY_STATE, false);
+          phase = 'messy';
+          loopTimer = setTimeout(runLoop, 600);
+        }, 600);
+        break;
+    }
   }
 
-  function goTo(index) {
-    current = index;
-    const sc = scenarios[current];
-
-    // Update dots
-    dotsEl.querySelectorAll('.arrangement-dot').forEach((d, i) => {
-      d.classList.toggle('active', i === current);
-    });
-
-    updateText(sc);
-
-    // Delay the list update slightly so text starts fading first
-    setTimeout(() => {
-      renderList(sc.order, sc.highlight, sc.nested, sc.flag, sc.tag, sc.rename);
-    }, 200);
-
-    // Reset interval
-    if (intervalId) clearInterval(intervalId);
-    if (isVisible) startAutoplay();
+  function startLoop() {
+    if (loopTimer) clearTimeout(loopTimer);
+    phase = 'messy';
+    runLoop();
   }
 
-  function advance() {
-    goTo((current + 1) % scenarios.length);
+  function stopLoop() {
+    if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
   }
 
-  function startAutoplay() {
-    if (intervalId) clearInterval(intervalId);
-    intervalId = setInterval(advance, 5000);
-  }
+  // Initial render (messy, no animation)
+  buildList(MESSY_STATE, false);
 
-  function stopAutoplay() {
-    if (intervalId) { clearInterval(intervalId); intervalId = null; }
-  }
-
-  // Initial render (no animation)
-  const sc0 = scenarios[0];
-  promptEl.innerHTML = sc0.prompt;
-  jsonEl.innerHTML = sc0.json;
-  renderList(sc0.order, sc0.highlight, sc0.nested, sc0.flag, sc0.tag, sc0.rename);
-
-  // IntersectionObserver for auto-play
+  // IntersectionObserver for play/pause
   const arrSection = document.querySelector('.arrangement-demo');
   if (arrSection) {
     const arrObserver = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           isVisible = true;
-          startAutoplay();
+          startLoop();
         } else {
           isVisible = false;
-          stopAutoplay();
+          stopLoop();
         }
       });
     }, { threshold: 0.2 });
