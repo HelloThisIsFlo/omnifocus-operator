@@ -301,11 +301,10 @@ class OperatorService:
                 is_noop = False
 
         if is_noop and len(payload) >= 1:
-            if not warnings:
-                warnings = [
-                    "No changes detected -- the task already has these values. "
-                    "If you don't want to change a field, omit it from the request."
-                ]
+            warnings.append(
+                "No changes detected -- the task already has these values. "
+                "If you don't want to change a field, omit it from the request."
+            )
             return TaskEditResult(
                 success=True,
                 id=spec.id,
