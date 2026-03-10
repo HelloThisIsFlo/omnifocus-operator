@@ -1031,35 +1031,28 @@ class TestEdgeCases:
 
 
 class TestFreshness:
-    """Tests for WAL-based freshness detection after _mark_stale."""
+    """Tests for write-through WAL freshness -- writes block until SQLite confirms."""
 
     @pytest.mark.asyncio
     async def test_freshness_wal_polling(self, tmp_path: Path) -> None:
-        """After _mark_stale(), get_all() polls WAL mtime; fresh data after change."""
+        """Write method polls WAL mtime; completes when mtime changes."""
         db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
-        # Create a WAL file to simulate WAL presence
         wal_path = db_path.parent / (db_path.name + "-wal")
         wal_path.touch()
 
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        # First read to establish baseline
-        await repo.get_all()
-
-        # Simulate write -- captures current mtime
-        repo._mark_stale()
+        bridge = InMemoryBridge(data={"id": "task-001", "name": "Edited"})
+        repo = HybridRepository(db_path=db_path, bridge=bridge)
 
         # Schedule a WAL mtime change after a short delay
         async def modify_wal() -> None:
             await asyncio.sleep(0.15)
-            # Force a visible mtime change by writing to the file
             wal_path.write_bytes(b"changed")
 
         task = asyncio.create_task(modify_wal())
-        # get_all() should poll and detect the change
-        result = await repo.get_all()
+        # edit_task should poll and detect the change
+        result = await repo.edit_task({"id": "task-001", "name": "Edited"})
         await task
-        assert isinstance(result, AllEntities)
-        assert len(result.tasks) == 1
+        assert result["id"] == "task-001"
 
     @pytest.mark.asyncio
     async def test_freshness_db_fallback(self, tmp_path: Path) -> None:
@@ -1070,9 +1063,8 @@ class TestFreshness:
         if wal_path.exists():
             wal_path.unlink()
 
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        await repo.get_all()
-        repo._mark_stale()
+        bridge = InMemoryBridge(data={"id": "task-001", "name": "Edited"})
+        repo = HybridRepository(db_path=db_path, bridge=bridge)
 
         # Modify DB file mtime after short delay
         async def modify_db() -> None:
@@ -1080,33 +1072,28 @@ class TestFreshness:
             db_path.write_bytes(db_path.read_bytes() + b"\x00")
 
         task = asyncio.create_task(modify_db())
-        result = await repo.get_all()
+        result = await repo.edit_task({"id": "task-001", "name": "Edited"})
         await task
-        assert isinstance(result, AllEntities)
+        assert result["id"] == "task-001"
 
     @pytest.mark.asyncio
     async def test_freshness_timeout(self, tmp_path: Path) -> None:
-        """If WAL mtime never changes within timeout, get_all() returns anyway."""
+        """Write without WAL change times out after ~2s and returns anyway."""
         db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
         wal_path = db_path.parent / (db_path.name + "-wal")
         wal_path.touch()
 
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        await repo.get_all()
-        repo._mark_stale()
+        bridge = InMemoryBridge(data={"id": "task-001", "name": "Edited"})
+        repo = HybridRepository(db_path=db_path, bridge=bridge)
 
-        # Don't modify WAL -- should timeout and return data anyway
+        # Don't modify WAL -- should timeout and return result anyway
         start = time.monotonic()
-        result = await repo.get_all()
+        result = await repo.edit_task({"id": "task-001", "name": "Edited"})
         elapsed = time.monotonic() - start
 
-        # Should complete in ~timeout, not immediately
         assert elapsed >= _FRESHNESS_TIMEOUT * 0.75
-        # But not much longer than timeout
         assert elapsed < _FRESHNESS_TIMEOUT * 1.5
-        # Data returned despite timeout
-        assert isinstance(result, AllEntities)
-        assert len(result.tasks) == 1
+        assert result["id"] == "task-001"
 
     @pytest.mark.asyncio
     async def test_freshness_no_timeout_when_wal_changes_during_bridge_call(
@@ -1114,59 +1101,33 @@ class TestFreshness:
     ) -> None:
         """edit_task() captures baseline BEFORE bridge call, so WAL changes are detected.
 
-        Reproduces a race condition: if _mark_stale() runs AFTER send_command(),
-        OmniFocus may have already flushed the WAL, making the baseline equal
-        the fresh mtime. Then _wait_for_fresh_data() sees no change and times out.
-
-        The fix: _mark_stale() runs BEFORE send_command(), so the baseline is
-        always pre-write. This test verifies that by having the bridge write to
-        the WAL as a side effect of send_command (simulating OmniFocus flushing).
+        The decorator captures mtime before send_command(), so if OmniFocus
+        flushes the WAL during the bridge call, _wait_for_fresh_data() sees
+        the change immediately and returns fast.
         """
         db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
-        wal_path = db_path.parent / (db_path.name + "-wal")
-        wal_path.touch()
-
-        # Bridge whose send_command writes to the WAL (simulating OmniFocus flush)
-        bridge = InMemoryBridge(data={"id": "task-001", "name": "Edited"})
-        original_send = bridge.send_command
-
-        async def send_and_flush_wal(
-            operation: str, params: dict[str, Any] | None = None
-        ) -> dict[str, Any]:
-            result = await original_send(operation, params)
-            # OmniFocus flushes the WAL during the bridge call
-            wal_path.write_bytes(b"omnifocus flushed")
-            return result
-
-        bridge.send_command = send_and_flush_wal  # type: ignore[assignment]
-
+        wal_path = str(db_path) + "-wal"
+        bridge = InMemoryBridge(data={"id": "task-001", "name": "Edited"}, wal_path=wal_path)
         repo = HybridRepository(db_path=db_path, bridge=bridge)
-        await repo.get_all()  # baseline read
 
-        # Write via edit_task — _mark_stale() should capture mtime BEFORE
-        # send_command() changes it
-        await repo.edit_task({"id": "task-001", "name": "Edited"})
-
-        # Next read should detect WAL already changed and return fast
         start = time.monotonic()
-        await repo.get_all()
+        await repo.edit_task({"id": "task-001", "name": "Edited"})
         elapsed = time.monotonic() - start
 
         assert elapsed < _FRESHNESS_TIMEOUT * 0.25, (
-            f"Expected fast return (data already fresh), but took {elapsed:.1f}s "
+            f"Expected fast return (WAL changed during bridge call), but took {elapsed:.1f}s "
             f"(likely hit the {_FRESHNESS_TIMEOUT}s timeout due to race condition)"
         )
 
     @pytest.mark.asyncio
     async def test_freshness_poll_interval(self, tmp_path: Path) -> None:
-        """Polling occurs at ~50ms intervals."""
+        """Polling during write occurs at ~50ms intervals."""
         db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
         wal_path = db_path.parent / (db_path.name + "-wal")
         wal_path.touch()
 
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        await repo.get_all()
-        repo._mark_stale()
+        bridge = InMemoryBridge(data={"id": "task-001", "name": "Edited"})
+        repo = HybridRepository(db_path=db_path, bridge=bridge)
 
         sleep_calls: list[float] = []
         original_sleep = asyncio.sleep
@@ -1184,7 +1145,7 @@ class TestFreshness:
         with patch(
             "omnifocus_operator.repository.hybrid.asyncio.sleep", side_effect=tracking_sleep
         ):
-            await repo.get_all()
+            await repo.edit_task({"id": "task-001", "name": "Edited"})
         await task
 
         # All sleep calls should be 0.05 (50ms)
@@ -1193,10 +1154,8 @@ class TestFreshness:
             assert call == pytest.approx(0.05)
 
     @pytest.mark.asyncio
-    async def test_freshness_no_stale_flag_normal_read(
-        self, minimal_task_repo: HybridRepository
-    ) -> None:
-        """Normal get_all() (no simulate_write) does NOT trigger freshness polling."""
+    async def test_reads_never_poll(self, minimal_task_repo: HybridRepository) -> None:
+        """Read methods never trigger freshness polling."""
         sleep_calls: list[float] = []
         original_sleep = asyncio.sleep
 
@@ -1207,34 +1166,29 @@ class TestFreshness:
         with patch(
             "omnifocus_operator.repository.hybrid.asyncio.sleep", side_effect=tracking_sleep
         ):
-            result = await minimal_task_repo.get_all()
+            await minimal_task_repo.get_all()
+            await minimal_task_repo.get_task("task-001")
 
-        assert isinstance(result, AllEntities)
-        # No polling should have occurred
         assert len(sleep_calls) == 0
 
     @pytest.mark.asyncio
-    async def test_simulate_write_marks_stale(self, tmp_path: Path) -> None:
-        """_mark_stale() sets stale flag; next get_all() clears it."""
+    async def test_write_through_add_task(self, tmp_path: Path) -> None:
+        """add_task blocks until WAL confirms write."""
         db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
         wal_path = db_path.parent / (db_path.name + "-wal")
         wal_path.touch()
 
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        await repo.get_all()
+        bridge = InMemoryBridge(data={"id": "new-1", "name": "Test"})
+        repo = HybridRepository(db_path=db_path, bridge=bridge)
 
-        assert repo._stale is False
-        repo._mark_stale()
-        assert repo._stale is True
+        async def modify_wal() -> None:
+            await asyncio.sleep(0.15)
+            wal_path.write_bytes(b"changed")
 
-        # Modify WAL so freshness check passes quickly
-        wal_path.write_bytes(b"modified")
-        await repo.get_all()
-        assert repo._stale is False
-
-    def test_mark_stale_not_on_protocol(self) -> None:
-        """_mark_stale is on HybridRepository only, not on Repository protocol."""
-        assert not hasattr(Repository, "_mark_stale")
+        task = asyncio.create_task(modify_wal())
+        result = await repo.add_task(TaskCreateSpec(name="Test"))
+        await task
+        assert result.id == "new-1"
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -1244,94 +1198,36 @@ class TestFreshness:
             pytest.param("edit_task", {"id": "task-001", "name": "Edited"}, id="edit_task"),
         ],
     )
-    async def test_mutating_operations_mark_stale(
+    async def test_both_write_methods_poll_wal(
         self,
         tmp_path: Path,
         method: str,
         arg: Any,
     ) -> None:
-        """All write operations mark the cache stale."""
-        bridge = InMemoryBridge(data={"id": "task-001", "name": "Test"})
-        repo = HybridRepository(db_path=tmp_path / "fake.db", bridge=bridge)
-
-        with patch.object(repo, "_mark_stale") as mock_stale:
-            await getattr(repo, method)(arg)
-            mock_stale.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_get_task_waits_for_fresh_data_when_stale(self, tmp_path: Path) -> None:
-        """get_task() calls _wait_for_fresh_data when _stale is True."""
+        """Both add_task and edit_task trigger WAL polling."""
         db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
         wal_path = db_path.parent / (db_path.name + "-wal")
         wal_path.touch()
 
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        await repo.get_all()  # baseline read
-        repo._mark_stale()
-        assert repo._stale is True
+        bridge = InMemoryBridge(data={"id": "task-001", "name": "Test"})
+        repo = HybridRepository(db_path=db_path, bridge=bridge)
 
-        # Modify WAL so freshness check passes quickly
-        wal_path.write_bytes(b"modified")
-        result = await repo.get_task("task-001")
-        assert result is not None
-        assert result.id == "task-001"
-        assert repo._stale is False
-
-    @pytest.mark.asyncio
-    async def test_get_project_waits_for_fresh_data_when_stale(self, tmp_path: Path) -> None:
-        """get_project() calls _wait_for_fresh_data when _stale is True."""
-        db_path = create_test_db(tmp_path, projects=[_minimal_project()])
-        wal_path = db_path.parent / (db_path.name + "-wal")
-        wal_path.touch()
-
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        await repo.get_all()  # baseline read
-        repo._mark_stale()
-        assert repo._stale is True
-
-        wal_path.write_bytes(b"modified")
-        result = await repo.get_project("proj-001")
-        assert result is not None
-        assert result.id == "proj-001"
-        assert repo._stale is False
-
-    @pytest.mark.asyncio
-    async def test_get_tag_waits_for_fresh_data_when_stale(self, tmp_path: Path) -> None:
-        """get_tag() calls _wait_for_fresh_data when _stale is True."""
-        db_path = create_test_db(tmp_path, tags=[_minimal_tag()])
-        wal_path = db_path.parent / (db_path.name + "-wal")
-        wal_path.touch()
-
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        await repo.get_all()  # baseline read
-        repo._mark_stale()
-        assert repo._stale is True
-
-        wal_path.write_bytes(b"modified")
-        result = await repo.get_tag("tag-001")
-        assert result is not None
-        assert result.id == "tag-001"
-        assert repo._stale is False
-
-    @pytest.mark.asyncio
-    async def test_get_task_no_stale_check_when_clean(
-        self, minimal_task_repo: HybridRepository
-    ) -> None:
-        """get_task() does NOT poll when _stale is False."""
-        sleep_calls: list[float] = []
+        sleep_called = False
         original_sleep = asyncio.sleep
 
         async def tracking_sleep(duration: float) -> None:
-            sleep_calls.append(duration)
+            nonlocal sleep_called
+            sleep_called = True
+            # Modify WAL to unblock the poll immediately
+            wal_path.write_bytes(b"changed")
             await original_sleep(duration)
 
         with patch(
             "omnifocus_operator.repository.hybrid.asyncio.sleep", side_effect=tracking_sleep
         ):
-            result = await minimal_task_repo.get_task("task-001")
+            await getattr(repo, method)(arg)
 
-        assert result is not None
-        assert len(sleep_calls) == 0
+        assert sleep_called, f"{method} did not trigger WAL polling"
 
 
 class TestAddTask:
@@ -1341,7 +1237,8 @@ class TestAddTask:
     async def test_add_task_calls_bridge(self, tmp_path: Path) -> None:
         """add_task sends add_task command to bridge with correct payload."""
         db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
-        bridge = InMemoryBridge(data={"id": "new-task-1", "name": "Buy milk"})
+        wal_path = str(db_path) + "-wal"
+        bridge = InMemoryBridge(data={"id": "new-task-1", "name": "Buy milk"}, wal_path=wal_path)
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
         spec = TaskCreateSpec(name="Buy milk")
@@ -1358,7 +1255,8 @@ class TestAddTask:
         from omnifocus_operator.models.write import TaskCreateResult
 
         db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
-        bridge = InMemoryBridge(data={"id": "new-task-1", "name": "Buy milk"})
+        wal_path = str(db_path) + "-wal"
+        bridge = InMemoryBridge(data={"id": "new-task-1", "name": "Buy milk"}, wal_path=wal_path)
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
         spec = TaskCreateSpec(name="Buy milk")
@@ -1373,7 +1271,8 @@ class TestAddTask:
     async def test_add_task_excludes_none_fields(self, tmp_path: Path) -> None:
         """add_task only sends non-None fields in payload."""
         db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
-        bridge = InMemoryBridge(data={"id": "t1", "name": "Test"})
+        wal_path = str(db_path) + "-wal"
+        bridge = InMemoryBridge(data={"id": "t1", "name": "Test"}, wal_path=wal_path)
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
         spec = TaskCreateSpec(name="Test")
@@ -1390,7 +1289,8 @@ class TestAddTask:
     async def test_add_task_with_resolved_tag_ids(self, tmp_path: Path) -> None:
         """add_task includes tagIds in payload when resolved_tag_ids provided."""
         db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
-        bridge = InMemoryBridge(data={"id": "t1", "name": "Test"})
+        wal_path = str(db_path) + "-wal"
+        bridge = InMemoryBridge(data={"id": "t1", "name": "Test"}, wal_path=wal_path)
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
         spec = TaskCreateSpec(name="Test", tags=["Work"])
@@ -1405,7 +1305,8 @@ class TestAddTask:
     async def test_add_task_uses_camel_case_keys(self, tmp_path: Path) -> None:
         """add_task payload uses camelCase keys for bridge protocol."""
         db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
-        bridge = InMemoryBridge(data={"id": "t1", "name": "Test"})
+        wal_path = str(db_path) + "-wal"
+        bridge = InMemoryBridge(data={"id": "t1", "name": "Test"}, wal_path=wal_path)
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
         spec = TaskCreateSpec(
