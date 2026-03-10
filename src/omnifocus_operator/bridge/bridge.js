@@ -88,6 +88,14 @@ function ri(v) {
     return v ? { steps: v.steps, unit: v.unit } : null;
 }
 
+// --- Utilities ---
+
+function resolveTagId(id) {
+    var tag = Tag.byIdentifier(id);
+    if (!tag) throw new Error("Tag not found: " + id);
+    return tag;
+}
+
 // --- IPC functions ---
 
 function readRequest(ipcDir, filePrefix) {
@@ -235,13 +243,10 @@ function handleAddTask(params) {
     if (params.hasOwnProperty("note")) task.note = params.note;
 
     // Tags -- resolved by ID (service already validated and resolved names to IDs)
-    if (params.tagIds && params.tagIds.length > 0) {
-        var tags = params.tagIds.map(function(id) {
-            var tag = Tag.byIdentifier(id);
-            if (!tag) throw new Error("Tag not found: " + id);
-            return tag;
-        });
-        task.addTags(tags);
+    if (params.tagIds) {
+        params.tagIds
+            .map(resolveTagId)
+            .forEach(tag => task.addTag(tag));
     }
 
     return { id: task.id.primaryKey, name: task.name };
@@ -269,17 +274,18 @@ function handleEditTask(params) {
             : null;
 
     // Tag management (diff-based: service computes add/remove sets)
-    function resolveTagIds(ids) {
-        return ids.map(function(id) {
-            var tag = Tag.byIdentifier(id);
-            if (!tag) throw new Error("Tag not found: " + id);
-            return tag;
-        });
+    // OmniFocus bug workaround: removeTags with an array is unreliable,
+    // so we remove one tag at a time.
+    if (params.hasOwnProperty("removeTagIds")) {
+        params.removeTagIds
+            .map(resolveTagId)
+            .forEach(tag => task.removeTag(tag));
     }
-    if (params.hasOwnProperty("removeTagIds"))
-        task.removeTags(resolveTagIds(params.removeTagIds));
-    if (params.hasOwnProperty("addTagIds"))
-        task.addTags(resolveTagIds(params.addTagIds));
+    if (params.hasOwnProperty("addTagIds")) {
+        params.addTagIds
+            .map(resolveTagId)
+            .forEach(tag => task.addTag(tag));
+    }
 
     // Movement
     if (params.hasOwnProperty("moveTo")) {

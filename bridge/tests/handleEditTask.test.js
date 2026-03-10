@@ -109,8 +109,8 @@ describe("handleEditTask", function () {
       deferDate: null,
       plannedDate: null,
       clearTags: vi.fn(),
-      addTags: vi.fn(),
-      removeTags: vi.fn(),
+      addTag: vi.fn(),
+      removeTag: vi.fn(),
     };
 
     // Restore Task with byIdentifier that returns our mock
@@ -252,8 +252,9 @@ describe("handleEditTask", function () {
 
     expect(Tag.byIdentifier).toHaveBeenCalledWith("tag-a");
     expect(Tag.byIdentifier).toHaveBeenCalledWith("tag-b");
-    expect(mockTask.addTags).toHaveBeenCalledWith([tag1, tag2]);
-    expect(mockTask.removeTags).not.toHaveBeenCalled();
+    expect(mockTask.addTag).toHaveBeenCalledWith(tag1);
+    expect(mockTask.addTag).toHaveBeenCalledWith(tag2);
+    expect(mockTask.removeTag).not.toHaveBeenCalled();
   });
 
   it("removes tags via removeTagIds", function () {
@@ -269,8 +270,8 @@ describe("handleEditTask", function () {
     });
 
     expect(Tag.byIdentifier).toHaveBeenCalledWith("tag-a");
-    expect(mockTask.removeTags).toHaveBeenCalledWith([tag1]);
-    expect(mockTask.addTags).not.toHaveBeenCalled();
+    expect(mockTask.removeTag).toHaveBeenCalledWith(tag1);
+    expect(mockTask.addTag).not.toHaveBeenCalled();
   });
 
   it("processes removeTagIds before addTagIds when both present", function () {
@@ -288,10 +289,10 @@ describe("handleEditTask", function () {
       removeTagIds: ["tag-rm"],
     });
 
-    expect(mockTask.removeTags).toHaveBeenCalledWith([tagRemove]);
-    expect(mockTask.addTags).toHaveBeenCalledWith([tagAdd]);
-    var removeOrder = mockTask.removeTags.mock.invocationCallOrder[0];
-    var addOrder = mockTask.addTags.mock.invocationCallOrder[0];
+    expect(mockTask.removeTag).toHaveBeenCalledWith(tagRemove);
+    expect(mockTask.addTag).toHaveBeenCalledWith(tagAdd);
+    var removeOrder = mockTask.removeTag.mock.invocationCallOrder[0];
+    var addOrder = mockTask.addTag.mock.invocationCallOrder[0];
     expect(removeOrder).toBeLessThan(addOrder);
   });
 
@@ -468,7 +469,7 @@ describe("handleEditTask", function () {
     expect(mockTask.name).toBe("Renamed");
     expect(mockTask.flagged).toBe(true);
     expect(mockTask.dueDate).toEqual(new Date("2026-12-31T23:59:59Z"));
-    expect(mockTask.addTags).toHaveBeenCalledWith([tag1]);
+    expect(mockTask.addTag).toHaveBeenCalledWith(tag1);
     expect(moveTasks).toHaveBeenCalledWith([mockTask], "proj-dest-ending");
     expect(result).toEqual({ id: "task-edit-001", name: "Renamed" });
   });

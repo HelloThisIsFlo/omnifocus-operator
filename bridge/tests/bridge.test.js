@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { readFileSync } from "fs";
+import { resolve } from "path";
 
 // Mock OmniFocus globals before requiring bridge.js
 var mockWrite = vi.fn();
@@ -209,6 +211,31 @@ vi.stubGlobal("console", {
 
 // Import bridge module (test mode: module is defined, so exports are available)
 var bridge = require("../../src/omnifocus_operator/bridge/bridge.js");
+
+describe("OmniFocus bug guard — batch tag methods are broken", function () {
+  // OmniFocus has a bug where the batch methods addTags([...]) and
+  // removeTags([...]) sometimes fail silently. The same call may work
+  // or not work — it's completely unreliable. We work around this by
+  // calling addTag/removeTag one tag at a time.
+  //
+  // These tests scan bridge.js source to ensure nobody accidentally
+  // reintroduces the flaky batch calls.
+
+  var source = readFileSync(
+    resolve(__dirname, "../../src/omnifocus_operator/bridge/bridge.js"),
+    "utf-8"
+  );
+
+  it("never calls task.addTags() (batch) — use addTag() one at a time instead", function () {
+    var matches = source.match(/\.addTags\s*\(/g);
+    expect(matches).toBeNull();
+  });
+
+  it("never calls task.removeTags() (batch) — use removeTag() one at a time instead", function () {
+    var matches = source.match(/\.removeTags\s*\(/g);
+    expect(matches).toBeNull();
+  });
+});
 
 describe("helper functions", function () {
   it("d() formats dates to ISO string", function () {
@@ -478,7 +505,7 @@ describe("handleAddTask", function () {
         flagged: false,
         estimatedMinutes: null,
         note: null,
-        addTags: vi.fn(),
+        addTag: vi.fn(),
       };
       createdTasks.push(t);
       return t;
@@ -585,7 +612,7 @@ describe("handleAddTask", function () {
     expect(createdTasks[0].note).toBe("Some details");
   });
 
-  it("resolves tags by ID via Tag.byIdentifier and calls addTags", function () {
+  it("resolves tags by ID via Tag.byIdentifier and calls addTag per tag", function () {
     var mockTag1 = { id: { primaryKey: "tag-a" }, name: "urgent" };
     var mockTag2 = { id: { primaryKey: "tag-b" }, name: "work" };
     Tag.byIdentifier
@@ -599,7 +626,8 @@ describe("handleAddTask", function () {
 
     expect(Tag.byIdentifier).toHaveBeenCalledWith("tag-a");
     expect(Tag.byIdentifier).toHaveBeenCalledWith("tag-b");
-    expect(createdTasks[0].addTags).toHaveBeenCalledWith([mockTag1, mockTag2]);
+    expect(createdTasks[0].addTag).toHaveBeenCalledWith(mockTag1);
+    expect(createdTasks[0].addTag).toHaveBeenCalledWith(mockTag2);
   });
 
   it("throws error when tag not found by ID", function () {
@@ -719,7 +747,7 @@ describe("dispatch", function () {
       return {
         id: { primaryKey: "dispatch-task-001" },
         name: name,
-        addTags: vi.fn(),
+        addTag: vi.fn(),
       };
     };
     TaskCtor.Status = origTask.Status;
