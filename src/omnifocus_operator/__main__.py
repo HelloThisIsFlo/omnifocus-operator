@@ -4,20 +4,26 @@ from __future__ import annotations
 
 import logging
 import os
-import sys
 
 
 def main() -> None:
     """Run the OmniFocus Operator MCP server."""
-    logging.basicConfig(
-        level=os.environ.get("OMNIFOCUS_LOG_LEVEL", "INFO").upper(),
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        stream=sys.stderr,
-    )
-
     from omnifocus_operator.server import create_server
 
     server = create_server()
+
+    # Log to file — stdio_server() hijacks stderr, so file is the reliable path.
+    log_path = os.path.expanduser("~/Library/Logs/omnifocus-operator.log")
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    log = logging.getLogger("omnifocus_operator")
+    log.setLevel(os.environ.get("OMNIFOCUS_LOG_LEVEL", "INFO").upper())
+    log.propagate = False
+    handler = logging.FileHandler(log_path)
+    handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+    log.addHandler(handler)
+
+    log.warning("🚀🚀🚀 OMNIFOCUS-OPERATOR SERVER STARTING 🚀🚀🚀")
+
     server.run(transport="stdio")
 
 

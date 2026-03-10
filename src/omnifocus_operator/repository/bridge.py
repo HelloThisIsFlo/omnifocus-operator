@@ -13,10 +13,13 @@ Design decisions (from phase 04 research + user choices):
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import TYPE_CHECKING, Any
 
 from omnifocus_operator.bridge.adapter import adapt_snapshot
 from omnifocus_operator.models.snapshot import AllEntities
+
+logger = logging.getLogger("omnifocus_operator")
 
 if TYPE_CHECKING:
     from omnifocus_operator.bridge.mtime import MtimeSource
@@ -69,7 +72,15 @@ class BridgeRepository:
             current_mtime = await self._mtime_source.get_mtime_ns()
 
             if self._cached is None or current_mtime != self._last_mtime_ns:
+                logger.debug("BridgeRepository.get_all: cache miss/stale, refreshing via bridge")
                 self._cached = await self._refresh(current_mtime)
+            else:
+                logger.debug(
+                    "BridgeRepository.get_all: cache hit, tasks=%d, projects=%d, tags=%d",
+                    len(self._cached.tasks),
+                    len(self._cached.projects),
+                    len(self._cached.tags),
+                )
 
             return self._cached
 
@@ -106,16 +117,20 @@ class BridgeRepository:
         if resolved_tag_ids is not None:
             payload["tagIds"] = resolved_tag_ids
 
+        logger.debug("BridgeRepository.add_task: sending to bridge")
         result = await self._bridge.send_command("add_task", payload)
         # Invalidate cache so next get_all fetches fresh data
         self._cached = None
+        logger.debug("BridgeRepository.add_task: cache invalidated, id=%s", result["id"])
 
         return TaskCreateResult(success=True, id=result["id"], name=result["name"])
 
     async def edit_task(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Edit a task via bridge and invalidate cache."""
+        logger.debug("BridgeRepository.edit_task: sending to bridge")
         result = await self._bridge.send_command("edit_task", payload)
         self._cached = None
+        logger.debug("BridgeRepository.edit_task: cache invalidated, id=%s", result.get("id"))
         return result
 
     async def _refresh(self, current_mtime: int) -> AllEntities:
@@ -124,9 +139,16 @@ class BridgeRepository:
         On success, updates ``_cached`` and ``_last_mtime_ns``.
         On failure, cache is **not** modified (preserves old or None).
         """
+        logger.debug("BridgeRepository._refresh: fetching full snapshot via bridge")
         raw: dict[str, Any] = await self._bridge.send_command("get_all")
         # Transform bridge-format -> new model shape (no-op if already new shape)
         adapt_snapshot(raw)
         result = AllEntities.model_validate(raw)
         self._last_mtime_ns = current_mtime
+        logger.debug(
+            "BridgeRepository._refresh: tasks=%d, projects=%d, tags=%d",
+            len(result.tasks),
+            len(result.projects),
+            len(result.tags),
+        )
         return result

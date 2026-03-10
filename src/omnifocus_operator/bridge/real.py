@@ -6,6 +6,7 @@ import asyncio
 import errno
 import importlib.resources
 import json
+import logging
 import os
 import re
 import subprocess
@@ -19,6 +20,8 @@ from omnifocus_operator.bridge.errors import (
     BridgeProtocolError,
     BridgeTimeoutError,
 )
+
+logger = logging.getLogger("omnifocus_operator")
 
 OMNIFOCUS_CONTAINER: Path = Path.home() / "Library" / "Containers" / "com.omnigroup.OmniFocus4"
 """Root of the OmniFocus 4 sandboxed container on macOS.
@@ -135,9 +138,16 @@ class RealBridge:
         """Send a command to OmniFocus and return the parsed response data."""
         request_id = uuid.uuid4()
         file_prefix = f"{self._pid}_{request_id}"
+        logger.debug(
+            "RealBridge.send_command: operation=%s, params=%r, request_id=%s",
+            operation,
+            params,
+            request_id,
+        )
 
         await self._write_request(request_id, operation, params)
         self._trigger_omnifocus(file_prefix)
+        logger.debug("RealBridge.send_command: waiting for response (timeout=%.1fs)", self._timeout)
 
         try:
             raw = await asyncio.wait_for(
@@ -145,12 +155,16 @@ class RealBridge:
                 timeout=self._timeout,
             )
         except TimeoutError:
+            logger.debug(
+                "RealBridge.send_command: TIMEOUT after %.1fs for %s", self._timeout, operation
+            )
             await self._cleanup_request(request_id)
             raise BridgeTimeoutError(
                 operation=operation,
                 timeout_seconds=self._timeout,
             ) from None
 
+        logger.debug("RealBridge.send_command: response received for %s", operation)
         result = self._validate_response(raw, operation)
         await self._cleanup_files(request_id)
         return result

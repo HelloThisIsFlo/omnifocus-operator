@@ -27,10 +27,14 @@ if TYPE_CHECKING:
     from omnifocus_operator.bridge.protocol import Bridge
     from omnifocus_operator.models.write import TaskCreateResult, TaskCreateSpec
 
+import logging
+
 from omnifocus_operator.models.project import Project
 from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.models.tag import Tag
 from omnifocus_operator.models.task import Task
+
+logger = logging.getLogger("omnifocus_operator")
 
 __all__ = ["HybridRepository"]
 
@@ -462,8 +466,16 @@ class HybridRepository:
         if resolved_tag_ids is not None:
             payload["tagIds"] = resolved_tag_ids
 
+        logger.debug(
+            "HybridRepository.add_task: sending to bridge, payload keys=%s",
+            list(payload.keys()),
+        )
         result = await self._bridge.send_command("add_task", payload)
         self._mark_stale()
+        logger.debug(
+            "HybridRepository.add_task: bridge returned id=%s; marked stale",
+            result["id"],
+        )
 
         return TaskCreateResult(success=True, id=result["id"], name=result["name"])
 
@@ -472,19 +484,35 @@ class HybridRepository:
         if self._bridge is None:
             msg = "HybridRepository requires a bridge for write operations"
             raise RuntimeError(msg)
+        logger.debug(
+            "HybridRepository.edit_task: sending to bridge, payload keys=%s",
+            list(payload.keys()),
+        )
         result = await self._bridge.send_command("edit_task", payload)
         self._mark_stale()
+        logger.debug(
+            "HybridRepository.edit_task: bridge returned id=%s; marked stale", result.get("id")
+        )
         return result
 
     async def get_all(self) -> AllEntities:
         """Return all OmniFocus entities from the SQLite cache."""
+        logger.debug("HybridRepository.get_all: stale=%s", self._stale)
         if self._stale:
+            logger.debug("HybridRepository.get_all: waiting for fresh data from OmniFocus")
             await self._wait_for_fresh_data()
             self._stale = False
         result = await asyncio.to_thread(self._read_all)
         # Update mtime tracking after read
         self._last_wal_mtime_ns = await self._get_current_mtime_ns()
-        return AllEntities.model_validate(result)
+        entities = AllEntities.model_validate(result)
+        logger.debug(
+            "HybridRepository.get_all: tasks=%d, projects=%d, tags=%d",
+            len(entities.tasks),
+            len(entities.projects),
+            len(entities.tags),
+        )
+        return entities
 
     async def _get_current_mtime_ns(self) -> int:
         """Get current WAL or DB file mtime in nanoseconds."""
@@ -506,8 +534,14 @@ class HybridRepository:
         while time.monotonic() < deadline:
             current_mtime = await self._get_current_mtime_ns()
             if current_mtime != self._last_wal_mtime_ns:
+                logger.debug(
+                    "HybridRepository._wait_for_fresh_data: mtime changed, OmniFocus write detected"
+                )
                 return
             await asyncio.sleep(0.05)
+        logger.debug(
+            "HybridRepository._wait_for_fresh_data: timeout, proceeding with possibly stale data"
+        )
 
     def _read_all(self) -> dict[str, Any]:
         """Synchronous read of all entities from SQLite.

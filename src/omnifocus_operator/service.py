@@ -65,18 +65,22 @@ class OperatorService:
         from the repository (bridge errors, validation errors, mtime
         errors) propagate to the caller unchanged.
         """
+        logger.debug("OperatorService.get_all_data: delegating to repository")
         return await self._repository.get_all()
 
     async def get_task(self, task_id: str) -> Task | None:
         """Return a single task by ID, or None if not found."""
+        logger.debug("OperatorService.get_task: id=%s", task_id)
         return await self._repository.get_task(task_id)
 
     async def get_project(self, project_id: str) -> Project | None:
         """Return a single project by ID, or None if not found."""
+        logger.debug("OperatorService.get_project: id=%s", project_id)
         return await self._repository.get_project(project_id)
 
     async def get_tag(self, tag_id: str) -> Tag | None:
         """Return a single tag by ID, or None if not found."""
+        logger.debug("OperatorService.get_tag: id=%s", tag_id)
         return await self._repository.get_tag(tag_id)
 
     async def add_task(self, spec: TaskCreateSpec) -> TaskCreateResult:
@@ -90,6 +94,13 @@ class OperatorService:
         ValueError
             If name is empty, parent not found, or tag resolution fails.
         """
+        logger.debug(
+            "OperatorService.add_task: name=%s, parent=%s, tags=%s",
+            spec.name,
+            spec.parent,
+            spec.tags,
+        )
+
         # Validate name
         if not spec.name or not spec.name.strip():
             msg = "Task name is required"
@@ -103,7 +114,13 @@ class OperatorService:
         resolved_tag_ids: list[str] | None = None
         if spec.tags is not None:
             resolved_tag_ids = await self._resolve_tags(spec.tags)
+            logger.debug(
+                "OperatorService.add_task: resolved %d tags to IDs: %s",
+                len(resolved_tag_ids),
+                resolved_tag_ids,
+            )
 
+        logger.debug("OperatorService.add_task: delegating to repository")
         return await self._repository.add_task(spec, resolved_tag_ids=resolved_tag_ids)
 
     async def edit_task(self, spec: TaskEditSpec) -> TaskEditResult:
@@ -122,10 +139,16 @@ class OperatorService:
         from omnifocus_operator.models.write import TaskEditResult, _Unset
 
         # 1. Verify task exists
+        logger.debug("OperatorService.edit_task: id=%s, fetching current state", spec.id)
         task = await self._repository.get_task(spec.id)
         if task is None:
             msg = f"Task not found: {spec.id}"
             raise ValueError(msg)
+        logger.debug(
+            "OperatorService.edit_task: task found, name=%s, current_tags=%d",
+            task.name,
+            len(task.tags),
+        )
 
         warnings: list[str] = []
 
@@ -192,10 +215,15 @@ class OperatorService:
             assert not isinstance(spec.actions, _Unset)
             tag_actions: TagActionSpec = spec.actions.tags  # type: ignore[assignment]
             add_ids, remove_ids, tag_warnings = await self._compute_tag_diff(tag_actions, task.tags)
+            logger.debug("OperatorService.edit_task: current_tags=%s", [t.id for t in task.tags])
+            logger.debug(
+                "OperatorService.edit_task: tag diff add_ids=%s, remove_ids=%s", add_ids, remove_ids
+            )
             if add_ids:
                 payload["addTagIds"] = add_ids
             if remove_ids:
                 payload["removeTagIds"] = remove_ids
+            logger.debug("OperatorService.edit_task: payload keys=%s", list(payload.keys()))
             warnings.extend(tag_warnings)
 
         # 5. Handle moveTo
@@ -205,6 +233,7 @@ class OperatorService:
             and not isinstance(spec.actions.move, _Unset)
         )
         if has_move:
+            logger.debug("OperatorService.edit_task: processing move action")
             assert not isinstance(spec.actions, _Unset)
             move_to_spec: MoveToSpec = spec.actions.move  # type: ignore[assignment]
             move_to_dict: dict[str, object] = {}
@@ -240,6 +269,7 @@ class OperatorService:
 
         # 6. Early return for completely empty edit (no fields, no tags, no move)
         if len(payload) == 1:  # Only "id" key
+            logger.debug("OperatorService.edit_task: empty edit (no fields), returning early")
             return TaskEditResult(
                 success=True,
                 id=spec.id,
@@ -301,6 +331,9 @@ class OperatorService:
                 is_noop = False
 
         if is_noop and len(payload) >= 1:
+            logger.debug(
+                "OperatorService.edit_task: no-op detected, all values match current state"
+            )
             warnings.append(
                 "No changes detected -- the task already has these values. "
                 "If you don't want to change a field, omit it from the request."
@@ -313,6 +346,10 @@ class OperatorService:
             )
 
         # 8. Delegate to repository
+        logger.debug(
+            "OperatorService.edit_task: delegating to repository, payload keys=%s",
+            list(payload.keys()),
+        )
         result = await self._repository.edit_task(payload)
 
         # 9. Return result
@@ -329,12 +366,16 @@ class OperatorService:
         Walks the parent chain from container_id upward. If task_id is
         found, the move would create a circular reference.
         """
+        logger.debug(
+            "OperatorService._check_cycle: task=%s under container=%s", task_id, container_id
+        )
         all_data = await self._repository.get_all()
         task_map = {t.id: t for t in all_data.tasks}
 
         current = container_id
         while current is not None:
             if current == task_id:
+                logger.debug("OperatorService._check_cycle: CYCLE DETECTED")
                 msg = "Cannot move task: would create circular reference"
                 raise ValueError(msg)
             t = task_map.get(current)
@@ -346,12 +387,15 @@ class OperatorService:
 
     async def _resolve_parent(self, parent_id: str) -> str:
         """Resolve parent ID to project or task. Raises ValueError if neither found."""
+        logger.debug("OperatorService._resolve_parent: id=%s", parent_id)
         project = await self._repository.get_project(parent_id)
         if project is not None:
+            logger.debug("OperatorService._resolve_parent: resolved as project")
             return parent_id
 
         task = await self._repository.get_task(parent_id)
         if task is not None:
+            logger.debug("OperatorService._resolve_parent: resolved as task")
             return parent_id
 
         msg = f"Parent not found: {parent_id}"
@@ -359,6 +403,9 @@ class OperatorService:
 
     async def _resolve_tags(self, tag_names: list[str]) -> list[str]:
         """Resolve tag names to IDs case-insensitively. Falls back to ID lookup."""
+        logger.debug(
+            "OperatorService._resolve_tags: resolving %d tags: %s", len(tag_names), tag_names
+        )
         all_data = await self._repository.get_all()
         resolved: list[str] = []
 
@@ -374,6 +421,9 @@ class OperatorService:
                 raise ValueError(msg)
             else:
                 # No name match -- try as ID fallback
+                logger.debug(
+                    "OperatorService._resolve_tags: '%s' no name match, trying as ID", name
+                )
                 tag = await self._repository.get_tag(name)
                 if tag is not None:
                     resolved.append(tag.id)
@@ -403,6 +453,13 @@ class OperatorService:
         has_replace = not isinstance(tag_actions.replace, _Unset)
         has_add = not isinstance(tag_actions.add, _Unset)
         has_remove = not isinstance(tag_actions.remove, _Unset)
+        logger.debug("OperatorService._compute_tag_diff: current_ids=%s", current_ids)
+        logger.debug(
+            "OperatorService._compute_tag_diff: has_replace=%s, has_add=%s, has_remove=%s",
+            has_replace,
+            has_add,
+            has_remove,
+        )
 
         # Build tag ID -> name map for warning display names
         all_tag_names: dict[str, str] = {}

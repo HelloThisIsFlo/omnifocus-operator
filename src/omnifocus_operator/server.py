@@ -41,6 +41,19 @@ __all__ = ["create_server"]
 logger = logging.getLogger("omnifocus_operator")
 
 
+def log_tool_call(name: str, **params: object) -> None:
+    """Log a standardized tool invocation message."""
+    separator = "=" * 80
+    logger.debug("")  # visual spacer before each tool block
+    logger.debug(separator)
+    if params:
+        formatted = ", ".join(f"{key}={value!r}" for key, value in params.items())
+        logger.debug("Tool invoked: %s(%s)", name, formatted)
+    else:
+        logger.debug("Tool invoked: %s", name)
+    logger.debug(separator)
+
+
 @asynccontextmanager
 async def app_lifespan(app: FastMCP) -> AsyncIterator[dict[str, object]]:
     """Create the service stack and yield it for tool handlers.
@@ -99,7 +112,15 @@ def _register_tools(mcp: FastMCP) -> None:
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
         service: OperatorService = ctx.request_context.lifespan_context["service"]
-        return await service.get_all_data()
+        log_tool_call("get_all")
+        result = await service.get_all_data()
+        logger.debug(
+            "server.get_all: returning tasks=%d, projects=%d, tags=%d",
+            len(result.tasks),
+            len(result.projects),
+            len(result.tags),
+        )
+        return result
 
     @mcp.tool(
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
@@ -108,11 +129,13 @@ def _register_tools(mcp: FastMCP) -> None:
         """Look up a single task by its ID. Returns the full Task object."""
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
+        log_tool_call("get_task", id=id)
         service: OperatorService = ctx.request_context.lifespan_context["service"]
         result = await service.get_task(id)
         if result is None:
             msg = f"Task not found: {id}"
             raise ValueError(msg)
+        logger.debug("server.get_task: returning name=%s", result.name)
         return result
 
     @mcp.tool(
@@ -122,11 +145,13 @@ def _register_tools(mcp: FastMCP) -> None:
         """Look up a single project by its ID. Returns the full Project object."""
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
+        log_tool_call("get_project", id=id)
         service: OperatorService = ctx.request_context.lifespan_context["service"]
         result = await service.get_project(id)
         if result is None:
             msg = f"Project not found: {id}"
             raise ValueError(msg)
+        logger.debug("server.get_project: returning name=%s", result.name)
         return result
 
     @mcp.tool(
@@ -136,11 +161,13 @@ def _register_tools(mcp: FastMCP) -> None:
         """Look up a single tag by its ID. Returns the full Tag object."""
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
+        log_tool_call("get_tag", id=id)
         service: OperatorService = ctx.request_context.lifespan_context["service"]
         result = await service.get_tag(id)
         if result is None:
             msg = f"Tag not found: {id}"
             raise ValueError(msg)
+        logger.debug("server.get_tag: returning name=%s", result.name)
         return result
 
     @mcp.tool(
@@ -172,6 +199,7 @@ def _register_tools(mcp: FastMCP) -> None:
 
         Returns array of results: [{success, id, name}]
         """
+        log_tool_call("add_tasks", items=len(items))
         if len(items) != 1:
             msg = f"add_tasks currently accepts exactly 1 item, got {len(items)}"
             raise ValueError(msg)
@@ -183,8 +211,10 @@ def _register_tools(mcp: FastMCP) -> None:
             spec = TaskCreateSpec.model_validate(items[0])
         except ValidationError as exc:
             messages = "; ".join(e["msg"] for e in exc.errors() if "_Unset" not in e["msg"])
+            logger.debug("server.add_tasks: validation error: %s", messages)
             raise ValueError(messages or "Invalid input") from None
         result = await service.add_task(spec)
+        logger.debug("server.add_tasks: returning id=%s, name=%s", result.id, result.name)
         return [result]
 
     @mcp.tool(
@@ -225,6 +255,7 @@ def _register_tools(mcp: FastMCP) -> None:
 
         Returns array of results: [{success, id, name, warnings?}]
         """
+        log_tool_call("edit_tasks", items=len(items))
         if len(items) != 1:
             msg = f"edit_tasks currently accepts exactly 1 item, got {len(items)}"
             raise ValueError(msg)
@@ -236,8 +267,15 @@ def _register_tools(mcp: FastMCP) -> None:
             spec = TaskEditSpec.model_validate(items[0])
         except ValidationError as exc:
             messages = "; ".join(e["msg"] for e in exc.errors() if "_Unset" not in e["msg"])
+            logger.debug("server.edit_tasks: validation error: %s", messages)
             raise ValueError(messages or "Invalid input") from None
         result = await service.edit_task(spec)
+        logger.debug(
+            "server.edit_tasks: returning id=%s, success=%s, warnings=%s",
+            result.id,
+            result.success,
+            result.warnings,
+        )
         return [result]
 
 
