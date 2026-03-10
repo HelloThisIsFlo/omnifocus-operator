@@ -111,7 +111,7 @@ Plans:
 **Goal:** Move tag set computation from bridge.js (4-branch dispatch) to Python service layer (_compute_tag_diff). Bridge receives only addTagIds/removeTagIds. Pure internal refactor -- API surface unchanged.
 **Requirements**: BTAG-01, BTAG-02, BTAG-03, BTAG-04, BTAG-05
 **Depends on:** Phase 16.1
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
 - [ ] 16.2-01-PLAN.md -- Python diff computation (_compute_tag_diff helper) + InMemoryRepository adaptation + service test rewrite
@@ -159,7 +159,7 @@ Phases execute in numeric order: 14 -> 15 -> 16 -> 17
 | 15. Write Pipeline & Task Creation | 4/4 | Complete    | 2026-03-08 | - |
 | 16. Task Editing | 6/6 | Complete    | 2026-03-09 | - |
 | 16.1. Actions Grouping | 3/3 | Complete    | 2026-03-09 | - |
-| 16.2. Bridge Tag Simplification | v1.2 | 0/2 | Not started | - |
+| 16.2. Bridge Tag Simplification | 1/2 | In Progress|  | - |
 | 17. Task Lifecycle | v1.2 | 0/? | Not started | - |
 
 ### Phase 18: Repetition rule write support: structured fields, not RRULE strings

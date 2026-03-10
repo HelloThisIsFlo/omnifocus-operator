@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 16.1 - Introduce actions grouping to edit_tasks
+**Current focus:** Phase 16.2 - Simplify bridge tag handling to diff-based approach
 
 ## Current Position
 
-Phase: 16.1 (Actions Grouping) -- inserted after Phase 16
-Plan: 3 of 3 (complete)
-Status: Phase 16.1 complete -- all 3 plans done (models+service, service tests, server tests+docs)
-Last activity: 2026-03-09 - Completed plan 16.1-03: server tests, docstring, UAT skill rewrite
+Phase: 16.2 (Bridge Tag Simplification) -- inserted after Phase 16.1
+Plan: 1 of 2
+Status: Plan 01 complete (Python-side diff-based tag handling)
+Last activity: 2026-03-10 - Completed plan 16.2-01: _compute_tag_diff helper, refactored service+repo
 
-Progress: [██████████] 100%
+Progress: [█████████░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 15 (v1.2)
+- Total plans completed: 16 (v1.2)
 - Average duration: 3.8min
-- Total execution time: 51min
+- Total execution time: 55min
 
 **By Phase:**
 
@@ -47,6 +47,7 @@ Progress: [██████████] 100%
 | 15 | 4/4 | 19min | 4.8min |
 | 16 | 6/6 | 22min | 3.7min |
 | 16.1 | 3/3 | 11min | 3.7min |
+| 16.2 | 1/2 | 4min | 4min |
 
 ## Accumulated Context
 
@@ -84,6 +85,9 @@ Progress: [██████████] 100%
 - [Phase 16.1]: Lifecycle fail-fast before any tag/move resolution work
 - [Phase 16.1]: Tasks 1+2 committed together due to mypy requiring consistent model+service state
 - [Phase 16.1]: Error assertion: 'Cannot use tags' -> 'Cannot use replace' to match TagActionSpec validator message
+- [Phase 16.2]: Diff-based tag computation: _compute_tag_diff computes minimal (add, remove) sets from TagActionSpec
+- [Phase 16.2]: No tagMode in payload -- empty diff = no tag keys = implicit no-op via len(payload) check
+- [Phase 16.2]: Replace no-op warning when replace produces empty diff (tags already match)
 
 ### Roadmap Evolution
 
@@ -113,6 +117,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-10T00:33:09.294Z
-Stopped at: Phase 16.2 context gathered
-Next action: Phase 16.1 complete. Next: Phase 16.2 (bridge tag simplification) or UAT verification
+Last session: 2026-03-10T00:57:53Z
+Stopped at: Completed 16.2-01-PLAN.md
+Next action: Phase 16.2 Plan 02 (bridge.js simplification)
