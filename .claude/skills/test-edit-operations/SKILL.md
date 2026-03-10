@@ -209,7 +209,8 @@ Use tag IDs from Step 1.1. Call them tag-a, tag-b, tag-c below.
 
 #### Test 8a: Replace tags
 1. `actions: { tags: { replace: [<tag-a>, <tag-b>] } }` on T8
-2. PASS if: success
+2. `get_task` to verify tag-a and tag-b are present
+3. PASS if: success, both tags confirmed via get_task
 
 #### Test 8b: Replace with different
 1. `actions: { tags: { replace: [<tag-c>] } }` on T8
@@ -223,11 +224,13 @@ Use tag IDs from Step 1.1. Call them tag-a, tag-b, tag-c below.
 #### Test 8d: Add incremental
 1. `actions: { tags: { add: [<tag-a>] } }` on T8
 2. `actions: { tags: { add: [<tag-b>] } }` on T8
-3. PASS if: both succeed
+3. `get_task` to verify both tag-a and tag-b are present
+4. PASS if: both succeed, both tags confirmed via get_task
 
 #### Test 8e: Remove selective
 1. `actions: { tags: { remove: [<tag-a>] } }` on T8
-2. PASS if: success (also confirms Fix 1 works in this context)
+2. `get_task` to verify tag-a is gone and tag-b remains
+3. PASS if: success, correct tags confirmed via get_task
 
 #### Test 8f: Mixed ID and name
 1. `actions: { tags: { add: [<tag-a-id>, <tag-c-name>] } }` on T8 (one by ID, one by name)
@@ -242,7 +245,14 @@ Use tag IDs from Step 1.1. Call them tag-a, tag-b, tag-c below.
 #### Test 8h: add + remove combo
 1. Clean T8 tags first, then `actions: { tags: { add: [<tag-b>] } }`
 2. `actions: { tags: { add: [<tag-a>], remove: [<tag-b>] } }` on T8
-3. PASS if: success, tag-a added, tag-b removed
+3. `get_task` to verify tag-a present and tag-b gone
+4. PASS if: success, correct tags confirmed via get_task
+
+#### Test 8i: Multi-tag remove
+1. Ensure T8 has tag-a and tag-b (add both if needed, one at a time)
+2. `actions: { tags: { remove: [<tag-a>, <tag-b>] } }` on T8 (both in one call)
+3. `get_task` to verify both tags are gone
+4. PASS if: success, both tags removed in a single call
 
 ### Section D — Movement
 
@@ -380,14 +390,15 @@ Every test gets its own row (no grouping like "8a-8h"). Use this format:
 | 7d | Name change | Renaming a task and verifying the response reflects the new name | PASS/FAIL |
 | 7e | Multi-field single call | Setting flagged, note, estimatedMinutes, and dueDate in one call; all applied | PASS/FAIL |
 | 7f | plannedDate set + clear | Setting plannedDate, then clearing with null | PASS/FAIL |
-| 8a | Tags: replace | Replace all tags using actions.tags.replace | PASS/FAIL |
+| 8a | Tags: replace | Replace all tags using actions.tags.replace; verify via get_task | PASS/FAIL |
 | 8b | Tags: replace with different | Replace tags with a different set; verify old tags gone | PASS/FAIL |
 | 8c | Tags: clear all | Set actions.tags.replace to [] to remove all tags | PASS/FAIL |
-| 8d | Tags: add incremental | Add tags one at a time with actions.tags.add | PASS/FAIL |
-| 8e | Tags: remove selective | Remove one tag with actions.tags.remove (also confirms remove-alone works) | PASS/FAIL |
+| 8d | Tags: add incremental | Add tags one at a time with actions.tags.add; verify via get_task | PASS/FAIL |
+| 8e | Tags: remove selective | Remove one tag with actions.tags.remove; verify via get_task | PASS/FAIL |
 | 8f | Tags: mixed ID and name | Add tags using a mix of tag IDs and tag names in one call | PASS/FAIL |
 | 8g | Tags: ambiguous name | Adding a tag by name when multiple tags share that name returns an ambiguity error | PASS/FAIL/SKIP |
-| 8h | Tags: add + remove combo | actions.tags.add and actions.tags.remove in the same call; verify both applied | PASS/FAIL |
+| 8h | Tags: add + remove combo | actions.tags.add and actions.tags.remove in the same call; verify via get_task | PASS/FAIL |
+| 8i | Tags: multi-tag remove | Remove 2 tags in one call with actions.tags.remove; verify via get_task | PASS/FAIL |
 | 9a | Move: all 5 modes | Test after, before, beginning, ending, and ending:null (inbox) movements | PASS/FAIL |
 | 9b | Move: carries children | Moving a parent task preserves its children (hasChildren still true) | PASS/FAIL |
 | 9c | Move: cross-level | Moving a grandchild to a different nesting level and back | PASS/FAIL |
@@ -462,3 +473,5 @@ Output improvement suggestions in a SEPARATE code block. This is for the user's 
 ````
 
 Only include items you actually observed during the run — don't pad with generic suggestions. If a section would be empty, omit it.
+
+**IMPORTANT:** Do NOT repeat bugs or issues already captured in the UAT Failures section. The Nice-to-Haves are for observations that go beyond what the test suite covers — wording improvements, UX polish, missing test coverage, architectural suggestions, etc. If something already has a FAIL row in the UAT table, it belongs there, not here.
