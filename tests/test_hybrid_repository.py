@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 import pytest
 
 from omnifocus_operator.models.snapshot import AllEntities
+from omnifocus_operator.models.write import TaskCreateSpec
 from omnifocus_operator.repository.hybrid import HybridRepository
 from omnifocus_operator.repository.protocol import Repository
 
@@ -1191,6 +1192,30 @@ class TestFreshness:
         assert not hasattr(Repository, "_mark_stale")
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("method", "arg"),
+        [
+            pytest.param("add_task", TaskCreateSpec(name="Test"), id="add_task"),
+            pytest.param("edit_task", {"id": "task-001", "name": "Edited"}, id="edit_task"),
+        ],
+    )
+    async def test_mutating_operations_mark_stale(
+        self,
+        tmp_path: Path,
+        method: str,
+        arg: Any,
+    ) -> None:
+        """All write operations mark the cache stale."""
+        from omnifocus_operator.bridge.in_memory import InMemoryBridge
+
+        bridge = InMemoryBridge(data={"id": "task-001", "name": "Test"})
+        repo = HybridRepository(db_path=tmp_path / "fake.db", bridge=bridge)
+
+        with patch.object(repo, "_mark_stale") as mock_stale:
+            await getattr(repo, method)(arg)
+            mock_stale.assert_called_once()
+
+    @pytest.mark.asyncio
     async def test_get_task_waits_for_fresh_data_when_stale(self, tmp_path: Path) -> None:
         """get_task() calls _wait_for_fresh_data when _stale is True."""
         db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
@@ -1305,21 +1330,6 @@ class TestAddTask:
         assert result.success is True
         assert result.id == "new-task-1"
         assert result.name == "Buy milk"
-
-    @pytest.mark.asyncio
-    async def test_add_task_marks_stale(self, tmp_path: Path) -> None:
-        """add_task sets _stale=True for next get_all freshness check."""
-        from omnifocus_operator.bridge.in_memory import InMemoryBridge
-        from omnifocus_operator.models.write import TaskCreateSpec
-
-        db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
-        bridge = InMemoryBridge(data={"id": "new-task-1", "name": "Test"})
-        repo = HybridRepository(db_path=db_path, bridge=bridge)
-
-        assert repo._stale is False
-        spec = TaskCreateSpec(name="Test")
-        await repo.add_task(spec)
-        assert repo._stale is True
 
     @pytest.mark.asyncio
     async def test_add_task_excludes_none_fields(self, tmp_path: Path) -> None:
