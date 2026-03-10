@@ -22,7 +22,7 @@ import pytest
 
 from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.models.write import TaskCreateSpec
-from omnifocus_operator.repository.hybrid import HybridRepository
+from omnifocus_operator.repository.hybrid import _FRESHNESS_TIMEOUT, HybridRepository
 from omnifocus_operator.repository.protocol import Repository
 
 # Core Foundation epoch: Jan 1, 2001 00:00:00 UTC
@@ -1103,13 +1103,64 @@ class TestFreshness:
         result = await repo.get_all()
         elapsed = time.monotonic() - start
 
-        # Should complete in ~2s (timeout), not immediately
-        assert elapsed >= 1.5
-        # But not much longer than 2s
-        assert elapsed < 3.0
+        # Should complete in ~timeout, not immediately
+        assert elapsed >= _FRESHNESS_TIMEOUT * 0.75
+        # But not much longer than timeout
+        assert elapsed < _FRESHNESS_TIMEOUT * 1.5
         # Data returned despite timeout
         assert isinstance(result, AllEntities)
         assert len(result.tasks) == 1
+
+    @pytest.mark.asyncio
+    async def test_freshness_no_timeout_when_wal_changes_during_bridge_call(
+        self, tmp_path: Path
+    ) -> None:
+        """edit_task() captures baseline BEFORE bridge call, so WAL changes are detected.
+
+        Reproduces a race condition: if _mark_stale() runs AFTER send_command(),
+        OmniFocus may have already flushed the WAL, making the baseline equal
+        the fresh mtime. Then _wait_for_fresh_data() sees no change and times out.
+
+        The fix: _mark_stale() runs BEFORE send_command(), so the baseline is
+        always pre-write. This test verifies that by having the bridge write to
+        the WAL as a side effect of send_command (simulating OmniFocus flushing).
+        """
+        db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
+        wal_path = db_path.parent / (db_path.name + "-wal")
+        wal_path.touch()
+
+        # Bridge whose send_command writes to the WAL (simulating OmniFocus flush)
+        from omnifocus_operator.bridge.in_memory import InMemoryBridge
+
+        bridge = InMemoryBridge(data={"id": "task-001", "name": "Edited"})
+        original_send = bridge.send_command
+
+        async def send_and_flush_wal(
+            operation: str, params: dict[str, Any] | None = None
+        ) -> dict[str, Any]:
+            result = await original_send(operation, params)
+            # OmniFocus flushes the WAL during the bridge call
+            wal_path.write_bytes(b"omnifocus flushed")
+            return result
+
+        bridge.send_command = send_and_flush_wal  # type: ignore[assignment]
+
+        repo = HybridRepository(db_path=db_path, bridge=bridge)
+        await repo.get_all()  # baseline read
+
+        # Write via edit_task — _mark_stale() should capture mtime BEFORE
+        # send_command() changes it
+        await repo.edit_task({"id": "task-001", "name": "Edited"})
+
+        # Next read should detect WAL already changed and return fast
+        start = time.monotonic()
+        await repo.get_all()
+        elapsed = time.monotonic() - start
+
+        assert elapsed < _FRESHNESS_TIMEOUT * 0.25, (
+            f"Expected fast return (data already fresh), but took {elapsed:.1f}s "
+            f"(likely hit the {_FRESHNESS_TIMEOUT}s timeout due to race condition)"
+        )
 
     @pytest.mark.asyncio
     async def test_freshness_poll_interval(self, tmp_path: Path) -> None:

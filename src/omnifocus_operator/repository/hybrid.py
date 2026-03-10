@@ -412,6 +412,10 @@ def _map_perspective_row(row: sqlite3.Row) -> dict[str, Any]:
 # -- Repository --
 
 
+_FRESHNESS_TIMEOUT = 2.0
+"""Seconds to wait for WAL mtime to change before returning possibly stale data."""
+
+
 class HybridRepository:
     """Repository reading OmniFocus data from the SQLite cache file.
 
@@ -488,20 +492,18 @@ class HybridRepository:
             "HybridRepository.edit_task: sending to bridge, payload keys=%s",
             list(payload.keys()),
         )
-        result = await self._bridge.send_command("edit_task", payload)
         self._mark_stale()
+        result = await self._bridge.send_command("edit_task", payload)
         logger.debug(
-            "HybridRepository.edit_task: bridge returned id=%s; marked stale", result.get("id")
+            "HybridRepository.edit_task: bridge returned id=%s; marked stale",
+            result.get("id"),
         )
         return result
 
     async def get_all(self) -> AllEntities:
         """Return all OmniFocus entities from the SQLite cache."""
         logger.debug("HybridRepository.get_all: stale=%s", self._stale)
-        if self._stale:
-            logger.debug("HybridRepository.get_all: waiting for fresh data from OmniFocus")
-            await self._wait_for_fresh_data()
-            self._stale = False
+        await self._ensure_fresh()
         result = await asyncio.to_thread(self._read_all)
         # Update mtime tracking after read
         self._last_wal_mtime_ns = await self._get_current_mtime_ns()
@@ -524,13 +526,19 @@ class HybridRepository:
             stat_result = await asyncio.to_thread(os.stat, self._db_path)
             return stat_result.st_mtime_ns
 
+    async def _ensure_fresh(self) -> None:
+        """Clear the stale flag, waiting for fresh SQLite data if needed."""
+        if self._stale:
+            await self._wait_for_fresh_data()
+            self._stale = False
+
     async def _wait_for_fresh_data(self) -> None:
         """Poll WAL/DB mtime until it changes or timeout (2s).
 
         If the WAL file doesn't exist, falls back to the main DB file mtime.
         On timeout, returns anyway -- slightly stale data is better than error.
         """
-        deadline = time.monotonic() + 2.0
+        deadline = time.monotonic() + _FRESHNESS_TIMEOUT
         while time.monotonic() < deadline:
             current_mtime = await self._get_current_mtime_ns()
             if current_mtime != self._last_wal_mtime_ns:
@@ -715,9 +723,8 @@ class HybridRepository:
 
     async def get_task(self, task_id: str) -> Task | None:
         """Return a single task by ID, or None if not found."""
-        if self._stale:
-            await self._wait_for_fresh_data()
-            self._stale = False
+        logger.debug("HybridRepository.get_task: stale=%s", self._stale)
+        await self._ensure_fresh()
         result = await asyncio.to_thread(self._read_task, task_id)
         if result is None:
             return None
@@ -725,9 +732,8 @@ class HybridRepository:
 
     async def get_project(self, project_id: str) -> Project | None:
         """Return a single project by ID, or None if not found."""
-        if self._stale:
-            await self._wait_for_fresh_data()
-            self._stale = False
+        logger.debug("HybridRepository.get_project: stale=%s", self._stale)
+        await self._ensure_fresh()
         result = await asyncio.to_thread(self._read_project, project_id)
         if result is None:
             return None
@@ -735,9 +741,8 @@ class HybridRepository:
 
     async def get_tag(self, tag_id: str) -> Tag | None:
         """Return a single tag by ID, or None if not found."""
-        if self._stale:
-            await self._wait_for_fresh_data()
-            self._stale = False
+        logger.debug("HybridRepository.get_tag: stale=%s", self._stale)
+        await self._ensure_fresh()
         result = await asyncio.to_thread(self._read_tag, tag_id)
         if result is None:
             return None
