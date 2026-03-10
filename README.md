@@ -10,6 +10,8 @@
 
 Production-grade MCP server exposing OmniFocus as structured task infrastructure for AI agents. Agent-first design, SQLite-cached performance, 534 tests.
 
+### [**→ See the full landing page**](https://hellothisisflo.github.io/omnifocus-operator) — features, architecture, benchmarks, and comparison
+
 ---
 
 ## 🚀 Quick Start
