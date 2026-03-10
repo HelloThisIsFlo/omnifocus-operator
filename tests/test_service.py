@@ -926,6 +926,39 @@ class TestEditTask:
         assert result.warnings is not None
         assert any("dropped" in w and "confirm with the user" in w for w in result.warnings)
 
+    async def test_stacked_warnings_completed_noop(self) -> None:
+        """Editing a completed task with same values produces BOTH completed + no-op warnings."""
+        from omnifocus_operator.models.write import TaskEditSpec
+
+        snapshot = make_snapshot(
+            tasks=[make_task_dict(id="task-001", name="Done Task", availability="completed")]
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        # Set name to same value -- should be no-op AND completed
+        result = await service.edit_task(TaskEditSpec(id="task-001", name="Done Task"))
+        assert result.warnings is not None
+        assert any("completed" in w for w in result.warnings)
+        assert any("No changes detected" in w for w in result.warnings)
+        assert len(result.warnings) == 2
+
+    async def test_stacked_warnings_dropped_noop(self) -> None:
+        """Editing a dropped task with same values produces BOTH dropped + no-op warnings."""
+        from omnifocus_operator.models.write import TaskEditSpec
+
+        snapshot = make_snapshot(
+            tasks=[make_task_dict(id="task-001", name="Dropped Task", availability="dropped")]
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(TaskEditSpec(id="task-001", name="Dropped Task"))
+        assert result.warnings is not None
+        assert any("dropped" in w for w in result.warnings)
+        assert any("No changes detected" in w for w in result.warnings)
+        assert len(result.warnings) == 2
+
     async def test_warning_addtags_duplicate(self) -> None:
         """Adding a tag already on the task produces a warning."""
         from omnifocus_operator.models.write import ActionsSpec, TagActionSpec, TaskEditSpec
