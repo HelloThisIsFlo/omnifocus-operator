@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, NoReturn
 from omnifocus_operator.models.enums import Availability
 
 if TYPE_CHECKING:
+    from omnifocus_operator.models.common import TagRef
     from omnifocus_operator.models.project import Project
     from omnifocus_operator.models.snapshot import AllEntities
     from omnifocus_operator.models.tag import Tag
@@ -181,7 +182,7 @@ class OperatorService:
                 msg = "Lifecycle actions are not yet implemented (coming in Phase 17)"
                 raise ValueError(msg)
 
-        # 4b. Handle tags
+        # 4b. Handle tags via diff computation
         has_tag_actions = (
             has_actions
             and not isinstance(spec.actions, _Unset)
@@ -190,63 +191,12 @@ class OperatorService:
         if has_tag_actions:
             assert not isinstance(spec.actions, _Unset)
             tag_actions: TagActionSpec = spec.actions.tags  # type: ignore[assignment]
-            has_replace = not isinstance(tag_actions.replace, _Unset)
-            has_add = not isinstance(tag_actions.add, _Unset)
-            has_remove = not isinstance(tag_actions.remove, _Unset)
-
-            # Build tag ID -> name map for warning display names
-            all_tag_names: dict[str, str] = {}
-            if has_add or has_remove:
-                all_data = await self._repository.get_all()
-                all_tag_names = {t.id: t.name for t in all_data.tags}
-
-            if has_replace:
-                # replace: null means clear all (same as replace: [])
-                tag_list = tag_actions.replace if isinstance(tag_actions.replace, list) else []
-                resolved_ids = await self._resolve_tags(tag_list) if tag_list else []
-                payload["tagMode"] = "replace"
-                payload["tagIds"] = resolved_ids
-            elif has_add and has_remove:
-                assert isinstance(tag_actions.add, list)
-                assert isinstance(tag_actions.remove, list)
-                add_ids = await self._resolve_tags(tag_actions.add) if tag_actions.add else []
-                remove_ids = (
-                    await self._resolve_tags(tag_actions.remove) if tag_actions.remove else []
-                )
-                current_tag_ids = {t.id for t in task.tags}
-                for i, tag_name in enumerate(tag_actions.add):
-                    if i < len(add_ids) and add_ids[i] in current_tag_ids:
-                        display = all_tag_names.get(add_ids[i], tag_name)
-                        warnings.append(f"Tag '{display}' ({add_ids[i]}) is already on this task")
-                for i, tag_name in enumerate(tag_actions.remove):
-                    if remove_ids[i] not in current_tag_ids:
-                        display = all_tag_names.get(remove_ids[i], tag_name)
-                        warnings.append(f"Tag '{display}' ({remove_ids[i]}) is not on this task")
-                payload["tagMode"] = "add_remove"
+            add_ids, remove_ids, tag_warnings = await self._compute_tag_diff(tag_actions, task.tags)
+            if add_ids:
                 payload["addTagIds"] = add_ids
+            if remove_ids:
                 payload["removeTagIds"] = remove_ids
-            elif has_add:
-                assert isinstance(tag_actions.add, list)
-                add_ids = await self._resolve_tags(tag_actions.add) if tag_actions.add else []
-                current_tag_ids = {t.id for t in task.tags}
-                for i, tag_name in enumerate(tag_actions.add):
-                    if i < len(add_ids) and add_ids[i] in current_tag_ids:
-                        display = all_tag_names.get(add_ids[i], tag_name)
-                        warnings.append(f"Tag '{display}' ({add_ids[i]}) is already on this task")
-                payload["tagMode"] = "add"
-                payload["tagIds"] = add_ids
-            elif has_remove:
-                assert isinstance(tag_actions.remove, list)
-                remove_ids = (
-                    await self._resolve_tags(tag_actions.remove) if tag_actions.remove else []
-                )
-                current_tag_ids = {t.id for t in task.tags}
-                for i, tag_name in enumerate(tag_actions.remove):
-                    if remove_ids[i] not in current_tag_ids:
-                        display = all_tag_names.get(remove_ids[i], tag_name)
-                        warnings.append(f"Tag '{display}' ({remove_ids[i]}) is not on this task")
-                payload["tagMode"] = "remove"
-                payload["removeTagIds"] = remove_ids
+            warnings.extend(tag_warnings)
 
         # 5. Handle moveTo
         has_move = (
@@ -325,17 +275,9 @@ class OperatorService:
                     is_noop = False
                     break
 
-        # Check tag changes if no field changes detected yet
-        if is_noop and "tagMode" in payload:
-            sorted_current_tag_ids = sorted(t.id for t in task.tags)
-            if payload.get("tagMode") == "replace":
-                raw_ids = payload.get("tagIds")
-                new_tag_ids = sorted(raw_ids) if isinstance(raw_ids, list) else []
-                if new_tag_ids != sorted_current_tag_ids:
-                    is_noop = False
-            else:
-                # add/remove/add_remove modes always represent intentional changes
-                is_noop = False
+        # Check tag changes: if addTagIds or removeTagIds present, it's not a no-op
+        if is_noop and ("addTagIds" in payload or "removeTagIds" in payload):
+            is_noop = False
 
         # Check moveTo
         if is_noop and "moveTo" in payload:
@@ -358,7 +300,7 @@ class OperatorService:
                 # before/after -- can't detect same position
                 is_noop = False
 
-        if is_noop and len(payload) > 1:
+        if is_noop and len(payload) >= 1:
             if not warnings:
                 warnings = [
                     "No changes detected -- the task already has these values. "
@@ -441,6 +383,94 @@ class OperatorService:
                     raise ValueError(msg)
 
         return resolved
+
+    async def _compute_tag_diff(
+        self,
+        tag_actions: TagActionSpec,
+        current_tags: list[TagRef],
+    ) -> tuple[list[str], list[str], list[str]]:
+        """Compute the minimal (add_ids, remove_ids, warnings) diff for tag actions.
+
+        Resolves tag names to IDs, computes the final tag set from the
+        TagActionSpec input, and returns only the IDs that need adding or
+        removing. Warnings are generated by comparing user intent against
+        current state BEFORE computing the final set.
+        """
+        from omnifocus_operator.models.write import _Unset
+
+        warnings: list[str] = []
+        current_ids = {t.id for t in current_tags}
+
+        has_replace = not isinstance(tag_actions.replace, _Unset)
+        has_add = not isinstance(tag_actions.add, _Unset)
+        has_remove = not isinstance(tag_actions.remove, _Unset)
+
+        # Build tag ID -> name map for warning display names
+        all_tag_names: dict[str, str] = {}
+        if has_add or has_remove or has_replace:
+            all_data = await self._repository.get_all()
+            all_tag_names = {t.id: t.name for t in all_data.tags}
+
+        if has_replace:
+            # replace: null or replace: [] means clear all
+            tag_list = tag_actions.replace if isinstance(tag_actions.replace, list) else []
+            resolved_ids = await self._resolve_tags(tag_list) if tag_list else []
+            final = set(resolved_ids)
+
+            # Warn if tags already match
+            if final == current_ids:
+                warnings.append("Tags already match the requested set -- no tag changes applied")
+        elif has_add and has_remove:
+            assert isinstance(tag_actions.add, list)
+            assert isinstance(tag_actions.remove, list)
+            add_resolved = await self._resolve_tags(tag_actions.add) if tag_actions.add else []
+            remove_resolved = (
+                await self._resolve_tags(tag_actions.remove) if tag_actions.remove else []
+            )
+
+            # Per-tag warnings BEFORE computing final set
+            for i, _tag_name in enumerate(tag_actions.add):
+                if i < len(add_resolved) and add_resolved[i] in current_ids:
+                    display = all_tag_names.get(add_resolved[i], _tag_name)
+                    warnings.append(f"Tag '{display}' ({add_resolved[i]}) is already on this task")
+            for i, _tag_name in enumerate(tag_actions.remove):
+                if i < len(remove_resolved) and remove_resolved[i] not in current_ids:
+                    display = all_tag_names.get(remove_resolved[i], _tag_name)
+                    warnings.append(f"Tag '{display}' ({remove_resolved[i]}) is not on this task")
+
+            final = (current_ids | set(add_resolved)) - set(remove_resolved)
+        elif has_add:
+            assert isinstance(tag_actions.add, list)
+            add_resolved = await self._resolve_tags(tag_actions.add) if tag_actions.add else []
+
+            # Per-tag warnings
+            for i, _tag_name in enumerate(tag_actions.add):
+                if i < len(add_resolved) and add_resolved[i] in current_ids:
+                    display = all_tag_names.get(add_resolved[i], _tag_name)
+                    warnings.append(f"Tag '{display}' ({add_resolved[i]}) is already on this task")
+
+            final = current_ids | set(add_resolved)
+        elif has_remove:
+            assert isinstance(tag_actions.remove, list)
+            remove_resolved = (
+                await self._resolve_tags(tag_actions.remove) if tag_actions.remove else []
+            )
+
+            # Per-tag warnings
+            for i, _tag_name in enumerate(tag_actions.remove):
+                if i < len(remove_resolved) and remove_resolved[i] not in current_ids:
+                    display = all_tag_names.get(remove_resolved[i], _tag_name)
+                    warnings.append(f"Tag '{display}' ({remove_resolved[i]}) is not on this task")
+
+            final = current_ids - set(remove_resolved)
+        else:
+            # No tag actions -- shouldn't reach here due to TagActionSpec validation
+            final = current_ids
+
+        to_add = list(final - current_ids)
+        to_remove = list(current_ids - final)
+
+        return to_add, to_remove, warnings
 
 
 class ErrorOperatorService(OperatorService):

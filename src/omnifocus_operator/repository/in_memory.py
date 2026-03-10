@@ -113,7 +113,7 @@ class InMemoryRepository:
             "estimatedMinutes": "estimated_minutes",
         }
 
-        skip_keys = {"id", "tagMode", "tagIds", "addTagIds", "removeTagIds", "moveTo"}
+        skip_keys = {"id", "addTagIds", "removeTagIds", "moveTo"}
         for key, value in payload.items():
             if key in skip_keys:
                 continue
@@ -121,25 +121,12 @@ class InMemoryRepository:
             if attr is not None:
                 setattr(task, attr, value)
 
-        # Handle tag operations
-        tag_mode = payload.get("tagMode")
-        if tag_mode == "replace":
-            tag_ids = payload.get("tagIds", [])
-            task.tags = [TagRef(id=tid, name=tid) for tid in tag_ids]
-        elif tag_mode == "add":
-            tag_ids = payload.get("tagIds", [])
-            existing_ids = {t.id for t in task.tags}
-            for tid in tag_ids:
-                if tid not in existing_ids:
-                    task.tags.append(TagRef(id=tid, name=tid))
-        elif tag_mode == "remove":
-            remove_ids = set(payload.get("removeTagIds", []))
+        # Handle tag operations (diff-based: removals first, then additions)
+        remove_ids = set(payload.get("removeTagIds", []))
+        if remove_ids:
             task.tags = [t for t in task.tags if t.id not in remove_ids]
-        elif tag_mode == "add_remove":
-            # Remove first, then add
-            remove_ids = set(payload.get("removeTagIds", []))
-            task.tags = [t for t in task.tags if t.id not in remove_ids]
-            add_ids = payload.get("addTagIds", [])
+        add_ids = payload.get("addTagIds", [])
+        if add_ids:
             existing_ids = {t.id for t in task.tags}
             for tid in add_ids:
                 if tid not in existing_ids:
