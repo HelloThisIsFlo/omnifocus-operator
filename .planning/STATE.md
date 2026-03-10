@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Writes & Lookups
 status: completed
-stopped_at: Phase 16.2 context gathered
-last_updated: "2026-03-10T00:33:09.306Z"
-last_activity: "2026-03-09 - Completed plan 16.1-03: server tests, docstring, UAT skill rewrite"
+stopped_at: Completed 16.2-02-PLAN.md
+last_updated: "2026-03-10T01:02:36.820Z"
+last_activity: "2026-03-10 - Completed plan 16.2-01: _compute_tag_diff helper, refactored service+repo"
 progress:
-  total_phases: 6
-  completed_phases: 4
-  total_plans: 15
-  completed_plans: 15
-  percent: 100
+  total_phases: 7
+  completed_phases: 5
+  total_plans: 17
+  completed_plans: 17
+  percent: 50
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 ## Current Position
 
 Phase: 16.2 (Bridge Tag Simplification) -- inserted after Phase 16.1
-Plan: 1 of 2
-Status: Plan 01 complete (Python-side diff-based tag handling)
-Last activity: 2026-03-10 - Completed plan 16.2-01: _compute_tag_diff helper, refactored service+repo
+Plan: 2 of 2
+Status: Phase 16.2 complete (bridge tag simplification done)
+Last activity: 2026-03-10 - Completed plan 16.2-02: simplified bridge.js tag handling to diff-based
 
-Progress: [█████████░] 50%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -48,6 +48,7 @@ Progress: [█████████░] 50%
 | 16 | 6/6 | 22min | 3.7min |
 | 16.1 | 3/3 | 11min | 3.7min |
 | 16.2 | 1/2 | 4min | 4min |
+| Phase 16.2 P02 | 2min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,7 @@ Progress: [█████████░] 50%
 - [Phase 16.2]: Diff-based tag computation: _compute_tag_diff computes minimal (add, remove) sets from TagActionSpec
 - [Phase 16.2]: No tagMode in payload -- empty diff = no tag keys = implicit no-op via len(payload) check
 - [Phase 16.2]: Replace no-op warning when replace produces empty diff (tags already match)
+- [Phase 16.2]: resolveTagIds helper inside handleEditTask scope for locality
 
 ### Roadmap Evolution
 
@@ -117,6 +119,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-10T00:57:53Z
-Stopped at: Completed 16.2-01-PLAN.md
+Last session: 2026-03-10T01:02:36.818Z
+Stopped at: Completed 16.2-02-PLAN.md
 Next action: Phase 16.2 Plan 02 (bridge.js simplification)
