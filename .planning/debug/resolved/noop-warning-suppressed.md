@@ -1,8 +1,8 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "No-op warning suppressed when completed-task warning fires"
 created: 2026-03-10T00:00:00Z
-updated: 2026-03-10T00:00:00Z
+updated: 2026-03-10T12:00:00Z
 ---
 
 ## Current Focus

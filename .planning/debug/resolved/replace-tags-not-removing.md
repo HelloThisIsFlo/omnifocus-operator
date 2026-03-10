@@ -1,8 +1,8 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "edit_tasks with actions.tags.replace doesn't remove existing tags"
 created: 2026-03-10T00:00:00Z
-updated: 2026-03-10T00:00:00Z
+updated: 2026-03-10T12:00:00Z
 ---
 
 ## Current Focus
