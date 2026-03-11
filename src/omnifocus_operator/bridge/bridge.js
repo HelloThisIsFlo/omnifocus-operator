@@ -313,6 +313,15 @@ function handleEditTask(params) {
         moveTasks([task], location);
     }
 
+    // Lifecycle
+    if (params.hasOwnProperty("lifecycle")) {
+        if (params.lifecycle === "complete") {
+            task.markComplete();
+        } else if (params.lifecycle === "drop") {
+            task.drop(false);
+        }
+    }
+
     return { id: task.id.primaryKey, name: task.name };
 }
 

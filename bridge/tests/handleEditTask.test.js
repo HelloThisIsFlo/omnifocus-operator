@@ -445,6 +445,28 @@ describe("handleEditTask", function () {
     }).toThrow("Anchor task not found: nonexistent");
   });
 
+  // --- Lifecycle ---
+
+  it("calls markComplete when lifecycle is 'complete'", function () {
+    mockTask.markComplete = vi.fn();
+    bridge.handleEditTask({ id: "task-edit-001", lifecycle: "complete" });
+    expect(mockTask.markComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls drop(false) when lifecycle is 'drop'", function () {
+    mockTask.drop = vi.fn();
+    bridge.handleEditTask({ id: "task-edit-001", lifecycle: "drop" });
+    expect(mockTask.drop).toHaveBeenCalledWith(false);
+  });
+
+  it("does not call markComplete or drop when lifecycle is absent", function () {
+    mockTask.markComplete = vi.fn();
+    mockTask.drop = vi.fn();
+    bridge.handleEditTask({ id: "task-edit-001", name: "Renamed" });
+    expect(mockTask.markComplete).not.toHaveBeenCalled();
+    expect(mockTask.drop).not.toHaveBeenCalled();
+  });
+
   // --- Combined operations ---
 
   it("applies field updates, tag changes, and movement in one call", function () {

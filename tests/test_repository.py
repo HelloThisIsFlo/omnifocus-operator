@@ -472,3 +472,35 @@ class TestInMemoryAddTask:
         r2 = await repo.add_task(TaskCreateSpec(name="Task 2"))
 
         assert r1.id != r2.id
+
+
+class TestInMemoryEditTaskLifecycle:
+    """InMemoryRepository.edit_task lifecycle mutations."""
+
+    async def test_lifecycle_complete_sets_availability(self) -> None:
+        """edit_task with lifecycle='complete' sets availability to COMPLETED."""
+        from omnifocus_operator.models.enums import Availability
+
+        from .conftest import make_snapshot, make_task_dict
+
+        snapshot = make_snapshot(tasks=[make_task_dict(id="task-001")])
+        repo = InMemoryRepository(snapshot=snapshot)
+
+        await repo.edit_task({"id": "task-001", "lifecycle": "complete"})
+        task = await repo.get_task("task-001")
+        assert task is not None
+        assert task.availability == Availability.COMPLETED
+
+    async def test_lifecycle_drop_sets_availability(self) -> None:
+        """edit_task with lifecycle='drop' sets availability to DROPPED."""
+        from omnifocus_operator.models.enums import Availability
+
+        from .conftest import make_snapshot, make_task_dict
+
+        snapshot = make_snapshot(tasks=[make_task_dict(id="task-001")])
+        repo = InMemoryRepository(snapshot=snapshot)
+
+        await repo.edit_task({"id": "task-001", "lifecycle": "drop"})
+        task = await repo.get_task("task-001")
+        assert task is not None
+        assert task.availability == Availability.DROPPED

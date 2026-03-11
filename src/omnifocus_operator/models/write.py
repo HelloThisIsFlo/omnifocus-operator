@@ -196,7 +196,7 @@ class ActionsSpec(OmniFocusBaseModel):
 
     tags: TagActionSpec | _Unset = UNSET
     move: MoveToSpec | _Unset = UNSET
-    lifecycle: str | _Unset = UNSET
+    lifecycle: Literal["complete", "drop"] | _Unset = UNSET
 
     @classmethod
     def model_json_schema(

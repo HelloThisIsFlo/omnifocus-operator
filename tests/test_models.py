@@ -931,3 +931,35 @@ class TestWriteModels:
         assert result2.success is True
         assert result2.id == "task-new-001"
         assert result2.name == "New Task"
+
+
+class TestActionsSpecLifecycle:
+    """ActionsSpec.lifecycle validates to Literal['complete', 'drop']."""
+
+    def test_lifecycle_complete_valid(self) -> None:
+        """ActionsSpec(lifecycle='complete') validates successfully."""
+        from omnifocus_operator.models.write import ActionsSpec
+
+        spec = ActionsSpec(lifecycle="complete")
+        assert spec.lifecycle == "complete"
+
+    def test_lifecycle_drop_valid(self) -> None:
+        """ActionsSpec(lifecycle='drop') validates successfully."""
+        from omnifocus_operator.models.write import ActionsSpec
+
+        spec = ActionsSpec(lifecycle="drop")
+        assert spec.lifecycle == "drop"
+
+    def test_lifecycle_reopen_rejected(self) -> None:
+        """ActionsSpec(lifecycle='reopen') raises ValidationError."""
+        from omnifocus_operator.models.write import ActionsSpec
+
+        with pytest.raises(ValidationError):
+            ActionsSpec(lifecycle="reopen")
+
+    def test_lifecycle_invalid_rejected(self) -> None:
+        """ActionsSpec(lifecycle='invalid') raises ValidationError."""
+        from omnifocus_operator.models.write import ActionsSpec
+
+        with pytest.raises(ValidationError):
+            ActionsSpec(lifecycle="invalid")

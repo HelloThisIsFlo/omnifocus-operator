@@ -113,7 +113,7 @@ class InMemoryRepository:
             "estimatedMinutes": "estimated_minutes",
         }
 
-        skip_keys = {"id", "addTagIds", "removeTagIds", "moveTo"}
+        skip_keys = {"id", "addTagIds", "removeTagIds", "moveTo", "lifecycle"}
         for key, value in payload.items():
             if key in skip_keys:
                 continue
@@ -131,6 +131,16 @@ class InMemoryRepository:
             for tid in add_ids:
                 if tid not in existing_ids:
                     task.tags.append(TagRef(id=tid, name=tid))
+
+        # Handle lifecycle
+        lifecycle = payload.get("lifecycle")
+        if lifecycle is not None:
+            from omnifocus_operator.models.enums import Availability
+
+            if lifecycle == "complete":
+                task.availability = Availability.COMPLETED
+            elif lifecycle == "drop":
+                task.availability = Availability.DROPPED
 
         # Handle moveTo (simplified -- just update parent)
         move_to = payload.get("moveTo")
