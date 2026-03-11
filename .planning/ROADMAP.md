@@ -42,7 +42,7 @@
 - [x] **Phase 14: Model Refactor & Lookups** - Unified parent field, rename list_all to get_all, and get-by-ID tools (completed 2026-03-07)
 - [x] **Phase 15: Write Pipeline & Task Creation** - Full write pipeline through bridge with add_tasks tool (completed 2026-03-08)
 - [x] **Phase 16: Task Editing** - Patch semantics, tag modes, and task movement via edit_tasks (completed 2026-03-08)
-- [ ] **Phase 17: Task Lifecycle** - Complete, drop, and reactivate tasks via edit_tasks
+- [x] **Phase 17: Task Lifecycle** - Complete, drop, and reactivate tasks via edit_tasks (completed 2026-03-11)
 
 ## Phase Details
 
@@ -161,14 +161,14 @@ Phases execute in numeric order: 14 -> 15 -> 16 -> 17
 | 16. Task Editing | 6/6 | Complete    | 2026-03-09 | - |
 | 16.1. Actions Grouping | 3/3 | Complete    | 2026-03-09 | - |
 | 16.2. Bridge Tag Simplification | 3/3 | Complete    | 2026-03-10 | - |
-| 17. Task Lifecycle | 1/2 | In Progress|  | - |
+| 17. Task Lifecycle | 2/2 | Complete   | 2026-03-11 | - |
 
 ### Phase 18: Repetition rule write support: structured fields, not RRULE strings
 
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 17
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 18 to break down)

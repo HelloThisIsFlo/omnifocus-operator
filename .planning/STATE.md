@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Writes & Lookups
-status: in_progress
-stopped_at: Completed 17-01 plan
-last_updated: "2026-03-11T22:50:03.000Z"
-last_activity: "2026-03-11 - Completed plan 17-01: Task lifecycle (complete/drop) through all layers"
+status: completed
+stopped_at: Completed 17-02-PLAN.md
+last_updated: "2026-03-11T22:58:25.537Z"
+last_activity: "2026-03-11 - Completed plan 17-02: Server docstring, tests, and UAT skill for lifecycle"
 progress:
-  total_phases: 8
-  completed_phases: 5
-  total_plans: 19
-  completed_plans: 19
+  total_phases: 7
+  completed_phases: 6
+  total_plans: 20
+  completed_plans: 20
   percent: 100
 ---
 
@@ -26,18 +26,18 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 ## Current Position
 
 Phase: 17 (Task Lifecycle)
-Plan: 1 of 1
-Status: Phase 17 plan 01 complete
-Last activity: 2026-03-11 - Completed plan 17-01: Task lifecycle (complete/drop) through all layers
+Plan: 2 of 2
+Status: Phase 17 complete
+Last activity: 2026-03-11 - Completed plan 17-02: Server docstring, tests, and UAT skill for lifecycle
 
 Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 19 (v1.2)
+- Total plans completed: 20 (v1.2)
 - Average duration: 3.7min
-- Total execution time: 60min
+- Total execution time: 64min
 
 **By Phase:**
 
@@ -48,7 +48,7 @@ Progress: [██████████] 100%
 | 16 | 6/6 | 22min | 3.7min |
 | 16.1 | 3/3 | 11min | 3.7min |
 | 16.2 | 3/3 | 9min | 3min |
-| 17 | 1/1 | 5min | 5min |
+| 17 | 2/2 | 9min | 4.5min |
 
 ## Accumulated Context
 
@@ -97,6 +97,7 @@ Progress: [██████████] 100%
 - [Phase 17]: lifecycle_handled flag suppresses generic status warning (no contradictory messages)
 - [Phase 17]: drop(false) universally in bridge.js -- handles both repeating and non-repeating tasks
 - [Phase 17]: Lifecycle processed before status warning to control suppression flow
+- [Phase 17]: Server tests verify lifecycle flows through InMemoryBridge at integration level
 
 ### Roadmap Evolution
 
@@ -127,6 +128,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-11T22:50:03.000Z
-Stopped at: Completed 17-01-PLAN.md
-Next action: UAT testing for lifecycle actions (complete/drop)
+Last session: 2026-03-11T23:00:00.000Z
+Stopped at: Completed 17-02-PLAN.md
+Next action: Phase 18 (repetition rule write support) or v1.3 milestone planning
