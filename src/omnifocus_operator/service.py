@@ -152,22 +152,46 @@ class OperatorService:
 
         warnings: list[str] = []
 
-        # Warn about editing completed/dropped tasks
-        if task.availability in (Availability.COMPLETED, Availability.DROPPED):
+        # 2. Handle actions block detection
+        has_actions = not isinstance(spec.actions, _Unset)
+
+        # 2a. Process lifecycle BEFORE status warning
+        lifecycle_handled = False
+        has_lifecycle = (
+            has_actions
+            and not isinstance(spec.actions, _Unset)
+            and not isinstance(spec.actions.lifecycle, _Unset)
+        )
+
+        # 3. Build payload with only non-UNSET fields
+        payload: dict[str, object] = {"id": spec.id}
+
+        if has_lifecycle:
+            assert not isinstance(spec.actions, _Unset)
+            lifecycle_action: str = spec.actions.lifecycle  # type: ignore[assignment]
+            should_call, lifecycle_warnings = self._process_lifecycle(lifecycle_action, task)
+            warnings.extend(lifecycle_warnings)
+            lifecycle_handled = True
+            if should_call:
+                payload["lifecycle"] = lifecycle_action
+
+        # Warn about editing completed/dropped tasks (only if lifecycle not handled)
+        if not lifecycle_handled and task.availability in (
+            Availability.COMPLETED,
+            Availability.DROPPED,
+        ):
             status = task.availability.value
             warnings.append(
                 f"This task is {status} -- your changes were applied, "
                 f"but please confirm with the user that they intended to edit a {status} task."
             )
 
-        # 2. Validate name (if provided)
+        # 4. Validate name (if provided)
         if not isinstance(spec.name, _Unset) and (not spec.name or not spec.name.strip()):
             msg = "Task name cannot be empty"
             raise ValueError(msg)
 
-        # 3. Build payload with only non-UNSET fields
-        payload: dict[str, object] = {"id": spec.id}
-
+        # 5. Build payload fields
         # Simple fields: (spec_attr, payload_key)
         _simple_fields = [
             ("name", "name"),
@@ -194,16 +218,6 @@ class OperatorService:
             value = getattr(spec, attr)
             if not isinstance(value, _Unset):
                 payload[key] = value.isoformat() if value is not None else None
-
-        # 4. Handle actions block (tags, move, lifecycle)
-        has_actions = not isinstance(spec.actions, _Unset)
-
-        # 4a. Lifecycle fail-fast
-        if has_actions:
-            assert not isinstance(spec.actions, _Unset)
-            if not isinstance(spec.actions.lifecycle, _Unset):
-                msg = "Lifecycle actions are not yet implemented (coming in Phase 17)"
-                raise ValueError(msg)
 
         # 4b. Handle tags via diff computation
         has_tag_actions = (
@@ -309,6 +323,10 @@ class OperatorService:
         if is_noop and ("addTagIds" in payload or "removeTagIds" in payload):
             is_noop = False
 
+        # Check lifecycle: if lifecycle is in payload, it's not a no-op
+        if is_noop and "lifecycle" in payload:
+            is_noop = False
+
         # Check moveTo
         if is_noop and "moveTo" in payload:
             move_data = payload["moveTo"]
@@ -359,6 +377,49 @@ class OperatorService:
             name=result["name"],
             warnings=warnings or None,
         )
+
+    def _process_lifecycle(self, lifecycle_action: str, task: Task) -> tuple[bool, list[str]]:
+        """Process a lifecycle action against the task's current state.
+
+        Returns (should_call_bridge, warnings).
+        - No-op (already in target state): False + no-op warning
+        - Cross-state (completed->dropped or vice versa): True + cross-state warning
+        - Fresh (available->completed/dropped): True + no warnings (unless repeating)
+        - Repeating task: appends occurrence-specific warning
+        """
+        warnings: list[str] = []
+
+        target_availability = (
+            Availability.COMPLETED if lifecycle_action == "complete" else Availability.DROPPED
+        )
+
+        # No-op check: already in target state
+        if task.availability == target_availability:
+            state_word = "complete" if lifecycle_action == "complete" else "dropped"
+            warnings.append(
+                f"Task is already {state_word} -- nothing changed. Omit actions.lifecycle to skip."
+            )
+            return False, warnings
+
+        # Cross-state check: transitioning between completed and dropped
+        if task.availability in (Availability.COMPLETED, Availability.DROPPED):
+            prior_state = task.availability.value
+            new_state = "complete" if lifecycle_action == "complete" else "dropped"
+            warnings.append(
+                f"Task was already {prior_state} -- lifecycle action applied, "
+                f"task is now {new_state}. Confirm with user that this was intended."
+            )
+
+        # Repeating task check
+        if task.repetition_rule is not None:
+            if lifecycle_action == "complete":
+                warnings.append(
+                    "Repeating task -- this occurrence completed, next occurrence created."
+                )
+            else:
+                warnings.append("Repeating task -- this occurrence was skipped.")
+
+        return True, warnings
 
     async def _check_cycle(self, task_id: str, container_id: str) -> None:
         """Check if moving task_id under container_id creates a cycle.

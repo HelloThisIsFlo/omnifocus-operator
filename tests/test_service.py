@@ -1417,18 +1417,286 @@ class TestEditTask:
         assert result.warnings is not None
         assert any("already a child of this parent" in w for w in result.warnings)
 
-    async def test_lifecycle_rejection(self) -> None:
-        """Lifecycle actions are rejected with Phase 17 message."""
+    async def test_lifecycle_complete_available_task(self) -> None:
+        """lifecycle='complete' on available task succeeds without special warning."""
         from omnifocus_operator.models.write import ActionsSpec, TaskEditSpec
 
         snapshot = make_snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
         repo = InMemoryRepository(snapshot=snapshot)
         service = OperatorService(repository=repo)
 
-        with pytest.raises(ValueError, match=r"not yet implemented.*Phase 17"):
-            await service.edit_task(
-                TaskEditSpec(id="task-001", actions=ActionsSpec(lifecycle="complete"))
+        result = await service.edit_task(
+            TaskEditSpec(id="task-001", actions=ActionsSpec(lifecycle="complete"))
+        )
+        assert result.success is True
+        # No lifecycle-specific warnings for fresh complete
+        if result.warnings:
+            assert not any("already" in w.lower() for w in result.warnings)
+
+    async def test_lifecycle_drop_available_task(self) -> None:
+        """lifecycle='drop' on available task succeeds without special warning."""
+        from omnifocus_operator.models.write import ActionsSpec, TaskEditSpec
+
+        snapshot = make_snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(
+            TaskEditSpec(id="task-001", actions=ActionsSpec(lifecycle="drop"))
+        )
+        assert result.success is True
+        if result.warnings:
+            assert not any("already" in w.lower() for w in result.warnings)
+
+    async def test_lifecycle_complete_already_completed_noop(self) -> None:
+        """Completing an already-completed task is a no-op with warning."""
+        from omnifocus_operator.models.write import ActionsSpec, TaskEditSpec
+
+        snapshot = make_snapshot(
+            tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(
+            TaskEditSpec(id="task-001", actions=ActionsSpec(lifecycle="complete"))
+        )
+        assert result.success is True
+        assert result.warnings is not None
+        assert any("already complete" in w.lower() for w in result.warnings)
+
+    async def test_lifecycle_drop_already_dropped_noop(self) -> None:
+        """Dropping an already-dropped task is a no-op with warning."""
+        from omnifocus_operator.models.write import ActionsSpec, TaskEditSpec
+
+        snapshot = make_snapshot(
+            tasks=[make_task_dict(id="task-001", name="Task", availability="dropped")]
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(
+            TaskEditSpec(id="task-001", actions=ActionsSpec(lifecycle="drop"))
+        )
+        assert result.success is True
+        assert result.warnings is not None
+        assert any("already dropped" in w.lower() for w in result.warnings)
+
+    async def test_lifecycle_complete_dropped_task_cross_state(self) -> None:
+        """Completing a dropped task succeeds with cross-state warning."""
+        from omnifocus_operator.models.write import ActionsSpec, TaskEditSpec
+
+        snapshot = make_snapshot(
+            tasks=[make_task_dict(id="task-001", name="Task", availability="dropped")]
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(
+            TaskEditSpec(id="task-001", actions=ActionsSpec(lifecycle="complete"))
+        )
+        assert result.success is True
+        assert result.warnings is not None
+        assert any("dropped" in w and "complete" in w.lower() for w in result.warnings)
+
+    async def test_lifecycle_drop_completed_task_cross_state(self) -> None:
+        """Dropping a completed task succeeds with cross-state warning."""
+        from omnifocus_operator.models.write import ActionsSpec, TaskEditSpec
+
+        snapshot = make_snapshot(
+            tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(
+            TaskEditSpec(id="task-001", actions=ActionsSpec(lifecycle="drop"))
+        )
+        assert result.success is True
+        assert result.warnings is not None
+        assert any("completed" in w and "drop" in w.lower() for w in result.warnings)
+
+    async def test_lifecycle_complete_repeating_task_warning(self) -> None:
+        """Completing a repeating task warns about occurrence completion."""
+        from omnifocus_operator.models.write import ActionsSpec, TaskEditSpec
+
+        snapshot = make_snapshot(
+            tasks=[
+                make_task_dict(
+                    id="task-001",
+                    name="Task",
+                    repetitionRule={
+                        "ruleString": "FREQ=WEEKLY",
+                        "scheduleType": "regularly",
+                        "anchorDateKey": "due_date",
+                        "catchUpAutomatically": False,
+                    },
+                )
+            ]
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(
+            TaskEditSpec(id="task-001", actions=ActionsSpec(lifecycle="complete"))
+        )
+        assert result.success is True
+        assert result.warnings is not None
+        assert any("repeating" in w.lower() and "occurrence" in w.lower() for w in result.warnings)
+
+    async def test_lifecycle_drop_repeating_task_warning(self) -> None:
+        """Dropping a repeating task warns about occurrence skipped."""
+        from omnifocus_operator.models.write import ActionsSpec, TaskEditSpec
+
+        snapshot = make_snapshot(
+            tasks=[
+                make_task_dict(
+                    id="task-001",
+                    name="Task",
+                    repetitionRule={
+                        "ruleString": "FREQ=WEEKLY",
+                        "scheduleType": "regularly",
+                        "anchorDateKey": "due_date",
+                        "catchUpAutomatically": False,
+                    },
+                )
+            ]
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(
+            TaskEditSpec(id="task-001", actions=ActionsSpec(lifecycle="drop"))
+        )
+        assert result.success is True
+        assert result.warnings is not None
+        assert any("repeating" in w.lower() and "skipped" in w.lower() for w in result.warnings)
+
+    async def test_lifecycle_cross_state_repeating_stacked_warnings(self) -> None:
+        """Cross-state + repeating: both warnings stack."""
+        from omnifocus_operator.models.write import ActionsSpec, TaskEditSpec
+
+        snapshot = make_snapshot(
+            tasks=[
+                make_task_dict(
+                    id="task-001",
+                    name="Task",
+                    availability="dropped",
+                    repetitionRule={
+                        "ruleString": "FREQ=WEEKLY",
+                        "scheduleType": "regularly",
+                        "anchorDateKey": "due_date",
+                        "catchUpAutomatically": False,
+                    },
+                )
+            ]
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(
+            TaskEditSpec(id="task-001", actions=ActionsSpec(lifecycle="complete"))
+        )
+        assert result.success is True
+        assert result.warnings is not None
+        # Both cross-state and repeating warnings should be present
+        all_warnings = " ".join(result.warnings).lower()
+        assert "dropped" in all_warnings  # cross-state
+        assert "repeating" in all_warnings  # repeating
+
+    async def test_lifecycle_with_field_edits(self) -> None:
+        """lifecycle + field edits in same call: both applied."""
+        from omnifocus_operator.models.write import ActionsSpec, TaskEditSpec
+
+        snapshot = make_snapshot(tasks=[make_task_dict(id="task-001", name="Task", flagged=False)])
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(
+            TaskEditSpec(
+                id="task-001",
+                flagged=True,
+                actions=ActionsSpec(lifecycle="complete"),
             )
+        )
+        assert result.success is True
+        task = await repo.get_task("task-001")
+        assert task is not None
+        assert task.flagged is True
+
+    async def test_lifecycle_only_not_empty_edit(self) -> None:
+        """lifecycle-only edit is NOT treated as empty edit."""
+        from omnifocus_operator.models.write import ActionsSpec, TaskEditSpec
+
+        snapshot = make_snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(
+            TaskEditSpec(id="task-001", actions=ActionsSpec(lifecycle="complete"))
+        )
+        assert result.success is True
+        # Should NOT have "No changes specified" warning
+        if result.warnings:
+            assert not any("no changes specified" in w.lower() for w in result.warnings)
+
+    async def test_lifecycle_noop_suppresses_status_warning(self) -> None:
+        """No-op lifecycle should NOT produce the generic status warning."""
+        from omnifocus_operator.models.write import ActionsSpec, TaskEditSpec
+
+        snapshot = make_snapshot(
+            tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(
+            TaskEditSpec(id="task-001", actions=ActionsSpec(lifecycle="complete"))
+        )
+        assert result.success is True
+        assert result.warnings is not None
+        # Should have no-op warning, but NOT the generic status warning
+        assert any("already complete" in w.lower() for w in result.warnings)
+        assert not any(
+            "confirm with the user that they intended to edit" in w for w in result.warnings
+        )
+
+    async def test_lifecycle_action_suppresses_status_warning(self) -> None:
+        """Cross-state lifecycle should NOT produce the generic status warning."""
+        from omnifocus_operator.models.write import ActionsSpec, TaskEditSpec
+
+        snapshot = make_snapshot(
+            tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(
+            TaskEditSpec(id="task-001", actions=ActionsSpec(lifecycle="drop"))
+        )
+        assert result.success is True
+        # Should have cross-state warning, but NOT the generic status warning
+        if result.warnings:
+            assert not any(
+                "confirm with the user that they intended to edit" in w for w in result.warnings
+            )
+
+    async def test_lifecycle_noop_detection_skips_lifecycle_key(self) -> None:
+        """No-op detection (step 7) should skip the lifecycle key in field comparisons."""
+        from omnifocus_operator.models.write import ActionsSpec, TaskEditSpec
+
+        snapshot = make_snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        # lifecycle="complete" on an available task should NOT trigger
+        # "No changes detected" (the lifecycle IS a change)
+        result = await service.edit_task(
+            TaskEditSpec(id="task-001", actions=ActionsSpec(lifecycle="complete"))
+        )
+        assert result.success is True
+        if result.warnings:
+            assert not any("no changes detected" in w.lower() for w in result.warnings)
 
     async def test_empty_actions_block(self) -> None:
         """ActionsSpec() with all UNSET fields behaves like empty edit."""
