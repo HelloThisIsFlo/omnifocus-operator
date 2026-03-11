@@ -48,11 +48,11 @@ Requirements for Writes & Lookups milestone. Each maps to roadmap phases.
 
 ### Task Lifecycle
 
-- [ ] **LIFE-01**: Agent can mark a task as complete via edit_tasks
-- [ ] **LIFE-02**: Agent can drop a task via edit_tasks
-- [ ] **LIFE-03**: Agent can reactivate a completed task via edit_tasks
-- [ ] **LIFE-04**: Lifecycle interface design is resolved via research spike on OmniJS APIs
-- [ ] **LIFE-05**: Edge cases documented: repeating tasks, dropped task reactivation limits
+- [x] **LIFE-01**: Agent can mark a task as complete via edit_tasks
+- [x] **LIFE-02**: Agent can drop a task via edit_tasks
+- [x] **LIFE-03**: Agent can reactivate a completed task via edit_tasks
+- [x] **LIFE-04**: Lifecycle interface design is resolved via research spike on OmniJS APIs
+- [x] **LIFE-05**: Edge cases documented: repeating tasks, dropped task reactivation limits
 
 ## Future Requirements
 
@@ -119,11 +119,11 @@ Requirements for Writes & Lookups milestone. Each maps to roadmap phases.
 | EDIT-07 | Phase 16 | Complete |
 | EDIT-08 | Phase 16 | Complete |
 | EDIT-09 | Phase 16 | Complete |
-| LIFE-01 | Phase 17 | Pending |
-| LIFE-02 | Phase 17 | Pending |
-| LIFE-03 | Phase 17 | Pending |
-| LIFE-04 | Phase 17 | Pending |
-| LIFE-05 | Phase 17 | Pending |
+| LIFE-01 | Phase 17 | Complete |
+| LIFE-02 | Phase 17 | Complete |
+| LIFE-03 | Phase 17 | Complete |
+| LIFE-04 | Phase 17 | Complete |
+| LIFE-05 | Phase 17 | Complete |
 
 **Coverage:**
 - v1.2 requirements: 29 total

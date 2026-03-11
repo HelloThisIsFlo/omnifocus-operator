@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Writes & Lookups
-status: completed
-stopped_at: Phase 17 context gathered
-last_updated: "2026-03-11T22:29:05.018Z"
-last_activity: "2026-03-10 - Completed plan 16.2-03: UAT gap fixes (stale-check + stacked warnings)"
+status: in_progress
+stopped_at: Completed 17-01 plan
+last_updated: "2026-03-11T22:50:03.000Z"
+last_activity: "2026-03-11 - Completed plan 17-01: Task lifecycle (complete/drop) through all layers"
 progress:
-  total_phases: 7
+  total_phases: 8
   completed_phases: 5
-  total_plans: 18
-  completed_plans: 18
+  total_plans: 19
+  completed_plans: 19
   percent: 100
 ---
 
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 16.2 - Simplify bridge tag handling to diff-based approach
+**Current focus:** Phase 17 - Task lifecycle (complete and drop)
 
 ## Current Position
 
-Phase: 16.2 (Bridge Tag Simplification) -- inserted after Phase 16.1
-Plan: 3 of 3
-Status: Phase 16.2 complete (all UAT gaps closed)
-Last activity: 2026-03-10 - Completed plan 16.2-03: UAT gap fixes (stale-check + stacked warnings)
+Phase: 17 (Task Lifecycle)
+Plan: 1 of 1
+Status: Phase 17 plan 01 complete
+Last activity: 2026-03-11 - Completed plan 17-01: Task lifecycle (complete/drop) through all layers
 
 Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 18 (v1.2)
-- Average duration: 3.6min
-- Total execution time: 55min
+- Total plans completed: 19 (v1.2)
+- Average duration: 3.7min
+- Total execution time: 60min
 
 **By Phase:**
 
@@ -48,6 +48,7 @@ Progress: [██████████] 100%
 | 16 | 6/6 | 22min | 3.7min |
 | 16.1 | 3/3 | 11min | 3.7min |
 | 16.2 | 3/3 | 9min | 3min |
+| 17 | 1/1 | 5min | 5min |
 
 ## Accumulated Context
 
@@ -91,6 +92,11 @@ Progress: [██████████] 100%
 - [Phase 16.2]: resolveTagIds helper inside handleEditTask scope for locality
 - [Phase 16.2]: Stale-check pattern applied to all get-by-ID methods (get_task, get_project, get_tag)
 - [Phase 16.2]: No-op warning uses append instead of conditional assignment for proper stacking
+- [Phase 17]: Literal["complete", "drop"] for lifecycle -- Pydantic validates, no dedicated enum needed
+- [Phase 17]: _process_lifecycle helper returns (should_call_bridge, warnings) tuple
+- [Phase 17]: lifecycle_handled flag suppresses generic status warning (no contradictory messages)
+- [Phase 17]: drop(false) universally in bridge.js -- handles both repeating and non-repeating tasks
+- [Phase 17]: Lifecycle processed before status warning to control suppression flow
 
 ### Roadmap Evolution
 
@@ -121,6 +127,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-11T22:29:05.005Z
-Stopped at: Phase 17 context gathered
-Next action: Phase 16.2 Plan 02 (bridge.js simplification)
+Last session: 2026-03-11T22:50:03.000Z
+Stopped at: Completed 17-01-PLAN.md
+Next action: UAT testing for lifecycle actions (complete/drop)
