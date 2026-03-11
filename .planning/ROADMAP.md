@@ -161,7 +161,7 @@ Phases execute in numeric order: 14 -> 15 -> 16 -> 17
 | 16. Task Editing | 6/6 | Complete    | 2026-03-09 | - |
 | 16.1. Actions Grouping | 3/3 | Complete    | 2026-03-09 | - |
 | 16.2. Bridge Tag Simplification | 3/3 | Complete    | 2026-03-10 | - |
-| 17. Task Lifecycle | 2/2 | Complete   | 2026-03-11 | - |
+| 17. Task Lifecycle | 2/2 | Complete    | 2026-03-11 | - |
 
 ### Phase 18: Repetition rule write support: structured fields, not RRULE strings
 
