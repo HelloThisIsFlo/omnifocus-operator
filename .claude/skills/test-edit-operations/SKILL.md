@@ -49,6 +49,8 @@ UAT-Regression (parent)
 +-- T7-FieldEditing
 +-- T8-TagOps
 +-- T9-Errors
++-- T10-LifecycleA
++-- T10-LifecycleB
 ```
 
 Create the parent first, then all level-1 children (can be parallel), then T6's children sequentially (T6b needs to exist before T6b1).
@@ -60,7 +62,7 @@ Store all IDs in a reference table — you'll need them for every subsequent ste
 Ask the user to perform these manual actions in OmniFocus:
 
 1. **Complete** T5-StatusWarning (check it off)
-2. **Drop** T6a-Child1 (right-click > Drop, or however they prefer)
+2. **Drop** T6a-Child1 (right-click > Drop, or however they prefer) — T6a is reused in Test 12e (cross-state lifecycle)
 3. **If no ambiguous tag name was found in Step 1.1**: Ask the user to create two tags with the same name (e.g., create a tag named "TestDupe" under two different parent tags in OmniFocus). This enables test 8g (ambiguous tag resolution). If the user declines, test 8g will be SKIPPED.
 
 Tell them: "Please complete T5-StatusWarning and drop T6a-Child1 in OmniFocus. Also, if you'd like to test ambiguous tag handling (test 8g), create two tags with the same name (e.g., 'TestDupe') under different parent tags. Otherwise that test will be skipped. Let me know when done."
@@ -349,6 +351,41 @@ Run each INDIVIDUALLY (they will error):
 1. `flagged: true, actions: { move: {"ending": "<UAT-id>"} }` on T9
 2. PASS if: success, both applied
 
+### Section G — Lifecycle
+
+These tests verify the `actions.lifecycle` field for completing and dropping tasks.
+
+#### Test 12a: Complete a task
+1. `actions: { lifecycle: "complete" }` on T10-LifecycleA
+2. PASS if: success, `get_task` shows `availability: "completed"`
+
+#### Test 12b: Drop a task
+1. `actions: { lifecycle: "drop" }` on T10-LifecycleB
+2. PASS if: success, `get_task` shows `availability: "dropped"`
+
+#### Test 12c: No-op complete
+1. `actions: { lifecycle: "complete" }` on T10-LifecycleA (already completed from 12a)
+2. PASS if: success with warning about "already complete"
+
+#### Test 12d: No-op drop
+1. `actions: { lifecycle: "drop" }` on T10-LifecycleB (already dropped from 12b)
+2. PASS if: success with warning about "already dropped"
+
+#### Test 12e: Cross-state (complete a dropped task)
+1. `actions: { lifecycle: "complete" }` on T6a-Child1 (dropped in Step 1.3)
+2. PASS if: success with warning about prior state (was dropped)
+
+#### Test 12f: Lifecycle + field edit
+1. `name: "T10-Lifecycle-Renamed", actions: { lifecycle: "complete" }` on T10-LifecycleB (currently dropped)
+2. PASS if: both applied — name changed AND lifecycle action executed
+
+#### Test 12g: Invalid lifecycle
+1. `actions: { lifecycle: "reopen" }` on T10-LifecycleA
+2. PASS if: clean error (no Pydantic internals like "type=", "input_value", "pydantic")
+
+#### Test 12h: Repeating task lifecycle (SKIP)
+SKIP unless the user has a repeating test task available. Repeating tasks have special lifecycle behavior (completing creates next occurrence). This test requires manual setup that goes beyond the standard UAT regression scope.
+
 ---
 
 ## Phase 3: Report
@@ -415,6 +452,14 @@ Every test gets its own row (no grouping like "8a-8h"). Use this format:
 | 11c | Combo: stacked warnings | Editing a completed task with no actual changes; TWO warnings (completed + no-op) | PASS/FAIL |
 | 11d | Combo: batch limit | Sending 3 items returns the 1-item limit error (expected) | PASS/FAIL |
 | 11e | Combo: edit + move | Changing flagged and moving in one call; both applied | PASS/FAIL |
+| 12a | Lifecycle: complete | Completing a task via actions.lifecycle sets availability to "completed" | PASS/FAIL |
+| 12b | Lifecycle: drop | Dropping a task via actions.lifecycle sets availability to "dropped" | PASS/FAIL |
+| 12c | Lifecycle: no-op complete | Completing an already-completed task returns a warning | PASS/FAIL |
+| 12d | Lifecycle: no-op drop | Dropping an already-dropped task returns a warning | PASS/FAIL |
+| 12e | Lifecycle: cross-state | Completing a previously-dropped task succeeds with warning about prior state | PASS/FAIL |
+| 12f | Lifecycle: + field edit | Combining lifecycle action with a name change; both applied | PASS/FAIL |
+| 12g | Lifecycle: invalid value | Invalid lifecycle value ("reopen") returns clean error, no Pydantic internals | PASS/FAIL |
+| 12h | Lifecycle: repeating task | Completing a repeating task creates next occurrence | SKIP |
 
 **Total: X PASS, Y FAIL, Z SKIP**
 

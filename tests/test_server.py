@@ -1240,3 +1240,160 @@ class TestEditTasks:
             assert "input_value" not in text
 
         await run_with_client(server, _check)
+
+
+# ---------------------------------------------------------------------------
+# LIFECYCLE: edit_tasks lifecycle actions (complete/drop)
+# ---------------------------------------------------------------------------
+
+
+class TestEditTasksLifecycle:
+    """Verify lifecycle actions (complete/drop) through the server layer."""
+
+    async def _make_server_with_data(
+        self,
+        *,
+        extra_tasks: list[dict[str, Any]] | None = None,
+    ) -> FastMCP:
+        """Build a test server with InMemoryRepository and known data."""
+        from omnifocus_operator.repository import InMemoryRepository
+        from omnifocus_operator.server import _register_tools
+        from omnifocus_operator.service import OperatorService
+
+        from .conftest import make_project_dict, make_snapshot, make_tag_dict, make_task_dict
+
+        tasks = [make_task_dict()]
+        if extra_tasks:
+            tasks.extend(extra_tasks)
+
+        snapshot = make_snapshot(
+            tasks=tasks, projects=[make_project_dict()], tags=[make_tag_dict()]
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        server = _build_patched_server(repo, service)
+        _register_tools(server)
+        return server
+
+    # -- Lifecycle: complete --
+
+    async def test_edit_tasks_lifecycle_complete(self) -> None:
+        """lifecycle='complete' on a normal task returns success."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            add_result = await session.call_tool("add_tasks", {"items": [{"name": "To Complete"}]})
+            assert add_result.isError is not True
+            task_id = add_result.structuredContent["result"][0]["id"]  # type: ignore[index]
+
+            edit_result = await session.call_tool(
+                "edit_tasks",
+                {"items": [{"id": task_id, "actions": {"lifecycle": "complete"}}]},
+            )
+            assert edit_result.isError is not True
+            items = edit_result.structuredContent["result"]  # type: ignore[index]
+            assert items[0]["success"] is True
+
+            # Verify task is completed via get_task
+            get_result = await session.call_tool("get_task", {"id": task_id})
+            assert get_result.isError is not True
+            assert get_result.structuredContent["availability"] == "completed"  # type: ignore[index]
+
+        await run_with_client(server, _check)
+
+    # -- Lifecycle: drop --
+
+    async def test_edit_tasks_lifecycle_drop(self) -> None:
+        """lifecycle='drop' on a normal task returns success."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            add_result = await session.call_tool("add_tasks", {"items": [{"name": "To Drop"}]})
+            assert add_result.isError is not True
+            task_id = add_result.structuredContent["result"][0]["id"]  # type: ignore[index]
+
+            edit_result = await session.call_tool(
+                "edit_tasks",
+                {"items": [{"id": task_id, "actions": {"lifecycle": "drop"}}]},
+            )
+            assert edit_result.isError is not True
+            items = edit_result.structuredContent["result"]  # type: ignore[index]
+            assert items[0]["success"] is True
+
+            # Verify task is dropped
+            get_result = await session.call_tool("get_task", {"id": task_id})
+            assert get_result.isError is not True
+            assert get_result.structuredContent["availability"] == "dropped"  # type: ignore[index]
+
+        await run_with_client(server, _check)
+
+    # -- Lifecycle: invalid value --
+
+    async def test_edit_tasks_lifecycle_invalid_clean_error(self) -> None:
+        """lifecycle='invalid' returns clean error without Pydantic internals."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            result = await session.call_tool(
+                "edit_tasks",
+                {"items": [{"id": "task-001", "actions": {"lifecycle": "invalid"}}]},
+            )
+            assert result.isError is True
+            text = result.content[0].text  # type: ignore[union-attr]
+            # Must be clean -- no Pydantic internals
+            assert "type=" not in text
+            assert "pydantic" not in text.lower()
+            assert "input_value" not in text
+
+        await run_with_client(server, _check)
+
+    # -- Lifecycle: already completed (no-op) --
+
+    async def test_edit_tasks_lifecycle_complete_already_completed(self) -> None:
+        """Completing an already-completed task returns success with warning."""
+        server = await self._make_server_with_data(
+            extra_tasks=[
+                {
+                    "id": "completed-task",
+                    "name": "Already Done",
+                    "url": "omnifocus:///task/completed-task",
+                    "note": "",
+                    "added": "2024-01-15T10:30:00.000Z",
+                    "modified": "2024-01-15T10:30:00.000Z",
+                    "urgency": "none",
+                    "availability": "completed",
+                    "flagged": False,
+                    "effectiveFlagged": False,
+                    "dueDate": None,
+                    "deferDate": None,
+                    "effectiveDueDate": None,
+                    "effectiveDeferDate": None,
+                    "completionDate": "2024-01-15T12:00:00.000Z",
+                    "effectiveCompletionDate": "2024-01-15T12:00:00.000Z",
+                    "plannedDate": None,
+                    "effectivePlannedDate": None,
+                    "dropDate": None,
+                    "effectiveDropDate": None,
+                    "estimatedMinutes": None,
+                    "hasChildren": False,
+                    "inInbox": True,
+                    "repetitionRule": None,
+                    "parent": None,
+                    "tags": [],
+                },
+            ],
+        )
+
+        async def _check(session: ClientSession) -> None:
+            edit_result = await session.call_tool(
+                "edit_tasks",
+                {"items": [{"id": "completed-task", "actions": {"lifecycle": "complete"}}]},
+            )
+            assert edit_result.isError is not True
+            items = edit_result.structuredContent["result"]  # type: ignore[index]
+            assert items[0]["success"] is True
+            warnings = items[0].get("warnings", [])
+            assert any("already" in w.lower() for w in warnings)
+
+        await run_with_client(server, _check)

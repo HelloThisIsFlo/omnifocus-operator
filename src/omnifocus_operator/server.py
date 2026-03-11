@@ -251,7 +251,9 @@ def _register_tools(mcp: FastMCP) -> None:
           - {"ending": "<parentId>"} / {"beginning": "<parentId>"}
           - {"before": "<taskId>"} / {"after": "<taskId>"}
           - {"ending": null} / {"beginning": null} -- move to inbox
-        - actions.lifecycle: Reserved (not yet implemented)
+        - actions.lifecycle: Task lifecycle action
+          - "complete" -- mark task as complete
+          - "drop" -- drop/skip task
 
         Returns array of results: [{success, id, name, warnings?}]
         """
