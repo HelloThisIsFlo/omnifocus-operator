@@ -119,19 +119,19 @@ Plans:
 - [ ] 16.2-03-PLAN.md -- Gap closure: stale-check on get-by-ID + no-op warning stacking fix
 
 ### Phase 17: Task Lifecycle
-**Goal**: Agents can change task lifecycle state -- completing, dropping, and reactivating tasks
-**Depends on**: Phase 15
+**Goal**: Agents can complete and drop tasks via edit_tasks using the actions.lifecycle field (reactivation deferred)
+**Depends on**: Phase 16.2
 **Requirements**: LIFE-01, LIFE-02, LIFE-03, LIFE-04, LIFE-05
 **Success Criteria** (what must be TRUE):
   1. Agent can mark a task as complete via `edit_tasks` and the task's availability changes to `completed`
   2. Agent can drop a task via `edit_tasks` and the task's availability changes to `dropped`
   3. Agent can reactivate a completed task via `edit_tasks` and the task becomes available again
   4. Edge cases for repeating tasks and dropped task reactivation are documented and handled with clear errors or documented behavior
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 17-01: TBD
-- [ ] 17-02: TBD
+- [ ] 17-01-PLAN.md -- Model + bridge + repository + service lifecycle logic (complete/drop with warnings)
+- [ ] 17-02-PLAN.md -- Server docstring + server tests + UAT skill lifecycle section
 
 ## Progress
 
@@ -161,7 +161,7 @@ Phases execute in numeric order: 14 -> 15 -> 16 -> 17
 | 16. Task Editing | 6/6 | Complete    | 2026-03-09 | - |
 | 16.1. Actions Grouping | 3/3 | Complete    | 2026-03-09 | - |
 | 16.2. Bridge Tag Simplification | 3/3 | Complete    | 2026-03-10 | - |
-| 17. Task Lifecycle | v1.2 | 0/? | Not started | - |
+| 17. Task Lifecycle | v1.2 | 0/2 | Not started | - |
 
 ### Phase 18: Repetition rule write support: structured fields, not RRULE strings
 
