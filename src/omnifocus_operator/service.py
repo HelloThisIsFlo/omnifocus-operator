@@ -349,9 +349,10 @@ class OperatorService:
                     warnings.append(
                         "Task is already in this container. OmniFocus API "
                         "limitation: 'beginning'/'ending' moves within the "
-                        "same container may not change position. Workaround: "
-                        "use 'before' or 'after' with a sibling task ID to "
-                        "control ordering."
+                        "same container does not change position.\n"
+                        "This will be fixed in a future release.\n"
+                        "Workaround: use 'before' or 'after' with a sibling "
+                        "task ID to control ordering within a container."
                     )
                     # is_noop stays True -- same container
                 else:
@@ -433,10 +434,12 @@ class OperatorService:
                 )
             else:
                 warnings.append(
-                    "Repeating task -- this occurrence was skipped, "
-                    "next occurrence created. To drop the entire repeating "
-                    "sequence, this must be done in the OmniFocus UI. "
-                    "Confirm with user if this was their intent."
+                    "Repeating task — this occurrence was skipped, "
+                    "next occurrence created.\n"
+                    "If the user wanted to drop the entire repeating "
+                    "sequence, let them know this must be done in the "
+                    "OmniFocus UI (intentional restriction against "
+                    "destructive operations)."
                 )
 
         return True, warnings
