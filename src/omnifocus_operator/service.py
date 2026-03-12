@@ -282,17 +282,27 @@ class OperatorService:
             payload["moveTo"] = move_to_dict
 
         # 6. Early return for completely empty edit (no fields, no tags, no move)
-        if len(payload) == 1:  # Only "id" key
+        if len(payload) == 1 and not warnings:  # Only "id" key, no action-specific warnings
             logger.debug("OperatorService.edit_task: empty edit (no fields), returning early")
             return TaskEditResult(
                 success=True,
                 id=spec.id,
                 name=task.name,
-                warnings=(warnings or [])
-                + [
+                warnings=[
                     "No changes specified -- if you intended to change fields, "
                     "include them in the request"
                 ],
+            )
+        if len(payload) == 1 and warnings:
+            # Action-specific warnings already present (e.g. lifecycle no-op, tag no-op)
+            logger.debug(
+                "OperatorService.edit_task: empty edit with action warnings, returning early"
+            )
+            return TaskEditResult(
+                success=True,
+                id=spec.id,
+                name=task.name,
+                warnings=warnings,
             )
 
         # 7. Generic no-op detection: compare payload against current task state
@@ -348,13 +358,16 @@ class OperatorService:
                 # before/after -- can't detect same position
                 is_noop = False
 
-        if is_noop and len(payload) >= 1:
+        if is_noop:
+            if not warnings:
+                # Genuine field-level no-op -- add generic warning
+                warnings.append(
+                    "No changes detected -- the task already has these values. "
+                    "If you don't want to change a field, omit it from the request."
+                )
+            # Return early -- action-specific warnings already present, or generic added
             logger.debug(
                 "OperatorService.edit_task: no-op detected, all values match current state"
-            )
-            warnings.append(
-                "No changes detected -- the task already has these values. "
-                "If you don't want to change a field, omit it from the request."
             )
             return TaskEditResult(
                 success=True,
