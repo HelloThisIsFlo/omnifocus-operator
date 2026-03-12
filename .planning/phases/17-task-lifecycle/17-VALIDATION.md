@@ -1,10 +1,11 @@
 ---
 phase: 17
 slug: task-lifecycle
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-11
+validated: 2026-03-12
 ---
 
 # Phase 17 — Validation Strategy
@@ -38,10 +39,13 @@ created: 2026-03-11
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 17-01-01 | 01 | 1 | LIFE-04 | unit | `uv run pytest tests/test_models.py -x -k lifecycle` | ❌ W0 | ⬜ pending |
-| 17-01-02 | 01 | 1 | LIFE-01 | unit | `uv run pytest tests/test_service.py -x -k lifecycle_complete` | ❌ W0 | ⬜ pending |
-| 17-01-03 | 01 | 1 | LIFE-02 | unit | `uv run pytest tests/test_service.py -x -k lifecycle_drop` | ❌ W0 | ⬜ pending |
-| 17-01-04 | 01 | 1 | LIFE-05 | unit | `uv run pytest tests/test_service.py -x -k "lifecycle and (repeat or noop or cross)"` | ❌ W0 | ⬜ pending |
+| 17-01-01 | 01 | 1 | LIFE-04 | unit | `uv run pytest tests/test_models.py -x -k lifecycle` | ✅ | ✅ green |
+| 17-01-02 | 01 | 1 | LIFE-01 | unit | `uv run pytest tests/test_service.py -x -k lifecycle_complete` | ✅ | ✅ green |
+| 17-01-03 | 01 | 1 | LIFE-02 | unit | `uv run pytest tests/test_service.py -x -k lifecycle_drop` | ✅ | ✅ green |
+| 17-01-04 | 01 | 1 | LIFE-05 | unit | `uv run pytest tests/test_service.py -x -k "lifecycle and (repeat or noop or cross)"` | ✅ | ✅ green |
+| 17-02-01 | 02 | 2 | LIFE-01, LIFE-02 | integration | `uv run pytest tests/test_server.py -x -k lifecycle` | ✅ | ✅ green |
+| 17-01-repo | 01 | 1 | LIFE-01, LIFE-02 | unit | `uv run pytest tests/test_repository.py -x -k lifecycle` | ✅ | ✅ green |
+| 17-01-bridge | 01 | 1 | LIFE-01, LIFE-02 | unit | `uv run npx vitest run bridge/tests/handleEditTask.test.js` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -67,11 +71,23 @@ created: 2026-03-11
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** passed
+
+---
+
+## Validation Audit 2026-03-12
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+| Total automated tests | 27 (24 Python + 3 JS) |
+| Requirements covered | 4/4 (LIFE-03 deferred) |
