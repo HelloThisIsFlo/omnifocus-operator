@@ -25,6 +25,11 @@ The agent has no way to see child ordering — `get_task` shows the parent but n
 - TaskPaper output (v1.4) naturally shows hierarchy and order via indentation — complementary to `order` field
 - `order` is for programmatic use, TaskPaper for full-hierarchy comprehension
 
+## Sequencing
+
+- Target: v1.3 (filtering milestone). The query infrastructure built for filtering naturally supports exposing child ordering.
+- Implementing this before or alongside the same-container move fix is ideal — both need the ability to query children in order.
+
 ## Related
 
-- **Move no-op warning check ordinal position not just container** — the no-op detection for same-container moves needs ordering data to distinguish beginning vs ending. Exposing the position field here would provide the data that fix consumes.
+- **[Fix same-container move by translating to moveBefore/moveAfter](2026-03-12-fix-same-container-move-by-translating-to-movebefore-moveafter.md)** — the write-side counterpart. This todo exposes ordering to agents (read); that fix uses ordering to make moves work (write). They share infrastructure and should land in the same milestone.
