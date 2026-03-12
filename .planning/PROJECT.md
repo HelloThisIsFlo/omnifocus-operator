@@ -39,7 +39,7 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 - [ ] Write pipeline: MCP -> Service -> Repository -> Bridge -> invalidate snapshot
 - [ ] Task creation: `add_tasks` -- create tasks with project/parent/tags/dates/flags
 - [ ] Task editing: `edit_tasks` -- patch semantics (omit/null/value), tag modes, task movement
-- [ ] Lifecycle changes: complete/drop/reactivate tasks via `edit_tasks`
+- ✓ Lifecycle changes: complete/drop tasks via `edit_tasks` (reactivation deferred) — Phase 17
 - [ ] Bridge script: new commands (get_task, get_project, get_tag, add_task, edit_task) with request file payloads
 
 ### Out of Scope
@@ -111,4 +111,4 @@ Two read paths: SQLite (default, ~46ms) and OmniJS bridge (fallback, ~1.5MB JSON
 - Bridge script write commands with request file payloads
 
 ---
-*Last updated: 2026-03-07 after v1.2 milestone started*
+*Last updated: 2026-03-12 after Phase 17*
