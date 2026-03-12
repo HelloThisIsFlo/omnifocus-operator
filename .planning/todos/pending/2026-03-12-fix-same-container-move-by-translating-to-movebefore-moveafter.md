@@ -20,7 +20,7 @@ When a task is already in a container and you call `moveTo beginning/ending` on 
 
 This was manually verified: `moveBefore`/`moveAfter` within the same container DOES work (confirmed 2026-03-12).
 
-Subsumes the previous todo "Move no-op warning check ordinal position not just container" — fixing the move itself makes the warning refinement moot.
+Previously thought to subsume the "Move no-op warning" todo, but they're separate concerns: this fixes the operation; that fixes the warning accuracy.
 
 ## Solution
 
@@ -48,3 +48,4 @@ Service layer (`edit_tasks` flow). The bridge stays dumb — it receives `moveBe
 ## Related
 
 - **[Add position field to expose child task ordering](2026-03-08-add-position-field-to-expose-child-task-ordering.md)** — the position feature and this fix share a dependency on ordering data. Position field is a read-side feature (agents see ordering); this is a write-side fix (moves actually reorder). Consider implementing in the same milestone phase since they touch similar infrastructure.
+- **[Move no-op warning check ordinal position not just container](2026-03-09-move-no-op-warning-check-ordinal-position-not-just-container.md)** — separate concern: this todo fixes the move operation; that one fixes the warning accuracy (warns when it shouldn't). Both need ordering data.

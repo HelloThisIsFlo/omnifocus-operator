@@ -105,7 +105,7 @@ Progress: [██████████] 100%
 - Phase 16.2 inserted after Phase 16: Simplify bridge tag handling to diff-based approach (URGENT)
 - Phase 18 added: Repetition rule write support: structured fields, not RRULE strings
 
-### Pending Todos (13)
+### Pending Todos (14)
 
 Carried from v1.0:
 1. Add retry logic for OmniFocus bridge timeouts (v1.5)
