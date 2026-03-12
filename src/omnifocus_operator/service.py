@@ -347,9 +347,11 @@ class OperatorService:
                 current_parent_id = task.parent.id if task.parent else None
                 if container_id == current_parent_id:
                     warnings.append(
-                        "Task is already a child of this parent. "
-                        "The move was applied, but the server cannot yet confirm "
-                        "whether the task's position within the parent changed."
+                        "Task is already in this container. OmniFocus API "
+                        "limitation: 'beginning'/'ending' moves within the "
+                        "same container may not change position. Workaround: "
+                        "use 'before' or 'after' with a sibling task ID to "
+                        "control ordering."
                     )
                     # is_noop stays True -- same container
                 else:
@@ -430,7 +432,12 @@ class OperatorService:
                     "Repeating task -- this occurrence completed, next occurrence created."
                 )
             else:
-                warnings.append("Repeating task -- this occurrence was skipped.")
+                warnings.append(
+                    "Repeating task -- this occurrence was skipped, "
+                    "next occurrence created. To drop the entire repeating "
+                    "sequence, this must be done in the OmniFocus UI. "
+                    "Confirm with user if this was their intent."
+                )
 
         return True, warnings
 

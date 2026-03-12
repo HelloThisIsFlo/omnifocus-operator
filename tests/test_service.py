@@ -1415,7 +1415,7 @@ class TestEditTask:
         )
         assert result.success is True
         assert result.warnings is not None
-        assert any("already a child of this parent" in w for w in result.warnings)
+        assert any("already in this container" in w for w in result.warnings)
 
     async def test_lifecycle_complete_available_task(self) -> None:
         """lifecycle='complete' on available task succeeds without special warning."""
@@ -1571,6 +1571,7 @@ class TestEditTask:
         assert result.success is True
         assert result.warnings is not None
         assert any("repeating" in w.lower() and "skipped" in w.lower() for w in result.warnings)
+        assert any("OmniFocus UI" in w for w in result.warnings)
 
     async def test_lifecycle_cross_state_repeating_stacked_warnings(self) -> None:
         """Cross-state + repeating: both warnings stack."""
@@ -1834,9 +1835,9 @@ class TestEditTask:
         )
         assert result.success is True
         assert result.warnings is not None
-        # Should have per-tag warning AND empty-edit warning
+        # Should have per-tag warning only (no generic empty-edit warning)
         assert any("already on this task" in w for w in result.warnings)
-        assert any("No changes" in w for w in result.warnings)
+        assert not any("No changes" in w for w in result.warnings)
 
     async def test_different_container_move_no_warning(self) -> None:
         """Moving task to different container has no location warning."""
@@ -1865,9 +1866,9 @@ class TestEditTask:
             )
         )
         assert result.success is True
-        # No "already a child of this parent" warning
+        # No "already in this container" warning
         if result.warnings:
-            assert not any("already a child of this parent" in w for w in result.warnings)
+            assert not any("already in this container" in w for w in result.warnings)
 
 
 # ---------------------------------------------------------------------------
