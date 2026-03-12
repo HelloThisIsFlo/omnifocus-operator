@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: complete
 phase: 17-task-lifecycle
 source: [17-01-SUMMARY.md, 17-02-SUMMARY.md]
 started: 2026-03-12T10:00:00Z
-updated: 2026-03-12T10:15:00Z
+updated: 2026-03-12T19:05:00Z
 ---
 
 ## Current Test
@@ -58,10 +58,10 @@ result: pass
 expected: Call edit_tasks with lifecycle set to an invalid value (e.g., "reopen"). Response returns a validation error, task is unchanged.
 result: pass
 
-### 11. No-Op Secondary Warning (observation)
-expected: No-op lifecycle (e.g., complete an already-completed task) should only produce the no-op warning.
+### 11. No-Op Action Triggers Spurious "No changes specified" Warning
+expected: When an action (lifecycle, move, or tags) is processed but results in a no-op, only the action-specific no-op warning should appear. The generic "No changes specified" field warning should NOT also appear.
 result: issue
-reported: "No-op complete/drop also emits a secondary 'No changes specified' warning — slightly noisy since the user did specify a lifecycle action, it just happened to be redundant"
+reported: "Whenever an action generates a no-op (lifecycle no-op, same-container move, tag no-op), the generic 'No changes specified' field warning is also emitted. The bug is that both the action-specific no-op warning AND the generic field no-op warning fire together. Either show the action-specific warning or the generic one, never both."
 severity: minor
 
 ### 12. Same-Container Move Warning (discovered during investigation)
@@ -80,17 +80,23 @@ skipped: 0
 
 ## Gaps
 
-- truth: "No-op lifecycle should only produce the no-op warning, not an additional 'No changes specified' warning"
+- truth: "When an action (lifecycle, move, tags) results in a no-op, only the action-specific warning should appear — not the generic field-level no-op warning"
   status: failed
-  reason: "User reported: No-op complete/drop also emits a secondary 'No changes specified' warning — slightly noisy since the user did specify a lifecycle action, it just happened to be redundant"
+  reason: "User reported: Whenever an action generates a no-op, the generic field-level warning also fires. Both the action-specific no-op and the generic no-op appear together. Either show the action-specific warning or the generic one, never both."
   severity: minor
   test: 11
-  root_cause: "service.py:285 early-return check `len(payload) == 1` fires when lifecycle is no-op because no-op lifecycle doesn't add 'lifecycle' key to payload. The check doesn't account for lifecycle_handled=True meaning the user DID specify an action."
+  root_cause: |
+    Two code paths produce generic no-op warnings that stack on top of action-specific warnings:
+    1. service.py:285 `len(payload)==1` → "No changes specified" — fires for lifecycle no-op (lifecycle not added to payload when no-op) and tag no-op (empty diff → nothing added)
+    2. service.py:351 `is_noop and len(payload)>=1` → "No changes detected" — fires for same-container move (moveTo IS in payload but is_noop stays True)
+    Both paths blindly append their generic warning even when `warnings` already contains action-specific no-op messages.
   artifacts:
     - path: "src/omnifocus_operator/service.py"
-      issue: "Line 285: empty-edit guard doesn't check lifecycle_handled flag"
+      issue: "Line 285: empty-edit guard fires even when actions were processed but no-oped"
+    - path: "src/omnifocus_operator/service.py"
+      issue: "Line 351: field no-op guard fires even when action-specific warnings already present"
   missing:
-    - "Add `and not lifecycle_handled` condition to the len(payload)==1 check at line 285"
+    - "Both no-op guards (lines 285 and 351) should suppress the generic warning when action-specific warnings are already present in `warnings`"
   debug_session: ""
 
 - truth: "Drop warning on repeating tasks should inform about full sequence implications"
