@@ -940,11 +940,11 @@ class TestEditTask:
         result = await service.edit_task(TaskEditSpec(id="task-001", name="Done Task"))
         assert result.warnings is not None
         assert any("completed" in w for w in result.warnings)
-        assert any("No changes detected" in w for w in result.warnings)
-        assert len(result.warnings) == 2
+        assert not any("No changes detected" in w for w in result.warnings)
+        assert len(result.warnings) == 1
 
     async def test_stacked_warnings_dropped_noop(self) -> None:
-        """Editing a dropped task with same values produces BOTH dropped + no-op warnings."""
+        """Editing a dropped task with same values produces ONLY the status warning."""
         from omnifocus_operator.models.write import TaskEditSpec
 
         snapshot = make_snapshot(
@@ -956,8 +956,8 @@ class TestEditTask:
         result = await service.edit_task(TaskEditSpec(id="task-001", name="Dropped Task"))
         assert result.warnings is not None
         assert any("dropped" in w for w in result.warnings)
-        assert any("No changes detected" in w for w in result.warnings)
-        assert len(result.warnings) == 2
+        assert not any("No changes detected" in w for w in result.warnings)
+        assert len(result.warnings) == 1
 
     async def test_warning_addtags_duplicate(self) -> None:
         """Adding a tag already on the task produces a warning."""
@@ -1655,11 +1655,84 @@ class TestEditTask:
         )
         assert result.success is True
         assert result.warnings is not None
-        # Should have no-op warning, but NOT the generic status warning
+        # Should have no-op warning, but NOT the generic status warning or empty edit warning
         assert any("already complete" in w.lower() for w in result.warnings)
         assert not any(
             "confirm with the user that they intended to edit" in w for w in result.warnings
         )
+        assert not any("No changes specified" in w for w in result.warnings)
+
+    async def test_noop_lifecycle_no_spurious_empty_edit_warning(self) -> None:
+        """No-op lifecycle (complete already-completed) should NOT add 'No changes specified'."""
+        from omnifocus_operator.models.write import ActionsSpec, TaskEditSpec
+
+        snapshot = make_snapshot(
+            tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(
+            TaskEditSpec(id="task-001", actions=ActionsSpec(lifecycle="complete"))
+        )
+        assert result.success is True
+        assert result.warnings is not None
+        assert any("already complete" in w.lower() for w in result.warnings)
+        assert not any("No changes specified" in w for w in result.warnings)
+        assert len(result.warnings) == 1
+
+    async def test_noop_same_container_move_no_spurious_noop_warning(self) -> None:
+        """Same-container move should NOT add 'No changes detected'."""
+        from omnifocus_operator.models.write import ActionsSpec, MoveToSpec, TaskEditSpec
+
+        snapshot = make_snapshot(
+            tasks=[
+                make_task_dict(
+                    id="task-001",
+                    name="Task",
+                    parent={"type": "project", "id": "proj-001", "name": "Test Project"},
+                )
+            ],
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(
+            TaskEditSpec(
+                id="task-001",
+                actions=ActionsSpec(move=MoveToSpec(ending="proj-001")),
+            )
+        )
+        assert result.success is True
+        assert result.warnings is not None
+        assert any("already" in w.lower() for w in result.warnings)
+        assert not any("No changes detected" in w for w in result.warnings)
+        assert len(result.warnings) == 1
+
+    async def test_noop_tags_no_spurious_empty_edit_warning(self) -> None:
+        """Replace tags with identical set should NOT add 'No changes specified'."""
+        from omnifocus_operator.models.write import ActionsSpec, TagActionSpec, TaskEditSpec
+
+        from .conftest import make_tag_dict
+
+        snapshot = make_snapshot(
+            tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])],
+            tags=[make_tag_dict(id="tag-a", name="A")],
+        )
+        repo = InMemoryRepository(snapshot=snapshot)
+        service = OperatorService(repository=repo)
+
+        result = await service.edit_task(
+            TaskEditSpec(
+                id="task-001",
+                actions=ActionsSpec(tags=TagActionSpec(replace=["A"])),
+            )
+        )
+        assert result.success is True
+        assert result.warnings is not None
+        assert any("already match" in w.lower() for w in result.warnings)
+        assert not any("No changes specified" in w for w in result.warnings)
+        assert len(result.warnings) == 1
 
     async def test_lifecycle_action_suppresses_status_warning(self) -> None:
         """Cross-state lifecycle should NOT produce the generic status warning."""
