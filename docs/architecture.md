@@ -26,6 +26,44 @@ omnifocus_operator/
     service.py       -- Validation, resolution, delegation to repository
 ```
 
+## Dumb Bridge, Smart Python
+
+The most important architectural invariant: **the bridge is a relay, not a brain**. All validation, resolution, diff computation, and business logic lives in Python. The bridge script receives pre-validated payloads and executes them without interpretation.
+
+### Why
+
+- **OmniJS freezes the UI.** Every line of bridge logic is user-visible latency — scanning 2,825 tasks takes ~1,264ms during which OmniFocus is unresponsive
+- **OmniJS is quirky.** Opaque enums, unreliable batch operations, null rejection — the runtime has sharp edges that are painful to debug
+- **Python is testable.** 534 pytest tests cover service logic, adapter transformations, and repository behavior. Bridge.js has 26 Vitest tests for basic relay correctness — that's the right ratio
+- **Python is typed.** Pydantic models, mypy strict mode, and structured error handling catch issues at development time, not at 7:30am in production
+
+### Known OmniJS Quirks
+
+These are concrete examples of why logic stays out of the bridge:
+
+- **`removeTags(array)` is unreliable** — bridge works around this by removing tags one at a time in a loop instead of batch (`bridge.js:279`)
+- **`note = null` is rejected** — OmniFocus API requires empty string to clear notes. Service maps `null -> ""` before bridge sees it (`service.py:207`)
+- **Enums are opaque objects** — `.name` returns `undefined`. Only `===` comparison against known constants works. Bridge does minimal enum-to-string resolution and throws on unknowns (`bridge.js:27`)
+- **Same-container moves are no-ops** — `beginning`/`ending` moves within the same container don't reorder. Service detects this and warns with a workaround (`service.py:349`)
+- **Blocking state is invisible** — bridge cannot determine sequential dependencies or parent-child blocking. Only SQLite has full availability data (`BRIDGE-SPEC.md:FALL-02`)
+
+### What Lives Where
+
+| Concern | Where | Why |
+|---------|-------|-----|
+| Enum-to-string resolution | Bridge | Must happen at source (opaque objects) |
+| Tag name-to-ID resolution | Service | Case-insensitive matching, ambiguity errors |
+| Tag diff computation | Service | Minimal add/remove sets, no-op warnings |
+| Cycle detection (moves) | Service | Parent chain walk on cached snapshot — instant |
+| No-op detection + warnings | Service | Field comparison before bridge delegation |
+| Null-means-clear mapping | Service | Business logic, not transport |
+| RRULE string generation | Service | Structured fields → RRULE string (see [RRULE Utility Layer](#rrule-utility-layer)) |
+| Validation (all of it) | Service | Three layers, all before bridge call |
+
+### The Result
+
+The bridge is ~400 lines of trivial relay code. The rest of the project is ~14,000 lines of validated, typed, tested Python. That's the right split.
+
 ## Repository Protocol
 
 Structural typing (no inheritance required). Current contract:
@@ -153,65 +191,181 @@ Design principles:
 
 ## Repetition Rule: Structured Fields, Not RRULE Strings
 
-The read and write models expose repetition as decomposed structured fields — not the raw ICS RRULE string.
+Agents never see RRULE strings. The read and write models expose repetition as structured, type-discriminated fields. The RRULE string is an internal serialization detail between the service layer and the bridge.
 
-```python
-RepetitionRule:
-  freq: "daily" | "weekly" | "monthly" | "yearly"
-  interval: int | None
-  byday: list[str] | None          # ["MO", "WE", "FR"]
-  bymonthday: int | None           # 1-31 or negative
-  bysetpos: int | None             # nth weekday (requires byday)
-  count: int | None
-  until: str | None                # "20261231T000000Z"
-  schedule_type: "regularly" | "from_completion"
-  anchor_date_key: "due_date" | "defer_date" | "planned_date"
-  catch_up_automatically: bool
+Why top-level (not inside `actions`): setting a repetition rule is idempotent — same input always produces the same result, regardless of current state. Follows the same pattern as `due_date`, `note` — set, clear, or leave unchanged.
+
+### Repetition Rule Structure
+
+```
+repetitionRule
+├── frequency                    -- nested, type-discriminated
+│   ├── type                     -- discriminator (required)
+│   ├── interval                 -- every N of that type (default: 1)
+│   └── days                     -- polymorphic by type (see below)
+├── schedule                     -- "regularly" | "regularly_with_catch_up" | "from_completion"
+├── basedOn                      -- "due_date" | "defer_date" | "planned_date"
+└── end                          -- optional: {"date": "ISO-8601"} or {"after": N}
 ```
 
-**Read model** — agent reads a task and gets structured fields:
+- `schedule` — three values; collapses scheduleType + catchUpAutomatically into one field
+- `basedOn` — renamed from anchorDateKey to match OmniFocus UI language ("based on due date")
+- `end` — "key IS the value" pattern (same as moveTo): exactly one key, omit for no end
+- `frequency.interval` — nested (tightly coupled with type: "every 2 weeks" is one concept)
+
+### Frequency Types
+
+Eight types, with `type` as the Pydantic discriminator:
+
+| Type | `days` field | Example |
+|------|-------------|---------|
+| `minutely` | — | Every 30 minutes |
+| `hourly` | — | Every 2 hours |
+| `daily` | — | Every 3 days |
+| `weekly` | `string[]` — two-letter codes (MO–SU), optional | Every 2 weeks on Mon, Fri |
+| `monthly` | — | Every month (from basedOn date) |
+| `monthly_day_of_week` | `object` — single `{ordinal: dayName}` | The 2nd Tuesday of every month |
+| `monthly_day_in_month` | `int[]` — day numbers (1–31, -1 = last) | The 1st and 15th of every month |
+| `yearly` | — | Every year |
+
+The `days` field is polymorphic — its type is determined by `frequency.type`:
+
+```json
+// weekly: array of two-letter day codes (case-insensitive, normalized to uppercase)
+"days": ["MO", "WE", "FR"]
+
+// monthly_day_of_week: single key-value object
+// Keys: first, second, third, fourth, fifth, last
+// Values: monday–sunday, weekday, weekend_day (case-insensitive, normalized to lowercase)
+"days": {"second": "tuesday"}
+
+// monthly_day_in_month: array of integers (1–31, -1 for last day)
+"days": [1, 15, -1]
+```
+
+### Examples
+
+**Daily** — every 3 days, from completion, based on defer date:
 ```json
 {
   "repetitionRule": {
-    "freq": "monthly",
-    "bymonthday": 1,
-    "count": 12,
-    "scheduleType": "regularly",
-    "anchorDateKey": "due_date",
-    "catchUpAutomatically": false
+    "frequency": { "type": "daily", "interval": 3 },
+    "schedule": "from_completion",
+    "basedOn": "defer_date"
   }
 }
 ```
 
-**Edit model** — agent sends back the same shape (modified or as-is):
+**Weekly** — every 2 weeks on Mon and Fri, regularly with catch-up, based on due date:
 ```json
 {
-  "id": "task-123",
   "repetitionRule": {
-    "freq": "weekly",
-    "interval": 2,
-    "byday": ["TU", "TH"],
-    "until": "20261231T000000Z",
-    "scheduleType": "from_completion",
-    "anchorDateKey": "defer_date",
-    "catchUpAutomatically": true
+    "frequency": { "type": "weekly", "interval": 2, "days": ["MO", "FR"] },
+    "schedule": "regularly_with_catch_up",
+    "basedOn": "due_date"
+  }
+}
+```
+
+**Monthly (nth weekday)** — the last Friday of every month, stop after 12 occurrences:
+```json
+{
+  "repetitionRule": {
+    "frequency": { "type": "monthly_day_of_week", "interval": 1, "days": {"last": "friday"} },
+    "schedule": "regularly",
+    "basedOn": "due_date",
+    "end": { "after": 12 }
+  }
+}
+```
+
+**Monthly (specific days)** — the 1st and 15th of every month, until a date:
+```json
+{
+  "repetitionRule": {
+    "frequency": { "type": "monthly_day_in_month", "interval": 1, "days": [1, 15] },
+    "schedule": "regularly_with_catch_up",
+    "basedOn": "planned_date",
+    "end": { "date": "2026-12-31" }
   }
 }
 ```
 
 **Clear** — standard patch semantics: `"repetitionRule": null`
 
-Why structured fields instead of raw RRULE strings:
-- Agents shouldn't need to know ICS RRULE syntax (`FREQ=WEEKLY;BYDAY=MO,WE,FR`) — structured fields are discoverable via JSON schema and natural to work with
-- Read and write use the same shape — agents can read a repetition rule, modify a field, and send it back without format conversion
-- Validation happens server-side with a zero-dep parser/builder — we don't trust OmniFocus to reject bad input gracefully or return clear errors
-- The RRULE string becomes an internal serialization detail between the service layer and bridge
+### Partial Update Semantics
 
-Why top-level (not inside `actions`):
-- Setting a repetition rule is idempotent — same input always produces the same result, regardless of current state
-- Follows the same pattern as `due_date`, `note` — set, clear, or leave unchanged
+Repetition rules support targeted partial updates on `edit_tasks`, following two rules:
 
-Research spike: `.research/deep-dives/rrule-validator/` (parser + builder + 79 tests)
+1. **Root-level fields are independently updatable** — change `schedule`, `basedOn`, or `end` without resending other fields
+2. **Frequency object uses type as the merge boundary:**
+   - Same type → merge (omitted fields preserved from existing rule)
+   - Type changes → full replacement required (no cross-type inference)
+   - `type` is always required in the frequency object
+
+```json
+// Change only basedOn (everything else preserved):
+{ "repetitionRule": { "basedOn": "defer_date" } }
+
+// Add Friday to existing weekly schedule (interval preserved):
+{ "repetitionRule": { "frequency": { "type": "weekly", "days": ["TH", "FR"] } } }
+
+// Switch from weekly to monthly (full frequency object required):
+{ "repetitionRule": { "frequency": { "type": "monthly_day_in_month", "interval": 1, "days": [15] } } }
+```
+
+No existing rule + partial update → error: "Task has no repetition rule. Provide a complete rule."
+
+### RRULE Utility Layer
+
+Standalone functions bridge the structured API and the internal RRULE format:
+
+```mermaid
+flowchart LR
+    subgraph Agent-Facing
+        SF[Structured Fields]
+    end
+
+    subgraph Internal
+        BUILD["build_rrule()"]
+        PARSE["parse_rrule()"]
+        RRULE[RRULE String]
+    end
+
+    subgraph OmniFocus
+        BRIDGE[bridge.js]
+        SQLITE[(SQLite cache)]
+    end
+
+    SF -- "writes" --> BUILD -- "writes" --> RRULE -- "writes" --> BRIDGE
+    SQLITE -- "reads" --> PARSE -- "reads" --> SF
+    BRIDGE -- "reads" --> PARSE
+```
+
+
+#### Write Path
+
+- `build_rrule(FrequencySpec) -> str` — structured model to RRULE string
+- Service layer calls `build_rrule()` then sends the RRULE string + metadata to bridge.js
+- Bridge stays dumb — receives `(ruleString, scheduleType, anchorDateKey, catchUp)`, creates `new Task.RepetitionRule()`
+
+#### Read Path
+
+- `parse_rrule(str) -> FrequencySpec` — RRULE string to structured model
+- Both read paths (SQLite and bridge adapter) call `parse_rrule()` — single parsing implementation, two call sites
+- All parsing in Python, not bridge — see [Dumb Bridge, Smart Python](#dumb-bridge-smart-python)
+
+#### Common
+
+- Both functions accept/return Pydantic models, not dicts
+
+### Validation Layers
+
+Three layers, all before bridge execution:
+
+1. **Pydantic structural** — required fields, enum values, `end` has exactly one key
+2. **Type-specific constraints** — reject fields that don't belong to given frequency type; value ranges (interval >= 1, valid day codes, valid ordinals, dayOfMonth -1 to 31 excluding 0)
+3. **Service semantic** — no existing rule + partial update, type change + incomplete frequency, no-op detection with educational warnings
 
 ## Deferred Decisions
 
