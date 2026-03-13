@@ -19,12 +19,12 @@ Enable agents to set, modify, and remove repetition rules on tasks via `edit_tas
 - Nested frequency object with `type` as discriminator:
   - Types: `minutely`, `hourly`, `daily`, `weekly`, `monthly`, `monthly_day_of_week`, `monthly_day_in_month`, `yearly`
   - `interval` nested inside frequency, defaults to 1
-  - Weekly `days`: optional array of two-letter codes (MO–SU). Case-insensitive input, normalized to uppercase. Omitted = repeats every N weeks from basedOn date
-  - `monthly_day_of_week` `days`: single key-value object. Key = ordinal (first/second/third/fourth/fifth/last). Value = day name (monday–sunday, weekday, weekend_day). Case-insensitive input, normalized to lowercase
-  - `monthly_day_in_month` `days`: array of integers (1–31, -1 for last day). Empty/omitted triggers warning suggesting plain `monthly` type
+  - Weekly `onDays`: optional array of two-letter codes (MO–SU). Case-insensitive input, normalized to uppercase. Omitted = repeats every N weeks from basedOn date
+  - `monthly_day_of_week` `on`: single key-value object. Key = ordinal (first/second/third/fourth/fifth/last). Value = day name (monday–sunday, weekday, weekend_day). Case-insensitive input, normalized to lowercase. Reads like English: `"on": {"second": "tuesday"}`
+  - `monthly_day_in_month` `onDates`: array of integers (1–31, -1 for last day). Empty/omitted triggers warning suggesting plain `monthly` type
 - `schedule` at root, required on creation: `regularly` / `regularly_with_catch_up` / `from_completion` (three values — no separate catchUp boolean)
 - `basedOn` at root, required on creation: `due_date` / `defer_date` / `planned_date` (renamed from anchorDateKey to match OmniFocus UI language)
-- `end` at root, optional: `{"date": "ISO-8601-string"}` or `{"after": N}` or omitted for no end. Same "key IS the value" pattern as moveTo — exactly one key allowed
+- `end` at root, optional: `{"date": "ISO-8601-string"}` or `{"occurrences": N}` or omitted for no end. Same "key IS the value" pattern as moveTo — exactly one key allowed
 
 ### Repetition lifecycle
 - Partial updates supported on `edit_tasks`
@@ -51,7 +51,7 @@ Enable agents to set, modify, and remove repetition rules on tasks via `edit_tas
 ### Validation and errors
 - Three validation layers:
   1. **Pydantic structural**: required fields, enum values, `end` has exactly one key
-  2. **Type-specific constraints**: reject fields that don't belong to given frequency type, value ranges (interval >= 1, valid day codes, valid ordinals, dayOfMonth -1 to 31 excluding 0, end.after >= 1)
+  2. **Type-specific constraints**: reject fields that don't belong to given frequency type, value ranges (interval >= 1, valid day codes, valid ordinals, dayOfMonth -1 to 31 excluding 0, end.occurrences >= 1)
   3. **Service semantic**: no existing rule + partial update, type change + incomplete frequency, no-op detection
 - Same error pattern as existing edit_tasks — ValueError with educational messages
 - End date in the past: warning (confirm with user intention), same style as existing "completed task" warnings
@@ -73,7 +73,7 @@ Enable agents to set, modify, and remove repetition rules on tasks via `edit_tas
 
 - The three schedule values (`regularly`, `regularly_with_catch_up`, `from_completion`) collapse what was previously a schedule type + boolean into a single ergonomic field — cleaner for agents
 - `basedOn` naming comes from OmniFocus UI language ("based on due date") rather than the technical `anchorDateKey` — more intuitive for agents driving user conversations
-- The `monthly_day_of_week` days object reads like English: `{"second": "Tuesday"}` — "the second Tuesday of every month"
+- The `monthly_day_of_week` `on` field reads like English: `"on": {"second": "tuesday"}` — "on the second Tuesday of every month"
 - Database validation is fine in general (e.g., reading current task state for merge logic), just avoid recursive/expensive operations
 - OmniFocus happily accepts interval=10000 (repeating every 10,000 years) — no upper bound needed
 - OmniFocus handles edge cases like dayOfMonth=31 in February internally — no need to validate calendar logic

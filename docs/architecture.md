@@ -41,10 +41,10 @@ The most important architectural invariant: **the bridge is a relay, not a brain
 
 These are concrete examples of why logic stays out of the bridge:
 
-- **`removeTags(array)` is unreliable** — bridge works around this by removing tags one at a time in a loop instead of batch (`bridge.js:279`)
-- **`note = null` is rejected** — OmniFocus API requires empty string to clear notes. Service maps `null -> ""` before bridge sees it (`service.py:207`)
-- **Enums are opaque objects** — `.name` returns `undefined`. Only `===` comparison against known constants works. Bridge does minimal enum-to-string resolution and throws on unknowns (`bridge.js:27`)
-- **Same-container moves are no-ops** — `beginning`/`ending` moves within the same container don't reorder. Service detects this and warns with a workaround (`service.py:349`)
+- **`removeTags(array)` is unreliable** — bridge works around this by removing tags one at a time in a loop instead of batch (`bridge.js`, `handleEditTask`)
+- **`note = null` is rejected** — OmniFocus API requires empty string to clear notes. Service maps `null -> ""` before bridge sees it (`service.py`, `_build_edit_payload`)
+- **Enums are opaque objects** — `.name` returns `undefined`. Only `===` comparison against known constants works. Bridge does minimal enum-to-string resolution and throws on unknowns (`bridge.js`, enum resolvers)
+- **Same-container moves are no-ops** — `beginning`/`ending` moves within the same container don't reorder. Service detects this and warns with a workaround (`service.py`, `_process_move`)
 - **Blocking state is invisible** — bridge cannot determine sequential dependencies or parent-child blocking. Only SQLite has full availability data (`BRIDGE-SPEC.md:FALL-02`)
 
 ### What Lives Where
@@ -58,6 +58,7 @@ These are concrete examples of why logic stays out of the bridge:
 | No-op detection + warnings | Service | Field comparison before bridge delegation |
 | Null-means-clear mapping | Service | Business logic, not transport |
 | RRULE string generation | Service | Structured fields → RRULE string (see [RRULE Utility Layer](#rrule-utility-layer)) |
+| Lifecycle (complete/drop) | Service + Bridge | Service validates state, bridge executes `markComplete()`/`drop()` |
 | Validation (all of it) | Service | Three layers, all before bridge call |
 
 ### The Result
@@ -71,7 +72,7 @@ Structural typing (no inheritance required). Current contract:
 - `get_all()` -> `AllEntities` -- full snapshot (tasks, projects, folders, tags)
 - `get_task(id)` / `get_project(id)` / `get_tag(id)` -> single entity or None
 - `add_task(spec, resolved_tag_ids)` -> `TaskCreateResult`
-- `edit_task(spec, ...)` -> `TaskEditResult` (Phase 16, planned)
+- `edit_task(spec, ...)` -> `TaskEditResult`
 
 Three implementations: HybridRepository (production), BridgeRepository (fallback), InMemoryRepository (tests).
 
@@ -129,31 +130,46 @@ Three implementations: HybridRepository (production), BridgeRepository (fallback
 ## Patch Semantics (edit_tasks)
 
 - Three-way field distinction: omit = no change, null = clear, value = set
+
+  ```json
+  {
+    "id": "abc123",
+    "name": "New name",      // value → set
+    "dueDate": null,         // null  → clear
+                             // note  → omitted, no change
+  }
+  ```
+
 - Pydantic sentinel pattern (UNSET) distinguishes "not provided" from "explicitly null"
 - Clearable fields: dates, note, estimated_minutes. Value-only: name, flagged
 - Bridge payload only includes non-UNSET fields; bridge.js uses `hasOwnProperty()` to detect presence
 
-## Task Movement (moveTo)
+## Task Movement (actions.move)
 
-"Key IS the position" design -- `moveTo` object has exactly one key:
+"Key IS the position" design — the move object has exactly one key:
 
 ```json
-{"moveTo": {"ending": "proj-123"}}       -- last child of container
-{"moveTo": {"beginning": "proj-123"}}    -- first child of container
-{"moveTo": {"after": "task-sibling"}}    -- after this sibling (parent inferred)
-{"moveTo": {"before": "task-sibling"}}   -- before this sibling (parent inferred)
-{"moveTo": {"beginning": null}}          -- move to inbox
+{"move": {"ending": "proj-123"}}       -- last child of container
+{"move": {"beginning": "proj-123"}}    -- first child of container
+{"move": {"after": "task-sibling"}}    -- after this sibling (parent inferred)
+{"move": {"before": "task-sibling"}}   -- before this sibling (parent inferred)
+{"move": {"beginning": null}}          -- move to inbox
 ```
 
+- Lives under `actions.move` in the edit spec (see [Field Graduation Pattern](#field-graduation-pattern))
 - One key = one position + one reference. Invalid combos are structurally impossible.
 - Maps directly to OmniJS position API: `container.beginning`, `container.ending`, `task.before`, `task.after`
 - Full cycle validation via SQLite parent chain walk before bridge call
 
 ## Educational Warnings
 
-- Write results include optional `warnings` array for no-ops
-- Hints teach agents patch semantics: "Tag 'X' was not on this task -- omit remove_tags to skip"
+- Write results include optional `warnings` array for no-ops and edge cases
 - Design principle: LLMs learn in-context from tool responses, so warnings serve as runtime documentation
+- Examples:
+  - Tag no-op: "Tag 'X' was not on this task — omit remove_tags to skip"
+  - Setter no-op: "Field 'flagged' is already true — omit to skip"
+  - Same-container move: "Task is already in this container. Use 'before' or 'after' with a sibling task ID to control ordering."
+  - Lifecycle on completed: "Task is already completed — no change made"
 
 ## Field Graduation Pattern
 
@@ -180,7 +196,16 @@ Design principles:
     1. Remove the field from top-level setters
     2. Add it as an action group under `actions` with `replace` + new operations
   - Example: `note` could graduate to `actions.note: { replace: "...", append: "..." }` when append-note is needed.
-- **Tags are the first graduated field** — top-level `tags` (replace-only) becomes `actions.tags` with `add`/`remove`/`replace` modes.
+- **Tags are the first graduated field:**
+
+  ```json
+  // Before graduation (v1.2.0): top-level setter, replace-only
+  { "tags": ["Work", "Planning"] }
+
+  // After graduation (v1.2.1): action group with add/remove/replace
+  { "actions": { "tags": { "add": ["Urgent"], "remove": ["Planning"] } } }
+  ```
+
 - **Each graduation is independent** — migrate one field at a time as use cases emerge.
 
 ## Two-Axis Status Model
@@ -190,6 +215,8 @@ Design principles:
 - Replaces single-winner status enum from v1.0; matches OmniFocus internal representation
 
 ## Repetition Rule: Structured Fields, Not RRULE Strings
+
+> **Status:** Spec for Phase 18 — not yet implemented. The current read model still exposes raw `rule_string`, `schedule_type`, and `anchor_date_key` fields. This section describes the target architecture.
 
 Agents never see RRULE strings. The read and write models expose repetition as structured, type-discriminated fields. The RRULE string is an internal serialization detail between the service layer and the bridge.
 
@@ -202,45 +229,45 @@ repetitionRule
 ├── frequency                    -- nested, type-discriminated
 │   ├── type                     -- discriminator (required)
 │   ├── interval                 -- every N of that type (default: 1)
-│   └── days                     -- polymorphic by type (see below)
+│   └── onDays / on / onDates    -- type-specific (see below)
 ├── schedule                     -- "regularly" | "regularly_with_catch_up" | "from_completion"
 ├── basedOn                      -- "due_date" | "defer_date" | "planned_date"
-└── end                          -- optional: {"date": "ISO-8601"} or {"after": N}
+└── end                          -- optional: {"date": "ISO-8601"} or {"occurrences": N}
 ```
 
 - `schedule` — three values; collapses scheduleType + catchUpAutomatically into one field
-- `basedOn` — renamed from anchorDateKey to match OmniFocus UI language ("based on due date")
-- `end` — "key IS the value" pattern (same as moveTo): exactly one key, omit for no end
+- `basedOn` — renamed from anchorDateKey to match OmniFocus UI language ("based on due date"). See [OmniFocus Concepts](omnifocus-concepts.md#dates) for date semantics
+- `end` — "key IS the value" pattern (same as [actions.move](#task-movement-actionsmove)): exactly one key, omit for no end
 - `frequency.interval` — nested (tightly coupled with type: "every 2 weeks" is one concept)
 
 ### Frequency Types
 
 Eight types, with `type` as the Pydantic discriminator:
 
-| Type | `days` field | Example |
-|------|-------------|---------|
+| Type | Day field | Example |
+|------|-----------|---------|
 | `minutely` | — | Every 30 minutes |
 | `hourly` | — | Every 2 hours |
 | `daily` | — | Every 3 days |
-| `weekly` | `string[]` — two-letter codes (MO–SU), optional | Every 2 weeks on Mon, Fri |
+| `weekly` | `onDays`: `string[]` — two-letter codes (MO–SU), optional | Every 2 weeks on Mon, Fri |
 | `monthly` | — | Every month (from basedOn date) |
-| `monthly_day_of_week` | `object` — single `{ordinal: dayName}` | The 2nd Tuesday of every month |
-| `monthly_day_in_month` | `int[]` — day numbers (1–31, -1 = last) | The 1st and 15th of every month |
+| `monthly_day_of_week` | `on`: `object` — single `{ordinal: dayName}` | The 2nd Tuesday of every month |
+| `monthly_day_in_month` | `onDates`: `int[]` — day numbers (1–31, -1 = last) | The 1st and 15th of every month |
 | `yearly` | — | Every year |
 
-The `days` field is polymorphic — its type is determined by `frequency.type`:
+Each frequency type that needs day specification uses a **type-specific field name** — no polymorphism:
 
 ```json
-// weekly: array of two-letter day codes (case-insensitive, normalized to uppercase)
-"days": ["MO", "WE", "FR"]
+// weekly → onDays: array of two-letter day codes (case-insensitive, normalized to uppercase)
+"onDays": ["MO", "WE", "FR"]
 
-// monthly_day_of_week: single key-value object
+// monthly_day_of_week → on: single key-value object (reads like English: "on the second Tuesday")
 // Keys: first, second, third, fourth, fifth, last
 // Values: monday–sunday, weekday, weekend_day (case-insensitive, normalized to lowercase)
-"days": {"second": "tuesday"}
+"on": {"second": "tuesday"}
 
-// monthly_day_in_month: array of integers (1–31, -1 for last day)
-"days": [1, 15, -1]
+// monthly_day_in_month → onDates: array of integers (1–31, -1 for last day)
+"onDates": [1, 15, -1]
 ```
 
 ### Examples
@@ -260,7 +287,7 @@ The `days` field is polymorphic — its type is determined by `frequency.type`:
 ```json
 {
   "repetitionRule": {
-    "frequency": { "type": "weekly", "interval": 2, "days": ["MO", "FR"] },
+    "frequency": { "type": "weekly", "interval": 2, "onDays": ["MO", "FR"] },
     "schedule": "regularly_with_catch_up",
     "basedOn": "due_date"
   }
@@ -271,10 +298,10 @@ The `days` field is polymorphic — its type is determined by `frequency.type`:
 ```json
 {
   "repetitionRule": {
-    "frequency": { "type": "monthly_day_of_week", "interval": 1, "days": {"last": "friday"} },
+    "frequency": { "type": "monthly_day_of_week", "interval": 1, "on": {"last": "friday"} },
     "schedule": "regularly",
     "basedOn": "due_date",
-    "end": { "after": 12 }
+    "end": { "occurrences": 12 }
   }
 }
 ```
@@ -283,7 +310,7 @@ The `days` field is polymorphic — its type is determined by `frequency.type`:
 ```json
 {
   "repetitionRule": {
-    "frequency": { "type": "monthly_day_in_month", "interval": 1, "days": [1, 15] },
+    "frequency": { "type": "monthly_day_in_month", "interval": 1, "onDates": [1, 15] },
     "schedule": "regularly_with_catch_up",
     "basedOn": "planned_date",
     "end": { "date": "2026-12-31" }
@@ -308,10 +335,10 @@ Repetition rules support targeted partial updates on `edit_tasks`, following two
 { "repetitionRule": { "basedOn": "defer_date" } }
 
 // Add Friday to existing weekly schedule (interval preserved):
-{ "repetitionRule": { "frequency": { "type": "weekly", "days": ["TH", "FR"] } } }
+{ "repetitionRule": { "frequency": { "type": "weekly", "onDays": ["TH", "FR"] } } }
 
 // Switch from weekly to monthly (full frequency object required):
-{ "repetitionRule": { "frequency": { "type": "monthly_day_in_month", "interval": 1, "days": [15] } } }
+{ "repetitionRule": { "frequency": { "type": "monthly_day_in_month", "interval": 1, "onDates": [15] } } }
 ```
 
 No existing rule + partial update → error: "Task has no repetition rule. Provide a complete rule."
