@@ -107,28 +107,29 @@ The test double handles each path with completely different logic:
 | `tags` → `tagIds` key rename | Repository (pop + insert) | N/A (service uses `addTagIds`/`removeTagIds`) |
 | `repetitionRule` key swap | Repository (pop + insert) | N/A (service inserts bridge format directly) |
 
-## Idea to explore: single-file protocol map
+## Idea to explore: unified protocol file
 
-One thought: have a single file that declares the protocol (types in, types out) at each layer boundary — server, service, repository. Not the implementation, just the contracts. Something like:
+Move the actual `Protocol` class definitions for all layers into a single file. Each layer's implementation would import and implement its protocol from there — so it's the real source of truth, not documentation.
 
 ```python
-# Strawman — not a real proposal yet
-class ServerProtocol:
-    async def add_tasks(items: list[dict]) -> list[TaskCreateResult]: ...
-    async def edit_tasks(items: list[dict]) -> list[TaskEditResult]: ...
+# e.g. protocols.py — the actual enforceable contracts
+class ServiceProtocol(Protocol):
+    async def add_task(self, spec: TaskCreateSpec) -> TaskCreateResult: ...
+    async def edit_task(self, spec: TaskEditSpec) -> TaskEditResult: ...
 
-class ServiceProtocol:
-    async def add_task(spec: TaskCreateSpec) -> TaskCreateResult: ...
-    async def edit_task(spec: TaskEditSpec) -> TaskEditResult: ...
-
-class RepositoryProtocol:
-    async def add_task(???) -> ???: ...
-    async def edit_task(???) -> ???: ...
+class RepositoryProtocol(Protocol):
+    async def add_task(self, ???) -> ???: ...
+    async def edit_task(self, ???) -> ???: ...
 ```
 
-The value would be: seeing the full information flow top-to-bottom in one place, making asymmetries obvious at a glance. Right now you have to hop between 5+ files to understand what types cross which boundary.
+Implementations import and satisfy these — mypy catches drift.
 
-Open questions:
-- Is this just documentation, or would it actually be enforced (e.g. runtime-checked Protocol classes)?
-- Does co-locating protocols create a coupling problem? Each layer currently owns its own interface.
-- Might be overkill — maybe just cleaning up the repo protocol signatures is enough.
+**Why it could work:**
+- Full data flow readable top-to-bottom in one file — asymmetries scream at you
+- Enforceable via mypy, not a sync-or-drift documentation problem
+- Extends a pattern that already exists (`repository/protocol.py`)
+
+**Tensions:**
+- Server and service are single-implementation today — protocols earn their keep when you have multiple implementations (like the 3 repo impls). Adding a `ServiceProtocol` is ceremony unless there's a second service impl someday.
+- Creates a central file that every layer imports from. Architecturally fine (just types), but it becomes a bottleneck for changes — every boundary change touches it.
+- For the repo layer this is a no-brainer (already exists). For server/service, the tradeoff is readability vs ceremony for single-impl layers.
