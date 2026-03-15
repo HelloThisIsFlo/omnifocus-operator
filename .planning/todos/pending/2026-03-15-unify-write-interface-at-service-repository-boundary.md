@@ -1,36 +1,108 @@
 ---
 created: 2026-03-15T21:51:11.609Z
-title: Unify write interface at service-repository boundary
+title: Explore write interface asymmetry across layers
 area: service
 files:
+  - src/omnifocus_operator/server.py
+  - src/omnifocus_operator/service.py
   - src/omnifocus_operator/repository/protocol.py
   - src/omnifocus_operator/repository/bridge.py
   - src/omnifocus_operator/repository/hybrid.py
   - src/omnifocus_operator/repository/in_memory.py
-  - src/omnifocus_operator/service.py
+  - src/omnifocus_operator/models/write.py
 ---
 
 ## Problem
 
-Write interface asymmetry at the service → repository boundary. The two write operations (`add_task` / `edit_task`) have completely different responsibility boundaries:
+The two write operations have different type signatures and responsibility splits at each layer boundary. This document maps where the type mismatches are.
+
+## Layer 1: Server → Service (clean)
+
+Both paths follow the same pattern — Pydantic validation at the boundary:
+
+| | `add_tasks` | `edit_tasks` |
+|---|---|---|
+| **Server receives** | `list[dict[str, Any]]` | `list[dict[str, Any]]` |
+| **Server validates into** | `TaskCreateSpec` | `TaskEditSpec` |
+| **Service accepts** | `TaskCreateSpec` | `TaskEditSpec` |
+| **Service returns** | `TaskCreateResult` | `TaskEditResult` |
+
+No issues here. Both tools: raw dict in, typed spec out, typed result back.
+
+## Layer 2: Service → Repository (asymmetric)
 
 | | `add_task` | `edit_task` |
 |---|---|---|
-| **Service passes** | `TaskCreateSpec` (typed) | `dict[str, Any]` (raw bridge-ready payload) |
-| **Who serializes** | Repository (`model_dump`) | Service (builds dict manually) |
-| **Who converts to bridge format** | Repository (but gets it wrong — user-facing fields, not bridge fields) | Service (`_process_repetition_rule`, `_compute_tag_diff`, moveTo builder) |
-| **Repository role** | Deserialize spec + swap resolved values | Dumb pass-through to `bridge.send_command` |
+| **Service passes** | `TaskCreateSpec` + `resolved_tag_ids` + `resolved_repetition_rule` kwargs | `dict[str, Any]` (fully bridge-ready payload) |
+| **Who converts tags** | Service resolves names→IDs, but repo swaps them in | Service computes diff → `addTagIds`/`removeTagIds` |
+| **Who converts repetition rule** | Service converts `RepetitionRuleSpec`→bridge dict, but repo swaps it in | Service converts inline |
+| **Who serializes to bridge format** | Repository (`model_dump(by_alias=True)` → camelCase) | Service (builds dict field-by-field) |
+| **Repository role** | `model_dump` spec, pop `tags`/`repetitionRule`, insert resolved values | Pass-through to `bridge.send_command` |
 | **Return type** | `TaskCreateResult` (typed) | `dict[str, Any]` (raw) |
 
-### Consequences
+### Protocol signature asymmetry
 
-- Bridge format conversion logic is scattered across two layers
-- `resolved_*` kwargs are band-aids — service converts, passes alongside spec, repo swaps into the model_dump'd payload
-- InMemoryRepository (test double) has different code paths for each: builds a Task from spec for add, mutates a Task from dict for edit — neither validates the payload shape matches what bridge.js expects
-- Adding a new field to `add_task` requires touching service (validation), repository (swap logic), AND the spec model. For `edit_task` it's just the service.
+```python
+# protocol.py
+async def add_task(
+    self,
+    spec: TaskCreateSpec,
+    *,
+    resolved_tag_ids: list[str] | None = None,
+    resolved_repetition_rule: dict[str, Any] | None = None,
+) -> TaskCreateResult: ...
 
-## Solution
+async def edit_task(
+    self, payload: dict[str, Any],
+) -> dict[str, Any]: ...
+```
 
-Unify both paths so there is one consistent pattern at the service → repository boundary. The service should own all conversion logic (FrequencySpec → ruleString, schedule → scheduleType, tag names → IDs, etc.) for both add and edit, passing a bridge-ready payload to the repository in both cases. Repository becomes a consistent pass-through for writes.
+`add_task` receives a typed spec + band-aid kwargs. `edit_task` receives an untyped dict.
 
-Key design question: whether the service passes a typed "bridge command" object or a raw dict. Either way, conversion logic should live in exactly one layer.
+## Layer 3: Repository → Bridge (converges)
+
+Both paths ultimately call the same thing:
+
+```python
+await self._bridge.send_command("add_task", payload)   # dict[str, Any]
+await self._bridge.send_command("edit_task", payload)   # dict[str, Any]
+```
+
+But they arrive at that dict differently:
+- **add_task**: repo does `spec.model_dump()` → pops/swaps resolved values → dict
+- **edit_task**: service already built the dict → repo passes through
+
+## InMemoryRepository (test double) divergence
+
+The test double handles each path with completely different logic:
+
+| | `add_task` | `edit_task` |
+|---|---|---|
+| **What it does** | Builds a `Task` from spec fields | Mutates existing `Task` from bridge-format dict |
+| **Tag handling** | Uses `resolved_tag_ids` to look up Tag objects | Maps `addTagIds`/`removeTagIds` to Tag mutations |
+| **Repetition rules** | **Ignores** `resolved_repetition_rule`, rebuilds from spec | Stores bridge dict keys directly on task |
+| **Validation** | Doesn't validate output matches bridge format | Doesn't validate input dict shape |
+
+## Bridge payload format (what both paths must produce)
+
+**add_task bridge expects:**
+- `name`, `parent`, `dueDate`, `deferDate`, `plannedDate`, `flagged`, `estimatedMinutes`, `note` (camelCase)
+- `tagIds: list[str]` (not `tags`)
+- `repetitionRule: {ruleString, scheduleType, anchorDateKey, catchUp}` (bridge format, not user-facing)
+
+**edit_task bridge expects:**
+- `id` (required), plus any changed fields in camelCase
+- `addTagIds` / `removeTagIds` (diff, not absolute)
+- `moveTo: {position, containerId|anchorId}`
+- `lifecycle: "complete" | "drop"`
+- `repetitionRule: {ruleString, scheduleType, anchorDateKey, catchUp} | None`
+
+## Summary of where conversion logic lives
+
+| Conversion | `add_task` | `edit_task` |
+|---|---|---|
+| Tag names → IDs | Service resolves, repo swaps | Service resolves + computes diff |
+| `RepetitionRuleSpec` → bridge dict | Service converts, repo swaps | Service converts |
+| Field serialization (snake→camel) | Repository (`model_dump(by_alias=True)`) | Service (manual dict building) |
+| `tags` → `tagIds` key rename | Repository (pop + insert) | N/A (service uses `addTagIds`/`removeTagIds`) |
+| `repetitionRule` key swap | Repository (pop + insert) | N/A (service inserts bridge format directly) |
