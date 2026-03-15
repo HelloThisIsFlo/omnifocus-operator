@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Writes & Lookups
 status: completed
-stopped_at: Phase 18 context gathered
-last_updated: "2026-03-13T18:11:23.285Z"
-last_activity: "2026-03-12 - Completed plan 17-03: Gap closure for UAT-reported warning issues"
+stopped_at: Deferred work moved to milestone specs (v1.2.1, v1.2.2, v1.3.1), phases 17.1 and 18 removed from roadmap
+last_updated: "2026-03-15"
+last_activity: "2026-03-15 - Created milestone specs for deferred work, cleaned up roadmap"
 progress:
-  total_phases: 7
+  total_phases: 6
   completed_phases: 6
   total_plans: 21
   completed_plans: 21
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-12)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 18 - Repetition rule write support
+**Current focus:** All v1.2 phases complete. Deferred work moved to milestone specs. Pending milestone audit + completion.
 
 ## Current Position
 
 Phase: 17 (Task Lifecycle)
 Plan: 3 of 3
-Status: Phase 17 complete (including gap closure)
-Last activity: 2026-03-12 - Completed plan 17-03: Gap closure for UAT-reported warning issues
+Status: All phases complete. Phases 17.1 and 18 removed from roadmap (moved to milestone specs v1.2.1, v1.2.2).
+Last activity: 2026-03-15 - Created milestone specs for deferred work, cleaned up roadmap
 
 Progress: [██████████] 100%
 
@@ -104,7 +104,8 @@ Progress: [██████████] 100%
 
 - Phase 16.1 inserted after Phase 16: Introduce actions grouping to edit_tasks (URGENT)
 - Phase 16.2 inserted after Phase 16: Simplify bridge tag handling to diff-based approach (URGENT)
-- Phase 18 added: Repetition rule write support: structured fields, not RRULE strings
+- Phase 18 added: Repetition rule write support: structured fields, not RRULE strings → moved to MILESTONE-v1.2.2.md
+- Phase 17.1 inserted after Phase 17: Unify write interface at service-repository boundary (URGENT) → moved to MILESTONE-v1.2.1.md
 
 ### Pending Todos (14)
 
@@ -129,6 +130,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-13T18:11:23.271Z
-Stopped at: Phase 18 context gathered
-Resume file: .planning/phases/18-repetition-rule-write-support-structured-fields-not-rrule-strings/18-CONTEXT.md
+Last session: 2026-03-15
+Stopped at: Deferred work moved to milestone specs, pending milestone audit + completion
+Resume file: N/A (milestone boundary)
