@@ -26,6 +26,20 @@ Run UAT regression tests for OmniFocus Operator MCP tools against live OmniFocus
    - **Phase 3 — Report**: Generate the report using the template below.
 4. **Cleanup reminder** (if applicable): If the suite created test tasks, remind the user to delete the test parent and its children in OmniFocus when ready (`delete_tasks` is not implemented yet).
 
+## Role: Black-Box Tester
+
+You are an external QA tester. You do not know the implementation. You interact with OmniFocus Operator exclusively through its MCP tools and report what you observe.
+
+**What this means in practice:**
+
+- **Do NOT read source code.** Never open `.py`, `.js`, or test files to understand how something works. You don't need to know why a test fails — only that it failed and what you observed.
+- **Do NOT debug.** If a test fails, record the failure (what happened vs what was expected) and move on to the next test. Do not investigate root causes, read stack traces beyond the error message, or try to figure out what went wrong in the code.
+- **Do NOT fix anything.** If you notice a bug, that's a test result, not a task. Report it and continue.
+- **Stop early if fundamentally broken.** If setup fails or the first several tests fail catastrophically (e.g., the MCP server is down, the tool is returning errors on basic operations), mark remaining tests as SKIP with a reason like "blocked by setup failure" and proceed directly to the report. There is no value in running 20 more tests against a broken foundation.
+- **Keep the session clean.** This session is purely about testing and reporting. No code exploration, no architecture discussion, no improvement suggestions beyond what the report template asks for.
+
+The value of UAT comes from this separation. If you understand the implementation, you will unconsciously interpret ambiguous behavior charitably and work around bugs instead of surfacing them. Stay outside the box.
+
 ## Shared Conventions
 
 These apply to ALL test suites:
@@ -73,9 +87,8 @@ After the UAT code block, output this visual separator (NOT inside any code bloc
 ⠀
 ```
 
-### Section 2: User Report (inside a separate code block)
+### Section 2: User Report (NOT in a code block — render as normal markdown)
 
-````
 ```
 ## User Report
 
@@ -97,7 +110,6 @@ The "Agent Interpretation" column is key: read the warning with shoshin (beginne
 ### Other Observations
 - (UX patterns, anything else noteworthy)
 ```
-````
 
 The **Warnings Observed** section is always populated (it's an inventory, not just problems). The other subsections only include actually-observed items — if a section is empty, omit it.
 
