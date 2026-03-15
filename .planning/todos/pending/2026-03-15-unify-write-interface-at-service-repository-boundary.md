@@ -106,3 +106,29 @@ The test double handles each path with completely different logic:
 | Field serialization (snake→camel) | Repository (`model_dump(by_alias=True)`) | Service (manual dict building) |
 | `tags` → `tagIds` key rename | Repository (pop + insert) | N/A (service uses `addTagIds`/`removeTagIds`) |
 | `repetitionRule` key swap | Repository (pop + insert) | N/A (service inserts bridge format directly) |
+
+## Idea to explore: single-file protocol map
+
+One thought: have a single file that declares the protocol (types in, types out) at each layer boundary — server, service, repository. Not the implementation, just the contracts. Something like:
+
+```python
+# Strawman — not a real proposal yet
+class ServerProtocol:
+    async def add_tasks(items: list[dict]) -> list[TaskCreateResult]: ...
+    async def edit_tasks(items: list[dict]) -> list[TaskEditResult]: ...
+
+class ServiceProtocol:
+    async def add_task(spec: TaskCreateSpec) -> TaskCreateResult: ...
+    async def edit_task(spec: TaskEditSpec) -> TaskEditResult: ...
+
+class RepositoryProtocol:
+    async def add_task(???) -> ???: ...
+    async def edit_task(???) -> ???: ...
+```
+
+The value would be: seeing the full information flow top-to-bottom in one place, making asymmetries obvious at a glance. Right now you have to hop between 5+ files to understand what types cross which boundary.
+
+Open questions:
+- Is this just documentation, or would it actually be enforced (e.g. runtime-checked Protocol classes)?
+- Does co-locating protocols create a coupling problem? Each layer currently owns its own interface.
+- Might be overkill — maybe just cleaning up the repo protocol signatures is enough.
