@@ -48,7 +48,7 @@ Include after the table:
 - **Total**: X PASS, Y FAIL, Z SKIP
 - **Failures**: What happened vs expected, for each failure
 - **Skipped Tests**: Why they were skipped
-- **Observations**: Warning tone, error message quality, anything noteworthy
+- **Observations**: Warning tone, error message quality, anything noteworthy. If any warnings looked problematic (unclear, misleading, missing info), flag them here — the full inventory lives in the User Report below.
 - **Cleanup**: "Please manually delete [parent task name] and all its children in OmniFocus when ready."
 
 ### Separator
@@ -64,7 +64,7 @@ After the UAT code block, output this visual separator (NOT inside any code bloc
 ⠀
   ▲ UAT REPORT (above) — copy-paste to share with reviewer
 ⠀
-  ▼ NICE-TO-HAVES (below) — internal improvement notes
+  ▼ USER REPORT (below) — warnings inventory + improvement notes
 ⠀
 ═══════════════════════════════════════════════════════════════
 ═══════════════════════════════════════════════════════════════
@@ -73,11 +73,20 @@ After the UAT code block, output this visual separator (NOT inside any code bloc
 ⠀
 ```
 
-### Section 2: Nice-to-Haves (inside a separate code block)
+### Section 2: User Report (inside a separate code block)
 
 ````
 ```
-## Nice-to-Haves
+## User Report
+
+### Warnings Observed
+
+Every distinct warning encountered during this test suite. Always populated — even when all warnings look correct.
+
+The "Agent Interpretation" column is key: read the warning with shoshin (beginner's mind) — pretend you know nothing about the implementation or the test that triggered it. What would an agent understand it to mean? What action would it take next? If the interpretation doesn't match reality, that's a signal the warning text needs improvement. Be honest — if the warning is unclear, say so.
+
+| Warning Text | Triggered By | Looks Correct? | Agent Interpretation | Notes |
+|---|---|---|---|---|
 
 ### Tool / Server Improvements
 - (Bugs, error message quality, API design, missing validations)
@@ -86,10 +95,10 @@ After the UAT code block, output this visual separator (NOT inside any code bloc
 - (Missing test cases, edge cases not covered, skill clarity)
 
 ### Other Observations
-- (UX patterns, warning tone, anything else noteworthy)
+- (UX patterns, anything else noteworthy)
 ```
 ````
 
-Only include actually-observed items. If a section is empty, omit it.
+The **Warnings Observed** section is always populated (it's an inventory, not just problems). The other subsections only include actually-observed items — if a section is empty, omit it.
 
-**IMPORTANT:** Do NOT repeat bugs already captured in the Failures section. Nice-to-Haves are for observations beyond what the test suite covers — wording improvements, UX polish, missing coverage, architectural suggestions.
+**IMPORTANT:** Do NOT repeat bugs already captured in the Failures section. The subsections below Warnings Observed are for observations beyond what the test suite covers — wording improvements, UX polish, missing coverage, architectural suggestions.
