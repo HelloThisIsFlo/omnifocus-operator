@@ -12,6 +12,19 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, NoReturn
 
 from omnifocus_operator.models.enums import Availability
+from omnifocus_operator.warnings import (
+    EDIT_COMPLETED_TASK,
+    EDIT_NO_CHANGES_DETECTED,
+    EDIT_NO_CHANGES_SPECIFIED,
+    LIFECYCLE_ALREADY_IN_STATE,
+    LIFECYCLE_CROSS_STATE,
+    LIFECYCLE_REPEATING_COMPLETE,
+    LIFECYCLE_REPEATING_DROP,
+    MOVE_SAME_CONTAINER,
+    TAG_ALREADY_ON_TASK,
+    TAG_NOT_ON_TASK,
+    TAGS_ALREADY_MATCH,
+)
 
 if TYPE_CHECKING:
     from omnifocus_operator.models.common import TagRef
@@ -181,10 +194,7 @@ class OperatorService:
             Availability.DROPPED,
         ):
             status = task.availability.value
-            warnings.append(
-                f"This task is {status} -- your changes were applied, "
-                f"but please confirm with the user that they intended to edit a {status} task."
-            )
+            warnings.append(EDIT_COMPLETED_TASK.format(status=status))
 
         # 4. Validate name (if provided)
         if not isinstance(spec.name, _Unset) and (not spec.name or not spec.name.strip()):
@@ -288,10 +298,7 @@ class OperatorService:
                 success=True,
                 id=spec.id,
                 name=task.name,
-                warnings=[
-                    "No changes specified -- if you intended to change fields, "
-                    "include them in the request"
-                ],
+                warnings=[EDIT_NO_CHANGES_SPECIFIED],
             )
         if len(payload) == 1 and warnings:
             # Action-specific warnings already present (e.g. lifecycle no-op, tag no-op)
@@ -346,14 +353,7 @@ class OperatorService:
                 container_id = move_data.get("containerId")
                 current_parent_id = task.parent.id if task.parent else None
                 if container_id == current_parent_id:
-                    warnings.append(
-                        "Task is already in this container. OmniFocus API "
-                        "limitation: 'beginning'/'ending' moves within the "
-                        "same container does not change position.\n"
-                        "This will be fixed in a future release.\n"
-                        "Workaround: use 'before' or 'after' with a sibling "
-                        "task ID to control ordering within a container."
-                    )
+                    warnings.append(MOVE_SAME_CONTAINER)
                     # is_noop stays True -- same container
                 else:
                     is_noop = False
@@ -364,10 +364,7 @@ class OperatorService:
         if is_noop:
             if not warnings:
                 # Genuine field-level no-op -- add generic warning
-                warnings.append(
-                    "No changes detected -- the task already has these values. "
-                    "If you don't want to change a field, omit it from the request."
-                )
+                warnings.append(EDIT_NO_CHANGES_DETECTED)
             # Return early -- action-specific warnings already present, or generic added
             logger.debug(
                 "OperatorService.edit_task: no-op detected, all values match current state"
@@ -412,9 +409,7 @@ class OperatorService:
         # No-op check: already in target state
         if task.availability == target_availability:
             state_word = "complete" if lifecycle_action == "complete" else "dropped"
-            warnings.append(
-                f"Task is already {state_word} -- nothing changed. Omit actions.lifecycle to skip."
-            )
+            warnings.append(LIFECYCLE_ALREADY_IN_STATE.format(state_word=state_word))
             return False, warnings
 
         # Cross-state check: transitioning between completed and dropped
@@ -422,25 +417,15 @@ class OperatorService:
             prior_state = task.availability.value
             new_state = "complete" if lifecycle_action == "complete" else "dropped"
             warnings.append(
-                f"Task was already {prior_state} -- lifecycle action applied, "
-                f"task is now {new_state}. Confirm with user that this was intended."
+                LIFECYCLE_CROSS_STATE.format(prior_state=prior_state, new_state=new_state)
             )
 
         # Repeating task check
         if task.repetition_rule is not None:
             if lifecycle_action == "complete":
-                warnings.append(
-                    "Repeating task -- this occurrence completed, next occurrence created."
-                )
+                warnings.append(LIFECYCLE_REPEATING_COMPLETE)
             else:
-                warnings.append(
-                    "Repeating task — this occurrence was skipped, "
-                    "next occurrence created.\n"
-                    "If the user wanted to drop the entire repeating "
-                    "sequence, let them know this must be done in the "
-                    "OmniFocus UI (intentional restriction against "
-                    "destructive operations)."
-                )
+                warnings.append(LIFECYCLE_REPEATING_DROP)
 
         return True, warnings
 
@@ -559,7 +544,7 @@ class OperatorService:
 
             # Warn if tags already match
             if final == current_ids:
-                warnings.append("Tags already match the requested set -- no tag changes applied")
+                warnings.append(TAGS_ALREADY_MATCH)
         elif has_add and has_remove:
             assert isinstance(tag_actions.add, list)
             assert isinstance(tag_actions.remove, list)
@@ -572,11 +557,15 @@ class OperatorService:
             for i, _tag_name in enumerate(tag_actions.add):
                 if i < len(add_resolved) and add_resolved[i] in current_ids:
                     display = all_tag_names.get(add_resolved[i], _tag_name)
-                    warnings.append(f"Tag '{display}' ({add_resolved[i]}) is already on this task")
+                    warnings.append(
+                        TAG_ALREADY_ON_TASK.format(display=display, tag_id=add_resolved[i])
+                    )
             for i, _tag_name in enumerate(tag_actions.remove):
                 if i < len(remove_resolved) and remove_resolved[i] not in current_ids:
                     display = all_tag_names.get(remove_resolved[i], _tag_name)
-                    warnings.append(f"Tag '{display}' ({remove_resolved[i]}) is not on this task")
+                    warnings.append(
+                        TAG_NOT_ON_TASK.format(display=display, tag_id=remove_resolved[i])
+                    )
 
             final = (current_ids | set(add_resolved)) - set(remove_resolved)
         elif has_add:
@@ -587,7 +576,9 @@ class OperatorService:
             for i, _tag_name in enumerate(tag_actions.add):
                 if i < len(add_resolved) and add_resolved[i] in current_ids:
                     display = all_tag_names.get(add_resolved[i], _tag_name)
-                    warnings.append(f"Tag '{display}' ({add_resolved[i]}) is already on this task")
+                    warnings.append(
+                        TAG_ALREADY_ON_TASK.format(display=display, tag_id=add_resolved[i])
+                    )
 
             final = current_ids | set(add_resolved)
         elif has_remove:
@@ -600,7 +591,9 @@ class OperatorService:
             for i, _tag_name in enumerate(tag_actions.remove):
                 if i < len(remove_resolved) and remove_resolved[i] not in current_ids:
                     display = all_tag_names.get(remove_resolved[i], _tag_name)
-                    warnings.append(f"Tag '{display}' ({remove_resolved[i]}) is not on this task")
+                    warnings.append(
+                        TAG_NOT_ON_TASK.format(display=display, tag_id=remove_resolved[i])
+                    )
 
             final = current_ids - set(remove_resolved)
         else:
