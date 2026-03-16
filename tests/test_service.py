@@ -414,23 +414,14 @@ class TestAddTask:
         assert task is not None
         assert task.estimated_minutes == 150.5
 
-    async def test_unknown_fields_ignored(self) -> None:
-        """Extra fields in model_validate are silently dropped (UAT #20)."""
+    async def test_unknown_fields_rejected(self) -> None:
+        """Extra fields in model_validate raise ValidationError (STRCT-01)."""
+        from pydantic import ValidationError
+
         from omnifocus_operator.models.write import TaskCreateSpec
 
-        # OmniFocusBaseModel does not set extra="forbid", so unknown fields
-        # are silently ignored (Pydantic default behavior).
-        spec = TaskCreateSpec.model_validate({"name": "Task", "bogus_field": "should be ignored"})
-        assert spec.name == "Task"
-        assert not hasattr(spec, "bogus_field")
-
-        # Also verify it works end-to-end through the service
-        snapshot = make_snapshot()
-        repo = InMemoryRepository(snapshot=snapshot)
-        service = OperatorService(repository=repo)
-
-        result = await service.add_task(spec)
-        assert result.success is True
+        with pytest.raises(ValidationError, match="bogus_field"):
+            TaskCreateSpec.model_validate({"name": "Task", "bogus_field": "should be rejected"})
 
 
 # ---------------------------------------------------------------------------

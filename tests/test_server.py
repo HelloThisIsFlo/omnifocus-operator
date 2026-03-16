@@ -861,6 +861,23 @@ class TestAddTasks:
 
         await run_with_client(server, _check)
 
+    # -- Unknown field rejection (STRCT-01) --
+
+    async def test_add_tasks_unknown_field_names_field(self) -> None:
+        """Server error message includes the unknown field name, not generic message."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            result = await session.call_tool(
+                "add_tasks",
+                {"items": [{"name": "Task", "bogusField": "x"}]},
+            )
+            assert result.isError is True
+            text = result.content[0].text  # type: ignore[union-attr]
+            assert "Unknown field 'bogusField'" in text
+
+        await run_with_client(server, _check)
+
     # -- Post-write freshness --
 
     async def test_add_tasks_then_get_all(self) -> None:
@@ -953,6 +970,23 @@ class TestEditTasks:
             assert result.isError is True
             text = result.content[0].text  # type: ignore[union-attr]
             assert "exactly 1 item" in text
+
+        await run_with_client(server, _check)
+
+    # -- Unknown field rejection (STRCT-01) --
+
+    async def test_edit_tasks_unknown_field_names_field(self) -> None:
+        """Server error message includes the unknown field name, not generic message."""
+        server = await self._make_server_with_data()
+
+        async def _check(session: ClientSession) -> None:
+            result = await session.call_tool(
+                "edit_tasks",
+                {"items": [{"id": "task-001", "bogusField": "x"}]},
+            )
+            assert result.isError is True
+            text = result.content[0].text  # type: ignore[union-attr]
+            assert "Unknown field 'bogusField'" in text
 
         await run_with_client(server, _check)
 
