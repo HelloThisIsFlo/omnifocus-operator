@@ -1,141 +1,152 @@
 # Technology Stack
 
-**Project:** OmniFocus Operator v1.2 -- Writes & Lookups
-**Researched:** 2026-03-07
+**Project:** OmniFocus Operator v1.2.1 -- Architectural Cleanup
+**Researched:** 2026-03-16
 
-## Key Finding: Zero New Dependencies
+## Key Finding: Zero New Dependencies, Leverage Existing Stack Harder
 
-v1.2 requires **no new runtime or dev dependencies**. The existing stack (Python 3.12 stdlib + Pydantic v2 + MCP SDK) handles everything needed for the write pipeline, get-by-ID tools, and task lifecycle changes.
-
-The project's constraint of `mcp>=1.26.0` as the sole runtime dep remains intact.
+v1.2.1 requires **no new runtime or dev dependencies**. This milestone is pure internal refactoring using Pydantic v2 (2.12.5) features and Python 3.12 module patterns already in the stack. The work is about using what's there more deliberately.
 
 ---
 
-## What Changes (v1.2 additions only)
+## What Changes (v1.2.1 patterns only)
 
-### Bridge Layer (OmniJS / bridge.js)
+### 1. Strict Write Model Validation (`extra="forbid"`)
 
-**New bridge commands** (all within existing `bridge.js`):
+**Problem:** `OmniFocusBaseModel` uses default `extra="ignore"`. Write models silently drop unknown fields -- an agent sending `{"name": "Test", "repetitionRule": "weekly"}` gets no error.
 
-| Command | Purpose | Payload Source | Response Shape |
-|---------|---------|---------------|----------------|
-| `get_task` | Single task by ID | Arg string (existing pattern) | Same as snapshot task object |
-| `get_project` | Single project by ID | Arg string | Same as snapshot project object |
-| `get_tag` | Single tag by ID | Arg string | Same as snapshot tag object |
-| `add_task` | Create task | Request file params | `{ id, name }` |
-| `edit_task` | Modify task fields | Request file params | `{ id, name }` |
+**Solution:** Introduce a `WriteModel` intermediate base class.
 
-**OmniJS write APIs** (verified in BRIDGE-SPEC.md Section 4):
+| Aspect | Detail | Confidence |
+|--------|--------|------------|
+| Mechanism | `ConfigDict(extra="forbid")` on a `WriteModel` subclass of `OmniFocusBaseModel` | HIGH -- Pydantic 2.12.5 docs confirm ConfigDict merges on inheritance |
+| Inheritance behavior | Child ConfigDict **merges** with parent -- `WriteModel` sets `extra="forbid"`, inherits `alias_generator=to_camel` and `validate_by_name=True` from `OmniFocusBaseModel` | HIGH -- verified in Pydantic docs |
+| Error type | `ValidationError` with error type `extra_forbidden` | HIGH -- Pydantic docs |
+| Error message | Pydantic auto-generates clear message: `"Extra inputs are not permitted"` | HIGH |
+| Read models | Stay on `OmniFocusBaseModel` (default `extra="ignore"`) -- OmniFocus may return fields we don't model yet | N/A -- design decision, not stack question |
 
-| Operation | OmniJS API | Notes |
-|-----------|-----------|-------|
-| Create task | `new Task(name, project)` | Returns Task object with `.id.primaryKey` |
-| Set fields | Direct property assignment (`t.dueDate = date`, etc.) | All writable, null clears |
-| Complete | `task.markComplete()` | Sets completionDate, active stays true |
-| Reactivate | `task.markIncomplete()` | Reverts completion |
-| Drop | `task.drop(true)` | Permanent -- `markIncomplete()` is a no-op after drop |
-| Add tag | `task.addTag(tag)` | Tag lookup via `Tag.byIdentifier(id)` |
-| Remove tag | `task.removeTag(tag)` | |
-| Clear tags | `task.clearTags()` | Used for `tags: []` replace mode |
+**Implementation pattern:**
 
-**Entity lookup by ID** (documented in BRIDGE-SPEC.md Section 7):
-- `Task.byIdentifier(id)` -- direct ID-based lookup
-- `Project.byIdentifier(id)` -- direct ID-based lookup
-- `Tag.byIdentifier(id)` -- also needed for tag resolution in write operations
+```python
+# models/base.py -- add WriteModel
+class WriteModel(OmniFocusBaseModel):
+    """Base for all write specs. Rejects unknown fields."""
+    model_config = ConfigDict(extra="forbid")
 
-### Request File Payload Format
-
-Write commands use the existing request file mechanism with richer params. No changes to `RealBridge._write_request()` needed -- it already serializes arbitrary `params` dicts.
-
-```json
-{
-  "operation": "add_task",
-  "params": {
-    "name": "Task name",
-    "project": "projectId123",
-    "tags": ["tagId1", "tagId2"],
-    "dueDate": "2026-03-15T10:00:00.000Z",
-    "flagged": true,
-    "note": "Task notes"
-  }
-}
+# models/write.py -- change parent
+class TaskCreateSpec(WriteModel):  # was OmniFocusBaseModel
+    name: str
+    # ... rest unchanged
 ```
 
-For edits, patch semantics via `hasOwnProperty` in bridge.js:
+**Why this works cleanly:**
+- ConfigDict merge in Pydantic v2 is additive -- child sets only `extra="forbid"`, inherits everything else from parent (`alias_generator`, `validate_by_name`, `validate_by_alias`)
+- All existing tests pass because valid inputs don't have extra fields
+- The mypy plugin's `init_forbid_extra = true` in `pyproject.toml` already enforces this at type-check time for `__init__` calls, but `model_validate(dict)` bypasses mypy -- `extra="forbid"` catches it at runtime too
+- No MRO issues: single inheritance chain, no diamond
 
-```json
-{
-  "operation": "edit_task",
-  "params": {
-    "id": "taskId123",
-    "changes": {
-      "name": "New name",
-      "dueDate": null,
-      "addTags": ["tagId3"],
-      "removeTags": ["tagId1"]
-    }
-  }
-}
+**Pitfall to avoid:**
+- Do NOT set `extra="forbid"` on `OmniFocusBaseModel` itself. Read models (Task, Project, Tag, etc.) must stay permissive because OmniFocus SQLite schema or bridge JSON may contain fields we haven't modeled yet. Breaking read models is a production outage.
+
+### 2. Service Layer Decomposition -- Module Patterns
+
+**Problem:** `service.py` is 637 lines mixing orchestration, validation, domain logic (tag diff, lifecycle, no-op detection), and format conversion (snake_case -> camelCase payload building).
+
+**Solution:** Extract cohesive modules within the service layer. Use plain Python modules with functions, not classes.
+
+| Pattern | Use For | Why |
+|---------|---------|-----|
+| Module with functions | Validation, format conversion, domain logic | Simplest possible extraction. No class ceremony. Functions are stateless -- they take inputs and return outputs. Easy to test, easy to import |
+| Service class stays | Orchestration (validate -> resolve -> convert -> delegate) | Needs repository reference for lookups. Class holds the dependency |
+| Protocol stays | Repository boundary | Already using structural typing via `Protocol`. No change needed |
+
+**Recommended module structure:**
+
+```
+src/omnifocus_operator/
+    service/                    # Package replaces single file
+        __init__.py             # Re-exports OperatorService, ErrorOperatorService
+        _orchestrator.py        # OperatorService class (orchestration only)
+        _validation.py          # Input validation functions
+        _domain.py              # Domain logic (tag diff, lifecycle, no-op detection)
+        _payload.py             # Format conversion (spec -> bridge-ready dict)
 ```
 
-### Repository Protocol Extension
+**Why functions, not classes:**
+- Validation, domain logic, and format conversion are stateless transformations
+- `validate_task_name(name: str) -> None` is clearer than `TaskValidator().validate_name(name)`
+- Functions compose: `payload = build_edit_payload(spec, task, tag_diff)`
+- No need for dependency injection -- these don't need the repository
+- YAGNI: classes add indirection without benefit when there's no state to manage
 
-Current protocol has only `get_all()`. v1.2 adds methods for single-entity lookup and writes:
+**Why underscore-prefixed modules:**
+- Convention for internal modules in Python packages
+- Signals "import from the package, not the module directly"
+- `from omnifocus_operator.service import OperatorService` still works via `__init__.py`
+
+**What NOT to do:**
+- Do NOT create abstract base classes for each concern. No `Validator` ABC, no `PayloadBuilder` ABC. These are internal implementation details, not extension points
+- Do NOT create a `domain/` sub-package. One level of extraction is enough. If `_domain.py` grows past ~200 lines, revisit then
+- Do NOT over-separate. Tag diff computation and lifecycle processing are both "domain logic" -- they belong in the same module even though they operate on different data
+
+### 3. Write Pipeline Unification -- Repository Protocol
+
+**Problem:** `add_task` and `edit_task` have asymmetric signatures at the service-repository boundary:
+
+| Aspect | `add_task` (current) | `edit_task` (current) |
+|--------|---------------------|----------------------|
+| Service passes | `TaskCreateSpec` + `resolved_tag_ids` kwarg | `dict[str, Any]` (fully bridge-ready) |
+| Who serializes | Repository (`model_dump`) | Service (builds dict field-by-field) |
+| Return type | `TaskCreateResult` (typed) | `dict[str, Any]` (raw) |
+
+**Solution:** Both paths should pass a bridge-ready `dict[str, Any]` payload to the repository. Service owns all serialization. Repository is a thin pass-through to bridge.
+
+| Aspect | After unification |
+|--------|------------------|
+| Service builds | Bridge-ready `dict[str, Any]` for both add and edit |
+| Repository receives | `dict[str, Any]` payload for both |
+| Repository role | Pass payload to `bridge.send_command()`, return typed result |
+| Return type | Typed Pydantic model for both (`TaskCreateResult`, `TaskEditResult`) |
+
+**Protocol change:**
 
 ```python
 class Repository(Protocol):
-    async def get_all(self) -> AllEntities: ...
+    # ... reads unchanged ...
 
-    # New in v1.2
-    async def get_task(self, task_id: str) -> Task: ...
-    async def get_project(self, project_id: str) -> Project: ...
-    async def get_tag(self, tag_id: str) -> Tag: ...
-    async def add_task(self, params: AddTaskParams) -> AddTaskResult: ...
-    async def edit_task(self, task_id: str, changes: EditTaskChanges) -> EditTaskResult: ...
+    async def add_task(self, payload: dict[str, Any]) -> TaskCreateResult:
+        """Create a task from bridge-ready payload."""
+        ...
+
+    async def edit_task(self, payload: dict[str, Any]) -> TaskEditResult:
+        """Edit a task from bridge-ready payload."""
+        ...
 ```
 
-**Implementation per repository:**
+**Why dict payload (not spec models) at the boundary:**
+- The repository doesn't validate or transform -- it sends to bridge. Receiving a dict is honest about that role
+- Service already builds the dict for edit_task today -- just extend the pattern to add_task
+- Typed return values give the server layer something safe to work with
+- The format conversion module (`_payload.py`) owns the spec-to-dict transformation for both paths
 
-| Method | HybridRepository (SQLite) | BridgeRepository | InMemoryRepository |
-|--------|--------------------------|------------------|--------------------|
-| `get_task` | `SELECT ... WHERE persistentIdentifier = ?` | Dict lookup from snapshot | Dict lookup |
-| `get_project` | `SELECT ... WHERE pi.task = ?` | Dict lookup | Dict lookup |
-| `get_tag` | `SELECT ... WHERE persistentIdentifier = ?` | Dict lookup | Dict lookup |
-| `add_task` | Delegate to bridge, mark stale | Delegate to bridge | In-memory insert |
-| `edit_task` | Delegate to bridge, mark stale | Delegate to bridge | In-memory update |
+**What about InMemoryRepository in tests?**
+- InMemoryRepository for tests also receives `dict[str, Any]` -- it can store it or extract fields as needed
+- This is simpler than having test doubles parse spec models
 
-**Critical:** HybridRepository writes go through the OmniJS bridge, not SQLite. SQLite is read-only -- OmniFocus owns the database. After a write, `self._stale = True` triggers WAL-based freshness detection on next read (already implemented via `_wait_for_fresh_data()`).
+### 4. Moving InMemoryBridge Out of Production Exports
 
-### HybridRepository Needs a Bridge Reference
+**Problem:** `InMemoryBridge` is a test double (call tracking, error simulation) but lives in `src/` and is exported from `bridge/__init__.py`.
 
-Currently `HybridRepository` only reads SQLite. For writes, it needs a bridge to dispatch OmniJS commands.
+**What's needed (no new tech):**
+- Remove from `bridge/__init__.py` exports
+- Remove `"inmemory"` branch from bridge factory
+- Update test imports: `from omnifocus_operator.bridge.in_memory import InMemoryBridge`
+- File stays in `src/` (moving to `tests/` is optional and can come later)
 
-**Recommendation:** Constructor injection -- `HybridRepository(db_path, bridge=bridge)`. Bridge is optional (None for read-only tests), required for writes. The factory (`create_repository()`) already has access to create both.
-
-### Pydantic Input Models
-
-New models for write requests (no new deps, standard Pydantic v2):
-
-| Model | Purpose | Key Fields |
-|-------|---------|------------|
-| `AddTaskParams` | Task creation input | `name` (required), `project`, `parent_task_id`, `tags`, dates, `flagged`, `note` |
-| `EditTaskChanges` | Patch semantics | All fields optional, null = clear, omit = no change |
-| `AddTaskResult` | Creation response | `id`, `name`, `success` |
-| `EditTaskResult` | Edit response | `id`, `name`, `success` |
-| `TaskLifecycleAction` | Enum for lifecycle | `complete`, `drop`, `reactivate` |
-
-**Validation approach** -- Pydantic v2 built-in validators handle everything:
-- `model_validator(mode="before")` for mutual exclusivity (project vs parent_task_id, tags vs add_tags)
-- `field_validator` for ISO8601 date parsing
-- Standard type validation for required vs optional fields
-- No need for jsonschema or external validation libraries
-
-### Snapshot Invalidation
-
-The mechanism already exists:
-- `HybridRepository.TEMPORARY_simulate_write()` captures WAL mtime and sets `_stale = True`
-- Replace with real `_mark_stale()` doing the same thing
-- Next `get_all()` calls `_wait_for_fresh_data()` (50ms poll, 2s timeout) -- already implemented and tested
+**Why keep the file in `src/` for now:**
+- The file is small (68 lines), well-bounded, and doesn't pollute the public API once removed from `__init__.py`
+- Moving to `tests/` requires updating `[tool.coverage.run]` source paths, potentially changing import mechanics
+- Direct module import (`from omnifocus_operator.bridge.in_memory import ...`) still works and is the correct pattern for test utilities that live alongside production code
 
 ---
 
@@ -147,22 +158,58 @@ The mechanism already exists:
 |------------|---------|---------|--------|
 | Python | 3.12+ | Runtime | Unchanged |
 | `mcp` | >=1.26.0 | MCP SDK (FastMCP) | Unchanged, sole runtime dep |
-| Pydantic | v2 (via mcp) | Models, validation | Unchanged, used for new input models |
-| sqlite3 | stdlib | Read path | Unchanged, read-only |
+| Pydantic | v2.12.5 (via mcp) | Models, validation | Unchanged -- using more features (ConfigDict merge, extra="forbid") |
+| sqlite3 | stdlib | Read path | Unchanged |
 | asyncio | stdlib | Async runtime | Unchanged |
-| json | stdlib | IPC serialization | Unchanged |
 
 ### Dev Dependencies (Unchanged)
 
 | Library | Version | Purpose |
 |---------|---------|---------|
 | ruff | >=0.15.0 | Linting/formatting |
-| mypy | >=1.19.1 | Type checking |
+| mypy | >=1.19.1 (strict) | Type checking + pydantic.mypy plugin |
 | pytest | >=9.0.2 | Testing |
 | pytest-asyncio | >=1.3.0 | Async test support |
 | pytest-cov | >=7.0.0 | Coverage |
 | pytest-timeout | >=2.4.0 | Test timeouts |
 | pre-commit | >=4.0.0 | Pre-commit hooks |
+
+### Mypy Configuration (Relevant)
+
+```toml
+[tool.mypy]
+strict = true
+plugins = ["pydantic.mypy"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true    # Already catches __init__ extra args at type-check
+init_typed = true
+warn_required_dynamic_aliases = true
+```
+
+The `init_forbid_extra = true` setting means mypy already flags `Model(unknown_field=x)` calls. But `Model.model_validate({"unknown_field": "x"})` bypasses mypy -- only runtime `extra="forbid"` catches that. Both layers are needed.
+
+---
+
+## Pydantic v2 Features Used
+
+| Feature | Version | Purpose | Confidence |
+|---------|---------|---------|------------|
+| `ConfigDict(extra="forbid")` | 2.0+ | Reject unknown fields on write models | HIGH -- official docs, verified in 2.12.5 |
+| ConfigDict inheritance merge | 2.0+ | `WriteModel` inherits `alias_generator` from parent, adds `extra="forbid"` | HIGH -- official docs confirm additive merge |
+| `_Unset` sentinel with `__get_pydantic_core_schema__` | 2.0+ | Patch semantics (already implemented) | HIGH -- in production since v1.2 |
+| `model_validator(mode="after")` | 2.0+ | Mutual exclusivity checks (already implemented) | HIGH -- in production since v1.2 |
+| `ValidationError` with `extra_forbidden` type | 2.0+ | Clear error when agent sends unknown fields | HIGH -- official docs |
+
+---
+
+## Python 3.12 Features Used
+
+| Feature | Purpose | Notes |
+|---------|---------|-------|
+| `type` statement (PEP 695) | Not needed | Existing generic syntax (`[F: Callable[..., Any]]`) works fine |
+| `Protocol` (structural typing) | Repository boundary | Already in use, no changes needed |
+| Modules as namespaces | Service decomposition | Package with `__init__.py` re-exports |
 
 ---
 
@@ -170,47 +217,23 @@ The mechanism already exists:
 
 | Category | Recommended | Alternative | Why Not |
 |----------|-------------|-------------|---------|
-| Validation | Pydantic v2 (existing) | marshmallow, attrs | Already in stack via MCP SDK |
-| Date parsing | Pydantic `AwareDatetime` | python-dateutil | Handles ISO8601; no RRULE parsing in v1.2 |
-| Schema for edits | Pydantic `model_validator` | jsonschema, json-patch | Pydantic handles patch semantics with optional fields + None sentinels |
-| Bridge IPC | Existing request file format | New protocol | Works as-is -- just add new operation names and richer params |
-| Write path | OmniJS bridge only | Direct SQLite writes | OmniFocus owns the database; direct writes corrupt state |
-| Retry/resilience | None (v1.2) | tenacity, backoff | Deferred to v1.5 Production Hardening |
-
-## What NOT to Add
-
-- **No new runtime dependencies.** Stdlib + Pydantic covers everything.
-- **No jsonschema/json-patch.** Pydantic optional fields + None sentinel = patch semantics.
-- **No python-dateutil.** ISO8601 handled by Pydantic. RRULE parsing not needed in v1.2.
-- **No retry/resilience libraries.** Deferred to v1.5.
-- **No transaction/rollback mechanism.** OmniJS has no transactions -- best-effort with per-item results.
+| Write model strictness | `WriteModel` intermediate class with `extra="forbid"` | Set `extra="forbid"` directly on each write spec | Intermediate class is DRY -- one place to change, clear inheritance chain |
+| Write model strictness | `WriteModel` intermediate class | `model_validate(..., strict=True)` at call site | Caller-side enforcement is fragile -- easy to forget. Model-level is declarative |
+| Service decomposition | Module with functions (`_validation.py`, etc.) | New classes (`TaskValidator`, `PayloadBuilder`) | Stateless transforms don't need classes. Functions are simpler, compose better |
+| Service decomposition | Single-level package (`service/`) | Nested packages (`service/validation/`, etc.) | Over-engineering for ~600 lines of logic. One level is enough |
+| Repository write interface | `dict[str, Any]` payload for both paths | Typed spec models at boundary | Repository is a pass-through to bridge -- dict is honest. Service owns the types |
+| InMemoryBridge location | Keep in `src/`, remove from exports | Move to `tests/` directory | Smaller change surface. Coverage config stays simple. Can move later if needed |
 
 ---
 
-## Integration Flow
+## What NOT to Do
 
-### Write pipeline through existing layers
-
-```
-MCP Tool (server.py)
-  -> OperatorService (service.py)       # Validate against snapshot
-    -> Repository.add_task()            # Dispatch to implementation
-      -> HybridRepository               # Delegates write to bridge
-        -> Bridge.send_command()        # Existing IPC mechanism
-          -> bridge.js dispatch()       # New operation handlers
-            -> OmniJS API              # new Task(), t.field = value, markComplete()
-        -> self._stale = True          # Trigger WAL freshness on next read
-```
-
-### Get-by-ID through existing layers
-
-```
-MCP Tool (server.py)
-  -> OperatorService (service.py)
-    -> Repository.get_task(id)
-      -> HybridRepository              # SELECT ... WHERE id = ?
-      or BridgeRepository              # Dict lookup from snapshot
-```
+- **No new dependencies.** Zero. Not even dev deps.
+- **No abstract base classes** for internal concerns. `Validator` ABC with a single implementation is textbook over-engineering.
+- **No dependency injection framework.** Repository is injected via constructor. Extracted modules are imported as functions. That's enough.
+- **No event system / pub-sub** for service decomposition. Direct function calls. The codebase has 6 tools and 2 write paths -- no need for indirection.
+- **No generic payload builder pattern.** The two write paths (add/edit) have different logic (edit has patch semantics, lifecycle, move, tag diff). A generic builder would obscure the differences. Two explicit paths with shared utility functions.
+- **No `dataclass` for intermediate DTOs.** The bridge payload is `dict[str, Any]` -- that's the format the bridge accepts. No need to wrap it in a typed intermediate just to unwrap it one function call later.
 
 ---
 
@@ -225,11 +248,16 @@ MCP Tool (server.py)
 
 ## Sources
 
-- BRIDGE-SPEC.md Section 4 (Write Operations) -- HIGH confidence, empirically verified against OmniFocus 4.8.8
-- BRIDGE-SPEC.md Section 7 (`Task.byIdentifier`, `Project.byIdentifier`) -- HIGH confidence
-- Existing codebase direct inspection: `bridge.js`, `real.py`, `hybrid.py`, `protocol.py`, `service.py`
-- MILESTONE-v1.2.md -- project spec for v1.2 scope
+- [Pydantic v2 Configuration docs (2.12.5)](https://docs.pydantic.dev/latest/concepts/config/) -- ConfigDict inheritance merge behavior, `extra` parameter -- HIGH confidence
+- [Pydantic v2 Models docs (2.12.5)](https://docs.pydantic.dev/latest/concepts/models/) -- `extra="forbid"` behavior -- HIGH confidence
+- [Pydantic v2 Validation Errors (2.12.5)](https://docs.pydantic.dev/latest/errors/validation_errors/) -- `extra_forbidden` error type and message format -- HIGH confidence
+- [Pydantic mypy integration docs](https://docs.pydantic.dev/latest/integrations/mypy/) -- `init_forbid_extra` interaction with ConfigDict -- HIGH confidence
+- [Pydantic ConfigDict inheritance discussion #7778](https://github.com/pydantic/pydantic/discussions/7778) -- confirms merge behavior in practice -- MEDIUM confidence
+- [PEP 544 -- Protocols: Structural subtyping](https://peps.python.org/pep-0544/) -- Protocol usage for Repository boundary -- HIGH confidence
+- [Mypy Protocols documentation](https://mypy.readthedocs.io/en/stable/protocols.html) -- structural typing with strict mypy -- HIGH confidence
+- Existing codebase direct inspection: `service.py`, `models/write.py`, `models/base.py`, `repository/protocol.py`, `bridge/__init__.py`, `hybrid.py`
+- MILESTONE-v1.2.1.md -- milestone spec
 
 ---
-*Stack research for: OmniFocus Operator v1.2 Writes & Lookups*
-*Researched: 2026-03-07*
+*Stack research for: OmniFocus Operator v1.2.1 Architectural Cleanup*
+*Researched: 2026-03-16*

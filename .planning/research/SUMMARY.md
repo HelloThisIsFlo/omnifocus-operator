@@ -1,167 +1,162 @@
 # Project Research Summary
 
-**Project:** OmniFocus Operator v1.2 -- Writes & Lookups
-**Domain:** MCP server write pipeline for local macOS task management app
-**Researched:** 2026-03-07
+**Project:** OmniFocus Operator v1.2.1 — Architectural Cleanup
+**Domain:** Internal refactoring — service layer decomposition and write pipeline unification
+**Researched:** 2026-03-16
 **Confidence:** HIGH
 
 ## Executive Summary
 
-v1.2 adds write capabilities (task creation, editing, lifecycle) and get-by-ID lookups to an existing read-only MCP server. The critical insight: **zero new dependencies are needed.** The existing stack (Python 3.12, Pydantic v2 via MCP SDK, OmniJS bridge IPC) handles everything. Writes flow through the OmniJS bridge exclusively -- SQLite remains read-only because OmniFocus owns its database. Get-by-ID is implemented as a filter on the already-cached snapshot, not as new bridge commands (sub-ms vs multi-second).
+v1.2.1 is a pure internal refactoring milestone with zero new runtime dependencies. The goal is to correct two structural problems that accumulated during v1.2: a 637-line monolithic `service.py` that mixes orchestration, validation, domain logic, and format conversion; and an asymmetric write pipeline where `add_task` and `edit_task` use different conventions at the service-repository boundary. Both problems are well-understood — research draws from direct codebase analysis, Pydantic v2 docs, and Cosmic Python architecture patterns.
 
-The recommended approach is a 4-phase incremental build: get-by-ID (warmup, zero risk) -> add_tasks (proves full write pipeline) -> edit_tasks fields (adds patch semantics) -> edit_tasks lifecycle (needs research spike). Each phase proves one new capability before the next adds complexity. The write pipeline follows asymmetric read/write paths -- reads from SQLite cache, writes through OmniJS bridge, with WAL-based invalidation connecting them.
+The recommended approach is staged decomposition: start with two independent quick wins (`extra="forbid"` on write models, `InMemoryBridge` export cleanup), then unify the repository write signatures, then extract the service into a package with validation/domain/conversion sub-modules. This ordering matters — decomposing the service before unifying the repository interface leads to wrong abstractions. The extraction should produce exactly 3 sub-modules plus the orchestrator, not 6+.
 
-Key risks center on OmniJS constraints: no transactions (partial writes are permanent), 1ms/task/property-access cost (never iterate in bridge.js), and unverified APIs for task movement and lifecycle edge cases. Mitigation: validate everything in Python before touching OmniJS, start with single-item arrays (no batch), and run research spikes before implementing movement and lifecycle operations.
+The main risks are Pydantic-specific: `extra="forbid"` may interact unexpectedly with the `_Unset` sentinel on `TaskEditSpec`, and `model_rebuild()` ordering in `models/__init__.py` is fragile if model files move. Both are detectable immediately with targeted tests. Circular imports during service extraction are the other likely stumbling block, prevented by enforcing a strict one-way dependency direction.
+
+---
 
 ## Key Findings
 
 ### Recommended Stack
 
-No new dependencies. The entire v1.2 scope is covered by what's already installed.
+No new dependencies. The milestone uses Pydantic v2.12.5 (already in stack via `mcp>=1.26.0`) more deliberately: `ConfigDict(extra="forbid")` for write model strictness and ConfigDict inheritance merge to keep the base model's alias settings. Python 3.12 module/package patterns handle the service decomposition.
 
-**Core technologies (all existing):**
-- **Python 3.12 + Pydantic v2** -- new input models (AddTaskRequest, EditTaskChanges, WriteResult) use standard Pydantic validators for patch semantics, mutual exclusivity, ISO8601 dates
-- **OmniJS bridge (bridge.js)** -- new `add_task` and `edit_task` operation handlers using request file payloads
-- **SQLite (stdlib)** -- read-only path unchanged; get-by-ID can use single-row queries in HybridRepository
-- **MCP SDK (FastMCP)** -- 5 new tool registrations, same patterns as existing tools
+**Core technologies:**
+- **Pydantic v2.12.5** (write model validation) — `ConfigDict(extra="forbid")` on write specs; ConfigDict merges additively on inheritance so a `WriteModel` base adds `extra="forbid"` without clobbering `alias_generator` from `OmniFocusBaseModel`
+- **Python packages with `__init__.py` re-exports** (service decomposition) — convert `service.py` to `service/` package; `__init__.py` re-exports `OperatorService` so all existing imports are unchanged
+- **Module-level functions** (extracted logic) — stateless validation, domain, and conversion functions need no class ceremony; directly testable without instantiating the service
 
-**Key technical decisions:**
-- HybridRepository gains an optional bridge dependency (constructor injection) for writes
-- `TEMPORARY_simulate_write()` replaced with real `_mark_stale()` using same WAL pattern
-- Patch semantics via Pydantic optional fields + None sentinel (no jsonschema/json-patch)
-- Get-by-ID implemented as snapshot filter, not new bridge commands
+**Critical constraint:** Read models (`Task`, `Project`, `Tag`) must remain `extra="ignore"`. OmniFocus may return unmodeled SQLite columns; strict read models would cause production outages on OmniFocus updates.
 
 ### Expected Features
 
+This milestone is internal — "features" are code quality deliverables, not user-visible capabilities.
+
 **Must have (table stakes):**
-- Get-by-ID for tasks, projects, tags -- agents need single-entity inspection after writes
-- Task creation (add_tasks) -- core write primitive, project/inbox/subtask placement
-- Task field editing (edit_tasks) -- name, dates, flags, notes, estimated_minutes
-- Tag management -- three modes: replace (tags), add (add_tags), remove (remove_tags)
-- Task completion and dropping -- most common lifecycle operations
-- Snapshot invalidation after writes -- stale reads after mutations break agent trust
-- Service-layer validation with clear error messages -- catch errors in Python, not OmniJS
-- Batch-shaped API (array in/out) -- even if single-item initially, forward-compatible shape
-- Patch semantics (omit/null/value) -- industry standard for partial updates
+- `extra="forbid"` on all write spec models — agents sending unknown fields currently get silent discard; essential for any write API
+- Symmetric `add_task`/`edit_task` signatures at repository boundary — both accept `dict[str, Any]`, return `dict[str, Any]`; current asymmetry forces every new write operation to invent its own convention
+- Service decomposed into orchestrator + 3 sub-modules (`_validation.py`, `_domain.py`, `_payload.py`) — service method becomes a readable ~20-line orchestration flow
+- `InMemoryBridge` removed from production exports — test double in `bridge/__init__.py` is a code smell
 
 **Should have (differentiators):**
-- Task reactivation (markIncomplete) -- undo wrong completion
-- Three tag edit modes -- avoids read-then-write for tag changes
-- Move to inbox (project: null) -- distinct from "leave project unchanged"
-- Rich LLM-optimized tool descriptions
-- Per-item result reporting
+- Typed return values from repository write methods — `TaskCreateResult`/`TaskEditResult` constructed in service, not wrangled from raw dicts
+- Shared resolution logic — `resolve_parent`/`resolve_tags` as free functions usable by both add and edit paths
 
-**Defer (v1.4+):**
-- delete_tasks (drop covers most intent)
-- Project/tag/folder writes (unverified APIs)
-- True batch execution (no transactions = partial failure risk)
-- Retry/resilience (v1.5)
-- Dry run / preview mode
+**Defer to later milestones:**
+- Typed `BridgePayload` model at service-repository boundary — `dict[str, Any]` is appropriate; typed intermediate adds overhead for no current benefit
+- Composable validation pipeline — only 2 write operations; explicit function calls are clearer
+- Physical relocation of `InMemoryBridge` to `tests/` — removing from exports is sufficient for v1.2.1
 
 ### Architecture Approach
 
-Asymmetric read/write paths. Reads stay on SQLite cache (46ms). Writes go through OmniJS bridge, then mark the snapshot stale for lazy invalidation. Get-by-ID filters the cached snapshot (sub-ms). Validation lives in the service layer; the bridge receives pre-validated payloads ("dumb bridge, smart Python").
+Target state: a three-module service package with strict one-way dependency direction. Orchestrator calls into sub-modules, never the reverse. Extracted modules are pure functions with explicit dependency injection (repo passed as argument, not accessed via `self`). The repository protocol becomes a thin bridge delegate — payload construction moves to `conversion.py`, result construction moves back to the service.
 
-**Major components (modified/new):**
-1. **MCP tools (server.py)** -- 5 new tool registrations (get_task, get_project, get_tag, add_tasks, edit_tasks)
-2. **OperatorService (service.py)** -- validation against snapshot, tag name-to-ID resolution, write delegation
-3. **Repository protocol** -- extended with add_tasks(), edit_tasks() signatures; all 3 implementations updated
-4. **HybridRepository** -- gains optional bridge dependency for writes, replaces TEMPORARY_simulate_write
-5. **bridge.js** -- new add_task/edit_task handlers with request file payloads and hasOwnProperty patch semantics
+**Major components after refactoring:**
+1. `service/_orchestrator.py` — 80-100 lines; pure orchestration: validate → domain → convert → delegate; holds repo reference
+2. `service/validation.py` — name checks, parent resolution, tag name-to-ID resolution; async functions receiving `repo` as argument
+3. `service/domain.py` — lifecycle state machine, tag diff, no-op detection, cycle detection; mostly pure sync functions
+4. `service/conversion.py` — `build_add_payload()` and `build_edit_payload()`; pure sync functions; no async, no repo access
+5. **Repository protocol** — unified: both `add_task(payload: dict)` and `edit_task(payload: dict)` return `dict`; no typed spec at boundary
 
-**Key patterns:**
-- Field name translation (snake_case -> camelCase) at repository boundary via dict mapping
-- Tag name resolution in Python (microsecond lookup from cached snapshot vs 2.8s OmniJS iteration)
-- Per-item WriteResult for batch-shaped operations
-- Optional bridge in HybridRepository (None = read-only mode for tests)
+**Unchanged:** `server.py` → `OperatorService` import; bridge IPC protocol; `@_ensures_write_through` decorator placement; SQLite read path.
 
 ### Critical Pitfalls
 
-1. **Snapshot invalidation race** -- OmniJS write completes before SQLite flush. Prevention: return bridge response as source of truth, don't re-read to confirm. WAL polling handles next-read freshness.
-2. **No transactions in OmniJS** -- partial writes are permanent. Prevention: validate everything in Python first, enforce single-item arrays in v1.2.
-3. **`assignedContainer` always null** -- task movement API is unverified. Prevention: research spike before implementing movement; test `moveTasks()`, `containingProject` assignment, and `task.parent` in OmniJS.
-4. **Repeating task completion spawns new ID** -- agent loses reference to successor. Prevention: check `repetitionRule` before completion, return successor_id in response.
-5. **`markIncomplete()` silent no-op on dropped tasks** -- agent thinks reactivation succeeded. Prevention: service-layer pre-check of task availability, explicit error for dropped tasks.
-6. **Tag name ambiguity** -- OmniFocus allows duplicate tag names. Prevention: service-layer duplicate check, error with disambiguation info.
-7. **`flattenedTasks` iteration in bridge.js** -- 2.8s frozen UI. Prevention: use `Task.byIdentifier(id)` for O(1) lookups, never iterate.
+1. **`extra="forbid"` + `_Unset` sentinel interaction** — `TaskEditSpec` uses `_Unset` as default for optional fields; `extra="forbid"` on a parent class may cause `ValidationError` on valid inputs due to Pydantic v2 config MRO issues (#9768, #9992). Prevention: apply `extra="forbid"` per-model, not via a `WriteModel` base; test both `model_validate(dict)` and `model_validate_json(str)` paths before any other refactoring.
+
+2. **`model_rebuild()` ordering** — `models/__init__.py` rebuilds 15 models in dependency order with a shared `_types_namespace`; reorganizing model files disrupts this ordering and causes `PydanticUndefinedAnnotation` at import time, crashing all 534 tests. Prevention: keep all `model_rebuild()` calls centralized in `models/__init__.py` regardless of where model classes live.
+
+3. **Circular imports during service extraction** — extracted modules importing back into the service creates circular deps. Prevention: strict one-way direction: orchestrator imports from sub-modules, never the reverse; sub-modules receive dependencies as arguments.
+
+4. **`InMemoryBridge` mass import breakage** — removing from `bridge/__init__.py` in one step causes 100+ `ImportError`s across the test suite. Prevention: two-commit approach — first update all test imports to use `bridge.in_memory` direct path, run suite, then remove the export.
+
+5. **`_Unset` sentinel leaking into bridge payloads** — using `model_dump()` on `TaskEditSpec` includes UNSET sentinel values; `bridge.js` can't deserialize them. Prevention: retain explicit field-by-field construction for edit payloads; use `model_dump()` only for create specs (no sentinels).
+
+---
 
 ## Implications for Roadmap
 
-### Phase 1: Get-by-ID Tools
-**Rationale:** Zero write risk, validates new service methods, enables write verification in later phases
-**Delivers:** get_task, get_project, get_tag MCP tools
-**Addresses:** Single-entity inspection (table stakes feature)
-**Avoids:** flattenedTasks scan pitfall (use byIdentifier or snapshot filter)
-**Complexity:** Low. Pure Python filtering on cached snapshot. No bridge changes, no protocol changes, no new models.
+### Phase 1: Write Model Strictness
+**Rationale:** Independent of all other changes; smallest scope; validates the Pydantic `extra="forbid"` + sentinel interaction before it affects anything else. Catching sentinel issues here costs minutes; catching them mid-decomposition costs hours.
+**Delivers:** Write specs reject unknown fields at runtime (`ValidationError`), closing the silent-discard gap for agent calls.
+**Addresses:** `extra="forbid"` table stakes feature.
+**Avoids:** Pitfall 1 (sentinel interaction) — tested in isolation before inheritance patterns are introduced.
 
-### Phase 2: Write Pipeline + add_tasks
-**Rationale:** Establishes the entire write pattern. Creation is simpler than editing (no patch semantics). Proves the full stack end-to-end.
-**Delivers:** Pydantic write models, repository protocol extension, HybridRepository bridge injection, bridge add_task handler, add_tasks MCP tool, snapshot invalidation (_mark_stale replacing TEMPORARY_simulate_write)
-**Addresses:** Task creation, service validation, tag name resolution, snapshot invalidation (all table stakes)
-**Avoids:** No-transaction pitfall (single-item constraint), snapshot race (return bridge response), tag ambiguity (duplicate check)
-**Complexity:** Medium. Highest-risk phase -- first real write through the full stack.
+### Phase 2: InMemoryBridge Export Cleanup
+**Rationale:** Independent of all other changes; best done before decomposition to reduce diff noise during larger refactors.
+**Delivers:** `InMemoryBridge` removed from public production exports; tests use `bridge.in_memory` direct module path.
+**Addresses:** InMemoryBridge code smell.
+**Avoids:** Pitfall 4 (mass import breakage) — two-commit approach with full suite run between steps.
 
-### Phase 3: edit_tasks -- Fields, Tags, Movement
-**Rationale:** Field editing reuses the proven write pipeline. Movement needs a research spike at phase start.
-**Delivers:** edit_tasks MCP tool for name, note, dates, flags, estimated_minutes, tags (3 modes), project/parent movement
-**Addresses:** Task editing, tag management, task movement (table stakes + differentiators)
-**Avoids:** assignedContainer pitfall (research spike first), tag mode conflicts (mutual exclusion validation)
-**Complexity:** Medium-high. Patch semantics + tag modes + movement = most fields to handle.
+### Phase 3: Repository Write Interface Unification
+**Rationale:** Must happen before service decomposition. Decomposing the service around the old asymmetric protocol leads to wrong abstractions. Once the repository accepts `dict[str, Any]` for both operations, the service's role (build the payload) becomes unambiguous.
+**Delivers:** Symmetric `add_task(payload: dict)`/`edit_task(payload: dict)` on all three repo implementations; payload construction removed from repositories.
+**Addresses:** Symmetric write protocol table stakes feature.
+**Avoids:** Pitfall 5 (payload shape change) — bridge payload contract tests assert exact dict passed to `send_command`; Pitfall 8 (UNSET leak) — explicit field construction retained for edit path; Pitfall 9 (`@_ensures_write_through` break) — decorator stays on repo methods unchanged.
 
-### Phase 4: edit_tasks -- Lifecycle Changes
-**Rationale:** Lifecycle operations have open questions (repeating tasks, drop permanence) requiring a research spike before implementation
-**Delivers:** complete, drop, reactivate via edit_tasks
-**Addresses:** Task completion and dropping (table stakes), reactivation (differentiator)
-**Avoids:** markIncomplete no-op pitfall (pre-check availability), repeating task ID pitfall (return successor_id)
-**Complexity:** Medium. Fewer fields than Phase 3, but requires research spike for OmniJS lifecycle behavior.
+### Phase 4: Service Decomposition
+**Rationale:** Depends on unified interface from Phase 3. Extraction order within this phase: conversion first (most mechanical, least design judgment), then validation, then domain logic (most interleaved with orchestration). Each sub-step keeps all 534 tests green.
+**Delivers:** `service/` package; `_orchestrator.py` slimmed to ~80-100 lines; clean separation of concerns.
+**Addresses:** All service decomposition table stakes features.
+**Avoids:** Pitfall 3 (circular imports) — one-way dependency direction enforced; Pitfall 6 (over-decomposition) — max 3 sub-modules; Pitfall 2 (model_rebuild) — service modules import from the `models` package, not individual files.
 
 ### Phase Ordering Rationale
 
-- **Dependency chain:** Get-by-ID (Phase 1) enables write verification. add_tasks (Phase 2) proves the full write pipeline. edit_tasks fields (Phase 3) reuses that pipeline with patch semantics. Lifecycle (Phase 4) adds OmniJS quirks on top.
-- **Risk escalation:** Each phase adds one new capability. Phase 1 is pure Python. Phase 2 is first bridge write. Phase 3 adds patch semantics. Phase 4 adds lifecycle edge cases.
-- **Research spikes isolated:** Movement API research gates only Phase 3. Lifecycle research gates only Phase 4. Neither blocks earlier phases.
+- Phases 1 and 2 are independent and can run in parallel or either order; they touch different files.
+- Phase 3 before Phase 4 is non-negotiable: the service decomposition's payload-building logic only makes sense once the repository is a thin passthrough.
+- The entire milestone has no public API changes — `server.py` and all external consumers are untouched throughout.
+- Risk increases from phase to phase: Phase 1 is a 5-line change, Phase 4 is the most complex. Doing easy phases first validates the approach and builds confidence.
 
 ### Research Flags
 
-**Phases needing deeper research during planning:**
-- **Phase 3 (movement):** Task movement API is unverified. Must empirically test `moveTasks()`, `containingProject` setter, and `task.parent` assignment before implementing.
-- **Phase 4 (lifecycle):** `markComplete()` on repeating tasks, `drop(false)` vs `drop(true)`, `markIncomplete()` on dropped tasks -- all need OmniJS verification.
+All phases have standard, well-documented patterns. No additional research spikes are needed.
 
-**Phases with standard patterns (skip research-phase):**
-- **Phase 1 (get-by-ID):** Snapshot filtering is trivial. Well-understood pattern.
-- **Phase 2 (add_tasks):** Bridge IPC, Pydantic models, service validation -- all established patterns. Only novelty is wiring them for writes.
+- **Phase 1:** Pydantic `ConfigDict` behavior is documented; the sentinel interaction test is prescriptive and self-contained.
+- **Phase 2:** Mechanical find-and-replace of import paths; scope discoverable via `grep`.
+- **Phase 3:** Signature change on known files; `mypy --strict` catches protocol mismatches.
+- **Phase 4:** Cosmic Python service layer extraction pattern is well-documented; order within phase is specified.
+
+---
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Zero new deps. All technologies already in use and proven in v1.0-v1.1. |
-| Features | HIGH | Spec is detailed (MILESTONE-v1.2.md). Feature scope well-defined with clear defer decisions. |
-| Architecture | HIGH | Extends existing patterns. Asymmetric read/write is the only viable approach given OmniFocus owns SQLite. |
-| Pitfalls | HIGH | BRIDGE-SPEC is empirically verified against live OmniFocus v4.8.8. Pitfalls are concrete, not speculative. |
+| Stack | HIGH | Zero new dependencies; Pydantic v2.12.5 ConfigDict inheritance confirmed in official docs and GitHub discussions |
+| Features | HIGH | Derived from direct codebase analysis; asymmetry and smells are observable facts |
+| Architecture | HIGH | Based on reading actual source files (`service.py` 637 lines, `repository/protocol.py`, etc.); target state is a straightforward extraction |
+| Pitfalls | HIGH | Pydantic sentinel/config pitfalls backed by known GitHub issues; circular import and decorator risks derived from codebase structure |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **Task movement API:** `assignedContainer` confirmed broken. `containingProject` setter and `moveTasks()` unverified. Resolve via research spike at Phase 3 start.
-- **Repeating task completion semantics:** Successor ID behavior, `drop(false)` vs `drop(true)` -- needs empirical verification. Resolve via research spike at Phase 4 start.
-- **`markIncomplete()` on dropped tasks:** Confirmed no-op but no recovery strategy defined. Decide during Phase 4: error out or attempt `document.undo()`.
-- **Partial failure strategy:** Moot with single-item constraint in v1.2 but needs a decision before batch is enabled.
-- **Tag name ambiguity UX:** Accept both names and IDs? Qualified paths like "Work/Meeting"? Decide during Phase 2 implementation.
+- **`extra="forbid"` + sentinel interaction (Phase 1):** High confidence on the risk, but exact behavior depends on Pydantic 2.12.5 runtime. Write the targeted test before committing to a `WriteModel` base vs. per-model approach. The per-model approach is safer and should be the default.
+- **`model_dump(exclude_unset=True)` semantics (Phase 3/4):** Pydantic's "unset" means "not provided during validation," which differs from "has UNSET sentinel default." Validate this explicitly before using `model_dump` anywhere in the edit path.
+- **`InMemoryRepository` dict handling (Phase 3):** After unification, `InMemoryRepository.add_task` receives `dict[str, Any]` with camelCase keys and must reconstruct in-memory `Task` objects. Exact field mapping needs verification against the `Task` model fields.
+
+---
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- `.research/deep-dives/omnifocus-api-ground-truth/BRIDGE-SPEC.md` -- empirical spec from 27 audit scripts against OmniFocus v4.8.8
-- `.research/updated-spec/MILESTONE-v1.2.md` -- detailed v1.2 spec with field tables and open questions
-- Existing codebase (v1.1) -- direct inspection of bridge.js, hybrid.py, bridge.py, protocol.py, service.py, server.py
+- Direct codebase analysis — `service.py` (637 lines), `models/write.py` (318 lines), `models/__init__.py` (115 lines, 15 model_rebuild calls), `repository/protocol.py`, `bridge/__init__.py`, `tests/test_service.py` (2000+ lines)
+- [Pydantic v2 Configuration docs (2.12.5)](https://docs.pydantic.dev/latest/concepts/config/) — ConfigDict inheritance merge, `extra` parameter
+- [Pydantic v2 Validation Errors](https://docs.pydantic.dev/latest/errors/validation_errors/) — `extra_forbidden` error type
+- [PEP 544 — Protocols](https://peps.python.org/pep-0544/) — structural typing for Repository boundary
+- [Cosmic Python: Service Layer](https://www.cosmicpython.com/book/chapter_04_service_layer.html) — orchestration responsibilities
+- [Cosmic Python: Validation](https://www.cosmicpython.com/book/appendix_validation.html) — syntax/semantic/pragmatic validation categories
 
 ### Secondary (MEDIUM confidence)
-- [OmniFocus Tasks - Omni Automation](https://www.omni-automation.com/omnifocus/task.html) -- OmniJS task API reference
-- [MCP Tools Specification](https://modelcontextprotocol.io/specification/2025-06-18/server/tools) -- official MCP tools spec
-- [54 Patterns for Building Better MCP Tools](https://www.arcade.dev/blog/mcp-tool-patterns) -- MCP tool design patterns
+- [Pydantic config inheritance discussion #7778](https://github.com/pydantic/pydantic/discussions/7778) — ConfigDict merge behavior in practice
+- `.research/updated-spec/MILESTONE-v1.2.1.md` — milestone spec with asymmetry map and acceptance criteria
+
+### Tertiary — Known issues requiring test validation
+- [Pydantic config MRO issue #9768](https://github.com/pydantic/pydantic/issues/9768) — config merging in multiple inheritance
+- [Pydantic model_config MRO issue #9992](https://github.com/pydantic/pydantic/issues/9992) — config doesn't respect MRO
+- [Pydantic sentinel serialization #9943](https://github.com/pydantic/pydantic/discussions/9943) — custom sentinel failures
+- [Pydantic model_rebuild issue #7618](https://github.com/pydantic/pydantic/issues/7618) — forward reference failures
 
 ---
-*Research completed: 2026-03-07*
+*Research completed: 2026-03-16*
 *Ready for roadmap: yes*

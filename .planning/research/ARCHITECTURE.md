@@ -1,367 +1,457 @@
-# Architecture Patterns
+# Architecture Patterns: Service Decomposition & Write Pipeline Unification
 
-**Domain:** Write pipeline and get-by-ID integration for OmniFocus MCP server (v1.2)
-**Researched:** 2026-03-07
-**Confidence:** HIGH (based on existing codebase analysis + BRIDGE-SPEC empirical data)
+**Domain:** Internal refactoring of existing MCP server (v1.2.1)
+**Researched:** 2026-03-16
+**Confidence:** HIGH -- based entirely on reading the actual codebase
 
-## Current Architecture (v1.1)
-
-```
-MCP Tool (server.py)
-  -> OperatorService (service.py)
-    -> Repository Protocol (repository/protocol.py)
-      -> HybridRepository (SQLite read, no bridge)
-      -> BridgeRepository (OmniJS read via bridge + mtime cache)
-      -> InMemoryRepository (tests, static snapshot)
-```
-
-- **Read-only today.** Repository protocol: `async get_all() -> AllEntities`
-- **Two read paths:** SQLite (46ms, default) and OmniJS bridge (fallback)
-- **Bridge layer exists but is decoupled from HybridRepository:** `Bridge.send_command(operation, params)` supports arbitrary operations, but HybridRepository has zero bridge dependency
-- **Snapshot invalidation already prototyped:** HybridRepository has `_stale` flag + WAL mtime polling via `TEMPORARY_simulate_write()`
-- **Request file IPC already supports payloads:** `_write_request()` writes `{"operation": "...", "params": {...}}` -- write payloads just go in `params`
-
-## Recommended Architecture for v1.2
-
-### Key Principle: Asymmetric Read/Write Paths
-
-Reads and writes take fundamentally different paths. Do NOT unify them.
+## Current Architecture
 
 ```
-READ PATH (existing, unchanged):
-  MCP tool -> Service -> Repository.get_all() -> SQLite or Bridge snapshot
-
-WRITE PATH (new):
-  MCP tool -> Service (validate against snapshot) -> Repository.add/edit_tasks()
-    -> Bridge.send_command() -> mark snapshot stale
-
-GET-BY-ID PATH (new):
-  MCP tool -> Service.get_task/project/tag(id) -> Repository.get_all() -> filter in Python
+MCP Server (server.py)
+  |
+  v
+OperatorService (service.py)         <-- 637 lines, monolithic
+  |
+  v
+Repository Protocol (repository/protocol.py)
+  |
+  +-- HybridRepository (SQLite read, Bridge write) -- production
+  +-- BridgeRepository (Bridge read+write, caching) -- fallback
+  +-- InMemoryRepository (in-memory snapshot) -- test-only
+  |
+  v
+Bridge Protocol (bridge/protocol.py)
+  |
+  +-- RealBridge (file-based IPC to OmniJS) -- production
+  +-- SimulatorBridge (IPC to Python simulator) -- integration test
+  +-- InMemoryBridge (in-memory, call tracking) -- unit test
 ```
 
-### Why get-by-ID Uses get_all()
+### Write Path Asymmetry (the core problem)
 
-The snapshot is cached in memory. Filtering one entity from an in-memory list is microseconds. Adding per-entity SQL queries or bridge commands adds a second code path with zero user-visible benefit at 2,400 tasks.
+**add_task path:**
+```
+Service.add_task(spec: TaskCreateSpec)
+  -> validates name
+  -> resolves parent (project-first)
+  -> resolves tags (name -> ID)
+  -> repo.add_task(spec, resolved_tag_ids=...)  # typed spec + kwarg
+```
+Repository receives a typed `TaskCreateSpec`, does its own serialization to dict in `add_task`.
 
-The milestone spec mentions `get_task`/`get_project`/`get_tag` bridge commands -- these are unnecessary. Both HybridRepository (SQLite cache) and BridgeRepository (in-memory snapshot) already have all entities loaded. Only add bridge-level get-by-ID if a future use case requires guaranteed real-time freshness (not currently needed).
+**edit_task path:**
+```
+Service.edit_task(spec: TaskEditSpec)
+  -> verifies task exists
+  -> processes lifecycle
+  -> validates name
+  -> BUILDS dict payload IN SERVICE (lines 167-282)  # <-- asymmetry
+  -> computes tag diff
+  -> resolves moveTo
+  -> detects no-ops
+  -> repo.edit_task(payload: dict[str, Any])  # untyped dict passthrough
+```
+Service builds the entire dict, repository is a dumb passthrough.
+
+**Repository protocol reflects the asymmetry:**
+```python
+# Different signatures, different levels of abstraction
+async def add_task(self, spec: TaskCreateSpec, *, resolved_tag_ids: list[str] | None) -> TaskCreateResult
+async def edit_task(self, payload: dict[str, Any]) -> dict[str, Any]
+```
+
+**Payload building is duplicated across repo implementations:**
+- `HybridRepository.add_task` builds payload from spec (lines 492-497)
+- `BridgeRepository.add_task` builds payload from spec (lines 115-118) -- same logic
+
+---
+
+## Recommended Architecture
+
+### Target State
+
+```
+MCP Server (server.py)
+  |
+  v
+OperatorService (service/__init__.py)     <-- thin orchestrator, ~80 lines
+  |  uses:
+  |  +-- service/validation.py            <-- name, parent, tag resolution
+  |  +-- service/domain.py                <-- lifecycle, no-op detection, tag diff, cycle check
+  |  +-- service/conversion.py            <-- spec -> bridge payload dict building
+  |
+  v
+Repository Protocol (repository/protocol.py)
+  |  add_task(payload: dict) -> dict       <-- unified: both take dict, return dict
+  |  edit_task(payload: dict) -> dict
+  |
+  +-- HybridRepository
+  +-- BridgeRepository
+  +-- InMemoryRepository (tests/ only)
+```
 
 ### Component Boundaries
 
 | Component | Responsibility | Communicates With |
 |-----------|---------------|-------------------|
-| **MCP tools** (server.py) | Parse args, call service, format response | Service |
-| **OperatorService** (service.py) | Validate inputs against snapshot, delegate writes | Repository |
-| **Repository protocol** | Abstract interface for reads + writes | (implementations below) |
-| **HybridRepository** | SQLite reads, delegates writes to bridge, invalidates via WAL mtime | Bridge (writes only), SQLite (reads) |
-| **BridgeRepository** | Snapshot cache reads, delegates writes to bridge, invalidates cache | Bridge |
-| **InMemoryRepository** | Test double: reads + writes against in-memory snapshot | None |
-| **Bridge protocol** | `send_command(operation, params)` -- IPC to OmniFocus | RealBridge (file IPC) |
-| **bridge.js** | Execute OmniJS commands inside OmniFocus runtime | OmniFocus Omni Automation |
+| `server.py` | MCP tool registration, request deserialization, response formatting | `OperatorService` |
+| `service/__init__.py` | Re-exports `OperatorService`, `ErrorOperatorService` | -- |
+| `service/_orchestrator.py` | Orchestrates validation -> domain -> conversion -> repo. No logic of its own. | `validation`, `domain`, `conversion`, Repository |
+| `service/validation.py` | Input validation: name checks, parent resolution, tag name-to-ID resolution | Repository (for lookups) |
+| `service/domain.py` | Business logic: lifecycle state machine, tag diff, no-op detection, cycle detection | None (pure functions + task state) |
+| `service/conversion.py` | Spec-to-payload: both `TaskCreateSpec` and `TaskEditSpec` produce `dict[str, Any]` | None (pure transformation) |
+| Repository protocol | Unified write interface: both take `dict[str, Any]`, return `dict[str, Any]` | Bridge |
+| Bridge protocol | IPC to OmniFocus: `send_command(operation, params)` | OmniFocus (via file IPC) |
 
-### New vs Modified vs Unchanged Components
+### Data Flow: Unified Write Path
 
-**New:**
-- Service methods: `get_task()`, `get_project()`, `get_tag()`, `add_tasks()`, `edit_tasks()`
-- Pydantic request/response models: `AddTaskRequest`, `EditTaskRequest`, `TaskChanges`, `WriteResult`
-- Bridge.js operation handlers: `add_task`, `edit_task`
-- MCP tool registrations: 5 new tools in server.py
-
-**Modified:**
-- `Repository` protocol -- add `add_tasks()`, `edit_tasks()` method signatures
-- `HybridRepository` -- add bridge dependency (optional constructor param), write methods, replace `TEMPORARY_simulate_write` with `_mark_stale()`
-- `BridgeRepository` -- add write methods (thin delegation to existing bridge)
-- `InMemoryRepository` -- add write methods (mutate in-memory snapshot)
-- `OperatorService` -- add validation + delegation methods
-- `bridge.js dispatch()` -- add new operation cases
-- `repository/factory.py` -- inject bridge into HybridRepository
-
-**Unchanged:**
-- Bridge protocol (`send_command` already supports arbitrary operations)
-- RealBridge IPC mechanics (request/response files, URL scheme trigger)
-- SQLite read path (queries, row mapping, timestamp parsing)
-- Adapter layer (only transforms bridge read snapshots)
-- AllEntities / entity Pydantic models (read shapes unchanged)
-
-## Data Flow
-
-### add_tasks Flow
+After unification, both add and edit follow the same shape:
 
 ```
-1. MCP tool: add_tasks([{name: "Buy milk", project: "abc123", tags: ["errands"]}])
-2. Service validates against current snapshot (via get_all()):
-   - name is non-empty
-   - project ID "abc123" exists in snapshot.projects
-   - tag name "errands" exists in snapshot.tags -> resolves to tag ID
-   - project and parent_task_id not both set
-3. Service calls Repository.add_tasks(validated_requests)
-4. Repository delegates to Bridge.send_command("add_task", {name, projectId, tagIds, ...})
-5. Bridge writes request file, triggers OmniFocus URL scheme
-6. bridge.js reads request, creates task via OmniJS, writes response file
-7. Bridge returns {success: true, data: {id: "xyz789", name: "Buy milk"}}
-8. Repository calls _mark_stale() (captures WAL mtime, sets _stale=True)
-9. Service returns WriteResult to MCP tool
-10. Next read: _stale flag triggers WAL poll -> fresh SQLite read
+1. MCP Server deserializes input -> TaskCreateSpec or TaskEditSpec
+2. Service calls validation (name, parent, tags)
+3. Service calls domain logic (lifecycle, no-op, tag diff -- edit only)
+4. Service calls conversion (spec -> bridge payload dict)
+5. Service calls repo.add_task(payload) or repo.edit_task(payload)
+6. Repo delegates to bridge.send_command(operation, payload)
+7. Repo waits for write-through (WAL mtime)
+8. Service wraps result as TaskCreateResult or TaskEditResult
 ```
 
-### edit_tasks Flow
+---
 
-```
-1. MCP tool: edit_tasks([{id: "xyz789", changes: {due_date: "2026-03-10", tags: null}}])
-2. Service validates:
-   - task ID "xyz789" exists in snapshot
-   - patch semantics: omit=no change, null=clear, value=set
-   - tag mode exclusivity (tags vs add_tags/remove_tags)
-3. Service calls Repository.edit_tasks(validated_edits)
-4. Repository translates field names (snake_case -> camelCase for bridge)
-5. Bridge.send_command("edit_task", {id, changes: {dueDate, tags}})
-6. bridge.js applies changes via hasOwnProperty checks on each field
-7. Returns success/error
-8. Repository marks stale
+## New Components
+
+### 1. `src/omnifocus_operator/service/validation.py`
+
+**Extracted from:** `OperatorService._resolve_parent`, `._resolve_tags`, name validation check
+
+```python
+async def validate_task_name(name: str | None) -> None:
+    """Raise ValueError if name is empty/blank. None = not provided (edit skip)."""
+
+async def resolve_parent(parent_id: str, repo: Repository) -> str:
+    """Resolve parent ID. Project-first, then task. Raises ValueError."""
+
+async def resolve_tags(tag_names: list[str], repo: Repository) -> list[str]:
+    """Resolve tag names to IDs (case-insensitive, ID fallback). Raises ValueError."""
 ```
 
-### get_task Flow
+**Why extract:** Used identically by both add and edit paths. Currently private methods that only use `self._repository`. Making them free functions with explicit `repo` parameter removes the class coupling.
 
+### 2. `src/omnifocus_operator/service/domain.py`
+
+**Extracted from:** `OperatorService._process_lifecycle`, `._compute_tag_diff`, `._check_cycle`, no-op detection (lines 309-380)
+
+```python
+def process_lifecycle(action: str, task: Task) -> tuple[bool, list[str]]:
+    """Returns (should_call_bridge, warnings). Already stateless."""
+
+async def compute_tag_diff(
+    tag_actions: TagActionSpec, current_tags: list[TagRef], repo: Repository,
+) -> tuple[list[str], list[str], list[str]]:
+    """Returns (add_ids, remove_ids, warnings)."""
+
+async def check_cycle(task_id: str, container_id: str, repo: Repository) -> None:
+    """Raises ValueError if move creates circular reference."""
+
+def detect_noop(payload: dict[str, Any], task: Task) -> tuple[bool, list[str]]:
+    """Returns (is_noop, warnings). Compares payload against current state."""
 ```
-1. MCP tool: get_task(id="xyz789")
-2. Service calls repository.get_all() (cached, sub-ms if warm)
-3. Service filters: next(t for t in snapshot.tasks if t.id == id)
-4. Returns full Task object (same shape as list_all results)
-5. If not found: raises clear error with the ID
+
+**Why extract:** Domain logic independent of service orchestration. `_process_lifecycle` is already a pure function. `_compute_tag_diff` only needs repo for tag resolution. No-op detection is a pure comparison.
+
+### 3. `src/omnifocus_operator/service/conversion.py`
+
+**Extracted from:** payload building in `HybridRepository.add_task` (lines 492-497), `BridgeRepository.add_task` (lines 115-118), and `OperatorService.edit_task` (lines 196-282)
+
+```python
+def build_add_payload(
+    spec: TaskCreateSpec, resolved_tag_ids: list[str] | None,
+) -> dict[str, Any]:
+    """Convert TaskCreateSpec to bridge-ready camelCase dict."""
+
+def build_edit_payload(
+    spec: TaskEditSpec,
+    add_tag_ids: list[str] | None,
+    remove_tag_ids: list[str] | None,
+    move_to: dict[str, object] | None,
+    lifecycle: str | None,
+) -> dict[str, Any]:
+    """Convert TaskEditSpec fields to bridge-ready camelCase dict.
+    Only includes non-UNSET fields."""
 ```
+
+**Why extract:** Serialization logic is currently split -- add payload built in two repo implementations (duplicated), edit payload built in service. Unifying into one module eliminates the duplication and asymmetry.
+
+### 4. `src/omnifocus_operator/service/__init__.py`
+
+Re-exports `OperatorService` and `ErrorOperatorService` so all existing imports work unchanged:
+```python
+from omnifocus_operator.service._orchestrator import ErrorOperatorService, OperatorService
+```
+
+---
+
+## Modified Components
+
+### Repository Protocol (`repository/protocol.py`)
+
+**Change:** Unify `add_task` and `edit_task` signatures.
+
+```python
+# BEFORE
+async def add_task(self, spec: TaskCreateSpec, *, resolved_tag_ids: list[str] | None) -> TaskCreateResult
+async def edit_task(self, payload: dict[str, Any]) -> dict[str, Any]
+
+# AFTER
+async def add_task(self, payload: dict[str, Any]) -> dict[str, Any]
+async def edit_task(self, payload: dict[str, Any]) -> dict[str, Any]
+```
+
+Both now: accept pre-built dict, return dict from bridge. Payload construction moved to `conversion.py`, result wrapping moved to service.
+
+**Impact:** All three repository implementations + their tests.
+
+### HybridRepository (`repository/hybrid.py`)
+
+**Change:** `add_task` drops spec-based signature, becomes a thin bridge delegate (matches `edit_task` pattern).
+
+```python
+# BEFORE (lines 477-509) -- builds payload from spec
+@_ensures_write_through
+async def add_task(self, spec, *, resolved_tag_ids=None) -> TaskCreateResult:
+    payload = spec.model_dump(by_alias=True, exclude_none=True, mode="json")
+    payload.pop("tags", None)
+    if resolved_tag_ids:
+        payload["tagIds"] = resolved_tag_ids
+    result = await self._bridge.send_command("add_task", payload)
+    return TaskCreateResult(success=True, id=result["id"], name=result["name"])
+
+# AFTER -- symmetric with edit_task
+@_ensures_write_through
+async def add_task(self, payload: dict[str, Any]) -> dict[str, Any]:
+    return await self._bridge.send_command("add_task", payload)
+```
+
+### BridgeRepository (`repository/bridge.py`)
+
+Same change as HybridRepository. Drops `TaskCreateSpec` import, returns `dict` instead of `TaskCreateResult`.
+
+### InMemoryRepository (`repository/in_memory.py`)
+
+**Signature change:** `add_task` takes `dict[str, Any]` instead of `TaskCreateSpec`.
+**Behavioral change:** Builds in-memory `Task` from dict keys (camelCase) instead of spec attributes.
+**Location change:** Move to `tests/` (or at minimum remove from `repository/__init__.py` exports).
+
+### Bridge `__init__.py`
+
+**Remove:** `InMemoryBridge` and `BridgeCall` from `__all__` and imports.
+
+### Bridge factory (`bridge/factory.py`)
+
+**Remove:** `"inmemory"` case. Update error message to list only `simulator` and `real`.
+
+### Write Models (`models/write.py`)
+
+**Add:** `extra="forbid"` on `TaskCreateSpec`, `TaskEditSpec`, `MoveToSpec`, `TagActionSpec`, `ActionsSpec`.
+
+```python
+class TaskCreateSpec(OmniFocusBaseModel):
+    model_config = ConfigDict(extra="forbid")
+    ...
+```
+
+**Note:** `OmniFocusBaseModel` sets `alias_generator`, `validate_by_name`, `validate_by_alias`. Pydantic v2 merges `ConfigDict` from parent and child -- `extra="forbid"` adds to the existing config without overriding.
+
+### Service (`service.py` -> `service/_orchestrator.py`)
+
+Slims from ~637 lines to ~80-100 lines. All private methods extracted. `edit_task` becomes a clear orchestration flow:
+
+```python
+async def edit_task(self, spec: TaskEditSpec) -> TaskEditResult:
+    task = await self._repository.get_task(spec.id)
+    if not task: raise ValueError(...)
+    warnings = []
+
+    # Domain: lifecycle
+    lifecycle, lifecycle_warnings = process_lifecycle_if_present(spec, task)
+    warnings.extend(lifecycle_warnings)
+
+    # Validation: name, tags, move
+    validate_edit_name(spec)
+    add_ids, remove_ids, tag_warnings = await resolve_edit_tags(spec, task, self._repo)
+    warnings.extend(tag_warnings)
+    move_to = await resolve_edit_move(spec, task, self._repo)
+
+    # Conversion: spec -> payload
+    payload = build_edit_payload(spec, add_ids, remove_ids, move_to, lifecycle)
+
+    # Domain: no-op detection
+    is_noop, noop_warnings = detect_noop(payload, task, warnings)
+    if is_noop: return TaskEditResult(success=True, id=spec.id, name=task.name, warnings=...)
+
+    # Execute
+    result = await self._repository.edit_task(payload)
+    return TaskEditResult(success=True, id=result["id"], name=result["name"], warnings=warnings or None)
+```
+
+---
 
 ## Patterns to Follow
 
-### Pattern 1: HybridRepository Gains a Bridge (Optional Dependency)
+### Pattern 1: Module-level functions over class methods
 
-HybridRepository currently has NO bridge dependency. For writes, it needs one.
+**What:** Extract logic as module-level async/sync functions, not methods on helper classes.
+**When:** The function doesn't need persistent state across calls.
+**Why:** All current private methods on `OperatorService` are stateless -- they only use `self._repository` as a dependency. Free functions with explicit `repo` parameter are clearer and directly testable without instantiating the service.
 
-```python
-class HybridRepository:
-    def __init__(self, db_path: Path | None = None, bridge: Bridge | None = None) -> None:
-        self._db_path = ...
-        self._bridge = bridge  # None = read-only mode
+### Pattern 2: Package with backward-compatible imports
 
-    async def add_tasks(self, tasks: list[AddTaskRequest]) -> list[WriteResult]:
-        if self._bridge is None:
-            raise RuntimeError("Write operations require a bridge (OmniFocus must be running)")
-        result = await self._bridge.send_command("add_task", ...)
-        self._mark_stale()
-        return [WriteResult(...)]
+**What:** Convert `service.py` to `service/` package directory.
+**When:** Decomposing a module with established import paths.
+**Why:** `from omnifocus_operator.service import OperatorService` is used in `server.py`, tests, and lifespan. The `__init__.py` re-exports everything, so no external import changes needed.
+
+```
+service/
+  __init__.py       # re-exports OperatorService, ErrorOperatorService
+  _orchestrator.py  # OperatorService, ErrorOperatorService
+  validation.py     # validate_task_name, resolve_parent, resolve_tags
+  domain.py         # process_lifecycle, compute_tag_diff, check_cycle, detect_noop
+  conversion.py     # build_add_payload, build_edit_payload
 ```
 
-**Why optional:** Tests may want read-only HybridRepository (SQLite testing without bridge). Clear error when writes attempted without bridge.
+### Pattern 3: Conversion as pure functions
 
-### Pattern 2: Stale-After-Write (Extend Existing)
+**What:** All spec-to-dict conversion in `conversion.py` as pure sync functions (no async, no repo access).
+**When:** Serialization/format conversion code.
+**Why:** Pure functions are trivially testable with no dependencies. Makes the data flow explicit: validation resolves IDs first, then conversion uses resolved IDs.
 
-Replace `TEMPORARY_simulate_write()` with `_mark_stale()`:
-
-```python
-def _mark_stale(self) -> None:
-    """Capture current WAL mtime and set stale flag."""
-    wal_path = self._db_path + "-wal"
-    try:
-        self._last_wal_mtime_ns = os.stat(wal_path).st_mtime_ns
-    except FileNotFoundError:
-        self._last_wal_mtime_ns = os.stat(self._db_path).st_mtime_ns
-    self._stale = True
-```
-
-Existing `_wait_for_fresh_data()` (50ms poll, 2s timeout) handles the rest. OmniFocus syncs writes to SQLite within ~100ms.
-
-For BridgeRepository: `self._cached = None` forces full refresh on next read.
-
-For InMemoryRepository: mutate the snapshot directly -- no invalidation needed.
-
-### Pattern 3: Validation in Service, Execution in Repository
-
-Service validates against the current snapshot before delegating writes:
-
-| Validation | Where | Why |
-|-----------|-------|-----|
-| name non-empty | Service | Business rule |
-| project ID exists | Service | Requires snapshot lookup |
-| tag names exist + resolve to IDs | Service | Requires snapshot lookup |
-| project vs parent_task_id mutual exclusivity | Service | Business rule |
-| task ID exists (for edits) | Service | Requires snapshot lookup |
-| tag mode exclusivity (tags vs add_tags/remove_tags) | Service | Business rule |
-
-Repository receives pre-validated payloads and executes blindly. Bridge is dumb (BRIDGE-SPEC principle: "dumb bridge, smart Python").
-
-### Pattern 4: Per-Item Results for Batch Operations
-
-```python
-@dataclass
-class WriteResult:
-    success: bool
-    id: str | None = None
-    name: str | None = None
-    error: str | None = None
-```
-
-**Best-effort processing:** Continue on failure. OmniFocus has no transactions -- already-applied changes persist even if later items fail. Return per-item results so the agent knows exactly what succeeded.
-
-### Pattern 5: Tag Name-to-ID Resolution in Service
-
-The spec says `add_tasks` accepts tag names (not IDs). Resolve in Python:
-
-```python
-# Service layer
-tag_map = {t.name: t.id for t in snapshot.tags}
-for tag_name in request.tags:
-    if tag_name not in tag_map:
-        raise ValueError(f"Unknown tag: {tag_name}")
-    tag_ids.append(tag_map[tag_name])
-# Send tag_ids to bridge
-```
-
-Bridge uses `Tag.byIdentifier(id)` -- no OmniJS iteration needed. Python already has the full tag list cached (microsecond lookup vs ~65ms OmniJS iteration).
-
-### Pattern 6: Field Name Translation at Repository Boundary
-
-Python uses snake_case, bridge expects camelCase. Translation at the repository layer:
-
-```python
-_FIELD_MAP = {
-    "due_date": "dueDate",
-    "defer_date": "deferDate",
-    "planned_date": "plannedDate",
-    "estimated_minutes": "estimatedMinutes",
-    "parent_task_id": "parentTaskId",
-}
-```
-
-Same dict-based approach used throughout the codebase (adapter.py pattern).
+---
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: SQLite Write Path
-**What:** Writing directly to OmniFocus's SQLite cache
-**Why bad:** OmniFocus owns that database. Corrupts state, breaks sync, may crash OmniFocus.
-**Instead:** All writes through OmniJS bridge -> OmniFocus processes them -> SQLite cache updates automatically.
+### Anti-Pattern 1: WriteModel base class with inheritance
 
-### Anti-Pattern 2: Separate Write Repository
-**What:** Creating a `WriteRepository` separate from read repositories
-**Why bad:** Writes need to invalidate the read cache. Separate objects require coordination (events, callbacks).
-**Instead:** Add write methods to existing repository implementations. Same object manages cache + invalidation.
+**What:** Creating a `WriteModel` base class for `TaskCreateSpec` and `TaskEditSpec`.
+**Why bad:** The two specs are fundamentally different -- `TaskCreateSpec` uses `None` defaults (OmniFocus picks defaults), `TaskEditSpec` uses `UNSET` sentinel (omit = no change). Forcing inheritance would require awkward type gymnastics.
+**Instead:** Keep as sibling classes. Share behavior through the conversion module.
 
-### Anti-Pattern 3: Bridge-Side Validation
-**What:** Validating field values, checking ID existence in bridge.js
-**Why bad:** OmniJS is ~1ms/task. Iterating 2,800 tasks to check an ID takes 2.8 seconds of frozen UI.
-**Instead:** Validate everything in Python. Bridge receives pre-validated payloads.
+### Anti-Pattern 2: Moving conversion into models
 
-### Anti-Pattern 4: Per-Entity Bridge Commands for get-by-ID
-**What:** Adding `get_task`/`get_project`/`get_tag` as OmniJS bridge operations
-**Why bad:** Each bridge round-trip is ~1-3 seconds. Filtering from cached snapshot is sub-ms.
-**Instead:** Implement get-by-ID as a filter on `get_all()` result.
+**What:** Adding `to_bridge_payload()` methods on spec models.
+**Why bad:** Models would need to know bridge payload format (camelCase keys, `tagIds` vs `tags`). Violates single responsibility.
+**Instead:** Models = pure data containers. Conversion = separate module.
 
-### Anti-Pattern 5: Eager Snapshot Refresh After Write
-**What:** Force full snapshot refresh immediately after every write
-**Why bad:** Adds 46ms+ latency to every write. The returned `{id, name}` is sufficient confirmation.
-**Instead:** Mark stale (lazy invalidation). Next read triggers refresh. Already how the codebase works.
+### Anti-Pattern 3: Intermediate typed payload model
 
-## Repository Protocol Changes
+**What:** Creating a `BridgePayload` Pydantic model between service and repository.
+**Why bad:** Bridge protocol is `dict[str, Any]`. Adding a typed intermediate creates serialization overhead. The dict gets serialized to JSON for IPC immediately. Type safety comes from conversion functions having typed inputs.
+**Instead:** Use `dict[str, Any]` at repo boundary.
 
-### Current
-```python
-class Repository(Protocol):
-    async def get_all(self) -> AllEntities: ...
-```
+### Anti-Pattern 4: Over-extracting into tiny modules
 
-### Proposed (v1.2)
-```python
-class Repository(Protocol):
-    async def get_all(self) -> AllEntities: ...
-    async def add_tasks(self, tasks: list[AddTaskRequest]) -> list[WriteResult]: ...
-    async def edit_tasks(self, edits: list[EditTaskRequest]) -> list[WriteResult]: ...
-```
+**What:** Separate files for each function (e.g., `lifecycle.py`, `tag_diff.py`, `cycle_check.py`).
+**Why bad:** Domain logic totals ~150 lines. Four+ files creates navigation overhead without encapsulation benefit.
+**Instead:** Three modules by concern: `validation.py`, `domain.py`, `conversion.py`.
 
-Service calls writes polymorphically -- same code path regardless of repository type. InMemoryRepository mutates snapshot directly for integration tests.
-
-## Bridge Script Changes
-
-### New Operations in dispatch()
-
-| Operation | Request Params | Response Data |
-|-----------|---------------|---------------|
-| `add_task` | `{name, projectId?, parentTaskId?, tagIds?, dueDate?, deferDate?, plannedDate?, flagged?, estimatedMinutes?, note?}` | `{id, name}` |
-| `edit_task` | `{id, changes: {name?, note?, dueDate?, deferDate?, plannedDate?, flagged?, estimatedMinutes?, projectId?, parentTaskId?, tagIds?, addTagIds?, removeTagIds?}}` | `{id, name}` |
-
-### Bridge JS Implementation Notes
-
-- **Task creation:** `new Task(name, project)` or `new Task(name)` for inbox. `Task.byIdentifier()` and `Project.byIdentifier()` for lookups.
-- **Parent task:** After creation, look up parent via `Task.byIdentifier(parentTaskId)`, set `task.parent = parentTask`
-- **Tag assignment:** `task.addTag(Tag.byIdentifier(tagId))` per tag. Service resolves names to IDs.
-- **Property writes:** Direct assignment: `task.dueDate = new Date(isoString)`, `task.flagged = true`, `task.dueDate = null` (clears)
-- **Patch semantics:** `if (changes.hasOwnProperty("dueDate")) { task.dueDate = changes.dueDate === null ? null : new Date(changes.dueDate); }`
-- **Tag modes:**
-  - `tagIds` present: `task.clearTags()` then `task.addTag()` each
-  - `addTagIds` present: `task.addTag()` each
-  - `removeTagIds` present: `task.removeTag()` each
-  - `removeTagIds` + `addTagIds`: remove first, then add (add wins on conflicts)
-- **Task movement:** `task.containingProject` for project assignment (BRIDGE-SPEC says `assignedContainer` is always null -- verify `containingProject` setter works or use alternative)
-
-### Open Bridge Questions (Resolve During Implementation)
-
-- Does `task.containingProject = project` work for moving tasks? Or use `moveTasks()`?
-- Does setting `task.parent = null` un-nest a task to project root?
-- Does `task.containingProject = null` move to inbox?
-- Does `markIncomplete()` on an already-incomplete task throw or no-op?
+---
 
 ## Suggested Build Order
 
-Ordered by dependency chain and risk:
+Ordered by dependency direction: repo protocol changes must land before service changes that depend on new signatures.
 
-### Phase 1: Get-by-ID Tools (warmup, zero new patterns)
-- Add `get_task()`, `get_project()`, `get_tag()` to OperatorService
-- Filter on `get_all()` result, raise not-found errors
-- Register 3 MCP tools in server.py
-- Test with InMemoryRepository
-- **No** bridge changes, protocol changes, or new models
-- **Risk:** Very low. Pure Python filtering.
-- **Dependency:** None
+### Phase 1: Write model strictness (independent, no deps)
 
-### Phase 2: Write Pipeline Foundation (new pattern, highest risk)
-- Define `AddTaskRequest`, `EditTaskRequest`, `TaskChanges`, `WriteResult` Pydantic models
-- Add `add_tasks()`, `edit_tasks()` to Repository protocol
-- Implement in InMemoryRepository first (mutate snapshot)
-- Add optional bridge param to HybridRepository constructor
-- Implement `_mark_stale()` replacing `TEMPORARY_simulate_write()`
-- Update repository factory to inject bridge into HybridRepository
-- **Risk:** Medium. New pattern but mechanically straightforward.
-- **Dependency:** None (parallel with Phase 1)
+Add `extra="forbid"` to all write spec models.
 
-### Phase 3: add_tasks End-to-End
-- Add `add_task` handler to bridge.js
-- Add service validation (name required, project exists, tag name->ID resolution)
-- Implement `add_tasks()` in HybridRepository and BridgeRepository
-- Register `add_tasks` MCP tool
-- UAT: create task, verify via get_task with returned ID
-- **Risk:** Medium. First real write through the full stack.
-- **Dependency:** Phase 1 (get-by-ID for verification) + Phase 2 (models + protocol)
+- **Files:** `models/write.py`
+- **Tests:** Verify unknown fields raise `ValidationError`
+- **Risk:** LOW -- Pydantic v2 ConfigDict merging is well-tested
+- **Dependencies:** None
 
-### Phase 4: edit_tasks -- Simple Fields
-- Add `edit_task` handler to bridge.js with hasOwnProperty patch semantics
-- Implement field edits: name, note, dates, flagged, estimated_minutes
-- Implement tag modes: replace (tagIds), add (addTagIds), remove (removeTagIds)
-- Implement task movement: project, parent_task_id
-- Service validation: task exists, tag mode exclusivity, mutual exclusivity
-- Register `edit_tasks` MCP tool
-- UAT: edit various fields, verify via get_task
-- **Risk:** Medium-high. Patch semantics + tag modes + movement = most complex phase.
-- **Dependency:** Phase 3 (need tasks to edit, pipeline proven)
+### Phase 2: Unify repository write signatures
 
-### Phase 5: edit_tasks -- Lifecycle Changes
-- Research spike: OmniJS `markComplete()`, `drop()`, `markIncomplete()` behavior
-- Determine interface: field edit (availability value) vs action-style
-- Handle repeating task edge cases (complete instance vs series)
-- Implement in bridge.js + wire through edit_tasks
-- UAT: complete, drop, reactivate tasks
-- **Risk:** Higher. Repeating tasks + drop permanence need careful investigation.
-- **Dependency:** Phase 4 (edit pipeline established)
+Change `add_task` and `edit_task` on Repository protocol to both accept/return `dict[str, Any]`.
+
+- **Files:**
+  - `repository/protocol.py` (protocol change)
+  - `repository/hybrid.py` (simplify `add_task` to bridge passthrough)
+  - `repository/bridge.py` (same simplification)
+  - `repository/in_memory.py` (update `add_task` to work from dict)
+- **Service bridge:** Service's `add_task` temporarily builds payload dict inline (copy 5 lines from old `HybridRepository.add_task`) before Phase 3 moves it to `conversion.py`.
+- **Risk:** LOW -- mechanical signature change, existing tests catch breakage
+- **Dependencies:** None (parallel with Phase 1)
+
+### Phase 3: Extract service into package
+
+Convert `service.py` to `service/` package with sub-modules.
+
+**Internal order (each step keeps tests green):**
+1. Create `service/` directory with `__init__.py` re-exporting current API
+2. Move `OperatorService` + `ErrorOperatorService` to `service/_orchestrator.py`
+3. Extract `validation.py` (resolve_parent, resolve_tags, validate_task_name)
+4. Extract `domain.py` (process_lifecycle, compute_tag_diff, check_cycle, detect_noop)
+5. Extract `conversion.py` (build_add_payload, build_edit_payload)
+6. Slim `_orchestrator.py` to use extracted modules
+
+- **Risk:** MEDIUM -- most complex phase, many moving parts. Each sub-step must keep tests green.
+- **Dependencies:** Phase 2 (service needs to build payload for new repo signature)
+
+### Phase 4: Relocate InMemoryBridge from production exports
+
+Two sub-steps (matches existing TODO):
+
+1. **Remove from public surface:** Drop from `bridge/__init__.py`, remove `"inmemory"` from bridge factory, update test imports to direct paths.
+2. **Physical relocation (optional):** Move file to `tests/` if desired. File can stay in `src/` with no public export.
+
+- **Files:** `bridge/__init__.py`, `bridge/factory.py`, `repository/factory.py`, 4 test files
+- **Risk:** LOW -- import-only changes, no behavioral change
+- **Dependencies:** Best done last to avoid import churn during other phases
+
+---
+
+## Integration Points
+
+### Unchanged
+
+| Integration | Path |
+|-------------|------|
+| `server.py` -> `OperatorService` | `from omnifocus_operator.service import OperatorService` |
+| `server.py` -> write models | `from omnifocus_operator.models import TaskCreateSpec, TaskEditSpec` |
+| Repository -> Bridge | `self._bridge.send_command(op, payload)` |
+| Write-through decorator | `@_ensures_write_through` on repo write methods |
+
+### New
+
+| Integration | Description |
+|-------------|-------------|
+| `_orchestrator.py` -> `validation.py` | `validate_task_name()`, `resolve_parent()`, `resolve_tags()` |
+| `_orchestrator.py` -> `domain.py` | `process_lifecycle()`, `compute_tag_diff()`, `detect_noop()`, `check_cycle()` |
+| `_orchestrator.py` -> `conversion.py` | `build_add_payload()`, `build_edit_payload()` |
+| `validation.py` -> Repository | Needs repo for `get_project`, `get_task`, `get_tag`, `get_all` lookups |
+| `domain.py` -> Repository | `compute_tag_diff` needs repo for tag resolution; `check_cycle` needs repo for task tree |
+
+### Breaking changes (internal only, no public API changes)
+
+| Change | Affected |
+|--------|----------|
+| `Repository.add_task` signature | All 3 repo implementations + direct repo tests |
+| `InMemoryBridge` removed from `bridge.__init__` | 5 test files importing from `bridge` package |
+| `service.py` becomes `service/` package | None -- `__init__.py` re-exports everything |
+
+---
 
 ## Sources
 
-- Existing codebase: `repository/protocol.py`, `repository/hybrid.py`, `repository/bridge.py`, `repository/in_memory.py`, `service.py`, `server.py`, `bridge/real.py`, `bridge/bridge.js`, `bridge/adapter.py`
-- `.research/deep-dives/omnifocus-api-ground-truth/BRIDGE-SPEC.md` (Section 4: Write Operations)
-- `.research/updated-spec/MILESTONE-v1.2.md`
-- `.planning/PROJECT.md`
+- Direct codebase analysis (HIGH confidence)
+  - `src/omnifocus_operator/service.py` -- 637 lines, primary decomposition target
+  - `src/omnifocus_operator/repository/protocol.py` -- write signature asymmetry
+  - `src/omnifocus_operator/repository/hybrid.py` -- add_task payload building (lines 477-509)
+  - `src/omnifocus_operator/repository/bridge.py` -- add_task payload building (lines 102-126, duplicated)
+  - `src/omnifocus_operator/repository/in_memory.py` -- test-only implementation
+  - `src/omnifocus_operator/models/write.py` -- write models, UNSET sentinel
+  - `src/omnifocus_operator/bridge/in_memory.py` -- test double in production tree
+  - `src/omnifocus_operator/bridge/__init__.py` -- public exports including test doubles
+  - `src/omnifocus_operator/bridge/factory.py` -- inmemory branch in factory
+  - `.planning/todos/pending/2026-03-10-remove-inmemorybridge-from-production-exports-and-factory.md`

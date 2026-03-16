@@ -1,259 +1,299 @@
-# Pitfalls Research
+# Domain Pitfalls
 
-**Domain:** Adding write capabilities (task creation, editing, lifecycle) to an existing read-only OmniFocus MCP server
-**Researched:** 2026-03-07
-**Confidence:** HIGH (based on codebase analysis, BRIDGE-SPEC empirical data, and OmniJS constraints)
+**Domain:** Service layer refactoring, write pipeline unification, Pydantic model reorganization in an existing MCP server with 534 tests
+**Researched:** 2026-03-16
+**Confidence:** HIGH (codebase analysis + Pydantic v2 docs + known GitHub issues)
 
 ## Critical Pitfalls
 
-### Pitfall 1: Snapshot Invalidation Race -- Write Completes Before OmniFocus Flushes to SQLite
+### Pitfall 1: `extra="forbid"` on WriteModel Base Rejects the `_Unset` Sentinel
 
 **What goes wrong:**
-Write goes through OmniJS bridge (modifies OmniFocus in-memory state), Python marks snapshot stale, next `get_all()` reads from SQLite -- but OmniFocus hasn't flushed to the SQLite cache yet. The "fresh" read returns pre-write data.
+Adding `extra="forbid"` to write models causes Pydantic to reject the `_Unset` sentinel as an "extra" field type in union-typed fields. The current `_Unset` class uses `is_instance_schema` in its core schema -- Pydantic treats `_Unset` in a `str | None | _Unset` union as a valid branch, but if `extra="forbid"` is set on a *parent class* that doesn't know about `_Unset`, config inheritance can produce unexpected validation errors.
 
 **Why it happens:**
-Write path: Python -> bridge.js -> OmniFocus (in-memory) -> SQLite cache (async flush). The SQLite cache is a read-only mirror updated on OmniFocus's schedule. WAL mtime polling (50ms intervals, 2s timeout) was designed for external changes, not for changes the server triggered via bridge.
+Pydantic v2 merges `model_config` from parent to child. If `WriteModel(OmniFocusBaseModel)` sets `extra="forbid"`, ALL write models inherit it -- including `TaskEditSpec` whose fields default to `UNSET`. The interaction between `extra="forbid"` and custom sentinel types in union annotations is not well-tested in Pydantic v2. Known issues: [pydantic#9768](https://github.com/pydantic/pydantic/issues/9768), [pydantic#9992](https://github.com/pydantic/pydantic/issues/9992).
 
-**How to avoid:**
-- After a successful bridge write, use the bridge's return value (created/edited entity ID) as source of truth -- don't immediately re-read from SQLite to "confirm"
-- For `add_tasks`, return the ID from bridge response directly
-- `TEMPORARY_simulate_write()` on HybridRepository already has the right invalidation pattern -- replace with real call
-- Add a UAT test that does write-then-read to measure actual flush latency
+**Consequences:**
+- `TaskEditSpec.model_validate({"id": "abc"})` may reject valid input
+- All 180+ edit_task tests break simultaneously
+- Subtle: may work in unit tests but fail when MCP server deserializes JSON (different validation path)
 
-**Warning signs:**
-- UAT tests doing `add_tasks` then `get_task` intermittently return stale data
-- WAL mtime doesn't change within 2s timeout after a bridge write
+**Prevention:**
+- Add `extra="forbid"` ONLY to `TaskCreateSpec` and `TaskEditSpec` directly, NOT to a shared base class
+- Write a focused test: construct every write model with `extra="forbid"` + UNSET defaults + one extra field, verify the extra field is rejected and UNSET defaults pass
+- Test both `model_validate(dict)` and `model_validate_json(json_string)` paths -- they can differ
+- Do NOT add `extra="forbid"` to `ActionsSpec`, `MoveToSpec`, or `TagActionSpec` via inheritance -- set it per-class if needed
 
-**Phase to address:**
-Phase 2 (add_tasks) -- first write, must validate invalidation flow end-to-end in UAT
+**Detection:**
+- ValidationError mentioning `extra_forbidden` in write model tests
+- Tests pass locally but MCP tool calls fail (JSON vs dict validation difference)
+
+**Phase to address:** First task in milestone -- validate the `extra="forbid"` + sentinel interaction before any other refactoring
 
 ---
 
-### Pitfall 2: OmniJS Has No Transactions -- Partial Writes Are Permanent
+### Pitfall 2: `model_rebuild()` Ordering Breaks When Models Move Between Modules
 
 **What goes wrong:**
-Batch `edit_tasks` modifies items 1-2 successfully, throws on item 3 (invalid tag). Items 1-2 are already modified in OmniFocus -- no rollback. Bridge returns error, Python reports failure, but 2/5 items are silently changed.
+`models/__init__.py` has a carefully ordered `model_rebuild()` call sequence with a shared `_types_namespace`. Moving write models to a submodule or splitting the models package disrupts this ordering, causing `PydanticUndefinedAnnotation` at import time.
 
 **Why it happens:**
-BRIDGE-SPEC Section 4: "OmniJS applies changes immediately. If a script throws partway through, already-applied changes persist." `document.undo()` undoes only the last discrete action, not a sequence.
+The current `__init__.py` rebuilds 15 models in dependency order: `ParentRef` -> `RepetitionRule` -> `ActionableEntity` -> ... -> `TaskEditSpec` -> `MoveToSpec`. This works because all types are imported into one namespace before any rebuild. If write models move to `models/write/validation.py` or similar, the import order changes and `_types_namespace` may be incomplete when `model_rebuild()` runs.
 
-**How to avoid:**
-- **Validate everything before touching OmniFocus.** Service layer checks all IDs exist, tag names resolve, mutually-exclusive constraints pass. Bridge receives a fully-validated payload.
-- **Start with single-item constraint.** v1.2 spec: "Start with single-item constraint (array of exactly one)." Eliminates partial failure entirely.
-- **Never rely on `document.undo()` for programmatic rollback.**
+**Consequences:**
+- `ImportError` / `PydanticUndefinedAnnotation` on server startup
+- All 534 tests fail simultaneously (import-time crash)
+- Error messages are cryptic: "type 'AwareDatetime' is not defined" even though it's imported
 
-**Warning signs:**
-- Service layer passes unvalidated data to bridge
-- Bridge.js processes items in a loop without per-item error handling
-- Tests only cover the happy path
+**Prevention:**
+- Keep ALL `model_rebuild()` calls in `models/__init__.py` regardless of where model classes live
+- If extracting service submodules, they should import from `models` (the package), not from individual model files
+- Test: `python -c "from omnifocus_operator.models import TaskEditSpec"` must work in isolation
+- Do NOT move `model_rebuild()` into submodules -- centralize it
 
-**Phase to address:**
-Phase 2 (add_tasks) -- enforce single-item. Phase 3 (edit_tasks) -- same.
+**Detection:**
+- `ImportError` when running any test
+- "not fully defined" Pydantic errors at import time
+- Works in IDE (lazy loading) but fails in pytest (eager import)
+
+**Phase to address:** Any task that reorganizes model files or import paths
 
 ---
 
-### Pitfall 3: `markIncomplete()` Is a Silent No-Op on Dropped Tasks
+### Pitfall 3: Circular Imports When Extracting Validation/Domain Logic from Service
 
 **What goes wrong:**
-Agent reactivates a dropped task via `markIncomplete()`. No error thrown, but task remains dropped. Agent assumes success.
+Extracting validation logic into `service/validation.py` creates a circular import: `validation.py` needs write models, write models need base models, service needs validation, and the extracted module needs to call back into service for `_resolve_parent()` or `_resolve_tags()`.
 
 **Why it happens:**
-BRIDGE-SPEC Section 4: "`markIncomplete()` on Dropped task: Silent no-op. No error, no state change. Dropping is permanent for standalone tasks."
+The current `service.py` is a monolith that freely calls its own private methods. Extraction creates cross-module dependencies. The resolution methods (`_resolve_parent`, `_resolve_tags`) need the repository, which the validator doesn't own. Python's import system fails on circular imports at module-body scope (works with function-scope imports but that's a code smell).
 
-**How to avoid:**
-- Service layer must check task's current availability before lifecycle operations
-- Bridge must verify post-operation state and error if unchanged
-- Consider making "reactivate dropped task" an explicit unsupported operation with clear error
-- Research spike: test whether `document.undo()` immediately after `drop()` can reverse it
+**Consequences:**
+- `ImportError: cannot import name 'X' from partially initialized module`
+- Temptation to use function-level imports everywhere (hides the dependency problem)
+- Over-decomposition: 5 tiny modules all importing each other defeats the purpose
 
-**Warning signs:**
-- Lifecycle tests that mock bridge responses without testing real OmniFocus behavior
-- No UAT test for drop-then-reactivate flow
+**Prevention:**
+- **Dependency direction rule:** `service.py` (orchestrator) imports from extracted modules, never the reverse
+- Extracted modules should be *pure functions* or *stateless classes* that receive their dependencies as arguments:
+  ```python
+  # Good: validation takes data, returns result
+  def validate_edit_spec(spec: TaskEditSpec, current_task: Task) -> list[str]:
 
-**Phase to address:**
-Phase 4 (lifecycle changes) -- requires research spike before implementation
+  # Bad: validation calls back into service
+  class EditValidator:
+      def __init__(self, service: OperatorService):  # circular
+  ```
+- The service stays the orchestrator: it calls `validate()`, then `resolve()`, then `convert()`, then `delegate()`
+- Use `TYPE_CHECKING` imports for type annotations in extracted modules, runtime imports only for actual values
+
+**Detection:**
+- `ImportError` at startup
+- Needing to add `from __future__ import annotations` to fix a circular import (symptom, not cure)
+- An extracted module that imports `OperatorService`
+
+**Phase to address:** Service decomposition task -- establish dependency direction before writing code
 
 ---
 
-### Pitfall 4: `assignedContainer` Is Always Null -- Task Movement API Is Unverified
+### Pitfall 4: InMemoryBridge Removal Breaks 100+ Test Imports
 
 **What goes wrong:**
-Developer uses `task.assignedContainer = project` to move tasks. Returns null on all 2,825 tasks -- it's a read-only property that never had a value.
+Removing `InMemoryBridge` from `bridge/__init__.py` exports causes `ImportError` in every test file that does `from omnifocus_operator.bridge import InMemoryBridge`. The test suite goes from 534 passing to 100+ import errors.
 
 **Why it happens:**
-BRIDGE-SPEC Section 2.1 "Do NOT use" list: "`t.assignedContainer` -- always null on all tasks (2825/2825)." Actual task movement API is an open question in the v1.2 spec.
+`InMemoryBridge` is exported from `bridge/__init__.py` and used extensively in tests via this public path. The plan to "remove from public surface" and "update test imports to use direct module paths" sounds simple but affects:
+- `tests/test_service.py` (line 19: `from omnifocus_operator.bridge import ... InMemoryBridge`)
+- `tests/test_bridge.py`
+- `tests/test_simulator_bridge.py`
+- `tests/test_repository_factory.py`
+- `tests/conftest.py` (if any fixtures use it)
+- Any other test importing from `omnifocus_operator.bridge`
 
-**How to avoid:**
-- **Research spike required before implementing task movement.** Test in OmniJS:
-  1. `moveTasks([task], project)` (document-level method)
-  2. Direct `task.containingProject` assignment (may not be writable)
-  3. Re-creating task in target project (nuclear option, loses history)
-- Do NOT implement until empirically verified
+**Consequences:**
+- Mass import failure if done in one step
+- If moved to `tests/` directory, the module path changes entirely
+- CI fails on every test, blocking all other work
 
-**Warning signs:**
-- Bridge.js using `assignedContainer` for writes
-- Task movement implemented without UAT
+**Prevention:**
+- **Two-commit approach:**
+  1. First commit: Update ALL test imports from `from omnifocus_operator.bridge import InMemoryBridge` to `from omnifocus_operator.bridge.in_memory import InMemoryBridge`. Run full test suite. Commit.
+  2. Second commit: Remove from `bridge/__init__.py` exports. Remove factory branch. Run full test suite. Commit.
+- Do NOT combine with the physical file move (`src/` -> `tests/`). That's a third step.
+- Use `grep -r "InMemoryBridge" tests/` to find every import before starting
+- Keep the file at `bridge/in_memory.py` (don't move to tests/) -- it's fine in src/ as an internal module, just not re-exported
 
-**Phase to address:**
-Phase 3 (edit_tasks movement) -- research spike at phase start
+**Detection:**
+- Mass `ImportError` when running tests after export removal
+- CI red on every test file
+
+**Phase to address:** Dedicated task, done independently from other changes
 
 ---
 
-### Pitfall 5: Repeating Task Completion Creates New Instance with New ID
+## Moderate Pitfalls
+
+### Pitfall 5: Write Interface Unification Silently Changes Payload Shape
 
 **What goes wrong:**
-Agent completes a repeating task. OmniFocus marks current instance complete and spawns a successor with a new ID. Agent's reference to the original ID now points to the completed instance. Subsequent edits hit the wrong task.
+Unifying the service-repository write interface changes who builds the bridge payload. Currently `edit_task` service builds a `dict[str, Any]` and repository passes it through. If refactored so repository does the serialization (like `add_task`), subtle key differences break the bridge: `estimatedMinutes` vs `estimated_minutes`, `dueDate` vs `due_date`.
 
 **Why it happens:**
-OmniFocus repeating tasks are individual tasks that spawn successors. `markComplete()` completes the instance; new instance gets a fresh `id.primaryKey`. v1.2 spec identifies this as an open question.
+`add_task` uses `spec.model_dump(by_alias=True)` (produces camelCase). `edit_task` builds the dict field-by-field with hardcoded camelCase keys. Unification means picking one approach and using it everywhere, but the two paths handle edge cases differently:
+- `add_task`: `exclude_none=True` drops None fields
+- `edit_task`: `None` means "clear the field" (intentionally included)
+- Date fields: `add_task` serializes via Pydantic's JSON mode, `edit_task` calls `.isoformat()` manually
 
-**How to avoid:**
-- Check `task.repetitionRule` before completion -- if non-null, return supplementary data
-- Bridge response for repeating task completion should include `{completed_id, successor_id}`
-- `drop(false)` skips one occurrence; `drop(true)` drops all -- expose distinction clearly
-- Test: "complete repeating task, look up old ID" must return completed task, not the new one
+**Prevention:**
+- Write a bridge payload contract test: given the same input, both paths must produce identical bridge payloads
+- Enumerate the differences before coding: `exclude_none` behavior, date serialization format, key naming, `tags` -> `tagIds` swap
+- The test should assert on the exact dict passed to `bridge.send_command()`
+- Keep the InMemoryBridge call-tracking (`bridge.calls`) to verify payloads in tests
 
-**Warning signs:**
-- Bridge `edit_task` handler doesn't check repetition rules before lifecycle changes
-- Tests use only non-repeating tasks
-- No test for post-completion ID behavior
+**Detection:**
+- UAT: task created/edited but fields wrong (dates shifted, fields missing)
+- Bridge.js errors about unexpected keys
 
-**Phase to address:**
-Phase 4 (lifecycle) -- requires research spike
-
----
-
-### Pitfall 6: `flattenedTasks` Scan for Get-by-ID Operations Freezes OmniFocus UI
+### Pitfall 6: Over-Decomposing the Service Layer
 
 **What goes wrong:**
-`get_task(id)` is implemented by iterating `flattenedTasks` in bridge.js to find the matching ID. 2,800 tasks * 1ms/task = 2.8 seconds of frozen OmniFocus UI.
+Service gets split into 6+ modules (`validation.py`, `domain.py`, `conversion.py`, `resolution.py`, `lifecycle.py`, `tags.py`). Each is 30-50 lines. Reading a single write flow requires opening 5 files. New contributors can't follow the code path.
 
 **Why it happens:**
-BRIDGE-SPEC Section 1: "1ms per task per operation" -- every property access in OmniJS is expensive. The snapshot pattern works because it's a single bulk read. Per-entity lookups via iteration are prohibitively slow.
+Refactoring enthusiasm. Each "concern" looks like it deserves its own file. But the entire `edit_task` method is ~100 lines of linear orchestration -- extracting each step into its own module adds indirection without proportional benefit.
 
-**How to avoid:**
-- Use `Task.byIdentifier(id)` for direct lookup (documented in BRIDGE-SPEC Section 7 as available API)
-- Similarly `Project.byIdentifier(id)`, `Tag.byIdentifier(id)` for other entity types
-- Verify these APIs exist and work in UAT before relying on them
-- For the bridge-based get-by-ID path, consider falling back to the cached snapshot dict lookup (already loaded in memory for BridgeRepository)
+**Prevention:**
+- **Rule of thumb:** Extract when a module has >1 consumer or >100 lines of self-contained logic
+- The milestone spec says "validation, domain logic, format conversion" -- that's 3 modules maximum plus the orchestrator
+- Start with extracting format conversion (purely mechanical, no dependencies on service state) and see if the service is readable before extracting more
+- If an extracted function is called from exactly one place and is <20 lines, inline it
 
-**Warning signs:**
-- Bridge.js get_task handler using `.filter()` or `.find()` on `flattenedTasks`
-- UAT showing multi-second response times for single entity lookups
+**Detection:**
+- Service method becomes: `validate(); resolve(); convert(); delegate()` -- four one-liners calling other modules
+- A file with fewer than 3 functions
+- Import list at the top of `service.py` is longer than the method bodies
 
-**Phase to address:**
-Phase 1 (get-by-ID tools) -- use `byIdentifier()` from day one
-
----
-
-### Pitfall 7: Tag Name Ambiguity -- OmniFocus Allows Duplicate Tag Names
+### Pitfall 7: Test Fragility from Overly Specific Assertions After Refactoring
 
 **What goes wrong:**
-`add_tasks` with `tags: ["Meeting"]` when two tags named "Meeting" exist (under "Work" and "Personal"). Bridge picks first match silently.
+After refactoring, tests that assert on internal implementation details (method call order, specific dict keys in payload, exact warning messages) break even though behavior is unchanged. Developer spends more time fixing tests than refactoring code.
 
 **Why it happens:**
-BRIDGE-SPEC Section 2.3: "Unique in observed data but OmniFocus allows duplicates." v1.2 spec uses tag names (not IDs) for agent ergonomics.
+Current tests are well-written (test behavior via InMemoryRepository) but some tests in `test_service.py` check specific warning message strings, payload dict shapes, and call patterns. These are correct now but become fragile when the internal structure changes.
 
-**How to avoid:**
-- Service layer must check for duplicate tag names during validation
-- If ambiguous, return error listing duplicates with IDs and parent paths
-- Accept both tag names and IDs (detect by format -- IDs are UUIDs/alphanumeric strings)
-- Consider qualified names like "Work/Meeting" for disambiguation
+**Prevention:**
+- Before refactoring, identify which tests assert on behavior (keep) vs implementation (may need updating)
+- Behavioral tests: "edit_task with unknown task raises ValueError" -- survives any refactoring
+- Implementation tests: "payload dict has key 'estimatedMinutes'" -- breaks if serialization moves
+- For payload tests, consider testing at the bridge boundary (what did `bridge.send_command` receive?) rather than at intermediate points
+- Run the full test suite after each atomic change, not just at the end
 
-**Warning signs:**
-- Tag lookup using `next(t for t in tags if t.name == name)` without duplicate check
-- Tests using only unique tag names
+**Detection:**
+- Tests fail with "expected 'estimatedMinutes' in payload" after moving serialization to a different layer
+- Warning message tests fail after rewording
 
-**Phase to address:**
-Phase 2 (add_tasks) -- tag validation is part of service-layer input validation
+### Pitfall 8: `_Unset` Sentinel Serialization Leaks into Bridge Payloads
 
----
+**What goes wrong:**
+During write interface unification, using `model_dump()` on `TaskEditSpec` includes UNSET sentinel values in the serialized output. These get sent to the bridge as `{"name": <_Unset instance>}`, which bridge.js can't deserialize.
 
-## Technical Debt Patterns
+**Why it happens:**
+`TaskEditSpec` has fields defaulting to `UNSET`. Pydantic's `model_dump()` includes them by default. The current code avoids this by building the payload field-by-field with `isinstance(value, _Unset)` checks. If the unification replaces this with `model_dump()`, UNSET values leak through.
 
-| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
-|----------|-------------------|----------------|-----------------|
-| Single-item arrays only (no batch) | Eliminates partial failure complexity | Must add batch later for agent productivity | v1.2 -- extend when pipeline proven |
-| Return bridge response without re-reading full entity | Fast, avoids SQLite flush race | Returned object may lack computed fields (urgency, availability) | v1.2 -- agent can `get_task` for full state |
-| No retry on bridge write timeout | Simpler error handling | Timed-out write may have succeeded | v1.2 -- retry is v1.5 scope |
-| Lifecycle deferred to phase 4 | Avoids research spike blocking simple edits | Later phases depend on lifecycle understanding | Always acceptable -- spec already plans this |
+**Prevention:**
+- If using `model_dump()`, add a custom serializer or post-processing step that strips UNSET values
+- Or: use `model_dump(exclude_unset=True)` -- but verify this actually excludes fields with UNSET *defaults* (Pydantic's "unset" means "not provided during validation," not "has sentinel default")
+- Better: keep the explicit field-by-field approach for edit models. `model_dump()` works for create models (no sentinels)
+- Test: serialize a TaskEditSpec with only `id` set, verify the payload contains exactly `{"id": "..."}` and nothing else
 
-## Integration Gotchas
+**Detection:**
+- Bridge.js errors about unexpected field types
+- JSON serialization errors: "Object of type _Unset is not JSON serializable"
 
-| Integration | Common Mistake | Correct Approach |
-|-------------|----------------|------------------|
-| OmniJS writes | Using `task.parentTask` for re-parenting | `task.parent` -- `parentTask` does not exist in Omni Automation |
-| OmniJS writes | Using `task.project` to set project | `task.containingProject` -- `task.project` returns null for child tasks |
-| OmniJS dates | Passing ISO8601 strings to date fields | OmniJS needs `Date` objects: `new Date("2024-01-15T10:30:00Z")` |
-| OmniJS tags | Assigning tag names to `task.tags` | `task.addTag(tagObject)` -- must look up `Tag` object first via `flattenedTags` or `Tag.byIdentifier()` |
-| OmniJS notes | Setting `task.note = null` to clear | `task.note` is never null -- set to `""` instead |
-| File IPC | Writing JSON without atomic rename | Use `.tmp` + `os.replace()` (already established in `_write_request`) |
-| Repository protocol | Adding write methods without updating all implementations | `InMemoryRepository`, `BridgeRepository`, `HybridRepository` all need write methods |
-| SQLite path | Expecting writes through SQLite | SQLite is read-only (`?mode=ro`). All writes go through OmniJS bridge |
+### Pitfall 9: `@_ensures_write_through` Decorator Signature Lost During Refactoring
 
-## Performance Traps
+**What goes wrong:**
+Moving or wrapping `_ensures_write_through` during repository refactoring breaks its `functools.wraps` behavior or the `self._db_path` attribute access. The decorator silently stops waiting for SQLite confirmation, and read-after-write tests pass by coincidence (InMemoryRepository doesn't use the decorator).
 
-| Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|----------------|
-| Iterating `flattenedTags` in OmniJS per task in a batch | Multi-second freeze per batch item | Resolve all tag names to Tag objects once upfront | Any batch > 5 items with tags |
-| Full snapshot reload after every write | 46ms (SQLite) or multi-second (bridge) per write | Invalidate only; let next read trigger reload | Rapid sequential writes |
-| `flattenedTasks` scan for lookups | 2.8s freeze for one task lookup | `Task.byIdentifier(id)` for O(1) lookup | Every get-by-ID call |
+**Why it happens:**
+The decorator uses Python 3.12's `[F: Callable[..., Any]]` syntax and accesses `self._db_path` on the decorated method's instance. If the method moves to a different class or the decorator is applied to a method whose `self` doesn't have `_db_path`, it fails silently or raises AttributeError. Since InMemoryRepository doesn't use the decorator, all unit tests pass -- only UAT catches the break.
 
-## UX Pitfalls
+**Prevention:**
+- Do NOT move the decorator between classes without verifying `self._db_path` availability
+- Add a type annotation or runtime check: `assert hasattr(self, '_db_path')` in the wrapper
+- If unifying the write interface changes where `add_task`/`edit_task` live, verify the decorator still applies correctly
+- The decorator is load-bearing for consistency -- treat it as a safety boundary, not refactoring target
 
-| Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
-| Silent success when write did nothing (e.g., `markIncomplete` on dropped) | Agent reports success, task unchanged | Bridge verifies post-state; errors if unchanged |
-| Returning only `{success, id}` without task state | Agent needs second call to see what was created | Return `{success, id, name}` minimum (spec requirement) |
-| Confusing error when project + parent_task_id both set | Agent doesn't know which to remove | Message: "project and parent_task_id are mutually exclusive" |
-| Tag errors showing IDs instead of names | Agent sees "Unknown tag: jK4x..." | Error messages must include tag names |
-| `null` vs `omit` confusion in edit payloads | Agent clears fields by accident | Tool description must clearly explain patch semantics: omit=no change, null=clear, value=set |
+**Detection:**
+- UAT: write then immediate read returns stale data
+- No unit test catches this because InMemoryRepository bypasses the decorator
 
-## "Looks Done But Isn't" Checklist
+## Minor Pitfalls
 
-- [ ] **add_tasks:** Task with no project AND no parent goes to Inbox (`inInbox: true`)
-- [ ] **add_tasks:** `planned_date` is v4.7+ -- older OmniFocus silently ignores it
-- [ ] **edit_tasks tags:** `tags` with `add_tags` is a validation error; `add_tags` + `remove_tags` is allowed
-- [ ] **edit_tasks null:** Every nullable field can actually be cleared via OmniJS (some may not accept null)
-- [ ] **edit_tasks movement:** Task disappears from old project's task list, not just re-pointed
-- [ ] **Snapshot invalidation:** Next `list_all` after write returns updated data
-- [ ] **Bridge errors:** OmniJS errors surface as clear MCP messages, not raw stack traces
-- [ ] **InMemoryRepository:** Write methods added -- tests fail silently if missing
-- [ ] **Repository protocol:** Extended with write methods; all 3 implementations satisfy it
-- [ ] **Bridge response:** `add_task` returns the new task's `id.primaryKey`, not some other identifier
+### Pitfall 10: Alias Generator Mismatch When Extracting Format Conversion
 
-## Recovery Strategies
+**What goes wrong:**
+Extracted format conversion module hardcodes camelCase keys (e.g., `"estimatedMinutes"`) instead of using Pydantic's `to_camel` alias generator. If a field name changes or a new field is added, the hardcoded mapping and the Pydantic alias diverge.
 
-| Pitfall | Recovery Cost | Recovery Steps |
-|---------|---------------|----------------|
-| Partial batch write (1-2 applied, 3-5 failed) | LOW | Report per-item results. Agent retries failed items. |
-| Write succeeded but snapshot stale | LOW | Force invalidation + re-read. WAL mtime catches up. |
-| Task moved to wrong project | LOW | Edit again with correct project ID. No data lost. |
-| Repeating task completed, lost successor ID | MEDIUM | Query by name/project to find new instance. Return successor ID to prevent. |
-| Dropped task cannot be reactivated | HIGH | `document.undo()` only works if nothing else happened since. Otherwise recreate task. History lost. |
-| Tag assigned incorrectly (name ambiguity) | LOW | Remove wrong tag, add correct one. Implement disambiguation. |
+**Prevention:**
+- Use `model_dump(by_alias=True)` where possible instead of manual key mapping
+- For edit payloads where manual construction is necessary, derive the camelCase key from the model field's alias: `TaskEditSpec.model_fields["estimated_minutes"].alias`
+- Or maintain a single mapping dict that both the format converter and tests reference
 
-## Pitfall-to-Phase Mapping
+### Pitfall 11: `model_json_schema` Overrides on Write Models Break After Reorganization
 
-| Pitfall | Prevention Phase | Verification |
-|---------|------------------|--------------|
-| Snapshot invalidation race | Phase 2 (add_tasks) | UAT: create task, immediately get_task -- data is fresh |
-| No transactions / partial failure | Phase 2 (add_tasks) | Enforce single-item. Test invalid input caught before bridge |
-| `markIncomplete()` no-op on dropped | Phase 4 (lifecycle) | Research spike + UAT: drop, attempt reactivate, verify error |
-| `assignedContainer` always null | Phase 3 (edit_tasks movement) | Research spike + UAT: move task between projects |
-| Repeating task ID changes | Phase 4 (lifecycle) | Research spike. Bridge returns successor ID |
-| `flattenedTasks` scan for lookup | Phase 1 (get-by-ID) | Use `Task.byIdentifier(id)`. UAT: verify < 200ms |
-| Tag name ambiguity | Phase 2 (add_tasks) | Test: two tags with same name, verify disambiguation error |
-| OmniJS date objects | Phase 2 (add_tasks) | Bridge.js must `new Date()` from ISO strings. UAT: verify dates round-trip |
-| Repository protocol extension | Phase 1 (get-by-ID) | All 3 implementations satisfy updated protocol |
+**What goes wrong:**
+Every write model has a `model_json_schema` override that strips `_Unset` from the JSON schema. If models are reorganized and a new write model forgets this override, MCP tool descriptions expose `_Unset` as a valid type to agents.
+
+**Prevention:**
+- If creating a `WriteModel` base, include the `model_json_schema` override there
+- Add a parametrized test: for every write model class, call `model_json_schema()` and assert `_Unset` doesn't appear
+- Consider a `__init_subclass__` hook that auto-applies the override
+
+### Pitfall 12: Repository Protocol Out of Sync After Write Interface Changes
+
+**What goes wrong:**
+`Repository` protocol defines `edit_task(self, payload: dict[str, Any]) -> dict[str, Any]`. If the unification changes this signature (e.g., to accept `TaskEditSpec`), `InMemoryRepository` and `HybridRepository` must update simultaneously. Missing one causes `TypeError` at runtime, not at import time (structural typing doesn't catch signature mismatches until the method is called).
+
+**Prevention:**
+- Update all 3 implementations (`InMemoryRepository`, `BridgeRepository` via `HybridRepository`, and the protocol) in the same commit
+- Add a `isinstance(repo, Repository)` assertion in conftest.py or a dedicated test to catch protocol violations eagerly
+- `mypy --strict` catches protocol mismatches if running -- verify it's in CI
+
+## Phase-Specific Warnings
+
+| Phase Topic | Likely Pitfall | Mitigation |
+|-------------|---------------|------------|
+| `extra="forbid"` on write models | Sentinel interaction (#1) | Test UNSET + forbid together before applying broadly |
+| Service decomposition | Circular imports (#3), over-decomposition (#6) | Establish dependency direction; extract max 3 modules |
+| Write interface unification | Payload shape change (#5), UNSET serialization leak (#8) | Bridge payload contract tests; keep explicit field-by-field for edits |
+| InMemoryBridge removal | Mass import breakage (#4) | Two-step: update imports first, remove exports second |
+| Model file reorganization | model_rebuild ordering (#2), schema override loss (#11) | Keep model_rebuild centralized; test JSON schema output |
+| Repository protocol changes | Silent signature mismatch (#12) | Update all implementations + protocol in one commit |
+| Decorator handling | Write-through decorator break (#9) | Do not move decorator; verify self._db_path in UAT |
+
+## Recommended Ordering
+
+Based on pitfall dependencies:
+
+1. **`extra="forbid"`** -- smallest scope, validates Pydantic interaction, informs all other changes
+2. **InMemoryBridge cleanup** -- independent, reduces noise in later diffs
+3. **Write interface unification** -- core refactoring, must happen before service decomposition (cleaner interface to decompose around)
+4. **Service decomposition** -- depends on unified interface; extract format conversion first, then validation
 
 ## Sources
 
-- BRIDGE-SPEC.md -- empirical spec from 27 audit scripts against live OmniFocus v4.8.8
-- MILESTONE-v1.2.md -- spec with open questions and phasing hints
-- Codebase: bridge.js (IPC protocol), real.py (trigger mechanism), hybrid.py (SQLite reader + WAL freshness), bridge.py (BridgeRepository caching), service.py, protocol.py
-- OmniJS performance constraint: 1ms/task/operation (BRIDGE-SPEC Section 1)
+- [Pydantic v2 extra config inheritance issue #9768](https://github.com/pydantic/pydantic/issues/9768) -- config merging behavior in multiple inheritance
+- [Pydantic model_config MRO issue #9992](https://github.com/pydantic/pydantic/issues/9992) -- config doesn't respect MRO
+- [Pydantic sentinel serialization discussion #9943](https://github.com/pydantic/pydantic/discussions/9943) -- custom sentinel serialization failures
+- [Pydantic model_rebuild issue #7618](https://github.com/pydantic/pydantic/issues/7618) -- model_rebuild failure with forward references
+- [Pydantic forward annotations docs](https://docs.pydantic.dev/latest/concepts/forward_annotations/) -- model_rebuild and TYPE_CHECKING patterns
+- [Pydantic v2.12 MISSING sentinel](https://pydantic.dev/articles/pydantic-v2-12-release) -- official sentinel alternative (experimental)
+- [Circular imports in Python architecture](https://dev.to/vivekjami/circular-imports-in-python-the-architecture-killer-that-breaks-production-539j) -- dependency direction patterns
+- [functools.wraps signature preservation](https://hynek.me/articles/decorators/) -- decorator pitfalls with type signatures
+- Codebase analysis: `service.py` (637 lines), `models/write.py` (318 lines), `models/__init__.py` (115 lines with 15 model_rebuild calls), `repository/protocol.py`, `bridge/__init__.py` exports, `tests/test_service.py` (2000+ lines)
 
 ---
-*Pitfalls research for: v1.2 Writes & Lookups*
-*Researched: 2026-03-07*
+*Pitfalls research for: v1.2.1 Architectural Cleanup*
+*Researched: 2026-03-16*
