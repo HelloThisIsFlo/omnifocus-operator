@@ -78,6 +78,16 @@ No `delete_projects` -- project deletion is always manual in OmniFocus.
 
 The tool description must warn about permanent deletion.
 
+### Mutually Exclusive Tag Enforcement
+
+OmniJS allows assigning multiple mutually exclusive sibling tags to a task. OmniFocus only enforces exclusivity at the UI level. Agents using `add_tasks` or `edit_tasks` can create tasks in states the UI wouldn't normally allow.
+
+- Investigate whether tag exclusivity metadata is accessible via OmniJS or SQLite
+- Decide: validate before writing, or warn after?
+- Low severity -- OmniFocus self-corrects when user later touches the tag group via UI
+
+See: `2026-03-08-enforce-mutually-exclusive-tags-at-service-layer.md`
+
 ## Key Acceptance Criteria
 
 - `show_perspective` visibly switches the OmniFocus perspective (built-in and custom)

@@ -39,13 +39,6 @@ See: `2026-03-08-investigate-and-enforce-serial-execution-guarantee-for-bridge-c
 - Verify bridge script compatibility
 - Report issues via error-serving mode (already exists -- extend with specific checks)
 
-### Fuzzy Search (Deferred from v1.3)
-- Index-based fuzzy matching for task names and notes
-- Catches typos and partial recall
-- Substring (SQL LIKE) matches rank higher than fuzzy
-- In-memory index built from snapshot, refreshed on snapshot change
-- Edge cases: emoji in task names, unicode normalization, accented characters
-
 ### App Nap Investigation
 - Investigate macOS App Nap impact on OmniFocus responsiveness
 - Determine if App Nap causes bridge timeouts
@@ -59,7 +52,6 @@ See: `2026-03-08-investigate-and-enforce-serial-execution-guarantee-for-bridge-c
 Scope is intentionally light. When we get here, evaluate:
 - Which of these items have become pain points in daily use?
 - Are there new issues discovered during v1.2-v1.4 that need hardening?
-- Is fuzzy search actually needed, or is substring search sufficient in practice?
 - What's the actual failure rate of bridge operations?
 
 Prioritize based on real-world usage data, not hypothetical concerns.
@@ -68,7 +60,6 @@ Prioritize based on real-world usage data, not hypothetical concerns.
 
 - Server recovers gracefully from OmniFocus crashes/restarts
 - Bridge timeouts produce actionable error messages with retry information
-- Fuzzy search finds tasks despite typos (if implemented)
 - Server can run a full daily review session without manual intervention
 - No new tools -- same 18-tool API surface as v1.4
 
