@@ -50,7 +50,7 @@
 
 ### 🚧 v1.2.1 Architectural Cleanup (Phases 18-22)
 
-- [ ] **Phase 18: Write Model Strictness** - Write specs reject unknown fields; sentinel interaction validated
+- [x] **Phase 18: Write Model Strictness** - Write specs reject unknown fields; sentinel interaction validated (completed 2026-03-16)
 - [ ] **Phase 19: InMemoryBridge Export Cleanup** - Test double removed from production exports
 - [ ] **Phase 20: Model Taxonomy** - Three-layer naming convention with typed bridge payloads
 - [ ] **Phase 21: Write Pipeline Unification** - Symmetric add/edit signatures at service-repository boundary
@@ -67,7 +67,7 @@
   2. Read models (Task, Project, Tag) continue accepting unknown fields without error
   3. TaskEditSpec with _Unset sentinel defaults validates and round-trips correctly under extra="forbid"
   4. All 534+ existing tests pass without modification
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 Plans:
 - [ ] 18-01-PLAN.md -- WriteModel base class, re-parent write specs, server error handler, strictness tests
 - [ ] 18-02-PLAN.md -- Warning string consolidation into warnings.py
@@ -149,7 +149,7 @@ Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22
 | 16.1. Actions Grouping | v1.2 | 3/3 | Complete | 2026-03-09 |
 | 16.2. Bridge Tag Simplification | v1.2 | 3/3 | Complete | 2026-03-10 |
 | 17. Task Lifecycle | v1.2 | 3/3 | Complete | 2026-03-12 |
-| 18. Write Model Strictness | v1.2.1 | 0/2 | Not started | - |
+| 18. Write Model Strictness | 2/2 | Complete   | 2026-03-16 | - |
 | 19. InMemoryBridge Export Cleanup | v1.2.1 | 0/TBD | Not started | - |
 | 20. Model Taxonomy | v1.2.1 | 0/TBD | Not started | - |
 | 21. Write Pipeline Unification | v1.2.1 | 0/TBD | Not started | - |

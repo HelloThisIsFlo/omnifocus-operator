@@ -29,7 +29,7 @@ Requirements for Architectural Cleanup milestone. No new tools, no behavioral ch
 
 ### Model Strictness
 
-- [ ] **STRCT-01**: Write models reject unknown fields with clear errors (`extra="forbid"`)
+- [x] **STRCT-01**: Write models reject unknown fields with clear errors (`extra="forbid"`)
 - [ ] **STRCT-02**: Read models remain permissive (`extra="ignore"`)
 - [ ] **STRCT-03**: `_Unset` sentinel works correctly with `extra="forbid"`
 
@@ -70,7 +70,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| STRCT-01 | Phase 18 | Pending |
+| STRCT-01 | Phase 18 | Complete |
 | STRCT-02 | Phase 18 | Pending |
 | STRCT-03 | Phase 18 | Pending |
 | INFRA-01 | Phase 19 | Pending |
