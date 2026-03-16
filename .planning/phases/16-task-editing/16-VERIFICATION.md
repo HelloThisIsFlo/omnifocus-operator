@@ -25,7 +25,7 @@ re_verification:
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
 | 1 | Agent can call `edit_tasks` omitting fields to leave unchanged, setting fields to null to clear them, or setting values to update them | VERIFIED | UNSET sentinel class (write.py L27), TaskEditSpec defaults all optional fields to UNSET (L143-184), service payload builder skips UNSET preserving None (service.py L131-159), 83 service tests pass |
-| 2 | Agent can replace all tags, add tags without removing existing, or remove specific tags -- and mixing replace with add/remove is rejected with a clear error | VERIFIED | `_tag_mutual_exclusivity` model_validator (write.py L173-184), service handles 4 tag modes: replace/add/remove/add_remove (service.py L162-217), bridge.js handleEditTask tag dispatch (bridge.js L250+), 32 Vitest tests pass |
+| 2 | Agent can replace all tags, add tags without removing existing, or remove specific tags -- and mixing replace with add/remove is rejected with a clear error | VERIFIED | `_tag_mutual_exclusivity` (renamed to `_validate_incompatible_tag_edit_modes`) model_validator (write.py L173-184), service handles 4 tag modes: replace/add/remove/add_remove (service.py L162-217), bridge.js handleEditTask tag dispatch (bridge.js L250+), 32 Vitest tests pass |
 | 3 | Agent can move a task to a different project, to a different parent task, or to inbox by setting parent to null | VERIFIED | MoveToSpec with exactly-one-key constraint (write.py L94-140), service moveTo resolution with cycle detection (service.py L219-251, L321-340), bridge.js moveTo handling, 49 server integration tests pass |
 | 4 | After editing a task, the agent's next read call returns the updated data | VERIFIED | HybridRepository marks stale after edit (hybrid.py L470+), BridgeRepository invalidates cache (bridge.py L115+), InMemoryRepository mutates snapshot in-place (in_memory.py L91-170), integration tests verify roundtrip |
 
@@ -66,7 +66,7 @@ re_verification:
 | EDIT-03 | 16-01, 16-02 | Replace all tags (`tags: [...]`) | SATISFIED | tagMode "replace" in service + bridge |
 | EDIT-04 | 16-01, 16-02, 16-05 | Add tags without removing (`add_tags: [...]`) | SATISFIED | tagMode "add" in service + bridge |
 | EDIT-05 | 16-01, 16-02, 16-04 | Remove specific tags (`remove_tags: [...]`) | SATISFIED | tagMode "remove" in service + bridge |
-| EDIT-06 | 16-01, 16-02 | Mutually exclusive tag modes validated | SATISFIED | `_tag_mutual_exclusivity` model_validator |
+| EDIT-06 | 16-01, 16-02 | Incompatible tag edit modes validated | SATISFIED | `_tag_mutual_exclusivity` (renamed to `_validate_incompatible_tag_edit_modes`) model_validator |
 | EDIT-07 | 16-02 | Move to different parent (project or task) | SATISFIED | MoveToSpec + service container resolution + cycle detection |
 | EDIT-08 | 16-01, 16-02 | Move to inbox (parent: null) | SATISFIED | MoveToSpec with None = inbox |
 | EDIT-09 | 16-03, 16-04 | API accepts arrays with single-item constraint | SATISFIED | server.py L231, `len(items) != 1` guard |

@@ -624,7 +624,7 @@ class TestEditTask:
         assert len(task.tags) == 1
         assert task.tags[0].id == "tag-b"
 
-    async def test_tag_mutual_exclusivity_replace_with_add(self) -> None:
+    async def test_incompatible_tag_edit_modes_replace_with_add(self) -> None:
         """TagActionSpec(replace=..., add=...) raises ValueError (EDIT-06)."""
         from pydantic import ValidationError
 
@@ -633,7 +633,7 @@ class TestEditTask:
         with pytest.raises(ValidationError, match="Cannot use 'replace' with 'add' or 'remove'"):
             TagActionSpec(replace=["a"], add=["b"])
 
-    async def test_tag_mutual_exclusivity_replace_with_remove(self) -> None:
+    async def test_incompatible_tag_edit_modes_replace_with_remove(self) -> None:
         """TagActionSpec(replace=..., remove=...) raises ValueError."""
         from pydantic import ValidationError
 
@@ -642,7 +642,7 @@ class TestEditTask:
         with pytest.raises(ValidationError, match="Cannot use 'replace' with 'add' or 'remove'"):
             TagActionSpec(replace=["a"], remove=["b"])
 
-    async def test_tag_mutual_exclusivity_empty(self) -> None:
+    async def test_incompatible_tag_edit_modes_empty(self) -> None:
         """TagActionSpec() with no fields raises ValueError."""
         from pydantic import ValidationError
 

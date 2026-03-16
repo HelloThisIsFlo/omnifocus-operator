@@ -43,7 +43,7 @@ created: 2026-03-08
 | 16-01-03 | 01 | 0 | EDIT-03 | unit | `uv run pytest tests/test_service.py::TestEditTask::test_tag_replace -x` | ✅ | ✅ green |
 | 16-01-04 | 01 | 0 | EDIT-04 | unit | `uv run pytest tests/test_service.py::TestEditTask::test_tag_add -x` | ✅ | ✅ green |
 | 16-01-05 | 01 | 0 | EDIT-05 | unit | `uv run pytest tests/test_service.py::TestEditTask::test_tag_remove -x` | ✅ | ✅ green |
-| 16-01-06 | 01 | 0 | EDIT-06 | unit | `uv run pytest tests/test_service.py::TestEditTask::test_tag_mutual_exclusivity tests/test_service.py::TestEditTask::test_add_and_remove_tags_together -x` | ✅ | ✅ green |
+| 16-01-06 | 01 | 0 | EDIT-06 | unit | `uv run pytest tests/test_service.py::TestEditTask::test_incompatible_tag_edit_modes_replace_with_add tests/test_service.py::TestEditTask::test_add_and_remove_tags_together -x` (tests renamed from `test_tag_mutual_exclusivity_*`) | ✅ | ✅ green |
 | 16-01-07 | 01 | 0 | EDIT-07 | unit | `uv run pytest tests/test_service.py::TestEditTask::test_move_to_project_ending tests/test_service.py::TestEditTask::test_move_to_task_beginning -x` | ✅ | ✅ green |
 | 16-01-08 | 01 | 0 | EDIT-08 | unit | `uv run pytest tests/test_service.py::TestEditTask::test_move_to_inbox -x` | ✅ | ✅ green |
 | 16-01-09 | 01 | 0 | EDIT-09 | integration | `uv run pytest tests/test_server.py::TestEditTasks -x` | ✅ | ✅ green |

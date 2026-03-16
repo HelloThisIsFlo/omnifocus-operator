@@ -144,7 +144,7 @@ class TagActionSpec(OmniFocusBaseModel):
     """Tag operations for task editing.
 
     Either ``replace`` (standalone) or ``add``/``remove`` (combinable).
-    Mutual exclusivity is enforced by the model validator.
+    Incompatible modes are rejected by the model validator.
     """
 
     add: list[str] | _Unset = UNSET
@@ -152,7 +152,7 @@ class TagActionSpec(OmniFocusBaseModel):
     replace: list[str] | None | _Unset = UNSET
 
     @model_validator(mode="after")
-    def _tag_mutual_exclusivity(self) -> TagActionSpec:
+    def _validate_incompatible_tag_edit_modes(self) -> TagActionSpec:
         has_replace = not isinstance(self.replace, _Unset)
         has_add = not isinstance(self.add, _Unset)
         has_remove = not isinstance(self.remove, _Unset)

@@ -30,7 +30,7 @@ started: Since edit_tasks was implemented
   implication: Any ValidationError from Pydantic model_validate propagates uncaught to the MCP framework
 
 - timestamp: 2026-03-08T00:02:00Z
-  checked: write.py TaskEditSpec._tag_mutual_exclusivity validator (lines 173-184)
+  checked: write.py TaskEditSpec._tag_mutual_exclusivity (renamed to _validate_incompatible_tag_edit_modes) validator (lines 173-184)
   found: Raises ValueError inside a @model_validator. Pydantic wraps this in a ValidationError with all the noisy metadata.
   implication: The clean ValueError message IS there, but Pydantic wraps it before it reaches the tool handler
 
