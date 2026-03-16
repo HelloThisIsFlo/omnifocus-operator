@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2.1
-milestone_name: Architectural Cleanup
-status: ready_to_plan
-stopped_at: Roadmap revised, ready to plan Phase 18
-last_updated: "2026-03-16"
-last_activity: "2026-03-16 — Roadmap revised for v1.2.1 (5 phases, 17 requirements)"
+milestone: v1.0
+milestone_name: milestone
+status: planning
+stopped_at: Phase 18 context gathered
+last_updated: "2026-03-16T22:49:29.030Z"
+last_activity: 2026-03-16 — Roadmap revised for v1.2.1
 progress:
   total_phases: 5
   completed_phases: 0
@@ -70,6 +70,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-16
-Stopped at: Roadmap revised for v1.2.1 Architectural Cleanup
-Resume file: None
+Last session: 2026-03-16T22:49:29.017Z
+Stopped at: Phase 18 context gathered
+Resume file: .planning/phases/18-write-model-strictness/18-CONTEXT.md
