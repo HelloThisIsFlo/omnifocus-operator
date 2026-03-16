@@ -28,3 +28,7 @@ If call 2 runs before call 1, T1-B goes before T1-C at the original level (sibli
 - Investigate whether the bridge or OmniFocus enforces serial execution of osascript calls
 - If not guaranteed, add a bridge-level lock/queue to enforce ordering
 - Formalize as a documented invariant: "Concurrent edit_tasks calls are processed in the order received"
+
+## Target Milestone
+
+v1.5 Production Hardening
