@@ -2,7 +2,7 @@
 created: 2026-03-08T01:52:00.000Z
 title: Enforce mutually exclusive tags at service layer
 area: service
-priority: medium
+priority: low
 files:
   - src/omnifocus_operator/service.py
 ---
