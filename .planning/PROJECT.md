@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A Python MCP server that exposes OmniFocus (macOS task manager) as structured task infrastructure for AI agents. Reads OmniFocus data directly from its SQLite cache for fast (~46ms), reliable access without requiring OmniFocus to be running. Provides a clean, protocol-first interface for querying tasks, projects, tags, and perspectives with a two-axis status model (Urgency + Availability).
+A Python MCP server that exposes OmniFocus (macOS task manager) as structured task infrastructure for AI agents. Reads via SQLite cache (~46ms), writes via OmniJS bridge. Six MCP tools: `get_all`, `get_task`, `get_project`, `get_tag`, `add_tasks`, `edit_tasks`. Agent-first design with educational warnings, patch semantics, and structured actions for tags/movement/lifecycle.
 
 ## Core Value
 
@@ -12,41 +12,50 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 ### Validated
 
-- Three-layer architecture: MCP Server -> Service Layer -> Repository -- v1.0
-- Bridge interface with pluggable implementations (InMemory, Simulator, Real) -- v1.0
-- Full database snapshot loaded into memory from bridge dump -- v1.0
-- File-based IPC with atomic writes (`.tmp` -> rename) -- v1.0
-- `list_all` MCP tool returning full structured database -- v1.0
-- Pydantic models derived from bridge script output shape -- v1.0
-- Snapshot freshness via `.ofocus` directory mtime check -- v1.0
-- Deduplication lock preventing parallel dump storms -- v1.0
-- Mock simulator as standalone Python script for IPC testing -- v1.0
-- Timeout handling with clear error messages -- v1.0
-- Error-serving degraded mode (startup errors -> actionable tool responses) -- v1.0
-- BRIDGE-SPEC alignment: fail-fast enums, per-entity status resolvers -- v1.0
-- Two-axis status model (Urgency + Availability) replacing single-winner enums -- v1.1
-- Pydantic model overhaul: deprecated fields removed, shared enums -- v1.1
-- SQLite cache as primary read path (~46ms full snapshot, OmniFocus not needed) -- v1.1
-- WAL-based read-after-write freshness detection (50ms poll, 2s timeout) -- v1.1
-- Repository protocol abstracting read path (HybridRepository, BridgeRepository, InMemoryRepository) -- v1.1
-- Error-serving degraded mode when SQLite unavailable (manual fallback via env var) -- v1.1
+- Three-layer architecture: MCP Server -> Service Layer -> Repository — v1.0
+- Bridge interface with pluggable implementations (InMemory, Simulator, Real) — v1.0
+- Full database snapshot loaded into memory from bridge dump — v1.0
+- File-based IPC with atomic writes (`.tmp` -> rename) — v1.0
+- Pydantic models derived from bridge script output shape — v1.0
+- Snapshot freshness via `.ofocus` directory mtime check — v1.0
+- Deduplication lock preventing parallel dump storms — v1.0
+- Mock simulator as standalone Python script for IPC testing — v1.0
+- Timeout handling with clear error messages — v1.0
+- Error-serving degraded mode (startup errors -> actionable tool responses) — v1.0
+- BRIDGE-SPEC alignment: fail-fast enums, per-entity status resolvers — v1.0
+- Two-axis status model (Urgency + Availability) replacing single-winner enums — v1.1
+- Pydantic model overhaul: deprecated fields removed, shared enums — v1.1
+- SQLite cache as primary read path (~46ms full snapshot, OmniFocus not needed) — v1.1
+- WAL-based read-after-write freshness detection (50ms poll, 2s timeout) — v1.1
+- Repository protocol abstracting read path (HybridRepository, BridgeRepository, InMemoryRepository) — v1.1
+- Error-serving degraded mode when SQLite unavailable (manual fallback via env var) — v1.1
+- ✓ Unified parent model (`parent: {type, id} | null`), `get_all` renamed from `list_all` — v1.2
+- ✓ Get-by-ID tools (`get_task`, `get_project`, `get_tag`) with dedicated SQLite queries — v1.2
+- ✓ Write pipeline: MCP → Service → Repository → Bridge → OmniFocus with write-through guarantee — v1.2
+- ✓ Task creation (`add_tasks`) with parent/tag resolution, validation, per-item results — v1.2
+- ✓ Task editing (`edit_tasks`) with UNSET sentinel patch semantics, actions block (tags/move/lifecycle) — v1.2
+- ✓ Diff-based tag computation in Python service layer, bridge receives only addTagIds/removeTagIds — v1.2
+- ✓ Task lifecycle (complete/drop) with no-op detection and educational warnings — v1.2
+- ✓ Bridge script write commands (add_task, edit_task) with request file payloads — v1.2
 
 ### Active
 
-<!-- Current milestone: v1.2 Writes & Lookups -->
+<!-- Next milestone: TBD via /gsd:new-milestone -->
 
-- [ ] Get-by-ID tools: `get_task`, `get_project`, `get_tag` -- single-entity lookup by primary key
-- [ ] Write pipeline: MCP -> Service -> Repository -> Bridge -> invalidate snapshot
-- [ ] Task creation: `add_tasks` -- create tasks with project/parent/tags/dates/flags
-- [ ] Task editing: `edit_tasks` -- patch semantics (omit/null/value), tag modes, task movement
-- ✓ Lifecycle changes: complete/drop tasks via `edit_tasks` (reactivation deferred) — Phase 17
-- [ ] Bridge script: new commands (get_task, get_project, get_tag, add_task, edit_task) with request file payloads
+- [ ] SQL filtering for tasks, projects, tags
+- [ ] List/count for all entities
+- [ ] Substring search
+- [ ] Perspectives support
+- [ ] Field selection
+- [ ] TaskPaper output format
+- [ ] Production hardening (retry, crash recovery, fuzzy search)
 
 ### Out of Scope
 
 - Workflow-specific logic (daily review, prioritization) -- server is a general-purpose bridge; workflow lives in the agent
 - Custom exception hierarchy -- use standard Python exceptions, refine when real error patterns emerge
-- Tag writes, folder writes, task reordering, undo/dry run -- future milestones
+- Task reactivation (markIncomplete) — OmniJS API unreliable, deferred
+- Tag writes, folder writes, task reordering, undo/dry run — future milestones
 - Mobile/iOS support -- OmniFocus desktop only (macOS)
 - TaskPaper output format -- future milestone
 - Production hardening (retry logic, crash recovery, idempotency) -- future milestone
@@ -62,11 +71,12 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 ## Context
 
-Shipped v1.1 with ~14,144 LOC Python, ~215k LOC JS (bridge + deps), ~28k TS (tests).
+Shipped v1.2 with ~20,189 LOC Python, ~215k LOC JS (bridge + deps), ~28k TS (tests).
 Tech stack: Python 3.12, uv, Pydantic v2, MCP SDK (FastMCP), OmniJS bridge, SQLite3 (stdlib).
-313 pytest tests (~98% coverage), 26 Vitest tests, UAT passed on all phases.
+501 pytest tests, 26 Vitest tests, UAT passed on all phases.
 Real OmniFocus database: ~2,400 tasks, ~363 projects, ~64 tags, ~79 folders.
-Two read paths: SQLite (default, ~46ms) and OmniJS bridge (fallback, ~1.5MB JSON snapshot).
+Read path: SQLite (default, ~46ms). Write path: OmniJS bridge with write-through guarantee.
+6 MCP tools: get_all, get_task, get_project, get_tag, add_tasks, edit_tasks.
 
 ## Constraints
 
@@ -93,22 +103,14 @@ Two read paths: SQLite (default, ~46ms) and OmniJS bridge (fallback, ~1.5MB JSON
 | Dict-based adapter mapping tables | Static mapping = dict lookup, not if/elif; in-place modification for zero-copy | Good -- fast, readable, easily extensible |
 | WAL mtime for freshness detection | WAL updates on every write; mtime_ns gives nanosecond precision | Good -- reliable read-after-write consistency |
 | Manual bridge fallback via env var | Silent automatic failover hides broken state; user must know which path is active | Good -- explicit is better than implicit |
-| Project-first parent resolution | When resolving a parent ID, try `get_project` before `get_task`. Project takes precedence. In practice IDs don't collide, but the order is intentional and deterministic | Decided in Phase 15, documented in Phase 16 |
-| Patch semantics via sentinel pattern | Edit models use UNSET sentinel to distinguish "not provided" from "null" (clear) from "value" (set). Pydantic can't distinguish omitted from None natively, sentinel solves the three-way | Phase 16 -- first partial-update API |
-| moveTo "key IS the position" design | Task movement expressed as `{"moveTo": {"ending": "parentId"}}` -- the key (beginning/ending/before/after) IS the position, the value IS the reference. Exactly one key allowed. Makes illegal states unrepresentable -- no runtime validation needed for invalid position+reference combos | Phase 16 -- maps directly to OmniJS position API |
-| Educational warnings in write responses | Write results include optional `warnings` array for no-ops (e.g., removing a tag not present, moving to same position) with hints like "omit moveTo to skip movement". Teaches agents patch semantics in-context | Phase 16 -- LLMs learn from tool responses |
+| Project-first parent resolution | When resolving a parent ID, try `get_project` before `get_task`. Project takes precedence. In practice IDs don't collide, but the order is intentional and deterministic | ✓ Good — v1.2 |
+| Patch semantics via sentinel pattern | Edit models use UNSET sentinel to distinguish "not provided" from "null" (clear) from "value" (set). Pydantic can't distinguish omitted from None natively, sentinel solves the three-way | ✓ Good — clean API, no ambiguity |
+| moveTo "key IS the position" design | Task movement expressed as `{"moveTo": {"ending": "parentId"}}` -- the key (beginning/ending/before/after) IS the position, the value IS the reference. Exactly one key allowed. Makes illegal states unrepresentable | ✓ Good — maps directly to OmniJS position API |
+| Educational warnings in write responses | Write results include optional `warnings` array for no-ops with hints. Teaches agents patch semantics in-context | ✓ Good — LLMs learn from tool responses |
+| Actions block grouping | edit_tasks separates idempotent field setters (top-level) from stateful operations (actions: tags/move/lifecycle). Clean semantic boundary | ✓ Good — extensible design |
+| Diff-based tag computation | _compute_tag_diff in Python service, bridge receives only addTagIds/removeTagIds. Replaced 4-branch JS dispatch with ~4 lines | ✓ Good — simpler bridge, logic in Python |
+| Lifecycle via Literal type | `lifecycle: Literal["complete", "drop"]` — Pydantic validates, no dedicated enum needed | ✓ Good — minimal surface area |
+| Write-through guarantee | `@_ensures_write_through` decorator ensures writes block until SQLite confirms; reads never wait | ✓ Good — consistent read-after-write |
 
 ---
-## Current Milestone: v1.2 Writes & Lookups
-
-**Goal:** Enable agents to look up individual entities by ID and create/edit tasks in OmniFocus, validating the write pipeline end-to-end.
-
-**Target features:**
-- Get-by-ID tools (get_task, get_project, get_tag)
-- Task creation (add_tasks)
-- Task editing with patch semantics (edit_tasks)
-- Lifecycle changes (complete, drop, reactivate)
-- Bridge script write commands with request file payloads
-
----
-*Last updated: 2026-03-12 after Phase 17*
+*Last updated: 2026-03-16 after v1.2 milestone*

@@ -95,6 +95,55 @@
 
 ---
 
+## Milestone: v1.2 -- Writes & Lookups
+
+**Shipped:** 2026-03-16
+**Phases:** 6 | **Plans:** 21 executed
+
+### What Was Built
+- Unified parent model (ParentRef) and `get_all` rename from `list_all`
+- Get-by-ID tools (`get_task`, `get_project`, `get_tag`) with dedicated SQLite queries
+- Full write pipeline: MCP → Service → Repository → Bridge → OmniFocus
+- Task creation (`add_tasks`) with parent/tag resolution and per-item results
+- Task editing (`edit_tasks`) with UNSET sentinel patch semantics and actions block
+- Diff-based tag computation replacing 4-branch bridge.js dispatch
+- Task lifecycle (complete/drop) with educational warnings
+
+### What Worked
+- Actions block refactor (Phase 16.1) was inserted mid-milestone and paid off immediately -- clean separation of field setters vs stateful operations
+- Diff-based tag simplification (Phase 16.2) dramatically reduced bridge.js complexity (~45 lines → ~4 lines)
+- Write-through guarantee (`@_ensures_write_through`) solved read-after-write consistency cleanly
+- UAT regression skill caught real issues (same-container move warning, repeating-task drop text)
+- Deferred work captured in milestone specs (v1.2.1, v1.2.2) instead of scope creep
+
+### What Was Inefficient
+- Phase 16 grew to 6 plans (originally scoped as 3) -- tag modes and movement were more complex than anticipated
+- SUMMARY.md files lack `one_liner` field -- gsd-tools couldn't auto-extract accomplishments at milestone completion
+- REQUIREMENTS.md descriptions for EDIT-03 through EDIT-08 became stale after Phase 16.1 restructured the API shape
+- LIFE-03 (reactivation) was a requirement but OmniJS API limitations made it unimplementable -- should have been flagged during requirements phase
+
+### Patterns Established
+- UNSET sentinel with `__get_pydantic_core_schema__` for Pydantic v2 patch models
+- Actions block grouping: idempotent setters (top-level) vs stateful operations (actions)
+- `_compute_tag_diff` for diff-based tag handling (replace/add/remove → minimal add/remove sets)
+- `_process_lifecycle` helper returning (should_call_bridge, warnings) tuple
+- Write-through decorator pattern for read-after-write consistency
+- Educational no-op warnings that teach agents patch semantics
+
+### Key Lessons
+1. **API restructuring mid-milestone is worth it** -- the actions block (Phase 16.1) was inserted urgently but made lifecycle (Phase 17) trivial to add
+2. **Move complexity to Python, keep bridge dumb** -- diff-based tag computation proved this pattern scales
+3. **Requirements should include feasibility research** -- LIFE-03 was a requirement that couldn't be met; research spike in Phase 17 discovered this too late
+4. **UAT regression suites catch real bugs** -- the uat-regression skill found 3 genuine issues in Phase 17
+5. **Scope discipline via milestone specs** -- deferring work to formal specs (v1.2.1, v1.2.2) prevented scope creep
+
+### Cost Observations
+- Model mix: ~70% opus (research, planning, complex phases), ~30% sonnet (execution, validation)
+- Sessions: ~10-15 across 9 days
+- Notable: 3.6 min average plan execution -- consistent with v1.0/v1.1 velocity
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -103,6 +152,7 @@
 |-----------|--------|-------|------------|
 | v1.0 | 11 | 22 | First milestone -- established GSD + TDD workflow |
 | v1.1 | 4 | 11 | Fastest milestone -- research artifacts enabled single-day execution |
+| v1.2 | 6 | 21 | First write milestone -- decimal phases (16.1, 16.2) for mid-milestone restructuring |
 
 ### Cumulative Quality
 
@@ -110,10 +160,12 @@
 |-----------|-------|----------|-----------------|
 | v1.0 | 203+ (177 pytest + 26 vitest) | ~98% | 4 (all low severity) |
 | v1.1 | 339 (313 pytest + 26 vitest) | ~98% | 0 |
+| v1.2 | 527 (501 pytest + 26 vitest) | ~94% | 3 (LIFE-03 deferred, stale docs, tag exclusivity) |
 
 ### Top Lessons (Verified Across Milestones)
 
-1. Research-first approach prevents rework (verified in v1.0 and v1.1 -- zero surprises both times)
-2. Fine-grained plans (~4 min avg) keep momentum and reduce context-switching cost
-3. Incremental migration beats big-bang (verified in v1.1 Phase 10 -- tests green at every commit)
-4. Gap closure plans catch integration issues early when forced by validation (verified in v1.1)
+1. Research-first approach prevents rework (verified in v1.0, v1.1, v1.2 -- LIFE-03 was the exception that proves the rule)
+2. Fine-grained plans (~4 min avg) keep momentum and reduce context-switching cost (consistent across all 3 milestones)
+3. Incremental migration beats big-bang (verified in v1.1 Phase 10, v1.2 Phase 16.1 actions refactor)
+4. Gap closure plans catch integration issues early when forced by validation (verified in v1.1, v1.2)
+5. Move complexity to Python, keep bridge dumb (established v1.2 -- diff-based tags proved the pattern)
