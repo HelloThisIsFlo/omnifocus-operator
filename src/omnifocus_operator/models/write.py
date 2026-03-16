@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import GetCoreSchemaHandler, model_validator
+from pydantic import ConfigDict, GetCoreSchemaHandler, model_validator
 from pydantic.json_schema import GenerateJsonSchema
 from pydantic_core import CoreSchema, core_schema
 
@@ -57,7 +57,13 @@ class _Unset:
 UNSET = _Unset()
 
 
-class TaskCreateSpec(OmniFocusBaseModel):
+class WriteModel(OmniFocusBaseModel):
+    """Base for write-side models. Rejects unknown fields at validation time."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class TaskCreateSpec(WriteModel):
     """Input model for task creation.
 
     Only ``name`` is required. All other fields default to ``None``,
@@ -91,7 +97,7 @@ class TaskCreateResult(OmniFocusBaseModel):
 # --- Edit models ---
 
 
-class MoveToSpec(OmniFocusBaseModel):
+class MoveToSpec(WriteModel):
     """Specifies where to move a task.
 
     Exactly one key must be set. The key doubles as both the position
@@ -140,7 +146,7 @@ class MoveToSpec(OmniFocusBaseModel):
         return _clean_unset_from_schema(schema)
 
 
-class TagActionSpec(OmniFocusBaseModel):
+class TagActionSpec(WriteModel):
     """Tag operations for task editing.
 
     Either ``replace`` (standalone) or ``add``/``remove`` (combinable).
@@ -188,7 +194,7 @@ class TagActionSpec(OmniFocusBaseModel):
         return _clean_unset_from_schema(schema)
 
 
-class ActionsSpec(OmniFocusBaseModel):
+class ActionsSpec(WriteModel):
     """Stateful operations grouped under the actions block.
 
     Contains tag operations, movement, and lifecycle (reserved).
@@ -219,7 +225,7 @@ class ActionsSpec(OmniFocusBaseModel):
         return _clean_unset_from_schema(schema)
 
 
-class TaskEditSpec(OmniFocusBaseModel):
+class TaskEditSpec(WriteModel):
     """Patch model for task editing.
 
     Only ``id`` is required. All other fields default to ``UNSET``

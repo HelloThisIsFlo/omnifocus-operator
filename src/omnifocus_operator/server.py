@@ -210,9 +210,17 @@ def _register_tools(mcp: FastMCP) -> None:
         try:
             spec = TaskCreateSpec.model_validate(items[0])
         except ValidationError as exc:
-            messages = "; ".join(e["msg"] for e in exc.errors() if "_Unset" not in e["msg"])
-            logger.debug("server.add_tasks: validation error: %s", messages)
-            raise ValueError(messages or "Invalid input") from None
+            messages = []
+            for e in exc.errors():
+                if "_Unset" in e["msg"]:
+                    continue
+                if e["type"] == "extra_forbidden":
+                    field = ".".join(str(loc) for loc in e["loc"])
+                    messages.append(f"Unknown field '{field}'")
+                else:
+                    messages.append(e["msg"])
+            logger.debug("server.add_tasks: validation error: %s", "; ".join(messages))
+            raise ValueError("; ".join(messages) or "Invalid input") from None
         result = await service.add_task(spec)
         logger.debug("server.add_tasks: returning id=%s, name=%s", result.id, result.name)
         return [result]
@@ -268,9 +276,17 @@ def _register_tools(mcp: FastMCP) -> None:
         try:
             spec = TaskEditSpec.model_validate(items[0])
         except ValidationError as exc:
-            messages = "; ".join(e["msg"] for e in exc.errors() if "_Unset" not in e["msg"])
-            logger.debug("server.edit_tasks: validation error: %s", messages)
-            raise ValueError(messages or "Invalid input") from None
+            messages = []
+            for e in exc.errors():
+                if "_Unset" in e["msg"]:
+                    continue
+                if e["type"] == "extra_forbidden":
+                    field = ".".join(str(loc) for loc in e["loc"])
+                    messages.append(f"Unknown field '{field}'")
+                else:
+                    messages.append(e["msg"])
+            logger.debug("server.edit_tasks: validation error: %s", "; ".join(messages))
+            raise ValueError("; ".join(messages) or "Invalid input") from None
         result = await service.edit_task(spec)
         logger.debug(
             "server.edit_tasks: returning id=%s, success=%s, warnings=%s",

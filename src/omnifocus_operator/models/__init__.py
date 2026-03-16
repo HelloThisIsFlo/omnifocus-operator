@@ -35,6 +35,7 @@ from omnifocus_operator.models.write import (
     TaskCreateSpec,
     TaskEditResult,
     TaskEditSpec,
+    WriteModel,
 )
 
 # Resolve forward references now that all modules are imported.
@@ -67,6 +68,7 @@ _ns: dict[str, type] = {
     "MoveToSpec": MoveToSpec,
     "ActionsSpec": ActionsSpec,
     "TagActionSpec": TagActionSpec,
+    "WriteModel": WriteModel,
 }
 ParentRef.model_rebuild(_types_namespace=_ns)
 RepetitionRule.model_rebuild(_types_namespace=_ns)
@@ -76,6 +78,7 @@ Project.model_rebuild(_types_namespace=_ns)
 Tag.model_rebuild(_types_namespace=_ns)
 Folder.model_rebuild(_types_namespace=_ns)
 AllEntities.model_rebuild(_types_namespace=_ns)
+WriteModel.model_rebuild(_types_namespace=_ns)
 TaskCreateSpec.model_rebuild(_types_namespace=_ns)
 TaskCreateResult.model_rebuild(_types_namespace=_ns)
 TagActionSpec.model_rebuild(_types_namespace=_ns)
@@ -112,4 +115,5 @@ __all__ = [
     "TaskEditResult",
     "TaskEditSpec",
     "Urgency",
+    "WriteModel",
 ]
