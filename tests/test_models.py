@@ -963,3 +963,98 @@ class TestActionsSpecLifecycle:
 
         with pytest.raises(ValidationError):
             ActionsSpec(lifecycle="invalid")
+
+
+class TestWriteModelStrictness:
+    """Write models reject unknown fields (STRCT-01); read models stay permissive (STRCT-02)."""
+
+    # --- STRCT-01: Write models reject unknown fields ---
+
+    def test_task_create_spec_rejects_unknown_field(self) -> None:
+        with pytest.raises(ValidationError, match="bogus_field"):
+            TaskCreateSpec.model_validate({"name": "Task", "bogus_field": "x"})
+
+    def test_task_edit_spec_rejects_unknown_field(self) -> None:
+        from omnifocus_operator.models.write import TaskEditSpec
+
+        with pytest.raises(ValidationError, match="bogus_field"):
+            TaskEditSpec.model_validate({"id": "t1", "bogus_field": "x"})
+
+    def test_move_to_spec_rejects_unknown_field(self) -> None:
+        from omnifocus_operator.models.write import MoveToSpec
+
+        with pytest.raises(ValidationError, match="bogus_field"):
+            MoveToSpec.model_validate({"ending": "p1", "bogus_field": "x"})
+
+    def test_tag_action_spec_rejects_unknown_field(self) -> None:
+        from omnifocus_operator.models.write import TagActionSpec
+
+        with pytest.raises(ValidationError, match="bogus_field"):
+            TagActionSpec.model_validate({"add": ["tag1"], "bogus_field": "x"})
+
+    def test_actions_spec_rejects_unknown_field(self) -> None:
+        from omnifocus_operator.models.write import ActionsSpec
+
+        with pytest.raises(ValidationError, match="bogus_field"):
+            ActionsSpec.model_validate({"lifecycle": "complete", "bogus_field": "x"})
+
+    # --- STRCT-02: Read/result models stay permissive ---
+
+    def test_task_create_result_accepts_unknown_field(self) -> None:
+        result = TaskCreateResult.model_validate(
+            {"success": True, "id": "t1", "name": "T", "bogus": "x"}
+        )
+        assert result.success is True
+        assert not hasattr(result, "bogus")
+
+    def test_task_edit_result_accepts_unknown_field(self) -> None:
+        from omnifocus_operator.models.write import TaskEditResult
+
+        result = TaskEditResult.model_validate(
+            {"success": True, "id": "t1", "name": "T", "bogus": "x"}
+        )
+        assert result.success is True
+        assert not hasattr(result, "bogus")
+
+    def test_read_model_task_accepts_unknown_field(self) -> None:
+        """Read models from OmniFocus must stay permissive for forward compatibility."""
+        data = make_task_dict()
+        data["some_future_field"] = "unknown"
+        task = Task.model_validate(data)
+        assert task.name is not None
+        assert not hasattr(task, "some_future_field")
+
+    # --- STRCT-03: UNSET sentinel works with extra=forbid ---
+
+    def test_task_edit_spec_unset_defaults_with_forbid(self) -> None:
+        """All UNSET defaults validate successfully -- they are declared fields, not extra."""
+        from omnifocus_operator.models.write import TaskEditSpec, _Unset
+
+        spec = TaskEditSpec(id="t1")
+        assert spec.id == "t1"
+        assert isinstance(spec.name, _Unset)
+        assert isinstance(spec.flagged, _Unset)
+        assert isinstance(spec.note, _Unset)
+        assert isinstance(spec.due_date, _Unset)
+        assert isinstance(spec.actions, _Unset)
+
+    def test_task_edit_spec_set_values_with_forbid(self) -> None:
+        """Setting real values on write models still works under forbid."""
+        from omnifocus_operator.models.write import TaskEditSpec
+
+        spec = TaskEditSpec(id="t1", name="Updated", flagged=True)
+        assert spec.name == "Updated"
+        assert spec.flagged is True
+
+    def test_write_model_accepts_camel_case_alias(self) -> None:
+        """Agents send camelCase -- must be accepted under forbid."""
+        spec = TaskCreateSpec.model_validate(
+            {
+                "name": "Test",
+                "dueDate": "2024-06-15T09:00:00Z",
+                "deferDate": "2024-06-15T09:00:00Z",
+                "estimatedMinutes": 30,
+            }
+        )
+        assert spec.name == "Test"
+        assert spec.estimated_minutes == 30
