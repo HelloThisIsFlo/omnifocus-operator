@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2
-milestone_name: Writes & Lookups
-status: shipped
-stopped_at: Milestone v1.2 archived and tagged
+milestone: v1.2.1
+milestone_name: Architectural Cleanup
+status: defining
+stopped_at: Defining requirements
 last_updated: "2026-03-16"
-last_activity: "2026-03-16 - Milestone v1.2 completion and archival"
+last_activity: "2026-03-16 — Milestone v1.2.1 started"
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 21
-  completed_plans: 21
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,34 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-16)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** v1.2 shipped. Next: `/gsd:new-milestone` for v1.3.
+**Current focus:** v1.2.1 Architectural Cleanup — internal quality, no new tools.
 
 ## Current Position
 
-Phase: All v1.2 phases complete
-Plan: N/A (milestone boundary)
-Status: Shipped
-Last activity: 2026-03-16 - Milestone v1.2 archived and tagged
-
-Progress: [██████████] 100% — SHIPPED
-
-## Performance Metrics
-
-**Velocity:**
-- Total plans completed: 21 (v1.2)
-- Average duration: 3.6min
-- Total execution time: 67min
-
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 14 | 2/2 | 10min | 5min |
-| 15 | 4/4 | 19min | 4.8min |
-| 16 | 6/6 | 22min | 3.7min |
-| 16.1 | 3/3 | 11min | 3.7min |
-| 16.2 | 3/3 | 9min | 3min |
-| 17 | 3/3 | 12min | 4min |
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-16 — Milestone v1.2.1 started
 
 ## Accumulated Context
 
@@ -67,5 +47,5 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-03-16
-Stopped at: Milestone v1.2 shipped and archived
-Resume file: N/A (milestone boundary — use `/gsd:new-milestone` for v1.3)
+Stopped at: Defining requirements for v1.2.1
+Resume file: N/A

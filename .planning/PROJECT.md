@@ -40,8 +40,17 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 ### Active
 
-<!-- Next milestone: TBD via /gsd:new-milestone -->
+## Current Milestone: v1.2.1 Architectural Cleanup
 
+**Goal:** Clean up write pipeline asymmetries and decompose the service layer into well-bounded modules. No new tools, no behavioral changes — pure internal quality.
+
+**Target features:**
+- Unify service-repository write interface (symmetric add/edit signatures)
+- Decompose service layer (validation, domain logic, format conversion as separate modules)
+- Strict write model validation (`extra="forbid"` on write models)
+- Remove InMemoryBridge from production exports
+
+<!-- Future milestones -->
 - [ ] SQL filtering for tasks, projects, tags
 - [ ] List/count for all entities
 - [ ] Substring search
@@ -113,4 +122,4 @@ Read path: SQLite (default, ~46ms). Write path: OmniJS bridge with write-through
 | Write-through guarantee | `@_ensures_write_through` decorator ensures writes block until SQLite confirms; reads never wait | ✓ Good — consistent read-after-write |
 
 ---
-*Last updated: 2026-03-16 after v1.2 milestone*
+*Last updated: 2026-03-16 after v1.2.1 milestone start*
