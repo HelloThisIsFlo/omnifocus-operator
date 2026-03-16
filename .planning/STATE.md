@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 18-02-PLAN.md
-last_updated: "2026-03-16T23:13:19.151Z"
+stopped_at: Completed 18-01-PLAN.md
+last_updated: "2026-03-16T23:14:16.268Z"
 last_activity: 2026-03-16 — Completed 18-02 (warning consolidation)
 progress:
   total_phases: 5
@@ -47,6 +47,7 @@ Progress: [█████░░░░░] 50%
 
 ## Accumulated Context
 | Phase 18 P02 | 5min | 2 tasks | 3 files |
+| Phase 18 P01 | 6min | 2 tasks | 6 files |
 
 ### Decisions
 
@@ -58,6 +59,8 @@ Recent decisions affecting current work:
 - Roadmap: SVCR merged into single Phase 22 (package conversion + all extractions in one phase)
 - [Phase 18]: Warning constants use {placeholder} syntax with .format() for parameterized messages
 - [Phase 18]: AST-based integrity test ensures no inline warning strings regress into service.py
+- [Phase 18]: WriteModel base with extra=forbid for strict write-side validation
+- [Phase 18]: Result models stay on OmniFocusBaseModel (permissive) -- server output, not agent input
 
 ### Pending Todos
 
@@ -73,6 +76,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-16T23:13:19.149Z
-Stopped at: Completed 18-02-PLAN.md
+Last session: 2026-03-16T23:14:16.263Z
+Stopped at: Completed 18-01-PLAN.md
 Resume file: None
