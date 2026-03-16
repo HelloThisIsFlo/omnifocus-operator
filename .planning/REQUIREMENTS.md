@@ -70,29 +70,29 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PIPE-01 | — | Pending |
-| PIPE-02 | — | Pending |
-| MODL-01 | — | Pending |
-| MODL-02 | — | Pending |
-| MODL-03 | — | Pending |
-| MODL-04 | — | Pending |
-| SVCR-01 | — | Pending |
-| SVCR-02 | — | Pending |
-| SVCR-03 | — | Pending |
-| SVCR-04 | — | Pending |
-| SVCR-05 | — | Pending |
-| STRCT-01 | — | Pending |
-| STRCT-02 | — | Pending |
-| STRCT-03 | — | Pending |
-| INFRA-01 | — | Pending |
-| INFRA-02 | — | Pending |
-| INFRA-03 | — | Pending |
+| STRCT-01 | Phase 18 | Pending |
+| STRCT-02 | Phase 18 | Pending |
+| STRCT-03 | Phase 18 | Pending |
+| INFRA-01 | Phase 19 | Pending |
+| INFRA-02 | Phase 19 | Pending |
+| INFRA-03 | Phase 19 | Pending |
+| MODL-01 | Phase 20 | Pending |
+| MODL-02 | Phase 20 | Pending |
+| MODL-03 | Phase 20 | Pending |
+| MODL-04 | Phase 20 | Pending |
+| PIPE-01 | Phase 21 | Pending |
+| PIPE-02 | Phase 21 | Pending |
+| SVCR-01 | Phase 22 | Pending |
+| SVCR-02 | Phase 22 | Pending |
+| SVCR-03 | Phase 22 | Pending |
+| SVCR-04 | Phase 22 | Pending |
+| SVCR-05 | Phase 22 | Pending |
 
 **Coverage:**
 - v1.2.1 requirements: 17 total
-- Mapped to phases: 0
-- Unmapped: 17 ⚠️
+- Mapped to phases: 17
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-16*
-*Last updated: 2026-03-16 after initial definition*
+*Last updated: 2026-03-16 after roadmap revision (merged Phase 22+23 into Phase 22)*

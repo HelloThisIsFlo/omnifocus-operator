@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.2.1
 milestone_name: Architectural Cleanup
-status: defining
-stopped_at: Defining requirements
+status: ready_to_plan
+stopped_at: Roadmap revised, ready to plan Phase 18
 last_updated: "2026-03-16"
-last_activity: "2026-03-16 — Milestone v1.2.1 started"
+last_activity: "2026-03-16 — Roadmap revised for v1.2.1 (5 phases, 17 requirements)"
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,16 +21,40 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-16)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** v1.2.1 Architectural Cleanup — internal quality, no new tools.
+**Current focus:** v1.2.1 Architectural Cleanup — Phase 18 (Write Model Strictness)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 18 — first of 5 (Write Model Strictness)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-03-16 — Milestone v1.2.1 started
+Status: Ready to plan
+Last activity: 2026-03-16 — Roadmap revised for v1.2.1
+
+Progress: [░░░░░░░░░░] 0%
+
+## Performance Metrics
+
+**Velocity:**
+- Total plans completed: 0
+- Average duration: —
+- Total execution time: 0 hours
+
+**By Phase:**
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| - | - | - | - |
 
 ## Accumulated Context
+
+### Decisions
+
+Decisions are logged in PROJECT.md Key Decisions table.
+Recent decisions affecting current work:
+
+- Roadmap: STRCT before MODL (validate Pydantic extra="forbid" + sentinel in isolation before model renames)
+- Roadmap: MODL before PIPE (typed payloads must exist before unifying pipeline around them)
+- Roadmap: SVCR merged into single Phase 22 (package conversion + all extractions in one phase)
 
 ### Pending Todos
 
@@ -47,5 +71,5 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-03-16
-Stopped at: Defining requirements for v1.2.1
-Resume file: N/A
+Stopped at: Roadmap revised for v1.2.1 Architectural Cleanup
+Resume file: None
