@@ -104,7 +104,7 @@ Progress: [██████████] 100%
 
 - Phase 16.1 inserted after Phase 16: Introduce actions grouping to edit_tasks (URGENT)
 - Phase 16.2 inserted after Phase 16: Simplify bridge tag handling to diff-based approach (URGENT)
-- Phase 18 added: Repetition rule write support: structured fields, not RRULE strings → moved to MILESTONE-v1.2.2.md
+- Phase 18 added: Repetition rule write support: structured fields, not RRULE strings → moved to MILESTONE-v1.2.3.md
 - Phase 17.1 inserted after Phase 17: Unify write interface at service-repository boundary (URGENT) → moved to MILESTONE-v1.2.1.md
 
 ### Pending Todos (14)

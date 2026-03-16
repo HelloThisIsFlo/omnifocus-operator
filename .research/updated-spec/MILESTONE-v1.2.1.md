@@ -38,7 +38,7 @@ The service class currently owns everything between "MCP tool called" and "bridg
 **Candidates for extraction (not exhaustive -- discover during planning):**
 
 - **Validation**: input constraints, mutually exclusive fields, no-op detection, ID existence checks, lifecycle guards
-- **Domain logic / policies**: urgency vs availability computation, status model rules, tag diff computation, repetition rule format and merge semantics (see MILESTONE-v1.2.2) -- these are our domain choices, not OmniFocus constraints
+- **Domain logic / policies**: urgency vs availability computation, status model rules, tag diff computation, repetition rule format and merge semantics (see MILESTONE-v1.2.3) -- these are our domain choices, not OmniFocus constraints
 - **Format conversion**: snake_case ↔ camelCase payload construction -- mechanical transformations
 
 The key distinction: validation checks "is this request valid?", domain logic implements "what are our rules?", format conversion handles "how do we serialize for the bridge?". Today they're all interleaved in service methods.

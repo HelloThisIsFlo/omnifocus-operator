@@ -21,6 +21,14 @@ Reliability and polish. No new tools -- the full 18-tool API surface is complete
 - Clean up orphaned IPC files from crashed processes (basic version exists from v1.0 -- extend if needed)
 - Ensure server can recover from unexpected states without restart
 
+### Serial Execution Guarantee for Bridge Calls
+- Investigate whether the bridge or OmniFocus enforces serial execution of osascript calls
+- If not guaranteed, add a bridge-level lock/queue to enforce ordering
+- Formalize as a documented invariant: "Concurrent edit_tasks calls are processed in the order received"
+- Critical for dependent moves (e.g., "move C under A, then move B before C")
+
+See: `2026-03-08-investigate-and-enforce-serial-execution-guarantee-for-bridge-calls.md`
+
 ### Idempotency
 - Define idempotency guarantees for write operations
 - Handle duplicate requests gracefully (e.g., agent retries after timeout)
