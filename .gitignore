@@ -36,8 +36,5 @@ node_modules/
 # Sandbox (local scratch files)
 .sandbox/
 
-# IDE
-.vscode/
-
 # OS
 .DS_Store
