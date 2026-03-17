@@ -277,8 +277,10 @@ Strict mypy with Pydantic plugin. Ruff linting across 9 rule categories.
 | v1.0 | Done | Core read tools |
 | v1.1 | Done | Writes + SQLite performance — 6 tools |
 | v1.3 | Planned | SQL filtering, search — 13 tools |
-| v1.4 | Planned | Perspectives, TaskPaper — 18 tools |
-| v1.5 | Planned | Retry, crash recovery, fuzzy search |
+| v1.4 | Planned | Field selection, task deletion, notes append — 14 tools |
+| v1.4.x | Planned | Fuzzy search, TaskPaper output, project writes — 16 tools |
+| v1.5 | Planned | UI & Perspectives — 19 tools |
+| v1.6 | Planned | Retry, crash recovery, serial execution |
 
 Active development. Clear direction.
 

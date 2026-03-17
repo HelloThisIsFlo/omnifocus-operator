@@ -52,12 +52,25 @@ Requirements for Architectural Cleanup milestone. No new tools, no behavioral ch
 - List/count for all entities
 - Substring search
 
-### v1.4 Output & UI
-- Perspectives support
-- Field selection
-- TaskPaper output format
+### v1.4 Field Selection & Writes
+- Field selection (projection on read tools)
+- Task deletion
+- Notes append (field graduation)
 
-### v1.5 Production Hardening
+### v1.4.1 Fuzzy Search
+- Typo-tolerant search on list_tasks/count_tasks
+
+### v1.4.2 TaskPaper Output
+- Alternative output format (~5x token reduction)
+
+### v1.4.3 Project Writes
+- Project creation and editing
+
+### v1.5 UI & Perspectives
+- Perspective switching and reading
+- Deep link (open task in UI)
+
+### v1.6 Production Hardening
 - Retry logic, crash recovery, fuzzy search
 
 ## Out of Scope

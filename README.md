@@ -132,8 +132,10 @@ See the [full documentation](https://hellothisisflo.github.io/omnifocus-operator
 | **v1.1** | Performance — SQLite caching, 30–60x speedup ✅ |
 | **v1.2** | Writes & Lookups — add/edit tasks, get-by-ID ✅ |
 | **v1.3** | Read Tools — SQL filtering, search, list/count |
-| **v1.4** | Output & UI — perspectives, TaskPaper, field selection |
-| **v1.5** | Production Hardening — retry, crash recovery, fuzzy search |
+| **v1.4** | Field Selection & Writes — projection, task deletion, notes append |
+| **v1.4.x** | Fuzzy Search, TaskPaper Output, Project Writes |
+| **v1.5** | UI & Perspectives — perspective switching, deep links |
+| **v1.6** | Production Hardening — retry, crash recovery, serial execution |
 
 ---
 

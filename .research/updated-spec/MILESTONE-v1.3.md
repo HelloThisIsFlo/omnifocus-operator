@@ -35,7 +35,7 @@ One new MCP tool with optional filter parameters. Primary path uses SQL WHERE cl
 - Date filters use `effective_due_date` (inherited values), not `due_date` (direct-only). Filtering on `due_date` alone misses ~45% of overdue tasks.
 - `availability: 'available'` semantic: should it include or exclude blocked? The original spec included blocked tasks under "available" for the filter, but this may be revisited. The two-axis model makes these orthogonal.
 - `urgency: 'due_soon'` includes overdue tasks (inclusive semantics).
-- Substring search only -- no fuzzy matching. Fuzzy deferred to v1.5+.
+- Substring search only -- no fuzzy matching. Fuzzy deferred to v1.4.1.
 
 **SQL implementation (HybridRepository):**
 - Build WHERE clauses dynamically from filter parameters
@@ -96,7 +96,7 @@ All hierarchy is flat with ID references (parent_id, folder_id, project_id). No 
 - Project `type` is a derived enum: `sequential`, `parallel`, or `single_action`.
 - Counts reuse the same filtering logic as list tools. One code path prevents count/list divergence.
 - SQL-level filtering is the primary path. In-memory filtering exists only for bridge fallback.
-- No fuzzy search. Substring matching via SQL LIKE is sufficient for now. Fuzzy deferred to v1.5+.
+- No fuzzy search. Substring matching via SQL LIKE is sufficient for now. Fuzzy deferred to v1.4.1.
 - Pagination via `limit`/`offset` on `list_tasks` and `list_projects`. SQL uses `LIMIT ? OFFSET ?`. Bridge fallback slices in-memory. `offset` without `limit` is an error. `count_*` tools are unaffected (always return total count for the filters).
 
 ## Key Acceptance Criteria

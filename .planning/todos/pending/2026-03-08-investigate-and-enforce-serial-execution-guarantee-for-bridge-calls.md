@@ -31,4 +31,4 @@ If call 2 runs before call 1, T1-B goes before T1-C at the original level (sibli
 
 ## Target Milestone
 
-v1.5 Production Hardening
+~~v1.5~~ → v1.6 Production Hardening

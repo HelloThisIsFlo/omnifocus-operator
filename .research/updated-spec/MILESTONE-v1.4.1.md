@@ -35,4 +35,4 @@ Agents can find tasks despite typos and partial recall. After this milestone, th
 
 ## Tools After This Milestone
 
-Eighteen (unchanged from v1.4).
+Fourteen (unchanged from v1.4).

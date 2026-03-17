@@ -14,7 +14,7 @@ Expose child ordering via an integer field on task responses so agents can see s
 - When listing children of a parent, return them in display order with `order`
 - Example: `[{"id": "abc", "name": "Design", "order": 0, "parent": {"id": "xyz", ...}}, ...]`
 - Independent of actions.move -- purely read-side
-- Complements TaskPaper output (v1.4) which shows hierarchy via indentation: `order` is for programmatic use, TaskPaper for visual comprehension
+- Complements TaskPaper output (v1.4.2) which shows hierarchy via indentation: `order` is for programmatic use, TaskPaper for visual comprehension
 
 See: `2026-03-08-add-position-field-to-expose-child-task-ordering.md`
 

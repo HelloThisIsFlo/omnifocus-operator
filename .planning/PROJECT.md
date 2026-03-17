@@ -51,13 +51,15 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 - Remove InMemoryBridge from production exports
 
 <!-- Future milestones -->
-- [ ] SQL filtering for tasks, projects, tags
-- [ ] List/count for all entities
-- [ ] Substring search
-- [ ] Perspectives support
-- [ ] Field selection
-- [ ] TaskPaper output format
-- [ ] Production hardening (retry, crash recovery, fuzzy search)
+- [ ] SQL filtering for tasks, projects, tags (v1.3)
+- [ ] List/count for all entities (v1.3)
+- [ ] Substring search (v1.3)
+- [ ] Field selection, task deletion, notes append (v1.4)
+- [ ] Fuzzy search (v1.4.1)
+- [ ] TaskPaper output format (v1.4.2)
+- [ ] Project writes (v1.4.3)
+- [ ] Perspectives support, deep links (v1.5)
+- [ ] Production hardening — retry, crash recovery, serial execution (v1.6)
 
 ### Out of Scope
 

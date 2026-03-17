@@ -96,12 +96,13 @@ File-based JSON request/response via OmniFocus's sandbox directory. Both sides u
 - `add_tasks([...])` -- task creation (v1.2)
 - `edit_tasks([{ id, changes }])` -- task editing with patch semantics (v1.2)
 - `delete_tasks([...])` -- task deletion (v1.4)
-- `add_projects([...])` -- project creation (v1.4)
-- `edit_projects([{ id, changes }])` -- project editing (v1.4)
+- `add_projects([...])` -- project creation (v1.4.3)
+- `edit_projects([{ id, changes }])` -- project editing (v1.4.3)
 
 ### UI
-- `show_perspective(name)` -- switches OmniFocus UI perspective (v1.4)
-- `get_current_perspective()` -- returns active perspective name (v1.4)
+- `show_perspective(name)` -- switches OmniFocus UI perspective (v1.5)
+- `get_current_perspective()` -- returns active perspective name (v1.5)
+- `open_task(id)` -- opens task in OmniFocus UI (v1.5)
 
 ### Not in Scope
 - Tag writes, folder writes, task reordering, undo/dry run, full-text indexing
@@ -115,8 +116,12 @@ File-based JSON request/response via OmniFocus's sandbox directory. Both sides u
 | v1.1 | HUGE Performance Upgrade | 1 | SQLite read path + two-axis status model |
 | v1.2 | Writes & Lookups | 6 | Get-by-ID + task write pipeline |
 | v1.3 | Read Tools | 13 | SQL filtering, entity browsing, counts |
-| v1.4 | Output, UI & Remaining Tools | 18 | Perspectives, field selection, TaskPaper, project writes |
-| v1.5 | Production Hardening | 18 | Retry, crash recovery, fuzzy search |
+| v1.4 | Field Selection & Writes | 14 | Field projection, task deletion, notes append |
+| v1.4.1 | Fuzzy Search | 14 | Typo-tolerant search |
+| v1.4.2 | TaskPaper Output | 14 | ~5x token reduction output format |
+| v1.4.3 | Project Writes | 16 | Project creation, editing, review marking |
+| v1.5 | UI & Perspectives | 19 | Perspective switching, deep link, UI data path |
+| v1.6 | Production Hardening | 19 | Retry, crash recovery, serial execution |
 
 Each milestone has its own detailed spec file.
 
