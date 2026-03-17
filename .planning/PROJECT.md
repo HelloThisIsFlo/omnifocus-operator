@@ -95,11 +95,13 @@ Read path: SQLite (default, ~46ms). Write path: OmniJS bridge with write-through
 - **IPC directory**: `~/Library/Containers/com.omnigroup.OmniFocus4/Data/Documents/omnifocus-operator/` (configurable for dev/test)
 - **SQLite path**: `~/Library/Group Containers/34YW5A3IGP.com.omnigroup.OmniFocus/com.omnigroup.OmniFocus4/OmniFocusDatabase.db`
 - **Field naming**: JSON from OmniFocus is camelCase; Pydantic uses snake_case with camelCase aliases for serialization
+- **Dev commands**: Run tests: `uv run pytest`. Run Python: `uv run python`. Always use `uv run` — never bare `pytest` or `python`.
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
+| Dumb bridge, smart Python | Bridge is a relay, not a brain. ALL validation, resolution, diff computation, and business logic lives in Python. Bridge receives pre-validated payloads and executes without interpretation. OmniJS freezes the UI and has sharp edges — minimize time there | Good -- bridge is ~400 lines of relay; ~14,000 lines of tested Python |
 | Three-layer architecture (MCP -> Service -> Repository) | Clear separation of concerns; service layer is thin in M1 but reserves space for filtering in M2 | Good -- clean boundaries, easy to test each layer independently |
 | File-based IPC via OmniFocus sandbox | Benchmarked as most efficient; works within OmniFocus sandbox constraints | Good -- reliable, debuggable, atomic |
 | Full snapshot in memory, no partial invalidation | Database is small (~1.5MB); sub-millisecond filtering; simplicity over complexity | Good -- no performance issues at 2,400 tasks |
@@ -122,4 +124,4 @@ Read path: SQLite (default, ~46ms). Write path: OmniJS bridge with write-through
 | Write-through guarantee | `@_ensures_write_through` decorator ensures writes block until SQLite confirms; reads never wait | ✓ Good — consistent read-after-write |
 
 ---
-*Last updated: 2026-03-16 after v1.2.1 milestone start*
+*Last updated: 2026-03-17 — added "Dumb bridge, smart Python" decision + dev commands constraint*
