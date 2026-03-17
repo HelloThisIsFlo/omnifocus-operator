@@ -42,6 +42,8 @@ Requirements for Architectural Cleanup milestone. No new tools, no behavioral ch
 - [ ] **INFRA-05**: Tests import SimulatorBridge via direct module path only
 - [ ] **INFRA-06**: `OMNIFOCUS_BRIDGE` environment variable removed — repository factory creates RealBridge directly
 - [ ] **INFRA-07**: Bridge factory (`create_bridge`) removed — env var reading absorbed into repository factory, PYTEST safety guard moved to `RealBridge.__init__`
+- [ ] **INFRA-08**: All test double modules physically located under `tests/`, not `src/` (InMemoryBridge, BridgeCall, InMemoryRepository, ConstantMtimeSource, SimulatorBridge)
+- [ ] **INFRA-09**: No production code (`src/`) imports test doubles — crossing the `src/`→`tests/` boundary is structurally impossible
 
 ## Future Requirements
 
@@ -64,7 +66,7 @@ Requirements for Architectural Cleanup milestone. No new tools, no behavioral ch
 |---------|--------|
 | New MCP tools | v1.2.1 is internal cleanup only — six tools unchanged |
 | Behavioral changes | Refactoring must be invisible to agents using the server |
-| InMemoryBridge physical relocation to tests/ | Import path complexity not worth it for a single file; removing from exports is sufficient |
+| ~~InMemoryBridge physical relocation to tests/~~ | ~~Import path complexity not worth it for a single file~~ — Revisited: now 5 test doubles, Phase 24 handles relocation |
 | Pydantic experimental MISSING sentinel | Interesting but not a blocker; custom _Unset works and is well-tested |
 | Automatic SQLite-to-OmniJS failover | Out of scope since v1.1 — silent fallback hides broken state |
 
@@ -95,12 +97,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-05 | Phase 23 | Pending |
 | INFRA-06 | Phase 23 | Pending |
 | INFRA-07 | Phase 23 | Pending |
+| INFRA-08 | Phase 24 | Pending |
+| INFRA-09 | Phase 24 | Pending |
 
 **Coverage:**
-- v1.2.1 requirements: 21 total
-- Mapped to phases: 21
+- v1.2.1 requirements: 23 total
+- Mapped to phases: 23
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-16*
-*Last updated: 2026-03-17 after Phase 23 requirements added (SimulatorBridge + factory cleanup)*
+*Last updated: 2026-03-17 after Phase 24 requirements added (test double relocation)*

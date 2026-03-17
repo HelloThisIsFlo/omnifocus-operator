@@ -5,7 +5,7 @@
 - ✅ **v1.0 Foundation** — Phases 1-9 (shipped 2026-03-07)
 - ✅ **v1.1 HUGE Performance Upgrade** — Phases 10-13 (shipped 2026-03-07)
 - ✅ **v1.2 Writes & Lookups** — Phases 14-17 (shipped 2026-03-16)
-- 🚧 **v1.2.1 Architectural Cleanup** — Phases 18-23 (in progress)
+- 🚧 **v1.2.1 Architectural Cleanup** — Phases 18-24 (in progress)
 
 ## Phases
 
@@ -48,7 +48,7 @@
 
 </details>
 
-### 🚧 v1.2.1 Architectural Cleanup (Phases 18-23)
+### 🚧 v1.2.1 Architectural Cleanup (Phases 18-24)
 
 - [x] **Phase 18: Write Model Strictness** - Write specs reject unknown fields; sentinel interaction validated (completed 2026-03-16)
 - [x] **Phase 19: InMemoryBridge Export Cleanup** - Test double removed from production exports (completed 2026-03-17)
@@ -56,6 +56,7 @@
 - [ ] **Phase 21: Write Pipeline Unification** - Symmetric add/edit signatures at service-repository boundary
 - [ ] **Phase 22: Service Decomposition** - service.py becomes service/ package; all logic extracted to dedicated modules
 - [ ] **Phase 23: SimulatorBridge and Factory Cleanup** - SimulatorBridge removed from exports; bridge factory eliminated; PYTEST guard moved to RealBridge
+- [ ] **Phase 24: Test Double Relocation** - All test double modules moved from src/ to tests/; production code structurally cannot import them
 
 ## Phase Details
 
@@ -126,8 +127,8 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22 -> 23
-(Phases 18 and 19 are independent and could execute in either order. Phase 23 depends on Phase 19.)
+Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24
+(Phases 18 and 19 are independent and could execute in either order. Phase 23 depends on Phase 19. Phase 24 depends on Phase 23.)
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -158,6 +159,7 @@ Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22 -> 23
 | 21. Write Pipeline Unification | v1.2.1 | 0/TBD | Not started | - |
 | 22. Service Decomposition | v1.2.1 | 0/TBD | Not started | - |
 | 23. SimulatorBridge and Factory Cleanup | v1.2.1 | 0/TBD | Not started | - |
+| 24. Test Double Relocation | v1.2.1 | 0/TBD | Not started | - |
 
 ### Phase 23: SimulatorBridge and Factory Cleanup
 **Goal**: SimulatorBridge removed from production exports and bridge factory eliminated — repository factory creates RealBridge directly, PYTEST safety guard lives in RealBridge.__init__
@@ -170,4 +172,16 @@ Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22 -> 23
   4. `create_bridge()` function and `bridge/factory.py` module removed — repository factory instantiates RealBridge directly
   5. PYTEST safety guard (`PYTEST_CURRENT_TEST` check) lives in `RealBridge.__init__` — blocks instantiation during automated testing regardless of call site
   6. All 534+ existing tests pass after migration
+**Plans**: TBD
+
+### Phase 24: Test Double Relocation
+**Goal**: All test double modules physically moved from `src/` to `tests/` — production code structurally cannot import test doubles
+**Depends on**: Phase 23 (SimulatorBridge export + factory cleanup must be complete so all test doubles are already decoupled from production imports)
+**Requirements**: INFRA-08, INFRA-09
+**Success Criteria** (what must be TRUE):
+  1. No test double modules exist under `src/omnifocus_operator/` (InMemoryBridge, BridgeCall, InMemoryRepository, ConstantMtimeSource, SimulatorBridge)
+  2. All test double modules live under `tests/` (e.g., `tests/doubles/` or similar)
+  3. No file in `src/` imports from the test doubles location
+  4. All test files import test doubles from their new `tests/` location
+  5. All 534+ existing tests pass after relocation
 **Plans**: TBD
