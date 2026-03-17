@@ -52,9 +52,9 @@ class FileMtimeSource:
 class ConstantMtimeSource:
     """MtimeSource that always returns 0 -- no cache invalidation.
 
-    Designed for use with ``InMemoryBridge`` where the underlying data
-    never changes on disk.  Because the mtime is constant, the repository
-    will load once and serve from cache thereafter.
+    Used with test doubles (``InMemoryBridge``, ``SimulatorBridge``) where
+    cache staleness detection is not needed.  Because the mtime is constant,
+    the repository will load once and serve from cache thereafter.
     """
 
     async def get_mtime_ns(self) -> int:
