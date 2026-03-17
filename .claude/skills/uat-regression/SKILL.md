@@ -29,7 +29,7 @@ Run UAT regression tests for OmniFocus Operator MCP tools against live OmniFocus
    - **Phase 2 — Autonomous testing**: Run all tests in the suite, collect results (PASS/FAIL/SKIP). After a test that modifies state, clean up if the task is reused later (e.g., rename back, remove tags).
    - **Phase 3 — Report**: Generate the report using the template below.
 4. **Cleanup consolidation**: After the report, consolidate all test artifacts into a single deletable task:
-   1. Create a new inbox task: `⚠️ DELETE THIS AFTER UAT`
+   1. Check if `⚠️ DELETE THIS AFTER UAT` already exists (via `get_all` or by tracking its ID from earlier in the session). Reuse it if found; only create a new one if it doesn't exist.
    2. Move all top-level test parents (e.g., `UAT-v1.2`, `UAT-v1.2-Alt`) under it — children follow automatically
    3. Move any stray leaf tasks created during testing (e.g., B1-InboxTask, B4-TagByName — tasks created in the inbox without a test parent) under it too
    4. Tell the user: "All test tasks are now under '⚠️ DELETE THIS AFTER UAT' in your inbox. Delete that one task to clean up everything."
@@ -51,9 +51,10 @@ The value of UAT comes from this separation. If you understand the implementatio
 
 ## Shared Conventions
 
-These apply to ALL test suites:
+These apply to ALL test suites AND any ad-hoc verification tasks:
 
 - **No parallel error calls.** Claude Code cancels all sibling calls when one errors. Never mix calls that might fail (nonexistent IDs, validation errors) with calls that must succeed. Run error-expecting calls individually.
+- **Cleanup = consolidate under umbrella task. Always.** Every task you create in OmniFocus — whether during a full suite run, a quick verification, or a one-off retest — is a test artifact that the user must manually delete. Dropping or completing tasks is NOT cleanup; those tasks still exist in the database. The ONLY acceptable cleanup is: create `⚠️ DELETE THIS AFTER UAT` in the inbox (or reuse one if it already exists), move all test artifacts under it, and tell the user to delete that one task. This applies even for a single temp task.
 
 Each suite lists its own domain-specific conventions in its `## Conventions` section.
 

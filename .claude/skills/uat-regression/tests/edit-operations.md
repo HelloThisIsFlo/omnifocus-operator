@@ -160,9 +160,9 @@ Run each INDIVIDUALLY (they will error):
 2. `note: null, flagged: true` on T1
 3. PASS if: success, both applied, no error
 
-#### Test 6b: Stacked warnings (no-op + completed)
+#### Test 6b: No-op on completed task — status warning suppressed
 1. `flagged: true` on T4 (already completed, already flagged from Test 4a)
-2. PASS if: TWO warnings — one about "completed", one about "no changes"
+2. PASS if: only "no changes detected" warning — the status warning ("your changes were applied") must NOT appear since nothing changed
 
 #### Test 6c: Multi-task batch (known limitation)
 1. Send 3 items in one `edit_tasks` call
@@ -193,5 +193,5 @@ Run each INDIVIDUALLY (they will error):
 | 5a | Error: nonexistent task | Editing a fake task ID returns "not found" | |
 | 5b | Error: empty name | Setting name to "" returns a validation error | |
 | 6a | Combo: note null + field | Clearing note and changing flagged in one call; both applied | |
-| 6b | Combo: stacked warnings | Editing completed task with no changes; TWO warnings | |
+| 6b | No-op on completed | No-op suppresses status warning, shows only "no changes" | |
 | 6c | Combo: batch limit | Sending 3 items returns 1-item limit error | |
