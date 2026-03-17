@@ -70,6 +70,10 @@ Carried from v1.0:
 3. Make UAT folder discoverable for verification agents
 4. Investigate `replace: []` bug in production (may not be staleness-related)
 
+### Roadmap Evolution
+
+- Phase 23 added: SimulatorBridge and factory cleanup (deferred from Phase 19 discussion)
+
 ### Blockers/Concerns
 
 None currently.

@@ -154,3 +154,13 @@ Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22
 | 20. Model Taxonomy | v1.2.1 | 0/TBD | Not started | - |
 | 21. Write Pipeline Unification | v1.2.1 | 0/TBD | Not started | - |
 | 22. Service Decomposition | v1.2.1 | 0/TBD | Not started | - |
+
+### Phase 23: SimulatorBridge and factory cleanup
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 22
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 23 to break down)

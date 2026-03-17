@@ -106,9 +106,9 @@ Scope: InMemoryBridge (+ BridgeCall, ConstantMtimeSource) from bridge package, I
 <deferred>
 ## Deferred Ideas
 
-- **SimulatorBridge export cleanup** — same pattern, but cascades into factory simplification. Deferred to Phase 22 (Service Decomposition) to avoid half-and-half cleanup.
-- **OMNIFOCUS_BRIDGE env var removal** — once SimulatorBridge is also removed from factory, the env var becomes pointless. Bundle with SimulatorBridge cleanup in Phase 22.
-- **Factory simplification/removal** — with only "real" remaining, the factory becomes trivial. Evaluate during Phase 22.
+- **SimulatorBridge export cleanup** — same pattern, but cascades into factory simplification. Deferred to Phase 23 (SimulatorBridge and factory cleanup) to avoid half-and-half cleanup.
+- **OMNIFOCUS_BRIDGE env var removal** — once SimulatorBridge is also removed from factory, the env var becomes pointless. Bundle with SimulatorBridge cleanup in Phase 23.
+- **Factory simplification/removal** — with only "real" remaining, the factory becomes trivial. Evaluate during Phase 23.
 
 </deferred>
 
