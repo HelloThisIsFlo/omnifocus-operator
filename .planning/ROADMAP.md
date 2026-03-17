@@ -82,7 +82,9 @@ Plans:
   2. All tests that use InMemoryBridge import it via the direct module path (`bridge.in_memory`)
   3. Bridge/repository factory functions have no "inmemory" option -- test code instantiates the bridge directly
   4. All 534+ existing tests pass after import path migration
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 19-01-PLAN.md -- Remove test doubles from exports, migrate test imports, update factory
 
 ### Phase 20: Model Taxonomy
 **Goal**: Write-side models follow a consistent three-layer naming convention (Request / Domain / Payload) with typed bridge payloads replacing dict[str, Any]
@@ -151,7 +153,7 @@ Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22 -> 23
 | 16.2. Bridge Tag Simplification | v1.2 | 3/3 | Complete | 2026-03-10 |
 | 17. Task Lifecycle | v1.2 | 3/3 | Complete | 2026-03-12 |
 | 18. Write Model Strictness | 2/2 | Complete    | 2026-03-16 | - |
-| 19. InMemoryBridge Export Cleanup | v1.2.1 | 0/TBD | Not started | - |
+| 19. InMemoryBridge Export Cleanup | v1.2.1 | 0/1 | Not started | - |
 | 20. Model Taxonomy | v1.2.1 | 0/TBD | Not started | - |
 | 21. Write Pipeline Unification | v1.2.1 | 0/TBD | Not started | - |
 | 22. Service Decomposition | v1.2.1 | 0/TBD | Not started | - |
