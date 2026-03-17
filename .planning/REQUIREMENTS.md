@@ -38,6 +38,10 @@ Requirements for Architectural Cleanup milestone. No new tools, no behavioral ch
 - [ ] **INFRA-01**: InMemoryBridge not importable from `omnifocus_operator.bridge`
 - [ ] **INFRA-02**: Tests import InMemoryBridge via direct module path only
 - [ ] **INFRA-03**: `"inmemory"` option removed from bridge/repository factory — no env var routing to test doubles
+- [ ] **INFRA-04**: SimulatorBridge not importable from `omnifocus_operator.bridge`
+- [ ] **INFRA-05**: Tests import SimulatorBridge via direct module path only
+- [ ] **INFRA-06**: `OMNIFOCUS_BRIDGE` environment variable removed — repository factory creates RealBridge directly
+- [ ] **INFRA-07**: Bridge factory (`create_bridge`) removed — env var reading absorbed into repository factory, PYTEST safety guard moved to `RealBridge.__init__`
 
 ## Future Requirements
 
@@ -87,12 +91,16 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SVCR-03 | Phase 22 | Pending |
 | SVCR-04 | Phase 22 | Pending |
 | SVCR-05 | Phase 22 | Pending |
+| INFRA-04 | Phase 23 | Pending |
+| INFRA-05 | Phase 23 | Pending |
+| INFRA-06 | Phase 23 | Pending |
+| INFRA-07 | Phase 23 | Pending |
 
 **Coverage:**
-- v1.2.1 requirements: 17 total
-- Mapped to phases: 17
+- v1.2.1 requirements: 21 total
+- Mapped to phases: 21
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-16*
-*Last updated: 2026-03-16 after roadmap revision (merged Phase 22+23 into Phase 22)*
+*Last updated: 2026-03-17 after Phase 23 requirements added (SimulatorBridge + factory cleanup)*

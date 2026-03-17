@@ -5,7 +5,7 @@
 - ✅ **v1.0 Foundation** — Phases 1-9 (shipped 2026-03-07)
 - ✅ **v1.1 HUGE Performance Upgrade** — Phases 10-13 (shipped 2026-03-07)
 - ✅ **v1.2 Writes & Lookups** — Phases 14-17 (shipped 2026-03-16)
-- 🚧 **v1.2.1 Architectural Cleanup** — Phases 18-22 (in progress)
+- 🚧 **v1.2.1 Architectural Cleanup** — Phases 18-23 (in progress)
 
 ## Phases
 
@@ -48,13 +48,14 @@
 
 </details>
 
-### 🚧 v1.2.1 Architectural Cleanup (Phases 18-22)
+### 🚧 v1.2.1 Architectural Cleanup (Phases 18-23)
 
 - [x] **Phase 18: Write Model Strictness** - Write specs reject unknown fields; sentinel interaction validated (completed 2026-03-16)
 - [ ] **Phase 19: InMemoryBridge Export Cleanup** - Test double removed from production exports
 - [ ] **Phase 20: Model Taxonomy** - Three-layer naming convention with typed bridge payloads
 - [ ] **Phase 21: Write Pipeline Unification** - Symmetric add/edit signatures at service-repository boundary
 - [ ] **Phase 22: Service Decomposition** - service.py becomes service/ package; all logic extracted to dedicated modules
+- [ ] **Phase 23: SimulatorBridge and Factory Cleanup** - SimulatorBridge removed from exports; bridge factory eliminated; PYTEST guard moved to RealBridge
 
 ## Phase Details
 
@@ -123,8 +124,8 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22
-(Phases 18 and 19 are independent and could execute in either order.)
+Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22 -> 23
+(Phases 18 and 19 are independent and could execute in either order. Phase 23 depends on Phase 19.)
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -154,13 +155,17 @@ Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22
 | 20. Model Taxonomy | v1.2.1 | 0/TBD | Not started | - |
 | 21. Write Pipeline Unification | v1.2.1 | 0/TBD | Not started | - |
 | 22. Service Decomposition | v1.2.1 | 0/TBD | Not started | - |
+| 23. SimulatorBridge and Factory Cleanup | v1.2.1 | 0/TBD | Not started | - |
 
-### Phase 23: SimulatorBridge and factory cleanup
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 22
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd:plan-phase 23 to break down)
+### Phase 23: SimulatorBridge and Factory Cleanup
+**Goal**: SimulatorBridge removed from production exports and bridge factory eliminated — repository factory creates RealBridge directly, PYTEST safety guard lives in RealBridge.__init__
+**Depends on**: Phase 19 (InMemoryBridge cleanup removes "inmemory", leaving "simulator" + "real" in factory)
+**Requirements**: INFRA-04, INFRA-05, INFRA-06, INFRA-07
+**Success Criteria** (what must be TRUE):
+  1. `from omnifocus_operator.bridge import SimulatorBridge` raises ImportError
+  2. All tests that use SimulatorBridge import it via the direct module path (`bridge.simulator`)
+  3. `OMNIFOCUS_BRIDGE` env var is not read anywhere in production code
+  4. `create_bridge()` function and `bridge/factory.py` module removed — repository factory instantiates RealBridge directly
+  5. PYTEST safety guard (`PYTEST_CURRENT_TEST` check) lives in `RealBridge.__init__` — blocks instantiation during automated testing regardless of call site
+  6. All 534+ existing tests pass after migration
+**Plans**: TBD
