@@ -60,6 +60,12 @@ LIFECYCLE_REPEATING_DROP = (
     "destructive operations)."
 )
 
+LIFECYCLE_INVALID_VALUE = "Invalid lifecycle action '{value}' -- must be 'complete' or 'drop'"
+
+# --- Validation ---
+
+UNKNOWN_FIELD = "Unknown field '{field}'"
+
 # --- Tags ---
 
 TAGS_ALREADY_MATCH = "Tags already match the requested set -- no tag changes applied"

@@ -215,8 +215,10 @@ def _register_tools(mcp: FastMCP) -> None:
                 if "_Unset" in e["msg"]:
                     continue
                 if e["type"] == "extra_forbidden":
+                    from omnifocus_operator.warnings import UNKNOWN_FIELD
+
                     field = ".".join(str(loc) for loc in e["loc"])
-                    messages.append(f"Unknown field '{field}'")
+                    messages.append(UNKNOWN_FIELD.format(field=field))
                 else:
                     messages.append(e["msg"])
             logger.debug("server.add_tasks: validation error: %s", "; ".join(messages))
@@ -281,8 +283,14 @@ def _register_tools(mcp: FastMCP) -> None:
                 if "_Unset" in e["msg"]:
                     continue
                 if e["type"] == "extra_forbidden":
+                    from omnifocus_operator.warnings import UNKNOWN_FIELD
+
                     field = ".".join(str(loc) for loc in e["loc"])
-                    messages.append(f"Unknown field '{field}'")
+                    messages.append(UNKNOWN_FIELD.format(field=field))
+                elif e["type"] == "literal_error" and "lifecycle" in e.get("loc", ()):
+                    from omnifocus_operator.warnings import LIFECYCLE_INVALID_VALUE
+
+                    messages.append(LIFECYCLE_INVALID_VALUE.format(value=e.get("input", "unknown")))
                 else:
                     messages.append(e["msg"])
             logger.debug("server.edit_tasks: validation error: %s", "; ".join(messages))
