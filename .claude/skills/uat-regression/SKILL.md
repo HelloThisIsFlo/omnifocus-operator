@@ -28,7 +28,12 @@ Run UAT regression tests for OmniFocus Operator MCP tools against live OmniFocus
    - **Phase 1 — Interactive setup**: Create test tasks as described in the suite's Setup section. Ask the user for any manual actions. Wait for confirmation.
    - **Phase 2 — Autonomous testing**: Run all tests in the suite, collect results (PASS/FAIL/SKIP). After a test that modifies state, clean up if the task is reused later (e.g., rename back, remove tags).
    - **Phase 3 — Report**: Generate the report using the template below.
-4. **Cleanup reminder** (if applicable): If the suite created test tasks, remind the user to delete the test parent and its children in OmniFocus when ready (`delete_tasks` is not implemented yet).
+4. **Cleanup consolidation**: After the report, consolidate all test artifacts into a single deletable task:
+   1. Create a new inbox task: `⚠️ DELETE THIS AFTER UAT`
+   2. Move all top-level test parents (e.g., `UAT-v1.2`, `UAT-v1.2-Alt`) under it — children follow automatically
+   3. Move any stray leaf tasks created during testing (e.g., B1-InboxTask, B4-TagByName — tasks created in the inbox without a test parent) under it too
+   4. Tell the user: "All test tasks are now under '⚠️ DELETE THIS AFTER UAT' in your inbox. Delete that one task to clean up everything."
+   5. **If moves fail** (e.g., move operations are broken): skip consolidation and instead list all task names/IDs the user needs to manually delete.
 
 ## Role: Black-Box Tester
 
@@ -67,7 +72,7 @@ Include after the table:
 - **Failures**: What happened vs expected, for each failure
 - **Skipped Tests**: Why they were skipped
 - **Observations**: Warning tone, error message quality, anything noteworthy. If any warnings looked problematic (unclear, misleading, missing info), flag them here — the full inventory lives in the User Report below.
-- **Cleanup**: "Please manually delete [parent task name] and all its children in OmniFocus when ready."
+- **Cleanup**: "All test tasks consolidated under '⚠️ DELETE THIS AFTER UAT' in your inbox — delete that one task to clean up."
 
 ### Separator
 
