@@ -22,7 +22,7 @@ The agent has no way to see child ordering — `get_task` shows the parent but n
 
 ## Extra Context
 
-- TaskPaper output (~~v1.4~~ → v1.4.2) naturally shows hierarchy and order via indentation — complementary to `order` field
+- TaskPaper output (v1.4.2) naturally shows hierarchy and order via indentation — complementary to `order` field
 - `order` is for programmatic use, TaskPaper for full-hierarchy comprehension
 
 ## Sequencing

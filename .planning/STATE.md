@@ -69,8 +69,8 @@ Recent decisions affecting current work:
 ### Pending Todos
 
 Carried from v1.0:
-1. Add retry logic for OmniFocus bridge timeouts (~~v1.5~~ → v1.6)
-2. Investigate macOS App Nap impact on OmniFocus responsiveness (~~v1.5~~ → v1.6)
+1. Add retry logic for OmniFocus bridge timeouts (v1.6)
+2. Investigate macOS App Nap impact on OmniFocus responsiveness (v1.6)
 3. Make UAT folder discoverable for verification agents
 4. Investigate `replace: []` bug in production (may not be staleness-related)
 
