@@ -17,7 +17,8 @@ from pydantic import ValidationError
 from omnifocus_operator.bridge.errors import BridgeError
 from omnifocus_operator.bridge.in_memory import InMemoryBridge
 from omnifocus_operator.bridge.mtime import FileMtimeSource
-from omnifocus_operator.repository import BridgeRepository, InMemoryRepository, Repository
+from omnifocus_operator.repository import BridgeRepository, Repository
+from omnifocus_operator.repository.in_memory import InMemoryRepository
 
 from .conftest import make_snapshot_dict
 

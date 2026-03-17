@@ -528,7 +528,7 @@ class TestGetByIdTools:
 
     async def _make_server_with_data(self) -> FastMCP:
         """Build a test server with known snapshot data."""
-        from omnifocus_operator.repository import InMemoryRepository
+        from omnifocus_operator.repository.in_memory import InMemoryRepository
         from omnifocus_operator.server import _register_tools
         from omnifocus_operator.service import OperatorService
 
@@ -663,7 +663,7 @@ class TestAddTasks:
         extra_tags: list[dict[str, Any]] | None = None,
     ) -> FastMCP:
         """Build a test server with InMemoryRepository and known data."""
-        from omnifocus_operator.repository import InMemoryRepository
+        from omnifocus_operator.repository.in_memory import InMemoryRepository
         from omnifocus_operator.server import _register_tools
         from omnifocus_operator.service import OperatorService
 
@@ -918,7 +918,7 @@ class TestEditTasks:
         extra_tags: list[dict[str, Any]] | None = None,
     ) -> FastMCP:
         """Build a test server with InMemoryRepository and known data."""
-        from omnifocus_operator.repository import InMemoryRepository
+        from omnifocus_operator.repository.in_memory import InMemoryRepository
         from omnifocus_operator.server import _register_tools
         from omnifocus_operator.service import OperatorService
 
@@ -1290,7 +1290,7 @@ class TestEditTasksLifecycle:
         extra_tasks: list[dict[str, Any]] | None = None,
     ) -> FastMCP:
         """Build a test server with InMemoryRepository and known data."""
-        from omnifocus_operator.repository import InMemoryRepository
+        from omnifocus_operator.repository.in_memory import InMemoryRepository
         from omnifocus_operator.server import _register_tools
         from omnifocus_operator.service import OperatorService
 

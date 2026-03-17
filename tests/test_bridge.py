@@ -6,13 +6,12 @@ import pytest
 
 from omnifocus_operator.bridge import (
     Bridge,
-    BridgeCall,
     BridgeConnectionError,
     BridgeError,
     BridgeProtocolError,
     BridgeTimeoutError,
-    InMemoryBridge,
 )
+from omnifocus_operator.bridge.in_memory import BridgeCall, InMemoryBridge
 
 # ---------------------------------------------------------------------------
 # Error hierarchy

@@ -16,9 +16,10 @@ if TYPE_CHECKING:
 
 from datetime import UTC
 
-from omnifocus_operator.bridge import BridgeError, InMemoryBridge, create_bridge
+from omnifocus_operator.bridge import BridgeError, create_bridge
+from omnifocus_operator.bridge.in_memory import InMemoryBridge
 from omnifocus_operator.bridge.mtime import ConstantMtimeSource, MtimeSource
-from omnifocus_operator.repository import InMemoryRepository
+from omnifocus_operator.repository.in_memory import InMemoryRepository
 from omnifocus_operator.service import OperatorService
 
 from .conftest import make_project_dict, make_snapshot, make_task_dict
