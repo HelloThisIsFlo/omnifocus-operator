@@ -35,9 +35,9 @@ Requirements for Architectural Cleanup milestone. No new tools, no behavioral ch
 
 ### Test Infrastructure
 
-- [ ] **INFRA-01**: InMemoryBridge not importable from `omnifocus_operator.bridge`
-- [ ] **INFRA-02**: Tests import InMemoryBridge via direct module path only
-- [ ] **INFRA-03**: `"inmemory"` option removed from bridge/repository factory — no env var routing to test doubles
+- [x] **INFRA-01**: InMemoryBridge not importable from `omnifocus_operator.bridge`
+- [x] **INFRA-02**: Tests import InMemoryBridge via direct module path only
+- [x] **INFRA-03**: `"inmemory"` option removed from bridge/repository factory — no env var routing to test doubles
 - [ ] **INFRA-04**: SimulatorBridge not importable from `omnifocus_operator.bridge`
 - [ ] **INFRA-05**: Tests import SimulatorBridge via direct module path only
 - [ ] **INFRA-06**: `OMNIFOCUS_BRIDGE` environment variable removed — repository factory creates RealBridge directly
@@ -77,9 +77,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | STRCT-01 | Phase 18 | Complete |
 | STRCT-02 | Phase 18 | Complete |
 | STRCT-03 | Phase 18 | Complete |
-| INFRA-01 | Phase 19 | Pending |
-| INFRA-02 | Phase 19 | Pending |
-| INFRA-03 | Phase 19 | Pending |
+| INFRA-01 | Phase 19 | Complete |
+| INFRA-02 | Phase 19 | Complete |
+| INFRA-03 | Phase 19 | Complete |
 | MODL-01 | Phase 20 | Pending |
 | MODL-02 | Phase 20 | Pending |
 | MODL-03 | Phase 20 | Pending |

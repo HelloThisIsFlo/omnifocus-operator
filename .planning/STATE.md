@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 19 context gathered
-last_updated: "2026-03-17T11:19:46.216Z"
-last_activity: 2026-03-16 — Completed 18-02 (warning consolidation)
+stopped_at: Completed 19-01-PLAN.md
+last_updated: "2026-03-17T12:33:30.278Z"
+last_activity: 2026-03-17 — Completed 19-01 (InMemoryBridge export cleanup)
 progress:
-  total_phases: 5
-  completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
-  percent: 50
+  total_phases: 6
+  completed_phases: 2
+  total_plans: 3
+  completed_plans: 3
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-16)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** v1.2.1 Architectural Cleanup — Phase 18 (Write Model Strictness)
+**Current focus:** v1.2.1 Architectural Cleanup — Phase 19 (InMemoryBridge Export Cleanup)
 
 ## Current Position
 
-Phase: 18 — first of 5 (Write Model Strictness)
-Plan: 2 of 2 (complete)
+Phase: 19 — second of 5+ (InMemoryBridge Export Cleanup)
+Plan: 1 of 1 (complete)
 Status: Executing
-Last activity: 2026-03-16 — Completed 18-02 (warning consolidation)
+Last activity: 2026-03-17 — Completed 19-01 (InMemoryBridge export cleanup)
 
-Progress: [█████░░░░░] 50%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -48,6 +48,7 @@ Progress: [█████░░░░░] 50%
 ## Accumulated Context
 | Phase 18 P02 | 5min | 2 tasks | 3 files |
 | Phase 18 P01 | 6min | 2 tasks | 6 files |
+| Phase 19 P01 | 7min | 3 tasks | 10 files |
 
 ### Decisions
 
@@ -61,6 +62,8 @@ Recent decisions affecting current work:
 - [Phase 18]: AST-based integrity test ensures no inline warning strings regress into service.py
 - [Phase 18]: WriteModel base with extra=forbid for strict write-side validation
 - [Phase 18]: Result models stay on OmniFocusBaseModel (permissive) -- server output, not agent input
+- [Phase 19]: Tool-calling server tests use monkeypatched InMemoryRepository instead of factory path
+- [Phase 19]: Test doubles imported via direct module paths, not package re-exports
 
 ### Pending Todos
 
@@ -80,6 +83,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-17T11:19:46.213Z
-Stopped at: Phase 19 context gathered
-Resume file: .planning/phases/19-inmemorybridge-export-cleanup/19-CONTEXT.md
+Last session: 2026-03-17T12:33:25.072Z
+Stopped at: Completed 19-01-PLAN.md
+Resume file: None
