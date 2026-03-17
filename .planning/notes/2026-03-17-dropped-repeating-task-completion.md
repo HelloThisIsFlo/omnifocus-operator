@@ -1,6 +1,6 @@
 ---
 date: "2026-03-17 16:45"
-promoted: false
+promoted: true
 ---
 
 **Question**: When you complete a task that's already dropped AND has a repetition rule, does OmniFocus actually create the next occurrence?
