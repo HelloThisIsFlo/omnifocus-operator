@@ -1393,7 +1393,7 @@ class TestEditTasksLifecycle:
     # -- Lifecycle: invalid value --
 
     async def test_edit_tasks_lifecycle_invalid_clean_error(self) -> None:
-        """lifecycle='invalid' returns clean error without Pydantic internals."""
+        """lifecycle='invalid' returns clean error echoing the value, without Pydantic internals."""
         server = await self._make_server_with_data()
 
         async def _check(session: ClientSession) -> None:
@@ -1407,6 +1407,9 @@ class TestEditTasksLifecycle:
             assert "type=" not in text
             assert "pydantic" not in text.lower()
             assert "input_value" not in text
+            # Must echo the invalid value and list allowed values
+            assert "invalid" in text
+            assert "must be 'complete' or 'drop'" in text
 
         await run_with_client(server, _check)
 
