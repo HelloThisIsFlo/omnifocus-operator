@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 19-01-PLAN.md
-last_updated: "2026-03-17T12:36:26.173Z"
-last_activity: 2026-03-17 - Completed quick task 260317-j2x: Fix F-6: Echo invalid lifecycle value in error message
+stopped_at: Completed quick-260317-lgu
+last_updated: "2026-03-17T16:32:22.604Z"
+last_activity: 2026-03-17 — Completed quick task 260317-lgu (Fix D-6b: suppress status warning on no-op edit)
 progress:
-  total_phases: 6
+  total_phases: 7
   completed_phases: 2
   total_plans: 3
   completed_plans: 3
@@ -64,6 +64,7 @@ Recent decisions affecting current work:
 - [Phase 18]: Result models stay on OmniFocusBaseModel (permissive) -- server output, not agent input
 - [Phase 19]: Tool-calling server tests use monkeypatched InMemoryRepository instead of factory path
 - [Phase 19]: Test doubles imported via direct module paths, not package re-exports
+- [Phase quick-260317-lgu]: Filter status warnings by content match rather than clearing all, preserving action-specific no-op warnings
 
 ### Pending Todos
 
@@ -86,9 +87,10 @@ None currently.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260317-j2x | Fix F-6: Echo invalid lifecycle value in error message | 2026-03-17 | 89ba983 | [260317-j2x-fix-f-6-echo-invalid-lifecycle-value-in-](./quick/260317-j2x-fix-f-6-echo-invalid-lifecycle-value-in-/) |
+| 260317-lgu | Fix D-6b: Suppress status warning on no-op edit of completed/dropped tasks | 2026-03-17 | 0f852a3 | [260317-lgu-fix-d-6b-suppress-status-warning-when-ed](./quick/260317-lgu-fix-d-6b-suppress-status-warning-when-ed/) |
 
 ## Session Continuity
 
-Last session: 2026-03-17T12:33:25.072Z
-Stopped at: Completed 19-01-PLAN.md
+Last session: 2026-03-17T16:32:20.827Z
+Stopped at: Completed quick-260317-lgu
 Resume file: None
