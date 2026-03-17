@@ -84,9 +84,10 @@ Run each INDIVIDUALLY (they will error):
    - PASS if: error about circular reference
 
 #### Test 1e: Move + edit combo
-1. `name: "T1-Moved", actions: { move: {"ending": "<UAT-id>"} }` on T1
-2. PASS if: success, name changed AND movement applied
-3. Restore: `name: "T1-MoveTarget"` on T1
+1. `name: "T1-Moved", actions: { move: {"ending": "<UAT-MoveOps-Alt-id>"} }` on T1
+2. `get_task` T1 to verify name changed AND parent is now UAT-MoveOps-Alt
+3. PASS if: both name and parent changed
+4. Restore: `name: "T1-MoveTarget", actions: { move: {"ending": "<UAT-id>"} }` on T1
 
 #### Test 1f: Tags survive movement
 1. Discover tag IDs from `get_all` if not already available — pick one unambiguous tag
@@ -116,8 +117,10 @@ Run INDIVIDUALLY (will error):
 ### 4. Combo: Edit + Move
 
 #### Test 4: Edit + move in same call
-1. `flagged: true, actions: { move: {"ending": "<UAT-id>"} }` on T8
-2. PASS if: success, both applied
+1. `flagged: true, actions: { move: {"ending": "<UAT-MoveOps-Alt-id>"} }` on T8
+2. `get_task` T8 to verify flagged is true AND parent is now UAT-MoveOps-Alt
+3. PASS if: both flagged and parent changed
+4. Restore: `flagged: false, actions: { move: {"ending": "<UAT-id>"} }` on T8
 
 ### 5. Completed/Dropped Task Movement
 
