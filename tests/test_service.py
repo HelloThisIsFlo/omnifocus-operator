@@ -917,8 +917,8 @@ class TestEditTask:
         assert result.warnings is not None
         assert any("dropped" in w and "confirm with the user" in w for w in result.warnings)
 
-    async def test_stacked_warnings_completed_noop(self) -> None:
-        """Editing a completed task with same values produces BOTH completed + no-op warnings."""
+    async def test_noop_priority_completed(self) -> None:
+        """No-op edit on completed task returns only no-op warning, not status warning."""
         from omnifocus_operator.models.write import TaskEditSpec
 
         snapshot = make_snapshot(
@@ -927,15 +927,15 @@ class TestEditTask:
         repo = InMemoryRepository(snapshot=snapshot)
         service = OperatorService(repository=repo)
 
-        # Set name to same value -- should be no-op AND completed
+        # Set name to same value -- no-op should suppress status warning
         result = await service.edit_task(TaskEditSpec(id="task-001", name="Done Task"))
         assert result.warnings is not None
-        assert any("completed" in w for w in result.warnings)
-        assert not any("No changes detected" in w for w in result.warnings)
+        assert any("No changes detected" in w for w in result.warnings)
+        assert not any("completed" in w for w in result.warnings)
         assert len(result.warnings) == 1
 
-    async def test_stacked_warnings_dropped_noop(self) -> None:
-        """Editing a dropped task with same values produces ONLY the status warning."""
+    async def test_noop_priority_dropped(self) -> None:
+        """No-op edit on dropped task returns only no-op warning, not status warning."""
         from omnifocus_operator.models.write import TaskEditSpec
 
         snapshot = make_snapshot(
@@ -946,8 +946,8 @@ class TestEditTask:
 
         result = await service.edit_task(TaskEditSpec(id="task-001", name="Dropped Task"))
         assert result.warnings is not None
-        assert any("dropped" in w for w in result.warnings)
-        assert not any("No changes detected" in w for w in result.warnings)
+        assert any("No changes detected" in w for w in result.warnings)
+        assert not any("dropped" in w for w in result.warnings)
         assert len(result.warnings) == 1
 
     async def test_warning_addtags_duplicate(self) -> None:
