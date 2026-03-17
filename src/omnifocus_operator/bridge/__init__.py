@@ -7,9 +7,7 @@ from omnifocus_operator.bridge.errors import (
     BridgeTimeoutError,
 )
 from omnifocus_operator.bridge.factory import create_bridge
-from omnifocus_operator.bridge.in_memory import BridgeCall, InMemoryBridge
 from omnifocus_operator.bridge.mtime import (
-    ConstantMtimeSource,
     FileMtimeSource,
     MtimeSource,
 )
@@ -26,14 +24,11 @@ __all__ = [
     "DEFAULT_OFOCUS_PATH",
     "OMNIFOCUS_CONTAINER",
     "Bridge",
-    "BridgeCall",
     "BridgeConnectionError",
     "BridgeError",
     "BridgeProtocolError",
     "BridgeTimeoutError",
-    "ConstantMtimeSource",
     "FileMtimeSource",
-    "InMemoryBridge",
     "MtimeSource",
     "RealBridge",
     "SimulatorBridge",

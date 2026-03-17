@@ -65,7 +65,7 @@ class OperatorService:
     ----------
     repository:
         Any ``Repository`` implementation (e.g. ``BridgeRepository``,
-        ``InMemoryRepository``) that provides ``get_all()``.
+        ``HybridRepository``) that provides ``get_all()``.
     """
 
     def __init__(self, repository: Repository) -> None:

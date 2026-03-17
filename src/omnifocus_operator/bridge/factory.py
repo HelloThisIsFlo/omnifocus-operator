@@ -10,8 +10,6 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from omnifocus_operator.bridge.in_memory import InMemoryBridge
-
 if TYPE_CHECKING:
     from omnifocus_operator.bridge.protocol import Bridge
 
@@ -24,7 +22,7 @@ def create_bridge(bridge_type: str) -> Bridge:
     Parameters
     ----------
     bridge_type:
-        One of ``"inmemory"``, ``"simulator"``, or ``"real"``.
+        One of ``"simulator"`` or ``"real"``.
 
     Returns
     -------
@@ -37,103 +35,6 @@ def create_bridge(bridge_type: str) -> Bridge:
         For unknown bridge type strings.
     """
     match bridge_type:
-        case "inmemory":
-            return InMemoryBridge(
-                data={
-                    "tasks": [
-                        {
-                            "id": "task-001",
-                            "name": "Sample Task",
-                            "url": "omnifocus:///task/task-001",
-                            "note": "",
-                            "added": "2024-01-15T10:30:00.000Z",
-                            "modified": "2024-01-15T10:30:00.000Z",
-                            "urgency": "none",
-                            "availability": "available",
-                            "flagged": False,
-                            "effectiveFlagged": False,
-                            "dueDate": None,
-                            "deferDate": None,
-                            "effectiveDueDate": None,
-                            "effectiveDeferDate": None,
-                            "completionDate": None,
-                            "effectiveCompletionDate": None,
-                            "plannedDate": None,
-                            "effectivePlannedDate": None,
-                            "dropDate": None,
-                            "effectiveDropDate": None,
-                            "estimatedMinutes": None,
-                            "hasChildren": False,
-                            "inInbox": False,
-                            "repetitionRule": None,
-                            "project": None,
-                            "parent": None,
-                            "tags": [],
-                        }
-                    ],
-                    "projects": [
-                        {
-                            "id": "proj-001",
-                            "name": "Sample Project",
-                            "url": "omnifocus:///project/proj-001",
-                            "note": "",
-                            "added": "2024-01-15T10:30:00.000Z",
-                            "modified": "2024-01-15T10:30:00.000Z",
-                            "urgency": "none",
-                            "availability": "available",
-                            "flagged": False,
-                            "effectiveFlagged": False,
-                            "dueDate": None,
-                            "deferDate": None,
-                            "effectiveDueDate": None,
-                            "effectiveDeferDate": None,
-                            "completionDate": None,
-                            "plannedDate": None,
-                            "effectivePlannedDate": None,
-                            "dropDate": None,
-                            "effectiveDropDate": None,
-                            "estimatedMinutes": None,
-                            "hasChildren": True,
-                            "repetitionRule": None,
-                            "lastReviewDate": "2024-01-10T10:00:00.000Z",
-                            "nextReviewDate": "2024-01-17T10:00:00.000Z",
-                            "reviewInterval": {"steps": 7, "unit": "days"},
-                            "nextTask": None,
-                            "folder": None,
-                            "tags": [],
-                        }
-                    ],
-                    "tags": [
-                        {
-                            "id": "tag-001",
-                            "name": "work",
-                            "url": "omnifocus:///tag/tag-001",
-                            "added": "2024-01-15T10:30:00.000Z",
-                            "modified": "2024-01-15T10:30:00.000Z",
-                            "availability": "available",
-                            "childrenAreMutuallyExclusive": False,
-                            "parent": None,
-                        }
-                    ],
-                    "folders": [
-                        {
-                            "id": "folder-001",
-                            "name": "Work",
-                            "url": "omnifocus:///folder/folder-001",
-                            "added": "2024-01-15T10:30:00.000Z",
-                            "modified": "2024-01-15T10:30:00.000Z",
-                            "availability": "available",
-                            "parent": None,
-                        }
-                    ],
-                    "perspectives": [
-                        {
-                            "id": None,
-                            "name": "Inbox",
-                        }
-                    ],
-                }
-            )
         case "simulator":
             import os
 
@@ -150,7 +51,7 @@ def create_bridge(bridge_type: str) -> Bridge:
                 msg = (
                     "RealBridge is not available during automated testing "
                     "(PYTEST_CURRENT_TEST is set). "
-                    "Use OMNIFOCUS_BRIDGE=inmemory or OMNIFOCUS_BRIDGE=simulator instead."
+                    "Use OMNIFOCUS_BRIDGE=simulator instead."
                 )
                 raise RuntimeError(msg)
 
@@ -167,5 +68,5 @@ def create_bridge(bridge_type: str) -> Bridge:
             )
             return RealBridge(ipc_dir=ipc_dir, timeout=timeout)
         case _:
-            msg = f"Unknown bridge type: {bridge_type!r}. Use: inmemory, simulator, real"
+            msg = f"Unknown bridge type: {bridge_type!r}. Use: simulator, real"
             raise ValueError(msg)

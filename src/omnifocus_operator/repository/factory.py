@@ -99,7 +99,7 @@ def _create_bridge_repository() -> Repository:
     bridge = create_bridge(bridge_type)
 
     mtime_source: MtimeSource
-    if bridge_type in ("inmemory", "simulator"):
+    if bridge_type == "simulator":
         mtime_source = ConstantMtimeSource()
     else:  # pragma: no cover — SAFE-01: real bridge path, tested via UAT
         from omnifocus_operator.bridge.mtime import FileMtimeSource
