@@ -362,10 +362,10 @@ class OperatorService:
                 is_noop = False
 
         if is_noop:
+            # No-op takes priority over status warnings ("changes applied" is misleading)
+            warnings = [w for w in warnings if "your changes were applied" not in w]
             if not warnings:
-                # Genuine field-level no-op -- add generic warning
                 warnings.append(EDIT_NO_CHANGES_DETECTED)
-            # Return early -- action-specific warnings already present, or generic added
             logger.debug(
                 "OperatorService.edit_task: no-op detected, all values match current state"
             )
