@@ -84,10 +84,10 @@ None currently.
 
 ### Quick Tasks Completed
 
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 260317-j2x | Fix F-6: Echo invalid lifecycle value in error message | 2026-03-17 | 89ba983 | [260317-j2x-fix-f-6-echo-invalid-lifecycle-value-in-](./quick/260317-j2x-fix-f-6-echo-invalid-lifecycle-value-in-/) |
-| 260317-lgu | Fix D-6b: Suppress status warning on no-op edit of completed/dropped tasks | 2026-03-17 | 0f852a3 | [260317-lgu-fix-d-6b-suppress-status-warning-when-ed](./quick/260317-lgu-fix-d-6b-suppress-status-warning-when-ed/) |
+| # | Description | Date | Commit | Status | Directory |
+|---|-------------|------|--------|--------|-----------|
+| 260317-j2x | Fix F-6: Echo invalid lifecycle value in error message | 2026-03-17 | 89ba983 |  | [260317-j2x-fix-f-6-echo-invalid-lifecycle-value-in-](./quick/260317-j2x-fix-f-6-echo-invalid-lifecycle-value-in-/) |
+| 260317-lgu | Fix D-6b: Suppress status warning on no-op edit of completed/dropped tasks | 2026-03-17 | 0f852a3 | Verified | [260317-lgu-fix-d-6b-suppress-status-warning-when-ed](./quick/260317-lgu-fix-d-6b-suppress-status-warning-when-ed/) |
 
 ## Session Continuity
 
