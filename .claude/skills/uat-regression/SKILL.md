@@ -11,6 +11,10 @@ Run UAT regression tests for OmniFocus Operator MCP tools against live OmniFocus
 
 | Suite | File | Tests | Covers |
 |-------|------|------:|--------|
+| **v1.2 Combined** | `tests/v1.2-combined.md` | 87 | **Full milestone regression** — lookups, creation, edits, tags, moves, lifecycle, integration |
+| Read Lookups | `tests/read-lookups.md` | 7 | get_task, get_project, get_tag — happy path + not-found errors |
+| Task Creation | `tests/task-creation.md` | 14 | add_tasks — inbox, parent, all fields, tag resolution, errors, batch limit |
+| Integration Flows | `tests/integration-flows.md` | 8 | End-to-end write-through: create→edit→move→tags→lifecycle→get_all |
 | Edit Operations | `tests/edit-operations.md` | 23 | Field editing, patch semantics, no-ops, status warnings, errors, combos |
 | Tag Operations | `tests/tag-operations.md` | 15 | Tag add/remove/replace, ambiguity, no-ops, errors |
 | Move Operations | `tests/move-operations.md` | 16 | All 5 move modes, cross-level, circular refs, completed/dropped movement |
