@@ -17,7 +17,6 @@ if TYPE_CHECKING:
 from datetime import UTC
 
 from omnifocus_operator.bridge import BridgeError, create_bridge
-from omnifocus_operator.bridge.in_memory import InMemoryBridge
 from omnifocus_operator.bridge.mtime import ConstantMtimeSource, MtimeSource
 from omnifocus_operator.repository.in_memory import InMemoryRepository
 from omnifocus_operator.service import OperatorService
@@ -1893,11 +1892,6 @@ class TestConstantMtimeSource:
 
 class TestCreateBridge:
     """create_bridge() factory returns the correct bridge or raises."""
-
-    def test_inmemory_returns_inmemory_bridge(self) -> None:
-        bridge = create_bridge("inmemory")
-
-        assert isinstance(bridge, InMemoryBridge)
 
     def test_simulator_returns_simulator_bridge(self) -> None:
         from omnifocus_operator.bridge.simulator import SimulatorBridge
