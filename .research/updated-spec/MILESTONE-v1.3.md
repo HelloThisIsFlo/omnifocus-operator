@@ -28,6 +28,8 @@ One new MCP tool with optional filter parameters. Primary path uses SQL WHERE cl
 | `availability` | enum | `available` (includes blocked? TBD), `blocked`, `completed`, `dropped` |
 | `urgency` | enum | `due_soon` (includes overdue), `overdue`, `none` |
 | `search` | string | Case-insensitive substring match on name and notes (SQL LIKE) |
+| `limit` | int | Maximum number of results to return (default: no limit) |
+| `offset` | int | Skip this many results before returning (default: 0). Requires `limit`. |
 
 **Key design decisions:**
 - Date filters use `effective_due_date` (inherited values), not `due_date` (direct-only). Filtering on `due_date` alone misses ~45% of overdue tasks.
@@ -53,6 +55,8 @@ One new MCP tool with optional filter parameters. Primary path uses SQL WHERE cl
 | `folder` | string | Case-insensitive partial match on folder name |
 | `review_due_within` | string | Projects where `nextReviewDate <= now + duration`. Format: `now`, `<number><unit>` (d/w/m/y). E.g., `1w`, `2m`. Invalid values return a human-readable error. Month/year arithmetic is naive (~30d, ~365d). Projects with no review schedule are excluded. |
 | `flagged` | bool | Flagged projects |
+| `limit` | int | Maximum number of results to return (default: no limit) |
+| `offset` | int | Skip this many results before returning (default: 0). Requires `limit`. |
 
 ### `list_tags(status?)`
 
@@ -93,6 +97,7 @@ All hierarchy is flat with ID references (parent_id, folder_id, project_id). No 
 - Counts reuse the same filtering logic as list tools. One code path prevents count/list divergence.
 - SQL-level filtering is the primary path. In-memory filtering exists only for bridge fallback.
 - No fuzzy search. Substring matching via SQL LIKE is sufficient for now. Fuzzy deferred to v1.5+.
+- Pagination via `limit`/`offset` on `list_tasks` and `list_projects`. SQL uses `LIMIT ? OFFSET ?`. Bridge fallback slices in-memory. `offset` without `limit` is an error. `count_*` tools are unaffected (always return total count for the filters).
 
 ## Key Acceptance Criteria
 
@@ -110,6 +115,8 @@ All hierarchy is flat with ID references (parent_id, folder_id, project_id). No 
 - Substring search finds case-insensitive matches in name and notes.
 - Tool descriptions are detailed enough for an LLM to call correctly.
 - Bridge fallback produces identical results to SQL path for the same filters.
+- `list_tasks(limit: 5)` returns at most 5 results. `list_tasks(limit: 5, offset: 5)` returns the next page.
+- `count_tasks()` returns total count regardless of `limit`/`offset` — agents can compute total pages.
 
 ## Tools After This Milestone
 
