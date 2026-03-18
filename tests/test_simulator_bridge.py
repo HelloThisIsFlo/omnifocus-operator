@@ -41,8 +41,8 @@ class TestSimulatorBridge:
 
     def test_satisfies_bridge_protocol(self, tmp_path: Path) -> None:
         """SimulatorBridge satisfies the Bridge protocol (structural typing)."""
-        from omnifocus_operator.bridge.protocol import Bridge  # noqa: TC001
         from omnifocus_operator.bridge.simulator import SimulatorBridge
+        from omnifocus_operator.contracts.protocols import Bridge  # noqa: TC001
 
         bridge: Bridge = SimulatorBridge(ipc_dir=tmp_path)
         assert bridge is not None
