@@ -1,4 +1,4 @@
-"""Base contract infrastructure: CommandModel, UNSET sentinel, schema utilities.
+"""Base contract infrastructure: CommandModel, UNSET sentinel.
 
 CommandModel is the base class for all command-layer models (agent instructions,
 repo payloads). It inherits OmniFocusBaseModel's camelCase aliasing and adds
@@ -43,8 +43,8 @@ class _Unset:
     ) -> CoreSchema:
         """Tell Pydantic how to validate _Unset.
 
-        Accepts the UNSET singleton during validation but never
-        appears in JSON schema (handled by model_json_schema override).
+        Uses is_instance_schema so Pydantic accepts the UNSET singleton
+        during validation but excludes it from JSON schema automatically.
         """
         return core_schema.is_instance_schema(cls)
 
@@ -58,45 +58,4 @@ class CommandModel(OmniFocusBaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-def _clean_unset_from_schema(schema: dict[str, Any]) -> dict[str, Any]:
-    """Remove _Unset references from a JSON schema.
-
-    Walks the schema and strips anyOf branches that reference _Unset,
-    simplifying to the real types. Also removes _Unset from $defs.
-    """
-    # Remove _Unset from $defs
-    defs = schema.get("$defs", {})
-    defs.pop("_Unset", None)
-
-    # Clean properties
-    props = schema.get("properties", {})
-    for _key, prop in props.items():
-        if "anyOf" in prop:
-            branches = [b for b in prop["anyOf"] if not (b.get("$ref", "").endswith("/_Unset"))]
-            if len(branches) == 1:
-                # Single type remaining -- flatten
-                prop.clear()
-                prop.update(branches[0])
-            elif branches:
-                prop["anyOf"] = branches
-
-    # Clean nested $defs (MoveAction etc.)
-    for _def_name, def_schema in defs.items():
-        def_props = def_schema.get("properties", {})
-        for _key, prop in def_props.items():
-            if "anyOf" in prop:
-                branches = [b for b in prop["anyOf"] if not (b.get("$ref", "").endswith("/_Unset"))]
-                if len(branches) == 1:
-                    prop.clear()
-                    prop.update(branches[0])
-                elif branches:
-                    prop["anyOf"] = branches
-
-    # Remove empty $defs
-    if not defs:
-        schema.pop("$defs", None)
-
-    return schema
-
-
-__all__ = ["UNSET", "CommandModel", "_Unset", "_clean_unset_from_schema"]
+__all__ = ["UNSET", "CommandModel", "_Unset"]

@@ -10,7 +10,6 @@ from pydantic import AwareDatetime
 from omnifocus_operator.contracts.base import (
     UNSET,
     CommandModel,
-    _clean_unset_from_schema,
     _Unset,
 )
 from omnifocus_operator.contracts.common import MoveAction, TagAction
@@ -87,5 +86,4 @@ __all__ = [
     "Service",
     "TagAction",
     "_Unset",
-    "_clean_unset_from_schema",
 ]

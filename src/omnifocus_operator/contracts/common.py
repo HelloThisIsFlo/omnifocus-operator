@@ -6,15 +6,11 @@ identical fields and validators.
 
 from __future__ import annotations
 
-from typing import Any, Literal
-
 from pydantic import model_validator
-from pydantic.json_schema import GenerateJsonSchema
 
 from omnifocus_operator.contracts.base import (
     UNSET,
     CommandModel,
-    _clean_unset_from_schema,
     _Unset,
 )
 
@@ -46,26 +42,6 @@ class TagAction(CommandModel):
             raise ValueError(msg)
         return self
 
-    @classmethod
-    def model_json_schema(
-        cls,
-        by_alias: bool = True,
-        ref_template: str = "{model}",
-        schema_generator: type[GenerateJsonSchema] = GenerateJsonSchema,
-        mode: Literal["validation", "serialization"] = "validation",
-        *,
-        union_format: Literal["any_of", "primitive_type_array"] = "any_of",
-    ) -> dict[str, Any]:
-        """Override to produce a clean JSON schema without _Unset type."""
-        schema = super().model_json_schema(
-            by_alias=by_alias,
-            ref_template=ref_template,
-            schema_generator=schema_generator,
-            mode=mode,
-            union_format=union_format,
-        )
-        return _clean_unset_from_schema(schema)
-
 
 class MoveAction(CommandModel):
     """Specifies where to move a task.
@@ -94,26 +70,6 @@ class MoveAction(CommandModel):
             msg = "moveTo must have exactly one key (beginning, ending, before, or after)"
             raise ValueError(msg)
         return self
-
-    @classmethod
-    def model_json_schema(
-        cls,
-        by_alias: bool = True,
-        ref_template: str = "{model}",
-        schema_generator: type[GenerateJsonSchema] = GenerateJsonSchema,
-        mode: Literal["validation", "serialization"] = "validation",
-        *,
-        union_format: Literal["any_of", "primitive_type_array"] = "any_of",
-    ) -> dict[str, Any]:
-        """Override to produce a clean JSON schema without _Unset type."""
-        schema = super().model_json_schema(
-            by_alias=by_alias,
-            ref_template=ref_template,
-            schema_generator=schema_generator,
-            mode=mode,
-            union_format=union_format,
-        )
-        return _clean_unset_from_schema(schema)
 
 
 __all__ = ["MoveAction", "TagAction"]

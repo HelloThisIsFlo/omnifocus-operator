@@ -7,14 +7,11 @@ both the agent boundary (Command/Result) and the repository boundary
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
-
-from pydantic.json_schema import GenerateJsonSchema
+from typing import TYPE_CHECKING, Literal
 
 from omnifocus_operator.contracts.base import (
     UNSET,
     CommandModel,
-    _clean_unset_from_schema,
     _Unset,
 )
 from omnifocus_operator.models.base import OmniFocusBaseModel
@@ -31,26 +28,6 @@ class EditTaskActions(CommandModel):
     tags: TagAction | _Unset = UNSET
     move: MoveAction | _Unset = UNSET
     lifecycle: Literal["complete", "drop"] | _Unset = UNSET
-
-    @classmethod
-    def model_json_schema(
-        cls,
-        by_alias: bool = True,
-        ref_template: str = "{model}",
-        schema_generator: type[GenerateJsonSchema] = GenerateJsonSchema,
-        mode: Literal["validation", "serialization"] = "validation",
-        *,
-        union_format: Literal["any_of", "primitive_type_array"] = "any_of",
-    ) -> dict[str, Any]:
-        """Override to produce a clean JSON schema without _Unset type."""
-        schema = super().model_json_schema(
-            by_alias=by_alias,
-            ref_template=ref_template,
-            schema_generator=schema_generator,
-            mode=mode,
-            union_format=union_format,
-        )
-        return _clean_unset_from_schema(schema)
 
 
 class EditTaskCommand(CommandModel):
@@ -72,26 +49,6 @@ class EditTaskCommand(CommandModel):
 
     # Stateful operations
     actions: EditTaskActions | _Unset = UNSET
-
-    @classmethod
-    def model_json_schema(
-        cls,
-        by_alias: bool = True,
-        ref_template: str = "{model}",
-        schema_generator: type[GenerateJsonSchema] = GenerateJsonSchema,
-        mode: Literal["validation", "serialization"] = "validation",
-        *,
-        union_format: Literal["any_of", "primitive_type_array"] = "any_of",
-    ) -> dict[str, Any]:
-        """Override to produce a clean JSON schema without _Unset type."""
-        schema = super().model_json_schema(
-            by_alias=by_alias,
-            ref_template=ref_template,
-            schema_generator=schema_generator,
-            mode=mode,
-            union_format=union_format,
-        )
-        return _clean_unset_from_schema(schema)
 
 
 class EditTaskResult(OmniFocusBaseModel):
