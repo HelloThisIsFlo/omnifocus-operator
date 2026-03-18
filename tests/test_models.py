@@ -1058,3 +1058,36 @@ class TestWriteModelStrictness:
         )
         assert spec.name == "Test"
         assert spec.estimated_minutes == 30
+
+    # --- Schema generation: _Unset stripped from agent-visible JSON schema ---
+
+    @pytest.mark.parametrize(
+        "model_path",
+        [
+            ("omnifocus_operator.contracts.use_cases.edit_task", "EditTaskCommand"),
+            ("omnifocus_operator.contracts.use_cases.edit_task", "EditTaskActions"),
+            ("omnifocus_operator.contracts.common", "TagAction"),
+            ("omnifocus_operator.contracts.common", "MoveAction"),
+        ],
+    )
+    def test_json_schema_has_no_unset(self, model_path: tuple[str, str]) -> None:
+        """model_json_schema must strip _Unset so agents never see it."""
+        import importlib
+        import json
+
+        module = importlib.import_module(model_path[0])
+        cls = getattr(module, model_path[1])
+        schema = cls.model_json_schema()
+        raw = json.dumps(schema)
+        assert "_Unset" not in raw, f"{model_path[1]} schema still contains _Unset"
+
+    def test_edit_command_schema_properties_are_clean_types(self) -> None:
+        """Spot-check that UNSET fields resolve to their real types, not anyOf with _Unset."""
+        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
+
+        schema = EditTaskCommand.model_json_schema()
+        props = schema["properties"]
+        # 'name' should be a plain string, not anyOf[string, _Unset]
+        assert props["name"] == {"title": "Name", "type": "string"}
+        # 'flagged' should be a plain boolean
+        assert props["flagged"] == {"title": "Flagged", "type": "boolean"}
