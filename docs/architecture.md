@@ -214,11 +214,12 @@ dict ──────► Bridge ──────► raw dict
 
 ## Dependency Direction
 
-- `service.py` -> `Repository` protocol (never concrete implementations)
-- `server.py` -> concrete `HybridRepository` + `BridgeRepository` + `Bridge` + `MtimeSource` (wiring only)
-- `repository/hybrid.py` -> `bridge/` package (Bridge for writes, SQLite for reads)
-- `repository/bridge.py` -> `bridge/` package (Bridge protocol, MtimeSource, adapter)
-- `repository/in_memory.py` -> `models/` only (zero bridge dependency)
+- `contracts/` -> `models/` (protocols reference domain entities)
+- `service.py` -> `contracts/` (protocols + commands + payloads + results)
+- `server.py` -> `contracts/` + concrete implementations (wiring only)
+- `repository/` -> `contracts/` (protocols + repo payloads + repo results) + `bridge/` (for writes)
+- `repository/in_memory.py` -> `contracts/` + `models/` only (zero bridge dependency)
+- `models/` -> nothing (leaf package, no outward dependencies except Pydantic)
 
 ## Caching & Read Path
 
@@ -231,13 +232,26 @@ dict ──────► Bridge ──────► raw dict
   - Concurrent reads coalesce into a single bridge dump
 - **InMemoryRepository** (tests): no caching (returns constructor snapshot as-is)
 
-## Write Pipeline (v1.2)
+## Write Pipeline
 
-- Writes flow: MCP Tool -> Service (validate) -> Repository -> Bridge (execute) -> invalidate cache
-- Service validates before bridge execution: task/parent exists, tags exist, name non-empty
-- Tag resolution in service: case-insensitive name match, ID fallback, ambiguity error with IDs
-- Parent resolution in service: try `get_project` first, then `get_task` -- **project takes precedence** (intentional, deterministic)
-- Bridge returns minimal result; service wraps into typed result model
+Writes flow through four typed boundaries:
+
+```
+CreateTaskCommand / EditTaskCommand              (agent → service)
+    ↓ service: validate → resolve → build payload
+CreateTaskRepoPayload / EditTaskRepoPayload      (service → repository)
+    ↓ repository: model_dump() → bridge
+dict                                              (repository → bridge)
+    ↓ bridge: execute in OmniFocus
+raw dict                                          (bridge → repository)
+    ↑ repository: wrap → CreateTaskRepoResult / EditTaskRepoResult
+    ↑ service: enrich → CreateTaskResult / EditTaskResult (+ warnings)
+```
+
+- **Service** does ALL processing: validation, parent/tag resolution, tag diff, move transformation, date serialization, no-op detection
+- **Repository** is a pure pass-through: `model_dump()` → `send_command()` → wrap result
+- **Bridge** is a dumb relay: receives pre-validated dicts, executes, returns minimal confirmation
+- Parent resolution: try `get_project` first, then `get_task` — **project takes precedence** (intentional, deterministic)
 - HybridRepository marks stale after write; BridgeRepository clears cache
 
 ## Patch Semantics (edit_tasks)
