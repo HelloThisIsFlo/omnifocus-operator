@@ -22,15 +22,19 @@ from pydantic import ValidationError
 # generate outputSchema.  With `from __future__ import annotations` the
 # annotation is a string; FastMCP resolves it via get_type_hints() which
 # needs the name in the module namespace.
-from omnifocus_operator.models import (
+from omnifocus_operator.contracts.use_cases.create_task import (
+    CreateTaskCommand,
+    CreateTaskResult,
+)
+from omnifocus_operator.contracts.use_cases.edit_task import (
+    EditTaskCommand,
+    EditTaskResult,
+)
+from omnifocus_operator.models import (  # noqa: TC001 — FastMCP needs runtime names
     AllEntities,
     Project,
     Tag,
     Task,
-    TaskCreateResult,
-    TaskCreateSpec,
-    TaskEditResult,
-    TaskEditSpec,
 )
 
 if TYPE_CHECKING:
@@ -178,7 +182,7 @@ def _register_tools(mcp: FastMCP) -> None:
     async def add_tasks(
         items: list[dict[str, Any]],
         ctx: Context[Any, Any, Any],
-    ) -> list[TaskCreateResult]:
+    ) -> list[CreateTaskResult]:
         """Create tasks in OmniFocus.
 
         Accepts an array of task objects. Currently limited to 1 item per call.
@@ -208,7 +212,7 @@ def _register_tools(mcp: FastMCP) -> None:
 
         service: OperatorService = ctx.request_context.lifespan_context["service"]
         try:
-            spec = TaskCreateSpec.model_validate(items[0])
+            spec = CreateTaskCommand.model_validate(items[0])
         except ValidationError as exc:
             messages = []
             for e in exc.errors():
@@ -235,7 +239,7 @@ def _register_tools(mcp: FastMCP) -> None:
     async def edit_tasks(
         items: list[dict[str, Any]],
         ctx: Context[Any, Any, Any],
-    ) -> list[TaskEditResult]:
+    ) -> list[EditTaskResult]:
         """Edit existing tasks in OmniFocus using patch semantics.
 
         Accepts an array of edit objects. Currently limited to 1 item per call.
@@ -276,7 +280,7 @@ def _register_tools(mcp: FastMCP) -> None:
 
         service: OperatorService = ctx.request_context.lifespan_context["service"]
         try:
-            spec = TaskEditSpec.model_validate(items[0])
+            spec = EditTaskCommand.model_validate(items[0])
         except ValidationError as exc:
             messages = []
             for e in exc.errors():

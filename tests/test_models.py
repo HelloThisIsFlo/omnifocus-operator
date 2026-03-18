@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
+from omnifocus_operator.contracts.use_cases.create_task import CreateTaskCommand, CreateTaskResult
 from omnifocus_operator.models import (
     ActionableEntity,
     AllEntities,
@@ -26,8 +27,6 @@ from omnifocus_operator.models import (
     TagAvailability,
     TagRef,
     Task,
-    TaskCreateResult,
-    TaskCreateSpec,
     Urgency,
 )
 
@@ -855,11 +854,11 @@ class TestAllEntities:
 
 
 class TestWriteModels:
-    """TaskCreateSpec and TaskCreateResult write models."""
+    """CreateTaskCommand and CreateTaskResult write models."""
 
     def test_task_create_spec_minimal(self) -> None:
-        """TaskCreateSpec with only name (required) creates valid instance."""
-        spec = TaskCreateSpec(name="Buy groceries")
+        """CreateTaskCommand with only name (required) creates valid instance."""
+        spec = CreateTaskCommand(name="Buy groceries")
         assert spec.name == "Buy groceries"
         assert spec.parent is None
         assert spec.tags is None
@@ -871,9 +870,9 @@ class TestWriteModels:
         assert spec.note is None
 
     def test_task_create_spec_all_fields(self) -> None:
-        """TaskCreateSpec with all fields populated."""
+        """CreateTaskCommand with all fields populated."""
         dt = datetime(2024, 6, 15, 9, 0, tzinfo=UTC)
-        spec = TaskCreateSpec(
+        spec = CreateTaskCommand(
             name="Full task",
             parent="proj-001",
             tags=["errands", "morning"],
@@ -895,14 +894,14 @@ class TestWriteModels:
         assert spec.note == "A note"
 
     def test_task_create_spec_rejects_missing_name(self) -> None:
-        """TaskCreateSpec without name raises ValidationError."""
+        """CreateTaskCommand without name raises ValidationError."""
         with pytest.raises(ValidationError):
-            TaskCreateSpec()  # type: ignore[call-arg]
+            CreateTaskCommand()  # type: ignore[call-arg]
 
     def test_task_create_spec_camel_case_serialization(self) -> None:
-        """TaskCreateSpec serializes to camelCase via OmniFocusBaseModel."""
+        """CreateTaskCommand serializes to camelCase via OmniFocusBaseModel."""
         dt = datetime(2024, 6, 15, 9, 0, tzinfo=UTC)
-        spec = TaskCreateSpec(
+        spec = CreateTaskCommand(
             name="Test",
             due_date=dt,
             defer_date=dt,
@@ -919,15 +918,15 @@ class TestWriteModels:
         assert "defer_date" not in dumped
 
     def test_task_create_result_round_trip(self) -> None:
-        """TaskCreateResult parses and serializes correctly."""
-        result = TaskCreateResult(success=True, id="task-new-001", name="New Task")
+        """CreateTaskResult parses and serializes correctly."""
+        result = CreateTaskResult(success=True, id="task-new-001", name="New Task")
         assert result.success is True
         assert result.id == "task-new-001"
         assert result.name == "New Task"
 
         # camelCase round-trip (fields are already camelCase-friendly)
         dumped = result.model_dump(by_alias=True)
-        result2 = TaskCreateResult.model_validate(dumped)
+        result2 = CreateTaskResult.model_validate(dumped)
         assert result2.success is True
         assert result2.id == "task-new-001"
         assert result2.name == "New Task"
@@ -937,32 +936,32 @@ class TestActionsSpecLifecycle:
     """ActionsSpec.lifecycle validates to Literal['complete', 'drop']."""
 
     def test_lifecycle_complete_valid(self) -> None:
-        """ActionsSpec(lifecycle='complete') validates successfully."""
-        from omnifocus_operator.models.write import ActionsSpec
+        """EditTaskActions(lifecycle='complete') validates successfully."""
+        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskActions
 
-        spec = ActionsSpec(lifecycle="complete")
+        spec = EditTaskActions(lifecycle="complete")
         assert spec.lifecycle == "complete"
 
     def test_lifecycle_drop_valid(self) -> None:
-        """ActionsSpec(lifecycle='drop') validates successfully."""
-        from omnifocus_operator.models.write import ActionsSpec
+        """EditTaskActions(lifecycle='drop') validates successfully."""
+        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskActions
 
-        spec = ActionsSpec(lifecycle="drop")
+        spec = EditTaskActions(lifecycle="drop")
         assert spec.lifecycle == "drop"
 
     def test_lifecycle_reopen_rejected(self) -> None:
-        """ActionsSpec(lifecycle='reopen') raises ValidationError."""
-        from omnifocus_operator.models.write import ActionsSpec
+        """EditTaskActions(lifecycle='reopen') raises ValidationError."""
+        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskActions
 
         with pytest.raises(ValidationError):
-            ActionsSpec(lifecycle="reopen")
+            EditTaskActions(lifecycle="reopen")
 
     def test_lifecycle_invalid_rejected(self) -> None:
-        """ActionsSpec(lifecycle='invalid') raises ValidationError."""
-        from omnifocus_operator.models.write import ActionsSpec
+        """EditTaskActions(lifecycle='invalid') raises ValidationError."""
+        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskActions
 
         with pytest.raises(ValidationError):
-            ActionsSpec(lifecycle="invalid")
+            EditTaskActions(lifecycle="invalid")
 
 
 class TestWriteModelStrictness:
@@ -972,45 +971,45 @@ class TestWriteModelStrictness:
 
     def test_task_create_spec_rejects_unknown_field(self) -> None:
         with pytest.raises(ValidationError, match="bogus_field"):
-            TaskCreateSpec.model_validate({"name": "Task", "bogus_field": "x"})
+            CreateTaskCommand.model_validate({"name": "Task", "bogus_field": "x"})
 
     def test_task_edit_spec_rejects_unknown_field(self) -> None:
-        from omnifocus_operator.models.write import TaskEditSpec
+        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
         with pytest.raises(ValidationError, match="bogus_field"):
-            TaskEditSpec.model_validate({"id": "t1", "bogus_field": "x"})
+            EditTaskCommand.model_validate({"id": "t1", "bogus_field": "x"})
 
     def test_move_to_spec_rejects_unknown_field(self) -> None:
-        from omnifocus_operator.models.write import MoveToSpec
+        from omnifocus_operator.contracts.common import MoveAction
 
         with pytest.raises(ValidationError, match="bogus_field"):
-            MoveToSpec.model_validate({"ending": "p1", "bogus_field": "x"})
+            MoveAction.model_validate({"ending": "p1", "bogus_field": "x"})
 
     def test_tag_action_spec_rejects_unknown_field(self) -> None:
-        from omnifocus_operator.models.write import TagActionSpec
+        from omnifocus_operator.contracts.common import TagAction
 
         with pytest.raises(ValidationError, match="bogus_field"):
-            TagActionSpec.model_validate({"add": ["tag1"], "bogus_field": "x"})
+            TagAction.model_validate({"add": ["tag1"], "bogus_field": "x"})
 
     def test_actions_spec_rejects_unknown_field(self) -> None:
-        from omnifocus_operator.models.write import ActionsSpec
+        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskActions
 
         with pytest.raises(ValidationError, match="bogus_field"):
-            ActionsSpec.model_validate({"lifecycle": "complete", "bogus_field": "x"})
+            EditTaskActions.model_validate({"lifecycle": "complete", "bogus_field": "x"})
 
     # --- STRCT-02: Read/result models stay permissive ---
 
     def test_task_create_result_accepts_unknown_field(self) -> None:
-        result = TaskCreateResult.model_validate(
+        result = CreateTaskResult.model_validate(
             {"success": True, "id": "t1", "name": "T", "bogus": "x"}
         )
         assert result.success is True
         assert not hasattr(result, "bogus")
 
     def test_task_edit_result_accepts_unknown_field(self) -> None:
-        from omnifocus_operator.models.write import TaskEditResult
+        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskResult
 
-        result = TaskEditResult.model_validate(
+        result = EditTaskResult.model_validate(
             {"success": True, "id": "t1", "name": "T", "bogus": "x"}
         )
         assert result.success is True
@@ -1028,9 +1027,10 @@ class TestWriteModelStrictness:
 
     def test_task_edit_spec_unset_defaults_with_forbid(self) -> None:
         """All UNSET defaults validate successfully -- they are declared fields, not extra."""
-        from omnifocus_operator.models.write import TaskEditSpec, _Unset
+        from omnifocus_operator.contracts.base import _Unset
+        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
-        spec = TaskEditSpec(id="t1")
+        spec = EditTaskCommand(id="t1")
         assert spec.id == "t1"
         assert isinstance(spec.name, _Unset)
         assert isinstance(spec.flagged, _Unset)
@@ -1040,15 +1040,15 @@ class TestWriteModelStrictness:
 
     def test_task_edit_spec_set_values_with_forbid(self) -> None:
         """Setting real values on write models still works under forbid."""
-        from omnifocus_operator.models.write import TaskEditSpec
+        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
-        spec = TaskEditSpec(id="t1", name="Updated", flagged=True)
+        spec = EditTaskCommand(id="t1", name="Updated", flagged=True)
         assert spec.name == "Updated"
         assert spec.flagged is True
 
     def test_write_model_accepts_camel_case_alias(self) -> None:
         """Agents send camelCase -- must be accepted under forbid."""
-        spec = TaskCreateSpec.model_validate(
+        spec = CreateTaskCommand.model_validate(
             {
                 "name": "Test",
                 "dueDate": "2024-06-15T09:00:00Z",

@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from omnifocus_operator.repository.protocol import Repository
+    from omnifocus_operator.contracts.protocols import Repository
 
 __all__ = ["create_repository"]
 

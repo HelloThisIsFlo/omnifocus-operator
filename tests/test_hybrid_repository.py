@@ -21,10 +21,11 @@ if TYPE_CHECKING:
 import pytest
 
 from omnifocus_operator.bridge.in_memory import InMemoryBridge
+from omnifocus_operator.contracts.protocols import Repository
+from omnifocus_operator.contracts.use_cases.create_task import CreateTaskRepoPayload
+from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoPayload
 from omnifocus_operator.models.snapshot import AllEntities
-from omnifocus_operator.models.write import TaskCreateSpec
 from omnifocus_operator.repository.hybrid import _FRESHNESS_TIMEOUT, HybridRepository
-from omnifocus_operator.repository.protocol import Repository
 
 # Core Foundation epoch: Jan 1, 2001 00:00:00 UTC
 _CF_EPOCH = datetime(2001, 1, 1, tzinfo=UTC)
@@ -1050,9 +1051,9 @@ class TestFreshness:
 
         task = asyncio.create_task(modify_wal())
         # edit_task should poll and detect the change
-        result = await repo.edit_task({"id": "task-001", "name": "Edited"})
+        result = await repo.edit_task(EditTaskRepoPayload(id="task-001", name="Edited"))
         await task
-        assert result["id"] == "task-001"
+        assert result.id == "task-001"
 
     @pytest.mark.asyncio
     async def test_freshness_db_fallback(self, tmp_path: Path) -> None:
@@ -1072,9 +1073,9 @@ class TestFreshness:
             db_path.write_bytes(db_path.read_bytes() + b"\x00")
 
         task = asyncio.create_task(modify_db())
-        result = await repo.edit_task({"id": "task-001", "name": "Edited"})
+        result = await repo.edit_task(EditTaskRepoPayload(id="task-001", name="Edited"))
         await task
-        assert result["id"] == "task-001"
+        assert result.id == "task-001"
 
     @pytest.mark.asyncio
     async def test_freshness_timeout(self, tmp_path: Path) -> None:
@@ -1088,12 +1089,12 @@ class TestFreshness:
 
         # Don't modify WAL -- should timeout and return result anyway
         start = time.monotonic()
-        result = await repo.edit_task({"id": "task-001", "name": "Edited"})
+        result = await repo.edit_task(EditTaskRepoPayload(id="task-001", name="Edited"))
         elapsed = time.monotonic() - start
 
         assert elapsed >= _FRESHNESS_TIMEOUT * 0.75
         assert elapsed < _FRESHNESS_TIMEOUT * 1.5
-        assert result["id"] == "task-001"
+        assert result.id == "task-001"
 
     @pytest.mark.asyncio
     async def test_freshness_no_timeout_when_wal_changes_during_bridge_call(
@@ -1111,7 +1112,7 @@ class TestFreshness:
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
         start = time.monotonic()
-        await repo.edit_task({"id": "task-001", "name": "Edited"})
+        await repo.edit_task(EditTaskRepoPayload(id="task-001", name="Edited"))
         elapsed = time.monotonic() - start
 
         assert elapsed < _FRESHNESS_TIMEOUT * 0.25, (
@@ -1145,7 +1146,7 @@ class TestFreshness:
         with patch(
             "omnifocus_operator.repository.hybrid.asyncio.sleep", side_effect=tracking_sleep
         ):
-            await repo.edit_task({"id": "task-001", "name": "Edited"})
+            await repo.edit_task(EditTaskRepoPayload(id="task-001", name="Edited"))
         await task
 
         # All sleep calls should be 0.05 (50ms)
@@ -1186,7 +1187,7 @@ class TestFreshness:
             wal_path.write_bytes(b"changed")
 
         task = asyncio.create_task(modify_wal())
-        result = await repo.add_task(TaskCreateSpec(name="Test"))
+        result = await repo.add_task(CreateTaskRepoPayload(name="Test"))
         await task
         assert result.id == "new-1"
 
@@ -1194,8 +1195,10 @@ class TestFreshness:
     @pytest.mark.parametrize(
         ("method", "arg"),
         [
-            pytest.param("add_task", TaskCreateSpec(name="Test"), id="add_task"),
-            pytest.param("edit_task", {"id": "task-001", "name": "Edited"}, id="edit_task"),
+            pytest.param("add_task", CreateTaskRepoPayload(name="Test"), id="add_task"),
+            pytest.param(
+                "edit_task", EditTaskRepoPayload(id="task-001", name="Edited"), id="edit_task"
+            ),
         ],
     )
     async def test_both_write_methods_poll_wal(
@@ -1241,8 +1244,8 @@ class TestAddTask:
         bridge = InMemoryBridge(data={"id": "new-task-1", "name": "Buy milk"}, wal_path=wal_path)
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
-        spec = TaskCreateSpec(name="Buy milk")
-        await repo.add_task(spec)
+        payload = CreateTaskRepoPayload(name="Buy milk")
+        await repo.add_task(payload)
 
         assert bridge.call_count == 1
         call = bridge.calls[0]
@@ -1251,19 +1254,18 @@ class TestAddTask:
 
     @pytest.mark.asyncio
     async def test_add_task_returns_result(self, tmp_path: Path) -> None:
-        """add_task returns TaskCreateResult with bridge response data."""
-        from omnifocus_operator.models.write import TaskCreateResult
+        """add_task returns CreateTaskRepoResult with bridge response data."""
+        from omnifocus_operator.contracts.use_cases.create_task import CreateTaskRepoResult
 
         db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
         wal_path = str(db_path) + "-wal"
         bridge = InMemoryBridge(data={"id": "new-task-1", "name": "Buy milk"}, wal_path=wal_path)
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
-        spec = TaskCreateSpec(name="Buy milk")
-        result = await repo.add_task(spec)
+        payload = CreateTaskRepoPayload(name="Buy milk")
+        result = await repo.add_task(payload)
 
-        assert isinstance(result, TaskCreateResult)
-        assert result.success is True
+        assert isinstance(result, CreateTaskRepoResult)
         assert result.id == "new-task-1"
         assert result.name == "Buy milk"
 
@@ -1275,8 +1277,8 @@ class TestAddTask:
         bridge = InMemoryBridge(data={"id": "t1", "name": "Test"}, wal_path=wal_path)
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
-        spec = TaskCreateSpec(name="Test")
-        await repo.add_task(spec)
+        payload = CreateTaskRepoPayload(name="Test")
+        await repo.add_task(payload)
 
         params = bridge.calls[0].params
         assert "name" in params
@@ -1286,20 +1288,18 @@ class TestAddTask:
         assert "parent" not in params
 
     @pytest.mark.asyncio
-    async def test_add_task_with_resolved_tag_ids(self, tmp_path: Path) -> None:
-        """add_task includes tagIds in payload when resolved_tag_ids provided."""
+    async def test_add_task_with_tag_ids(self, tmp_path: Path) -> None:
+        """add_task includes tagIds in payload when tag_ids provided."""
         db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
         wal_path = str(db_path) + "-wal"
         bridge = InMemoryBridge(data={"id": "t1", "name": "Test"}, wal_path=wal_path)
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
-        spec = TaskCreateSpec(name="Test", tags=["Work"])
-        await repo.add_task(spec, resolved_tag_ids=["tag-001", "tag-002"])
+        payload = CreateTaskRepoPayload(name="Test", tag_ids=["tag-001", "tag-002"])
+        await repo.add_task(payload)
 
         params = bridge.calls[0].params
         assert params["tagIds"] == ["tag-001", "tag-002"]
-        # tags (names) should NOT be in the payload sent to bridge
-        assert "tags" not in params
 
     @pytest.mark.asyncio
     async def test_add_task_uses_camel_case_keys(self, tmp_path: Path) -> None:
@@ -1309,12 +1309,12 @@ class TestAddTask:
         bridge = InMemoryBridge(data={"id": "t1", "name": "Test"}, wal_path=wal_path)
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
-        spec = TaskCreateSpec(
+        payload = CreateTaskRepoPayload(
             name="Test",
-            due_date=datetime(2026, 3, 15, 10, 0, tzinfo=UTC),
+            due_date="2026-03-15T10:00:00+00:00",
             estimated_minutes=30.0,
         )
-        await repo.add_task(spec)
+        await repo.add_task(payload)
 
         params = bridge.calls[0].params
         assert "dueDate" in params

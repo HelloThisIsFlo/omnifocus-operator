@@ -23,11 +23,18 @@ logger = logging.getLogger("omnifocus_operator")
 
 if TYPE_CHECKING:
     from omnifocus_operator.bridge.mtime import MtimeSource
-    from omnifocus_operator.bridge.protocol import Bridge
+    from omnifocus_operator.contracts.protocols import Bridge
+    from omnifocus_operator.contracts.use_cases.create_task import (
+        CreateTaskRepoPayload,
+        CreateTaskRepoResult,
+    )
+    from omnifocus_operator.contracts.use_cases.edit_task import (
+        EditTaskRepoPayload,
+        EditTaskRepoResult,
+    )
     from omnifocus_operator.models.project import Project
     from omnifocus_operator.models.tag import Tag
     from omnifocus_operator.models.task import Task
-    from omnifocus_operator.models.write import TaskCreateResult, TaskCreateSpec
 
 __all__ = ["BridgeRepository"]
 
@@ -99,39 +106,34 @@ class BridgeRepository:
         all_entities = await self.get_all()
         return next((t for t in all_entities.tags if t.id == tag_id), None)
 
-    async def add_task(
-        self,
-        spec: TaskCreateSpec,
-        *,
-        resolved_tag_ids: list[str] | None = None,
-    ) -> TaskCreateResult:
+    async def add_task(self, payload: CreateTaskRepoPayload) -> CreateTaskRepoResult:
         """Create a task via bridge and invalidate cache.
 
-        Builds a camelCase payload from the spec, replaces tag names with
-        resolved tag IDs, sends via bridge, and invalidates the cache.
+        Serializes the typed payload to a camelCase dict and sends via bridge.
         """
-        from omnifocus_operator.models.write import TaskCreateResult
+        from omnifocus_operator.contracts.use_cases.create_task import CreateTaskRepoResult
 
-        payload = spec.model_dump(by_alias=True, exclude_none=True, mode="json")
-        payload.pop("tags", None)
-        if resolved_tag_ids is not None:
-            payload["tagIds"] = resolved_tag_ids
+        raw = payload.model_dump(by_alias=True, exclude_none=True)
 
         logger.debug("BridgeRepository.add_task: sending to bridge")
-        result = await self._bridge.send_command("add_task", payload)
+        result = await self._bridge.send_command("add_task", raw)
         # Invalidate cache so next get_all fetches fresh data
         self._cached = None
         logger.debug("BridgeRepository.add_task: cache invalidated, id=%s", result["id"])
 
-        return TaskCreateResult(success=True, id=result["id"], name=result["name"])
+        return CreateTaskRepoResult(id=result["id"], name=result["name"])
 
-    async def edit_task(self, payload: dict[str, Any]) -> dict[str, Any]:
+    async def edit_task(self, payload: EditTaskRepoPayload) -> EditTaskRepoResult:
         """Edit a task via bridge and invalidate cache."""
+        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoResult
+
+        raw = payload.model_dump(by_alias=True, exclude_unset=True)
+
         logger.debug("BridgeRepository.edit_task: sending to bridge")
-        result = await self._bridge.send_command("edit_task", payload)
+        result = await self._bridge.send_command("edit_task", raw)
         self._cached = None
         logger.debug("BridgeRepository.edit_task: cache invalidated, id=%s", result.get("id"))
-        return result
+        return EditTaskRepoResult(id=result["id"], name=result["name"])
 
     async def _refresh(self, current_mtime: int) -> AllEntities:
         """Fetch fresh data from the bridge and update cache state.

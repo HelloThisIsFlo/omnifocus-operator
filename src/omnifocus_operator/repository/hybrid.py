@@ -26,8 +26,15 @@ from zoneinfo import ZoneInfo
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from omnifocus_operator.bridge.protocol import Bridge
-    from omnifocus_operator.models.write import TaskCreateResult, TaskCreateSpec
+    from omnifocus_operator.contracts.protocols import Bridge
+    from omnifocus_operator.contracts.use_cases.create_task import (
+        CreateTaskRepoPayload,
+        CreateTaskRepoResult,
+    )
+    from omnifocus_operator.contracts.use_cases.edit_task import (
+        EditTaskRepoPayload,
+        EditTaskRepoResult,
+    )
 
 import logging
 
@@ -474,53 +481,45 @@ class HybridRepository:
         self._bridge: Bridge = bridge
 
     @_ensures_write_through
-    async def add_task(
-        self,
-        spec: TaskCreateSpec,
-        *,
-        resolved_tag_ids: list[str] | None = None,
-    ) -> TaskCreateResult:
+    async def add_task(self, payload: CreateTaskRepoPayload) -> CreateTaskRepoResult:
         """Create a task via bridge and mark snapshot stale.
 
-        Builds a camelCase payload from the spec, replaces tag names with
-        resolved tag IDs, sends via bridge, and marks data as stale so the
-        next get_all() will wait for fresh data from OmniFocus.
+        Serializes the typed payload to a camelCase dict and sends via bridge.
+        The next get_all() will wait for fresh data from OmniFocus.
         """
-        from omnifocus_operator.models.write import TaskCreateResult
+        from omnifocus_operator.contracts.use_cases.create_task import CreateTaskRepoResult
 
-        # Build payload: camelCase keys, exclude None fields
-        payload = spec.model_dump(by_alias=True, exclude_none=True, mode="json")
-
-        # Replace tag names with resolved tag IDs for bridge
-        payload.pop("tags", None)
-        if resolved_tag_ids is not None:
-            payload["tagIds"] = resolved_tag_ids
+        raw = payload.model_dump(by_alias=True, exclude_none=True)
 
         logger.debug(
             "HybridRepository.add_task: sending to bridge, payload keys=%s",
-            list(payload.keys()),
+            list(raw.keys()),
         )
-        result = await self._bridge.send_command("add_task", payload)
+        result = await self._bridge.send_command("add_task", raw)
         logger.debug(
             "HybridRepository.add_task: bridge returned id=%s",
             result["id"],
         )
 
-        return TaskCreateResult(success=True, id=result["id"], name=result["name"])
+        return CreateTaskRepoResult(id=result["id"], name=result["name"])
 
     @_ensures_write_through
-    async def edit_task(self, payload: dict[str, Any]) -> dict[str, Any]:
+    async def edit_task(self, payload: EditTaskRepoPayload) -> EditTaskRepoResult:
         """Edit a task via bridge and wait for SQLite confirmation."""
+        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoResult
+
+        raw = payload.model_dump(by_alias=True, exclude_unset=True)
+
         logger.debug(
             "HybridRepository.edit_task: sending to bridge, payload keys=%s",
-            list(payload.keys()),
+            list(raw.keys()),
         )
-        result = await self._bridge.send_command("edit_task", payload)
+        result = await self._bridge.send_command("edit_task", raw)
         logger.debug(
             "HybridRepository.edit_task: bridge returned id=%s",
             result.get("id"),
         )
-        return result
+        return EditTaskRepoResult(id=result["id"], name=result["name"])
 
     async def get_all(self) -> AllEntities:
         """Return all OmniFocus entities from the SQLite cache."""

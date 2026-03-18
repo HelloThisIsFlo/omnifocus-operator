@@ -11,7 +11,6 @@ from omnifocus_operator.bridge.mtime import (
     FileMtimeSource,
     MtimeSource,
 )
-from omnifocus_operator.bridge.protocol import Bridge
 from omnifocus_operator.bridge.real import (
     DEFAULT_OFOCUS_PATH,
     OMNIFOCUS_CONTAINER,
@@ -19,6 +18,7 @@ from omnifocus_operator.bridge.real import (
     sweep_orphaned_files,
 )
 from omnifocus_operator.bridge.simulator import SimulatorBridge
+from omnifocus_operator.contracts.protocols import Bridge
 
 __all__ = [
     "DEFAULT_OFOCUS_PATH",

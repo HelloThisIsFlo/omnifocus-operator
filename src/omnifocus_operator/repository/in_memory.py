@@ -3,15 +3,22 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 if TYPE_CHECKING:
+    from omnifocus_operator.contracts.use_cases.create_task import (
+        CreateTaskRepoPayload,
+        CreateTaskRepoResult,
+    )
+    from omnifocus_operator.contracts.use_cases.edit_task import (
+        EditTaskRepoPayload,
+        EditTaskRepoResult,
+    )
     from omnifocus_operator.models.project import Project
     from omnifocus_operator.models.snapshot import AllEntities
     from omnifocus_operator.models.tag import Tag
     from omnifocus_operator.models.task import Task
-    from omnifocus_operator.models.write import TaskCreateResult, TaskCreateSpec
 
 __all__ = ["InMemoryRepository"]
 
@@ -42,41 +49,36 @@ class InMemoryRepository:
         """Return a single tag by ID, or None if not found."""
         return next((t for t in self._snapshot.tags if t.id == tag_id), None)
 
-    async def add_task(
-        self,
-        spec: TaskCreateSpec,
-        *,
-        resolved_tag_ids: list[str] | None = None,
-    ) -> TaskCreateResult:
+    async def add_task(self, payload: CreateTaskRepoPayload) -> CreateTaskRepoResult:
         """Create a task in-memory and append to snapshot.
 
         Generates a synthetic ID and builds a Task with computed fields.
         Used for testing without a real bridge.
         """
+        from omnifocus_operator.contracts.use_cases.create_task import CreateTaskRepoResult
         from omnifocus_operator.models.task import Task
-        from omnifocus_operator.models.write import TaskCreateResult
 
         task_id = f"mem-{uuid4().hex[:8]}"
         now = datetime.now(tz=UTC)
-        has_parent = spec.parent is not None
+        has_parent = payload.parent is not None
 
         task = Task.model_validate(
             {
                 "id": task_id,
-                "name": spec.name,
+                "name": payload.name,
                 "url": f"omnifocus:///task/{task_id}",
                 "added": now.isoformat(),
                 "modified": now.isoformat(),
-                "note": spec.note or "",
-                "flagged": spec.flagged or False,
-                "effectiveFlagged": spec.flagged or False,
+                "note": payload.note or "",
+                "flagged": payload.flagged or False,
+                "effectiveFlagged": payload.flagged or False,
                 "urgency": "none",
                 "availability": "available",
                 "inInbox": not has_parent,
-                "dueDate": spec.due_date.isoformat() if spec.due_date else None,
-                "deferDate": spec.defer_date.isoformat() if spec.defer_date else None,
-                "plannedDate": spec.planned_date.isoformat() if spec.planned_date else None,
-                "estimatedMinutes": spec.estimated_minutes,
+                "dueDate": payload.due_date,
+                "deferDate": payload.defer_date,
+                "plannedDate": payload.planned_date,
+                "estimatedMinutes": payload.estimated_minutes,
                 "hasChildren": False,
                 "parent": None,
                 "tags": [],
@@ -86,17 +88,20 @@ class InMemoryRepository:
         # Append to mutable tasks list
         self._snapshot.tasks.append(task)
 
-        return TaskCreateResult(success=True, id=task_id, name=spec.name)
+        return CreateTaskRepoResult(id=task_id, name=payload.name)
 
-    async def edit_task(self, payload: dict[str, Any]) -> dict[str, Any]:
+    async def edit_task(self, payload: EditTaskRepoPayload) -> EditTaskRepoResult:
         """Edit a task in-memory by mutating the snapshot.
 
-        Simplified mutation for testing -- maps camelCase payload keys to
-        snake_case model attributes and updates tags/parent as needed.
+        Serializes the typed payload to a camelCase dict, then applies
+        existing mutation logic on that dict for consistency.
         """
+        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoResult
         from omnifocus_operator.models.common import ParentRef, TagRef
 
-        task_id = payload["id"]
+        raw = payload.model_dump(by_alias=True, exclude_unset=True)
+
+        task_id = raw["id"]
         task = next((t for t in self._snapshot.tasks if t.id == task_id), None)
         if task is None:
             msg = f"Task not found: {task_id}"
@@ -114,7 +119,7 @@ class InMemoryRepository:
         }
 
         skip_keys = {"id", "addTagIds", "removeTagIds", "moveTo", "lifecycle"}
-        for key, value in payload.items():
+        for key, value in raw.items():
             if key in skip_keys:
                 continue
             attr = _key_map.get(key)
@@ -122,10 +127,10 @@ class InMemoryRepository:
                 setattr(task, attr, value)
 
         # Handle tag operations (diff-based: removals first, then additions)
-        remove_ids = set(payload.get("removeTagIds", []))
+        remove_ids = set(raw.get("removeTagIds", []))
         if remove_ids:
             task.tags = [t for t in task.tags if t.id not in remove_ids]
-        add_ids = payload.get("addTagIds", [])
+        add_ids = raw.get("addTagIds", [])
         if add_ids:
             existing_ids = {t.id for t in task.tags}
             for tid in add_ids:
@@ -133,7 +138,7 @@ class InMemoryRepository:
                     task.tags.append(TagRef(id=tid, name=tid))
 
         # Handle lifecycle
-        lifecycle = payload.get("lifecycle")
+        lifecycle = raw.get("lifecycle")
         if lifecycle is not None:
             from omnifocus_operator.models.enums import Availability
 
@@ -143,7 +148,7 @@ class InMemoryRepository:
                 task.availability = Availability.DROPPED
 
         # Handle moveTo (simplified -- just update parent)
-        move_to = payload.get("moveTo")
+        move_to = raw.get("moveTo")
         if move_to is not None:
             container_id = move_to.get("containerId")
             if container_id is None:
@@ -164,4 +169,4 @@ class InMemoryRepository:
                     task.parent = ParentRef(type="task", id=container_id, name=name)
                     task.in_inbox = False
 
-        return {"id": task.id, "name": task.name}
+        return EditTaskRepoResult(id=task.id, name=task.name)

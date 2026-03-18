@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from omnifocus_operator.bridge.protocol import Bridge
+    from omnifocus_operator.contracts.protocols import Bridge
 
 logger = logging.getLogger("omnifocus_operator")
 

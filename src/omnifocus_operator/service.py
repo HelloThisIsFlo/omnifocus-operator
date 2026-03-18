@@ -27,19 +27,20 @@ from omnifocus_operator.warnings import (
 )
 
 if TYPE_CHECKING:
+    from omnifocus_operator.contracts.common import MoveAction, TagAction
+    from omnifocus_operator.contracts.use_cases.create_task import (
+        CreateTaskCommand,
+        CreateTaskResult,
+    )
+    from omnifocus_operator.contracts.use_cases.edit_task import (
+        EditTaskCommand,
+        EditTaskResult,
+    )
     from omnifocus_operator.models.common import TagRef
     from omnifocus_operator.models.project import Project
     from omnifocus_operator.models.snapshot import AllEntities
     from omnifocus_operator.models.tag import Tag
     from omnifocus_operator.models.task import Task
-    from omnifocus_operator.models.write import (
-        MoveToSpec,
-        TagActionSpec,
-        TaskCreateResult,
-        TaskCreateSpec,
-        TaskEditResult,
-        TaskEditSpec,
-    )
     from omnifocus_operator.repository import Repository
 
 __all__ = ["ErrorOperatorService", "OperatorService"]
@@ -96,47 +97,67 @@ class OperatorService:
         logger.debug("OperatorService.get_tag: id=%s", tag_id)
         return await self._repository.get_tag(tag_id)
 
-    async def add_task(self, spec: TaskCreateSpec) -> TaskCreateResult:
+    async def add_task(self, command: CreateTaskCommand) -> CreateTaskResult:
         """Create a task with validation and delegation to repository.
 
         Validates name, resolves parent (project or task), resolves tag
-        names to IDs, then delegates to repository.add_task.
+        names to IDs, builds a typed repo payload, then delegates to
+        repository.add_task.
 
         Raises
         ------
         ValueError
             If name is empty, parent not found, or tag resolution fails.
         """
+        from omnifocus_operator.contracts.use_cases.create_task import (
+            CreateTaskRepoPayload,
+            CreateTaskResult,
+        )
+
         logger.debug(
             "OperatorService.add_task: name=%s, parent=%s, tags=%s",
-            spec.name,
-            spec.parent,
-            spec.tags,
+            command.name,
+            command.parent,
+            command.tags,
         )
 
         # Validate name
-        if not spec.name or not spec.name.strip():
+        if not command.name or not command.name.strip():
             msg = "Task name is required"
             raise ValueError(msg)
 
         # Resolve parent
-        if spec.parent is not None:
-            await self._resolve_parent(spec.parent)
+        if command.parent is not None:
+            await self._resolve_parent(command.parent)
 
         # Resolve tags
         resolved_tag_ids: list[str] | None = None
-        if spec.tags is not None:
-            resolved_tag_ids = await self._resolve_tags(spec.tags)
+        if command.tags is not None:
+            resolved_tag_ids = await self._resolve_tags(command.tags)
             logger.debug(
                 "OperatorService.add_task: resolved %d tags to IDs: %s",
                 len(resolved_tag_ids),
                 resolved_tag_ids,
             )
 
-        logger.debug("OperatorService.add_task: delegating to repository")
-        return await self._repository.add_task(spec, resolved_tag_ids=resolved_tag_ids)
+        # Build typed repo payload
+        payload = CreateTaskRepoPayload(
+            name=command.name,
+            parent=command.parent,
+            tag_ids=resolved_tag_ids,
+            due_date=command.due_date.isoformat() if command.due_date else None,
+            defer_date=command.defer_date.isoformat() if command.defer_date else None,
+            planned_date=command.planned_date.isoformat() if command.planned_date else None,
+            flagged=command.flagged,
+            estimated_minutes=command.estimated_minutes,
+            note=command.note,
+        )
 
-    async def edit_task(self, spec: TaskEditSpec) -> TaskEditResult:
+        logger.debug("OperatorService.add_task: delegating to repository")
+        repo_result = await self._repository.add_task(payload)
+        return CreateTaskResult(success=True, id=repo_result.id, name=repo_result.name)
+
+    async def edit_task(self, command: EditTaskCommand) -> EditTaskResult:
         """Edit a task with validation and delegation to repository.
 
         Validates task existence, name, resolves tags and parent/moveTo,
@@ -149,13 +170,18 @@ class OperatorService:
             If task not found, name empty, parent not found, anchor not
             found, or move would create a cycle.
         """
-        from omnifocus_operator.models.write import TaskEditResult, _Unset
+        from omnifocus_operator.contracts.base import _Unset
+        from omnifocus_operator.contracts.use_cases.edit_task import (
+            EditTaskRepoPayload,
+            EditTaskResult,
+            MoveToRepoPayload,
+        )
 
         # 1. Verify task exists
-        logger.debug("OperatorService.edit_task: id=%s, fetching current state", spec.id)
-        task = await self._repository.get_task(spec.id)
+        logger.debug("OperatorService.edit_task: id=%s, fetching current state", command.id)
+        task = await self._repository.get_task(command.id)
         if task is None:
-            msg = f"Task not found: {spec.id}"
+            msg = f"Task not found: {command.id}"
             raise ValueError(msg)
         logger.debug(
             "OperatorService.edit_task: task found, name=%s, current_tags=%d",
@@ -166,22 +192,22 @@ class OperatorService:
         warnings: list[str] = []
 
         # 2. Handle actions block detection
-        has_actions = not isinstance(spec.actions, _Unset)
+        has_actions = not isinstance(command.actions, _Unset)
 
         # 2a. Process lifecycle BEFORE status warning
         lifecycle_handled = False
         has_lifecycle = (
             has_actions
-            and not isinstance(spec.actions, _Unset)
-            and not isinstance(spec.actions.lifecycle, _Unset)
+            and not isinstance(command.actions, _Unset)
+            and not isinstance(command.actions.lifecycle, _Unset)
         )
 
         # 3. Build payload with only non-UNSET fields
-        payload: dict[str, object] = {"id": spec.id}
+        payload: dict[str, object] = {"id": command.id}
 
         if has_lifecycle:
-            assert not isinstance(spec.actions, _Unset)
-            lifecycle_action: str = spec.actions.lifecycle  # type: ignore[assignment]
+            assert not isinstance(command.actions, _Unset)
+            lifecycle_action: str = command.actions.lifecycle  # type: ignore[assignment]
             should_call, lifecycle_warnings = self._process_lifecycle(lifecycle_action, task)
             warnings.extend(lifecycle_warnings)
             lifecycle_handled = True
@@ -197,12 +223,12 @@ class OperatorService:
             warnings.append(EDIT_COMPLETED_TASK.format(status=status))
 
         # 4. Validate name (if provided)
-        if not isinstance(spec.name, _Unset) and (not spec.name or not spec.name.strip()):
+        if not isinstance(command.name, _Unset) and (not command.name or not command.name.strip()):
             msg = "Task name cannot be empty"
             raise ValueError(msg)
 
         # 5. Build payload fields
-        # Simple fields: (spec_attr, payload_key)
+        # Simple fields: (command_attr, payload_key)
         _simple_fields = [
             ("name", "name"),
             ("note", "note"),
@@ -210,7 +236,7 @@ class OperatorService:
             ("estimated_minutes", "estimatedMinutes"),
         ]
         for attr, key in _simple_fields:
-            value = getattr(spec, attr)
+            value = getattr(command, attr)
             if not isinstance(value, _Unset):
                 payload[key] = value
 
@@ -225,19 +251,19 @@ class OperatorService:
             ("planned_date", "plannedDate"),
         ]
         for attr, key in _date_fields:
-            value = getattr(spec, attr)
+            value = getattr(command, attr)
             if not isinstance(value, _Unset):
                 payload[key] = value.isoformat() if value is not None else None
 
         # 4b. Handle tags via diff computation
         has_tag_actions = (
             has_actions
-            and not isinstance(spec.actions, _Unset)
-            and not isinstance(spec.actions.tags, _Unset)
+            and not isinstance(command.actions, _Unset)
+            and not isinstance(command.actions.tags, _Unset)
         )
         if has_tag_actions:
-            assert not isinstance(spec.actions, _Unset)
-            tag_actions: TagActionSpec = spec.actions.tags  # type: ignore[assignment]
+            assert not isinstance(command.actions, _Unset)
+            tag_actions: TagAction = command.actions.tags  # type: ignore[assignment]
             add_ids, remove_ids, tag_warnings = await self._compute_tag_diff(tag_actions, task.tags)
             logger.debug("OperatorService.edit_task: current_tags=%s", [t.id for t in task.tags])
             logger.debug(
@@ -253,18 +279,18 @@ class OperatorService:
         # 5. Handle moveTo
         has_move = (
             has_actions
-            and not isinstance(spec.actions, _Unset)
-            and not isinstance(spec.actions.move, _Unset)
+            and not isinstance(command.actions, _Unset)
+            and not isinstance(command.actions.move, _Unset)
         )
         if has_move:
             logger.debug("OperatorService.edit_task: processing move action")
-            assert not isinstance(spec.actions, _Unset)
-            move_to_spec: MoveToSpec = spec.actions.move  # type: ignore[assignment]
+            assert not isinstance(command.actions, _Unset)
+            move_action: MoveAction = command.actions.move  # type: ignore[assignment]
             move_to_dict: dict[str, object] = {}
 
             # Find which key is set
             for position_key in ("beginning", "ending"):
-                value = getattr(move_to_spec, position_key)
+                value = getattr(move_action, position_key)
                 if not isinstance(value, _Unset):
                     if value is None:
                         # Move to inbox
@@ -277,10 +303,10 @@ class OperatorService:
                         # Cycle detection: check if container is a task
                         container_task = await self._repository.get_task(value)
                         if container_task is not None:
-                            await self._check_cycle(spec.id, value)
+                            await self._check_cycle(command.id, value)
 
             for position_key in ("before", "after"):
-                value = getattr(move_to_spec, position_key)
+                value = getattr(move_action, position_key)
                 if not isinstance(value, _Unset):
                     # Validate anchor exists
                     anchor = await self._repository.get_task(value)
@@ -294,9 +320,9 @@ class OperatorService:
         # 6. Early return for completely empty edit (no fields, no tags, no move)
         if len(payload) == 1 and not warnings:  # Only "id" key, no action-specific warnings
             logger.debug("OperatorService.edit_task: empty edit (no fields), returning early")
-            return TaskEditResult(
+            return EditTaskResult(
                 success=True,
-                id=spec.id,
+                id=command.id,
                 name=task.name,
                 warnings=[EDIT_NO_CHANGES_SPECIFIED],
             )
@@ -305,9 +331,9 @@ class OperatorService:
             logger.debug(
                 "OperatorService.edit_task: empty edit with action warnings, returning early"
             )
-            return TaskEditResult(
+            return EditTaskResult(
                 success=True,
-                id=spec.id,
+                id=command.id,
                 name=task.name,
                 warnings=warnings,
             )
@@ -369,25 +395,52 @@ class OperatorService:
             logger.debug(
                 "OperatorService.edit_task: no-op detected, all values match current state"
             )
-            return TaskEditResult(
+            return EditTaskResult(
                 success=True,
-                id=spec.id,
+                id=command.id,
                 name=task.name,
                 warnings=warnings,
             )
 
-        # 8. Delegate to repository
+        # 8. Build typed repo payload and delegate to repository
+        # Only include fields that are in the service payload dict, so that
+        # exclude_unset=True in repos correctly distinguishes "not changed" from "clear to None"
+        repo_kwargs: dict[str, object] = {"id": command.id}
+        _payload_to_repo = {
+            "name": "name",
+            "note": "note",
+            "flagged": "flagged",
+            "estimatedMinutes": "estimated_minutes",
+            "dueDate": "due_date",
+            "deferDate": "defer_date",
+            "plannedDate": "planned_date",
+            "addTagIds": "add_tag_ids",
+            "removeTagIds": "remove_tag_ids",
+            "lifecycle": "lifecycle",
+        }
+        for payload_key, repo_key in _payload_to_repo.items():
+            if payload_key in payload:
+                repo_kwargs[repo_key] = payload[payload_key]
+        if "moveTo" in payload:
+            move_data = payload["moveTo"]
+            assert isinstance(move_data, dict)
+            repo_kwargs["move_to"] = MoveToRepoPayload(
+                position=move_data["position"],
+                container_id=move_data.get("containerId"),
+                anchor_id=move_data.get("anchorId"),
+            )
+        repo_payload = EditTaskRepoPayload.model_validate(repo_kwargs)
         logger.debug(
             "OperatorService.edit_task: delegating to repository, payload keys=%s",
             list(payload.keys()),
         )
-        result = await self._repository.edit_task(payload)
+        repo_result = await self._repository.edit_task(repo_payload)
 
         # 9. Return result
-        return TaskEditResult(
+        return EditTaskResult(
             success=True,
-            id=result["id"],
-            name=result["name"],
+            id=repo_result.id,
+            name=repo_result.name,
             warnings=warnings or None,
         )
 
@@ -504,17 +557,17 @@ class OperatorService:
 
     async def _compute_tag_diff(
         self,
-        tag_actions: TagActionSpec,
+        tag_actions: TagAction,
         current_tags: list[TagRef],
     ) -> tuple[list[str], list[str], list[str]]:
         """Compute the minimal (add_ids, remove_ids, warnings) diff for tag actions.
 
         Resolves tag names to IDs, computes the final tag set from the
-        TagActionSpec input, and returns only the IDs that need adding or
+        TagAction input, and returns only the IDs that need adding or
         removing. Warnings are generated by comparing user intent against
         current state BEFORE computing the final set.
         """
-        from omnifocus_operator.models.write import _Unset
+        from omnifocus_operator.contracts.base import _Unset
 
         warnings: list[str] = []
         current_ids = {t.id for t in current_tags}

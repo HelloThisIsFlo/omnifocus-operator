@@ -127,16 +127,19 @@ class TestAddTask:
     """Service.add_task validates inputs and delegates to repository."""
 
     async def test_create_minimal(self) -> None:
-        """Name-only spec creates task and returns TaskCreateResult."""
-        from omnifocus_operator.models.write import TaskCreateResult, TaskCreateSpec
+        """Name-only spec creates task and returns CreateTaskResult."""
+        from omnifocus_operator.contracts.use_cases.create_task import (
+            CreateTaskCommand,
+            CreateTaskResult,
+        )
 
         snapshot = make_snapshot()
         repo = InMemoryRepository(snapshot=snapshot)
         service = OperatorService(repository=repo)
 
-        result = await service.add_task(TaskCreateSpec(name="Buy milk"))
+        result = await service.add_task(CreateTaskCommand(name="Buy milk"))
 
-        assert isinstance(result, TaskCreateResult)
+        assert isinstance(result, CreateTaskResult)
         assert result.success is True
         assert result.name == "Buy milk"
 
