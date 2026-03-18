@@ -85,6 +85,42 @@ Three implementations: HybridRepository (production), BridgeRepository (fallback
 - `get_*` = heterogeneous structured return; `list_*` = homogeneous filtered collection
 - `AllEntities` (not `DatabaseSnapshot`) -- no caching/snapshot semantics at the protocol level
 
+## Model Taxonomy (Write-Side Naming Convention)
+
+Write-side models follow a CQRS/DDD-inspired naming convention. Every model's name indicates its layer and role. Read-side models (entities, value objects) use bare names with no suffix.
+
+### The layers
+
+| Suffix | Role | When to use | Examples |
+|--------|------|-------------|---------|
+| `___Command` | Top-level write instruction | Agent sends this to create/edit an entity | `CreateTaskCommand`, `EditTaskCommand` |
+| `___Action` | Stateful mutation in the actions block | Nested operation that mutates relative to current state | `TagAction`, `MoveAction` |
+| `___Spec` | Write-side value object (desired state) | Nested setter with different shape from its read counterpart (e.g. partial update semantics) | `RepetitionRuleSpec` (future) |
+| `___Payload` | Bridge wire format | What the service builds and the repository/bridge receives | `CreateTaskPayload`, `EditTaskPayload` |
+| `___Result` | Outcome of a write operation | What comes back to the agent | `CreateTaskResult`, `EditTaskResult` |
+| No suffix | Read-side entity or shared value object | Domain entities, value objects same shape in both directions | `Task`, `TagRef`, `RepetitionRule` |
+
+### Naming rules
+
+- **Verb-first** for commands, payloads, and results: `CreateTask___`, `EditTask___` (not `TaskCreate___`)
+- **Noun-only** for read entities: `Task`, `Project`, `Tag` (no verb, no suffix)
+- **Value objects** within commands are suffix-free when unambiguous (`TagAction`, `MoveAction`), or use `___Spec` when a read-side model of the same name exists with a different shape
+- **Base class**: `CommandModel` — all command-layer models inherit this (`extra="forbid"`, strict validation)
+
+### Decision tree for naming a new write-side model
+
+1. Is it a top-level instruction that creates/edits an entity? → `___Command`
+2. Is it a stateful operation inside the actions block? → `___Action`
+3. Is it a complex value object (setter, not a mutation)?
+   - Same shape as read side → no suffix (shared model)
+   - Different shape from read side (e.g. partial update optionality) → `___Spec`
+4. Is it the bridge wire format? → `___Payload`
+5. Is it the outcome returned to the agent? → `___Result`
+
+### Ubiquitous language
+
+> "The agent sends a **command**. The service validates, resolves, and builds a **payload**. The bridge executes and returns a **result**. Within a command, **actions** mutate state; **specs** describe desired state for complex nested objects."
+
 ## Why Repository, Not DataSource
 
 - Repository implies querying/filtering -- `list_tasks(filters)` in v1.3
