@@ -176,24 +176,6 @@ Write-side models follow a CQRS/DDD-inspired naming convention. Every model's na
 5. Is it the confirmation from the repository? → `___RepoResult`
 6. Is it the enriched outcome returned to the agent? → `___Result`
 
-### Data flow
-
-```
-Agent (JSON)
-  │                                ▲
-  │     === Server ===             │
-  ▼                                │
-CreateTaskCommand            CreateTaskResult
-  │                                ▲
-  │     === Service ===            │
-  ▼                                │
-CreateTaskRepoPayload      CreateTaskRepoResult
-  │                                ▲
-  │    === Repository ===          │
-  ▼                                ▲
-dict ──────► Bridge ──────► raw dict
-```
-
 ### Ubiquitous language
 
 > "The agent sends a **command**. The service validates, resolves, and builds a **repo payload**. The repository forwards to the bridge and returns a **repo result**. The service enriches this into a **result** for the agent. Within a command, **actions** mutate state; **specs** describe desired state for complex nested objects."
@@ -237,15 +219,19 @@ dict ──────► Bridge ──────► raw dict
 Writes flow through four typed boundaries:
 
 ```
-CreateTaskCommand / EditTaskCommand              (agent → service)
-    ↓ service: validate → resolve → build payload
-CreateTaskRepoPayload / EditTaskRepoPayload      (service → repository)
-    ↓ repository: model_dump() → bridge
-dict                                              (repository → bridge)
-    ↓ bridge: execute in OmniFocus
-raw dict                                          (bridge → repository)
-    ↑ repository: wrap → CreateTaskRepoResult / EditTaskRepoResult
-    ↑ service: enrich → CreateTaskResult / EditTaskResult (+ warnings)
+Agent (JSON)
+  │                                ▲
+  │     === Server ===             │
+  ▼                                │
+CreateTaskCommand            CreateTaskResult
+  │                                ▲
+  │     === Service ===            │
+  ▼                                │
+CreateTaskRepoPayload      CreateTaskRepoResult
+  │                                ▲
+  │    === Repository ===          │
+  ▼                                │
+dict ──────► Bridge ──────► raw dict
 ```
 
 - **Service** does ALL processing: validation, parent/tag resolution, tag diff, move transformation, date serialization, no-op detection
