@@ -18,13 +18,22 @@ Repository (protocol)        -- async reads + writes -> AllEntities, Task, etc.
 
 ```
 omnifocus_operator/
+    contracts/       -- Typed boundaries: protocols, commands, payloads, results
+        protocols.py     -- Service, Repository, Bridge — all boundaries in one file
+        base.py          -- CommandModel, UNSET sentinel
+        common.py        -- Shared value objects (TagAction, MoveAction)
+        use_cases/       -- One module per operation
+            create_task.py   -- CreateTaskCommand, CreateTaskRepoPayload, CreateTaskRepoResult, CreateTaskResult
+            edit_task.py     -- EditTaskCommand, EditTaskActions, EditTaskRepoPayload, EditTaskRepoResult, EditTaskResult
+    models/          -- Read-side domain models (entities, enums, value objects)
     bridge/          -- OmniFocus communication (IPC, in-memory, simulator)
-    repository/      -- Data access protocol + implementations + factory
-    models/          -- Pydantic models (entities, enums, read/write specs)
+    repository/      -- Data access implementations + factory
     simulator/       -- Mock OmniFocus simulator for IPC testing
     server.py        -- FastMCP tool registration + wiring
     service.py       -- Validation, resolution, delegation to repository
 ```
+
+**Split principle:** `models/` = what OmniFocus IS (domain entities). `contracts/` = what you can DO (operations, boundaries). Everything else = how it's done (implementations).
 
 ## Dumb Bridge, Smart Python
 
@@ -65,16 +74,46 @@ These are concrete examples of why logic stays out of the bridge:
 
 The bridge is ~400 lines of trivial relay code. The rest of the project is ~14,000 lines of validated, typed, tested Python. That's the right split.
 
-## Repository Protocol
+## Protocols
 
-Structural typing (no inheritance required). Current contract:
+All protocols live in `contracts/protocols.py` — one file shows every typed boundary in the system.
 
-- `get_all()` -> `AllEntities` -- full snapshot (tasks, projects, folders, tags)
-- `get_task(id)` / `get_project(id)` / `get_tag(id)` -> single entity or None
-- `add_task(spec, resolved_tag_ids)` -> `TaskCreateResult`
-- `edit_task(spec, ...)` -> `TaskEditResult`
+### Service protocol (agent ↔ service)
 
-Three implementations: HybridRepository (production), BridgeRepository (fallback), InMemoryRepository (tests).
+```python
+class Service(Protocol):
+    # Reads — return domain entities
+    async def get_all_data(self) -> AllEntities: ...
+    async def get_task(self, task_id: str) -> Task | None: ...
+    async def get_project(self, project_id: str) -> Project | None: ...
+    async def get_tag(self, tag_id: str) -> Tag | None: ...
+    # Writes — take commands, return results
+    async def add_task(self, command: CreateTaskCommand) -> CreateTaskResult: ...
+    async def edit_task(self, command: EditTaskCommand) -> EditTaskResult: ...
+```
+
+### Repository protocol (service ↔ repository)
+
+```python
+class Repository(Protocol):
+    # Reads — return domain entities
+    async def get_all(self) -> AllEntities: ...
+    async def get_task(self, task_id: str) -> Task | None: ...
+    async def get_project(self, project_id: str) -> Project | None: ...
+    async def get_tag(self, tag_id: str) -> Tag | None: ...
+    # Writes — take repo payloads, return repo results
+    async def add_task(self, payload: CreateTaskRepoPayload) -> CreateTaskRepoResult: ...
+    async def edit_task(self, payload: EditTaskRepoPayload) -> EditTaskRepoResult: ...
+```
+
+### Bridge protocol (repository ↔ OmniFocus)
+
+```python
+class Bridge(Protocol):
+    async def send_command(self, operation: str, params: dict[str, Any] | None = None) -> dict[str, Any]: ...
+```
+
+Three repository implementations: HybridRepository (production), BridgeRepository (fallback), InMemoryRepository (tests).
 
 ## Method Naming Convention
 
@@ -91,35 +130,73 @@ Write-side models follow a CQRS/DDD-inspired naming convention. Every model's na
 
 ### The layers
 
+### Agent boundary (agent ↔ service)
+
+| Suffix | Role | Direction | Examples |
+|--------|------|-----------|---------|
+| `___Command` | Top-level write instruction | Inbound | `CreateTaskCommand`, `EditTaskCommand` |
+| `___Result` | Outcome returned to agent | Outbound | `CreateTaskResult`, `EditTaskResult` |
+
+### Repository boundary (service ↔ repository)
+
+| Suffix | Role | Direction | Examples |
+|--------|------|-----------|---------|
+| `___RepoPayload` | Processed, bridge-ready data | Inbound | `CreateTaskRepoPayload`, `EditTaskRepoPayload` |
+| `___RepoResult` | Minimal confirmation from bridge | Outbound | `CreateTaskRepoResult`, `EditTaskRepoResult` |
+
+### Value objects (nested within commands)
+
 | Suffix | Role | When to use | Examples |
 |--------|------|-------------|---------|
-| `___Command` | Top-level write instruction | Agent sends this to create/edit an entity | `CreateTaskCommand`, `EditTaskCommand` |
 | `___Action` | Stateful mutation in the actions block | Nested operation that mutates relative to current state | `TagAction`, `MoveAction` |
 | `___Spec` | Write-side value object (desired state) | Nested setter with different shape from its read counterpart (e.g. partial update semantics) | `RepetitionRuleSpec` (future) |
-| `___Payload` | Bridge wire format | What the service builds and the repository/bridge receives | `CreateTaskPayload`, `EditTaskPayload` |
-| `___Result` | Outcome of a write operation | What comes back to the agent | `CreateTaskResult`, `EditTaskResult` |
-| No suffix | Read-side entity or shared value object | Domain entities, value objects same shape in both directions | `Task`, `TagRef`, `RepetitionRule` |
+
+### Read-side models
+
+| Suffix | Role | Examples |
+|--------|------|---------|
+| No suffix | Domain entity or shared value object | `Task`, `Project`, `Tag`, `TagRef`, `RepetitionRule` |
 
 ### Naming rules
 
-- **Verb-first** for commands, payloads, and results: `CreateTask___`, `EditTask___` (not `TaskCreate___`)
+- **Verb-first** for all write-side models: `CreateTask___`, `EditTask___` (not `TaskCreate___`)
 - **Noun-only** for read entities: `Task`, `Project`, `Tag` (no verb, no suffix)
 - **Value objects** within commands are suffix-free when unambiguous (`TagAction`, `MoveAction`), or use `___Spec` when a read-side model of the same name exists with a different shape
 - **Base class**: `CommandModel` — all command-layer models inherit this (`extra="forbid"`, strict validation)
+- **Repo qualifier**: Both inbound and outbound models at the repository boundary use `Repo` prefix for symmetry and clarity
 
 ### Decision tree for naming a new write-side model
 
-1. Is it a top-level instruction that creates/edits an entity? → `___Command`
-2. Is it a stateful operation inside the actions block? → `___Action`
-3. Is it a complex value object (setter, not a mutation)?
+1. Is it a top-level instruction from the agent? → `___Command`
+2. Is it processed data sent to the repository? → `___RepoPayload`
+3. Is it a stateful operation inside the actions block? → `___Action`
+4. Is it a complex nested value object (setter, not a mutation)?
    - Same shape as read side → no suffix (shared model)
    - Different shape from read side (e.g. partial update optionality) → `___Spec`
-4. Is it the bridge wire format? → `___Payload`
-5. Is it the outcome returned to the agent? → `___Result`
+5. Is it the confirmation from the repository? → `___RepoResult`
+6. Is it the enriched outcome returned to the agent? → `___Result`
+
+### Data flow
+
+```
+Agent (JSON)
+  │                                ▲
+  │     === Server ===             │
+  ▼                                │
+CreateTaskCommand            CreateTaskResult
+  │                                ▲
+  │     === Service ===            │
+  ▼                                │
+CreateTaskRepoPayload      CreateTaskRepoResult
+  │                                ▲
+  │    === Repository ===          │
+  ▼                                ▲
+dict ──────► Bridge ──────► raw dict
+```
 
 ### Ubiquitous language
 
-> "The agent sends a **command**. The service validates, resolves, and builds a **payload**. The bridge executes and returns a **result**. Within a command, **actions** mutate state; **specs** describe desired state for complex nested objects."
+> "The agent sends a **command**. The service validates, resolves, and builds a **repo payload**. The repository forwards to the bridge and returns a **repo result**. The service enriches this into a **result** for the agent. Within a command, **actions** mutate state; **specs** describe desired state for complex nested objects."
 
 ## Why Repository, Not DataSource
 
