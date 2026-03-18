@@ -78,10 +78,16 @@ validated: 2026-03-18
 | Metric | Count |
 |--------|-------|
 | Gaps found | 3 |
-| Resolved | 0 |
-| Skipped | 3 |
+| Resolved | 1 |
+| Skipped | 2 |
 
-**Skipped gaps (redundant):**
+**Resolved:**
+- JSON schema shape tests — 5 tests in `test_models.py::TestWriteModelStrictness` verify agent-visible schemas have correct types, required fields, and branch counts. Catches `_Unset` leaking if `is_instance_schema` ever breaks.
+
+**Skipped (redundant):**
 - Import smoke test — already covered by 517 existing tests that import and use contracts/ models
 - Deletion guards for old files — hardcodes historical decisions; no value as regression tests
-- Full suite: 517 passed, 96% coverage
+
+**Bonus:** Removed ~90 lines of dead code (`_clean_unset_from_schema` + 4 `model_json_schema` overrides) — `is_instance_schema` already excludes `_Unset` from schemas.
+
+**Result:** 522 passed, 96.76% coverage
