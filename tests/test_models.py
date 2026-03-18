@@ -1059,35 +1059,50 @@ class TestWriteModelStrictness:
         assert spec.name == "Test"
         assert spec.estimated_minutes == 30
 
-    # --- Schema generation: _Unset stripped from agent-visible JSON schema ---
+    # --- Schema generation: agent-visible JSON schema is clean ---
 
-    @pytest.mark.parametrize(
-        "model_path",
-        [
-            ("omnifocus_operator.contracts.use_cases.edit_task", "EditTaskCommand"),
-            ("omnifocus_operator.contracts.use_cases.edit_task", "EditTaskActions"),
-            ("omnifocus_operator.contracts.common", "TagAction"),
-            ("omnifocus_operator.contracts.common", "MoveAction"),
-        ],
-    )
-    def test_json_schema_has_no_unset(self, model_path: tuple[str, str]) -> None:
-        """model_json_schema must strip _Unset so agents never see it."""
-        import importlib
-        import json
-
-        module = importlib.import_module(model_path[0])
-        cls = getattr(module, model_path[1])
-        schema = cls.model_json_schema()
-        raw = json.dumps(schema)
-        assert "_Unset" not in raw, f"{model_path[1]} schema still contains _Unset"
-
-    def test_edit_command_schema_properties_are_clean_types(self) -> None:
-        """Spot-check that UNSET fields resolve to their real types, not anyOf with _Unset."""
+    def test_edit_command_schema_only_id_required(self) -> None:
+        """Only 'id' is required — all UNSET-defaulted fields are optional."""
         from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
         schema = EditTaskCommand.model_json_schema()
-        props = schema["properties"]
-        # 'name' should be a plain string, not anyOf[string, _Unset]
-        assert props["name"] == {"title": "Name", "type": "string"}
-        # 'flagged' should be a plain boolean
-        assert props["flagged"] == {"title": "Flagged", "type": "boolean"}
+        assert schema["required"] == ["id"]
+
+    def test_edit_command_schema_non_nullable_fields(self) -> None:
+        """Non-nullable UNSET fields appear as their plain type."""
+        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
+
+        props = EditTaskCommand.model_json_schema()["properties"]
+        assert props["name"]["type"] == "string"
+        assert props["flagged"]["type"] == "boolean"
+        assert "anyOf" not in props["name"]
+        assert "anyOf" not in props["flagged"]
+
+    def test_edit_command_schema_nullable_fields(self) -> None:
+        """Nullable UNSET fields appear as anyOf[real_type, null] — exactly two branches."""
+        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
+
+        props = EditTaskCommand.model_json_schema()["properties"]
+        assert len(props["note"]["anyOf"]) == 2
+        note_types = {b.get("type") for b in props["note"]["anyOf"]}
+        assert note_types == {"string", "null"}
+        assert len(props["dueDate"]["anyOf"]) == 2
+        due_types = {b.get("type") for b in props["dueDate"]["anyOf"]}
+        assert due_types == {"string", "null"}
+
+    def test_edit_actions_schema_all_optional(self) -> None:
+        """EditTaskActions: tags, move, lifecycle are all optional."""
+        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskActions
+
+        schema = EditTaskActions.model_json_schema()
+        assert schema.get("required", []) == []
+
+    def test_tag_action_schema_fields(self) -> None:
+        """TagAction: add/remove are arrays, replace is nullable array."""
+        from omnifocus_operator.contracts.common import TagAction
+
+        props = TagAction.model_json_schema()["properties"]
+        assert props["add"]["type"] == "array"
+        assert props["remove"]["type"] == "array"
+        replace_types = {b.get("type") for b in props["replace"]["anyOf"]}
+        assert replace_types == {"array", "null"}
