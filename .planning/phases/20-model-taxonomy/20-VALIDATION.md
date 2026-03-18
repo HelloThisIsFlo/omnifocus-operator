@@ -39,7 +39,7 @@ validated: 2026-03-18
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 20-01-01 | 01 | 1 | MODL-01 | smoke | `uv run pytest tests/test_contracts_smoke.py -x` | ✅ | ✅ green |
+| 20-01-01 | 01 | 1 | MODL-01 | regression | `uv run pytest tests/ -x -q --no-header --tb=short` | ✅ | ✅ green |
 | 20-01-02 | 01 | 1 | MODL-02 | regression | `uv run pytest tests/ -x -q --no-header --tb=short` | ✅ | ✅ green |
 | 20-02-01 | 02 | 2 | MODL-03 | unit+regression | `uv run pytest tests/test_service.py tests/test_repository.py tests/test_hybrid_repository.py -x` | ✅ | ✅ green |
 | 20-02-02 | 02 | 2 | MODL-04 | regression | `uv run pytest tests/test_models.py tests/test_service.py -x` | ✅ | ✅ green |
@@ -50,11 +50,7 @@ validated: 2026-03-18
 
 ## Wave 0 Requirements
 
-- [x] Import smoke test verifying `contracts/` package is importable with correct model names — `tests/test_contracts_smoke.py::TestContractsImportSmoke`
-- [x] Verification that `models/write.py` is deleted and `from omnifocus_operator.models.write import ...` raises ImportError — `tests/test_contracts_smoke.py::TestOldFileDeletionGuards::test_models_write_deleted`
-- [x] Verification that `bridge/protocol.py` and `repository/protocol.py` are deleted — `tests/test_contracts_smoke.py::TestOldFileDeletionGuards::test_bridge_protocol_deleted` + `test_repository_protocol_deleted`
-
-*All Wave 0 gaps filled by `tests/test_contracts_smoke.py` (8 tests).*
+*Existing test infrastructure covers all phase requirements. The 517 existing tests import and exercise every contracts/ model — no additional smoke tests needed.*
 
 ---
 
@@ -82,10 +78,10 @@ validated: 2026-03-18
 | Metric | Count |
 |--------|-------|
 | Gaps found | 3 |
-| Resolved | 3 |
-| Escalated | 0 |
+| Resolved | 0 |
+| Skipped | 3 |
 
-**Test file generated:** `tests/test_contracts_smoke.py` (8 tests)
-- 4 import smoke tests (all exports + schema generation for 4 models)
-- 3 deletion guard tests (models/write.py, bridge/protocol.py, repository/protocol.py)
-- Full suite: 525 passed, 96% coverage
+**Skipped gaps (redundant):**
+- Import smoke test — already covered by 517 existing tests that import and use contracts/ models
+- Deletion guards for old files — hardcodes historical decisions; no value as regression tests
+- Full suite: 517 passed, 96% coverage
