@@ -15,8 +15,8 @@ Requirements for Architectural Cleanup milestone. No new tools, no behavioral ch
 ### Model Taxonomy
 
 - [x] **MODL-01**: Three-layer model taxonomy established: Request (user intent), Domain (entities), Payload (bridge format)
-- [ ] **MODL-02**: Write-side request models renamed to follow consistent convention distinguishing them from domain models
-- [ ] **MODL-03**: Typed bridge payload models replace `dict[str, Any]` at the service-repository boundary
+- [x] **MODL-02**: Write-side request models renamed to follow consistent convention distinguishing them from domain models
+- [x] **MODL-03**: Typed bridge payload models replace `dict[str, Any]` at the service-repository boundary
 - [x] **MODL-04**: All write-side sub-models (RepetitionRuleSpec, MoveToSpec, TagActionSpec, etc.) renamed to indicate their layer
 
 ### Service Decomposition
@@ -96,8 +96,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-02 | Phase 19 | Complete |
 | INFRA-03 | Phase 19 | Complete |
 | MODL-01 | Phase 20 | Complete |
-| MODL-02 | Phase 20 | Pending |
-| MODL-03 | Phase 20 | Pending |
+| MODL-02 | Phase 20 | Complete |
+| MODL-03 | Phase 20 | Complete |
 | MODL-04 | Phase 20 | Complete |
 | PIPE-01 | Phase 21 | Pending |
 | PIPE-02 | Phase 21 | Pending |

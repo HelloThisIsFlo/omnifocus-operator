@@ -52,7 +52,7 @@
 
 - [x] **Phase 18: Write Model Strictness** - Write specs reject unknown fields; sentinel interaction validated (completed 2026-03-16)
 - [x] **Phase 19: InMemoryBridge Export Cleanup** - Test double removed from production exports (completed 2026-03-17)
-- [ ] **Phase 20: Model Taxonomy** - Three-layer naming convention with typed bridge payloads
+- [x] **Phase 20: Model Taxonomy** - Three-layer naming convention with typed bridge payloads (completed 2026-03-18)
 - [ ] **Phase 21: Write Pipeline Unification** - Symmetric add/edit signatures at service-repository boundary
 - [ ] **Phase 22: Service Decomposition** - service.py becomes service/ package; all logic extracted to dedicated modules
 - [ ] **Phase 23: SimulatorBridge and Factory Cleanup** - SimulatorBridge removed from exports; bridge factory eliminated; PYTEST guard moved to RealBridge
@@ -97,7 +97,7 @@ Plans:
   3. Typed Pydantic models exist for bridge payloads, replacing raw dict[str, Any] at the service-repository boundary
   4. All existing import paths that changed have backward-compatible aliases or all call sites are updated
   5. All 534+ existing tests pass without modification to assertions (only import paths may change)
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [ ] 20-01-PLAN.md -- Create contracts/ package with new model definitions and consolidated protocols
 - [ ] 20-02-PLAN.md -- Migrate all source and test imports, typed repo signatures, delete old files
@@ -158,7 +158,7 @@ Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24
 | 17. Task Lifecycle | v1.2 | 3/3 | Complete | 2026-03-12 |
 | 18. Write Model Strictness | 2/2 | Complete    | 2026-03-16 | - |
 | 19. InMemoryBridge Export Cleanup | 1/1 | Complete    | 2026-03-17 | - |
-| 20. Model Taxonomy | 1/2 | In Progress|  | - |
+| 20. Model Taxonomy | 2/2 | Complete   | 2026-03-18 | - |
 | 21. Write Pipeline Unification | v1.2.1 | 0/TBD | Not started | - |
 | 22. Service Decomposition | v1.2.1 | 0/TBD | Not started | - |
 | 23. SimulatorBridge and Factory Cleanup | v1.2.1 | 0/TBD | Not started | - |
