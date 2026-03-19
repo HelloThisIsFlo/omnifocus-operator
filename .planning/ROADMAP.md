@@ -53,7 +53,7 @@
 - [x] **Phase 18: Write Model Strictness** - Write specs reject unknown fields; sentinel interaction validated (completed 2026-03-16)
 - [x] **Phase 19: InMemoryBridge Export Cleanup** - Test double removed from production exports (completed 2026-03-17)
 - [x] **Phase 20: Model Taxonomy** - Three-layer naming convention with typed bridge payloads (completed 2026-03-18)
-- [ ] **Phase 21: Write Pipeline Unification** - Symmetric add/edit signatures at service-repository boundary
+- [x] **Phase 21: Write Pipeline Unification** - Symmetric add/edit signatures at service-repository boundary (completed 2026-03-19)
 - [ ] **Phase 22: Service Decomposition** - service.py becomes service/ package; all logic extracted to dedicated modules
 - [ ] **Phase 23: SimulatorBridge and Factory Cleanup** - SimulatorBridge removed from exports; bridge factory eliminated; PYTEST guard moved to RealBridge
 - [ ] **Phase 24: Test Double Relocation** - All test double modules moved from src/ to tests/; production code structurally cannot import them
@@ -111,7 +111,7 @@ Plans:
   2. Both write paths construct bridge payloads using the same pattern (no split between repo model_dump vs service dict-building)
   3. All three repository implementations (Hybrid, Bridge, InMemory) conform to the unified protocol
   4. All 534+ existing tests pass without behavioral changes
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [ ] 21-01-PLAN.md -- Service-side payload construction convergence (kwargs dict pattern for add_task, snake_case elimination of camelCase roundtrip for edit_task)
 - [ ] 21-02-PLAN.md -- BridgeWriteMixin extraction, exclude_unset standardization, explicit protocol conformance
@@ -162,7 +162,7 @@ Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24
 | 18. Write Model Strictness | 2/2 | Complete    | 2026-03-16 | - |
 | 19. InMemoryBridge Export Cleanup | 1/1 | Complete    | 2026-03-17 | - |
 | 20. Model Taxonomy | 2/2 | Complete    | 2026-03-18 | - |
-| 21. Write Pipeline Unification | 1/2 | In Progress|  | - |
+| 21. Write Pipeline Unification | 2/2 | Complete   | 2026-03-19 | - |
 | 22. Service Decomposition | v1.2.1 | 0/TBD | Not started | - |
 | 23. SimulatorBridge and Factory Cleanup | v1.2.1 | 0/TBD | Not started | - |
 | 24. Test Double Relocation | v1.2.1 | 0/TBD | Not started | - |
