@@ -1,8 +1,4 @@
-"""Shared value objects for the contracts layer: TagAction, MoveAction.
-
-These are renamed from TagActionSpec and MoveToSpec respectively, with
-identical fields and validators.
-"""
+"""Shared value objects for the contracts layer: TagAction, MoveAction."""
 
 from __future__ import annotations
 
