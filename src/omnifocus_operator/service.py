@@ -140,18 +140,25 @@ class OperatorService:
                 resolved_tag_ids,
             )
 
-        # Build typed repo payload
-        payload = CreateTaskRepoPayload(
-            name=command.name,
-            parent=command.parent,
-            tag_ids=resolved_tag_ids,
-            due_date=command.due_date.isoformat() if command.due_date else None,
-            defer_date=command.defer_date.isoformat() if command.defer_date else None,
-            planned_date=command.planned_date.isoformat() if command.planned_date else None,
-            flagged=command.flagged,
-            estimated_minutes=command.estimated_minutes,
-            note=command.note,
-        )
+        # Build typed repo payload (kwargs dict with only populated fields)
+        repo_kwargs: dict[str, object] = {"name": command.name}
+        if command.parent is not None:
+            repo_kwargs["parent"] = command.parent
+        if resolved_tag_ids is not None:
+            repo_kwargs["tag_ids"] = resolved_tag_ids
+        if command.due_date is not None:
+            repo_kwargs["due_date"] = command.due_date.isoformat()
+        if command.defer_date is not None:
+            repo_kwargs["defer_date"] = command.defer_date.isoformat()
+        if command.planned_date is not None:
+            repo_kwargs["planned_date"] = command.planned_date.isoformat()
+        if command.flagged is not None:
+            repo_kwargs["flagged"] = command.flagged
+        if command.estimated_minutes is not None:
+            repo_kwargs["estimated_minutes"] = command.estimated_minutes
+        if command.note is not None:
+            repo_kwargs["note"] = command.note
+        payload = CreateTaskRepoPayload.model_validate(repo_kwargs)
 
         logger.debug("OperatorService.add_task: delegating to repository")
         repo_result = await self._repository.add_task(payload)
