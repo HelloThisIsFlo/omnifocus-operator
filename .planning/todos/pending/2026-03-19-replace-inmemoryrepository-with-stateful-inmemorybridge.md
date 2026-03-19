@@ -24,3 +24,12 @@ Make `InMemoryBridge` stateful so tests can use `BridgeRepository + InMemoryBrid
 6. Tests construct `BridgeRepository(bridge=InMemoryBridge(...), mtime_source=FakeMtime())`
 
 This exercises the real serialization path (`BridgeWriteMixin`), real cache invalidation, and real snapshot parsing (`AllEntities.model_validate()`). The simulation logic moves to InMemoryBridge but works in camelCase — matching what OmniFocus actually receives.
+
+## Blast radius
+
+- **Delete**: `src/omnifocus_operator/repository/in_memory.py` (175 lines)
+- **Rewrite**: `src/omnifocus_operator/bridge/in_memory.py` — add stateful mutation logic
+- **Update imports**: `test_service.py`, `test_server.py` (7 call sites), `test_repository.py` — swap `InMemoryRepository(snapshot)` for `BridgeRepository(bridge=..., mtime_source=...)`
+- **Keep as-is**: `ConstantMtimeSource` already exists and is already used with BridgeRepository in `test_server.py`
+- **Keep as-is**: `SimulatorBridge` + simulator process — different job (tests IPC file mechanics, not business logic)
+- **Zero production code changes**
