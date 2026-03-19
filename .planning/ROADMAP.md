@@ -188,3 +188,13 @@ Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24
   4. All test files import test doubles from their new `tests/` location
   5. All 534+ existing tests pass after relocation
 **Plans**: TBD
+
+### Phase 25: Patch/PatchOrClear type aliases for command models
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 24
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 25 to break down)

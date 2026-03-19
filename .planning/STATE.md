@@ -83,6 +83,7 @@ Carried from v1.0:
 ### Roadmap Evolution
 
 - Phase 23 added: SimulatorBridge and factory cleanup (deferred from Phase 19 discussion)
+- Phase 25 added: Patch/PatchOrClear type aliases for command models (from sentinel pattern deep dive)
 
 ### Blockers/Concerns
 
