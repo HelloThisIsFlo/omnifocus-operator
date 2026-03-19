@@ -128,7 +128,7 @@ Plans:
   5. Each extracted module can be imported and tested without instantiating OperatorService
   6. The orchestrator reads as a short sequence of validate, domain, convert, delegate steps per write method
   7. All 534+ existing tests pass without modification
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
 - [ ] 22-01-PLAN.md -- Create service/ package, extract resolve.py, domain.py, payload.py; rewrite service.py as thin orchestrator
 - [ ] 22-02-PLAN.md -- Unit tests for extracted modules (test_service_resolve.py, test_service_domain.py, test_service_payload.py)
@@ -166,7 +166,7 @@ Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24
 | 19. InMemoryBridge Export Cleanup | 1/1 | Complete    | 2026-03-17 | - |
 | 20. Model Taxonomy | 2/2 | Complete    | 2026-03-18 | - |
 | 21. Write Pipeline Unification | 2/2 | Complete    | 2026-03-19 | - |
-| 22. Service Decomposition | v1.2.1 | 0/2 | Not started | - |
+| 22. Service Decomposition | 1/2 | In Progress|  | - |
 | 23. SimulatorBridge and Factory Cleanup | v1.2.1 | 0/TBD | Not started | - |
 | 24. Test Double Relocation | v1.2.1 | 0/TBD | Not started | - |
 

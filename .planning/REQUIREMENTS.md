@@ -21,10 +21,10 @@ Requirements for Architectural Cleanup milestone. No new tools, no behavioral ch
 
 ### Service Decomposition
 
-- [ ] **SVCR-01**: Validation logic extracted to dedicated module
-- [ ] **SVCR-02**: Domain logic extracted to dedicated module (tag diff, repetition rule semantics)
-- [ ] **SVCR-03**: Format conversion extracted to dedicated module
-- [ ] **SVCR-04**: service.py converted to service/ package (preserves all import paths)
+- [x] **SVCR-01**: Validation logic extracted to dedicated module
+- [x] **SVCR-02**: Domain logic extracted to dedicated module (tag diff, repetition rule semantics)
+- [x] **SVCR-03**: Format conversion extracted to dedicated module
+- [x] **SVCR-04**: service.py converted to service/ package (preserves all import paths)
 - [ ] **SVCR-05**: Each extracted module is independently testable
 
 ### Model Strictness
@@ -101,10 +101,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MODL-04 | Phase 20 | Complete |
 | PIPE-01 | Phase 21 | Complete |
 | PIPE-02 | Phase 21 | Complete |
-| SVCR-01 | Phase 22 | Pending |
-| SVCR-02 | Phase 22 | Pending |
-| SVCR-03 | Phase 22 | Pending |
-| SVCR-04 | Phase 22 | Pending |
+| SVCR-01 | Phase 22 | Complete |
+| SVCR-02 | Phase 22 | Complete |
+| SVCR-03 | Phase 22 | Complete |
+| SVCR-04 | Phase 22 | Complete |
 | SVCR-05 | Phase 22 | Pending |
 | INFRA-04 | Phase 23 | Pending |
 | INFRA-05 | Phase 23 | Pending |
