@@ -240,7 +240,7 @@ class OperatorService:
             ("name", "name"),
             ("note", "note"),
             ("flagged", "flagged"),
-            ("estimated_minutes", "estimatedMinutes"),
+            ("estimated_minutes", "estimated_minutes"),
         ]
         for attr, key in _simple_fields:
             value = getattr(command, attr)
@@ -253,9 +253,9 @@ class OperatorService:
 
         # Date fields: serialize to ISO string if not None
         _date_fields = [
-            ("due_date", "dueDate"),
-            ("defer_date", "deferDate"),
-            ("planned_date", "plannedDate"),
+            ("due_date", "due_date"),
+            ("defer_date", "defer_date"),
+            ("planned_date", "planned_date"),
         ]
         for attr, key in _date_fields:
             value = getattr(command, attr)
@@ -277,9 +277,9 @@ class OperatorService:
                 "OperatorService.edit_task: tag diff add_ids=%s, remove_ids=%s", add_ids, remove_ids
             )
             if add_ids:
-                payload["addTagIds"] = add_ids
+                payload["add_tag_ids"] = add_ids
             if remove_ids:
-                payload["removeTagIds"] = remove_ids
+                payload["remove_tag_ids"] = remove_ids
             logger.debug("OperatorService.edit_task: payload keys=%s", list(payload.keys()))
             warnings.extend(tag_warnings)
 
@@ -301,11 +301,11 @@ class OperatorService:
                 if not isinstance(value, _Unset):
                     if value is None:
                         # Move to inbox
-                        move_to_dict = {"position": position_key, "containerId": None}
+                        move_to_dict = {"position": position_key, "container_id": None}
                     else:
                         # Resolve container
                         await self._resolve_parent(value)
-                        move_to_dict = {"position": position_key, "containerId": value}
+                        move_to_dict = {"position": position_key, "container_id": value}
 
                         # Cycle detection: check if container is a task
                         container_task = await self._repository.get_task(value)
@@ -320,9 +320,9 @@ class OperatorService:
                     if anchor is None:
                         msg = f"Anchor task not found: {value}"
                         raise ValueError(msg)
-                    move_to_dict = {"position": position_key, "anchorId": value}
+                    move_to_dict = {"position": position_key, "anchor_id": value}
 
-            payload["moveTo"] = move_to_dict
+            payload["move_to"] = move_to_dict
 
         # 6. Early return for completely empty edit (no fields, no tags, no move)
         if len(payload) == 1 and not warnings:  # Only "id" key, no action-specific warnings
@@ -347,15 +347,15 @@ class OperatorService:
 
         # 7. Generic no-op detection: compare payload against current task state
         is_noop = True
-        _date_keys = {"dueDate", "deferDate", "plannedDate"}
+        _date_keys = {"due_date", "defer_date", "planned_date"}
         field_comparisons: dict[str, object] = {
             "name": task.name,
             "note": task.note,
             "flagged": task.flagged,
-            "estimatedMinutes": task.estimated_minutes,
-            "dueDate": task.due_date,
-            "deferDate": task.defer_date,
-            "plannedDate": task.planned_date,
+            "estimated_minutes": task.estimated_minutes,
+            "due_date": task.due_date,
+            "defer_date": task.defer_date,
+            "planned_date": task.planned_date,
         }
         for key, current_value in field_comparisons.items():
             if key in payload:
@@ -369,21 +369,21 @@ class OperatorService:
                     is_noop = False
                     break
 
-        # Check tag changes: if addTagIds or removeTagIds present, it's not a no-op
-        if is_noop and ("addTagIds" in payload or "removeTagIds" in payload):
+        # Check tag changes: if add_tag_ids or remove_tag_ids present, it's not a no-op
+        if is_noop and ("add_tag_ids" in payload or "remove_tag_ids" in payload):
             is_noop = False
 
         # Check lifecycle: if lifecycle is in payload, it's not a no-op
         if is_noop and "lifecycle" in payload:
             is_noop = False
 
-        # Check moveTo
-        if is_noop and "moveTo" in payload:
-            move_data = payload["moveTo"]
+        # Check move_to
+        if is_noop and "move_to" in payload:
+            move_data = payload["move_to"]
             assert isinstance(move_data, dict)
             position = move_data.get("position")
             if position in ("beginning", "ending"):
-                container_id = move_data.get("containerId")
+                container_id = move_data.get("container_id")
                 current_parent_id = task.parent.id if task.parent else None
                 if container_id == current_parent_id:
                     warnings.append(MOVE_SAME_CONTAINER)
@@ -410,33 +410,13 @@ class OperatorService:
             )
 
         # 8. Build typed repo payload and delegate to repository
-        # Only include fields that are in the service payload dict, so that
-        # exclude_unset=True in repos correctly distinguishes "not changed" from "clear to None"
-        repo_kwargs: dict[str, object] = {"id": command.id}
-        _payload_to_repo = {
-            "name": "name",
-            "note": "note",
-            "flagged": "flagged",
-            "estimatedMinutes": "estimated_minutes",
-            "dueDate": "due_date",
-            "deferDate": "defer_date",
-            "plannedDate": "planned_date",
-            "addTagIds": "add_tag_ids",
-            "removeTagIds": "remove_tag_ids",
-            "lifecycle": "lifecycle",
-        }
-        for payload_key, repo_key in _payload_to_repo.items():
-            if payload_key in payload:
-                repo_kwargs[repo_key] = payload[payload_key]
-        if "moveTo" in payload:
-            move_data = payload["moveTo"]
+        # payload dict already uses snake_case keys matching EditTaskRepoPayload fields,
+        # so model_validate(payload) works directly. Only move_to needs MoveToRepoPayload wrapping.
+        if "move_to" in payload:
+            move_data = payload["move_to"]
             assert isinstance(move_data, dict)
-            repo_kwargs["move_to"] = MoveToRepoPayload(
-                position=move_data["position"],
-                container_id=move_data.get("containerId"),
-                anchor_id=move_data.get("anchorId"),
-            )
-        repo_payload = EditTaskRepoPayload.model_validate(repo_kwargs)
+            payload["move_to"] = MoveToRepoPayload(**move_data)
+        repo_payload = EditTaskRepoPayload.model_validate(payload)
         logger.debug(
             "OperatorService.edit_task: delegating to repository, payload keys=%s",
             list(payload.keys()),
