@@ -7,6 +7,7 @@ updated: 2026-03-19T18:34:00Z
 ---
 
 ## Current Test
+<!-- OVERWRITE each test - shows where we are -->
 
 [testing complete]
 
@@ -49,5 +50,10 @@ skipped: 0
   reason: "User reported: Pattern is correct but variable naming is inconsistent: add_task uses `repo_kwargs` while edit_task uses `payload` for the same concept"
   severity: minor
   test: 1
-  artifacts: []
-  missing: []
+  root_cause: "Two atomic tasks in plan 01 each chose their own variable name without cross-harmonization. Task 1 introduced `repo_kwargs` in add_task, Task 2 kept the pre-existing `payload` in edit_task."
+  artifacts:
+    - path: "src/omnifocus_operator/service.py"
+      issue: "add_task line 144 uses `repo_kwargs`, edit_task line 213 uses `payload`"
+  missing:
+    - "Rename `repo_kwargs` to `payload` in add_task (3 occurrences: declaration, field assignments, model_validate call)"
+  debug_session: ""
