@@ -141,27 +141,27 @@ class OperatorService:
             )
 
         # Build typed repo payload (kwargs dict with only populated fields)
-        repo_kwargs: dict[str, object] = {"name": command.name}
+        payload: dict[str, object] = {"name": command.name}
         if command.parent is not None:
-            repo_kwargs["parent"] = command.parent
+            payload["parent"] = command.parent
         if resolved_tag_ids is not None:
-            repo_kwargs["tag_ids"] = resolved_tag_ids
+            payload["tag_ids"] = resolved_tag_ids
         if command.due_date is not None:
-            repo_kwargs["due_date"] = command.due_date.isoformat()
+            payload["due_date"] = command.due_date.isoformat()
         if command.defer_date is not None:
-            repo_kwargs["defer_date"] = command.defer_date.isoformat()
+            payload["defer_date"] = command.defer_date.isoformat()
         if command.planned_date is not None:
-            repo_kwargs["planned_date"] = command.planned_date.isoformat()
+            payload["planned_date"] = command.planned_date.isoformat()
         if command.flagged is not None:
-            repo_kwargs["flagged"] = command.flagged
+            payload["flagged"] = command.flagged
         if command.estimated_minutes is not None:
-            repo_kwargs["estimated_minutes"] = command.estimated_minutes
+            payload["estimated_minutes"] = command.estimated_minutes
         if command.note is not None:
-            repo_kwargs["note"] = command.note
-        payload = CreateTaskRepoPayload.model_validate(repo_kwargs)
+            payload["note"] = command.note
+        repo_payload = CreateTaskRepoPayload.model_validate(payload)
 
         logger.debug("OperatorService.add_task: delegating to repository")
-        repo_result = await self._repository.add_task(payload)
+        repo_result = await self._repository.add_task(repo_payload)
         return CreateTaskResult(success=True, id=repo_result.id, name=repo_result.name)
 
     async def edit_task(self, command: EditTaskCommand) -> EditTaskResult:
