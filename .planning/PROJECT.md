@@ -37,6 +37,7 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 - ✓ Diff-based tag computation in Python service layer, bridge receives only addTagIds/removeTagIds — v1.2
 - ✓ Task lifecycle (complete/drop) with no-op detection and educational warnings — v1.2
 - ✓ Bridge script write commands (add_task, edit_task) with request file payloads — v1.2
+- ✓ Write pipeline unification: symmetric add/edit signatures, BridgeWriteMixin, exclude_unset standardization, explicit protocol conformance — v1.2.1 Phase 21
 
 ### Active
 
@@ -126,4 +127,4 @@ Read path: SQLite (default, ~46ms). Write path: OmniJS bridge with write-through
 | Write-through guarantee | `@_ensures_write_through` decorator ensures writes block until SQLite confirms; reads never wait | ✓ Good — consistent read-after-write |
 
 ---
-*Last updated: 2026-03-17 — added "Dumb bridge, smart Python" decision + dev commands constraint*
+*Last updated: 2026-03-19 — Phase 21 complete: write pipeline unification*
