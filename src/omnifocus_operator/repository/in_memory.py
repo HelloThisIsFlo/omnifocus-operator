@@ -6,6 +6,8 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
+from omnifocus_operator.contracts.protocols import Repository
+
 if TYPE_CHECKING:
     from omnifocus_operator.contracts.use_cases.create_task import (
         CreateTaskRepoPayload,
@@ -23,7 +25,7 @@ if TYPE_CHECKING:
 __all__ = ["InMemoryRepository"]
 
 
-class InMemoryRepository:
+class InMemoryRepository(Repository):
     """Repository backed by a pre-built ``AllEntities`` instance.
 
     Useful for testing where no bridge, adapter, or caching is needed.

@@ -1270,8 +1270,8 @@ class TestAddTask:
         assert result.name == "Buy milk"
 
     @pytest.mark.asyncio
-    async def test_add_task_excludes_none_fields(self, tmp_path: Path) -> None:
-        """add_task only sends non-None fields in payload."""
+    async def test_add_task_only_sends_populated_fields(self, tmp_path: Path) -> None:
+        """add_task only sends populated fields in payload."""
         db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
         wal_path = str(db_path) + "-wal"
         bridge = InMemoryBridge(data={"id": "t1", "name": "Test"}, wal_path=wal_path)

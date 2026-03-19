@@ -17,7 +17,9 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from omnifocus_operator.bridge.adapter import adapt_snapshot
+from omnifocus_operator.contracts.protocols import Repository
 from omnifocus_operator.models.snapshot import AllEntities
+from omnifocus_operator.repository.bridge_write_mixin import BridgeWriteMixin
 
 logger = logging.getLogger("omnifocus_operator")
 
@@ -39,7 +41,7 @@ if TYPE_CHECKING:
 __all__ = ["BridgeRepository"]
 
 
-class BridgeRepository:
+class BridgeRepository(BridgeWriteMixin, Repository):
     """Caching repository that loads data from the bridge.
 
     Parameters
@@ -113,12 +115,9 @@ class BridgeRepository:
         """
         from omnifocus_operator.contracts.use_cases.create_task import CreateTaskRepoResult
 
-        raw = payload.model_dump(by_alias=True, exclude_none=True)
-
         logger.debug("BridgeRepository.add_task: sending to bridge")
-        result = await self._bridge.send_command("add_task", raw)
-        # Invalidate cache so next get_all fetches fresh data
-        self._cached = None
+        result = await self._send_to_bridge("add_task", payload)
+        self._cached = None  # Visible cache invalidation
         logger.debug("BridgeRepository.add_task: cache invalidated, id=%s", result["id"])
 
         return CreateTaskRepoResult(id=result["id"], name=result["name"])
@@ -127,11 +126,9 @@ class BridgeRepository:
         """Edit a task via bridge and invalidate cache."""
         from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoResult
 
-        raw = payload.model_dump(by_alias=True, exclude_unset=True)
-
         logger.debug("BridgeRepository.edit_task: sending to bridge")
-        result = await self._bridge.send_command("edit_task", raw)
-        self._cached = None
+        result = await self._send_to_bridge("edit_task", payload)
+        self._cached = None  # Visible cache invalidation
         logger.debug("BridgeRepository.edit_task: cache invalidated, id=%s", result.get("id"))
         return EditTaskRepoResult(id=result["id"], name=result["name"])
 

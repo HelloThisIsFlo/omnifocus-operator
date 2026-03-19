@@ -23,6 +23,9 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 from zoneinfo import ZoneInfo
 
+from omnifocus_operator.contracts.protocols import Repository
+from omnifocus_operator.repository.bridge_write_mixin import BridgeWriteMixin
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -463,7 +466,7 @@ def _ensures_write_through[F: Callable[..., Any]](fn: F) -> F:
     return wrapper  # type: ignore[return-value]
 
 
-class HybridRepository:
+class HybridRepository(BridgeWriteMixin, Repository):
     """Repository reading OmniFocus data from the SQLite cache file.
 
     Opens a fresh read-only connection for each get_all() call.
@@ -489,17 +492,9 @@ class HybridRepository:
         """
         from omnifocus_operator.contracts.use_cases.create_task import CreateTaskRepoResult
 
-        raw = payload.model_dump(by_alias=True, exclude_none=True)
-
-        logger.debug(
-            "HybridRepository.add_task: sending to bridge, payload keys=%s",
-            list(raw.keys()),
-        )
-        result = await self._bridge.send_command("add_task", raw)
-        logger.debug(
-            "HybridRepository.add_task: bridge returned id=%s",
-            result["id"],
-        )
+        logger.debug("HybridRepository.add_task: sending to bridge")
+        result = await self._send_to_bridge("add_task", payload)
+        logger.debug("HybridRepository.add_task: bridge returned id=%s", result["id"])
 
         return CreateTaskRepoResult(id=result["id"], name=result["name"])
 
@@ -508,17 +503,9 @@ class HybridRepository:
         """Edit a task via bridge and wait for SQLite confirmation."""
         from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoResult
 
-        raw = payload.model_dump(by_alias=True, exclude_unset=True)
-
-        logger.debug(
-            "HybridRepository.edit_task: sending to bridge, payload keys=%s",
-            list(raw.keys()),
-        )
-        result = await self._bridge.send_command("edit_task", raw)
-        logger.debug(
-            "HybridRepository.edit_task: bridge returned id=%s",
-            result.get("id"),
-        )
+        logger.debug("HybridRepository.edit_task: sending to bridge")
+        result = await self._send_to_bridge("edit_task", payload)
+        logger.debug("HybridRepository.edit_task: bridge returned id=%s", result.get("id"))
         return EditTaskRepoResult(id=result["id"], name=result["name"])
 
     async def get_all(self) -> AllEntities:
