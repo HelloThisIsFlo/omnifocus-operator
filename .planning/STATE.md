@@ -2,16 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 21 context gathered
-last_updated: "2026-03-19T17:57:34.508Z"
-last_activity: 2026-03-18 — Completed 20-02 (import migration + old file deletion)
+status: unknown
+stopped_at: Completed 21-01-PLAN.md
+last_updated: "2026-03-19T18:19:35.623Z"
 progress:
   total_phases: 8
   completed_phases: 3
-  total_plans: 5
-  completed_plans: 5
-  percent: 100
+  total_plans: 7
+  completed_plans: 6
 ---
 
 # Project State
@@ -21,16 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-16)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** v1.2.1 Architectural Cleanup — Phase 20 (Model Taxonomy)
+**Current focus:** Phase 21 — write-pipeline-unification
 
 ## Current Position
 
-Phase: 20 — Model Taxonomy
-Plan: 2 of 2 (complete)
-Status: Phase Complete
-Last activity: 2026-03-18 — Completed 20-02 (import migration + old file deletion)
-
-Progress: [██████████] 100%
+Phase: 21 (write-pipeline-unification) — EXECUTING
+Plan: 2 of 2
 
 ## Performance Metrics
 
@@ -53,6 +47,7 @@ Progress: [██████████] 100%
 | Phase 19 P01 | 7min | 3 tasks | 10 files |
 | Phase 20 P01 | 5min | 2 tasks | 7 files |
 | Phase 20 P02 | 21min | 2 tasks | 15 files |
+| Phase 21 P01 | 3min | 2 tasks | 1 files |
 
 ### Decisions
 
@@ -73,6 +68,8 @@ Recent decisions affecting current work:
 - [Phase 20]: MoveAction/TagAction imports in edit_task.py under TYPE_CHECKING per ruff TC001, resolved by model_rebuild
 - [Phase 20]: edit_task repos use exclude_unset=True to preserve null-means-clear semantics
 - [Phase 20]: Service builds EditTaskRepoPayload via model_validate with dynamic kwargs dict
+- [Phase 21]: add_task uses kwargs dict with only populated fields instead of passing all fields to constructor
+- [Phase 21]: edit_task builds snake_case payload dict from the start, eliminating _payload_to_repo mapping
 
 ### Pending Todos
 
@@ -101,6 +98,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-19T17:57:34.498Z
-Stopped at: Phase 21 context gathered
-Resume file: .planning/phases/21-write-pipeline-unification/21-CONTEXT.md
+Last session: 2026-03-19T18:19:35.621Z
+Stopped at: Completed 21-01-PLAN.md
+Resume file: None

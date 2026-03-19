@@ -9,8 +9,8 @@ Requirements for Architectural Cleanup milestone. No new tools, no behavioral ch
 
 ### Write Pipeline
 
-- [ ] **PIPE-01**: add_task and edit_task have symmetric signatures at the service-repository boundary
-- [ ] **PIPE-02**: Both write paths use the same pattern for bridge payload construction (no split between repo model_dump vs service dict-building)
+- [x] **PIPE-01**: add_task and edit_task have symmetric signatures at the service-repository boundary
+- [x] **PIPE-02**: Both write paths use the same pattern for bridge payload construction (no split between repo model_dump vs service dict-building)
 
 ### Model Taxonomy
 
@@ -99,8 +99,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MODL-02 | Phase 20 | Complete |
 | MODL-03 | Phase 20 | Complete |
 | MODL-04 | Phase 20 | Complete |
-| PIPE-01 | Phase 21 | Pending |
-| PIPE-02 | Phase 21 | Pending |
+| PIPE-01 | Phase 21 | Complete |
+| PIPE-02 | Phase 21 | Complete |
 | SVCR-01 | Phase 22 | Pending |
 | SVCR-02 | Phase 22 | Pending |
 | SVCR-03 | Phase 22 | Pending |
