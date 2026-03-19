@@ -3,8 +3,10 @@
 import ast
 import inspect
 
-from omnifocus_operator import server, service
+from omnifocus_operator import server
 from omnifocus_operator import warnings as warn_mod
+from omnifocus_operator.service import domain as service_domain
+from omnifocus_operator.service import service as service_orchestrator
 
 
 def _get_all_warning_constants() -> set[str]:
@@ -12,7 +14,7 @@ def _get_all_warning_constants() -> set[str]:
     return {name for name in dir(warn_mod) if name.isupper() and not name.startswith("_")}
 
 
-_WARNING_CONSUMERS = [service, server]
+_WARNING_CONSUMERS = [service_orchestrator, service_domain, server]
 
 
 def _get_warning_consumer_sources() -> str:

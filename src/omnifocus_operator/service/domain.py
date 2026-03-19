@@ -371,22 +371,9 @@ class DomainLogic:
 
     def _is_empty_edit(self, payload: EditTaskRepoPayload, warnings: list[str]) -> bool:
         """Only 'id' in payload, nothing to change."""
-        # EditTaskRepoPayload defaults: all optional fields are None.
-        # An empty edit means only 'id' was provided -- all other fields are None.
-        has_extra = (
-            payload.name is not None
-            or payload.note is not None
-            or payload.flagged is not None
-            or payload.estimated_minutes is not None
-            or payload.due_date is not None
-            or payload.defer_date is not None
-            or payload.planned_date is not None
-            or payload.add_tag_ids is not None
-            or payload.remove_tag_ids is not None
-            or payload.move_to is not None
-            or payload.lifecycle is not None
-        )
-        return not has_extra
+        # Use model_fields_set to detect which fields were explicitly provided,
+        # since None can mean "clear" for clearable fields (dates, note, etc.)
+        return payload.model_fields_set == {"id"}
 
     def _all_fields_match(
         self,
@@ -411,9 +398,13 @@ class DomainLogic:
             "planned_date": task.planned_date,
         }
 
+        # Use model_fields_set to detect which fields were explicitly provided,
+        # since None can mean "clear" for clearable fields (dates, note, etc.)
+        fields_set = payload.model_fields_set
+
         for key, current_value in field_comparisons.items():
-            payload_val = getattr(payload, key)
-            if payload_val is not None:
+            if key in fields_set:
+                payload_val = getattr(payload, key)
                 if key in _date_keys:
                     if _to_utc_ts(payload_val) != _to_utc_ts(current_value):
                         return False
@@ -421,15 +412,15 @@ class DomainLogic:
                     return False
 
         # Check tag changes
-        if payload.add_tag_ids is not None or payload.remove_tag_ids is not None:
+        if "add_tag_ids" in fields_set or "remove_tag_ids" in fields_set:
             return False
 
         # Check lifecycle
-        if payload.lifecycle is not None:
+        if "lifecycle" in fields_set:
             return False
 
         # Check move_to
-        if payload.move_to is not None:
+        if "move_to" in fields_set and payload.move_to is not None:
             position = payload.move_to.position
             if position in ("beginning", "ending"):
                 container_id = payload.move_to.container_id
