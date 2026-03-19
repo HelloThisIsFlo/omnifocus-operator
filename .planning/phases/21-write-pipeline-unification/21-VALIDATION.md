@@ -1,9 +1,9 @@
 ---
 phase: 21
 slug: write-pipeline-unification
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-19
 ---
 
@@ -38,11 +38,11 @@ created: 2026-03-19
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 21-01-01 | 01 | 1 | PIPE-02 | unit | `uv run python -m pytest tests/test_service.py -k "TestAddTask" -x` | ✅ | ⬜ pending |
-| 21-01-02 | 01 | 1 | PIPE-02 | unit | `uv run python -m pytest tests/test_service.py -k "TestEditTask" -x` | ✅ | ⬜ pending |
-| 21-01-03 | 01 | 1 | PIPE-02 | unit | `uv run python -m pytest tests/test_hybrid_repository.py -k "excludes" -x` | ✅ | ⬜ pending |
-| 21-02-01 | 02 | 1 | PIPE-01 | unit | `uv run python -m pytest tests/test_repository.py tests/test_hybrid_repository.py -k "add_task or edit_task" -x` | ✅ | ⬜ pending |
-| 21-02-02 | 02 | 1 | PIPE-01 | unit | `uv run python -m pytest tests/test_repository.py -k "satisfies_protocol" -x` | ✅ | ⬜ pending |
+| 21-01-01 | 01 | 1 | PIPE-02 | unit | `uv run python -m pytest tests/test_service.py -k "TestAddTask" -x` | ✅ | ✅ green (19 passed) |
+| 21-01-02 | 01 | 1 | PIPE-02 | unit | `uv run python -m pytest tests/test_service.py -k "TestEditTask" -x` | ✅ | ✅ green (71 passed) |
+| 21-01-03 | 01 | 1 | PIPE-02 | unit | `uv run python -m pytest tests/test_hybrid_repository.py -k "only_sends_populated" -x` | ✅ | ✅ green (1 passed) |
+| 21-02-01 | 02 | 1 | PIPE-01 | unit | `uv run python -m pytest tests/test_repository.py tests/test_hybrid_repository.py -k "add_task or edit_task" -x` | ✅ | ✅ green (14 passed) |
+| 21-02-02 | 02 | 1 | PIPE-01 | unit | `uv run python -m pytest tests/test_repository.py -k "satisfies_protocol" -x` | ✅ | ✅ green (1 passed) |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -62,11 +62,23 @@ All phase behaviors have automated verification.
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 13s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 13s (12.77s full suite)
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved (2026-03-19)
+
+---
+
+## Validation Audit 2026-03-19
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+**Notes:** All 5 task verifications pass green. One stale command filter corrected (21-01-03: `-k "excludes"` → `-k "only_sends_populated"` after test rename in plan 02). Full suite: 522 passed, 96.93% coverage, 12.77s.
