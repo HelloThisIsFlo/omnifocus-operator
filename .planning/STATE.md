@@ -88,6 +88,7 @@ Carried from v1.0:
 
 - Phase 23 added: SimulatorBridge and factory cleanup (deferred from Phase 19 discussion)
 - Phase 25 added: Patch/PatchOrClear type aliases for command models (from sentinel pattern deep dive)
+- Phase 26 added: Replace InMemoryRepository with stateful InMemoryBridge (from phase 21 UAT discussion)
 
 ### Blockers/Concerns
 

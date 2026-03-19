@@ -201,3 +201,13 @@ Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 25 to break down)
+
+### Phase 26: Replace InMemoryRepository with stateful InMemoryBridge
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 25
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 26 to break down)
