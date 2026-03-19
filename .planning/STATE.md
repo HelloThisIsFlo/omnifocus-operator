@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 22-01-PLAN.md
-last_updated: "2026-03-19T23:15:49.377Z"
+stopped_at: Completed 22-02-PLAN.md
+last_updated: "2026-03-19T23:22:03.949Z"
 progress:
   total_phases: 9
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 9
-  completed_plans: 8
+  completed_plans: 9
 ---
 
 # Project State
@@ -50,6 +50,7 @@ Plan: 2 of 2
 | Phase 21 P01 | 3min | 2 tasks | 1 files |
 | Phase 21 P02 | 3min | 1 tasks | 5 files |
 | Phase 22 P01 | 12min | 2 tasks | 6 files |
+| Phase 22 P02 | 4min | 2 tasks | 3 files |
 
 ### Decisions
 
@@ -74,6 +75,7 @@ Recent decisions affecting current work:
 - [Phase 21]: edit_task builds snake_case payload dict from the start, eliminating _payload_to_repo mapping
 - [Phase 21]: Mixin uses TYPE_CHECKING guard for Bridge and OmniFocusBaseModel imports (no runtime circular deps)
 - [Phase 22]: Used model_fields_set for no-op detection (null-means-clear correctness)
+- [Phase 22]: DomainLogic tests use StubResolver/StubRepo instead of InMemoryRepository -- future-proofs for Phase 26
 
 ### Pending Todos
 
@@ -105,6 +107,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-19T23:15:49.375Z
-Stopped at: Completed 22-01-PLAN.md
+Last session: 2026-03-19T23:22:03.947Z
+Stopped at: Completed 22-02-PLAN.md
 Resume file: None
