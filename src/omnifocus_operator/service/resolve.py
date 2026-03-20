@@ -1,8 +1,4 @@
-"""Input resolution -- verify and normalize raw user identifiers.
-
-Provides ``Resolver`` (parent/tag resolution against the repository) and
-standalone validation helpers (``validate_task_name``, ``validate_task_name_if_set``).
-"""
+"""Input resolution -- verify and normalize raw user identifiers."""
 
 from __future__ import annotations
 
@@ -12,32 +8,11 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from omnifocus_operator.contracts.protocols import Repository
     from omnifocus_operator.models.tag import Tag
+    from omnifocus_operator.models.task import Task
 
 logger = logging.getLogger("omnifocus_operator")
 
-__all__ = ["Resolver", "validate_task_name", "validate_task_name_if_set"]
-
-
-def validate_task_name(name: str | None) -> None:
-    """Raise ValueError if name is empty or whitespace."""
-    if not name or not name.strip():
-        msg = "Task name is required"
-        raise ValueError(msg)
-
-
-def validate_task_name_if_set(name: object) -> None:
-    """Raise ValueError if name is provided but empty/whitespace.
-
-    Accepts ``_Unset`` (no-op) or a string. If string, validates
-    it is non-empty.
-    """
-    from omnifocus_operator.contracts.base import _Unset
-
-    if isinstance(name, _Unset):
-        return
-    if not name or not str(name).strip():
-        msg = "Task name cannot be empty"
-        raise ValueError(msg)
+__all__ = ["Resolver"]
 
 
 class Resolver:
@@ -64,6 +39,15 @@ class Resolver:
 
         msg = f"Parent not found: {parent_id}"
         raise ValueError(msg)
+
+    async def resolve_task(self, task_id: str) -> Task:
+        """Verify task exists. Returns the Task. Raises ValueError if not found."""
+        logger.debug("Resolver.resolve_task: id=%s", task_id)
+        task = await self._repo.get_task(task_id)
+        if task is None:
+            msg = f"Task not found: {task_id}"
+            raise ValueError(msg)
+        return task
 
     async def resolve_tags(self, tag_names: list[str]) -> list[str]:
         """Resolve tag names to IDs (case-insensitive).

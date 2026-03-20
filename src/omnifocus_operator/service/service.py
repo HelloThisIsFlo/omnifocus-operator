@@ -17,11 +17,8 @@ from typing import TYPE_CHECKING, NoReturn
 from omnifocus_operator.contracts.protocols import Service
 from omnifocus_operator.service.domain import DomainLogic
 from omnifocus_operator.service.payload import PayloadBuilder
-from omnifocus_operator.service.resolve import (
-    Resolver,
-    validate_task_name,
-    validate_task_name_if_set,
-)
+from omnifocus_operator.service.resolve import Resolver
+from omnifocus_operator.service.validate import validate_task_name, validate_task_name_if_set
 
 if TYPE_CHECKING:
     from omnifocus_operator.contracts.use_cases.create_task import (
