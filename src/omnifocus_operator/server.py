@@ -22,6 +22,14 @@ from pydantic import ValidationError
 # generate outputSchema.  With `from __future__ import annotations` the
 # annotation is a string; FastMCP resolves it via get_type_hints() which
 # needs the name in the module namespace.
+from omnifocus_operator.agent_messages.errors import (
+    ADD_TASKS_BATCH_LIMIT,
+    EDIT_TASKS_BATCH_LIMIT,
+    INVALID_INPUT,
+    PROJECT_NOT_FOUND,
+    TAG_NOT_FOUND,
+    TASK_NOT_FOUND,
+)
 from omnifocus_operator.contracts.use_cases.create_task import (
     CreateTaskCommand,
     CreateTaskResult,
@@ -137,7 +145,7 @@ def _register_tools(mcp: FastMCP) -> None:
         service: OperatorService = ctx.request_context.lifespan_context["service"]
         result = await service.get_task(id)
         if result is None:
-            msg = f"Task not found: {id}"
+            msg = TASK_NOT_FOUND.format(id=id)
             raise ValueError(msg)
         logger.debug("server.get_task: returning name=%s", result.name)
         return result
@@ -153,7 +161,7 @@ def _register_tools(mcp: FastMCP) -> None:
         service: OperatorService = ctx.request_context.lifespan_context["service"]
         result = await service.get_project(id)
         if result is None:
-            msg = f"Project not found: {id}"
+            msg = PROJECT_NOT_FOUND.format(id=id)
             raise ValueError(msg)
         logger.debug("server.get_project: returning name=%s", result.name)
         return result
@@ -169,7 +177,7 @@ def _register_tools(mcp: FastMCP) -> None:
         service: OperatorService = ctx.request_context.lifespan_context["service"]
         result = await service.get_tag(id)
         if result is None:
-            msg = f"Tag not found: {id}"
+            msg = TAG_NOT_FOUND.format(name=id)
             raise ValueError(msg)
         logger.debug("server.get_tag: returning name=%s", result.name)
         return result
@@ -205,7 +213,7 @@ def _register_tools(mcp: FastMCP) -> None:
         """
         log_tool_call("add_tasks", items=len(items))
         if len(items) != 1:
-            msg = f"add_tasks currently accepts exactly 1 item, got {len(items)}"
+            msg = ADD_TASKS_BATCH_LIMIT.format(count=len(items))
             raise ValueError(msg)
 
         from omnifocus_operator.service import OperatorService  # noqa: TC001
@@ -219,14 +227,14 @@ def _register_tools(mcp: FastMCP) -> None:
                 if "_Unset" in e["msg"]:
                     continue
                 if e["type"] == "extra_forbidden":
-                    from omnifocus_operator.warnings import UNKNOWN_FIELD
+                    from omnifocus_operator.agent_messages.warnings import UNKNOWN_FIELD
 
                     field = ".".join(str(loc) for loc in e["loc"])
                     messages.append(UNKNOWN_FIELD.format(field=field))
                 else:
                     messages.append(e["msg"])
             logger.debug("server.add_tasks: validation error: %s", "; ".join(messages))
-            raise ValueError("; ".join(messages) or "Invalid input") from None
+            raise ValueError("; ".join(messages) or INVALID_INPUT) from None
         result = await service.add_task(spec)
         logger.debug("server.add_tasks: returning id=%s, name=%s", result.id, result.name)
         return [result]
@@ -273,7 +281,7 @@ def _register_tools(mcp: FastMCP) -> None:
         """
         log_tool_call("edit_tasks", items=len(items))
         if len(items) != 1:
-            msg = f"edit_tasks currently accepts exactly 1 item, got {len(items)}"
+            msg = EDIT_TASKS_BATCH_LIMIT.format(count=len(items))
             raise ValueError(msg)
 
         from omnifocus_operator.service import OperatorService  # noqa: TC001
@@ -287,18 +295,18 @@ def _register_tools(mcp: FastMCP) -> None:
                 if "_Unset" in e["msg"]:
                     continue
                 if e["type"] == "extra_forbidden":
-                    from omnifocus_operator.warnings import UNKNOWN_FIELD
+                    from omnifocus_operator.agent_messages.warnings import UNKNOWN_FIELD
 
                     field = ".".join(str(loc) for loc in e["loc"])
                     messages.append(UNKNOWN_FIELD.format(field=field))
                 elif e["type"] == "literal_error" and "lifecycle" in e.get("loc", ()):
-                    from omnifocus_operator.warnings import LIFECYCLE_INVALID_VALUE
+                    from omnifocus_operator.agent_messages.warnings import LIFECYCLE_INVALID_VALUE
 
                     messages.append(LIFECYCLE_INVALID_VALUE.format(value=e.get("input", "unknown")))
                 else:
                     messages.append(e["msg"])
             logger.debug("server.edit_tasks: validation error: %s", "; ".join(messages))
-            raise ValueError("; ".join(messages) or "Invalid input") from None
+            raise ValueError("; ".join(messages) or INVALID_INPUT) from None
         result = await service.edit_task(spec)
         logger.debug(
             "server.edit_tasks: returning id=%s, success=%s, warnings=%s",

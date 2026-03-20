@@ -11,8 +11,12 @@ import logging
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from omnifocus_operator.models.enums import Availability
-from omnifocus_operator.warnings import (
+from omnifocus_operator.agent_messages.errors import (
+    ANCHOR_TASK_NOT_FOUND,
+    CIRCULAR_REFERENCE,
+    NO_POSITION_KEY,
+)
+from omnifocus_operator.agent_messages.warnings import (
     EDIT_COMPLETED_TASK,
     EDIT_NO_CHANGES_DETECTED,
     EDIT_NO_CHANGES_SPECIFIED,
@@ -25,6 +29,7 @@ from omnifocus_operator.warnings import (
     TAG_NOT_ON_TASK,
     TAGS_ALREADY_MATCH,
 )
+from omnifocus_operator.models.enums import Availability
 
 if TYPE_CHECKING:
     from omnifocus_operator.contracts.common import MoveAction, TagAction
@@ -290,7 +295,7 @@ class DomainLogic:
         while current is not None:
             if current == task_id:
                 logger.debug("DomainLogic.check_cycle: CYCLE DETECTED")
-                msg = "Cannot move task: would create circular reference"
+                msg = CIRCULAR_REFERENCE
                 raise ValueError(msg)
             t = task_map.get(current)
             if t is None or t.parent is None:
@@ -327,7 +332,7 @@ class DomainLogic:
             value = getattr(move_action, key)
             if is_set(value):
                 return key, value
-        msg = "No position key set on move action"
+        msg = NO_POSITION_KEY
         raise ValueError(msg)
 
     async def _process_container_move(
@@ -359,7 +364,7 @@ class DomainLogic:
         try:
             await self._resolver.resolve_task(anchor_id)
         except ValueError:
-            msg = f"Anchor task not found: {anchor_id}"
+            msg = ANCHOR_TASK_NOT_FOUND.format(id=anchor_id)
             raise ValueError(msg) from None
         return {"position": position, "anchor_id": anchor_id}
 

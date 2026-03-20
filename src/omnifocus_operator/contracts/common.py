@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from pydantic import model_validator
 
+from omnifocus_operator.agent_messages.errors import (
+    MOVE_EXACTLY_ONE_KEY,
+    TAG_NO_OPERATION,
+    TAG_REPLACE_WITH_ADD_REMOVE,
+)
 from omnifocus_operator.contracts.base import (
     UNSET,
     CommandModel,
@@ -29,13 +34,10 @@ class TagAction(CommandModel):
         has_add = is_set(self.add)
         has_remove = is_set(self.remove)
         if has_replace and (has_add or has_remove):
-            msg = (
-                "Cannot use 'replace' with 'add' or 'remove' "
-                "-- use either replace mode or add/remove mode"
-            )
+            msg = TAG_REPLACE_WITH_ADD_REMOVE
             raise ValueError(msg)
         if not has_replace and not has_add and not has_remove:
-            msg = "tags must specify at least one of: add, remove, replace"
+            msg = TAG_NO_OPERATION
             raise ValueError(msg)
         return self
 
@@ -62,7 +64,7 @@ class MoveAction(CommandModel):
             1 for v in (self.beginning, self.ending, self.before, self.after) if is_set(v)
         )
         if keys_set != 1:
-            msg = "moveTo must have exactly one key (beginning, ending, before, or after)"
+            msg = MOVE_EXACTLY_ONE_KEY
             raise ValueError(msg)
         return self
 

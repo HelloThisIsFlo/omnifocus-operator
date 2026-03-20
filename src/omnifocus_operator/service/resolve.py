@@ -5,6 +5,13 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from omnifocus_operator.agent_messages.errors import (
+    AMBIGUOUS_TAG,
+    PARENT_NOT_FOUND,
+    TAG_NOT_FOUND,
+    TASK_NOT_FOUND,
+)
+
 if TYPE_CHECKING:
     from omnifocus_operator.contracts.protocols import Repository
     from omnifocus_operator.models.tag import Tag
@@ -37,7 +44,7 @@ class Resolver:
             logger.debug("Resolver.resolve_parent: resolved as task")
             return parent_id
 
-        msg = f"Parent not found: {parent_id}"
+        msg = PARENT_NOT_FOUND.format(id=parent_id)
         raise ValueError(msg)
 
     async def resolve_task(self, task_id: str) -> Task:
@@ -45,7 +52,7 @@ class Resolver:
         logger.debug("Resolver.resolve_task: id=%s", task_id)
         task = await self._repo.get_task(task_id)
         if task is None:
-            msg = f"Task not found: {task_id}"
+            msg = TASK_NOT_FOUND.format(id=task_id)
             raise ValueError(msg)
         return task
 
@@ -73,12 +80,12 @@ class Resolver:
             return matches[0].id
         if len(matches) > 1:
             ids = ", ".join(m.id for m in matches)
-            msg = f"Ambiguous tag '{name}': multiple matches ({ids})"
+            msg = AMBIGUOUS_TAG.format(name=name, ids=ids)
             raise ValueError(msg)
         # No name match -- try as ID fallback
         logger.debug("Resolver.resolve_tags: '%s' no name match, trying as ID", name)
         id_match = next((t for t in tags if t.id == name), None)
         if id_match is not None:
             return id_match.id
-        msg = f"Tag not found: {name}"
+        msg = TAG_NOT_FOUND.format(name=name)
         raise ValueError(msg)

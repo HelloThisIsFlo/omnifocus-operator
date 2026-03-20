@@ -10,13 +10,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from omnifocus_operator.models.snapshot import AllEntities
-from omnifocus_operator.service.domain import DomainLogic
-from omnifocus_operator.warnings import (
+from omnifocus_operator.agent_messages.warnings import (
     EDIT_COMPLETED_TASK,
     LIFECYCLE_REPEATING_COMPLETE,
     LIFECYCLE_REPEATING_DROP,
 )
+from omnifocus_operator.models.snapshot import AllEntities
+from omnifocus_operator.service.domain import DomainLogic
 
 if TYPE_CHECKING:
     from omnifocus_operator.models.task import Task
