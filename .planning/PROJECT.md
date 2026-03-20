@@ -39,6 +39,7 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 - ✓ Bridge script write commands (add_task, edit_task) with request file payloads — v1.2
 - ✓ Write pipeline unification: symmetric add/edit signatures, BridgeWriteMixin, exclude_unset standardization, explicit protocol conformance — v1.2.1 Phase 21
 - ✓ Service decomposition: service.py → service/ package with resolve, domain, payload modules; orchestrator is pure orchestration — v1.2.1 Phase 22
+- ✓ SimulatorBridge removed from production exports, bridge factory eliminated, PYTEST guard in RealBridge.__init__ — v1.2.1 Phase 23
 
 ### Active
 
@@ -129,4 +130,4 @@ Read path: SQLite (default, ~46ms). Write path: OmniJS bridge with write-through
 | "Add" verb for creation tools | Tool names use `add_*` (not `create_*`). "Add" is domain-native (OmniJS, task management UX), matches natural voice ("add a task"), and forms coherent verb system (add/edit/delete). Tool descriptions use natural language freely for discoverability. Write-side model names align: `AddTask*`, `EditTask*` | Decision locked pre-publish — rename `CreateTask*` → `AddTask*` pending |
 
 ---
-*Last updated: 2026-03-20 — Phase 22 gap closure complete: validation/resolution SRP, null-means-clear centralization*
+*Last updated: 2026-03-20 — Phase 23 complete: SimulatorBridge/factory cleanup, PYTEST guard in RealBridge*
