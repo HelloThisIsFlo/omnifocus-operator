@@ -75,7 +75,7 @@ class OperatorService(Service):  # explicitly implements Service protocol
         logger.debug("OperatorService.get_tag: id=%s", tag_id)
         return await self._repository.get_tag(tag_id)
 
-    # -- add_task: validate -> resolve -> build -> delegate ----------------
+    # -- add_task: delegates to _CreateTaskPipeline (Method Object) --------
 
     async def add_task(self, command: CreateTaskCommand) -> CreateTaskResult:
         """Create a task with validation and delegation to repository.
@@ -85,32 +85,13 @@ class OperatorService(Service):  # explicitly implements Service protocol
         ValueError
             If name is empty, parent not found, or tag resolution fails.
         """
-        logger.debug(
-            "OperatorService.add_task: name=%s, parent=%s, tags=%s",
-            command.name,
-            command.parent,
-            command.tags,
+        pipeline = _CreateTaskPipeline(
+            self._resolver,
+            self._domain,
+            self._payload,
+            self._repository,
         )
-
-        validate_task_name(command.name)
-
-        if command.parent is not None:
-            await self._resolver.resolve_parent(command.parent)
-
-        resolved_tag_ids: list[str] | None = None
-        if command.tags is not None:
-            resolved_tag_ids = await self._resolver.resolve_tags(command.tags)
-            logger.debug(
-                "OperatorService.add_task: resolved %d tags to IDs: %s",
-                len(resolved_tag_ids),
-                resolved_tag_ids,
-            )
-
-        repo_payload = self._payload.build_add(command, resolved_tag_ids)
-
-        logger.debug("OperatorService.add_task: delegating to repository")
-        repo_result = await self._repository.add_task(repo_payload)
-        return CreateTaskResult(success=True, id=repo_result.id, name=repo_result.name)
+        return await pipeline.execute(command)
 
     # -- edit_task: delegates to _EditTaskPipeline (Method Object) ---------
 
@@ -132,11 +113,11 @@ class OperatorService(Service):  # explicitly implements Service protocol
         return await pipeline.execute(command)
 
 
-# -- edit_task pipeline (Method Object) ------------------------------------
+# -- Pipeline base ---------------------------------------------------------
 
 
-class _EditTaskPipeline:
-    """Method object for edit_task — each step is a named method, state on self."""
+class _Pipeline:
+    """Shared dependencies for all task pipelines."""
 
     def __init__(
         self,
@@ -149,6 +130,63 @@ class _EditTaskPipeline:
         self._domain = domain
         self._payload = payload
         self._repository = repository
+
+
+# -- add_task pipeline (Method Object) -------------------------------------
+
+
+class _CreateTaskPipeline(_Pipeline):
+    """Method object for add_task — validate, resolve, build, delegate."""
+
+    async def execute(self, command: CreateTaskCommand) -> CreateTaskResult:
+        """Run the full create-task pipeline."""
+        self._command = command
+
+        self._validate()
+        await self._resolve_parent()
+        await self._resolve_tags()
+        self._build_payload()
+        return await self._delegate()
+
+    def _validate(self) -> None:
+        logger.debug(
+            "OperatorService.add_task: name=%s, parent=%s, tags=%s",
+            self._command.name,
+            self._command.parent,
+            self._command.tags,
+        )
+        validate_task_name(self._command.name)
+
+    async def _resolve_parent(self) -> None:
+        if self._command.parent is None:
+            return
+        await self._resolver.resolve_parent(self._command.parent)
+
+    async def _resolve_tags(self) -> None:
+        self._resolved_tag_ids: list[str] | None = None
+        if self._command.tags is None:
+            return
+        self._resolved_tag_ids = await self._resolver.resolve_tags(self._command.tags)
+        logger.debug(
+            "OperatorService.add_task: resolved %d tags to IDs: %s",
+            len(self._resolved_tag_ids),
+            self._resolved_tag_ids,
+        )
+
+    def _build_payload(self) -> None:
+        self._repo_payload = self._payload.build_add(self._command, self._resolved_tag_ids)
+
+    async def _delegate(self) -> CreateTaskResult:
+        logger.debug("OperatorService.add_task: delegating to repository")
+        repo_result = await self._repository.add_task(self._repo_payload)
+        return CreateTaskResult(success=True, id=repo_result.id, name=repo_result.name)
+
+
+# -- edit_task pipeline (Method Object) ------------------------------------
+
+
+class _EditTaskPipeline(_Pipeline):
+    """Method object for edit_task — each step is a named method, state on self."""
 
     async def execute(self, command: EditTaskCommand) -> EditTaskResult:
         """Run the full edit-task pipeline."""
