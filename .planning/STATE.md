@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 22-03-PLAN.md
-last_updated: "2026-03-20T13:02:29.924Z"
+stopped_at: Completed 22-04-PLAN.md
+last_updated: "2026-03-20T13:07:51.579Z"
 progress:
   total_phases: 9
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 11
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # Project State
@@ -52,6 +52,7 @@ Plan: 4 of 4
 | Phase 22 P01 | 12min | 2 tasks | 6 files |
 | Phase 22 P02 | 4min | 2 tasks | 3 files |
 | Phase 22 P03 | 3min | 2 tasks | 6 files |
+| Phase 22-04 P04 | 3min | 1 tasks | 5 files |
 
 ### Decisions
 
@@ -79,6 +80,8 @@ Recent decisions affecting current work:
 - [Phase 22]: DomainLogic tests use StubResolver/StubRepo instead of InMemoryRepository -- future-proofs for Phase 26
 - [Phase 22]: service.py import update pulled into Task 1 commit (pre-commit mypy requires consistent imports)
 - [Phase 22]: Container move type-check stays as direct repo access (not resolution, verified by plan)
+- [Phase 22]: Fail-fast assert in _apply_replace instead of defensive fallback -- bypassing normalization is a bug
+- [Phase 22]: normalize_clear_intents returns new command via model_copy (immutable normalization pattern)
 
 ### Pending Todos
 
@@ -111,6 +114,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-20T13:02:29.922Z
-Stopped at: Completed 22-03-PLAN.md
+Last session: 2026-03-20T13:07:51.576Z
+Stopped at: Completed 22-04-PLAN.md
 Resume file: None
