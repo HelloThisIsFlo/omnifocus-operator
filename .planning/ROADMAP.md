@@ -54,7 +54,7 @@
 - [x] **Phase 19: InMemoryBridge Export Cleanup** - Test double removed from production exports (completed 2026-03-17)
 - [x] **Phase 20: Model Taxonomy** - Three-layer naming convention with typed bridge payloads (completed 2026-03-18)
 - [x] **Phase 21: Write Pipeline Unification** - Symmetric add/edit signatures at service-repository boundary (completed 2026-03-19)
-- [x] **Phase 22: Service Decomposition** - service.py becomes service/ package; all logic extracted to dedicated modules (completed 2026-03-19)
+- [ ] **Phase 22: Service Decomposition** - service.py becomes service/ package; all logic extracted to dedicated modules (gap closure in progress)
 - [ ] **Phase 23: SimulatorBridge and Factory Cleanup** - SimulatorBridge removed from exports; bridge factory eliminated; PYTEST guard moved to RealBridge
 - [ ] **Phase 24: Test Double Relocation** - All test double modules moved from src/ to tests/; production code structurally cannot import them
 
@@ -123,15 +123,19 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. `service/` is a Python package; `from omnifocus_operator.service import OperatorService` still works
   2. Format conversion functions (build_add_payload, build_edit_payload) live in a dedicated module, not in the orchestrator
-  3. Validation logic (name checks, parent resolution, tag resolution) lives in a dedicated module
+  3. Validation logic (name checks) lives in a dedicated module, separate from resolution
   4. Domain logic (tag diff, repetition rule semantics, lifecycle, no-op detection) lives in a dedicated module
   5. Each extracted module can be imported and tested without instantiating OperatorService
-  6. The orchestrator reads as a short sequence of validate, domain, convert, delegate steps per write method
-  7. All 534+ existing tests pass without modification
-**Plans:** 2/2 plans complete
+  6. The orchestrator reads as a short sequence of validate, resolve, domain, convert, delegate steps per write method
+  7. All entity existence checks route through Resolver
+  8. Null-means-clear intent normalization is centralized in DomainLogic
+  9. All 579+ existing tests pass without modification
+**Plans:** 4 plans (2 complete, 2 gap closure)
 Plans:
-- [ ] 22-01-PLAN.md -- Create service/ package, extract resolve.py, domain.py, payload.py; rewrite service.py as thin orchestrator
-- [ ] 22-02-PLAN.md -- Unit tests for extracted modules (test_service_resolve.py, test_service_domain.py, test_service_payload.py)
+- [x] 22-01-PLAN.md -- Create service/ package, extract resolve.py, domain.py, payload.py; rewrite service.py as thin orchestrator
+- [x] 22-02-PLAN.md -- Unit tests for extracted modules (test_service_resolve.py, test_service_domain.py, test_service_payload.py)
+- [ ] 22-03-PLAN.md -- Split validate.py from resolve.py, add resolve_task to Resolver, route all entity checks through Resolver
+- [ ] 22-04-PLAN.md -- Centralize null-means-clear intent normalization in DomainLogic
 
 ## Progress
 
@@ -166,7 +170,7 @@ Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24
 | 19. InMemoryBridge Export Cleanup | 1/1 | Complete    | 2026-03-17 | - |
 | 20. Model Taxonomy | 2/2 | Complete    | 2026-03-18 | - |
 | 21. Write Pipeline Unification | 2/2 | Complete    | 2026-03-19 | - |
-| 22. Service Decomposition | 2/2 | Complete    | 2026-03-19 | - |
+| 22. Service Decomposition | 2/4 | Gap closure | 2026-03-19 | - |
 | 23. SimulatorBridge and Factory Cleanup | v1.2.1 | 0/TBD | Not started | - |
 | 24. Test Double Relocation | v1.2.1 | 0/TBD | Not started | - |
 
