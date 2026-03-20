@@ -7,7 +7,7 @@ extra="forbid" to reject unknown fields at validation time.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TypeGuard
 
 from pydantic import ConfigDict, GetCoreSchemaHandler
 from pydantic_core import CoreSchema, core_schema
@@ -52,10 +52,15 @@ class _Unset:
 UNSET = _Unset()
 
 
+def is_set[T](value: T | _Unset) -> TypeGuard[T]:
+    """True if value was explicitly provided (not UNSET)."""
+    return not isinstance(value, _Unset)
+
+
 class CommandModel(OmniFocusBaseModel):
     """Base for all command-layer models. Rejects unknown fields at validation time."""
 
     model_config = ConfigDict(extra="forbid")
 
 
-__all__ = ["UNSET", "CommandModel", "_Unset"]
+__all__ = ["UNSET", "CommandModel", "_Unset", "is_set"]
