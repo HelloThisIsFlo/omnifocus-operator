@@ -42,8 +42,8 @@ Requirements for Architectural Cleanup milestone. No new tools, no behavioral ch
 - [x] **INFRA-05**: Tests import SimulatorBridge via direct module path only
 - [x] **INFRA-06**: `OMNIFOCUS_BRIDGE` environment variable removed — repository factory creates RealBridge directly
 - [x] **INFRA-07**: Bridge factory (`create_bridge`) removed — env var reading absorbed into repository factory, PYTEST safety guard moved to `RealBridge.__init__`
-- [ ] **INFRA-08**: All test double modules physically located under `tests/`, not `src/` (InMemoryBridge, BridgeCall, InMemoryRepository, ConstantMtimeSource, SimulatorBridge)
-- [ ] **INFRA-09**: No production code (`src/`) imports test doubles — crossing the `src/`→`tests/` boundary is structurally impossible
+- [x] **INFRA-08**: All test double modules physically located under `tests/`, not `src/` (InMemoryBridge, BridgeCall, InMemoryRepository, ConstantMtimeSource, SimulatorBridge)
+- [x] **INFRA-09**: No production code (`src/`) imports test doubles — crossing the `src/`→`tests/` boundary is structurally impossible
 
 ## Future Requirements
 
@@ -110,8 +110,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-05 | Phase 23 | Complete |
 | INFRA-06 | Phase 23 | Complete |
 | INFRA-07 | Phase 23 | Complete |
-| INFRA-08 | Phase 24 | Pending |
-| INFRA-09 | Phase 24 | Pending |
+| INFRA-08 | Phase 24 | Complete |
+| INFRA-09 | Phase 24 | Complete |
 
 **Coverage:**
 - v1.2.1 requirements: 23 total
