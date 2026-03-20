@@ -12,7 +12,8 @@ from typing import TYPE_CHECKING, Literal
 from omnifocus_operator.contracts.base import (
     UNSET,
     CommandModel,
-    _Unset,
+    Patch,
+    PatchOrClear,
 )
 from omnifocus_operator.models.base import OmniFocusBaseModel
 
@@ -25,9 +26,9 @@ if TYPE_CHECKING:
 class EditTaskActions(CommandModel):
     """Stateful operations grouped under the actions block."""
 
-    tags: TagAction | _Unset = UNSET
-    move: MoveAction | _Unset = UNSET
-    lifecycle: Literal["complete", "drop"] | _Unset = UNSET
+    tags: Patch[TagAction] = UNSET
+    move: Patch[MoveAction] = UNSET
+    lifecycle: Patch[Literal["complete", "drop"]] = UNSET
 
 
 class EditTaskCommand(CommandModel):
@@ -37,18 +38,18 @@ class EditTaskCommand(CommandModel):
     id: str
 
     # Value-only fields (no None -- these can't be "cleared")
-    name: str | _Unset = UNSET
-    flagged: bool | _Unset = UNSET
+    name: Patch[str] = UNSET
+    flagged: Patch[bool] = UNSET
 
     # Clearable fields (None = clear the value)
-    note: str | None | _Unset = UNSET
-    due_date: AwareDatetime | None | _Unset = UNSET
-    defer_date: AwareDatetime | None | _Unset = UNSET
-    planned_date: AwareDatetime | None | _Unset = UNSET
-    estimated_minutes: float | None | _Unset = UNSET
+    note: PatchOrClear[str] = UNSET
+    due_date: PatchOrClear[AwareDatetime] = UNSET
+    defer_date: PatchOrClear[AwareDatetime] = UNSET
+    planned_date: PatchOrClear[AwareDatetime] = UNSET
+    estimated_minutes: PatchOrClear[float] = UNSET
 
     # Stateful operations
-    actions: EditTaskActions | _Unset = UNSET
+    actions: Patch[EditTaskActions] = UNSET
 
 
 class EditTaskResult(OmniFocusBaseModel):

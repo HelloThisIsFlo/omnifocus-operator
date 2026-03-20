@@ -12,6 +12,8 @@ from omnifocus_operator.agent_messages.errors import (
 from omnifocus_operator.contracts.base import (
     UNSET,
     CommandModel,
+    Patch,
+    PatchOrNone,
     _Unset,
     is_set,
 )
@@ -24,9 +26,9 @@ class TagAction(CommandModel):
     Incompatible modes are rejected by the model validator.
     """
 
-    add: list[str] | _Unset = UNSET
-    remove: list[str] | _Unset = UNSET
-    replace: list[str] | None | _Unset = UNSET
+    add: Patch[list[str]] = UNSET
+    remove: Patch[list[str]] = UNSET
+    replace: PatchOrNone[list[str]] = UNSET
 
     @model_validator(mode="after")
     def _validate_incompatible_tag_edit_modes(self) -> TagAction:
@@ -53,10 +55,10 @@ class MoveAction(CommandModel):
     - ``before``/``after``: ID of a sibling task (parent is inferred).
     """
 
-    beginning: str | None | _Unset = UNSET
-    ending: str | None | _Unset = UNSET
-    before: str | _Unset = UNSET
-    after: str | _Unset = UNSET
+    beginning: PatchOrNone[str] = UNSET
+    ending: PatchOrNone[str] = UNSET
+    before: Patch[str] = UNSET
+    after: Patch[str] = UNSET
 
     @model_validator(mode="after")
     def _exactly_one_key(self) -> MoveAction:

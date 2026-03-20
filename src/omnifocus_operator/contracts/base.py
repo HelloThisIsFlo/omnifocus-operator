@@ -7,7 +7,7 @@ extra="forbid" to reject unknown fields at validation time.
 
 from __future__ import annotations
 
-from typing import Any, TypeGuard
+from typing import Any, TypeGuard, TypeVar, Union
 
 from pydantic import ConfigDict, GetCoreSchemaHandler
 from pydantic_core import CoreSchema, core_schema
@@ -51,6 +51,24 @@ class _Unset:
 
 UNSET = _Unset()
 
+# --- Patch type aliases ---
+# Make patch semantics self-documenting in field annotations.
+# Pydantic resolves these to plain unions at model creation time --
+# JSON schema output is identical to writing the union directly.
+
+T = TypeVar("T")
+
+Patch = Union[T, _Unset]
+"""Field can be set or omitted (UNSET). Cannot be cleared to None."""
+
+PatchOrClear = Union[T, None, _Unset]
+"""Field can be set, cleared (None), or omitted (UNSET). None means 'clear the value'."""
+
+PatchOrNone = Union[T, None, _Unset]
+"""Field can be set, set to None, or omitted (UNSET). None carries domain meaning, not 'clear'.
+Same union as PatchOrClear -- the distinct name signals that None is a meaningful value
+(e.g., MoveAction.ending = None means 'inbox'), not a clear instruction."""
+
 
 def is_set[T](value: T | _Unset) -> TypeGuard[T]:
     """True if value was explicitly provided (not UNSET)."""
@@ -62,5 +80,13 @@ class CommandModel(OmniFocusBaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    def changed_fields(self) -> dict[str, Any]:
+        """Return only fields explicitly set by the caller (UNSET values excluded)."""
+        return {
+            name: value
+            for name, value in self.__dict__.items()
+            if not isinstance(value, _Unset)
+        }
 
-__all__ = ["UNSET", "CommandModel", "_Unset", "is_set"]
+
+__all__ = ["UNSET", "CommandModel", "Patch", "PatchOrClear", "PatchOrNone", "_Unset", "is_set"]
