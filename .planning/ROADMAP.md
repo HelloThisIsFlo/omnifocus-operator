@@ -55,7 +55,7 @@
 - [x] **Phase 20: Model Taxonomy** - Three-layer naming convention with typed bridge payloads (completed 2026-03-18)
 - [x] **Phase 21: Write Pipeline Unification** - Symmetric add/edit signatures at service-repository boundary (completed 2026-03-19)
 - [x] **Phase 22: Service Decomposition** - service.py becomes service/ package; all logic extracted to dedicated modules (gap closure in progress) (completed 2026-03-20)
-- [ ] **Phase 23: SimulatorBridge and Factory Cleanup** - SimulatorBridge removed from exports; bridge factory eliminated; PYTEST guard moved to RealBridge
+- [x] **Phase 23: SimulatorBridge and Factory Cleanup** - SimulatorBridge removed from exports; bridge factory eliminated; PYTEST guard moved to RealBridge (completed 2026-03-20)
 - [ ] **Phase 24: Test Double Relocation** - All test double modules moved from src/ to tests/; production code structurally cannot import them
 - [ ] **Phase 25: Patch/PatchOrClear type aliases for command models** - Type aliases for patch semantics in command models
 - [ ] **Phase 26: Replace InMemoryRepository with stateful InMemoryBridge** - Merge InMemoryRepository into stateful InMemoryBridge for test fidelity
@@ -151,9 +151,9 @@ Plans:
   4. `create_bridge()` function and `bridge/factory.py` module removed — repository factory instantiates RealBridge directly
   5. PYTEST safety guard (`PYTEST_CURRENT_TEST` check) lives in `RealBridge.__init__` — blocks instantiation during automated testing regardless of call site
   6. All 534+ existing tests pass after migration
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 Plans:
-- [ ] 23-01-PLAN.md -- PYTEST guard migration to RealBridge, bridge factory deletion, export cleanup, repository factory simplification, test migration
+- [x] 23-01-PLAN.md -- PYTEST guard migration to RealBridge, bridge factory deletion, export cleanup, repository factory simplification, test migration
 
 ## Progress
 
@@ -189,7 +189,7 @@ Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24
 | 20. Model Taxonomy | 2/2 | Complete    | 2026-03-18 | - |
 | 21. Write Pipeline Unification | 2/2 | Complete    | 2026-03-19 | - |
 | 22. Service Decomposition | 4/4 | Complete    | 2026-03-20 | - |
-| 23. SimulatorBridge and Factory Cleanup | v1.2.1 | 0/1 | Not started | - |
+| 23. SimulatorBridge and Factory Cleanup | v1.2.1 | 1/1 | Complete   | 2026-03-20 |
 | 24. Test Double Relocation | v1.2.1 | 0/TBD | Not started | - |
 
 ### Phase 24: Test Double Relocation

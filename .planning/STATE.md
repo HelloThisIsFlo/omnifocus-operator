@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2.1
 milestone_name: Architectural Cleanup
 status: unknown
-stopped_at: Phase 23 context gathered
-last_updated: "2026-03-20T18:28:14.164Z"
-last_activity: "2026-03-20 - Completed quick task 260320-k6u: Centralize agent-facing messages into agent_messages/ package"
+stopped_at: Completed 23-01-PLAN.md
+last_updated: "2026-03-20T18:55:46.903Z"
+last_activity: 2026-03-20
 progress:
   total_phases: 10
-  completed_phases: 5
-  total_plans: 11
-  completed_plans: 11
+  completed_phases: 6
+  total_plans: 12
+  completed_plans: 12
 ---
 
 # Project State
@@ -20,12 +20,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-16)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 22 — service-decomposition
+**Current focus:** Phase 23 — SimulatorBridge and Factory Cleanup
 
 ## Current Position
 
-Phase: 22 (service-decomposition) — EXECUTING
-Plan: 4 of 4
+Phase: 23 (SimulatorBridge and Factory Cleanup) — EXECUTING
+Plan: 1 of 1
 
 ## Performance Metrics
 
@@ -54,6 +54,7 @@ Plan: 4 of 4
 | Phase 22 P02 | 4min | 2 tasks | 3 files |
 | Phase 22 P03 | 3min | 2 tasks | 6 files |
 | Phase 22-04 P04 | 3min | 1 tasks | 5 files |
+| Phase 23 P01 | 6min | 2 tasks | 10 files |
 
 ### Decisions
 
@@ -83,6 +84,9 @@ Recent decisions affecting current work:
 - [Phase 22]: Container move type-check stays as direct repo access (not resolution, verified by plan)
 - [Phase 22]: Fail-fast assert in _apply_replace instead of defensive fallback -- bypassing normalization is a bug
 - [Phase 22]: normalize_clear_intents returns new command via model_copy (immutable normalization pattern)
+- [Phase 23]: PYTEST guard uses type(self) is RealBridge so subclasses bypass automatically
+- [Phase 23]: Repository factory creates RealBridge directly -- no OMNIFOCUS_BRIDGE env var or bridge factory
+- [Phase 23]: Bridge factory deleted, SimulatorBridge/create_bridge removed from package exports
 
 ### Pending Todos
 
@@ -118,6 +122,6 @@ None currently.
 
 ## Session Continuity
 
-Last activity: 2026-03-20 - Completed quick task 260320-k6u: Centralize agent-facing messages into agent_messages/ package
-Stopped at: Phase 23 context gathered
-Resume file: .planning/phases/23-simulatorbridge-and-factory-cleanup/23-CONTEXT.md
+Last activity: 2026-03-20
+Stopped at: Completed 23-01-PLAN.md
+Resume file: None

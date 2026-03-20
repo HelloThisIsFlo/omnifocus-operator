@@ -38,10 +38,10 @@ Requirements for Architectural Cleanup milestone. No new tools, no behavioral ch
 - [x] **INFRA-01**: InMemoryBridge not importable from `omnifocus_operator.bridge`
 - [x] **INFRA-02**: Tests import InMemoryBridge via direct module path only
 - [x] **INFRA-03**: `"inmemory"` option removed from bridge/repository factory — no env var routing to test doubles
-- [ ] **INFRA-04**: SimulatorBridge not importable from `omnifocus_operator.bridge`
-- [ ] **INFRA-05**: Tests import SimulatorBridge via direct module path only
-- [ ] **INFRA-06**: `OMNIFOCUS_BRIDGE` environment variable removed — repository factory creates RealBridge directly
-- [ ] **INFRA-07**: Bridge factory (`create_bridge`) removed — env var reading absorbed into repository factory, PYTEST safety guard moved to `RealBridge.__init__`
+- [x] **INFRA-04**: SimulatorBridge not importable from `omnifocus_operator.bridge`
+- [x] **INFRA-05**: Tests import SimulatorBridge via direct module path only
+- [x] **INFRA-06**: `OMNIFOCUS_BRIDGE` environment variable removed — repository factory creates RealBridge directly
+- [x] **INFRA-07**: Bridge factory (`create_bridge`) removed — env var reading absorbed into repository factory, PYTEST safety guard moved to `RealBridge.__init__`
 - [ ] **INFRA-08**: All test double modules physically located under `tests/`, not `src/` (InMemoryBridge, BridgeCall, InMemoryRepository, ConstantMtimeSource, SimulatorBridge)
 - [ ] **INFRA-09**: No production code (`src/`) imports test doubles — crossing the `src/`→`tests/` boundary is structurally impossible
 
@@ -106,10 +106,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SVCR-03 | Phase 22 | Complete |
 | SVCR-04 | Phase 22 | Complete |
 | SVCR-05 | Phase 22 | Complete |
-| INFRA-04 | Phase 23 | Pending |
-| INFRA-05 | Phase 23 | Pending |
-| INFRA-06 | Phase 23 | Pending |
-| INFRA-07 | Phase 23 | Pending |
+| INFRA-04 | Phase 23 | Complete |
+| INFRA-05 | Phase 23 | Complete |
+| INFRA-06 | Phase 23 | Complete |
+| INFRA-07 | Phase 23 | Complete |
 | INFRA-08 | Phase 24 | Pending |
 | INFRA-09 | Phase 24 | Pending |
 
