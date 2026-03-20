@@ -48,7 +48,7 @@
 
 </details>
 
-### v1.2.1 Architectural Cleanup (Phases 18-24)
+### v1.2.1 Architectural Cleanup (Phases 18-27)
 
 - [x] **Phase 18: Write Model Strictness** - Write specs reject unknown fields; sentinel interaction validated (completed 2026-03-16)
 - [x] **Phase 19: InMemoryBridge Export Cleanup** - Test double removed from production exports (completed 2026-03-17)
@@ -57,6 +57,9 @@
 - [x] **Phase 22: Service Decomposition** - service.py becomes service/ package; all logic extracted to dedicated modules (gap closure in progress) (completed 2026-03-20)
 - [ ] **Phase 23: SimulatorBridge and Factory Cleanup** - SimulatorBridge removed from exports; bridge factory eliminated; PYTEST guard moved to RealBridge
 - [ ] **Phase 24: Test Double Relocation** - All test double modules moved from src/ to tests/; production code structurally cannot import them
+- [ ] **Phase 25: Patch/PatchOrClear type aliases for command models** - Type aliases for patch semantics in command models
+- [ ] **Phase 26: Replace InMemoryRepository with stateful InMemoryBridge** - Merge InMemoryRepository into stateful InMemoryBridge for test fidelity
+- [ ] **Phase 27: Repository contract tests for behavioral equivalence** - Shared contract test suite proving InMemoryBridge and RealBridge behave identically
 
 ## Phase Details
 
@@ -218,3 +221,13 @@ Plans:
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 26 to break down)
+
+### Phase 27: Repository contract tests for behavioral equivalence
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 26
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 27 to break down)
