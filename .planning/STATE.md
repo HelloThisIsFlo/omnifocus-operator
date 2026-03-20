@@ -4,7 +4,7 @@ milestone: v1.2.1
 milestone_name: Architectural Cleanup
 status: unknown
 stopped_at: Completed 24-01-PLAN.md
-last_updated: "2026-03-20T19:47:20.296Z"
+last_updated: "2026-03-20T19:51:04.348Z"
 last_activity: 2026-03-20
 progress:
   total_phases: 10
@@ -24,8 +24,8 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 
 ## Current Position
 
-Phase: 24 (test-double-relocation-to-tests) — EXECUTING
-Plan: 1 of 1
+Phase: 25
+Plan: Not started
 
 ## Performance Metrics
 
