@@ -44,7 +44,14 @@ omnifocus_operator/
     repository/      -- Data access implementations + factory
     simulator/       -- Mock OmniFocus simulator for IPC testing
     server.py        -- FastMCP tool registration + wiring
-    service.py       -- Validation, resolution, delegation to repository
+    service/         -- Validation, resolution, domain logic, delegation
+        service.py       -- Thin orchestrator (OperatorService)
+        resolve.py       -- Entity resolution (parent, tags, task)
+        validate.py      -- Pure input validation
+        domain.py        -- Business rules (lifecycle, tags, cycle, no-op, move)
+        payload.py       -- Typed repo payload construction
+    messages/        -- Agent-facing communication surface (planned)
+    warnings.py      -- Centralized warning message constants
 ```
 
 **Split principle:** `models/` = what OmniFocus IS (domain entities). `contracts/` = what you can DO (operations, boundaries). Everything else = how it's done (implementations).
@@ -148,6 +155,40 @@ sequenceDiagram
 - **Bridge** is a dumb relay: receives pre-validated dicts, executes, returns minimal confirmation
 - Parent resolution: try `get_project` first, then `get_task` — **project takes precedence** (intentional, deterministic)
 - HybridRepository marks stale after write; BridgeRepository clears cache
+
+### Method Object Pattern (complex pipelines)
+
+When a service method has many sequential steps with intermediate state, we use the **Method Object** pattern: extract the method body into a short-lived class where each step is a named method and intermediate values live on `self`.
+
+**Why:** Familiarity vs readability. A 100-line method with 12 local variables and numbered comments is *familiar* but forces you to track all state simultaneously. A Method Object with a 12-line `execute()` method and 3-8 line steps is *readable* — each step is self-contained, named, navigable, and shows up in stack traces.
+
+**How it works:**
+
+```python
+# Orchestrator stays thin -- one-liner delegation
+async def edit_task(self, command: EditTaskCommand) -> EditTaskResult:
+    pipeline = _EditTaskPipeline(self._resolver, self._domain, self._payload, self._repository)
+    return await pipeline.execute(command)
+
+# Pipeline reads like a table of contents
+class _EditTaskPipeline:
+    async def execute(self, command):
+        await self._verify_task_exists()
+        self._validate_and_normalize()
+        self._detect_action_flags()
+        self._apply_lifecycle()
+        ...
+```
+
+**When to use:** All service-layer use cases — not just complex ones. The pattern makes any orchestration method self-documenting. Even `add_task` (5 steps) reads better as a pipeline than inline code with variables flowing between steps. The value is self-documenting orchestration, not complexity management.
+
+**Conventions:**
+- All pipelines inherit from `_Pipeline` (shared DI constructor)
+- Class name: `_VerbNounPipeline` (private, underscore prefix) — e.g., `_CreateTaskPipeline`, `_EditTaskPipeline`
+- Constructor receives DI dependencies; `execute()` receives the input
+- Mutable state on `self` is acceptable — the object is created, executed, and discarded within a single call. The lifetime is bounded.
+- Step methods are private (`_verify_task_exists`, not `verify_task_exists`)
+- Read delegation methods (get_task, get_project, etc.) stay inline on OperatorService — they're one-liner pass-throughs, not pipelines
 
 ## Read Pipeline
 
@@ -584,4 +625,3 @@ Three layers, all before bridge execution:
 ## Deferred Decisions
 
 - Multi-repository coordination in OperatorService (if needed)
-- Service protocol enforcement — `OperatorService` doesn't formally implement the `Service` protocol yet (Phase 22 concern)
