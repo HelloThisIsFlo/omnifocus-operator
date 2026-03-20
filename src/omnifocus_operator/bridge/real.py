@@ -114,6 +114,7 @@ class RealBridge(Bridge):
     """
 
     def __init__(self, ipc_dir: Path, *, timeout: float = 10.0) -> None:
+        self._guard_automated_testing()
         self._ipc_dir = ipc_dir
         self._pid = os.getpid()
         self._timeout = timeout
@@ -125,6 +126,19 @@ class RealBridge(Bridge):
             .joinpath("bridge.js")
             .read_text(encoding="utf-8")
         )
+
+    def _guard_automated_testing(self) -> None:
+        """Block RealBridge instantiation during automated testing (SAFE-01).
+
+        Uses ``type(self) is RealBridge`` so subclasses like SimulatorBridge
+        bypass the guard automatically -- no opt-out machinery needed.
+        """
+        if type(self) is RealBridge and os.environ.get("PYTEST_CURRENT_TEST"):
+            msg = (
+                "RealBridge cannot be instantiated during automated testing "
+                "(PYTEST_CURRENT_TEST is set)."
+            )
+            raise RuntimeError(msg)
 
     @property
     def ipc_dir(self) -> Path:

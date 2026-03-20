@@ -2,6 +2,9 @@
 
 The ``create_repository`` function selects a repository based on a string type
 identifier (typically from the ``OMNIFOCUS_REPOSITORY`` environment variable).
+
+Production code always creates a ``RealBridge`` directly -- the bridge factory
+and ``OMNIFOCUS_BRIDGE`` env var are no longer used.
 """
 
 from __future__ import annotations
@@ -12,7 +15,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from omnifocus_operator.contracts.protocols import Repository
+    from omnifocus_operator.contracts.protocols import Bridge, Repository
 
 __all__ = ["create_repository"]
 
@@ -61,6 +64,21 @@ def create_repository(repo_type: str | None = None) -> Repository:
             raise ValueError(msg)
 
 
+def _create_real_bridge() -> Bridge:
+    """Create a RealBridge reading config from environment variables."""
+    from omnifocus_operator.bridge.real import DEFAULT_IPC_DIR, RealBridge
+
+    ipc_dir_str = os.environ.get("OMNIFOCUS_IPC_DIR")
+    ipc_dir = Path(ipc_dir_str) if ipc_dir_str else DEFAULT_IPC_DIR
+    timeout = float(os.environ.get("OMNIFOCUS_BRIDGE_TIMEOUT", "10"))
+    logger.debug(
+        "Creating RealBridge: timeout=%.1fs, ipc_dir=%s",
+        timeout,
+        ipc_dir,
+    )
+    return RealBridge(ipc_dir=ipc_dir, timeout=timeout)
+
+
 def _create_hybrid_repository() -> Repository:
     """Create a HybridRepository with path validation."""
     from omnifocus_operator.repository.hybrid import HybridRepository
@@ -81,39 +99,29 @@ def _create_hybrid_repository() -> Repository:
         )
         raise FileNotFoundError(msg)
 
-    from omnifocus_operator.bridge.factory import create_bridge
-
-    bridge_type = os.environ.get("OMNIFOCUS_BRIDGE", "real")
-    bridge = create_bridge(bridge_type)
+    bridge = _create_real_bridge()
 
     return HybridRepository(db_path=Path(db_path), bridge=bridge)
 
 
-def _create_bridge_repository() -> Repository:
-    """Create a BridgeRepository with appropriate MtimeSource."""
-    from omnifocus_operator.bridge import create_bridge
-    from omnifocus_operator.bridge.mtime import ConstantMtimeSource, MtimeSource
+def _create_bridge_repository() -> Repository:  # pragma: no cover — SAFE-01: real bridge path, tested via UAT
+    """Create a BridgeRepository with FileMtimeSource."""
+    from omnifocus_operator.bridge.mtime import FileMtimeSource, MtimeSource
+    from omnifocus_operator.bridge.real import DEFAULT_OFOCUS_PATH
     from omnifocus_operator.repository.bridge import BridgeRepository
 
-    bridge_type = os.environ.get("OMNIFOCUS_BRIDGE", "real")
-    bridge = create_bridge(bridge_type)
+    bridge = _create_real_bridge()
 
     mtime_source: MtimeSource
-    if bridge_type == "simulator":
-        mtime_source = ConstantMtimeSource()
-    else:  # pragma: no cover — SAFE-01: real bridge path, tested via UAT
-        from omnifocus_operator.bridge.mtime import FileMtimeSource
-        from omnifocus_operator.bridge.real import DEFAULT_OFOCUS_PATH
-
-        ofocus_path = os.environ.get("OMNIFOCUS_OFOCUS_PATH", str(DEFAULT_OFOCUS_PATH))
-        if not os.path.exists(ofocus_path):
-            logger.error(
-                "OmniFocus .ofocus bundle not found at: %s — "
-                "set OMNIFOCUS_OFOCUS_PATH or verify OmniFocus 4 is installed.",
-                ofocus_path,
-            )
-            raise FileNotFoundError(f"OmniFocus .ofocus bundle not found: {ofocus_path}")
-        mtime_source = FileMtimeSource(path=ofocus_path)
+    ofocus_path = os.environ.get("OMNIFOCUS_OFOCUS_PATH", str(DEFAULT_OFOCUS_PATH))
+    if not os.path.exists(ofocus_path):
+        logger.error(
+            "OmniFocus .ofocus bundle not found at: %s — "
+            "set OMNIFOCUS_OFOCUS_PATH or verify OmniFocus 4 is installed.",
+            ofocus_path,
+        )
+        raise FileNotFoundError(f"OmniFocus .ofocus bundle not found: {ofocus_path}")
+    mtime_source = FileMtimeSource(path=ofocus_path)
 
     logger.warning(
         "Running in bridge mode — 'blocked' availability is not available, "
