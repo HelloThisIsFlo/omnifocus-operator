@@ -57,7 +57,7 @@
 - [x] **Phase 22: Service Decomposition** - service.py becomes service/ package; all logic extracted to dedicated modules (gap closure in progress) (completed 2026-03-20)
 - [x] **Phase 23: SimulatorBridge and Factory Cleanup** - SimulatorBridge removed from exports; bridge factory eliminated; PYTEST guard moved to RealBridge (completed 2026-03-20)
 - [x] **Phase 24: Test Double Relocation** - All test double modules moved from src/ to tests/; production code structurally cannot import them (completed 2026-03-20)
-- [ ] **Phase 25: Patch/PatchOrClear type aliases for command models** - `Patch[T]`/`PatchOrClear[T]` aliases + `changed_fields()` helper (TYPE-01–04)
+- [x] **Phase 25: Patch/PatchOrClear type aliases for command models** - `Patch[T]`/`PatchOrClear[T]` aliases + `changed_fields()` helper (TYPE-01–04) (completed 2026-03-20)
 - [ ] **Phase 26: Replace InMemoryRepository with stateful InMemoryBridge** - Stateful InMemoryBridge, delete InMemoryRepository, real serialization path in tests (INFRA-10–12)
 - [ ] **Phase 27: Repository contract tests (golden master)** - Golden master from RealBridge UAT, CI contract tests verify InMemoryBridge matches (INFRA-13–14)
 
@@ -216,10 +216,10 @@ Plans:
   3. JSON schema output is identical before and after the migration
   4. `changed_fields()` on any `CommandModel` instance returns a dict of only explicitly set fields (UNSET values excluded)
   5. All existing tests pass without modification
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 25-01-PLAN.md -- Define Patch/PatchOrClear/PatchOrNone aliases, changed_fields(), migrate all annotations, schema identity tests
+- [x] 25-01-PLAN.md -- Define Patch/PatchOrClear/PatchOrNone aliases, changed_fields(), migrate all annotations, schema identity tests
 
 ### Phase 26: Replace InMemoryRepository with stateful InMemoryBridge
 **Goal**: InMemoryRepository deleted and replaced by a stateful InMemoryBridge — write tests exercise the real serialization path instead of an independent simulation that can drift

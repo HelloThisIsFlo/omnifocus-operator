@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2.1
 milestone_name: Architectural Cleanup
 status: unknown
-stopped_at: Phase 25 context gathered
-last_updated: "2026-03-20T21:02:33.931Z"
+stopped_at: Completed 25-01-PLAN.md
+last_updated: "2026-03-20T21:21:24.842Z"
 last_activity: 2026-03-20
 progress:
   total_phases: 10
-  completed_phases: 7
-  total_plans: 13
-  completed_plans: 13
+  completed_phases: 8
+  total_plans: 14
+  completed_plans: 14
 ---
 
 # Project State
@@ -20,12 +20,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-16)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 24 — test-double-relocation-to-tests
+**Current focus:** Phase 25 — patch-patchorclear-type-aliases-for-command-models
 
 ## Current Position
 
-Phase: 25
-Plan: Not started
+Phase: 25 (patch-patchorclear-type-aliases-for-command-models) — EXECUTING
+Plan: 1 of 1
 
 ## Performance Metrics
 
@@ -56,6 +56,7 @@ Plan: Not started
 | Phase 22-04 P04 | 3min | 1 tasks | 5 files |
 | Phase 23 P01 | 6min | 2 tasks | 10 files |
 | Phase 24 P01 | 5min | 2 tasks | 15 files |
+| Phase 25 P01 | 5min | 1 tasks | 5 files |
 
 ### Decisions
 
@@ -90,6 +91,9 @@ Recent decisions affecting current work:
 - [Phase 23]: Bridge factory deleted, SimulatorBridge/create_bridge removed from package exports
 - [Phase 24]: ConstantMtimeSource and FileMtimeSource explicitly inherit MtimeSource protocol (was structural)
 - [Phase 24]: tests/doubles/ established as canonical location for all test doubles
+- [Phase 25]: TypeVar+Union approach for Patch/PatchOrClear/PatchOrNone aliases (clean JSON schema + mypy pass)
+- [Phase 25]: PatchOrNone[T] as distinct alias from PatchOrClear[T] for domain-meaningful None values (e.g., inbox)
+- [Phase 25]: changed_fields() on CommandModel base class, complementing is_set() TypeGuard for per-field branching
 
 ### Pending Todos
 
@@ -126,5 +130,5 @@ None currently.
 ## Session Continuity
 
 Last activity: 2026-03-20
-Stopped at: Phase 25 context gathered
-Resume file: .planning/phases/25-patch-patchorclear-type-aliases-for-command-models/25-CONTEXT.md
+Stopped at: Completed 25-01-PLAN.md
+Resume file: None

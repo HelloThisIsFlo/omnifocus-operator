@@ -52,10 +52,10 @@ Requirements for Architectural Cleanup milestone. No new tools, no behavioral ch
 
 ### Type Expressiveness
 
-- [ ] **TYPE-01**: Patchable command model fields annotated with `Patch[T]` type alias (`Union[T, _Unset]`) — patch semantics visible in the annotation
-- [ ] **TYPE-02**: Clearable command model fields annotated with `PatchOrClear[T]` type alias (`Union[T, None, _Unset]`) — `None`-means-clear visible in the annotation
-- [ ] **TYPE-03**: JSON schema output identical before and after type alias migration
-- [ ] **TYPE-04**: `changed_fields()` helper on `CommandModel` returns only fields explicitly set by the caller
+- [x] **TYPE-01**: Patchable command model fields annotated with `Patch[T]` type alias (`Union[T, _Unset]`) — patch semantics visible in the annotation
+- [x] **TYPE-02**: Clearable command model fields annotated with `PatchOrClear[T]` type alias (`Union[T, None, _Unset]`) — `None`-means-clear visible in the annotation
+- [x] **TYPE-03**: JSON schema output identical before and after type alias migration
+- [x] **TYPE-04**: `changed_fields()` helper on `CommandModel` returns only fields explicitly set by the caller
 
 ## Future Requirements
 
@@ -124,10 +124,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-07 | Phase 23 | Complete |
 | INFRA-08 | Phase 24 | Complete |
 | INFRA-09 | Phase 24 | Complete |
-| TYPE-01 | Phase 25 | Pending |
-| TYPE-02 | Phase 25 | Pending |
-| TYPE-03 | Phase 25 | Pending |
-| TYPE-04 | Phase 25 | Pending |
+| TYPE-01 | Phase 25 | Complete |
+| TYPE-02 | Phase 25 | Complete |
+| TYPE-03 | Phase 25 | Complete |
+| TYPE-04 | Phase 25 | Complete |
 | INFRA-10 | Phase 26 | Pending |
 | INFRA-11 | Phase 26 | Pending |
 | INFRA-12 | Phase 26 | Pending |
