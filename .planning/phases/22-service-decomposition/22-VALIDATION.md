@@ -1,10 +1,11 @@
 ---
 phase: 22
 slug: service-decomposition
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-19
+audited: 2026-03-20
 ---
 
 # Phase 22 — Validation Strategy
@@ -38,11 +39,11 @@ created: 2026-03-19
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 22-01-01 | 01 | 1 | SVCR-04 | integration | `uv run python -m pytest tests/test_service.py tests/test_server.py -x -q` | ✅ | ⬜ pending |
-| 22-01-02 | 01 | 1 | SVCR-01 | unit | `uv run python -m pytest tests/test_service_resolve.py -x -q` | ❌ W0 | ⬜ pending |
-| 22-01-03 | 01 | 1 | SVCR-02 | unit | `uv run python -m pytest tests/test_service_domain.py -x -q` | ❌ W0 | ⬜ pending |
-| 22-01-04 | 01 | 1 | SVCR-03 | unit | `uv run python -m pytest tests/test_service_payload.py -x -q` | ❌ W0 | ⬜ pending |
-| 22-01-05 | 01 | 1 | SVCR-05 | unit | `uv run python -m pytest tests/test_service_resolve.py tests/test_service_domain.py tests/test_service_payload.py -x -q` | ❌ W0 | ⬜ pending |
+| 22-01-01 | 01 | 1 | SVCR-04 | integration | `uv run python -m pytest tests/test_service.py tests/test_server.py -x -q` | ✅ | ✅ green (164 passed) |
+| 22-01-02 | 01 | 1 | SVCR-01 | unit | `uv run python -m pytest tests/test_service_resolve.py -x -q` | ✅ | ✅ green (17 passed) |
+| 22-01-03 | 01 | 1 | SVCR-02 | unit | `uv run python -m pytest tests/test_service_domain.py -x -q` | ✅ | ✅ green (25 passed) |
+| 22-01-04 | 01 | 1 | SVCR-03 | unit | `uv run python -m pytest tests/test_service_payload.py -x -q` | ✅ | ✅ green (15 passed) |
+| 22-01-05 | 01 | 1 | SVCR-05 | unit | `uv run python -m pytest tests/test_service_resolve.py tests/test_service_domain.py tests/test_service_payload.py -x -q` | ✅ | ✅ green (57 passed) |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -50,9 +51,9 @@ created: 2026-03-19
 
 ## Wave 0 Requirements
 
-- [ ] `tests/test_service_resolve.py` — stubs for SVCR-01 (Resolver unit tests with real InMemoryRepo)
-- [ ] `tests/test_service_domain.py` — stubs for SVCR-02 (DomainLogic unit tests with stub Resolver)
-- [ ] `tests/test_service_payload.py` — stubs for SVCR-03 (PayloadBuilder pure unit tests)
+- [x] `tests/test_service_resolve.py` — 17 tests for SVCR-01 (Resolver unit tests with real InMemoryRepo)
+- [x] `tests/test_service_domain.py` — 25 tests for SVCR-02 (DomainLogic unit tests with stub Resolver)
+- [x] `tests/test_service_payload.py` — 15 tests for SVCR-03 (PayloadBuilder pure unit tests)
 
 ---
 
@@ -66,11 +67,21 @@ created: 2026-03-19
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 10s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 10s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** complete
+
+---
+
+## Validation Audit 2026-03-20
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
