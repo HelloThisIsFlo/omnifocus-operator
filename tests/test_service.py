@@ -75,13 +75,13 @@ class TestOperatorService:
         assert result is not None
         assert result.id == "task-001"
 
-    async def test_get_task_returns_none_when_not_found(self) -> None:
+    async def test_get_task_raises_when_not_found(self) -> None:
         snapshot = make_snapshot()
         repo = InMemoryRepository(snapshot=snapshot)
         service = OperatorService(repository=repo)
 
-        result = await service.get_task("nonexistent")
-        assert result is None
+        with pytest.raises(ValueError, match="Task not found: nonexistent"):
+            await service.get_task("nonexistent")
 
     async def test_get_project_delegates_to_repository(self) -> None:
         snapshot = make_snapshot()
@@ -92,13 +92,13 @@ class TestOperatorService:
         assert result is not None
         assert result.id == "proj-001"
 
-    async def test_get_project_returns_none_when_not_found(self) -> None:
+    async def test_get_project_raises_when_not_found(self) -> None:
         snapshot = make_snapshot()
         repo = InMemoryRepository(snapshot=snapshot)
         service = OperatorService(repository=repo)
 
-        result = await service.get_project("nonexistent")
-        assert result is None
+        with pytest.raises(ValueError, match="Project not found: nonexistent"):
+            await service.get_project("nonexistent")
 
     async def test_get_tag_delegates_to_repository(self) -> None:
         snapshot = make_snapshot()
@@ -109,13 +109,13 @@ class TestOperatorService:
         assert result is not None
         assert result.id == "tag-001"
 
-    async def test_get_tag_returns_none_when_not_found(self) -> None:
+    async def test_get_tag_raises_when_not_found(self) -> None:
         snapshot = make_snapshot()
         repo = InMemoryRepository(snapshot=snapshot)
         service = OperatorService(repository=repo)
 
-        result = await service.get_tag("nonexistent")
-        assert result is None
+        with pytest.raises(ValueError, match="Tag not found: nonexistent"):
+            await service.get_tag("nonexistent")
 
 
 # ---------------------------------------------------------------------------

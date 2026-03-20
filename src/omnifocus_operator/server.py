@@ -26,9 +26,6 @@ from omnifocus_operator.agent_messages.errors import (
     ADD_TASKS_BATCH_LIMIT,
     EDIT_TASKS_BATCH_LIMIT,
     INVALID_INPUT,
-    PROJECT_NOT_FOUND,
-    TAG_NOT_FOUND,
-    TASK_NOT_FOUND,
 )
 from omnifocus_operator.contracts.use_cases.add_task import (
     AddTaskCommand,
@@ -144,9 +141,6 @@ def _register_tools(mcp: FastMCP) -> None:
         log_tool_call("get_task", id=id)
         service: OperatorService = ctx.request_context.lifespan_context["service"]
         result = await service.get_task(id)
-        if result is None:
-            msg = TASK_NOT_FOUND.format(id=id)
-            raise ValueError(msg)
         logger.debug("server.get_task: returning name=%s", result.name)
         return result
 
@@ -160,9 +154,6 @@ def _register_tools(mcp: FastMCP) -> None:
         log_tool_call("get_project", id=id)
         service: OperatorService = ctx.request_context.lifespan_context["service"]
         result = await service.get_project(id)
-        if result is None:
-            msg = PROJECT_NOT_FOUND.format(id=id)
-            raise ValueError(msg)
         logger.debug("server.get_project: returning name=%s", result.name)
         return result
 
@@ -176,9 +167,6 @@ def _register_tools(mcp: FastMCP) -> None:
         log_tool_call("get_tag", id=id)
         service: OperatorService = ctx.request_context.lifespan_context["service"]
         result = await service.get_tag(id)
-        if result is None:
-            msg = TAG_NOT_FOUND.format(name=id)
-            raise ValueError(msg)
         logger.debug("server.get_tag: returning name=%s", result.name)
         return result
 

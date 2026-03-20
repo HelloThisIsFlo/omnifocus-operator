@@ -60,20 +60,20 @@ class OperatorService(Service):  # explicitly implements Service protocol
         logger.debug("OperatorService.get_all_data: delegating to repository")
         return await self._repository.get_all()
 
-    async def get_task(self, task_id: str) -> Task | None:
-        """Return a single task by ID, or None if not found."""
+    async def get_task(self, task_id: str) -> Task:
+        """Return a single task by ID. Raises ValueError if not found."""
         logger.debug("OperatorService.get_task: id=%s", task_id)
-        return await self._repository.get_task(task_id)
+        return await self._resolver.resolve_task(task_id)
 
-    async def get_project(self, project_id: str) -> Project | None:
-        """Return a single project by ID, or None if not found."""
+    async def get_project(self, project_id: str) -> Project:
+        """Return a single project by ID. Raises ValueError if not found."""
         logger.debug("OperatorService.get_project: id=%s", project_id)
-        return await self._repository.get_project(project_id)
+        return await self._resolver.resolve_project(project_id)
 
-    async def get_tag(self, tag_id: str) -> Tag | None:
-        """Return a single tag by ID, or None if not found."""
+    async def get_tag(self, tag_id: str) -> Tag:
+        """Return a single tag by ID. Raises ValueError if not found."""
         logger.debug("OperatorService.get_tag: id=%s", tag_id)
-        return await self._repository.get_tag(tag_id)
+        return await self._resolver.resolve_tag(tag_id)
 
     # -- add_task: delegates to _AddTaskPipeline (Method Object) --------
 

@@ -8,12 +8,14 @@ from typing import TYPE_CHECKING
 from omnifocus_operator.agent_messages.errors import (
     AMBIGUOUS_TAG,
     PARENT_NOT_FOUND,
+    PROJECT_NOT_FOUND,
     TAG_NOT_FOUND,
     TASK_NOT_FOUND,
 )
 
 if TYPE_CHECKING:
     from omnifocus_operator.contracts.protocols import Repository
+    from omnifocus_operator.models.project import Project
     from omnifocus_operator.models.tag import Tag
     from omnifocus_operator.models.task import Task
 
@@ -55,6 +57,24 @@ class Resolver:
             msg = TASK_NOT_FOUND.format(id=task_id)
             raise ValueError(msg)
         return task
+
+    async def resolve_project(self, project_id: str) -> Project:
+        """Verify project exists. Returns the Project. Raises ValueError if not found."""
+        logger.debug("Resolver.resolve_project: id=%s", project_id)
+        project = await self._repo.get_project(project_id)
+        if project is None:
+            msg = PROJECT_NOT_FOUND.format(id=project_id)
+            raise ValueError(msg)
+        return project
+
+    async def resolve_tag(self, tag_id: str) -> Tag:
+        """Verify tag exists by ID. Returns the Tag. Raises ValueError if not found."""
+        logger.debug("Resolver.resolve_tag: id=%s", tag_id)
+        tag = await self._repo.get_tag(tag_id)
+        if tag is None:
+            msg = TAG_NOT_FOUND.format(name=tag_id)
+            raise ValueError(msg)
+        return tag
 
     async def resolve_tags(self, tag_names: list[str]) -> list[str]:
         """Resolve tag names to IDs (case-insensitive).

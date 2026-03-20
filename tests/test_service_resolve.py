@@ -135,7 +135,33 @@ class TestResolver:
         with pytest.raises(ValueError, match="Task not found: unknown-id"):
             await resolver.resolve_task("unknown-id")
 
-    # -- Tag resolution ----------------------------------------------------
+    # -- Project resolution ------------------------------------------------
+
+    async def test_resolve_project_found(self, resolver: Resolver) -> None:
+        """Known project ID returns the project."""
+        project = await resolver.resolve_project("proj-1")
+        assert project.id == "proj-1"
+        assert project.name == "Project One"
+
+    async def test_resolve_project_not_found(self, resolver: Resolver) -> None:
+        """Unknown project ID raises ValueError."""
+        with pytest.raises(ValueError, match="Project not found: unknown-id"):
+            await resolver.resolve_project("unknown-id")
+
+    # -- Tag resolution (by ID) --------------------------------------------
+
+    async def test_resolve_tag_found(self, resolver: Resolver) -> None:
+        """Known tag ID returns the tag."""
+        tag = await resolver.resolve_tag("tag-work")
+        assert tag.id == "tag-work"
+        assert tag.name == "Work"
+
+    async def test_resolve_tag_not_found(self, resolver: Resolver) -> None:
+        """Unknown tag ID raises ValueError."""
+        with pytest.raises(ValueError, match="Tag not found: unknown-id"):
+            await resolver.resolve_tag("unknown-id")
+
+    # -- Tag resolution (by name) ------------------------------------------
 
     async def test_resolve_tags_by_name(self, resolver: Resolver) -> None:
         """Exact name match resolves to the tag's ID."""
