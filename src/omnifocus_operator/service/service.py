@@ -12,7 +12,7 @@ delegate to repository. All heavy lifting lives in the extracted modules:
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, NoReturn
+from typing import TYPE_CHECKING, NamedTuple, NoReturn
 
 from omnifocus_operator.contracts.protocols import Service
 from omnifocus_operator.service.domain import DomainLogic
@@ -117,7 +117,7 @@ class OperatorService(Service):  # explicitly implements Service protocol
         repo_result = await self._repository.add_task(repo_payload)
         return CreateTaskResult(success=True, id=repo_result.id, name=repo_result.name)
 
-    # -- edit_task: fetch -> domain -> build -> no-op check -> delegate ----
+    # -- edit_task: delegates to _EditTaskPipeline (Method Object) ---------
 
     async def edit_task(self, command: EditTaskCommand) -> EditTaskResult:
         """Edit a task with validation and delegation to repository.
@@ -128,86 +128,168 @@ class OperatorService(Service):  # explicitly implements Service protocol
             If task not found, name empty, parent not found, anchor not
             found, or move would create a cycle.
         """
-        from omnifocus_operator.contracts.base import is_set
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskResult
+        pipeline = _EditTaskPipeline(
+            self._resolver,
+            self._domain,
+            self._payload,
+            self._repository,
+        )
+        return await pipeline.execute(command)
 
-        # 1. Verify task exists
-        logger.debug("OperatorService.edit_task: id=%s, fetching current state", command.id)
-        task = await self._resolver.resolve_task(command.id)
+
+# -- edit_task pipeline (Method Object) ------------------------------------
+
+
+class _EditFlags(NamedTuple):
+    has_lifecycle: bool
+    has_tag_actions: bool
+    has_move: bool
+
+
+class _EditTaskPipeline:
+    """Method object for edit_task — each step is a named method, state on self."""
+
+    def __init__(
+        self,
+        resolver: Resolver,
+        domain: DomainLogic,
+        payload: PayloadBuilder,
+        repository: Repository,
+    ) -> None:
+        self._resolver = resolver
+        self._domain = domain
+        self._payload = payload
+        self._repository = repository
+
+    async def execute(self, command: EditTaskCommand) -> EditTaskResult:
+        """Run the full edit-task pipeline."""
+        self._command = command
+
+        await self._verify_task_exists()
+        self._validate_and_normalize()
+        self._detect_action_flags()
+        self._apply_lifecycle()
+        self._check_completed_status()
+        await self._apply_tag_diff()
+        await self._apply_move()
+        self._build_payload()
+
+        if (early := self._detect_noop()) is not None:
+            return early
+        return await self._delegate()
+
+    async def _verify_task_exists(self) -> None:
+        logger.debug("OperatorService.edit_task: id=%s, fetching current state", self._command.id)
+        self._task = await self._resolver.resolve_task(self._command.id)
         logger.debug(
             "OperatorService.edit_task: task found, name=%s, current_tags=%d",
-            task.name,
-            len(task.tags),
+            self._task.name,
+            len(self._task.tags),
         )
 
-        validate_task_name_if_set(command.name)
+    def _validate_and_normalize(self) -> None:
+        validate_task_name_if_set(self._command.name)
+        self._command = self._domain.normalize_clear_intents(self._command)
 
-        # 1.5. Normalize null-means-clear intents
-        command = self._domain.normalize_clear_intents(command)
+    def _detect_action_flags(self) -> None:
+        from omnifocus_operator.contracts.base import is_set
 
-        # 2. is_set checks -- orchestrator decides what to call
-        has_actions = is_set(command.actions)
-        has_lifecycle = has_actions and is_set(command.actions.lifecycle)  # type: ignore[union-attr]
-        has_tag_actions = has_actions and is_set(command.actions.tags)  # type: ignore[union-attr]
-        has_move = has_actions and is_set(command.actions.move)  # type: ignore[union-attr]
+        actions = self._command.actions
+        if not is_set(actions):
+            self._flags = _EditFlags(has_lifecycle=False, has_tag_actions=False, has_move=False)
+            return
+        self._flags = _EditFlags(
+            has_lifecycle=is_set(actions.lifecycle),
+            has_tag_actions=is_set(actions.tags),
+            has_move=is_set(actions.move),
+        )
 
-        # 3. Domain: lifecycle
-        lifecycle: str | None = None
-        lifecycle_warns: list[str] = []
-        if has_lifecycle:
-            lifecycle_action: str = command.actions.lifecycle  # type: ignore[union-attr,assignment]
-            should_call, lifecycle_warns = self._domain.process_lifecycle(lifecycle_action, task)
-            if should_call:
-                lifecycle = lifecycle_action
+    def _apply_lifecycle(self) -> None:
+        from omnifocus_operator.contracts.base import is_set
 
-        # 4. Domain: status warnings
-        status_warns = self._domain.check_completed_status(task, has_lifecycle)
+        self._lifecycle: str | None = None
+        self._lifecycle_warns: list[str] = []
+        if not self._flags.has_lifecycle:
+            return
+        actions = self._command.actions
+        assert is_set(actions) and is_set(actions.lifecycle)
+        should_call, self._lifecycle_warns = self._domain.process_lifecycle(
+            actions.lifecycle,
+            self._task,
+        )
+        if should_call:
+            self._lifecycle = actions.lifecycle
 
-        # 5. Domain: tag diff
-        tag_adds: list[str] | None = None
-        tag_removes: list[str] | None = None
-        tag_warns: list[str] = []
-        if has_tag_actions:
-            tag_adds, tag_removes, tag_warns = await self._domain.compute_tag_diff(
-                command.actions.tags,  # type: ignore[union-attr,arg-type]
-                task.tags,
-            )
-            logger.debug("OperatorService.edit_task: current_tags=%s", [t.id for t in task.tags])
-            logger.debug(
-                "OperatorService.edit_task: tag diff add_ids=%s, remove_ids=%s",
-                tag_adds,
-                tag_removes,
-            )
+    def _check_completed_status(self) -> None:
+        self._status_warns = self._domain.check_completed_status(
+            self._task,
+            self._flags.has_lifecycle,
+        )
 
-        # 6. Domain: move processing
-        move_to: dict[str, object] | None = None
-        if has_move:
-            move_to = await self._domain.process_move(
-                command.actions.move,  # type: ignore[union-attr,arg-type]
-                command.id,
-            )
+    async def _apply_tag_diff(self) -> None:
+        from omnifocus_operator.contracts.base import is_set
 
-        # 7. Build payload
-        repo_payload = self._payload.build_edit(command, lifecycle, tag_adds, tag_removes, move_to)
+        self._tag_adds: list[str] | None = None
+        self._tag_removes: list[str] | None = None
+        self._tag_warns: list[str] = []
+        if not self._flags.has_tag_actions:
+            return
+        actions = self._command.actions
+        assert is_set(actions) and is_set(actions.tags)
+        self._tag_adds, self._tag_removes, self._tag_warns = await self._domain.compute_tag_diff(
+            actions.tags, self._task.tags
+        )
+        logger.debug("OperatorService.edit_task: current_tags=%s", [t.id for t in self._task.tags])
+        logger.debug(
+            "OperatorService.edit_task: tag diff add_ids=%s, remove_ids=%s",
+            self._tag_adds,
+            self._tag_removes,
+        )
+
+    async def _apply_move(self) -> None:
+        from omnifocus_operator.contracts.base import is_set
+
+        self._move_to: dict[str, object] | None = None
+        if not self._flags.has_move:
+            return
+        actions = self._command.actions
+        assert is_set(actions) and is_set(actions.move)
+        self._move_to = await self._domain.process_move(
+            actions.move,
+            self._command.id,
+        )
+
+    def _build_payload(self) -> None:
+        self._repo_payload = self._payload.build_edit(
+            self._command,
+            self._lifecycle,
+            self._tag_adds,
+            self._tag_removes,
+            self._move_to,
+        )
         logger.debug(
             "OperatorService.edit_task: payload fields_set=%s",
-            repo_payload.model_fields_set,
+            self._repo_payload.model_fields_set,
+        )
+        self._all_warnings = self._lifecycle_warns + self._status_warns + self._tag_warns
+
+    def _detect_noop(self) -> EditTaskResult | None:
+        return self._domain.detect_early_return(
+            self._repo_payload,
+            self._task,
+            self._all_warnings,
         )
 
-        # 8. Domain: no-op + empty-edit detection
-        all_warnings = lifecycle_warns + status_warns + tag_warns
-        early = self._domain.detect_early_return(repo_payload, task, all_warnings)
-        if early is not None:
-            return early
+    async def _delegate(self) -> EditTaskResult:
+        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskResult
 
-        # 9. Delegate
         logger.debug("OperatorService.edit_task: delegating to repository")
-        repo_result = await self._repository.edit_task(repo_payload)
+        repo_result = await self._repository.edit_task(self._repo_payload)
         return EditTaskResult(
             success=True,
             id=repo_result.id,
             name=repo_result.name,
-            warnings=all_warnings or None,
+            warnings=self._all_warnings or None,
         )
 
 
