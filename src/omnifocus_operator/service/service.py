@@ -12,7 +12,7 @@ delegate to repository. All heavy lifting lives in the extracted modules:
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, NamedTuple, NoReturn
+from typing import TYPE_CHECKING, NoReturn
 
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.protocols import Service
@@ -135,12 +135,6 @@ class OperatorService(Service):  # explicitly implements Service protocol
 # -- edit_task pipeline (Method Object) ------------------------------------
 
 
-class _EditFlags(NamedTuple):
-    has_lifecycle: bool
-    has_tag_actions: bool
-    has_move: bool
-
-
 class _EditTaskPipeline:
     """Method object for edit_task — each step is a named method, state on self."""
 
@@ -162,7 +156,7 @@ class _EditTaskPipeline:
 
         await self._verify_task_exists()
         self._validate_and_normalize()
-        self._detect_action_flags()
+        self._resolve_actions()
         self._apply_lifecycle()
         self._check_completed_status()
         await self._apply_tag_diff()
@@ -186,47 +180,43 @@ class _EditTaskPipeline:
         validate_task_name_if_set(self._command.name)
         self._command = self._domain.normalize_clear_intents(self._command)
 
-    def _detect_action_flags(self) -> None:
+    def _resolve_actions(self) -> None:
         actions = self._command.actions
         if not is_set(actions):
-            self._flags = _EditFlags(has_lifecycle=False, has_tag_actions=False, has_move=False)
+            self._lifecycle_action = None
+            self._tag_actions = None
+            self._move_action = None
             return
-        self._flags = _EditFlags(
-            has_lifecycle=is_set(actions.lifecycle),
-            has_tag_actions=is_set(actions.tags),
-            has_move=is_set(actions.move),
-        )
+        self._lifecycle_action = actions.lifecycle if is_set(actions.lifecycle) else None
+        self._tag_actions = actions.tags if is_set(actions.tags) else None
+        self._move_action = actions.move if is_set(actions.move) else None
 
     def _apply_lifecycle(self) -> None:
         self._lifecycle: str | None = None
         self._lifecycle_warns: list[str] = []
-        if not self._flags.has_lifecycle:
+        if self._lifecycle_action is None:
             return
-        actions = self._command.actions
-        assert is_set(actions) and is_set(actions.lifecycle)
         should_call, self._lifecycle_warns = self._domain.process_lifecycle(
-            actions.lifecycle,
+            self._lifecycle_action,
             self._task,
         )
         if should_call:
-            self._lifecycle = actions.lifecycle
+            self._lifecycle = self._lifecycle_action
 
     def _check_completed_status(self) -> None:
         self._status_warns = self._domain.check_completed_status(
             self._task,
-            self._flags.has_lifecycle,
+            self._lifecycle_action is not None,
         )
 
     async def _apply_tag_diff(self) -> None:
         self._tag_adds: list[str] | None = None
         self._tag_removes: list[str] | None = None
         self._tag_warns: list[str] = []
-        if not self._flags.has_tag_actions:
+        if self._tag_actions is None:
             return
-        actions = self._command.actions
-        assert is_set(actions) and is_set(actions.tags)
         self._tag_adds, self._tag_removes, self._tag_warns = await self._domain.compute_tag_diff(
-            actions.tags, self._task.tags
+            self._tag_actions, self._task.tags
         )
         logger.debug("OperatorService.edit_task: current_tags=%s", [t.id for t in self._task.tags])
         logger.debug(
@@ -237,12 +227,10 @@ class _EditTaskPipeline:
 
     async def _apply_move(self) -> None:
         self._move_to: dict[str, object] | None = None
-        if not self._flags.has_move:
+        if self._move_action is None:
             return
-        actions = self._command.actions
-        assert is_set(actions) and is_set(actions.move)
         self._move_to = await self._domain.process_move(
-            actions.move,
+            self._move_action,
             self._command.id,
         )
 
