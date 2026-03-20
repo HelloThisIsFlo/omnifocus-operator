@@ -44,6 +44,18 @@ Requirements for Architectural Cleanup milestone. No new tools, no behavioral ch
 - [x] **INFRA-07**: Bridge factory (`create_bridge`) removed — env var reading absorbed into repository factory, PYTEST safety guard moved to `RealBridge.__init__`
 - [x] **INFRA-08**: All test double modules physically located under `tests/`, not `src/` (InMemoryBridge, BridgeCall, InMemoryRepository, ConstantMtimeSource, SimulatorBridge)
 - [x] **INFRA-09**: No production code (`src/`) imports test doubles — crossing the `src/`→`tests/` boundary is structurally impossible
+- [ ] **INFRA-10**: `InMemoryBridge` maintains mutable in-memory state and handles `add_task`/`edit_task` commands as a stateful test double
+- [ ] **INFRA-11**: `InMemoryRepository` deleted — write test infrastructure routes through the bridge serialization layer
+- [ ] **INFRA-12**: Write tests exercise the real serialization path (`BridgeWriteMixin`, `model_dump(by_alias=True)`, snapshot parsing) via the stateful `InMemoryBridge`
+- [ ] **INFRA-13**: Golden master of expected repository behavior captured from RealBridge via UAT and committed to the repo
+- [ ] **INFRA-14**: CI contract tests verify InMemoryBridge-backed `BridgeRepository` output matches the committed golden master
+
+### Type Expressiveness
+
+- [ ] **TYPE-01**: Patchable command model fields annotated with `Patch[T]` type alias (`Union[T, _Unset]`) — patch semantics visible in the annotation
+- [ ] **TYPE-02**: Clearable command model fields annotated with `PatchOrClear[T]` type alias (`Union[T, None, _Unset]`) — `None`-means-clear visible in the annotation
+- [ ] **TYPE-03**: JSON schema output identical before and after type alias migration
+- [ ] **TYPE-04**: `changed_fields()` helper on `CommandModel` returns only fields explicitly set by the caller
 
 ## Future Requirements
 
@@ -112,12 +124,21 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-07 | Phase 23 | Complete |
 | INFRA-08 | Phase 24 | Complete |
 | INFRA-09 | Phase 24 | Complete |
+| TYPE-01 | Phase 25 | Pending |
+| TYPE-02 | Phase 25 | Pending |
+| TYPE-03 | Phase 25 | Pending |
+| TYPE-04 | Phase 25 | Pending |
+| INFRA-10 | Phase 26 | Pending |
+| INFRA-11 | Phase 26 | Pending |
+| INFRA-12 | Phase 26 | Pending |
+| INFRA-13 | Phase 27 | Pending |
+| INFRA-14 | Phase 27 | Pending |
 
 **Coverage:**
-- v1.2.1 requirements: 23 total
-- Mapped to phases: 23
+- v1.2.1 requirements: 32 total
+- Mapped to phases: 32
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-16*
-*Last updated: 2026-03-17 after Phase 24 requirements added (test double relocation)*
+*Last updated: 2026-03-20 after Phase 25-27 requirements defined*

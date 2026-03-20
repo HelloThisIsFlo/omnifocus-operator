@@ -57,9 +57,9 @@
 - [x] **Phase 22: Service Decomposition** - service.py becomes service/ package; all logic extracted to dedicated modules (gap closure in progress) (completed 2026-03-20)
 - [x] **Phase 23: SimulatorBridge and Factory Cleanup** - SimulatorBridge removed from exports; bridge factory eliminated; PYTEST guard moved to RealBridge (completed 2026-03-20)
 - [x] **Phase 24: Test Double Relocation** - All test double modules moved from src/ to tests/; production code structurally cannot import them (completed 2026-03-20)
-- [ ] **Phase 25: Patch/PatchOrClear type aliases for command models** - Type aliases for patch semantics in command models
-- [ ] **Phase 26: Replace InMemoryRepository with stateful InMemoryBridge** - Merge InMemoryRepository into stateful InMemoryBridge for test fidelity
-- [ ] **Phase 27: Repository contract tests for behavioral equivalence** - Shared contract test suite proving InMemoryBridge and RealBridge behave identically
+- [ ] **Phase 25: Patch/PatchOrClear type aliases for command models** - `Patch[T]`/`PatchOrClear[T]` aliases + `changed_fields()` helper (TYPE-01–04)
+- [ ] **Phase 26: Replace InMemoryRepository with stateful InMemoryBridge** - Stateful InMemoryBridge, delete InMemoryRepository, real serialization path in tests (INFRA-10–12)
+- [ ] **Phase 27: Repository contract tests (golden master)** - Golden master from RealBridge UAT, CI contract tests verify InMemoryBridge matches (INFRA-13–14)
 
 ## Phase Details
 
@@ -158,8 +158,8 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24
-(Phases 18 and 19 are independent and could execute in either order. Phase 23 depends on Phase 19. Phase 24 depends on Phase 23.)
+Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24 -> 25 -> 26 -> 27
+(Phases 18 and 19 are independent and could execute in either order. Phase 23 depends on Phase 19. Phase 24 depends on Phase 23. Phases 25-27 are sequential.)
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -207,30 +207,43 @@ Plans:
 - [x] 24-01-PLAN.md -- Create tests/doubles/ package, relocate all test doubles, migrate imports, negative import tests
 
 ### Phase 25: Patch/PatchOrClear type aliases for command models
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 24
+**Goal**: Command model field annotations use `Patch[T]` and `PatchOrClear[T]` type aliases to make patch semantics self-documenting — pure readability change with identical JSON schema output
+**Depends on**: Phase 24
+**Requirements**: TYPE-01, TYPE-02, TYPE-03, TYPE-04
+**Success Criteria** (what must be TRUE):
+  1. All patchable command model fields use `Patch[T]` annotation instead of raw `T | _Unset`
+  2. All clearable command model fields use `PatchOrClear[T]` annotation instead of raw `T | None | _Unset`
+  3. JSON schema output is identical before and after the migration
+  4. `changed_fields()` on any `CommandModel` instance returns a dict of only explicitly set fields (UNSET values excluded)
+  5. All existing tests pass without modification
 **Plans:** 0 plans
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 25 to break down)
 
 ### Phase 26: Replace InMemoryRepository with stateful InMemoryBridge
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 25
+**Goal**: InMemoryRepository deleted and replaced by a stateful InMemoryBridge — write tests exercise the real serialization path instead of an independent simulation that can drift
+**Depends on**: Phase 25
+**Requirements**: INFRA-10, INFRA-11, INFRA-12
+**Success Criteria** (what must be TRUE):
+  1. `InMemoryBridge` maintains mutable task/project/tag state and handles `add_task`/`edit_task` bridge commands
+  2. `InMemoryRepository` module is deleted — no repository test double simulates write behavior independently of the bridge layer
+  3. Write tests exercise `BridgeWriteMixin`, `model_dump(by_alias=True)`, and snapshot parsing through the stateful `InMemoryBridge`
+  4. All existing tests pass without behavioral changes
 **Plans:** 0 plans
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 26 to break down)
 
-### Phase 27: Repository contract tests for behavioral equivalence
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 26
+### Phase 27: Repository contract tests (golden master)
+**Goal**: Golden master pattern proves behavioral equivalence between InMemoryBridge and RealBridge — UAT captures expected behavior, CI verifies the test double matches
+**Depends on**: Phase 26
+**Requirements**: INFRA-13, INFRA-14
+**Success Criteria** (what must be TRUE):
+  1. Golden master of expected repository behavior exists, captured from RealBridge via UAT
+  2. Golden master is committed to the repo as the source of truth for "what OmniFocus actually does"
+  3. CI contract tests verify InMemoryBridge-backed `BridgeRepository` output matches the committed golden master
+  4. All existing tests pass
 **Plans:** 0 plans
 
 Plans:
