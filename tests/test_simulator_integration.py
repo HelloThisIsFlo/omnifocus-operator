@@ -20,8 +20,8 @@ from mcp.client.session import ClientSession
 from mcp.shared.message import SessionMessage
 
 from omnifocus_operator.bridge.errors import BridgeProtocolError, BridgeTimeoutError
-from tests.doubles import SimulatorBridge
 from omnifocus_operator.simulator.data import SIMULATOR_SNAPSHOT
+from tests.doubles import SimulatorBridge
 
 if TYPE_CHECKING:
     from collections.abc import Generator

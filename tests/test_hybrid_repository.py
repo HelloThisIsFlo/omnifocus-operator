@@ -20,12 +20,12 @@ if TYPE_CHECKING:
 
 import pytest
 
-from tests.doubles import InMemoryBridge
 from omnifocus_operator.contracts.protocols import Repository
 from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoPayload
 from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoPayload
 from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.repository.hybrid import _FRESHNESS_TIMEOUT, HybridRepository
+from tests.doubles import InMemoryBridge
 
 # Core Foundation epoch: Jan 1, 2001 00:00:00 UTC
 _CF_EPOCH = datetime(2001, 1, 1, tzinfo=UTC)

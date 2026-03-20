@@ -7,19 +7,14 @@ factory function (creates the appropriate bridge implementation).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from datetime import UTC
 
 import pytest
 
-if TYPE_CHECKING:
-    from pathlib import Path
-
-from datetime import UTC
-
 from omnifocus_operator.bridge import BridgeError
 from omnifocus_operator.bridge.mtime import MtimeSource
-from tests.doubles import ConstantMtimeSource, InMemoryRepository
 from omnifocus_operator.service import OperatorService
+from tests.doubles import ConstantMtimeSource, InMemoryRepository
 
 from .conftest import make_project_dict, make_snapshot, make_task_dict
 

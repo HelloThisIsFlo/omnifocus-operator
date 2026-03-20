@@ -14,7 +14,6 @@ from omnifocus_operator.contracts.base import (
     CommandModel,
     Patch,
     PatchOrNone,
-    _Unset,
     is_set,
 )
 

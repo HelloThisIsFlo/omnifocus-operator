@@ -228,12 +228,12 @@ class TestTestDoubleRelocation:
     def test_in_memory_bridge_not_importable_from_old_path(self) -> None:
         """in_memory module removed from bridge package."""
         with pytest.raises(ModuleNotFoundError):
-            from omnifocus_operator.bridge.in_memory import InMemoryBridge  # noqa: F401, F811
+            from omnifocus_operator.bridge.in_memory import InMemoryBridge  # noqa: F401
 
     def test_bridge_call_not_importable_from_old_path(self) -> None:
         """BridgeCall removed with in_memory module."""
         with pytest.raises(ModuleNotFoundError):
-            from omnifocus_operator.bridge.in_memory import BridgeCall  # noqa: F401, F811
+            from omnifocus_operator.bridge.in_memory import BridgeCall  # noqa: F401
 
     def test_simulator_bridge_not_importable_from_old_path(self) -> None:
         """simulator module removed from bridge package."""

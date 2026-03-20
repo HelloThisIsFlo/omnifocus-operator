@@ -202,10 +202,10 @@ class TestTOOL01ListAllStructuredOutput:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Verify structuredContent uses camelCase field names for nested entities."""
-        from tests.doubles import ConstantMtimeSource, InMemoryBridge
         from omnifocus_operator.repository import BridgeRepository
         from omnifocus_operator.server import _register_tools
         from omnifocus_operator.service import OperatorService
+        from tests.doubles import ConstantMtimeSource, InMemoryBridge
 
         task_data = {
             "id": "task-1",
@@ -570,9 +570,9 @@ class TestGetByIdTools:
 
     async def _make_server_with_data(self) -> FastMCP:
         """Build a test server with known snapshot data."""
-        from tests.doubles import InMemoryRepository
         from omnifocus_operator.server import _register_tools
         from omnifocus_operator.service import OperatorService
+        from tests.doubles import InMemoryRepository
 
         from .conftest import make_snapshot
 
@@ -705,9 +705,9 @@ class TestAddTasks:
         extra_tags: list[dict[str, Any]] | None = None,
     ) -> FastMCP:
         """Build a test server with InMemoryRepository and known data."""
-        from tests.doubles import InMemoryRepository
         from omnifocus_operator.server import _register_tools
         from omnifocus_operator.service import OperatorService
+        from tests.doubles import InMemoryRepository
 
         from .conftest import make_project_dict, make_snapshot, make_tag_dict
 
@@ -960,9 +960,9 @@ class TestEditTasks:
         extra_tags: list[dict[str, Any]] | None = None,
     ) -> FastMCP:
         """Build a test server with InMemoryRepository and known data."""
-        from tests.doubles import InMemoryRepository
         from omnifocus_operator.server import _register_tools
         from omnifocus_operator.service import OperatorService
+        from tests.doubles import InMemoryRepository
 
         from .conftest import make_project_dict, make_snapshot, make_tag_dict, make_task_dict
 
@@ -1332,9 +1332,9 @@ class TestEditTasksLifecycle:
         extra_tasks: list[dict[str, Any]] | None = None,
     ) -> FastMCP:
         """Build a test server with InMemoryRepository and known data."""
-        from tests.doubles import InMemoryRepository
         from omnifocus_operator.server import _register_tools
         from omnifocus_operator.service import OperatorService
+        from tests.doubles import InMemoryRepository
 
         from .conftest import make_project_dict, make_snapshot, make_tag_dict, make_task_dict
 
