@@ -128,4 +128,4 @@ Read path: SQLite (default, ~46ms). Write path: OmniJS bridge with write-through
 | Write-through guarantee | `@_ensures_write_through` decorator ensures writes block until SQLite confirms; reads never wait | ✓ Good — consistent read-after-write |
 
 ---
-*Last updated: 2026-03-19 — Phase 22 complete: service decomposition*
+*Last updated: 2026-03-20 — Phase 22 gap closure complete: validation/resolution SRP, null-means-clear centralization*
