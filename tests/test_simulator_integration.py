@@ -313,15 +313,20 @@ class TestMcpIntegration:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """MCP get_all tool returns simulator data via full stack."""
+        from omnifocus_operator.repository.bridge import BridgeRepository
+        from tests.doubles import ConstantMtimeSource
+
         proc = _start_simulator(tmp_path)
         try:
-            monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge-only")
-            monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
-            # Create a fake .ofocus bundle for FileMtimeSource
-            ofocus_bundle = tmp_path / "OmniFocus.ofocus"
-            ofocus_bundle.mkdir(exist_ok=True)
-            monkeypatch.setenv("OMNIFOCUS_OFOCUS_PATH", str(ofocus_bundle))
-            monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+            # Build a repository with SimulatorBridge directly.
+            # NEVER bypass PYTEST_CURRENT_TEST or use RealBridge in tests (SAFE-01).
+            bridge = SimulatorBridge(ipc_dir=tmp_path)
+            repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
+
+            monkeypatch.setattr(
+                "omnifocus_operator.repository.create_repository",
+                lambda *_a, **_kw: repo,
+            )
 
             from omnifocus_operator.server import create_server
 

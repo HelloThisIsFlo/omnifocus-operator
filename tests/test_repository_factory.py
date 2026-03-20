@@ -11,6 +11,16 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+def _stub_real_bridge(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Monkeypatch _create_real_bridge so factory never touches RealBridge."""
+    from tests.doubles import SimulatorBridge
+
+    monkeypatch.setattr(
+        "omnifocus_operator.repository.factory._create_real_bridge",
+        lambda: SimulatorBridge(ipc_dir=tmp_path),
+    )
+
+
 class TestCreateRepositoryHybridMode:
     """Tests for hybrid repository creation."""
 
@@ -20,8 +30,7 @@ class TestCreateRepositoryHybridMode:
         db_file = tmp_path / "OmniFocusDatabase.db"
         db_file.touch()
         monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(db_file))
-        monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
-        monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
+        _stub_real_bridge(monkeypatch, tmp_path)
 
         from omnifocus_operator.repository import HybridRepository
         from omnifocus_operator.repository.factory import create_repository
@@ -33,8 +42,7 @@ class TestCreateRepositoryHybridMode:
         db_file = tmp_path / "OmniFocusDatabase.db"
         db_file.touch()
         monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(db_file))
-        monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
-        monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
+        _stub_real_bridge(monkeypatch, tmp_path)
         monkeypatch.delenv("OMNIFOCUS_REPOSITORY", raising=False)
 
         from omnifocus_operator.repository import HybridRepository
@@ -50,8 +58,7 @@ class TestCreateRepositoryHybridMode:
         ofocus_bundle.mkdir()
         monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge-only")
         monkeypatch.setenv("OMNIFOCUS_OFOCUS_PATH", str(ofocus_bundle))
-        monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
-        monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
+        _stub_real_bridge(monkeypatch, tmp_path)
 
         from omnifocus_operator.repository.factory import create_repository
 
@@ -66,8 +73,7 @@ class TestCreateRepositoryHybridMode:
         custom_db = tmp_path / "custom.db"
         custom_db.touch()
         monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(custom_db))
-        monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
-        monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
+        _stub_real_bridge(monkeypatch, tmp_path)
 
         from omnifocus_operator.repository.factory import create_repository
 
@@ -84,8 +90,7 @@ class TestCreateRepositoryBridgeMode:
         ofocus_bundle = tmp_path / "OmniFocus.ofocus"
         ofocus_bundle.mkdir()
         monkeypatch.setenv("OMNIFOCUS_OFOCUS_PATH", str(ofocus_bundle))
-        monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
-        monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
+        _stub_real_bridge(monkeypatch, tmp_path)
 
         from omnifocus_operator.repository import BridgeRepository
         from omnifocus_operator.repository.factory import create_repository
@@ -99,8 +104,7 @@ class TestCreateRepositoryBridgeMode:
         ofocus_bundle = tmp_path / "OmniFocus.ofocus"
         ofocus_bundle.mkdir()
         monkeypatch.setenv("OMNIFOCUS_OFOCUS_PATH", str(ofocus_bundle))
-        monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
-        monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
+        _stub_real_bridge(monkeypatch, tmp_path)
 
         from omnifocus_operator.repository.factory import create_repository
 
