@@ -94,18 +94,18 @@ class PayloadBuilder:
 
     def _add_if_set(self, kwargs: dict[str, object], command: object, *fields: str) -> None:
         """Add non-UNSET command fields to kwargs dict."""
-        from omnifocus_operator.contracts.base import _Unset
+        from omnifocus_operator.contracts.base import is_set
 
         for field in fields:
             value = getattr(command, field)
-            if not isinstance(value, _Unset):
+            if is_set(value):
                 kwargs[field] = value
 
     def _add_dates_if_set(self, kwargs: dict[str, object], command: object, *fields: str) -> None:
         """Add non-UNSET date fields, serialized to ISO string."""
-        from omnifocus_operator.contracts.base import _Unset
+        from omnifocus_operator.contracts.base import is_set
 
         for field in fields:
             value = getattr(command, field)
-            if not isinstance(value, _Unset):
+            if is_set(value):
                 kwargs[field] = value.isoformat() if value is not None else None

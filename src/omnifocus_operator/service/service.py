@@ -128,7 +128,7 @@ class OperatorService(Service):  # explicitly implements Service protocol
             If task not found, name empty, parent not found, anchor not
             found, or move would create a cycle.
         """
-        from omnifocus_operator.contracts.base import _Unset
+        from omnifocus_operator.contracts.base import is_set
         from omnifocus_operator.contracts.use_cases.edit_task import EditTaskResult
 
         # 1. Verify task exists
@@ -145,23 +145,11 @@ class OperatorService(Service):  # explicitly implements Service protocol
         # 1.5. Normalize null-means-clear intents
         command = self._domain.normalize_clear_intents(command)
 
-        # 2. _Unset checks -- orchestrator decides what to call
-        has_actions = not isinstance(command.actions, _Unset)
-        has_lifecycle = (
-            has_actions
-            and not isinstance(command.actions, _Unset)
-            and not isinstance(command.actions.lifecycle, _Unset)
-        )
-        has_tag_actions = (
-            has_actions
-            and not isinstance(command.actions, _Unset)
-            and not isinstance(command.actions.tags, _Unset)
-        )
-        has_move = (
-            has_actions
-            and not isinstance(command.actions, _Unset)
-            and not isinstance(command.actions.move, _Unset)
-        )
+        # 2. is_set checks -- orchestrator decides what to call
+        has_actions = is_set(command.actions)
+        has_lifecycle = has_actions and is_set(command.actions.lifecycle)  # type: ignore[union-attr]
+        has_tag_actions = has_actions and is_set(command.actions.tags)  # type: ignore[union-attr]
+        has_move = has_actions and is_set(command.actions.move)  # type: ignore[union-attr]
 
         # 3. Domain: lifecycle
         lifecycle: str | None = None

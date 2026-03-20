@@ -82,16 +82,16 @@ class DomainLogic:
 
         Centralizes this pattern so PayloadBuilder stays pure construction.
         """
-        from omnifocus_operator.contracts.base import _Unset
+        from omnifocus_operator.contracts.base import is_set
 
         # note: None means "clear the note" -> empty string for bridge
-        if not isinstance(command.note, _Unset) and command.note is None:
+        if is_set(command.note) and command.note is None:
             command = command.model_copy(update={"note": ""})
 
         # tags.replace: None means "clear all tags" -> empty list
-        if not isinstance(command.actions, _Unset) and not isinstance(command.actions.tags, _Unset):
+        if is_set(command.actions) and is_set(command.actions.tags):
             tag_actions = command.actions.tags
-            if not isinstance(tag_actions.replace, _Unset) and tag_actions.replace is None:
+            if is_set(tag_actions.replace) and tag_actions.replace is None:
                 new_tags = tag_actions.model_copy(update={"replace": []})
                 new_actions = command.actions.model_copy(update={"tags": new_tags})
                 command = command.model_copy(update={"actions": new_actions})
@@ -155,13 +155,13 @@ class DomainLogic:
         current_tags: list[TagRef],
     ) -> tuple[list[str], list[str], list[str]]:
         """Returns (add_ids, remove_ids, warnings)."""
-        from omnifocus_operator.contracts.base import _Unset
+        from omnifocus_operator.contracts.base import is_set
 
         current_ids = {t.id for t in current_tags}
 
-        has_replace = not isinstance(tag_actions.replace, _Unset)
-        has_add = not isinstance(tag_actions.add, _Unset)
-        has_remove = not isinstance(tag_actions.remove, _Unset)
+        has_replace = is_set(tag_actions.replace)
+        has_add = is_set(tag_actions.add)
+        has_remove = is_set(tag_actions.remove)
         logger.debug("DomainLogic.compute_tag_diff: current_ids=%s", current_ids)
         logger.debug(
             "DomainLogic.compute_tag_diff: has_replace=%s, has_add=%s, has_remove=%s",
@@ -321,11 +321,11 @@ class DomainLogic:
         move_action: MoveAction,
     ) -> tuple[str, str | None]:
         """Find which position key is set. Returns (position, target_id)."""
-        from omnifocus_operator.contracts.base import _Unset
+        from omnifocus_operator.contracts.base import is_set
 
         for key in ("beginning", "ending", "before", "after"):
             value = getattr(move_action, key)
-            if not isinstance(value, _Unset):
+            if is_set(value):
                 return key, value
         msg = "No position key set on move action"
         raise ValueError(msg)

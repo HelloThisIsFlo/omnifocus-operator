@@ -8,6 +8,7 @@ from omnifocus_operator.contracts.base import (
     UNSET,
     CommandModel,
     _Unset,
+    is_set,
 )
 
 
@@ -24,9 +25,9 @@ class TagAction(CommandModel):
 
     @model_validator(mode="after")
     def _validate_incompatible_tag_edit_modes(self) -> TagAction:
-        has_replace = not isinstance(self.replace, _Unset)
-        has_add = not isinstance(self.add, _Unset)
-        has_remove = not isinstance(self.remove, _Unset)
+        has_replace = is_set(self.replace)
+        has_add = is_set(self.add)
+        has_remove = is_set(self.remove)
         if has_replace and (has_add or has_remove):
             msg = (
                 "Cannot use 'replace' with 'add' or 'remove' "
@@ -58,9 +59,7 @@ class MoveAction(CommandModel):
     @model_validator(mode="after")
     def _exactly_one_key(self) -> MoveAction:
         keys_set = sum(
-            1
-            for v in (self.beginning, self.ending, self.before, self.after)
-            if not isinstance(v, _Unset)
+            1 for v in (self.beginning, self.ending, self.before, self.after) if is_set(v)
         )
         if keys_set != 1:
             msg = "moveTo must have exactly one key (beginning, ending, before, or after)"
