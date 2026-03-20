@@ -558,37 +558,33 @@ class TestOrphanSweep:
 
 
 # ---------------------------------------------------------------------------
-# TestSAFE01FactoryGuard
+# TestRealBridgeSafety
 # ---------------------------------------------------------------------------
 
 
-class TestSAFE01FactoryGuard:
-    """SAFE-01: create_bridge('real') refuses during automated testing."""
+class TestRealBridgeSafety:
+    """SAFE-01: RealBridge refuses instantiation during automated testing."""
 
     def test_real_bridge_refused_during_pytest(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """create_bridge('real') raises RuntimeError when PYTEST_CURRENT_TEST is set."""
-        from omnifocus_operator.bridge.factory import create_bridge
+        """RealBridge() raises RuntimeError when PYTEST_CURRENT_TEST is set."""
+        from omnifocus_operator.bridge.real import RealBridge
 
-        # PYTEST_CURRENT_TEST is automatically set by pytest -- verify it's present
         assert os.environ.get("PYTEST_CURRENT_TEST") is not None
-
         monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
         with pytest.raises(RuntimeError, match="PYTEST_CURRENT_TEST"):
-            create_bridge("real")
+            RealBridge(ipc_dir=tmp_path)
 
     def test_real_bridge_allowed_when_not_in_pytest(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """create_bridge('real') succeeds when PYTEST_CURRENT_TEST is NOT set."""
-        from omnifocus_operator.bridge.factory import create_bridge
+        """RealBridge() succeeds when PYTEST_CURRENT_TEST is NOT set."""
+        from omnifocus_operator.bridge.real import RealBridge
 
         monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
         monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
-        bridge = create_bridge("real")
-
-        # Don't import the production bridge for isinstance -- check behavior instead
+        bridge = RealBridge(ipc_dir=tmp_path)
         assert hasattr(bridge, "ipc_dir")
         assert bridge.ipc_dir == tmp_path
 
@@ -601,11 +597,10 @@ class TestSAFE01FactoryGuard:
 class TestExports:
     """Package-level exports for SimulatorBridge and sweep_orphaned_files."""
 
-    def test_simulator_bridge_importable_from_package(self) -> None:
-        """from omnifocus_operator.bridge import SimulatorBridge works."""
-        from omnifocus_operator.bridge import SimulatorBridge as SimulatorBridgeExport
-
-        assert SimulatorBridgeExport is SimulatorBridge
+    def test_simulator_bridge_not_importable_from_package(self) -> None:
+        """from omnifocus_operator.bridge import SimulatorBridge raises ImportError."""
+        with pytest.raises(ImportError):
+            from omnifocus_operator.bridge import SimulatorBridge  # noqa: F811
 
     def test_sweep_importable_from_package(self) -> None:
         """from omnifocus_operator.bridge import sweep_orphaned_files works."""

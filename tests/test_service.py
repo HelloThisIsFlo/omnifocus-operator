@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 from datetime import UTC
 
-from omnifocus_operator.bridge import BridgeError, create_bridge
+from omnifocus_operator.bridge import BridgeError
 from omnifocus_operator.bridge.mtime import ConstantMtimeSource, MtimeSource
 from omnifocus_operator.repository.in_memory import InMemoryRepository
 from omnifocus_operator.service import OperatorService
@@ -2038,33 +2038,6 @@ class TestConstantMtimeSource:
         source = ConstantMtimeSource()
 
         assert isinstance(source, MtimeSource)
-
-
-# ---------------------------------------------------------------------------
-# Bridge factory (create_bridge)
-# ---------------------------------------------------------------------------
-
-
-class TestCreateBridge:
-    """create_bridge() factory returns the correct bridge or raises."""
-
-    def test_simulator_returns_simulator_bridge(self) -> None:
-        from omnifocus_operator.bridge.simulator import SimulatorBridge
-
-        bridge = create_bridge("simulator")
-        assert isinstance(bridge, SimulatorBridge)
-
-    def test_real_refused_during_pytest(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """SAFE-01: create_bridge('real') is refused during automated testing."""
-        monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
-        with pytest.raises(RuntimeError, match="PYTEST_CURRENT_TEST"):
-            create_bridge("real")
-
-    def test_unknown_raises_value_error(self) -> None:
-        with pytest.raises(ValueError, match="Unknown bridge type"):
-            create_bridge("something_else")
 
 
 # ---------------------------------------------------------------------------

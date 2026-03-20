@@ -1,4 +1,4 @@
-"""OmniFocus bridge protocol, implementations, and factory."""
+"""OmniFocus bridge protocol and implementations."""
 
 from omnifocus_operator.bridge.errors import (
     BridgeConnectionError,
@@ -6,7 +6,6 @@ from omnifocus_operator.bridge.errors import (
     BridgeProtocolError,
     BridgeTimeoutError,
 )
-from omnifocus_operator.bridge.factory import create_bridge
 from omnifocus_operator.bridge.mtime import (
     FileMtimeSource,
     MtimeSource,
@@ -17,7 +16,6 @@ from omnifocus_operator.bridge.real import (
     RealBridge,
     sweep_orphaned_files,
 )
-from omnifocus_operator.bridge.simulator import SimulatorBridge
 from omnifocus_operator.contracts.protocols import Bridge
 
 __all__ = [
@@ -31,7 +29,5 @@ __all__ = [
     "FileMtimeSource",
     "MtimeSource",
     "RealBridge",
-    "SimulatorBridge",
-    "create_bridge",
     "sweep_orphaned_files",
 ]

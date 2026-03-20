@@ -268,8 +268,11 @@ class TestTOOL02Annotations:
         tmp_path: Any,
     ) -> None:
         monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge-only")
-        monkeypatch.setenv("OMNIFOCUS_BRIDGE", "simulator")
         monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
+        _ofocus = tmp_path / "OmniFocus.ofocus"
+        _ofocus.mkdir(exist_ok=True)
+        monkeypatch.setenv("OMNIFOCUS_OFOCUS_PATH", str(_ofocus))
+        monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
         from omnifocus_operator.server import create_server
 
         server = create_server()
@@ -288,8 +291,11 @@ class TestTOOL02Annotations:
         tmp_path: Any,
     ) -> None:
         monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge-only")
-        monkeypatch.setenv("OMNIFOCUS_BRIDGE", "simulator")
         monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
+        _ofocus = tmp_path / "OmniFocus.ofocus"
+        _ofocus.mkdir(exist_ok=True)
+        monkeypatch.setenv("OMNIFOCUS_OFOCUS_PATH", str(_ofocus))
+        monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
         from omnifocus_operator.server import create_server
 
         server = create_server()
@@ -317,8 +323,11 @@ class TestTOOL03OutputSchema:
         tmp_path: Any,
     ) -> None:
         monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge-only")
-        monkeypatch.setenv("OMNIFOCUS_BRIDGE", "simulator")
         monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
+        _ofocus = tmp_path / "OmniFocus.ofocus"
+        _ofocus.mkdir(exist_ok=True)
+        monkeypatch.setenv("OMNIFOCUS_OFOCUS_PATH", str(_ofocus))
+        monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
         from omnifocus_operator.server import create_server
 
         server = create_server()
@@ -336,8 +345,11 @@ class TestTOOL03OutputSchema:
         tmp_path: Any,
     ) -> None:
         monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge-only")
-        monkeypatch.setenv("OMNIFOCUS_BRIDGE", "simulator")
         monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
+        _ofocus = tmp_path / "OmniFocus.ofocus"
+        _ofocus.mkdir(exist_ok=True)
+        monkeypatch.setenv("OMNIFOCUS_OFOCUS_PATH", str(_ofocus))
+        monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
         from omnifocus_operator.server import create_server
 
         server = create_server()
@@ -412,8 +424,11 @@ class TestIPC06OrphanSweepWiring:
     ) -> None:
         """IPC sweep runs regardless of OMNIFOCUS_REPOSITORY setting."""
         monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge-only")
-        monkeypatch.setenv("OMNIFOCUS_BRIDGE", "simulator")
         monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
+        _ofocus = tmp_path / "OmniFocus.ofocus"
+        _ofocus.mkdir(exist_ok=True)
+        monkeypatch.setenv("OMNIFOCUS_OFOCUS_PATH", str(_ofocus))
+        monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
 
         mock_sweep = AsyncMock()
 

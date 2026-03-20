@@ -316,8 +316,12 @@ class TestMcpIntegration:
         proc = _start_simulator(tmp_path)
         try:
             monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge-only")
-            monkeypatch.setenv("OMNIFOCUS_BRIDGE", "simulator")
             monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
+            # Create a fake .ofocus bundle for FileMtimeSource
+            ofocus_bundle = tmp_path / "OmniFocus.ofocus"
+            ofocus_bundle.mkdir(exist_ok=True)
+            monkeypatch.setenv("OMNIFOCUS_OFOCUS_PATH", str(ofocus_bundle))
+            monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
 
             from omnifocus_operator.server import create_server
 

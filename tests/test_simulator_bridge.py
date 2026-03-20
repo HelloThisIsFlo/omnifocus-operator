@@ -6,14 +6,13 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 
 import anyio
+import pytest
 from mcp.client.session import ClientSession
 from mcp.server.fastmcp import FastMCP
 from mcp.shared.message import SessionMessage
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    import pytest
 
 
 # ---------------------------------------------------------------------------
@@ -112,75 +111,34 @@ async def _run_with_client(
 
 
 # ---------------------------------------------------------------------------
-# Factory wiring tests
-# ---------------------------------------------------------------------------
-
-
-class TestFactory:
-    """create_bridge('simulator') returns SimulatorBridge."""
-
-    def test_create_bridge_simulator_returns_simulator_bridge(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """create_bridge('simulator') returns a SimulatorBridge instance."""
-        from omnifocus_operator.bridge.factory import create_bridge
-        from omnifocus_operator.bridge.simulator import SimulatorBridge
-
-        bridge = create_bridge("simulator")
-        assert isinstance(bridge, SimulatorBridge)
-
-    def test_create_bridge_simulator_respects_env_var(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """create_bridge('simulator') respects OMNIFOCUS_IPC_DIR env var."""
-        from omnifocus_operator.bridge.factory import create_bridge
-        from omnifocus_operator.bridge.simulator import SimulatorBridge
-
-        custom_dir = tmp_path / "custom-ipc"
-        monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(custom_dir))
-
-        bridge = create_bridge("simulator")
-        assert isinstance(bridge, SimulatorBridge)
-        assert bridge.ipc_dir == custom_dir
-
-    def test_create_bridge_simulator_uses_default_ipc_dir(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """create_bridge('simulator') uses DEFAULT_IPC_DIR when env var not set."""
-        from omnifocus_operator.bridge.factory import create_bridge
-        from omnifocus_operator.bridge.real import DEFAULT_IPC_DIR
-        from omnifocus_operator.bridge.simulator import SimulatorBridge
-
-        monkeypatch.delenv("OMNIFOCUS_IPC_DIR", raising=False)
-
-        bridge = create_bridge("simulator")
-        assert isinstance(bridge, SimulatorBridge)
-        assert bridge.ipc_dir == DEFAULT_IPC_DIR
-
-
-# ---------------------------------------------------------------------------
-# Package export tests
+# Package export tests (negative — removed from public API)
 # ---------------------------------------------------------------------------
 
 
 class TestPackageExport:
-    """SimulatorBridge is importable from omnifocus_operator.bridge."""
+    """SimulatorBridge is NOT importable from omnifocus_operator.bridge."""
 
-    def test_simulator_bridge_importable_from_package(self) -> None:
-        """SimulatorBridge is exported from omnifocus_operator.bridge."""
-        from omnifocus_operator.bridge import SimulatorBridge
+    def test_simulator_bridge_not_importable_from_package(self) -> None:
+        """SimulatorBridge is NOT exported from omnifocus_operator.bridge."""
+        with pytest.raises(ImportError):
+            from omnifocus_operator.bridge import SimulatorBridge  # noqa: F811
 
-        assert SimulatorBridge is not None
-
-    def test_simulator_bridge_in_all(self) -> None:
-        """SimulatorBridge is listed in __all__."""
+    def test_simulator_bridge_not_in_all(self) -> None:
+        """SimulatorBridge is NOT listed in __all__."""
         import omnifocus_operator.bridge as bridge_pkg
 
-        assert "SimulatorBridge" in bridge_pkg.__all__
+        assert "SimulatorBridge" not in bridge_pkg.__all__
+
+    def test_create_bridge_not_importable_from_package(self) -> None:
+        """create_bridge is NOT exported from omnifocus_operator.bridge."""
+        with pytest.raises(ImportError):
+            from omnifocus_operator.bridge import create_bridge  # noqa: F811
+
+    def test_create_bridge_not_in_all(self) -> None:
+        """create_bridge is NOT listed in __all__."""
+        import omnifocus_operator.bridge as bridge_pkg
+
+        assert "create_bridge" not in bridge_pkg.__all__
 
 
 # ---------------------------------------------------------------------------
@@ -189,49 +147,35 @@ class TestPackageExport:
 
 
 class TestLifespan:
-    """app_lifespan handles OMNIFOCUS_BRIDGE=simulator with ConstantMtimeSource."""
+    """app_lifespan wiring with monkeypatched InMemoryRepository."""
 
     @staticmethod
-    def _make_simulator_bridge_with_seed(
-        tmp_path: Path,
-    ) -> Any:
-        """Create a SimulatorBridge with mocked send_command returning seed data."""
-        from omnifocus_operator.bridge.simulator import SimulatorBridge
+    def _make_in_memory_repo() -> Any:
+        """Create an InMemoryRepository with empty seed data."""
+        from omnifocus_operator.models import AllEntities
+        from omnifocus_operator.repository.in_memory import InMemoryRepository
 
-        mock_bridge = SimulatorBridge(ipc_dir=tmp_path)
+        return InMemoryRepository(
+            snapshot=AllEntities(
+                tasks=[],
+                projects=[],
+                tags=[],
+                folders=[],
+                perspectives=[],
+            ),
+        )
 
-        seed_data: dict[str, Any] = {
-            "tasks": [],
-            "projects": [],
-            "tags": [],
-            "folders": [],
-            "perspectives": [],
-        }
-
-        async def fake_send_command(
-            operation: str,
-            params: dict[str, Any] | None = None,
-        ) -> dict[str, Any]:
-            return seed_data
-
-        mock_bridge.send_command = fake_send_command  # type: ignore[assignment]
-        return mock_bridge
-
-    async def test_lifespan_simulator_completes_without_error(
+    async def test_lifespan_completes_without_error(
         self,
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
     ) -> None:
-        """Server lifespan completes successfully with bridge_type='simulator'."""
-        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge-only")
-        monkeypatch.setenv("OMNIFOCUS_BRIDGE", "simulator")
-        monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
-
-        mock_bridge = self._make_simulator_bridge_with_seed(tmp_path)
+        """Server lifespan completes successfully with monkeypatched repository."""
+        repo = self._make_in_memory_repo()
 
         with patch(
-            "omnifocus_operator.bridge.create_bridge",
-            return_value=mock_bridge,
+            "omnifocus_operator.repository.create_repository",
+            return_value=repo,
         ):
             from omnifocus_operator.server import _register_tools, app_lifespan
 
@@ -245,21 +189,17 @@ class TestLifespan:
 
             await _run_with_client(server, _check)
 
-    async def test_lifespan_simulator_can_serve_get_all(
+    async def test_lifespan_can_serve_get_all(
         self,
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
     ) -> None:
-        """Server with simulator bridge can serve get_all tool calls."""
-        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge-only")
-        monkeypatch.setenv("OMNIFOCUS_BRIDGE", "simulator")
-        monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
-
-        mock_bridge = self._make_simulator_bridge_with_seed(tmp_path)
+        """Server with monkeypatched repository can serve get_all tool calls."""
+        repo = self._make_in_memory_repo()
 
         with patch(
-            "omnifocus_operator.bridge.create_bridge",
-            return_value=mock_bridge,
+            "omnifocus_operator.repository.create_repository",
+            return_value=repo,
         ):
             from omnifocus_operator.server import _register_tools, app_lifespan
 
@@ -272,7 +212,7 @@ class TestLifespan:
 
             await _run_with_client(server, _check)
 
-    async def test_lifespan_simulator_sweeps_orphaned_files(
+    async def test_lifespan_sweeps_orphaned_files(
         self,
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
@@ -280,17 +220,13 @@ class TestLifespan:
         """Lifespan always sweeps orphaned IPC files (DEFAULT_IPC_DIR)."""
         from unittest.mock import AsyncMock
 
-        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge-only")
-        monkeypatch.setenv("OMNIFOCUS_BRIDGE", "simulator")
-        monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
-
-        mock_bridge = self._make_simulator_bridge_with_seed(tmp_path)
+        repo = self._make_in_memory_repo()
         mock_sweep = AsyncMock()
 
         with (
             patch(
-                "omnifocus_operator.bridge.create_bridge",
-                return_value=mock_bridge,
+                "omnifocus_operator.repository.create_repository",
+                return_value=repo,
             ),
             patch(
                 "omnifocus_operator.bridge.real.sweep_orphaned_files",
