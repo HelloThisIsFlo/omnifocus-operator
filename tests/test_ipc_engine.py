@@ -600,7 +600,7 @@ class TestExports:
     def test_simulator_bridge_not_importable_from_package(self) -> None:
         """from omnifocus_operator.bridge import SimulatorBridge raises ImportError."""
         with pytest.raises(ImportError):
-            from omnifocus_operator.bridge import SimulatorBridge  # noqa: F811
+            from omnifocus_operator.bridge import SimulatorBridge  # noqa: F401
 
     def test_sweep_importable_from_package(self) -> None:
         """from omnifocus_operator.bridge import sweep_orphaned_files works."""

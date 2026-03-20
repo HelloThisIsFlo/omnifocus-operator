@@ -40,8 +40,8 @@ class TestSimulatorBridge:
 
     def test_satisfies_bridge_protocol(self, tmp_path: Path) -> None:
         """SimulatorBridge satisfies the Bridge protocol (structural typing)."""
-        from tests.doubles import SimulatorBridge
         from omnifocus_operator.contracts.protocols import Bridge  # noqa: TC001
+        from tests.doubles import SimulatorBridge
 
         bridge: Bridge = SimulatorBridge(ipc_dir=tmp_path)
         assert bridge is not None
@@ -121,7 +121,7 @@ class TestPackageExport:
     def test_simulator_bridge_not_importable_from_package(self) -> None:
         """SimulatorBridge is NOT exported from omnifocus_operator.bridge."""
         with pytest.raises(ImportError):
-            from omnifocus_operator.bridge import SimulatorBridge  # noqa: F811
+            from omnifocus_operator.bridge import SimulatorBridge  # noqa: F401
 
     def test_simulator_bridge_not_in_all(self) -> None:
         """SimulatorBridge is NOT listed in __all__."""
@@ -132,7 +132,7 @@ class TestPackageExport:
     def test_create_bridge_not_importable_from_package(self) -> None:
         """create_bridge is NOT exported from omnifocus_operator.bridge."""
         with pytest.raises(ImportError):
-            from omnifocus_operator.bridge import create_bridge  # noqa: F811
+            from omnifocus_operator.bridge import create_bridge  # noqa: F401
 
     def test_create_bridge_not_in_all(self) -> None:
         """create_bridge is NOT listed in __all__."""
