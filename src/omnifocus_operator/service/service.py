@@ -142,6 +142,9 @@ class OperatorService(Service):  # explicitly implements Service protocol
 
         validate_task_name_if_set(command.name)
 
+        # 1.5. Normalize null-means-clear intents
+        command = self._domain.normalize_clear_intents(command)
+
         # 2. _Unset checks -- orchestrator decides what to call
         has_actions = not isinstance(command.actions, _Unset)
         has_lifecycle = (

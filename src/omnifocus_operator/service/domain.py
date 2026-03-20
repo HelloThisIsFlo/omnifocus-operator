@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from omnifocus_operator.contracts.common import MoveAction, TagAction
     from omnifocus_operator.contracts.protocols import Repository
     from omnifocus_operator.contracts.use_cases.edit_task import (
+        EditTaskCommand,
         EditTaskRepoPayload,
         EditTaskResult,
     )
@@ -69,6 +70,33 @@ class DomainLogic:
     def __init__(self, repo: Repository, resolver: Resolver) -> None:
         self._repo = repo
         self._resolver = resolver
+
+    # -- Clear-intent normalization ----------------------------------------
+
+    def normalize_clear_intents(self, command: EditTaskCommand) -> EditTaskCommand:
+        """Normalize null-means-clear fields before payload construction.
+
+        OmniFocus semantics:
+        - note=None -> note='' (bridge expects empty string to clear)
+        - tags.replace=None -> tags.replace=[] (empty list clears all tags)
+
+        Centralizes this pattern so PayloadBuilder stays pure construction.
+        """
+        from omnifocus_operator.contracts.base import _Unset
+
+        # note: None means "clear the note" -> empty string for bridge
+        if not isinstance(command.note, _Unset) and command.note is None:
+            command = command.model_copy(update={"note": ""})
+
+        # tags.replace: None means "clear all tags" -> empty list
+        if not isinstance(command.actions, _Unset) and not isinstance(command.actions.tags, _Unset):
+            tag_actions = command.actions.tags
+            if not isinstance(tag_actions.replace, _Unset) and tag_actions.replace is None:
+                new_tags = tag_actions.model_copy(update={"replace": []})
+                new_actions = command.actions.model_copy(update={"tags": new_tags})
+                command = command.model_copy(update={"actions": new_actions})
+
+        return command
 
     # -- Lifecycle ---------------------------------------------------------
 
@@ -165,7 +193,10 @@ class DomainLogic:
         tag_names: dict[str, str],
     ) -> tuple[set[str], list[str]]:
         """Replace all tags. Returns (final_set, warnings)."""
-        tag_list = tag_actions.replace if isinstance(tag_actions.replace, list) else []
+        assert isinstance(tag_actions.replace, list), (
+            f"tag_actions.replace must be list after normalization, got {type(tag_actions.replace)}"
+        )
+        tag_list = tag_actions.replace
         resolved_ids = await self._resolver.resolve_tags(tag_list) if tag_list else []
         final = set(resolved_ids)
 

@@ -438,3 +438,69 @@ class TestCheckCycle:
         domain = _domain(tasks=[parent, child])
         with pytest.raises(ValueError, match="circular reference"):
             await domain.check_cycle("t-parent", "t-child")
+
+
+# ---------------------------------------------------------------------------
+# normalize_clear_intents
+# ---------------------------------------------------------------------------
+
+
+class TestNormalizeClearIntents:
+    """Null-means-clear normalization centralized in DomainLogic."""
+
+    def test_note_none_becomes_empty_string(self) -> None:
+        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
+
+        domain = _domain()
+        cmd = EditTaskCommand(id="t1", note=None)
+        result = domain.normalize_clear_intents(cmd)
+        assert result.note == ""
+
+    def test_note_with_value_unchanged(self) -> None:
+        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
+
+        domain = _domain()
+        cmd = EditTaskCommand(id="t1", note="Hello")
+        result = domain.normalize_clear_intents(cmd)
+        assert result.note == "Hello"
+
+    def test_note_unset_unchanged(self) -> None:
+        from omnifocus_operator.contracts.base import _Unset
+        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
+
+        domain = _domain()
+        cmd = EditTaskCommand(id="t1")
+        result = domain.normalize_clear_intents(cmd)
+        assert isinstance(result.note, _Unset)
+
+    def test_tags_replace_none_becomes_empty_list(self) -> None:
+        from omnifocus_operator.contracts.common import TagAction
+        from omnifocus_operator.contracts.use_cases.edit_task import (
+            EditTaskActions,
+            EditTaskCommand,
+        )
+
+        domain = _domain()
+        cmd = EditTaskCommand(id="t1", actions=EditTaskActions(tags=TagAction(replace=None)))
+        result = domain.normalize_clear_intents(cmd)
+        assert result.actions.tags.replace == []
+
+    def test_tags_replace_with_names_unchanged(self) -> None:
+        from omnifocus_operator.contracts.common import TagAction
+        from omnifocus_operator.contracts.use_cases.edit_task import (
+            EditTaskActions,
+            EditTaskCommand,
+        )
+
+        domain = _domain()
+        cmd = EditTaskCommand(id="t1", actions=EditTaskActions(tags=TagAction(replace=["Work"])))
+        result = domain.normalize_clear_intents(cmd)
+        assert result.actions.tags.replace == ["Work"]
+
+    def test_no_actions_unchanged(self) -> None:
+        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
+
+        domain = _domain()
+        cmd = EditTaskCommand(id="t1", name="Foo")
+        result = domain.normalize_clear_intents(cmd)
+        assert result.name == "Foo"

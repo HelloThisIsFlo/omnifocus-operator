@@ -107,14 +107,26 @@ class TestBuildEdit:
         assert payload.flagged is None
 
     def test_build_edit_note_null_clears(self) -> None:
-        """note=None in command maps to empty string (null-means-clear)."""
+        """note='' (normalized from None by DomainLogic) passes through."""
+        builder = PayloadBuilder()
+        command = EditTaskCommand(id="t1", note="")  # was None, normalized upstream
+        payload = builder.build_edit(
+            command, lifecycle=None, add_tag_ids=None, remove_tag_ids=None, move_to=None
+        )
+
+        assert payload.note == ""
+
+    def test_build_edit_note_none_passes_through(self) -> None:
+        """PayloadBuilder does not interpret null semantics -- passes None through.
+        DomainLogic normalizes note=None to '' before PayloadBuilder sees it."""
         builder = PayloadBuilder()
         command = EditTaskCommand(id="t1", note=None)
         payload = builder.build_edit(
             command, lifecycle=None, add_tag_ids=None, remove_tag_ids=None, move_to=None
         )
 
-        assert payload.note == ""
+        # PayloadBuilder no longer converts None->'' -- that's DomainLogic's job
+        assert payload.note is None
 
     def test_build_edit_dates(self) -> None:
         """Dates serialized to ISO strings, None stays None (clear)."""

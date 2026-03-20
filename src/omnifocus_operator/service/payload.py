@@ -76,10 +76,6 @@ class PayloadBuilder:
         # Simple fields (name, note, flagged, estimated_minutes)
         self._add_if_set(kwargs, command, "name", "note", "flagged", "estimated_minutes")
 
-        # note=None means 'clear' -> OmniFocus wants empty string
-        if "note" in kwargs and kwargs["note"] is None:
-            kwargs["note"] = ""
-
         # Date fields -> ISO strings (None stays None = clear)
         self._add_dates_if_set(kwargs, command, "due_date", "defer_date", "planned_date")
 
