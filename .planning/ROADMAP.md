@@ -190,7 +190,7 @@ Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24
 | 21. Write Pipeline Unification | 2/2 | Complete    | 2026-03-19 | - |
 | 22. Service Decomposition | 4/4 | Complete    | 2026-03-20 | - |
 | 23. SimulatorBridge and Factory Cleanup | v1.2.1 | 1/1 | Complete    | 2026-03-20 |
-| 24. Test Double Relocation | v1.2.1 | 0/TBD | Not started | - |
+| 24. Test Double Relocation | v1.2.1 | 0/1 | Not started | - |
 
 ### Phase 24: Test Double Relocation
 **Goal**: All test double modules physically moved from `src/` to `tests/` — production code structurally cannot import test doubles
@@ -202,7 +202,9 @@ Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24
   3. No file in `src/` imports from the test doubles location
   4. All test files import test doubles from their new `tests/` location
   5. All 534+ existing tests pass after relocation
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 24-01-PLAN.md -- Create tests/doubles/ package, relocate all test doubles, migrate imports, negative import tests
 
 ### Phase 25: Patch/PatchOrClear type aliases for command models
 
