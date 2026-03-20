@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from omnifocus_operator.contracts.protocols import Bridge
+
 
 @dataclass(frozen=True)
 class BridgeCall:
@@ -15,7 +17,7 @@ class BridgeCall:
     params: dict[str, Any] | None
 
 
-class InMemoryBridge:
+class InMemoryBridge(Bridge):
     """Test bridge: returns data from memory with call tracking.
 
     Designed for unit tests.  Supports:

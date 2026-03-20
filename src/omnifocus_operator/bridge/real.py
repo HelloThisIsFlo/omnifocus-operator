@@ -20,6 +20,7 @@ from omnifocus_operator.bridge.errors import (
     BridgeProtocolError,
     BridgeTimeoutError,
 )
+from omnifocus_operator.contracts.protocols import Bridge
 
 logger = logging.getLogger("omnifocus_operator")
 
@@ -103,13 +104,13 @@ async def sweep_orphaned_files(ipc_dir: Path) -> None:
     await asyncio.to_thread(_sweep)
 
 
-class RealBridge:
+class RealBridge(Bridge):
     """File-based IPC bridge to OmniFocus.
 
     Communicates with OmniFocus via the filesystem: writes a request file,
     triggers OmniFocus via URL scheme, and polls for a response file.
 
-    Satisfies the ``Bridge`` protocol via structural typing -- no inheritance.
+    Explicitly implements the ``Bridge`` protocol.
     """
 
     def __init__(self, ipc_dir: Path, *, timeout: float = 10.0) -> None:

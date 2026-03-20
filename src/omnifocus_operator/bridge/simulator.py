@@ -13,9 +13,10 @@ scheme trigger needed.
 from __future__ import annotations
 
 from omnifocus_operator.bridge.real import RealBridge
+from omnifocus_operator.contracts.protocols import Bridge
 
 
-class SimulatorBridge(RealBridge):
+class SimulatorBridge(RealBridge, Bridge):
     """File-based IPC bridge that skips OmniFocus URL scheme trigger.
 
     Inherits all IPC mechanics from :class:`RealBridge`.  The only
