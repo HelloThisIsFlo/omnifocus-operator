@@ -37,7 +37,7 @@ omnifocus_operator/
         base.py          -- CommandModel, UNSET sentinel
         common.py        -- Shared value objects (TagAction, MoveAction)
         use_cases/       -- One module per operation
-            create_task.py   -- CreateTaskCommand, CreateTaskRepoPayload, CreateTaskRepoResult, CreateTaskResult
+            create_task.py   -- AddTaskCommand, AddTaskRepoPayload, AddTaskRepoResult, AddTaskResult
             edit_task.py     -- EditTaskCommand, EditTaskActions, EditTaskRepoPayload, EditTaskRepoResult, EditTaskResult
     models/          -- Read-side domain models (entities, enums, value objects)
     bridge/          -- OmniFocus communication (IPC, in-memory, simulator)
@@ -98,7 +98,7 @@ class Service(Protocol):
     async def get_project(self, project_id: str) -> Project | None: ...
     async def get_tag(self, tag_id: str) -> Tag | None: ...
     # Writes — take commands, return results
-    async def add_task(self, command: CreateTaskCommand) -> CreateTaskResult: ...
+    async def add_task(self, command: AddTaskCommand) -> AddTaskResult: ...
     async def edit_task(self, command: EditTaskCommand) -> EditTaskResult: ...
 ```
 
@@ -114,7 +114,7 @@ class Repository(Protocol):
     async def get_project(self, project_id: str) -> Project | None: ...
     async def get_tag(self, tag_id: str) -> Tag | None: ...
     # Writes — take repo payloads, return repo results
-    async def add_task(self, payload: CreateTaskRepoPayload) -> CreateTaskRepoResult: ...
+    async def add_task(self, payload: AddTaskRepoPayload) -> AddTaskRepoResult: ...
     async def edit_task(self, payload: EditTaskRepoPayload) -> EditTaskRepoResult: ...
 ```
 
@@ -137,17 +137,17 @@ sequenceDiagram
     participant OF as OmniFocus
 
     A->>S: JSON payload
-    S->>Svc: CreateTaskCommand
+    S->>Svc: AddTaskCommand
     Note over Svc: validate · resolve · build payload
-    Svc->>R: CreateTaskRepoPayload
+    Svc->>R: AddTaskRepoPayload
     Note over R: model_dump() → dict
     R->>B: dict
     B->>OF: File IPC
     OF-->>B: result dict
     B-->>R: {id, name}
-    R-->>Svc: CreateTaskRepoResult
+    R-->>Svc: AddTaskRepoResult
     Note over Svc: enrich (add success, warnings)
-    Svc-->>S: CreateTaskResult
+    Svc-->>S: AddTaskResult
     S-->>A: JSON response
 ```
 
@@ -185,7 +185,7 @@ class _EditTaskPipeline:
 
 **Conventions:**
 - All pipelines inherit from `_Pipeline` (shared DI constructor)
-- Class name: `_VerbNounPipeline` (private, underscore prefix) — e.g., `_CreateTaskPipeline`, `_EditTaskPipeline`
+- Class name: `_VerbNounPipeline` (private, underscore prefix) — e.g., `_AddTaskPipeline`, `_EditTaskPipeline`
 - Constructor receives DI dependencies; `execute()` receives the input
 - Mutable state on `self` is acceptable — the object is created, executed, and discarded within a single call. The lifetime is bounded.
 - Step methods are private (`_verify_task_exists`, not `verify_task_exists`)
@@ -237,6 +237,21 @@ sequenceDiagram
 
 ## Naming Conventions
 
+### MCP tool verbs
+
+Write tools use domain-native verbs, not CRUD:
+
+| Verb | Operation | Examples |
+|------|-----------|---------|
+| `add_*` | Introduce a new entity into OmniFocus | `add_tasks`, future `add_projects` |
+| `edit_*` | Modify an existing entity | `edit_tasks`, future `edit_projects` |
+| `delete_*` | Remove an entity | future `delete_tasks` |
+| `get_*` | Look up a single entity by ID | `get_task`, `get_project`, `get_tag` |
+| `list_*` | Filtered collection of one entity type | future `list_tasks`, `list_projects` |
+| `count_*` | Count entities matching a filter | future `count_tasks` |
+
+**Why "add" not "create":** Deliberate decision after extensive analysis. "Add" is the natural verb for task management ("add a task to my inbox"), matches OmniJS domain language, and forms a coherent verb system (add/edit/delete). "Create" is standard CRUD but sounds formal for the most common operation (tasks). Tool descriptions use natural language freely — e.g., `add_tasks` description can say "Create tasks in OmniFocus" — the tool name is the technical identifier, the description is the UX.
+
 ### Method names
 
 - `get_all()` → `AllEntities`: structured container with all entity types
@@ -254,15 +269,15 @@ Write-side models follow a CQRS/DDD-inspired naming convention. Every model's na
 
 | Suffix | Role | Direction | Examples |
 |--------|------|-----------|---------|
-| `___Command` | Top-level write instruction | Inbound | `CreateTaskCommand`, `EditTaskCommand` |
-| `___Result` | Outcome returned to agent | Outbound | `CreateTaskResult`, `EditTaskResult` |
+| `___Command` | Top-level write instruction | Inbound | `AddTaskCommand`, `EditTaskCommand` |
+| `___Result` | Outcome returned to agent | Outbound | `AddTaskResult`, `EditTaskResult` |
 
 #### Repository boundary (service ↔ repository)
 
 | Suffix | Role | Direction | Examples |
 |--------|------|-----------|---------|
-| `___RepoPayload` | Processed, bridge-ready data | Inbound | `CreateTaskRepoPayload`, `EditTaskRepoPayload` |
-| `___RepoResult` | Minimal confirmation from bridge | Outbound | `CreateTaskRepoResult`, `EditTaskRepoResult` |
+| `___RepoPayload` | Processed, bridge-ready data | Inbound | `AddTaskRepoPayload`, `EditTaskRepoPayload` |
+| `___RepoResult` | Minimal confirmation from bridge | Outbound | `AddTaskRepoResult`, `EditTaskRepoResult` |
 
 #### Value objects (nested within commands)
 
@@ -279,7 +294,8 @@ Write-side models follow a CQRS/DDD-inspired naming convention. Every model's na
 
 #### Naming rules
 
-- **Verb-first** for all write-side models: `CreateTask___`, `EditTask___` (not `TaskCreate___`)
+- **Verb-first** for all write-side models: `AddTask___`, `EditTask___` (not `TaskAdd___`)
+- **Write-side verb matches tool verb**: tool is `add_tasks` → models are `AddTask*`; tool is `edit_tasks` → models are `EditTask*`
 - **Noun-only** for read entities: `Task`, `Project`, `Tag` (no verb, no suffix)
 - **Value objects** within commands are suffix-free when unambiguous (`TagAction`, `MoveAction`), or use `___Spec` when a read-side model of the same name exists with a different shape
 - **Base class**: `CommandModel` — all command-layer models inherit this (`extra="forbid"`, strict validation)

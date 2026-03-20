@@ -11,11 +11,11 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 if TYPE_CHECKING:
     from typing import Any
 
-    from omnifocus_operator.contracts.use_cases.create_task import (
-        CreateTaskCommand,
-        CreateTaskRepoPayload,
-        CreateTaskRepoResult,
-        CreateTaskResult,
+    from omnifocus_operator.contracts.use_cases.add_task import (
+        AddTaskCommand,
+        AddTaskRepoPayload,
+        AddTaskRepoResult,
+        AddTaskResult,
     )
     from omnifocus_operator.contracts.use_cases.edit_task import (
         EditTaskCommand,
@@ -38,7 +38,7 @@ class Service(Protocol):
 
     async def get_tag(self, tag_id: str) -> Tag | None: ...
 
-    async def add_task(self, command: CreateTaskCommand) -> CreateTaskResult: ...
+    async def add_task(self, command: AddTaskCommand) -> AddTaskResult: ...
 
     async def edit_task(self, command: EditTaskCommand) -> EditTaskResult: ...
 
@@ -55,7 +55,7 @@ class Repository(Protocol):
 
     async def get_tag(self, tag_id: str) -> Tag | None: ...
 
-    async def add_task(self, payload: CreateTaskRepoPayload) -> CreateTaskRepoResult: ...
+    async def add_task(self, payload: AddTaskRepoPayload) -> AddTaskRepoResult: ...
 
     async def edit_task(self, payload: EditTaskRepoPayload) -> EditTaskRepoResult: ...
 

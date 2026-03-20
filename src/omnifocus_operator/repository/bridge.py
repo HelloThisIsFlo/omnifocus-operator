@@ -26,9 +26,9 @@ logger = logging.getLogger("omnifocus_operator")
 if TYPE_CHECKING:
     from omnifocus_operator.bridge.mtime import MtimeSource
     from omnifocus_operator.contracts.protocols import Bridge
-    from omnifocus_operator.contracts.use_cases.create_task import (
-        CreateTaskRepoPayload,
-        CreateTaskRepoResult,
+    from omnifocus_operator.contracts.use_cases.add_task import (
+        AddTaskRepoPayload,
+        AddTaskRepoResult,
     )
     from omnifocus_operator.contracts.use_cases.edit_task import (
         EditTaskRepoPayload,
@@ -108,19 +108,19 @@ class BridgeRepository(BridgeWriteMixin, Repository):
         all_entities = await self.get_all()
         return next((t for t in all_entities.tags if t.id == tag_id), None)
 
-    async def add_task(self, payload: CreateTaskRepoPayload) -> CreateTaskRepoResult:
+    async def add_task(self, payload: AddTaskRepoPayload) -> AddTaskRepoResult:
         """Create a task via bridge and invalidate cache.
 
         Serializes the typed payload to a camelCase dict and sends via bridge.
         """
-        from omnifocus_operator.contracts.use_cases.create_task import CreateTaskRepoResult
+        from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoResult
 
         logger.debug("BridgeRepository.add_task: sending to bridge")
         result = await self._send_to_bridge("add_task", payload)
         self._cached = None  # Visible cache invalidation
         logger.debug("BridgeRepository.add_task: cache invalidated, id=%s", result["id"])
 
-        return CreateTaskRepoResult(id=result["id"], name=result["name"])
+        return AddTaskRepoResult(id=result["id"], name=result["name"])
 
     async def edit_task(self, payload: EditTaskRepoPayload) -> EditTaskRepoResult:
         """Edit a task via bridge and invalidate cache."""

@@ -1,6 +1,6 @@
 """Unit tests for PayloadBuilder -- pure data transformation, no dependencies.
 
-Tests verify that CreateTaskRepoPayload and EditTaskRepoPayload are correctly
+Tests verify that AddTaskRepoPayload and EditTaskRepoPayload are correctly
 assembled from command data and domain results. No repos, no stubs, no async.
 """
 
@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from omnifocus_operator.contracts.use_cases.create_task import CreateTaskCommand
+from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand
 from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 from omnifocus_operator.service.payload import PayloadBuilder
 
@@ -18,12 +18,12 @@ from omnifocus_operator.service.payload import PayloadBuilder
 
 
 class TestBuildAdd:
-    """PayloadBuilder.build_add assembles CreateTaskRepoPayload."""
+    """PayloadBuilder.build_add assembles AddTaskRepoPayload."""
 
     def test_build_add_minimal(self) -> None:
         """Name-only command produces payload with only name."""
         builder = PayloadBuilder()
-        command = CreateTaskCommand(name="Buy milk")
+        command = AddTaskCommand(name="Buy milk")
         payload = builder.build_add(command, resolved_tag_ids=None)
 
         assert payload.name == "Buy milk"
@@ -39,7 +39,7 @@ class TestBuildAdd:
     def test_build_add_full(self) -> None:
         """All fields populated produces complete payload."""
         builder = PayloadBuilder()
-        command = CreateTaskCommand(
+        command = AddTaskCommand(
             name="Full task",
             parent="proj-1",
             tags=["Work"],  # tags resolved externally
@@ -62,7 +62,7 @@ class TestBuildAdd:
     def test_build_add_with_tags(self) -> None:
         """Resolved tag IDs are set on payload."""
         builder = PayloadBuilder()
-        command = CreateTaskCommand(name="Tagged", tags=["Work", "Home"])
+        command = AddTaskCommand(name="Tagged", tags=["Work", "Home"])
         payload = builder.build_add(command, resolved_tag_ids=["tag-1", "tag-2"])
         assert payload.tag_ids == ["tag-1", "tag-2"]
 
@@ -72,7 +72,7 @@ class TestBuildAdd:
         due = datetime(2026, 5, 1, 10, 0, tzinfo=UTC)
         defer = datetime(2026, 4, 20, 8, 0, tzinfo=UTC)
         planned = datetime(2026, 4, 25, 9, 0, tzinfo=UTC)
-        command = CreateTaskCommand(
+        command = AddTaskCommand(
             name="Dated",
             due_date=due,
             defer_date=defer,

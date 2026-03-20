@@ -14,11 +14,11 @@ from omnifocus_operator.contracts.base import (
 )
 from omnifocus_operator.contracts.common import MoveAction, TagAction
 from omnifocus_operator.contracts.protocols import Bridge, Repository, Service
-from omnifocus_operator.contracts.use_cases.create_task import (
-    CreateTaskCommand,
-    CreateTaskRepoPayload,
-    CreateTaskRepoResult,
-    CreateTaskResult,
+from omnifocus_operator.contracts.use_cases.add_task import (
+    AddTaskCommand,
+    AddTaskRepoPayload,
+    AddTaskRepoResult,
+    AddTaskResult,
 )
 from omnifocus_operator.contracts.use_cases.edit_task import (
     EditTaskActions,
@@ -37,10 +37,10 @@ _ns: dict[str, type] = {
     "TagAction": TagAction,
     "MoveAction": MoveAction,
     "EditTaskActions": EditTaskActions,
-    "CreateTaskCommand": CreateTaskCommand,
-    "CreateTaskResult": CreateTaskResult,
-    "CreateTaskRepoPayload": CreateTaskRepoPayload,
-    "CreateTaskRepoResult": CreateTaskRepoResult,
+    "AddTaskCommand": AddTaskCommand,
+    "AddTaskResult": AddTaskResult,
+    "AddTaskRepoPayload": AddTaskRepoPayload,
+    "AddTaskRepoResult": AddTaskRepoResult,
     "EditTaskCommand": EditTaskCommand,
     "EditTaskResult": EditTaskResult,
     "EditTaskRepoPayload": EditTaskRepoPayload,
@@ -54,10 +54,10 @@ TagAction.model_rebuild(_types_namespace=_ns)
 MoveAction.model_rebuild(_types_namespace=_ns)
 
 # Create-task models
-CreateTaskCommand.model_rebuild(_types_namespace=_ns)
-CreateTaskResult.model_rebuild(_types_namespace=_ns)
-CreateTaskRepoPayload.model_rebuild(_types_namespace=_ns)
-CreateTaskRepoResult.model_rebuild(_types_namespace=_ns)
+AddTaskCommand.model_rebuild(_types_namespace=_ns)
+AddTaskResult.model_rebuild(_types_namespace=_ns)
+AddTaskRepoPayload.model_rebuild(_types_namespace=_ns)
+AddTaskRepoResult.model_rebuild(_types_namespace=_ns)
 
 # Edit-task models
 EditTaskActions.model_rebuild(_types_namespace=_ns)
@@ -69,12 +69,12 @@ EditTaskRepoResult.model_rebuild(_types_namespace=_ns)
 
 __all__ = [
     "UNSET",
+    "AddTaskCommand",
+    "AddTaskRepoPayload",
+    "AddTaskRepoResult",
+    "AddTaskResult",
     "Bridge",
     "CommandModel",
-    "CreateTaskCommand",
-    "CreateTaskRepoPayload",
-    "CreateTaskRepoResult",
-    "CreateTaskResult",
     "EditTaskActions",
     "EditTaskCommand",
     "EditTaskRepoPayload",

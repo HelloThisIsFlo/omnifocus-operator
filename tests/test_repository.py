@@ -394,10 +394,10 @@ class TestInMemoryAddTask:
     """Tests for InMemoryRepository.add_task (in-memory write for testing)."""
 
     async def test_add_task_returns_result(self) -> None:
-        """add_task returns CreateTaskRepoResult."""
-        from omnifocus_operator.contracts.use_cases.create_task import (
-            CreateTaskRepoPayload,
-            CreateTaskRepoResult,
+        """add_task returns AddTaskRepoResult."""
+        from omnifocus_operator.contracts.use_cases.add_task import (
+            AddTaskRepoPayload,
+            AddTaskRepoResult,
         )
 
         from .conftest import make_snapshot
@@ -405,16 +405,16 @@ class TestInMemoryAddTask:
         snapshot = make_snapshot()
         repo = InMemoryRepository(snapshot=snapshot)
 
-        payload = CreateTaskRepoPayload(name="New task")
+        payload = AddTaskRepoPayload(name="New task")
         result = await repo.add_task(payload)
 
-        assert isinstance(result, CreateTaskRepoResult)
+        assert isinstance(result, AddTaskRepoResult)
         assert result.name == "New task"
         assert result.id.startswith("mem-")
 
     async def test_add_task_appends_to_snapshot(self) -> None:
         """add_task appends the new task to the snapshot."""
-        from omnifocus_operator.contracts.use_cases.create_task import CreateTaskRepoPayload
+        from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoPayload
 
         from .conftest import make_snapshot
 
@@ -422,7 +422,7 @@ class TestInMemoryAddTask:
         initial_count = len(snapshot.tasks)
         repo = InMemoryRepository(snapshot=snapshot)
 
-        payload = CreateTaskRepoPayload(name="New task")
+        payload = AddTaskRepoPayload(name="New task")
         await repo.add_task(payload)
 
         updated_snapshot = await repo.get_all()
@@ -432,14 +432,14 @@ class TestInMemoryAddTask:
 
     async def test_add_task_inbox_when_no_parent(self) -> None:
         """Task with no parent goes to inbox (in_inbox=True)."""
-        from omnifocus_operator.contracts.use_cases.create_task import CreateTaskRepoPayload
+        from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoPayload
 
         from .conftest import make_snapshot
 
         snapshot = make_snapshot()
         repo = InMemoryRepository(snapshot=snapshot)
 
-        payload = CreateTaskRepoPayload(name="Inbox task")
+        payload = AddTaskRepoPayload(name="Inbox task")
         result = await repo.add_task(payload)
 
         updated = await repo.get_all()
@@ -448,14 +448,14 @@ class TestInMemoryAddTask:
 
     async def test_add_task_with_parent(self) -> None:
         """Task with parent sets in_inbox=False."""
-        from omnifocus_operator.contracts.use_cases.create_task import CreateTaskRepoPayload
+        from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoPayload
 
         from .conftest import make_snapshot
 
         snapshot = make_snapshot()
         repo = InMemoryRepository(snapshot=snapshot)
 
-        payload = CreateTaskRepoPayload(name="Child task", parent="proj-001")
+        payload = AddTaskRepoPayload(name="Child task", parent="proj-001")
         result = await repo.add_task(payload)
 
         updated = await repo.get_all()
@@ -464,15 +464,15 @@ class TestInMemoryAddTask:
 
     async def test_add_task_generates_unique_ids(self) -> None:
         """Each add_task generates a unique ID."""
-        from omnifocus_operator.contracts.use_cases.create_task import CreateTaskRepoPayload
+        from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoPayload
 
         from .conftest import make_snapshot
 
         snapshot = make_snapshot()
         repo = InMemoryRepository(snapshot=snapshot)
 
-        r1 = await repo.add_task(CreateTaskRepoPayload(name="Task 1"))
-        r2 = await repo.add_task(CreateTaskRepoPayload(name="Task 2"))
+        r1 = await repo.add_task(AddTaskRepoPayload(name="Task 1"))
+        r2 = await repo.add_task(AddTaskRepoPayload(name="Task 2"))
 
         assert r1.id != r2.id
 

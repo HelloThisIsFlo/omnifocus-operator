@@ -1,6 +1,6 @@
 """Typed payload construction -- assemble repo payloads from processed data.
 
-Transforms validated, resolved command data into typed ``CreateTaskRepoPayload``
+Transforms validated, resolved command data into typed ``AddTaskRepoPayload``
 and ``EditTaskRepoPayload`` instances ready for the repository layer.
 """
 
@@ -10,9 +10,9 @@ import logging
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from omnifocus_operator.contracts.use_cases.create_task import (
-        CreateTaskCommand,
-        CreateTaskRepoPayload,
+    from omnifocus_operator.contracts.use_cases.add_task import (
+        AddTaskCommand,
+        AddTaskRepoPayload,
     )
     from omnifocus_operator.contracts.use_cases.edit_task import (
         EditTaskCommand,
@@ -29,12 +29,12 @@ class PayloadBuilder:
 
     def build_add(
         self,
-        command: CreateTaskCommand,
+        command: AddTaskCommand,
         resolved_tag_ids: list[str] | None,
-    ) -> CreateTaskRepoPayload:
+    ) -> AddTaskRepoPayload:
         """Build add-task payload. Only includes populated fields."""
-        from omnifocus_operator.contracts.use_cases.create_task import (
-            CreateTaskRepoPayload,
+        from omnifocus_operator.contracts.use_cases.add_task import (
+            AddTaskRepoPayload,
         )
 
         kwargs: dict[str, object] = {"name": command.name}
@@ -54,7 +54,7 @@ class PayloadBuilder:
             kwargs["estimated_minutes"] = command.estimated_minutes
         if command.note is not None:
             kwargs["note"] = command.note
-        return CreateTaskRepoPayload.model_validate(kwargs)
+        return AddTaskRepoPayload.model_validate(kwargs)
 
     def build_edit(
         self,

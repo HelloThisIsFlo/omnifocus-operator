@@ -22,7 +22,7 @@ import pytest
 
 from omnifocus_operator.bridge.in_memory import InMemoryBridge
 from omnifocus_operator.contracts.protocols import Repository
-from omnifocus_operator.contracts.use_cases.create_task import CreateTaskRepoPayload
+from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoPayload
 from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoPayload
 from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.repository.hybrid import _FRESHNESS_TIMEOUT, HybridRepository
@@ -1187,7 +1187,7 @@ class TestFreshness:
             wal_path.write_bytes(b"changed")
 
         task = asyncio.create_task(modify_wal())
-        result = await repo.add_task(CreateTaskRepoPayload(name="Test"))
+        result = await repo.add_task(AddTaskRepoPayload(name="Test"))
         await task
         assert result.id == "new-1"
 
@@ -1195,7 +1195,7 @@ class TestFreshness:
     @pytest.mark.parametrize(
         ("method", "arg"),
         [
-            pytest.param("add_task", CreateTaskRepoPayload(name="Test"), id="add_task"),
+            pytest.param("add_task", AddTaskRepoPayload(name="Test"), id="add_task"),
             pytest.param(
                 "edit_task", EditTaskRepoPayload(id="task-001", name="Edited"), id="edit_task"
             ),
@@ -1244,7 +1244,7 @@ class TestAddTask:
         bridge = InMemoryBridge(data={"id": "new-task-1", "name": "Buy milk"}, wal_path=wal_path)
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
-        payload = CreateTaskRepoPayload(name="Buy milk")
+        payload = AddTaskRepoPayload(name="Buy milk")
         await repo.add_task(payload)
 
         assert bridge.call_count == 1
@@ -1254,18 +1254,18 @@ class TestAddTask:
 
     @pytest.mark.asyncio
     async def test_add_task_returns_result(self, tmp_path: Path) -> None:
-        """add_task returns CreateTaskRepoResult with bridge response data."""
-        from omnifocus_operator.contracts.use_cases.create_task import CreateTaskRepoResult
+        """add_task returns AddTaskRepoResult with bridge response data."""
+        from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoResult
 
         db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
         wal_path = str(db_path) + "-wal"
         bridge = InMemoryBridge(data={"id": "new-task-1", "name": "Buy milk"}, wal_path=wal_path)
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
-        payload = CreateTaskRepoPayload(name="Buy milk")
+        payload = AddTaskRepoPayload(name="Buy milk")
         result = await repo.add_task(payload)
 
-        assert isinstance(result, CreateTaskRepoResult)
+        assert isinstance(result, AddTaskRepoResult)
         assert result.id == "new-task-1"
         assert result.name == "Buy milk"
 
@@ -1277,7 +1277,7 @@ class TestAddTask:
         bridge = InMemoryBridge(data={"id": "t1", "name": "Test"}, wal_path=wal_path)
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
-        payload = CreateTaskRepoPayload(name="Test")
+        payload = AddTaskRepoPayload(name="Test")
         await repo.add_task(payload)
 
         params = bridge.calls[0].params
@@ -1295,7 +1295,7 @@ class TestAddTask:
         bridge = InMemoryBridge(data={"id": "t1", "name": "Test"}, wal_path=wal_path)
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
-        payload = CreateTaskRepoPayload(name="Test", tag_ids=["tag-001", "tag-002"])
+        payload = AddTaskRepoPayload(name="Test", tag_ids=["tag-001", "tag-002"])
         await repo.add_task(payload)
 
         params = bridge.calls[0].params
@@ -1309,7 +1309,7 @@ class TestAddTask:
         bridge = InMemoryBridge(data={"id": "t1", "name": "Test"}, wal_path=wal_path)
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
-        payload = CreateTaskRepoPayload(
+        payload = AddTaskRepoPayload(
             name="Test",
             due_date="2026-03-15T10:00:00+00:00",
             estimated_minutes=30.0,

@@ -30,9 +30,9 @@ from omnifocus_operator.agent_messages.errors import (
     TAG_NOT_FOUND,
     TASK_NOT_FOUND,
 )
-from omnifocus_operator.contracts.use_cases.create_task import (
-    CreateTaskCommand,
-    CreateTaskResult,
+from omnifocus_operator.contracts.use_cases.add_task import (
+    AddTaskCommand,
+    AddTaskResult,
 )
 from omnifocus_operator.contracts.use_cases.edit_task import (
     EditTaskCommand,
@@ -190,7 +190,7 @@ def _register_tools(mcp: FastMCP) -> None:
     async def add_tasks(
         items: list[dict[str, Any]],
         ctx: Context[Any, Any, Any],
-    ) -> list[CreateTaskResult]:
+    ) -> list[AddTaskResult]:
         """Create tasks in OmniFocus.
 
         Accepts an array of task objects. Currently limited to 1 item per call.
@@ -220,7 +220,7 @@ def _register_tools(mcp: FastMCP) -> None:
 
         service: OperatorService = ctx.request_context.lifespan_context["service"]
         try:
-            spec = CreateTaskCommand.model_validate(items[0])
+            spec = AddTaskCommand.model_validate(items[0])
         except ValidationError as exc:
             messages = []
             for e in exc.errors():

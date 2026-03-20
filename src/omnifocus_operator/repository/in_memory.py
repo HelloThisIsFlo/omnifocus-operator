@@ -9,9 +9,9 @@ from uuid import uuid4
 from omnifocus_operator.contracts.protocols import Repository
 
 if TYPE_CHECKING:
-    from omnifocus_operator.contracts.use_cases.create_task import (
-        CreateTaskRepoPayload,
-        CreateTaskRepoResult,
+    from omnifocus_operator.contracts.use_cases.add_task import (
+        AddTaskRepoPayload,
+        AddTaskRepoResult,
     )
     from omnifocus_operator.contracts.use_cases.edit_task import (
         EditTaskRepoPayload,
@@ -51,13 +51,13 @@ class InMemoryRepository(Repository):
         """Return a single tag by ID, or None if not found."""
         return next((t for t in self._snapshot.tags if t.id == tag_id), None)
 
-    async def add_task(self, payload: CreateTaskRepoPayload) -> CreateTaskRepoResult:
+    async def add_task(self, payload: AddTaskRepoPayload) -> AddTaskRepoResult:
         """Create a task in-memory and append to snapshot.
 
         Generates a synthetic ID and builds a Task with computed fields.
         Used for testing without a real bridge.
         """
-        from omnifocus_operator.contracts.use_cases.create_task import CreateTaskRepoResult
+        from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoResult
         from omnifocus_operator.models.task import Task
 
         task_id = f"mem-{uuid4().hex[:8]}"
@@ -90,7 +90,7 @@ class InMemoryRepository(Repository):
         # Append to mutable tasks list
         self._snapshot.tasks.append(task)
 
-        return CreateTaskRepoResult(id=task_id, name=payload.name)
+        return AddTaskRepoResult(id=task_id, name=payload.name)
 
     async def edit_task(self, payload: EditTaskRepoPayload) -> EditTaskRepoResult:
         """Edit a task in-memory by mutating the snapshot.

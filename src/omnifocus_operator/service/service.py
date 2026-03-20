@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, NoReturn
 
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.protocols import Service
-from omnifocus_operator.contracts.use_cases.create_task import CreateTaskResult
+from omnifocus_operator.contracts.use_cases.add_task import AddTaskResult
 from omnifocus_operator.contracts.use_cases.edit_task import EditTaskResult
 from omnifocus_operator.service.domain import DomainLogic
 from omnifocus_operator.service.payload import PayloadBuilder
@@ -24,7 +24,7 @@ from omnifocus_operator.service.resolve import Resolver
 from omnifocus_operator.service.validate import validate_task_name, validate_task_name_if_set
 
 if TYPE_CHECKING:
-    from omnifocus_operator.contracts.use_cases.create_task import CreateTaskCommand
+    from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand
     from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
     from omnifocus_operator.models.project import Project
     from omnifocus_operator.models.snapshot import AllEntities
@@ -75,9 +75,9 @@ class OperatorService(Service):  # explicitly implements Service protocol
         logger.debug("OperatorService.get_tag: id=%s", tag_id)
         return await self._repository.get_tag(tag_id)
 
-    # -- add_task: delegates to _CreateTaskPipeline (Method Object) --------
+    # -- add_task: delegates to _AddTaskPipeline (Method Object) --------
 
-    async def add_task(self, command: CreateTaskCommand) -> CreateTaskResult:
+    async def add_task(self, command: AddTaskCommand) -> AddTaskResult:
         """Create a task with validation and delegation to repository.
 
         Raises
@@ -85,7 +85,7 @@ class OperatorService(Service):  # explicitly implements Service protocol
         ValueError
             If name is empty, parent not found, or tag resolution fails.
         """
-        pipeline = _CreateTaskPipeline(
+        pipeline = _AddTaskPipeline(
             self._resolver,
             self._domain,
             self._payload,
@@ -135,10 +135,10 @@ class _Pipeline:
 # -- add_task pipeline (Method Object) -------------------------------------
 
 
-class _CreateTaskPipeline(_Pipeline):
+class _AddTaskPipeline(_Pipeline):
     """Method object for add_task — validate, resolve, build, delegate."""
 
-    async def execute(self, command: CreateTaskCommand) -> CreateTaskResult:
+    async def execute(self, command: AddTaskCommand) -> AddTaskResult:
         """Run the full create-task pipeline."""
         self._command = command
 
@@ -176,10 +176,10 @@ class _CreateTaskPipeline(_Pipeline):
     def _build_payload(self) -> None:
         self._repo_payload = self._payload.build_add(self._command, self._resolved_tag_ids)
 
-    async def _delegate(self) -> CreateTaskResult:
+    async def _delegate(self) -> AddTaskResult:
         logger.debug("OperatorService.add_task: delegating to repository")
         repo_result = await self._repository.add_task(self._repo_payload)
-        return CreateTaskResult(success=True, id=repo_result.id, name=repo_result.name)
+        return AddTaskResult(success=True, id=repo_result.id, name=repo_result.name)
 
 
 # -- edit_task pipeline (Method Object) ------------------------------------

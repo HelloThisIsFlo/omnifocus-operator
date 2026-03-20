@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from omnifocus_operator.contracts.use_cases.create_task import CreateTaskCommand, CreateTaskResult
+from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand, AddTaskResult
 from omnifocus_operator.models import (
     ActionableEntity,
     AllEntities,
@@ -854,11 +854,11 @@ class TestAllEntities:
 
 
 class TestWriteModels:
-    """CreateTaskCommand and CreateTaskResult write models."""
+    """AddTaskCommand and AddTaskResult write models."""
 
     def test_task_create_spec_minimal(self) -> None:
-        """CreateTaskCommand with only name (required) creates valid instance."""
-        spec = CreateTaskCommand(name="Buy groceries")
+        """AddTaskCommand with only name (required) creates valid instance."""
+        spec = AddTaskCommand(name="Buy groceries")
         assert spec.name == "Buy groceries"
         assert spec.parent is None
         assert spec.tags is None
@@ -870,9 +870,9 @@ class TestWriteModels:
         assert spec.note is None
 
     def test_task_create_spec_all_fields(self) -> None:
-        """CreateTaskCommand with all fields populated."""
+        """AddTaskCommand with all fields populated."""
         dt = datetime(2024, 6, 15, 9, 0, tzinfo=UTC)
-        spec = CreateTaskCommand(
+        spec = AddTaskCommand(
             name="Full task",
             parent="proj-001",
             tags=["errands", "morning"],
@@ -894,14 +894,14 @@ class TestWriteModels:
         assert spec.note == "A note"
 
     def test_task_create_spec_rejects_missing_name(self) -> None:
-        """CreateTaskCommand without name raises ValidationError."""
+        """AddTaskCommand without name raises ValidationError."""
         with pytest.raises(ValidationError):
-            CreateTaskCommand()  # type: ignore[call-arg]
+            AddTaskCommand()  # type: ignore[call-arg]
 
     def test_task_create_spec_camel_case_serialization(self) -> None:
-        """CreateTaskCommand serializes to camelCase via OmniFocusBaseModel."""
+        """AddTaskCommand serializes to camelCase via OmniFocusBaseModel."""
         dt = datetime(2024, 6, 15, 9, 0, tzinfo=UTC)
-        spec = CreateTaskCommand(
+        spec = AddTaskCommand(
             name="Test",
             due_date=dt,
             defer_date=dt,
@@ -918,15 +918,15 @@ class TestWriteModels:
         assert "defer_date" not in dumped
 
     def test_task_create_result_round_trip(self) -> None:
-        """CreateTaskResult parses and serializes correctly."""
-        result = CreateTaskResult(success=True, id="task-new-001", name="New Task")
+        """AddTaskResult parses and serializes correctly."""
+        result = AddTaskResult(success=True, id="task-new-001", name="New Task")
         assert result.success is True
         assert result.id == "task-new-001"
         assert result.name == "New Task"
 
         # camelCase round-trip (fields are already camelCase-friendly)
         dumped = result.model_dump(by_alias=True)
-        result2 = CreateTaskResult.model_validate(dumped)
+        result2 = AddTaskResult.model_validate(dumped)
         assert result2.success is True
         assert result2.id == "task-new-001"
         assert result2.name == "New Task"
@@ -971,7 +971,7 @@ class TestWriteModelStrictness:
 
     def test_task_create_spec_rejects_unknown_field(self) -> None:
         with pytest.raises(ValidationError, match="bogus_field"):
-            CreateTaskCommand.model_validate({"name": "Task", "bogus_field": "x"})
+            AddTaskCommand.model_validate({"name": "Task", "bogus_field": "x"})
 
     def test_task_edit_spec_rejects_unknown_field(self) -> None:
         from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
@@ -1000,7 +1000,7 @@ class TestWriteModelStrictness:
     # --- STRCT-02: Read/result models stay permissive ---
 
     def test_task_create_result_accepts_unknown_field(self) -> None:
-        result = CreateTaskResult.model_validate(
+        result = AddTaskResult.model_validate(
             {"success": True, "id": "t1", "name": "T", "bogus": "x"}
         )
         assert result.success is True
@@ -1048,7 +1048,7 @@ class TestWriteModelStrictness:
 
     def test_write_model_accepts_camel_case_alias(self) -> None:
         """Agents send camelCase -- must be accepted under forbid."""
-        spec = CreateTaskCommand.model_validate(
+        spec = AddTaskCommand.model_validate(
             {
                 "name": "Test",
                 "dueDate": "2024-06-15T09:00:00Z",

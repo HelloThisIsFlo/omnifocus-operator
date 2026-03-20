@@ -126,6 +126,7 @@ Read path: SQLite (default, ~46ms). Write path: OmniJS bridge with write-through
 | Diff-based tag computation | _compute_tag_diff in Python service, bridge receives only addTagIds/removeTagIds. Replaced 4-branch JS dispatch with ~4 lines | ✓ Good — simpler bridge, logic in Python |
 | Lifecycle via Literal type | `lifecycle: Literal["complete", "drop"]` — Pydantic validates, no dedicated enum needed | ✓ Good — minimal surface area |
 | Write-through guarantee | `@_ensures_write_through` decorator ensures writes block until SQLite confirms; reads never wait | ✓ Good — consistent read-after-write |
+| "Add" verb for creation tools | Tool names use `add_*` (not `create_*`). "Add" is domain-native (OmniJS, task management UX), matches natural voice ("add a task"), and forms coherent verb system (add/edit/delete). Tool descriptions use natural language freely for discoverability. Write-side model names align: `AddTask*`, `EditTask*` | Decision locked pre-publish — rename `CreateTask*` → `AddTask*` pending |
 
 ---
 *Last updated: 2026-03-20 — Phase 22 gap closure complete: validation/resolution SRP, null-means-clear centralization*

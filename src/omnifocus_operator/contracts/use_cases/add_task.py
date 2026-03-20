@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from pydantic import AwareDatetime
 
 
-class CreateTaskCommand(CommandModel):
+class AddTaskCommand(CommandModel):
     """Agent instruction to create a task."""
 
     name: str
@@ -30,7 +30,7 @@ class CreateTaskCommand(CommandModel):
     note: str | None = None
 
 
-class CreateTaskResult(OmniFocusBaseModel):
+class AddTaskResult(OmniFocusBaseModel):
     """Agent-facing outcome of task creation."""
 
     success: bool
@@ -38,7 +38,7 @@ class CreateTaskResult(OmniFocusBaseModel):
     name: str
 
 
-class CreateTaskRepoPayload(CommandModel):
+class AddTaskRepoPayload(CommandModel):
     """Bridge-ready payload for task creation. Service has resolved all fields."""
 
     name: str
@@ -52,7 +52,7 @@ class CreateTaskRepoPayload(CommandModel):
     note: str | None = None
 
 
-class CreateTaskRepoResult(OmniFocusBaseModel):
+class AddTaskRepoResult(OmniFocusBaseModel):
     """Minimal confirmation from bridge after task creation."""
 
     id: str
@@ -60,8 +60,8 @@ class CreateTaskRepoResult(OmniFocusBaseModel):
 
 
 __all__ = [
-    "CreateTaskCommand",
-    "CreateTaskRepoPayload",
-    "CreateTaskRepoResult",
-    "CreateTaskResult",
+    "AddTaskCommand",
+    "AddTaskRepoPayload",
+    "AddTaskRepoResult",
+    "AddTaskResult",
 ]

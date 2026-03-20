@@ -30,9 +30,9 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from omnifocus_operator.contracts.protocols import Bridge
-    from omnifocus_operator.contracts.use_cases.create_task import (
-        CreateTaskRepoPayload,
-        CreateTaskRepoResult,
+    from omnifocus_operator.contracts.use_cases.add_task import (
+        AddTaskRepoPayload,
+        AddTaskRepoResult,
     )
     from omnifocus_operator.contracts.use_cases.edit_task import (
         EditTaskRepoPayload,
@@ -484,19 +484,19 @@ class HybridRepository(BridgeWriteMixin, Repository):
         self._bridge: Bridge = bridge
 
     @_ensures_write_through
-    async def add_task(self, payload: CreateTaskRepoPayload) -> CreateTaskRepoResult:
+    async def add_task(self, payload: AddTaskRepoPayload) -> AddTaskRepoResult:
         """Create a task via bridge and mark snapshot stale.
 
         Serializes the typed payload to a camelCase dict and sends via bridge.
         The next get_all() will wait for fresh data from OmniFocus.
         """
-        from omnifocus_operator.contracts.use_cases.create_task import CreateTaskRepoResult
+        from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoResult
 
         logger.debug("HybridRepository.add_task: sending to bridge")
         result = await self._send_to_bridge("add_task", payload)
         logger.debug("HybridRepository.add_task: bridge returned id=%s", result["id"])
 
-        return CreateTaskRepoResult(id=result["id"], name=result["name"])
+        return AddTaskRepoResult(id=result["id"], name=result["name"])
 
     @_ensures_write_through
     async def edit_task(self, payload: EditTaskRepoPayload) -> EditTaskRepoResult:
