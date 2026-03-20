@@ -58,13 +58,14 @@ UNSET = _Unset()
 
 T = TypeVar("T")
 
-Patch = Union[T, _Unset]
+# Union[] required: pipe syntax breaks TypeVar resolution in Pydantic schema generation.
+Patch = Union[T, _Unset]  # noqa: UP007
 """Field can be set or omitted (UNSET). Cannot be cleared to None."""
 
-PatchOrClear = Union[T, None, _Unset]
+PatchOrClear = Union[T, None, _Unset]  # noqa: UP007
 """Field can be set, cleared (None), or omitted (UNSET). None means 'clear the value'."""
 
-PatchOrNone = Union[T, None, _Unset]
+PatchOrNone = Union[T, None, _Unset]  # noqa: UP007
 """Field can be set, set to None, or omitted (UNSET). None carries domain meaning, not 'clear'.
 Same union as PatchOrClear -- the distinct name signals that None is a meaningful value
 (e.g., MoveAction.ending = None means 'inbox'), not a clear instruction."""
@@ -82,11 +83,7 @@ class CommandModel(OmniFocusBaseModel):
 
     def changed_fields(self) -> dict[str, Any]:
         """Return only fields explicitly set by the caller (UNSET values excluded)."""
-        return {
-            name: value
-            for name, value in self.__dict__.items()
-            if not isinstance(value, _Unset)
-        }
+        return {name: value for name, value in self.__dict__.items() if is_set(value)}
 
 
 __all__ = ["UNSET", "CommandModel", "Patch", "PatchOrClear", "PatchOrNone", "_Unset", "is_set"]
