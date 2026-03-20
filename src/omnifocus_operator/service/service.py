@@ -14,21 +14,18 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, NamedTuple, NoReturn
 
+from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.protocols import Service
+from omnifocus_operator.contracts.use_cases.create_task import CreateTaskResult
+from omnifocus_operator.contracts.use_cases.edit_task import EditTaskResult
 from omnifocus_operator.service.domain import DomainLogic
 from omnifocus_operator.service.payload import PayloadBuilder
 from omnifocus_operator.service.resolve import Resolver
 from omnifocus_operator.service.validate import validate_task_name, validate_task_name_if_set
 
 if TYPE_CHECKING:
-    from omnifocus_operator.contracts.use_cases.create_task import (
-        CreateTaskCommand,
-        CreateTaskResult,
-    )
-    from omnifocus_operator.contracts.use_cases.edit_task import (
-        EditTaskCommand,
-        EditTaskResult,
-    )
+    from omnifocus_operator.contracts.use_cases.create_task import CreateTaskCommand
+    from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
     from omnifocus_operator.models.project import Project
     from omnifocus_operator.models.snapshot import AllEntities
     from omnifocus_operator.models.tag import Tag
@@ -88,8 +85,6 @@ class OperatorService(Service):  # explicitly implements Service protocol
         ValueError
             If name is empty, parent not found, or tag resolution fails.
         """
-        from omnifocus_operator.contracts.use_cases.create_task import CreateTaskResult
-
         logger.debug(
             "OperatorService.add_task: name=%s, parent=%s, tags=%s",
             command.name,
@@ -192,8 +187,6 @@ class _EditTaskPipeline:
         self._command = self._domain.normalize_clear_intents(self._command)
 
     def _detect_action_flags(self) -> None:
-        from omnifocus_operator.contracts.base import is_set
-
         actions = self._command.actions
         if not is_set(actions):
             self._flags = _EditFlags(has_lifecycle=False, has_tag_actions=False, has_move=False)
@@ -205,8 +198,6 @@ class _EditTaskPipeline:
         )
 
     def _apply_lifecycle(self) -> None:
-        from omnifocus_operator.contracts.base import is_set
-
         self._lifecycle: str | None = None
         self._lifecycle_warns: list[str] = []
         if not self._flags.has_lifecycle:
@@ -227,8 +218,6 @@ class _EditTaskPipeline:
         )
 
     async def _apply_tag_diff(self) -> None:
-        from omnifocus_operator.contracts.base import is_set
-
         self._tag_adds: list[str] | None = None
         self._tag_removes: list[str] | None = None
         self._tag_warns: list[str] = []
@@ -247,8 +236,6 @@ class _EditTaskPipeline:
         )
 
     async def _apply_move(self) -> None:
-        from omnifocus_operator.contracts.base import is_set
-
         self._move_to: dict[str, object] | None = None
         if not self._flags.has_move:
             return
@@ -281,8 +268,6 @@ class _EditTaskPipeline:
         )
 
     async def _delegate(self) -> EditTaskResult:
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskResult
-
         logger.debug("OperatorService.edit_task: delegating to repository")
         repo_result = await self._repository.edit_task(self._repo_payload)
         return EditTaskResult(
