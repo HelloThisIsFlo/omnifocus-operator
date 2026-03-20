@@ -1,10 +1,9 @@
-"""MtimeSource protocol and implementations -- data-source freshness checks.
+"""MtimeSource protocol and FileMtimeSource -- data-source freshness checks.
 
 MtimeSource defines a pluggable interface for checking whether the OmniFocus
 data source has changed.  FileMtimeSource is the production implementation
 that monitors a filesystem path's modification time using ``st_mtime_ns``
-(nanosecond precision).  ConstantMtimeSource always returns 0 for use with
-InMemoryBridge (no cache invalidation).
+(nanosecond precision).
 """
 
 from __future__ import annotations
@@ -14,7 +13,6 @@ import os
 from typing import Protocol, runtime_checkable
 
 __all__ = [
-    "ConstantMtimeSource",
     "FileMtimeSource",
     "MtimeSource",
 ]
@@ -32,7 +30,7 @@ class MtimeSource(Protocol):
     async def get_mtime_ns(self) -> int: ...
 
 
-class FileMtimeSource:
+class FileMtimeSource(MtimeSource):
     """Production mtime source backed by filesystem stat.
 
     Calls ``os.stat`` via ``asyncio.to_thread`` to avoid blocking the
@@ -47,16 +45,3 @@ class FileMtimeSource:
         """Return the modification time of *path* in nanoseconds."""
         stat_result = await asyncio.to_thread(os.stat, self._path)
         return stat_result.st_mtime_ns
-
-
-class ConstantMtimeSource:
-    """MtimeSource that always returns 0 -- no cache invalidation.
-
-    Used with test doubles (``InMemoryBridge``, ``SimulatorBridge``) where
-    cache staleness detection is not needed.  Because the mtime is constant,
-    the repository will load once and serve from cache thereafter.
-    """
-
-    async def get_mtime_ns(self) -> int:
-        """Always return 0 (data is never stale)."""
-        return 0

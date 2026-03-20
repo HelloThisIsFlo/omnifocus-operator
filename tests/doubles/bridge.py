@@ -1,4 +1,4 @@
-"""InMemoryBridge -- test double that returns data from memory."""
+"""Test doubles -- InMemoryBridge and BridgeCall for unit tests."""
 
 from __future__ import annotations
 
