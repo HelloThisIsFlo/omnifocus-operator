@@ -140,6 +140,21 @@ Plans:
 - [x] 22-03-PLAN.md -- Split validate.py from resolve.py, add resolve_task to Resolver, route all entity checks through Resolver
 - [x] 22-04-PLAN.md -- Centralize null-means-clear intent normalization in DomainLogic
 
+### Phase 23: SimulatorBridge and Factory Cleanup
+**Goal**: SimulatorBridge removed from production exports and bridge factory eliminated — repository factory creates RealBridge directly, PYTEST safety guard lives in RealBridge.__init__
+**Depends on**: Phase 19 (InMemoryBridge cleanup removes "inmemory", leaving "simulator" + "real" in factory)
+**Requirements**: INFRA-04, INFRA-05, INFRA-06, INFRA-07
+**Success Criteria** (what must be TRUE):
+  1. `from omnifocus_operator.bridge import SimulatorBridge` raises ImportError
+  2. All tests that use SimulatorBridge import it via the direct module path (`bridge.simulator`)
+  3. `OMNIFOCUS_BRIDGE` env var is not read anywhere in production code
+  4. `create_bridge()` function and `bridge/factory.py` module removed — repository factory instantiates RealBridge directly
+  5. PYTEST safety guard (`PYTEST_CURRENT_TEST` check) lives in `RealBridge.__init__` — blocks instantiation during automated testing regardless of call site
+  6. All 534+ existing tests pass after migration
+**Plans:** 1 plan
+Plans:
+- [ ] 23-01-PLAN.md -- PYTEST guard migration to RealBridge, bridge factory deletion, export cleanup, repository factory simplification, test migration
+
 ## Progress
 
 **Execution Order:**
@@ -174,21 +189,8 @@ Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24
 | 20. Model Taxonomy | 2/2 | Complete    | 2026-03-18 | - |
 | 21. Write Pipeline Unification | 2/2 | Complete    | 2026-03-19 | - |
 | 22. Service Decomposition | 4/4 | Complete    | 2026-03-20 | - |
-| 23. SimulatorBridge and Factory Cleanup | v1.2.1 | 0/TBD | Not started | - |
+| 23. SimulatorBridge and Factory Cleanup | v1.2.1 | 0/1 | Not started | - |
 | 24. Test Double Relocation | v1.2.1 | 0/TBD | Not started | - |
-
-### Phase 23: SimulatorBridge and Factory Cleanup
-**Goal**: SimulatorBridge removed from production exports and bridge factory eliminated — repository factory creates RealBridge directly, PYTEST safety guard lives in RealBridge.__init__
-**Depends on**: Phase 19 (InMemoryBridge cleanup removes "inmemory", leaving "simulator" + "real" in factory)
-**Requirements**: INFRA-04, INFRA-05, INFRA-06, INFRA-07
-**Success Criteria** (what must be TRUE):
-  1. `from omnifocus_operator.bridge import SimulatorBridge` raises ImportError
-  2. All tests that use SimulatorBridge import it via the direct module path (`bridge.simulator`)
-  3. `OMNIFOCUS_BRIDGE` env var is not read anywhere in production code
-  4. `create_bridge()` function and `bridge/factory.py` module removed — repository factory instantiates RealBridge directly
-  5. PYTEST safety guard (`PYTEST_CURRENT_TEST` check) lives in `RealBridge.__init__` — blocks instantiation during automated testing regardless of call site
-  6. All 534+ existing tests pass after migration
-**Plans**: TBD
 
 ### Phase 24: Test Double Relocation
 **Goal**: All test double modules physically moved from `src/` to `tests/` — production code structurally cannot import test doubles
