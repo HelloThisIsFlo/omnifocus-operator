@@ -134,8 +134,8 @@ Plans:
 Plans:
 - [x] 22-01-PLAN.md -- Create service/ package, extract resolve.py, domain.py, payload.py; rewrite service.py as thin orchestrator
 - [x] 22-02-PLAN.md -- Unit tests for extracted modules (test_service_resolve.py, test_service_domain.py, test_service_payload.py)
-- [ ] 22-03-PLAN.md -- Split validate.py from resolve.py, add resolve_task to Resolver, route all entity checks through Resolver
-- [ ] 22-04-PLAN.md -- Centralize null-means-clear intent normalization in DomainLogic
+- [x] 22-03-PLAN.md -- Split validate.py from resolve.py, add resolve_task to Resolver, route all entity checks through Resolver
+- [x] 22-04-PLAN.md -- Centralize null-means-clear intent normalization in DomainLogic
 
 ## Progress
 
@@ -170,7 +170,7 @@ Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24
 | 19. InMemoryBridge Export Cleanup | 1/1 | Complete    | 2026-03-17 | - |
 | 20. Model Taxonomy | 2/2 | Complete    | 2026-03-18 | - |
 | 21. Write Pipeline Unification | 2/2 | Complete    | 2026-03-19 | - |
-| 22. Service Decomposition | 4/4 | Complete   | 2026-03-20 | - |
+| 22. Service Decomposition | 4/4 | Complete    | 2026-03-20 | - |
 | 23. SimulatorBridge and Factory Cleanup | v1.2.1 | 0/TBD | Not started | - |
 | 24. Test Double Relocation | v1.2.1 | 0/TBD | Not started | - |
 
