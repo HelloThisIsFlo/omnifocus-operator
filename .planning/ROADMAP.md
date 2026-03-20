@@ -216,10 +216,10 @@ Plans:
   3. JSON schema output is identical before and after the migration
   4. `changed_fields()` on any `CommandModel` instance returns a dict of only explicitly set fields (UNSET values excluded)
   5. All existing tests pass without modification
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 25 to break down)
+- [ ] 25-01-PLAN.md -- Define Patch/PatchOrClear/PatchOrNone aliases, changed_fields(), migrate all annotations, schema identity tests
 
 ### Phase 26: Replace InMemoryRepository with stateful InMemoryBridge
 **Goal**: InMemoryRepository deleted and replaced by a stateful InMemoryBridge — write tests exercise the real serialization path instead of an independent simulation that can drift
