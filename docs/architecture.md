@@ -50,8 +50,9 @@ omnifocus_operator/
         validate.py      -- Pure input validation
         domain.py        -- Business rules (lifecycle, tags, cycle, no-op, move)
         payload.py       -- Typed repo payload construction
-    messages/        -- Agent-facing communication surface (planned)
-    warnings.py      -- Centralized warning message constants
+    agent_messages/  -- Agent-facing communication surface (warnings + errors)
+        warnings.py      -- Centralized warning constants
+        errors.py        -- Centralized error message constants
 ```
 
 **Split principle:** `models/` = what OmniFocus IS (domain entities). `contracts/` = what you can DO (operations, boundaries). Everything else = how it's done (implementations).
@@ -411,10 +412,12 @@ Design principles:
 
 - **Each graduation is independent** — migrate one field at a time as use cases emerge.
 
-### Educational warnings
+### Agent-facing messages
+
+All agent-facing text — warnings and errors — is centralized in `agent_messages/` with AST-based test enforcement preventing inline regressions. Agents learn from every response, so message quality is a first-class concern.
 
 - Write results include optional `warnings` array for no-ops and edge cases
-- Design principle: LLMs learn in-context from tool responses, so warnings serve as runtime documentation
+- Errors (ValueError) use the same centralized constant + `.format()` pattern as warnings
 - Examples:
   - Tag no-op: "Tag 'X' was not on this task — omit remove_tags to skip"
   - Setter no-op: "Field 'flagged' is already true — omit to skip"
