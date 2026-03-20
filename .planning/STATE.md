@@ -113,7 +113,7 @@ None currently.
 | 260317-lgu | Fix D-6b: Suppress status warning on no-op edit of completed/dropped tasks | 2026-03-17 | 0f852a3 | Verified | [260317-lgu-fix-d-6b-suppress-status-warning-when-ed](./quick/260317-lgu-fix-d-6b-suppress-status-warning-when-ed/) |
 | 260319-tlz | Make Bridge protocol explicitly implemented by all bridge classes | 2026-03-20 | 347c168 |  | [260319-tlz-make-bridge-protocol-explicitly-implemen](./quick/260319-tlz-make-bridge-protocol-explicitly-implemen/) |
 | 260320-jd6 | Add is_set TypeGuard helper to replace isinstance Unset checks | 2026-03-20 | 2661e2e | Verified | [260320-jd6-add-is-set-typeguard-helper-to-replace-i](./quick/260320-jd6-add-is-set-typeguard-helper-to-replace-i/) |
-| 260320-k6u | Centralize agent-facing messages into agent_messages/ package | 2026-03-20 | 1ccd86d |  | [260320-k6u-centralize-agent-facing-messages-into-me](./quick/260320-k6u-centralize-agent-facing-messages-into-me/) |
+| 260320-k6u | Centralize agent-facing messages into agent_messages/ package | 2026-03-20 | 1ccd86d | Verified | [260320-k6u-centralize-agent-facing-messages-into-me](./quick/260320-k6u-centralize-agent-facing-messages-into-me/) |
 
 ## Session Continuity
 
