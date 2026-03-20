@@ -12,11 +12,11 @@ import warnings
 
 import pytest
 
-# Suppress Pydantic's "default UNSET is not JSON serializable" warnings during schema generation.
-# These are expected and harmless -- Pydantic drops UNSET from schema, which is exactly what we want.
+# Suppress Pydantic's "default UNSET is not JSON serializable" warnings during schema
+# generation. Expected and harmless -- Pydantic drops UNSET from schema, which is what we want.
 warnings.filterwarnings("ignore", message=".*UNSET.*not JSON serializable.*")
 
-from omnifocus_operator.contracts import (
+from omnifocus_operator.contracts import (  # noqa: E402
     EditTaskActions,
     EditTaskCommand,
     MoveAction,
@@ -33,12 +33,8 @@ EDIT_TASK_COMMAND_SCHEMA = json.loads(
 EDIT_TASK_ACTIONS_SCHEMA = json.loads(
     json.dumps(EditTaskActions.model_json_schema(), sort_keys=True)
 )
-TAG_ACTION_SCHEMA = json.loads(
-    json.dumps(TagAction.model_json_schema(), sort_keys=True)
-)
-MOVE_ACTION_SCHEMA = json.loads(
-    json.dumps(MoveAction.model_json_schema(), sort_keys=True)
-)
+TAG_ACTION_SCHEMA = json.loads(json.dumps(TagAction.model_json_schema(), sort_keys=True))
+MOVE_ACTION_SCHEMA = json.loads(json.dumps(MoveAction.model_json_schema(), sort_keys=True))
 
 
 # --- Schema identity tests ---
@@ -48,27 +44,19 @@ class TestSchemaIdentical:
     """Prove JSON schema output is identical after alias migration."""
 
     def test_edit_task_command_schema_identical(self) -> None:
-        actual = json.loads(
-            json.dumps(EditTaskCommand.model_json_schema(), sort_keys=True)
-        )
+        actual = json.loads(json.dumps(EditTaskCommand.model_json_schema(), sort_keys=True))
         assert actual == EDIT_TASK_COMMAND_SCHEMA
 
     def test_edit_task_actions_schema_identical(self) -> None:
-        actual = json.loads(
-            json.dumps(EditTaskActions.model_json_schema(), sort_keys=True)
-        )
+        actual = json.loads(json.dumps(EditTaskActions.model_json_schema(), sort_keys=True))
         assert actual == EDIT_TASK_ACTIONS_SCHEMA
 
     def test_tag_action_schema_identical(self) -> None:
-        actual = json.loads(
-            json.dumps(TagAction.model_json_schema(), sort_keys=True)
-        )
+        actual = json.loads(json.dumps(TagAction.model_json_schema(), sort_keys=True))
         assert actual == TAG_ACTION_SCHEMA
 
     def test_move_action_schema_identical(self) -> None:
-        actual = json.loads(
-            json.dumps(MoveAction.model_json_schema(), sort_keys=True)
-        )
+        actual = json.loads(json.dumps(MoveAction.model_json_schema(), sort_keys=True))
         assert actual == MOVE_ACTION_SCHEMA
 
 
@@ -86,9 +74,10 @@ class TestNoAliasLeakage:
     def test_no_alias_names_in_schema_defs(self, model: type) -> None:
         schema = model.model_json_schema()
         schema_str = json.dumps(schema)
-        assert "Patch_" not in schema_str, f"Alias name 'Patch_' leaked into {model.__name__} schema"
-        assert "PatchOrClear_" not in schema_str, f"Alias name 'PatchOrClear_' leaked into {model.__name__} schema"
-        assert "PatchOrNone_" not in schema_str, f"Alias name 'PatchOrNone_' leaked into {model.__name__} schema"
+        name = model.__name__
+        assert "Patch_" not in schema_str, f"Alias 'Patch_' leaked into {name} schema"
+        assert "PatchOrClear_" not in schema_str, f"Alias 'PatchOrClear_' leaked into {name} schema"
+        assert "PatchOrNone_" not in schema_str, f"Alias 'PatchOrNone_' leaked into {name} schema"
 
 
 # --- changed_fields() tests ---
