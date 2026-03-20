@@ -31,14 +31,26 @@ from .conftest import make_snapshot, make_tag_dict, make_task_dict
 class StubResolver:
     """Returns pre-configured IDs. No InMemoryRepository dependency."""
 
-    def __init__(self, tag_map: dict[str, str] | None = None) -> None:
+    def __init__(
+        self,
+        tag_map: dict[str, str] | None = None,
+        tasks: list[Task] | None = None,
+    ) -> None:
         self._tag_map = tag_map or {}
+        self._tasks = {t.id: t for t in (tasks or [])}
 
     async def resolve_tags(self, names: list[str]) -> list[str]:
         return [self._tag_map[n] for n in names]
 
     async def resolve_parent(self, pid: str) -> str:
         return pid  # always succeeds
+
+    async def resolve_task(self, task_id: str) -> Task:
+        task = self._tasks.get(task_id)
+        if task is None:
+            msg = f"Task not found: {task_id}"
+            raise ValueError(msg)
+        return task
 
 
 class StubRepo:
@@ -96,7 +108,7 @@ def _domain(
     snapshot: AllEntities | None = None,
 ) -> DomainLogic:
     """Build a DomainLogic with stub dependencies."""
-    resolver = StubResolver(tag_map)
+    resolver = StubResolver(tag_map, tasks=tasks)
     repo = StubRepo(tasks=tasks, tags=tags, snapshot=snapshot)
     return DomainLogic(repo, resolver)  # type: ignore[arg-type]
 

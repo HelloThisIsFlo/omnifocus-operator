@@ -133,10 +133,7 @@ class OperatorService(Service):  # explicitly implements Service protocol
 
         # 1. Verify task exists
         logger.debug("OperatorService.edit_task: id=%s, fetching current state", command.id)
-        task = await self._repository.get_task(command.id)
-        if task is None:
-            msg = f"Task not found: {command.id}"
-            raise ValueError(msg)
+        task = await self._resolver.resolve_task(command.id)
         logger.debug(
             "OperatorService.edit_task: task found, name=%s, current_tags=%d",
             task.name,

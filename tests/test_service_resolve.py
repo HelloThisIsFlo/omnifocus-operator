@@ -10,11 +10,8 @@ import pytest
 
 from omnifocus_operator.contracts.base import UNSET
 from omnifocus_operator.repository.in_memory import InMemoryRepository
-from omnifocus_operator.service.resolve import (
-    Resolver,
-    validate_task_name,
-    validate_task_name_if_set,
-)
+from omnifocus_operator.service.resolve import Resolver
+from omnifocus_operator.service.validate import validate_task_name, validate_task_name_if_set
 
 from .conftest import (
     make_project_dict,
@@ -124,6 +121,19 @@ class TestResolver:
         """Unknown ID raises ValueError."""
         with pytest.raises(ValueError, match="Parent not found: unknown-id"):
             await resolver.resolve_parent("unknown-id")
+
+    # -- Task resolution ---------------------------------------------------
+
+    async def test_resolve_task_found(self, resolver: Resolver) -> None:
+        """Known task ID returns the task."""
+        task = await resolver.resolve_task("task-1")
+        assert task.id == "task-1"
+        assert task.name == "Alpha"
+
+    async def test_resolve_task_not_found(self, resolver: Resolver) -> None:
+        """Unknown task ID raises ValueError."""
+        with pytest.raises(ValueError, match="Task not found: unknown-id"):
+            await resolver.resolve_task("unknown-id")
 
     # -- Tag resolution ----------------------------------------------------
 

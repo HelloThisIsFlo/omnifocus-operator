@@ -325,10 +325,11 @@ class DomainLogic:
         anchor_id: str,
     ) -> dict[str, object]:
         """Move before/after a sibling task."""
-        anchor = await self._repo.get_task(anchor_id)
-        if anchor is None:
+        try:
+            await self._resolver.resolve_task(anchor_id)
+        except ValueError:
             msg = f"Anchor task not found: {anchor_id}"
-            raise ValueError(msg)
+            raise ValueError(msg) from None
         return {"position": position, "anchor_id": anchor_id}
 
     # -- No-op detection ---------------------------------------------------
