@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from omnifocus_operator.models import AllEntities, Project, Tag, Task
 
 
+@runtime_checkable
 class Service(Protocol):
     """Agent-facing boundary. Takes commands, returns results."""
 
@@ -59,6 +60,7 @@ class Repository(Protocol):
     async def edit_task(self, payload: EditTaskRepoPayload) -> EditTaskRepoResult: ...
 
 
+@runtime_checkable
 class Bridge(Protocol):
     """Repository-facing boundary. Raw dict in, raw dict out."""
 
