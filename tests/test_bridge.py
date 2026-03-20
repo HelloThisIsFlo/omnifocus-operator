@@ -11,7 +11,7 @@ from omnifocus_operator.bridge import (
     BridgeProtocolError,
     BridgeTimeoutError,
 )
-from omnifocus_operator.bridge.in_memory import BridgeCall, InMemoryBridge
+from tests.doubles import BridgeCall, InMemoryBridge
 
 # ---------------------------------------------------------------------------
 # Error hierarchy
@@ -215,3 +215,37 @@ class TestBridgeProtocol:
         """
         bridge: Bridge = InMemoryBridge(data={})
         assert bridge is not None
+
+
+# ---------------------------------------------------------------------------
+# Negative import tests -- old production paths are broken (Phase 24)
+# ---------------------------------------------------------------------------
+
+
+class TestTestDoubleRelocation:
+    """Test doubles are NOT importable from old production paths (Phase 24)."""
+
+    def test_in_memory_bridge_not_importable_from_old_path(self) -> None:
+        """in_memory module removed from bridge package."""
+        with pytest.raises(ModuleNotFoundError):
+            from omnifocus_operator.bridge.in_memory import InMemoryBridge  # noqa: F401, F811
+
+    def test_bridge_call_not_importable_from_old_path(self) -> None:
+        """BridgeCall removed with in_memory module."""
+        with pytest.raises(ModuleNotFoundError):
+            from omnifocus_operator.bridge.in_memory import BridgeCall  # noqa: F401, F811
+
+    def test_simulator_bridge_not_importable_from_old_path(self) -> None:
+        """simulator module removed from bridge package."""
+        with pytest.raises(ModuleNotFoundError):
+            from omnifocus_operator.bridge.simulator import SimulatorBridge  # noqa: F401
+
+    def test_in_memory_repository_not_importable_from_old_path(self) -> None:
+        """in_memory module removed from repository package."""
+        with pytest.raises(ModuleNotFoundError):
+            from omnifocus_operator.repository.in_memory import InMemoryRepository  # noqa: F401
+
+    def test_constant_mtime_source_not_importable_from_old_path(self) -> None:
+        """ConstantMtimeSource removed from bridge.mtime module."""
+        with pytest.raises(ImportError):
+            from omnifocus_operator.bridge.mtime import ConstantMtimeSource  # noqa: F401

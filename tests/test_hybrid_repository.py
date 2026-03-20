@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 import pytest
 
-from omnifocus_operator.bridge.in_memory import InMemoryBridge
+from tests.doubles import InMemoryBridge
 from omnifocus_operator.contracts.protocols import Repository
 from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoPayload
 from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoPayload

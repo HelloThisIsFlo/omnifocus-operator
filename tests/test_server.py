@@ -89,7 +89,7 @@ class TestARCH01ThreeLayerArchitecture:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         from omnifocus_operator.models.snapshot import AllEntities
-        from omnifocus_operator.repository.in_memory import InMemoryRepository
+        from tests.doubles import InMemoryRepository
 
         monkeypatch.setattr(
             "omnifocus_operator.repository.create_repository",
@@ -123,7 +123,7 @@ class TestARCH02RepositoryInjection:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         from omnifocus_operator.models.snapshot import AllEntities
-        from omnifocus_operator.repository.in_memory import InMemoryRepository
+        from tests.doubles import InMemoryRepository
 
         monkeypatch.setattr(
             "omnifocus_operator.repository.create_repository",
@@ -177,7 +177,7 @@ class TestTOOL01ListAllStructuredOutput:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         from omnifocus_operator.models.snapshot import AllEntities
-        from omnifocus_operator.repository.in_memory import InMemoryRepository
+        from tests.doubles import InMemoryRepository
 
         monkeypatch.setattr(
             "omnifocus_operator.repository.create_repository",
@@ -202,8 +202,7 @@ class TestTOOL01ListAllStructuredOutput:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Verify structuredContent uses camelCase field names for nested entities."""
-        from omnifocus_operator.bridge.in_memory import InMemoryBridge
-        from omnifocus_operator.bridge.mtime import ConstantMtimeSource
+        from tests.doubles import ConstantMtimeSource, InMemoryBridge
         from omnifocus_operator.repository import BridgeRepository
         from omnifocus_operator.server import _register_tools
         from omnifocus_operator.service import OperatorService
@@ -571,7 +570,7 @@ class TestGetByIdTools:
 
     async def _make_server_with_data(self) -> FastMCP:
         """Build a test server with known snapshot data."""
-        from omnifocus_operator.repository.in_memory import InMemoryRepository
+        from tests.doubles import InMemoryRepository
         from omnifocus_operator.server import _register_tools
         from omnifocus_operator.service import OperatorService
 
@@ -706,7 +705,7 @@ class TestAddTasks:
         extra_tags: list[dict[str, Any]] | None = None,
     ) -> FastMCP:
         """Build a test server with InMemoryRepository and known data."""
-        from omnifocus_operator.repository.in_memory import InMemoryRepository
+        from tests.doubles import InMemoryRepository
         from omnifocus_operator.server import _register_tools
         from omnifocus_operator.service import OperatorService
 
@@ -961,7 +960,7 @@ class TestEditTasks:
         extra_tags: list[dict[str, Any]] | None = None,
     ) -> FastMCP:
         """Build a test server with InMemoryRepository and known data."""
-        from omnifocus_operator.repository.in_memory import InMemoryRepository
+        from tests.doubles import InMemoryRepository
         from omnifocus_operator.server import _register_tools
         from omnifocus_operator.service import OperatorService
 
@@ -1333,7 +1332,7 @@ class TestEditTasksLifecycle:
         extra_tasks: list[dict[str, Any]] | None = None,
     ) -> FastMCP:
         """Build a test server with InMemoryRepository and known data."""
-        from omnifocus_operator.repository.in_memory import InMemoryRepository
+        from tests.doubles import InMemoryRepository
         from omnifocus_operator.server import _register_tools
         from omnifocus_operator.service import OperatorService
 

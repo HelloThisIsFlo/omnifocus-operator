@@ -22,7 +22,7 @@ import pytest
 
 from omnifocus_operator.bridge.errors import BridgeProtocolError, BridgeTimeoutError
 from omnifocus_operator.bridge.real import DEFAULT_IPC_DIR, sweep_orphaned_files
-from omnifocus_operator.bridge.simulator import SimulatorBridge
+from tests.doubles import SimulatorBridge
 
 # ---------------------------------------------------------------------------
 # Helpers

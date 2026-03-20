@@ -25,7 +25,7 @@ class TestSimulatorBridge:
 
     def test_trigger_omnifocus_is_noop(self, tmp_path: Path) -> None:
         """_trigger_omnifocus() is callable and returns None (no side effects)."""
-        from omnifocus_operator.bridge.simulator import SimulatorBridge
+        from tests.doubles import SimulatorBridge
 
         bridge = SimulatorBridge(ipc_dir=tmp_path)
         result = bridge._trigger_omnifocus("test-file-prefix")
@@ -33,14 +33,14 @@ class TestSimulatorBridge:
 
     def test_ipc_dir_returns_configured_path(self, tmp_path: Path) -> None:
         """ipc_dir property returns the configured path."""
-        from omnifocus_operator.bridge.simulator import SimulatorBridge
+        from tests.doubles import SimulatorBridge
 
         bridge = SimulatorBridge(ipc_dir=tmp_path)
         assert bridge.ipc_dir == tmp_path
 
     def test_satisfies_bridge_protocol(self, tmp_path: Path) -> None:
         """SimulatorBridge satisfies the Bridge protocol (structural typing)."""
-        from omnifocus_operator.bridge.simulator import SimulatorBridge
+        from tests.doubles import SimulatorBridge
         from omnifocus_operator.contracts.protocols import Bridge  # noqa: TC001
 
         bridge: Bridge = SimulatorBridge(ipc_dir=tmp_path)
@@ -51,7 +51,7 @@ class TestSimulatorBridge:
 
     def test_ipc_directory_created_on_init(self, tmp_path: Path) -> None:
         """IPC directory is created on init (inherited from base bridge)."""
-        from omnifocus_operator.bridge.simulator import SimulatorBridge
+        from tests.doubles import SimulatorBridge
 
         ipc_dir = tmp_path / "ipc"
         assert not ipc_dir.exists()
@@ -60,7 +60,7 @@ class TestSimulatorBridge:
 
     def test_has_ipc_mechanics(self, tmp_path: Path) -> None:
         """SimulatorBridge inherits IPC mechanics (ipc_dir, send_command)."""
-        from omnifocus_operator.bridge.simulator import SimulatorBridge
+        from tests.doubles import SimulatorBridge
 
         bridge = SimulatorBridge(ipc_dir=tmp_path)
         assert hasattr(bridge, "ipc_dir")
@@ -69,7 +69,7 @@ class TestSimulatorBridge:
 
     def test_accepts_timeout_kwarg(self, tmp_path: Path) -> None:
         """SimulatorBridge accepts timeout kwargs (inherited from base bridge)."""
-        from omnifocus_operator.bridge.simulator import SimulatorBridge
+        from tests.doubles import SimulatorBridge
 
         bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=5.0)
         assert bridge._timeout == 5.0
@@ -153,7 +153,7 @@ class TestLifespan:
     def _make_in_memory_repo() -> Any:
         """Create an InMemoryRepository with empty seed data."""
         from omnifocus_operator.models import AllEntities
-        from omnifocus_operator.repository.in_memory import InMemoryRepository
+        from tests.doubles import InMemoryRepository
 
         return InMemoryRepository(
             snapshot=AllEntities(

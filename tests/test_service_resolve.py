@@ -9,7 +9,7 @@ from __future__ import annotations
 import pytest
 
 from omnifocus_operator.contracts.base import UNSET
-from omnifocus_operator.repository.in_memory import InMemoryRepository
+from tests.doubles import InMemoryRepository
 from omnifocus_operator.service.resolve import Resolver
 from omnifocus_operator.service.validate import validate_task_name, validate_task_name_if_set
 
