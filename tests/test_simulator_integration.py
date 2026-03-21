@@ -48,7 +48,13 @@ def _start_simulator(
     Returns the running Popen process.  Raises ``RuntimeError`` if the
     simulator does not become ready within *timeout* seconds.
     """
-    cmd = [sys.executable, "-m", "omnifocus_operator.simulator", "--ipc-dir", str(ipc_dir)]
+    cmd = [
+        sys.executable,
+        "-m",
+        "omnifocus_operator.simulator",
+        "--ipc-dir",
+        str(ipc_dir),
+    ]
     if fail_mode is not None:
         cmd.extend(["--fail-mode", fail_mode])
     if fail_after is not None:
@@ -319,7 +325,7 @@ class TestMcpIntegration:
         proc = _start_simulator(tmp_path)
         try:
             # Build a repository with SimulatorBridge directly.
-            # NEVER bypass PYTEST_CURRENT_TEST or use RealBridge in tests (SAFE-01).
+            # NEVER bypass PYTEST_CURRENT_TEST or use the real Bridge in tests (SAFE-01).
             bridge = SimulatorBridge(ipc_dir=tmp_path)
             repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
 

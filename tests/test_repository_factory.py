@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 def _stub_real_bridge(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """Monkeypatch _create_real_bridge so factory never touches RealBridge."""
+    """Monkeypatch _create_real_bridge so factory never touches the real Bridge."""
     from tests.doubles import SimulatorBridge
 
     monkeypatch.setattr(
@@ -99,7 +99,10 @@ class TestCreateRepositoryBridgeMode:
         assert isinstance(repo, BridgeRepository)
 
     def test_bridge_only_logs_degraded_warning(
-        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, tmp_path: Path
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+        tmp_path: Path,
     ) -> None:
         ofocus_bundle = tmp_path / "OmniFocus.ofocus"
         ofocus_bundle.mkdir()
