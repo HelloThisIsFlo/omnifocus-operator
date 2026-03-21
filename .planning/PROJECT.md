@@ -105,6 +105,7 @@ Read path: SQLite (default, ~46ms). Write path: OmniJS bridge with write-through
 - **SQLite path**: `~/Library/Group Containers/34YW5A3IGP.com.omnigroup.OmniFocus/com.omnigroup.OmniFocus4/OmniFocusDatabase.db`
 - **Field naming**: JSON from OmniFocus is camelCase; Pydantic uses snake_case with camelCase aliases for serialization
 - **Dev commands**: Run tests: `uv run pytest`. Run Python: `uv run python`. Always use `uv run` — never bare `pytest` or `python`.
+- **GOLD-01**: Any phase that adds or modifies bridge operations must re-capture the golden master (`uat/capture_golden_master.py`) and add contract test coverage for the new behavior. Golden master = source of truth for "what OmniFocus actually does."
 
 ## Key Decisions
 

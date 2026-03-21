@@ -14,8 +14,10 @@ Golden master pattern proves behavioral equivalence between InMemoryBridge and R
 ## Implementation Decisions
 
 ### Scenario coverage
-- **D-01:** Full write cycle — golden master covers multiple `add_task` variations, `edit_task` variations (field updates, tag add/remove, lifecycle, move), with `get_all` captured between each operation to track state transitions
+- **D-01:** Full write cycle — golden master covers pragmatically exhaustive `add_task` variations, `edit_task` variations (field updates, tag add/remove, lifecycle, move), with `get_all` captured between each operation to track state transitions. Every distinct behavior path is covered; combinatorial explosion is not.
 - **D-02:** One-click capture — single `uv run python uat/capture_golden_master.py` command runs all scenarios and writes all fixture files
+- **D-18:** Repetition rules excluded — next milestone implements repetition rules; golden master gets regenerated at that point to include them
+- **D-19:** Golden master files stored as multiple JSON files in a folder, ordered incrementally by scenario number. Easier to maintain and debug than one monolithic file.
 
 ### Capture workflow
 - **D-03:** Interactive guided flow — script explains what it does upfront, step-by-step manual setup with verification after each step, confirms with user before executing the capture
@@ -40,8 +42,10 @@ Golden master pattern proves behavioral equivalence between InMemoryBridge and R
 - **D-16:** `normalize_for_comparison()` helper strips dynamic fields before diffing golden master vs InMemoryBridge output
 - **D-17:** Filtering mechanism — script tracks which IDs it created (from `add_task` responses) and which projects/tags the user created (from verification step), filters `get_all` to only those IDs
 
+### Future-proofing
+- **D-20:** Standing project requirement (GOLD-01): any phase that adds or modifies bridge operations must re-capture the golden master and add contract test coverage for the new behavior. Added to PROJECT.md constraints.
+
 ### Claude's Discretion
-- Golden master file format (JSON, YAML, etc.) and directory structure
 - How edit_task sub-behaviors are organized in the scenario sequence (combined or separate)
 - Exact filtering implementation for `get_all`
 - Exact normalization implementation

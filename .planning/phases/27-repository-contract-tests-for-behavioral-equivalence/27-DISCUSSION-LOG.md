@@ -65,9 +65,37 @@ Major correction raised by user during summary review:
 
 ---
 
+## Coverage Level & Exclusions (Assumption Review Session)
+
+**Date:** 2026-03-21 (second session)
+
+Discussed during `/gsd:list-phase-assumptions 27` — Claude surfaced assumptions, user refined:
+
+- **Coverage level:** Pragmatically exhaustive. Every distinct behavior path (individual field edits, tag add/remove, lifecycle, move) but not combinatorial. If a bug only shows when exactly three specific fields change simultaneously, that's an accepted gap.
+- **Repetition rules:** Explicitly excluded. Next milestone implements them; golden master gets regenerated then.
+- **File format:** Multiple JSON files in a folder, ordered incrementally. Not one monolithic file — easier to maintain and debug.
+- **Behavioral mismatch:** User clarified this is the whole point of the phase, not a risk. If InMemoryBridge differs from RealBridge, that's the signal we want.
+- **Filtering performance:** Not a concern. ~3,000 tasks filtered in memory is milliseconds.
+
+---
+
+## Future-proofing: Golden Master Maintenance
+
+User raised: how do we ensure future phases update the golden master when adding bridge operations?
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| CLAUDE.md rule | Lightweight mention in project instructions | |
+| PROJECT.md constraint (GOLD-01) | Named constraint like SAFE-01/02, picked up during phase planning | ✓ |
+| CI guardrail | Harder to enforce for manual capture step | |
+
+**User's choice:** PROJECT.md constraint (GOLD-01)
+**Notes:** Slots into existing requirements system. Gets picked up naturally during phase planning like SAFE-01/02 do.
+
+---
+
 ## Claude's Discretion
 
-- Golden master file format and directory structure
 - How edit_task sub-behaviors are organized in the scenario sequence
 - Exact filtering implementation for get_all
 - Exact normalization implementation
@@ -76,4 +104,4 @@ Major correction raised by user during summary review:
 
 ## Deferred Ideas
 
-None — discussion stayed within phase scope
+- Repetition rule coverage — deferred to next milestone when repetition rules are implemented
