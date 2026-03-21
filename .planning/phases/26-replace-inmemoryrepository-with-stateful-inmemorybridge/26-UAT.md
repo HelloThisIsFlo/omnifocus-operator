@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: resolved
 phase: 26-replace-inmemoryrepository-with-stateful-inmemorybridge
 source: 26-01-SUMMARY.md, 26-02-SUMMARY.md
 started: 2026-03-21T02:15:00Z
-updated: 2026-03-21T03:00:00Z
+updated: 2026-03-21T03:30:00Z
 ---
 
 ## Current Test
@@ -53,19 +53,16 @@ blocked: 0
 ## Gaps
 
 - truth: "InMemoryBridge should be a single-purpose stateful test double with no hidden modes"
-  status: failed
-  reason: "User reported: InMemoryBridge has two hidden modes (stateful vs stub) with auto-detection via seed data shape. Should be split into StubBridge + InMemoryBridge. Duplicate shared plumbing, kill _stateful flag."
+  status: resolved
+  reason: "Plan 26-03 created StubBridge class, removed _stateful flag and auto-detection from InMemoryBridge, migrated all stub-mode usages to StubBridge, exported StubBridge from tests/doubles/__init__.py."
   severity: minor
   test: 2
   root_cause: "Plan 01 added backward-compatible stub mode as an auto-fix during implementation to avoid breaking existing tests that seed InMemoryBridge with write-result dicts. The auto-detection was expedient but conflates two distinct test double responsibilities in one class."
   artifacts:
+    - path: "tests/doubles/stub_bridge.py"
+      issue: "resolved — StubBridge created as single-purpose canned-response double"
     - path: "tests/doubles/bridge.py"
-      issue: "Single class with _stateful flag and auto-detection heuristic"
-  missing:
-    - "Create StubBridge class (~20 lines) with canned-response behavior"
-    - "Remove _stateful flag and auto-detection from InMemoryBridge"
-    - "Update tests that use stub-mode InMemoryBridge to use StubBridge"
-    - "Export StubBridge from tests/doubles/__init__.py"
+      issue: "resolved — InMemoryBridge is now purely stateful, no dual-mode"
   debug_session: ""
 
 - truth: "Tests should use fixture composition (bridge→repo→service) instead of repeating construction boilerplate"
