@@ -1,9 +1,9 @@
 ---
-status: resolved
+status: complete
 phase: 26-replace-inmemoryrepository-with-stateful-inmemorybridge
-source: 26-01-SUMMARY.md, 26-02-SUMMARY.md
-started: 2026-03-21T02:15:00Z
-updated: 2026-03-21T03:30:00Z
+source: 26-01-SUMMARY.md, 26-02-SUMMARY.md, 26-03-SUMMARY.md, 26-04-SUMMARY.md, 26-05-SUMMARY.md
+started: 2026-03-21T14:00:00Z
+updated: 2026-03-21T14:10:00Z
 ---
 
 ## Current Test
@@ -12,68 +12,39 @@ updated: 2026-03-21T03:30:00Z
 
 ## Tests
 
-### 1. Doubles Package Exports
-expected: Open `tests/doubles/__init__.py`. The public API should be clean and minimal — InMemoryBridge, BridgeCall, ConstantMtimeSource, SimulatorBridge. No trace of InMemoryRepository in exports or comments.
+### 1. Package Layout — Two Bridge Doubles, No InMemoryRepository
+expected: `tests/doubles/` contains `bridge.py` (InMemoryBridge) and StubBridge (in its own file or co-located). `repository.py` does not exist. `__init__.py` exports both bridge doubles plus supporting types — no InMemoryRepository. `grep -r InMemoryRepository tests/` returns zero hits.
 result: pass
 
-### 2. InMemoryBridge API Surface
-expected: Open `tests/doubles/bridge.py`. The class should read as a self-documenting test double: clear docstring explaining stateful vs stub modes, intuitive send_command dispatch (get_all/add_task/edit_task), and the backward-compat fallback should feel like a natural safety net, not a hack.
-result: issue
-reported: "InMemoryBridge has two hidden modes (stateful vs stub) with auto-detection via seed data shape. Should be split into two separate classes: StubBridge (canned responses, no state) and InMemoryBridge (stateful dispatch only). Duplicate the shared plumbing (~15 lines of call tracking, error injection, WAL). Kill the _stateful flag and auto-detection."
-severity: minor
-
-### 3. InMemoryRepository Fully Removed
-expected: Confirm `tests/doubles/repository.py` no longer exists. Run `grep -r "InMemoryRepository" tests/` — should find zero hits (no stale imports, comments, or references).
+### 2. Single Responsibility — InMemoryBridge Is Purely Stateful
+expected: Open `tests/doubles/bridge.py`. InMemoryBridge has NO `_stateful` flag, no `_data` raw backup, no auto-detection heuristic. It's purely a stateful snapshot-based double with entity lists (_tasks, _projects, etc.) and operation dispatch (add_task, edit_task, get_all). The class has one clear purpose.
 result: pass
 
-### 4. Fixture Composition Pattern
-expected: Open `tests/test_service.py` (top ~40 lines) and `tests/test_service_resolve.py` (top ~60 lines). The bridge→repo fixture chain should be readable: `bridge()` creates InMemoryBridge with snapshot data, `repo(bridge)` wires it into BridgeRepository. The pattern should feel natural and consistent across both files.
-result: issue
-reported: "Fixtures exist (bridge, repo) but almost no tests use them. Every test recreates bridge + repo + service inline — same 3 lines copy-pasted ~90+ times. Additionally, imports like AddTaskCommand and make_tag_dict are repeated inline in 15+ test methods instead of at top of file. Should add service(repo) fixture. Design direction: custom @pytest.mark.snapshot(...) marker for declarative test data, fixture reads marker to build pre-loaded service. Hoist all repeated inline imports to module level. Eliminates boilerplate for both default and custom snapshot cases."
-severity: major
+### 3. Single Responsibility — StubBridge Is Purely Canned-Response
+expected: Open the StubBridge source. It's a simple class that stores seed data and returns it for every operation. No stateful mutation, no dispatch logic. Uses BridgeCall for call tracking (same as InMemoryBridge). A new developer reading it immediately understands: "this returns whatever I seed it with."
+result: pass
 
-### 5. Test Readability After Migration
-expected: Skim a few test methods in `tests/test_service.py` (e.g. test_get_all_data_returns_snapshot, test_add_task_delegates). The inline `InMemoryBridge(data=make_snapshot_dict(...))` construction should be clear — you can see exactly what data each test starts with. No indirection or mystery.
-result: skipped
-reason: Same root cause as Test 4 — boilerplate duplication is the readability problem.
+### 4. Fixture Chain — @pytest.mark.snapshot Ergonomics
+expected: In `tests/conftest.py`, there's a bridge → repo → service fixture chain. Tests declare custom snapshot data via `@pytest.mark.snapshot(tasks=[...], tags=[...])` on methods. No marker = default snapshot. The chain reads naturally and a new contributor could write a test by copying an existing one without understanding the plumbing.
+result: pass
 
-### 6. Test Suite Health
-expected: Run `just test` (or equivalent). All ~640 tests pass, no warnings about missing imports or deprecated usage. Coverage stays at or above 94%.
+### 5. Test Readability — TestEditTask After Full Migration
+expected: Open `tests/test_service.py`, look at TestEditTask methods. Each method has a `@pytest.mark.snapshot(...)` decorator declaring its data and receives `service` (+ optionally `repo`/`bridge`) as fixture params. No inline `InMemoryBridge(...)` / `BridgeRepository(...)` / `OperatorService(...)` construction. The test body is pure operation + assertion.
+result: pass
+
+### 6. Import Hygiene
+expected: `tests/test_service.py` does NOT import `InMemoryBridge` or `make_snapshot_dict` directly. `BridgeRepository` is behind a `TYPE_CHECKING` guard. `ruff check tests/` and `pytest --collect-only` succeed cleanly.
 result: pass
 
 ## Summary
 
 total: 6
-passed: 3
-issues: 2
+passed: 6
+issues: 0
 pending: 0
-skipped: 1
+skipped: 0
 blocked: 0
 
 ## Gaps
 
-- truth: "InMemoryBridge should be a single-purpose stateful test double with no hidden modes"
-  status: resolved
-  reason: "Plan 26-03 created StubBridge class, removed _stateful flag and auto-detection from InMemoryBridge, migrated all stub-mode usages to StubBridge, exported StubBridge from tests/doubles/__init__.py."
-  severity: minor
-  test: 2
-  root_cause: "Plan 01 added backward-compatible stub mode as an auto-fix during implementation to avoid breaking existing tests that seed InMemoryBridge with write-result dicts. The auto-detection was expedient but conflates two distinct test double responsibilities in one class."
-  artifacts:
-    - path: "tests/doubles/stub_bridge.py"
-      issue: "resolved — StubBridge created as single-purpose canned-response double"
-    - path: "tests/doubles/bridge.py"
-      issue: "resolved — InMemoryBridge is now purely stateful, no dual-mode"
-  debug_session: ""
-
-- truth: "Tests should use fixture composition (bridge→repo→service) instead of repeating construction boilerplate"
-  status: resolved
-  reason: "Plans 26-04 and 26-05 implemented @pytest.mark.snapshot marker infrastructure and refactored all test_service.py classes (TestOperatorService, TestAddTask, TestEditTask — ~92 methods total) to use fixture injection. Zero inline bridge/repo/service boilerplate remaining."
-  severity: major
-  test: 4
-  root_cause: "Plan 02 migrated 121 InMemoryRepository sites mechanically (1:1 replacement) without refactoring the test structure. The old tests already had this boilerplate pattern with InMemoryRepository; the migration preserved it. Fixtures were added but not wired into existing tests."
-  artifacts:
-    - path: "tests/test_service.py"
-      issue: "resolved — all test classes use fixture injection"
-    - path: "tests/conftest.py"
-      issue: "resolved — snapshot marker + bridge/repo/service fixture chain added"
-  debug_session: ""
+[none yet]
