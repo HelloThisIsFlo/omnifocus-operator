@@ -17,7 +17,7 @@ from pydantic import ValidationError
 from omnifocus_operator.bridge.errors import BridgeError
 from omnifocus_operator.bridge.mtime import FileMtimeSource
 from omnifocus_operator.repository import BridgeRepository, Repository
-from tests.doubles import InMemoryBridge, InMemoryRepository
+from tests.doubles import InMemoryBridge
 
 from .conftest import make_snapshot_dict
 
@@ -351,30 +351,12 @@ class TestFileMtimeSource:
 
 
 # ---------------------------------------------------------------------------
-# InMemoryRepository
+# BridgeRepository protocol conformance
 # ---------------------------------------------------------------------------
 
 
-class TestInMemoryRepository:
-    """InMemoryRepository returns pre-built snapshots and satisfies protocol."""
-
-    async def test_satisfies_repository_protocol(self) -> None:
-        from .conftest import make_snapshot
-
-        snapshot = make_snapshot()
-        repo = InMemoryRepository(snapshot=snapshot)
-
-        assert isinstance(repo, Repository)
-
-    async def test_returns_snapshot(self) -> None:
-        from .conftest import make_snapshot
-
-        snapshot = make_snapshot()
-        repo = InMemoryRepository(snapshot=snapshot)
-
-        result = await repo.get_all()
-
-        assert result is snapshot
+class TestBridgeRepositoryProtocol:
+    """BridgeRepository satisfies the Repository protocol."""
 
     async def test_bridge_repository_satisfies_protocol(self) -> None:
         bridge = InMemoryBridge(data=make_snapshot_dict())
@@ -382,129 +364,3 @@ class TestInMemoryRepository:
         repo = BridgeRepository(bridge=bridge, mtime_source=mtime)
 
         assert isinstance(repo, Repository)
-
-
-# ---------------------------------------------------------------------------
-# InMemoryRepository -- add_task
-# ---------------------------------------------------------------------------
-
-
-class TestInMemoryAddTask:
-    """Tests for InMemoryRepository.add_task (in-memory write for testing)."""
-
-    async def test_add_task_returns_result(self) -> None:
-        """add_task returns AddTaskRepoResult."""
-        from omnifocus_operator.contracts.use_cases.add_task import (
-            AddTaskRepoPayload,
-            AddTaskRepoResult,
-        )
-
-        from .conftest import make_snapshot
-
-        snapshot = make_snapshot()
-        repo = InMemoryRepository(snapshot=snapshot)
-
-        payload = AddTaskRepoPayload(name="New task")
-        result = await repo.add_task(payload)
-
-        assert isinstance(result, AddTaskRepoResult)
-        assert result.name == "New task"
-        assert result.id.startswith("mem-")
-
-    async def test_add_task_appends_to_snapshot(self) -> None:
-        """add_task appends the new task to the snapshot."""
-        from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoPayload
-
-        from .conftest import make_snapshot
-
-        snapshot = make_snapshot()
-        initial_count = len(snapshot.tasks)
-        repo = InMemoryRepository(snapshot=snapshot)
-
-        payload = AddTaskRepoPayload(name="New task")
-        await repo.add_task(payload)
-
-        updated_snapshot = await repo.get_all()
-        assert len(updated_snapshot.tasks) == initial_count + 1
-        new_task = updated_snapshot.tasks[-1]
-        assert new_task.name == "New task"
-
-    async def test_add_task_inbox_when_no_parent(self) -> None:
-        """Task with no parent goes to inbox (in_inbox=True)."""
-        from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoPayload
-
-        from .conftest import make_snapshot
-
-        snapshot = make_snapshot()
-        repo = InMemoryRepository(snapshot=snapshot)
-
-        payload = AddTaskRepoPayload(name="Inbox task")
-        result = await repo.add_task(payload)
-
-        updated = await repo.get_all()
-        new_task = next(t for t in updated.tasks if t.id == result.id)
-        assert new_task.in_inbox is True
-
-    async def test_add_task_with_parent(self) -> None:
-        """Task with parent sets in_inbox=False."""
-        from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoPayload
-
-        from .conftest import make_snapshot
-
-        snapshot = make_snapshot()
-        repo = InMemoryRepository(snapshot=snapshot)
-
-        payload = AddTaskRepoPayload(name="Child task", parent="proj-001")
-        result = await repo.add_task(payload)
-
-        updated = await repo.get_all()
-        new_task = next(t for t in updated.tasks if t.id == result.id)
-        assert new_task.in_inbox is False
-
-    async def test_add_task_generates_unique_ids(self) -> None:
-        """Each add_task generates a unique ID."""
-        from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoPayload
-
-        from .conftest import make_snapshot
-
-        snapshot = make_snapshot()
-        repo = InMemoryRepository(snapshot=snapshot)
-
-        r1 = await repo.add_task(AddTaskRepoPayload(name="Task 1"))
-        r2 = await repo.add_task(AddTaskRepoPayload(name="Task 2"))
-
-        assert r1.id != r2.id
-
-
-class TestInMemoryEditTaskLifecycle:
-    """InMemoryRepository.edit_task lifecycle mutations."""
-
-    async def test_lifecycle_complete_sets_availability(self) -> None:
-        """edit_task with lifecycle='complete' sets availability to COMPLETED."""
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoPayload
-        from omnifocus_operator.models.enums import Availability
-
-        from .conftest import make_snapshot, make_task_dict
-
-        snapshot = make_snapshot(tasks=[make_task_dict(id="task-001")])
-        repo = InMemoryRepository(snapshot=snapshot)
-
-        await repo.edit_task(EditTaskRepoPayload(id="task-001", lifecycle="complete"))
-        task = await repo.get_task("task-001")
-        assert task is not None
-        assert task.availability == Availability.COMPLETED
-
-    async def test_lifecycle_drop_sets_availability(self) -> None:
-        """edit_task with lifecycle='drop' sets availability to DROPPED."""
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoPayload
-        from omnifocus_operator.models.enums import Availability
-
-        from .conftest import make_snapshot, make_task_dict
-
-        snapshot = make_snapshot(tasks=[make_task_dict(id="task-001")])
-        repo = InMemoryRepository(snapshot=snapshot)
-
-        await repo.edit_task(EditTaskRepoPayload(id="task-001", lifecycle="drop"))
-        task = await repo.get_task("task-001")
-        assert task is not None
-        assert task.availability == Availability.DROPPED

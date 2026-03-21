@@ -1,7 +1,7 @@
 """Unit tests for DomainLogic -- business rules for the edit-task pipeline.
 
-Tests use StubResolver and StubRepo (no InMemoryRepository dependency),
-future-proofing for Phase 26 which replaces InMemoryRepository.
+Tests use StubResolver and StubRepo (no repository dependency),
+independent of repository implementation.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ from .conftest import make_snapshot, make_tag_dict, make_task_dict
 
 
 class StubResolver:
-    """Returns pre-configured IDs. No InMemoryRepository dependency."""
+    """Returns pre-configured IDs. No repository dependency."""
 
     def __init__(
         self,

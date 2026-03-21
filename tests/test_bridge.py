@@ -245,6 +245,11 @@ class TestTestDoubleRelocation:
         with pytest.raises(ModuleNotFoundError):
             from omnifocus_operator.repository.in_memory import InMemoryRepository  # noqa: F401
 
+    def test_in_memory_repository_not_in_doubles_exports(self) -> None:
+        """InMemoryRepository removed from test doubles."""
+        with pytest.raises(ImportError):
+            from tests.doubles.repository import InMemoryRepository  # noqa: F401
+
     def test_constant_mtime_source_not_importable_from_old_path(self) -> None:
         """ConstantMtimeSource removed from bridge.mtime module."""
         with pytest.raises(ImportError):
