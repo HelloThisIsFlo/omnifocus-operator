@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock
 
 import pytest
@@ -22,11 +23,13 @@ from omnifocus_operator.contracts.use_cases.edit_task import (
     EditTaskActions,
     EditTaskCommand,
 )
-from omnifocus_operator.repository import BridgeRepository
 from omnifocus_operator.service import ErrorOperatorService, OperatorService
-from tests.doubles import ConstantMtimeSource, InMemoryBridge
+from tests.doubles import ConstantMtimeSource
 
-from .conftest import make_project_dict, make_snapshot_dict, make_tag_dict, make_task_dict
+from .conftest import make_project_dict, make_tag_dict, make_task_dict
+
+if TYPE_CHECKING:
+    from omnifocus_operator.repository import BridgeRepository
 
 # ---------------------------------------------------------------------------
 # OperatorService
@@ -279,16 +282,9 @@ class TestAddTask:
 class TestEditTask:
     """Service.edit_task validates inputs and delegates to repository."""
 
-    async def test_patch_name_only(self) -> None:
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Old Name", flagged=True)])
+    async def test_patch_name_only(self, service: OperatorService, repo: BridgeRepository) -> None:
         """Editing only name leaves other fields unchanged (EDIT-01)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[make_task_dict(id="task-001", name="Old Name", flagged=True)]
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(EditTaskCommand(id="task-001", name="New Name"))
 
@@ -299,14 +295,9 @@ class TestEditTask:
         assert task is not None
         assert task.flagged is True  # unchanged
 
-    async def test_patch_note_only(self) -> None:
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
+    async def test_patch_note_only(self, service: OperatorService, repo: BridgeRepository) -> None:
         """Editing only note leaves other fields unchanged."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")])
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(EditTaskCommand(id="task-001", note="New note"))
         assert result.success is True
@@ -314,16 +305,11 @@ class TestEditTask:
         assert task is not None
         assert task.note == "New note"
 
-    async def test_patch_flagged_only(self) -> None:
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task", flagged=False)])
+    async def test_patch_flagged_only(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
         """Editing only flagged leaves other fields unchanged."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[make_task_dict(id="task-001", name="Task", flagged=False)]
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(EditTaskCommand(id="task-001", flagged=True))
         assert result.success is True
@@ -331,18 +317,11 @@ class TestEditTask:
         assert task is not None
         assert task.flagged is True
 
-    async def test_clear_due_date(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Task", dueDate="2026-04-01T10:00:00+00:00")]
+    )
+    async def test_clear_due_date(self, service: OperatorService, repo: BridgeRepository) -> None:
         """Setting due_date=None clears it (EDIT-01)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[
-                    make_task_dict(id="task-001", name="Task", dueDate="2026-04-01T10:00:00+00:00")
-                ]
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(EditTaskCommand(id="task-001", due_date=None))
         assert result.success is True
@@ -350,28 +329,20 @@ class TestEditTask:
         assert task is not None
         assert task.due_date is None
 
-    async def test_set_due_date(self) -> None:
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
+    async def test_set_due_date(self, service: OperatorService) -> None:
         """Setting due_date to a value updates it (EDIT-02)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")])
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(id="task-001", due_date=datetime(2026, 5, 1, 10, 0, tzinfo=UTC))
         )
         assert result.success is True
 
-    async def test_set_estimated_minutes(self) -> None:
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
+    async def test_set_estimated_minutes(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
         """Setting estimated_minutes updates it (EDIT-02)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")])
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(EditTaskCommand(id="task-001", estimated_minutes=30.0))
         assert result.success is True
@@ -379,21 +350,12 @@ class TestEditTask:
         assert task is not None
         assert task.estimated_minutes == 30.0
 
-    async def test_tag_replace(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-old", "name": "Old"}])],
+        tags=[make_tag_dict(id="tag-new", name="NewTag")],
+    )
+    async def test_tag_replace(self, service: OperatorService, repo: BridgeRepository) -> None:
         """actions.tags.replace=["tag1"] replaces all tags (EDIT-03)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[
-                    make_task_dict(
-                        id="task-001", name="Task", tags=[{"id": "tag-old", "name": "Old"}]
-                    )
-                ],
-                tags=[make_tag_dict(id="tag-new", name="NewTag")],
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(
@@ -407,22 +369,15 @@ class TestEditTask:
         assert len(task.tags) == 1
         assert task.tags[0].id == "tag-new"
 
-    async def test_tag_add(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])],
+        tags=[
+            make_tag_dict(id="tag-a", name="A"),
+            make_tag_dict(id="tag-b", name="B"),
+        ],
+    )
+    async def test_tag_add(self, service: OperatorService, repo: BridgeRepository) -> None:
         """actions.tags.add=["tag2"] adds without removing (EDIT-04)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[
-                    make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])
-                ],
-                tags=[
-                    make_tag_dict(id="tag-a", name="A"),
-                    make_tag_dict(id="tag-b", name="B"),
-                ],
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(
@@ -438,26 +393,21 @@ class TestEditTask:
         assert "tag-a" in tag_ids
         assert "tag-b" in tag_ids
 
-    async def test_tag_remove(self) -> None:
-        """actions.tags.remove=["tag1"] removes specific tag (EDIT-05)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[
-                    make_task_dict(
-                        id="task-001",
-                        name="Task",
-                        tags=[{"id": "tag-a", "name": "A"}, {"id": "tag-b", "name": "B"}],
-                    )
-                ],
-                tags=[
-                    make_tag_dict(id="tag-a", name="A"),
-                    make_tag_dict(id="tag-b", name="B"),
-                ],
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="task-001",
+                name="Task",
+                tags=[{"id": "tag-a", "name": "A"}, {"id": "tag-b", "name": "B"}],
             )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
+        ],
+        tags=[
+            make_tag_dict(id="tag-a", name="A"),
+            make_tag_dict(id="tag-b", name="B"),
+        ],
+    )
+    async def test_tag_remove(self, service: OperatorService, repo: BridgeRepository) -> None:
+        """actions.tags.remove=["tag1"] removes specific tag (EDIT-05)."""
 
         result = await service.edit_task(
             EditTaskCommand(
@@ -489,26 +439,23 @@ class TestEditTask:
         with pytest.raises(ValidationError, match="tags must specify at least one of"):
             TagAction()
 
-    async def test_add_and_remove_tags_together(self) -> None:
-        """actions.tags with add + remove together is allowed (EDIT-06)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[
-                    make_task_dict(
-                        id="task-001",
-                        name="Task",
-                        tags=[{"id": "tag-a", "name": "A"}],
-                    )
-                ],
-                tags=[
-                    make_tag_dict(id="tag-a", name="A"),
-                    make_tag_dict(id="tag-b", name="B"),
-                ],
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="task-001",
+                name="Task",
+                tags=[{"id": "tag-a", "name": "A"}],
             )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
+        ],
+        tags=[
+            make_tag_dict(id="tag-a", name="A"),
+            make_tag_dict(id="tag-b", name="B"),
+        ],
+    )
+    async def test_add_and_remove_tags_together(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
+        """actions.tags with add + remove together is allowed (EDIT-06)."""
 
         result = await service.edit_task(
             EditTaskCommand(
@@ -522,16 +469,13 @@ class TestEditTask:
         assert len(task.tags) == 1
         assert task.tags[0].id == "tag-b"
 
-    async def test_move_to_project_ending(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Task", inInbox=True)],
+    )
+    async def test_move_to_project_ending(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
         """Move task to project via ending (EDIT-07)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[make_task_dict(id="task-001", name="Task", inInbox=True)],
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(
@@ -547,19 +491,16 @@ class TestEditTask:
         assert task.parent.id == "proj-001"
         assert task.in_inbox is False
 
-    async def test_move_to_task_beginning(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="task-001", name="Task"),
+            make_task_dict(id="task-parent", name="Parent Task"),
+        ],
+    )
+    async def test_move_to_task_beginning(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
         """Move task under another task via beginning (EDIT-07)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[
-                    make_task_dict(id="task-001", name="Task"),
-                    make_task_dict(id="task-parent", name="Parent Task"),
-                ],
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(
@@ -574,23 +515,18 @@ class TestEditTask:
         assert task.parent.type == "task"
         assert task.parent.id == "task-parent"
 
-    async def test_move_to_inbox(self) -> None:
-        """Move task to inbox via ending=null (EDIT-08)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[
-                    make_task_dict(
-                        id="task-001",
-                        name="Task",
-                        parent={"type": "project", "id": "proj-001", "name": "Project"},
-                        inInbox=False,
-                    )
-                ],
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="task-001",
+                name="Task",
+                parent={"type": "project", "id": "proj-001", "name": "Project"},
+                inInbox=False,
             )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
+        ],
+    )
+    async def test_move_to_inbox(self, service: OperatorService, repo: BridgeRepository) -> None:
+        """Move task to inbox via ending=null (EDIT-08)."""
 
         result = await service.edit_task(
             EditTaskCommand(
@@ -604,25 +540,20 @@ class TestEditTask:
         assert task.parent is None
         assert task.in_inbox is True
 
-    async def test_cycle_detection(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="task-parent", name="Parent"),
+            make_task_dict(
+                id="task-child",
+                name="Child",
+                parent={"type": "task", "id": "task-parent", "name": "Parent"},
+            ),
+        ],
+    )
+    async def test_cycle_detection(self, service: OperatorService) -> None:
         """Moving task under its own child raises ValueError."""
 
         # task-parent -> task-child (child's parent is task-parent)
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[
-                    make_task_dict(id="task-parent", name="Parent"),
-                    make_task_dict(
-                        id="task-child",
-                        name="Child",
-                        parent={"type": "task", "id": "task-parent", "name": "Parent"},
-                    ),
-                ],
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
-
         with pytest.raises(ValueError, match="circular reference"):
             await service.edit_task(
                 EditTaskCommand(
@@ -631,47 +562,30 @@ class TestEditTask:
                 )
             )
 
-    async def test_task_not_found(self) -> None:
+    async def test_task_not_found(self, service: OperatorService) -> None:
         """Non-existent task raises ValueError."""
-
-        bridge = InMemoryBridge(data=make_snapshot_dict())
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         with pytest.raises(ValueError, match="Task not found"):
             await service.edit_task(EditTaskCommand(id="nonexistent"))
 
-    async def test_empty_name(self) -> None:
+    async def test_empty_name(self, service: OperatorService) -> None:
         """Empty name raises ValueError."""
-
-        bridge = InMemoryBridge(data=make_snapshot_dict())
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         with pytest.raises(ValueError, match="Task name cannot be empty"):
             await service.edit_task(EditTaskCommand(id="task-001", name=""))
 
-    async def test_whitespace_name(self) -> None:
+    async def test_whitespace_name(self, service: OperatorService) -> None:
         """Whitespace-only name raises ValueError."""
-
-        bridge = InMemoryBridge(data=make_snapshot_dict())
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         with pytest.raises(ValueError, match="Task name cannot be empty"):
             await service.edit_task(EditTaskCommand(id="task-001", name="   "))
 
-    async def test_warning_remove_tag_not_on_task(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Task", tags=[])],
+        tags=[make_tag_dict(id="tag-x", name="X")],
+    )
+    async def test_warning_remove_tag_not_on_task(self, service: OperatorService) -> None:
         """Removing a tag the task doesn't have produces a warning."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[make_task_dict(id="task-001", name="Task", tags=[])],
-                tags=[make_tag_dict(id="tag-x", name="X")],
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(
@@ -684,26 +598,17 @@ class TestEditTask:
         assert any("is not on this task" in w for w in result.warnings)
         assert any("(tag-x)" in w for w in result.warnings)
 
-    async def test_no_warnings_when_none(self) -> None:
+    async def test_no_warnings_when_none(self, service: OperatorService) -> None:
         """No warnings when edit is clean."""
-
-        bridge = InMemoryBridge(data=make_snapshot_dict())
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(EditTaskCommand(id="task-001", name="Updated"))
         assert result.warnings is None
 
-    async def test_note_null_clears_note(self) -> None:
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task", note="Some note")])
+    async def test_note_null_clears_note(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
         """note=None maps to empty string (null-means-clear)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[make_task_dict(id="task-001", name="Task", note="Some note")]
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(EditTaskCommand(id="task-001", note=None))
         assert result.success is True
@@ -711,19 +616,14 @@ class TestEditTask:
         assert task is not None
         assert task.note == ""
 
-    async def test_tags_null_clears_all_tags(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])],
+        tags=[make_tag_dict(id="tag-a", name="A")],
+    )
+    async def test_tags_null_clears_all_tags(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
         """actions.tags.replace=None clears all tags (null-means-clear)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[
-                    make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])
-                ],
-                tags=[make_tag_dict(id="tag-a", name="A")],
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(
@@ -736,46 +636,31 @@ class TestEditTask:
         assert task is not None
         assert task.tags == []
 
-    async def test_warning_edit_completed_task(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Done Task", availability="completed")]
+    )
+    async def test_warning_edit_completed_task(self, service: OperatorService) -> None:
         """Editing a completed task produces a warm warning."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[make_task_dict(id="task-001", name="Done Task", availability="completed")]
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(EditTaskCommand(id="task-001", name="Renamed"))
         assert result.warnings is not None
         assert any("completed" in w and "confirm with the user" in w for w in result.warnings)
 
-    async def test_warning_edit_dropped_task(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Dropped Task", availability="dropped")]
+    )
+    async def test_warning_edit_dropped_task(self, service: OperatorService) -> None:
         """Editing a dropped task produces a warm warning."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[make_task_dict(id="task-001", name="Dropped Task", availability="dropped")]
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(EditTaskCommand(id="task-001", name="Renamed"))
         assert result.warnings is not None
         assert any("dropped" in w and "confirm with the user" in w for w in result.warnings)
 
-    async def test_noop_priority_completed(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Done Task", availability="completed")]
+    )
+    async def test_noop_priority_completed(self, service: OperatorService) -> None:
         """No-op edit on completed task returns only no-op warning, not status warning."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[make_task_dict(id="task-001", name="Done Task", availability="completed")]
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         # Set name to same value -- no-op should suppress status warning
         result = await service.edit_task(EditTaskCommand(id="task-001", name="Done Task"))
@@ -784,16 +669,11 @@ class TestEditTask:
         assert not any("completed" in w for w in result.warnings)
         assert len(result.warnings) == 1
 
-    async def test_noop_priority_dropped(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Dropped Task", availability="dropped")]
+    )
+    async def test_noop_priority_dropped(self, service: OperatorService) -> None:
         """No-op edit on dropped task returns only no-op warning, not status warning."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[make_task_dict(id="task-001", name="Dropped Task", availability="dropped")]
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(EditTaskCommand(id="task-001", name="Dropped Task"))
         assert result.warnings is not None
@@ -801,19 +681,14 @@ class TestEditTask:
         assert not any("dropped" in w for w in result.warnings)
         assert len(result.warnings) == 1
 
-    async def test_warning_addtags_duplicate(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])],
+        tags=[make_tag_dict(id="tag-a", name="A")],
+    )
+    async def test_warning_addtags_duplicate(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
         """Adding a tag already on the task produces a warning."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[
-                    make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])
-                ],
-                tags=[make_tag_dict(id="tag-a", name="A")],
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(
@@ -829,22 +704,15 @@ class TestEditTask:
         assert task is not None
         assert any(t.id == "tag-a" for t in task.tags)
 
-    async def test_warning_addtags_duplicate_in_add_remove(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])],
+        tags=[
+            make_tag_dict(id="tag-a", name="A"),
+            make_tag_dict(id="tag-b", name="B"),
+        ],
+    )
+    async def test_warning_addtags_duplicate_in_add_remove(self, service: OperatorService) -> None:
         """Adding a tag already present in add_remove mode produces a warning."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[
-                    make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])
-                ],
-                tags=[
-                    make_tag_dict(id="tag-a", name="A"),
-                    make_tag_dict(id="tag-b", name="B"),
-                ],
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(
@@ -858,19 +726,12 @@ class TestEditTask:
         # Should NOT warn "is not on this task" for A since A IS on the task
         assert not any("is not on this task" in w for w in result.warnings)
 
-    async def test_add_tag_warning_resolves_name_from_id(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-x", "name": "X"}])],
+        tags=[make_tag_dict(id="tag-x", name="X")],
+    )
+    async def test_add_tag_warning_resolves_name_from_id(self, service: OperatorService) -> None:
         """add tags with raw ID for tag already on task shows resolved name, not ID."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[
-                    make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-x", "name": "X"}])
-                ],
-                tags=[make_tag_dict(id="tag-x", name="X")],
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         # Pass raw ID instead of name
         result = await service.edit_task(
@@ -884,17 +745,12 @@ class TestEditTask:
         assert any("Tag 'X'" in w and "(tag-x)" in w for w in result.warnings)
         assert not any("Tag 'tag-x'" in w for w in result.warnings)
 
-    async def test_remove_tag_warning_resolves_name_from_id(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Task", tags=[])],
+        tags=[make_tag_dict(id="tag-x", name="X")],
+    )
+    async def test_remove_tag_warning_resolves_name_from_id(self, service: OperatorService) -> None:
         """remove tags with raw ID for tag NOT on task shows resolved name, not ID."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[make_task_dict(id="task-001", name="Task", tags=[])],
-                tags=[make_tag_dict(id="tag-x", name="X")],
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         # Pass raw ID instead of name
         result = await service.edit_task(
@@ -909,21 +765,12 @@ class TestEditTask:
         assert any("Tag 'X'" in w and "(tag-x)" in w for w in result.warnings)
         assert not any("Tag 'tag-x'" in w for w in result.warnings)
 
-    async def test_add_tag_warning_with_name_still_works(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "Alpha"}])],
+        tags=[make_tag_dict(id="tag-a", name="Alpha")],
+    )
+    async def test_add_tag_warning_with_name_still_works(self, service: OperatorService) -> None:
         """add tags with name string still shows name correctly (regression guard)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[
-                    make_task_dict(
-                        id="task-001", name="Task", tags=[{"id": "tag-a", "name": "Alpha"}]
-                    )
-                ],
-                tags=[make_tag_dict(id="tag-a", name="Alpha")],
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(
@@ -934,52 +781,35 @@ class TestEditTask:
         assert result.warnings is not None
         assert any("Tag 'Alpha'" in w and "(tag-a)" in w for w in result.warnings)
 
-    async def test_warning_empty_edit(self) -> None:
+    async def test_warning_empty_edit(self, service: OperatorService) -> None:
         """Empty edit (only id, no fields) returns warning without calling bridge."""
-
-        bridge = InMemoryBridge(data=make_snapshot_dict())
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(EditTaskCommand(id="task-001"))
         assert result.success is True
         assert result.warnings is not None
         assert any("No changes specified" in w for w in result.warnings)
 
-    async def test_noop_detection_same_name(self) -> None:
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Foo")])
+    async def test_noop_detection_same_name(self, service: OperatorService) -> None:
         """Editing name to same value triggers no-op detection."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Foo")])
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(EditTaskCommand(id="task-001", name="Foo"))
         assert result.success is True
         assert result.warnings is not None
         assert any("No changes detected" in w for w in result.warnings)
 
-    async def test_noop_detection_different_name(self) -> None:
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Foo")])
+    async def test_noop_detection_different_name(self, service: OperatorService) -> None:
         """Editing name to different value does not trigger no-op warning."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Foo")])
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(EditTaskCommand(id="task-001", name="Bar"))
         assert result.warnings is None
 
-    async def test_set_estimate_and_flag_together(self) -> None:
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
+    async def test_set_estimate_and_flag_together(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
         """Edit task with both estimated_minutes and flagged (UAT #3)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")])
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(id="task-001", estimated_minutes=45.0, flagged=True)
@@ -990,14 +820,11 @@ class TestEditTask:
         assert task.estimated_minutes == 45.0
         assert task.flagged is True
 
-    async def test_set_defer_and_planned_dates(self) -> None:
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
+    async def test_set_defer_and_planned_dates(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
         """Edit task setting defer_date and planned_date (UAT #4)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")])
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(
@@ -1014,14 +841,9 @@ class TestEditTask:
         assert task.planned_date is not None
         assert task.planned_date.isoformat() == "2026-03-12T09:00:00+00:00"
 
-    async def test_multi_field_edit(self) -> None:
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Old")])
+    async def test_multi_field_edit(self, service: OperatorService, repo: BridgeRepository) -> None:
         """Edit task changing name, note, flagged, and estimated_minutes (UAT #5)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Old")])
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(
@@ -1040,16 +862,9 @@ class TestEditTask:
         assert task.flagged is True
         assert task.estimated_minutes == 60.0
 
-    async def test_unflag(self) -> None:
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task", flagged=True)])
+    async def test_unflag(self, service: OperatorService, repo: BridgeRepository) -> None:
         """Start with flagged=True, edit to flagged=False (UAT #6)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[make_task_dict(id="task-001", name="Task", flagged=True)]
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(EditTaskCommand(id="task-001", flagged=False))
         assert result.success is True
@@ -1057,16 +872,11 @@ class TestEditTask:
         assert task is not None
         assert task.flagged is False
 
-    async def test_clear_note_with_empty_string(self) -> None:
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task", note="Some note")])
+    async def test_clear_note_with_empty_string(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
         """Edit task with note='' clears note (UAT #9)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[make_task_dict(id="task-001", name="Task", note="Some note")]
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(EditTaskCommand(id="task-001", note=""))
         assert result.success is True
@@ -1074,16 +884,11 @@ class TestEditTask:
         assert task is not None
         assert task.note == ""
 
-    async def test_clear_estimated_minutes(self) -> None:
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task", estimatedMinutes=30.0)])
+    async def test_clear_estimated_minutes(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
         """Set estimated_minutes=None clears the estimate (UAT #10)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[make_task_dict(id="task-001", name="Task", estimatedMinutes=30.0)]
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(EditTaskCommand(id="task-001", estimated_minutes=None))
         assert result.success is True
@@ -1091,24 +896,21 @@ class TestEditTask:
         assert task is not None
         assert task.estimated_minutes is None
 
-    async def test_patch_preserves_untouched_fields(self) -> None:
-        """Editing only name preserves note, flagged, estimatedMinutes (UAT #11)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[
-                    make_task_dict(
-                        id="task-001",
-                        name="Original",
-                        note="Keep me",
-                        flagged=True,
-                        estimatedMinutes=45.0,
-                    )
-                ]
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="task-001",
+                name="Original",
+                note="Keep me",
+                flagged=True,
+                estimatedMinutes=45.0,
             )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
+        ]
+    )
+    async def test_patch_preserves_untouched_fields(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
+        """Editing only name preserves note, flagged, estimatedMinutes (UAT #11)."""
 
         result = await service.edit_task(EditTaskCommand(id="task-001", name="Updated"))
         assert result.success is True
@@ -1119,19 +921,14 @@ class TestEditTask:
         assert task.flagged is True
         assert task.estimated_minutes == 45.0
 
-    async def test_move_after_sibling(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="task-001", name="Task A"),
+            make_task_dict(id="task-002", name="Task B"),
+        ],
+    )
+    async def test_move_after_sibling(self, service: OperatorService) -> None:
         """Move task after a sibling task (UAT #28)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[
-                    make_task_dict(id="task-001", name="Task A"),
-                    make_task_dict(id="task-002", name="Task B"),
-                ],
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(
@@ -1141,19 +938,14 @@ class TestEditTask:
         )
         assert result.success is True
 
-    async def test_move_before_sibling(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="task-001", name="Task A"),
+            make_task_dict(id="task-002", name="Task B"),
+        ],
+    )
+    async def test_move_before_sibling(self, service: OperatorService) -> None:
         """Move task before a sibling task (UAT #29)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[
-                    make_task_dict(id="task-001", name="Task A"),
-                    make_task_dict(id="task-002", name="Task B"),
-                ],
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(
@@ -1163,14 +955,9 @@ class TestEditTask:
         )
         assert result.success is True
 
-    async def test_cycle_self_reference(self) -> None:
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
+    async def test_cycle_self_reference(self, service: OperatorService) -> None:
         """Moving task under itself raises circular reference (UAT #38)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")])
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         with pytest.raises(ValueError, match="circular reference"):
             await service.edit_task(
@@ -1180,14 +967,9 @@ class TestEditTask:
                 )
             )
 
-    async def test_moveto_anchor_not_found(self) -> None:
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
+    async def test_moveto_anchor_not_found(self, service: OperatorService) -> None:
         """MoveToSpec with nonexistent anchor raises ValueError (UAT #46)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")])
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         with pytest.raises(ValueError, match="Anchor task not found"):
             await service.edit_task(
@@ -1197,16 +979,13 @@ class TestEditTask:
                 )
             )
 
-    async def test_move_and_edit_combined(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Old Name", inInbox=True)],
+    )
+    async def test_move_and_edit_combined(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
         """Edit task with both move and field changes (UAT #39)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[make_task_dict(id="task-001", name="Old Name", inInbox=True)],
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(
@@ -1222,22 +1001,19 @@ class TestEditTask:
         assert task.parent is not None
         assert task.parent.id == "proj-001"
 
-    async def test_noop_detection_same_date_different_timezone(self) -> None:
-        """Same absolute time in different timezone triggers no-op (UAT #47)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[
-                    make_task_dict(
-                        id="task-001",
-                        name="Task",
-                        dueDate="2026-03-10T07:00:00+00:00",
-                    )
-                ]
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="task-001",
+                name="Task",
+                dueDate="2026-03-10T07:00:00+00:00",
             )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
+        ]
+    )
+    async def test_noop_detection_same_date_different_timezone(
+        self, service: OperatorService
+    ) -> None:
+        """Same absolute time in different timezone triggers no-op (UAT #47)."""
 
         # Same absolute time but expressed as +01:00
         result = await service.edit_task(
@@ -1250,22 +1026,17 @@ class TestEditTask:
         assert result.warnings is not None
         assert any("No changes detected" in w for w in result.warnings)
 
-    async def test_same_container_move_warning(self) -> None:
-        """Moving task to same container (ending) produces location warning (UAT #70)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[
-                    make_task_dict(
-                        id="task-001",
-                        name="Task",
-                        parent={"type": "project", "id": "proj-001", "name": "Test Project"},
-                    )
-                ],
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="task-001",
+                name="Task",
+                parent={"type": "project", "id": "proj-001", "name": "Test Project"},
             )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
+        ],
+    )
+    async def test_same_container_move_warning(self, service: OperatorService) -> None:
+        """Moving task to same container (ending) produces location warning (UAT #70)."""
 
         result = await service.edit_task(
             EditTaskCommand(
@@ -1277,14 +1048,9 @@ class TestEditTask:
         assert result.warnings is not None
         assert any("already in this container" in w for w in result.warnings)
 
-    async def test_lifecycle_complete_available_task(self) -> None:
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
+    async def test_lifecycle_complete_available_task(self, service: OperatorService) -> None:
         """lifecycle='complete' on available task succeeds without special warning."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")])
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="complete"))
@@ -1294,14 +1060,9 @@ class TestEditTask:
         if result.warnings:
             assert not any("already" in w.lower() for w in result.warnings)
 
-    async def test_lifecycle_drop_available_task(self) -> None:
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
+    async def test_lifecycle_drop_available_task(self, service: OperatorService) -> None:
         """lifecycle='drop' on available task succeeds without special warning."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")])
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="drop"))
@@ -1310,16 +1071,13 @@ class TestEditTask:
         if result.warnings:
             assert not any("already" in w.lower() for w in result.warnings)
 
-    async def test_lifecycle_complete_already_completed_noop(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
+    )
+    async def test_lifecycle_complete_already_completed_noop(
+        self, service: OperatorService
+    ) -> None:
         """Completing an already-completed task is a no-op with warning."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="complete"))
@@ -1328,16 +1086,11 @@ class TestEditTask:
         assert result.warnings is not None
         assert any("already complete" in w.lower() for w in result.warnings)
 
-    async def test_lifecycle_drop_already_dropped_noop(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Task", availability="dropped")]
+    )
+    async def test_lifecycle_drop_already_dropped_noop(self, service: OperatorService) -> None:
         """Dropping an already-dropped task is a no-op with warning."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[make_task_dict(id="task-001", name="Task", availability="dropped")]
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="drop"))
@@ -1346,16 +1099,13 @@ class TestEditTask:
         assert result.warnings is not None
         assert any("already dropped" in w.lower() for w in result.warnings)
 
-    async def test_lifecycle_complete_dropped_task_cross_state(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Task", availability="dropped")]
+    )
+    async def test_lifecycle_complete_dropped_task_cross_state(
+        self, service: OperatorService
+    ) -> None:
         """Completing a dropped task succeeds with cross-state warning."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[make_task_dict(id="task-001", name="Task", availability="dropped")]
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="complete"))
@@ -1364,16 +1114,13 @@ class TestEditTask:
         assert result.warnings is not None
         assert any("dropped" in w and "complete" in w.lower() for w in result.warnings)
 
-    async def test_lifecycle_drop_completed_task_cross_state(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
+    )
+    async def test_lifecycle_drop_completed_task_cross_state(
+        self, service: OperatorService
+    ) -> None:
         """Dropping a completed task succeeds with cross-state warning."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="drop"))
@@ -1382,27 +1129,24 @@ class TestEditTask:
         assert result.warnings is not None
         assert any("completed" in w and "drop" in w.lower() for w in result.warnings)
 
-    async def test_lifecycle_complete_repeating_task_warning(self) -> None:
-        """Completing a repeating task warns about occurrence completion."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[
-                    make_task_dict(
-                        id="task-001",
-                        name="Task",
-                        repetitionRule={
-                            "ruleString": "FREQ=WEEKLY",
-                            "scheduleType": "regularly",
-                            "anchorDateKey": "due_date",
-                            "catchUpAutomatically": False,
-                        },
-                    )
-                ]
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="task-001",
+                name="Task",
+                repetitionRule={
+                    "ruleString": "FREQ=WEEKLY",
+                    "scheduleType": "regularly",
+                    "anchorDateKey": "due_date",
+                    "catchUpAutomatically": False,
+                },
             )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
+        ]
+    )
+    async def test_lifecycle_complete_repeating_task_warning(
+        self, service: OperatorService
+    ) -> None:
+        """Completing a repeating task warns about occurrence completion."""
 
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="complete"))
@@ -1411,27 +1155,22 @@ class TestEditTask:
         assert result.warnings is not None
         assert any("repeating" in w.lower() and "occurrence" in w.lower() for w in result.warnings)
 
-    async def test_lifecycle_drop_repeating_task_warning(self) -> None:
-        """Dropping a repeating task warns about occurrence skipped."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[
-                    make_task_dict(
-                        id="task-001",
-                        name="Task",
-                        repetitionRule={
-                            "ruleString": "FREQ=WEEKLY",
-                            "scheduleType": "regularly",
-                            "anchorDateKey": "due_date",
-                            "catchUpAutomatically": False,
-                        },
-                    )
-                ]
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="task-001",
+                name="Task",
+                repetitionRule={
+                    "ruleString": "FREQ=WEEKLY",
+                    "scheduleType": "regularly",
+                    "anchorDateKey": "due_date",
+                    "catchUpAutomatically": False,
+                },
             )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
+        ]
+    )
+    async def test_lifecycle_drop_repeating_task_warning(self, service: OperatorService) -> None:
+        """Dropping a repeating task warns about occurrence skipped."""
 
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="drop"))
@@ -1441,28 +1180,25 @@ class TestEditTask:
         assert any("repeating" in w.lower() and "skipped" in w.lower() for w in result.warnings)
         assert any("OmniFocus UI" in w for w in result.warnings)
 
-    async def test_lifecycle_cross_state_repeating_stacked_warnings(self) -> None:
-        """Cross-state + repeating: both warnings stack."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[
-                    make_task_dict(
-                        id="task-001",
-                        name="Task",
-                        availability="dropped",
-                        repetitionRule={
-                            "ruleString": "FREQ=WEEKLY",
-                            "scheduleType": "regularly",
-                            "anchorDateKey": "due_date",
-                            "catchUpAutomatically": False,
-                        },
-                    )
-                ]
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="task-001",
+                name="Task",
+                availability="dropped",
+                repetitionRule={
+                    "ruleString": "FREQ=WEEKLY",
+                    "scheduleType": "regularly",
+                    "anchorDateKey": "due_date",
+                    "catchUpAutomatically": False,
+                },
             )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
+        ]
+    )
+    async def test_lifecycle_cross_state_repeating_stacked_warnings(
+        self, service: OperatorService
+    ) -> None:
+        """Cross-state + repeating: both warnings stack."""
 
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="complete"))
@@ -1474,16 +1210,11 @@ class TestEditTask:
         assert "dropped" in all_warnings  # cross-state
         assert "repeating" in all_warnings  # repeating
 
-    async def test_lifecycle_with_field_edits(self) -> None:
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task", flagged=False)])
+    async def test_lifecycle_with_field_edits(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
         """lifecycle + field edits in same call: both applied."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[make_task_dict(id="task-001", name="Task", flagged=False)]
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(
@@ -1497,14 +1228,9 @@ class TestEditTask:
         assert task is not None
         assert task.flagged is True
 
-    async def test_lifecycle_only_not_empty_edit(self) -> None:
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
+    async def test_lifecycle_only_not_empty_edit(self, service: OperatorService) -> None:
         """lifecycle-only edit is NOT treated as empty edit."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")])
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="complete"))
@@ -1514,16 +1240,11 @@ class TestEditTask:
         if result.warnings:
             assert not any("no changes specified" in w.lower() for w in result.warnings)
 
-    async def test_lifecycle_noop_suppresses_status_warning(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
+    )
+    async def test_lifecycle_noop_suppresses_status_warning(self, service: OperatorService) -> None:
         """No-op lifecycle should NOT produce the generic status warning."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="complete"))
@@ -1537,16 +1258,13 @@ class TestEditTask:
         )
         assert not any("No changes specified" in w for w in result.warnings)
 
-    async def test_noop_lifecycle_no_spurious_empty_edit_warning(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
+    )
+    async def test_noop_lifecycle_no_spurious_empty_edit_warning(
+        self, service: OperatorService
+    ) -> None:
         """No-op lifecycle (complete already-completed) should NOT add 'No changes specified'."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="complete"))
@@ -1557,22 +1275,19 @@ class TestEditTask:
         assert not any("No changes specified" in w for w in result.warnings)
         assert len(result.warnings) == 1
 
-    async def test_noop_same_container_move_no_spurious_noop_warning(self) -> None:
-        """Same-container move should NOT add 'No changes detected'."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[
-                    make_task_dict(
-                        id="task-001",
-                        name="Task",
-                        parent={"type": "project", "id": "proj-001", "name": "Test Project"},
-                    )
-                ],
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="task-001",
+                name="Task",
+                parent={"type": "project", "id": "proj-001", "name": "Test Project"},
             )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
+        ],
+    )
+    async def test_noop_same_container_move_no_spurious_noop_warning(
+        self, service: OperatorService
+    ) -> None:
+        """Same-container move should NOT add 'No changes detected'."""
 
         result = await service.edit_task(
             EditTaskCommand(
@@ -1586,19 +1301,12 @@ class TestEditTask:
         assert not any("No changes detected" in w for w in result.warnings)
         assert len(result.warnings) == 1
 
-    async def test_noop_tags_no_spurious_empty_edit_warning(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])],
+        tags=[make_tag_dict(id="tag-a", name="A")],
+    )
+    async def test_noop_tags_no_spurious_empty_edit_warning(self, service: OperatorService) -> None:
         """Replace tags with identical set should NOT add 'No changes specified'."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[
-                    make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])
-                ],
-                tags=[make_tag_dict(id="tag-a", name="A")],
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(
@@ -1612,16 +1320,13 @@ class TestEditTask:
         assert not any("No changes specified" in w for w in result.warnings)
         assert len(result.warnings) == 1
 
-    async def test_lifecycle_action_suppresses_status_warning(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
+    )
+    async def test_lifecycle_action_suppresses_status_warning(
+        self, service: OperatorService
+    ) -> None:
         """Cross-state lifecycle should NOT produce the generic status warning."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="drop"))
@@ -1633,14 +1338,11 @@ class TestEditTask:
                 "confirm with the user that they intended to edit" in w for w in result.warnings
             )
 
-    async def test_lifecycle_noop_detection_skips_lifecycle_key(self) -> None:
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
+    async def test_lifecycle_noop_detection_skips_lifecycle_key(
+        self, service: OperatorService
+    ) -> None:
         """No-op detection (step 7) should skip the lifecycle key in field comparisons."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")])
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         # lifecycle="complete" on an available task should NOT trigger
         # "No changes detected" (the lifecycle IS a change)
@@ -1651,33 +1353,23 @@ class TestEditTask:
         if result.warnings:
             assert not any("no changes detected" in w.lower() for w in result.warnings)
 
-    async def test_empty_actions_block(self) -> None:
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
+    async def test_empty_actions_block(self, service: OperatorService) -> None:
         """EditTaskActions() with all UNSET fields behaves like empty edit."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")])
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(EditTaskCommand(id="task-001", actions=EditTaskActions()))
         assert result.success is True
         assert result.warnings is not None
         assert any("No changes" in w for w in result.warnings)
 
-    async def test_tag_replace_noop_same_tags(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])],
+        tags=[make_tag_dict(id="tag-a", name="A")],
+    )
+    async def test_tag_replace_noop_same_tags(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
         """Replace with same tags produces warning, no bridge tag keys."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[
-                    make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])
-                ],
-                tags=[make_tag_dict(id="tag-a", name="A")],
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         result = await service.edit_task(
             EditTaskCommand(
@@ -1694,19 +1386,12 @@ class TestEditTask:
         assert len(task.tags) == 1
         assert task.tags[0].id == "tag-a"
 
-    async def test_tag_only_noop_produces_warning(self) -> None:
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])],
+        tags=[make_tag_dict(id="tag-a", name="A")],
+    )
+    async def test_tag_only_noop_produces_warning(self, service: OperatorService) -> None:
         """Tag action that produces empty diff triggers no-op warning."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[
-                    make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])
-                ],
-                tags=[make_tag_dict(id="tag-a", name="A")],
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
 
         # Add a tag that's already there -- diff is empty
         result = await service.edit_task(
@@ -1721,26 +1406,21 @@ class TestEditTask:
         assert any("already on this task" in w for w in result.warnings)
         assert not any("No changes" in w for w in result.warnings)
 
-    async def test_different_container_move_no_warning(self) -> None:
-        """Moving task to different container has no location warning."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[
-                    make_task_dict(
-                        id="task-001",
-                        name="Task",
-                        parent={"type": "project", "id": "proj-001", "name": "Test Project"},
-                    )
-                ],
-                projects=[
-                    make_project_dict(id="proj-001", name="Test Project"),
-                    make_project_dict(id="proj-002", name="Other Project"),
-                ],
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="task-001",
+                name="Task",
+                parent={"type": "project", "id": "proj-001", "name": "Test Project"},
             )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
+        ],
+        projects=[
+            make_project_dict(id="proj-001", name="Test Project"),
+            make_project_dict(id="proj-002", name="Other Project"),
+        ],
+    )
+    async def test_different_container_move_no_warning(self, service: OperatorService) -> None:
+        """Moving task to different container has no location warning."""
 
         result = await service.edit_task(
             EditTaskCommand(
