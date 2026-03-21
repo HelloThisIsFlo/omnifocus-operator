@@ -29,23 +29,6 @@ from tests.doubles import ConstantMtimeSource, InMemoryBridge
 from .conftest import make_project_dict, make_snapshot_dict, make_tag_dict, make_task_dict
 
 # ---------------------------------------------------------------------------
-# Shared fixtures (per D-11, D-12, D-13)
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture
-def bridge() -> InMemoryBridge:
-    """InMemoryBridge pre-loaded with default snapshot data (per D-11)."""
-    return InMemoryBridge(data=make_snapshot_dict())
-
-
-@pytest.fixture
-def repo(bridge: InMemoryBridge) -> BridgeRepository:
-    """Repository wired to test bridge with constant mtime (per D-11, D-13)."""
-    return BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-
-
-# ---------------------------------------------------------------------------
 # OperatorService
 # ---------------------------------------------------------------------------
 
@@ -53,11 +36,7 @@ def repo(bridge: InMemoryBridge) -> BridgeRepository:
 class TestOperatorService:
     """OperatorService delegates to repository and passes through results."""
 
-    async def test_get_all_data_returns_snapshot(self) -> None:
-        bridge = InMemoryBridge(data=make_snapshot_dict())
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
-
+    async def test_get_all_data_returns_snapshot(self, service: OperatorService) -> None:
         result = await service.get_all_data()
 
         assert len(result.tasks) == 1
@@ -66,12 +45,8 @@ class TestOperatorService:
         assert len(result.folders) == 1
         assert len(result.perspectives) == 1
 
-    async def test_get_all_data_delegates_to_repository(self) -> None:
+    async def test_get_all_data_delegates_to_repository(self, service: OperatorService) -> None:
         """Service returns a complete snapshot from the repository."""
-        bridge = InMemoryBridge(data=make_snapshot_dict())
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
-
         result = await service.get_all_data()
 
         # BridgeRepository deserializes fresh each call; verify structural equality
@@ -90,55 +65,31 @@ class TestOperatorService:
         with pytest.raises(BridgeError, match="connection lost"):
             await service.get_all_data()
 
-    async def test_get_task_delegates_to_repository(self) -> None:
+    async def test_get_task_delegates_to_repository(self, service: OperatorService) -> None:
         """Service.get_task delegates to repository and returns result."""
-        bridge = InMemoryBridge(data=make_snapshot_dict())
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
-
         result = await service.get_task("task-001")
         assert result is not None
         assert result.id == "task-001"
 
-    async def test_get_task_raises_when_not_found(self) -> None:
-        bridge = InMemoryBridge(data=make_snapshot_dict())
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
-
+    async def test_get_task_raises_when_not_found(self, service: OperatorService) -> None:
         with pytest.raises(ValueError, match="Task not found: nonexistent"):
             await service.get_task("nonexistent")
 
-    async def test_get_project_delegates_to_repository(self) -> None:
-        bridge = InMemoryBridge(data=make_snapshot_dict())
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
-
+    async def test_get_project_delegates_to_repository(self, service: OperatorService) -> None:
         result = await service.get_project("proj-001")
         assert result is not None
         assert result.id == "proj-001"
 
-    async def test_get_project_raises_when_not_found(self) -> None:
-        bridge = InMemoryBridge(data=make_snapshot_dict())
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
-
+    async def test_get_project_raises_when_not_found(self, service: OperatorService) -> None:
         with pytest.raises(ValueError, match="Project not found: nonexistent"):
             await service.get_project("nonexistent")
 
-    async def test_get_tag_delegates_to_repository(self) -> None:
-        bridge = InMemoryBridge(data=make_snapshot_dict())
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
-
+    async def test_get_tag_delegates_to_repository(self, service: OperatorService) -> None:
         result = await service.get_tag("tag-001")
         assert result is not None
         assert result.id == "tag-001"
 
-    async def test_get_tag_raises_when_not_found(self) -> None:
-        bridge = InMemoryBridge(data=make_snapshot_dict())
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
-
+    async def test_get_tag_raises_when_not_found(self, service: OperatorService) -> None:
         with pytest.raises(ValueError, match="Tag not found: nonexistent"):
             await service.get_tag("nonexistent")
 
@@ -151,136 +102,67 @@ class TestOperatorService:
 class TestAddTask:
     """Service.add_task validates inputs and delegates to repository."""
 
-    async def test_create_minimal(self) -> None:
+    async def test_create_minimal(self, service: OperatorService) -> None:
         """Name-only spec creates task and returns AddTaskResult."""
-
-        bridge = InMemoryBridge(data=make_snapshot_dict())
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
-
         result = await service.add_task(AddTaskCommand(name="Buy milk"))
 
         assert isinstance(result, AddTaskResult)
         assert result.success is True
         assert result.name == "Buy milk"
 
-    async def test_create_with_parent_project(self) -> None:
+    async def test_create_with_parent_project(self, service: OperatorService) -> None:
         """Parent ID matching a project resolves successfully."""
-
-        bridge = InMemoryBridge(data=make_snapshot_dict())  # has proj-001
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
-
         result = await service.add_task(AddTaskCommand(name="Sub task", parent="proj-001"))
         assert result.success is True
 
-    async def test_create_with_parent_task(self) -> None:
+    async def test_create_with_parent_task(self, service: OperatorService) -> None:
         """Parent ID matching a task (not project) resolves successfully."""
-
-        bridge = InMemoryBridge(data=make_snapshot_dict())  # has task-001
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
-
         result = await service.add_task(AddTaskCommand(name="Sub task", parent="task-001"))
         assert result.success is True
 
-    async def test_no_parent_inbox(self) -> None:
+    async def test_no_parent_inbox(self, service: OperatorService) -> None:
         """No parent -> task goes to inbox."""
-
-        bridge = InMemoryBridge(data=make_snapshot_dict())
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
-
         result = await service.add_task(AddTaskCommand(name="Inbox task"))
         assert result.success is True
 
-    async def test_parent_not_found(self) -> None:
+    async def test_parent_not_found(self, service: OperatorService) -> None:
         """Non-existent parent raises ValueError."""
-
-        bridge = InMemoryBridge(data=make_snapshot_dict())
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
-
         with pytest.raises(ValueError, match="Parent not found: nonexistent-id"):
             await service.add_task(AddTaskCommand(name="Task", parent="nonexistent-id"))
 
-    async def test_tags_by_name(self) -> None:
+    @pytest.mark.snapshot(tags=[make_tag_dict(id="tag-work", name="Work")])
+    async def test_tags_by_name(self, service: OperatorService) -> None:
         """Case-insensitive tag name resolution."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tags=[
-                    make_tag_dict(id="tag-work", name="Work"),
-                ]
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
-
         # "work" (lowercase) should match "Work"
         result = await service.add_task(AddTaskCommand(name="Task", tags=["work"]))
         assert result.success is True
 
-    async def test_tags_by_id_fallback(self) -> None:
+    @pytest.mark.snapshot(tags=[make_tag_dict(id="tag-work", name="Work")])
+    async def test_tags_by_id_fallback(self, service: OperatorService) -> None:
         """Tag name that doesn't match tries ID fallback."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tags=[
-                    make_tag_dict(id="tag-work", name="Work"),
-                ]
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
-
         # "tag-work" as name doesn't match, but as ID it does
         result = await service.add_task(AddTaskCommand(name="Task", tags=["tag-work"]))
         assert result.success is True
 
-    async def test_tag_not_found(self) -> None:
+    async def test_tag_not_found(self, service: OperatorService) -> None:
         """Non-existent tag raises ValueError."""
-
-        bridge = InMemoryBridge(data=make_snapshot_dict())
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
-
         with pytest.raises(ValueError, match="Tag not found"):
             await service.add_task(AddTaskCommand(name="Task", tags=["nonexistent"]))
 
-    async def test_tag_ambiguous(self) -> None:
+    @pytest.mark.snapshot(
+        tags=[make_tag_dict(id="tag-a", name="Work"), make_tag_dict(id="tag-b", name="Work")]
+    )
+    async def test_tag_ambiguous(self, service: OperatorService) -> None:
         """Multiple tags with same name raises ValueError with IDs listed."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tags=[
-                    make_tag_dict(id="tag-a", name="Work"),
-                    make_tag_dict(id="tag-b", name="Work"),
-                ]
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
-
         with pytest.raises(ValueError, match="Ambiguous tag") as exc_info:
             await service.add_task(AddTaskCommand(name="Task", tags=["Work"]))
         # Error should include both IDs
         assert "tag-a" in str(exc_info.value)
         assert "tag-b" in str(exc_info.value)
 
-    async def test_all_fields(self) -> None:
+    @pytest.mark.snapshot(tags=[make_tag_dict(id="tag-work", name="Work")])
+    async def test_all_fields(self, service: OperatorService) -> None:
         """Spec with all fields creates task successfully."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tags=[
-                    make_tag_dict(id="tag-work", name="Work"),
-                ]
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
-
         spec = AddTaskCommand(
             name="Full task",
             parent="proj-001",
@@ -295,23 +177,13 @@ class TestAddTask:
         result = await service.add_task(spec)
         assert result.success is True
 
-    async def test_empty_name(self) -> None:
+    async def test_empty_name(self, service: OperatorService) -> None:
         """Empty string name raises ValueError."""
-
-        bridge = InMemoryBridge(data=make_snapshot_dict())
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
-
         with pytest.raises(ValueError, match="Task name is required"):
             await service.add_task(AddTaskCommand(name=""))
 
-    async def test_whitespace_name(self) -> None:
+    async def test_whitespace_name(self, service: OperatorService) -> None:
         """Whitespace-only name raises ValueError."""
-
-        bridge = InMemoryBridge(data=make_snapshot_dict())
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
-
         with pytest.raises(ValueError, match="Task name is required"):
             await service.add_task(AddTaskCommand(name="   "))
 
@@ -328,13 +200,10 @@ class TestAddTask:
 
         mock_repo.add_task.assert_not_called()
 
-    async def test_create_hierarchy_in_inbox(self) -> None:
+    async def test_create_hierarchy_in_inbox(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
         """Parent task in inbox, then child under that parent (UAT #5)."""
-
-        bridge = InMemoryBridge(data=make_snapshot_dict())
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
-
         # Create parent in inbox (no parent field)
         parent_result = await service.add_task(AddTaskCommand(name="Parent task"))
         assert parent_result.success is True
@@ -350,33 +219,22 @@ class TestAddTask:
         assert child is not None
         assert child.name == "Child task"
 
-    async def test_multiple_tags(self) -> None:
+    @pytest.mark.snapshot(
+        tags=[
+            make_tag_dict(id="tag-a", name="Urgent"),
+            make_tag_dict(id="tag-b", name="Work"),
+            make_tag_dict(id="tag-c", name="Home"),
+        ]
+    )
+    async def test_multiple_tags(self, service: OperatorService) -> None:
         """Task with three tags resolves all successfully (UAT #7)."""
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tags=[
-                    make_tag_dict(id="tag-a", name="Urgent"),
-                    make_tag_dict(id="tag-b", name="Work"),
-                    make_tag_dict(id="tag-c", name="Home"),
-                ]
-            )
-        )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
-
         result = await service.add_task(
             AddTaskCommand(name="Multi-tag task", tags=["Urgent", "Work", "Home"])
         )
         assert result.success is True
 
-    async def test_planned_date_only(self) -> None:
+    async def test_planned_date_only(self, service: OperatorService) -> None:
         """Task with only plannedDate set (no due/defer) succeeds (UAT #11)."""
-
-        bridge = InMemoryBridge(data=make_snapshot_dict())
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
-
         result = await service.add_task(
             AddTaskCommand(
                 name="Planned-only task",
@@ -385,26 +243,18 @@ class TestAddTask:
         )
         assert result.success is True
 
-    async def test_emoji_and_special_chars(self) -> None:
+    async def test_emoji_and_special_chars(self, service: OperatorService) -> None:
         """Task name with emoji and special characters round-trips (UAT #18)."""
-
-        bridge = InMemoryBridge(data=make_snapshot_dict())
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
-
         name = '🎯 Buy <milk> & "eggs"'
         result = await service.add_task(AddTaskCommand(name=name))
 
         assert result.success is True
         assert result.name == name
 
-    async def test_fractional_estimated_minutes(self) -> None:
+    async def test_fractional_estimated_minutes(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
         """Fractional estimatedMinutes preserved through round-trip (UAT #19)."""
-
-        bridge = InMemoryBridge(data=make_snapshot_dict())
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
-
         result = await service.add_task(
             AddTaskCommand(name="Fractional estimate", estimated_minutes=150.5)
         )
