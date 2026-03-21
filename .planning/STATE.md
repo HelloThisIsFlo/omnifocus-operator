@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2.1
 milestone_name: Architectural Cleanup
 status: unknown
-stopped_at: Completed 26-04-PLAN.md
-last_updated: "2026-03-21T12:44:35.684Z"
+stopped_at: Completed 26-05-PLAN.md
+last_updated: "2026-03-21T12:55:32.439Z"
 last_activity: 2026-03-21
 progress:
   total_phases: 10
   completed_phases: 8
   total_plans: 19
-  completed_plans: 17
+  completed_plans: 18
 ---
 
 # Project State
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 ## Current Position
 
 Phase: 26
-Plan: 05 (next)
+Plan: 05 (complete)
 
 ## Performance Metrics
 
@@ -60,6 +60,7 @@ Plan: 05 (next)
 | Phase 26 P01 | 5min | 1 tasks | 2 files |
 | Phase 26 P02 | 12min | 2 tasks | 10 files |
 | Phase 26 P04 | 5min | 2 tasks | 3 files |
+| Phase 26 P05 | 8min | 1 tasks | 1 files |
 
 ### Decisions
 
@@ -100,6 +101,7 @@ Recent decisions affecting current work:
 - [Phase 26]: Backward-compatible stub mode: auto-detect snapshot vs stub data to avoid breaking existing tests
 - [Phase 26]: Inline BridgeRepository construction for custom-snapshot tests; fixture injection for defaults (per D-11/D-12/D-13)
 - [Phase 26]: Late imports in conftest.py fixtures to break circular dependency with tests.doubles.bridge
+- [Phase 26]: Removed InMemoryBridge/make_snapshot_dict imports from test_service.py after full fixture migration; BridgeRepository moved to TYPE_CHECKING
 
 ### Pending Todos
 
@@ -138,5 +140,5 @@ None currently.
 ## Session Continuity
 
 Last activity: 2026-03-21
-Stopped at: Completed 26-04-PLAN.md
+Stopped at: Completed 26-05-PLAN.md
 Resume file: None
