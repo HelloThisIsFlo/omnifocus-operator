@@ -44,7 +44,7 @@ Requirements for Architectural Cleanup milestone. No new tools, no behavioral ch
 - [x] **INFRA-07**: Bridge factory (`create_bridge`) removed — env var reading absorbed into repository factory, PYTEST safety guard moved to `RealBridge.__init__`
 - [x] **INFRA-08**: All test double modules physically located under `tests/`, not `src/` (InMemoryBridge, BridgeCall, InMemoryRepository, ConstantMtimeSource, SimulatorBridge)
 - [x] **INFRA-09**: No production code (`src/`) imports test doubles — crossing the `src/`→`tests/` boundary is structurally impossible
-- [ ] **INFRA-10**: `InMemoryBridge` maintains mutable in-memory state and handles `add_task`/`edit_task` commands as a stateful test double
+- [x] **INFRA-10**: `InMemoryBridge` maintains mutable in-memory state and handles `add_task`/`edit_task` commands as a stateful test double
 - [ ] **INFRA-11**: `InMemoryRepository` deleted — write test infrastructure routes through the bridge serialization layer
 - [ ] **INFRA-12**: Write tests exercise the real serialization path (`BridgeWriteMixin`, `model_dump(by_alias=True)`, snapshot parsing) via the stateful `InMemoryBridge`
 - [ ] **INFRA-13**: Golden master of expected repository behavior captured from RealBridge via UAT and committed to the repo
@@ -128,7 +128,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TYPE-02 | Phase 25 | Complete |
 | TYPE-03 | Phase 25 | Complete |
 | TYPE-04 | Phase 25 | Complete |
-| INFRA-10 | Phase 26 | Pending |
+| INFRA-10 | Phase 26 | Complete |
 | INFRA-11 | Phase 26 | Pending |
 | INFRA-12 | Phase 26 | Pending |
 | INFRA-13 | Phase 27 | Pending |
