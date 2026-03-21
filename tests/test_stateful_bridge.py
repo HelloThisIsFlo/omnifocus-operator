@@ -233,6 +233,63 @@ class TestAddTask:
         assert new_task["dueDate"] == "2026-03-15T17:00:00Z"
         assert new_task["deferDate"] == "2026-03-10T09:00:00Z"
 
+    async def test_add_task_with_parent_resolves_project(self) -> None:
+        """add_task with parent=project ID resolves to {type, id, name} dict."""
+        bridge = InMemoryBridge(data=make_snapshot_dict())
+
+        await bridge.send_command("add_task", {"name": "Child", "parent": "proj-001"})
+
+        new_task = bridge._tasks[-1]
+        assert new_task["parent"] == {
+            "type": "project",
+            "id": "proj-001",
+            "name": "Test Project",
+        }
+
+    async def test_add_task_with_parent_resolves_task(self) -> None:
+        """add_task with parent=task ID (not a project) resolves to task type."""
+        bridge = InMemoryBridge(data=make_snapshot_dict())
+
+        await bridge.send_command("add_task", {"name": "Sub", "parent": "task-001"})
+
+        new_task = bridge._tasks[-1]
+        assert new_task["parent"] == {
+            "type": "task",
+            "id": "task-001",
+            "name": "Test Task",
+        }
+
+    async def test_add_task_with_parent_unknown_falls_back(self) -> None:
+        """add_task with unknown parent ID falls back to type=task, name=ID."""
+        bridge = InMemoryBridge(data=make_snapshot_dict())
+
+        await bridge.send_command("add_task", {"name": "Orphan", "parent": "unknown-id"})
+
+        new_task = bridge._tasks[-1]
+        assert new_task["parent"] == {
+            "type": "task",
+            "id": "unknown-id",
+            "name": "unknown-id",
+        }
+
+    async def test_add_task_with_tag_ids_resolves_names(self) -> None:
+        """add_task with tagIds resolves tag names from internal state."""
+        bridge = InMemoryBridge(data=make_snapshot_dict())
+
+        await bridge.send_command("add_task", {"name": "Tagged", "tagIds": ["tag-001"]})
+
+        new_task = bridge._tasks[-1]
+        assert new_task["tags"] == [{"id": "tag-001", "name": "Test Tag"}]
+
+    async def test_add_task_with_tag_ids_unknown_falls_back(self) -> None:
+        """add_task with unknown tagIds uses ID as name fallback."""
+        bridge = InMemoryBridge(data=make_snapshot_dict())
+
+        await bridge.send_command("add_task", {"name": "Tagged", "tagIds": ["no-such-tag"]})
+
+        new_task = bridge._tasks[-1]
+        assert new_task["tags"] == [{"id": "no-such-tag", "name": "no-such-tag"}]
+
 
 # ---------------------------------------------------------------------------
 # edit_task
@@ -366,6 +423,30 @@ class TestEditTask:
         )
 
         assert bridge._tasks[0]["availability"] == "dropped"
+
+    async def test_edit_task_add_tags_resolves_name_from_internal_tags(self) -> None:
+        """edit_task addTagIds resolves tag names from internal _tags list."""
+        bridge = InMemoryBridge(data=make_snapshot_dict())
+
+        await bridge.send_command(
+            "edit_task",
+            {"id": "task-001", "addTagIds": ["tag-001"]},
+        )
+
+        task_tags = bridge._tasks[0]["tags"]
+        assert {"id": "tag-001", "name": "Test Tag"} in task_tags
+
+    async def test_edit_task_add_tags_unknown_falls_back(self) -> None:
+        """edit_task addTagIds with unknown tag uses ID as name fallback."""
+        bridge = InMemoryBridge(data=make_snapshot_dict())
+
+        await bridge.send_command(
+            "edit_task",
+            {"id": "task-001", "addTagIds": ["unknown-tag"]},
+        )
+
+        task_tags = bridge._tasks[0]["tags"]
+        assert {"id": "unknown-tag", "name": "unknown-tag"} in task_tags
 
     async def test_edit_task_move_to_inbox(self) -> None:
         """edit_task with moveTo containerId=null moves task to inbox."""
