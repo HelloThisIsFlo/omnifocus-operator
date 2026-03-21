@@ -17,10 +17,10 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-16)
+See: .planning/PROJECT.md (updated 2026-03-21)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 26 — replace-inmemoryrepository-with-stateful-inmemorybridge
+**Current focus:** Phase 27 — repository-contract-tests-for-behavioral-equivalence
 
 ## Current Position
 
@@ -114,8 +114,6 @@ Carried from v1.0:
 3. Make UAT folder discoverable for verification agents
 4. Investigate `replace: []` bug in production (may not be staleness-related)
 
-5. Replace InMemoryRepository with stateful InMemoryBridge (test fidelity)
-
 ### Roadmap Evolution
 
 - Phase 23 added: SimulatorBridge and factory cleanup (deferred from Phase 19 discussion)
@@ -142,5 +140,5 @@ None currently.
 ## Session Continuity
 
 Last activity: 2026-03-21
-Stopped at: Completed 26-03-PLAN.md
+Stopped at: Phase 26 complete, ready to plan Phase 27
 Resume file: None

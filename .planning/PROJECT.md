@@ -41,6 +41,9 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 - ✓ Service decomposition: service.py → service/ package with resolve, domain, payload modules; orchestrator is pure orchestration — v1.2.1 Phase 22
 - ✓ SimulatorBridge removed from production exports, bridge factory eliminated, PYTEST guard in RealBridge.__init__ — v1.2.1 Phase 23
 - ✓ All test doubles (InMemoryBridge, SimulatorBridge, ConstantMtimeSource, InMemoryRepository) relocated from src/ to tests/doubles/ — v1.2.1 Phase 24
+- ✓ InMemoryRepository deleted; stateful InMemoryBridge handles add_task/edit_task commands, write tests exercise real serialization path — v1.2.1 Phase 26
+- ✓ StubBridge extracted as single-purpose canned-response double; InMemoryBridge is purely stateful — v1.2.1 Phase 26
+- ✓ @pytest.mark.snapshot marker + fixture composition (bridge→repo→service) eliminates test boilerplate — v1.2.1 Phase 26
 
 ### Active
 
@@ -131,4 +134,4 @@ Read path: SQLite (default, ~46ms). Write path: OmniJS bridge with write-through
 | "Add" verb for creation tools | Tool names use `add_*` (not `create_*`). "Add" is domain-native (OmniJS, task management UX), matches natural voice ("add a task"), and forms coherent verb system (add/edit/delete). Tool descriptions use natural language freely for discoverability. Write-side model names align: `AddTask*`, `EditTask*` | Decision locked pre-publish — rename `CreateTask*` → `AddTask*` pending |
 
 ---
-*Last updated: 2026-03-21 — Phase 26 complete: InMemoryRepository deleted, replaced by stateful InMemoryBridge — write tests now exercise real serialization path*
+*Last updated: 2026-03-21 after Phase 26 — InMemoryRepository deleted, stateful InMemoryBridge, StubBridge extraction, @pytest.mark.snapshot fixture composition*
