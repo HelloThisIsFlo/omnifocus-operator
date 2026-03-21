@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2.1
 milestone_name: Architectural Cleanup
 status: unknown
-stopped_at: Completed 26-01-PLAN.md
-last_updated: "2026-03-21T01:49:14.414Z"
+stopped_at: Completed 26-02-PLAN.md
+last_updated: "2026-03-21T02:04:36.594Z"
 last_activity: 2026-03-21
 progress:
   total_phases: 10
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 16
-  completed_plans: 15
+  completed_plans: 16
 ---
 
 # Project State
@@ -58,6 +58,7 @@ Plan: 2 of 2
 | Phase 24 P01 | 5min | 2 tasks | 15 files |
 | Phase 25 P01 | 5min | 1 tasks | 5 files |
 | Phase 26 P01 | 5min | 1 tasks | 2 files |
+| Phase 26 P02 | 12min | 2 tasks | 10 files |
 
 ### Decisions
 
@@ -96,6 +97,7 @@ Recent decisions affecting current work:
 - [Phase 25]: PatchOrNone[T] as distinct alias from PatchOrClear[T] for domain-meaningful None values (e.g., inbox)
 - [Phase 25]: changed_fields() on CommandModel base class, complementing is_set() TypeGuard for per-field branching
 - [Phase 26]: Backward-compatible stub mode: auto-detect snapshot vs stub data to avoid breaking existing tests
+- [Phase 26]: Inline BridgeRepository construction for custom-snapshot tests; fixture injection for defaults (per D-11/D-12/D-13)
 
 ### Pending Todos
 
@@ -134,5 +136,5 @@ None currently.
 ## Session Continuity
 
 Last activity: 2026-03-21
-Stopped at: Completed 26-01-PLAN.md
+Stopped at: Completed 26-02-PLAN.md
 Resume file: None

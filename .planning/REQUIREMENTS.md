@@ -45,8 +45,8 @@ Requirements for Architectural Cleanup milestone. No new tools, no behavioral ch
 - [x] **INFRA-08**: All test double modules physically located under `tests/`, not `src/` (InMemoryBridge, BridgeCall, InMemoryRepository, ConstantMtimeSource, SimulatorBridge)
 - [x] **INFRA-09**: No production code (`src/`) imports test doubles — crossing the `src/`→`tests/` boundary is structurally impossible
 - [x] **INFRA-10**: `InMemoryBridge` maintains mutable in-memory state and handles `add_task`/`edit_task` commands as a stateful test double
-- [ ] **INFRA-11**: `InMemoryRepository` deleted — write test infrastructure routes through the bridge serialization layer
-- [ ] **INFRA-12**: Write tests exercise the real serialization path (`BridgeWriteMixin`, `model_dump(by_alias=True)`, snapshot parsing) via the stateful `InMemoryBridge`
+- [x] **INFRA-11**: `InMemoryRepository` deleted — write test infrastructure routes through the bridge serialization layer
+- [x] **INFRA-12**: Write tests exercise the real serialization path (`BridgeWriteMixin`, `model_dump(by_alias=True)`, snapshot parsing) via the stateful `InMemoryBridge`
 - [ ] **INFRA-13**: Golden master of expected repository behavior captured from RealBridge via UAT and committed to the repo
 - [ ] **INFRA-14**: CI contract tests verify InMemoryBridge-backed `BridgeRepository` output matches the committed golden master
 
@@ -129,8 +129,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TYPE-03 | Phase 25 | Complete |
 | TYPE-04 | Phase 25 | Complete |
 | INFRA-10 | Phase 26 | Complete |
-| INFRA-11 | Phase 26 | Pending |
-| INFRA-12 | Phase 26 | Pending |
+| INFRA-11 | Phase 26 | Complete |
+| INFRA-12 | Phase 26 | Complete |
 | INFRA-13 | Phase 27 | Pending |
 | INFRA-14 | Phase 27 | Pending |
 

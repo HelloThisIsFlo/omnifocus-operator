@@ -58,7 +58,7 @@
 - [x] **Phase 23: SimulatorBridge and Factory Cleanup** - SimulatorBridge removed from exports; bridge factory eliminated; PYTEST guard moved to RealBridge (completed 2026-03-20)
 - [x] **Phase 24: Test Double Relocation** - All test double modules moved from src/ to tests/; production code structurally cannot import them (completed 2026-03-20)
 - [x] **Phase 25: Patch/PatchOrClear type aliases for command models** - `Patch[T]`/`PatchOrClear[T]` aliases + `changed_fields()` helper (TYPE-01–04) (completed 2026-03-20)
-- [ ] **Phase 26: Replace InMemoryRepository with stateful InMemoryBridge** - Stateful InMemoryBridge, delete InMemoryRepository, real serialization path in tests (INFRA-10–12)
+- [x] **Phase 26: Replace InMemoryRepository with stateful InMemoryBridge** - Stateful InMemoryBridge, delete InMemoryRepository, real serialization path in tests (INFRA-10–12) (completed 2026-03-21)
 - [ ] **Phase 27: Repository contract tests (golden master)** - Golden master from RealBridge UAT, CI contract tests verify InMemoryBridge matches (INFRA-13–14)
 
 ## Phase Details
@@ -230,11 +230,11 @@ Plans:
   2. `InMemoryRepository` module is deleted — no repository test double simulates write behavior independently of the bridge layer
   3. Write tests exercise `BridgeWriteMixin`, `model_dump(by_alias=True)`, and snapshot parsing through the stateful `InMemoryBridge`
   4. All existing tests pass without behavioral changes
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 26-01-PLAN.md -- Rewrite InMemoryBridge to stateful with add_task/edit_task command handlers
-- [ ] 26-02-PLAN.md -- Migrate all test files from InMemoryRepository to BridgeRepository, delete InMemoryRepository
+- [x] 26-02-PLAN.md -- Migrate all test files from InMemoryRepository to BridgeRepository, delete InMemoryRepository
 
 ### Phase 27: Repository contract tests (golden master)
 **Goal**: Golden master pattern proves behavioral equivalence between InMemoryBridge and RealBridge — UAT captures expected behavior, CI verifies the test double matches
