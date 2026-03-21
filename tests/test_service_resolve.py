@@ -29,24 +29,26 @@ from .conftest import (
 @pytest.fixture
 def bridge() -> InMemoryBridge:
     """InMemoryBridge pre-loaded with resolver test data (per D-11)."""
-    return InMemoryBridge(data=make_snapshot_dict(
-        tasks=[
-            make_task_dict(id="task-1", name="Alpha"),
-            make_task_dict(
-                id="task-2",
-                name="Beta",
-                parent={"type": "task", "id": "task-1", "name": "Alpha"},
-            ),
-        ],
-        projects=[
-            make_project_dict(id="proj-1", name="Project One"),
-        ],
-        tags=[
-            make_tag_dict(id="tag-work", name="Work"),
-            make_tag_dict(id="tag-home", name="Home"),
-            make_tag_dict(id="tag-errand", name="Errand"),
-        ],
-    ))
+    return InMemoryBridge(
+        data=make_snapshot_dict(
+            tasks=[
+                make_task_dict(id="task-1", name="Alpha"),
+                make_task_dict(
+                    id="task-2",
+                    name="Beta",
+                    parent={"type": "task", "id": "task-1", "name": "Alpha"},
+                ),
+            ],
+            projects=[
+                make_project_dict(id="proj-1", name="Project One"),
+            ],
+            tags=[
+                make_tag_dict(id="tag-work", name="Work"),
+                make_tag_dict(id="tag-home", name="Home"),
+                make_tag_dict(id="tag-errand", name="Errand"),
+            ],
+        )
+    )
 
 
 @pytest.fixture
@@ -196,12 +198,14 @@ class TestResolver:
 
     async def test_resolve_tags_ambiguous(self, resolver: Resolver) -> None:
         """Two tags with same name raises ValueError listing both IDs."""
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tags=[
-                make_tag_dict(id="tag-a", name="Duplicate"),
-                make_tag_dict(id="tag-b", name="Duplicate"),
-            ],
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tags=[
+                    make_tag_dict(id="tag-a", name="Duplicate"),
+                    make_tag_dict(id="tag-b", name="Duplicate"),
+                ],
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         ambiguous_resolver = Resolver(repo)
 
