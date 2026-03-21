@@ -131,4 +131,4 @@ Read path: SQLite (default, ~46ms). Write path: OmniJS bridge with write-through
 | "Add" verb for creation tools | Tool names use `add_*` (not `create_*`). "Add" is domain-native (OmniJS, task management UX), matches natural voice ("add a task"), and forms coherent verb system (add/edit/delete). Tool descriptions use natural language freely for discoverability. Write-side model names align: `AddTask*`, `EditTask*` | Decision locked pre-publish — rename `CreateTask*` → `AddTask*` pending |
 
 ---
-*Last updated: 2026-03-20 — Phase 25 complete: Patch[T]/PatchOrClear[T]/PatchOrNone[T] type aliases + changed_fields() on CommandModel*
+*Last updated: 2026-03-21 — Phase 26 complete: InMemoryRepository deleted, replaced by stateful InMemoryBridge — write tests now exercise real serialization path*
