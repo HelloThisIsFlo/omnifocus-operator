@@ -3,7 +3,7 @@ status: diagnosed
 phase: 26-replace-inmemoryrepository-with-stateful-inmemorybridge
 source: 26-01-SUMMARY.md, 26-02-SUMMARY.md
 started: 2026-03-21T02:15:00Z
-updated: 2026-03-21T02:30:00Z
+updated: 2026-03-21T03:00:00Z
 ---
 
 ## Current Test
@@ -69,20 +69,14 @@ blocked: 0
   debug_session: ""
 
 - truth: "Tests should use fixture composition (bridge→repo→service) instead of repeating construction boilerplate"
-  status: failed
-  reason: "User reported: Fixtures exist but almost no tests use them. Every test recreates bridge + repo + service inline — same 3 lines copy-pasted ~90+ times. Additionally, imports like AddTaskCommand and make_tag_dict are repeated inline in 15+ test methods instead of at top of file. Should add service(repo) fixture. Design direction: custom @pytest.mark.snapshot(...) marker for declarative test data, fixture reads marker to build pre-loaded service. Hoist all repeated inline imports to module level. Eliminates boilerplate for both default and custom snapshot cases."
+  status: resolved
+  reason: "Plans 26-04 and 26-05 implemented @pytest.mark.snapshot marker infrastructure and refactored all test_service.py classes (TestOperatorService, TestAddTask, TestEditTask — ~92 methods total) to use fixture injection. Zero inline bridge/repo/service boilerplate remaining."
   severity: major
   test: 4
   root_cause: "Plan 02 migrated 121 InMemoryRepository sites mechanically (1:1 replacement) without refactoring the test structure. The old tests already had this boilerplate pattern with InMemoryRepository; the migration preserved it. Fixtures were added but not wired into existing tests."
   artifacts:
     - path: "tests/test_service.py"
-      issue: "~90 inline bridge/repo/service constructions, 15+ inline imports"
-    - path: "tests/test_service_resolve.py"
-      issue: "Same pattern, smaller scale"
-  missing:
-    - "Add service(repo) fixture to test files"
-    - "Implement @pytest.mark.snapshot(...) custom marker + fixture that reads it"
-    - "Refactor default-snapshot tests to use fixture injection"
-    - "Refactor custom-snapshot tests to use @pytest.mark.snapshot marker"
-    - "Hoist repeated inline imports to module level (user handling separately)"
+      issue: "resolved — all test classes use fixture injection"
+    - path: "tests/conftest.py"
+      issue: "resolved — snapshot marker + bridge/repo/service fixture chain added"
   debug_session: ""
