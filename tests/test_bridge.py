@@ -1,4 +1,4 @@
-"""Tests for the bridge protocol, error hierarchy, and InMemoryBridge."""
+"""Tests for the bridge protocol, error hierarchy, and StubBridge."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from omnifocus_operator.bridge import (
     BridgeProtocolError,
     BridgeTimeoutError,
 )
-from tests.doubles import BridgeCall, InMemoryBridge
+from tests.doubles import BridgeCall, InMemoryBridge, StubBridge
 
 # ---------------------------------------------------------------------------
 # Error hierarchy
@@ -87,17 +87,17 @@ class TestBridgeErrors:
 
 
 # ---------------------------------------------------------------------------
-# InMemoryBridge
+# StubBridge
 # ---------------------------------------------------------------------------
 
 
-class TestInMemoryBridge:
-    """InMemoryBridge: data return, call tracking, error simulation."""
+class TestStubBridge:
+    """StubBridge: data return, call tracking, error simulation."""
 
     async def test_send_command_returns_data(self) -> None:
         """send_command returns the configured data dict."""
         data = {"tasks": [], "projects": []}
-        bridge = InMemoryBridge(data=data)
+        bridge = StubBridge(data=data)
 
         result = await bridge.send_command("snapshot")
 
@@ -105,7 +105,7 @@ class TestInMemoryBridge:
 
     async def test_send_command_with_params(self) -> None:
         """send_command records params in call history."""
-        bridge = InMemoryBridge(data={})
+        bridge = StubBridge(data={})
         params = {"task_id": "abc-123"}
 
         await bridge.send_command("complete_task", params=params)
@@ -114,7 +114,7 @@ class TestInMemoryBridge:
 
     async def test_call_count(self) -> None:
         """call_count returns number of invocations."""
-        bridge = InMemoryBridge(data={})
+        bridge = StubBridge(data={})
 
         await bridge.send_command("snapshot")
         await bridge.send_command("snapshot")
@@ -123,7 +123,7 @@ class TestInMemoryBridge:
 
     async def test_calls_returns_bridge_call_records(self) -> None:
         """calls returns list of BridgeCall records."""
-        bridge = InMemoryBridge(data={})
+        bridge = StubBridge(data={})
 
         await bridge.send_command("snapshot")
         await bridge.send_command("complete_task", params={"id": "1"})
@@ -135,7 +135,7 @@ class TestInMemoryBridge:
 
     async def test_calls_returns_copy(self) -> None:
         """Mutating calls does not affect internal state."""
-        bridge = InMemoryBridge(data={})
+        bridge = StubBridge(data={})
         await bridge.send_command("snapshot")
 
         calls_copy = bridge.calls
@@ -146,7 +146,7 @@ class TestInMemoryBridge:
 
     async def test_error_simulation(self) -> None:
         """set_error causes send_command to raise the configured error."""
-        bridge = InMemoryBridge(data={})
+        bridge = StubBridge(data={})
         bridge.set_error(BridgeTimeoutError("snapshot", timeout_seconds=10.0))
 
         with pytest.raises(BridgeTimeoutError) as exc_info:
@@ -157,7 +157,7 @@ class TestInMemoryBridge:
 
     async def test_call_recorded_before_error(self) -> None:
         """Call is recorded BEFORE error is raised."""
-        bridge = InMemoryBridge(data={})
+        bridge = StubBridge(data={})
         bridge.set_error(BridgeError("test", "fail"))
 
         with pytest.raises(BridgeError):
@@ -167,7 +167,7 @@ class TestInMemoryBridge:
 
     async def test_clear_error(self) -> None:
         """clear_error removes the configured error."""
-        bridge = InMemoryBridge(data={"ok": True})
+        bridge = StubBridge(data={"ok": True})
         bridge.set_error(BridgeError("test", "fail"))
         bridge.clear_error()
 
@@ -176,16 +176,16 @@ class TestInMemoryBridge:
         assert result == {"ok": True}
 
     async def test_default_empty_data(self) -> None:
-        """InMemoryBridge() defaults to empty dict."""
-        bridge = InMemoryBridge()
+        """StubBridge() defaults to empty dict."""
+        bridge = StubBridge()
 
         result = await bridge.send_command("snapshot")
 
         assert result == {}
 
     async def test_data_none_defaults_to_empty_dict(self) -> None:
-        """InMemoryBridge(data=None) defaults to empty dict."""
-        bridge = InMemoryBridge(data=None)
+        """StubBridge(data=None) defaults to empty dict."""
+        bridge = StubBridge(data=None)
 
         result = await bridge.send_command("snapshot")
 
@@ -214,6 +214,15 @@ class TestBridgeProtocol:
         No isinstance check -- structural typing is static.
         """
         bridge: Bridge = InMemoryBridge(data={})
+        assert bridge is not None
+
+    def test_stub_bridge_satisfies_protocol(self) -> None:
+        """StubBridge structurally satisfies the Bridge protocol.
+
+        If this line type-checks with mypy --strict, the protocol is satisfied.
+        No isinstance check -- structural typing is static.
+        """
+        bridge: Bridge = StubBridge(data={})
         assert bridge is not None
 
 

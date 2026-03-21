@@ -26,7 +26,7 @@ from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoPayload, 
 from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoPayload
 from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.repository.hybrid import _FRESHNESS_TIMEOUT, HybridRepository
-from tests.doubles import InMemoryBridge
+from tests.doubles import InMemoryBridge, StubBridge
 
 # Core Foundation epoch: Jan 1, 2001 00:00:00 UTC
 _CF_EPOCH = datetime(2001, 1, 1, tzinfo=UTC)
@@ -1040,7 +1040,7 @@ class TestFreshness:
         wal_path = db_path.parent / (db_path.name + "-wal")
         wal_path.touch()
 
-        bridge = InMemoryBridge(data={"id": "task-001", "name": "Edited"})
+        bridge = StubBridge(data={"id": "task-001", "name": "Edited"})
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
         # Schedule a WAL mtime change after a short delay
@@ -1063,7 +1063,7 @@ class TestFreshness:
         if wal_path.exists():
             wal_path.unlink()
 
-        bridge = InMemoryBridge(data={"id": "task-001", "name": "Edited"})
+        bridge = StubBridge(data={"id": "task-001", "name": "Edited"})
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
         # Modify DB file mtime after short delay
@@ -1083,7 +1083,7 @@ class TestFreshness:
         wal_path = db_path.parent / (db_path.name + "-wal")
         wal_path.touch()
 
-        bridge = InMemoryBridge(data={"id": "task-001", "name": "Edited"})
+        bridge = StubBridge(data={"id": "task-001", "name": "Edited"})
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
         # Don't modify WAL -- should timeout and return result anyway
@@ -1107,7 +1107,7 @@ class TestFreshness:
         """
         db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
         wal_path = str(db_path) + "-wal"
-        bridge = InMemoryBridge(data={"id": "task-001", "name": "Edited"}, wal_path=wal_path)
+        bridge = StubBridge(data={"id": "task-001", "name": "Edited"}, wal_path=wal_path)
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
         start = time.monotonic()
@@ -1126,7 +1126,7 @@ class TestFreshness:
         wal_path = db_path.parent / (db_path.name + "-wal")
         wal_path.touch()
 
-        bridge = InMemoryBridge(data={"id": "task-001", "name": "Edited"})
+        bridge = StubBridge(data={"id": "task-001", "name": "Edited"})
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
         sleep_calls: list[float] = []
@@ -1178,7 +1178,7 @@ class TestFreshness:
         wal_path = db_path.parent / (db_path.name + "-wal")
         wal_path.touch()
 
-        bridge = InMemoryBridge(data={"id": "new-1", "name": "Test"})
+        bridge = StubBridge(data={"id": "new-1", "name": "Test"})
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
         async def modify_wal() -> None:
@@ -1211,7 +1211,7 @@ class TestFreshness:
         wal_path = db_path.parent / (db_path.name + "-wal")
         wal_path.touch()
 
-        bridge = InMemoryBridge(data={"id": "task-001", "name": "Test"})
+        bridge = StubBridge(data={"id": "task-001", "name": "Test"})
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
         sleep_called = False
@@ -1240,7 +1240,7 @@ class TestAddTask:
         """add_task sends add_task command to bridge with correct payload."""
         db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
         wal_path = str(db_path) + "-wal"
-        bridge = InMemoryBridge(data={"id": "new-task-1", "name": "Buy milk"}, wal_path=wal_path)
+        bridge = StubBridge(data={"id": "new-task-1", "name": "Buy milk"}, wal_path=wal_path)
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
         payload = AddTaskRepoPayload(name="Buy milk")
@@ -1256,7 +1256,7 @@ class TestAddTask:
         """add_task returns AddTaskRepoResult with bridge response data."""
         db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
         wal_path = str(db_path) + "-wal"
-        bridge = InMemoryBridge(data={"id": "new-task-1", "name": "Buy milk"}, wal_path=wal_path)
+        bridge = StubBridge(data={"id": "new-task-1", "name": "Buy milk"}, wal_path=wal_path)
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
         payload = AddTaskRepoPayload(name="Buy milk")
@@ -1271,7 +1271,7 @@ class TestAddTask:
         """add_task only sends populated fields in payload."""
         db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
         wal_path = str(db_path) + "-wal"
-        bridge = InMemoryBridge(data={"id": "t1", "name": "Test"}, wal_path=wal_path)
+        bridge = StubBridge(data={"id": "t1", "name": "Test"}, wal_path=wal_path)
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
         payload = AddTaskRepoPayload(name="Test")
@@ -1289,7 +1289,7 @@ class TestAddTask:
         """add_task includes tagIds in payload when tag_ids provided."""
         db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
         wal_path = str(db_path) + "-wal"
-        bridge = InMemoryBridge(data={"id": "t1", "name": "Test"}, wal_path=wal_path)
+        bridge = StubBridge(data={"id": "t1", "name": "Test"}, wal_path=wal_path)
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
         payload = AddTaskRepoPayload(name="Test", tag_ids=["tag-001", "tag-002"])
@@ -1303,7 +1303,7 @@ class TestAddTask:
         """add_task payload uses camelCase keys for bridge protocol."""
         db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
         wal_path = str(db_path) + "-wal"
-        bridge = InMemoryBridge(data={"id": "t1", "name": "Test"}, wal_path=wal_path)
+        bridge = StubBridge(data={"id": "t1", "name": "Test"}, wal_path=wal_path)
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
         payload = AddTaskRepoPayload(

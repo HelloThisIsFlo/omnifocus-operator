@@ -466,21 +466,30 @@ class TestErrorInjectionPreserved:
 
 
 class TestUnknownOperations:
-    """Unknown operations fall back to raw data (backward compatibility)."""
+    """Unknown operations return assembled snapshot (same as get_all)."""
 
-    async def test_unknown_operation_returns_raw_data(self) -> None:
-        """send_command with unknown operation returns raw seed data (backward compat)."""
-        data = {"ok": True}
-        bridge = InMemoryBridge(data=data)
+    async def test_unknown_operation_returns_snapshot(self) -> None:
+        """send_command with unknown operation returns assembled snapshot."""
+        bridge = InMemoryBridge(data=make_snapshot_dict())
 
         result = await bridge.send_command("some_unknown_op")
 
-        assert result == {"ok": True}
+        assert "tasks" in result
+        assert "projects" in result
+        assert "tags" in result
+        assert "folders" in result
+        assert "perspectives" in result
 
-    async def test_unknown_operation_with_empty_data_returns_empty_dict(self) -> None:
-        """send_command with unknown operation on empty bridge returns {}."""
-        bridge = InMemoryBridge()
+    async def test_unknown_operation_with_empty_data_returns_empty_collections(self) -> None:
+        """send_command with unknown operation on empty bridge returns empty collections."""
+        bridge = InMemoryBridge(data={})
 
         result = await bridge.send_command("unknown_op")
 
-        assert result == {}
+        assert result == {
+            "tasks": [],
+            "projects": [],
+            "tags": [],
+            "folders": [],
+            "perspectives": [],
+        }

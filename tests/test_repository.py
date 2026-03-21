@@ -247,9 +247,14 @@ class TestErrorPropagation:
         with pytest.raises(BridgeError):
             await repo.get_all()
 
-        # Fix the bridge and retry
+        # Fix the bridge by populating entity lists and retry
         bridge.clear_error()
-        bridge._data = make_snapshot_dict()
+        snap = make_snapshot_dict()
+        bridge._tasks = list(snap["tasks"])
+        bridge._projects = list(snap["projects"])
+        bridge._tags = list(snap["tags"])
+        bridge._folders = list(snap["folders"])
+        bridge._perspectives = list(snap["perspectives"])
         snapshot = await repo.get_all()
         assert len(snapshot.tasks) == 1
 
@@ -289,9 +294,14 @@ class TestErrorPropagation:
         with pytest.raises(BridgeError):
             await repo.get_all()
 
-        # Fix and retry
+        # Fix by populating entity lists and retry
         bridge.clear_error()
-        bridge._data = make_snapshot_dict()
+        snap = make_snapshot_dict()
+        bridge._tasks = list(snap["tasks"])
+        bridge._projects = list(snap["projects"])
+        bridge._tags = list(snap["tags"])
+        bridge._folders = list(snap["folders"])
+        bridge._perspectives = list(snap["perspectives"])
         snapshot = await repo.get_all()
         assert len(snapshot.tasks) == 1
 
