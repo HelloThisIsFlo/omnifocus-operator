@@ -1,0 +1,141 @@
+{
+  "scenario": "08_edit_dates",
+  "description": "Set due and defer dates on a task",
+  "operation": "edit_task",
+  "params": {
+    "id": "agglZqzDzto",
+    "dueDate": "2026-12-20T17:00:00.000Z",
+    "deferDate": "2026-12-18T09:00:00.000Z"
+  },
+  "response": {
+    "name": "GM-ParentTask"
+  },
+  "state_after": {
+    "tasks": [
+      {
+        "name": "GM-AllFields",
+        "note": "Golden master test note",
+        "flagged": true,
+        "effectiveFlagged": true,
+        "dueDate": "2026-12-15T17:00:00.000Z",
+        "deferDate": "2026-12-10T09:00:00.000Z",
+        "plannedDate": "2026-12-12T09:00:00.000Z",
+        "estimatedMinutes": 30,
+        "hasChildren": false,
+        "inInbox": false,
+        "parent": {
+          "type": "task",
+          "id": "bW2BCrF4TAz",
+          "name": ""
+        },
+        "tags": [],
+        "urgency": "none",
+        "availability": "blocked"
+      },
+      {
+        "name": "GM-InboxTask-Renamed",
+        "note": "Added note via edit",
+        "flagged": true,
+        "effectiveFlagged": true,
+        "dueDate": null,
+        "deferDate": null,
+        "plannedDate": null,
+        "estimatedMinutes": null,
+        "hasChildren": false,
+        "inInbox": true,
+        "parent": null,
+        "tags": [],
+        "urgency": "none",
+        "availability": "available"
+      },
+      {
+        "name": "GM-ParentTask",
+        "note": "",
+        "flagged": false,
+        "effectiveFlagged": false,
+        "dueDate": "2026-12-20T17:00:00.000Z",
+        "deferDate": "2026-12-18T09:00:00.000Z",
+        "plannedDate": null,
+        "estimatedMinutes": null,
+        "hasChildren": false,
+        "inInbox": false,
+        "parent": {
+          "type": "task",
+          "id": "bW2BCrF4TAz",
+          "name": ""
+        },
+        "tags": [],
+        "urgency": "none",
+        "availability": "blocked"
+      },
+      {
+        "name": "GM-TaggedTask",
+        "note": "",
+        "flagged": false,
+        "effectiveFlagged": false,
+        "dueDate": null,
+        "deferDate": null,
+        "plannedDate": null,
+        "estimatedMinutes": null,
+        "hasChildren": false,
+        "inInbox": true,
+        "parent": null,
+        "tags": [
+          {
+            "id": "c0W69oNhnmB",
+            "name": "\ud83e\uddea GM-Tag1"
+          },
+          {
+            "id": "ft1Be0WAcQr",
+            "name": "\ud83e\uddea GM-Tag2"
+          }
+        ],
+        "urgency": "none",
+        "availability": "available"
+      }
+    ],
+    "projects": [
+      {
+        "name": "\ud83e\uddea GM-TestProject",
+        "note": "",
+        "flagged": false,
+        "effectiveFlagged": false,
+        "dueDate": null,
+        "deferDate": null,
+        "effectiveDueDate": null,
+        "effectiveDeferDate": null,
+        "plannedDate": null,
+        "effectivePlannedDate": null,
+        "dropDate": null,
+        "effectiveDropDate": null,
+        "estimatedMinutes": null,
+        "hasChildren": true,
+        "lastReviewDate": "2026-03-21T00:00:00.000Z",
+        "nextReviewDate": "2026-03-28T00:00:00.000Z",
+        "reviewInterval": {
+          "steps": 1,
+          "unit": "weeks"
+        },
+        "folder": "omIFXTj55Bs",
+        "tags": [],
+        "availability": "available",
+        "urgency": "none"
+      }
+    ],
+    "tags": [
+      {
+        "name": "\ud83e\uddea GM-Tag1",
+        "childrenAreMutuallyExclusive": false,
+        "parent": "gX5jz77Zqk9",
+        "availability": "available"
+      },
+      {
+        "name": "\ud83e\uddea GM-Tag2",
+        "childrenAreMutuallyExclusive": false,
+        "parent": "gX5jz77Zqk9",
+        "availability": "available"
+      }
+    ]
+  },
+  "created_ids": []
+}

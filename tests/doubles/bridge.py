@@ -104,10 +104,15 @@ class InMemoryBridge(Bridge):
         return tag["name"] if tag is not None else tag_id
 
     def _resolve_parent(self, container_id: str) -> dict[str, Any]:
-        """Resolve a parent ID to a {type, id, name} dict."""
+        """Resolve a parent ID to a {type, id, name} dict.
+
+        Matches OmniFocus behavior: a project's root task is represented as
+        type "task" with an empty name in get_all snapshots. Only actual
+        task parents get type "task" with their real name.
+        """
         project = next((p for p in self._projects if p["id"] == container_id), None)
         if project is not None:
-            return {"type": "project", "id": container_id, "name": project["name"]}
+            return {"type": "task", "id": container_id, "name": ""}
         parent_task = next((t for t in self._tasks if t["id"] == container_id), None)
         if parent_task is not None:
             return {"type": "task", "id": container_id, "name": parent_task["name"]}
@@ -147,6 +152,12 @@ class InMemoryBridge(Bridge):
         tag_ids = params.get("tagIds", [])
         tags = [{"id": tid, "name": self._resolve_tag_name(tid)} for tid in tag_ids]
 
+        # Compute availability: "blocked" if deferred to the future
+        defer_date = params.get("deferDate")
+        availability = "available"
+        if defer_date is not None:
+            availability = "blocked"
+
         task = make_task_dict(
             id=task_id,
             name=params["name"],
@@ -159,13 +170,21 @@ class InMemoryBridge(Bridge):
             inInbox=not has_parent,
             parent=parent,
             dueDate=params.get("dueDate"),
-            deferDate=params.get("deferDate"),
+            deferDate=defer_date,
             plannedDate=params.get("plannedDate"),
             estimatedMinutes=params.get("estimatedMinutes"),
             tags=tags,
+            availability=availability,
         )
 
         self._tasks.append(task)
+
+        # Update parent project's hasChildren flag
+        if parent_id is not None:
+            project = next((p for p in self._projects if p["id"] == parent_id), None)
+            if project is not None:
+                project["hasChildren"] = True
+
         return {"id": task_id, "name": params["name"]}
 
     def _handle_edit_task(self, params: dict[str, Any]) -> dict[str, Any]:
@@ -197,6 +216,13 @@ class InMemoryBridge(Bridge):
         if "flagged" in params:
             task["effectiveFlagged"] = params["flagged"]
 
+        # Recompute availability when deferDate changes
+        if "deferDate" in params:
+            if params["deferDate"] is not None:
+                task["availability"] = "blocked"
+            else:
+                task["availability"] = "available"
+
         # Tag operations: remove first, then add
         remove_ids = set(params.get("removeTagIds", []))
         if remove_ids:
@@ -213,8 +239,10 @@ class InMemoryBridge(Bridge):
         lifecycle = params.get("lifecycle")
         if lifecycle == "complete":
             task["availability"] = "completed"
+            task["completionDate"] = datetime.now(tz=UTC).isoformat()
         elif lifecycle == "drop":
             task["availability"] = "dropped"
+            task["dropDate"] = datetime.now(tz=UTC).isoformat()
 
         # Move (dict-level with parent resolution)
         if "moveTo" in params:
@@ -225,6 +253,10 @@ class InMemoryBridge(Bridge):
             else:
                 task["inInbox"] = False
                 task["parent"] = self._resolve_parent(container_id)
+                # Update parent project's hasChildren flag
+                project = next((p for p in self._projects if p["id"] == container_id), None)
+                if project is not None:
+                    project["hasChildren"] = True
 
         return {"id": task_id, "name": task["name"]}
 

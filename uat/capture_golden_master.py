@@ -12,12 +12,12 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from omnifocus_operator.bridge._real import DEFAULT_IPC_DIR, RealBridge
-
 from omnifocus_operator.bridge.adapter import adapt_snapshot
+from omnifocus_operator.bridge.real import DEFAULT_IPC_DIR, RealBridge
 from tests.golden.normalize import (
     filter_to_known_ids,
     normalize_response,
@@ -183,7 +183,7 @@ def _build_scenarios() -> list[dict[str, Any]]:
                 "operation": "edit_task",
                 "params_fn": lambda: {
                     "id": TASK_IDS["move_target"],
-                    "moveTo": {"containerId": GM_PROJECT_ID},
+                    "moveTo": {"position": "ending", "containerId": GM_PROJECT_ID},
                 },
             },
         },
@@ -193,7 +193,7 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "operation": "edit_task",
             "params_fn": lambda: {
                 "id": TASK_IDS["move_target"],
-                "moveTo": {"containerId": None},
+                "moveTo": {"position": "ending", "containerId": None},
             },
         },
     ]
@@ -226,11 +226,15 @@ async def _capture_scenario(
     operation = scenario["operation"]
     params = scenario.get("params") or scenario["params_fn"]()
 
+    # Track IDs created during this scenario (for contract test ID mapping)
+    created_ids: list[str] = []
+
     # Execute the write operation
     response = await bridge.send_command(operation, params)
 
     # If this is an add_task, track the new ID
     if operation == "add_task":
+        created_ids.append(response["id"])
         capture_key = scenario.get("capture_id_as")
         if capture_key:
             TASK_IDS[capture_key] = response["id"]
@@ -258,7 +262,14 @@ async def _capture_scenario(
         "params": resolved_params,
         "response": normalize_response(response),
         "state_after": normalize_state(filtered),
+        "created_ids": created_ids,
     }
+
+    # For followup scenarios, store the primary operation so the contract
+    # test can replay it (e.g., create the task before editing it).
+    if followup:
+        fixture["setup_operation"] = operation
+        fixture["setup_params"] = params if isinstance(params, dict) else scenario["params_fn"]()
 
     desc = scenario["description"]
     print(f"  Scenario {scenario_num:02d}/{total}: {desc}... OK")
@@ -308,62 +319,127 @@ async def _phase_2_manual_setup(bridge: RealBridge) -> None:
     print("-" * 60)
     print()
 
-    # --- Project ---
-    while True:
-        print("Please create a project named 'GM-TestProject' in OmniFocus.")
-        input("Press Enter when done... ")
-        state = await _get_all_adapted(bridge)
-        project = _find_by_name(state.get("projects", []), "GM-TestProject")
+    # One upfront query to check what already exists
+    state = await _get_all_adapted(bridge)
+    project = _find_by_name(state.get("projects", []), "🧪 GM-TestProject")
+    tag1 = _find_by_name(state.get("tags", []), "🧪 GM-Tag1")
+    tag2 = _find_by_name(state.get("tags", []), "🧪 GM-Tag2")
+
+    if project and tag1 and tag2:
+        GM_PROJECT_ID = project["id"]
+        GM_TAG1_ID = tag1["id"]
+        GM_TAG2_ID = tag2["id"]
+        known_project_ids.add(GM_PROJECT_ID)
+        known_tag_ids.update({GM_TAG1_ID, GM_TAG2_ID})
+        print(f"  ✓ 🧪 GM-TestProject (ID: {GM_PROJECT_ID})")
+        print(f"  ✓ 🧪 GM-Tag1 (ID: {GM_TAG1_ID})")
+        print(f"  ✓ 🧪 GM-Tag2 (ID: {GM_TAG2_ID})")
+        print("  All entities found — skipping manual setup.")
+        print()
+    else:
+        # Guide through missing entities one by one
         if project:
             GM_PROJECT_ID = project["id"]
             known_project_ids.add(GM_PROJECT_ID)
-            print(f"  Found: GM-TestProject (ID: {GM_PROJECT_ID})")
+            print(f"  ✓ 🧪 GM-TestProject (ID: {GM_PROJECT_ID})")
+        else:
+            while True:
+                print("Please create a project named '🧪 GM-TestProject' in OmniFocus.")
+                input("Press Enter when done... ")
+                state = await _get_all_adapted(bridge)
+                project = _find_by_name(state.get("projects", []), "🧪 GM-TestProject")
+                if project:
+                    GM_PROJECT_ID = project["id"]
+                    known_project_ids.add(GM_PROJECT_ID)
+                    print(f"  ✓ 🧪 GM-TestProject (ID: {GM_PROJECT_ID})")
+                    break
+                print("  ERROR: Not found. Please try again.")
             print()
-            break
-        print("  ERROR: Project 'GM-TestProject' not found. Please try again.")
-        print()
 
-    # --- Tag 1 ---
-    while True:
-        print("Please create a tag named 'GM-Tag1' in OmniFocus.")
-        input("Press Enter when done... ")
-        state = await _get_all_adapted(bridge)
-        tag = _find_by_name(state.get("tags", []), "GM-Tag1")
-        if tag:
-            GM_TAG1_ID = tag["id"]
+        if tag1:
+            GM_TAG1_ID = tag1["id"]
             known_tag_ids.add(GM_TAG1_ID)
-            print(f"  Found: GM-Tag1 (ID: {GM_TAG1_ID})")
+            print(f"  ✓ 🧪 GM-Tag1 (ID: {GM_TAG1_ID})")
+        else:
+            while True:
+                print("Please create a tag named '🧪 GM-Tag1' in OmniFocus.")
+                input("Press Enter when done... ")
+                state = await _get_all_adapted(bridge)
+                tag1 = _find_by_name(state.get("tags", []), "🧪 GM-Tag1")
+                if tag1:
+                    GM_TAG1_ID = tag1["id"]
+                    known_tag_ids.add(GM_TAG1_ID)
+                    print(f"  ✓ 🧪 GM-Tag1 (ID: {GM_TAG1_ID})")
+                    break
+                print("  ERROR: Not found. Please try again.")
             print()
-            break
-        print("  ERROR: Tag 'GM-Tag1' not found. Please try again.")
-        print()
 
-    # --- Tag 2 ---
-    while True:
-        print("Please create a tag named 'GM-Tag2' in OmniFocus.")
-        input("Press Enter when done... ")
-        state = await _get_all_adapted(bridge)
-        tag = _find_by_name(state.get("tags", []), "GM-Tag2")
-        if tag:
-            GM_TAG2_ID = tag["id"]
+        if tag2:
+            GM_TAG2_ID = tag2["id"]
             known_tag_ids.add(GM_TAG2_ID)
-            print(f"  Found: GM-Tag2 (ID: {GM_TAG2_ID})")
+            print(f"  ✓ 🧪 GM-Tag2 (ID: {GM_TAG2_ID})")
+        else:
+            while True:
+                print("Please create a tag named '🧪 GM-Tag2' in OmniFocus.")
+                input("Press Enter when done... ")
+                state = await _get_all_adapted(bridge)
+                tag2 = _find_by_name(state.get("tags", []), "🧪 GM-Tag2")
+                if tag2:
+                    GM_TAG2_ID = tag2["id"]
+                    known_tag_ids.add(GM_TAG2_ID)
+                    print(f"  ✓ 🧪 GM-Tag2 (ID: {GM_TAG2_ID})")
+                    break
+                print("  ERROR: Not found. Please try again.")
             print()
-            break
-        print("  ERROR: Tag 'GM-Tag2' not found. Please try again.")
-        print()
 
     # --- Write initial state ---
     state = await _get_all_adapted(bridge)
     initial = filter_to_known_ids(state, known_task_ids, known_project_ids, known_tag_ids)
-    initial_normalized = normalize_state(initial)
+    # Keep IDs — contract tests need them to seed InMemoryBridge and build
+    # known_*_ids sets for filter_to_known_ids. Only scenario state_after
+    # snapshots are normalized (IDs stripped for comparison).
     initial_path = GOLDEN_DIR / "initial_state.json"
     initial_path.write_text(
-        json.dumps(initial_normalized, indent=2, sort_keys=False) + "\n",
+        json.dumps(initial, indent=2, sort_keys=False) + "\n",
         encoding="utf-8",
     )
     print(f"  Initial state written to {initial_path}")
     print()
+
+
+async def _check_leftover_tasks(bridge: RealBridge) -> None:
+    """Ensure no GM- tasks remain from a previous run."""
+    state = await _get_all_adapted(bridge)
+    leftover = [
+        t
+        for t in state.get("tasks", [])
+        if t.get("name", "").startswith(("GM-", "🧪 GM-")) and t["id"] not in known_project_ids
+    ]
+    if not leftover:
+        return
+
+    print("  WARNING: Found leftover tasks from a previous run:")
+    for t in leftover:
+        print(f"    - {t['name']} (ID: {t['id']})")
+    print()
+    print("  These will pollute the golden master state snapshots.")
+    print("  Please delete them in OmniFocus before continuing.")
+    print()
+
+    while True:
+        input("  Press Enter when cleaned up (or Ctrl+C to abort)... ")
+        state = await _get_all_adapted(bridge)
+        remaining = [
+            t
+            for t in state.get("tasks", [])
+            if t.get("name", "").startswith(("GM-", "🧪 GM-")) and t["id"] not in known_project_ids
+        ]
+        if not remaining:
+            print("  All clear — no leftover tasks found.")
+            print()
+            return
+        print(f"  Still found {len(remaining)} GM- task(s). Please delete them all.")
+        print()
 
 
 def _phase_3_confirmation() -> bool:
@@ -376,9 +452,9 @@ def _phase_3_confirmation() -> bool:
     print()
     print("  add_task scenarios:")
     print("    01. Add inbox task (no parent, no optional fields)")
-    print("    02. Add task with parent (under GM-TestProject)")
+    print("    02. Add task with parent (under 🧪 GM-TestProject)")
     print("    03. Add task with all fields (flagged, dates, note, estimate)")
-    print("    04. Add task with tags (GM-Tag1, GM-Tag2)")
+    print("    04. Add task with tags (🧪 GM-Tag1, 🧪 GM-Tag2)")
     print()
     print("  edit_task scenarios:")
     print("    05. Edit name")
@@ -422,24 +498,33 @@ async def _phase_4_capture(bridge: RealBridge) -> None:
 
 
 async def _phase_5_consolidation(bridge: RealBridge) -> None:
-    """Move all test-created tasks under the test project for easy cleanup."""
+    """Create a disposable parent task and move all scenario tasks under it."""
     print("-" * 60)
     print("  Phase 5: Consolidation")
     print("-" * 60)
     print()
 
+    # Create a disposable parent task under the project
+    date_str = datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M")
+    cleanup_name = f"⚠️ Delete this task (GM capture {date_str})"
+    result = await bridge.send_command(
+        "add_task",
+        {"name": cleanup_name, "parent": GM_PROJECT_ID},
+    )
+    cleanup_task_id = result["id"]
+    print(f"  Created cleanup task: {cleanup_name}")
+
+    # Move all scenario tasks under the cleanup task
     for task_id in known_task_ids:
         await bridge.send_command(
             "edit_task",
-            {"id": task_id, "moveTo": {"containerId": GM_PROJECT_ID}},
+            {"id": task_id, "moveTo": {"position": "ending", "containerId": cleanup_task_id}},
         )
 
-    print("  All test tasks consolidated under 'GM-TestProject'.")
+    print("  All test tasks consolidated under the cleanup task.")
     print()
-    print("  To clean up:")
-    print("    1. Delete the project 'GM-TestProject' in OmniFocus")
-    print("       (this deletes all test tasks too)")
-    print("    2. Delete tags 'GM-Tag1' and 'GM-Tag2'")
+    print("  To clean up: delete the task '⚠️ Delete this task...' in OmniFocus.")
+    print("  The project and tags can stay for future captures.")
     print()
 
 
@@ -458,7 +543,7 @@ def _report_cleanup_info() -> None:
         print(f"  Tag IDs: {', '.join(sorted(known_tag_ids))}")
     print()
     print("  You can find test tasks by searching for 'GM-' in OmniFocus.")
-    print("  Consolidation project: 'GM-TestProject'")
+    print("  Look for '⚠️ Delete this task...' under '🧪 GM-TestProject'.")
     print()
 
 
@@ -476,6 +561,9 @@ async def main() -> int:
     try:
         # Phase 2: Manual setup
         await _phase_2_manual_setup(bridge)
+
+        # Check for leftover tasks from previous runs
+        await _check_leftover_tasks(bridge)
 
         # Phase 3: Confirmation
         if not _phase_3_confirmation():
@@ -502,7 +590,7 @@ async def main() -> int:
     print("  Next steps:")
     print("    1. Run contract tests: uv run pytest tests/test_bridge_contract.py -x -v")
     print("    2. Run full suite: uv run pytest")
-    print("    3. Clean up OmniFocus (delete GM-TestProject, GM-Tag1, GM-Tag2)")
+    print("    3. Clean up: delete '⚠️ Delete this task...' under '🧪 GM-TestProject'")
     print()
     return 0
 

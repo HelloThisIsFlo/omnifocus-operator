@@ -234,16 +234,16 @@ class TestAddTask:
         assert new_task["deferDate"] == "2026-03-10T09:00:00Z"
 
     async def test_add_task_with_parent_resolves_project(self) -> None:
-        """add_task with parent=project ID resolves to {type, id, name} dict."""
+        """add_task with parent=project ID resolves like OmniFocus: type=task, empty name."""
         bridge = InMemoryBridge(data=make_snapshot_dict())
 
         await bridge.send_command("add_task", {"name": "Child", "parent": "proj-001"})
 
         new_task = bridge._tasks[-1]
         assert new_task["parent"] == {
-            "type": "project",
+            "type": "task",
             "id": "proj-001",
-            "name": "Test Project",
+            "name": "",
         }
 
     async def test_add_task_with_parent_resolves_task(self) -> None:

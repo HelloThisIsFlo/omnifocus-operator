@@ -1,0 +1,97 @@
+{
+  "scenario": "02_add_task_with_parent",
+  "description": "Create a task under a project",
+  "operation": "add_task",
+  "params": {
+    "name": "GM-ParentTask",
+    "parent": "bW2BCrF4TAz"
+  },
+  "response": {
+    "name": "GM-ParentTask"
+  },
+  "state_after": {
+    "tasks": [
+      {
+        "name": "GM-InboxTask",
+        "note": "",
+        "flagged": false,
+        "effectiveFlagged": false,
+        "dueDate": null,
+        "deferDate": null,
+        "plannedDate": null,
+        "estimatedMinutes": null,
+        "hasChildren": false,
+        "inInbox": true,
+        "parent": null,
+        "tags": [],
+        "urgency": "none",
+        "availability": "available"
+      },
+      {
+        "name": "GM-ParentTask",
+        "note": "",
+        "flagged": false,
+        "effectiveFlagged": false,
+        "dueDate": null,
+        "deferDate": null,
+        "plannedDate": null,
+        "estimatedMinutes": null,
+        "hasChildren": false,
+        "inInbox": false,
+        "parent": {
+          "type": "task",
+          "id": "bW2BCrF4TAz",
+          "name": ""
+        },
+        "tags": [],
+        "urgency": "none",
+        "availability": "available"
+      }
+    ],
+    "projects": [
+      {
+        "name": "\ud83e\uddea GM-TestProject",
+        "note": "",
+        "flagged": false,
+        "effectiveFlagged": false,
+        "dueDate": null,
+        "deferDate": null,
+        "effectiveDueDate": null,
+        "effectiveDeferDate": null,
+        "plannedDate": null,
+        "effectivePlannedDate": null,
+        "dropDate": null,
+        "effectiveDropDate": null,
+        "estimatedMinutes": null,
+        "hasChildren": true,
+        "lastReviewDate": "2026-03-21T00:00:00.000Z",
+        "nextReviewDate": "2026-03-28T00:00:00.000Z",
+        "reviewInterval": {
+          "steps": 1,
+          "unit": "weeks"
+        },
+        "folder": "omIFXTj55Bs",
+        "tags": [],
+        "availability": "available",
+        "urgency": "none"
+      }
+    ],
+    "tags": [
+      {
+        "name": "\ud83e\uddea GM-Tag1",
+        "childrenAreMutuallyExclusive": false,
+        "parent": "gX5jz77Zqk9",
+        "availability": "available"
+      },
+      {
+        "name": "\ud83e\uddea GM-Tag2",
+        "childrenAreMutuallyExclusive": false,
+        "parent": "gX5jz77Zqk9",
+        "availability": "available"
+      }
+    ]
+  },
+  "created_ids": [
+    "agglZqzDzto"
+  ]
+}

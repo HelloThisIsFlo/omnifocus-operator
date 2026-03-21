@@ -18,6 +18,8 @@ DYNAMIC_TASK_FIELDS: set[str] = {
     "url",
     "added",
     "modified",
+    "completionDate",
+    "dropDate",
     "effectiveDueDate",
     "effectiveDeferDate",
     "effectiveCompletionDate",
@@ -33,6 +35,7 @@ DYNAMIC_PROJECT_FIELDS: set[str] = {
     "modified",
     "completionDate",
     "repetitionRule",
+    "nextTask",
 }
 
 DYNAMIC_TAG_FIELDS: set[str] = {
