@@ -7,14 +7,16 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from omnifocus_operator.repository import BridgeRepository, HybridRepository
+from omnifocus_operator.repository.factory import create_repository
+from tests.doubles import SimulatorBridge
+
 if TYPE_CHECKING:
     from pathlib import Path
 
 
 def _stub_real_bridge(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Monkeypatch _create_real_bridge so factory never touches the real Bridge."""
-    from tests.doubles import SimulatorBridge
-
     monkeypatch.setattr(
         "omnifocus_operator.repository.factory._create_real_bridge",
         lambda: SimulatorBridge(ipc_dir=tmp_path),
@@ -32,9 +34,6 @@ class TestCreateRepositoryHybridMode:
         monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(db_file))
         _stub_real_bridge(monkeypatch, tmp_path)
 
-        from omnifocus_operator.repository import HybridRepository
-        from omnifocus_operator.repository.factory import create_repository
-
         repo = create_repository("hybrid")
         assert isinstance(repo, HybridRepository)
 
@@ -44,9 +43,6 @@ class TestCreateRepositoryHybridMode:
         monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(db_file))
         _stub_real_bridge(monkeypatch, tmp_path)
         monkeypatch.delenv("OMNIFOCUS_REPOSITORY", raising=False)
-
-        from omnifocus_operator.repository import HybridRepository
-        from omnifocus_operator.repository.factory import create_repository
 
         repo = create_repository(None)
         assert isinstance(repo, HybridRepository)
@@ -60,11 +56,7 @@ class TestCreateRepositoryHybridMode:
         monkeypatch.setenv("OMNIFOCUS_OFOCUS_PATH", str(ofocus_bundle))
         _stub_real_bridge(monkeypatch, tmp_path)
 
-        from omnifocus_operator.repository.factory import create_repository
-
         repo = create_repository()
-        from omnifocus_operator.repository import BridgeRepository
-
         assert isinstance(repo, BridgeRepository)
 
     def test_omnifocus_sqlite_path_overrides_default(
@@ -74,8 +66,6 @@ class TestCreateRepositoryHybridMode:
         custom_db.touch()
         monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(custom_db))
         _stub_real_bridge(monkeypatch, tmp_path)
-
-        from omnifocus_operator.repository.factory import create_repository
 
         repo = create_repository("hybrid")
         assert repo._db_path == str(custom_db)
@@ -92,9 +82,6 @@ class TestCreateRepositoryBridgeMode:
         monkeypatch.setenv("OMNIFOCUS_OFOCUS_PATH", str(ofocus_bundle))
         _stub_real_bridge(monkeypatch, tmp_path)
 
-        from omnifocus_operator.repository import BridgeRepository
-        from omnifocus_operator.repository.factory import create_repository
-
         repo = create_repository("bridge-only")
         assert isinstance(repo, BridgeRepository)
 
@@ -109,8 +96,6 @@ class TestCreateRepositoryBridgeMode:
         monkeypatch.setenv("OMNIFOCUS_OFOCUS_PATH", str(ofocus_bundle))
         _stub_real_bridge(monkeypatch, tmp_path)
 
-        from omnifocus_operator.repository.factory import create_repository
-
         with caplog.at_level(logging.WARNING):
             create_repository("bridge-only")
 
@@ -121,8 +106,6 @@ class TestCreateRepositoryErrors:
     """Tests for error handling."""
 
     def test_unknown_type_raises_value_error(self) -> None:
-        from omnifocus_operator.repository.factory import create_repository
-
         with pytest.raises(ValueError, match="unknown"):
             create_repository("unknown")
 
@@ -131,8 +114,6 @@ class TestCreateRepositoryErrors:
     ) -> None:
         missing_path = tmp_path / "nonexistent.db"
         monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(missing_path))
-
-        from omnifocus_operator.repository.factory import create_repository
 
         with pytest.raises(FileNotFoundError):
             create_repository("hybrid")
@@ -143,8 +124,6 @@ class TestCreateRepositoryErrors:
         missing_path = tmp_path / "nonexistent.db"
         monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(missing_path))
 
-        from omnifocus_operator.repository.factory import create_repository
-
         with pytest.raises(FileNotFoundError, match=str(missing_path)):
             create_repository("hybrid")
 
@@ -153,8 +132,6 @@ class TestCreateRepositoryErrors:
     ) -> None:
         missing_path = tmp_path / "nonexistent.db"
         monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(missing_path))
-
-        from omnifocus_operator.repository.factory import create_repository
 
         with pytest.raises(FileNotFoundError, match="OMNIFOCUS_SQLITE_PATH"):
             create_repository("hybrid")
@@ -165,8 +142,6 @@ class TestCreateRepositoryErrors:
         missing_path = tmp_path / "nonexistent.db"
         monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(missing_path))
 
-        from omnifocus_operator.repository.factory import create_repository
-
         with pytest.raises(FileNotFoundError, match="OMNIFOCUS_REPOSITORY=bridge-only"):
             create_repository("hybrid")
 
@@ -175,8 +150,6 @@ class TestCreateRepositoryErrors:
     ) -> None:
         missing_path = tmp_path / "nonexistent.db"
         monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(missing_path))
-
-        from omnifocus_operator.repository.factory import create_repository
 
         with pytest.raises(FileNotFoundError) as exc_info:
             create_repository("hybrid")

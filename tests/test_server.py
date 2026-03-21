@@ -6,6 +6,9 @@ paired memory streams -- no network sockets or subprocesses needed.
 
 from __future__ import annotations
 
+import logging
+from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, patch
 
@@ -14,13 +17,18 @@ from mcp.client.session import ClientSession
 from mcp.server.fastmcp import FastMCP
 from mcp.shared.message import SessionMessage
 
+from omnifocus_operator.repository import BridgeRepository
+from omnifocus_operator.server import _register_tools, app_lifespan, create_server
+from omnifocus_operator.service import OperatorService
+from tests.conftest import make_project_dict, make_snapshot_dict, make_tag_dict, make_task_dict
+from tests.doubles import ConstantMtimeSource, InMemoryBridge, SimulatorBridge
+
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Awaitable, Callable
 
     import pytest
 
     from omnifocus_operator.repository import Repository
-    from omnifocus_operator.service import OperatorService
 
 
 # ---------------------------------------------------------------------------
@@ -33,7 +41,6 @@ def _build_patched_server(
     service: OperatorService,
 ) -> FastMCP:
     """Create a FastMCP server with a patched lifespan injecting *service*."""
-    from contextlib import asynccontextmanager
 
     @asynccontextmanager
     async def _patched_lifespan(app: FastMCP) -> AsyncIterator[dict[str, Any]]:
@@ -88,9 +95,6 @@ class TestARCH01ThreeLayerArchitecture:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        from omnifocus_operator.repository import BridgeRepository
-        from tests.doubles import ConstantMtimeSource, InMemoryBridge
-
         monkeypatch.setattr(
             "omnifocus_operator.repository.create_repository",
             lambda *a, **kw: BridgeRepository(
@@ -106,7 +110,6 @@ class TestARCH01ThreeLayerArchitecture:
                 mtime_source=ConstantMtimeSource(),
             ),
         )
-        from omnifocus_operator.server import create_server
 
         server = create_server()
 
@@ -131,9 +134,6 @@ class TestARCH02RepositoryInjection:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        from omnifocus_operator.repository import BridgeRepository
-        from tests.doubles import ConstantMtimeSource, InMemoryBridge
-
         monkeypatch.setattr(
             "omnifocus_operator.repository.create_repository",
             lambda *a, **kw: BridgeRepository(
@@ -149,7 +149,6 @@ class TestARCH02RepositoryInjection:
                 mtime_source=ConstantMtimeSource(),
             ),
         )
-        from omnifocus_operator.server import create_server
 
         server = create_server()
 
@@ -167,7 +166,6 @@ class TestARCH02RepositoryInjection:
         """FALL-03: SQLite not found -> error-serving mode with actionable message."""
         monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "hybrid")
         monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(tmp_path / "missing.db"))
-        from omnifocus_operator.server import create_server
 
         server = create_server()
 
@@ -194,9 +192,6 @@ class TestTOOL01ListAllStructuredOutput:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        from omnifocus_operator.repository import BridgeRepository
-        from tests.doubles import ConstantMtimeSource, InMemoryBridge
-
         monkeypatch.setattr(
             "omnifocus_operator.repository.create_repository",
             lambda *a, **kw: BridgeRepository(
@@ -212,7 +207,6 @@ class TestTOOL01ListAllStructuredOutput:
                 mtime_source=ConstantMtimeSource(),
             ),
         )
-        from omnifocus_operator.server import create_server
 
         server = create_server()
 
@@ -229,11 +223,6 @@ class TestTOOL01ListAllStructuredOutput:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Verify structuredContent uses camelCase field names for nested entities."""
-        from omnifocus_operator.repository import BridgeRepository
-        from omnifocus_operator.server import _register_tools
-        from omnifocus_operator.service import OperatorService
-        from tests.doubles import ConstantMtimeSource, InMemoryBridge
-
         task_data = {
             "id": "task-1",
             "name": "Test Task",
@@ -293,16 +282,12 @@ class TestTOOL02Annotations:
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Any,
     ) -> None:
-        from omnifocus_operator.repository.bridge import BridgeRepository
-        from tests.doubles import ConstantMtimeSource, SimulatorBridge
-
         bridge = SimulatorBridge(ipc_dir=tmp_path)
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         monkeypatch.setattr(
             "omnifocus_operator.repository.create_repository",
             lambda *_a, **_kw: repo,
         )
-        from omnifocus_operator.server import create_server
 
         server = create_server()
 
@@ -319,16 +304,12 @@ class TestTOOL02Annotations:
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Any,
     ) -> None:
-        from omnifocus_operator.repository.bridge import BridgeRepository
-        from tests.doubles import ConstantMtimeSource, SimulatorBridge
-
         bridge = SimulatorBridge(ipc_dir=tmp_path)
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         monkeypatch.setattr(
             "omnifocus_operator.repository.create_repository",
             lambda *_a, **_kw: repo,
         )
-        from omnifocus_operator.server import create_server
 
         server = create_server()
 
@@ -354,16 +335,12 @@ class TestTOOL03OutputSchema:
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Any,
     ) -> None:
-        from omnifocus_operator.repository.bridge import BridgeRepository
-        from tests.doubles import ConstantMtimeSource, SimulatorBridge
-
         bridge = SimulatorBridge(ipc_dir=tmp_path)
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         monkeypatch.setattr(
             "omnifocus_operator.repository.create_repository",
             lambda *_a, **_kw: repo,
         )
-        from omnifocus_operator.server import create_server
 
         server = create_server()
 
@@ -379,16 +356,12 @@ class TestTOOL03OutputSchema:
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Any,
     ) -> None:
-        from omnifocus_operator.repository.bridge import BridgeRepository
-        from tests.doubles import ConstantMtimeSource, SimulatorBridge
-
         bridge = SimulatorBridge(ipc_dir=tmp_path)
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         monkeypatch.setattr(
             "omnifocus_operator.repository.create_repository",
             lambda *_a, **_kw: repo,
         )
-        from omnifocus_operator.server import create_server
 
         server = create_server()
 
@@ -431,8 +404,6 @@ class TestTOOL04StdoutClean:
 
     def test_no_print_calls_in_source(self) -> None:
         """Source files must not contain print() calls."""
-        from pathlib import Path
-
         src = Path(__file__).resolve().parent.parent / "src" / "omnifocus_operator"
         violations = []
         for py_file in sorted(src.rglob("*.py")):
@@ -461,9 +432,6 @@ class TestIPC06OrphanSweepWiring:
         tmp_path: Any,
     ) -> None:
         """IPC sweep runs regardless of OMNIFOCUS_REPOSITORY setting."""
-        from omnifocus_operator.repository.bridge import BridgeRepository
-        from tests.doubles import ConstantMtimeSource, SimulatorBridge
-
         bridge = SimulatorBridge(ipc_dir=tmp_path)
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         monkeypatch.setattr(
@@ -477,8 +445,6 @@ class TestIPC06OrphanSweepWiring:
             "omnifocus_operator.bridge.real.sweep_orphaned_files",
             mock_sweep,
         ):
-            from omnifocus_operator.server import _register_tools, app_lifespan
-
             server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
             _register_tools(server)
 
@@ -506,8 +472,6 @@ class TestIPC06OrphanSweepWiring:
             "omnifocus_operator.bridge.real.sweep_orphaned_files",
             mock_sweep,
         ):
-            from omnifocus_operator.server import _register_tools, app_lifespan
-
             server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
             _register_tools(server)
 
@@ -536,8 +500,6 @@ class TestDegradedMode:
             "omnifocus_operator.repository.create_repository",
             side_effect=RuntimeError("repository exploded"),
         ):
-            from omnifocus_operator.server import _register_tools, app_lifespan
-
             server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
             _register_tools(server)
 
@@ -555,14 +517,10 @@ class TestDegradedMode:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Full traceback is logged at ERROR level when startup fails."""
-        import logging
-
         with patch(
             "omnifocus_operator.repository.create_repository",
             side_effect=RuntimeError("repository exploded"),
         ):
-            from omnifocus_operator.server import _register_tools, app_lifespan
-
             server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
             _register_tools(server)
 
@@ -581,14 +539,10 @@ class TestDegradedMode:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """WARNING is logged for each tool call in degraded mode."""
-        import logging
-
         with patch(
             "omnifocus_operator.repository.create_repository",
             side_effect=RuntimeError("repository exploded"),
         ):
-            from omnifocus_operator.server import _register_tools, app_lifespan
-
             server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
             _register_tools(server)
 
@@ -612,13 +566,6 @@ class TestGetByIdTools:
 
     async def _make_server_with_data(self) -> FastMCP:
         """Build a test server with known snapshot data."""
-        from omnifocus_operator.repository import BridgeRepository
-        from omnifocus_operator.server import _register_tools
-        from omnifocus_operator.service import OperatorService
-        from tests.doubles import ConstantMtimeSource, InMemoryBridge
-
-        from .conftest import make_snapshot_dict
-
         bridge = InMemoryBridge(data=make_snapshot_dict())
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
@@ -748,13 +695,6 @@ class TestAddTasks:
         extra_tags: list[dict[str, Any]] | None = None,
     ) -> FastMCP:
         """Build a test server with BridgeRepository + InMemoryBridge and known data."""
-        from omnifocus_operator.repository import BridgeRepository
-        from omnifocus_operator.server import _register_tools
-        from omnifocus_operator.service import OperatorService
-        from tests.doubles import ConstantMtimeSource, InMemoryBridge
-
-        from .conftest import make_project_dict, make_snapshot_dict, make_tag_dict
-
         projects = [make_project_dict()]
         if extra_projects:
             projects.extend(extra_projects)
@@ -1004,13 +944,6 @@ class TestEditTasks:
         extra_tags: list[dict[str, Any]] | None = None,
     ) -> FastMCP:
         """Build a test server with BridgeRepository + InMemoryBridge and known data."""
-        from omnifocus_operator.repository import BridgeRepository
-        from omnifocus_operator.server import _register_tools
-        from omnifocus_operator.service import OperatorService
-        from tests.doubles import ConstantMtimeSource, InMemoryBridge
-
-        from .conftest import make_project_dict, make_snapshot_dict, make_tag_dict, make_task_dict
-
         tasks = [make_task_dict()]
         if extra_tasks:
             tasks.extend(extra_tasks)
@@ -1377,13 +1310,6 @@ class TestEditTasksLifecycle:
         extra_tasks: list[dict[str, Any]] | None = None,
     ) -> FastMCP:
         """Build a test server with BridgeRepository + InMemoryBridge and known data."""
-        from omnifocus_operator.repository import BridgeRepository
-        from omnifocus_operator.server import _register_tools
-        from omnifocus_operator.service import OperatorService
-        from tests.doubles import ConstantMtimeSource, InMemoryBridge
-
-        from .conftest import make_project_dict, make_snapshot_dict, make_tag_dict, make_task_dict
-
         tasks = [make_task_dict()]
         if extra_tasks:
             tasks.extend(extra_tasks)

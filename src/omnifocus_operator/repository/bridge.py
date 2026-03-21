@@ -18,6 +18,8 @@ from typing import TYPE_CHECKING, Any
 
 from omnifocus_operator.bridge.adapter import adapt_snapshot
 from omnifocus_operator.contracts.protocols import Repository
+from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoResult
+from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoResult
 from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.repository.bridge_write_mixin import BridgeWriteMixin
 
@@ -26,14 +28,8 @@ logger = logging.getLogger("omnifocus_operator")
 if TYPE_CHECKING:
     from omnifocus_operator.bridge.mtime import MtimeSource
     from omnifocus_operator.contracts.protocols import Bridge
-    from omnifocus_operator.contracts.use_cases.add_task import (
-        AddTaskRepoPayload,
-        AddTaskRepoResult,
-    )
-    from omnifocus_operator.contracts.use_cases.edit_task import (
-        EditTaskRepoPayload,
-        EditTaskRepoResult,
-    )
+    from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoPayload
+    from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoPayload
     from omnifocus_operator.models.project import Project
     from omnifocus_operator.models.tag import Tag
     from omnifocus_operator.models.task import Task
@@ -113,8 +109,6 @@ class BridgeRepository(BridgeWriteMixin, Repository):
 
         Serializes the typed payload to a camelCase dict and sends via bridge.
         """
-        from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoResult
-
         logger.debug("BridgeRepository.add_task: sending to bridge")
         result = await self._send_to_bridge("add_task", payload)
         self._cached = None  # Visible cache invalidation
@@ -124,8 +118,6 @@ class BridgeRepository(BridgeWriteMixin, Repository):
 
     async def edit_task(self, payload: EditTaskRepoPayload) -> EditTaskRepoResult:
         """Edit a task via bridge and invalidate cache."""
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoResult
-
         logger.debug("BridgeRepository.edit_task: sending to bridge")
         result = await self._send_to_bridge("edit_task", payload)
         self._cached = None  # Visible cache invalidation

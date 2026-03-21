@@ -9,15 +9,16 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from omnifocus_operator.contracts.base import is_set
+from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoPayload
+from omnifocus_operator.contracts.use_cases.edit_task import (
+    EditTaskRepoPayload,
+    MoveToRepoPayload,
+)
+
 if TYPE_CHECKING:
-    from omnifocus_operator.contracts.use_cases.add_task import (
-        AddTaskCommand,
-        AddTaskRepoPayload,
-    )
-    from omnifocus_operator.contracts.use_cases.edit_task import (
-        EditTaskCommand,
-        EditTaskRepoPayload,
-    )
+    from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand
+    from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
 logger = logging.getLogger("omnifocus_operator")
 
@@ -33,10 +34,6 @@ class PayloadBuilder:
         resolved_tag_ids: list[str] | None,
     ) -> AddTaskRepoPayload:
         """Build add-task payload. Only includes populated fields."""
-        from omnifocus_operator.contracts.use_cases.add_task import (
-            AddTaskRepoPayload,
-        )
-
         kwargs: dict[str, object] = {"name": command.name}
         if command.parent is not None:
             kwargs["parent"] = command.parent
@@ -65,11 +62,6 @@ class PayloadBuilder:
         move_to: dict[str, object] | None,
     ) -> EditTaskRepoPayload:
         """Build edit-task payload from command + domain results."""
-        from omnifocus_operator.contracts.use_cases.edit_task import (
-            EditTaskRepoPayload,
-            MoveToRepoPayload,
-        )
-
         # --- 1. Extract command fields ---
         kwargs: dict[str, object] = {"id": command.id}
 
@@ -94,8 +86,6 @@ class PayloadBuilder:
 
     def _add_if_set(self, kwargs: dict[str, object], command: object, *fields: str) -> None:
         """Add non-UNSET command fields to kwargs dict."""
-        from omnifocus_operator.contracts.base import is_set
-
         for field in fields:
             value = getattr(command, field)
             if is_set(value):
@@ -103,8 +93,6 @@ class PayloadBuilder:
 
     def _add_dates_if_set(self, kwargs: dict[str, object], command: object, *fields: str) -> None:
         """Add non-UNSET date fields, serialized to ISO string."""
-        from omnifocus_operator.contracts.base import is_set
-
         for field in fields:
             value = getattr(command, field)
             if is_set(value):

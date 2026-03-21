@@ -21,7 +21,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from omnifocus_operator.bridge.errors import BridgeProtocolError, BridgeTimeoutError
-from omnifocus_operator.bridge.real import DEFAULT_IPC_DIR, sweep_orphaned_files
+from omnifocus_operator.bridge.real import DEFAULT_IPC_DIR, RealBridge, sweep_orphaned_files
 from tests.doubles import SimulatorBridge
 
 # ---------------------------------------------------------------------------
@@ -569,8 +569,6 @@ class TestRealBridgeSafety:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """RealBridge() raises RuntimeError when PYTEST_CURRENT_TEST is set."""
-        from omnifocus_operator.bridge.real import RealBridge
-
         assert os.environ.get("PYTEST_CURRENT_TEST") is not None
         monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
         with pytest.raises(RuntimeError, match="PYTEST_CURRENT_TEST"):
@@ -580,8 +578,6 @@ class TestRealBridgeSafety:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """RealBridge() succeeds when PYTEST_CURRENT_TEST is NOT set."""
-        from omnifocus_operator.bridge.real import RealBridge
-
         monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
         monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
         bridge = RealBridge(ipc_dir=tmp_path)
@@ -600,11 +596,11 @@ class TestExports:
     def test_simulator_bridge_not_importable_from_package(self) -> None:
         """from omnifocus_operator.bridge import SimulatorBridge raises ImportError."""
         with pytest.raises(ImportError):
-            from omnifocus_operator.bridge import SimulatorBridge  # noqa: F401
+            from omnifocus_operator.bridge import SimulatorBridge  # noqa: F401, PLC0415
 
     def test_sweep_importable_from_package(self) -> None:
         """from omnifocus_operator.bridge import sweep_orphaned_files works."""
-        from omnifocus_operator.bridge import sweep_orphaned_files as sweep
+        from omnifocus_operator.bridge import sweep_orphaned_files as sweep  # noqa: PLC0415
 
         assert sweep is sweep_orphaned_files
 

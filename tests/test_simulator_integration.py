@@ -20,8 +20,10 @@ from mcp.client.session import ClientSession
 from mcp.shared.message import SessionMessage
 
 from omnifocus_operator.bridge.errors import BridgeProtocolError, BridgeTimeoutError
+from omnifocus_operator.repository.bridge import BridgeRepository
+from omnifocus_operator.server import create_server
 from omnifocus_operator.simulator.data import SIMULATOR_SNAPSHOT
-from tests.doubles import SimulatorBridge
+from tests.doubles import ConstantMtimeSource, SimulatorBridge
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -319,9 +321,6 @@ class TestMcpIntegration:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """MCP get_all tool returns simulator data via full stack."""
-        from omnifocus_operator.repository.bridge import BridgeRepository
-        from tests.doubles import ConstantMtimeSource
-
         proc = _start_simulator(tmp_path)
         try:
             # Build a repository with SimulatorBridge directly.
@@ -333,8 +332,6 @@ class TestMcpIntegration:
                 "omnifocus_operator.repository.create_repository",
                 lambda *_a, **_kw: repo,
             )
-
-            from omnifocus_operator.server import create_server
 
             server = create_server()
 

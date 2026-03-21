@@ -29,6 +29,8 @@ from omnifocus_operator.agent_messages.warnings import (
     TAG_NOT_ON_TASK,
     TAGS_ALREADY_MATCH,
 )
+from omnifocus_operator.contracts.base import is_set
+from omnifocus_operator.contracts.use_cases.edit_task import EditTaskResult
 from omnifocus_operator.models.enums import Availability
 
 if TYPE_CHECKING:
@@ -37,7 +39,6 @@ if TYPE_CHECKING:
     from omnifocus_operator.contracts.use_cases.edit_task import (
         EditTaskCommand,
         EditTaskRepoPayload,
-        EditTaskResult,
     )
     from omnifocus_operator.models.common import TagRef
     from omnifocus_operator.models.task import Task
@@ -87,8 +88,6 @@ class DomainLogic:
 
         Centralizes this pattern so PayloadBuilder stays pure construction.
         """
-        from omnifocus_operator.contracts.base import is_set
-
         # note: None means "clear the note" -> empty string for bridge
         if is_set(command.note) and command.note is None:
             command = command.model_copy(update={"note": ""})
@@ -160,8 +159,6 @@ class DomainLogic:
         current_tags: list[TagRef],
     ) -> tuple[list[str], list[str], list[str]]:
         """Returns (add_ids, remove_ids, warnings)."""
-        from omnifocus_operator.contracts.base import is_set
-
         current_ids = {t.id for t in current_tags}
 
         has_replace = is_set(tag_actions.replace)
@@ -326,8 +323,6 @@ class DomainLogic:
         move_action: MoveAction,
     ) -> tuple[str, str | None]:
         """Find which position key is set. Returns (position, target_id)."""
-        from omnifocus_operator.contracts.base import is_set
-
         for key in ("beginning", "ending", "before", "after"):
             value = getattr(move_action, key)
             if is_set(value):
@@ -377,8 +372,6 @@ class DomainLogic:
         warnings: list[str],
     ) -> EditTaskResult | None:
         """Returns early result if edit is empty or a no-op, else None."""
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskResult
-
         if self._is_empty_edit(payload, warnings):
             if warnings:
                 return EditTaskResult(

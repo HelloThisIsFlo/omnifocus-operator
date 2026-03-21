@@ -6,8 +6,6 @@ independent of repository implementation.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import pytest
 
 from omnifocus_operator.agent_messages.warnings import (
@@ -15,11 +13,17 @@ from omnifocus_operator.agent_messages.warnings import (
     LIFECYCLE_REPEATING_COMPLETE,
     LIFECYCLE_REPEATING_DROP,
 )
+from omnifocus_operator.contracts.base import _Unset
+from omnifocus_operator.contracts.common import MoveAction, TagAction
+from omnifocus_operator.contracts.use_cases.edit_task import (
+    EditTaskActions,
+    EditTaskCommand,
+    EditTaskRepoPayload,
+)
+from omnifocus_operator.models.common import TagRef
 from omnifocus_operator.models.snapshot import AllEntities
+from omnifocus_operator.models.task import Task
 from omnifocus_operator.service.domain import DomainLogic
-
-if TYPE_CHECKING:
-    from omnifocus_operator.models.task import Task
 
 from .conftest import make_snapshot, make_tag_dict, make_task_dict
 
@@ -96,8 +100,6 @@ class StubRepo:
 
 def _make_task(**overrides: object) -> Task:
     """Create a Task model from make_task_dict defaults."""
-    from omnifocus_operator.models.task import Task
-
     return Task.model_validate(make_task_dict(**overrides))
 
 
@@ -209,8 +211,6 @@ class TestComputeTagDiff:
     """Tag diff computation with stub Resolver."""
 
     async def test_add_new_tag(self) -> None:
-        from omnifocus_operator.contracts.common import TagAction
-
         domain = _domain(
             tag_map={"Work": "tag-work"},
             snapshot=make_snapshot(tags=[make_tag_dict(id="tag-work", name="Work")]),
@@ -225,9 +225,6 @@ class TestComputeTagDiff:
         assert warnings == []
 
     async def test_add_existing_tag_warns(self) -> None:
-        from omnifocus_operator.contracts.common import TagAction
-        from omnifocus_operator.models.common import TagRef
-
         domain = _domain(
             tag_map={"Work": "tag-work"},
             snapshot=make_snapshot(tags=[make_tag_dict(id="tag-work", name="Work")]),
@@ -240,9 +237,6 @@ class TestComputeTagDiff:
         assert any("already on this task" in w for w in warnings)
 
     async def test_remove_existing_tag(self) -> None:
-        from omnifocus_operator.contracts.common import TagAction
-        from omnifocus_operator.models.common import TagRef
-
         domain = _domain(
             tag_map={"Work": "tag-work"},
             snapshot=make_snapshot(tags=[make_tag_dict(id="tag-work", name="Work")]),
@@ -257,8 +251,6 @@ class TestComputeTagDiff:
         assert warnings == []
 
     async def test_remove_absent_tag_warns(self) -> None:
-        from omnifocus_operator.contracts.common import TagAction
-
         domain = _domain(
             tag_map={"Work": "tag-work"},
             snapshot=make_snapshot(tags=[make_tag_dict(id="tag-work", name="Work")]),
@@ -271,9 +263,6 @@ class TestComputeTagDiff:
         assert any("is not on this task" in w for w in warnings)
 
     async def test_replace_tags(self) -> None:
-        from omnifocus_operator.contracts.common import TagAction
-        from omnifocus_operator.models.common import TagRef
-
         domain = _domain(
             tag_map={"Home": "tag-home"},
             snapshot=make_snapshot(
@@ -293,9 +282,6 @@ class TestComputeTagDiff:
         assert warnings == []
 
     async def test_replace_same_warns(self) -> None:
-        from omnifocus_operator.contracts.common import TagAction
-        from omnifocus_operator.models.common import TagRef
-
         domain = _domain(
             tag_map={"Work": "tag-work"},
             snapshot=make_snapshot(tags=[make_tag_dict(id="tag-work", name="Work")]),
@@ -319,8 +305,6 @@ class TestDetectEarlyReturn:
     """No-op and empty-edit detection."""
 
     def test_empty_edit_no_warnings(self) -> None:
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoPayload
-
         task = _make_task(id="t1", name="Task")
         payload = EditTaskRepoPayload.model_validate({"id": "t1"})
         result = _domain().detect_early_return(payload, task, [])
@@ -329,8 +313,6 @@ class TestDetectEarlyReturn:
         assert any("No changes specified" in w for w in result.warnings)
 
     def test_empty_edit_with_warnings(self) -> None:
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoPayload
-
         task = _make_task(id="t1", name="Task", availability="completed")
         payload = EditTaskRepoPayload.model_validate({"id": "t1"})
         warnings = [EDIT_COMPLETED_TASK.format(status="completed")]
@@ -342,8 +324,6 @@ class TestDetectEarlyReturn:
         assert not any("No changes specified" in w for w in result.warnings)
 
     def test_noop_all_fields_match(self) -> None:
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoPayload
-
         task = _make_task(id="t1", name="Foo")
         payload = EditTaskRepoPayload.model_validate({"id": "t1", "name": "Foo"})
         result = _domain().detect_early_return(payload, task, [])
@@ -352,8 +332,6 @@ class TestDetectEarlyReturn:
         assert any("No changes detected" in w for w in result.warnings)
 
     def test_noop_filters_status_warnings(self) -> None:
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoPayload
-
         task = _make_task(id="t1", name="Foo", availability="completed")
         payload = EditTaskRepoPayload.model_validate({"id": "t1", "name": "Foo"})
         # Status warning contains "your changes were applied"
@@ -367,8 +345,6 @@ class TestDetectEarlyReturn:
         assert any("No changes detected" in w for w in result.warnings)
 
     def test_not_noop_returns_none(self) -> None:
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoPayload
-
         task = _make_task(id="t1", name="Foo")
         payload = EditTaskRepoPayload.model_validate({"id": "t1", "name": "Bar"})
         result = _domain().detect_early_return(payload, task, [])
@@ -384,15 +360,11 @@ class TestProcessMove:
     """Move processing with stub Resolver."""
 
     async def test_move_to_inbox(self) -> None:
-        from omnifocus_operator.contracts.common import MoveAction
-
         domain = _domain()
         result = await domain.process_move(MoveAction(ending=None), "task-1")
         assert result == {"position": "ending", "container_id": None}
 
     async def test_move_to_project(self) -> None:
-        from omnifocus_operator.contracts.common import MoveAction
-
         # StubResolver.resolve_parent always succeeds; StubRepo.get_task returns None
         # for the container (it's a project, not a task), so no cycle check
         domain = _domain()
@@ -400,8 +372,6 @@ class TestProcessMove:
         assert result == {"position": "ending", "container_id": "proj-1"}
 
     async def test_move_before_anchor(self) -> None:
-        from omnifocus_operator.contracts.common import MoveAction
-
         task = _make_task(id="task-anchor", name="Anchor")
         domain = _domain(tasks=[task])
         result = await domain.process_move(MoveAction(before="task-anchor"), "task-1")
@@ -449,57 +419,36 @@ class TestNormalizeClearIntents:
     """Null-means-clear normalization centralized in DomainLogic."""
 
     def test_note_none_becomes_empty_string(self) -> None:
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
-
         domain = _domain()
         cmd = EditTaskCommand(id="t1", note=None)
         result = domain.normalize_clear_intents(cmd)
         assert result.note == ""
 
     def test_note_with_value_unchanged(self) -> None:
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
-
         domain = _domain()
         cmd = EditTaskCommand(id="t1", note="Hello")
         result = domain.normalize_clear_intents(cmd)
         assert result.note == "Hello"
 
     def test_note_unset_unchanged(self) -> None:
-        from omnifocus_operator.contracts.base import _Unset
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
-
         domain = _domain()
         cmd = EditTaskCommand(id="t1")
         result = domain.normalize_clear_intents(cmd)
         assert isinstance(result.note, _Unset)
 
     def test_tags_replace_none_becomes_empty_list(self) -> None:
-        from omnifocus_operator.contracts.common import TagAction
-        from omnifocus_operator.contracts.use_cases.edit_task import (
-            EditTaskActions,
-            EditTaskCommand,
-        )
-
         domain = _domain()
         cmd = EditTaskCommand(id="t1", actions=EditTaskActions(tags=TagAction(replace=None)))
         result = domain.normalize_clear_intents(cmd)
         assert result.actions.tags.replace == []
 
     def test_tags_replace_with_names_unchanged(self) -> None:
-        from omnifocus_operator.contracts.common import TagAction
-        from omnifocus_operator.contracts.use_cases.edit_task import (
-            EditTaskActions,
-            EditTaskCommand,
-        )
-
         domain = _domain()
         cmd = EditTaskCommand(id="t1", actions=EditTaskActions(tags=TagAction(replace=["Work"])))
         result = domain.normalize_clear_intents(cmd)
         assert result.actions.tags.replace == ["Work"]
 
     def test_no_actions_unchanged(self) -> None:
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
-
         domain = _domain()
         cmd = EditTaskCommand(id="t1", name="Foo")
         result = domain.normalize_clear_intents(cmd)

@@ -24,20 +24,16 @@ from typing import TYPE_CHECKING, Any
 from zoneinfo import ZoneInfo
 
 from omnifocus_operator.contracts.protocols import Repository
+from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoResult
+from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoResult
 from omnifocus_operator.repository.bridge_write_mixin import BridgeWriteMixin
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from omnifocus_operator.contracts.protocols import Bridge
-    from omnifocus_operator.contracts.use_cases.add_task import (
-        AddTaskRepoPayload,
-        AddTaskRepoResult,
-    )
-    from omnifocus_operator.contracts.use_cases.edit_task import (
-        EditTaskRepoPayload,
-        EditTaskRepoResult,
-    )
+    from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoPayload
+    from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoPayload
 
 import logging
 
@@ -490,8 +486,6 @@ class HybridRepository(BridgeWriteMixin, Repository):
         Serializes the typed payload to a camelCase dict and sends via bridge.
         The next get_all() will wait for fresh data from OmniFocus.
         """
-        from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoResult
-
         logger.debug("HybridRepository.add_task: sending to bridge")
         result = await self._send_to_bridge("add_task", payload)
         logger.debug("HybridRepository.add_task: bridge returned id=%s", result["id"])
@@ -501,8 +495,6 @@ class HybridRepository(BridgeWriteMixin, Repository):
     @_ensures_write_through
     async def edit_task(self, payload: EditTaskRepoPayload) -> EditTaskRepoResult:
         """Edit a task via bridge and wait for SQLite confirmation."""
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoResult
-
         logger.debug("HybridRepository.edit_task: sending to bridge")
         result = await self._send_to_bridge("edit_task", payload)
         logger.debug("HybridRepository.edit_task: bridge returned id=%s", result.get("id"))

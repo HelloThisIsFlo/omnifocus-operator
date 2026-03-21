@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from omnifocus_operator.contracts.base import is_set
+
 __all__ = ["validate_task_name", "validate_task_name_if_set"]
 
 
@@ -18,8 +20,6 @@ def validate_task_name_if_set(name: object) -> None:
     Accepts ``_Unset`` (no-op) or a string. If string, validates
     it is non-empty.
     """
-    from omnifocus_operator.contracts.base import is_set
-
     if not is_set(name):
         return
     if not name or not str(name).strip():

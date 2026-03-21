@@ -14,6 +14,7 @@ import time
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
+from zoneinfo import ZoneInfo
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -21,7 +22,7 @@ if TYPE_CHECKING:
 import pytest
 
 from omnifocus_operator.contracts.protocols import Repository
-from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoPayload
+from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoPayload, AddTaskRepoResult
 from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoPayload
 from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.repository.hybrid import _FRESHNESS_TIMEOUT, HybridRepository
@@ -441,8 +442,6 @@ class TestTaskTimestamps:
     @pytest.mark.asyncio
     async def test_task_dates_local_time_string(self, tmp_path: Path) -> None:
         """dateDue/dateToStart as local-time ISO strings parse correctly."""
-        from zoneinfo import ZoneInfo
-
         db_path = create_test_db(
             tmp_path,
             tasks=[
@@ -1255,8 +1254,6 @@ class TestAddTask:
     @pytest.mark.asyncio
     async def test_add_task_returns_result(self, tmp_path: Path) -> None:
         """add_task returns AddTaskRepoResult with bridge response data."""
-        from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoResult
-
         db_path = create_test_db(tmp_path, tasks=[_minimal_task()])
         wal_path = str(db_path) + "-wal"
         bridge = InMemoryBridge(data={"id": "new-task-1", "name": "Buy milk"}, wal_path=wal_path)
@@ -1633,8 +1630,6 @@ class TestLocalDatetimeParsing:
     @pytest.mark.asyncio
     async def test_due_date_local_time_winter(self, tmp_path: Path) -> None:
         """dateDue as local-time ISO string in winter converts to UTC correctly."""
-        from zoneinfo import ZoneInfo
-
         # London winter: UTC+0, so local 10:00 = UTC 10:00
         db_path = create_test_db(
             tmp_path,
@@ -1664,8 +1659,6 @@ class TestLocalDatetimeParsing:
     @pytest.mark.asyncio
     async def test_due_date_local_time_summer_dst(self, tmp_path: Path) -> None:
         """dateDue as local-time ISO string in summer (BST) converts to UTC correctly."""
-        from zoneinfo import ZoneInfo
-
         # London summer (BST): UTC+1, so local 10:00 = UTC 09:00
         db_path = create_test_db(
             tmp_path,
@@ -1691,8 +1684,6 @@ class TestLocalDatetimeParsing:
     @pytest.mark.asyncio
     async def test_defer_date_local_time(self, tmp_path: Path) -> None:
         """dateToStart stored as local-time ISO text converts to UTC correctly."""
-        from zoneinfo import ZoneInfo
-
         db_path = create_test_db(
             tmp_path,
             tasks=[
@@ -1717,8 +1708,6 @@ class TestLocalDatetimeParsing:
     @pytest.mark.asyncio
     async def test_planned_date_local_time(self, tmp_path: Path) -> None:
         """datePlanned stored as local-time ISO text converts to UTC correctly."""
-        from zoneinfo import ZoneInfo
-
         db_path = create_test_db(
             tmp_path,
             tasks=[

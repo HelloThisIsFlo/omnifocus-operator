@@ -5,9 +5,16 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
-from pydantic import ValidationError
+from pydantic import AwareDatetime, ValidationError
 
+from omnifocus_operator.contracts.base import _Unset
+from omnifocus_operator.contracts.common import MoveAction, TagAction
 from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand, AddTaskResult
+from omnifocus_operator.contracts.use_cases.edit_task import (
+    EditTaskActions,
+    EditTaskCommand,
+    EditTaskResult,
+)
 from omnifocus_operator.models import (
     ActionableEntity,
     AllEntities,
@@ -269,7 +276,6 @@ class TestActionableEntityDates:
 
     def test_aware_datetime_rejects_naive(self) -> None:
         """AwareDatetime raises ValidationError on naive datetime."""
-        from pydantic import AwareDatetime
 
         class DateModel(OmniFocusBaseModel):
             ts: AwareDatetime
@@ -937,29 +943,21 @@ class TestActionsSpecLifecycle:
 
     def test_lifecycle_complete_valid(self) -> None:
         """EditTaskActions(lifecycle='complete') validates successfully."""
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskActions
-
         spec = EditTaskActions(lifecycle="complete")
         assert spec.lifecycle == "complete"
 
     def test_lifecycle_drop_valid(self) -> None:
         """EditTaskActions(lifecycle='drop') validates successfully."""
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskActions
-
         spec = EditTaskActions(lifecycle="drop")
         assert spec.lifecycle == "drop"
 
     def test_lifecycle_reopen_rejected(self) -> None:
         """EditTaskActions(lifecycle='reopen') raises ValidationError."""
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskActions
-
         with pytest.raises(ValidationError):
             EditTaskActions(lifecycle="reopen")
 
     def test_lifecycle_invalid_rejected(self) -> None:
         """EditTaskActions(lifecycle='invalid') raises ValidationError."""
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskActions
-
         with pytest.raises(ValidationError):
             EditTaskActions(lifecycle="invalid")
 
@@ -974,26 +972,18 @@ class TestWriteModelStrictness:
             AddTaskCommand.model_validate({"name": "Task", "bogus_field": "x"})
 
     def test_task_edit_spec_rejects_unknown_field(self) -> None:
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
-
         with pytest.raises(ValidationError, match="bogus_field"):
             EditTaskCommand.model_validate({"id": "t1", "bogus_field": "x"})
 
     def test_move_to_spec_rejects_unknown_field(self) -> None:
-        from omnifocus_operator.contracts.common import MoveAction
-
         with pytest.raises(ValidationError, match="bogus_field"):
             MoveAction.model_validate({"ending": "p1", "bogus_field": "x"})
 
     def test_tag_action_spec_rejects_unknown_field(self) -> None:
-        from omnifocus_operator.contracts.common import TagAction
-
         with pytest.raises(ValidationError, match="bogus_field"):
             TagAction.model_validate({"add": ["tag1"], "bogus_field": "x"})
 
     def test_actions_spec_rejects_unknown_field(self) -> None:
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskActions
-
         with pytest.raises(ValidationError, match="bogus_field"):
             EditTaskActions.model_validate({"lifecycle": "complete", "bogus_field": "x"})
 
@@ -1007,8 +997,6 @@ class TestWriteModelStrictness:
         assert not hasattr(result, "bogus")
 
     def test_task_edit_result_accepts_unknown_field(self) -> None:
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskResult
-
         result = EditTaskResult.model_validate(
             {"success": True, "id": "t1", "name": "T", "bogus": "x"}
         )
@@ -1027,9 +1015,6 @@ class TestWriteModelStrictness:
 
     def test_task_edit_spec_unset_defaults_with_forbid(self) -> None:
         """All UNSET defaults validate successfully -- they are declared fields, not extra."""
-        from omnifocus_operator.contracts.base import _Unset
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
-
         spec = EditTaskCommand(id="t1")
         assert spec.id == "t1"
         assert isinstance(spec.name, _Unset)
@@ -1040,8 +1025,6 @@ class TestWriteModelStrictness:
 
     def test_task_edit_spec_set_values_with_forbid(self) -> None:
         """Setting real values on write models still works under forbid."""
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
-
         spec = EditTaskCommand(id="t1", name="Updated", flagged=True)
         assert spec.name == "Updated"
         assert spec.flagged is True
@@ -1063,15 +1046,11 @@ class TestWriteModelStrictness:
 
     def test_edit_command_schema_only_id_required(self) -> None:
         """Only 'id' is required — all UNSET-defaulted fields are optional."""
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
-
         schema = EditTaskCommand.model_json_schema()
         assert schema["required"] == ["id"]
 
     def test_edit_command_schema_non_nullable_fields(self) -> None:
         """Non-nullable UNSET fields appear as their plain type."""
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
-
         props = EditTaskCommand.model_json_schema()["properties"]
         assert props["name"]["type"] == "string"
         assert props["flagged"]["type"] == "boolean"
@@ -1080,8 +1059,6 @@ class TestWriteModelStrictness:
 
     def test_edit_command_schema_nullable_fields(self) -> None:
         """Nullable UNSET fields appear as anyOf[real_type, null] — exactly two branches."""
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
-
         props = EditTaskCommand.model_json_schema()["properties"]
         assert len(props["note"]["anyOf"]) == 2
         note_types = {b.get("type") for b in props["note"]["anyOf"]}
@@ -1092,15 +1069,11 @@ class TestWriteModelStrictness:
 
     def test_edit_actions_schema_all_optional(self) -> None:
         """EditTaskActions: tags, move, lifecycle are all optional."""
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskActions
-
         schema = EditTaskActions.model_json_schema()
         assert schema.get("required", []) == []
 
     def test_tag_action_schema_fields(self) -> None:
         """TagAction: add/remove are arrays, replace is nullable array."""
-        from omnifocus_operator.contracts.common import TagAction
-
         props = TagAction.model_json_schema()["properties"]
         assert props["add"]["type"] == "array"
         assert props["remove"]["type"] == "array"
