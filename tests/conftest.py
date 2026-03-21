@@ -234,3 +234,91 @@ def service(repo: Any) -> Any:
     from omnifocus_operator.service import OperatorService  # noqa: PLC0415
 
     return OperatorService(repository=repo)
+
+
+@pytest.fixture
+def server(service: Any) -> Any:
+    """FastMCP server with patched lifespan injecting the test service.
+
+    Chain: @pytest.mark.snapshot(...) -> bridge -> repo -> service -> server
+
+    Note: Return type is ``Any`` to avoid importing ``FastMCP`` at module
+    level.  Actual return: ``FastMCP``.
+    """
+    from contextlib import asynccontextmanager  # noqa: PLC0415
+
+    from mcp.server.fastmcp import FastMCP  # noqa: PLC0415
+
+    from omnifocus_operator.server import _register_tools  # noqa: PLC0415
+
+    @asynccontextmanager
+    async def _patched_lifespan(app: Any) -> Any:
+        yield {"service": service}
+
+    srv = FastMCP("omnifocus-operator", lifespan=_patched_lifespan)
+    _register_tools(srv)
+    return srv
+
+
+@pytest.fixture
+def client_session(server: Any) -> Any:
+    """Connected MCP ClientSession against the test server.
+
+    Chain: ... -> server -> client_session
+
+    Returns a ``_ClientSessionProxy`` that delegates ``call_tool`` and
+    ``list_tools`` to a fresh in-memory MCP connection per call.  Each call
+    spins up the server, connects a ``ClientSession``, performs the
+    operation, then tears down cleanly -- all within a single
+    ``anyio.create_task_group`` (no cross-task cancel-scope issues).
+
+    State persists across calls because the underlying ``InMemoryBridge``
+    (held by the ``service`` fixture) lives outside the connection lifecycle.
+    """
+    import anyio  # noqa: PLC0415
+    from mcp.client.session import ClientSession  # noqa: PLC0415
+    from mcp.shared.message import SessionMessage  # noqa: PLC0415
+
+    class _ClientSessionProxy:
+        """Lightweight proxy that delegates to a per-call MCP connection."""
+
+        def __init__(self, srv: Any) -> None:
+            self._server = srv
+
+        async def _with_session(
+            self,
+            method: str,
+            args: tuple[Any, ...],
+            kwargs: dict[str, Any],
+        ) -> Any:
+            s2c_send, s2c_recv = anyio.create_memory_object_stream[SessionMessage](0)
+            c2s_send, c2s_recv = anyio.create_memory_object_stream[SessionMessage](0)
+
+            result: Any = None
+
+            async with anyio.create_task_group() as tg:
+
+                async def _run_server() -> None:
+                    await self._server._mcp_server.run(
+                        c2s_recv,
+                        s2c_send,
+                        self._server._mcp_server.create_initialization_options(),
+                        raise_exceptions=True,
+                    )
+
+                tg.start_soon(_run_server)
+
+                async with ClientSession(s2c_recv, c2s_send) as session:
+                    await session.initialize()
+                    result = await getattr(session, method)(*args, **kwargs)
+                    tg.cancel_scope.cancel()
+
+            return result
+
+        async def call_tool(self, *args: Any, **kwargs: Any) -> Any:
+            return await self._with_session("call_tool", args, kwargs)
+
+        async def list_tools(self, *args: Any, **kwargs: Any) -> Any:
+            return await self._with_session("list_tools", args, kwargs)
+
+    return _ClientSessionProxy(server)

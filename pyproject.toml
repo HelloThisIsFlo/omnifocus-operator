@@ -38,6 +38,7 @@ addopts = [
 ]
 markers = [
     "snapshot: seed InMemoryBridge with custom snapshot data (kwargs passed to make_snapshot_dict)",
+    "hybrid_db: seed SQLite database for HybridRepository tests (kwargs passed to create_test_db)",
 ]
 
 [tool.coverage.run]

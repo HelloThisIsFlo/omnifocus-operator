@@ -308,27 +308,28 @@ def _minimal_project(overrides: dict[str, Any] | None = None) -> dict[str, Any]:
 
 
 @pytest.fixture
-def empty_db(tmp_path: Path) -> Path:
-    """Empty OmniFocus-schema SQLite database."""
+def hybrid_db(request: pytest.FixtureRequest, tmp_path: Path) -> Path:
+    """SQLite DB seeded from @pytest.mark.hybrid_db(...) marker.
+
+    Without marker: creates an empty database (no seed data).
+    With marker: passes kwargs to create_test_db().
+    """
+    marker = request.node.get_closest_marker("hybrid_db")
+    if marker is not None:
+        return create_test_db(tmp_path, **marker.kwargs)
     return create_test_db(tmp_path)
 
 
 @pytest.fixture
-def empty_repo(empty_db: Path) -> HybridRepository:
-    """HybridRepository backed by an empty DB + InMemoryBridge."""
-    return HybridRepository(db_path=empty_db, bridge=InMemoryBridge())
+def hybrid_repo(hybrid_db: Path) -> HybridRepository:
+    """HybridRepository backed by marker-seeded DB + empty InMemoryBridge.
 
+    Chain: @pytest.mark.hybrid_db(...) -> hybrid_db -> hybrid_repo
 
-@pytest.fixture
-def minimal_task_db(tmp_path: Path) -> Path:
-    """DB with one minimal task row."""
-    return create_test_db(tmp_path, tasks=[_minimal_task()])
-
-
-@pytest.fixture
-def minimal_task_repo(minimal_task_db: Path) -> HybridRepository:
-    """HybridRepository with one minimal task + InMemoryBridge."""
-    return HybridRepository(db_path=minimal_task_db, bridge=InMemoryBridge())
+    The InMemoryBridge is always empty -- it's only used for write operations
+    that read-focused tests don't exercise.
+    """
+    return HybridRepository(db_path=hybrid_db, bridge=InMemoryBridge())
 
 
 # ============================================================================
@@ -337,28 +338,26 @@ def minimal_task_repo(minimal_task_db: Path) -> HybridRepository:
 
 
 class TestProtocol:
-    def test_satisfies_repository_protocol(self, empty_repo: HybridRepository) -> None:
-        assert isinstance(empty_repo, Repository)
+    def test_satisfies_repository_protocol(self, hybrid_repo: HybridRepository) -> None:
+        assert isinstance(hybrid_repo, Repository)
 
 
 class TestReadAllEntities:
     @pytest.mark.asyncio
-    async def test_read_all_entities(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[_minimal_task()],
-            projects=[_minimal_project()],
-            tags=[_minimal_tag()],
-            folders=[_minimal_folder()],
-            perspectives=[
-                {
-                    "persistentIdentifier": "persp-001",
-                    "valueData": _make_perspective_plist("Forecast"),
-                }
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(
+        tasks=[_minimal_task()],
+        projects=[_minimal_project()],
+        tags=[_minimal_tag()],
+        folders=[_minimal_folder()],
+        perspectives=[
+            {
+                "persistentIdentifier": "persp-001",
+                "valueData": _make_perspective_plist("Forecast"),
+            }
+        ],
+    )
+    async def test_read_all_entities(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         assert isinstance(result, AllEntities)
         assert len(result.tasks) == 1
         assert len(result.projects) == 1
@@ -368,7 +367,7 @@ class TestReadAllEntities:
 
 
 class TestConnectionSemantics:
-    def test_read_only_connection(self, empty_repo: HybridRepository) -> None:
+    def test_read_only_connection(self, hybrid_repo: HybridRepository) -> None:
         """Verify that the connection string contains ?mode=ro."""
         # Inspect the connection URI by calling _read_all and checking the path usage
         # We'll monkeypatch sqlite3.connect to capture the URI
@@ -380,13 +379,13 @@ class TestConnectionSemantics:
             return original_connect(uri_str, **kwargs)
 
         with patch("sqlite3.connect", side_effect=capturing_connect):
-            empty_repo._read_all()
+            hybrid_repo._read_all()
 
         assert len(calls) == 1
         assert "?mode=ro" in calls[0]
 
     @pytest.mark.asyncio
-    async def test_fresh_connection_per_read(self, empty_repo: HybridRepository) -> None:
+    async def test_fresh_connection_per_read(self, hybrid_repo: HybridRepository) -> None:
         """Two consecutive get_all() calls create two separate connections."""
         call_count = 0
         original_connect = sqlite3.connect
@@ -397,33 +396,31 @@ class TestConnectionSemantics:
             return original_connect(uri_str, **kwargs)
 
         with patch("sqlite3.connect", side_effect=counting_connect):
-            await empty_repo.get_all()
-            await empty_repo.get_all()
+            await hybrid_repo.get_all()
+            await hybrid_repo.get_all()
 
         assert call_count == 2
 
 
 class TestTaskBasicFields:
     @pytest.mark.asyncio
-    async def test_task_basic_fields(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[
-                _minimal_task(
-                    {
-                        "persistentIdentifier": "abc123",
-                        "name": "Buy milk",
-                        "plainTextNote": "Remember oat milk",
-                        "flagged": 1,
-                        "effectiveFlagged": 1,
-                        "inInbox": 1,
-                        "childrenCount": 3,
-                    }
-                )
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task(
+                {
+                    "persistentIdentifier": "abc123",
+                    "name": "Buy milk",
+                    "plainTextNote": "Remember oat milk",
+                    "flagged": 1,
+                    "effectiveFlagged": 1,
+                    "inInbox": 1,
+                    "childrenCount": 3,
+                }
+            )
+        ],
+    )
+    async def test_task_basic_fields(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         task = result.tasks[0]
 
         assert task.id == "abc123"
@@ -440,26 +437,24 @@ class TestTaskBasicFields:
 
 class TestTaskTimestamps:
     @pytest.mark.asyncio
-    async def test_task_dates_local_time_string(self, tmp_path: Path) -> None:
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task(
+                {
+                    "dateDue": "2026-02-20T15:15:16.000",
+                    "dateToStart": "2026-02-20T15:15:16.000",
+                }
+            )
+        ],
+    )
+    async def test_task_dates_local_time_string(self, hybrid_repo: HybridRepository) -> None:
         """dateDue/dateToStart as local-time ISO strings parse correctly."""
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[
-                _minimal_task(
-                    {
-                        "dateDue": "2026-02-20T15:15:16.000",
-                        "dateToStart": "2026-02-20T15:15:16.000",
-                    }
-                )
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
         # Use UTC timezone so local time == UTC for predictable assertions
         with patch(
             "omnifocus_operator.repository.hybrid._LOCAL_TZ",
             ZoneInfo("UTC"),
         ):
-            result = await repo.get_all()
+            result = await hybrid_repo.get_all()
         task = result.tasks[0]
 
         assert task.due_date is not None
@@ -470,23 +465,19 @@ class TestTaskTimestamps:
         assert task.defer_date.year == 2026
 
     @pytest.mark.asyncio
-    async def test_effective_dates_cf_epoch(self, tmp_path: Path) -> None:
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task(
+                {
+                    "effectiveDateDue": _cf_epoch(datetime(2026, 2, 16, 22, 0, 0, tzinfo=UTC)),
+                    "effectiveDateToStart": _cf_epoch(datetime(2026, 2, 16, 22, 0, 0, tzinfo=UTC)),
+                }
+            )
+        ],
+    )
+    async def test_effective_dates_cf_epoch(self, hybrid_repo: HybridRepository) -> None:
         """effectiveDateDue/effectiveDateToStart as CF epoch floats parse correctly."""
-        target_dt = datetime(2026, 2, 16, 22, 0, 0, tzinfo=UTC)
-        cf_value = _cf_epoch(target_dt)
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[
-                _minimal_task(
-                    {
-                        "effectiveDateDue": cf_value,
-                        "effectiveDateToStart": cf_value,
-                    }
-                )
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+        result = await hybrid_repo.get_all()
         task = result.tasks[0]
 
         assert task.effective_due_date is not None
@@ -496,9 +487,10 @@ class TestTaskTimestamps:
         assert task.effective_defer_date is not None
 
     @pytest.mark.asyncio
-    async def test_task_null_dates(self, minimal_task_repo: HybridRepository) -> None:
+    @pytest.mark.hybrid_db(tasks=[_minimal_task()])
+    async def test_task_null_dates(self, hybrid_repo: HybridRepository) -> None:
         """NULL date columns produce None fields."""
-        result = await minimal_task_repo.get_all()
+        result = await hybrid_repo.get_all()
         task = result.tasks[0]
 
         assert task.due_date is None
@@ -510,99 +502,70 @@ class TestTaskTimestamps:
 
 class TestTaskStatus:
     @pytest.mark.asyncio
-    async def test_task_urgency_overdue(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[_minimal_task({"overdue": 1, "dueSoon": 0})],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(tasks=[_minimal_task({"overdue": 1, "dueSoon": 0})])
+    async def test_task_urgency_overdue(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         assert result.tasks[0].urgency == "overdue"
 
     @pytest.mark.asyncio
-    async def test_task_urgency_due_soon(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[_minimal_task({"overdue": 0, "dueSoon": 1})],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(tasks=[_minimal_task({"overdue": 0, "dueSoon": 1})])
+    async def test_task_urgency_due_soon(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         assert result.tasks[0].urgency == "due_soon"
 
     @pytest.mark.asyncio
-    async def test_task_urgency_none(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[_minimal_task({"overdue": 0, "dueSoon": 0})],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(tasks=[_minimal_task({"overdue": 0, "dueSoon": 0})])
+    async def test_task_urgency_none(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         assert result.tasks[0].urgency == "none"
 
     @pytest.mark.asyncio
-    async def test_task_urgency_overdue_priority(self, tmp_path: Path) -> None:
+    @pytest.mark.hybrid_db(tasks=[_minimal_task({"overdue": 1, "dueSoon": 1})])
+    async def test_task_urgency_overdue_priority(self, hybrid_repo: HybridRepository) -> None:
         """Overdue takes priority over due_soon."""
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[_minimal_task({"overdue": 1, "dueSoon": 1})],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+        result = await hybrid_repo.get_all()
         assert result.tasks[0].urgency == "overdue"
 
     @pytest.mark.asyncio
-    async def test_task_availability_dropped(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[_minimal_task({"dateHidden": _NOW_CF})],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(tasks=[_minimal_task({"dateHidden": _NOW_CF})])
+    async def test_task_availability_dropped(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         assert result.tasks[0].availability == "dropped"
 
     @pytest.mark.asyncio
-    async def test_task_availability_completed(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[_minimal_task({"dateCompleted": _NOW_CF})],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(tasks=[_minimal_task({"dateCompleted": _NOW_CF})])
+    async def test_task_availability_completed(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         assert result.tasks[0].availability == "completed"
 
     @pytest.mark.asyncio
-    async def test_task_availability_blocked(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[_minimal_task({"blocked": 1})],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(tasks=[_minimal_task({"blocked": 1})])
+    async def test_task_availability_blocked(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         assert result.tasks[0].availability == "blocked"
 
     @pytest.mark.asyncio
-    async def test_task_availability_available(self, minimal_task_repo: HybridRepository) -> None:
-        result = await minimal_task_repo.get_all()
+    @pytest.mark.hybrid_db(tasks=[_minimal_task()])
+    async def test_task_availability_available(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         assert result.tasks[0].availability == "available"
 
 
 class TestTaskTags:
     @pytest.mark.asyncio
-    async def test_task_tags_via_join(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[_minimal_task({"persistentIdentifier": "t1"})],
-            tags=[
-                _minimal_tag({"persistentIdentifier": "tag-a", "name": "Errand"}),
-                _minimal_tag({"persistentIdentifier": "tag-b", "name": "Home"}),
-            ],
-            task_tags=[
-                {"task": "t1", "tag": "tag-a"},
-                {"task": "t1", "tag": "tag-b"},
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(
+        tasks=[_minimal_task({"persistentIdentifier": "t1"})],
+        tags=[
+            _minimal_tag({"persistentIdentifier": "tag-a", "name": "Errand"}),
+            _minimal_tag({"persistentIdentifier": "tag-b", "name": "Home"}),
+        ],
+        task_tags=[
+            {"task": "t1", "tag": "tag-a"},
+            {"task": "t1", "tag": "tag-b"},
+        ],
+    )
+    async def test_task_tags_via_join(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         task = result.tasks[0]
         assert len(task.tags) == 2
         tag_names = {t.name for t in task.tags}
@@ -613,22 +576,20 @@ class TestTaskTags:
 
 class TestTaskRepetition:
     @pytest.mark.asyncio
-    async def test_task_repetition_rule(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[
-                _minimal_task(
-                    {
-                        "repetitionRuleString": "FREQ=WEEKLY;INTERVAL=1",
-                        "repetitionScheduleTypeString": "fixed",
-                        "repetitionAnchorDateKey": "dateDue",
-                        "catchUpAutomatically": 1,
-                    }
-                )
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task(
+                {
+                    "repetitionRuleString": "FREQ=WEEKLY;INTERVAL=1",
+                    "repetitionScheduleTypeString": "fixed",
+                    "repetitionAnchorDateKey": "dateDue",
+                    "catchUpAutomatically": 1,
+                }
+            )
+        ],
+    )
+    async def test_task_repetition_rule(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         task = result.tasks[0]
         assert task.repetition_rule is not None
         assert task.repetition_rule.rule_string == "FREQ=WEEKLY;INTERVAL=1"
@@ -637,59 +598,58 @@ class TestTaskRepetition:
         assert task.repetition_rule.catch_up_automatically is True
 
     @pytest.mark.asyncio
-    async def test_task_no_repetition_rule(self, minimal_task_repo: HybridRepository) -> None:
-        result = await minimal_task_repo.get_all()
+    @pytest.mark.hybrid_db(tasks=[_minimal_task()])
+    async def test_task_no_repetition_rule(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         assert result.tasks[0].repetition_rule is None
 
 
 class TestTaskNotes:
     @pytest.mark.asyncio
-    async def test_task_note_plain_text(self, tmp_path: Path) -> None:
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task(
+                {
+                    "plainTextNote": "Buy oat milk and eggs",
+                }
+            )
+        ],
+    )
+    async def test_task_note_plain_text(self, hybrid_repo: HybridRepository) -> None:
         """Notes are read from plainTextNote column (not noteXMLData)."""
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[
-                _minimal_task(
-                    {
-                        "plainTextNote": "Buy oat milk and eggs",
-                    }
-                )
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+        result = await hybrid_repo.get_all()
         assert result.tasks[0].note == "Buy oat milk and eggs"
 
     @pytest.mark.asyncio
-    async def test_task_note_null(self, minimal_task_repo: HybridRepository) -> None:
-        result = await minimal_task_repo.get_all()
+    @pytest.mark.hybrid_db(tasks=[_minimal_task()])
+    async def test_task_note_null(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         assert result.tasks[0].note == ""
 
 
 class TestTaskRelationships:
     @pytest.mark.asyncio
-    async def test_inbox_task_parent_null(self, minimal_task_repo: HybridRepository) -> None:
+    @pytest.mark.hybrid_db(tasks=[_minimal_task()])
+    async def test_inbox_task_parent_null(self, hybrid_repo: HybridRepository) -> None:
         """Task with no project and no parent has parent=None."""
-        result = await minimal_task_repo.get_all()
+        result = await hybrid_repo.get_all()
         task = result.tasks[0]
         assert task.parent is None
 
     @pytest.mark.asyncio
-    async def test_task_in_project_parent_ref(self, tmp_path: Path) -> None:
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task(
+                {
+                    "containingProjectInfo": "pi-proj-001",
+                }
+            )
+        ],
+        projects=[_minimal_project()],
+    )
+    async def test_task_in_project_parent_ref(self, hybrid_repo: HybridRepository) -> None:
         """Task in a project gets parent={type:'project', id, name}."""
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[
-                _minimal_task(
-                    {
-                        "containingProjectInfo": "pi-proj-001",
-                    }
-                )
-            ],
-            projects=[_minimal_project()],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+        result = await hybrid_repo.get_all()
         task = result.tasks[0]
         assert task.parent is not None
         assert task.parent.type == "project"
@@ -697,31 +657,29 @@ class TestTaskRelationships:
         assert task.parent.name == "Test Project"
 
     @pytest.mark.asyncio
-    async def test_subtask_parent_ref(self, tmp_path: Path) -> None:
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task(
+                {
+                    "persistentIdentifier": "subtask-001",
+                    "name": "Subtask",
+                    "parent": "parent-task-001",
+                    "containingProjectInfo": "pi-proj-001",
+                }
+            ),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "parent-task-001",
+                    "name": "Parent Task",
+                    "containingProjectInfo": "pi-proj-001",
+                }
+            ),
+        ],
+        projects=[_minimal_project()],
+    )
+    async def test_subtask_parent_ref(self, hybrid_repo: HybridRepository) -> None:
         """Subtask gets parent={type:'task', id, name} using parent task."""
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[
-                _minimal_task(
-                    {
-                        "persistentIdentifier": "subtask-001",
-                        "name": "Subtask",
-                        "parent": "parent-task-001",
-                        "containingProjectInfo": "pi-proj-001",
-                    }
-                ),
-                _minimal_task(
-                    {
-                        "persistentIdentifier": "parent-task-001",
-                        "name": "Parent Task",
-                        "containingProjectInfo": "pi-proj-001",
-                    }
-                ),
-            ],
-            projects=[_minimal_project()],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+        result = await hybrid_repo.get_all()
         subtask = next(t for t in result.tasks if t.id == "subtask-001")
         assert subtask.parent is not None
         assert subtask.parent.type == "task"
@@ -731,30 +689,28 @@ class TestTaskRelationships:
 
 class TestProjectFields:
     @pytest.mark.asyncio
-    async def test_project_fields(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            projects=[
-                _minimal_project(
-                    {
-                        "persistentIdentifier": "proj-abc",
-                        "name": "My Project",
-                        "project_info": {
-                            "pk": "pi-proj-abc",
-                            "task": "proj-abc",
-                            "lastReviewDate": _EARLIER_CF,
-                            "nextReviewDate": _NOW_CF,
-                            "reviewRepetitionString": "@1w",
-                            "nextTask": "next-t1",
-                            "folder": "folder-001",
-                            "effectiveStatus": "active",
-                        },
-                    }
-                )
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(
+        projects=[
+            _minimal_project(
+                {
+                    "persistentIdentifier": "proj-abc",
+                    "name": "My Project",
+                    "project_info": {
+                        "pk": "pi-proj-abc",
+                        "task": "proj-abc",
+                        "lastReviewDate": _EARLIER_CF,
+                        "nextReviewDate": _NOW_CF,
+                        "reviewRepetitionString": "@1w",
+                        "nextTask": "next-t1",
+                        "folder": "folder-001",
+                        "effectiveStatus": "active",
+                    },
+                }
+            )
+        ],
+    )
+    async def test_project_fields(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         proj = result.projects[0]
         assert proj.id == "proj-abc"
         assert proj.name == "My Project"
@@ -767,120 +723,102 @@ class TestProjectFields:
         assert proj.folder == "folder-001"
 
     @pytest.mark.asyncio
-    async def test_project_availability_dropped_by_status(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            projects=[
-                _minimal_project(
-                    {
-                        "project_info": {"effectiveStatus": "dropped"},
-                    }
-                )
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(
+        projects=[
+            _minimal_project(
+                {
+                    "project_info": {"effectiveStatus": "dropped"},
+                }
+            )
+        ],
+    )
+    async def test_project_availability_dropped_by_status(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        result = await hybrid_repo.get_all()
         assert result.projects[0].availability == "dropped"
 
     @pytest.mark.asyncio
-    async def test_project_availability_dropped_by_date_hidden(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            projects=[_minimal_project({"dateHidden": _NOW_CF})],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(projects=[_minimal_project({"dateHidden": _NOW_CF})])
+    async def test_project_availability_dropped_by_date_hidden(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        result = await hybrid_repo.get_all()
         assert result.projects[0].availability == "dropped"
 
     @pytest.mark.asyncio
-    async def test_project_availability_completed(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            projects=[_minimal_project({"dateCompleted": _NOW_CF})],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(projects=[_minimal_project({"dateCompleted": _NOW_CF})])
+    async def test_project_availability_completed(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         assert result.projects[0].availability == "completed"
 
     @pytest.mark.asyncio
-    async def test_project_availability_blocked(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            projects=[
-                _minimal_project(
-                    {
-                        "project_info": {"effectiveStatus": "inactive"},
-                    }
-                )
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(
+        projects=[
+            _minimal_project(
+                {
+                    "project_info": {"effectiveStatus": "inactive"},
+                }
+            )
+        ],
+    )
+    async def test_project_availability_blocked(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         assert result.projects[0].availability == "blocked"
 
     @pytest.mark.asyncio
-    async def test_project_availability_available(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            projects=[_minimal_project()],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(projects=[_minimal_project()])
+    async def test_project_availability_available(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         assert result.projects[0].availability == "available"
 
     @pytest.mark.asyncio
-    async def test_project_review_interval_weekly(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            projects=[
-                _minimal_project(
-                    {
-                        "project_info": {"reviewRepetitionString": "@1w"},
-                    }
-                )
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(
+        projects=[
+            _minimal_project(
+                {
+                    "project_info": {"reviewRepetitionString": "@1w"},
+                }
+            )
+        ],
+    )
+    async def test_project_review_interval_weekly(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         assert result.projects[0].review_interval.steps == 1
         assert result.projects[0].review_interval.unit == "weeks"
 
     @pytest.mark.asyncio
-    async def test_project_review_interval_monthly(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            projects=[
-                _minimal_project(
-                    {
-                        "project_info": {"reviewRepetitionString": "~2m"},
-                    }
-                )
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(
+        projects=[
+            _minimal_project(
+                {
+                    "project_info": {"reviewRepetitionString": "~2m"},
+                }
+            )
+        ],
+    )
+    async def test_project_review_interval_monthly(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         assert result.projects[0].review_interval.steps == 2
         assert result.projects[0].review_interval.unit == "months"
 
 
 class TestTagFields:
     @pytest.mark.asyncio
-    async def test_tag_fields(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            tags=[
-                _minimal_tag(
-                    {
-                        "persistentIdentifier": "tag-xyz",
-                        "name": "Errands",
-                        "childrenAreMutuallyExclusive": 1,
-                        "parent": "tag-parent",
-                    }
-                )
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(
+        tags=[
+            _minimal_tag(
+                {
+                    "persistentIdentifier": "tag-xyz",
+                    "name": "Errands",
+                    "childrenAreMutuallyExclusive": 1,
+                    "parent": "tag-parent",
+                }
+            )
+        ],
+    )
+    async def test_tag_fields(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         tag = result.tags[0]
         assert tag.id == "tag-xyz"
         assert tag.name == "Errands"
@@ -891,53 +829,39 @@ class TestTagFields:
         assert tag.modified is not None
 
     @pytest.mark.asyncio
-    async def test_tag_availability_blocked(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            tags=[_minimal_tag({"allowsNextAction": 0})],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(tags=[_minimal_tag({"allowsNextAction": 0})])
+    async def test_tag_availability_blocked(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         assert result.tags[0].availability == "blocked"
 
     @pytest.mark.asyncio
-    async def test_tag_availability_dropped(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            tags=[_minimal_tag({"dateHidden": _NOW_CF})],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(tags=[_minimal_tag({"dateHidden": _NOW_CF})])
+    async def test_tag_availability_dropped(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         assert result.tags[0].availability == "dropped"
 
     @pytest.mark.asyncio
-    async def test_tag_availability_available(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            tags=[_minimal_tag()],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(tags=[_minimal_tag()])
+    async def test_tag_availability_available(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         assert result.tags[0].availability == "available"
 
 
 class TestFolderFields:
     @pytest.mark.asyncio
-    async def test_folder_fields(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            folders=[
-                _minimal_folder(
-                    {
-                        "persistentIdentifier": "fold-1",
-                        "name": "Work",
-                        "parent": "fold-parent",
-                    }
-                )
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(
+        folders=[
+            _minimal_folder(
+                {
+                    "persistentIdentifier": "fold-1",
+                    "name": "Work",
+                    "parent": "fold-parent",
+                }
+            )
+        ],
+    )
+    async def test_folder_fields(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         folder = result.folders[0]
         assert folder.id == "fold-1"
         assert folder.name == "Work"
@@ -947,58 +871,46 @@ class TestFolderFields:
         assert folder.modified is not None
 
     @pytest.mark.asyncio
-    async def test_folder_availability_dropped(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            folders=[_minimal_folder({"dateHidden": _NOW_CF})],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(folders=[_minimal_folder({"dateHidden": _NOW_CF})])
+    async def test_folder_availability_dropped(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         assert result.folders[0].availability == "dropped"
 
     @pytest.mark.asyncio
-    async def test_folder_availability_available(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            folders=[_minimal_folder()],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(folders=[_minimal_folder()])
+    async def test_folder_availability_available(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         assert result.folders[0].availability == "available"
 
 
 class TestPerspective:
     @pytest.mark.asyncio
-    async def test_perspective_from_plist(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            perspectives=[
-                {
-                    "persistentIdentifier": "persp-custom",
-                    "valueData": _make_perspective_plist("My Custom View"),
-                }
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(
+        perspectives=[
+            {
+                "persistentIdentifier": "persp-custom",
+                "valueData": _make_perspective_plist("My Custom View"),
+            }
+        ],
+    )
+    async def test_perspective_from_plist(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         persp = result.perspectives[0]
         assert persp.id == "persp-custom"
         assert persp.name == "My Custom View"
         assert persp.builtin is False
 
     @pytest.mark.asyncio
-    async def test_perspective_builtin_detection(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            perspectives=[
-                {
-                    "persistentIdentifier": None,
-                    "valueData": _make_perspective_plist("Inbox"),
-                }
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+    @pytest.mark.hybrid_db(
+        perspectives=[
+            {
+                "persistentIdentifier": None,
+                "valueData": _make_perspective_plist("Inbox"),
+            }
+        ],
+    )
+    async def test_perspective_builtin_detection(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         persp = result.perspectives[0]
         assert persp.id is None
         assert persp.builtin is True
@@ -1006,8 +918,8 @@ class TestPerspective:
 
 class TestEdgeCases:
     @pytest.mark.asyncio
-    async def test_empty_database(self, empty_repo: HybridRepository) -> None:
-        result = await empty_repo.get_all()
+    async def test_empty_database(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_all()
         assert result.tasks == []
         assert result.projects == []
         assert result.tags == []
@@ -1015,17 +927,14 @@ class TestEdgeCases:
         assert result.perspectives == []
 
     @pytest.mark.asyncio
-    async def test_reads_without_omnifocus(self, tmp_path: Path) -> None:
+    @pytest.mark.hybrid_db(
+        tasks=[_minimal_task()],
+        tags=[_minimal_tag()],
+    )
+    async def test_reads_without_omnifocus(self, hybrid_repo: HybridRepository) -> None:
         """Reading from a file-based SQLite works without OmniFocus process."""
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[_minimal_task()],
-            tags=[_minimal_tag()],
-        )
-        # This is already a file-based test (using tmp_path).
         # The point: no OmniFocus dependency, just a SQLite file.
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+        result = await hybrid_repo.get_all()
         assert len(result.tasks) == 1
         assert len(result.tags) == 1
 
@@ -1154,7 +1063,8 @@ class TestFreshness:
             assert call == pytest.approx(0.05)
 
     @pytest.mark.asyncio
-    async def test_reads_never_poll(self, minimal_task_repo: HybridRepository) -> None:
+    @pytest.mark.hybrid_db(tasks=[_minimal_task()])
+    async def test_reads_never_poll(self, hybrid_repo: HybridRepository) -> None:
         """Read methods never trigger freshness polling."""
         sleep_calls: list[float] = []
         original_sleep = asyncio.sleep
@@ -1166,8 +1076,8 @@ class TestFreshness:
         with patch(
             "omnifocus_operator.repository.hybrid.asyncio.sleep", side_effect=tracking_sleep
         ):
-            await minimal_task_repo.get_all()
-            await minimal_task_repo.get_task("task-001")
+            await hybrid_repo.get_all()
+            await hybrid_repo.get_task("task-001")
 
         assert len(sleep_calls) == 0
 
@@ -1338,28 +1248,26 @@ class TestGetTask:
     """Tests for HybridRepository.get_task() -- single task lookup by ID."""
 
     @pytest.mark.asyncio
-    async def test_found_returns_task_with_all_fields(self, tmp_path: Path) -> None:
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task(
+                {
+                    "persistentIdentifier": "task-abc",
+                    "name": "Buy milk",
+                    "plainTextNote": "Oat milk",
+                    "flagged": 1,
+                    "effectiveFlagged": 1,
+                    "inInbox": 0,
+                    "childrenCount": 2,
+                    "overdue": 1,
+                }
+            )
+        ],
+        projects=[_minimal_project()],
+    )
+    async def test_found_returns_task_with_all_fields(self, hybrid_repo: HybridRepository) -> None:
         """Found task returns a complete Task model with all fields populated."""
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[
-                _minimal_task(
-                    {
-                        "persistentIdentifier": "task-abc",
-                        "name": "Buy milk",
-                        "plainTextNote": "Oat milk",
-                        "flagged": 1,
-                        "effectiveFlagged": 1,
-                        "inInbox": 0,
-                        "childrenCount": 2,
-                        "overdue": 1,
-                    }
-                )
-            ],
-            projects=[_minimal_project()],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        task = await repo.get_task("task-abc")
+        task = await hybrid_repo.get_task("task-abc")
 
         assert task is not None
         assert task.id == "task-abc"
@@ -1374,27 +1282,26 @@ class TestGetTask:
         assert task.modified is not None
 
     @pytest.mark.asyncio
-    async def test_not_found_returns_none(self, minimal_task_repo: HybridRepository) -> None:
-        result = await minimal_task_repo.get_task("nonexistent-id")
+    @pytest.mark.hybrid_db(tasks=[_minimal_task()])
+    async def test_not_found_returns_none(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_task("nonexistent-id")
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_task_with_project_parent_ref(self, tmp_path: Path) -> None:
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task(
+                {
+                    "persistentIdentifier": "task-in-proj",
+                    "containingProjectInfo": "pi-proj-001",
+                }
+            )
+        ],
+        projects=[_minimal_project()],
+    )
+    async def test_task_with_project_parent_ref(self, hybrid_repo: HybridRepository) -> None:
         """Task in a project gets ParentRef with type='project'."""
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[
-                _minimal_task(
-                    {
-                        "persistentIdentifier": "task-in-proj",
-                        "containingProjectInfo": "pi-proj-001",
-                    }
-                )
-            ],
-            projects=[_minimal_project()],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        task = await repo.get_task("task-in-proj")
+        task = await hybrid_repo.get_task("task-in-proj")
 
         assert task is not None
         assert task.parent is not None
@@ -1403,31 +1310,29 @@ class TestGetTask:
         assert task.parent.name == "Test Project"
 
     @pytest.mark.asyncio
-    async def test_task_with_task_parent_ref(self, tmp_path: Path) -> None:
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task(
+                {
+                    "persistentIdentifier": "subtask-1",
+                    "name": "Subtask",
+                    "parent": "parent-task-1",
+                    "containingProjectInfo": "pi-proj-001",
+                }
+            ),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "parent-task-1",
+                    "name": "Parent Task",
+                    "containingProjectInfo": "pi-proj-001",
+                }
+            ),
+        ],
+        projects=[_minimal_project()],
+    )
+    async def test_task_with_task_parent_ref(self, hybrid_repo: HybridRepository) -> None:
         """Subtask gets ParentRef with type='task'."""
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[
-                _minimal_task(
-                    {
-                        "persistentIdentifier": "subtask-1",
-                        "name": "Subtask",
-                        "parent": "parent-task-1",
-                        "containingProjectInfo": "pi-proj-001",
-                    }
-                ),
-                _minimal_task(
-                    {
-                        "persistentIdentifier": "parent-task-1",
-                        "name": "Parent Task",
-                        "containingProjectInfo": "pi-proj-001",
-                    }
-                ),
-            ],
-            projects=[_minimal_project()],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        task = await repo.get_task("subtask-1")
+        task = await hybrid_repo.get_task("subtask-1")
 
         assert task is not None
         assert task.parent is not None
@@ -1436,35 +1341,31 @@ class TestGetTask:
         assert task.parent.name == "Parent Task"
 
     @pytest.mark.asyncio
-    async def test_inbox_task_parent_none(self, tmp_path: Path) -> None:
+    @pytest.mark.hybrid_db(
+        tasks=[_minimal_task({"persistentIdentifier": "inbox-task", "inInbox": 1})],
+    )
+    async def test_inbox_task_parent_none(self, hybrid_repo: HybridRepository) -> None:
         """Inbox task (no project, no parent) has parent=None."""
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[_minimal_task({"persistentIdentifier": "inbox-task", "inInbox": 1})],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        task = await repo.get_task("inbox-task")
+        task = await hybrid_repo.get_task("inbox-task")
 
         assert task is not None
         assert task.parent is None
 
     @pytest.mark.asyncio
-    async def test_task_with_tags(self, tmp_path: Path) -> None:
+    @pytest.mark.hybrid_db(
+        tasks=[_minimal_task({"persistentIdentifier": "tagged-task"})],
+        tags=[
+            _minimal_tag({"persistentIdentifier": "tag-a", "name": "Errand"}),
+            _minimal_tag({"persistentIdentifier": "tag-b", "name": "Home"}),
+        ],
+        task_tags=[
+            {"task": "tagged-task", "tag": "tag-a"},
+            {"task": "tagged-task", "tag": "tag-b"},
+        ],
+    )
+    async def test_task_with_tags(self, hybrid_repo: HybridRepository) -> None:
         """Task tags are included in get_task result."""
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[_minimal_task({"persistentIdentifier": "tagged-task"})],
-            tags=[
-                _minimal_tag({"persistentIdentifier": "tag-a", "name": "Errand"}),
-                _minimal_tag({"persistentIdentifier": "tag-b", "name": "Home"}),
-            ],
-            task_tags=[
-                {"task": "tagged-task", "tag": "tag-a"},
-                {"task": "tagged-task", "tag": "tag-b"},
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        task = await repo.get_task("tagged-task")
+        task = await hybrid_repo.get_task("tagged-task")
 
         assert task is not None
         assert len(task.tags) == 2
@@ -1472,14 +1373,12 @@ class TestGetTask:
         assert tag_names == {"Errand", "Home"}
 
     @pytest.mark.asyncio
-    async def test_does_not_return_project_as_task(self, tmp_path: Path) -> None:
+    @pytest.mark.hybrid_db(
+        projects=[_minimal_project({"persistentIdentifier": "proj-as-task"})],
+    )
+    async def test_does_not_return_project_as_task(self, hybrid_repo: HybridRepository) -> None:
         """A project's task row is excluded from get_task (has ProjectInfo)."""
-        db_path = create_test_db(
-            tmp_path,
-            projects=[_minimal_project({"persistentIdentifier": "proj-as-task"})],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_task("proj-as-task")
+        result = await hybrid_repo.get_task("proj-as-task")
         assert result is None
 
 
@@ -1487,30 +1386,30 @@ class TestGetProject:
     """Tests for HybridRepository.get_project() -- single project lookup by ID."""
 
     @pytest.mark.asyncio
-    async def test_found_returns_project_with_all_fields(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            projects=[
-                _minimal_project(
-                    {
-                        "persistentIdentifier": "proj-xyz",
-                        "name": "My Project",
-                        "project_info": {
-                            "pk": "pi-proj-xyz",
-                            "task": "proj-xyz",
-                            "lastReviewDate": _EARLIER_CF,
-                            "nextReviewDate": _NOW_CF,
-                            "reviewRepetitionString": "@2w",
-                            "nextTask": "next-1",
-                            "folder": "fold-1",
-                            "effectiveStatus": "active",
-                        },
-                    }
-                )
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        proj = await repo.get_project("proj-xyz")
+    @pytest.mark.hybrid_db(
+        projects=[
+            _minimal_project(
+                {
+                    "persistentIdentifier": "proj-xyz",
+                    "name": "My Project",
+                    "project_info": {
+                        "pk": "pi-proj-xyz",
+                        "task": "proj-xyz",
+                        "lastReviewDate": _EARLIER_CF,
+                        "nextReviewDate": _NOW_CF,
+                        "reviewRepetitionString": "@2w",
+                        "nextTask": "next-1",
+                        "folder": "fold-1",
+                        "effectiveStatus": "active",
+                    },
+                }
+            )
+        ],
+    )
+    async def test_found_returns_project_with_all_fields(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        proj = await hybrid_repo.get_project("proj-xyz")
 
         assert proj is not None
         assert proj.id == "proj-xyz"
@@ -1522,10 +1421,9 @@ class TestGetProject:
         assert proj.folder == "fold-1"
 
     @pytest.mark.asyncio
-    async def test_not_found_returns_none(self, tmp_path: Path) -> None:
-        db_path = create_test_db(tmp_path, projects=[_minimal_project()])
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_project("nonexistent-id")
+    @pytest.mark.hybrid_db(projects=[_minimal_project()])
+    async def test_not_found_returns_none(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_project("nonexistent-id")
         assert result is None
 
 
@@ -1533,22 +1431,20 @@ class TestGetTag:
     """Tests for HybridRepository.get_tag() -- single tag lookup by ID."""
 
     @pytest.mark.asyncio
-    async def test_found_returns_tag_with_all_fields(self, tmp_path: Path) -> None:
-        db_path = create_test_db(
-            tmp_path,
-            tags=[
-                _minimal_tag(
-                    {
-                        "persistentIdentifier": "tag-xyz",
-                        "name": "Errands",
-                        "childrenAreMutuallyExclusive": 1,
-                        "parent": "tag-parent",
-                    }
-                )
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        tag = await repo.get_tag("tag-xyz")
+    @pytest.mark.hybrid_db(
+        tags=[
+            _minimal_tag(
+                {
+                    "persistentIdentifier": "tag-xyz",
+                    "name": "Errands",
+                    "childrenAreMutuallyExclusive": 1,
+                    "parent": "tag-parent",
+                }
+            )
+        ],
+    )
+    async def test_found_returns_tag_with_all_fields(self, hybrid_repo: HybridRepository) -> None:
+        tag = await hybrid_repo.get_tag("tag-xyz")
 
         assert tag is not None
         assert tag.id == "tag-xyz"
@@ -1560,10 +1456,9 @@ class TestGetTag:
         assert tag.modified is not None
 
     @pytest.mark.asyncio
-    async def test_not_found_returns_none(self, tmp_path: Path) -> None:
-        db_path = create_test_db(tmp_path, tags=[_minimal_tag()])
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_tag("nonexistent-id")
+    @pytest.mark.hybrid_db(tags=[_minimal_tag()])
+    async def test_not_found_returns_none(self, hybrid_repo: HybridRepository) -> None:
+        result = await hybrid_repo.get_tag("nonexistent-id")
         assert result is None
 
 
@@ -1576,46 +1471,43 @@ class TestPlainTextNoteEncoding:
     """Notes should be read from plainTextNote column, not noteXMLData."""
 
     @pytest.mark.asyncio
-    async def test_task_reads_plain_text_note(self, tmp_path: Path) -> None:
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task(
+                {
+                    "plainTextNote": "Remember oat milk\nAnd eggs",
+                }
+            )
+        ],
+    )
+    async def test_task_reads_plain_text_note(self, hybrid_repo: HybridRepository) -> None:
         """Task with plainTextNote reads as clean text (no XML artifacts).
 
         Crucially, noteXMLData is NOT set -- proves we read from plainTextNote.
         """
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[
-                _minimal_task(
-                    {
-                        "plainTextNote": "Remember oat milk\nAnd eggs",
-                    }
-                )
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+        result = await hybrid_repo.get_all()
         assert result.tasks[0].note == "Remember oat milk\nAnd eggs"
 
     @pytest.mark.asyncio
-    async def test_task_null_plain_text_note(self, minimal_task_repo: HybridRepository) -> None:
+    @pytest.mark.hybrid_db(tasks=[_minimal_task()])
+    async def test_task_null_plain_text_note(self, hybrid_repo: HybridRepository) -> None:
         """Task with NULL plainTextNote reads as empty string."""
-        result = await minimal_task_repo.get_all()
+        result = await hybrid_repo.get_all()
         assert result.tasks[0].note == ""
 
     @pytest.mark.asyncio
-    async def test_project_reads_plain_text_note(self, tmp_path: Path) -> None:
+    @pytest.mark.hybrid_db(
+        projects=[
+            _minimal_project(
+                {
+                    "plainTextNote": "Project notes here",
+                }
+            )
+        ],
+    )
+    async def test_project_reads_plain_text_note(self, hybrid_repo: HybridRepository) -> None:
         """Project with plainTextNote reads as clean text."""
-        db_path = create_test_db(
-            tmp_path,
-            projects=[
-                _minimal_project(
-                    {
-                        "plainTextNote": "Project notes here",
-                    }
-                )
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+        result = await hybrid_repo.get_all()
         assert result.projects[0].note == "Project notes here"
 
 
@@ -1628,25 +1520,23 @@ class TestLocalDatetimeParsing:
     """dateDue, dateToStart, datePlanned should be parsed as local time with DST."""
 
     @pytest.mark.asyncio
-    async def test_due_date_local_time_winter(self, tmp_path: Path) -> None:
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task(
+                {
+                    "dateDue": "2026-01-15T10:00:00.000",
+                }
+            )
+        ],
+    )
+    async def test_due_date_local_time_winter(self, hybrid_repo: HybridRepository) -> None:
         """dateDue as local-time ISO string in winter converts to UTC correctly."""
         # London winter: UTC+0, so local 10:00 = UTC 10:00
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[
-                _minimal_task(
-                    {
-                        "dateDue": "2026-01-15T10:00:00.000",
-                    }
-                )
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
         with patch(
             "omnifocus_operator.repository.hybrid._LOCAL_TZ",
             ZoneInfo("Europe/London"),
         ):
-            result = await repo.get_all()
+            result = await hybrid_repo.get_all()
         task = result.tasks[0]
 
         assert task.due_date is not None
@@ -1657,73 +1547,67 @@ class TestLocalDatetimeParsing:
         assert task.due_date.minute == 0
 
     @pytest.mark.asyncio
-    async def test_due_date_local_time_summer_dst(self, tmp_path: Path) -> None:
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task(
+                {
+                    "dateDue": "2026-07-15T10:00:00.000",
+                }
+            )
+        ],
+    )
+    async def test_due_date_local_time_summer_dst(self, hybrid_repo: HybridRepository) -> None:
         """dateDue as local-time ISO string in summer (BST) converts to UTC correctly."""
         # London summer (BST): UTC+1, so local 10:00 = UTC 09:00
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[
-                _minimal_task(
-                    {
-                        "dateDue": "2026-07-15T10:00:00.000",
-                    }
-                )
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
         with patch(
             "omnifocus_operator.repository.hybrid._LOCAL_TZ",
             ZoneInfo("Europe/London"),
         ):
-            result = await repo.get_all()
+            result = await hybrid_repo.get_all()
         task = result.tasks[0]
 
         assert task.due_date is not None
         assert task.due_date.hour == 9  # BST is UTC+1, so 10:00 BST = 09:00 UTC
 
     @pytest.mark.asyncio
-    async def test_defer_date_local_time(self, tmp_path: Path) -> None:
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task(
+                {
+                    "dateToStart": "2026-07-15T14:00:00.000",
+                }
+            )
+        ],
+    )
+    async def test_defer_date_local_time(self, hybrid_repo: HybridRepository) -> None:
         """dateToStart stored as local-time ISO text converts to UTC correctly."""
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[
-                _minimal_task(
-                    {
-                        "dateToStart": "2026-07-15T14:00:00.000",
-                    }
-                )
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
         with patch(
             "omnifocus_operator.repository.hybrid._LOCAL_TZ",
             ZoneInfo("Europe/London"),
         ):
-            result = await repo.get_all()
+            result = await hybrid_repo.get_all()
         task = result.tasks[0]
 
         assert task.defer_date is not None
         assert task.defer_date.hour == 13  # 14:00 BST = 13:00 UTC
 
     @pytest.mark.asyncio
-    async def test_planned_date_local_time(self, tmp_path: Path) -> None:
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task(
+                {
+                    "datePlanned": "2026-01-20T08:00:00.000",
+                }
+            )
+        ],
+    )
+    async def test_planned_date_local_time(self, hybrid_repo: HybridRepository) -> None:
         """datePlanned stored as local-time ISO text converts to UTC correctly."""
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[
-                _minimal_task(
-                    {
-                        "datePlanned": "2026-01-20T08:00:00.000",
-                    }
-                )
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
         with patch(
             "omnifocus_operator.repository.hybrid._LOCAL_TZ",
             ZoneInfo("Europe/London"),
         ):
-            result = await repo.get_all()
+            result = await hybrid_repo.get_all()
         task = result.tasks[0]
 
         assert task.planned_date is not None
@@ -1731,23 +1615,19 @@ class TestLocalDatetimeParsing:
         assert task.planned_date.day == 20
 
     @pytest.mark.asyncio
-    async def test_effective_dates_still_use_cf_epoch(self, tmp_path: Path) -> None:
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task(
+                {
+                    "effectiveDateDue": _cf_epoch(datetime(2026, 2, 20, 15, 0, 0, tzinfo=UTC)),
+                    "effectiveDateToStart": _cf_epoch(datetime(2026, 2, 20, 15, 0, 0, tzinfo=UTC)),
+                }
+            )
+        ],
+    )
+    async def test_effective_dates_still_use_cf_epoch(self, hybrid_repo: HybridRepository) -> None:
         """effectiveDateDue stored as CF epoch integer still parses correctly (regression)."""
-        target_dt = datetime(2026, 2, 20, 15, 0, 0, tzinfo=UTC)
-        cf_value = _cf_epoch(target_dt)
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[
-                _minimal_task(
-                    {
-                        "effectiveDateDue": cf_value,
-                        "effectiveDateToStart": cf_value,
-                    }
-                )
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+        result = await hybrid_repo.get_all()
         task = result.tasks[0]
 
         assert task.effective_due_date is not None
@@ -1758,23 +1638,21 @@ class TestLocalDatetimeParsing:
         assert task.effective_defer_date is not None
 
     @pytest.mark.asyncio
-    async def test_date_added_modified_cf_epoch_regression(self, tmp_path: Path) -> None:
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task(
+                {
+                    "dateAdded": _cf_epoch(datetime(2026, 3, 1, 12, 30, 0, tzinfo=UTC)),
+                    "dateModified": _cf_epoch(datetime(2026, 3, 1, 12, 30, 0, tzinfo=UTC)),
+                }
+            )
+        ],
+    )
+    async def test_date_added_modified_cf_epoch_regression(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
         """dateAdded/dateModified as CF epoch float still parse correctly (regression)."""
-        target_dt = datetime(2026, 3, 1, 12, 30, 0, tzinfo=UTC)
-        cf_value = _cf_epoch(target_dt)
-        db_path = create_test_db(
-            tmp_path,
-            tasks=[
-                _minimal_task(
-                    {
-                        "dateAdded": cf_value,
-                        "dateModified": cf_value,
-                    }
-                )
-            ],
-        )
-        repo = HybridRepository(db_path=db_path, bridge=InMemoryBridge())
-        result = await repo.get_all()
+        result = await hybrid_repo.get_all()
         task = result.tasks[0]
 
         assert task.added is not None
