@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2.1
 milestone_name: Architectural Cleanup
 status: unknown
-stopped_at: Phase 27 context gathered
-last_updated: "2026-03-21T16:07:06.827Z"
+stopped_at: Completed 27-01-PLAN.md
+last_updated: "2026-03-21T17:18:12.362Z"
 last_activity: 2026-03-21
 progress:
   total_phases: 10
   completed_phases: 9
-  total_plans: 19
-  completed_plans: 19
+  total_plans: 21
+  completed_plans: 20
 ---
 
 # Project State
@@ -24,8 +24,8 @@ See: .planning/PROJECT.md (updated 2026-03-21)
 
 ## Current Position
 
-Phase: 27
-Plan: Not started
+Phase: 27 (repository-contract-tests-for-behavioral-equivalence) — EXECUTING
+Plan: 2 of 2
 
 ## Performance Metrics
 
@@ -62,6 +62,7 @@ Plan: Not started
 | Phase 26 P04 | 5min | 2 tasks | 3 files |
 | Phase 26 P05 | 8min | 1 tasks | 1 files |
 | Phase 26 P03 | 7min | 2 tasks | 7 files |
+| Phase 27 P01 | 4min | 2 tasks | 5 files |
 
 ### Decisions
 
@@ -104,6 +105,7 @@ Recent decisions affecting current work:
 - [Phase 26]: Late imports in conftest.py fixtures to break circular dependency with tests.doubles.bridge
 - [Phase 26]: Removed InMemoryBridge/make_snapshot_dict imports from test_service.py after full fixture migration; BridgeRepository moved to TYPE_CHECKING
 - [Phase 26]: StubBridge extracted as separate canned-response test double; InMemoryBridge cleaned of dual-mode _stateful logic
+- [Phase 27]: Extracted _resolve_parent as shared helper reused by both add_task and edit_task moveTo
 
 ### Pending Todos
 
@@ -140,5 +142,5 @@ None currently.
 ## Session Continuity
 
 Last activity: 2026-03-21
-Stopped at: Phase 27 context gathered
-Resume file: .planning/phases/27-repository-contract-tests-for-behavioral-equivalence/27-CONTEXT.md
+Stopped at: Completed 27-01-PLAN.md
+Resume file: None
