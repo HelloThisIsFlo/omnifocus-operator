@@ -36,6 +36,9 @@ addopts = [
     "--cov-config=pyproject.toml",
     "--cov-report=term-missing",
 ]
+markers = [
+    "snapshot: seed InMemoryBridge with custom snapshot data (kwargs passed to make_snapshot_dict)",
+]
 
 [tool.coverage.run]
 source = ["omnifocus_operator"]

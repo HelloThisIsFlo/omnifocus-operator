@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+
 from omnifocus_operator.models.snapshot import AllEntities
 
 
@@ -177,3 +179,58 @@ def make_snapshot(**overrides: Any) -> AllEntities:
     Delegates to ``make_snapshot_dict()`` and validates through Pydantic.
     """
     return AllEntities.model_validate(make_snapshot_dict(**overrides))
+
+
+# ---------------------------------------------------------------------------
+# Shared fixtures: marker-driven bridge -> repo -> service chain
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def bridge(request: pytest.FixtureRequest) -> Any:
+    """InMemoryBridge seeded from @pytest.mark.snapshot(...) or default snapshot.
+
+    Usage:
+        @pytest.mark.snapshot(tasks=[make_task_dict(id="t1")])
+        async def test_something(self, service): ...
+
+    Without marker: uses make_snapshot_dict() defaults (1 of each entity).
+
+    Note: Return type is ``Any`` because ``InMemoryBridge`` lives in
+    ``tests.doubles`` which imports from this module -- using the concrete
+    type in the signature would create a circular import at module load time.
+    The actual return value is always ``InMemoryBridge``.
+    """
+    from tests.doubles import InMemoryBridge  # noqa: PLC0415 — circular import guard
+
+    marker = request.node.get_closest_marker("snapshot")
+    if marker is not None:
+        snapshot_data = make_snapshot_dict(**marker.kwargs)
+    else:
+        snapshot_data = make_snapshot_dict()
+    return InMemoryBridge(data=snapshot_data)
+
+
+@pytest.fixture
+def repo(bridge: Any) -> Any:
+    """Repository wired to test bridge with constant mtime.
+
+    Note: Parameter and return types are ``Any`` to avoid circular imports
+    with ``tests.doubles``.  Actual types: ``InMemoryBridge`` -> ``BridgeRepository``.
+    """
+    from omnifocus_operator.repository import BridgeRepository  # noqa: PLC0415
+    from tests.doubles import ConstantMtimeSource  # noqa: PLC0415 — circular import guard
+
+    return BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
+
+
+@pytest.fixture
+def service(repo: Any) -> Any:
+    """OperatorService wired to test repo.
+
+    Note: Return type is ``Any`` to avoid importing ``OperatorService`` at
+    module level (keeping conftest lightweight).  Actual return: ``OperatorService``.
+    """
+    from omnifocus_operator.service import OperatorService  # noqa: PLC0415
+
+    return OperatorService(repository=repo)
