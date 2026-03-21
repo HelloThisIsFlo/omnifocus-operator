@@ -189,7 +189,7 @@ class InMemoryBridge(Bridge):
         elif lifecycle == "drop":
             task["availability"] = "dropped"
 
-        # Move (simplified dict-level)
+        # Move (dict-level with parent resolution)
         if "moveTo" in params:
             container_id = params["moveTo"].get("containerId")
             if container_id is None:
@@ -197,5 +197,15 @@ class InMemoryBridge(Bridge):
                 task["inInbox"] = True
             else:
                 task["inInbox"] = False
+                # Resolve parent type and name from internal state
+                project = next((p for p in self._projects if p["id"] == container_id), None)
+                if project is not None:
+                    task["parent"] = {"type": "project", "id": container_id, "name": project["name"]}
+                else:
+                    parent_task = next((t for t in self._tasks if t["id"] == container_id), None)
+                    if parent_task is not None:
+                        task["parent"] = {"type": "task", "id": container_id, "name": parent_task["name"]}
+                    else:
+                        task["parent"] = {"type": "task", "id": container_id, "name": container_id}
 
         return {"id": task_id, "name": task["name"]}

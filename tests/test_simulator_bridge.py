@@ -147,22 +147,17 @@ class TestPackageExport:
 
 
 class TestLifespan:
-    """app_lifespan wiring with monkeypatched InMemoryRepository."""
+    """app_lifespan wiring with monkeypatched BridgeRepository + InMemoryBridge."""
 
     @staticmethod
-    def _make_in_memory_repo() -> Any:
-        """Create an InMemoryRepository with empty seed data."""
-        from omnifocus_operator.models import AllEntities
-        from tests.doubles import InMemoryRepository
+    def _make_repo() -> Any:
+        """Create a BridgeRepository with empty InMemoryBridge."""
+        from omnifocus_operator.repository import BridgeRepository
+        from tests.doubles import ConstantMtimeSource, InMemoryBridge
 
-        return InMemoryRepository(
-            snapshot=AllEntities(
-                tasks=[],
-                projects=[],
-                tags=[],
-                folders=[],
-                perspectives=[],
-            ),
+        return BridgeRepository(
+            bridge=InMemoryBridge(data={"tasks": [], "projects": [], "tags": [], "folders": [], "perspectives": []}),
+            mtime_source=ConstantMtimeSource(),
         )
 
     async def test_lifespan_completes_without_error(
@@ -171,7 +166,7 @@ class TestLifespan:
         tmp_path: Path,
     ) -> None:
         """Server lifespan completes successfully with monkeypatched repository."""
-        repo = self._make_in_memory_repo()
+        repo = self._make_repo()
 
         with patch(
             "omnifocus_operator.repository.create_repository",
@@ -195,7 +190,7 @@ class TestLifespan:
         tmp_path: Path,
     ) -> None:
         """Server with monkeypatched repository can serve get_all tool calls."""
-        repo = self._make_in_memory_repo()
+        repo = self._make_repo()
 
         with patch(
             "omnifocus_operator.repository.create_repository",
@@ -220,7 +215,7 @@ class TestLifespan:
         """Lifespan always sweeps orphaned IPC files (DEFAULT_IPC_DIR)."""
         from unittest.mock import AsyncMock
 
-        repo = self._make_in_memory_repo()
+        repo = self._make_repo()
         mock_sweep = AsyncMock()
 
         with (

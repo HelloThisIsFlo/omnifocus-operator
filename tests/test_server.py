@@ -88,13 +88,14 @@ class TestARCH01ThreeLayerArchitecture:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        from omnifocus_operator.models.snapshot import AllEntities
-        from tests.doubles import InMemoryRepository
+        from omnifocus_operator.repository import BridgeRepository
+        from tests.doubles import ConstantMtimeSource, InMemoryBridge
 
         monkeypatch.setattr(
             "omnifocus_operator.repository.create_repository",
-            lambda *a, **kw: InMemoryRepository(
-                snapshot=AllEntities(tasks=[], projects=[], tags=[], folders=[], perspectives=[]),
+            lambda *a, **kw: BridgeRepository(
+                bridge=InMemoryBridge(data={"tasks": [], "projects": [], "tags": [], "folders": [], "perspectives": []}),
+                mtime_source=ConstantMtimeSource(),
             ),
         )
         from omnifocus_operator.server import create_server
@@ -122,13 +123,14 @@ class TestARCH02RepositoryInjection:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        from omnifocus_operator.models.snapshot import AllEntities
-        from tests.doubles import InMemoryRepository
+        from omnifocus_operator.repository import BridgeRepository
+        from tests.doubles import ConstantMtimeSource, InMemoryBridge
 
         monkeypatch.setattr(
             "omnifocus_operator.repository.create_repository",
-            lambda *a, **kw: InMemoryRepository(
-                snapshot=AllEntities(tasks=[], projects=[], tags=[], folders=[], perspectives=[]),
+            lambda *a, **kw: BridgeRepository(
+                bridge=InMemoryBridge(data={"tasks": [], "projects": [], "tags": [], "folders": [], "perspectives": []}),
+                mtime_source=ConstantMtimeSource(),
             ),
         )
         from omnifocus_operator.server import create_server
@@ -176,13 +178,14 @@ class TestTOOL01ListAllStructuredOutput:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        from omnifocus_operator.models.snapshot import AllEntities
-        from tests.doubles import InMemoryRepository
+        from omnifocus_operator.repository import BridgeRepository
+        from tests.doubles import ConstantMtimeSource, InMemoryBridge
 
         monkeypatch.setattr(
             "omnifocus_operator.repository.create_repository",
-            lambda *a, **kw: InMemoryRepository(
-                snapshot=AllEntities(tasks=[], projects=[], tags=[], folders=[], perspectives=[]),
+            lambda *a, **kw: BridgeRepository(
+                bridge=InMemoryBridge(data={"tasks": [], "projects": [], "tags": [], "folders": [], "perspectives": []}),
+                mtime_source=ConstantMtimeSource(),
             ),
         )
         from omnifocus_operator.server import create_server
@@ -585,14 +588,15 @@ class TestGetByIdTools:
 
     async def _make_server_with_data(self) -> FastMCP:
         """Build a test server with known snapshot data."""
+        from omnifocus_operator.repository import BridgeRepository
         from omnifocus_operator.server import _register_tools
         from omnifocus_operator.service import OperatorService
-        from tests.doubles import InMemoryRepository
+        from tests.doubles import ConstantMtimeSource, InMemoryBridge
 
-        from .conftest import make_snapshot
+        from .conftest import make_snapshot_dict
 
-        snapshot = make_snapshot()
-        repo = InMemoryRepository(snapshot=snapshot)
+        bridge = InMemoryBridge(data=make_snapshot_dict())
+        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
         server = _build_patched_server(repo, service)
@@ -719,12 +723,13 @@ class TestAddTasks:
         extra_projects: list[dict[str, Any]] | None = None,
         extra_tags: list[dict[str, Any]] | None = None,
     ) -> FastMCP:
-        """Build a test server with InMemoryRepository and known data."""
+        """Build a test server with BridgeRepository + InMemoryBridge and known data."""
+        from omnifocus_operator.repository import BridgeRepository
         from omnifocus_operator.server import _register_tools
         from omnifocus_operator.service import OperatorService
-        from tests.doubles import InMemoryRepository
+        from tests.doubles import ConstantMtimeSource, InMemoryBridge
 
-        from .conftest import make_project_dict, make_snapshot, make_tag_dict
+        from .conftest import make_project_dict, make_snapshot_dict, make_tag_dict
 
         projects = [make_project_dict()]
         if extra_projects:
@@ -734,8 +739,8 @@ class TestAddTasks:
         if extra_tags:
             tags.extend(extra_tags)
 
-        snapshot = make_snapshot(projects=projects, tags=tags)
-        repo = InMemoryRepository(snapshot=snapshot)
+        bridge = InMemoryBridge(data=make_snapshot_dict(projects=projects, tags=tags))
+        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
         server = _build_patched_server(repo, service)
@@ -974,12 +979,13 @@ class TestEditTasks:
         extra_projects: list[dict[str, Any]] | None = None,
         extra_tags: list[dict[str, Any]] | None = None,
     ) -> FastMCP:
-        """Build a test server with InMemoryRepository and known data."""
+        """Build a test server with BridgeRepository + InMemoryBridge and known data."""
+        from omnifocus_operator.repository import BridgeRepository
         from omnifocus_operator.server import _register_tools
         from omnifocus_operator.service import OperatorService
-        from tests.doubles import InMemoryRepository
+        from tests.doubles import ConstantMtimeSource, InMemoryBridge
 
-        from .conftest import make_project_dict, make_snapshot, make_tag_dict, make_task_dict
+        from .conftest import make_project_dict, make_snapshot_dict, make_tag_dict, make_task_dict
 
         tasks = [make_task_dict()]
         if extra_tasks:
@@ -993,8 +999,8 @@ class TestEditTasks:
         if extra_tags:
             tags.extend(extra_tags)
 
-        snapshot = make_snapshot(tasks=tasks, projects=projects, tags=tags)
-        repo = InMemoryRepository(snapshot=snapshot)
+        bridge = InMemoryBridge(data=make_snapshot_dict(tasks=tasks, projects=projects, tags=tags))
+        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
         server = _build_patched_server(repo, service)
@@ -1346,21 +1352,22 @@ class TestEditTasksLifecycle:
         *,
         extra_tasks: list[dict[str, Any]] | None = None,
     ) -> FastMCP:
-        """Build a test server with InMemoryRepository and known data."""
+        """Build a test server with BridgeRepository + InMemoryBridge and known data."""
+        from omnifocus_operator.repository import BridgeRepository
         from omnifocus_operator.server import _register_tools
         from omnifocus_operator.service import OperatorService
-        from tests.doubles import InMemoryRepository
+        from tests.doubles import ConstantMtimeSource, InMemoryBridge
 
-        from .conftest import make_project_dict, make_snapshot, make_tag_dict, make_task_dict
+        from .conftest import make_project_dict, make_snapshot_dict, make_tag_dict, make_task_dict
 
         tasks = [make_task_dict()]
         if extra_tasks:
             tasks.extend(extra_tasks)
 
-        snapshot = make_snapshot(
+        bridge = InMemoryBridge(data=make_snapshot_dict(
             tasks=tasks, projects=[make_project_dict()], tags=[make_tag_dict()]
-        )
-        repo = InMemoryRepository(snapshot=snapshot)
+        ))
+        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
         server = _build_patched_server(repo, service)

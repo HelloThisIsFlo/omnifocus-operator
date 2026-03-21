@@ -1,7 +1,7 @@
 """Unit tests for Resolver and validate_task_name / validate_task_name_if_set.
 
 Tests the resolve module independently of OperatorService. Resolver tests use
-a real InMemoryRepository (per CONTEXT.md strategy), validation tests are pure.
+BridgeRepository + InMemoryBridge (per D-11), validation tests are pure.
 """
 
 from __future__ import annotations
@@ -9,13 +9,14 @@ from __future__ import annotations
 import pytest
 
 from omnifocus_operator.contracts.base import UNSET
+from omnifocus_operator.repository import BridgeRepository
 from omnifocus_operator.service.resolve import Resolver
 from omnifocus_operator.service.validate import validate_task_name, validate_task_name_if_set
-from tests.doubles import InMemoryRepository
+from tests.doubles import ConstantMtimeSource, InMemoryBridge
 
 from .conftest import (
     make_project_dict,
-    make_snapshot,
+    make_snapshot_dict,
     make_tag_dict,
     make_task_dict,
 )
@@ -26,9 +27,9 @@ from .conftest import (
 
 
 @pytest.fixture
-def resolver() -> Resolver:
-    """Resolver with InMemoryRepository containing known test data."""
-    snapshot = make_snapshot(
+def bridge() -> InMemoryBridge:
+    """InMemoryBridge pre-loaded with resolver test data (per D-11)."""
+    return InMemoryBridge(data=make_snapshot_dict(
         tasks=[
             make_task_dict(id="task-1", name="Alpha"),
             make_task_dict(
@@ -45,8 +46,18 @@ def resolver() -> Resolver:
             make_tag_dict(id="tag-home", name="Home"),
             make_tag_dict(id="tag-errand", name="Errand"),
         ],
-    )
-    repo = InMemoryRepository(snapshot)
+    ))
+
+
+@pytest.fixture
+def repo(bridge: InMemoryBridge) -> BridgeRepository:
+    """Repository wired to test bridge with constant mtime (per D-11, D-13)."""
+    return BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
+
+
+@pytest.fixture
+def resolver(repo: BridgeRepository) -> Resolver:
+    """Resolver with BridgeRepository + InMemoryBridge containing known test data."""
     return Resolver(repo)
 
 
@@ -103,7 +114,7 @@ class TestValidateTaskNameIfSet:
 
 
 class TestResolver:
-    """Resolver resolves parent IDs and tag names against a real InMemoryRepository."""
+    """Resolver resolves parent IDs and tag names against BridgeRepository + InMemoryBridge."""
 
     # -- Parent resolution -------------------------------------------------
 
@@ -185,13 +196,13 @@ class TestResolver:
 
     async def test_resolve_tags_ambiguous(self, resolver: Resolver) -> None:
         """Two tags with same name raises ValueError listing both IDs."""
-        snapshot = make_snapshot(
+        bridge = InMemoryBridge(data=make_snapshot_dict(
             tags=[
                 make_tag_dict(id="tag-a", name="Duplicate"),
                 make_tag_dict(id="tag-b", name="Duplicate"),
             ],
-        )
-        repo = InMemoryRepository(snapshot)
+        ))
+        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         ambiguous_resolver = Resolver(repo)
 
         with pytest.raises(ValueError, match="Ambiguous tag") as exc_info:
