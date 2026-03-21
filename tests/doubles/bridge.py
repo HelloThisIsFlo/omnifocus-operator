@@ -95,6 +95,25 @@ class InMemoryBridge(Bridge):
         return self._handle_get_all()
 
     # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def _resolve_tag_name(self, tag_id: str) -> str:
+        """Look up tag name from internal _tags list; fall back to tag_id."""
+        tag = next((t for t in self._tags if t["id"] == tag_id), None)
+        return tag["name"] if tag is not None else tag_id
+
+    def _resolve_parent(self, container_id: str) -> dict[str, Any]:
+        """Resolve a parent ID to a {type, id, name} dict."""
+        project = next((p for p in self._projects if p["id"] == container_id), None)
+        if project is not None:
+            return {"type": "project", "id": container_id, "name": project["name"]}
+        parent_task = next((t for t in self._tasks if t["id"] == container_id), None)
+        if parent_task is not None:
+            return {"type": "task", "id": container_id, "name": parent_task["name"]}
+        return {"type": "task", "id": container_id, "name": container_id}
+
+    # ------------------------------------------------------------------
     # Operation handlers
     # ------------------------------------------------------------------
 
@@ -118,7 +137,15 @@ class InMemoryBridge(Bridge):
         """
         task_id = f"mem-{uuid4().hex[:8]}"
         now = datetime.now(tz=UTC).isoformat()
-        has_parent = params.get("parent") is not None
+        parent_id = params.get("parent")
+        has_parent = parent_id is not None
+
+        # Resolve parent to {type, id, name} dict (or None for inbox)
+        parent = self._resolve_parent(parent_id) if has_parent else None
+
+        # Resolve tagIds to [{id, name}] list
+        tag_ids = params.get("tagIds", [])
+        tags = [{"id": tid, "name": self._resolve_tag_name(tid)} for tid in tag_ids]
 
         task = make_task_dict(
             id=task_id,
@@ -130,12 +157,12 @@ class InMemoryBridge(Bridge):
             flagged=params.get("flagged", False),
             effectiveFlagged=params.get("flagged", False),
             inInbox=not has_parent,
-            parent=None,
+            parent=parent,
             dueDate=params.get("dueDate"),
             deferDate=params.get("deferDate"),
             plannedDate=params.get("plannedDate"),
             estimatedMinutes=params.get("estimatedMinutes"),
-            tags=[],
+            tags=tags,
         )
 
         self._tasks.append(task)
@@ -180,7 +207,7 @@ class InMemoryBridge(Bridge):
             existing_ids = {t["id"] for t in task["tags"]}
             for tid in add_ids:
                 if tid not in existing_ids:
-                    task["tags"].append({"id": tid, "name": tid})
+                    task["tags"].append({"id": tid, "name": self._resolve_tag_name(tid)})
 
         # Lifecycle
         lifecycle = params.get("lifecycle")
@@ -197,24 +224,7 @@ class InMemoryBridge(Bridge):
                 task["inInbox"] = True
             else:
                 task["inInbox"] = False
-                # Resolve parent type and name from internal state
-                project = next((p for p in self._projects if p["id"] == container_id), None)
-                if project is not None:
-                    task["parent"] = {
-                        "type": "project",
-                        "id": container_id,
-                        "name": project["name"],
-                    }
-                else:
-                    parent_task = next((t for t in self._tasks if t["id"] == container_id), None)
-                    if parent_task is not None:
-                        task["parent"] = {
-                            "type": "task",
-                            "id": container_id,
-                            "name": parent_task["name"],
-                        }
-                    else:
-                        task["parent"] = {"type": "task", "id": container_id, "name": container_id}
+                task["parent"] = self._resolve_parent(container_id)
 
         return {"id": task_id, "name": task["name"]}
 
