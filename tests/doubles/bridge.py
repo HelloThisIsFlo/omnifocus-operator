@@ -30,7 +30,8 @@ class InMemoryBridge(Bridge):
     - Read operation: get_all (returns deep-copied snapshot)
     - Full call history via ``calls`` / ``call_count``
     - Configurable error simulation via ``set_error`` / ``clear_error``
-    - Backward-compatible fallback for unknown operations
+
+    For canned-response (non-stateful) testing, use StubBridge instead.
     """
 
     def __init__(
@@ -40,19 +41,12 @@ class InMemoryBridge(Bridge):
     ) -> None:
         seed = data if data is not None else {}
 
-        # Detect if seed data is a snapshot (has entity list keys) or a stub
-        _entity_keys = {"tasks", "projects", "tags", "folders", "perspectives"}
-        self._stateful: bool = bool(seed.keys() & _entity_keys)
-
         # Decompose seed data into mutable entity lists
         self._tasks: list[dict[str, Any]] = list(seed.get("tasks", []))
         self._projects: list[dict[str, Any]] = list(seed.get("projects", []))
         self._tags: list[dict[str, Any]] = list(seed.get("tags", []))
         self._folders: list[dict[str, Any]] = list(seed.get("folders", []))
         self._perspectives: list[dict[str, Any]] = list(seed.get("perspectives", []))
-
-        # Keep raw data for backward-compatible fallback (stub mode)
-        self._data: dict[str, Any] = seed
 
         self._calls: list[BridgeCall] = []
         self._error: Exception | None = None
@@ -90,17 +84,15 @@ class InMemoryBridge(Bridge):
         if self._wal_path:
             self._wal_path.write_bytes(b"flushed")
 
-        # Stateful dispatch: only when seeded with snapshot data
-        if self._stateful:
-            if operation == "get_all":
-                return self._handle_get_all()
-            if operation == "add_task":
-                return self._handle_add_task(params or {})
-            if operation == "edit_task":
-                return self._handle_edit_task(params or {})
+        if operation == "get_all":
+            return self._handle_get_all()
+        if operation == "add_task":
+            return self._handle_add_task(params or {})
+        if operation == "edit_task":
+            return self._handle_edit_task(params or {})
 
-        # Fallback: return raw seed data (backward compat for stub usage)
-        return self._data
+        # Unknown operations return the assembled snapshot
+        return self._handle_get_all()
 
     # ------------------------------------------------------------------
     # Operation handlers
