@@ -3,7 +3,7 @@ id: SEED-002
 status: dormant
 planted: 2026-03-21
 planted_during: v1.2.1 phase 26 (Replace InMemoryRepository with Stateful InMemoryBridge)
-trigger_when: after phase 26, before phase 27 — investigate before adding new operations
+trigger_when: when discussing/planning phase 27 — should be considered as a candidate phase to insert before 27
 scope: Medium
 ---
 
@@ -28,12 +28,13 @@ A consistent response envelope (e.g. `{success, payload}` or similar) across all
 
 ## When to Surface
 
-**Trigger:** After completing phase 26, before starting phase 27
+**Trigger:** When phase 26 completes and discussion/planning of the next phase begins
 
-This seed should be presented during `/gsd:new-milestone` when the milestone scope matches any of these conditions:
-- Adding new bridge operations (delete, complete, drop, etc.)
-- Refactoring bridge/repository layer contracts
-- Working on `contracts/protocols.py` bridge protocol definition
+This seed should be presented during `/gsd:discuss-phase` for phase 27 (or whatever comes after 26). It's a candidate to insert as a phase before 27 — the investigation should happen before committing to new operations that would add more inconsistent return shapes.
+
+Surface conditions:
+- Phase 26 is marked complete and next-phase discussion starts
+- Any discussion about what to work on next after phase 26
 
 ## Scope Estimate
 
