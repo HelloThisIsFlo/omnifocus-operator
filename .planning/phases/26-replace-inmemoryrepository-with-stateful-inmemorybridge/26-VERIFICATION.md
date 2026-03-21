@@ -1,9 +1,21 @@
 ---
 phase: 26-replace-inmemoryrepository-with-stateful-inmemorybridge
-verified: 2026-03-21T02:30:00Z
+verified: 2026-03-21T15:00:00Z
 status: passed
-score: 12/12 must-haves verified
-re_verification: false
+score: 17/17 must-haves verified
+re_verification:
+  previous_status: passed
+  previous_score: 12/12
+  gaps_closed:
+    - "InMemoryBridge is a single-purpose stateful test double with no hidden modes"
+    - "StubBridge is a separate class for canned-response testing"
+    - "All tests that used stub-mode InMemoryBridge now use StubBridge"
+    - "Tests declare their snapshot data via @pytest.mark.snapshot(...) marker"
+    - "A service fixture auto-builds bridge->repo->service from marker data"
+    - "All TestEditTask methods use fixture injection instead of inline construction"
+    - "No test in test_service.py has inline bridge/repo/service boilerplate (except AsyncMock tests)"
+  gaps_remaining: []
+  regressions: []
 ---
 
 # Phase 26: Replace InMemoryRepository with Stateful InMemoryBridge — Verification Report
@@ -11,7 +23,7 @@ re_verification: false
 **Phase Goal:** InMemoryRepository deleted and replaced by a stateful InMemoryBridge — write tests exercise the real serialization path instead of an independent simulation that can drift
 **Verified:** 2026-03-21
 **Status:** PASSED
-**Re-verification:** No — initial verification
+**Re-verification:** Yes — after gap closure (Plans 03, 04, 05 executed)
 
 ---
 
@@ -21,20 +33,25 @@ re_verification: false
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | InMemoryBridge.send_command('add_task', params) mutates internal _tasks list and returns {id, name} | VERIFIED | `_handle_add_task` in bridge.py: appends to `self._tasks`, returns `{"id": task_id, "name": params["name"]}` |
-| 2 | InMemoryBridge.send_command('edit_task', params) finds task by id, applies field mutations, and returns {id, name} | VERIFIED | `_handle_edit_task` in bridge.py: mutates task dict in-place, handles fields/tags/lifecycle/moveTo, returns `{"id": task_id, "name": task["name"]}` |
-| 3 | InMemoryBridge.send_command('get_all') returns a deep copy of internal state as a snapshot dict | VERIFIED | `_handle_get_all` uses `copy.deepcopy({"tasks": ..., "projects": ..., "tags": ..., "folders": ..., "perspectives": ...})` |
-| 4 | Existing call tracking (BridgeCall, call_count, calls) and error injection (set_error, clear_error) still work | VERIFIED | `BridgeCall` dataclass present; `calls` and `call_count` properties preserved; `set_error`/`clear_error` methods intact |
-| 5 | WAL path simulation still works | VERIFIED | `_wal_path` field stored; `.touch()` on init; `.write_bytes(b"flushed")` on each send_command |
-| 6 | InMemoryRepository module is deleted — no file at tests/doubles/repository.py | VERIFIED | `test -f tests/doubles/repository.py` returns exit 1 (file absent) |
-| 7 | InMemoryRepository is not exported from tests.doubles | VERIFIED | `tests/doubles/__init__.py` exports only `BridgeCall`, `ConstantMtimeSource`, `InMemoryBridge`, `SimulatorBridge` |
-| 8 | All write tests exercise BridgeWriteMixin._send_to_bridge (model_dump by_alias=True) through BridgeRepository | VERIFIED | `test_service.py` write tests use `BridgeRepository(bridge=InMemoryBridge(...), mtime_source=ConstantMtimeSource())` — serialization flows through `BridgeWriteMixin._send_to_bridge` → `model_dump(by_alias=True, exclude_unset=True)` → `InMemoryBridge.send_command` |
-| 9 | All read tests use BridgeRepository backed by InMemoryBridge instead of InMemoryRepository | VERIFIED | All 640 tests pass; grep confirms zero non-guard InMemoryRepository references across tests/ |
-| 10 | Test files use pytest fixture composition: bridge fixture -> repo fixture (per D-11) | VERIFIED | `test_service.py` lines 29-37 and `test_service_resolve.py` lines 30-55 both define `bridge` fixture → `repo` fixture → `resolver` fixture chain |
-| 11 | Tests inject repo or both repo and bridge as needed — standard pytest pattern (per D-12) | VERIFIED | `test_service.py` and `test_service_resolve.py` use fixture injection; custom-snapshot tests construct inline as documented |
-| 12 | All 611+ tests pass with identical behavior | VERIFIED | `640 passed, 13 warnings` — full suite green at 98% coverage |
+| 1 | InMemoryBridge.send_command('add_task') mutates internal _tasks list and returns {id, name} | VERIFIED | `_handle_add_task` appends to `self._tasks`, returns `{"id": task_id, "name": params["name"]}` |
+| 2 | InMemoryBridge.send_command('edit_task') finds task by id, applies mutations, returns {id, name} | VERIFIED | `_handle_edit_task` mutates task dict in-place, returns `{"id": task_id, "name": task["name"]}` |
+| 3 | InMemoryBridge.send_command('get_all') returns a deep copy of internal state | VERIFIED | `_handle_get_all` uses `copy.deepcopy({"tasks": ..., ...})` |
+| 4 | Existing call tracking and error injection still work | VERIFIED | `BridgeCall` dataclass, `calls`, `call_count`, `set_error`, `clear_error` all present |
+| 5 | WAL path simulation still works | VERIFIED | `_wal_path` field; `.touch()` on init; `.write_bytes(b"flushed")` on each `send_command` |
+| 6 | InMemoryRepository module is deleted | VERIFIED | `test -f tests/doubles/repository.py` returns absent |
+| 7 | InMemoryRepository is not exported from tests.doubles | VERIFIED | `__init__.py` exports only `BridgeCall`, `ConstantMtimeSource`, `InMemoryBridge`, `SimulatorBridge`, `StubBridge` |
+| 8 | All write tests exercise the real serialization path | VERIFIED | Write tests flow through `BridgeWriteMixin._send_to_bridge` → `model_dump(by_alias=True)` → `InMemoryBridge.send_command` |
+| 9 | All read tests use BridgeRepository backed by InMemoryBridge | VERIFIED | 641 tests pass; zero non-guard InMemoryRepository references |
+| 10 | InMemoryBridge is a single-purpose stateful test double with no hidden modes | VERIFIED | No `_stateful` flag, no `_data` raw backup, no auto-detection heuristic in `bridge.py` |
+| 11 | StubBridge is a separate class for canned-response testing | VERIFIED | `tests/doubles/stub_bridge.py` exists (65 lines); returns `self._data` unconditionally; exported from `tests.doubles` |
+| 12 | All tests that used stub-mode InMemoryBridge now use StubBridge | VERIFIED | `test_hybrid_repository.py` uses StubBridge for 13 canned-response write sites; `test_bridge.py` renamed to `TestStubBridge` |
+| 13 | @pytest.mark.snapshot marker declared and registered | VERIFIED | `pyproject.toml` markers config includes `snapshot: seed InMemoryBridge...`; `--strict-markers` is enabled |
+| 14 | bridge/repo/service fixture chain exists in conftest.py | VERIFIED | Lines 190-236 in `conftest.py`; marker-driven seeding via `make_snapshot_dict(**marker.kwargs)` |
+| 15 | TestOperatorService and TestAddTask use fixture injection | VERIFIED | All 8+16 methods inject `service` (or `service`+`bridge`); zero inline construction in these classes |
+| 16 | TestEditTask uses fixture injection throughout | VERIFIED | 68 `@pytest.mark.snapshot` markers in `test_service.py`; `grep "bridge = InMemoryBridge" tests/test_service.py` returns 0 matches |
+| 17 | No inline bridge/repo/service boilerplate in test_service.py (except AsyncMock tests) | VERIFIED | `bridge = InMemoryBridge`, `repo = BridgeRepository`, `service = OperatorService` each have 0 occurrences in `test_service.py` (2 AsyncMock tests construct OperatorService via mock repo, not bridge stack) |
 
-**Score:** 12/12 truths verified
+**Score:** 17/17 truths verified
 
 ---
 
@@ -42,10 +59,13 @@ re_verification: false
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `tests/doubles/bridge.py` | Stateful InMemoryBridge with add_task/edit_task command handlers | VERIFIED | 212 lines; contains `_handle_get_all`, `_handle_add_task`, `_handle_edit_task`, `copy.deepcopy`, `f"mem-{uuid4().hex[:8]}"`, `BridgeCall`, `set_error`, `clear_error` |
-| `tests/doubles/repository.py` | MUST NOT EXIST (deleted) | VERIFIED | File absent confirmed |
-| `tests/doubles/__init__.py` | Exports without InMemoryRepository | VERIFIED | Exports `BridgeCall`, `ConstantMtimeSource`, `InMemoryBridge`, `SimulatorBridge` only |
-| `tests/test_stateful_bridge.py` | 37 tests covering stateful InMemoryBridge behaviour | VERIFIED | 451 lines; covers state decomposition, get_all, add_task, edit_task, call tracking, error injection |
+| `tests/doubles/bridge.py` | Stateful InMemoryBridge, no dual-mode logic | VERIFIED | 220 lines; no `_stateful`, no `_data` raw backup, no auto-detection; `_handle_add_task`/`_handle_edit_task`/`_handle_get_all` present |
+| `tests/doubles/stub_bridge.py` | StubBridge for canned-response testing | VERIFIED | 65 lines; returns `self._data` unconditionally; BridgeCall tracking; WAL support; implements Bridge protocol |
+| `tests/doubles/__init__.py` | Exports StubBridge | VERIFIED | Exports `BridgeCall`, `ConstantMtimeSource`, `InMemoryBridge`, `SimulatorBridge`, `StubBridge` |
+| `tests/doubles/repository.py` | MUST NOT EXIST | VERIFIED | File absent |
+| `tests/conftest.py` | bridge/repo/service fixture chain | VERIFIED | Three fixtures at lines 190-236; late imports to break circular dependency |
+| `pyproject.toml` | snapshot marker registration | VERIFIED | `markers = ["snapshot: seed InMemoryBridge..."]` under `[tool.pytest.ini_options]` |
+| `tests/test_service.py` | Fully refactored with fixture injection | VERIFIED | 68 `@pytest.mark.snapshot` markers; 0 inline bridge/repo/service construction (except 2 AsyncMock tests) |
 
 ---
 
@@ -53,10 +73,11 @@ re_verification: false
 
 | From | To | Via | Status | Details |
 |------|----|-----|--------|---------|
-| `tests/test_service.py` | `tests/doubles/bridge.py` | `bridge` fixture creates `InMemoryBridge`, `repo` fixture wraps it in `BridgeRepository` | WIRED | Pattern `def bridge.*InMemoryBridge` and `def repo.*BridgeRepository` confirmed at lines 29-37 |
-| `tests/test_server.py` | `tests/doubles/bridge.py` | monkeypatch lambdas create `BridgeRepository(InMemoryBridge(...))` | WIRED | Lines 91-97, 126-132, 181-187 all construct `BridgeRepository(bridge=InMemoryBridge(...))` |
-| `tests/test_service_resolve.py` | `tests/doubles/bridge.py` | `bridge` fixture → `repo` fixture → `resolver` fixture for Resolver tests | WIRED | Lines 30-60: full three-fixture chain confirmed |
-| `tests/test_simulator_bridge.py` | `tests/doubles/bridge.py` | `_make_repo()` helper creates `BridgeRepository(InMemoryBridge(...))` | WIRED | Lines 153-159: helper renamed and wired to BridgeRepository + InMemoryBridge |
+| `tests/test_service.py` | `tests/conftest.py` | `service` fixture injection | WIRED | 9 methods in TestOperatorService, 16 in TestAddTask, 68 in TestEditTask all inject `service` |
+| `tests/conftest.py` | `tests/doubles/bridge.py` | `InMemoryBridge(data=snapshot_data)` in `bridge` fixture | WIRED | Line 211: `return InMemoryBridge(data=snapshot_data)` |
+| `tests/conftest.py` | `tests/conftest.py` `make_snapshot_dict` | marker kwargs pass-through | WIRED | Lines 208-210: `make_snapshot_dict(**marker.kwargs)` or `make_snapshot_dict()` |
+| `tests/test_hybrid_repository.py` | `tests/doubles/stub_bridge.py` | `StubBridge(data=...)` for write tests | WIRED | 13 StubBridge usages for canned-response write tests; `from tests.doubles import InMemoryBridge, StubBridge` at line 29 |
+| `tests/test_bridge.py` | `tests/doubles/stub_bridge.py` | `TestStubBridge` class tests stub behavior | WIRED | Class renamed from `TestInMemoryBridge`; tests stub call tracking, error injection, WAL |
 
 ---
 
@@ -64,11 +85,11 @@ re_verification: false
 
 | Requirement | Source Plan | Description | Status | Evidence |
 |-------------|------------|-------------|--------|----------|
-| INFRA-10 | 26-01-PLAN.md | `InMemoryBridge` maintains mutable in-memory state and handles `add_task`/`edit_task` commands as a stateful test double | SATISFIED | `bridge.py` stores `_tasks/_projects/_tags/_folders/_perspectives` as mutable lists; dispatches to `_handle_add_task` and `_handle_edit_task` |
-| INFRA-11 | 26-02-PLAN.md | `InMemoryRepository` deleted — write test infrastructure routes through the bridge serialization layer | SATISFIED | File absent; zero non-guard references in codebase |
-| INFRA-12 | 26-02-PLAN.md | Write tests exercise the real serialization path (`BridgeWriteMixin`, `model_dump(by_alias=True)`, snapshot parsing) via the stateful `InMemoryBridge` | SATISFIED | `BridgeWriteMixin._send_to_bridge` confirmed to use `model_dump(by_alias=True, exclude_unset=True)`; write test calls flow through BridgeRepository → BridgeWriteMixin → InMemoryBridge.send_command |
+| INFRA-10 | 26-01-PLAN.md, 26-03-PLAN.md | `InMemoryBridge` maintains mutable in-memory state, handles `add_task`/`edit_task`, no dual-mode logic | SATISFIED | Stateful entity lists in `bridge.py`; `_handle_add_task`, `_handle_edit_task` dispatch; no `_stateful` flag |
+| INFRA-11 | 26-02-PLAN.md, 26-04-PLAN.md, 26-05-PLAN.md | `InMemoryRepository` deleted; write tests route through bridge serialization layer | SATISFIED | File absent; zero non-guard references; 641 tests pass through `BridgeRepository + InMemoryBridge` |
+| INFRA-12 | 26-02-PLAN.md, 26-04-PLAN.md, 26-05-PLAN.md | Write tests exercise the real serialization path via stateful `InMemoryBridge` | SATISFIED | `@pytest.mark.snapshot` marker fixture chain wires every service test through `BridgeWriteMixin._send_to_bridge → model_dump(by_alias=True)` |
 
-No orphaned requirements: all three phase-26 requirement IDs appear in plan frontmatter and have implementation evidence.
+No orphaned requirements: all three phase-26 requirement IDs appear in plan frontmatter with implementation evidence.
 
 ---
 
@@ -86,27 +107,36 @@ No TODOs, FIXMEs, placeholders, empty return stubs, or disconnected wiring detec
 
 None. All goal claims are verifiable programmatically:
 - File existence/deletion is binary
-- Test passage is deterministic
-- Fixture wiring is confirmed via grep
-- Serialization path is traceable through source code
+- Test passage is deterministic (641 passed, 13 warnings)
+- Fixture wiring confirmed via grep and file inspection
+- Marker count (68) confirmed via grep
+- StubBridge separation confirmed via class inspection
 
 ---
 
-## Deviations Noted (Non-blocking)
+## Re-verification Summary
 
-Two plan deviations were auto-fixed during execution and do not affect goal achievement:
+Plans 03, 04, and 05 fully closed the gaps identified during UAT:
 
-1. **Backward-compatible stub mode added** — `_stateful` flag auto-detects snapshot vs stub seed data. Existing tests that use `InMemoryBridge` with write-result stubs (not snapshots) continue working via fallback. The stateful path activates only when seed data has entity keys.
+**Plan 03** — Split InMemoryBridge dual-mode into two single-purpose test doubles:
+- `StubBridge` created in `tests/doubles/stub_bridge.py` (canned-response, no state)
+- `InMemoryBridge` cleaned of `_stateful` flag, `_data` backup, and auto-detection heuristic
+- 13 canned-response usages in `test_hybrid_repository.py` migrated to StubBridge
+- `TestInMemoryBridge` renamed to `TestStubBridge` in `test_bridge.py`
 
-2. **Unknown operations return `self._data` instead of `{}`** — preserves backward compatibility with `send_command("snapshot")` usage in existing tests. This is a deliberate change from the plan spec.
+**Plan 04** — Snapshot marker infrastructure and first-class fixture refactoring:
+- `@pytest.mark.snapshot` marker registered in `pyproject.toml` (compatible with `--strict-markers`)
+- `bridge/repo/service` fixture chain in `conftest.py` with late imports (circular dependency workaround)
+- `TestOperatorService` (8 methods) and `TestAddTask` (16 methods) converted to fixture injection
 
-Neither deviation undermines INFRA-10/11/12 satisfaction.
+**Plan 05** — Complete TestEditTask fixture migration:
+- All 68 TestEditTask methods converted to `@pytest.mark.snapshot` + fixture injection
+- 320 lines of inline boilerplate eliminated
+- `InMemoryBridge` and `make_snapshot_dict` imports removed from `test_service.py` (no longer needed directly)
 
----
+All five commits verified in git history: `dd81a57`, `7e5f715`, `ab58206`, `ca9586d`, `543be4c`.
 
-## Summary
-
-Phase 26 goal is fully achieved. InMemoryRepository is deleted. The stateful InMemoryBridge handles `add_task`, `edit_task`, and `get_all` by mutating and reading mutable dict lists. All test files previously using InMemoryRepository now route through `BridgeRepository + InMemoryBridge`, so write tests exercise `BridgeWriteMixin._send_to_bridge → model_dump(by_alias=True)` — the real serialization path. 640 tests pass at 98% coverage. All four documented commits exist in git history.
+Full test suite: **641 passed, 13 warnings, 98% coverage**.
 
 ---
 
