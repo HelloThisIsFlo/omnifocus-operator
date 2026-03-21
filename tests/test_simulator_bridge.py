@@ -156,7 +156,9 @@ class TestLifespan:
         from tests.doubles import ConstantMtimeSource, InMemoryBridge
 
         return BridgeRepository(
-            bridge=InMemoryBridge(data={"tasks": [], "projects": [], "tags": [], "folders": [], "perspectives": []}),
+            bridge=InMemoryBridge(
+                data={"tasks": [], "projects": [], "tags": [], "folders": [], "perspectives": []}
+            ),
             mtime_source=ConstantMtimeSource(),
         )
 

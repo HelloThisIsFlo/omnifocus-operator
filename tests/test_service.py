@@ -19,7 +19,6 @@ from tests.doubles import ConstantMtimeSource, InMemoryBridge
 
 from .conftest import make_project_dict, make_snapshot_dict, make_task_dict
 
-
 # ---------------------------------------------------------------------------
 # Shared fixtures (per D-11, D-12, D-13)
 # ---------------------------------------------------------------------------
@@ -35,6 +34,7 @@ def bridge() -> InMemoryBridge:
 def repo(bridge: InMemoryBridge) -> BridgeRepository:
     """Repository wired to test bridge with constant mtime (per D-11, D-13)."""
     return BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
+
 
 # ---------------------------------------------------------------------------
 # OperatorService
@@ -210,11 +210,13 @@ class TestAddTask:
 
         from .conftest import make_tag_dict
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tags=[
-                make_tag_dict(id="tag-work", name="Work"),
-            ]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tags=[
+                    make_tag_dict(id="tag-work", name="Work"),
+                ]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -228,11 +230,13 @@ class TestAddTask:
 
         from .conftest import make_tag_dict
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tags=[
-                make_tag_dict(id="tag-work", name="Work"),
-            ]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tags=[
+                    make_tag_dict(id="tag-work", name="Work"),
+                ]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -257,12 +261,14 @@ class TestAddTask:
 
         from .conftest import make_tag_dict
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tags=[
-                make_tag_dict(id="tag-a", name="Work"),
-                make_tag_dict(id="tag-b", name="Work"),
-            ]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tags=[
+                    make_tag_dict(id="tag-a", name="Work"),
+                    make_tag_dict(id="tag-b", name="Work"),
+                ]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -279,11 +285,13 @@ class TestAddTask:
 
         from .conftest import make_tag_dict
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tags=[
-                make_tag_dict(id="tag-work", name="Work"),
-            ]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tags=[
+                    make_tag_dict(id="tag-work", name="Work"),
+                ]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -370,13 +378,15 @@ class TestAddTask:
 
         from .conftest import make_tag_dict
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tags=[
-                make_tag_dict(id="tag-a", name="Urgent"),
-                make_tag_dict(id="tag-b", name="Work"),
-                make_tag_dict(id="tag-c", name="Home"),
-            ]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tags=[
+                    make_tag_dict(id="tag-a", name="Urgent"),
+                    make_tag_dict(id="tag-b", name="Work"),
+                    make_tag_dict(id="tag-c", name="Home"),
+                ]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -456,9 +466,11 @@ class TestEditTask:
         """Editing only name leaves other fields unchanged (EDIT-01)."""
         from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Old Name", flagged=True)]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[make_task_dict(id="task-001", name="Old Name", flagged=True)]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -475,7 +487,9 @@ class TestEditTask:
         """Editing only note leaves other fields unchanged."""
         from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")]))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")])
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -489,7 +503,11 @@ class TestEditTask:
         """Editing only flagged leaves other fields unchanged."""
         from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task", flagged=False)]))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[make_task_dict(id="task-001", name="Task", flagged=False)]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -503,9 +521,13 @@ class TestEditTask:
         """Setting due_date=None clears it (EDIT-01)."""
         from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Task", dueDate="2026-04-01T10:00:00+00:00")]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(id="task-001", name="Task", dueDate="2026-04-01T10:00:00+00:00")
+                ]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -521,7 +543,9 @@ class TestEditTask:
 
         from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")]))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")])
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -534,7 +558,9 @@ class TestEditTask:
         """Setting estimated_minutes updates it (EDIT-02)."""
         from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")]))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")])
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -554,12 +580,16 @@ class TestEditTask:
 
         from .conftest import make_tag_dict
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[
-                make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-old", "name": "Old"}])
-            ],
-            tags=[make_tag_dict(id="tag-new", name="NewTag")],
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(
+                        id="task-001", name="Task", tags=[{"id": "tag-old", "name": "Old"}]
+                    )
+                ],
+                tags=[make_tag_dict(id="tag-new", name="NewTag")],
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -585,13 +615,17 @@ class TestEditTask:
 
         from .conftest import make_tag_dict
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])],
-            tags=[
-                make_tag_dict(id="tag-a", name="A"),
-                make_tag_dict(id="tag-b", name="B"),
-            ],
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])
+                ],
+                tags=[
+                    make_tag_dict(id="tag-a", name="A"),
+                    make_tag_dict(id="tag-b", name="B"),
+                ],
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -619,19 +653,21 @@ class TestEditTask:
 
         from .conftest import make_tag_dict
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[
-                make_task_dict(
-                    id="task-001",
-                    name="Task",
-                    tags=[{"id": "tag-a", "name": "A"}, {"id": "tag-b", "name": "B"}],
-                )
-            ],
-            tags=[
-                make_tag_dict(id="tag-a", name="A"),
-                make_tag_dict(id="tag-b", name="B"),
-            ],
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(
+                        id="task-001",
+                        name="Task",
+                        tags=[{"id": "tag-a", "name": "A"}, {"id": "tag-b", "name": "B"}],
+                    )
+                ],
+                tags=[
+                    make_tag_dict(id="tag-a", name="A"),
+                    make_tag_dict(id="tag-b", name="B"),
+                ],
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -684,19 +720,21 @@ class TestEditTask:
 
         from .conftest import make_tag_dict
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[
-                make_task_dict(
-                    id="task-001",
-                    name="Task",
-                    tags=[{"id": "tag-a", "name": "A"}],
-                )
-            ],
-            tags=[
-                make_tag_dict(id="tag-a", name="A"),
-                make_tag_dict(id="tag-b", name="B"),
-            ],
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(
+                        id="task-001",
+                        name="Task",
+                        tags=[{"id": "tag-a", "name": "A"}],
+                    )
+                ],
+                tags=[
+                    make_tag_dict(id="tag-a", name="A"),
+                    make_tag_dict(id="tag-b", name="B"),
+                ],
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -720,9 +758,11 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Task", inInbox=True)],
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[make_task_dict(id="task-001", name="Task", inInbox=True)],
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -748,12 +788,14 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[
-                make_task_dict(id="task-001", name="Task"),
-                make_task_dict(id="task-parent", name="Parent Task"),
-            ],
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(id="task-001", name="Task"),
+                    make_task_dict(id="task-parent", name="Parent Task"),
+                ],
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -778,16 +820,18 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[
-                make_task_dict(
-                    id="task-001",
-                    name="Task",
-                    parent={"type": "project", "id": "proj-001", "name": "Project"},
-                    inInbox=False,
-                )
-            ],
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(
+                        id="task-001",
+                        name="Task",
+                        parent={"type": "project", "id": "proj-001", "name": "Project"},
+                        inInbox=False,
+                    )
+                ],
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -812,16 +856,18 @@ class TestEditTask:
         )
 
         # task-parent -> task-child (child's parent is task-parent)
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[
-                make_task_dict(id="task-parent", name="Parent"),
-                make_task_dict(
-                    id="task-child",
-                    name="Child",
-                    parent={"type": "task", "id": "task-parent", "name": "Parent"},
-                ),
-            ],
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(id="task-parent", name="Parent"),
+                    make_task_dict(
+                        id="task-child",
+                        name="Child",
+                        parent={"type": "task", "id": "task-parent", "name": "Parent"},
+                    ),
+                ],
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -876,10 +922,12 @@ class TestEditTask:
 
         from .conftest import make_tag_dict
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Task", tags=[])],
-            tags=[make_tag_dict(id="tag-x", name="X")],
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[make_task_dict(id="task-001", name="Task", tags=[])],
+                tags=[make_tag_dict(id="tag-x", name="X")],
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -909,9 +957,11 @@ class TestEditTask:
         """note=None maps to empty string (null-means-clear)."""
         from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Task", note="Some note")]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[make_task_dict(id="task-001", name="Task", note="Some note")]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -931,10 +981,14 @@ class TestEditTask:
 
         from .conftest import make_tag_dict
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])],
-            tags=[make_tag_dict(id="tag-a", name="A")],
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])
+                ],
+                tags=[make_tag_dict(id="tag-a", name="A")],
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -953,9 +1007,11 @@ class TestEditTask:
         """Editing a completed task produces a warm warning."""
         from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Done Task", availability="completed")]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[make_task_dict(id="task-001", name="Done Task", availability="completed")]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -967,9 +1023,11 @@ class TestEditTask:
         """Editing a dropped task produces a warm warning."""
         from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Dropped Task", availability="dropped")]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[make_task_dict(id="task-001", name="Dropped Task", availability="dropped")]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -981,9 +1039,11 @@ class TestEditTask:
         """No-op edit on completed task returns only no-op warning, not status warning."""
         from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Done Task", availability="completed")]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[make_task_dict(id="task-001", name="Done Task", availability="completed")]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -998,9 +1058,11 @@ class TestEditTask:
         """No-op edit on dropped task returns only no-op warning, not status warning."""
         from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Dropped Task", availability="dropped")]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[make_task_dict(id="task-001", name="Dropped Task", availability="dropped")]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1020,10 +1082,14 @@ class TestEditTask:
 
         from .conftest import make_tag_dict
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])],
-            tags=[make_tag_dict(id="tag-a", name="A")],
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])
+                ],
+                tags=[make_tag_dict(id="tag-a", name="A")],
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1051,13 +1117,17 @@ class TestEditTask:
 
         from .conftest import make_tag_dict
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])],
-            tags=[
-                make_tag_dict(id="tag-a", name="A"),
-                make_tag_dict(id="tag-b", name="B"),
-            ],
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])
+                ],
+                tags=[
+                    make_tag_dict(id="tag-a", name="A"),
+                    make_tag_dict(id="tag-b", name="B"),
+                ],
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1083,10 +1153,14 @@ class TestEditTask:
 
         from .conftest import make_tag_dict
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-x", "name": "X"}])],
-            tags=[make_tag_dict(id="tag-x", name="X")],
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-x", "name": "X"}])
+                ],
+                tags=[make_tag_dict(id="tag-x", name="X")],
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1112,10 +1186,12 @@ class TestEditTask:
 
         from .conftest import make_tag_dict
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Task", tags=[])],
-            tags=[make_tag_dict(id="tag-x", name="X")],
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[make_task_dict(id="task-001", name="Task", tags=[])],
+                tags=[make_tag_dict(id="tag-x", name="X")],
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1142,12 +1218,16 @@ class TestEditTask:
 
         from .conftest import make_tag_dict
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[
-                make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "Alpha"}])
-            ],
-            tags=[make_tag_dict(id="tag-a", name="Alpha")],
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(
+                        id="task-001", name="Task", tags=[{"id": "tag-a", "name": "Alpha"}]
+                    )
+                ],
+                tags=[make_tag_dict(id="tag-a", name="Alpha")],
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1177,7 +1257,9 @@ class TestEditTask:
         """Editing name to same value triggers no-op detection."""
         from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Foo")]))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Foo")])
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1190,7 +1272,9 @@ class TestEditTask:
         """Editing name to different value does not trigger no-op warning."""
         from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Foo")]))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Foo")])
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1201,7 +1285,9 @@ class TestEditTask:
         """Edit task with both estimated_minutes and flagged (UAT #3)."""
         from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")]))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")])
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1220,7 +1306,9 @@ class TestEditTask:
 
         from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")]))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")])
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1243,7 +1331,9 @@ class TestEditTask:
         """Edit task changing name, note, flagged, and estimated_minutes (UAT #5)."""
         from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Old")]))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Old")])
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1268,7 +1358,11 @@ class TestEditTask:
         """Start with flagged=True, edit to flagged=False (UAT #6)."""
         from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task", flagged=True)]))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[make_task_dict(id="task-001", name="Task", flagged=True)]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1282,9 +1376,11 @@ class TestEditTask:
         """Edit task with note='' clears note (UAT #9)."""
         from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Task", note="Some note")]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[make_task_dict(id="task-001", name="Task", note="Some note")]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1298,9 +1394,11 @@ class TestEditTask:
         """Set estimated_minutes=None clears the estimate (UAT #10)."""
         from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Task", estimatedMinutes=30.0)]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[make_task_dict(id="task-001", name="Task", estimatedMinutes=30.0)]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1314,17 +1412,19 @@ class TestEditTask:
         """Editing only name preserves note, flagged, estimatedMinutes (UAT #11)."""
         from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[
-                make_task_dict(
-                    id="task-001",
-                    name="Original",
-                    note="Keep me",
-                    flagged=True,
-                    estimatedMinutes=45.0,
-                )
-            ]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(
+                        id="task-001",
+                        name="Original",
+                        note="Keep me",
+                        flagged=True,
+                        estimatedMinutes=45.0,
+                    )
+                ]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1345,12 +1445,14 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[
-                make_task_dict(id="task-001", name="Task A"),
-                make_task_dict(id="task-002", name="Task B"),
-            ],
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(id="task-001", name="Task A"),
+                    make_task_dict(id="task-002", name="Task B"),
+                ],
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1370,12 +1472,14 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[
-                make_task_dict(id="task-001", name="Task A"),
-                make_task_dict(id="task-002", name="Task B"),
-            ],
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(id="task-001", name="Task A"),
+                    make_task_dict(id="task-002", name="Task B"),
+                ],
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1395,7 +1499,9 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")]))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")])
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1415,7 +1521,9 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")]))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")])
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1435,9 +1543,11 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Old Name", inInbox=True)],
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[make_task_dict(id="task-001", name="Old Name", inInbox=True)],
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1461,15 +1571,17 @@ class TestEditTask:
 
         from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[
-                make_task_dict(
-                    id="task-001",
-                    name="Task",
-                    dueDate="2026-03-10T07:00:00+00:00",
-                )
-            ]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(
+                        id="task-001",
+                        name="Task",
+                        dueDate="2026-03-10T07:00:00+00:00",
+                    )
+                ]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1492,15 +1604,17 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[
-                make_task_dict(
-                    id="task-001",
-                    name="Task",
-                    parent={"type": "project", "id": "proj-001", "name": "Test Project"},
-                )
-            ],
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(
+                        id="task-001",
+                        name="Task",
+                        parent={"type": "project", "id": "proj-001", "name": "Test Project"},
+                    )
+                ],
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1521,7 +1635,9 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")]))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")])
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1540,7 +1656,9 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")]))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")])
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1558,9 +1676,11 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1578,9 +1698,11 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Task", availability="dropped")]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[make_task_dict(id="task-001", name="Task", availability="dropped")]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1598,9 +1720,11 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Task", availability="dropped")]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[make_task_dict(id="task-001", name="Task", availability="dropped")]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1618,9 +1742,11 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1638,20 +1764,22 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[
-                make_task_dict(
-                    id="task-001",
-                    name="Task",
-                    repetitionRule={
-                        "ruleString": "FREQ=WEEKLY",
-                        "scheduleType": "regularly",
-                        "anchorDateKey": "due_date",
-                        "catchUpAutomatically": False,
-                    },
-                )
-            ]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(
+                        id="task-001",
+                        name="Task",
+                        repetitionRule={
+                            "ruleString": "FREQ=WEEKLY",
+                            "scheduleType": "regularly",
+                            "anchorDateKey": "due_date",
+                            "catchUpAutomatically": False,
+                        },
+                    )
+                ]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1669,20 +1797,22 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[
-                make_task_dict(
-                    id="task-001",
-                    name="Task",
-                    repetitionRule={
-                        "ruleString": "FREQ=WEEKLY",
-                        "scheduleType": "regularly",
-                        "anchorDateKey": "due_date",
-                        "catchUpAutomatically": False,
-                    },
-                )
-            ]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(
+                        id="task-001",
+                        name="Task",
+                        repetitionRule={
+                            "ruleString": "FREQ=WEEKLY",
+                            "scheduleType": "regularly",
+                            "anchorDateKey": "due_date",
+                            "catchUpAutomatically": False,
+                        },
+                    )
+                ]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1701,21 +1831,23 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[
-                make_task_dict(
-                    id="task-001",
-                    name="Task",
-                    availability="dropped",
-                    repetitionRule={
-                        "ruleString": "FREQ=WEEKLY",
-                        "scheduleType": "regularly",
-                        "anchorDateKey": "due_date",
-                        "catchUpAutomatically": False,
-                    },
-                )
-            ]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(
+                        id="task-001",
+                        name="Task",
+                        availability="dropped",
+                        repetitionRule={
+                            "ruleString": "FREQ=WEEKLY",
+                            "scheduleType": "regularly",
+                            "anchorDateKey": "due_date",
+                            "catchUpAutomatically": False,
+                        },
+                    )
+                ]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1736,7 +1868,11 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task", flagged=False)]))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[make_task_dict(id="task-001", name="Task", flagged=False)]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1759,7 +1895,9 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")]))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")])
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1778,9 +1916,11 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1803,9 +1943,11 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1826,15 +1968,17 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[
-                make_task_dict(
-                    id="task-001",
-                    name="Task",
-                    parent={"type": "project", "id": "proj-001", "name": "Test Project"},
-                )
-            ],
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(
+                        id="task-001",
+                        name="Task",
+                        parent={"type": "project", "id": "proj-001", "name": "Test Project"},
+                    )
+                ],
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1860,10 +2004,14 @@ class TestEditTask:
 
         from .conftest import make_tag_dict
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])],
-            tags=[make_tag_dict(id="tag-a", name="A")],
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])
+                ],
+                tags=[make_tag_dict(id="tag-a", name="A")],
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1886,9 +2034,11 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1909,7 +2059,9 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")]))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")])
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1929,7 +2081,9 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")]))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(tasks=[make_task_dict(id="task-001", name="Task")])
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1948,10 +2102,14 @@ class TestEditTask:
 
         from .conftest import make_tag_dict
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])],
-            tags=[make_tag_dict(id="tag-a", name="A")],
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])
+                ],
+                tags=[make_tag_dict(id="tag-a", name="A")],
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -1980,10 +2138,14 @@ class TestEditTask:
 
         from .conftest import make_tag_dict
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])],
-            tags=[make_tag_dict(id="tag-a", name="A")],
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])
+                ],
+                tags=[make_tag_dict(id="tag-a", name="A")],
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
@@ -2008,19 +2170,21 @@ class TestEditTask:
             EditTaskCommand,
         )
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=[
-                make_task_dict(
-                    id="task-001",
-                    name="Task",
-                    parent={"type": "project", "id": "proj-001", "name": "Test Project"},
-                )
-            ],
-            projects=[
-                make_project_dict(id="proj-001", name="Test Project"),
-                make_project_dict(id="proj-002", name="Other Project"),
-            ],
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(
+                        id="task-001",
+                        name="Task",
+                        parent={"type": "project", "id": "proj-001", "name": "Test Project"},
+                    )
+                ],
+                projects=[
+                    make_project_dict(id="proj-001", name="Test Project"),
+                    make_project_dict(id="proj-002", name="Other Project"),
+                ],
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 

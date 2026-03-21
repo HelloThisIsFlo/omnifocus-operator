@@ -94,7 +94,15 @@ class TestARCH01ThreeLayerArchitecture:
         monkeypatch.setattr(
             "omnifocus_operator.repository.create_repository",
             lambda *a, **kw: BridgeRepository(
-                bridge=InMemoryBridge(data={"tasks": [], "projects": [], "tags": [], "folders": [], "perspectives": []}),
+                bridge=InMemoryBridge(
+                    data={
+                        "tasks": [],
+                        "projects": [],
+                        "tags": [],
+                        "folders": [],
+                        "perspectives": [],
+                    }
+                ),
                 mtime_source=ConstantMtimeSource(),
             ),
         )
@@ -129,7 +137,15 @@ class TestARCH02RepositoryInjection:
         monkeypatch.setattr(
             "omnifocus_operator.repository.create_repository",
             lambda *a, **kw: BridgeRepository(
-                bridge=InMemoryBridge(data={"tasks": [], "projects": [], "tags": [], "folders": [], "perspectives": []}),
+                bridge=InMemoryBridge(
+                    data={
+                        "tasks": [],
+                        "projects": [],
+                        "tags": [],
+                        "folders": [],
+                        "perspectives": [],
+                    }
+                ),
                 mtime_source=ConstantMtimeSource(),
             ),
         )
@@ -184,7 +200,15 @@ class TestTOOL01ListAllStructuredOutput:
         monkeypatch.setattr(
             "omnifocus_operator.repository.create_repository",
             lambda *a, **kw: BridgeRepository(
-                bridge=InMemoryBridge(data={"tasks": [], "projects": [], "tags": [], "folders": [], "perspectives": []}),
+                bridge=InMemoryBridge(
+                    data={
+                        "tasks": [],
+                        "projects": [],
+                        "tags": [],
+                        "folders": [],
+                        "perspectives": [],
+                    }
+                ),
                 mtime_source=ConstantMtimeSource(),
             ),
         )
@@ -1364,9 +1388,11 @@ class TestEditTasksLifecycle:
         if extra_tasks:
             tasks.extend(extra_tasks)
 
-        bridge = InMemoryBridge(data=make_snapshot_dict(
-            tasks=tasks, projects=[make_project_dict()], tags=[make_tag_dict()]
-        ))
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=tasks, projects=[make_project_dict()], tags=[make_tag_dict()]
+            )
+        )
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 

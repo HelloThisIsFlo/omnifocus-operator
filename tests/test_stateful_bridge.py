@@ -9,7 +9,6 @@ from omnifocus_operator.models.snapshot import AllEntities
 from tests.conftest import make_snapshot_dict, make_task_dict
 from tests.doubles import BridgeCall, InMemoryBridge
 
-
 # ---------------------------------------------------------------------------
 # State decomposition
 # ---------------------------------------------------------------------------
@@ -221,11 +220,14 @@ class TestAddTask:
         """add_task respects date parameters."""
         bridge = InMemoryBridge(data=make_snapshot_dict())
 
-        await bridge.send_command("add_task", {
-            "name": "Dated",
-            "dueDate": "2026-03-15T17:00:00Z",
-            "deferDate": "2026-03-10T09:00:00Z",
-        })
+        await bridge.send_command(
+            "add_task",
+            {
+                "name": "Dated",
+                "dueDate": "2026-03-15T17:00:00Z",
+                "deferDate": "2026-03-10T09:00:00Z",
+            },
+        )
 
         new_task = bridge._tasks[-1]
         assert new_task["dueDate"] == "2026-03-15T17:00:00Z"
@@ -270,10 +272,13 @@ class TestEditTask:
         """edit_task with addTagIds appends tags to the task."""
         bridge = InMemoryBridge(data=make_snapshot_dict())
 
-        await bridge.send_command("edit_task", {
-            "id": "task-001",
-            "addTagIds": ["tag-a", "tag-b"],
-        })
+        await bridge.send_command(
+            "edit_task",
+            {
+                "id": "task-001",
+                "addTagIds": ["tag-a", "tag-b"],
+            },
+        )
 
         task_tags = bridge._tasks[0]["tags"]
         tag_ids = [t["id"] for t in task_tags]
@@ -282,16 +287,25 @@ class TestEditTask:
 
     async def test_edit_task_remove_tags(self) -> None:
         """edit_task with removeTagIds removes tags from the task."""
-        data = make_snapshot_dict(tasks=[make_task_dict(tags=[
-            {"id": "tag-x", "name": "X"},
-            {"id": "tag-y", "name": "Y"},
-        ])])
+        data = make_snapshot_dict(
+            tasks=[
+                make_task_dict(
+                    tags=[
+                        {"id": "tag-x", "name": "X"},
+                        {"id": "tag-y", "name": "Y"},
+                    ]
+                )
+            ]
+        )
         bridge = InMemoryBridge(data=data)
 
-        await bridge.send_command("edit_task", {
-            "id": "task-001",
-            "removeTagIds": ["tag-x"],
-        })
+        await bridge.send_command(
+            "edit_task",
+            {
+                "id": "task-001",
+                "removeTagIds": ["tag-x"],
+            },
+        )
 
         task_tags = bridge._tasks[0]["tags"]
         tag_ids = [t["id"] for t in task_tags]
@@ -300,16 +314,25 @@ class TestEditTask:
 
     async def test_edit_task_remove_then_add_tags(self) -> None:
         """edit_task processes removeTagIds before addTagIds."""
-        data = make_snapshot_dict(tasks=[make_task_dict(tags=[
-            {"id": "tag-a", "name": "A"},
-        ])])
+        data = make_snapshot_dict(
+            tasks=[
+                make_task_dict(
+                    tags=[
+                        {"id": "tag-a", "name": "A"},
+                    ]
+                )
+            ]
+        )
         bridge = InMemoryBridge(data=data)
 
-        await bridge.send_command("edit_task", {
-            "id": "task-001",
-            "removeTagIds": ["tag-a"],
-            "addTagIds": ["tag-a"],  # re-add after remove
-        })
+        await bridge.send_command(
+            "edit_task",
+            {
+                "id": "task-001",
+                "removeTagIds": ["tag-a"],
+                "addTagIds": ["tag-a"],  # re-add after remove
+            },
+        )
 
         # tag-a should be present (removed then re-added)
         task_tags = bridge._tasks[0]["tags"]
@@ -320,10 +343,13 @@ class TestEditTask:
         """edit_task with lifecycle='complete' sets availability to 'completed'."""
         bridge = InMemoryBridge(data=make_snapshot_dict())
 
-        await bridge.send_command("edit_task", {
-            "id": "task-001",
-            "lifecycle": "complete",
-        })
+        await bridge.send_command(
+            "edit_task",
+            {
+                "id": "task-001",
+                "lifecycle": "complete",
+            },
+        )
 
         assert bridge._tasks[0]["availability"] == "completed"
 
@@ -331,10 +357,13 @@ class TestEditTask:
         """edit_task with lifecycle='drop' sets availability to 'dropped'."""
         bridge = InMemoryBridge(data=make_snapshot_dict())
 
-        await bridge.send_command("edit_task", {
-            "id": "task-001",
-            "lifecycle": "drop",
-        })
+        await bridge.send_command(
+            "edit_task",
+            {
+                "id": "task-001",
+                "lifecycle": "drop",
+            },
+        )
 
         assert bridge._tasks[0]["availability"] == "dropped"
 
@@ -343,10 +372,13 @@ class TestEditTask:
         data = make_snapshot_dict(tasks=[make_task_dict(inInbox=False)])
         bridge = InMemoryBridge(data=data)
 
-        await bridge.send_command("edit_task", {
-            "id": "task-001",
-            "moveTo": {"containerId": None},
-        })
+        await bridge.send_command(
+            "edit_task",
+            {
+                "id": "task-001",
+                "moveTo": {"containerId": None},
+            },
+        )
 
         assert bridge._tasks[0]["inInbox"] is True
         assert bridge._tasks[0]["parent"] is None
@@ -355,10 +387,13 @@ class TestEditTask:
         """edit_task with moveTo containerId sets inInbox=False."""
         bridge = InMemoryBridge(data=make_snapshot_dict())
 
-        await bridge.send_command("edit_task", {
-            "id": "task-001",
-            "moveTo": {"containerId": "proj-001"},
-        })
+        await bridge.send_command(
+            "edit_task",
+            {
+                "id": "task-001",
+                "moveTo": {"containerId": "proj-001"},
+            },
+        )
 
         assert bridge._tasks[0]["inInbox"] is False
 
