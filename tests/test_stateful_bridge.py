@@ -431,11 +431,20 @@ class TestErrorInjectionPreserved:
 
 
 class TestUnknownOperations:
-    """Unknown operations return empty dict."""
+    """Unknown operations fall back to raw data (backward compatibility)."""
 
-    async def test_unknown_operation_returns_empty_dict(self) -> None:
-        """send_command with unknown operation returns {}."""
-        bridge = InMemoryBridge(data=make_snapshot_dict())
+    async def test_unknown_operation_returns_raw_data(self) -> None:
+        """send_command with unknown operation returns raw seed data (backward compat)."""
+        data = {"ok": True}
+        bridge = InMemoryBridge(data=data)
+
+        result = await bridge.send_command("some_unknown_op")
+
+        assert result == {"ok": True}
+
+    async def test_unknown_operation_with_empty_data_returns_empty_dict(self) -> None:
+        """send_command with unknown operation on empty bridge returns {}."""
+        bridge = InMemoryBridge()
 
         result = await bridge.send_command("unknown_op")
 
