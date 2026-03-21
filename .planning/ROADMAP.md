@@ -59,7 +59,7 @@
 - [x] **Phase 24: Test Double Relocation** - All test double modules moved from src/ to tests/; production code structurally cannot import them (completed 2026-03-20)
 - [x] **Phase 25: Patch/PatchOrClear type aliases for command models** - `Patch[T]`/`PatchOrClear[T]` aliases + `changed_fields()` helper (TYPE-01--04) (completed 2026-03-20)
 - [x] **Phase 26: Replace InMemoryRepository with stateful InMemoryBridge** - Stateful InMemoryBridge, delete InMemoryRepository, real serialization path in tests (INFRA-10--12) (gap closure in progress) (completed 2026-03-21)
-- [ ] **Phase 27: Repository contract tests (golden master)** - Golden master from RealBridge UAT, CI contract tests verify InMemoryBridge matches (INFRA-13--14)
+- [ ] **Phase 27: Bridge contract tests (golden master)** - Golden master from RealBridge UAT, CI contract tests verify InMemoryBridge matches (INFRA-13--14)
 
 ## Phase Details
 
@@ -239,14 +239,14 @@ Plans:
 - [x] 26-04-PLAN.md -- Snapshot marker infrastructure + TestOperatorService/TestAddTask fixture refactor (gap closure: UAT Test 4)
 - [x] 26-05-PLAN.md -- TestEditTask fixture refactor (gap closure: UAT Test 4)
 
-### Phase 27: Repository contract tests (golden master)
-**Goal**: Golden master pattern proves behavioral equivalence between InMemoryBridge and RealBridge — UAT captures expected behavior, CI verifies the test double matches
+### Phase 27: Bridge contract tests (golden master)
+**Goal**: Golden master pattern proves behavioral equivalence between InMemoryBridge and RealBridge — UAT captures expected bridge behavior, CI verifies the test double matches
 **Depends on**: Phase 26
 **Requirements**: INFRA-13, INFRA-14
 **Success Criteria** (what must be TRUE):
-  1. Golden master of expected repository behavior exists, captured from RealBridge via UAT
+  1. Golden master of expected bridge behavior exists, captured from RealBridge via UAT
   2. Golden master is committed to the repo as the source of truth for "what OmniFocus actually does"
-  3. CI contract tests verify InMemoryBridge-backed `BridgeRepository` output matches the committed golden master
+  3. CI contract tests verify InMemoryBridge output matches the committed golden master
   4. All existing tests pass
 **Plans:** 0 plans
 

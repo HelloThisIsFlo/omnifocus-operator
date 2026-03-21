@@ -47,8 +47,8 @@ Requirements for Architectural Cleanup milestone. No new tools, no behavioral ch
 - [x] **INFRA-10**: `InMemoryBridge` maintains mutable in-memory state and handles `add_task`/`edit_task` commands as a stateful test double
 - [x] **INFRA-11**: `InMemoryRepository` deleted — write test infrastructure routes through the bridge serialization layer
 - [x] **INFRA-12**: Write tests exercise the real serialization path (`BridgeWriteMixin`, `model_dump(by_alias=True)`, snapshot parsing) via the stateful `InMemoryBridge`
-- [ ] **INFRA-13**: Golden master of expected repository behavior captured from RealBridge via UAT and committed to the repo
-- [ ] **INFRA-14**: CI contract tests verify InMemoryBridge-backed `BridgeRepository` output matches the committed golden master
+- [ ] **INFRA-13**: Golden master of expected bridge behavior captured from RealBridge via UAT and committed to the repo
+- [ ] **INFRA-14**: CI contract tests verify InMemoryBridge output matches the committed golden master
 
 ### Type Expressiveness
 
