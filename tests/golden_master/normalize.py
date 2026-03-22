@@ -44,14 +44,16 @@ VOLATILE_TAG_FIELDS: set[str] = {
 # Remove from here when InMemoryBridge learns the computation -- the contract
 # test will then start verifying the field automatically.
 UNCOMPUTED_TASK_FIELDS: set[str] = {
-    # Status remains UNCOMPUTED (D-13): OmniFocus status computation (DueSoon,
-    # Overdue, Next) is time-dependent and intentionally out of scope. The normal
-    # read path uses SQLite urgency/availability columns; bridge read is degraded.
-    "status",
-    # Graduated in Phase 28:
-    #   effectiveDueDate, effectiveDeferDate, effectivePlannedDate -> exact match (ancestor-chain inheritance)
-    #   effectiveCompletionDate, effectiveDropDate -> presence-check (D-09)
-    #   repetitionRule -> exact match (both sides return null, D-12)
+    # --- Status computation ---
+    #
+    # The status field is intentionally omitted to prevent unnecessary complexity.
+    #
+    # This is acceptable because:
+    #  1. The normal read path uses HybridRepository → SQLite, which stores
+    #     urgency/availability as separate columns.
+    #  2. The bridge read path is for BridgeOnlyRepository, which is a fallback mode, and intentionally degraded => Prevents unnecessary complexity for a fallback mode (fully documented)
+    #  3. Implementing the status computation would mean implementing the logic we intentionally scoped out (see 2.)
+    "status",  # see above
 }
 UNCOMPUTED_PROJECT_FIELDS: set[str] = {
     "taskStatus",  # same reasoning as task status
@@ -65,10 +67,10 @@ UNCOMPUTED_TAG_FIELDS: set[str] = set()  # Tags are fully computed
 # Fields where null-vs-non-null is deterministic but exact timestamp differs.
 # Normalized to "<set>" sentinel (non-null) or None (null) for comparison.
 PRESENCE_CHECK_TASK_FIELDS: set[str] = {
-    "completionDate",           # InMemoryBridge sets this, but timestamp differs per run (D-08)
-    "dropDate",                 # InMemoryBridge sets this, but timestamp differs per run (D-08)
+    "completionDate",  # InMemoryBridge sets this, but timestamp differs per run (D-08)
+    "dropDate",  # InMemoryBridge sets this, but timestamp differs per run (D-08)
     "effectiveCompletionDate",  # Same presence-check pattern (D-09)
-    "effectiveDropDate",        # Same presence-check pattern (D-09)
+    "effectiveDropDate",  # Same presence-check pattern (D-09)
 }
 
 # Combined sets used by normalize_for_comparison (backward-compatible)
