@@ -248,10 +248,10 @@ Plans:
   2. Golden master is committed to the repo as the source of truth for "what OmniFocus actually does"
   3. CI contract tests verify InMemoryBridge output matches the committed golden master
   4. All existing tests pass
-**Plans:** 4 plans
+**Plans:** 3/4 plans executed
 
 Plans:
 - [x] 27-01-PLAN.md -- Fix InMemoryBridge behavioral gaps (parent/tag resolution) + golden master normalization infrastructure
 - [x] 27-02-PLAN.md -- Capture script (UAT), CI contract tests, human-verify checkpoint
-- [ ] 27-03-PLAN.md -- Make InMemoryBridge return raw bridge format + fix service regression (gap closure)
+- [x] 27-03-PLAN.md -- Make InMemoryBridge return raw bridge format + fix service regression (gap closure)
 - [ ] 27-04-PLAN.md -- Update golden master infrastructure for raw format + re-capture (gap closure)
