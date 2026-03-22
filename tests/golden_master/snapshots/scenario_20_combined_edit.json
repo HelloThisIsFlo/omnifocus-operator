@@ -1,13 +1,18 @@
 {
-  "scenario": "06_edit_note",
-  "description": "Set note on a task",
+  "scenario": "20_combined_edit",
+  "description": "Edit multiple fields in a single call (name + note + flagged + tags)",
   "operation": "edit_task",
   "params": {
-    "id": "f_vZUZ1nSJv",
-    "note": "Added note via edit"
+    "id": "opZiOckBaej",
+    "name": "GM-TaggedTask-MultiEdit",
+    "note": "Multi-edit test",
+    "flagged": true,
+    "addTagIds": [
+      "c0W69oNhnmB"
+    ]
   },
   "response": {
-    "name": "GM-InboxTask-Renamed"
+    "name": "GM-TaggedTask-MultiEdit"
   },
   "state_after": {
     "tasks": [
@@ -28,8 +33,45 @@
         "tags": []
       },
       {
+        "name": "GM-DropTarget",
+        "note": "",
+        "status": "Dropped",
+        "flagged": false,
+        "effectiveFlagged": false,
+        "dueDate": null,
+        "deferDate": null,
+        "plannedDate": null,
+        "estimatedMinutes": null,
+        "hasChildren": false,
+        "inInbox": true,
+        "project": null,
+        "parent": null,
+        "tags": []
+      },
+      {
         "name": "GM-InboxTask-Renamed",
         "note": "Added note via edit",
+        "status": "Completed",
+        "flagged": true,
+        "effectiveFlagged": true,
+        "dueDate": null,
+        "deferDate": null,
+        "plannedDate": null,
+        "estimatedMinutes": 45,
+        "hasChildren": false,
+        "inInbox": true,
+        "project": null,
+        "parent": null,
+        "tags": [
+          {
+            "id": "ft1Be0WAcQr",
+            "name": "\ud83e\uddea GM-Tag2"
+          }
+        ]
+      },
+      {
+        "name": "GM-MoveTarget",
+        "note": "",
         "status": "Available",
         "flagged": false,
         "effectiveFlagged": false,
@@ -60,11 +102,27 @@
         "tags": []
       },
       {
-        "name": "GM-TaggedTask",
+        "name": "GM-Subtask",
         "note": "",
         "status": "Available",
         "flagged": false,
         "effectiveFlagged": false,
+        "dueDate": null,
+        "deferDate": null,
+        "plannedDate": null,
+        "estimatedMinutes": null,
+        "hasChildren": false,
+        "inInbox": true,
+        "project": null,
+        "parent": null,
+        "tags": []
+      },
+      {
+        "name": "GM-TaggedTask-MultiEdit",
+        "note": "Multi-edit test",
+        "status": "Available",
+        "flagged": true,
+        "effectiveFlagged": true,
         "dueDate": null,
         "deferDate": null,
         "plannedDate": null,

@@ -6,9 +6,12 @@
       "name": "\ud83e\uddea GM-TestProject",
       "url": "omnifocus:///project/bW2BCrF4TAz",
       "note": "",
+      "status": "Active",
+      "taskStatus": "Next",
       "added": "2026-03-21T19:28:30.448Z",
-      "modified": "2026-03-21T20:00:32.247Z",
+      "modified": "2026-03-22T14:35:34.576Z",
       "completionDate": null,
+      "effectiveCompletionDate": null,
       "flagged": false,
       "effectiveFlagged": false,
       "dueDate": null,
@@ -30,9 +33,7 @@
       },
       "nextTask": "bW2BCrF4TAz",
       "folder": "omIFXTj55Bs",
-      "tags": [],
-      "availability": "available",
-      "urgency": "none"
+      "tags": []
     }
   ],
   "tags": [
@@ -42,9 +43,9 @@
       "url": "omnifocus:///tag/c0W69oNhnmB",
       "added": "2026-03-21T19:00:52.100Z",
       "modified": "2026-03-21T19:48:05.870Z",
+      "status": "Active",
       "childrenAreMutuallyExclusive": false,
-      "parent": "gX5jz77Zqk9",
-      "availability": "available"
+      "parent": "gX5jz77Zqk9"
     },
     {
       "id": "ft1Be0WAcQr",
@@ -52,9 +53,9 @@
       "url": "omnifocus:///tag/ft1Be0WAcQr",
       "added": "2026-03-21T19:00:53.954Z",
       "modified": "2026-03-21T19:48:08.857Z",
+      "status": "Active",
       "childrenAreMutuallyExclusive": false,
-      "parent": "gX5jz77Zqk9",
-      "availability": "available"
+      "parent": "gX5jz77Zqk9"
     }
   ]
 }

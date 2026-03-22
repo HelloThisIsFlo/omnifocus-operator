@@ -1,13 +1,16 @@
 {
-  "scenario": "06_edit_note",
-  "description": "Set note on a task",
+  "scenario": "19_move_subtask_to_inbox",
+  "description": "Move a sub-task back to inbox (clears both parent and project)",
   "operation": "edit_task",
   "params": {
-    "id": "f_vZUZ1nSJv",
-    "note": "Added note via edit"
+    "id": "m-EUNlhjAVq",
+    "moveTo": {
+      "position": "ending",
+      "containerId": null
+    }
   },
   "response": {
-    "name": "GM-InboxTask-Renamed"
+    "name": "GM-Subtask"
   },
   "state_after": {
     "tasks": [
@@ -28,8 +31,45 @@
         "tags": []
       },
       {
+        "name": "GM-DropTarget",
+        "note": "",
+        "status": "Dropped",
+        "flagged": false,
+        "effectiveFlagged": false,
+        "dueDate": null,
+        "deferDate": null,
+        "plannedDate": null,
+        "estimatedMinutes": null,
+        "hasChildren": false,
+        "inInbox": true,
+        "project": null,
+        "parent": null,
+        "tags": []
+      },
+      {
         "name": "GM-InboxTask-Renamed",
         "note": "Added note via edit",
+        "status": "Completed",
+        "flagged": true,
+        "effectiveFlagged": true,
+        "dueDate": null,
+        "deferDate": null,
+        "plannedDate": null,
+        "estimatedMinutes": 45,
+        "hasChildren": false,
+        "inInbox": true,
+        "project": null,
+        "parent": null,
+        "tags": [
+          {
+            "id": "ft1Be0WAcQr",
+            "name": "\ud83e\uddea GM-Tag2"
+          }
+        ]
+      },
+      {
+        "name": "GM-MoveTarget",
+        "note": "",
         "status": "Available",
         "flagged": false,
         "effectiveFlagged": false,
@@ -57,6 +97,22 @@
         "inInbox": false,
         "project": "bW2BCrF4TAz",
         "parent": "bW2BCrF4TAz",
+        "tags": []
+      },
+      {
+        "name": "GM-Subtask",
+        "note": "",
+        "status": "Available",
+        "flagged": false,
+        "effectiveFlagged": false,
+        "dueDate": null,
+        "deferDate": null,
+        "plannedDate": null,
+        "estimatedMinutes": null,
+        "hasChildren": false,
+        "inInbox": true,
+        "project": null,
+        "parent": null,
         "tags": []
       },
       {

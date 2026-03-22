@@ -13,6 +13,7 @@
       {
         "name": "GM-InboxTask",
         "note": "",
+        "status": "Available",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": null,
@@ -21,16 +22,17 @@
         "estimatedMinutes": null,
         "hasChildren": false,
         "inInbox": true,
+        "project": null,
         "parent": null,
-        "tags": [],
-        "urgency": "none",
-        "availability": "available"
+        "tags": []
       }
     ],
     "projects": [
       {
         "name": "\ud83e\uddea GM-TestProject",
         "note": "",
+        "status": "Active",
+        "taskStatus": "Next",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": null,
@@ -50,27 +52,25 @@
           "unit": "weeks"
         },
         "folder": "omIFXTj55Bs",
-        "tags": [],
-        "availability": "available",
-        "urgency": "none"
+        "tags": []
       }
     ],
     "tags": [
       {
         "name": "\ud83e\uddea GM-Tag1",
+        "status": "Active",
         "childrenAreMutuallyExclusive": false,
-        "parent": "gX5jz77Zqk9",
-        "availability": "available"
+        "parent": "gX5jz77Zqk9"
       },
       {
         "name": "\ud83e\uddea GM-Tag2",
+        "status": "Active",
         "childrenAreMutuallyExclusive": false,
-        "parent": "gX5jz77Zqk9",
-        "availability": "available"
+        "parent": "gX5jz77Zqk9"
       }
     ]
   },
   "created_ids": [
-    "kvs_o_57UpJ"
+    "f_vZUZ1nSJv"
   ]
 }

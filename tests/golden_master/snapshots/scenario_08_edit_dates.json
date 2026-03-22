@@ -3,7 +3,7 @@
   "description": "Set due and defer dates on a task",
   "operation": "edit_task",
   "params": {
-    "id": "agglZqzDzto",
+    "id": "pefJxCtfz-U",
     "dueDate": "2026-12-20T17:00:00.000Z",
     "deferDate": "2026-12-18T09:00:00.000Z"
   },
@@ -15,6 +15,7 @@
       {
         "name": "GM-AllFields",
         "note": "Golden master test note",
+        "status": "Blocked",
         "flagged": true,
         "effectiveFlagged": true,
         "dueDate": "2026-12-15T17:00:00.000Z",
@@ -23,18 +24,14 @@
         "estimatedMinutes": 30,
         "hasChildren": false,
         "inInbox": false,
-        "parent": {
-          "type": "task",
-          "id": "bW2BCrF4TAz",
-          "name": ""
-        },
-        "tags": [],
-        "urgency": "none",
-        "availability": "blocked"
+        "project": "bW2BCrF4TAz",
+        "parent": "bW2BCrF4TAz",
+        "tags": []
       },
       {
         "name": "GM-InboxTask-Renamed",
         "note": "Added note via edit",
+        "status": "Available",
         "flagged": true,
         "effectiveFlagged": true,
         "dueDate": null,
@@ -43,14 +40,14 @@
         "estimatedMinutes": null,
         "hasChildren": false,
         "inInbox": true,
+        "project": null,
         "parent": null,
-        "tags": [],
-        "urgency": "none",
-        "availability": "available"
+        "tags": []
       },
       {
         "name": "GM-ParentTask",
         "note": "",
+        "status": "Blocked",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": "2026-12-20T17:00:00.000Z",
@@ -59,18 +56,14 @@
         "estimatedMinutes": null,
         "hasChildren": false,
         "inInbox": false,
-        "parent": {
-          "type": "task",
-          "id": "bW2BCrF4TAz",
-          "name": ""
-        },
-        "tags": [],
-        "urgency": "none",
-        "availability": "blocked"
+        "project": "bW2BCrF4TAz",
+        "parent": "bW2BCrF4TAz",
+        "tags": []
       },
       {
         "name": "GM-TaggedTask",
         "note": "",
+        "status": "Available",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": null,
@@ -79,6 +72,7 @@
         "estimatedMinutes": null,
         "hasChildren": false,
         "inInbox": true,
+        "project": null,
         "parent": null,
         "tags": [
           {
@@ -89,15 +83,15 @@
             "id": "ft1Be0WAcQr",
             "name": "\ud83e\uddea GM-Tag2"
           }
-        ],
-        "urgency": "none",
-        "availability": "available"
+        ]
       }
     ],
     "projects": [
       {
         "name": "\ud83e\uddea GM-TestProject",
         "note": "",
+        "status": "Active",
+        "taskStatus": "Blocked",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": null,
@@ -117,23 +111,21 @@
           "unit": "weeks"
         },
         "folder": "omIFXTj55Bs",
-        "tags": [],
-        "availability": "available",
-        "urgency": "none"
+        "tags": []
       }
     ],
     "tags": [
       {
         "name": "\ud83e\uddea GM-Tag1",
+        "status": "Active",
         "childrenAreMutuallyExclusive": false,
-        "parent": "gX5jz77Zqk9",
-        "availability": "available"
+        "parent": "gX5jz77Zqk9"
       },
       {
         "name": "\ud83e\uddea GM-Tag2",
+        "status": "Active",
         "childrenAreMutuallyExclusive": false,
-        "parent": "gX5jz77Zqk9",
-        "availability": "available"
+        "parent": "gX5jz77Zqk9"
       }
     ]
   },
