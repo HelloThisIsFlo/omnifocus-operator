@@ -255,3 +255,13 @@ Plans:
 - [x] 27-02-PLAN.md -- Capture script (UAT), CI contract tests, human-verify checkpoint
 - [x] 27-03-PLAN.md -- Make InMemoryBridge return raw bridge format + fix service regression (gap closure)
 - [x] 27-04-PLAN.md -- Update golden master infrastructure for raw format + re-capture (gap closure)
+
+### Phase 28: Expand golden master coverage and normalize lifecycle date fields
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 27
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 28 to break down)
