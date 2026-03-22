@@ -274,6 +274,13 @@ def _replay_all() -> dict[str, ScenarioResult]:
                 known_task_ids.add(response["id"])
                 if golden_ids:
                     id_map[golden_ids[0]] = response["id"]
+            elif operation == "add_task" and "setup_operation" in scenario:
+                # Both setup and main are add_task (e.g., flagged_chain:
+                # setup creates parent, main creates child). Track the
+                # child's ID at golden_ids[1].
+                known_task_ids.add(response["id"])
+                if len(golden_ids) > 1:
+                    id_map[golden_ids[1]] = response["id"]
 
             # Check response
             actual_response = normalize_response(response)
