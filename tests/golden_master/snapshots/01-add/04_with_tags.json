@@ -1,5 +1,5 @@
 {
-  "scenario": "04_add_task_with_tags",
+  "scenario": "01-add/04_with_tags",
   "description": "Create a task with two tags",
   "operation": "add_task",
   "params": {
@@ -17,15 +17,22 @@
       {
         "name": "GM-AllFields",
         "note": "Golden master test note",
-        "status": "Blocked",
         "flagged": true,
         "effectiveFlagged": true,
         "dueDate": "2026-12-15T17:00:00.000Z",
         "deferDate": "2026-12-10T09:00:00.000Z",
+        "effectiveDueDate": "2026-12-15T17:00:00.000Z",
+        "effectiveDeferDate": "2026-12-10T09:00:00.000Z",
+        "completionDate": null,
+        "effectiveCompletionDate": null,
         "plannedDate": "2026-12-12T09:00:00.000Z",
+        "effectivePlannedDate": "2026-12-12T09:00:00.000Z",
+        "dropDate": null,
+        "effectiveDropDate": null,
         "estimatedMinutes": 30,
         "hasChildren": false,
         "inInbox": false,
+        "repetitionRule": null,
         "project": "bW2BCrF4TAz",
         "parent": "bW2BCrF4TAz",
         "tags": []
@@ -33,15 +40,22 @@
       {
         "name": "GM-InboxTask",
         "note": "",
-        "status": "Available",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": null,
         "deferDate": null,
+        "effectiveDueDate": null,
+        "effectiveDeferDate": null,
+        "completionDate": null,
+        "effectiveCompletionDate": null,
         "plannedDate": null,
+        "effectivePlannedDate": null,
+        "dropDate": null,
+        "effectiveDropDate": null,
         "estimatedMinutes": null,
         "hasChildren": false,
         "inInbox": true,
+        "repetitionRule": null,
         "project": null,
         "parent": null,
         "tags": []
@@ -49,15 +63,22 @@
       {
         "name": "GM-ParentTask",
         "note": "",
-        "status": "Next",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": null,
         "deferDate": null,
+        "effectiveDueDate": null,
+        "effectiveDeferDate": null,
+        "completionDate": null,
+        "effectiveCompletionDate": null,
         "plannedDate": null,
+        "effectivePlannedDate": null,
+        "dropDate": null,
+        "effectiveDropDate": null,
         "estimatedMinutes": null,
         "hasChildren": false,
         "inInbox": false,
+        "repetitionRule": null,
         "project": "bW2BCrF4TAz",
         "parent": "bW2BCrF4TAz",
         "tags": []
@@ -65,15 +86,22 @@
       {
         "name": "GM-TaggedTask",
         "note": "",
-        "status": "Available",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": null,
         "deferDate": null,
+        "effectiveDueDate": null,
+        "effectiveDeferDate": null,
+        "completionDate": null,
+        "effectiveCompletionDate": null,
         "plannedDate": null,
+        "effectivePlannedDate": null,
+        "dropDate": null,
+        "effectiveDropDate": null,
         "estimatedMinutes": null,
         "hasChildren": false,
         "inInbox": true,
+        "repetitionRule": null,
         "project": null,
         "parent": null,
         "tags": [
@@ -93,7 +121,6 @@
         "name": "\ud83e\uddea GM-TestProject",
         "note": "",
         "status": "Active",
-        "taskStatus": "Blocked",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": null,
@@ -112,7 +139,57 @@
           "steps": 1,
           "unit": "weeks"
         },
-        "folder": "omIFXTj55Bs",
+        "folder": "cqHTMJEOCF5",
+        "tags": []
+      },
+      {
+        "name": "\ud83e\uddea GM-TestProject-Dated",
+        "note": "",
+        "status": "Active",
+        "flagged": true,
+        "effectiveFlagged": true,
+        "dueDate": "2036-03-01T19:00:00.000Z",
+        "deferDate": "2026-03-21T08:00:00.000Z",
+        "effectiveDueDate": "2036-03-01T19:00:00.000Z",
+        "effectiveDeferDate": "2026-03-21T08:00:00.000Z",
+        "plannedDate": null,
+        "effectivePlannedDate": null,
+        "dropDate": null,
+        "effectiveDropDate": null,
+        "estimatedMinutes": null,
+        "hasChildren": false,
+        "lastReviewDate": "2026-03-22T00:00:00.000Z",
+        "nextReviewDate": "2026-03-29T00:00:00.000Z",
+        "reviewInterval": {
+          "steps": 1,
+          "unit": "weeks"
+        },
+        "folder": "cqHTMJEOCF5",
+        "tags": []
+      },
+      {
+        "name": "\ud83e\uddea GM-TestProject2",
+        "note": "",
+        "status": "Active",
+        "flagged": false,
+        "effectiveFlagged": false,
+        "dueDate": null,
+        "deferDate": null,
+        "effectiveDueDate": null,
+        "effectiveDeferDate": null,
+        "plannedDate": null,
+        "effectivePlannedDate": null,
+        "dropDate": null,
+        "effectiveDropDate": null,
+        "estimatedMinutes": null,
+        "hasChildren": false,
+        "lastReviewDate": "2026-03-22T00:00:00.000Z",
+        "nextReviewDate": "2026-03-29T00:00:00.000Z",
+        "reviewInterval": {
+          "steps": 1,
+          "unit": "weeks"
+        },
+        "folder": "cqHTMJEOCF5",
         "tags": []
       }
     ],
@@ -132,6 +209,6 @@
     ]
   },
   "created_ids": [
-    "opZiOckBaej"
+    "d4pW0zpt9qG"
   ]
 }

@@ -1,0 +1,156 @@
+{
+  "scenario": "01-add/02_with_parent",
+  "description": "Create a task under a project",
+  "operation": "add_task",
+  "params": {
+    "name": "GM-ParentTask",
+    "parent": "bW2BCrF4TAz"
+  },
+  "response": {
+    "name": "GM-ParentTask"
+  },
+  "state_after": {
+    "tasks": [
+      {
+        "name": "GM-InboxTask",
+        "note": "",
+        "flagged": false,
+        "effectiveFlagged": false,
+        "dueDate": null,
+        "deferDate": null,
+        "effectiveDueDate": null,
+        "effectiveDeferDate": null,
+        "completionDate": null,
+        "effectiveCompletionDate": null,
+        "plannedDate": null,
+        "effectivePlannedDate": null,
+        "dropDate": null,
+        "effectiveDropDate": null,
+        "estimatedMinutes": null,
+        "hasChildren": false,
+        "inInbox": true,
+        "repetitionRule": null,
+        "project": null,
+        "parent": null,
+        "tags": []
+      },
+      {
+        "name": "GM-ParentTask",
+        "note": "",
+        "flagged": false,
+        "effectiveFlagged": false,
+        "dueDate": null,
+        "deferDate": null,
+        "effectiveDueDate": null,
+        "effectiveDeferDate": null,
+        "completionDate": null,
+        "effectiveCompletionDate": null,
+        "plannedDate": null,
+        "effectivePlannedDate": null,
+        "dropDate": null,
+        "effectiveDropDate": null,
+        "estimatedMinutes": null,
+        "hasChildren": false,
+        "inInbox": false,
+        "repetitionRule": null,
+        "project": "bW2BCrF4TAz",
+        "parent": "bW2BCrF4TAz",
+        "tags": []
+      }
+    ],
+    "projects": [
+      {
+        "name": "\ud83e\uddea GM-TestProject",
+        "note": "",
+        "status": "Active",
+        "flagged": false,
+        "effectiveFlagged": false,
+        "dueDate": null,
+        "deferDate": null,
+        "effectiveDueDate": null,
+        "effectiveDeferDate": null,
+        "plannedDate": null,
+        "effectivePlannedDate": null,
+        "dropDate": null,
+        "effectiveDropDate": null,
+        "estimatedMinutes": null,
+        "hasChildren": true,
+        "lastReviewDate": "2026-03-21T00:00:00.000Z",
+        "nextReviewDate": "2026-03-28T00:00:00.000Z",
+        "reviewInterval": {
+          "steps": 1,
+          "unit": "weeks"
+        },
+        "folder": "cqHTMJEOCF5",
+        "tags": []
+      },
+      {
+        "name": "\ud83e\uddea GM-TestProject-Dated",
+        "note": "",
+        "status": "Active",
+        "flagged": true,
+        "effectiveFlagged": true,
+        "dueDate": "2036-03-01T19:00:00.000Z",
+        "deferDate": "2026-03-21T08:00:00.000Z",
+        "effectiveDueDate": "2036-03-01T19:00:00.000Z",
+        "effectiveDeferDate": "2026-03-21T08:00:00.000Z",
+        "plannedDate": null,
+        "effectivePlannedDate": null,
+        "dropDate": null,
+        "effectiveDropDate": null,
+        "estimatedMinutes": null,
+        "hasChildren": false,
+        "lastReviewDate": "2026-03-22T00:00:00.000Z",
+        "nextReviewDate": "2026-03-29T00:00:00.000Z",
+        "reviewInterval": {
+          "steps": 1,
+          "unit": "weeks"
+        },
+        "folder": "cqHTMJEOCF5",
+        "tags": []
+      },
+      {
+        "name": "\ud83e\uddea GM-TestProject2",
+        "note": "",
+        "status": "Active",
+        "flagged": false,
+        "effectiveFlagged": false,
+        "dueDate": null,
+        "deferDate": null,
+        "effectiveDueDate": null,
+        "effectiveDeferDate": null,
+        "plannedDate": null,
+        "effectivePlannedDate": null,
+        "dropDate": null,
+        "effectiveDropDate": null,
+        "estimatedMinutes": null,
+        "hasChildren": false,
+        "lastReviewDate": "2026-03-22T00:00:00.000Z",
+        "nextReviewDate": "2026-03-29T00:00:00.000Z",
+        "reviewInterval": {
+          "steps": 1,
+          "unit": "weeks"
+        },
+        "folder": "cqHTMJEOCF5",
+        "tags": []
+      }
+    ],
+    "tags": [
+      {
+        "name": "\ud83e\uddea GM-Tag1",
+        "status": "Active",
+        "childrenAreMutuallyExclusive": false,
+        "parent": "gX5jz77Zqk9"
+      },
+      {
+        "name": "\ud83e\uddea GM-Tag2",
+        "status": "Active",
+        "childrenAreMutuallyExclusive": false,
+        "parent": "gX5jz77Zqk9"
+      }
+    ]
+  },
+  "created_ids": [
+    "h6EMC-VzMfG"
+  ]
+}
