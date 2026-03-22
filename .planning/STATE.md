@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2.1
 milestone_name: Architectural Cleanup
-status: unknown
-stopped_at: Phase 28 context gathered
-last_updated: "2026-03-22T17:20:48.305Z"
+status: Ready to execute
+stopped_at: Completed 28-01-PLAN.md
+last_updated: "2026-03-22T18:05:11.229Z"
 last_activity: 2026-03-22
 progress:
   total_phases: 11
   completed_phases: 10
-  total_plans: 23
-  completed_plans: 23
+  total_plans: 27
+  completed_plans: 24
 ---
 
 # Project State
@@ -20,12 +20,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-21)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 27 — repository-contract-tests-for-behavioral-equivalence
+**Current focus:** Phase 28 — expand-golden-master-coverage-and-improve-field-normalization
 
 ## Current Position
 
-Phase: 27 (repository-contract-tests-for-behavioral-equivalence) — EXECUTING
-Plan: 4 of 4
+Phase: 28 (expand-golden-master-coverage-and-improve-field-normalization) — EXECUTING
+Plan: 3 of 4
 
 ## Performance Metrics
 
@@ -65,6 +65,8 @@ Plan: 4 of 4
 | Phase 27 P01 | 4min | 2 tasks | 5 files |
 | Phase 27 P03 | 6min | 2 tasks | 3 files |
 | Phase 27 P04 | multi-session | 3 tasks | 35 files |
+| Phase 28 P02 | 4min | 2 tasks | 2 files |
+| Phase 28 P01 | 7min | 3 tasks | 3 files |
 
 ### Decisions
 
@@ -113,6 +115,10 @@ Recent decisions affecting current work:
 - [Phase 27]: VOLATILE/UNCOMPUTED field split: removing a field from UNCOMPUTED auto-enables contract verification
 - [Phase 27]: status/taskStatus excluded as UNCOMPUTED (OmniFocus status computation intentionally out of scope for InMemoryBridge)
 - [Phase 27]: hasChildren computed by InMemoryBridge on add_task and moveTo (required for contract test correctness)
+- [Phase 28]: 43 scenarios total (6+11+7+5+4+3+7) in 7 numbered subfolder categories
+- [Phase 28]: Followup add_task support in _capture_scenario for inheritance chain ID tracking
+- [Phase 28]: Backward-compatible key restriction (_restrict_to_expected_keys) for golden master transition during field graduation
+- [Phase 28]: effectiveCompletionDate/effectiveDropDate set directly during lifecycle (not via inheritance)
 
 ### Pending Todos
 
@@ -150,5 +156,5 @@ None currently.
 ## Session Continuity
 
 Last activity: 2026-03-22
-Stopped at: Phase 28 context gathered
-Resume file: .planning/phases/28-expand-golden-master-coverage-and-improve-field-normalization/28-CONTEXT.md
+Stopped at: Completed 28-01-PLAN.md
+Resume file: None

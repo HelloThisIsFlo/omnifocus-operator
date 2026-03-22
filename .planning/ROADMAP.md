@@ -261,10 +261,10 @@ Plans:
 **Goal:** Expand golden master from 20 to ~43 scenarios (organized in numbered subfolders), graduate 9 fields from VOLATILE/UNCOMPUTED to verified, and implement ancestor-chain inheritance in InMemoryBridge
 **Requirements**: GOLD-01, GOLD-02, GOLD-03, NORM-01, NORM-02, NORM-03, NORM-04
 **Depends on:** Phase 27
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 
 Plans:
-- [ ] 28-01-PLAN.md -- InMemoryBridge inheritance helpers + normalization field graduation + contract test subfolder discovery
+- [x] 28-01-PLAN.md -- InMemoryBridge inheritance helpers + normalization field graduation + contract test subfolder discovery
 - [ ] 28-02-PLAN.md -- Capture script rewrite with ~43 scenarios in 7 categories
 - [ ] 28-03-PLAN.md -- Human capture: run script against live OmniFocus, commit fixtures
 - [ ] 28-04-PLAN.md -- Interactive triage: run contract tests, fix InMemoryBridge mismatches
