@@ -62,6 +62,16 @@ def _load_initial_state() -> dict[str, Any]:
 
 
 def _load_scenarios() -> list[dict[str, Any]]:
+    """Load scenarios from numbered subfolders or flat files (backward-compatible)."""
+    # Try subfolder format first (Phase 28+)
+    scenarios: list[dict[str, Any]] = []
+    for subfolder in sorted(SNAPSHOTS_DIR.iterdir()):
+        if subfolder.is_dir():
+            for f in sorted(subfolder.glob("*.json")):
+                scenarios.append(json.loads(f.read_text(encoding="utf-8")))
+    if scenarios:
+        return scenarios
+    # Fall back to flat format (Phase 27)
     files = sorted(SNAPSHOTS_DIR.glob("scenario_*.json"))
     if not files:
         pytest.skip(SKIP_MSG)
@@ -100,9 +110,15 @@ def _remap_ids(params: dict[str, Any], id_map: dict[str, str]) -> dict[str, Any]
     if "parent" in remapped and remapped["parent"] in id_map:
         remapped["parent"] = id_map[remapped["parent"]]
     if "moveTo" in remapped and isinstance(remapped["moveTo"], dict):
-        cid = remapped["moveTo"].get("containerId")
+        mt = dict(remapped["moveTo"])
+        cid = mt.get("containerId")
         if cid in id_map:
-            remapped["moveTo"] = {**remapped["moveTo"], "containerId": id_map[cid]}
+            mt["containerId"] = id_map[cid]
+        # Anchor-based moves (before/after positioning)
+        aid = mt.get("anchorId")
+        if aid in id_map:
+            mt["anchorId"] = id_map[aid]
+        remapped["moveTo"] = mt
     return remapped
 
 
@@ -320,8 +336,20 @@ def _replay_all() -> dict[str, ScenarioResult]:
 
 def _get_scenario_ids() -> list[str]:
     """Get scenario IDs for parametrize. Returns empty list if not captured."""
+    if not INITIAL_STATE_FILE.exists():
+        return []
+    # Try subfolder format first (Phase 28+)
+    ids: list[str] = []
+    for subfolder in sorted(SNAPSHOTS_DIR.iterdir()):
+        if subfolder.is_dir():
+            for f in sorted(subfolder.glob("*.json")):
+                data = json.loads(f.read_text(encoding="utf-8"))
+                ids.append(data["scenario"])
+    if ids:
+        return ids
+    # Fall back to flat format (Phase 27)
     files = sorted(SNAPSHOTS_DIR.glob("scenario_*.json"))
-    if not files or not INITIAL_STATE_FILE.exists():
+    if not files:
         return []
     return [json.loads(f.read_text(encoding="utf-8"))["scenario"] for f in files]
 
