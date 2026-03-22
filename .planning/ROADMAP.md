@@ -158,8 +158,8 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24 -> 25 -> 26 -> 27
-(Phases 18 and 19 are independent and could execute in either order. Phase 23 depends on Phase 19. Phase 24 depends on Phase 23. Phases 25-27 are sequential.)
+Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22 -> 23 -> 24 -> 25 -> 26 -> 27 -> 28
+(Phases 18 and 19 are independent and could execute in either order. Phase 23 depends on Phase 19. Phase 24 depends on Phase 23. Phases 25-28 are sequential.)
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -261,7 +261,10 @@ Plans:
 **Goal:** Expand golden master from 20 to ~43 scenarios (organized in numbered subfolders), graduate 9 fields from VOLATILE/UNCOMPUTED to verified, and implement ancestor-chain inheritance in InMemoryBridge
 **Requirements**: GOLD-01, GOLD-02, GOLD-03, NORM-01, NORM-02, NORM-03, NORM-04
 **Depends on:** Phase 27
-**Plans:** 0 plans
+**Plans:** 4 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 28 to break down)
+- [ ] 28-01-PLAN.md -- InMemoryBridge inheritance helpers + normalization field graduation + contract test subfolder discovery
+- [ ] 28-02-PLAN.md -- Capture script rewrite with ~43 scenarios in 7 categories
+- [ ] 28-03-PLAN.md -- Human capture: run script against live OmniFocus, commit fixtures
+- [ ] 28-04-PLAN.md -- Interactive triage: run contract tests, fix InMemoryBridge mismatches
