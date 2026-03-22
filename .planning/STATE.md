@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.2.1
 milestone_name: Architectural Cleanup
 status: unknown
-stopped_at: Completed 27-04-PLAN.md
-last_updated: "2026-03-22T15:33:56.855Z"
+stopped_at: Phase 28 context gathered
+last_updated: "2026-03-22T17:20:48.305Z"
 last_activity: 2026-03-22
 progress:
-  total_phases: 10
+  total_phases: 11
   completed_phases: 10
   total_plans: 23
   completed_plans: 23
@@ -129,6 +129,7 @@ Carried from v1.0:
 - Phase 25 added: Patch/PatchOrClear type aliases for command models (from sentinel pattern deep dive)
 - Phase 26 added: Replace InMemoryRepository with stateful InMemoryBridge (from phase 21 UAT discussion)
 - Phase 27 added: Repository contract tests for behavioral equivalence (from todo — proves InMemory/Real equivalence after Phase 26 merge)
+- Phase 28 added: Expand golden master coverage and normalize lifecycle date fields
 
 ### Blockers/Concerns
 
@@ -149,5 +150,5 @@ None currently.
 ## Session Continuity
 
 Last activity: 2026-03-22
-Stopped at: Completed 27-04-PLAN.md
-Resume file: None
+Stopped at: Phase 28 context gathered
+Resume file: .planning/phases/28-expand-golden-master-coverage-and-improve-field-normalization/28-CONTEXT.md
