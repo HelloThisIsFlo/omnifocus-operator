@@ -12,6 +12,76 @@ from uuid import uuid4
 from omnifocus_operator.contracts.protocols import Bridge
 from tests.conftest import make_task_dict
 
+# ---------------------------------------------------------------------------
+# Reverse status maps: model-format -> raw bridge format
+# ---------------------------------------------------------------------------
+
+_REVERSE_TASK_STATUS: dict[tuple[str, str], str] = {
+    ("none", "available"): "Available",
+    ("none", "blocked"): "Blocked",
+    ("due_soon", "available"): "DueSoon",
+    ("overdue", "available"): "Overdue",
+    ("none", "completed"): "Completed",
+    ("none", "dropped"): "Dropped",
+}
+
+_REVERSE_PROJECT_STATUS: dict[str, str] = {
+    "available": "Active",
+    "blocked": "OnHold",
+    "completed": "Done",
+    "dropped": "Dropped",
+}
+
+_REVERSE_PROJECT_TASK_STATUS: dict[str, str] = {
+    "none": "Available",
+    "due_soon": "DueSoon",
+    "overdue": "Overdue",
+}
+
+_REVERSE_TAG_STATUS: dict[str, str] = {
+    "available": "Active",
+    "blocked": "OnHold",
+    "dropped": "Dropped",
+}
+
+_REVERSE_FOLDER_STATUS: dict[str, str] = {
+    "available": "Active",
+    "dropped": "Dropped",
+}
+
+
+def _find_containing_project(
+    task: dict[str, Any],
+    task_index: dict[str, dict[str, Any]],
+    project_ids: set[str],
+) -> str | None:
+    """Walk parent chain to find the containing project for a task.
+
+    Returns the project ID if found, None if the task is in the inbox
+    (no project ancestor). Matches OmniFocus t.containingProject behavior.
+    """
+    current = task
+    visited: set[str] = set()
+    while True:
+        parent_ref = current.get("parent")
+        if parent_ref is None:
+            # Reached inbox (no parent) -- no containing project
+            return None
+        parent_id = parent_ref["id"]
+        if parent_id in visited:
+            # Cycle protection
+            return None
+        visited.add(parent_id)
+        if parent_id in project_ids:
+            # Found the containing project
+            return parent_id
+        # Parent is a task -- walk up
+        parent_task = task_index.get(parent_id)
+        if parent_task is None:
+            # Parent task not in index (shouldn't happen, but safe)
+            return None
+        current = parent_task
+
 
 @dataclass(frozen=True)
 class BridgeCall:
@@ -123,8 +193,13 @@ class InMemoryBridge(Bridge):
     # ------------------------------------------------------------------
 
     def _handle_get_all(self) -> dict[str, Any]:
-        """Return a deep copy of internal state as a snapshot dict."""
-        return copy.deepcopy(
+        """Return a deep copy of internal state converted to raw bridge format.
+
+        Internal storage remains model-format (urgency, availability, parent as dict).
+        The output matches what RealBridge/bridge.js returns (status, parent/project
+        as string IDs), so BridgeRepository.adapt_snapshot processes it correctly.
+        """
+        snapshot = copy.deepcopy(
             {
                 "tasks": self._tasks,
                 "projects": self._projects,
@@ -133,6 +208,100 @@ class InMemoryBridge(Bridge):
                 "perspectives": self._perspectives,
             }
         )
+        self._to_raw_format(snapshot)
+        return snapshot
+
+    # ------------------------------------------------------------------
+    # Raw format conversion (model -> bridge.js output shape)
+    # ------------------------------------------------------------------
+
+    def _to_raw_format(self, snapshot: dict[str, Any]) -> None:
+        """Convert a model-format snapshot to raw bridge format in place.
+
+        Each entity type has its own conversion: status fields are reversed
+        from model (urgency/availability) back to bridge (status string),
+        and task parent dicts are decomposed back to parent/project string IDs.
+        """
+        # Pre-compute containing project map BEFORE converting tasks.
+        # This avoids the iteration-order bug: once _task_to_raw converts
+        # parent dicts to strings, walking the parent chain would break.
+        task_index: dict[str, dict[str, Any]] = {t["id"]: t for t in snapshot["tasks"]}
+        project_ids: set[str] = {p["id"] for p in snapshot["projects"]}
+        containing_project_map = self._build_containing_project_map(task_index, project_ids)
+
+        for task in snapshot["tasks"]:
+            self._task_to_raw(task, containing_project_map)
+        for project in snapshot["projects"]:
+            self._project_to_raw(project)
+        for tag in snapshot["tags"]:
+            self._tag_to_raw(tag)
+        for folder in snapshot["folders"]:
+            self._folder_to_raw(folder)
+
+    @staticmethod
+    def _build_containing_project_map(
+        task_index: dict[str, dict[str, Any]],
+        project_ids: set[str],
+    ) -> dict[str, str | None]:
+        """Pre-compute task_id -> containing_project_id for all tasks.
+
+        Walks the parent chain (while parent dicts are still intact) to find
+        the containing project. Handles all 4 cases:
+        - Inbox task (parent=None): containing_project = None
+        - Direct project child (parent.id is a project): containing_project = parent.id
+        - Sub-task in project: walk up until a project is found
+        - Sub-task in inbox: walk up, no project found -> None
+        """
+        result: dict[str, str | None] = {}
+        for task_id, task in task_index.items():
+            result[task_id] = _find_containing_project(task, task_index, project_ids)
+        return result
+
+    @staticmethod
+    def _task_to_raw(
+        task: dict[str, Any],
+        containing_project_map: dict[str, str | None],
+    ) -> None:
+        """Convert a single task from model format to raw bridge format."""
+        # urgency + availability -> status
+        urgency = task.pop("urgency", "none")
+        availability = task.pop("availability", "available")
+        task["status"] = _REVERSE_TASK_STATUS.get((urgency, availability), "Available")
+
+        # parent dict -> parent (string|None) + project (string|None)
+        parent_ref = task.get("parent")
+        if parent_ref is None:
+            task["parent"] = None
+            task["project"] = None
+        else:
+            parent_id = parent_ref["id"]
+            task["parent"] = parent_id
+            task["parentName"] = parent_ref.get("name", "")
+            task["project"] = containing_project_map.get(task["id"])
+            if task["project"] is not None:
+                # Add projectName (bridge.js includes it)
+                task["projectName"] = ""
+
+    @staticmethod
+    def _project_to_raw(project: dict[str, Any]) -> None:
+        """Convert a single project from model format to raw bridge format."""
+        availability = project.pop("availability", "available")
+        urgency = project.pop("urgency", "none")
+        project["status"] = _REVERSE_PROJECT_STATUS.get(availability, "Active")
+        project["taskStatus"] = _REVERSE_PROJECT_TASK_STATUS.get(urgency, "Available")
+
+    @staticmethod
+    def _tag_to_raw(tag: dict[str, Any]) -> None:
+        """Convert a single tag from model format to raw bridge format."""
+        availability = tag.pop("availability", "available")
+        tag["status"] = _REVERSE_TAG_STATUS.get(availability, "Active")
+
+    @staticmethod
+    def _folder_to_raw(folder: dict[str, Any]) -> None:
+        """Convert a single folder from model format to raw bridge format."""
+        availability = folder.pop("availability", "available")
+        tag_status = _REVERSE_FOLDER_STATUS.get(availability, "Active")
+        folder["status"] = tag_status
 
     def _handle_add_task(self, params: dict[str, Any]) -> dict[str, Any]:
         """Create a task in-memory and append to internal tasks list.
