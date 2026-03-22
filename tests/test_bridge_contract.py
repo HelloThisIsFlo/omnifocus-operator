@@ -14,6 +14,7 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+import copy
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -102,6 +103,22 @@ def _remap_ids(params: dict[str, Any], id_map: dict[str, str]) -> dict[str, Any]
         cid = remapped["moveTo"].get("containerId")
         if cid in id_map:
             remapped["moveTo"] = {**remapped["moveTo"], "containerId": id_map[cid]}
+    return remapped
+
+
+def _remap_state_ids(state: dict[str, Any], id_map: dict[str, str]) -> dict[str, Any]:
+    """Remap golden master IDs in state_after to InMemoryBridge IDs.
+
+    Task parent/project fields reference entity IDs that differ between
+    OmniFocus and InMemoryBridge. The id_map (built during replay) maps
+    golden master task IDs to their InMemoryBridge equivalents.
+    """
+    remapped = copy.deepcopy(state)
+    for task in remapped.get("tasks", []):
+        if task.get("parent") in id_map:
+            task["parent"] = id_map[task["parent"]]
+        if task.get("project") in id_map:
+            task["project"] = id_map[task["project"]]
     return remapped
 
 
@@ -235,7 +252,8 @@ def _replay_all() -> dict[str, ScenarioResult]:
                 known_tag_ids,
             )
             actual_state = normalize_state(filtered)
-            expected_state = normalize_state(scenario["state_after"])
+            expected_raw = _remap_state_ids(scenario["state_after"], id_map)
+            expected_state = normalize_state(expected_raw)
             if actual_state != expected_state:
                 results[label] = ScenarioResult(
                     label=label,
