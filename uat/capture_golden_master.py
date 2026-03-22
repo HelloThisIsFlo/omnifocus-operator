@@ -592,6 +592,11 @@ async def main() -> int:
     """Run the golden master capture workflow."""
     _phase_1_introduction()
 
+    # Clean slate: nuke and recreate snapshots directory
+    if SNAPSHOTS_DIR.exists():
+        shutil.rmtree(SNAPSHOTS_DIR)
+    SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+
     bridge = RealBridge(ipc_dir=DEFAULT_IPC_DIR)
 
     try:
@@ -605,11 +610,6 @@ async def main() -> int:
         if not _phase_3_confirmation():
             print("\nCapture cancelled.")
             return 1
-
-        # Clean slate: nuke and recreate snapshots directory
-        if SNAPSHOTS_DIR.exists():
-            shutil.rmtree(SNAPSHOTS_DIR)
-        SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
 
         # Phase 4: Capture
         await _phase_4_capture(bridge)
