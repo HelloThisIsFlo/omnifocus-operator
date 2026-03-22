@@ -1,6 +1,6 @@
 """Golden master fixtures and comparison helpers for bridge contract tests."""
 
-from tests.golden.normalize import (
+from tests.golden_master.normalize import (
     DYNAMIC_PROJECT_FIELDS,
     DYNAMIC_TAG_FIELDS,
     DYNAMIC_TASK_FIELDS,

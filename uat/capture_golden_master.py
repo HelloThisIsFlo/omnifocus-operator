@@ -11,19 +11,21 @@ from __future__ import annotations
 
 import asyncio
 import json
+import shutil
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from omnifocus_operator.bridge.real import DEFAULT_IPC_DIR, RealBridge
-from tests.golden.normalize import (
+from tests.golden_master.normalize import (
     filter_to_known_ids,
     normalize_response,
     normalize_state,
 )
 
-GOLDEN_DIR = Path(__file__).resolve().parent.parent / "tests" / "golden"
+GOLDEN_MASTER_DIR = Path(__file__).resolve().parent.parent / "tests" / "golden_master"
+SNAPSHOTS_DIR = GOLDEN_MASTER_DIR / "snapshots"
 
 
 # ---------------------------------------------------------------------------
@@ -307,7 +309,7 @@ async def _capture_scenario(
 
 def _write_fixture(fixture: dict[str, Any], scenario_name: str) -> None:
     """Write a scenario fixture to a JSON file."""
-    path = GOLDEN_DIR / f"scenario_{scenario_name}.json"
+    path = SNAPSHOTS_DIR / f"scenario_{scenario_name}.json"
     path.write_text(json.dumps(fixture, indent=2, sort_keys=False) + "\n", encoding="utf-8")
 
 
@@ -330,7 +332,7 @@ def _phase_1_introduction() -> None:
     print("  1. You manually create a test project and two tags in OmniFocus")
     print("  2. The script verifies each entity exists")
     print("  3. 20 scenarios run automatically (add/edit tasks)")
-    print("  4. Fixture JSON files are written to tests/golden/")
+    print("  4. Fixture JSON files are written to tests/golden_master/snapshots/")
     print("  5. Test tasks are consolidated for easy cleanup")
     print()
     print("Prerequisites:")
@@ -427,7 +429,7 @@ async def _phase_2_manual_setup(bridge: RealBridge) -> None:
     # Keep IDs — contract tests need them to seed InMemoryBridge and build
     # known_*_ids sets for filter_to_known_ids. Only scenario state_after
     # snapshots are normalized (IDs stripped for comparison).
-    initial_path = GOLDEN_DIR / "initial_state.json"
+    initial_path = SNAPSHOTS_DIR / "initial_state.json"
     initial_path.write_text(
         json.dumps(initial, indent=2, sort_keys=False) + "\n",
         encoding="utf-8",
@@ -527,7 +529,7 @@ async def _phase_4_capture(bridge: RealBridge) -> None:
 
     print()
     print(f"  All {total} scenarios captured successfully.")
-    print(f"  Fixture files written to {GOLDEN_DIR}/")
+    print(f"  Fixture files written to {SNAPSHOTS_DIR}/")
     print()
 
 
@@ -603,6 +605,11 @@ async def main() -> int:
         if not _phase_3_confirmation():
             print("\nCapture cancelled.")
             return 1
+
+        # Clean slate: nuke and recreate snapshots directory
+        if SNAPSHOTS_DIR.exists():
+            shutil.rmtree(SNAPSHOTS_DIR)
+        SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
 
         # Phase 4: Capture
         await _phase_4_capture(bridge)

@@ -24,14 +24,14 @@ import pytest
 
 from omnifocus_operator.bridge.adapter import adapt_snapshot
 from tests.doubles import InMemoryBridge
-from tests.golden.normalize import (
+from tests.golden_master.normalize import (
     filter_to_known_ids,
     normalize_response,
     normalize_state,
 )
 
-GOLDEN_DIR = Path(__file__).parent / "golden"
-INITIAL_STATE_FILE = GOLDEN_DIR / "initial_state.json"
+SNAPSHOTS_DIR = Path(__file__).parent / "golden_master" / "snapshots"
+INITIAL_STATE_FILE = SNAPSHOTS_DIR / "initial_state.json"
 
 SKIP_MSG = "Golden master not captured yet. Run: uv run python uat/capture_golden_master.py"
 
@@ -63,7 +63,7 @@ def _load_initial_state() -> dict[str, Any]:
 
 
 def _load_scenarios() -> list[dict[str, Any]]:
-    files = sorted(GOLDEN_DIR.glob("scenario_*.json"))
+    files = sorted(SNAPSHOTS_DIR.glob("scenario_*.json"))
     if not files:
         pytest.skip(SKIP_MSG)
     return [json.loads(f.read_text(encoding="utf-8")) for f in files]
@@ -279,7 +279,7 @@ def _replay_all() -> dict[str, ScenarioResult]:
 
 def _get_scenario_ids() -> list[str]:
     """Get scenario IDs for parametrize. Returns empty list if not captured."""
-    files = sorted(GOLDEN_DIR.glob("scenario_*.json"))
+    files = sorted(SNAPSHOTS_DIR.glob("scenario_*.json"))
     if not files or not INITIAL_STATE_FILE.exists():
         return []
     return [json.loads(f.read_text(encoding="utf-8"))["scenario"] for f in files]

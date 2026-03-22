@@ -1,4 +1,4 @@
-# Golden Master Fixtures
+# Golden Master
 
 Bridge contract test infrastructure for proving InMemoryBridge behavioral equivalence with RealBridge.
 
@@ -9,8 +9,9 @@ Bridge contract test infrastructure for proving InMemoryBridge behavioral equiva
   - `normalize_response()` -- strip `id` from write responses
   - `normalize_state()` -- normalize + sort an entire state snapshot
   - `filter_to_known_ids()` -- filter `get_all` to test-created entities only
-- `scenario_NN_*.json` -- Captured golden master scenario files (after UAT capture)
-- `initial_state.json` -- Seeded state before scenarios (after UAT capture)
+- `snapshots/` -- Captured golden master fixtures (nuked and regenerated on each capture)
+  - `initial_state.json` -- Seeded state before scenarios
+  - `scenario_NN_*.json` -- Per-scenario state snapshots
 
 ## Regeneration
 
