@@ -70,11 +70,12 @@ No new MCP tools, no behavioral changes to the server — pure test infrastructu
 - 02: fields + lifecycle in same call
 - 03: subtask add + move out
 
-**07-inheritance/ (4 scenarios)**
+**07-inheritance/ (5 scenarios)**
 - 01: task under project with dueDate → verify effectiveDueDate inherited
 - 02: task under flagged project → verify effectiveFlagged = true
 - 03: subtask under flagged parent task → verify effectiveFlagged chain
 - 04: task under project with deferDate → verify effectiveDeferDate inherited
+- 05: deep nesting (project → task → subtask → sub-subtask, 3-4 levels) → verify effective fields propagate all the way down
 
 ### Setup prerequisites
 - **D-04:** Manual setup extended with two new entities:
@@ -182,7 +183,6 @@ No new MCP tools, no behavioral changes to the server — pure test infrastructu
 <deferred>
 ## Deferred Ideas
 
-- **Inheritance scenarios for deeper nesting** — current scenarios test 1-2 levels (task → project, task → task → project). Deeper chains (3+ levels) deferred unless golden master reveals issues.
 - **Status field graduation** — `status` and `taskStatus` remain UNCOMPUTED. OmniFocus status computation (DueSoon, Overdue, Next) is time-dependent and complex. Would be its own phase if ever implemented.
 - **Milestone closure** — user handles v1.2.1 milestone closure separately, not part of Phase 28.
 
