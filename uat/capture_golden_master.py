@@ -423,20 +423,6 @@ async def _phase_2_manual_setup(bridge: RealBridge) -> None:
                 print("  ERROR: Not found. Please try again.")
             print()
 
-    # --- Write initial state ---
-    state = await _get_all_raw(bridge)
-    initial = filter_to_known_ids(state, known_task_ids, known_project_ids, known_tag_ids)
-    # Keep IDs — contract tests need them to seed InMemoryBridge and build
-    # known_*_ids sets for filter_to_known_ids. Only scenario state_after
-    # snapshots are normalized (IDs stripped for comparison).
-    initial_path = SNAPSHOTS_DIR / "initial_state.json"
-    initial_path.write_text(
-        json.dumps(initial, indent=2, sort_keys=False) + "\n",
-        encoding="utf-8",
-    )
-    print(f"  Initial state written to {initial_path}")
-    print()
-
 
 async def _check_leftover_tasks(bridge: RealBridge) -> None:
     """Ensure no GM- tasks remain from a previous run."""
@@ -583,6 +569,22 @@ def _report_cleanup_info() -> None:
     print()
 
 
+async def _capture_initial_state(bridge: RealBridge) -> None:
+    """Capture initial state after setup and leftover cleanup."""
+    state = await _get_all_raw(bridge)
+    initial = filter_to_known_ids(state, known_task_ids, known_project_ids, known_tag_ids)
+    # Keep IDs — contract tests need them to seed InMemoryBridge and build
+    # known_*_ids sets for filter_to_known_ids. Only scenario state_after
+    # snapshots are normalized (IDs stripped for comparison).
+    initial_path = SNAPSHOTS_DIR / "initial_state.json"
+    initial_path.write_text(
+        json.dumps(initial, indent=2, sort_keys=False) + "\n",
+        encoding="utf-8",
+    )
+    print(f"  Initial state written to {initial_path}")
+    print()
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -600,11 +602,15 @@ async def main() -> int:
     bridge = RealBridge(ipc_dir=DEFAULT_IPC_DIR)
 
     try:
-        # Phase 2: Manual setup
+        # Phase 2: Manual setup (creates project/tags, verifies they exist)
         await _phase_2_manual_setup(bridge)
 
-        # Check for leftover tasks from previous runs
+        # Check for leftover tasks BEFORE capturing initial state —
+        # otherwise hasChildren etc. reflect stale data
         await _check_leftover_tasks(bridge)
+
+        # Capture initial state (clean, after leftover removal)
+        await _capture_initial_state(bridge)
 
         # Phase 3: Confirmation
         if not _phase_3_confirmation():
