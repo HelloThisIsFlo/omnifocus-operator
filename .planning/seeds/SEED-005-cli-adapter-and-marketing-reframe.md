@@ -3,7 +3,8 @@ id: SEED-005
 status: dormant
 planted: 2026-03-22
 planted_during: v1.2.1 (Architectural Cleanup)
-trigger_when: v1.6 Production Hardening complete and launch preparation begins
+trigger_when: After v1.5 or v1.6 — when core feature set is complete
+depends_on: SEED-006 (marketing foundation must exist before CLI reframe)
 scope: Large
 ---
 
@@ -21,20 +22,22 @@ The marketing reframe is equally important: README, landing page, and all copy s
 
 ## When to Surface
 
-**Trigger:** When v1.6 Production Hardening is complete and launch preparation begins
+**Trigger:** After v1.5 or v1.6 — when the core MCP feature set is complete
+
+**Depends on:** SEED-006 (marketing foundation must be polished before the CLI reframe layer)
 
 This seed should be presented during `/gsd:new-milestone` when the milestone scope matches any of these conditions:
-- Launch preparation, public release, or "go to market" milestone
+- Post v1.5 or v1.6 milestone planning
 - CLI, command-line, or terminal interface work
-- Marketing, README, or landing page overhaul
-- Post v1.6 milestone planning
+- "Going public" or launch preparation (if CLI is part of launch strategy)
+- Expanding the user base beyond MCP/AI agent users
 
 ## Scope Estimate
 
 **Large** — Full milestone. Two tracks:
 
 1. **CLI adapter** — entry point, arg parsing, output formatting (table/JSON/plain), error handling, shell completions. Thin technically but needs polish for a good DX.
-2. **Marketing reframe** — README, landing page (PAGE.md), tagline, feature comparison, installation docs all need to present both interfaces. Not just find-and-replace; the narrative needs to work for both audiences.
+2. **Marketing reframe** — layer CLI messaging onto the already-polished marketing (SEED-006). Update tagline, feature comparison, installation docs to present both interfaces. The narrative needs to work for both MCP and CLI audiences.
 
 ## Breadcrumbs
 
