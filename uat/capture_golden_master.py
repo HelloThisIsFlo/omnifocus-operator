@@ -667,7 +667,7 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "folder": "07-inheritance",
             "file": "05c_deep_nesting_l3",
             "scenario": "07-inheritance/05c_deep_nesting_l3",
-            "description": "Deep nesting L3: sub-subtask under L2 (inherits from project through 3 levels)",
+            "description": "Deep nesting L3: sub-subtask under L2 (3-level inheritance)",
             "operation": "add_task",
             "params_fn": lambda: {
                 "name": "GM-DeepL3",
@@ -691,6 +691,21 @@ async def _get_all_raw(bridge: RealBridge) -> dict[str, Any]:
 def _find_by_name(entities: list[dict[str, Any]], name: str) -> dict[str, Any] | None:
     """Find an entity by name in a list of dicts."""
     return next((e for e in entities if e.get("name") == name), None)
+
+
+def _validate_dated_project(project: dict[str, Any]) -> list[str]:
+    """Check that GM-TestProject-Dated has the required properties for inheritance scenarios.
+
+    Returns a list of problems (empty = all good).
+    """
+    problems: list[str] = []
+    if not project.get("dueDate"):
+        problems.append("dueDate is not set (needed for effectiveDueDate inheritance)")
+    if not project.get("deferDate"):
+        problems.append("deferDate is not set (needed for effectiveDeferDate inheritance)")
+    if not project.get("flagged"):
+        problems.append("flagged is not true (needed for effectiveFlagged inheritance)")
+    return problems
 
 
 async def _capture_scenario(
@@ -819,17 +834,6 @@ async def _phase_2_manual_setup(bridge: RealBridge) -> None:
     print("-" * 60)
     print()
 
-    # Entity definitions: (display_name, global_var_name, entity_list_key)
-    projects_to_find = [
-        ("🧪 GM-TestProject", "projects"),
-        ("🧪 GM-TestProject2", "projects"),
-        ("🧪 GM-TestProject-Dated", "projects"),
-    ]
-    tags_to_find = [
-        ("🧪 GM-Tag1", "tags"),
-        ("🧪 GM-Tag2", "tags"),
-    ]
-
     # One upfront query to check what already exists
     state = await _get_all_raw(bridge)
 
@@ -856,11 +860,39 @@ async def _phase_2_manual_setup(bridge: RealBridge) -> None:
         print(f"  Found: 🧪 GM-Tag2 (ID: {GM_TAG2_ID})")
         print("  All entities found -- skipping manual setup.")
         print()
-        print("  REMINDER: Ensure 🧪 GM-TestProject-Dated has:")
-        print("    - dueDate set (any future date)")
-        print("    - deferDate set (any future date)")
-        print("    - flagged = true")
-        print("  These are required for inheritance scenarios (07-*).")
+
+        # Verify GM-TestProject-Dated has required properties
+        problems = _validate_dated_project(dated_project)  # type: ignore[arg-type]
+        if problems:
+            print("  ⚠ 🧪 GM-TestProject-Dated is missing required properties:")
+            for p in problems:
+                print(f"    - {p}")
+            print()
+            print("  Please fix in OmniFocus Inspector, then press Enter to re-check.")
+            while problems:
+                input("  Press Enter when fixed... ")
+                state = await _get_all_raw(bridge)
+                dated_project = _find_by_name(state.get("projects", []), "🧪 GM-TestProject-Dated")
+                if dated_project is None:
+                    print("  ERROR: Project not found. Please re-create it.")
+                    continue
+                problems = _validate_dated_project(dated_project)
+                if problems:
+                    print("  Still missing:")
+                    for p in problems:
+                        print(f"    - {p}")
+                else:
+                    GM_DATED_PROJECT_ID = dated_project["id"]
+                    print(
+                        "  ✓ 🧪 GM-TestProject-Dated verified: dueDate, deferDate, flagged all set."
+                    )
+            print()
+        else:
+            print("  ✓ GM-TestProject-Dated verified: dueDate, deferDate, flagged set.")
+            print()
+
+        print("  NOTE: Also ensure 'Complete with last action' is OFF for this project")
+        print("  (not exposed via bridge -- cannot verify automatically).")
         print()
     else:
         # Guide through each missing entity
@@ -893,6 +925,7 @@ async def _phase_2_manual_setup(bridge: RealBridge) -> None:
                     print(f"Please create a {entity_type} named '{name}' in OmniFocus.")
                     if name == "🧪 GM-TestProject-Dated":
                         print("  This project must have: dueDate set, deferDate set, flagged=true")
+                        print("  Also disable 'Complete with last action' in Inspector")
                     input("Press Enter when done... ")
                     state = await _get_all_raw(bridge)
                     entity = _find_by_name(state.get(list_key, []), name)
@@ -902,6 +935,41 @@ async def _phase_2_manual_setup(bridge: RealBridge) -> None:
                         break
                     print("  ERROR: Not found. Please try again.")
                 print()
+
+        # Validate GM-TestProject-Dated properties
+        dated = found_entities["🧪 GM-TestProject-Dated"]
+        problems = _validate_dated_project(dated)
+        if problems:
+            print("  ⚠ 🧪 GM-TestProject-Dated is missing required properties:")
+            for p in problems:
+                print(f"    - {p}")
+            print()
+            print("  Please fix in OmniFocus Inspector, then press Enter to re-check.")
+            while problems:
+                input("  Press Enter when fixed... ")
+                state = await _get_all_raw(bridge)
+                dated = _find_by_name(state.get("projects", []), "🧪 GM-TestProject-Dated")
+                if dated is None:
+                    print("  ERROR: Project not found. Please re-create it.")
+                    continue
+                problems = _validate_dated_project(dated)
+                if problems:
+                    print("  Still missing:")
+                    for p in problems:
+                        print(f"    - {p}")
+                else:
+                    found_entities["🧪 GM-TestProject-Dated"] = dated
+                    print(
+                        "  ✓ 🧪 GM-TestProject-Dated verified: dueDate, deferDate, flagged all set."
+                    )
+            print()
+        else:
+            print("  ✓ GM-TestProject-Dated verified: dueDate, deferDate, flagged set.")
+            print()
+
+        print("  NOTE: Also ensure 'Complete with last action' is OFF for this project")
+        print("  (not exposed via bridge -- cannot verify automatically).")
+        print()
 
         GM_PROJECT_ID = found_entities["🧪 GM-TestProject"]["id"]
         GM_PROJECT2_ID = found_entities["🧪 GM-TestProject2"]["id"]
