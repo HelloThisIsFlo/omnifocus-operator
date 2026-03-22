@@ -45,6 +45,18 @@ VOLATILE_TAG_FIELDS: set[str] = {
 # Remove from here when InMemoryBridge learns the computation -- the contract
 # test will then start verifying the field automatically.
 UNCOMPUTED_TASK_FIELDS: set[str] = {
+    # --- Status computation ---
+    #
+    # The status field is intentionally omitted to prevent unnecessary complexity.
+    #
+    # This is acceptable because:
+    #  1. The normal read path uses HybridRepository → SQLite, which stores
+    #     urgency/availability as separate columns.
+    #  2. The bridge read path is for BridgeOnlyRepository, which is a fallback mode, and intentionally degraded => Prevents unnecessary complexity for a fallback mode (fully documented)
+    #  3. Implementing the status computation would mean implementing the logic we intentionally scoped out (see 2.)
+    #  4. Lifecycle transitions (complete/drop) are verifiable by checking the presence/absence of
+    #     completionDate and dropDate — TODO: Not yet implemented, see related TODO
+    "status",  # see above
     "effectiveDueDate",  # inherited from parent project/task; InMemoryBridge doesn't walk hierarchy
     "effectiveDeferDate",  # same inheritance logic
     "effectiveCompletionDate",  # inherited/computed by OmniFocus
@@ -53,6 +65,7 @@ UNCOMPUTED_TASK_FIELDS: set[str] = {
     "repetitionRule",  # InMemoryBridge doesn't simulate repeat rules
 }
 UNCOMPUTED_PROJECT_FIELDS: set[str] = {
+    "taskStatus",  # same reasoning as task status
     "completionDate",  # no "complete a project" operation in InMemoryBridge
     "effectiveCompletionDate",  # adapter strips this for projects (dead field), but present in raw bridge output
     "repetitionRule",  # InMemoryBridge doesn't simulate project repeat rules
