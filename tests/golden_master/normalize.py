@@ -13,10 +13,12 @@ from typing import Any
 # ---------------------------------------------------------------------------
 # Dynamic fields per entity type (D-15, D-18)
 #
-# Split into VOLATILE (different every run, never matchable) and UNCOMPUTED
-# (deterministic but InMemoryBridge doesn't compute yet). Remove a field
-# from UNCOMPUTED when InMemoryBridge learns the computation -- the contract
-# test will then start verifying it automatically.
+# - VOLATILE: different every run, never matchable — stripped entirely
+# - PRESENCE_CHECK: timestamps that vary but presence matters — non-null → "<set>"
+# - UNCOMPUTED: deterministic but InMemoryBridge doesn't compute yet — stripped
+#
+# Remove a field from UNCOMPUTED when InMemoryBridge learns the computation --
+# the contract test will then start verifying it automatically.
 # ---------------------------------------------------------------------------
 
 # Fields that differ every run -- will never match between the real Bridge and InMemoryBridge
@@ -73,7 +75,7 @@ PRESENCE_CHECK_TASK_FIELDS: set[str] = {
     "effectiveDropDate",  # Same presence-check pattern (D-09)
 }
 
-# Combined sets used by normalize_for_comparison (backward-compatible)
+# Combined sets used by normalize_for_comparison
 DYNAMIC_TASK_FIELDS = VOLATILE_TASK_FIELDS | UNCOMPUTED_TASK_FIELDS
 DYNAMIC_PROJECT_FIELDS = VOLATILE_PROJECT_FIELDS | UNCOMPUTED_PROJECT_FIELDS
 DYNAMIC_TAG_FIELDS = VOLATILE_TAG_FIELDS | UNCOMPUTED_TAG_FIELDS

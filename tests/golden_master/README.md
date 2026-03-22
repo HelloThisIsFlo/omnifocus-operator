@@ -38,6 +38,27 @@ Per GOLD-01: regenerate when bridge operations change (new commands, field addit
 
 ## How It Works
 
+```mermaid
+flowchart LR
+    subgraph Capture ["① Capture (manual UAT)"]
+        CS[capture_golden_master.py] -->|runs against| RB[Real Bridge]
+        RB -->|creates tasks in| OF[OmniFocus]
+        RB -->|records| FX[JSON Fixtures\n snapshots/01-add/ … 07-inheritance/]
+    end
+
+    subgraph Replay ["② Contract Tests (CI)"]
+        CT[test_bridge_contract.py] -->|reads| FX
+        CT -->|replays ops against| IM[InMemoryBridge]
+        IM -->|produces| AC[Actual Output]
+        FX -->|expected| NM[normalize.py]
+        AC -->|actual| NM
+        NM -->|assert eq| EQ{Match?}
+    end
+
+    EQ -->|✓| PASS[42 tests pass]
+    EQ -->|✗| FAIL[Behavioral\n mismatch]
+```
+
 1. **Capture** (manual UAT): `capture_golden_master.py` runs against the real Bridge, creates test entities in OmniFocus, records responses and state snapshots as JSON fixtures in numbered subfolders.
 2. **Contract tests** (CI): `test_bridge_contract.py` discovers subfolders in sort order, replays the same operations against InMemoryBridge, and asserts structural equivalence after normalizing dynamic fields.
 
