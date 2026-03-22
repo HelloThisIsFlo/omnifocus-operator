@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2.1
 milestone_name: Architectural Cleanup
 status: unknown
-stopped_at: Completed 27-03-PLAN.md
-last_updated: "2026-03-22T10:02:40.778Z"
+stopped_at: Completed 27-04-PLAN.md
+last_updated: "2026-03-22T15:33:56.855Z"
 last_activity: 2026-03-22
 progress:
   total_phases: 10
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 23
-  completed_plans: 22
+  completed_plans: 23
 ---
 
 # Project State
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-03-21)
 ## Current Position
 
 Phase: 27 (repository-contract-tests-for-behavioral-equivalence) — EXECUTING
-Plan: 2 of 4
+Plan: 4 of 4
 
 ## Performance Metrics
 
@@ -64,6 +64,7 @@ Plan: 2 of 4
 | Phase 26 P03 | 7min | 2 tasks | 7 files |
 | Phase 27 P01 | 4min | 2 tasks | 5 files |
 | Phase 27 P03 | 6min | 2 tasks | 3 files |
+| Phase 27 P04 | multi-session | 3 tasks | 35 files |
 
 ### Decisions
 
@@ -109,6 +110,9 @@ Recent decisions affecting current work:
 - [Phase 27]: Extracted _resolve_parent as shared helper reused by both add_task and edit_task moveTo
 - [Phase 27]: Pre-compute containing_project_map before task conversion to avoid iteration-order bug in raw format conversion
 - [Phase 27]: test_move_to_project_ending asserts parent.type=='task' matching golden master scenario_16 (OmniFocus real behavior)
+- [Phase 27]: VOLATILE/UNCOMPUTED field split: removing a field from UNCOMPUTED auto-enables contract verification
+- [Phase 27]: status/taskStatus excluded as UNCOMPUTED (OmniFocus status computation intentionally out of scope for InMemoryBridge)
+- [Phase 27]: hasChildren computed by InMemoryBridge on add_task and moveTo (required for contract test correctness)
 
 ### Pending Todos
 
@@ -145,5 +149,5 @@ None currently.
 ## Session Continuity
 
 Last activity: 2026-03-22
-Stopped at: Completed 27-03-PLAN.md
+Stopped at: Completed 27-04-PLAN.md
 Resume file: None
