@@ -45,7 +45,7 @@ known_tag_ids: set[str] = set()
 
 
 def _build_scenarios() -> list[dict[str, Any]]:
-    """Build the 17 scenario definitions using captured IDs."""
+    """Build the 20 scenario definitions using captured IDs."""
     return [
         # --- add_task scenarios ---
         {
@@ -195,6 +195,38 @@ def _build_scenarios() -> list[dict[str, Any]]:
                 "moveTo": {"position": "ending", "containerId": None},
             },
         },
+        # --- parent disambiguation scenarios ---
+        {
+            "scenario": "18_add_subtask_under_task",
+            "description": "Create a sub-task under a task in a project (parent != project)",
+            "operation": "add_task",
+            "params_fn": lambda: {
+                "name": "GM-Subtask",
+                "parent": TASK_IDS["parent_task"],
+            },
+            "capture_id_as": "subtask",
+        },
+        {
+            "scenario": "19_move_subtask_to_inbox",
+            "description": "Move a sub-task back to inbox (clears both parent and project)",
+            "operation": "edit_task",
+            "params_fn": lambda: {
+                "id": TASK_IDS["subtask"],
+                "moveTo": {"position": "ending", "containerId": None},
+            },
+        },
+        {
+            "scenario": "20_combined_edit",
+            "description": "Edit multiple fields in a single call (name + note + flagged + tags)",
+            "operation": "edit_task",
+            "params_fn": lambda: {
+                "id": TASK_IDS["tagged_task"],
+                "name": "GM-TaggedTask-MultiEdit",
+                "note": "Multi-edit test",
+                "flagged": True,
+                "addTagIds": [GM_TAG1_ID],
+            },
+        },
     ]
 
 
@@ -297,7 +329,7 @@ def _phase_1_introduction() -> None:
     print("What will happen:")
     print("  1. You manually create a test project and two tags in OmniFocus")
     print("  2. The script verifies each entity exists")
-    print("  3. 17 scenarios run automatically (add/edit tasks)")
+    print("  3. 20 scenarios run automatically (add/edit tasks)")
     print("  4. Fixture JSON files are written to tests/golden/")
     print("  5. Test tasks are consolidated for easy cleanup")
     print()
@@ -445,7 +477,7 @@ def _phase_3_confirmation() -> bool:
     print("  Phase 3: Scenario Preview")
     print("-" * 60)
     print()
-    print("The following 17 scenarios will be executed:")
+    print("The following 20 scenarios will be executed:")
     print()
     print("  add_task scenarios:")
     print("    01. Add inbox task (no parent, no optional fields)")
@@ -468,8 +500,13 @@ def _phase_3_confirmation() -> bool:
     print("    16. Move to project (creates inbox task first)")
     print("    17. Move to inbox")
     print()
+    print("  parent disambiguation scenarios:")
+    print("    18. Add sub-task under task (parent != project)")
+    print("    19. Move sub-task to inbox")
+    print("    20. Combined multi-action edit")
+    print()
 
-    answer = input("Ready to run 17 scenarios? [y/N] ").strip().lower()
+    answer = input("Ready to run 20 scenarios? [y/N] ").strip().lower()
     return answer == "y"
 
 
