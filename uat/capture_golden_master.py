@@ -49,7 +49,7 @@ known_tag_ids: set[str] = set()
 
 
 def _build_scenarios() -> list[dict[str, Any]]:
-    """Build ~43 scenario definitions across 7 categories using captured IDs."""
+    """Build ~42 scenario definitions across 7 categories using captured IDs."""
     return [
         # =================================================================
         # 01-add/ (6 scenarios)
@@ -135,7 +135,7 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "capture_id_as": "max_payload_task",
         },
         # =================================================================
-        # 02-edit/ (11 scenarios)
+        # 02-edit/ (10 scenarios)
         # =================================================================
         {
             "folder": "02-edit",
@@ -169,26 +169,21 @@ def _build_scenarios() -> list[dict[str, Any]]:
                 },
             },
         },
+        # note: OmniFocus rejects note=null at the bridge level.
+        # Our service layer converts null -> "" (see domain.py:92), but the
+        # bridge itself requires a non-null value. Only empty string is valid.
         {
             "folder": "02-edit",
-            "file": "03_clear_note_null",
-            "scenario": "02-edit/03_clear_note_null",
-            "description": "Clear note using null",
-            "operation": "edit_task",
-            "params_fn": lambda: {"id": TASK_IDS["note_target"], "note": None},
-        },
-        {
-            "folder": "02-edit",
-            "file": "04_clear_note_empty",
-            "scenario": "02-edit/04_clear_note_empty",
+            "file": "03_clear_note_empty",
+            "scenario": "02-edit/03_clear_note_empty",
             "description": "Clear note using empty string",
             "operation": "edit_task",
             "params_fn": lambda: {"id": TASK_IDS["note_target"], "note": ""},
         },
         {
             "folder": "02-edit",
-            "file": "05_flag",
-            "scenario": "02-edit/05_flag",
+            "file": "04_flag",
+            "scenario": "02-edit/04_flag",
             "description": "Flag a task",
             "operation": "add_task",
             "params": {"name": "GM-FlagTarget"},
@@ -203,16 +198,16 @@ def _build_scenarios() -> list[dict[str, Any]]:
         },
         {
             "folder": "02-edit",
-            "file": "06_unflag",
-            "scenario": "02-edit/06_unflag",
+            "file": "05_unflag",
+            "scenario": "02-edit/05_unflag",
             "description": "Unflag a task",
             "operation": "edit_task",
             "params_fn": lambda: {"id": TASK_IDS["flag_target"], "flagged": False},
         },
         {
             "folder": "02-edit",
-            "file": "07_set_dates",
-            "scenario": "02-edit/07_set_dates",
+            "file": "06_set_dates",
+            "scenario": "02-edit/06_set_dates",
             "description": "Set due and defer dates on a task",
             "operation": "add_task",
             "params": {"name": "GM-DateTarget"},
@@ -228,8 +223,8 @@ def _build_scenarios() -> list[dict[str, Any]]:
         },
         {
             "folder": "02-edit",
-            "file": "08_clear_dates",
-            "scenario": "02-edit/08_clear_dates",
+            "file": "07_clear_dates",
+            "scenario": "02-edit/07_clear_dates",
             "description": "Clear due and defer dates (null means clear)",
             "operation": "edit_task",
             "params_fn": lambda: {
@@ -240,8 +235,8 @@ def _build_scenarios() -> list[dict[str, Any]]:
         },
         {
             "folder": "02-edit",
-            "file": "09_set_estimated",
-            "scenario": "02-edit/09_set_estimated",
+            "file": "08_set_estimated",
+            "scenario": "02-edit/08_set_estimated",
             "description": "Set estimated minutes on a task",
             "operation": "add_task",
             "params": {"name": "GM-EstimateTarget"},
@@ -256,8 +251,8 @@ def _build_scenarios() -> list[dict[str, Any]]:
         },
         {
             "folder": "02-edit",
-            "file": "10_clear_estimated",
-            "scenario": "02-edit/10_clear_estimated",
+            "file": "09_clear_estimated",
+            "scenario": "02-edit/09_clear_estimated",
             "description": "Clear estimated minutes (null means clear)",
             "operation": "edit_task",
             "params_fn": lambda: {
@@ -267,8 +262,8 @@ def _build_scenarios() -> list[dict[str, Any]]:
         },
         {
             "folder": "02-edit",
-            "file": "11_set_planned_date",
-            "scenario": "02-edit/11_set_planned_date",
+            "file": "10_set_planned_date",
+            "scenario": "02-edit/10_set_planned_date",
             "description": "Set planned date on a task",
             "operation": "add_task",
             "params": {"name": "GM-PlannedTarget"},
@@ -814,7 +809,7 @@ def _phase_1_introduction() -> None:
     print("What will happen:")
     print("  1. You verify 3 projects and 2 tags exist in OmniFocus")
     print("  2. The script verifies each entity exists")
-    print("  3. ~43 scenarios run automatically across 7 categories")
+    print("  3. ~42 scenarios run automatically across 7 categories")
     print("  4. Fixture JSON files are written to tests/golden_master/snapshots/")
     print("     organized in numbered subfolders (01-add/ through 07-inheritance/)")
     print("  5. Test tasks are consolidated for easy cleanup")
@@ -1021,7 +1016,7 @@ def _phase_3_confirmation() -> bool:
     print("  Phase 3: Scenario Preview")
     print("-" * 60)
     print()
-    print("The following ~43 scenarios will be executed across 7 categories:")
+    print("The following ~42 scenarios will be executed across 7 categories:")
     print()
     print("  01-add/ (6 scenarios):")
     print("    01. Inbox task (minimal)")
@@ -1031,18 +1026,17 @@ def _phase_3_confirmation() -> bool:
     print("    05. Parent + tags")
     print("    06. Max payload (all fields + parent + tags)")
     print()
-    print("  02-edit/ (11 scenarios):")
+    print("  02-edit/ (10 scenarios):")
     print("    01. Rename")
     print("    02. Set note")
-    print("    03. Clear note (null)")
-    print("    04. Clear note (empty string)")
-    print("    05. Flag")
-    print("    06. Unflag")
-    print("    07. Set dates (due + defer)")
-    print("    08. Clear dates (null)")
-    print("    09. Set estimated minutes")
-    print("    10. Clear estimated minutes (null)")
-    print("    11. Set planned date")
+    print("    03. Clear note (empty string)")
+    print("    04. Flag")
+    print("    05. Unflag")
+    print("    06. Set dates (due + defer)")
+    print("    07. Clear dates (null)")
+    print("    08. Set estimated minutes")
+    print("    09. Clear estimated minutes (null)")
+    print("    10. Set planned date")
     print()
     print("  03-move/ (7 scenarios):")
     print("    01. To project (ending)")
