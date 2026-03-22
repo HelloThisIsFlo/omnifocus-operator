@@ -256,7 +256,7 @@ def _replay_all() -> dict[str, ScenarioResult]:
             # Setup step for followup scenarios
             if "setup_operation" in scenario:
                 setup_params = _remap_ids(scenario["setup_params"], id_map)
-                setup_response = asyncio.get_event_loop().run_until_complete(
+                setup_response = asyncio.run(
                     bridge.send_command(scenario["setup_operation"], setup_params)
                 )
                 if scenario["setup_operation"] == "add_task":
@@ -267,9 +267,7 @@ def _replay_all() -> dict[str, ScenarioResult]:
             operation = scenario["operation"]
             params = _remap_ids(scenario["params"], id_map)
 
-            response = asyncio.get_event_loop().run_until_complete(
-                bridge.send_command(operation, params)
-            )
+            response = asyncio.run(bridge.send_command(operation, params))
             if operation == "add_task" and "setup_operation" not in scenario:
                 known_task_ids.add(response["id"])
                 if golden_ids:
@@ -296,7 +294,7 @@ def _replay_all() -> dict[str, ScenarioResult]:
                 continue
 
             # Check state
-            state = asyncio.get_event_loop().run_until_complete(bridge.send_command("get_all"))
+            state = asyncio.run(bridge.send_command("get_all"))
             filtered = filter_to_known_ids(
                 state,
                 known_task_ids,
