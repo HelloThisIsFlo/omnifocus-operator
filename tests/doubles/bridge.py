@@ -111,6 +111,18 @@ class InMemoryBridge(Bridge):
         tag = next((t for t in self._tags if t["id"] == tag_id), None)
         return tag["name"] if tag is not None else tag_id
 
+    def _set_has_children(self, parent_id: str, value: bool) -> None:
+        """Set hasChildren on a task or project by ID."""
+        for entity in (*self._tasks, *self._projects):
+            if entity["id"] == parent_id:
+                entity["hasChildren"] = value
+                return
+
+    def _recheck_has_children(self, parent_id: str) -> None:
+        """Recompute hasChildren for a task/project based on current children."""
+        has = any(t.get("parent") == parent_id for t in self._tasks)
+        self._set_has_children(parent_id, has)
+
     def _resolve_raw_parent(self, container_id: str) -> tuple[str, str | None]:
         """Resolve a container ID to raw-format (parent_id, project_id).
 
@@ -210,11 +222,8 @@ class InMemoryBridge(Bridge):
 
         self._tasks.append(task)
 
-        # Update parent project's hasChildren flag
         if parent_id is not None:
-            project = next((p for p in self._projects if p["id"] == parent_id), None)
-            if project is not None:
-                project["hasChildren"] = True
+            self._set_has_children(parent_id, value=True)
 
         return {"id": task_id, "name": params["name"]}
 
@@ -277,6 +286,7 @@ class InMemoryBridge(Bridge):
 
         # Move (raw string IDs)
         if "moveTo" in params:
+            old_parent_id = task.get("parent")
             container_id = params["moveTo"].get("containerId")
             if container_id is None:
                 task["parent"] = None
@@ -287,10 +297,11 @@ class InMemoryBridge(Bridge):
                 parent_str, project_str = self._resolve_raw_parent(container_id)
                 task["parent"] = parent_str
                 task["project"] = project_str
-                # Update parent project's hasChildren flag
-                project = next((p for p in self._projects if p["id"] == container_id), None)
-                if project is not None:
-                    project["hasChildren"] = True
+                self._set_has_children(container_id, value=True)
+
+            # Recheck old parent — may no longer have children
+            if old_parent_id is not None:
+                self._recheck_has_children(old_parent_id)
 
         return {"id": task_id, "name": task["name"]}
 
