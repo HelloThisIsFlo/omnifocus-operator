@@ -11,13 +11,22 @@ from typing import Any
 
 # ---------------------------------------------------------------------------
 # Dynamic fields per entity type (D-15, D-18)
+#
+# Split into VOLATILE (different every run, never matchable) and UNCOMPUTED
+# (deterministic but InMemoryBridge doesn't compute yet). Remove a field
+# from UNCOMPUTED when InMemoryBridge learns the computation -- the contract
+# test will then start verifying it automatically.
 # ---------------------------------------------------------------------------
 
-DYNAMIC_TASK_FIELDS: set[str] = {
-    "id",
-    "url",
-    "added",
-    "modified",
+# Fields that differ every run -- will never match between RealBridge and InMemoryBridge
+VOLATILE_TASK_FIELDS: set[str] = {"id", "url", "added", "modified"}
+VOLATILE_PROJECT_FIELDS: set[str] = {"id", "url", "added", "modified"}
+VOLATILE_TAG_FIELDS: set[str] = {"id", "url", "added", "modified"}
+
+# Fields that are deterministic but InMemoryBridge doesn't compute yet.
+# Remove from here when InMemoryBridge learns the computation -- the contract
+# test will then start verifying the field automatically.
+UNCOMPUTED_TASK_FIELDS: set[str] = {
     "completionDate",
     "dropDate",
     "effectiveDueDate",
@@ -26,24 +35,21 @@ DYNAMIC_TASK_FIELDS: set[str] = {
     "effectivePlannedDate",
     "effectiveDropDate",
     "repetitionRule",
+    "parentName",
+    "projectName",
 }
-
-DYNAMIC_PROJECT_FIELDS: set[str] = {
-    "id",
-    "url",
-    "added",
-    "modified",
+UNCOMPUTED_PROJECT_FIELDS: set[str] = {
     "completionDate",
+    "effectiveCompletionDate",
     "repetitionRule",
     "nextTask",
 }
+UNCOMPUTED_TAG_FIELDS: set[str] = set()  # Tags are fully computed
 
-DYNAMIC_TAG_FIELDS: set[str] = {
-    "id",
-    "url",
-    "added",
-    "modified",
-}
+# Combined sets used by normalize_for_comparison (backward-compatible)
+DYNAMIC_TASK_FIELDS = VOLATILE_TASK_FIELDS | UNCOMPUTED_TASK_FIELDS
+DYNAMIC_PROJECT_FIELDS = VOLATILE_PROJECT_FIELDS | UNCOMPUTED_PROJECT_FIELDS
+DYNAMIC_TAG_FIELDS = VOLATILE_TAG_FIELDS | UNCOMPUTED_TAG_FIELDS
 
 _DYNAMIC_FIELDS_BY_TYPE: dict[str, set[str]] = {
     "task": DYNAMIC_TASK_FIELDS,

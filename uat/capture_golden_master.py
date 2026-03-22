@@ -16,7 +16,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from omnifocus_operator.bridge.adapter import adapt_snapshot
 from omnifocus_operator.bridge.real import DEFAULT_IPC_DIR, RealBridge
 from tests.golden.normalize import (
     filter_to_known_ids,
@@ -204,11 +203,9 @@ def _build_scenarios() -> list[dict[str, Any]]:
 # ---------------------------------------------------------------------------
 
 
-async def _get_all_adapted(bridge: RealBridge) -> dict[str, Any]:
-    """Get full snapshot from bridge and adapt to model format."""
-    raw = await bridge.send_command("get_all")
-    adapt_snapshot(raw)
-    return raw
+async def _get_all_raw(bridge: RealBridge) -> dict[str, Any]:
+    """Get full snapshot from bridge in raw bridge format."""
+    return await bridge.send_command("get_all")
 
 
 def _find_by_name(entities: list[dict[str, Any]], name: str) -> dict[str, Any] | None:
@@ -247,7 +244,7 @@ async def _capture_scenario(
         response = await bridge.send_command(followup["operation"], followup_params)
 
     # Capture state after all operations for this scenario
-    state = await _get_all_adapted(bridge)
+    state = await _get_all_raw(bridge)
     filtered = filter_to_known_ids(state, known_task_ids, known_project_ids, known_tag_ids)
 
     # Build fixture (params may need resolving for serialization)
@@ -320,7 +317,7 @@ async def _phase_2_manual_setup(bridge: RealBridge) -> None:
     print()
 
     # One upfront query to check what already exists
-    state = await _get_all_adapted(bridge)
+    state = await _get_all_raw(bridge)
     project = _find_by_name(state.get("projects", []), "🧪 GM-TestProject")
     tag1 = _find_by_name(state.get("tags", []), "🧪 GM-Tag1")
     tag2 = _find_by_name(state.get("tags", []), "🧪 GM-Tag2")
@@ -346,7 +343,7 @@ async def _phase_2_manual_setup(bridge: RealBridge) -> None:
             while True:
                 print("Please create a project named '🧪 GM-TestProject' in OmniFocus.")
                 input("Press Enter when done... ")
-                state = await _get_all_adapted(bridge)
+                state = await _get_all_raw(bridge)
                 project = _find_by_name(state.get("projects", []), "🧪 GM-TestProject")
                 if project:
                     GM_PROJECT_ID = project["id"]
@@ -364,7 +361,7 @@ async def _phase_2_manual_setup(bridge: RealBridge) -> None:
             while True:
                 print("Please create a tag named '🧪 GM-Tag1' in OmniFocus.")
                 input("Press Enter when done... ")
-                state = await _get_all_adapted(bridge)
+                state = await _get_all_raw(bridge)
                 tag1 = _find_by_name(state.get("tags", []), "🧪 GM-Tag1")
                 if tag1:
                     GM_TAG1_ID = tag1["id"]
@@ -382,7 +379,7 @@ async def _phase_2_manual_setup(bridge: RealBridge) -> None:
             while True:
                 print("Please create a tag named '🧪 GM-Tag2' in OmniFocus.")
                 input("Press Enter when done... ")
-                state = await _get_all_adapted(bridge)
+                state = await _get_all_raw(bridge)
                 tag2 = _find_by_name(state.get("tags", []), "🧪 GM-Tag2")
                 if tag2:
                     GM_TAG2_ID = tag2["id"]
@@ -393,7 +390,7 @@ async def _phase_2_manual_setup(bridge: RealBridge) -> None:
             print()
 
     # --- Write initial state ---
-    state = await _get_all_adapted(bridge)
+    state = await _get_all_raw(bridge)
     initial = filter_to_known_ids(state, known_task_ids, known_project_ids, known_tag_ids)
     # Keep IDs — contract tests need them to seed InMemoryBridge and build
     # known_*_ids sets for filter_to_known_ids. Only scenario state_after
@@ -409,7 +406,7 @@ async def _phase_2_manual_setup(bridge: RealBridge) -> None:
 
 async def _check_leftover_tasks(bridge: RealBridge) -> None:
     """Ensure no GM- tasks remain from a previous run."""
-    state = await _get_all_adapted(bridge)
+    state = await _get_all_raw(bridge)
     leftover = [
         t
         for t in state.get("tasks", [])
@@ -428,7 +425,7 @@ async def _check_leftover_tasks(bridge: RealBridge) -> None:
 
     while True:
         input("  Press Enter when cleaned up (or Ctrl+C to abort)... ")
-        state = await _get_all_adapted(bridge)
+        state = await _get_all_raw(bridge)
         remaining = [
             t
             for t in state.get("tasks", [])
