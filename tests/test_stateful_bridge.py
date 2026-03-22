@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from omnifocus_operator.bridge import BridgeError
+from omnifocus_operator.bridge.adapter import adapt_snapshot
 from omnifocus_operator.models.snapshot import AllEntities
 from tests.conftest import make_snapshot_dict, make_task_dict
 from tests.doubles import BridgeCall, InMemoryBridge
@@ -102,10 +103,11 @@ class TestGetAll:
         assert "perspectives" in result
 
     async def test_get_all_parseable_by_all_entities(self) -> None:
-        """get_all result can be parsed by AllEntities.model_validate()."""
+        """get_all result can be parsed by AllEntities after adapt_snapshot."""
         bridge = InMemoryBridge(data=make_snapshot_dict())
 
         result = await bridge.send_command("get_all")
+        adapt_snapshot(result)  # Convert raw -> model format
 
         snapshot = AllEntities.model_validate(result)
         assert len(snapshot.tasks) == 1

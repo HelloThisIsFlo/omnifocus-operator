@@ -487,7 +487,11 @@ class TestEditTask:
         task = await repo.get_task("task-001")
         assert task is not None
         assert task.parent is not None
-        assert task.parent.type == "project"
+        # OmniFocus sets both parent (root task) and project to the same ID
+        # for top-level tasks in a project. The adapter's _adapt_parent_ref
+        # sees parent is not None and produces type="task".
+        # Golden master scenario_16 confirms this is real OmniFocus behavior.
+        assert task.parent.type == "task"
         assert task.parent.id == "proj-001"
         assert task.in_inbox is False
 

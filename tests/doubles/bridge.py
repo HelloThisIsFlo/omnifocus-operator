@@ -49,6 +49,17 @@ _REVERSE_FOLDER_STATUS: dict[str, str] = {
     "dropped": "Dropped",
 }
 
+_REVERSE_SCHEDULE_TYPE: dict[str, str] = {
+    "regularly": "Regularly",
+    "from_completion": "FromCompletion",
+}
+
+_REVERSE_ANCHOR_DATE_KEY: dict[str, str] = {
+    "due_date": "DueDate",
+    "defer_date": "DeferDate",
+    "planned_date": "PlannedDate",
+}
+
 
 def _find_containing_project(
     task: dict[str, Any],
@@ -221,22 +232,38 @@ class InMemoryBridge(Bridge):
         Each entity type has its own conversion: status fields are reversed
         from model (urgency/availability) back to bridge (status string),
         and task parent dicts are decomposed back to parent/project string IDs.
+
+        Gracefully skips conversion if entity collections are not lists of dicts
+        (lets downstream Pydantic validation report the real error).
         """
+        tasks = snapshot.get("tasks", [])
+        projects = snapshot.get("projects", [])
+        tags = snapshot.get("tags", [])
+        folders = snapshot.get("folders", [])
+
+        # Guard: only process if entities are lists of dicts
+        if not isinstance(tasks, list) or not all(isinstance(t, dict) for t in tasks):
+            return
+        if not isinstance(projects, list) or not all(isinstance(p, dict) for p in projects):
+            return
+
         # Pre-compute containing project map BEFORE converting tasks.
         # This avoids the iteration-order bug: once _task_to_raw converts
         # parent dicts to strings, walking the parent chain would break.
-        task_index: dict[str, dict[str, Any]] = {t["id"]: t for t in snapshot["tasks"]}
-        project_ids: set[str] = {p["id"] for p in snapshot["projects"]}
+        task_index: dict[str, dict[str, Any]] = {t["id"]: t for t in tasks}
+        project_ids: set[str] = {p["id"] for p in projects}
         containing_project_map = self._build_containing_project_map(task_index, project_ids)
 
-        for task in snapshot["tasks"]:
+        for task in tasks:
             self._task_to_raw(task, containing_project_map)
-        for project in snapshot["projects"]:
+        for project in projects:
             self._project_to_raw(project)
-        for tag in snapshot["tags"]:
-            self._tag_to_raw(tag)
-        for folder in snapshot["folders"]:
-            self._folder_to_raw(folder)
+        for tag in tags:
+            if isinstance(tag, dict):
+                self._tag_to_raw(tag)
+        for folder in folders:
+            if isinstance(folder, dict):
+                self._folder_to_raw(folder)
 
     @staticmethod
     def _build_containing_project_map(
@@ -268,6 +295,9 @@ class InMemoryBridge(Bridge):
         availability = task.pop("availability", "available")
         task["status"] = _REVERSE_TASK_STATUS.get((urgency, availability), "Available")
 
+        # repetitionRule: snake_case -> PascalCase
+        InMemoryBridge._repetition_rule_to_raw(task)
+
         # parent dict -> parent (string|None) + project (string|None)
         parent_ref = task.get("parent")
         if parent_ref is None:
@@ -289,6 +319,22 @@ class InMemoryBridge(Bridge):
         urgency = project.pop("urgency", "none")
         project["status"] = _REVERSE_PROJECT_STATUS.get(availability, "Active")
         project["taskStatus"] = _REVERSE_PROJECT_TASK_STATUS.get(urgency, "Available")
+
+        # repetitionRule: snake_case -> PascalCase
+        InMemoryBridge._repetition_rule_to_raw(project)
+
+    @staticmethod
+    def _repetition_rule_to_raw(entity: dict[str, Any]) -> None:
+        """Reverse repetition rule from model format to raw bridge format."""
+        rule = entity.get("repetitionRule")
+        if rule is None:
+            return
+        schedule_type = rule.get("scheduleType")
+        if schedule_type is not None and schedule_type in _REVERSE_SCHEDULE_TYPE:
+            rule["scheduleType"] = _REVERSE_SCHEDULE_TYPE[schedule_type]
+        anchor_key = rule.get("anchorDateKey")
+        if anchor_key is not None and anchor_key in _REVERSE_ANCHOR_DATE_KEY:
+            rule["anchorDateKey"] = _REVERSE_ANCHOR_DATE_KEY[anchor_key]
 
     @staticmethod
     def _tag_to_raw(tag: dict[str, Any]) -> None:
