@@ -123,6 +123,46 @@ class InMemoryBridge(Bridge):
         has = any(t.get("parent") == parent_id for t in self._tasks)
         self._set_has_children(parent_id, has)
 
+    def _compute_effective_field(self, task: dict[str, Any], field: str) -> Any:
+        """Walk ancestor chain (parent tasks -> project), return first non-null value."""
+        if task.get(field) is not None:
+            return task[field]
+        task_index = {t["id"]: t for t in self._tasks}
+        project_index = {p["id"]: p for p in self._projects}
+        current_id = task.get("parent")
+        visited: set[str] = set()
+        while current_id is not None and current_id not in visited:
+            visited.add(current_id)
+            if current_id in project_index:
+                return project_index[current_id].get(field)
+            parent_task = task_index.get(current_id)
+            if parent_task is None:
+                return None
+            if parent_task.get(field) is not None:
+                return parent_task[field]
+            current_id = parent_task.get("parent")
+        return None
+
+    def _compute_effective_flagged(self, task: dict[str, Any]) -> bool:
+        """Boolean OR: true if task or any ancestor is flagged."""
+        if task.get("flagged", False):
+            return True
+        task_index = {t["id"]: t for t in self._tasks}
+        project_index = {p["id"]: p for p in self._projects}
+        current_id = task.get("parent")
+        visited: set[str] = set()
+        while current_id is not None and current_id not in visited:
+            visited.add(current_id)
+            if current_id in project_index:
+                return project_index[current_id].get("flagged", False)
+            parent_task = task_index.get(current_id)
+            if parent_task is None:
+                return False
+            if parent_task.get("flagged", False):
+                return True
+            current_id = parent_task.get("parent")
+        return False
+
     def _resolve_raw_parent(self, container_id: str) -> tuple[str, str | None]:
         """Resolve a container ID to raw-format (parent_id, project_id).
 
@@ -208,7 +248,6 @@ class InMemoryBridge(Bridge):
             modified=now,
             note=params.get("note", ""),
             flagged=params.get("flagged", False),
-            effectiveFlagged=params.get("flagged", False),
             inInbox=not has_parent,
             parent=parent_str,
             project=project_str,
@@ -219,6 +258,12 @@ class InMemoryBridge(Bridge):
             tags=tags,
             status=status,
         )
+
+        # Compute effective fields via ancestor-chain inheritance
+        task["effectiveFlagged"] = self._compute_effective_flagged(task)
+        task["effectiveDueDate"] = self._compute_effective_field(task, "dueDate")
+        task["effectiveDeferDate"] = self._compute_effective_field(task, "deferDate")
+        task["effectivePlannedDate"] = self._compute_effective_field(task, "plannedDate")
 
         self._tasks.append(task)
 
@@ -252,9 +297,17 @@ class InMemoryBridge(Bridge):
             if key in params:
                 task[key] = params[key]
 
-        # Sync effectiveFlagged when flagged is updated
+        # Sync effectiveFlagged when flagged is updated (ancestor-chain inheritance)
         if "flagged" in params:
-            task["effectiveFlagged"] = params["flagged"]
+            task["effectiveFlagged"] = self._compute_effective_flagged(task)
+
+        # Recompute effective dates when direct date fields change
+        if "dueDate" in params:
+            task["effectiveDueDate"] = self._compute_effective_field(task, "dueDate")
+        if "deferDate" in params:
+            task["effectiveDeferDate"] = self._compute_effective_field(task, "deferDate")
+        if "plannedDate" in params:
+            task["effectivePlannedDate"] = self._compute_effective_field(task, "plannedDate")
 
         # Recompute status when deferDate changes
         if "deferDate" in params:
@@ -280,14 +333,24 @@ class InMemoryBridge(Bridge):
         if lifecycle == "complete":
             task["status"] = "Completed"
             task["completionDate"] = datetime.now(tz=UTC).isoformat()
+            task["effectiveCompletionDate"] = task["completionDate"]
         elif lifecycle == "drop":
             task["status"] = "Dropped"
             task["dropDate"] = datetime.now(tz=UTC).isoformat()
+            task["effectiveDropDate"] = task["dropDate"]
 
         # Move (raw string IDs)
         if "moveTo" in params:
             old_parent_id = task.get("parent")
             container_id = params["moveTo"].get("containerId")
+
+            # Anchor-based moves: task becomes sibling of anchor. Use anchor's parent.
+            anchor_id = params["moveTo"].get("anchorId")
+            if anchor_id is not None:
+                anchor = next((t for t in self._tasks if t["id"] == anchor_id), None)
+                if anchor is not None:
+                    container_id = anchor.get("parent")
+
             if container_id is None:
                 task["parent"] = None
                 task["project"] = None
@@ -298,6 +361,12 @@ class InMemoryBridge(Bridge):
                 task["parent"] = parent_str
                 task["project"] = project_str
                 self._set_has_children(container_id, value=True)
+
+            # Recompute effective fields after parent change
+            task["effectiveFlagged"] = self._compute_effective_flagged(task)
+            task["effectiveDueDate"] = self._compute_effective_field(task, "dueDate")
+            task["effectiveDeferDate"] = self._compute_effective_field(task, "deferDate")
+            task["effectivePlannedDate"] = self._compute_effective_field(task, "plannedDate")
 
             # Recheck old parent — may no longer have children
             if old_parent_id is not None:
