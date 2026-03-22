@@ -25,8 +25,7 @@ VOLATILE_TASK_FIELDS: set[str] = {
     "url",  # derived from id (omnifocus:///task/{id})
     "added",  # timestamp set by OmniFocus at creation time
     "modified",  # timestamp updated by OmniFocus on every mutation
-    "completionDate",  # InMemoryBridge sets this, but timestamp differs per run
-    "dropDate",  # InMemoryBridge sets this, but timestamp differs per run
+    # completionDate and dropDate moved to PRESENCE_CHECK_TASK_FIELDS (D-08)
 }
 VOLATILE_PROJECT_FIELDS: set[str] = {
     "id",  # OmniFocus generates unique IDs
@@ -45,24 +44,14 @@ VOLATILE_TAG_FIELDS: set[str] = {
 # Remove from here when InMemoryBridge learns the computation -- the contract
 # test will then start verifying the field automatically.
 UNCOMPUTED_TASK_FIELDS: set[str] = {
-    # --- Status computation ---
-    #
-    # The status field is intentionally omitted to prevent unnecessary complexity.
-    #
-    # This is acceptable because:
-    #  1. The normal read path uses HybridRepository → SQLite, which stores
-    #     urgency/availability as separate columns.
-    #  2. The bridge read path is for BridgeOnlyRepository, which is a fallback mode, and intentionally degraded => Prevents unnecessary complexity for a fallback mode (fully documented)
-    #  3. Implementing the status computation would mean implementing the logic we intentionally scoped out (see 2.)
-    #  4. Lifecycle transitions (complete/drop) are verifiable by checking the presence/absence of
-    #     completionDate and dropDate — TODO: Not yet implemented, see related TODO
-    "status",  # see above
-    "effectiveDueDate",  # inherited from parent project/task; InMemoryBridge doesn't walk hierarchy
-    "effectiveDeferDate",  # same inheritance logic
-    "effectiveCompletionDate",  # inherited/computed by OmniFocus
-    "effectivePlannedDate",  # same inheritance logic
-    "effectiveDropDate",  # same inheritance logic
-    "repetitionRule",  # InMemoryBridge doesn't simulate repeat rules
+    # Status remains UNCOMPUTED (D-13): OmniFocus status computation (DueSoon,
+    # Overdue, Next) is time-dependent and intentionally out of scope. The normal
+    # read path uses SQLite urgency/availability columns; bridge read is degraded.
+    "status",
+    # Graduated in Phase 28:
+    #   effectiveDueDate, effectiveDeferDate, effectivePlannedDate -> exact match (ancestor-chain inheritance)
+    #   effectiveCompletionDate, effectiveDropDate -> presence-check (D-09)
+    #   repetitionRule -> exact match (both sides return null, D-12)
 }
 UNCOMPUTED_PROJECT_FIELDS: set[str] = {
     "taskStatus",  # same reasoning as task status
@@ -72,6 +61,15 @@ UNCOMPUTED_PROJECT_FIELDS: set[str] = {
     "nextTask",  # OmniFocus computes "next available task"; InMemoryBridge doesn't
 }
 UNCOMPUTED_TAG_FIELDS: set[str] = set()  # Tags are fully computed
+
+# Fields where null-vs-non-null is deterministic but exact timestamp differs.
+# Normalized to "<set>" sentinel (non-null) or None (null) for comparison.
+PRESENCE_CHECK_TASK_FIELDS: set[str] = {
+    "completionDate",           # InMemoryBridge sets this, but timestamp differs per run (D-08)
+    "dropDate",                 # InMemoryBridge sets this, but timestamp differs per run (D-08)
+    "effectiveCompletionDate",  # Same presence-check pattern (D-09)
+    "effectiveDropDate",        # Same presence-check pattern (D-09)
+}
 
 # Combined sets used by normalize_for_comparison (backward-compatible)
 DYNAMIC_TASK_FIELDS = VOLATILE_TASK_FIELDS | UNCOMPUTED_TASK_FIELDS
@@ -84,6 +82,12 @@ _DYNAMIC_FIELDS_BY_TYPE: dict[str, set[str]] = {
     "tag": DYNAMIC_TAG_FIELDS,
 }
 
+_PRESENCE_CHECK_BY_TYPE: dict[str, set[str]] = {
+    "task": PRESENCE_CHECK_TASK_FIELDS,
+    "project": set(),
+    "tag": set(),
+}
+
 
 # ---------------------------------------------------------------------------
 # Public helpers
@@ -91,13 +95,24 @@ _DYNAMIC_FIELDS_BY_TYPE: dict[str, set[str]] = {
 
 
 def normalize_for_comparison(entity: dict[str, Any], entity_type: str) -> dict[str, Any]:
-    """Strip dynamic fields from an entity dict for deterministic comparison.
+    """Strip dynamic fields and apply presence-check normalization.
 
-    Returns a new dict without the fields that vary between runs
-    (timestamps, IDs, computed dates, repetition rules).
+    Returns a new dict without volatile/uncomputed fields.  Presence-check
+    fields are normalized to ``"<set>"`` (non-null) or ``None`` (null) so
+    that timestamp differences between runs are ignored while still
+    verifying that the field was populated (or not).
     """
     fields_to_strip = _DYNAMIC_FIELDS_BY_TYPE.get(entity_type, set())
-    return {k: v for k, v in entity.items() if k not in fields_to_strip}
+    presence_fields = _PRESENCE_CHECK_BY_TYPE.get(entity_type, set())
+    result: dict[str, Any] = {}
+    for k, v in entity.items():
+        if k in fields_to_strip:
+            continue
+        if k in presence_fields:
+            result[k] = "<set>" if v is not None else None
+        else:
+            result[k] = v
+    return result
 
 
 def normalize_response(response: dict[str, Any]) -> dict[str, Any]:

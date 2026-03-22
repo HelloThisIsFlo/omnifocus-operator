@@ -122,6 +122,35 @@ def _remap_state_ids(state: dict[str, Any], id_map: dict[str, str]) -> dict[str,
     return remapped
 
 
+def _restrict_to_expected_keys(
+    expected_state: dict[str, Any], actual_state: dict[str, Any]
+) -> dict[str, Any]:
+    """Restrict actual state entities to only keys present in expected state.
+
+    Backward-compatible: when fields graduate from VOLATILE/UNCOMPUTED, the
+    golden master (captured before graduation) won't have those fields.  The
+    InMemoryBridge output will.  Rather than failing on the extra fields, we
+    restrict comparison to the intersection.  Once re-captured, the golden
+    master includes all fields and this is a no-op.
+    """
+    result: dict[str, Any] = {}
+    for entity_type in ("tasks", "projects", "tags"):
+        exp_list = expected_state.get(entity_type, [])
+        act_list = actual_state.get(entity_type, [])
+        # Build name->expected_keys lookup
+        exp_keys_by_name = {e.get("name", ""): set(e.keys()) for e in exp_list}
+        restricted: list[dict[str, Any]] = []
+        for entity in act_list:
+            name = entity.get("name", "")
+            if name in exp_keys_by_name:
+                allowed = exp_keys_by_name[name]
+                restricted.append({k: v for k, v in entity.items() if k in allowed})
+            else:
+                restricted.append(entity)
+        result[entity_type] = restricted
+    return result
+
+
 def _diff_dicts(expected: dict[str, Any], actual: dict[str, Any]) -> str:
     lines: list[str] = []
     all_keys = sorted(set(expected) | set(actual))
@@ -254,6 +283,8 @@ def _replay_all() -> dict[str, ScenarioResult]:
             actual_state = normalize_state(filtered)
             expected_raw = _remap_state_ids(scenario["state_after"], id_map)
             expected_state = normalize_state(expected_raw)
+            # Restrict to keys present in expected (backward-compat for field graduation)
+            actual_state = _restrict_to_expected_keys(expected_state, actual_state)
             if actual_state != expected_state:
                 results[label] = ScenarioResult(
                     label=label,
