@@ -57,6 +57,19 @@ Requirements for Architectural Cleanup milestone. No new tools, no behavioral ch
 - [x] **TYPE-03**: JSON schema output identical before and after type alias migration
 - [x] **TYPE-04**: `changed_fields()` helper on `CommandModel` returns only fields explicitly set by the caller
 
+### Golden Master Coverage
+
+- [ ] **GOLD-01**: Golden master scenarios reorganized into numbered subfolders (`01-add/` through `07-inheritance/`) with ~43 scenarios covering all bridge code paths
+- [ ] **GOLD-02**: Capture script rewritten for new folder structure with extended manual prerequisites (3 projects, 2 tags)
+- [ ] **GOLD-03**: Contract tests discover and replay scenarios in subfolder sort order without external manifest
+
+### Field Normalization
+
+- [ ] **NORM-01**: `completionDate` and `dropDate` verified via presence-check normalization (null vs `"<set>"` sentinel) instead of stripped as volatile
+- [ ] **NORM-02**: `effectiveCompletionDate` and `effectiveDropDate` verified via same presence-check normalization
+- [ ] **NORM-03**: `effectiveFlagged`, `effectiveDueDate`, `effectiveDeferDate`, `effectivePlannedDate` verified via exact match — InMemoryBridge computes these via ancestor-chain inheritance (project → task hierarchy)
+- [ ] **NORM-04**: `repetitionRule` verified via exact match (null for now — write support not yet implemented)
+
 ## Future Requirements
 
 ### v1.3 Read Tools
@@ -133,12 +146,19 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-12 | Phase 26 | Complete |
 | INFRA-13 | Phase 27 | Complete |
 | INFRA-14 | Phase 27 | Complete |
+| GOLD-01 | Phase 28 | Pending |
+| GOLD-02 | Phase 28 | Pending |
+| GOLD-03 | Phase 28 | Pending |
+| NORM-01 | Phase 28 | Pending |
+| NORM-02 | Phase 28 | Pending |
+| NORM-03 | Phase 28 | Pending |
+| NORM-04 | Phase 28 | Pending |
 
 **Coverage:**
-- v1.2.1 requirements: 32 total
-- Mapped to phases: 32
+- v1.2.1 requirements: 39 total
+- Mapped to phases: 39
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-16*
-*Last updated: 2026-03-20 after Phase 25-27 requirements defined*
+*Last updated: 2026-03-22 after Phase 28 requirements defined*
