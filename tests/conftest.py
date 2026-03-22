@@ -1,8 +1,10 @@
-"""Shared test fixtures and factory functions for new-shape model dicts.
+"""Shared test fixtures and factory functions.
 
-Factory functions return dicts with camelCase keys matching the new model shape
-(after adapter transformation). These use the two-axis status model
-(urgency + availability) and snake_case enum values.
+Two sets of factories:
+- ``make_task_dict()`` etc. return **raw bridge format** (matching bridge.js output).
+  Used for seeding InMemoryBridge and most tests.
+- ``make_model_task_dict()`` etc. return **model format** (after adapter transformation).
+  Used for Pydantic model validation tests.
 """
 
 from __future__ import annotations
@@ -13,9 +15,177 @@ import pytest
 
 from omnifocus_operator.models.snapshot import AllEntities
 
+# ---------------------------------------------------------------------------
+# Raw bridge format factories (match bridge.js output shape)
+# ---------------------------------------------------------------------------
+
 
 def make_task_dict(**overrides: Any) -> dict[str, Any]:
-    """Factory for new-shape task dict (camelCase keys).
+    """Factory for raw bridge-format task dict (camelCase keys).
+
+    Returns a complete task dict with all 26 bridge fields.
+    Uses flat parent/project string IDs (matching bridge.js output).
+    """
+    defaults: dict[str, Any] = {
+        # Identity (3)
+        "id": "task-001",
+        "name": "Test Task",
+        "url": "omnifocus:///task/task-001",
+        "note": "",
+        # Lifecycle (2)
+        "added": "2024-01-15T10:30:00.000Z",
+        "modified": "2024-01-15T10:30:00.000Z",
+        # Status -- single PascalCase string (1)
+        "status": "Available",
+        # Flags (2)
+        "flagged": False,
+        "effectiveFlagged": False,
+        # Dates (10)
+        "dueDate": None,
+        "deferDate": None,
+        "effectiveDueDate": None,
+        "effectiveDeferDate": None,
+        "completionDate": None,
+        "effectiveCompletionDate": None,
+        "plannedDate": None,
+        "effectivePlannedDate": None,
+        "dropDate": None,
+        "effectiveDropDate": None,
+        # Metadata (2)
+        "estimatedMinutes": None,
+        "hasChildren": False,
+        # Relationships (4)
+        "inInbox": True,
+        "repetitionRule": None,
+        "project": None,
+        "parent": None,
+        # Tags -- list of TagRef objects {id, name}
+        "tags": [],
+    }
+    return {**defaults, **overrides}
+
+
+def make_project_dict(**overrides: Any) -> dict[str, Any]:
+    """Factory for raw bridge-format project dict (camelCase keys).
+
+    Returns a complete project dict with all 29 bridge fields.
+    """
+    defaults: dict[str, Any] = {
+        # Identity (3) + lifecycle
+        "id": "proj-001",
+        "name": "Test Project",
+        "url": "omnifocus:///project/proj-001",
+        "note": "",
+        # Status -- two separate PascalCase strings (2)
+        "status": "Active",
+        "taskStatus": "Available",
+        # Lifecycle fields
+        "added": "2024-01-15T10:30:00.000Z",
+        "modified": "2024-01-15T10:30:00.000Z",
+        # Completion dates (2)
+        "completionDate": None,
+        "effectiveCompletionDate": None,
+        # Flags (2)
+        "flagged": False,
+        "effectiveFlagged": False,
+        # Dates (8)
+        "dueDate": None,
+        "deferDate": None,
+        "effectiveDueDate": None,
+        "effectiveDeferDate": None,
+        "plannedDate": None,
+        "effectivePlannedDate": None,
+        "dropDate": None,
+        "effectiveDropDate": None,
+        # Metadata (2)
+        "estimatedMinutes": None,
+        "hasChildren": True,
+        # Repetition (1)
+        "repetitionRule": None,
+        # Review (3)
+        "lastReviewDate": "2024-01-10T10:00:00.000Z",
+        "nextReviewDate": "2024-01-17T10:00:00.000Z",
+        "reviewInterval": {"steps": 7, "unit": "days"},
+        # Relationships (3)
+        "nextTask": None,
+        "folder": None,
+        # Tags -- list of TagRef objects {id, name}
+        "tags": [],
+    }
+    return {**defaults, **overrides}
+
+
+def make_tag_dict(**overrides: Any) -> dict[str, Any]:
+    """Factory for raw bridge-format tag dict (camelCase keys).
+
+    Returns a complete tag dict with all 8 bridge fields.
+    """
+    defaults: dict[str, Any] = {
+        "id": "tag-001",
+        "name": "Test Tag",
+        "url": "omnifocus:///tag/tag-001",
+        "added": "2024-01-15T10:30:00.000Z",
+        "modified": "2024-01-15T10:30:00.000Z",
+        "status": "Active",
+        "childrenAreMutuallyExclusive": False,
+        "parent": None,
+    }
+    return {**defaults, **overrides}
+
+
+def make_folder_dict(**overrides: Any) -> dict[str, Any]:
+    """Factory for raw bridge-format folder dict (camelCase keys).
+
+    Returns a complete folder dict with all 7 bridge fields.
+    """
+    defaults: dict[str, Any] = {
+        "id": "folder-001",
+        "name": "Test Folder",
+        "url": "omnifocus:///folder/folder-001",
+        "added": "2024-01-15T10:30:00.000Z",
+        "modified": "2024-01-15T10:30:00.000Z",
+        "status": "Active",
+        "parent": None,
+    }
+    return {**defaults, **overrides}
+
+
+def make_perspective_dict(**overrides: Any) -> dict[str, Any]:
+    """Factory for bridge-format perspective JSON (camelCase keys).
+
+    Returns a complete perspective dict with all 2 bridge fields.
+    (builtin is a computed field in Python, not sent from bridge.)
+    """
+    defaults: dict[str, Any] = {
+        "id": "persp-001",
+        "name": "Test Perspective",
+    }
+    return {**defaults, **overrides}
+
+
+def make_snapshot_dict(**overrides: Any) -> dict[str, Any]:
+    """Factory for raw bridge-format snapshot dict (camelCase keys).
+
+    Returns a complete entity dict with 1 of each entity type by default.
+    Override individual collections or use empty lists.
+    """
+    defaults: dict[str, Any] = {
+        "tasks": [make_task_dict()],
+        "projects": [make_project_dict()],
+        "tags": [make_tag_dict()],
+        "folders": [make_folder_dict()],
+        "perspectives": [make_perspective_dict()],
+    }
+    return {**defaults, **overrides}
+
+
+# ---------------------------------------------------------------------------
+# Model format factories (after adapter transformation)
+# ---------------------------------------------------------------------------
+
+
+def make_model_task_dict(**overrides: Any) -> dict[str, Any]:
+    """Factory for model-format task dict (camelCase keys).
 
     Returns a complete task dict with all 26 model fields.
     Uses unified parent field: None (inbox) or {type, id, name} (ParentRef).
@@ -59,8 +229,8 @@ def make_task_dict(**overrides: Any) -> dict[str, Any]:
     return {**defaults, **overrides}
 
 
-def make_project_dict(**overrides: Any) -> dict[str, Any]:
-    """Factory for new-shape project dict (camelCase keys).
+def make_model_project_dict(**overrides: Any) -> dict[str, Any]:
+    """Factory for model-format project dict (camelCase keys).
 
     Returns a complete project dict with all 28 model fields.
     (Project does NOT have effectiveCompletionDate -- that's Task-only.)
@@ -109,8 +279,8 @@ def make_project_dict(**overrides: Any) -> dict[str, Any]:
     return {**defaults, **overrides}
 
 
-def make_tag_dict(**overrides: Any) -> dict[str, Any]:
-    """Factory for new-shape tag dict (camelCase keys).
+def make_model_tag_dict(**overrides: Any) -> dict[str, Any]:
+    """Factory for model-format tag dict (camelCase keys).
 
     Returns a complete tag dict with all 8 model fields.
     """
@@ -127,8 +297,8 @@ def make_tag_dict(**overrides: Any) -> dict[str, Any]:
     return {**defaults, **overrides}
 
 
-def make_folder_dict(**overrides: Any) -> dict[str, Any]:
-    """Factory for new-shape folder dict (camelCase keys).
+def make_model_folder_dict(**overrides: Any) -> dict[str, Any]:
+    """Factory for model-format folder dict (camelCase keys).
 
     Returns a complete folder dict with all 7 model fields.
     """
@@ -144,30 +314,17 @@ def make_folder_dict(**overrides: Any) -> dict[str, Any]:
     return {**defaults, **overrides}
 
 
-def make_perspective_dict(**overrides: Any) -> dict[str, Any]:
-    """Factory for bridge-format perspective JSON (camelCase keys).
-
-    Returns a complete perspective dict with all 2 bridge fields.
-    (builtin is a computed field in Python, not sent from bridge.)
-    """
-    defaults: dict[str, Any] = {
-        "id": "persp-001",
-        "name": "Test Perspective",
-    }
-    return {**defaults, **overrides}
-
-
-def make_snapshot_dict(**overrides: Any) -> dict[str, Any]:
-    """Factory for new-shape AllEntities dict (camelCase keys).
+def make_model_snapshot_dict(**overrides: Any) -> dict[str, Any]:
+    """Factory for model-format AllEntities dict (camelCase keys).
 
     Returns a complete entity dict with 1 of each entity type by default.
     Override individual collections or use empty lists.
     """
     defaults: dict[str, Any] = {
-        "tasks": [make_task_dict()],
-        "projects": [make_project_dict()],
-        "tags": [make_tag_dict()],
-        "folders": [make_folder_dict()],
+        "tasks": [make_model_task_dict()],
+        "projects": [make_model_project_dict()],
+        "tags": [make_model_tag_dict()],
+        "folders": [make_model_folder_dict()],
         "perspectives": [make_perspective_dict()],
     }
     return {**defaults, **overrides}
@@ -176,9 +333,9 @@ def make_snapshot_dict(**overrides: Any) -> dict[str, Any]:
 def make_snapshot(**overrides: Any) -> AllEntities:
     """Factory for a validated ``AllEntities`` model instance.
 
-    Delegates to ``make_snapshot_dict()`` and validates through Pydantic.
+    Delegates to ``make_model_snapshot_dict()`` and validates through Pydantic.
     """
-    return AllEntities.model_validate(make_snapshot_dict(**overrides))
+    return AllEntities.model_validate(make_model_snapshot_dict(**overrides))
 
 
 # ---------------------------------------------------------------------------

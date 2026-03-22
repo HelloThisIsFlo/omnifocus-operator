@@ -236,43 +236,34 @@ class TestAddTask:
         assert new_task["deferDate"] == "2026-03-10T09:00:00Z"
 
     async def test_add_task_with_parent_resolves_project(self) -> None:
-        """add_task with parent=project ID resolves like OmniFocus: type=task, empty name."""
+        """add_task with parent=project ID stores raw string parent and project."""
         bridge = InMemoryBridge(data=make_snapshot_dict())
 
         await bridge.send_command("add_task", {"name": "Child", "parent": "proj-001"})
 
         new_task = bridge._tasks[-1]
-        assert new_task["parent"] == {
-            "type": "task",
-            "id": "proj-001",
-            "name": "",
-        }
+        assert new_task["parent"] == "proj-001"
+        assert new_task["project"] == "proj-001"
 
     async def test_add_task_with_parent_resolves_task(self) -> None:
-        """add_task with parent=task ID (not a project) resolves to task type."""
+        """add_task with parent=task ID (not a project) stores raw string parent."""
         bridge = InMemoryBridge(data=make_snapshot_dict())
 
         await bridge.send_command("add_task", {"name": "Sub", "parent": "task-001"})
 
         new_task = bridge._tasks[-1]
-        assert new_task["parent"] == {
-            "type": "task",
-            "id": "task-001",
-            "name": "Test Task",
-        }
+        assert new_task["parent"] == "task-001"
+        assert new_task["project"] is None
 
     async def test_add_task_with_parent_unknown_falls_back(self) -> None:
-        """add_task with unknown parent ID falls back to type=task, name=ID."""
+        """add_task with unknown parent ID stores raw string parent."""
         bridge = InMemoryBridge(data=make_snapshot_dict())
 
         await bridge.send_command("add_task", {"name": "Orphan", "parent": "unknown-id"})
 
         new_task = bridge._tasks[-1]
-        assert new_task["parent"] == {
-            "type": "task",
-            "id": "unknown-id",
-            "name": "unknown-id",
-        }
+        assert new_task["parent"] == "unknown-id"
+        assert new_task["project"] is None
 
     async def test_add_task_with_tag_ids_resolves_names(self) -> None:
         """add_task with tagIds resolves tag names from internal state."""
@@ -399,7 +390,7 @@ class TestEditTask:
         assert "tag-a" in tag_ids
 
     async def test_edit_task_lifecycle_complete(self) -> None:
-        """edit_task with lifecycle='complete' sets availability to 'completed'."""
+        """edit_task with lifecycle='complete' sets status to 'Completed'."""
         bridge = InMemoryBridge(data=make_snapshot_dict())
 
         await bridge.send_command(
@@ -410,10 +401,10 @@ class TestEditTask:
             },
         )
 
-        assert bridge._tasks[0]["availability"] == "completed"
+        assert bridge._tasks[0]["status"] == "Completed"
 
     async def test_edit_task_lifecycle_drop(self) -> None:
-        """edit_task with lifecycle='drop' sets availability to 'dropped'."""
+        """edit_task with lifecycle='drop' sets status to 'Dropped'."""
         bridge = InMemoryBridge(data=make_snapshot_dict())
 
         await bridge.send_command(
@@ -424,7 +415,7 @@ class TestEditTask:
             },
         )
 
-        assert bridge._tasks[0]["availability"] == "dropped"
+        assert bridge._tasks[0]["status"] == "Dropped"
 
     async def test_edit_task_add_tags_resolves_name_from_internal_tags(self) -> None:
         """edit_task addTagIds resolves tag names from internal _tags list."""
@@ -465,9 +456,10 @@ class TestEditTask:
 
         assert bridge._tasks[0]["inInbox"] is True
         assert bridge._tasks[0]["parent"] is None
+        assert bridge._tasks[0]["project"] is None
 
     async def test_edit_task_move_to_project(self) -> None:
-        """edit_task with moveTo containerId sets inInbox=False."""
+        """edit_task with moveTo containerId sets inInbox=False and updates parent/project."""
         bridge = InMemoryBridge(data=make_snapshot_dict())
 
         await bridge.send_command(
@@ -479,6 +471,8 @@ class TestEditTask:
         )
 
         assert bridge._tasks[0]["inInbox"] is False
+        assert bridge._tasks[0]["parent"] == "proj-001"
+        assert bridge._tasks[0]["project"] == "proj-001"
 
 
 # ---------------------------------------------------------------------------

@@ -36,7 +36,7 @@ def bridge() -> InMemoryBridge:
                 make_task_dict(
                     id="task-2",
                     name="Beta",
-                    parent={"type": "task", "id": "task-1", "name": "Alpha"},
+                    parent="task-1",
                 ),
             ],
             projects=[

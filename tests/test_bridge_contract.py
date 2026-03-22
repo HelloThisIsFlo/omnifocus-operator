@@ -14,7 +14,6 @@ Usage:
 from __future__ import annotations
 
 import asyncio
-import copy
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,7 +21,6 @@ from typing import Any
 
 import pytest
 
-from omnifocus_operator.bridge.adapter import adapt_snapshot
 from tests.doubles import InMemoryBridge
 from tests.golden_master.normalize import (
     filter_to_known_ids,
@@ -70,18 +68,12 @@ def _load_scenarios() -> list[dict[str, Any]]:
 
 
 def _seed_bridge(initial_state: dict[str, Any]) -> InMemoryBridge:
-    """Seed InMemoryBridge from initial state (raw format from capture script).
-
-    Applies adapt_snapshot to convert raw format to model format,
-    since InMemoryBridge stores model format internally.
-    """
-    adapted = copy.deepcopy(initial_state)
-    adapt_snapshot(adapted)
+    """Seed InMemoryBridge from initial state (raw format from capture script)."""
     return InMemoryBridge(
         data={
-            "tasks": list(adapted.get("tasks", [])),
-            "projects": list(adapted.get("projects", [])),
-            "tags": list(adapted.get("tags", [])),
+            "tasks": list(initial_state.get("tasks", [])),
+            "projects": list(initial_state.get("projects", [])),
+            "tags": list(initial_state.get("tags", [])),
             "folders": [],
             "perspectives": [],
         }

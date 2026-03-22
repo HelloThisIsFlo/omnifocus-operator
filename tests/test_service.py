@@ -524,7 +524,8 @@ class TestEditTask:
             make_task_dict(
                 id="task-001",
                 name="Task",
-                parent={"type": "project", "id": "proj-001", "name": "Project"},
+                parent="proj-001",
+                project="proj-001",
                 inInbox=False,
             )
         ],
@@ -550,7 +551,7 @@ class TestEditTask:
             make_task_dict(
                 id="task-child",
                 name="Child",
-                parent={"type": "task", "id": "task-parent", "name": "Parent"},
+                parent="task-parent",
             ),
         ],
     )
@@ -641,7 +642,7 @@ class TestEditTask:
         assert task.tags == []
 
     @pytest.mark.snapshot(
-        tasks=[make_task_dict(id="task-001", name="Done Task", availability="completed")]
+        tasks=[make_task_dict(id="task-001", name="Done Task", status="Completed")]
     )
     async def test_warning_edit_completed_task(self, service: OperatorService) -> None:
         """Editing a completed task produces a warm warning."""
@@ -651,7 +652,7 @@ class TestEditTask:
         assert any("completed" in w and "confirm with the user" in w for w in result.warnings)
 
     @pytest.mark.snapshot(
-        tasks=[make_task_dict(id="task-001", name="Dropped Task", availability="dropped")]
+        tasks=[make_task_dict(id="task-001", name="Dropped Task", status="Dropped")]
     )
     async def test_warning_edit_dropped_task(self, service: OperatorService) -> None:
         """Editing a dropped task produces a warm warning."""
@@ -661,7 +662,7 @@ class TestEditTask:
         assert any("dropped" in w and "confirm with the user" in w for w in result.warnings)
 
     @pytest.mark.snapshot(
-        tasks=[make_task_dict(id="task-001", name="Done Task", availability="completed")]
+        tasks=[make_task_dict(id="task-001", name="Done Task", status="Completed")]
     )
     async def test_noop_priority_completed(self, service: OperatorService) -> None:
         """No-op edit on completed task returns only no-op warning, not status warning."""
@@ -674,7 +675,7 @@ class TestEditTask:
         assert len(result.warnings) == 1
 
     @pytest.mark.snapshot(
-        tasks=[make_task_dict(id="task-001", name="Dropped Task", availability="dropped")]
+        tasks=[make_task_dict(id="task-001", name="Dropped Task", status="Dropped")]
     )
     async def test_noop_priority_dropped(self, service: OperatorService) -> None:
         """No-op edit on dropped task returns only no-op warning, not status warning."""
@@ -1035,7 +1036,8 @@ class TestEditTask:
             make_task_dict(
                 id="task-001",
                 name="Task",
-                parent={"type": "project", "id": "proj-001", "name": "Test Project"},
+                parent="proj-001",
+                project="proj-001",
             )
         ],
     )
@@ -1075,9 +1077,7 @@ class TestEditTask:
         if result.warnings:
             assert not any("already" in w.lower() for w in result.warnings)
 
-    @pytest.mark.snapshot(
-        tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
-    )
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task", status="Completed")])
     async def test_lifecycle_complete_already_completed_noop(
         self, service: OperatorService
     ) -> None:
@@ -1090,9 +1090,7 @@ class TestEditTask:
         assert result.warnings is not None
         assert any("already complete" in w.lower() for w in result.warnings)
 
-    @pytest.mark.snapshot(
-        tasks=[make_task_dict(id="task-001", name="Task", availability="dropped")]
-    )
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task", status="Dropped")])
     async def test_lifecycle_drop_already_dropped_noop(self, service: OperatorService) -> None:
         """Dropping an already-dropped task is a no-op with warning."""
 
@@ -1103,9 +1101,7 @@ class TestEditTask:
         assert result.warnings is not None
         assert any("already dropped" in w.lower() for w in result.warnings)
 
-    @pytest.mark.snapshot(
-        tasks=[make_task_dict(id="task-001", name="Task", availability="dropped")]
-    )
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task", status="Dropped")])
     async def test_lifecycle_complete_dropped_task_cross_state(
         self, service: OperatorService
     ) -> None:
@@ -1118,9 +1114,7 @@ class TestEditTask:
         assert result.warnings is not None
         assert any("dropped" in w and "complete" in w.lower() for w in result.warnings)
 
-    @pytest.mark.snapshot(
-        tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
-    )
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task", status="Completed")])
     async def test_lifecycle_drop_completed_task_cross_state(
         self, service: OperatorService
     ) -> None:
@@ -1140,8 +1134,8 @@ class TestEditTask:
                 name="Task",
                 repetitionRule={
                     "ruleString": "FREQ=WEEKLY",
-                    "scheduleType": "regularly",
-                    "anchorDateKey": "due_date",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
                     "catchUpAutomatically": False,
                 },
             )
@@ -1166,8 +1160,8 @@ class TestEditTask:
                 name="Task",
                 repetitionRule={
                     "ruleString": "FREQ=WEEKLY",
-                    "scheduleType": "regularly",
-                    "anchorDateKey": "due_date",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
                     "catchUpAutomatically": False,
                 },
             )
@@ -1189,11 +1183,11 @@ class TestEditTask:
             make_task_dict(
                 id="task-001",
                 name="Task",
-                availability="dropped",
+                status="Dropped",
                 repetitionRule={
                     "ruleString": "FREQ=WEEKLY",
-                    "scheduleType": "regularly",
-                    "anchorDateKey": "due_date",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
                     "catchUpAutomatically": False,
                 },
             )
@@ -1244,9 +1238,7 @@ class TestEditTask:
         if result.warnings:
             assert not any("no changes specified" in w.lower() for w in result.warnings)
 
-    @pytest.mark.snapshot(
-        tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
-    )
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task", status="Completed")])
     async def test_lifecycle_noop_suppresses_status_warning(self, service: OperatorService) -> None:
         """No-op lifecycle should NOT produce the generic status warning."""
 
@@ -1262,9 +1254,7 @@ class TestEditTask:
         )
         assert not any("No changes specified" in w for w in result.warnings)
 
-    @pytest.mark.snapshot(
-        tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
-    )
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task", status="Completed")])
     async def test_noop_lifecycle_no_spurious_empty_edit_warning(
         self, service: OperatorService
     ) -> None:
@@ -1284,7 +1274,8 @@ class TestEditTask:
             make_task_dict(
                 id="task-001",
                 name="Task",
-                parent={"type": "project", "id": "proj-001", "name": "Test Project"},
+                parent="proj-001",
+                project="proj-001",
             )
         ],
     )
@@ -1324,9 +1315,7 @@ class TestEditTask:
         assert not any("No changes specified" in w for w in result.warnings)
         assert len(result.warnings) == 1
 
-    @pytest.mark.snapshot(
-        tasks=[make_task_dict(id="task-001", name="Task", availability="completed")]
-    )
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task", status="Completed")])
     async def test_lifecycle_action_suppresses_status_warning(
         self, service: OperatorService
     ) -> None:
@@ -1415,7 +1404,8 @@ class TestEditTask:
             make_task_dict(
                 id="task-001",
                 name="Task",
-                parent={"type": "project", "id": "proj-001", "name": "Test Project"},
+                parent="proj-001",
+                project="proj-001",
             )
         ],
         projects=[

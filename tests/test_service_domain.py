@@ -25,7 +25,7 @@ from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.models.task import Task
 from omnifocus_operator.service.domain import DomainLogic
 
-from .conftest import make_snapshot, make_tag_dict, make_task_dict
+from .conftest import make_model_tag_dict, make_model_task_dict, make_snapshot
 
 # ---------------------------------------------------------------------------
 # Stubs
@@ -99,8 +99,8 @@ class StubRepo:
 
 
 def _make_task(**overrides: object) -> Task:
-    """Create a Task model from make_task_dict defaults."""
-    return Task.model_validate(make_task_dict(**overrides))
+    """Create a Task model from make_model_task_dict defaults."""
+    return Task.model_validate(make_model_task_dict(**overrides))
 
 
 def _domain(
@@ -213,7 +213,7 @@ class TestComputeTagDiff:
     async def test_add_new_tag(self) -> None:
         domain = _domain(
             tag_map={"Work": "tag-work"},
-            snapshot=make_snapshot(tags=[make_tag_dict(id="tag-work", name="Work")]),
+            snapshot=make_snapshot(tags=[make_model_tag_dict(id="tag-work", name="Work")]),
         )
         current_tags = []  # no tags on task
         add_ids, remove_ids, warnings = await domain.compute_tag_diff(
@@ -227,7 +227,7 @@ class TestComputeTagDiff:
     async def test_add_existing_tag_warns(self) -> None:
         domain = _domain(
             tag_map={"Work": "tag-work"},
-            snapshot=make_snapshot(tags=[make_tag_dict(id="tag-work", name="Work")]),
+            snapshot=make_snapshot(tags=[make_model_tag_dict(id="tag-work", name="Work")]),
         )
         current_tags = [TagRef(id="tag-work", name="Work")]
         _add_ids, _remove_ids, warnings = await domain.compute_tag_diff(
@@ -239,7 +239,7 @@ class TestComputeTagDiff:
     async def test_remove_existing_tag(self) -> None:
         domain = _domain(
             tag_map={"Work": "tag-work"},
-            snapshot=make_snapshot(tags=[make_tag_dict(id="tag-work", name="Work")]),
+            snapshot=make_snapshot(tags=[make_model_tag_dict(id="tag-work", name="Work")]),
         )
         current_tags = [TagRef(id="tag-work", name="Work")]
         add_ids, remove_ids, warnings = await domain.compute_tag_diff(
@@ -253,7 +253,7 @@ class TestComputeTagDiff:
     async def test_remove_absent_tag_warns(self) -> None:
         domain = _domain(
             tag_map={"Work": "tag-work"},
-            snapshot=make_snapshot(tags=[make_tag_dict(id="tag-work", name="Work")]),
+            snapshot=make_snapshot(tags=[make_model_tag_dict(id="tag-work", name="Work")]),
         )
         current_tags = []  # tag not on task
         _add_ids, _remove_ids, warnings = await domain.compute_tag_diff(
@@ -267,8 +267,8 @@ class TestComputeTagDiff:
             tag_map={"Home": "tag-home"},
             snapshot=make_snapshot(
                 tags=[
-                    make_tag_dict(id="tag-work", name="Work"),
-                    make_tag_dict(id="tag-home", name="Home"),
+                    make_model_tag_dict(id="tag-work", name="Work"),
+                    make_model_tag_dict(id="tag-home", name="Home"),
                 ]
             ),
         )
@@ -284,7 +284,7 @@ class TestComputeTagDiff:
     async def test_replace_same_warns(self) -> None:
         domain = _domain(
             tag_map={"Work": "tag-work"},
-            snapshot=make_snapshot(tags=[make_tag_dict(id="tag-work", name="Work")]),
+            snapshot=make_snapshot(tags=[make_model_tag_dict(id="tag-work", name="Work")]),
         )
         current_tags = [TagRef(id="tag-work", name="Work")]
         add_ids, remove_ids, warnings = await domain.compute_tag_diff(

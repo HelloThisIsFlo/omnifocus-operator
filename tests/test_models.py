@@ -38,12 +38,12 @@ from omnifocus_operator.models import (
 )
 
 from .conftest import (
-    make_folder_dict,
+    make_model_folder_dict,
+    make_model_project_dict,
+    make_model_snapshot_dict,
+    make_model_tag_dict,
+    make_model_task_dict,
     make_perspective_dict,
-    make_project_dict,
-    make_snapshot_dict,
-    make_tag_dict,
-    make_task_dict,
 )
 
 # ---------------------------------------------------------------------------
@@ -368,30 +368,30 @@ class TestInheritanceHierarchy:
 class TestFactoryFunctions:
     """Factory functions produce valid new-shape dicts with correct field counts."""
 
-    def test_make_task_dict_field_count(self) -> None:
-        """make_task_dict returns exactly 26 fields (new model shape with unified parent)."""
-        d = make_task_dict()
+    def test_make_model_task_dict_field_count(self) -> None:
+        """make_model_task_dict returns exactly 26 fields (new model shape with unified parent)."""
+        d = make_model_task_dict()
         assert len(d) == 26
 
-    def test_make_task_dict_overrides(self) -> None:
-        """make_task_dict supports keyword overrides."""
-        d = make_task_dict(name="Custom Task", urgency="overdue")
+    def test_make_model_task_dict_overrides(self) -> None:
+        """make_model_task_dict supports keyword overrides."""
+        d = make_model_task_dict(name="Custom Task", urgency="overdue")
         assert d["name"] == "Custom Task"
         assert d["urgency"] == "overdue"
 
-    def test_make_project_dict_field_count(self) -> None:
-        """make_project_dict returns exactly 28 fields (no effectiveCompletionDate)."""
-        d = make_project_dict()
+    def test_make_model_project_dict_field_count(self) -> None:
+        """make_model_project_dict returns exactly 28 fields (no effectiveCompletionDate)."""
+        d = make_model_project_dict()
         assert len(d) == 28
 
-    def test_make_tag_dict_field_count(self) -> None:
-        """make_tag_dict returns exactly 8 fields (new model shape)."""
-        d = make_tag_dict()
+    def test_make_model_tag_dict_field_count(self) -> None:
+        """make_model_tag_dict returns exactly 8 fields (new model shape)."""
+        d = make_model_tag_dict()
         assert len(d) == 8
 
-    def test_make_folder_dict_field_count(self) -> None:
-        """make_folder_dict returns exactly 7 fields (new model shape)."""
-        d = make_folder_dict()
+    def test_make_model_folder_dict_field_count(self) -> None:
+        """make_model_folder_dict returns exactly 7 fields (new model shape)."""
+        d = make_model_folder_dict()
         assert len(d) == 7
 
     def test_make_perspective_dict_field_count(self) -> None:
@@ -399,9 +399,9 @@ class TestFactoryFunctions:
         d = make_perspective_dict()
         assert len(d) == 2
 
-    def test_make_snapshot_dict_structure(self) -> None:
-        """make_snapshot_dict contains all 5 entity collections."""
-        d = make_snapshot_dict()
+    def test_make_model_snapshot_dict_structure(self) -> None:
+        """make_model_snapshot_dict contains all 5 entity collections."""
+        d = make_model_snapshot_dict()
         assert "tasks" in d
         assert "projects" in d
         assert "tags" in d
@@ -423,8 +423,8 @@ class TestTaskModel:
     """Task model parses all 26 fields with snake_case names and camelCase aliases."""
 
     def test_task_from_bridge_json(self) -> None:
-        """Parse make_task_dict() via Task.model_validate(), verify all 26 fields."""
-        data = make_task_dict(
+        """Parse make_model_task_dict() via Task.model_validate(), verify all 26 fields."""
+        data = make_model_task_dict(
             dueDate="2024-06-15T09:00:00.000Z",
             tags=[{"id": "t1", "name": "errands"}, {"id": "t2", "name": "morning"}],
         )
@@ -497,21 +497,21 @@ class TestTaskModel:
 
     def test_task_urgency_required(self) -> None:
         """Task without urgency raises ValidationError."""
-        data = make_task_dict()
+        data = make_model_task_dict()
         del data["urgency"]
         with pytest.raises(ValidationError):
             Task.model_validate(data)
 
     def test_task_availability_required(self) -> None:
         """Task without availability raises ValidationError."""
-        data = make_task_dict()
+        data = make_model_task_dict()
         del data["availability"]
         with pytest.raises(ValidationError):
             Task.model_validate(data)
 
     def test_task_tags_are_tag_refs(self) -> None:
         """tags field contains TagRef objects with id and name."""
-        data = make_task_dict(
+        data = make_model_task_dict(
             tags=[{"id": "t1", "name": "errands"}, {"id": "t2", "name": "morning"}],
         )
         task = Task.model_validate(data)
@@ -522,13 +522,15 @@ class TestTaskModel:
 
     def test_task_parent_none_for_inbox(self) -> None:
         """Inbox task has parent=None."""
-        data = make_task_dict()
+        data = make_model_task_dict()
         task = Task.model_validate(data)
         assert task.parent is None
 
     def test_task_parent_ref_project(self) -> None:
         """Task in project has parent as ParentRef with type='project'."""
-        data = make_task_dict(parent={"type": "project", "id": "proj-001", "name": "My Project"})
+        data = make_model_task_dict(
+            parent={"type": "project", "id": "proj-001", "name": "My Project"}
+        )
         task = Task.model_validate(data)
         assert task.parent is not None
         assert isinstance(task.parent, ParentRef)
@@ -538,7 +540,9 @@ class TestTaskModel:
 
     def test_task_parent_ref_task(self) -> None:
         """Subtask has parent as ParentRef with type='task'."""
-        data = make_task_dict(parent={"type": "task", "id": "task-parent", "name": "Parent Task"})
+        data = make_model_task_dict(
+            parent={"type": "task", "id": "task-parent", "name": "Parent Task"}
+        )
         task = Task.model_validate(data)
         assert task.parent is not None
         assert isinstance(task.parent, ParentRef)
@@ -555,8 +559,8 @@ class TestProjectModel:
     """Project model parses all 28 fields including nested objects."""
 
     def test_project_from_bridge_json(self) -> None:
-        """Parse make_project_dict(), verify all 28 fields."""
-        data = make_project_dict()
+        """Parse make_model_project_dict(), verify all 28 fields."""
+        data = make_model_project_dict()
         project = Project.model_validate(data)
 
         # Identity + lifecycle from OmniFocusEntity
@@ -597,14 +601,14 @@ class TestProjectModel:
 
     def test_project_status_axes(self) -> None:
         """Project uses urgency + availability two-axis model."""
-        data = make_project_dict(urgency="overdue", availability="blocked")
+        data = make_model_project_dict(urgency="overdue", availability="blocked")
         project = Project.model_validate(data)
         assert project.urgency == Urgency.OVERDUE
         assert project.availability == Availability.BLOCKED
 
     def test_project_nested_repetition_rule(self) -> None:
         """Project with repetitionRule object parses correctly."""
-        data = make_project_dict(
+        data = make_model_project_dict(
             repetitionRule={
                 "ruleString": "FREQ=WEEKLY",
                 "scheduleType": "regularly",
@@ -621,7 +625,7 @@ class TestProjectModel:
 
     def test_project_nested_review_interval(self) -> None:
         """Project with reviewInterval object parses correctly."""
-        data = make_project_dict(reviewInterval={"steps": 14, "unit": "days"})
+        data = make_model_project_dict(reviewInterval={"steps": 14, "unit": "days"})
         project = Project.model_validate(data)
         assert project.review_interval is not None
         assert project.review_interval.steps == 14
@@ -637,8 +641,8 @@ class TestTagModel:
     """Tag model parses all 8 fields."""
 
     def test_tag_from_bridge_json(self) -> None:
-        """Parse make_tag_dict(), verify all 8 fields."""
-        data = make_tag_dict()
+        """Parse make_model_tag_dict(), verify all 8 fields."""
+        data = make_model_tag_dict()
         tag = Tag.model_validate(data)
 
         assert tag.id == "tag-001"
@@ -661,7 +665,7 @@ class TestTagModel:
 
     def test_tag_availability_required(self) -> None:
         """Tag without availability raises ValidationError."""
-        data = make_tag_dict()
+        data = make_model_tag_dict()
         del data["availability"]
         with pytest.raises(ValidationError):
             Tag.model_validate(data)
@@ -676,8 +680,8 @@ class TestFolderModel:
     """Folder model parses all 7 fields."""
 
     def test_folder_from_bridge_json(self) -> None:
-        """Parse make_folder_dict(), verify all 7 fields."""
-        data = make_folder_dict()
+        """Parse make_model_folder_dict(), verify all 7 fields."""
+        data = make_model_folder_dict()
         folder = Folder.model_validate(data)
 
         assert folder.id == "folder-001"
@@ -698,7 +702,7 @@ class TestFolderModel:
 
     def test_folder_availability_required(self) -> None:
         """Folder without availability raises ValidationError."""
-        data = make_folder_dict()
+        data = make_model_folder_dict()
         del data["availability"]
         with pytest.raises(ValidationError):
             Folder.model_validate(data)
@@ -749,8 +753,8 @@ class TestAllEntities:
     """AllEntities aggregates tasks, projects, tags, folders, perspectives lists."""
 
     def test_all_entities_round_trip(self) -> None:
-        """Parse make_snapshot_dict(), verify collections, serialize and re-parse."""
-        data = make_snapshot_dict()
+        """Parse make_model_snapshot_dict(), verify collections, serialize and re-parse."""
+        data = make_model_snapshot_dict()
         snapshot = AllEntities.model_validate(data)
 
         assert len(snapshot.tasks) == 1
@@ -774,7 +778,7 @@ class TestAllEntities:
 
     def test_all_entities_empty_collections(self) -> None:
         """AllEntities with empty lists is valid."""
-        data = make_snapshot_dict(tasks=[], projects=[], tags=[], folders=[], perspectives=[])
+        data = make_model_snapshot_dict(tasks=[], projects=[], tags=[], folders=[], perspectives=[])
         snapshot = AllEntities.model_validate(data)
         assert len(snapshot.tasks) == 0
         assert len(snapshot.projects) == 0
@@ -786,8 +790,10 @@ class TestAllEntities:
         """Large payload with multiple entities round-trips without data loss."""
         data = {
             "tasks": [
-                make_task_dict(id="t1", name="Task 1", urgency="none", availability="available"),
-                make_task_dict(
+                make_model_task_dict(
+                    id="t1", name="Task 1", urgency="none", availability="available"
+                ),
+                make_model_task_dict(
                     id="t2",
                     name="Task 2",
                     urgency="due_soon",
@@ -796,7 +802,7 @@ class TestAllEntities:
                     tags=[{"id": "tref1", "name": "errands"}],
                     parent={"type": "project", "id": "proj-001", "name": "Project A"},
                 ),
-                make_task_dict(
+                make_model_task_dict(
                     id="t3",
                     name="Task 3",
                     urgency="none",
@@ -804,8 +810,8 @@ class TestAllEntities:
                 ),
             ],
             "projects": [
-                make_project_dict(id="p1", name="Project A"),
-                make_project_dict(
+                make_model_project_dict(id="p1", name="Project A"),
+                make_model_project_dict(
                     id="p2",
                     name="Project B",
                     urgency="none",
@@ -814,11 +820,11 @@ class TestAllEntities:
                 ),
             ],
             "tags": [
-                make_tag_dict(id="tg1", name="errands"),
-                make_tag_dict(id="tg2", name="morning"),
+                make_model_tag_dict(id="tg1", name="errands"),
+                make_model_tag_dict(id="tg2", name="morning"),
             ],
             "folders": [
-                make_folder_dict(id="f1", name="Work"),
+                make_model_folder_dict(id="f1", name="Work"),
             ],
             "perspectives": [
                 make_perspective_dict(id="ps1", name="Custom View"),
@@ -1005,7 +1011,7 @@ class TestWriteModelStrictness:
 
     def test_read_model_task_accepts_unknown_field(self) -> None:
         """Read models from OmniFocus must stay permissive for forward compatibility."""
-        data = make_task_dict()
+        data = make_model_task_dict()
         data["some_future_field"] = "unknown"
         task = Task.model_validate(data)
         assert task.name is not None
