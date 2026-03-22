@@ -1,4 +1,4 @@
-"""CI contract tests: verify InMemoryBridge matches golden master from RealBridge.
+"""CI contract tests: verify InMemoryBridge matches golden master from the real Bridge.
 
 Golden master fixtures are captured by uat/capture_golden_master.py (human-run).
 These tests replay the same operations against InMemoryBridge and assert structural
@@ -287,7 +287,7 @@ _scenario_ids = _get_scenario_ids()
 
 @pytest.mark.skipif(not _scenario_ids, reason=SKIP_MSG)
 class TestBridgeContract:
-    """Verify InMemoryBridge matches golden master from RealBridge."""
+    """Verify InMemoryBridge matches golden master from the real Bridge."""
 
     @pytest.mark.parametrize("scenario_id", _scenario_ids)
     def test_scenario(self, scenario_id: str) -> None:
