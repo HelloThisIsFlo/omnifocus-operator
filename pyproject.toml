@@ -36,6 +36,9 @@ addopts = [
     "--cov-config=pyproject.toml",
     "--cov-report=term-missing",
 ]
+filterwarnings = [
+    "ignore:Default value UNSET is not JSON serializable:pydantic.json_schema.PydanticJsonSchemaWarning",
+]
 markers = [
     "snapshot: seed InMemoryBridge with custom snapshot data (kwargs passed to make_snapshot_dict)",
     "hybrid_db: seed SQLite database for HybridRepository tests (kwargs passed to create_test_db)",

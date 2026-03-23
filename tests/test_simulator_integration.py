@@ -98,6 +98,8 @@ def simulator_process(tmp_path: Path) -> Generator[subprocess.Popen[str], None, 
     """Spawn a default (no-failure) simulator subprocess."""
     proc = _start_simulator(tmp_path)
     yield proc
+    if proc.stderr:
+        proc.stderr.close()
     proc.terminate()
     proc.wait(timeout=5)
 
@@ -162,6 +164,8 @@ class TestSimulatorProcess:
     def test_shutdown_on_terminate(self, tmp_path: Path) -> None:
         """Simulator exits cleanly after SIGTERM."""
         proc = _start_simulator(tmp_path)
+        if proc.stderr:
+            proc.stderr.close()
         proc.terminate()
         exit_code = proc.wait(timeout=5)
         # Terminated processes return negative signal number or 0
@@ -230,6 +234,8 @@ class TestErrorSimulation:
             with pytest.raises(BridgeProtocolError, match="simulated error"):
                 await bridge.send_command("snapshot")
         finally:
+            if proc.stderr:
+                proc.stderr.close()
             proc.terminate()
             proc.wait(timeout=5)
 
@@ -242,6 +248,8 @@ class TestErrorSimulation:
             with pytest.raises(json.JSONDecodeError):
                 await bridge.send_command("snapshot")
         finally:
+            if proc.stderr:
+                proc.stderr.close()
             proc.terminate()
             proc.wait(timeout=5)
 
@@ -254,6 +262,8 @@ class TestErrorSimulation:
             with pytest.raises(BridgeTimeoutError):
                 await bridge.send_command("snapshot")
         finally:
+            if proc.stderr:
+                proc.stderr.close()
             proc.terminate()
             proc.wait(timeout=5)
 
@@ -281,6 +291,8 @@ class TestFailAfter:
             with pytest.raises(BridgeProtocolError, match="simulated error"):
                 await bridge.send_command("snapshot")
         finally:
+            if proc.stderr:
+                proc.stderr.close()
             proc.terminate()
             proc.wait(timeout=5)
 
@@ -302,6 +314,8 @@ class TestDelay:
             result = await bridge.send_command("snapshot")
             assert "tasks" in result
         finally:
+            if proc.stderr:
+                proc.stderr.close()
             proc.terminate()
             proc.wait(timeout=5)
 
@@ -351,5 +365,7 @@ class TestMcpIntegration:
 
             await _run_with_client(server, _check)
         finally:
+            if proc.stderr:
+                proc.stderr.close()
             proc.terminate()
             proc.wait(timeout=5)

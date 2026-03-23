@@ -367,6 +367,7 @@ def _get_scenario_ids() -> list[str]:
 _scenario_ids = _get_scenario_ids()
 
 
+@pytest.mark.filterwarnings("ignore::ResourceWarning")
 @pytest.mark.skipif(not _scenario_ids, reason=SKIP_MSG)
 class TestBridgeContract:
     """Verify InMemoryBridge matches golden master from the real Bridge."""
