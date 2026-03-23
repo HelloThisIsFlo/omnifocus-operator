@@ -24,6 +24,7 @@ UAT-Lifecycle (parent)
 +-- T5-Repeating
 +-- T6-Combo
 +-- T7-InvalidLifecycle
++-- T8-DeferLifecycle
 ```
 
 Create the parent first, then all children (can be parallel). Store all IDs.
@@ -99,6 +100,18 @@ Run INDIVIDUALLY (will error):
 1. `actions: { lifecycle: "reopen" }` on T7
 2. PASS if: clean error (no "type=", "input_value", "pydantic" internals)
 
+### 7. Defer Date Lifecycle
+
+#### Test 7a: Defer date blocks task
+1. `deferDate: "2036-01-01T09:00:00+01:00"` on T8 (far-future date)
+2. `get_task` T8
+3. PASS if: task availability is NOT "available" (should be blocked/deferred due to future defer date)
+
+#### Test 7b: Clear defer date unblocks task
+1. `deferDate: null` on T8
+2. `get_task` T8
+3. PASS if: task availability returns to "available"
+
 ## Report Table Rows
 
 | # | Test | Description | Result |
@@ -113,3 +126,5 @@ Run INDIVIDUALLY (will error):
 | 4b | Repeating: drop | Dropping/skipping repeating occurrence | |
 | 5 | Lifecycle + field edit | Complete + name change in one call; both applied | |
 | 6 | Invalid lifecycle | "reopen" returns clean validation error | |
+| 7a | Defer: blocks task | Future deferDate changes availability away from "available" | |
+| 7b | Defer: unblocks task | Clearing deferDate restores availability to "available" | |

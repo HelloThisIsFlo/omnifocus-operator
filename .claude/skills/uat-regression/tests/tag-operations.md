@@ -64,7 +64,8 @@ Wait for confirmation before proceeding. Then tell them: "Running all tests now.
 
 #### Test 2c: Clear all tags
 1. `actions: { tags: { replace: [] } }` on T2
-2. PASS if: success, task has no tags
+2. `get_task` to verify `tags` is `[]` (empty array, not `null` or missing)
+3. PASS if: success, `tags` is `[]`
 
 #### Test 2d: Add incremental
 1. `actions: { tags: { add: [<tag-a>] } }` on T2
@@ -136,7 +137,7 @@ Run INDIVIDUALLY (will error):
 | 1 | Remove tags alone | Calling tags.remove without add doesn't crash | |
 | 2a | Tags: replace | Replace all tags using tags.replace; verify via get_task | |
 | 2b | Tags: replace different | Replace with different set; old tags gone | |
-| 2c | Tags: clear all | replace: [] removes all tags | |
+| 2c | Tags: clear all | replace: [] returns `tags: []` (not null) | |
 | 2d | Tags: add incremental | Add tags one at a time; both confirmed via get_task | |
 | 2e | Tags: remove selective | Remove one tag; other remains | |
 | 2f | Tags: mixed ID and name | Add using mix of ID and name in one call | |

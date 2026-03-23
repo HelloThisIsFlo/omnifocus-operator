@@ -48,16 +48,16 @@ Wait for confirmation before proceeding to tests. Then tell them: "Running all t
 #### Test 1b: note: "" clears the note
 1. `note: "some text"` on T1
 2. `note: ""` on T1
-3. `get_task` T1 and verify note is empty
-4. PASS if: success, note cleared
+3. `get_task` T1 and verify note is `""` (empty string, not `null`)
+4. PASS if: success, note is `""` (empty string)
 
 ### 2. Field Editing
 
 #### Test 2a: Patch semantics
 1. Set `name: "T2-Updated", flagged: true, note: "test note", estimatedMinutes: 30` on T2
 2. Edit only `flagged: false` on T2
-3. `get_task` T2 and verify: name still "T2-Updated", note still "test note", estimatedMinutes still 30
-4. PASS if: untouched fields preserved
+3. `get_task` T2 and verify: name still "T2-Updated", note still "test note", estimatedMinutes still 30, `effectiveFlagged: false` matches `flagged: false`
+4. PASS if: untouched fields preserved, effective fields mirror base fields
 
 #### Test 2b: Date fields set + clear
 1. `dueDate: "2026-03-15T17:00:00+01:00", deferDate: "2026-03-10T09:00:00+01:00"` on T2
@@ -78,14 +78,14 @@ Wait for confirmation before proceeding to tests. Then tell them: "Running all t
 
 #### Test 2e: Multi-field single call
 1. `flagged: true, note: "multi", estimatedMinutes: 60, dueDate: "2026-03-20T12:00:00+01:00"` on T2
-2. `get_task` to verify all four fields
-3. PASS if: all four applied in one call
+2. `get_task` to verify all four fields, plus `effectiveFlagged: true` and `effectiveDueDate` matches dueDate
+3. PASS if: all four applied in one call, effective fields mirror base fields
 
 #### Test 2f: plannedDate set + clear
 1. `plannedDate: "2026-03-12T10:00:00+01:00"` on T2
-2. Verify success
+2. `get_task` to verify `plannedDate` is set and `effectivePlannedDate` matches
 3. `plannedDate: null` on T2
-4. PASS if: both set and clear succeed
+4. PASS if: both set and clear succeed, effective field mirrors base field when set
 
 ### 3. No-Op Warnings
 
@@ -135,7 +135,8 @@ Wait for confirmation before proceeding to tests. Then tell them: "Running all t
 
 #### Test 4a: Editing a completed task
 1. `flagged: true` on T4 (completed by user in setup)
-2. PASS if: success with warning mentioning "completed"
+2. `get_task` T4 to verify `flagged: true` actually took effect
+3. PASS if: success with warning mentioning "completed", AND `get_task` confirms flagged is true
 
 #### Test 4b: Editing a dropped task
 1. `name: "T5-Dropped"` on T5 (dropped by user in setup)
@@ -173,13 +174,13 @@ Run each INDIVIDUALLY (they will error):
 | # | Test | Description | Result |
 |---|------|-------------|--------|
 | 1a | note: null | Setting note to null clears the note without error | |
-| 1b | note: "" | Setting note to empty string also clears the note | |
-| 2a | Patch semantics | Editing one field preserves all other fields unchanged | |
+| 1b | note: "" | Setting note to empty string clears the note; returns `""` not `null` | |
+| 2a | Patch semantics | Editing one field preserves others; effective fields mirror base | |
 | 2b | Date set + clear | Setting dueDate and deferDate, then clearing both with null | |
 | 2c | estimatedMinutes set + clear | Setting estimatedMinutes, then clearing with null | |
 | 2d | Name change | Renaming a task; response reflects the new name | |
-| 2e | Multi-field single call | Setting 4 fields in one call; all applied | |
-| 2f | plannedDate set + clear | Setting plannedDate, then clearing with null | |
+| 2e | Multi-field single call | 4 fields in one call; all applied; effective fields mirror | |
+| 2f | plannedDate set + clear | Set plannedDate; effectivePlannedDate mirrors; then clear | |
 | 3a | No-op: empty edit | Sending only an ID with no fields returns "no changes specified" | |
 | 3b | No-op: same flagged | Setting flagged to its current value returns "no changes detected" | |
 | 3c | No-op: same name | Setting name to its current value returns a warning | |
@@ -188,7 +189,7 @@ Run each INDIVIDUALLY (they will error):
 | 3f | No-op: same deferDate | Setting deferDate to the same value returns a warning | |
 | 3g | No-op: same plannedDate | Setting plannedDate to the same value returns a warning | |
 | 3h | No-op: note null on empty | Setting note to null when already empty returns a warning | |
-| 4a | Status: completed task | Editing a completed task succeeds with "completed" warning | |
+| 4a | Status: completed task | Editing completed task warns; get_task confirms edit took effect | |
 | 4b | Status: dropped task | Editing a dropped task succeeds with "dropped" warning | |
 | 5a | Error: nonexistent task | Editing a fake task ID returns "not found" | |
 | 5b | Error: empty name | Setting name to "" returns a validation error | |

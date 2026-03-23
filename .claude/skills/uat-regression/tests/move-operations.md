@@ -59,14 +59,16 @@ Run sequentially on T1:
 3. `actions: { move: {"beginning": "<UAT-id>"} }` — PASS if success
 4. `actions: { move: {"ending": "<UAT-id>"} }` — PASS if success
 5. `actions: { move: {"ending": null} }` — PASS if success (moves to inbox)
-6. `actions: { move: {"beginning": "<UAT-id>"} }` — restore
-7. PASS if: all 6 calls succeed
+6. `get_task` T1 and verify `inInbox: true`
+7. `actions: { move: {"beginning": "<UAT-id>"} }` — restore
+8. `get_task` T1 and verify `inInbox: false`
+9. PASS if: all move calls succeed, `inInbox` flips correctly (true after move to inbox, false after move to parent)
 
 #### Test 1b: Move carries children
 1. `actions: { move: {"ending": null} }` on T2 (to inbox)
-2. `get_task` T2, verify `hasChildren: true`
+2. `get_task` T2, verify `hasChildren: true` and `inInbox: true`
 3. `actions: { move: {"beginning": "<UAT-id>"} }` (move back)
-4. PASS if: children preserved
+4. PASS if: children preserved, `hasChildren: true` confirmed
 
 #### Test 1c: Cross-level move
 1. `actions: { move: {"ending": "<UAT-id>"} }` on T2a (grandchild → direct child of root)
@@ -176,8 +178,8 @@ For tests that need order verification, assign `estimatedMinutes` = 1, 2, 3... t
 
 | # | Test | Description | Result |
 |---|------|-------------|--------|
-| 1a | Move: all 5 modes | after, before, beginning, ending, inbox — all succeed | |
-| 1b | Move: carries children | Moving a parent preserves its children | |
+| 1a | Move: all 5 modes | after, before, beginning, ending, inbox — all succeed; `inInbox` flips | |
+| 1b | Move: carries children | Parent move preserves children; `hasChildren: true` confirmed | |
 | 1c | Move: cross-level | Grandchild to direct child and back | |
 | 1d | Move: circular ref (3) | Parent into child, ancestor into descendant, self — all blocked | |
 | 1e | Move: + edit combo | Name change and move in same call | |
