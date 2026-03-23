@@ -1,16 +1,13 @@
 {
-  "scenario": "06-combined/03_subtask_add_move",
-  "description": "Add subtask under a task, then move it to inbox",
+  "scenario": "05-lifecycle/05_complete_dropped",
+  "description": "Complete a task that was already dropped",
   "operation": "edit_task",
   "params": {
-    "id": "$task:subtask_add_move",
-    "moveTo": {
-      "position": "ending",
-      "containerId": null
-    }
+    "id": "$task:drop_target",
+    "lifecycle": "complete"
   },
   "response": {
-    "name": "GM-SubtaskAddMoveTarget"
+    "name": "GM-DropTarget"
   },
   "state_after": {
     "tasks": [
@@ -38,8 +35,8 @@
         "tags": []
       },
       {
-        "name": "GM-CombinedLifecycleTarget",
-        "note": "Final note",
+        "name": "GM-CompleteTarget",
+        "note": "",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": null,
@@ -52,52 +49,6 @@
         "effectivePlannedDate": null,
         "dropDate": null,
         "effectiveDropDate": null,
-        "estimatedMinutes": null,
-        "hasChildren": false,
-        "inInbox": true,
-        "repetitionRule": null,
-        "project": null,
-        "parent": null,
-        "tags": []
-      },
-      {
-        "name": "GM-CombinedMoveTarget-Edited",
-        "note": "",
-        "flagged": true,
-        "effectiveFlagged": true,
-        "dueDate": null,
-        "deferDate": null,
-        "effectiveDueDate": null,
-        "effectiveDeferDate": null,
-        "completionDate": null,
-        "effectiveCompletionDate": null,
-        "plannedDate": null,
-        "effectivePlannedDate": null,
-        "dropDate": null,
-        "effectiveDropDate": null,
-        "estimatedMinutes": null,
-        "hasChildren": false,
-        "inInbox": false,
-        "repetitionRule": null,
-        "project": "$project:test_project",
-        "parent": "$project:test_project",
-        "tags": []
-      },
-      {
-        "name": "GM-CompleteTarget",
-        "note": "",
-        "flagged": false,
-        "effectiveFlagged": false,
-        "dueDate": null,
-        "deferDate": null,
-        "effectiveDueDate": null,
-        "effectiveDeferDate": null,
-        "completionDate": null,
-        "effectiveCompletionDate": null,
-        "plannedDate": null,
-        "effectivePlannedDate": null,
-        "dropDate": "<set>",
-        "effectiveDropDate": "<set>",
         "estimatedMinutes": null,
         "hasChildren": false,
         "inInbox": true,
@@ -535,29 +486,6 @@
         "tags": []
       },
       {
-        "name": "GM-SubtaskAddMoveTarget",
-        "note": "",
-        "flagged": false,
-        "effectiveFlagged": false,
-        "dueDate": null,
-        "deferDate": null,
-        "effectiveDueDate": null,
-        "effectiveDeferDate": null,
-        "completionDate": null,
-        "effectiveCompletionDate": null,
-        "plannedDate": null,
-        "effectivePlannedDate": null,
-        "dropDate": null,
-        "effectiveDropDate": null,
-        "estimatedMinutes": null,
-        "hasChildren": false,
-        "inInbox": true,
-        "repetitionRule": null,
-        "project": null,
-        "parent": null,
-        "tags": []
-      },
-      {
         "name": "GM-SubtaskMoveTarget",
         "note": "",
         "flagged": false,
@@ -756,12 +684,5 @@
       }
     ]
   },
-  "created_ids": [
-    "$task:subtask_add_move"
-  ],
-  "setup_operation": "add_task",
-  "setup_params": {
-    "name": "GM-SubtaskAddMoveTarget",
-    "parent": "$task:parent_task"
-  }
+  "created_ids": []
 }

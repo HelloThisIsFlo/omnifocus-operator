@@ -1,16 +1,17 @@
 {
-  "scenario": "06-combined/03_subtask_add_move",
-  "description": "Add subtask under a task, then move it to inbox",
+  "scenario": "06-combined/05_edit_completed_task",
+  "description": "Rename and move a completed task in a single call",
   "operation": "edit_task",
   "params": {
-    "id": "$task:subtask_add_move",
+    "id": "$task:complete_target",
+    "name": "GM-CompleteTarget-Edited",
     "moveTo": {
       "position": "ending",
-      "containerId": null
+      "containerId": "$project:test_project2"
     }
   },
   "response": {
-    "name": "GM-SubtaskAddMoveTarget"
+    "name": "GM-CompleteTarget-Edited"
   },
   "state_after": {
     "tasks": [
@@ -35,6 +36,29 @@
         "repetitionRule": null,
         "project": "$project:test_project",
         "parent": "$project:test_project",
+        "tags": []
+      },
+      {
+        "name": "GM-AnchorOnCompleted",
+        "note": "",
+        "flagged": false,
+        "effectiveFlagged": false,
+        "dueDate": null,
+        "deferDate": null,
+        "effectiveDueDate": null,
+        "effectiveDeferDate": null,
+        "completionDate": null,
+        "effectiveCompletionDate": null,
+        "plannedDate": null,
+        "effectivePlannedDate": null,
+        "dropDate": null,
+        "effectiveDropDate": null,
+        "estimatedMinutes": null,
+        "hasChildren": false,
+        "inInbox": true,
+        "repetitionRule": null,
+        "project": null,
+        "parent": null,
         "tags": []
       },
       {
@@ -84,7 +108,7 @@
         "tags": []
       },
       {
-        "name": "GM-CompleteTarget",
+        "name": "GM-CompleteTarget-Edited",
         "note": "",
         "flagged": false,
         "effectiveFlagged": false,
@@ -100,10 +124,10 @@
         "effectiveDropDate": "<set>",
         "estimatedMinutes": null,
         "hasChildren": false,
-        "inInbox": true,
+        "inInbox": false,
         "repetitionRule": null,
-        "project": null,
-        "parent": null,
+        "project": "$project:test_project2",
+        "parent": "$project:test_project2",
         "tags": []
       },
       {
@@ -756,12 +780,5 @@
       }
     ]
   },
-  "created_ids": [
-    "$task:subtask_add_move"
-  ],
-  "setup_operation": "add_task",
-  "setup_params": {
-    "name": "GM-SubtaskAddMoveTarget",
-    "parent": "$task:parent_task"
-  }
+  "created_ids": []
 }

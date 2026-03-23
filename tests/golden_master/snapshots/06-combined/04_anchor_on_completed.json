@@ -1,16 +1,16 @@
 {
-  "scenario": "06-combined/03_subtask_add_move",
-  "description": "Add subtask under a task, then move it to inbox",
+  "scenario": "06-combined/04_anchor_on_completed",
+  "description": "Move task to position after a completed task (anchor on completed)",
   "operation": "edit_task",
   "params": {
-    "id": "$task:subtask_add_move",
+    "id": "$task:anchor_on_completed",
     "moveTo": {
-      "position": "ending",
-      "containerId": null
+      "position": "after",
+      "anchorId": "$task:complete_target"
     }
   },
   "response": {
-    "name": "GM-SubtaskAddMoveTarget"
+    "name": "GM-AnchorOnCompleted"
   },
   "state_after": {
     "tasks": [
@@ -35,6 +35,29 @@
         "repetitionRule": null,
         "project": "$project:test_project",
         "parent": "$project:test_project",
+        "tags": []
+      },
+      {
+        "name": "GM-AnchorOnCompleted",
+        "note": "",
+        "flagged": false,
+        "effectiveFlagged": false,
+        "dueDate": null,
+        "deferDate": null,
+        "effectiveDueDate": null,
+        "effectiveDeferDate": null,
+        "completionDate": null,
+        "effectiveCompletionDate": null,
+        "plannedDate": null,
+        "effectivePlannedDate": null,
+        "dropDate": null,
+        "effectiveDropDate": null,
+        "estimatedMinutes": null,
+        "hasChildren": false,
+        "inInbox": true,
+        "repetitionRule": null,
+        "project": null,
+        "parent": null,
         "tags": []
       },
       {
@@ -757,11 +780,11 @@
     ]
   },
   "created_ids": [
-    "$task:subtask_add_move"
+    "$task:anchor_on_completed"
   ],
   "setup_operation": "add_task",
   "setup_params": {
-    "name": "GM-SubtaskAddMoveTarget",
-    "parent": "$task:parent_task"
+    "name": "GM-AnchorOnCompleted",
+    "parent": "$project:test_project"
   }
 }

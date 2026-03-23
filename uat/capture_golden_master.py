@@ -58,7 +58,7 @@ _id_map: dict[str, str] = {}
 
 
 def _build_scenarios() -> list[dict[str, Any]]:
-    """Build ~42 scenario definitions across 7 categories using captured IDs."""
+    """Build ~49 scenario definitions across 7 categories using captured IDs."""
     return [
         # =================================================================
         # 01-add/ (6 scenarios)
@@ -286,7 +286,7 @@ def _build_scenarios() -> list[dict[str, Any]]:
             },
         },
         # =================================================================
-        # 03-move/ (7 scenarios)
+        # 03-move/ (9 scenarios)
         # =================================================================
         {
             "folder": "03-move",
@@ -393,6 +393,35 @@ def _build_scenarios() -> list[dict[str, Any]]:
                 },
             },
         },
+        # --- GM-4: hasChildren true→false when last child removed ---
+        {
+            "folder": "03-move",
+            "file": "08_remove_last_child",
+            "scenario": "03-move/08_remove_last_child",
+            "description": "Move last child to inbox so parent hasChildren becomes false",
+            "operation": "add_task",
+            "params": {"name": "GM-HasChildrenParent"},
+            "capture_id_as": "has_children_parent",
+            "followup": {
+                "operation": "add_task",
+                "params_fn": lambda: {
+                    "name": "GM-HasChildrenChild",
+                    "parent": TASK_IDS["has_children_parent"],
+                },
+                "capture_id_as": "has_children_child",
+            },
+        },
+        {
+            "folder": "03-move",
+            "file": "09_remove_last_child_verify",
+            "scenario": "03-move/09_remove_last_child_verify",
+            "description": "Verify hasChildren=false after moving last child to inbox",
+            "operation": "edit_task",
+            "params_fn": lambda: {
+                "id": TASK_IDS["has_children_child"],
+                "moveTo": {"position": "ending", "containerId": None},
+            },
+        },
         # =================================================================
         # 04-tags/ (5 scenarios)
         # =================================================================
@@ -466,7 +495,7 @@ def _build_scenarios() -> list[dict[str, Any]]:
             },
         },
         # =================================================================
-        # 05-lifecycle/ (4 scenarios)
+        # 05-lifecycle/ (6 scenarios)
         # =================================================================
         {
             "folder": "05-lifecycle",
@@ -527,8 +556,33 @@ def _build_scenarios() -> list[dict[str, Any]]:
                 "deferDate": None,
             },
         },
+        # --- GM-3: Cross-state lifecycle transitions ---
+        {
+            "folder": "05-lifecycle",
+            "file": "05_complete_dropped",
+            "scenario": "05-lifecycle/05_complete_dropped",
+            "description": "Complete a task that was already dropped",
+            "operation": "edit_task",
+            # drop_target was dropped in 05-lifecycle/02_drop
+            "params_fn": lambda: {
+                "id": TASK_IDS["drop_target"],
+                "lifecycle": "complete",
+            },
+        },
+        {
+            "folder": "05-lifecycle",
+            "file": "06_drop_completed",
+            "scenario": "05-lifecycle/06_drop_completed",
+            "description": "Drop a task that was already completed",
+            "operation": "edit_task",
+            # complete_target was completed in 05-lifecycle/01_complete
+            "params_fn": lambda: {
+                "id": TASK_IDS["complete_target"],
+                "lifecycle": "drop",
+            },
+        },
         # =================================================================
-        # 06-combined/ (3 scenarios)
+        # 06-combined/ (5 scenarios)
         # =================================================================
         {
             "folder": "06-combined",
@@ -584,8 +638,44 @@ def _build_scenarios() -> list[dict[str, Any]]:
                 },
             },
         },
+        # --- GM-1: Anchor on completed/dropped task ---
+        {
+            "folder": "06-combined",
+            "file": "04_anchor_on_completed",
+            "scenario": "06-combined/04_anchor_on_completed",
+            "description": "Move task to position after a completed task (anchor on completed)",
+            "operation": "add_task",
+            "params_fn": lambda: {
+                "name": "GM-AnchorOnCompleted",
+                "parent": GM_PROJECT_ID,
+            },
+            "capture_id_as": "anchor_on_completed",
+            "followup": {
+                "operation": "edit_task",
+                # complete_target was completed in 05-lifecycle/01_complete,
+                # then dropped in 06_drop_completed — but it's still a valid anchor.
+                "params_fn": lambda: {
+                    "id": TASK_IDS["anchor_on_completed"],
+                    "moveTo": {"position": "after", "anchorId": TASK_IDS["complete_target"]},
+                },
+            },
+        },
+        # --- GM-5: Combined edit + move on completed task ---
+        {
+            "folder": "06-combined",
+            "file": "05_edit_completed_task",
+            "scenario": "06-combined/05_edit_completed_task",
+            "description": "Rename and move a completed task in a single call",
+            "operation": "edit_task",
+            # complete_target is completed (then dropped) — edit + move it
+            "params_fn": lambda: {
+                "id": TASK_IDS["complete_target"],
+                "name": "GM-CompleteTarget-Edited",
+                "moveTo": {"position": "ending", "containerId": GM_PROJECT2_ID},
+            },
+        },
         # =================================================================
-        # 07-inheritance/ (7 scenarios: 01-04 simple, 03 has chain, 05a-05c deep nesting)
+        # 07-inheritance/ (8 scenarios: 01-04, 03 chain, 05a-c nesting, 06 move)
         # =================================================================
         {
             "folder": "07-inheritance",
@@ -678,6 +768,26 @@ def _build_scenarios() -> list[dict[str, Any]]:
                 "parent": TASK_IDS["deep_l2"],
             },
             "capture_id_as": "deep_l3",
+        },
+        # --- GM-6: Effective date recalculation after move ---
+        {
+            "folder": "07-inheritance",
+            "file": "06_effective_date_after_move",
+            "scenario": "07-inheritance/06_effective_date_after_move",
+            "description": "Effective dates clear after move to undated project",
+            "operation": "add_task",
+            "params_fn": lambda: {
+                "name": "GM-DateInheritMove",
+                "parent": GM_DATED_PROJECT_ID,
+            },
+            "capture_id_as": "date_inherit_move",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["date_inherit_move"],
+                    "moveTo": {"position": "ending", "containerId": GM_PROJECT2_ID},
+                },
+            },
         },
     ]
 
@@ -910,7 +1020,7 @@ def _phase_1_introduction() -> None:
     print("What will happen:")
     print("  1. You verify 3 projects and 2 tags exist in OmniFocus")
     print("  2. The script verifies each entity exists")
-    print("  3. ~42 scenarios run automatically across 7 categories")
+    print("  3. ~50 scenarios run automatically across 7 categories")
     print("  4. Fixture JSON files are written to tests/golden_master/snapshots/")
     print("     organized in numbered subfolders (01-add/ through 07-inheritance/)")
     print("  5. Test tasks are consolidated for easy cleanup")
@@ -1122,7 +1232,7 @@ def _phase_3_confirmation() -> bool:
     print("  Phase 3: Scenario Preview")
     print("-" * 60)
     print()
-    print("The following ~42 scenarios will be executed across 7 categories:")
+    print("The following ~50 scenarios will be executed across 7 categories:")
     print()
     print("  01-add/ (6 scenarios):")
     print("    01. Inbox task (minimal)")
@@ -1144,7 +1254,7 @@ def _phase_3_confirmation() -> bool:
     print("    09. Clear estimated minutes (null)")
     print("    10. Set planned date")
     print()
-    print("  03-move/ (7 scenarios):")
+    print("  03-move/ (9 scenarios):")
     print("    01. To project (ending)")
     print("    02. To inbox")
     print("    03. To beginning")
@@ -1152,6 +1262,7 @@ def _phase_3_confirmation() -> bool:
     print("    05. Before anchor task")
     print("    06. Between projects")
     print("    07. Task as parent")
+    print("    08-09. Remove last child (hasChildren false)")
     print()
     print("  04-tags/ (5 scenarios):")
     print("    01. Add tags")
@@ -1160,23 +1271,28 @@ def _phase_3_confirmation() -> bool:
     print("    04. Add duplicate tag (no-op)")
     print("    05. Remove absent tag (no-op)")
     print()
-    print("  05-lifecycle/ (4 scenarios):")
+    print("  05-lifecycle/ (6 scenarios):")
     print("    01. Complete")
     print("    02. Drop")
     print("    03. Defer (blocked)")
     print("    04. Clear defer (available)")
+    print("    05. Complete a dropped task")
+    print("    06. Drop a completed task")
     print()
-    print("  06-combined/ (3 scenarios):")
+    print("  06-combined/ (5 scenarios):")
     print("    01. Fields + move")
     print("    02. Fields + lifecycle")
     print("    03. Subtask add + move out")
+    print("    04. Anchor on completed/dropped task")
+    print("    05. Edit + move completed task")
     print()
-    print("  07-inheritance/ (7 scenarios):")
+    print("  07-inheritance/ (8 scenarios):")
     print("    01. Effective due date from project")
     print("    02. Effective flagged from project")
     print("    03. Flagged chain (parent task -> child)")
     print("    04. Effective defer date from project")
     print("    05a-c. Deep nesting (3 levels)")
+    print("    06. Effective dates clear after move to undated project")
     print()
 
     scenarios = _build_scenarios()
