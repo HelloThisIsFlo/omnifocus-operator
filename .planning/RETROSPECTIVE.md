@@ -144,6 +144,58 @@
 
 ---
 
+## Milestone: v1.2.1 -- Architectural Cleanup
+
+**Shipped:** 2026-03-23
+**Phases:** 11 | **Plans:** 27 executed
+
+### What Was Built
+- Write model strictness (`extra="forbid"`) on all 5 write specs with improved error handling
+- Three-layer model taxonomy in contracts/ package (Command/RepoPayload/RepoResult/Result)
+- Service decomposition: monolithic 669-line service.py → 4-module service/ package with DI
+- Test double isolation: 5 doubles relocated from src/ to tests/doubles/ with structural import barrier
+- Stateful InMemoryBridge replacing InMemoryRepository — write tests exercise real serialization
+- StubBridge as purpose-built canned-response double; InMemoryBridge purely stateful
+- Patch[T]/PatchOrClear[T] type aliases making patch semantics self-documenting
+- Golden master contract testing: 43 scenarios in 7 categories proving InMemoryBridge ≡ RealBridge
+- 9 fields graduated from VOLATILE/UNCOMPUTED with ancestor-chain inheritance
+- @pytest.mark.snapshot fixture composition eliminating hundreds of lines of test boilerplate
+
+### What Worked
+- Dependency ordering (STRCT→MODL→PIPE→SVCR) validated each concern in isolation before building on it
+- Gap closure plans (Phases 22, 26, 27) caught real integration issues — StubBridge extraction, fixture refactoring, raw format conversion all emerged from UAT
+- Golden master approach proved powerful — captured real OmniFocus behavior once, verified forever in CI
+- Quick task mechanism handled 7 urgent fixes without disrupting the main roadmap
+- Phases 25-28 grew organically from earlier phase discussions — roadmap evolution was disciplined (formal additions, not scope creep)
+
+### What Was Inefficient
+- Phase 27 VERIFICATION.md never re-run after gap closure plans fixed the issues — stale documentation artifact
+- Phase 26 grew from 2 to 5 plans due to UAT discoveries (StubBridge split, fixture refactoring) — could have been anticipated with deeper upfront analysis of test coupling
+- ROADMAP.md header said "Phases 18-24" but milestone actually spanned 18-28 — headers became stale as phases were added
+- Progress table column alignment inconsistency for v1.2.1 phases (missing milestone column in some rows)
+
+### Patterns Established
+- Method Object pattern (`_VerbNounPipeline`) for service use cases — created, executed, discarded
+- contracts/ package as the canonical location for cross-layer types and protocols
+- `@pytest.mark.snapshot` + fixture chain (bridge→repo→service) for declarative test setup
+- Golden master capture script with numbered subfolder categories (01-add through 07-inheritance)
+- Presence-check sentinel normalization (`"<set>"`) for verifying nullable date fields without value comparison
+- `changed_fields()` on CommandModel complementing `is_set()` TypeGuard for field inspection
+
+### Key Lessons
+1. **Dependency ordering for refactoring milestones is critical** — validating strictness before renaming, typed payloads before pipeline unification, made each phase build on verified foundations
+2. **Golden master > unit test mocks for behavioral equivalence** — 43 scenarios caught drift that targeted unit tests would miss
+3. **Quick tasks are essential for milestone hygiene** — 7 urgent fixes handled without derailing the 11-phase roadmap
+4. **Gap closure plans are a feature** — Phases 26 and 27 both grew through UAT-driven gap closure, and the result was dramatically better test infrastructure
+5. **Structural isolation > convention** — moving test doubles to tests/doubles/ made production-test boundary impossible to violate, not just discouraged
+
+### Cost Observations
+- Model mix: ~65% opus (research, planning, complex phases), ~35% sonnet (execution, validation)
+- Sessions: ~15-20 across 8 days
+- Notable: Phase 22 (service decomposition) was the most complex — 4 plans + gap closure. Phase 28 (golden master expansion) required UAT capture sessions with the live database.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -153,6 +205,7 @@
 | v1.0 | 11 | 22 | First milestone -- established GSD + TDD workflow |
 | v1.1 | 4 | 11 | Fastest milestone -- research artifacts enabled single-day execution |
 | v1.2 | 6 | 21 | First write milestone -- decimal phases (16.1, 16.2) for mid-milestone restructuring |
+| v1.2.1 | 11 | 27 | First refactoring milestone -- dependency-ordered phases, golden master contract testing |
 
 ### Cumulative Quality
 
@@ -161,11 +214,14 @@
 | v1.0 | 203+ (177 pytest + 26 vitest) | ~98% | 4 (all low severity) |
 | v1.1 | 339 (313 pytest + 26 vitest) | ~98% | 0 |
 | v1.2 | 527 (501 pytest + 26 vitest) | ~94% | 3 (LIFE-03 deferred, stale docs, tag exclusivity) |
+| v1.2.1 | 723 (697 pytest + 26 vitest) | ~94% | 1 (stale Phase 27 VERIFICATION.md) |
 
 ### Top Lessons (Verified Across Milestones)
 
 1. Research-first approach prevents rework (verified in v1.0, v1.1, v1.2 -- LIFE-03 was the exception that proves the rule)
-2. Fine-grained plans (~4 min avg) keep momentum and reduce context-switching cost (consistent across all 3 milestones)
-3. Incremental migration beats big-bang (verified in v1.1 Phase 10, v1.2 Phase 16.1 actions refactor)
-4. Gap closure plans catch integration issues early when forced by validation (verified in v1.1, v1.2)
+2. Fine-grained plans (~4 min avg) keep momentum and reduce context-switching cost (consistent across all 4 milestones)
+3. Incremental migration beats big-bang (verified in v1.1 Phase 10, v1.2 Phase 16.1 actions refactor, v1.2.1 dependency ordering)
+4. Gap closure plans catch integration issues early when forced by validation (verified in v1.1, v1.2, v1.2.1 Phases 22/26/27)
 5. Move complexity to Python, keep bridge dumb (established v1.2 -- diff-based tags proved the pattern)
+6. Structural isolation > convention for test boundaries (established v1.2.1 -- physical relocation beats import discipline)
+7. Golden master > targeted mocks for behavioral equivalence (established v1.2.1 -- 43 scenarios catch drift that unit tests miss)

@@ -37,25 +37,21 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 - ✓ Diff-based tag computation in Python service layer, bridge receives only addTagIds/removeTagIds — v1.2
 - ✓ Task lifecycle (complete/drop) with no-op detection and educational warnings — v1.2
 - ✓ Bridge script write commands (add_task, edit_task) with request file payloads — v1.2
-- ✓ Write pipeline unification: symmetric add/edit signatures, BridgeWriteMixin, exclude_unset standardization, explicit protocol conformance — v1.2.1 Phase 21
-- ✓ Service decomposition: service.py → service/ package with resolve, domain, payload modules; orchestrator is pure orchestration — v1.2.1 Phase 22
-- ✓ SimulatorBridge removed from production exports, bridge factory eliminated, PYTEST guard in RealBridge.__init__ — v1.2.1 Phase 23
-- ✓ All test doubles (InMemoryBridge, SimulatorBridge, ConstantMtimeSource, InMemoryRepository) relocated from src/ to tests/doubles/ — v1.2.1 Phase 24
-- ✓ InMemoryRepository deleted; stateful InMemoryBridge handles add_task/edit_task commands, write tests exercise real serialization path — v1.2.1 Phase 26
-- ✓ StubBridge extracted as single-purpose canned-response double; InMemoryBridge is purely stateful — v1.2.1 Phase 26
-- ✓ @pytest.mark.snapshot marker + fixture composition (bridge→repo→service) eliminates test boilerplate — v1.2.1 Phase 26
+- ✓ Write model strictness: `extra="forbid"` catches unknown agent fields at validation time — v1.2.1
+- ✓ Warning string consolidation into agent_messages/ package with AST integrity tests — v1.2.1
+- ✓ Three-layer model taxonomy (Command/RepoPayload/RepoResult/Result) in contracts/ package — v1.2.1
+- ✓ Write pipeline unification: symmetric add/edit signatures, BridgeWriteMixin, exclude_unset — v1.2.1
+- ✓ Service decomposition: service.py → service/ package (Resolver, DomainLogic, PayloadBuilder, orchestrator) — v1.2.1
+- ✓ SimulatorBridge removed from exports, bridge factory eliminated, PYTEST guard in RealBridge — v1.2.1
+- ✓ All test doubles relocated from src/ to tests/doubles/ with structural import barrier — v1.2.1
+- ✓ Patch[T]/PatchOrClear[T] type aliases make patch semantics self-documenting in annotations — v1.2.1
+- ✓ InMemoryRepository deleted; stateful InMemoryBridge exercises real serialization in tests — v1.2.1
+- ✓ StubBridge extracted as canned-response double; InMemoryBridge is purely stateful — v1.2.1
+- ✓ @pytest.mark.snapshot marker + fixture composition eliminates test boilerplate — v1.2.1
+- ✓ Golden master contract testing: 43 scenarios proving InMemoryBridge ≡ RealBridge equivalence — v1.2.1
+- ✓ 9 fields graduated from VOLATILE/UNCOMPUTED to verified via ancestor-chain inheritance — v1.2.1
 
 ### Active
-
-## Current Milestone: v1.2.1 Architectural Cleanup
-
-**Goal:** Clean up write pipeline asymmetries and decompose the service layer into well-bounded modules. No new tools, no behavioral changes — pure internal quality.
-
-**Target features:**
-- Unify service-repository write interface (symmetric add/edit signatures)
-- Decompose service layer (validation, domain logic, format conversion as separate modules)
-- Strict write model validation (`extra="forbid"` on write models)
-- Remove InMemoryBridge from production exports
 
 <!-- Future milestones -->
 - [ ] SQL filtering for tasks, projects, tags (v1.3)
@@ -89,12 +85,14 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 ## Context
 
-Shipped v1.2 with ~20,189 LOC Python, ~215k LOC JS (bridge + deps), ~28k TS (tests).
+Shipped v1.2.1 with ~16,381 LOC Python (src + tests), ~215k LOC JS (bridge + deps), ~28k TS (tests).
 Tech stack: Python 3.12, uv, Pydantic v2, MCP SDK (FastMCP), OmniJS bridge, SQLite3 (stdlib).
-501 pytest tests, 26 Vitest tests, UAT passed on all phases.
+697 pytest tests, 26 Vitest tests, UAT passed on all phases.
 Real OmniFocus database: ~2,400 tasks, ~363 projects, ~64 tags, ~79 folders.
 Read path: SQLite (default, ~46ms). Write path: OmniJS bridge with write-through guarantee.
 6 MCP tools: get_all, get_task, get_project, get_tag, add_tasks, edit_tasks.
+Architecture: service/ package (Resolver, DomainLogic, PayloadBuilder, orchestrator), contracts/ package (Command, RepoPayload, Result models), tests/doubles/ (InMemoryBridge, StubBridge, SimulatorBridge).
+Golden master: 43 scenarios in 7 categories, contract tests verify InMemoryBridge matches RealBridge.
 
 ## Constraints
 
@@ -133,6 +131,11 @@ Read path: SQLite (default, ~46ms). Write path: OmniJS bridge with write-through
 | Lifecycle via Literal type | `lifecycle: Literal["complete", "drop"]` — Pydantic validates, no dedicated enum needed | ✓ Good — minimal surface area |
 | Write-through guarantee | `@_ensures_write_through` decorator ensures writes block until SQLite confirms; reads never wait | ✓ Good — consistent read-after-write |
 | "Add" verb for creation tools | Tool names use `add_*` (not `create_*`). "Add" is domain-native (OmniJS, task management UX), matches natural voice ("add a task"), and forms coherent verb system (add/edit/delete). Tool descriptions use natural language freely for discoverability. Write-side model names align: `AddTask*`, `EditTask*` | Decision locked pre-publish — rename `CreateTask*` → `AddTask*` pending |
+| Service as package with DI | service.py → service/ with Resolver, DomainLogic, PayloadBuilder injected into orchestrator. Each module independently testable | ✓ Good — v1.2.1, enables targeted testing and clear boundaries |
+| Method Object pattern for use cases | Every use case gets a `_VerbNounPipeline` class; created, executed, discarded in one call. Mutable self is fine | ✓ Good — v1.2.1, clean pipeline pattern |
+| Golden master for contract testing | Capture RealBridge behavior via UAT, commit as fixtures, verify InMemoryBridge matches in CI. Source of truth = OmniFocus actual behavior | ✓ Good — v1.2.1, 43 scenarios, catches drift automatically |
+| Structural import barrier for test doubles | Test doubles in tests/doubles/, production code in src/. Structural impossibility of importing test code in production | ✓ Good — v1.2.1, eliminates a class of mistakes |
+| Patch[T]/PatchOrClear[T] type aliases | Make three-way semantics (unset/null/value) visible in annotations. Identical JSON schema, pure readability gain | ✓ Good — v1.2.1, self-documenting models |
 
 ---
-*Last updated: 2026-03-21 after Phase 26 — InMemoryRepository deleted, stateful InMemoryBridge, StubBridge extraction, @pytest.mark.snapshot fixture composition*
+*Last updated: 2026-03-23 after v1.2.1 milestone — architectural cleanup complete, 697 tests, golden master contract testing*
