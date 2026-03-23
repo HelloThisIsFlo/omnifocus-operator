@@ -5,20 +5,22 @@ description: Run UAT regression tests for OmniFocus Operator MCP tools against t
 
 # UAT Regression
 
+**⚠️ This skill operates against the user's real OmniFocus database.** It must ONLY be run when explicitly requested by the user. An agent must never autonomously decide to invoke this skill (e.g., after code changes, as part of a verification step, etc.).
+
 Run UAT regression tests for OmniFocus Operator MCP tools against live OmniFocus. Tests are organized into domain-specific suites that run independently.
 
 ## Available Test Suites
 
 | Suite | File | Tests | Covers |
 |-------|------|------:|--------|
-| **v1.2 Combined** | `tests/v1.2-combined.md` | 87 | **Full milestone regression** — lookups, creation, edits, tags, moves, lifecycle, integration |
+| **v1.2 Combined** *(composite)* | `tests/v1.2-combined.md` | 95 | **Full milestone regression** — lookups, creation, edits, tags, moves, lifecycle, integration |
 | Read Lookups | `tests/read-lookups.md` | 7 | get_task, get_project, get_tag — happy path + not-found errors |
 | Task Creation | `tests/task-creation.md` | 14 | add_tasks — inbox, parent, all fields, tag resolution, errors, batch limit |
 | Integration Flows | `tests/integration-flows.md` | 8 | End-to-end write-through: create→edit→move→tags→lifecycle→get_all |
 | Edit Operations | `tests/edit-operations.md` | 23 | Field editing, patch semantics, no-ops, status warnings, errors, combos |
 | Tag Operations | `tests/tag-operations.md` | 15 | Tag add/remove/replace, ambiguity, no-ops, errors |
 | Move Operations | `tests/move-operations.md` | 16 | All 5 move modes, cross-level, circular refs, completed/dropped movement |
-| Lifecycle | `tests/lifecycle.md` | 10 | Complete, drop, cross-state, repeating tasks, validation |
+| Lifecycle | `tests/lifecycle.md` | 12 | Complete, drop, cross-state, repeating tasks, validation |
 
 ## Flow
 
@@ -34,6 +36,26 @@ Run UAT regression tests for OmniFocus Operator MCP tools against live OmniFocus
    3. Move any stray leaf tasks created during testing (e.g., B1-InboxTask, B4-TagByName — tasks created in the inbox without a test parent) under it too
    4. Tell the user: "All test tasks are now under '⚠️ DELETE THIS AFTER UAT' in your inbox. Delete that one task to clean up everything."
    5. **If moves fail** (e.g., move operations are broken): skip consolidation and instead list all task names/IDs the user needs to manually delete.
+
+## Composite Suite Handling
+
+When a selected suite file contains a `## Composite Suite` heading, it is a manifest referencing multiple base suites — not a test file itself. Use this flow instead of the standard single-suite flow.
+
+1. **Detection**: After reading the selected suite file, check for the `## Composite Suite` heading. If present, parse the manifest table to get the ordered list of base suite files and their section prefixes.
+
+2. **Read all base suites**: Load every base suite file listed in the manifest.
+
+3. **Consolidated discovery**: Perform a single `get_all` call that satisfies the discovery needs of all base suites (tags, projects, tag-lookups, ambiguity checks). Share the discovered entities across all suites.
+
+4. **Create all task hierarchies upfront**: Each base suite keeps its own parent task name (UAT-ReadLookups, UAT-EditOps, etc.) — do not rename or renumber them. Create all hierarchies from all suites before running any tests.
+
+5. **Consolidated manual actions**: Collect all manual actions from all base suites into one numbered list. Present it to the user once, get one confirmation, then proceed hands-off.
+
+6. **Sequential test execution**: Run each base suite's tests in manifest order (A, B, C, ...). Within each suite, follow its own test ordering. Use task references from that suite's hierarchy.
+
+7. **Consolidated report**: One report table with section prefixes (A-1, A-2a, B-1, B-2a, C-1, ...). Insert bold section-header rows between suites (e.g., **`A — Read Lookups`**). Source each suite's rows from its `## Report Table Rows` section. Totals cover all suites combined.
+
+8. **Single cleanup umbrella**: Create one `⚠️ DELETE THIS AFTER UAT` task. Move all parent tasks from all suites under it. Same cleanup rules as the standard flow.
 
 ## Role: Black-Box Tester
 

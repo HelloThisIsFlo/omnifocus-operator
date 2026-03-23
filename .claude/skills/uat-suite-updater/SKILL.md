@@ -87,6 +87,7 @@ Create (or update) the test suite file following the exact format of existing su
 2. Update `.claude/skills/uat-regression/SKILL.md`:
    - Add the suite to the "Available Test Suites" table
    - Add relevant trigger phrases to the `description` field in frontmatter
+3. Remind the user to add the new suite to any relevant composite manifests (e.g., `tests/v1.2-combined.md`). Composite suites (files with a `## Composite Suite` heading) are manifests that reference base suites — don't modify them as if they contain tests.
 
 **For updating an existing suite:**
 1. Edit the existing file — add new test sections, update the report table rows
