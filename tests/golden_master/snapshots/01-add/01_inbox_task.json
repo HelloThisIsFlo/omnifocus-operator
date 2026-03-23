@@ -50,7 +50,7 @@
         "dropDate": null,
         "effectiveDropDate": null,
         "estimatedMinutes": null,
-        "hasChildren": true,
+        "hasChildren": false,
         "lastReviewDate": "2026-03-21T00:00:00.000Z",
         "nextReviewDate": "2026-03-28T00:00:00.000Z",
         "reviewInterval": {
