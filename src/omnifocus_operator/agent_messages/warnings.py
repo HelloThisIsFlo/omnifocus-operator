@@ -52,7 +52,7 @@ LIFECYCLE_REPEATING_COMPLETE = (
 )
 
 LIFECYCLE_REPEATING_DROP = (
-    "Repeating task \u2014 this occurrence was skipped, "
+    "Repeating task -- this occurrence was skipped, "
     "next occurrence created.\n"
     "If the user wanted to drop the entire repeating "
     "sequence, let them know this must be done in the "
