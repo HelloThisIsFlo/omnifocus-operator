@@ -328,16 +328,21 @@ class InMemoryBridge(Bridge):
                 if tid not in existing_ids:
                     task["tags"].append({"id": tid, "name": self._resolve_tag_name(tid)})
 
-        # Lifecycle
+        # Lifecycle — terminal states are mutually exclusive: completing
+        # clears drop dates, dropping clears completion dates.
         lifecycle = params.get("lifecycle")
         if lifecycle == "complete":
             task["status"] = "Completed"
             task["completionDate"] = datetime.now(tz=UTC).isoformat()
             task["effectiveCompletionDate"] = task["completionDate"]
+            task["dropDate"] = None
+            task["effectiveDropDate"] = None
         elif lifecycle == "drop":
             task["status"] = "Dropped"
             task["dropDate"] = datetime.now(tz=UTC).isoformat()
             task["effectiveDropDate"] = task["dropDate"]
+            task["completionDate"] = None
+            task["effectiveCompletionDate"] = None
 
         # Move (raw string IDs)
         if "moveTo" in params:
