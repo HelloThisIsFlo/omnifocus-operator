@@ -3,10 +3,10 @@
   "description": "Move task to position after an anchor task",
   "operation": "edit_task",
   "params": {
-    "id": "j9Zr9tBKQh8",
+    "id": "$task:move_begin_target",
     "moveTo": {
       "position": "after",
-      "anchorId": "h6EMC-VzMfG"
+      "anchorId": "$task:parent_task"
     }
   },
   "response": {
@@ -33,8 +33,8 @@
         "hasChildren": false,
         "inInbox": false,
         "repetitionRule": null,
-        "project": "bW2BCrF4TAz",
-        "parent": "bW2BCrF4TAz",
+        "project": "$project:test_project",
+        "parent": "$project:test_project",
         "tags": []
       },
       {
@@ -148,15 +148,15 @@
         "hasChildren": false,
         "inInbox": false,
         "repetitionRule": null,
-        "project": "bW2BCrF4TAz",
-        "parent": "bW2BCrF4TAz",
+        "project": "$project:test_project",
+        "parent": "$project:test_project",
         "tags": [
           {
-            "id": "c0W69oNhnmB",
+            "id": "$tag:tag1",
             "name": "\ud83e\uddea GM-Tag1"
           },
           {
-            "id": "ft1Be0WAcQr",
+            "id": "$tag:tag2",
             "name": "\ud83e\uddea GM-Tag2"
           }
         ]
@@ -180,8 +180,8 @@
         "hasChildren": false,
         "inInbox": false,
         "repetitionRule": null,
-        "project": "bW2BCrF4TAz",
-        "parent": "bW2BCrF4TAz",
+        "project": "$project:test_project",
+        "parent": "$project:test_project",
         "tags": []
       },
       {
@@ -249,11 +249,11 @@
         "hasChildren": false,
         "inInbox": false,
         "repetitionRule": null,
-        "project": "bW2BCrF4TAz",
-        "parent": "bW2BCrF4TAz",
+        "project": "$project:test_project",
+        "parent": "$project:test_project",
         "tags": [
           {
-            "id": "c0W69oNhnmB",
+            "id": "$tag:tag1",
             "name": "\ud83e\uddea GM-Tag1"
           }
         ]
@@ -277,8 +277,8 @@
         "hasChildren": false,
         "inInbox": false,
         "repetitionRule": null,
-        "project": "bW2BCrF4TAz",
-        "parent": "bW2BCrF4TAz",
+        "project": "$project:test_project",
+        "parent": "$project:test_project",
         "tags": []
       },
       {
@@ -350,11 +350,11 @@
         "parent": null,
         "tags": [
           {
-            "id": "c0W69oNhnmB",
+            "id": "$tag:tag1",
             "name": "\ud83e\uddea GM-Tag1"
           },
           {
-            "id": "ft1Be0WAcQr",
+            "id": "$tag:tag2",
             "name": "\ud83e\uddea GM-Tag2"
           }
         ]
@@ -383,7 +383,7 @@
           "steps": 1,
           "unit": "weeks"
         },
-        "folder": "cqHTMJEOCF5",
+        "folder": "$folder:operator_gm_tests",
         "tags": []
       },
       {
@@ -408,7 +408,7 @@
           "steps": 1,
           "unit": "weeks"
         },
-        "folder": "cqHTMJEOCF5",
+        "folder": "$folder:operator_gm_tests",
         "tags": []
       },
       {
@@ -433,7 +433,7 @@
           "steps": 1,
           "unit": "weeks"
         },
-        "folder": "cqHTMJEOCF5",
+        "folder": "$folder:operator_gm_tests",
         "tags": []
       }
     ],
@@ -442,13 +442,13 @@
         "name": "\ud83e\uddea GM-Tag1",
         "status": "Active",
         "childrenAreMutuallyExclusive": false,
-        "parent": "gX5jz77Zqk9"
+        "parent": "$tag_group:sandbox"
       },
       {
         "name": "\ud83e\uddea GM-Tag2",
         "status": "Active",
         "childrenAreMutuallyExclusive": false,
-        "parent": "gX5jz77Zqk9"
+        "parent": "$tag_group:sandbox"
       }
     ]
   },

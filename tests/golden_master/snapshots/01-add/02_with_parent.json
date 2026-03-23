@@ -4,7 +4,7 @@
   "operation": "add_task",
   "params": {
     "name": "GM-ParentTask",
-    "parent": "bW2BCrF4TAz"
+    "parent": "$project:test_project"
   },
   "response": {
     "name": "GM-ParentTask"
@@ -53,8 +53,8 @@
         "hasChildren": false,
         "inInbox": false,
         "repetitionRule": null,
-        "project": "bW2BCrF4TAz",
-        "parent": "bW2BCrF4TAz",
+        "project": "$project:test_project",
+        "parent": "$project:test_project",
         "tags": []
       }
     ],
@@ -81,7 +81,7 @@
           "steps": 1,
           "unit": "weeks"
         },
-        "folder": "cqHTMJEOCF5",
+        "folder": "$folder:operator_gm_tests",
         "tags": []
       },
       {
@@ -106,7 +106,7 @@
           "steps": 1,
           "unit": "weeks"
         },
-        "folder": "cqHTMJEOCF5",
+        "folder": "$folder:operator_gm_tests",
         "tags": []
       },
       {
@@ -131,7 +131,7 @@
           "steps": 1,
           "unit": "weeks"
         },
-        "folder": "cqHTMJEOCF5",
+        "folder": "$folder:operator_gm_tests",
         "tags": []
       }
     ],
@@ -140,17 +140,17 @@
         "name": "\ud83e\uddea GM-Tag1",
         "status": "Active",
         "childrenAreMutuallyExclusive": false,
-        "parent": "gX5jz77Zqk9"
+        "parent": "$tag_group:sandbox"
       },
       {
         "name": "\ud83e\uddea GM-Tag2",
         "status": "Active",
         "childrenAreMutuallyExclusive": false,
-        "parent": "gX5jz77Zqk9"
+        "parent": "$tag_group:sandbox"
       }
     ]
   },
   "created_ids": [
-    "h6EMC-VzMfG"
+    "$task:parent_task"
   ]
 }

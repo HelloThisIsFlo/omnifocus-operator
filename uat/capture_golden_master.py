@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import shutil
 import sys
 from datetime import UTC, datetime
@@ -19,6 +20,9 @@ from typing import Any
 
 from omnifocus_operator.bridge.real import DEFAULT_IPC_DIR, RealBridge
 from tests.golden_master.normalize import (
+    UNCOMPUTED_PROJECT_FIELDS,
+    VOLATILE_PROJECT_FIELDS,
+    VOLATILE_TAG_FIELDS,
     filter_to_known_ids,
     normalize_response,
     normalize_state,
@@ -46,6 +50,11 @@ TASK_IDS: dict[str, str] = {}
 known_task_ids: set[str] = set()
 known_project_ids: set[str] = set()
 known_tag_ids: set[str] = set()
+
+# Symbolic ID map: real OmniFocus ID → stable symbolic ref (e.g. "$project:test_project").
+# Populated during Phase 2 (projects/tags/external refs) and Phase 4 (tasks).
+# Applied before writing fixtures so re-captures produce identical output.
+_id_map: dict[str, str] = {}
 
 
 def _build_scenarios() -> list[dict[str, Any]]:
@@ -703,6 +712,96 @@ def _validate_dated_project(project: dict[str, Any]) -> list[str]:
     return problems
 
 
+# ---------------------------------------------------------------------------
+# Symbolic ID helpers — stable IDs for diff-friendly snapshots
+# ---------------------------------------------------------------------------
+
+# Fields to strip from initial_state entities (volatile timestamps + uncomputed).
+# We keep "id" (needed to seed InMemoryBridge) but strip everything else that
+# causes diff noise on re-capture.
+_INITIAL_STATE_STRIP_PROJECT = (VOLATILE_PROJECT_FIELDS - {"id"}) | UNCOMPUTED_PROJECT_FIELDS
+_INITIAL_STATE_STRIP_TAG = VOLATILE_TAG_FIELDS - {"id"}
+
+
+def _symbolize_ids(data: Any) -> Any:
+    """Recursively replace real OmniFocus IDs with stable symbolic refs.
+
+    Exact string match only — safe because OmniFocus IDs are random
+    alphanumeric strings that won't collide with task names or other values.
+    """
+    if isinstance(data, str):
+        return _id_map.get(data, data)
+    if isinstance(data, list):
+        return [_symbolize_ids(item) for item in data]
+    if isinstance(data, dict):
+        return {k: _symbolize_ids(v) for k, v in data.items()}
+    return data
+
+
+def _normalize_initial_state(state: dict[str, Any]) -> dict[str, Any]:
+    """Strip volatile/uncomputed fields from initial_state, keeping id.
+
+    initial_state.json needs ``id`` for seeding InMemoryBridge, but fields
+    like url, added, modified, taskStatus, nextTask are noise that changes
+    on every capture.
+    """
+    result: dict[str, Any] = {}
+    result["tasks"] = list(state.get("tasks", []))  # empty at initial capture
+
+    result["projects"] = [
+        {k: v for k, v in p.items() if k not in _INITIAL_STATE_STRIP_PROJECT}
+        for p in state.get("projects", [])
+    ]
+    result["tags"] = [
+        {k: v for k, v in t.items() if k not in _INITIAL_STATE_STRIP_TAG}
+        for t in state.get("tags", [])
+    ]
+    return result
+
+
+def _populate_id_map_from_setup(state: dict[str, Any]) -> None:
+    """Build the symbolic ID map for projects, tags, and external refs.
+
+    Called after Phase 2 discovers test entities.  Uses the full get_all
+    state to look up folder and parent-tag names for readable symbolic refs.
+    """
+    # Projects
+    _id_map[GM_PROJECT_ID] = "$project:test_project"
+    _id_map[GM_PROJECT2_ID] = "$project:test_project2"
+    _id_map[GM_DATED_PROJECT_ID] = "$project:dated_project"
+
+    # Tags
+    _id_map[GM_TAG1_ID] = "$tag:tag1"
+    _id_map[GM_TAG2_ID] = "$tag:tag2"
+
+    # External: folders referenced by test projects
+    folders_by_id = {f["id"]: f for f in state.get("folders", [])}
+    for p in state.get("projects", []):
+        folder_id = p.get("folder")
+        if folder_id and folder_id not in _id_map:
+            folder = folders_by_id.get(folder_id)
+            slug = _slugify(folder["name"]) if folder else "unknown"
+            _id_map[folder_id] = f"$folder:{slug}"
+
+    # External: parent tags of test tags
+    tags_by_id = {t["id"]: t for t in state.get("tags", [])}
+    for t in state.get("tags", []):
+        parent_id = t.get("parent")
+        if parent_id and parent_id not in _id_map:
+            parent = tags_by_id.get(parent_id)
+            slug = _slugify(parent["name"]) if parent else "unknown"
+            _id_map[parent_id] = f"$tag_group:{slug}"
+
+
+def _slugify(name: str) -> str:
+    """Convert an entity name to a stable slug for symbolic IDs."""
+    # Strip emoji prefix (🧪 etc.) and leading/trailing whitespace
+    name = re.sub(r"^[\U0001f000-\U0001ffff\s]+", "", name).strip()
+    # Lowercase, replace non-alphanumeric with underscores, collapse
+    slug = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
+    return slug or "unknown"
+
+
 async def _capture_scenario(
     bridge: RealBridge,
     scenario: dict[str, Any],
@@ -725,6 +824,7 @@ async def _capture_scenario(
         capture_key = scenario.get("capture_id_as")
         if capture_key:
             TASK_IDS[capture_key] = response["id"]
+            _id_map[response["id"]] = f"$task:{capture_key}"
             known_task_ids.add(response["id"])
 
     # If there's a followup (e.g., add_task then edit_task), run it
@@ -740,6 +840,7 @@ async def _capture_scenario(
             followup_capture_key = followup.get("capture_id_as")
             if followup_capture_key:
                 TASK_IDS[followup_capture_key] = response["id"]
+                _id_map[response["id"]] = f"$task:{followup_capture_key}"
                 known_task_ids.add(response["id"])
 
     # Capture state after all operations for this scenario
@@ -974,6 +1075,11 @@ async def _phase_2_manual_setup(bridge: RealBridge) -> None:
         known_project_ids.update({GM_PROJECT_ID, GM_PROJECT2_ID, GM_DATED_PROJECT_ID})
         known_tag_ids.update({GM_TAG1_ID, GM_TAG2_ID})
 
+    # Build symbolic ID map from discovered entities.
+    # Re-query to ensure we have the full state (including folders for slug lookup).
+    full_state = await _get_all_raw(bridge)
+    _populate_id_map_from_setup(full_state)
+
 
 async def _check_leftover_tasks(bridge: RealBridge) -> None:
     """Ensure no GM- tasks remain from a previous run."""
@@ -1091,7 +1197,10 @@ async def _phase_4_capture(bridge: RealBridge) -> None:
 
     for i, scenario in enumerate(scenarios, 1):
         fixture = await _capture_scenario(bridge, scenario, i, total)
-        # Attach folder/file for _write_fixture routing
+        # Replace real OmniFocus IDs with stable symbolic refs before writing
+        fixture = _symbolize_ids(fixture)
+        # Attach folder/file for _write_fixture routing (after symbolize —
+        # these are path components, not data)
         fixture["folder"] = scenario.get("folder")
         fixture["file"] = scenario.get("file")
         _write_fixture(fixture)
@@ -1157,9 +1266,11 @@ async def _capture_initial_state(bridge: RealBridge) -> None:
     """Capture initial state after setup and leftover cleanup."""
     state = await _get_all_raw(bridge)
     initial = filter_to_known_ids(state, known_task_ids, known_project_ids, known_tag_ids)
-    # Keep IDs -- contract tests need them to seed InMemoryBridge and build
-    # known_*_ids sets for filter_to_known_ids. Only scenario state_after
-    # snapshots are normalized (IDs stripped for comparison).
+    # Strip volatile/uncomputed fields (url, added, modified, taskStatus, etc.)
+    # but keep id — contract tests need it to seed InMemoryBridge.
+    initial = _normalize_initial_state(initial)
+    # Replace real OmniFocus IDs with stable symbolic refs
+    initial = _symbolize_ids(initial)
     initial_path = SNAPSHOTS_DIR / "initial_state.json"
     initial_path.write_text(
         json.dumps(initial, indent=2, sort_keys=False) + "\n",

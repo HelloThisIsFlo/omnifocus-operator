@@ -57,7 +57,7 @@
           "steps": 1,
           "unit": "weeks"
         },
-        "folder": "cqHTMJEOCF5",
+        "folder": "$folder:operator_gm_tests",
         "tags": []
       },
       {
@@ -82,7 +82,7 @@
           "steps": 1,
           "unit": "weeks"
         },
-        "folder": "cqHTMJEOCF5",
+        "folder": "$folder:operator_gm_tests",
         "tags": []
       },
       {
@@ -107,7 +107,7 @@
           "steps": 1,
           "unit": "weeks"
         },
-        "folder": "cqHTMJEOCF5",
+        "folder": "$folder:operator_gm_tests",
         "tags": []
       }
     ],
@@ -116,17 +116,17 @@
         "name": "\ud83e\uddea GM-Tag1",
         "status": "Active",
         "childrenAreMutuallyExclusive": false,
-        "parent": "gX5jz77Zqk9"
+        "parent": "$tag_group:sandbox"
       },
       {
         "name": "\ud83e\uddea GM-Tag2",
         "status": "Active",
         "childrenAreMutuallyExclusive": false,
-        "parent": "gX5jz77Zqk9"
+        "parent": "$tag_group:sandbox"
       }
     ]
   },
   "created_ids": [
-    "ezmE-NyrhR6"
+    "$task:inbox_task"
   ]
 }

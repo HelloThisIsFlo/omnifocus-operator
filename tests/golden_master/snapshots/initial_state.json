@@ -2,16 +2,10 @@
   "tasks": [],
   "projects": [
     {
-      "id": "bW2BCrF4TAz",
+      "id": "$project:test_project",
       "name": "\ud83e\uddea GM-TestProject",
-      "url": "omnifocus:///project/bW2BCrF4TAz",
       "note": "",
       "status": "Active",
-      "taskStatus": "Next",
-      "added": "2026-03-21T19:28:30.448Z",
-      "modified": "2026-03-22T18:18:03.252Z",
-      "completionDate": null,
-      "effectiveCompletionDate": null,
       "flagged": false,
       "effectiveFlagged": false,
       "dueDate": null,
@@ -24,28 +18,20 @@
       "effectiveDropDate": null,
       "estimatedMinutes": null,
       "hasChildren": false,
-      "repetitionRule": null,
       "lastReviewDate": "2026-03-21T00:00:00.000Z",
       "nextReviewDate": "2026-03-28T00:00:00.000Z",
       "reviewInterval": {
         "steps": 1,
         "unit": "weeks"
       },
-      "nextTask": "bW2BCrF4TAz",
-      "folder": "cqHTMJEOCF5",
+      "folder": "$folder:operator_gm_tests",
       "tags": []
     },
     {
-      "id": "gux8zqHgGas",
+      "id": "$project:test_project2",
       "name": "\ud83e\uddea GM-TestProject2",
-      "url": "omnifocus:///project/gux8zqHgGas",
       "note": "",
       "status": "Active",
-      "taskStatus": "Next",
-      "added": "2026-03-22T18:09:18.716Z",
-      "modified": "2026-03-22T18:09:24.363Z",
-      "completionDate": null,
-      "effectiveCompletionDate": null,
       "flagged": false,
       "effectiveFlagged": false,
       "dueDate": null,
@@ -58,28 +44,20 @@
       "effectiveDropDate": null,
       "estimatedMinutes": null,
       "hasChildren": false,
-      "repetitionRule": null,
       "lastReviewDate": "2026-03-22T00:00:00.000Z",
       "nextReviewDate": "2026-03-29T00:00:00.000Z",
       "reviewInterval": {
         "steps": 1,
         "unit": "weeks"
       },
-      "nextTask": "gux8zqHgGas",
-      "folder": "cqHTMJEOCF5",
+      "folder": "$folder:operator_gm_tests",
       "tags": []
     },
     {
-      "id": "e-OCRt-smkH",
+      "id": "$project:dated_project",
       "name": "\ud83e\uddea GM-TestProject-Dated",
-      "url": "omnifocus:///project/e-OCRt-smkH",
       "note": "",
       "status": "Active",
-      "taskStatus": "Next",
-      "added": "2026-03-22T18:09:40.299Z",
-      "modified": "2026-03-22T18:16:28.110Z",
-      "completionDate": null,
-      "effectiveCompletionDate": null,
       "flagged": true,
       "effectiveFlagged": true,
       "dueDate": "2036-03-01T19:00:00.000Z",
@@ -92,38 +70,30 @@
       "effectiveDropDate": null,
       "estimatedMinutes": null,
       "hasChildren": false,
-      "repetitionRule": null,
       "lastReviewDate": "2026-03-22T00:00:00.000Z",
       "nextReviewDate": "2026-03-29T00:00:00.000Z",
       "reviewInterval": {
         "steps": 1,
         "unit": "weeks"
       },
-      "nextTask": "e-OCRt-smkH",
-      "folder": "cqHTMJEOCF5",
+      "folder": "$folder:operator_gm_tests",
       "tags": []
     }
   ],
   "tags": [
     {
-      "id": "c0W69oNhnmB",
+      "id": "$tag:tag1",
       "name": "\ud83e\uddea GM-Tag1",
-      "url": "omnifocus:///tag/c0W69oNhnmB",
-      "added": "2026-03-21T19:00:52.100Z",
-      "modified": "2026-03-21T19:48:05.870Z",
       "status": "Active",
       "childrenAreMutuallyExclusive": false,
-      "parent": "gX5jz77Zqk9"
+      "parent": "$tag_group:sandbox"
     },
     {
-      "id": "ft1Be0WAcQr",
+      "id": "$tag:tag2",
       "name": "\ud83e\uddea GM-Tag2",
-      "url": "omnifocus:///tag/ft1Be0WAcQr",
-      "added": "2026-03-21T19:00:53.954Z",
-      "modified": "2026-03-21T19:48:08.857Z",
       "status": "Active",
       "childrenAreMutuallyExclusive": false,
-      "parent": "gX5jz77Zqk9"
+      "parent": "$tag_group:sandbox"
     }
   ]
 }
