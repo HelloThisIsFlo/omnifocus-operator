@@ -1,299 +1,322 @@
-# Domain Pitfalls
+# Domain Pitfalls: FastMCP v3 Migration
 
-**Domain:** Service layer refactoring, write pipeline unification, Pydantic model reorganization in an existing MCP server with 534 tests
-**Researched:** 2026-03-16
-**Confidence:** HIGH (codebase analysis + Pydantic v2 docs + known GitHub issues)
+**Domain:** MCP server dependency migration (mcp SDK bundled -> standalone fastmcp v3)
+**Researched:** 2026-03-24
+**Confidence:** HIGH (official docs, source code analysis, GitHub issues, upgrade guides verified)
 
 ## Critical Pitfalls
 
-### Pitfall 1: `extra="forbid"` on WriteModel Base Rejects the `_Unset` Sentinel
+### Pitfall 1: `ctx.request_context.lifespan_context` Accessor Path Changed
 
 **What goes wrong:**
-Adding `extra="forbid"` to write models causes Pydantic to reject the `_Unset` sentinel as an "extra" field type in union-typed fields. The current `_Unset` class uses `is_instance_schema` in its core schema -- Pydantic treats `_Unset` in a `str | None | _Unset` union as a valid branch, but if `extra="forbid"` is set on a *parent class* that doesn't know about `_Unset`, config inheritance can produce unexpected validation errors.
+All 6 tool handlers access the service via `ctx.request_context.lifespan_context["service"]`. In FastMCP v3, the canonical accessor is `ctx.lifespan_context` (a direct property on Context). The old path technically still works (the property internally delegates to `request_context.lifespan_context`), but relying on it is fragile -- the `request_context` property returns `None` in some contexts (background tasks), and v3's Context has a fallback to `server._lifespan_result` that only the shortcut property uses.
 
 **Why it happens:**
-Pydantic v2 merges `model_config` from parent to child. If `WriteModel(OmniFocusBaseModel)` sets `extra="forbid"`, ALL write models inherit it -- including `TaskEditSpec` whose fields default to `UNSET`. The interaction between `extra="forbid"` and custom sentinel types in union annotations is not well-tested in Pydantic v2. Known issues: [pydantic#9768](https://github.com/pydantic/pydantic/issues/9768), [pydantic#9992](https://github.com/pydantic/pydantic/issues/9992).
+In the MCP SDK's bundled FastMCP 1.0, `Context` was generic (`Context[ServerDeps, ClientDeps, LifespanContext]`) and exposed lifespan via the nested `request_context.lifespan_context` path. FastMCP v3 replaced this with a non-generic `Context` dataclass providing `lifespan_context` as a first-class property with a two-path implementation: tries `request_context` first, falls back to `server._lifespan_result`.
 
 **Consequences:**
-- `TaskEditSpec.model_validate({"id": "abc"})` may reject valid input
-- All 180+ edit_task tests break simultaneously
-- Subtle: may work in unit tests but fail when MCP server deserializes JSON (different validation path)
+- Old accessor may work in stdio (always has request context) but fail in other transport contexts
+- Keeping old path means tests pass but production behavior diverges from documented API
+- Future FastMCP updates could change the internal `request_context` shape
 
 **Prevention:**
-- Add `extra="forbid"` ONLY to `TaskCreateSpec` and `TaskEditSpec` directly, NOT to a shared base class
-- Write a focused test: construct every write model with `extra="forbid"` + UNSET defaults + one extra field, verify the extra field is rejected and UNSET defaults pass
-- Test both `model_validate(dict)` and `model_validate_json(json_string)` paths -- they can differ
-- Do NOT add `extra="forbid"` to `ActionsSpec`, `MoveToSpec`, or `TagActionSpec` via inheritance -- set it per-class if needed
+- Replace all 6 occurrences of `ctx.request_context.lifespan_context["service"]` with `ctx.lifespan_context["service"]`
+- Grep for `request_context.lifespan_context` across entire codebase (src + tests + planning docs)
+- Mechanical find-replace, must be done atomically (all or nothing)
 
 **Detection:**
-- ValidationError mentioning `extra_forbidden` in write model tests
-- Tests pass locally but MCP tool calls fail (JSON vs dict validation difference)
+- `AttributeError: 'NoneType' object has no attribute 'lifespan_context'` in non-stdio contexts
+- Works with stdio transport but breaks if transport changes
 
-**Phase to address:** First task in milestone -- validate the `extra="forbid"` + sentinel interaction before any other refactoring
+**Verified:** [FastMCP v3 Context source code](https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/server/context.py) -- `lifespan_context` property with `request_context` fallback to `server._lifespan_result`
 
 ---
 
-### Pitfall 2: `model_rebuild()` Ordering Breaks When Models Move Between Modules
+### Pitfall 2: `Context` Type Parameters Removed -- Strict Mypy Breaks
 
 **What goes wrong:**
-`models/__init__.py` has a carefully ordered `model_rebuild()` call sequence with a shared `_types_namespace`. Moving write models to a submodule or splitting the models package disrupts this ordering, causing `PydanticUndefinedAnnotation` at import time.
+All 6 tool handlers annotate `ctx: Context[Any, Any, Any]`. In FastMCP v3, `Context` is a non-generic `@dataclass` -- subscripting it with type parameters is invalid. With `strict = true` in mypy, this produces errors.
 
 **Why it happens:**
-The current `__init__.py` rebuilds 15 models in dependency order: `ParentRef` -> `RepetitionRule` -> `ActionableEntity` -> ... -> `TaskEditSpec` -> `MoveToSpec`. This works because all types are imported into one namespace before any rebuild. If write models move to `models/write/validation.py` or similar, the import order changes and `_types_namespace` may be incomplete when `model_rebuild()` runs.
+The MCP SDK's bundled Context was `class Context(Generic[ServerDependencies, LifespanContext, RequestContext])`. FastMCP v3 redesigned Context as a simple dataclass with no type parameters. Import path also changes: `from fastmcp import Context`.
 
 **Consequences:**
-- `ImportError` / `PydanticUndefinedAnnotation` on server startup
-- All 534 tests fail simultaneously (import-time crash)
-- Error messages are cryptic: "type 'AwareDatetime' is not defined" even though it's imported
+- `mypy --strict` errors: `error: "Context" is not generic [type-arg]`
+- 6 tool handler signatures need updating
+- Tests referencing `Context[Any, Any, Any]` also break
 
 **Prevention:**
-- Keep ALL `model_rebuild()` calls in `models/__init__.py` regardless of where model classes live
-- If extracting service submodules, they should import from `models` (the package), not from individual model files
-- Test: `python -c "from omnifocus_operator.models import TaskEditSpec"` must work in isolation
-- Do NOT move `model_rebuild()` into submodules -- centralize it
+- Change all `ctx: Context[Any, Any, Any]` to `ctx: Context`
+- Remove `Any` imports if only used for Context type params
+- Update import: `from fastmcp import Context, FastMCP`
+- Run `uv run mypy --strict src/` before committing
 
 **Detection:**
-- `ImportError` when running any test
-- "not fully defined" Pydantic errors at import time
-- Works in IDE (lazy loading) but fails in pytest (eager import)
+- mypy `[type-arg]` errors on every tool handler
+- Python runtime: may or may not error (non-generic class `__class_getitem__` behavior varies)
 
-**Phase to address:** Any task that reorganizes model files or import paths
+**Verified:** [FastMCP v3 Context API docs](https://gofastmcp.com/python-sdk/fastmcp-server-context) -- Context is non-generic
 
 ---
 
-### Pitfall 3: Circular Imports When Extracting Validation/Domain Logic from Service
+### Pitfall 3: In-Process Test Pattern Completely Changed
 
 **What goes wrong:**
-Extracting validation logic into `service/validation.py` creates a circular import: `validation.py` needs write models, write models need base models, service needs validation, and the extracted module needs to call back into service for `_resolve_parent()` or `_resolve_tags()`.
+Tests use the MCP SDK's low-level testing pattern:
+```python
+server._mcp_server.run(
+    read_stream, write_stream,
+    server._mcp_server.create_initialization_options(),
+)
+```
+This relies on `_mcp_server` (a private attribute) and `create_initialization_options()` (MCP SDK internal). FastMCP v3 provides `Client(server)` as the canonical testing API, and the internal `_mcp_server` attribute may not exist or may have changed shape.
 
 **Why it happens:**
-The current `service.py` is a monolith that freely calls its own private methods. Extraction creates cross-module dependencies. The resolution methods (`_resolve_parent`, `_resolve_tags`) need the repository, which the validator doesn't own. Python's import system fails on circular imports at module-body scope (works with function-scope imports but that's a code smell).
+When this project was built, FastMCP 1.0 (bundled with `mcp`) had no official in-process testing API. The `_mcp_server` pattern was the community workaround. FastMCP v3 introduced `from fastmcp import Client` with `async with Client(server) as client:` as the proper testing interface.
 
 **Consequences:**
-- `ImportError: cannot import name 'X' from partially initialized module`
-- Temptation to use function-level imports everywhere (hides the dependency problem)
-- Over-decomposition: 5 tiny modules all importing each other defeats the purpose
+- 4 test locations break: `test_server.py`, `test_simulator_bridge.py`, `test_simulator_integration.py`, `conftest.py` (`client_session` fixture)
+- The `run_with_client()` helper and `_ClientSessionProxy` class in conftest become obsolete
+- Tests using `mcp.client.session.ClientSession` and `mcp.shared.message.SessionMessage` need rethinking
 
 **Prevention:**
-- **Dependency direction rule:** `service.py` (orchestrator) imports from extracted modules, never the reverse
-- Extracted modules should be *pure functions* or *stateless classes* that receive their dependencies as arguments:
+- **Phase this separately** from the import swap -- test infrastructure is its own task
+- Replace `_ClientSessionProxy` in conftest.py with a new fixture using `from fastmcp import Client`
+- New pattern:
   ```python
-  # Good: validation takes data, returns result
-  def validate_edit_spec(spec: TaskEditSpec, current_task: Task) -> list[str]:
-
-  # Bad: validation calls back into service
-  class EditValidator:
-      def __init__(self, service: OperatorService):  # circular
+  async with Client(server) as client:
+      result = await client.call_tool("get_all", {})
   ```
-- The service stays the orchestrator: it calls `validate()`, then `resolve()`, then `convert()`, then `delegate()`
-- Use `TYPE_CHECKING` imports for type annotations in extracted modules, runtime imports only for actual values
+- Test the new pattern on ONE test file first before migrating all 4
+- Note: `_mcp_server` may still work in v3.1.1 (private attr exists), but relying on it is a time bomb
 
 **Detection:**
-- `ImportError` at startup
-- Needing to add `from __future__ import annotations` to fix a circular import (symptom, not cure)
-- An extracted module that imports `OperatorService`
+- `AttributeError: 'FastMCP' object has no attribute '_mcp_server'`
+- `ImportError` if `ClientSession` or `SessionMessage` paths change
+- Test timeout (new Client pattern uses different async machinery)
 
-**Phase to address:** Service decomposition task -- establish dependency direction before writing code
+**Verified:** [FastMCP v3 testing docs](https://gofastmcp.com/development/tests) -- `Client(server)` pattern with in-memory transport
 
 ---
 
-### Pitfall 4: InMemoryBridge Removal Breaks 100+ Test Imports
+### Pitfall 4: Dependency Conflict Between `mcp` and `fastmcp`
 
 **What goes wrong:**
-Removing `InMemoryBridge` from `bridge/__init__.py` exports causes `ImportError` in every test file that does `from omnifocus_operator.bridge import InMemoryBridge`. The test suite goes from 534 passing to 100+ import errors.
+FastMCP v3 depends on `mcp>=1.24.0,<2.0`. The project currently depends on `mcp>=1.26.0`. After migration, the dependency should be `fastmcp>=3.x` (which pulls in `mcp` transitively). If both `mcp>=1.26.0` AND `fastmcp>=3.x` are in pyproject.toml, the resolver may install conflicting or redundant versions.
 
 **Why it happens:**
-`InMemoryBridge` is exported from `bridge/__init__.py` and used extensively in tests via this public path. The plan to "remove from public surface" and "update test imports to use direct module paths" sounds simple but affects:
-- `tests/test_service.py` (line 19: `from omnifocus_operator.bridge import ... InMemoryBridge`)
-- `tests/test_bridge.py`
-- `tests/test_simulator_bridge.py`
-- `tests/test_repository_factory.py`
-- `tests/conftest.py` (if any fixtures use it)
-- Any other test importing from `omnifocus_operator.bridge`
+FastMCP v3 wraps the `mcp` package. Having an explicit direct dependency on `mcp` alongside `fastmcp` is redundant and can cause version pinning conflicts.
 
 **Consequences:**
-- Mass import failure if done in one step
-- If moved to `tests/` directory, the module path changes entirely
-- CI fails on every test, blocking all other work
+- `uv sync` may fail with conflicting version constraints
+- CI environment may differ from local (different resolution strategies)
+- Both `from mcp.types import ToolAnnotations` and `from fastmcp import FastMCP` still work (mcp is a transitive dep), but explicit + transitive = confusion
 
 **Prevention:**
-- **Two-commit approach:**
-  1. First commit: Update ALL test imports from `from omnifocus_operator.bridge import InMemoryBridge` to `from omnifocus_operator.bridge.in_memory import InMemoryBridge`. Run full test suite. Commit.
-  2. Second commit: Remove from `bridge/__init__.py` exports. Remove factory branch. Run full test suite. Commit.
-- Do NOT combine with the physical file move (`src/` -> `tests/`). That's a third step.
-- Use `grep -r "InMemoryBridge" tests/` to find every import before starting
-- Keep the file at `bridge/in_memory.py` (don't move to tests/) -- it's fine in src/ as an internal module, just not re-exported
+- **Replace** `mcp>=1.26.0` with `fastmcp>=3.1,<4` in pyproject.toml -- do NOT keep both
+- `from mcp.types import ToolAnnotations` still works (fastmcp depends on mcp)
+- Pin floor to 3.1 (avoids known-buggy 3.0.x releases); cap at <4 for safety
+- After swap: `uv sync` then `uv pip list | grep -E "mcp|fastmcp"` -- verify both present at compatible versions
+- Verify: `python -c "from fastmcp import FastMCP; from mcp.types import ToolAnnotations"` must work
 
 **Detection:**
-- Mass `ImportError` when running tests after export removal
-- CI red on every test file
+- `uv sync` version conflict errors
+- `ModuleNotFoundError: No module named 'mcp.types'` if mcp not pulled in
+- Tests pass locally but CI fails (different resolver cache)
 
-**Phase to address:** Dedicated task, done independently from other changes
+**Verified:** [FastMCP pyproject.toml](https://github.com/jlowin/fastmcp/blob/main/pyproject.toml) -- `mcp>=1.24.0,<2.0`; [FastMCP installation docs](https://gofastmcp.com/getting-started/installation) -- "breaking changes may occur in minor versions"
 
 ---
 
 ## Moderate Pitfalls
 
-### Pitfall 5: Write Interface Unification Silently Changes Payload Shape
+### Pitfall 5: `ctx.info()` / `ctx.warning()` Are Async -- Logging Architecture Rethink
 
 **What goes wrong:**
-Unifying the service-repository write interface changes who builds the bridge payload. Currently `edit_task` service builds a `dict[str, Any]` and repository passes it through. If refactored so repository does the serialization (like `add_task`), subtle key differences break the bridge: `estimatedMinutes` vs `estimated_minutes`, `dueDate` vs `due_date`.
+The migration goal includes replacing file-based logging with protocol-level `ctx.info()` / `ctx.warning()`. These methods:
+1. Are **async** (must be awaited)
+2. Send messages to the **MCP client**, not to a log file
+3. Are only available **inside tool handlers** (not in lifespan, startup, module-level)
+4. Silently fail if client doesn't support logging capability
+
+The existing `logging.FileHandler` works everywhere. Replacing it entirely means losing server-side persistence.
 
 **Why it happens:**
-`add_task` uses `spec.model_dump(by_alias=True)` (produces camelCase). `edit_task` builds the dict field-by-field with hardcoded camelCase keys. Unification means picking one approach and using it everywhere, but the two paths handle edge cases differently:
-- `add_task`: `exclude_none=True` drops None fields
-- `edit_task`: `None` means "clear the field" (intentionally included)
-- Date fields: `add_task` serializes via Pydantic's JSON mode, `edit_task` calls `.isoformat()` manually
+MCP protocol logging (`notifications/message`) is client-facing. Fundamentally different from server-side file logging:
+- `ctx.info()`: tells the *agent* what happened
+- `logger.info()`: records what happened for *debugging*
+
+**Consequences:**
+- Removing FileHandler loses all server-side debugging capability
+- Lifespan startup/shutdown messages have no `ctx` available
+- `log_tool_call()` helper needs async rework if using ctx methods
+- Silent message loss if `ctx.info()` called without `await` (coroutine created but never awaited, no error raised)
 
 **Prevention:**
-- Write a bridge payload contract test: given the same input, both paths must produce identical bridge payloads
-- Enumerate the differences before coding: `exclude_none` behavior, date serialization format, key naming, `tags` -> `tagIds` swap
-- The test should assert on the exact dict passed to `bridge.send_command()`
-- Keep the InMemoryBridge call-tracking (`bridge.calls`) to verify payloads in tests
+- **Keep file logging** for server-side debugging -- do NOT remove FileHandler
+- **Add** `await ctx.info()` / `await ctx.warning()` in tool handlers as agent-facing messages
+- Two separate concerns: `logger.info(...)` for debug file + `await ctx.info(...)` for agent visibility
+- Messages via ctx are also logged at DEBUG level under `fastmcp.server.context.to_client` -- don't rely on this as primary
 
 **Detection:**
-- UAT: task created/edited but fields wrong (dates shifted, fields missing)
-- Bridge.js errors about unexpected keys
+- `RuntimeWarning: coroutine was never awaited` if await missing
+- Lifespan log messages disappear (no ctx)
+- Agent stops seeing messages (if file logging removed without ctx replacement)
 
-### Pitfall 6: Over-Decomposing the Service Layer
+**Verified:** [FastMCP logging docs](https://gofastmcp.com/servers/logging) -- async methods, also logged to `fastmcp.server.context.to_client`
+
+---
+
+### Pitfall 6: Lifespan Signature Convention Change
 
 **What goes wrong:**
-Service gets split into 6+ modules (`validation.py`, `domain.py`, `conversion.py`, `resolution.py`, `lifecycle.py`, `tags.py`). Each is 30-50 lines. Reading a single write flow requires opening 5 files. New contributors can't follow the code path.
+Current lifespan uses `app: FastMCP` as the parameter:
+```python
+async def app_lifespan(app: FastMCP) -> AsyncIterator[dict[str, object]]:
+```
+FastMCP v3 docs use `server` as convention. The `@asynccontextmanager` pattern still works (FastMCP constructor accepts `LifespanCallable | Lifespan | None`), but mixing conventions creates confusion.
 
 **Why it happens:**
-Refactoring enthusiasm. Each "concern" looks like it deserves its own file. But the entire `edit_task` method is ~100 lines of linear orchestration -- extracting each step into its own module adds indirection without proportional benefit.
+MCP SDK bundled FastMCP used `app` (ASGI/Starlette convention). FastMCP v3 uses `server`. The parameter name doesn't matter to Python, but `@lifespan` decorator from `fastmcp.server.lifespan` is the new canonical approach.
 
 **Prevention:**
-- **Rule of thumb:** Extract when a module has >1 consumer or >100 lines of self-contained logic
-- The milestone spec says "validation, domain logic, format conversion" -- that's 3 modules maximum plus the orchestrator
-- Start with extracting format conversion (purely mechanical, no dependencies on service state) and see if the service is readable before extracting more
-- If an extracted function is called from exactly one place and is <20 lines, inline it
+- **Keep `@asynccontextmanager`** -- explicitly supported, no need to switch to `@lifespan`
+- Rename parameter `app` -> `server` for convention alignment
+- Update type annotation to import FastMCP from `fastmcp`
+- `@lifespan` decorator only needed for composition (`|` operator) -- unnecessary for this project
 
 **Detection:**
-- Service method becomes: `validate(); resolve(); convert(); delegate()` -- four one-liners calling other modules
-- A file with fewer than 3 functions
-- Import list at the top of `service.py` is longer than the method bodies
+- No runtime error (parameter name doesn't matter)
+- Convention confusion in code review
 
-### Pitfall 7: Test Fragility from Overly Specific Assertions After Refactoring
+**Verified:** [FastMCP lifespan docs](https://gofastmcp.com/servers/lifespan); [server source](https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/server/server.py) -- `LifespanCallable | Lifespan | None`
+
+---
+
+### Pitfall 7: `_register_tools()` Pattern and Decorator Return Values
 
 **What goes wrong:**
-After refactoring, tests that assert on internal implementation details (method call order, specific dict keys in payload, exact warning messages) break even though behavior is unchanged. Developer spends more time fixing tests than refactoring code.
+FastMCP v3 decorators return the **original function** unchanged, not a wrapper object. Code accessing `.name` or `.description` on decorated functions gets `AttributeError`. The current codebase doesn't do this, but it's a landmine for future changes.
 
-**Why it happens:**
-Current tests are well-written (test behavior via InMemoryRepository) but some tests in `test_service.py` check specific warning message strings, payload dict shapes, and call patterns. These are correct now but become fragile when the internal structure changes.
+**Also:** The `annotations` kwarg on `@mcp.tool()` with `ToolAnnotations` objects must still work. `ToolAnnotations` stays at `mcp.types` (not re-exported by fastmcp).
 
 **Prevention:**
-- Before refactoring, identify which tests assert on behavior (keep) vs implementation (may need updating)
-- Behavioral tests: "edit_task with unknown task raises ValueError" -- survives any refactoring
-- Implementation tests: "payload dict has key 'estimatedMinutes'" -- breaks if serialization moves
-- For payload tests, consider testing at the bridge boundary (what did `bridge.send_command` receive?) rather than at intermediate points
-- Run the full test suite after each atomic change, not just at the end
+- Grep for attribute access on decorated tool functions: `get_all.`, `get_task.`, etc. -- none found in current codebase
+- `from mcp.types import ToolAnnotations` still works (transitive dep)
+- Test: `await client.list_tools()` and verify annotations appear correctly
+- No action needed, but document for awareness
 
 **Detection:**
-- Tests fail with "expected 'estimatedMinutes' in payload" after moving serialization to a different layer
-- Warning message tests fail after rewording
+- `AttributeError` on tool function attributes
+- Tool annotations missing in `list_tools()` response
 
-### Pitfall 8: `_Unset` Sentinel Serialization Leaks into Bridge Payloads
+---
+
+### Pitfall 8: Dependency Count Badge in README
 
 **What goes wrong:**
-During write interface unification, using `model_dump()` on `TaskEditSpec` includes UNSET sentinel values in the serialized output. These get sent to the bridge as `{"name": <_Unset instance>}`, which bridge.js can't deserialize.
-
-**Why it happens:**
-`TaskEditSpec` has fields defaulting to `UNSET`. Pydantic's `model_dump()` includes them by default. The current code avoids this by building the payload field-by-field with `isinstance(value, _Unset)` checks. If the unification replaces this with `model_dump()`, UNSET values leak through.
+README states "Dependencies 1" badge. After migration, direct dep is still 1 (`fastmcp`), but transitive deps increase from ~12 to ~30+ (fastmcp pulls in cyclopts, diskcache, etc.).
 
 **Prevention:**
-- If using `model_dump()`, add a custom serializer or post-processing step that strips UNSET values
-- Or: use `model_dump(exclude_unset=True)` -- but verify this actually excludes fields with UNSET *defaults* (Pydantic's "unset" means "not provided during validation," not "has sentinel default")
-- Better: keep the explicit field-by-field approach for edit models. `model_dump()` works for create models (no sentinels)
-- Test: serialize a TaskEditSpec with only `id` set, verify the payload contains exactly `{"id": "..."}` and nothing else
+- Update badge. Options: "Dependencies 1" (direct only, technically true), or remove badge
+- Run `uv tree` after migration to audit full tree
+- FastMCP core extras are minimal; heavy deps (anthropic, openai) are optional extras
+- Accept the tradeoff: slightly larger dep tree for maintained framework
 
-**Detection:**
-- Bridge.js errors about unexpected field types
-- JSON serialization errors: "Object of type _Unset is not JSON serializable"
-
-### Pitfall 9: `@_ensures_write_through` Decorator Signature Lost During Refactoring
-
-**What goes wrong:**
-Moving or wrapping `_ensures_write_through` during repository refactoring breaks its `functools.wraps` behavior or the `self._db_path` attribute access. The decorator silently stops waiting for SQLite confirmation, and read-after-write tests pass by coincidence (InMemoryRepository doesn't use the decorator).
-
-**Why it happens:**
-The decorator uses Python 3.12's `[F: Callable[..., Any]]` syntax and accesses `self._db_path` on the decorated method's instance. If the method moves to a different class or the decorator is applied to a method whose `self` doesn't have `_db_path`, it fails silently or raises AttributeError. Since InMemoryRepository doesn't use the decorator, all unit tests pass -- only UAT catches the break.
-
-**Prevention:**
-- Do NOT move the decorator between classes without verifying `self._db_path` availability
-- Add a type annotation or runtime check: `assert hasattr(self, '_db_path')` in the wrapper
-- If unifying the write interface changes where `add_task`/`edit_task` live, verify the decorator still applies correctly
-- The decorator is load-bearing for consistency -- treat it as a safety boundary, not refactoring target
-
-**Detection:**
-- UAT: write then immediate read returns stale data
-- No unit test catches this because InMemoryRepository bypasses the decorator
+---
 
 ## Minor Pitfalls
 
-### Pitfall 10: Alias Generator Mismatch When Extracting Format Conversion
+### Pitfall 9: Test Imports from `mcp.client` and `mcp.shared`
 
 **What goes wrong:**
-Extracted format conversion module hardcodes camelCase keys (e.g., `"estimatedMinutes"`) instead of using Pydantic's `to_camel` alias generator. If a field name changes or a new field is added, the hardcoded mapping and the Pydantic alias diverge.
+Tests import `ClientSession` from `mcp.client.session` and `SessionMessage` from `mcp.shared.message`. These are MCP SDK types. If migrating to `fastmcp.Client`, these imports become unnecessary but still work (fastmcp depends on mcp).
 
 **Prevention:**
-- Use `model_dump(by_alias=True)` where possible instead of manual key mapping
-- For edit payloads where manual construction is necessary, derive the camelCase key from the model field's alias: `TaskEditSpec.model_fields["estimated_minutes"].alias`
-- Or maintain a single mapping dict that both the format converter and tests reference
+- Migrate to `from fastmcp import Client` for testing
+- If some tests need raw MCP protocol types (simulator tests), keep `from mcp.client.session import ClientSession`
+- Track which tests need low-level access vs. high-level Client
 
-### Pitfall 11: `model_json_schema` Overrides on Write Models Break After Reorganization
+### Pitfall 10: `from __future__ import annotations` and Type Resolution
 
 **What goes wrong:**
-Every write model has a `model_json_schema` override that strips `_Unset` from the JSON schema. If models are reorganized and a new write model forgets this override, MCP tool descriptions expose `_Unset` as a valid type to agents.
+`server.py` uses `from __future__ import annotations` (PEP 563). FastMCP resolves tool return types via `get_type_hints()`. If `Context` or return type models are imported under different names or conditionally, resolution fails.
 
 **Prevention:**
-- If creating a `WriteModel` base, include the `model_json_schema` override there
-- Add a parametrized test: for every write model class, call `model_json_schema()` and assert `_Unset` doesn't appear
-- Consider a `__init_subclass__` hook that auto-applies the override
+- Keep `Context` as a runtime import (not `TYPE_CHECKING`-only) -- current code already does this
+- Keep `AllEntities`, `Task`, `Project`, `Tag` as runtime imports (already correct, with the NOTE comment explaining why)
+- Verify: `from fastmcp import Context` in server.py must be a runtime import
 
-### Pitfall 12: Repository Protocol Out of Sync After Write Interface Changes
+**Detection:**
+- `get_type_hints()` failure crashes at tool registration, caught immediately
+
+### Pitfall 11: Lifespan Scope (Per-Server vs Per-Session)
 
 **What goes wrong:**
-`Repository` protocol defines `edit_task(self, payload: dict[str, Any]) -> dict[str, Any]`. If the unification changes this signature (e.g., to accept `TaskEditSpec`), `InMemoryRepository` and `HybridRepository` must update simultaneously. Missing one causes `TypeError` at runtime, not at import time (structural typing doesn't catch signature mismatches until the method is called).
+In the MCP SDK, lifespan ran per-session (documented in issues [#166](https://github.com/jlowin/fastmcp/issues/166), [#1115](https://github.com/jlowin/fastmcp/issues/1115)). FastMCP v3 docs say lifespan runs "exactly once regardless of how many clients connect." For stdio (one process = one session), this doesn't matter. But it's a conceptual change.
 
 **Prevention:**
-- Update all 3 implementations (`InMemoryRepository`, `BridgeRepository` via `HybridRepository`, and the protocol) in the same commit
-- Add a `isinstance(repo, Repository)` assertion in conftest.py or a dedicated test to catch protocol violations eagerly
-- `mypy --strict` catches protocol mismatches if running -- verify it's in CI
+- No action for stdio transport
+- If SSE/HTTP transport added later (v1.6), re-evaluate lifespan assumptions
+- The current IPC sweep + repo creation in lifespan is fine either way (idempotent initialization)
+
+### Pitfall 12: `fastmcp` Pulls in Additional Transitive Dependencies
+
+**What goes wrong:**
+The project has a "single runtime dependency" claim. Switching to `fastmcp>=3.x` introduces: `cyclopts` (CLI), potentially `diskcache`, and other transitive deps.
+
+**Prevention:**
+- Run `uv tree` after migration to audit
+- Core fastmcp extras are minimal; heavy deps are optional
+- Accept tradeoff: bigger tree for maintained framework + proper logging + testing API
+
+---
 
 ## Phase-Specific Warnings
 
 | Phase Topic | Likely Pitfall | Mitigation |
 |-------------|---------------|------------|
-| `extra="forbid"` on write models | Sentinel interaction (#1) | Test UNSET + forbid together before applying broadly |
-| Service decomposition | Circular imports (#3), over-decomposition (#6) | Establish dependency direction; extract max 3 modules |
-| Write interface unification | Payload shape change (#5), UNSET serialization leak (#8) | Bridge payload contract tests; keep explicit field-by-field for edits |
-| InMemoryBridge removal | Mass import breakage (#4) | Two-step: update imports first, remove exports second |
-| Model file reorganization | model_rebuild ordering (#2), schema override loss (#11) | Keep model_rebuild centralized; test JSON schema output |
-| Repository protocol changes | Silent signature mismatch (#12) | Update all implementations + protocol in one commit |
-| Decorator handling | Write-through decorator break (#9) | Do not move decorator; verify self._db_path in UAT |
+| Dependency swap | Conflict (#4), buggy 3.0.x | Replace `mcp` with `fastmcp>=3.1,<4`; do NOT keep both |
+| Import migration | Context generics (#2), accessor (#1) | Remove `[Any, Any, Any]`; use `ctx.lifespan_context` directly |
+| Test infrastructure | _mcp_server pattern (#3), client imports (#9) | Migrate conftest fixture to `Client(server)`; one file at a time |
+| Logging migration | Async ctx methods (#5), FileHandler removal | Keep FileHandler; ADD ctx.info/warning alongside; always await |
+| Tool registration | Decorator return value (#7), ToolAnnotations | Verify annotations work; no code accesses decorator returns |
+| Entry point | `server.run(transport="stdio")` | Works in v3; manual UAT with Claude Desktop |
+| Documentation | Dep count badge (#8) | Update badge honestly |
 
-## Recommended Ordering
+## Recommended Migration Order
 
-Based on pitfall dependencies:
+Based on pitfall dependencies and blast radius:
 
-1. **`extra="forbid"`** -- smallest scope, validates Pydantic interaction, informs all other changes
-2. **InMemoryBridge cleanup** -- independent, reduces noise in later diffs
-3. **Write interface unification** -- core refactoring, must happen before service decomposition (cleaner interface to decompose around)
-4. **Service decomposition** -- depends on unified interface; extract format conversion first, then validation
+1. **Dependency swap** -- `mcp>=1.26.0` -> `fastmcp>=3.1,<4` in pyproject.toml. `uv sync`. *(Pitfall #4)*
+2. **Import swap** -- `from mcp.server.fastmcp import Context, FastMCP` -> `from fastmcp import Context, FastMCP`. Remove `Context[Any, Any, Any]` -> `Context`. *(Pitfalls #1, #2)*
+3. **Lifespan context accessor** -- `ctx.request_context.lifespan_context` -> `ctx.lifespan_context` in all 6 handlers. *(Pitfall #1)*
+4. **Run full test suite** -- Catch immediate breaks before touching test infrastructure
+5. **Test infrastructure** -- Migrate conftest fixture from `_mcp_server` to `Client(server)`. Then test files one at a time. *(Pitfall #3)*
+6. **Logging enhancement** -- Add `await ctx.info()` / `await ctx.warning()` alongside file logging. *(Pitfall #5)*
+7. **Manual UAT** -- Start server, connect via Claude Desktop, exercise all 6 tools. *(Pitfall #6, #7)*
+
+Steps 1-4 can be one commit. Step 5 is separate. Step 6 is separate. Step 7 is validation.
 
 ## Sources
 
-- [Pydantic v2 extra config inheritance issue #9768](https://github.com/pydantic/pydantic/issues/9768) -- config merging behavior in multiple inheritance
-- [Pydantic model_config MRO issue #9992](https://github.com/pydantic/pydantic/issues/9992) -- config doesn't respect MRO
-- [Pydantic sentinel serialization discussion #9943](https://github.com/pydantic/pydantic/discussions/9943) -- custom sentinel serialization failures
-- [Pydantic model_rebuild issue #7618](https://github.com/pydantic/pydantic/issues/7618) -- model_rebuild failure with forward references
-- [Pydantic forward annotations docs](https://docs.pydantic.dev/latest/concepts/forward_annotations/) -- model_rebuild and TYPE_CHECKING patterns
-- [Pydantic v2.12 MISSING sentinel](https://pydantic.dev/articles/pydantic-v2-12-release) -- official sentinel alternative (experimental)
-- [Circular imports in Python architecture](https://dev.to/vivekjami/circular-imports-in-python-the-architecture-killer-that-breaks-production-539j) -- dependency direction patterns
-- [functools.wraps signature preservation](https://hynek.me/articles/decorators/) -- decorator pitfalls with type signatures
-- Codebase analysis: `service.py` (637 lines), `models/write.py` (318 lines), `models/__init__.py` (115 lines with 15 model_rebuild calls), `repository/protocol.py`, `bridge/__init__.py` exports, `tests/test_service.py` (2000+ lines)
+- [FastMCP upgrade guide (from MCP SDK)](https://gofastmcp.com/getting-started/upgrading/from-mcp-sdk) -- official import migration
+- [FastMCP upgrade guide (from FastMCP 2)](https://gofastmcp.com/getting-started/upgrading/from-fastmcp-2) -- breaking changes
+- [FastMCP Context API docs](https://gofastmcp.com/python-sdk/fastmcp-server-context) -- non-generic Context, lifespan_context property
+- [FastMCP Context source code](https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/server/context.py) -- lifespan_context with request_context fallback
+- [FastMCP lifespan docs](https://gofastmcp.com/servers/lifespan) -- @asynccontextmanager supported, @lifespan optional
+- [FastMCP logging docs](https://gofastmcp.com/servers/logging) -- async methods, logged to fastmcp.server.context.to_client
+- [FastMCP testing docs](https://gofastmcp.com/development/tests) -- Client(server) in-memory pattern
+- [FastMCP server source](https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/server/server.py) -- lifespan accepts LifespanCallable | Lifespan | None
+- [FastMCP installation guide](https://gofastmcp.com/getting-started/installation) -- version pinning, breaking changes in minors
+- [FastMCP PyPI](https://pypi.org/project/fastmcp/) -- latest 3.1.1 (2026-03-14)
+- [FastMCP GitHub](https://github.com/PrefectHQ/fastmcp) -- mcp>=1.24.0,<2.0 dependency
+- [Context.set_state serialization issue #3156](https://github.com/PrefectHQ/fastmcp/issues/3156) -- undocumented v3 breaking change
+- [Lifespan per-session issue #166](https://github.com/jlowin/fastmcp/issues/166) -- lifespan scope
+- [Lifespan per-tool-call issue #1115](https://github.com/jlowin/fastmcp/issues/1115) -- lifespan scope as session-scoped
+- [mcp.types import issue #2166](https://github.com/PrefectHQ/fastmcp/issues/2166) -- namespace shadowing
+- Codebase analysis: `server.py` (317 lines, 6 tool handlers, 6 `ctx.request_context.lifespan_context` accesses), `__main__.py` (31 lines, FileHandler), `conftest.py` (4 `_mcp_server` usages), `test_server.py` / `test_simulator_*.py` (3 more `_mcp_server` usages), `pyproject.toml` (single `mcp>=1.26.0` dep)
 
 ---
-*Pitfalls research for: v1.2.1 Architectural Cleanup*
-*Researched: 2026-03-16*
+*Pitfalls research for: v1.2.2 FastMCP v3 Migration*
+*Researched: 2026-03-24*

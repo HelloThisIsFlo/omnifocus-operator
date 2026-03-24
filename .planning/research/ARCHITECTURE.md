@@ -1,457 +1,255 @@
-# Architecture Patterns: Service Decomposition & Write Pipeline Unification
+# Architecture Patterns: FastMCP v3 Migration
 
-**Domain:** Internal refactoring of existing MCP server (v1.2.1)
-**Researched:** 2026-03-16
-**Confidence:** HIGH -- based entirely on reading the actual codebase
+**Domain:** MCP server dependency migration (`mcp.server.fastmcp` -> standalone `fastmcp>=3`)
+**Researched:** 2026-03-24
+**Confidence:** HIGH -- verified against official docs (gofastmcp.com), PyPI, GitHub
 
-## Current Architecture
+## Executive Summary
 
-```
-MCP Server (server.py)
-  |
-  v
-OperatorService (service.py)         <-- 637 lines, monolithic
-  |
-  v
-Repository Protocol (repository/protocol.py)
-  |
-  +-- HybridRepository (SQLite read, Bridge write) -- production
-  +-- BridgeRepository (Bridge read+write, caching) -- fallback
-  +-- InMemoryRepository (in-memory snapshot) -- test-only
-  |
-  v
-Bridge Protocol (bridge/protocol.py)
-  |
-  +-- RealBridge (file-based IPC to OmniJS) -- production
-  +-- SimulatorBridge (IPC to Python simulator) -- integration test
-  +-- InMemoryBridge (in-memory, call tracking) -- unit test
-```
+The migration is architecturally clean. The three-layer architecture is unaffected. Changes are concentrated in:
 
-### Write Path Asymmetry (the core problem)
+1. **Import paths** -- `from mcp.server.fastmcp` -> `from fastmcp`
+2. **Context access** -- `ctx.request_context.lifespan_context["key"]` -> `ctx.lifespan_context["key"]`
+3. **Context type** -- `Context[Any, Any, Any]` -> `Context` (no generics)
+4. **Logging** -- file-based `logging.FileHandler` workaround -> protocol-level `await ctx.info()`/`await ctx.warning()`
+5. **Dependency** -- `mcp>=1.26.0` -> `fastmcp>=3.1,<4` (which depends on `mcp>=1.24.0,<2.0` internally)
 
-**add_task path:**
-```
-Service.add_task(spec: TaskCreateSpec)
-  -> validates name
-  -> resolves parent (project-first)
-  -> resolves tags (name -> ID)
-  -> repo.add_task(spec, resolved_tag_ids=...)  # typed spec + kwarg
-```
-Repository receives a typed `TaskCreateSpec`, does its own serialization to dict in `add_task`.
+Service layer, repository layer, bridge layer, contracts, models -- all untouched.
 
-**edit_task path:**
-```
-Service.edit_task(spec: TaskEditSpec)
-  -> verifies task exists
-  -> processes lifecycle
-  -> validates name
-  -> BUILDS dict payload IN SERVICE (lines 167-282)  # <-- asymmetry
-  -> computes tag diff
-  -> resolves moveTo
-  -> detects no-ops
-  -> repo.edit_task(payload: dict[str, Any])  # untyped dict passthrough
-```
-Service builds the entire dict, repository is a dumb passthrough.
-
-**Repository protocol reflects the asymmetry:**
-```python
-# Different signatures, different levels of abstraction
-async def add_task(self, spec: TaskCreateSpec, *, resolved_tag_ids: list[str] | None) -> TaskCreateResult
-async def edit_task(self, payload: dict[str, Any]) -> dict[str, Any]
-```
-
-**Payload building is duplicated across repo implementations:**
-- `HybridRepository.add_task` builds payload from spec (lines 492-497)
-- `BridgeRepository.add_task` builds payload from spec (lines 115-118) -- same logic
-
----
-
-## Recommended Architecture
-
-### Target State
+## Dependency Relationship
 
 ```
-MCP Server (server.py)
-  |
-  v
-OperatorService (service/__init__.py)     <-- thin orchestrator, ~80 lines
-  |  uses:
-  |  +-- service/validation.py            <-- name, parent, tag resolution
-  |  +-- service/domain.py                <-- lifecycle, no-op detection, tag diff, cycle check
-  |  +-- service/conversion.py            <-- spec -> bridge payload dict building
-  |
-  v
-Repository Protocol (repository/protocol.py)
-  |  add_task(payload: dict) -> dict       <-- unified: both take dict, return dict
-  |  edit_task(payload: dict) -> dict
-  |
-  +-- HybridRepository
-  +-- BridgeRepository
-  +-- InMemoryRepository (tests/ only)
+BEFORE:
+  pyproject.toml: dependencies = ["mcp>=1.26.0"]
+  FastMCP class comes FROM mcp SDK (bundled copy of FastMCP 1.0)
+
+AFTER:
+  pyproject.toml: dependencies = ["fastmcp>=3.1,<4"]
+  fastmcp package depends on mcp>=1.24.0,<2.0 internally
+  mcp.types (ToolAnnotations etc.) still available as transitive dep
+  mcp.client.session (ClientSession) still available for tests
+  mcp.shared.message (SessionMessage) still available for tests
 ```
 
-### Component Boundaries
-
-| Component | Responsibility | Communicates With |
-|-----------|---------------|-------------------|
-| `server.py` | MCP tool registration, request deserialization, response formatting | `OperatorService` |
-| `service/__init__.py` | Re-exports `OperatorService`, `ErrorOperatorService` | -- |
-| `service/_orchestrator.py` | Orchestrates validation -> domain -> conversion -> repo. No logic of its own. | `validation`, `domain`, `conversion`, Repository |
-| `service/validation.py` | Input validation: name checks, parent resolution, tag name-to-ID resolution | Repository (for lookups) |
-| `service/domain.py` | Business logic: lifecycle state machine, tag diff, no-op detection, cycle detection | None (pure functions + task state) |
-| `service/conversion.py` | Spec-to-payload: both `TaskCreateSpec` and `TaskEditSpec` produce `dict[str, Any]` | None (pure transformation) |
-| Repository protocol | Unified write interface: both take `dict[str, Any]`, return `dict[str, Any]` | Bridge |
-| Bridge protocol | IPC to OmniFocus: `send_command(operation, params)` | OmniFocus (via file IPC) |
-
-### Data Flow: Unified Write Path
-
-After unification, both add and edit follow the same shape:
-
-```
-1. MCP Server deserializes input -> TaskCreateSpec or TaskEditSpec
-2. Service calls validation (name, parent, tags)
-3. Service calls domain logic (lifecycle, no-op, tag diff -- edit only)
-4. Service calls conversion (spec -> bridge payload dict)
-5. Service calls repo.add_task(payload) or repo.edit_task(payload)
-6. Repo delegates to bridge.send_command(operation, payload)
-7. Repo waits for write-through (WAL mtime)
-8. Service wraps result as TaskCreateResult or TaskEditResult
-```
-
----
-
-## New Components
-
-### 1. `src/omnifocus_operator/service/validation.py`
-
-**Extracted from:** `OperatorService._resolve_parent`, `._resolve_tags`, name validation check
-
-```python
-async def validate_task_name(name: str | None) -> None:
-    """Raise ValueError if name is empty/blank. None = not provided (edit skip)."""
-
-async def resolve_parent(parent_id: str, repo: Repository) -> str:
-    """Resolve parent ID. Project-first, then task. Raises ValueError."""
-
-async def resolve_tags(tag_names: list[str], repo: Repository) -> list[str]:
-    """Resolve tag names to IDs (case-insensitive, ID fallback). Raises ValueError."""
-```
-
-**Why extract:** Used identically by both add and edit paths. Currently private methods that only use `self._repository`. Making them free functions with explicit `repo` parameter removes the class coupling.
-
-### 2. `src/omnifocus_operator/service/domain.py`
-
-**Extracted from:** `OperatorService._process_lifecycle`, `._compute_tag_diff`, `._check_cycle`, no-op detection (lines 309-380)
-
-```python
-def process_lifecycle(action: str, task: Task) -> tuple[bool, list[str]]:
-    """Returns (should_call_bridge, warnings). Already stateless."""
-
-async def compute_tag_diff(
-    tag_actions: TagActionSpec, current_tags: list[TagRef], repo: Repository,
-) -> tuple[list[str], list[str], list[str]]:
-    """Returns (add_ids, remove_ids, warnings)."""
-
-async def check_cycle(task_id: str, container_id: str, repo: Repository) -> None:
-    """Raises ValueError if move creates circular reference."""
-
-def detect_noop(payload: dict[str, Any], task: Task) -> tuple[bool, list[str]]:
-    """Returns (is_noop, warnings). Compares payload against current state."""
-```
-
-**Why extract:** Domain logic independent of service orchestration. `_process_lifecycle` is already a pure function. `_compute_tag_diff` only needs repo for tag resolution. No-op detection is a pure comparison.
-
-### 3. `src/omnifocus_operator/service/conversion.py`
-
-**Extracted from:** payload building in `HybridRepository.add_task` (lines 492-497), `BridgeRepository.add_task` (lines 115-118), and `OperatorService.edit_task` (lines 196-282)
-
-```python
-def build_add_payload(
-    spec: TaskCreateSpec, resolved_tag_ids: list[str] | None,
-) -> dict[str, Any]:
-    """Convert TaskCreateSpec to bridge-ready camelCase dict."""
-
-def build_edit_payload(
-    spec: TaskEditSpec,
-    add_tag_ids: list[str] | None,
-    remove_tag_ids: list[str] | None,
-    move_to: dict[str, object] | None,
-    lifecycle: str | None,
-) -> dict[str, Any]:
-    """Convert TaskEditSpec fields to bridge-ready camelCase dict.
-    Only includes non-UNSET fields."""
-```
-
-**Why extract:** Serialization logic is currently split -- add payload built in two repo implementations (duplicated), edit payload built in service. Unifying into one module eliminates the duplication and asymmetry.
-
-### 4. `src/omnifocus_operator/service/__init__.py`
-
-Re-exports `OperatorService` and `ErrorOperatorService` so all existing imports work unchanged:
-```python
-from omnifocus_operator.service._orchestrator import ErrorOperatorService, OperatorService
-```
-
----
-
-## Modified Components
-
-### Repository Protocol (`repository/protocol.py`)
-
-**Change:** Unify `add_task` and `edit_task` signatures.
-
-```python
-# BEFORE
-async def add_task(self, spec: TaskCreateSpec, *, resolved_tag_ids: list[str] | None) -> TaskCreateResult
-async def edit_task(self, payload: dict[str, Any]) -> dict[str, Any]
-
-# AFTER
-async def add_task(self, payload: dict[str, Any]) -> dict[str, Any]
-async def edit_task(self, payload: dict[str, Any]) -> dict[str, Any]
-```
-
-Both now: accept pre-built dict, return dict from bridge. Payload construction moved to `conversion.py`, result wrapping moved to service.
-
-**Impact:** All three repository implementations + their tests.
-
-### HybridRepository (`repository/hybrid.py`)
-
-**Change:** `add_task` drops spec-based signature, becomes a thin bridge delegate (matches `edit_task` pattern).
-
-```python
-# BEFORE (lines 477-509) -- builds payload from spec
-@_ensures_write_through
-async def add_task(self, spec, *, resolved_tag_ids=None) -> TaskCreateResult:
-    payload = spec.model_dump(by_alias=True, exclude_none=True, mode="json")
-    payload.pop("tags", None)
-    if resolved_tag_ids:
-        payload["tagIds"] = resolved_tag_ids
-    result = await self._bridge.send_command("add_task", payload)
-    return TaskCreateResult(success=True, id=result["id"], name=result["name"])
-
-# AFTER -- symmetric with edit_task
-@_ensures_write_through
-async def add_task(self, payload: dict[str, Any]) -> dict[str, Any]:
-    return await self._bridge.send_command("add_task", payload)
-```
-
-### BridgeRepository (`repository/bridge.py`)
-
-Same change as HybridRepository. Drops `TaskCreateSpec` import, returns `dict` instead of `TaskCreateResult`.
-
-### InMemoryRepository (`repository/in_memory.py`)
-
-**Signature change:** `add_task` takes `dict[str, Any]` instead of `TaskCreateSpec`.
-**Behavioral change:** Builds in-memory `Task` from dict keys (camelCase) instead of spec attributes.
-**Location change:** Move to `tests/` (or at minimum remove from `repository/__init__.py` exports).
-
-### Bridge `__init__.py`
-
-**Remove:** `InMemoryBridge` and `BridgeCall` from `__all__` and imports.
-
-### Bridge factory (`bridge/factory.py`)
-
-**Remove:** `"inmemory"` case. Update error message to list only `simulator` and `real`.
-
-### Write Models (`models/write.py`)
-
-**Add:** `extra="forbid"` on `TaskCreateSpec`, `TaskEditSpec`, `MoveToSpec`, `TagActionSpec`, `ActionsSpec`.
-
-```python
-class TaskCreateSpec(OmniFocusBaseModel):
-    model_config = ConfigDict(extra="forbid")
-    ...
-```
-
-**Note:** `OmniFocusBaseModel` sets `alias_generator`, `validate_by_name`, `validate_by_alias`. Pydantic v2 merges `ConfigDict` from parent and child -- `extra="forbid"` adds to the existing config without overriding.
-
-### Service (`service.py` -> `service/_orchestrator.py`)
-
-Slims from ~637 lines to ~80-100 lines. All private methods extracted. `edit_task` becomes a clear orchestration flow:
-
-```python
-async def edit_task(self, spec: TaskEditSpec) -> TaskEditResult:
-    task = await self._repository.get_task(spec.id)
-    if not task: raise ValueError(...)
-    warnings = []
-
-    # Domain: lifecycle
-    lifecycle, lifecycle_warnings = process_lifecycle_if_present(spec, task)
-    warnings.extend(lifecycle_warnings)
-
-    # Validation: name, tags, move
-    validate_edit_name(spec)
-    add_ids, remove_ids, tag_warnings = await resolve_edit_tags(spec, task, self._repo)
-    warnings.extend(tag_warnings)
-    move_to = await resolve_edit_move(spec, task, self._repo)
-
-    # Conversion: spec -> payload
-    payload = build_edit_payload(spec, add_ids, remove_ids, move_to, lifecycle)
-
-    # Domain: no-op detection
-    is_noop, noop_warnings = detect_noop(payload, task, warnings)
-    if is_noop: return TaskEditResult(success=True, id=spec.id, name=task.name, warnings=...)
-
-    # Execute
-    result = await self._repository.edit_task(payload)
-    return TaskEditResult(success=True, id=result["id"], name=result["name"], warnings=warnings or None)
-```
-
----
-
-## Patterns to Follow
-
-### Pattern 1: Module-level functions over class methods
-
-**What:** Extract logic as module-level async/sync functions, not methods on helper classes.
-**When:** The function doesn't need persistent state across calls.
-**Why:** All current private methods on `OperatorService` are stateless -- they only use `self._repository` as a dependency. Free functions with explicit `repo` parameter are clearer and directly testable without instantiating the service.
-
-### Pattern 2: Package with backward-compatible imports
-
-**What:** Convert `service.py` to `service/` package directory.
-**When:** Decomposing a module with established import paths.
-**Why:** `from omnifocus_operator.service import OperatorService` is used in `server.py`, tests, and lifespan. The `__init__.py` re-exports everything, so no external import changes needed.
-
-```
-service/
-  __init__.py       # re-exports OperatorService, ErrorOperatorService
-  _orchestrator.py  # OperatorService, ErrorOperatorService
-  validation.py     # validate_task_name, resolve_parent, resolve_tags
-  domain.py         # process_lifecycle, compute_tag_diff, check_cycle, detect_noop
-  conversion.py     # build_add_payload, build_edit_payload
-```
-
-### Pattern 3: Conversion as pure functions
-
-**What:** All spec-to-dict conversion in `conversion.py` as pure sync functions (no async, no repo access).
-**When:** Serialization/format conversion code.
-**Why:** Pure functions are trivially testable with no dependencies. Makes the data flow explicit: validation resolves IDs first, then conversion uses resolved IDs.
-
----
-
-## Anti-Patterns to Avoid
-
-### Anti-Pattern 1: WriteModel base class with inheritance
-
-**What:** Creating a `WriteModel` base class for `TaskCreateSpec` and `TaskEditSpec`.
-**Why bad:** The two specs are fundamentally different -- `TaskCreateSpec` uses `None` defaults (OmniFocus picks defaults), `TaskEditSpec` uses `UNSET` sentinel (omit = no change). Forcing inheritance would require awkward type gymnastics.
-**Instead:** Keep as sibling classes. Share behavior through the conversion module.
-
-### Anti-Pattern 2: Moving conversion into models
-
-**What:** Adding `to_bridge_payload()` methods on spec models.
-**Why bad:** Models would need to know bridge payload format (camelCase keys, `tagIds` vs `tags`). Violates single responsibility.
-**Instead:** Models = pure data containers. Conversion = separate module.
-
-### Anti-Pattern 3: Intermediate typed payload model
-
-**What:** Creating a `BridgePayload` Pydantic model between service and repository.
-**Why bad:** Bridge protocol is `dict[str, Any]`. Adding a typed intermediate creates serialization overhead. The dict gets serialized to JSON for IPC immediately. Type safety comes from conversion functions having typed inputs.
-**Instead:** Use `dict[str, Any]` at repo boundary.
-
-### Anti-Pattern 4: Over-extracting into tiny modules
-
-**What:** Separate files for each function (e.g., `lifecycle.py`, `tag_diff.py`, `cycle_check.py`).
-**Why bad:** Domain logic totals ~150 lines. Four+ files creates navigation overhead without encapsulation benefit.
-**Instead:** Three modules by concern: `validation.py`, `domain.py`, `conversion.py`.
-
----
-
-## Suggested Build Order
-
-Ordered by dependency direction: repo protocol changes must land before service changes that depend on new signatures.
-
-### Phase 1: Write model strictness (independent, no deps)
-
-Add `extra="forbid"` to all write spec models.
-
-- **Files:** `models/write.py`
-- **Tests:** Verify unknown fields raise `ValidationError`
-- **Risk:** LOW -- Pydantic v2 ConfigDict merging is well-tested
-- **Dependencies:** None
-
-### Phase 2: Unify repository write signatures
-
-Change `add_task` and `edit_task` on Repository protocol to both accept/return `dict[str, Any]`.
-
-- **Files:**
-  - `repository/protocol.py` (protocol change)
-  - `repository/hybrid.py` (simplify `add_task` to bridge passthrough)
-  - `repository/bridge.py` (same simplification)
-  - `repository/in_memory.py` (update `add_task` to work from dict)
-- **Service bridge:** Service's `add_task` temporarily builds payload dict inline (copy 5 lines from old `HybridRepository.add_task`) before Phase 3 moves it to `conversion.py`.
-- **Risk:** LOW -- mechanical signature change, existing tests catch breakage
-- **Dependencies:** None (parallel with Phase 1)
-
-### Phase 3: Extract service into package
-
-Convert `service.py` to `service/` package with sub-modules.
-
-**Internal order (each step keeps tests green):**
-1. Create `service/` directory with `__init__.py` re-exporting current API
-2. Move `OperatorService` + `ErrorOperatorService` to `service/_orchestrator.py`
-3. Extract `validation.py` (resolve_parent, resolve_tags, validate_task_name)
-4. Extract `domain.py` (process_lifecycle, compute_tag_diff, check_cycle, detect_noop)
-5. Extract `conversion.py` (build_add_payload, build_edit_payload)
-6. Slim `_orchestrator.py` to use extracted modules
-
-- **Risk:** MEDIUM -- most complex phase, many moving parts. Each sub-step must keep tests green.
-- **Dependencies:** Phase 2 (service needs to build payload for new repo signature)
-
-### Phase 4: Relocate InMemoryBridge from production exports
-
-Two sub-steps (matches existing TODO):
-
-1. **Remove from public surface:** Drop from `bridge/__init__.py`, remove `"inmemory"` from bridge factory, update test imports to direct paths.
-2. **Physical relocation (optional):** Move file to `tests/` if desired. File can stay in `src/` with no public export.
-
-- **Files:** `bridge/__init__.py`, `bridge/factory.py`, `repository/factory.py`, 4 test files
-- **Risk:** LOW -- import-only changes, no behavioral change
-- **Dependencies:** Best done last to avoid import churn during other phases
-
----
-
-## Integration Points
+- `fastmcp>=3` is a standalone package (PyPI: `fastmcp`, latest 3.1.1 as of 2026-03-24)
+- It includes `mcp` SDK as a dependency, so all `mcp.*` imports still resolve
+- No need to declare `mcp` separately -- `fastmcp` brings it
+- License: Apache-2.0 (compatible with MIT project)
+- Python: >=3.10 (project uses 3.12, no conflict)
+
+**Transitive dependency impact:** fastmcp brings ~19 direct dependencies (httpx, authlib, uvicorn, rich, cyclopts, opentelemetry-api, etc.). Many overlap with what `mcp` already brings. The project goes from 1 declared dep to 1 declared dep with a heavier tree.
+
+## Files That Change
+
+### Production Code
+
+| File | Change Type | What Changes |
+|------|-------------|--------------|
+| `pyproject.toml` | Modify | `mcp>=1.26.0` -> `fastmcp>=3.1,<4` |
+| `src/omnifocus_operator/server.py` | Modify | Imports, Context type, lifespan access, tool logging |
+| `src/omnifocus_operator/__main__.py` | Modify | Simplify file-based logging (keep for lifecycle, reduce for tools) |
+
+### Test Code
+
+| File | Change Type | What Changes |
+|------|-------------|--------------|
+| `tests/conftest.py` | Modify | `from mcp.server.fastmcp import FastMCP` -> `from fastmcp import FastMCP` |
+| `tests/test_server.py` | Modify | Same import change |
+| `tests/test_simulator_bridge.py` | Modify | Same import change |
+| `tests/test_simulator_integration.py` | Modify | Same import change |
 
 ### Unchanged
 
-| Integration | Path |
-|-------------|------|
-| `server.py` -> `OperatorService` | `from omnifocus_operator.service import OperatorService` |
-| `server.py` -> write models | `from omnifocus_operator.models import TaskCreateSpec, TaskEditSpec` |
-| Repository -> Bridge | `self._bridge.send_command(op, payload)` |
-| Write-through decorator | `@_ensures_write_through` on repo write methods |
+- `src/omnifocus_operator/service/` -- no MCP imports
+- `src/omnifocus_operator/repository/` -- no MCP imports
+- `src/omnifocus_operator/bridge/` -- no MCP imports
+- `src/omnifocus_operator/contracts/` -- no MCP imports
+- `src/omnifocus_operator/models/` -- no MCP imports
+- `src/omnifocus_operator/agent_messages/` -- no MCP imports
 
-### New
+## Migration Details
 
-| Integration | Description |
-|-------------|-------------|
-| `_orchestrator.py` -> `validation.py` | `validate_task_name()`, `resolve_parent()`, `resolve_tags()` |
-| `_orchestrator.py` -> `domain.py` | `process_lifecycle()`, `compute_tag_diff()`, `detect_noop()`, `check_cycle()` |
-| `_orchestrator.py` -> `conversion.py` | `build_add_payload()`, `build_edit_payload()` |
-| `validation.py` -> Repository | Needs repo for `get_project`, `get_task`, `get_tag`, `get_all` lookups |
-| `domain.py` -> Repository | `compute_tag_diff` needs repo for tag resolution; `check_cycle` needs repo for task tree |
+### 1. Import Changes in server.py
 
-### Breaking changes (internal only, no public API changes)
+```python
+# BEFORE
+from mcp.server.fastmcp import Context, FastMCP
+from mcp.types import ToolAnnotations
 
-| Change | Affected |
-|--------|----------|
-| `Repository.add_task` signature | All 3 repo implementations + direct repo tests |
-| `InMemoryBridge` removed from `bridge.__init__` | 5 test files importing from `bridge` package |
-| `service.py` becomes `service/` package | None -- `__init__.py` re-exports everything |
+# AFTER
+from fastmcp import FastMCP, Context
+from mcp.types import ToolAnnotations  # stays -- no fastmcp equivalent
+```
 
----
+- `FastMCP` and `Context` move to `from fastmcp import ...`
+- `ToolAnnotations` stays at `from mcp.types` (or use dict format as alternative)
+- `Context` is no longer generic -- `Context[Any, Any, Any]` becomes just `Context`
+
+### 2. Lifespan (No Change Required)
+
+```python
+# Current pattern -- fully compatible with FastMCP v3
+@asynccontextmanager
+async def app_lifespan(app: FastMCP) -> AsyncIterator[dict[str, object]]:
+    # ... setup ...
+    yield {"service": service}
+
+mcp = FastMCP("omnifocus-operator", lifespan=app_lifespan)
+```
+
+FastMCP v3 also offers `@lifespan` decorator and composable lifespans (`|` operator), but `@asynccontextmanager` works as-is. **Do not rewrite.**
+
+### 3. Context Access in Tool Handlers
+
+```python
+# BEFORE
+async def get_all(ctx: Context[Any, Any, Any]) -> AllEntities:
+    service: OperatorService = ctx.request_context.lifespan_context["service"]
+
+# AFTER
+async def get_all(ctx: Context) -> AllEntities:
+    service: OperatorService = ctx.lifespan_context["service"]
+```
+
+- `ctx.lifespan_context` is a direct property in v3, returns `dict[str, Any]`
+- Returns empty dict if no lifespan configured (safe fallback)
+- The `.request_context.lifespan_context` chain still exists but `request_context` can be `None`
+
+### 4. Logging Migration
+
+```python
+# BEFORE (server.py) -- logging goes to file, invisible to agent
+logger.debug("server.get_all: returning tasks=%d, projects=%d", ...)
+
+# AFTER (server.py) -- dual channel
+await ctx.info(f"Returning {len(result.tasks)} tasks, {len(result.projects)} projects")
+logger.debug("get_all complete")  # optional: file-only for developer debugging
+```
+
+Available `ctx` logging methods (all async):
+- `await ctx.debug(message)` -- detailed execution info
+- `await ctx.info(message)` -- normal execution milestones
+- `await ctx.warning(message)` -- non-critical issues
+- `await ctx.error(message)` -- recoverable errors
+
+**Keep FileHandler for lifecycle events** (startup, IPC sweep, shutdown) where Context is not available.
+
+### 5. Test Imports (Minimal Change)
+
+```python
+# BEFORE (tests/)
+from mcp.server.fastmcp import FastMCP
+
+# AFTER
+from fastmcp import FastMCP
+
+# These stay unchanged (still available via transitive mcp dep):
+from mcp.client.session import ClientSession
+from mcp.shared.message import SessionMessage
+```
+
+**Test harness decision: Keep existing pattern for v1.2.2.** The `_ClientSessionProxy` + anyio streams + `_mcp_server.run()` pattern still works because:
+- `_mcp_server` attribute still exists in FastMCP v3 (it wraps the low-level `Server`)
+- `ClientSession` and `SessionMessage` come from transitive `mcp` dep
+- Refactoring to `fastmcp.Client(transport=server)` is a future DX improvement
+
+### 6. Tool Registration (Unchanged)
+
+```python
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
+async def get_all(ctx: Context) -> AllEntities:
+    ...
+```
+
+Only change: `Context` without generic params. `@mcp.tool()` API is identical.
+
+### 7. Entry Point (Unchanged)
+
+```python
+server.run(transport="stdio")
+```
+
+`run(transport="stdio")` works identically. Constructor kwargs that moved to `run()` in v3 (host, port, etc.) are irrelevant for stdio transport.
+
+## Component Boundary Diagram
+
+```
+BEFORE:                              AFTER:
+
+  pyproject.toml                      pyproject.toml
+  deps: [mcp>=1.26.0]                deps: [fastmcp>=3.1,<4]
+                                           |
+                                           +-- mcp>=1.24.0 (transitive)
+                                           +-- httpx, authlib, ... (transitive)
+
+  __main__.py                         __main__.py
+  - FileHandler logging               - FileHandler (lifecycle only)
+  - server.run("stdio")               - server.run("stdio")  [unchanged]
+
+  server.py                           server.py
+  - from mcp.server.fastmcp           - from fastmcp import FastMCP, Context
+  - Context[Any,Any,Any]              - Context (no generics)
+  - ctx.request_context               - ctx.lifespan_context["service"]
+      .lifespan_context["service"]    - await ctx.info/warning/debug/error
+  - logger.debug(...)
+  - @mcp.tool(annotations=...)        - @mcp.tool(annotations=...)  [unchanged]
+
+  service/ ---- UNCHANGED ----        service/ ---- UNCHANGED ----
+  repository/ - UNCHANGED ----        repository/ - UNCHANGED ----
+  bridge/ ---- UNCHANGED ----         bridge/ ---- UNCHANGED ----
+  contracts/ -- UNCHANGED ----        contracts/ -- UNCHANGED ----
+  models/ ----- UNCHANGED ----        models/ ----- UNCHANGED ----
+```
+
+## Patterns to Follow
+
+### Pattern 1: Minimal Import Migration
+**What:** Change only imports that must change. Leave `mcp.types` and `mcp.client.*` imports alone.
+**Why:** `fastmcp` depends on `mcp` and does not re-export `mcp.types`. Don't create unnecessary churn.
+
+### Pattern 2: Dual Logging Strategy
+**What:** Keep file-based `logging` for server infrastructure (startup, IPC sweep, shutdown). Use `ctx.info()`/`ctx.warning()` for agent-relevant messages inside tool handlers.
+**Why:** Different audiences, different channels. `ctx` methods reach the agent. File logging captures developer diagnostics.
+
+### Pattern 3: Keep Existing Test Harness
+**What:** Only change `FastMCP` import paths in test files. Keep `_ClientSessionProxy` + anyio streams pattern.
+**Why:** Minimizes migration scope. The pattern still works. Refactoring to `fastmcp.Client` can be done separately.
+
+## Anti-Patterns to Avoid
+
+### Anti-Pattern 1: Importing Everything from fastmcp
+**What:** Replacing all `mcp.types` imports with fastmcp equivalents.
+**Why bad:** `ToolAnnotations`, `TextContent`, etc. live in `mcp.types`. No `fastmcp.types` equivalent exists.
+**Instead:** Only change `FastMCP` and `Context` imports.
+
+### Anti-Pattern 2: Rewriting Lifespan Pattern
+**What:** Using `@lifespan` decorator or composable lifespans when `@asynccontextmanager` works.
+**Why bad:** Unnecessary diff, imports from internal module path, adds no value.
+**Instead:** Keep `@asynccontextmanager` pattern. FastMCP 3 accepts it directly.
+
+### Anti-Pattern 3: Removing File Logging Entirely
+**What:** Deleting the FileHandler in `__main__.py` since `ctx` methods exist.
+**Why bad:** `ctx` is only available inside tool handlers. Startup, shutdown, IPC sweep have no ctx.
+**Instead:** Keep file logging for infrastructure. Add ctx logging for tool-handler messages.
+
+### Anti-Pattern 4: Pinning to `fastmcp==3.x.x` or `>=3.0.0`
+**What:** Exact version pin or floor at 3.0.0.
+**Why bad:** Exact pin misses patches. Floor at 3.0.0 includes buggy v3.0.0 release (middleware state bug, decorator type issues).
+**Instead:** Use `fastmcp>=3.1,<4`.
+
+### Anti-Pattern 5: Test Refactoring in Migration Scope
+**What:** Rewriting `_ClientSessionProxy` to `fastmcp.Client(transport=server)` during this milestone.
+**Why bad:** Mixes infrastructure changes with dependency migration. Harder to isolate regressions. `CallToolResult.data` return type differs from `ClientSession.call_tool()`.
+**Instead:** Verify existing tests pass. Defer to future milestone.
 
 ## Sources
 
-- Direct codebase analysis (HIGH confidence)
-  - `src/omnifocus_operator/service.py` -- 637 lines, primary decomposition target
-  - `src/omnifocus_operator/repository/protocol.py` -- write signature asymmetry
-  - `src/omnifocus_operator/repository/hybrid.py` -- add_task payload building (lines 477-509)
-  - `src/omnifocus_operator/repository/bridge.py` -- add_task payload building (lines 102-126, duplicated)
-  - `src/omnifocus_operator/repository/in_memory.py` -- test-only implementation
-  - `src/omnifocus_operator/models/write.py` -- write models, UNSET sentinel
-  - `src/omnifocus_operator/bridge/in_memory.py` -- test double in production tree
-  - `src/omnifocus_operator/bridge/__init__.py` -- public exports including test doubles
-  - `src/omnifocus_operator/bridge/factory.py` -- inmemory branch in factory
-  - `.planning/todos/pending/2026-03-10-remove-inmemorybridge-from-production-exports-and-factory.md`
+- [FastMCP Official Docs](https://gofastmcp.com) -- server, tools, context, lifespan, logging
+- [FastMCP PyPI](https://pypi.org/project/fastmcp/) -- v3.1.1, dependencies, Python version
+- [FastMCP GitHub (pyproject.toml)](https://github.com/PrefectHQ/fastmcp) -- mcp>=1.24.0,<2.0 dependency
+- [FastMCP Upgrade Guide](https://gofastmcp.com/development/upgrade-guide) -- import changes, breaking changes
+- [FastMCP 3.0 GA Announcement](https://www.jlowin.dev/blog/fastmcp-3-launch)
+- [FastMCP Context API](https://gofastmcp.com/python-sdk/fastmcp-server-context) -- ctx.lifespan_context, logging methods
+- [FastMCP Tools](https://gofastmcp.com/servers/tools) -- @mcp.tool() API, ToolAnnotations
+- [FastMCP Testing](https://gofastmcp.com/servers/testing) -- Client in-process testing pattern
+- [FastMCP Client](https://gofastmcp.com/clients/client) -- Client class API

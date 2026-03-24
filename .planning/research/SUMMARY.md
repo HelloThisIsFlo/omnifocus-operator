@@ -1,162 +1,149 @@
 # Project Research Summary
 
-**Project:** OmniFocus Operator v1.2.1 — Architectural Cleanup
-**Domain:** Internal refactoring — service layer decomposition and write pipeline unification
-**Researched:** 2026-03-16
+**Project:** OmniFocus Operator v1.2.2 — FastMCP v3 Migration
+**Domain:** MCP server dependency migration (bundled SDK -> standalone framework)
+**Researched:** 2026-03-24
 **Confidence:** HIGH
 
 ## Executive Summary
 
-v1.2.1 is a pure internal refactoring milestone with zero new runtime dependencies. The goal is to correct two structural problems that accumulated during v1.2: a 637-line monolithic `service.py` that mixes orchestration, validation, domain logic, and format conversion; and an asymmetric write pipeline where `add_task` and `edit_task` use different conventions at the service-repository boundary. Both problems are well-understood — research draws from direct codebase analysis, Pydantic v2 docs, and Cosmic Python architecture patterns.
+This milestone is a focused dependency swap, not a feature build. The migration replaces the bundled FastMCP 1.0 (shipped inside `mcp>=1.26.0`) with standalone `fastmcp>=3.1,<4` — the actively maintained project now backed by Prefect. The three-layer architecture (MCP Server / Service / Repository) is completely unaffected. All changes are contained in 3 production files (`pyproject.toml`, `server.py`, `__main__.py`) and 4 test files. The primary win beyond maintenance alignment is protocol-level logging: `await ctx.info()` / `await ctx.warning()` send messages directly to the MCP client (Claude Desktop), replacing the current file-based `~/Library/Logs/` workaround that agents can never see.
 
-The recommended approach is staged decomposition: start with two independent quick wins (`extra="forbid"` on write models, `InMemoryBridge` export cleanup), then unify the repository write signatures, then extract the service into a package with validation/domain/conversion sub-modules. This ordering matters — decomposing the service before unifying the repository interface leads to wrong abstractions. The extraction should produce exactly 3 sub-modules plus the orchestrator, not 6+.
+The recommended execution order is strict: dependency swap first, then import + Context type changes, then lifespan context accessor updates, then full test suite validation, then logging enhancement, then manual UAT. This sequence isolates each failure mode. The biggest risk is conflating these steps — particularly mixing test infrastructure changes (which involve a different return-type contract from `fastmcp.Client` vs `ClientSession`) into the same commit as the import swap.
 
-The main risks are Pydantic-specific: `extra="forbid"` may interact unexpectedly with the `_Unset` sentinel on `TaskEditSpec`, and `model_rebuild()` ordering in `models/__init__.py` is fragile if model files move. Both are detectable immediately with targeted tests. Circular imports during service extraction are the other likely stumbling block, prevented by enforcing a strict one-way dependency direction.
-
----
+The transitive dependency footprint grows (from ~12 to ~30+ packages), and the README "Dependencies 1" badge becomes misleading. This is a real tradeoff with no mitigation — fastmcp is the community standard (70% of MCP servers), and the gains justify accepting it. The badge should be updated or removed.
 
 ## Key Findings
 
 ### Recommended Stack
 
-No new dependencies. The milestone uses Pydantic v2.12.5 (already in stack via `mcp>=1.26.0`) more deliberately: `ConfigDict(extra="forbid")` for write model strictness and ConfigDict inheritance merge to keep the base model's alias settings. Python 3.12 module/package patterns handle the service decomposition.
+Single dependency swap: `mcp>=1.26.0` -> `fastmcp>=3.1,<4`. The `mcp` package remains available as a transitive dependency, so `mcp.types.ToolAnnotations`, `mcp.client.session.ClientSession`, and `mcp.shared.message.SessionMessage` all continue to work with no import changes. Floor at `>=3.1` (not `>=3.0`) because v3.0.0 had known bugs: middleware state surviving to tool handlers, decorator overload types. Cap at `<4` for semver safety.
 
 **Core technologies:**
-- **Pydantic v2.12.5** (write model validation) — `ConfigDict(extra="forbid")` on write specs; ConfigDict merges additively on inheritance so a `WriteModel` base adds `extra="forbid"` without clobbering `alias_generator` from `OmniFocusBaseModel`
-- **Python packages with `__init__.py` re-exports** (service decomposition) — convert `service.py` to `service/` package; `__init__.py` re-exports `OperatorService` so all existing imports are unchanged
-- **Module-level functions** (extracted logic) — stateless validation, domain, and conversion functions need no class ceremony; directly testable without instantiating the service
-
-**Critical constraint:** Read models (`Task`, `Project`, `Tag`) must remain `extra="ignore"`. OmniFocus may return unmodeled SQLite columns; strict read models would cause production outages on OmniFocus updates.
+- `fastmcp>=3.1,<4`: MCP server framework — standalone project, actively maintained by Prefect, 1M+ downloads/day, protocol-level logging
+- `mcp>=1.24.0` (transitive via fastmcp): types and low-level SDK — `ToolAnnotations`, `ClientSession`, `SessionMessage` remain importable with no changes
 
 ### Expected Features
 
-This milestone is internal — "features" are code quality deliverables, not user-visible capabilities.
+**Must have (table stakes for this milestone):**
+- Dep swap in `pyproject.toml` — the foundation; nothing else moves without this
+- Import changes: `from fastmcp import FastMCP, Context` in `server.py` and 4 test files
+- Context type simplification: `Context[Any, Any, Any]` -> `Context` (non-generic in v3)
+- Lifespan context accessor: `ctx.request_context.lifespan_context["service"]` -> `ctx.lifespan_context["service"]` across all 6 tool handlers
+- Protocol-level logging: `await ctx.info()` / `await ctx.warning()` in tool handlers (agent-visible)
+- All 6 existing tools behaviorally identical — 697 tests must pass
 
-**Must have (table stakes):**
-- `extra="forbid"` on all write spec models — agents sending unknown fields currently get silent discard; essential for any write API
-- Symmetric `add_task`/`edit_task` signatures at repository boundary — both accept `dict[str, Any]`, return `dict[str, Any]`; current asymmetry forces every new write operation to invent its own convention
-- Service decomposed into orchestrator + 3 sub-modules (`_validation.py`, `_domain.py`, `_payload.py`) — service method becomes a readable ~20-line orchestration flow
-- `InMemoryBridge` removed from production exports — test double in `bridge/__init__.py` is a code smell
+**Should have (differentiators unlocked by migration, adopt in this milestone):**
+- `ctx.lifespan_context` direct property shorthand (cleaner, two-path fallback)
+- Dual logging strategy: FileHandler for lifecycle events + `ctx` methods for agent-visible messages
+- ToolAnnotations as dict (`{"readOnlyHint": True}`) — reduces coupling to `mcp.types`
 
-**Should have (differentiators):**
-- Typed return values from repository write methods — `TaskCreateResult`/`TaskEditResult` constructed in service, not wrangled from raw dicts
-- Shared resolution logic — `resolve_parent`/`resolve_tags` as free functions usable by both add and edit paths
-
-**Defer to later milestones:**
-- Typed `BridgePayload` model at service-repository boundary — `dict[str, Any]` is appropriate; typed intermediate adds overhead for no current benefit
-- Composable validation pipeline — only 2 write operations; explicit function calls are clearer
-- Physical relocation of `InMemoryBridge` to `tests/` — removing from exports is sufficient for v1.2.1
+**Defer (future milestones):**
+- Middleware framework (v1.6 production hardening)
+- Dependency injection via `Depends()` (when DI simplifies code)
+- `fastmcp.Client` test infrastructure refactor (DX improvement, separate milestone)
+- Tool timeouts `@mcp.tool(timeout=30.0)` (v1.6)
+- HTTP/SSE transport (out of scope, stdio-only design)
 
 ### Architecture Approach
 
-Target state: a three-module service package with strict one-way dependency direction. Orchestrator calls into sub-modules, never the reverse. Extracted modules are pure functions with explicit dependency injection (repo passed as argument, not accessed via `self`). The repository protocol becomes a thin bridge delegate — payload construction moves to `conversion.py`, result construction moves back to the service.
+The migration is architecturally clean — service, repository, bridge, contracts, models, and agent_messages layers have zero MCP imports and require no changes. All modifications are at the server boundary layer only. The pattern to follow is minimal import migration: change only `FastMCP` and `Context` imports, leave all `mcp.types` and `mcp.client.*` imports alone (they resolve through fastmcp's transitive `mcp` dependency). Adopt dual logging as a structural pattern: file-based `logging` for server infrastructure, `await ctx.info()/warning()` for agent-visible tool execution messages.
 
-**Major components after refactoring:**
-1. `service/_orchestrator.py` — 80-100 lines; pure orchestration: validate → domain → convert → delegate; holds repo reference
-2. `service/validation.py` — name checks, parent resolution, tag name-to-ID resolution; async functions receiving `repo` as argument
-3. `service/domain.py` — lifecycle state machine, tag diff, no-op detection, cycle detection; mostly pure sync functions
-4. `service/conversion.py` — `build_add_payload()` and `build_edit_payload()`; pure sync functions; no async, no repo access
-5. **Repository protocol** — unified: both `add_task(payload: dict)` and `edit_task(payload: dict)` return `dict`; no typed spec at boundary
-
-**Unchanged:** `server.py` → `OperatorService` import; bridge IPC protocol; `@_ensures_write_through` decorator placement; SQLite read path.
+**Major components and their migration scope:**
+1. `pyproject.toml` — dep swap only
+2. `server.py` — imports, Context type, lifespan accessor, logging (most changes)
+3. `__main__.py` — FileHandler kept for lifecycle; file-only tool logging removed or reduced
+4. `tests/conftest.py` + 3 test files — FastMCP import only; test harness pattern deferred
 
 ### Critical Pitfalls
 
-1. **`extra="forbid"` + `_Unset` sentinel interaction** — `TaskEditSpec` uses `_Unset` as default for optional fields; `extra="forbid"` on a parent class may cause `ValidationError` on valid inputs due to Pydantic v2 config MRO issues (#9768, #9992). Prevention: apply `extra="forbid"` per-model, not via a `WriteModel` base; test both `model_validate(dict)` and `model_validate_json(str)` paths before any other refactoring.
+1. **`ctx.request_context.lifespan_context` accessor is fragile** — v3 adds a direct `ctx.lifespan_context` property with a two-path fallback to `server._lifespan_result`. Old path works in stdio but not guaranteed in all contexts. Replace all 6 occurrences atomically; grep for `request_context.lifespan_context` across the entire codebase.
 
-2. **`model_rebuild()` ordering** — `models/__init__.py` rebuilds 15 models in dependency order with a shared `_types_namespace`; reorganizing model files disrupts this ordering and causes `PydanticUndefinedAnnotation` at import time, crashing all 534 tests. Prevention: keep all `model_rebuild()` calls centralized in `models/__init__.py` regardless of where model classes live.
+2. **`Context[Any, Any, Any]` breaks mypy in v3** — Context is a non-generic dataclass in v3; subscripting it produces `[type-arg]` errors under strict mypy. Change all 6 tool handler signatures to plain `Context`. Remove unused `Any` imports if they were only needed for Context type params.
 
-3. **Circular imports during service extraction** — extracted modules importing back into the service creates circular deps. Prevention: strict one-way direction: orchestrator imports from sub-modules, never the reverse; sub-modules receive dependencies as arguments.
+3. **Test infrastructure uses private `_mcp_server` attribute** — The `_ClientSessionProxy` + anyio streams + `_mcp_server.run()` pattern relies on a private API. v3 provides `fastmcp.Client(server)` as the official testing API, but with a different return type (`CallToolResult.data` vs `ClientSession.call_tool()`). Keep this change separate from the import swap. Current pattern still works in v3.1.1 but is a time bomb.
 
-4. **`InMemoryBridge` mass import breakage** — removing from `bridge/__init__.py` in one step causes 100+ `ImportError`s across the test suite. Prevention: two-commit approach — first update all test imports to use `bridge.in_memory` direct path, run suite, then remove the export.
+4. **Keeping both `mcp` and `fastmcp` in deps causes conflicts** — Replace (not add). Verify with `python -c "from fastmcp import FastMCP; from mcp.types import ToolAnnotations"` after sync.
 
-5. **`_Unset` sentinel leaking into bridge payloads** — using `model_dump()` on `TaskEditSpec` includes UNSET sentinel values; `bridge.js` can't deserialize them. Prevention: retain explicit field-by-field construction for edit payloads; use `model_dump()` only for create specs (no sentinels).
-
----
+5. **`ctx.info()` / `ctx.warning()` are async and only work inside tool handlers** — Missing `await` produces a silent coroutine warning, not an error. Lifespan startup/shutdown has no `ctx`. Do not remove FileHandler; add `ctx` calls alongside it, not instead.
 
 ## Implications for Roadmap
 
-### Phase 1: Write Model Strictness
-**Rationale:** Independent of all other changes; smallest scope; validates the Pydantic `extra="forbid"` + sentinel interaction before it affects anything else. Catching sentinel issues here costs minutes; catching them mid-decomposition costs hours.
-**Delivers:** Write specs reject unknown fields at runtime (`ValidationError`), closing the silent-discard gap for agent calls.
-**Addresses:** `extra="forbid"` table stakes feature.
-**Avoids:** Pitfall 1 (sentinel interaction) — tested in isolation before inheritance patterns are introduced.
+This is a single focused milestone. Within it, research reveals a mandatory execution sequence with three natural commit groupings:
 
-### Phase 2: InMemoryBridge Export Cleanup
-**Rationale:** Independent of all other changes; best done before decomposition to reduce diff noise during larger refactors.
-**Delivers:** `InMemoryBridge` removed from public production exports; tests use `bridge.in_memory` direct module path.
-**Addresses:** InMemoryBridge code smell.
-**Avoids:** Pitfall 4 (mass import breakage) — two-commit approach with full suite run between steps.
+### Phase 1: Core Dependency + Import Swap
+**Rationale:** All subsequent changes depend on fastmcp being installed and importable. Must be the first commit and validated before anything else.
+**Delivers:** fastmcp installed, all imports resolving, 697 tests passing
+**Addresses:** Table stakes features (dep swap, import changes, Context type, lifespan accessor)
+**Avoids:** Dependency conflict pitfall, mypy breakage pitfall
 
-### Phase 3: Repository Write Interface Unification
-**Rationale:** Must happen before service decomposition. Decomposing the service around the old asymmetric protocol leads to wrong abstractions. Once the repository accepts `dict[str, Any]` for both operations, the service's role (build the payload) becomes unambiguous.
-**Delivers:** Symmetric `add_task(payload: dict)`/`edit_task(payload: dict)` on all three repo implementations; payload construction removed from repositories.
-**Addresses:** Symmetric write protocol table stakes feature.
-**Avoids:** Pitfall 5 (payload shape change) — bridge payload contract tests assert exact dict passed to `send_command`; Pitfall 8 (UNSET leak) — explicit field construction retained for edit path; Pitfall 9 (`@_ensures_write_through` break) — decorator stays on repo methods unchanged.
+### Phase 2: Protocol-Level Logging Enhancement
+**Rationale:** Requires Phase 1 complete. Independent of test infrastructure changes — keeps blast radius small.
+**Delivers:** Agent-visible logging via `await ctx.info()` / `await ctx.warning()` in all 6 tool handlers
+**Addresses:** The primary user-facing win of the milestone
+**Avoids:** Logging async pitfall — always `await`, keep FileHandler for lifecycle events
 
-### Phase 4: Service Decomposition
-**Rationale:** Depends on unified interface from Phase 3. Extraction order within this phase: conversion first (most mechanical, least design judgment), then validation, then domain logic (most interleaved with orchestration). Each sub-step keeps all 534 tests green.
-**Delivers:** `service/` package; `_orchestrator.py` slimmed to ~80-100 lines; clean separation of concerns.
-**Addresses:** All service decomposition table stakes features.
-**Avoids:** Pitfall 3 (circular imports) — one-way dependency direction enforced; Pitfall 6 (over-decomposition) — max 3 sub-modules; Pitfall 2 (model_rebuild) — service modules import from the `models` package, not individual files.
+### Phase 3: Manual UAT + Documentation
+**Rationale:** Must follow code changes. Protocol-level logging is only verifiable via live Claude Desktop session. README dep badge is the final documentation touch.
+**Delivers:** Confirmed live behavior, updated README badge
+**Note:** Test infrastructure refactor (`fastmcp.Client`) deferred to future milestone
 
 ### Phase Ordering Rationale
 
-- Phases 1 and 2 are independent and can run in parallel or either order; they touch different files.
-- Phase 3 before Phase 4 is non-negotiable: the service decomposition's payload-building logic only makes sense once the repository is a thin passthrough.
-- The entire milestone has no public API changes — `server.py` and all external consumers are untouched throughout.
-- Risk increases from phase to phase: Phase 1 is a 5-line change, Phase 4 is the most complex. Doing easy phases first validates the approach and builds confidence.
+- Phase 1 before everything: fastmcp cannot be imported until installed; import changes cannot be validated without the dep
+- Phase 2 separate from Phase 1: mixing logging changes with import changes inflates diff and makes regression isolation harder
+- Test harness refactor deferred: `fastmcp.Client` return type differs from `ClientSession`; mixing this into migration scope creates a second independent failure surface
+- UAT last: manual testing only meaningful after all code changes are stable
 
 ### Research Flags
 
-All phases have standard, well-documented patterns. No additional research spikes are needed.
+Phases with well-documented patterns (skip research-phase during planning):
+- **Phase 1 (import swap):** Fully specified. Official docs, upgrade guide, and source code analysis give exact import paths and file list.
+- **Phase 2 (logging):** Fully specified. `ctx.info/warning/debug/error` signatures are documented; dual-channel strategy is clear.
+- **Phase 3 (UAT + docs):** Standard process.
 
-- **Phase 1:** Pydantic `ConfigDict` behavior is documented; the sentinel interaction test is prescriptive and self-contained.
-- **Phase 2:** Mechanical find-and-replace of import paths; scope discoverable via `grep`.
-- **Phase 3:** Signature change on known files; `mypy --strict` catches protocol mismatches.
-- **Phase 4:** Cosmic Python service layer extraction pattern is well-documented; order within phase is specified.
-
----
+Phases that may need deeper investigation:
+- **Test infrastructure refactor (deferred):** When tackled in a future milestone, the `fastmcp.Client` return type difference and `_mcp_server` removal will need careful study of the new fixture contract.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Zero new dependencies; Pydantic v2.12.5 ConfigDict inheritance confirmed in official docs and GitHub discussions |
-| Features | HIGH | Derived from direct codebase analysis; asymmetry and smells are observable facts |
-| Architecture | HIGH | Based on reading actual source files (`service.py` 637 lines, `repository/protocol.py`, etc.); target state is a straightforward extraction |
-| Pitfalls | HIGH | Pydantic sentinel/config pitfalls backed by known GitHub issues; circular import and decorator risks derived from codebase structure |
+| Stack | HIGH | Official docs, PyPI, GitHub source cross-verified. Dep versions confirmed from fastmcp pyproject.toml directly |
+| Features | HIGH | Feature scope is narrow and mechanically specified. Import paths verified against v3.1.1 source |
+| Architecture | HIGH | File-level change map verified against codebase analysis (317-line server.py, 6 handlers, 6 `ctx.request_context` usages counted) |
+| Pitfalls | HIGH | Context source code read directly; GitHub issues cited for lifespan scope; upgrade guide is official |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **`extra="forbid"` + sentinel interaction (Phase 1):** High confidence on the risk, but exact behavior depends on Pydantic 2.12.5 runtime. Write the targeted test before committing to a `WriteModel` base vs. per-model approach. The per-model approach is safer and should be the default.
-- **`model_dump(exclude_unset=True)` semantics (Phase 3/4):** Pydantic's "unset" means "not provided during validation," which differs from "has UNSET sentinel default." Validate this explicitly before using `model_dump` anywhere in the edit path.
-- **`InMemoryRepository` dict handling (Phase 3):** After unification, `InMemoryRepository.add_task` receives `dict[str, Any]` with camelCase keys and must reconstruct in-memory `Task` objects. Exact field mapping needs verification against the `Task` model fields.
-
----
+- **Test harness (`fastmcp.Client` migration):** Deliberately deferred. When tackled, need to verify how `CallToolResult.data` differs from existing `ClientSession.call_tool()` return and whether `_ClientSessionProxy` can be replaced cleanly.
+- **`uv tree` audit post-migration:** Actual transitive dep list should be verified after `uv sync`. Research estimates ~30+ but exact set depends on fastmcp extras installed.
+- **README badge decision:** "Dependencies 1" remains technically true (one direct dep) but misleading. Human judgment call on whether to update or remove.
+- **Agent log visibility validation:** Need UAT to confirm `ctx.info()` messages actually appear in Claude Desktop's UI — not just technically sent but visually surfaced.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- Direct codebase analysis — `service.py` (637 lines), `models/write.py` (318 lines), `models/__init__.py` (115 lines, 15 model_rebuild calls), `repository/protocol.py`, `bridge/__init__.py`, `tests/test_service.py` (2000+ lines)
-- [Pydantic v2 Configuration docs (2.12.5)](https://docs.pydantic.dev/latest/concepts/config/) — ConfigDict inheritance merge, `extra` parameter
-- [Pydantic v2 Validation Errors](https://docs.pydantic.dev/latest/errors/validation_errors/) — `extra_forbidden` error type
-- [PEP 544 — Protocols](https://peps.python.org/pep-0544/) — structural typing for Repository boundary
-- [Cosmic Python: Service Layer](https://www.cosmicpython.com/book/chapter_04_service_layer.html) — orchestration responsibilities
-- [Cosmic Python: Validation](https://www.cosmicpython.com/book/appendix_validation.html) — syntax/semantic/pragmatic validation categories
+- [FastMCP Official Docs](https://gofastmcp.com) — server, tools, context, lifespan, logging, testing
+- [FastMCP Context API reference](https://gofastmcp.com/python-sdk/fastmcp-server-context) — `lifespan_context` property, method signatures
+- [FastMCP Context source code](https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/server/context.py) — `lifespan_context` two-path implementation
+- [FastMCP PyPI](https://pypi.org/project/fastmcp/) — v3.1.1 latest, dependency list
+- [FastMCP GitHub (pyproject.toml)](https://github.com/PrefectHQ/fastmcp) — `mcp>=1.24.0,<2.0` transitive dep confirmed
+- [FastMCP Changelog](https://gofastmcp.com/changelog) — version history, 3.0.1 bug fixes documented
+- [FastMCP Upgrade Guide](https://gofastmcp.com/getting-started/upgrading/from-mcp-sdk) — official import migration path
+- [FastMCP Testing docs](https://gofastmcp.com/development/tests) — `Client(server)` in-memory pattern
 
 ### Secondary (MEDIUM confidence)
-- [Pydantic config inheritance discussion #7778](https://github.com/pydantic/pydantic/discussions/7778) — ConfigDict merge behavior in practice
-- `.research/updated-spec/MILESTONE-v1.2.1.md` — milestone spec with asymmetry map and acceptance criteria
+- [FastMCP 3.0 GA Announcement](https://www.jlowin.dev/blog/fastmcp-3-launch) — breaking changes overview, author blog
+- [FastMCP 3.0 what's new](https://www.jlowin.dev/blog/fastmcp-3-whats-new) — new features, differentiators
 
-### Tertiary — Known issues requiring test validation
-- [Pydantic config MRO issue #9768](https://github.com/pydantic/pydantic/issues/9768) — config merging in multiple inheritance
-- [Pydantic model_config MRO issue #9992](https://github.com/pydantic/pydantic/issues/9992) — config doesn't respect MRO
-- [Pydantic sentinel serialization #9943](https://github.com/pydantic/pydantic/discussions/9943) — custom sentinel failures
-- [Pydantic model_rebuild issue #7618](https://github.com/pydantic/pydantic/issues/7618) — forward reference failures
+### Tertiary (confirmed via GitHub issues)
+- [Lifespan per-session issue #1115](https://github.com/jlowin/fastmcp/issues/1115) — lifespan scope confirmed by maintainer
+- [mcp.types namespace issue #2166](https://github.com/PrefectHQ/fastmcp/issues/2166) — namespace shadowing edge case
+- Codebase analysis: server.py (317 lines, 6 handlers), conftest.py (4 `_mcp_server` usages), 3 test files
 
 ---
-*Research completed: 2026-03-16*
+*Research completed: 2026-03-24*
 *Ready for roadmap: yes*
