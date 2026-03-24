@@ -2,7 +2,7 @@
 
 > Built up during experimentation. Each section filled in after running.
 
-## Exp 01: Minimal Server
+## Exp 01: Server & Context
 
 - **Verdict**: Obviously works. Both packages build MCP servers — not much to de-risk here.
 - **One useful detail**: `ctx.lifespan_context` works as a shortcut (in addition to the old `ctx.request_context.lifespan_context`). Minor convenience.
@@ -19,9 +19,6 @@
 
 
 ## Exp 05: Middleware
-
-
-## Exp 06: Context Access
 
 
 ## Exp 07: Progress

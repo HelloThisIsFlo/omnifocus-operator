@@ -1,26 +1,12 @@
-"""Experiment 08: Dependency Injection — Depends() vs Lifespan
+"""Experiment 08: Dependency Injection — Depends() vs Lifespan Pattern
 
 QUESTION: Could Depends() replace our lifespan-based service injection?
+Is it cleaner? More testable?
 
-CONTEXT:
-  Current pattern (every tool):
-    service = ctx.request_context.lifespan_context["service"]
-
-  Alternative with Depends():
-    async def get_service(ctx: Context) -> OperatorService:
-        return ctx.lifespan_context["service"]
-
-    @mcp.tool()
-    async def get_all(service: OperatorService = Depends(get_service)):
-        ...
-
-  The question is: is this cleaner? More testable? Worth the change?
-
-WHAT TO LOOK FOR:
-- Does Depends() work with lifespan context?
-- Can the dependency function access Context?
-- How does it affect testing? (Can you override dependencies?)
-- Is it just syntactic sugar, or does it enable new patterns?
+WHAT THIS PROVES:
+  Run the script. It shows both patterns working side by side and compares
+  ergonomics. The guide skill will walk you through whether this is worth
+  adopting.
 
 RUN: uv run python .research/deep-dives/fastmcp-spike/experiments/08_dependency_injection.py
 """
@@ -34,19 +20,8 @@ from typing import Any
 from fastmcp import FastMCP, Context, Client
 
 
-# --- Try to import Depends ---
-try:
-    from fastmcp.dependencies import Depends
-    HAS_DEPENDS = True
-except ImportError:
-    try:
-        from fastmcp import Depends
-        HAS_DEPENDS = True
-    except ImportError:
-        HAS_DEPENDS = False
+# ── Fake service ─────────────────────────────────────────────────────
 
-
-# --- Fake service ---
 class FakeService:
     def __init__(self, name: str) -> None:
         self.name = name
@@ -57,124 +32,154 @@ class FakeService:
         return [{"id": "1", "name": "Task A"}, {"id": "2", "name": "Task B"}]
 
 
+# ── Try importing Depends ────────────────────────────────────────────
+
+HAS_DEPENDS = False
+Depends: Any = None
+try:
+    from fastmcp.dependencies import Depends as _Depends
+    Depends = _Depends
+    HAS_DEPENDS = True
+except ImportError:
+    try:
+        from fastmcp import Depends as _Depends
+        Depends = _Depends
+        HAS_DEPENDS = True
+    except ImportError:
+        pass
+
+
+# ── Build servers ────────────────────────────────────────────────────
+
 @asynccontextmanager
 async def lifespan(app: FastMCP):  # type: ignore[type-arg]
     yield {"service": FakeService("from-lifespan")}
 
 
-def create_server_with_depends() -> FastMCP | None:
-    """Server using Depends() pattern."""
-    if not HAS_DEPENDS:
-        return None
-
-    mcp = FastMCP("depends-spike", lifespan=lifespan)
-
-    # Dependency provider — extracts service from lifespan context
-    def get_service(ctx: Context) -> FakeService:
-        return ctx.lifespan_context["service"]
-
-    @mcp.tool()
-    async def get_tasks_v1(ctx: Context) -> list[dict[str, str]]:
-        """OLD pattern: manual extraction."""
-        service = ctx.lifespan_context["service"]
-        return service.get_tasks()
-
-    @mcp.tool()
-    async def get_tasks_v2(service: FakeService = Depends(get_service)) -> list[dict[str, str]]:
-        """NEW pattern: dependency injection."""
-        return service.get_tasks()
-
-    @mcp.tool()
-    async def get_call_count(service: FakeService = Depends(get_service)) -> int:
-        """Both tools share the same service instance?"""
-        return service.call_count
-
-    return mcp
-
-
-def create_server_without_depends() -> FastMCP:
-    """Fallback if Depends() isn't available."""
-    mcp = FastMCP("no-depends-spike", lifespan=lifespan)
-
-    @mcp.tool()
-    async def get_tasks(ctx: Context) -> list[dict[str, str]]:
-        service: FakeService = ctx.lifespan_context["service"]
-        return service.get_tasks()
-
-    return mcp
-
-
 async def main() -> None:
-    print("=" * 60)
-    print("EXPERIMENT 08: Dependency Injection")
-    print("=" * 60)
+    print("=" * 64)
+    print("  EXPERIMENT 08: Dependency Injection")
+    print("=" * 64)
 
     print(f"\n  Depends() available: {HAS_DEPENDS}")
 
-    if HAS_DEPENDS:
-        server = create_server_with_depends()
-        assert server is not None
+    if not HAS_DEPENDS:
+        print("  Cannot test — Depends() not found in fastmcp")
+        print("  This means the lifespan pattern is the only option.")
+        print("=" * 64)
+        return
 
-        async with Client(server) as client:
-            # Test 1: Old pattern
-            print("\n--- Test 1: Old pattern (ctx.lifespan_context) ---")
-            result = await client.call_tool("get_tasks_v1", {})
-            print(f"  Result: {result}")
+    # ── Pattern A: Current (lifespan extraction) ──
+    print("\n── Pattern A: Lifespan Extraction (current) ────────────")
 
-            # Test 2: New pattern (Depends)
-            print("\n--- Test 2: New pattern (Depends) ---")
-            result = await client.call_tool("get_tasks_v2", {})
-            print(f"  Result: {result}")
+    mcp_a = FastMCP("pattern-a", lifespan=lifespan)
 
-            # Test 3: Shared instance?
-            print("\n--- Test 3: Do both patterns share the same service? ---")
-            count = await client.call_tool("get_call_count", {})
-            print(f"  Call count after 2 tool calls: {count}")
-            print(f"  (Should be 2 if shared, 1 if separate instances)")
+    @mcp_a.tool()
+    async def get_tasks_lifespan(ctx: Context) -> list[dict[str, str]]:
+        service: FakeService = ctx.lifespan_context["service"]
+        return service.get_tasks()
 
-        # Test 4: Testing implications
-        print("\n--- Test 4: Testing with Depends ---")
-        print("""
-  With Depends(), testing could look like:
+    async with Client(mcp_a) as client:
+        result = await client.call_tool("get_tasks_lifespan", {})
+        print(f"  Result: {result.data}")
 
-    # Override the dependency for testing:
-    fake_service = FakeService("test-override")
-    # ... but how? Need to check if FastMCP supports dependency overrides.
-        """)
+    # ── Pattern B: Depends() with ctx parameter ──
+    print("\n── Pattern B: Depends(get_service) where get_service takes ctx ──")
 
-    else:
-        print("\n  Depends() not available — falling back")
-        server = create_server_without_depends()
-        async with Client(server) as client:
-            result = await client.call_tool("get_tasks", {})
-            print(f"  Result: {result}")
+    mcp_b = FastMCP("pattern-b", lifespan=lifespan)
 
-    # Ergonomics comparison
-    print("\n" + "=" * 60)
-    print("ERGONOMICS COMPARISON")
-    print("=" * 60)
-    print("""
-  CURRENT (every tool, 1 line each):
-    service: OperatorService = ctx.request_context.lifespan_context["service"]
-
-  DEPENDS (if it works):
-    # Define once:
-    def get_service(ctx: Context) -> OperatorService:
+    def get_service_with_ctx(ctx: Context) -> FakeService:
+        """Dependency that needs Context — does Depends() inject it?"""
         return ctx.lifespan_context["service"]
 
-    # Then each tool:
-    async def get_all(service: OperatorService = Depends(get_service)):
-        ...  # No ctx needed unless logging!
+    @mcp_b.tool()
+    async def get_tasks_depends_ctx(service: FakeService = Depends(get_service_with_ctx)) -> list[dict[str, str]]:
+        return service.get_tasks()
 
-  VERDICT: Is the indirection worth it?
-  - Pro: Tools don't need to know about lifespan context
-  - Pro: Dependency is typed (IDE autocomplete on service)
-  - Con: One more abstraction layer
-  - Con: How do you test/override?
-    """)
+    async with Client(mcp_b) as client:
+        try:
+            result = await client.call_tool("get_tasks_depends_ctx", {})
+            print(f"  Result: {result.data}")
+        except Exception as e:
+            print(f"  FAILED: {type(e).__name__}: {e}")
+            print(f"  -> Depends() does NOT auto-inject Context into dependency functions!")
 
-    print("EXPERIMENT 08 COMPLETE")
-    print("=" * 60)
+    # ── Pattern C: Depends() without ctx (parameterless factory) ──
+    print("\n── Pattern C: Depends() with parameterless factory ─────")
+
+    # This is the pattern from the docs — no ctx in the dependency
+    shared_service = FakeService("shared-instance")
+
+    mcp_c = FastMCP("pattern-c")
+
+    def get_shared_service() -> FakeService:
+        """Dependency without ctx — uses closure instead."""
+        return shared_service
+
+    @mcp_c.tool()
+    async def get_tasks_depends_closure(service: FakeService = Depends(get_shared_service)) -> list[dict[str, str]]:
+        return service.get_tasks()
+
+    async with Client(mcp_c) as client:
+        try:
+            result = await client.call_tool("get_tasks_depends_closure", {})
+            print(f"  Result: {result.data}")
+            print(f"  -> Parameterless Depends() works, but requires a closure/global")
+        except Exception as e:
+            print(f"  FAILED: {type(e).__name__}: {e}")
+
+    # ── Pattern D: ctx + Depends() together ──
+    print("\n── Pattern D: Can a tool use BOTH ctx and Depends()? ───")
+
+    mcp_d = FastMCP("pattern-d")
+
+    @mcp_d.tool()
+    async def mixed(ctx: Context, service: FakeService = Depends(get_shared_service)) -> str:
+        await ctx.info(f"Using service: {service.name}")
+        tasks = service.get_tasks()
+        return f"Got {len(tasks)} tasks via Depends + logged via ctx"
+
+    async with Client(mcp_d) as client:
+        try:
+            result = await client.call_tool("mixed", {})
+            print(f"  Result: {result.data}")
+        except Exception as e:
+            print(f"  FAILED: {type(e).__name__}: {e}")
+
+    # ── Ergonomics comparison ──
+    print("\n── Ergonomics Comparison ───────────────────────────────")
+    print("""
+  Pattern A — Lifespan extraction (current, 1 line per tool):
+  ┌──────────────────────────────────────────────────────────┐
+  │ @mcp.tool()                                              │
+  │ async def get_all(ctx: Context) -> AllEntities:          │
+  │     service = ctx.lifespan_context["service"]            │
+  │     return await service.get_all()                       │
+  └──────────────────────────────────────────────────────────┘
+
+  Pattern C — Depends() with closure (no ctx in dependency):
+  ┌──────────────────────────────────────────────────────────┐
+  │ # Requires closure or global — can't access lifespan!    │
+  │ def get_service() -> OperatorService:                    │
+  │     return _global_service  # or closure capture         │
+  │                                                          │
+  │ @mcp.tool()                                              │
+  │ async def get_all(                                       │
+  │     svc: OperatorService = Depends(get_service),         │
+  │ ) -> AllEntities:                                        │
+  │     return await svc.get_all()                           │
+  └──────────────────────────────────────────────────────────┘
+
+  Key finding: Depends() does NOT auto-inject Context.
+  So you can't use Depends() to wrap lifespan access —
+  you'd need a global/closure, which defeats the purpose.
+
+  Verdict: Lifespan extraction (Pattern A) is actually simpler
+  for our use case. Depends() is better for stateless dependencies
+  (config, HTTP clients) than for lifespan-scoped services.
+""")
+
+    print("=" * 64)
 
 
 if __name__ == "__main__":

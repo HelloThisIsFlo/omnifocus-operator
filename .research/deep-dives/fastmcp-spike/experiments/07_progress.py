@@ -1,18 +1,32 @@
-"""Experiment 07: Progress Reporting — Bulk Operations
+"""Experiment 07: Progress Reporting — Does the Client Render It?
 
-QUESTION: Does ctx.report_progress() emit events a client can see?
+QUESTION: Does ctx.report_progress() emit events the client can see?
+This can only be answered by connecting a real client.
 
-CONTEXT:
-  add_tasks and edit_tasks process batches. Progress reporting could
-  improve agent UX for large batches.
+HOW TO CONNECT:
+  Option A — MCP Inspector:
+    1. Start: uv run python .research/deep-dives/fastmcp-spike/experiments/07_progress.py
+    2. In another terminal: npx @modelcontextprotocol/inspector
+    3. Connect via stdio
 
-WHAT TO LOOK FOR:
-- Does report_progress() work?
-- Does the Client receive progress events?
-- What does the progress handler signature look like?
-- Is this something Claude Desktop / Claude Code would display?
+  Option B — Claude Code:
+    1. Run: uv run python .research/deep-dives/fastmcp-spike/experiments/setup_mcp.py add 07
+    2. Restart Claude Code (or reload MCP servers)
+    3. Ask Claude to call the tools
+    4. When done: uv run python .../setup_mcp.py remove
 
-RUN: uv run python .research/deep-dives/fastmcp-spike/experiments/07_progress.py
+GUIDED WALKTHROUGH:
+  1. Call `process_batch` with {"items": ["task1", "task2", "task3", "task4", "task5"]}
+     - Do you see a progress indicator? A percentage? Individual updates?
+     - Each item takes 500ms — slow enough to observe.
+     - What does Claude Code show? What does Inspector show?
+
+  2. Call `process_with_messages` — same as above but with status messages.
+     - Does the message text appear alongside the progress?
+
+  3. Call `process_unknown_total` — progress without knowing the total.
+     - Does the client handle indeterminate progress?
+     - Or does it just ignore it?
 """
 
 from __future__ import annotations
@@ -20,7 +34,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from fastmcp import FastMCP, Context, Client
+from fastmcp import FastMCP, Context
 
 
 mcp = FastMCP("progress-spike")
@@ -28,85 +42,47 @@ mcp = FastMCP("progress-spike")
 
 @mcp.tool()
 async def process_batch(items: list[str], ctx: Context) -> dict[str, Any]:
-    """Process a batch of items with progress updates."""
+    """Process items with progress updates. Each item takes 500ms."""
     total = len(items)
     results = []
 
     for i, item in enumerate(items):
         await ctx.report_progress(progress=i, total=total)
-        await asyncio.sleep(0.05)  # Simulate work
+        await asyncio.sleep(0.5)  # Slow enough to observe
         results.append(item.upper())
 
-    # Final progress
     await ctx.report_progress(progress=total, total=total)
 
     return {"processed": len(results), "results": results}
 
 
 @mcp.tool()
+async def process_with_messages(items: list[str], ctx: Context) -> dict[str, Any]:
+    """Progress updates WITH status messages."""
+    total = len(items)
+    results = []
+
+    for i, item in enumerate(items):
+        await ctx.report_progress(progress=i, total=total)
+        await ctx.info(f"Processing item {i+1}/{total}: {item}")
+        await asyncio.sleep(0.5)
+        results.append(item.upper())
+
+    await ctx.report_progress(progress=total, total=total)
+    await ctx.info(f"All {total} items processed")
+
+    return {"processed": len(results), "results": results}
+
+
+@mcp.tool()
 async def process_unknown_total(ctx: Context) -> str:
-    """Progress without knowing total — does it work?"""
+    """Progress without knowing the total — indeterminate progress."""
     for i in range(5):
-        await ctx.report_progress(progress=i)  # No total
-        await asyncio.sleep(0.05)
-    return "done"
-
-
-async def main() -> None:
-    print("=" * 60)
-    print("EXPERIMENT 07: Progress Reporting")
-    print("=" * 60)
-
-    # Capture progress events
-    progress_events: list[dict[str, Any]] = []
-
-    def progress_handler(
-        progress: float,
-        total: float | None = None,
-        message: str | None = None,
-    ) -> None:
-        event = {"progress": progress, "total": total, "message": message}
-        progress_events.append(event)
-        pct = f"{progress}/{total}" if total else f"{progress}/?"
-        print(f"  [PROGRESS] {pct} {message or ''}")
-
-    # Test 1: Batch with known total
-    print("\n--- Test 1: Batch processing with known total ---")
-    progress_events.clear()
-    try:
-        async with Client(mcp, progress_handler=progress_handler) as client:
-            result = await client.call_tool(
-                "process_batch",
-                {"items": ["task1", "task2", "task3", "task4", "task5"]},
-            )
-            print(f"  Result: {result}")
-            print(f"  Progress events received: {len(progress_events)}")
-    except TypeError as e:
-        print(f"  progress_handler not supported on Client(): {e}")
-        print("  Trying without progress handler...")
-        async with Client(mcp) as client:
-            result = await client.call_tool(
-                "process_batch",
-                {"items": ["task1", "task2", "task3"]},
-            )
-            print(f"  Result: {result}")
-
-    # Test 2: Unknown total
-    print("\n--- Test 2: Progress without total ---")
-    progress_events.clear()
-    try:
-        async with Client(mcp, progress_handler=progress_handler) as client:
-            result = await client.call_tool("process_unknown_total", {})
-            print(f"  Result: {result}")
-    except TypeError:
-        async with Client(mcp) as client:
-            result = await client.call_tool("process_unknown_total", {})
-            print(f"  Result: {result}")
-
-    print("\n" + "=" * 60)
-    print("EXPERIMENT 07 COMPLETE")
-    print("=" * 60)
+        await ctx.report_progress(progress=i)
+        await ctx.info(f"Discovered item {i+1}...")
+        await asyncio.sleep(0.5)
+    return "Processed 5 items (total was unknown upfront)"
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    mcp.run(transport="stdio")

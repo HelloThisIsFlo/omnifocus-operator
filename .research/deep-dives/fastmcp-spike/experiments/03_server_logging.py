@@ -1,176 +1,164 @@
-"""Experiment 03: Server-Side Logging — get_logger(), stderr, FileHandler
+"""Experiment 03: Server-Side Logging — stderr, get_logger(), FileHandler
 
-QUESTION: What's the right server-side logging story?
-Is stderr still hijacked? What's fastmcp.utilities.logging.get_logger()?
+QUESTION: Is stderr still hijacked under stdio transport?
+What's fastmcp.utilities.logging.get_logger()? Can we have dual logging?
 
 CONTEXT:
-  Our current workaround: FileHandler → ~/Library/Logs/omnifocus-operator.log
-  because stdio_server() hijacks stderr.
+  Our current workaround: FileHandler -> ~/Library/Logs/omnifocus-operator.log
+  because stdio_server() hijacks stderr. The question is whether FastMCP v3
+  changes this, and what the recommended server-side logging story is.
 
-  FastMCP docs say:
-    "For standard server-side logging (e.g., writing to files, console),
-     use fastmcp.utilities.logging.get_logger() or Python's built-in
-     logging module."
+HOW TO CONNECT:
+  Option A — MCP Inspector:
+    1. Start: uv run python .research/deep-dives/fastmcp-spike/experiments/03_server_logging.py
+    2. In another terminal: npx @modelcontextprotocol/inspector
+    3. Connect via stdio
 
-WHAT TO LOOK FOR:
-- What does get_logger() return? How is it different from logging.getLogger()?
-- Is stderr still hijacked under stdio transport?
-- Can we use BOTH protocol logging (ctx.info) AND file logging simultaneously?
-- What logger names does FastMCP use internally?
-- When to use which: ctx.info vs get_logger vs FileHandler?
+  Option B — Claude Code:
+    1. Run: uv run python .research/deep-dives/fastmcp-spike/experiments/setup_mcp.py add 03
+    2. Restart Claude Code (or reload MCP servers)
+    3. Ask Claude to call the tools
+    4. When done: uv run python .../setup_mcp.py remove
 
-RUN: uv run python .research/deep-dives/fastmcp-spike/experiments/03_server_logging.py
+GUIDED WALKTHROUGH:
+  1. Call `test_dual_logging` — this writes to BOTH protocol and file.
+     - Check /tmp/fastmcp-spike-server.log — is the file output there?
+     - Check your client — did the ctx.info() messages arrive?
+     - Both channels should work independently.
+
+  2. Call `test_stderr_write` — attempts to write directly to stderr.
+     - If stdio transport hijacks stderr, this might corrupt the protocol.
+     - Or it might be silently swallowed.
+     - Or FastMCP v3 might have fixed this.
+     - What happened?
+
+  3. Call `test_get_logger` — uses fastmcp.utilities.logging.get_logger().
+     - Check /tmp/fastmcp-spike-server.log for output.
+     - Is get_logger() just a wrapper around logging.getLogger()?
+     - Does it add any special handling?
+
+  4. After running all tools, check the log file:
+     cat /tmp/fastmcp-spike-server.log
 """
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import sys
-import tempfile
-from pathlib import Path
 
-from fastmcp import FastMCP, Context, Client
+from fastmcp import FastMCP, Context
+
+# ── Set up file logging (like our current workaround) ────────────────
+
+LOG_FILE = "/tmp/fastmcp-spike-server.log"
+
+file_logger = logging.getLogger("spike_server")
+file_logger.setLevel(logging.DEBUG)
+file_logger.propagate = False
+handler = logging.FileHandler(LOG_FILE, mode="w")  # overwrite each run
+handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+file_logger.addHandler(handler)
+
+file_logger.info("=== Server starting ===")
+file_logger.info(f"Log file: {LOG_FILE}")
+file_logger.info(f"stderr type at startup: {type(sys.stderr).__name__}")
+file_logger.info(f"stderr is __stderr__: {sys.stderr is sys.__stderr__}")
+
+# ── Try get_logger() ─────────────────────────────────────────────────
+
+try:
+    from fastmcp.utilities.logging import get_logger
+    fm_logger = get_logger("spike_fastmcp")
+    file_logger.info(f"get_logger() returned: {type(fm_logger).__name__}, name={fm_logger.name}")
+    HAS_GET_LOGGER = True
+except ImportError as e:
+    file_logger.warning(f"get_logger() import failed: {e}")
+    fm_logger = None
+    HAS_GET_LOGGER = False
 
 
-# --- Explore get_logger() ---
-def explore_get_logger() -> None:
-    print("--- Part A: Exploring get_logger() ---")
+# ── Server ───────────────────────────────────────────────────────────
+
+mcp = FastMCP("server-logging-spike")
+
+
+@mcp.tool()
+async def test_dual_logging(ctx: Context) -> dict[str, str]:
+    """Writes to BOTH protocol (ctx.info) and file (FileHandler)."""
+
+    # Protocol logging — goes to client
+    await ctx.info("PROTOCOL: This message should appear in your client")
+    await ctx.warning("PROTOCOL: This warning should also appear in your client")
+
+    # File logging — goes to /tmp/fastmcp-spike-server.log
+    file_logger.info("FILE: This message should appear in the log file")
+    file_logger.warning("FILE: This warning should appear in the log file")
+
+    return {
+        "status": "dual logging executed",
+        "log_file": LOG_FILE,
+        "instruction": "Check both: your client for protocol messages, and the log file for file messages",
+    }
+
+
+@mcp.tool()
+async def test_stderr_write(ctx: Context) -> dict[str, str]:
+    """Attempts to write directly to stderr under stdio transport.
+
+    This is the key question: does stdio transport still hijack stderr?
+    """
+    file_logger.info(f"stderr type during tool call: {type(sys.stderr).__name__}")
+    file_logger.info(f"stderr is __stderr__: {sys.stderr is sys.__stderr__}")
 
     try:
-        from fastmcp.utilities.logging import get_logger
-        logger = get_logger("spike_test")
-        print(f"  get_logger() returned: {type(logger).__name__}")
-        print(f"  Logger name: {logger.name}")
-        print(f"  Logger level: {logger.level} ({logging.getLevelName(logger.level)})")
-        print(f"  Logger handlers: {logger.handlers}")
-        print(f"  Logger effective level: {logger.getEffectiveLevel()}")
-
-        # Compare with standard logging
-        std_logger = logging.getLogger("spike_test_std")
-        print(f"\n  Standard logger type: {type(std_logger).__name__}")
-        print(f"  Same type? {type(logger) == type(std_logger)}")
-
-        # Try logging through it
-        logger.info("Test message from get_logger()")
-        print("  get_logger().info() called — check if it appeared above")
-
-    except ImportError as e:
-        print(f"  get_logger() import FAILED: {e}")
-        print("  Trying alternative import paths...")
-        # Maybe it's elsewhere?
-        try:
-            import fastmcp.utilities
-            print(f"  fastmcp.utilities contents: {dir(fastmcp.utilities)}")
-        except Exception as e2:
-            print(f"  fastmcp.utilities also failed: {e2}")
-
-
-# --- Test what happens to stderr ---
-def explore_stderr() -> None:
-    print("\n--- Part B: stderr behavior (outside MCP context) ---")
-    print(f"  sys.stderr type: {type(sys.stderr).__name__}")
-    print(f"  sys.stderr is sys.__stderr__: {sys.stderr is sys.__stderr__}")
-
-    # Write directly to stderr
-    try:
-        sys.stderr.write("  [STDERR DIRECT] This is a test write to stderr\n")
+        sys.stderr.write("STDERR: Direct write to stderr\n")
         sys.stderr.flush()
-        print("  Direct stderr write succeeded")
+        result = "stderr write succeeded (no exception)"
     except Exception as e:
-        print(f"  Direct stderr write FAILED: {e}")
+        result = f"stderr write failed: {type(e).__name__}: {e}"
+
+    file_logger.info(f"stderr write result: {result}")
+
+    await ctx.info(f"stderr type: {type(sys.stderr).__name__}")
+    await ctx.info(f"stderr write result: {result}")
+
+    return {
+        "stderr_type": type(sys.stderr).__name__,
+        "stderr_is_original": sys.stderr is sys.__stderr__,
+        "write_result": result,
+        "instruction": "If stderr is hijacked, the write might corrupt the MCP protocol stream",
+    }
 
 
-# --- Test file logging alongside protocol logging ---
-async def explore_dual_logging() -> None:
-    print("\n--- Part C: Dual logging (protocol + file) ---")
+@mcp.tool()
+async def test_get_logger(ctx: Context) -> dict[str, str]:
+    """Tests fastmcp.utilities.logging.get_logger() behavior."""
+    if not HAS_GET_LOGGER or fm_logger is None:
+        return {"status": "get_logger() not available", "error": "import failed"}
 
-    log_file = Path(tempfile.mktemp(suffix=".log", prefix="fastmcp_spike_"))
-    print(f"  Log file: {log_file}")
+    # Write through get_logger()
+    fm_logger.info("GET_LOGGER: Info message from get_logger()")
+    fm_logger.warning("GET_LOGGER: Warning message from get_logger()")
+    fm_logger.debug("GET_LOGGER: Debug message from get_logger()")
 
-    # Set up file handler (like our current workaround)
-    file_logger = logging.getLogger("spike_server")
-    file_logger.setLevel(logging.DEBUG)
-    file_logger.propagate = False
-    handler = logging.FileHandler(str(log_file))
-    handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
-    file_logger.addHandler(handler)
+    # Also log to file for comparison
+    file_logger.info("FILE: Logged alongside get_logger() test")
 
-    mcp = FastMCP("dual-logging-spike")
+    # Check get_logger() configuration
+    info = {
+        "status": "get_logger() available",
+        "logger_name": fm_logger.name,
+        "logger_level": logging.getLevelName(fm_logger.level),
+        "logger_handlers": [type(h).__name__ for h in fm_logger.handlers],
+        "logger_effective_level": logging.getLevelName(fm_logger.getEffectiveLevel()),
+        "instruction": f"Check {LOG_FILE} for output from all loggers",
+    }
 
-    @mcp.tool()
-    async def dual_log(ctx: Context) -> dict[str, str]:
-        """Tool that logs to BOTH protocol and file."""
-        # Protocol logging (client-facing)
-        await ctx.info("Protocol: this goes to the client")
-        await ctx.warning("Protocol: warning for the client")
+    await ctx.info(f"get_logger() config: {fm_logger.name}, level={logging.getLevelName(fm_logger.level)}")
 
-        # File logging (server-side)
-        file_logger.info("File: this goes to the log file")
-        file_logger.warning("File: warning in the log file")
-
-        return {"status": "dual logging executed"}
-
-    received_logs: list[str] = []
-
-    def log_handler(level: str, message: str, logger_name: str | None = None) -> None:
-        received_logs.append(f"[{level}] {message}")
-
-    async with Client(mcp, log_handler=log_handler) as client:
-        result = await client.call_tool("dual_log", {})
-        print(f"  Tool result: {result}")
-        print(f"  Protocol logs received by client: {received_logs}")
-
-    # Check file
-    file_content = log_file.read_text()
-    print(f"  File log content:\n{file_content}")
-    print(f"  Both channels worked? Protocol={len(received_logs) > 0}, File={len(file_content) > 0}")
-
-    # Cleanup
-    file_logger.removeHandler(handler)
-    handler.close()
-    log_file.unlink(missing_ok=True)
-
-
-# --- Explore FastMCP's internal loggers ---
-def explore_fastmcp_loggers() -> None:
-    print("\n--- Part D: FastMCP internal logger names ---")
-
-    # Check what loggers FastMCP creates
-    all_loggers = [name for name in logging.Logger.manager.loggerDict if "fastmcp" in name.lower()]
-    print(f"  FastMCP-related loggers: {all_loggers}")
-
-    # Check the root fastmcp logger
-    fm_logger = logging.getLogger("fastmcp")
-    print(f"  fastmcp logger level: {fm_logger.level} ({logging.getLevelName(fm_logger.level)})")
-    print(f"  fastmcp logger handlers: {fm_logger.handlers}")
-
-
-async def main() -> None:
-    print("=" * 60)
-    print("EXPERIMENT 03: Server-Side Logging")
-    print("=" * 60)
-
-    explore_get_logger()
-    explore_stderr()
-    await explore_dual_logging()
-    explore_fastmcp_loggers()
-
-    print("\n" + "=" * 60)
-    print("LOGGING MATRIX — Fill in after running:")
-    print("=" * 60)
-    print("""
-    | Method              | Goes where?        | When to use?              |
-    |---------------------|--------------------|---------------------------|
-    | ctx.info()          | MCP client         | ?                         |
-    | ctx.warning()       | MCP client         | ?                         |
-    | get_logger().info() | ???                | ?                         |
-    | FileHandler         | Log file           | ?                         |
-    | print()/stderr      | ???                | ?                         |
-    """)
-    print("EXPERIMENT 03 COMPLETE")
-    print("=" * 60)
+    return info
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    file_logger.info("Starting MCP server on stdio transport...")
+    mcp.run(transport="stdio")

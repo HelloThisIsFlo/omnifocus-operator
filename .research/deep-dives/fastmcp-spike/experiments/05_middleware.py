@@ -1,177 +1,123 @@
-"""Experiment 05: Middleware — What's Possible?
+"""Experiment 05: Middleware — Timing, Logging, Error Handling
 
-QUESTION: What middleware exists? What could we realistically use?
+QUESTION: What middleware exists? Could it replace our manual _log_tool_call()?
+What happens when middleware catches an error?
 
-CONTEXT:
-  We currently have _log_tool_call() in server.py that manually logs
-  tool invocations with their arguments. Could middleware replace this?
+HOW TO CONNECT:
+  Option A — MCP Inspector:
+    1. Start: uv run python .research/deep-dives/fastmcp-spike/experiments/05_middleware.py
+    2. In another terminal: npx @modelcontextprotocol/inspector
+    3. Connect via stdio
 
-  FastMCP v3 middleware hooks (general → specific):
-  1. on_message — all MCP traffic
-  2. on_request / on_notification — type-level
-  3. on_call_tool, on_read_resource, etc. — operation-level
+  Option B — Claude Code:
+    1. Run: uv run python .research/deep-dives/fastmcp-spike/experiments/setup_mcp.py add 05
+    2. Restart Claude Code (or reload MCP servers)
+    3. Ask Claude to call the tools
+    4. When done: uv run python .../setup_mcp.py remove
 
-WHAT TO LOOK FOR:
-- What built-in middleware exists?
-- Can we write a timing middleware that replaces _log_tool_call()?
-- Can middleware catch exceptions and return agent-friendly errors?
-- How does middleware compose with lifespan?
-- Performance overhead?
+GUIDED WALKTHROUGH:
+  1. Call `fast_tool` — check your client.
+     - Does any timing info appear? A log message?
+     - The middleware logs to ctx.info() — does the client show it?
 
-RUN: uv run python .research/deep-dives/fastmcp-spike/experiments/05_middleware.py
+  2. Call `slow_tool` — this takes ~500ms.
+     - Compare the timing output to fast_tool.
+
+  3. Call `failing_tool` — this raises ValueError.
+     - Does the client get a clean error message?
+     - Or a raw traceback?
+     - Check if the middleware caught it.
+
+  4. After calling all tools, check:
+     - /tmp/fastmcp-spike-middleware.log for server-side timing data
+     - The middleware captures every call with duration — useful?
 """
 
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from typing import Any
 
-from fastmcp import FastMCP, Context, Client
+from fastmcp import FastMCP, Context
 from fastmcp.server.middleware import Middleware, MiddlewareContext
 
+# ── File logger for server-side timing records ───────────────────────
 
-# ============================================================
-# Custom Middleware: Tool Call Timer (replacement for _log_tool_call)
-# ============================================================
+LOG_FILE = "/tmp/fastmcp-spike-middleware.log"
+file_logger = logging.getLogger("spike_middleware")
+file_logger.setLevel(logging.DEBUG)
+file_logger.propagate = False
+handler = logging.FileHandler(LOG_FILE, mode="w")
+handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+file_logger.addHandler(handler)
+
+
+# ── Custom Middleware: Tool Timing ───────────────────────────────────
+
 class ToolTimingMiddleware(Middleware):
-    """Logs every tool call with its arguments and duration.
-
-    This is what we'd use to replace the manual _log_tool_call()
-    in server.py.
-    """
-
-    def __init__(self) -> None:
-        self.call_log: list[dict[str, Any]] = []
+    """Logs every tool call with duration — potential replacement for _log_tool_call()."""
 
     async def on_call_tool(self, context: MiddlewareContext, call_next: Any) -> Any:
         start = time.monotonic()
-        tool_name = context.params.get("name", "unknown") if hasattr(context, "params") and isinstance(context.params, dict) else "unknown"
-        print(f"  [MIDDLEWARE] >>> Tool call: {tool_name}")
-        print(f"  [MIDDLEWARE]     Params: {context.params}")
+
+        # Extract tool name from the request
+        tool_name = "unknown"
+        if hasattr(context, "params") and isinstance(context.params, dict):
+            tool_name = context.params.get("name", "unknown")
+
+        file_logger.info(f">>> {tool_name} — starting")
 
         try:
             result = await call_next(context)
-            elapsed = (time.monotonic() - start) * 1000
-            print(f"  [MIDDLEWARE] <<< Tool call: {tool_name} ({elapsed:.1f}ms)")
-            self.call_log.append({
-                "tool": tool_name,
-                "elapsed_ms": round(elapsed, 1),
-                "success": True,
-            })
+            elapsed_ms = (time.monotonic() - start) * 1000
+            file_logger.info(f"<<< {tool_name} — {elapsed_ms:.1f}ms (success)")
             return result
         except Exception as e:
-            elapsed = (time.monotonic() - start) * 1000
-            print(f"  [MIDDLEWARE] !!! Tool call FAILED: {tool_name} ({elapsed:.1f}ms) — {e}")
-            self.call_log.append({
-                "tool": tool_name,
-                "elapsed_ms": round(elapsed, 1),
-                "success": False,
-                "error": str(e),
-            })
+            elapsed_ms = (time.monotonic() - start) * 1000
+            file_logger.info(f"!!! {tool_name} — {elapsed_ms:.1f}ms (FAILED: {e})")
             raise
 
 
-# ============================================================
-# Custom Middleware: Error Handler (agent-friendly errors)
-# ============================================================
-class AgentFriendlyErrorMiddleware(Middleware):
-    """Catches exceptions and returns structured error responses
-    instead of raw tracebacks.
+# ── Server ───────────────────────────────────────────────────────────
 
-    Could replace per-tool try/except patterns.
-    """
-
-    async def on_call_tool(self, context: MiddlewareContext, call_next: Any) -> Any:
-        try:
-            return await call_next(context)
-        except ValueError as e:
-            print(f"  [ERROR MW] Caught ValueError, returning friendly message")
-            # Can we return a modified result here? Let's see...
-            raise  # For now, re-raise and see what happens
+mcp = FastMCP("middleware-spike")
+mcp.add_middleware(ToolTimingMiddleware())
 
 
-# ============================================================
-# Server with middleware
-# ============================================================
-def create_server() -> tuple[FastMCP, ToolTimingMiddleware]:
-    mcp = FastMCP("middleware-spike")
-
-    timing = ToolTimingMiddleware()
-    mcp.add_middleware(timing)
-
-    @mcp.tool()
-    async def fast_tool() -> str:
-        """Returns immediately."""
-        return "fast!"
-
-    @mcp.tool()
-    async def slow_tool() -> str:
-        """Simulates a slow operation."""
-        await asyncio.sleep(0.1)
-        return "slow but done!"
-
-    @mcp.tool()
-    async def failing_tool() -> str:
-        """Raises an error."""
-        raise ValueError("Something went wrong")
-
-    return mcp, timing
+@mcp.tool()
+async def fast_tool(ctx: Context) -> str:
+    """Returns immediately. Check timing output."""
+    await ctx.info("fast_tool: executing (should be <5ms)")
+    return "fast!"
 
 
-async def main() -> None:
-    print("=" * 60)
-    print("EXPERIMENT 05: Middleware")
-    print("=" * 60)
+@mcp.tool()
+async def slow_tool(ctx: Context) -> str:
+    """Takes ~500ms. Compare timing with fast_tool."""
+    await ctx.info("slow_tool: starting 500ms work...")
+    await asyncio.sleep(0.5)
+    await ctx.info("slow_tool: done")
+    return "slow but done!"
 
-    # Test 1: Timing middleware
-    print("\n--- Test 1: Tool timing middleware ---")
-    server, timing = create_server()
-    async with Client(server) as client:
-        await client.call_tool("fast_tool", {})
-        await client.call_tool("slow_tool", {})
 
-    print(f"\n  Call log: {timing.call_log}")
+@mcp.tool()
+async def failing_tool() -> str:
+    """Raises ValueError. What does the client see?"""
+    raise ValueError("Something went wrong — does middleware catch this cleanly?")
 
-    # Test 2: Error in middleware context
-    print("\n--- Test 2: Error handling through middleware ---")
-    server2, timing2 = create_server()
-    async with Client(server2) as client:
-        try:
-            await client.call_tool("failing_tool", {})
-        except Exception as e:
-            print(f"  Client received: {type(e).__name__}: {e}")
-    print(f"  Call log: {timing2.call_log}")
 
-    # Test 3: Explore built-in middleware
-    print("\n--- Test 3: Exploring available built-in middleware ---")
+@mcp.tool()
+async def check_timing_log() -> dict[str, str]:
+    """Returns the contents of the middleware timing log."""
     try:
-        from fastmcp.server import middleware as mw_module
-        available = [name for name in dir(mw_module) if not name.startswith("_")]
-        print(f"  Available in fastmcp.server.middleware: {available}")
-    except Exception as e:
-        print(f"  Could not inspect middleware module: {e}")
-
-    # Try to import specific built-in middleware mentioned in docs
-    for name in ["TimingMiddleware", "LoggingMiddleware", "CachingMiddleware",
-                 "RateLimitMiddleware", "ErrorHandlerMiddleware"]:
-        try:
-            cls = getattr(mw_module, name, None)
-            if cls:
-                print(f"  Found: {name}")
-            else:
-                print(f"  Not found: {name}")
-        except Exception:
-            print(f"  Error checking: {name}")
-
-    # Test 4: MiddlewareContext inspection
-    print("\n--- Test 4: What's in MiddlewareContext? ---")
-    print(f"  MiddlewareContext attributes: {[a for a in dir(MiddlewareContext) if not a.startswith('_')]}")
-
-    print("\n" + "=" * 60)
-    print("EXPERIMENT 05 COMPLETE")
-    print("=" * 60)
+        with open(LOG_FILE) as f:
+            return {"log_file": LOG_FILE, "contents": f.read()}
+    except FileNotFoundError:
+        return {"log_file": LOG_FILE, "contents": "(file not found)"}
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    file_logger.info("=== Middleware spike server starting ===")
+    mcp.run(transport="stdio")

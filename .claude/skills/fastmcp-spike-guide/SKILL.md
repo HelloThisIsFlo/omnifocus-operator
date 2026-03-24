@@ -13,91 +13,130 @@ Read these files to understand the spike:
 - `.research/deep-dives/fastmcp-spike/README.md` — overview
 - `.research/deep-dives/fastmcp-spike/FINDINGS.md` — current state of findings (may be partially filled)
 
+## Two Interaction Modes
+
+### Server-interactive experiments (02, 03, 05, 07, 09)
+
+The script IS the MCP server. The user connects via MCP Inspector or Claude Code.
+
+**Flow:**
+1. Read the experiment file to understand what tools are available
+2. Help the user start the server:
+   - Option A: `uv run python .research/deep-dives/fastmcp-spike/experiments/0X_name.py` + MCP Inspector
+   - Option B: `uv run python .../setup_mcp.py add XX` → restart Claude Code
+3. Walk through the `GUIDED WALKTHROUGH` in the experiment docstring, one step at a time
+4. Ask what they see at each step — the answers ARE the experiment results
+5. When done, help them run `setup_mcp.py remove` if they used Claude Code
+
+**Key principle:** You CANNOT run these yourself or test them in-process. The whole point is the user observing what the real client shows. Ask questions like "What did Claude Code show you?" and "Did you see a warning inline?"
+
+### Code-interactive experiments (01, 04, 08)
+
+The script runs standalone and prints structured output. The guide walks through the code.
+
+**Flow:**
+1. Read the experiment file
+2. Brief the user: "Run this, then we'll look at the output together"
+3. After they share output, interpret it
+4. Then walk through the CODE: "Open the script at line X, now open conftest.py:Y — see how this replaces that?"
+5. The script is a prop for guided exploration, not the experiment itself
+
 ## Experiments
 
-There are 9 experiments in `.research/deep-dives/fastmcp-spike/experiments/`. Each is a standalone Python script.
+| # | File | Type | Key Question |
+|---|------|------|-------------|
+| 01 | `01_server_and_context.py` | code | Does our migration pattern work? Context inventory? |
+| 02 | `02_client_logging.py` | server | What does the client see when tools log via ctx? |
+| 03 | `03_server_logging.py` | server | stderr hijacked? get_logger()? Dual logging? |
+| 04 | `04_test_client.py` | code | Can Client(server) replace 90 lines of plumbing? |
+| 05 | `05_middleware.py` | server | What middleware exists? Replace _log_tool_call()? |
+| 07 | `07_progress.py` | server | Does the client render progress? |
+| 08 | `08_dependency_injection.py` | code | Depends() vs lifespan — cleaner? |
+| 09 | `09_elicitation.py` | server | ctx.elicit() for destructive op confirmations? |
 
-| # | File | Category | Key Question |
-|---|------|----------|-------------|
-| 01 | `01_minimal_server.py` | de-risk | Does our lifespan/tool/ToolAnnotations pattern work? |
-| 02 | `02_client_logging.py` | de-risk | How does ctx.info()/warning() work? What does the client see? |
-| 03 | `03_server_logging.py` | de-risk | get_logger() vs FileHandler vs stderr — what goes where? |
-| 04 | `04_test_client.py` | de-risk | Can Client(server) replace 90 lines of stream plumbing? |
-| 05 | `05_middleware.py` | explore | What middleware exists? Could it replace _log_tool_call()? |
-| 06 | `06_context_access.py` | de-risk | ctx.lifespan_context vs ctx.request_context — which works? |
-| 07 | `07_progress.py` | explore | Does report_progress() work for batch operations? |
-| 08 | `08_dependency_injection.py` | explore | Depends() vs lifespan pattern — cleaner? |
-| 09 | `09_elicitation.py` | explore | ctx.elicit() for destructive op confirmations? |
+## Recommended Order
 
-## Flow
+01 → 02 → 03 → 04 → 05 → 07 → 08 → 09
 
-### Phase 1: Pick an experiment
+- **01** first: sanity check, confirms migration shape works
+- **02 → 03** next: logging is the main driver for the migration
+- **04**: the big DX win for testing
+- **05 → 09**: exploration features (any order is fine)
 
-1. Read `FINDINGS.md` to see what's already been explored
-2. Present the experiment table, highlighting which are done vs remaining
-3. **Recommended order**: 01 → 06 → 02 → 03 → 04 → 05 → 07 → 08 → 09
-   - Start with 01 (basic migration shape) and 06 (context access) — these are blockers
-   - Then logging (02, 03) — the main driver
-   - Then test client (04) — the big DX win
-   - Exploration experiments (05, 07, 08, 09) in any order
-4. Let the user pick. If they ask "what's next?", recommend based on the order above
+## Per-Experiment Walkthrough Notes
 
-### Phase 2: Run the experiment
+### 01 — Server & Context (code)
+- After output: "Open `server.py:16-17` — those imports change to `from fastmcp import FastMCP, Context`"
+- "Now look at `server.py:115` — that's `ctx.request_context.lifespan_context['service']`. The output shows whether the shorter `ctx.lifespan_context` also works."
+- "Check the attribute inventory — anything useful beyond lifespan? request_id? transport?"
 
-1. Read the experiment file to refresh on what it does
-2. Brief the user on what to look for — 3-4 bullet points, conversational
-3. Tell them the command: `uv run python .research/deep-dives/fastmcp-spike/experiments/0X_*.py`
-4. **Do NOT run it yourself.** The user runs it and shares the output.
-5. If the script has errors:
-   - Help debug and fix the script
-   - The experiments are meant to be tweaked — encourage the user to modify them
-   - If an API doesn't work as expected, that IS a finding
+### 02 — Client Logging (server)
+- This is THE experiment. Spend time here.
+- After `log_all_levels`: "Which levels appeared? Was debug filtered? Where did warnings render — inline? In a log panel?"
+- After `log_with_structure`: "Did structured data appear or just the message string?"
+- After `log_in_real_scenario`: "This is what add_tasks would log. Is this useful from the agent's perspective? Better than a log file?"
+- Big question: "Would you want EVERY logger.info() in the codebase to become ctx.info()? Or only some?"
 
-### Phase 3: Interpret results
+### 03 — Server Logging (server)
+- After `test_dual_logging`: "Check `/tmp/fastmcp-spike-server.log` — is file output there? And check your client — did protocol messages arrive too?"
+- After `test_stderr_write`: "This is the key question. If stderr is hijacked, that's why we need the FileHandler workaround. If it's NOT hijacked, maybe we can use stderr again."
+- After `test_get_logger`: "Is get_logger() just logging.getLogger() with extra steps? Or does it add something?"
+- Build the logging matrix: client-facing (ctx.info) vs server-side (FileHandler / stderr / get_logger)
 
-After the user shares output:
+### 04 — Test Client (code)
+- After output: "Now open `conftest.py:439-481`. That's the _ClientSessionProxy — 40 lines of anyio stream plumbing."
+- "And `test_server.py:51-82` — run_with_client, another 30 lines."
+- "The script you just ran does the same thing in 3 lines. Worth migrating?"
+- Check: "Did error handling work? What type did call_tool return?"
 
-1. **Highlight surprises** — anything that differs from what we expected based on FastMCP docs
-2. **Answer the experiment's key question** — give a clear verdict
-3. **Connect to the migration** — what does this mean for v1.2.2?
-4. **Suggest follow-up tweaks** — "Try changing X to see if Y also works"
-5. Ask the user for their take before recording
+### 05 — Middleware (server)
+- After `fast_tool` and `slow_tool`: "Check `/tmp/fastmcp-spike-middleware.log` — do you see timing data?"
+- "Now open `server.py:50-63` — that's our manual `_log_tool_call()`. Could this middleware replace it?"
+- After `failing_tool`: "What did the client get? Clean error or traceback?"
 
-### Phase 4: Record findings
+### 07 — Progress (server)
+- Call `process_batch` with 5 items. "Do you see progress updates? A bar? Percentage?"
+- "Our add_tasks and edit_tasks process batches. Would progress reporting improve the experience?"
+- Reality check: "Does Claude Code actually render this?"
 
-Help the user update `.research/deep-dives/fastmcp-spike/FINDINGS.md`:
+### 08 — Dependency Injection (code)
+- After output: "Look at the two patterns side by side. Is Depends() cleaner?"
+- "The catch: tools that also need ctx.info() need BOTH ctx AND the dependency. That's most of our tools."
+- "And testing: can you override dependencies? Or is the lifespan pattern simpler for testing?"
 
-- For each experiment section, record:
+### 09 — Elicitation (server)
+- Call `edit_completed_task` and ACCEPT. "What did the prompt look like?"
+- Call it again and DECLINE. "What happened? Did the tool handle it?"
+- Call `no_elicitation_fallback`. "Compare: warning-in-response vs interactive prompt. Which is better for agents?"
+- Reality check: "Does Claude Code support elicitation? Does Claude Desktop?"
+
+## Recording Findings
+
+After each experiment, help the user update `.research/deep-dives/fastmcp-spike/FINDINGS.md`:
+
+- For each section, record:
   - **Verdict**: One-line answer to the key question
   - **Observations**: What we saw (2-4 bullets)
   - **Surprises**: Anything unexpected
   - **Migration impact**: What this means for v1.2.2
 
-Use the Edit tool to update the relevant section in FINDINGS.md. Keep it scannable — bullets over prose.
+Use the Edit tool to update the relevant section. Keep it scannable.
 
-### Phase 5: Go/No-Go (after all experiments)
+## Go/No-Go (after enough experiments)
 
-When all experiments are done (or enough to decide):
+When the user is ready to decide (all experiments or enough to judge):
 
-1. Summarize the de-risk experiments: did anything block the migration?
-2. Summarize the exploration experiments: what's worth including?
-3. **Ask the user for their decision** — do NOT make the call yourself
-4. Help them fill in the Go/No-Go section of FINDINGS.md
-5. If "go": help scope the migration (must-do vs nice-to-have vs future)
-
-## Tone
-
-- Lab partner, not lecturer
-- "Here's what I'd watch for..." not "You should test..."
-- Celebrate interesting findings, especially surprises
-- If something doesn't work, that's valuable data, not a failure
-- Keep it conversational — this is exploration, not a test suite
+1. Summarize de-risk results: did anything block?
+2. Summarize exploration results: what's worth including?
+3. **Ask the user for their decision** — never make the call yourself
+4. Help fill in the Go/No-Go section of FINDINGS.md
+5. If "go": help scope (must-do vs nice-to-have vs future milestone)
 
 ## Important Rules
 
-- **Never run experiments yourself** — the user runs them
-- **Never pre-fill findings** — help the user write their own
+- **Never run server-interactive experiments yourself** — the user must connect a real client
+- **Never pre-fill findings** — help the user write their own observations
 - **Never make the go/no-go decision** — it's the user's call
-- If the user wants to skip experiments or go out of order, that's fine
-- If the user wants to modify an experiment script, encourage it
-- If the user discovers something not covered by the 9 experiments, roll with it
+- If the user wants to skip, reorder, or modify experiments — that's fine
+- If something breaks, that's valuable data, not a failure
+- Encourage tweaking the scripts — they're meant to be modified

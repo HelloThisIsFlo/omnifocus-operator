@@ -2,38 +2,52 @@
 
 Pre-migration exploration before committing to milestone v1.2.2.
 
-## Why
-
-Milestone v1.2.2 proposes migrating from `mcp.server.fastmcp` (bundled) to standalone `fastmcp>=3`. The main driver is protocol-level logging (`ctx.info()` instead of our file-based workaround), but FastMCP v3 brings much more: middleware, a test client, dependency injection, progress reporting, and elicitation.
-
-This spike validates the migration path and explores what's worth using.
-
-## How to Run
+## Setup
 
 ```bash
-# Install (already in dev deps)
-uv sync
-
-# Run any experiment
-uv run python .research/deep-dives/fastmcp-spike/experiments/01_minimal_server.py
-
-# Or use the guide skill for a structured walkthrough
-# /fastmcp-spike
+uv sync --group spike
 ```
 
 ## Experiments
 
-| # | Name | Category | Question |
-|---|------|----------|----------|
-| 01 | Minimal Server | de-risk | Does our lifespan/tool pattern work with v3? |
-| 02 | Client Logging | de-risk | How does ctx.info()/warning()/error() work? |
-| 03 | Server Logging | de-risk | get_logger() vs FileHandler vs stderr? |
-| 04 | Test Client | de-risk | Can Client(server) replace 90 lines of plumbing? |
-| 05 | Middleware | explore | What middleware exists? Replace _log_tool_call()? |
-| 06 | Context Access | de-risk | ctx.lifespan_context vs ctx.request_context? |
-| 07 | Progress | explore | Does report_progress() work for batches? |
-| 08 | Dependency Injection | explore | Depends() vs lifespan pattern? |
-| 09 | Elicitation | explore | ctx.elicit() for "are you sure?" prompts? |
+Two kinds: **server-interactive** (you connect a client) and **code-interactive** (you run and read output).
+
+| # | Name | Type | Question |
+|---|------|------|----------|
+| 01 | Server & Context | code | Does our migration pattern work? Context inventory? |
+| 02 | Client Logging | **server** | What does the client see when tools log via ctx? |
+| 03 | Server Logging | **server** | stderr hijacked? get_logger()? Dual logging? |
+| 04 | Test Client | code | Can Client(server) replace 90 lines of plumbing? |
+| 05 | Middleware | **server** | What middleware exists? Replace _log_tool_call()? |
+| 07 | Progress | **server** | Does the client render progress? |
+| 08 | Dependency Injection | code | Depends() vs lifespan — cleaner? |
+| 09 | Elicitation | **server** | ctx.elicit() for "are you sure?" prompts? |
+
+### Running code-interactive experiments
+
+```bash
+uv run python .research/deep-dives/fastmcp-spike/experiments/01_server_and_context.py
+```
+
+### Running server-interactive experiments
+
+```bash
+# Option A — MCP Inspector
+uv run python .research/deep-dives/fastmcp-spike/experiments/02_client_logging.py
+# Then in another terminal: npx @modelcontextprotocol/inspector
+
+# Option B — Claude Code
+uv run python .research/deep-dives/fastmcp-spike/experiments/setup_mcp.py add 02
+# Restart Claude Code, test, then:
+uv run python .research/deep-dives/fastmcp-spike/experiments/setup_mcp.py remove
+```
+
+### Guided walkthrough
+
+Use the spike guide skill for a structured walkthrough:
+```
+/fastmcp-spike-guide
+```
 
 ## Findings
 

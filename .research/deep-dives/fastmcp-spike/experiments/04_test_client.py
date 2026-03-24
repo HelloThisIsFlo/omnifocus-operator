@@ -1,23 +1,15 @@
-"""Experiment 04: Test Client Simplification
+"""Experiment 04: Test Client — Client(server) vs Stream Plumbing
 
 QUESTION: Can `async with Client(server) as client:` replace our
-60-line anyio stream plumbing in conftest.py?
+60-line _ClientSessionProxy and 30-line run_with_client?
 
-CONTEXT:
-  Our current test infra uses:
-  - `_ClientSessionProxy` (conftest.py:439-481) — 40 lines
-  - `run_with_client` (test_server.py:51-82) — 30 lines
-  - Manual anyio memory streams, task groups, cancellation
+WHAT THIS PROVES:
+  Run the script. The output shows side-by-side what each pattern looks like
+  and whether Client(server) handles our test scenarios correctly.
 
-  FastMCP's Client should collapse this to ~3 lines.
-
-WHAT TO LOOK FOR:
-- Does Client(server) run the lifespan?
-- Does call_tool() return the same shape as ClientSession.call_tool()?
-- Does list_tools() work?
-- How are errors handled? (RuntimeError from ErrorOperatorService)
-- Can we call multiple tools sequentially (state persists)?
-- What about concurrent tool calls?
+  After running, the guide skill will walk you through comparing this
+  to your actual test infrastructure in conftest.py:439-481 and
+  test_server.py:51-82.
 
 RUN: uv run python .research/deep-dives/fastmcp-spike/experiments/04_test_client.py
 """
@@ -31,124 +23,160 @@ from typing import Any
 from fastmcp import FastMCP, Context, Client
 
 
-# --- Build a server that mimics our test setup ---
-def build_test_server() -> FastMCP:
-    """Mirrors how conftest.py builds a test server with patched lifespan."""
+# ── Test server (mimics conftest.py's server fixture) ────────────────
 
-    # Fake service with mutable state (like InMemoryBridge)
-    fake_service = {
-        "tasks": [
+class FakeService:
+    """Stands in for OperatorService in tests."""
+    def __init__(self) -> None:
+        self.tasks = [
             {"id": "task-1", "name": "Buy groceries"},
             {"id": "task-2", "name": "Review PR"},
-        ],
-        "call_count": 0,
-    }
+        ]
+        self.call_count = 0
+
+    def get_tasks(self) -> list[dict[str, str]]:
+        self.call_count += 1
+        return list(self.tasks)
+
+    def add_task(self, name: str) -> dict[str, str]:
+        self.call_count += 1
+        task = {"id": f"task-{len(self.tasks) + 1}", "name": name}
+        self.tasks.append(task)
+        return task
+
+
+def build_test_server(service: FakeService) -> FastMCP:
+    """Mirrors conftest.py's server fixture: patched lifespan + _register_tools."""
 
     @asynccontextmanager
     async def patched_lifespan(app: FastMCP):  # type: ignore[type-arg]
-        print("  [lifespan] Starting (test mode)")
-        yield {"service": fake_service}
-        print("  [lifespan] Shutting down (test mode)")
+        yield {"service": service}
 
-    mcp = FastMCP("test-server", lifespan=patched_lifespan)
+    srv = FastMCP("test-server", lifespan=patched_lifespan)
 
-    @mcp.tool()
+    @srv.tool()
     async def get_tasks(ctx: Context) -> list[dict[str, str]]:
-        svc = ctx.lifespan_context["service"]
-        svc["call_count"] += 1
-        return svc["tasks"]
+        svc: FakeService = ctx.lifespan_context["service"]
+        return svc.get_tasks()
 
-    @mcp.tool()
+    @srv.tool()
     async def add_task(name: str, ctx: Context) -> dict[str, str]:
-        svc = ctx.lifespan_context["service"]
-        new_task = {"id": f"task-{len(svc['tasks']) + 1}", "name": name}
-        svc["tasks"].append(new_task)
-        svc["call_count"] += 1
-        return new_task
+        svc: FakeService = ctx.lifespan_context["service"]
+        return svc.add_task(name)
 
-    @mcp.tool()
+    @srv.tool()
     async def get_call_count(ctx: Context) -> int:
-        svc = ctx.lifespan_context["service"]
-        return svc["call_count"]
+        svc: FakeService = ctx.lifespan_context["service"]
+        return svc.call_count
 
-    @mcp.tool()
+    @srv.tool()
     async def fail_loudly() -> str:
-        """Tool that raises — how does Client handle it?"""
         raise RuntimeError("Simulated startup error (like ErrorOperatorService)")
 
-    return mcp
+    return srv
 
+
+# ── Tests ────────────────────────────────────────────────────────────
 
 async def main() -> None:
-    print("=" * 60)
-    print("EXPERIMENT 04: Test Client Simplification")
-    print("=" * 60)
+    print("=" * 64)
+    print("  EXPERIMENT 04: Test Client Simplification")
+    print("=" * 64)
 
-    server = build_test_server()
+    # ── Test 1: Basic usage ──
+    print("\n── Test 1: Basic Client(server) ────────────────────────")
+    service = FakeService()
+    server = build_test_server(service)
 
-    # Test 1: Basic Client usage
-    print("\n--- Test 1: Basic Client(server) usage ---")
     async with Client(server) as client:
         tools = await client.list_tools()
-        print(f"  Tools found: {[t.name for t in tools]}")
+        tool_names = [t.name for t in tools]
+        print(f"  list_tools():  {tool_names}")
 
         result = await client.call_tool("get_tasks", {})
-        print(f"  get_tasks result type: {type(result).__name__}")
-        print(f"  get_tasks result: {result}")
+        print(f"  call_tool():   {result.data}")
+        print(f"  Return type:   {type(result).__name__} (use .data for extracted value)")
 
-    # Test 2: State persists across calls within same session
-    print("\n--- Test 2: State persistence across calls ---")
-    async with Client(server) as client:
+    # ── Test 2: State persistence across calls ──
+    print("\n── Test 2: State Persistence ───────────────────────────")
+    service2 = FakeService()
+    server2 = build_test_server(service2)
+
+    async with Client(server2) as client:
         r1 = await client.call_tool("get_tasks", {})
-        print(f"  Initial tasks: {r1}")
+        print(f"  Initial tasks:   {r1.data}")
 
         r2 = await client.call_tool("add_task", {"name": "New task"})
-        print(f"  Added: {r2}")
+        print(f"  Added task:      {r2.data}")
 
         r3 = await client.call_tool("get_tasks", {})
-        print(f"  After add: {r3}")
+        print(f"  After add:       {r3.data}")
 
         count = await client.call_tool("get_call_count", {})
-        print(f"  Total calls in this session: {count}")
+        print(f"  Call count:      {count.data}  (should be 3)")
 
-    # Test 3: Fresh session = fresh lifespan?
-    print("\n--- Test 3: Does each Client session get a fresh lifespan? ---")
-    async with Client(server) as client:
-        result = await client.call_tool("get_call_count", {})
-        print(f"  Call count in new session: {result}")
-        print(f"  (If 0, lifespan resets per session — if >0, state leaks)")
+    # ── Test 3: Error handling ──
+    print("\n── Test 3: Error Handling ──────────────────────────────")
+    service3 = FakeService()
+    server3 = build_test_server(service3)
 
-    # Test 4: Error handling
-    print("\n--- Test 4: Error handling (tool raises RuntimeError) ---")
-    async with Client(server) as client:
+    async with Client(server3) as client:
         try:
             result = await client.call_tool("fail_loudly", {})
-            print(f"  Result (no exception?): {result}")
+            # call_tool may return a result with is_error=True instead of raising
+            if hasattr(result, "is_error") and result.is_error:
+                print(f"  Error result:  is_error=True")
+                print(f"  Error text:    {result.content[0].text if result.content else '?'}")
+            else:
+                print(f"  No exception!  Result: {result.data}")
         except Exception as e:
-            print(f"  Exception type: {type(e).__name__}")
-            print(f"  Exception message: {e}")
+            print(f"  Exception:     {type(e).__name__}: {e}")
 
-    # Test 5: Compare with what we'd REPLACE
-    print("\n--- Test 5: Side-by-side comparison ---")
+    # ── Test 4: Session isolation ──
+    print("\n── Test 4: Session Isolation ───────────────────────────")
+    service4 = FakeService()
+    server4 = build_test_server(service4)
+
+    async with Client(server4) as client:
+        await client.call_tool("add_task", {"name": "Session 1 task"})
+        count1 = await client.call_tool("get_call_count", {})
+        print(f"  Session 1 calls: {count1.data}")
+
+    # Note: FakeService is shared (passed to build_test_server), so state
+    # persists between sessions. This is the same as our current test infra
+    # where InMemoryBridge outlives the MCP connection.
+    async with Client(server4) as client:
+        count2 = await client.call_tool("get_call_count", {})
+        print(f"  Session 2 calls: {count2.data}  (state shared via FakeService)")
+
+    # ── Comparison ──
+    print("\n── Side-by-Side Comparison ─────────────────────────────")
     print("""
-  CURRENT (conftest.py, ~40 lines):
-    s2c_send, s2c_recv = anyio.create_memory_object_stream[SessionMessage](0)
-    c2s_send, c2s_recv = anyio.create_memory_object_stream[SessionMessage](0)
-    async with anyio.create_task_group() as tg:
-        tg.start_soon(lambda: server._mcp_server.run(...))
-        async with ClientSession(s2c_recv, c2s_send) as session:
-            await session.initialize()
-            result = await session.call_tool(...)
-            tg.cancel_scope.cancel()
+  CURRENT conftest.py (lines 439-481, 40+ lines):
+  ┌──────────────────────────────────────────────────────────┐
+  │ class _ClientSessionProxy:                               │
+  │     async def _with_session(self, method, args, kwargs): │
+  │         s2c_send, s2c_recv = anyio.create_memory_...     │
+  │         c2s_send, c2s_recv = anyio.create_memory_...     │
+  │         async with anyio.create_task_group() as tg:      │
+  │             tg.start_soon(_run_server)                   │
+  │             async with ClientSession(...) as session:    │
+  │                 await session.initialize()               │
+  │                 result = await getattr(session, ...)     │
+  │                 tg.cancel_scope.cancel()                 │
+  │         return result                                    │
+  │     async def call_tool(self, *args, **kwargs):          │
+  │     async def list_tools(self, *args, **kwargs):         │
+  └──────────────────────────────────────────────────────────┘
 
-  FASTMCP v3 (~3 lines):
-    async with Client(server) as client:
-        result = await client.call_tool(...)
-    """)
+  FASTMCP v3 (3 lines):
+  ┌──────────────────────────────────────────────────────────┐
+  │ async with Client(server) as client:                     │
+  │     result = await client.call_tool("tool", {})          │
+  └──────────────────────────────────────────────────────────┘
+""")
 
-    print("=" * 60)
-    print("EXPERIMENT 04 COMPLETE")
-    print("=" * 60)
+    print("=" * 64)
 
 
 if __name__ == "__main__":
