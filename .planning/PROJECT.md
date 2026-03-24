@@ -8,6 +8,15 @@ A Python MCP server that exposes OmniFocus (macOS task manager) as structured ta
 
 Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
 
+## Current Milestone: v1.2.2 FastMCP v3 Migration
+
+**Goal:** Migrate from built-in `mcp.server.fastmcp` to standalone `fastmcp>=3` — fixes broken logging, unlocks better middleware/lifecycle support, no behavioral changes.
+
+**Target features:**
+- Dependency swap: `from mcp.server.fastmcp` → `from fastmcp` with `fastmcp>=3` in deps
+- Logging migration: file-based `FileHandler` workaround → protocol-level `ctx.info()`/`ctx.warning()`
+- Documentation updates: README, landing page reflect new dependency
+
 ## Requirements
 
 ### Validated
@@ -137,5 +146,22 @@ Golden master: 43 scenarios in 7 categories, contract tests verify InMemoryBridg
 | Structural import barrier for test doubles | Test doubles in tests/doubles/, production code in src/. Structural impossibility of importing test code in production | ✓ Good — v1.2.1, eliminates a class of mistakes |
 | Patch[T]/PatchOrClear[T] type aliases | Make three-way semantics (unset/null/value) visible in annotations. Identical JSON schema, pure readability gain | ✓ Good — v1.2.1, self-documenting models |
 
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd:transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd:complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
 ---
-*Last updated: 2026-03-23 after v1.2.1 milestone — architectural cleanup complete, 697 tests, golden master contract testing*
+*Last updated: 2026-03-24 after v1.2.2 milestone start — FastMCP v3 migration*
