@@ -14,7 +14,54 @@ The architecture isn't decoration — each layer exists because it handles genui
 - **Service** (`service/`, 5 modules) — Orchestration, validation, resolution, domain logic, payload construction. Thin orchestrator delegates to extracted modules.
 - **Repository** (`repository/`) — Data access with three pluggable implementations: HybridRepository (SQLite + bridge, 46ms reads), BridgeRepository (fallback), InMemoryBridge (tests).
 
+```mermaid
+graph TD
+    Server["server.py<br/>MCP wiring"]
+    Service["service/<br/>orchestration + domain logic"]
+
+    Server --> Service
+    Service --> Repo
+
+    subgraph Repo["repository/"]
+        HybridRepo["HybridRepository<br/>SQLite reads + bridge writes"]
+        BridgeRepo["BridgeRepository<br/>bridge only"]
+        InMemory["InMemoryBridge<br/>tests"]
+    end
+
+    HybridRepo --> SQLite["SQLite DB<br/>46ms reads"]
+    HybridRepo --> Bridge
+    BridgeRepo --> Bridge
+
+    subgraph Bridge["bridge/"]
+        BridgeJS["bridge.js<br/>OmniJS IPC"]
+    end
+
+    SQLite --> OmniFocus["OmniFocus"]
+    Bridge --> OmniFocus
+```
+
 **Why it matters:** A skeptical tech lead would expect this to be over-engineered for 6 tools. It's not — the complexity is *localized* to where it's needed (bridge adapter, SQLite reader, domain logic) and *absent* where it would hurt (the service orchestrator is genuinely thin).
+
+### Framework-Agnostic by Design
+
+```mermaid
+graph TD
+    MCP["MCP Server<br/>(FastMCP)"] --> Core
+    CLI["CLI<br/>(future adapter)"] -.-> Core
+
+    subgraph Core["Operator Core"]
+        S["service/"]
+        R["repository/"]
+        B["bridge/"]
+        M["models/ + contracts/"]
+    end
+
+    Core --> OF["OmniFocus"]
+```
+
+Exactly **2 MCP imports** in the entire codebase — both in `server.py`. Service, repository, bridge, models, contracts: none of them know MCP exists.
+
+`server.py` is pure wiring: tool registration, lifespan management, error-to-response conversion. Zero business logic. Adding a CLI means writing another ~300-line adapter that calls the same `OperatorService`. Same domain logic, same validation, same repository. The MCP layer is a thin shell around a framework-independent core.
 
 ### "Dumb Bridge, Smart Python"
 
@@ -80,7 +127,76 @@ No silent failover — explicit env var, factory warns on startup when running d
 
 ---
 
-## 2. Type System & API Design
+## 2. Agent Experience Design
+
+The user of this system is an AI agent. Agents can't browse documentation, can't ask clarifying questions mid-operation, can't undo mistakes, can't open a second tab. Every piece of information they need must be in the request schema, the response payload, or the error message. This constraint drove design decisions across every layer of the system.
+
+### Design From What Agents Need, Not What the Source Provides
+
+OmniFocus stores task state in a single `taskStatus` field: `Available`, `Blocked`, `DueSoon`, `Overdue`, `Completed`, `Dropped`. The path of least resistance — and what most developers would do — is expose that single field. Maybe add a docstring explaining what each value means.
+
+Instead, this project decomposes it into two independent axes: **urgency** (time pressure: `overdue | due_soon | none`) and **availability** (work readiness: `available | blocked | completed | dropped`). A task can be "available and overdue" (work on this NOW) vs "blocked and due_soon" (waiting, will be urgent soon). The single-field status loses this distinction — an agent would have to reverse-engineer the components every time.
+
+This is the hardest kind of design decision: it adds complexity to the adapter layer so the agent doesn't have to think. The adapter absorbs the translation; the agent sees a clean, two-dimensional model. The complexity is invisible to the user — which is exactly what good product design looks like.
+
+This principle — design from what the user needs, not from what the source provides — runs through the entire system. The technical implementation is detailed in Section 5; the point here is the *design instinct* behind it.
+
+### Responses That Teach
+
+Every write response includes a `warnings` array — operations succeed but surface caveats the agent needs to know:
+
+- **Status awareness:** Editing a completed task? Warning tells the agent and asks it to confirm with the user.
+- **API limitations:** Moving to the same container? Warning explains the OmniFocus API limitation and suggests a workaround (use `before`/`after` instead).
+- **Lifecycle surprises:** Completing a repeating task? Warning explains that this occurrence completed and a new one was created — non-obvious behavior the agent needs to understand.
+- **Redundancy detection:** Adding a tag that's already present? Warning names the tag and its ID so the agent can adjust.
+
+Warnings are the agent's learning signal. An agent evaluating them with "beginner's mind" takes the correct action without needing to read documentation or source code. The warning text IS the documentation.
+
+All messages are centralized in `agent_messages/` — parameterized format strings, enforced by AST-based tests that prevent inline strings from sneaking into service code (see Section 4).
+
+### Errors That Guide
+
+Error messages include four components: what went wrong, why it matters, how to fix it, and what the tradeoff is. (See the SQLite error example in Section 6.)
+
+Entity-specific errors ensure the agent knows exactly which field to fix:
+- `TASK_NOT_FOUND` vs `PARENT_NOT_FOUND` vs `ANCHOR_TASK_NOT_FOUND` — different entities, different resolution paths
+- `AMBIGUOUS_TAG` lists all matching IDs so the agent can disambiguate without a second round-trip
+- `TAG_REPLACE_WITH_ADD_REMOVE` explains the mutual exclusivity constraint, not just "invalid input"
+
+### Validation as Agent Protection
+
+Write models use `extra="forbid"` — an agent that sends `tag` instead of `tags` gets an immediate, specific error naming the unknown field. Read models use `extra="ignore"` for forward compatibility (new bridge fields don't break older agents).
+
+Batch limit is checked before validation — the agent sees "exactly 1 item per call" instead of a confusing validation failure on item #2. Model validators prevent conflicting intent: can't use `replace` with `add`/`remove` on tags, `moveTo` must have exactly one position key. Invalid states are unrepresentable, not just undocumented.
+
+### Tool Descriptions as the Only Documentation
+
+MCP tool descriptions are the agent's entire reference. They're not brief — they include field-by-field parameter guides, explicit constraints ("currently limited to 1 item per call"), patch semantics cheat sheets (omit = no change, null = clear, value = update), and warnings about unsupported features ("Repetition rules, notifications, and sequential/parallel settings are not yet available").
+
+Tool annotations (`ToolAnnotations`) signal the safety profile of each operation: `readOnlyHint=True` on reads, `destructiveHint=False` on writes (creates/modifies, never deletes). Agents and MCP clients use these hints to decide which tools are safe to call without user confirmation.
+
+### No-Op Detection
+
+When an edit wouldn't change anything, the system returns early with guidance instead of making a pointless bridge call. Two distinct messages for two distinct root causes:
+- **"No changes specified"** — agent sent an edit request but omitted all fields (forgot to include them)
+- **"No changes detected"** — agent's values match the task's current state (nothing to do)
+
+Different root causes, different guidance. The agent learns the distinction. And because the bridge call is skipped entirely, it's also a performance win.
+
+### Deliberate Omissions as Design
+
+What the system doesn't do is as intentional as what it does:
+
+- **No dry-run/preview** — agent commits to an operation or doesn't. No guess-and-check workflow that would double the API surface.
+- **No undo** — agent calls edit again to reverse. Consequence awareness is built into the interaction model.
+- **No interactive confirmation** — all decisions are made upfront in the request payload. The agent is trusted to have already consulted the user.
+- **No summary/lightweight mode** — agent always gets the full entity with all fields. No mode to forget about, no partial data to misinterpret.
+
+These aren't missing features — they keep the API surface small, predictable, and unambiguous. An agent learning this system has fewer modes to discover and fewer ways to get confused.
+
+---
+
+## 3. Type System & API Design
 
 ### The UNSET Sentinel: Three-Way Distinction at the Type Level
 
@@ -141,7 +257,7 @@ All `@runtime_checkable`. Structural subtyping enables test doubles without inhe
 
 ---
 
-## 3. Testing Strategy
+## 4. Testing Strategy
 
 ### The Golden Master Contract Pattern (Most Novel)
 
@@ -222,7 +338,7 @@ Call tracking (`BridgeCall` records), error injection (`set_error`/`clear_error`
 
 ---
 
-## 4. Domain Modeling
+## 5. Domain Modeling
 
 ### Two-Axis Status Model
 
@@ -262,7 +378,7 @@ Models include both direct fields (`due_date`) and effective fields (`effective_
 
 ---
 
-## 5. Code Craft
+## 6. Code Craft
 
 ### Naming That Encodes Architecture
 
@@ -313,7 +429,7 @@ Not "File not found." An error that teaches: what went wrong, why it matters, ho
 
 ---
 
-## 6. Safety & Operations
+## 7. Safety & Operations
 
 ### Failure Cascade Table
 
@@ -343,7 +459,7 @@ Request files use tmp-then-rename pattern (`os.replace`) for atomicity. Response
 
 ---
 
-## 7. Developer Experience
+## 8. Developer Experience
 
 ### Discoverability: Navigate by `ls`
 
@@ -374,7 +490,7 @@ Each layer has a purpose. Violations stop early. Errors propagate cleanly.
 
 ---
 
-## 8. AI Conductor Process
+## 9. AI Conductor Process
 
 ### Contract-First Planning
 
@@ -416,7 +532,7 @@ The constraint is the feature. Each role's *epistemological profile* — what it
 
 ---
 
-## 9. Taste & Restraint: What's NOT Built
+## 10. Taste & Restraint: What's NOT Built
 
 The previous career handover assessment said: *"The project has taste. That is the word that best captures it."*
 
@@ -431,7 +547,7 @@ Evidence of restraint:
 
 ---
 
-## 10. The Numbers
+## 11. The Numbers
 
 | Metric | Value | Significance |
 |--------|-------|-------------|
@@ -448,7 +564,7 @@ Evidence of restraint:
 
 ---
 
-## 11. Independent Validation
+## 12. Independent Validation
 
 Two independent assessments reached the same conclusions:
 
