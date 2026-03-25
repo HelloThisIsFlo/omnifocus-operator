@@ -7,6 +7,10 @@ files:
   - src/omnifocus_operator/server.py
 ---
 
+> **⚠ OUTDATED** — The problem/solution below was written before the FastMCP v3 spike.
+> Several assumptions were invalidated (stderr not hijacked, `ctx.info()` is a dead end, logging is SDK-independent).
+> See `.research/deep-dives/fastmcp-spike/FINDINGS.md` for the up-to-date picture and go/no-go decision.
+
 ## Problem
 
 The project currently uses `mcp.server.fastmcp` (built into the official `mcp` SDK). This has several limitations discovered during development:
