@@ -1,6 +1,6 @@
 ---
 name: uat-regression
-description: Run UAT regression tests for OmniFocus Operator MCP tools against the live OmniFocus database. Choose from test suites covering edit operations, tag operations, move operations, lifecycle, and more. Trigger when the user says "run UAT", "UAT regression", "regression test", "test edits", "test tags", "test tag operations", "test moves", "test movement", "test lifecycle", "test complete/drop", "test reads", "test filters", "test add_tasks", "run edit tests", or wants to verify tool behavior after code changes. This skill requires the omnifocus-operator MCP server to be running.
+description: Run UAT regression tests for OmniFocus Operator MCP tools against the live OmniFocus database. Choose from test suites covering edit operations, tag operations, move operations, lifecycle, inheritance, and more. Trigger when the user says "run UAT", "UAT regression", "regression test", "test edits", "test tags", "test tag operations", "test moves", "test movement", "test lifecycle", "test complete/drop", "test reads", "test filters", "test add_tasks", "run edit tests", "test inheritance", "test effective fields", "effective field inheritance", or wants to verify tool behavior after code changes. This skill requires the omnifocus-operator MCP server to be running.
 ---
 
 # UAT Regression
@@ -13,7 +13,7 @@ Run UAT regression tests for OmniFocus Operator MCP tools against live OmniFocus
 
 | Suite | File | Tests | Covers |
 |-------|------|------:|--------|
-| **v1.2 Combined** *(composite)* | `tests/v1.2-combined.md` | 95 | **Full milestone regression** — lookups, creation, edits, tags, moves, lifecycle, integration |
+| **v1.2 Combined** *(composite)* | `tests/v1.2-combined.md` | 103 | **Full milestone regression** — lookups, creation, edits, tags, moves, lifecycle, integration, inheritance |
 | Read Lookups | `tests/read-lookups.md` | 7 | get_task, get_project, get_tag — happy path + not-found errors |
 | Task Creation | `tests/task-creation.md` | 14 | add_tasks — inbox, parent, all fields, tag resolution, errors, batch limit |
 | Integration Flows | `tests/integration-flows.md` | 8 | End-to-end write-through: create→edit→move→tags→lifecycle→get_all |
@@ -21,6 +21,7 @@ Run UAT regression tests for OmniFocus Operator MCP tools against live OmniFocus
 | Tag Operations | `tests/tag-operations.md` | 15 | Tag add/remove/replace, ambiguity, no-ops, errors |
 | Move Operations | `tests/move-operations.md` | 16 | All 5 move modes, cross-level, circular refs, completed/dropped movement |
 | Lifecycle | `tests/lifecycle.md` | 12 | Complete, drop, cross-state, repeating tasks, validation |
+| Inheritance | `tests/inheritance.md` | 8 | Effective field inheritance — dueDate, deferDate, plannedDate, flagged from projects through task chains |
 
 ## Flow
 
