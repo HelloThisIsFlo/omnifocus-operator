@@ -42,7 +42,7 @@ Task in inbox (no parent):
 
 Creation order:
 1. T1, T2, T3, T4, T5, T6, T7 (can be parallel — T1/T2/T3/T4/T6/T7 under dated-project, T5 in inbox)
-2. T2a under T2, T3a under T3 (can be parallel, need parents from step 1)
+2. T2a under T2, T3a under T3, T7a under T7 (can be parallel, need parents from step 1)
 3. T3b under T3a (needs T3a from step 2)
 
 Store all IDs.
