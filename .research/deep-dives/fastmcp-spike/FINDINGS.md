@@ -253,6 +253,99 @@ FastMCP's `Depends()` is powered by [Docket](https://github.com/chrisguidry/dock
 
 ## Exp 08: Elicitation
 
+**Verdict:** Pass — works beautifully in Claude Code CLI. Powerful feature, but needs fallback for clients that don't support it (Claude Desktop).
+
+**How it looks in Claude Code (real output):**
+
+Confirmation (None response):
+```
+  Task 'task-456' is already completed. Edit it anyway?
+  ❯ Accept    Decline
+  Esc to cancel · ↑↓ to navigate
+```
+
+String input:
+```
+  What should the task be called?
+  ❯ * Value: Type something…
+    Accept    Decline
+```
+
+Number input (with validation!):
+```
+  How many minutes to estimate?
+  ❯ ⚠ Value: hello
+        Must be an integer
+    Accept    Decline
+```
+
+Boolean (checkbox):
+```
+  Should this task be flagged?
+  ❯ ✔ Value: ☐
+    Accept    Decline
+  Space to toggle
+```
+
+Choice (radio buttons):
+```
+  What priority level?
+  ❯ * Value: ▾
+          ◯ low
+        ❯ ◯ medium
+          ◯ high
+          ◯ critical
+```
+
+Structured form (multiple fields):
+```
+  Please provide task details
+  ❯ ✔ Name: Type something…
+    * Project: not set
+    * Priority: not set
+    * Flagged: not set
+    Accept    Decline
+```
+
+Defaults + descriptions (Pydantic Field):
+```
+  Create a new task (defaults pre-filled)
+  ❯ ⚠ Name: Type something…
+        Task name
+        This field is required
+      Note: not set
+        Optional note
+    ✔ Priority: medium
+        Priority level
+    ✔ Flagged: ☐
+        Flag this task?
+```
+
+**Client support:**
+- Claude Code CLI: **YES** (since v2.1.76) — all types except multi-select
+- Claude Desktop: **NO** (tested) — returns `McpError: Method not found`, no graceful fallback
+- Cursor: reportedly yes (not tested, from research)
+- MCP Inspector: reportedly yes for form mode (not tested, from research)
+
+**What works:**
+- Confirmation (None) — clean accept/decline
+- String, integer, boolean — proper input widgets with validation
+- Constrained choice — radio button dropdown
+- Structured form (dataclass) — multi-field form, each typed correctly
+- Defaults — enum and boolean defaults pre-populate; string defaults don't show
+- Field descriptions (Pydantic `Field(description=...)`) — displayed under each field
+- Multi-turn — works but inferior UX to structured form (just repeats single prompts)
+
+**What doesn't work:**
+- Multi-select (`[["a", "b", "c"]]`) — schema validation error in Claude Code
+- String defaults — not pre-populated (enum/boolean defaults work)
+
+**Preference:** Structured form > multi-turn. If you need multiple inputs, use a dataclass/Pydantic model — one form, all fields at once.
+
+**Migration impact:**
+- **Not adding elicitation now.** The primary target is Claude Desktop, which doesn't support it.
+- Good to know it exists and works well in Claude Code — revisit when Claude Desktop adds support.
+- If added later: must wrap in try/except, fall back to warning-in-response (existing pattern).
 
 ---
 
