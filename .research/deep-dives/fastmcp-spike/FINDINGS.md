@@ -90,10 +90,17 @@ Open issue: [anthropics/claude-code#29035](https://github.com/anthropics/claude-
 - `StreamHandler(stderr)` with 4 log levels: all written, tool response returned correctly
 - Both SDKs only wrap `stdin` and `stdout` for JSON-RPC — stderr is left untouched
 
-**Correction:**
-- `__main__.py:15` says `"stdio_server() hijacks stderr"` — **this is wrong**
-- The `FileHandler` workaround was never necessary. `StreamHandler(stderr)` was always safe.
-- This comment should be corrected during the migration.
+### Gotcha: stderr hijacking in the base `mcp` SDK was a misdiagnosis
+
+Our `__main__.py:15` says `"stdio_server() hijacks stderr"` — this was the original reason we used `FileHandler` instead of `StreamHandler`, and **one of the main drivers for considering the FastMCP v3 migration.** Turns out it was completely wrong.
+
+What actually happened: we tested logging in **Claude Code**, saw nothing on stderr, and concluded the SDK was hijacking it. But the SDK never touched stderr — it was **Claude Code swallowing stderr during tool execution** (see Gotcha above, issue [#29035](https://github.com/anthropics/claude-code/issues/29035)). If we'd checked Claude Desktop's log page back then, we'd have seen our stderr output all along.
+
+This means:
+- `StreamHandler(stderr)` was always safe, on both the old `mcp` SDK and FastMCP v3
+- The `FileHandler` workaround was unnecessary from day one
+- **Logging is not a reason to migrate to FastMCP v3** — the logging story is identical on both SDKs
+- The migration may still be worth it for other reasons (test client, cleaner API) — that's what the remaining experiments will determine
 
 ## Exp 04: Test Client
 
