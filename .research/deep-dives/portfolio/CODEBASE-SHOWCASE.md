@@ -77,6 +77,16 @@ The bridge (`bridge.js`, ~400 lines) is intentionally minimal: enum resolution, 
 
 **Not guessed — researched.** The bridge design was informed by 27 OmniJS audit scripts that mapped real OmniFocus behavior (enum semantics, edge cases, API quirks) and 6 structured deep dives before architecture was finalized. The "dumb bridge" constraint is evidence-based, not aesthetic.
 
+**Known OmniJS quirks that drive this design:**
+
+| Quirk | Workaround |
+|-------|------------|
+| `removeTags(array)` is unreliable | Bridge removes tags one at a time in a loop |
+| `note = null` is rejected | Service maps `null → ""` before building payload |
+| Enums are opaque objects (`.name` returns `undefined`) | Bridge does minimal enum-to-string resolution, throws on unknowns |
+| Same-container moves are silent no-ops | Service detects and warns with `before`/`after` workaround |
+| Blocking state is invisible to OmniJS | Only SQLite has full availability data (see Capability Degradation) |
+
 ### Method Object Pipeline Pattern
 
 Write operations use Method Objects — `_AddTaskPipeline` and `_EditTaskPipeline` encapsulate multi-step workflows:
@@ -198,21 +208,9 @@ These aren't missing features — they keep the API surface small, predictable, 
 
 ## 3. Type System & API Design
 
-### The UNSET Sentinel: Three-Way Distinction at the Type Level
+### Three-Way Patch Semantics
 
-Solves a fundamental API problem: distinguishing omitted (no change) from null (clear) from value (update).
-
-```python
-class _Unset:
-    def __new__(cls) -> _Unset:
-        if cls._instance is None:
-            cls._instance = object.__new__(cls)
-        return cls._instance
-    def __get_pydantic_core_schema__(cls, _source_type, _handler):
-        return core_schema.is_instance_schema(cls)
-```
-
-Pydantic's `is_instance_schema` validates UNSET at runtime but produces zero output in JSON schema. Agents never see it; it works internally.
+The API distinguishes three states for every field: **omitted** (no change), **null** (clear the value), and **set** (update). An internal `UNSET` sentinel handles this at the type level — invisible in JSON schema, agents never see it.
 
 ### Type Aliases That Encode Domain Intent
 
@@ -246,6 +244,8 @@ The edit API separates two fundamentally different kinds of operations:
 
 This separation prevents agents from confusing "set a field" with "perform an operation" — a distinction that most task APIs collapse.
 
+This boundary evolved: tags started as a top-level field in v1.2, then migrated to the actions block in v1.2.1 when it became clear that tag operations produce side effects (per-tag warnings, diff computation). The API has a forward-thinking evolution path — new stateful operations join the actions block; simple setters stay top-level.
+
 ### Protocol-Driven Boundaries
 
 Three protocols in one file (`contracts/protocols.py`):
@@ -261,21 +261,46 @@ All `@runtime_checkable`. Structural subtyping enables test doubles without inhe
 
 ### The Golden Master Contract Pattern (Most Novel)
 
-Captures real OmniFocus behavior, replays against InMemoryBridge in CI:
+The central testing challenge: how do you verify that your test double (InMemoryBridge) behaves like the real system (OmniFocus) when you can't run OmniFocus in CI?
 
-1. **UAT script** (`uat/capture_golden_master.py`, 1230 lines) — interactive, guided, runs against live OmniFocus. 42 scenarios across 7 categories.
-2. **Snapshots** (`tests/golden_master/snapshots/`) — ground truth JSON: operation, params, response, state_after.
-3. **Contract tests** (`tests/test_bridge_contract.py`, 379 lines) — replays against InMemoryBridge, compares with normalization.
+```mermaid
+graph LR
+    subgraph Capture ["Capture (manual, live OmniFocus)"]
+        UAT["UAT Script<br/>42 scenarios"] --> Snap["Snapshots<br/>ground truth JSON"]
+    end
 
-### VOLATILE / UNCOMPUTED / PRESENCE_CHECK Stratification
+    subgraph CI ["CI (automated, no OmniFocus)"]
+        Snap --> Replay["Replay against<br/>InMemoryBridge"]
+        Replay --> Norm["Normalize"]
+        Norm --> Compare["Compare"]
+    end
 
-The normalization pattern that makes golden master testing work:
+    subgraph Normalization ["Normalization Strategy"]
+        V["VOLATILE<br/>always stripped"]
+        U["UNCOMPUTED<br/>stripped until learned"]
+        P["PRESENCE_CHECK<br/>null vs non-null only"]
+    end
 
-- **VOLATILE** (id, url, timestamps) — different every run, always stripped
-- **UNCOMPUTED** (status, effectiveDueDate) — InMemoryBridge doesn't compute these *yet*, stripped until it does
-- **PRESENCE_CHECK** (completionDate, dropDate) — null-vs-non-null is deterministic, timestamp varies, normalized to `"<set>"` sentinel
+    Norm --> V
+    Norm --> U
+    Norm --> P
+```
 
-**The ratchet:** Removing a field from UNCOMPUTED auto-enables verification with zero test changes. As InMemoryBridge learns, tests automatically get stricter. This is test infrastructure that evolves with the product.
+1. **Capture** — UAT script (`uat/capture_golden_master.py`, 1230 lines) runs interactively against live OmniFocus. 42 scenarios across 7 categories. Human-guided, records operation + params + response + state_after as JSON snapshots.
+2. **Replay** — Contract tests (`tests/test_bridge_contract.py`, 379 lines) load each snapshot, replay the operation against InMemoryBridge, compare output with normalization.
+3. **Normalize** — Three-tier field stratification handles the reality that a test double can't perfectly match a live system:
+
+| Tier | Fields | Treatment | Why |
+|------|--------|-----------|-----|
+| **VOLATILE** | id, url, timestamps | Always stripped | Different every run — random/time-dependent |
+| **UNCOMPUTED** | status, effectiveDueDate | Stripped until InMemoryBridge learns | Bridge doesn't compute these *yet* |
+| **PRESENCE_CHECK** | completionDate, dropDate | Normalized to `"<set>"` | Null-vs-non-null is deterministic; exact timestamp varies |
+
+### The Ratchet: Tests That Get Stricter Automatically
+
+UNCOMPUTED is a whitelist of fields InMemoryBridge doesn't compute yet. When InMemoryBridge learns to compute a field (e.g., `effectiveFlagged`), the fix is: remove it from the UNCOMPUTED list. That's it — one line deleted. The golden master comparison now includes that field automatically. Zero test code changes, zero snapshot updates. Tests just got stricter.
+
+This means test infrastructure *compels* progress: every improvement to InMemoryBridge automatically tightens verification. The ratchet only moves in one direction.
 
 ### Four Testing Layers
 
@@ -322,15 +347,17 @@ async def test_something(service: OperatorService) -> None:
 
 The chain `bridge → repo → service → server` is wired by conftest fixtures. Tests declare state via markers, not factory calls.
 
-### Stateful Test Doubles
+### Stateful Test Doubles: Why the Golden Master Works
 
-InMemoryBridge isn't a stub — it implements full task lifecycle:
-- `_handle_add_task()` generates IDs, builds task dicts, resolves parents
-- `_handle_edit_task()` mutates state, computes tag diffs, handles lifecycle
-- `_compute_effective_field()` walks ancestor chains for inheritance
-- `_set_has_children()` updates parent flags on add/move
+The golden master pattern only works if the test double is faithful enough that behavioral equivalence testing is meaningful. InMemoryBridge isn't a stub or a mock — it's a **behavioral double** that implements real domain logic:
 
-Call tracking (`BridgeCall` records), error injection (`set_error`/`clear_error`), and raw bridge format output ensure tests exercise the same paths as production.
+- **Full task lifecycle** — add, edit, complete, drop. Generates synthetic IDs, builds task dicts in raw bridge format (camelCase), resolves parent references.
+- **Ancestor-chain inheritance** — `_compute_effective_field()` walks up the task→project hierarchy to compute `effectiveDueDate`, `effectiveFlagged`, matching real OmniFocus behavior.
+- **Tag diff semantics** — add/remove/replace modes with the same set-based computation as the production service.
+- **Parent flag synchronization** — `_set_has_children()` updates parent flags when tasks are added or moved, maintaining referential integrity.
+- **Deep-copy isolation** — `get_all()` returns deep copies so tests can't leak side effects between scenarios.
+
+Call tracking (`BridgeCall` records) and error injection (`set_error`/`clear_error`) round out the testing infrastructure. Tests exercise the same adapter paths as production because InMemoryBridge outputs raw bridge format, not pre-adapted models.
 
 ### AST-Based Message Enforcement
 
@@ -447,7 +474,9 @@ Not "File not found." An error that teaches: what went wrong, why it matters, ho
 
 ### Write-Through Verification
 
-After bridge writes, the system polls SQLite WAL mtime to confirm OmniFocus persisted the change. 50ms polling, 2s timeout. Prevents returning stale data to agents after writes. Detects silent failures (bridge says OK but nothing persisted).
+After bridge writes, the `@_ensures_write_through` decorator polls SQLite WAL mtime to confirm OmniFocus persisted the change. Captures baseline mtime before the bridge call, polls at 50ms intervals, 2s timeout. If timeout occurs, logs a warning and continues with possibly stale data — doesn't crash, doesn't block.
+
+This catches silent failures: the bridge says "OK" but nothing actually persisted. Most task systems trust the write response blindly. This one verifies at the filesystem level.
 
 ### Async-Safe I/O
 
@@ -522,13 +551,13 @@ The three-role orchestration above is actually the surface of a deeper design pr
 
 Five custom agent skills built for this project, each with deliberately constrained knowledge:
 
-- **UAT regression** (naive) — forbidden from reading source code. Tests tool behavior with "beginner's mind." A UAT agent that reads implementation works *around* bugs instead of *surfacing* them.
-- **Ground truth auditor** (thorough) — forbidden from skipping edge cases. Must verify every scenario, not sample.
-- **Coverage auditor** (skeptical) — respects layer boundaries. Can't mark a unit test as covering a service-level behavior.
-- **Suite updater** (constructive) — researches features before writing tests. Can't invent test scenarios without evidence.
-- **Executor** (autonomous) — plans are behavioral contracts. Executes without human judgment mid-flight, but deviations are flagged.
+- **UAT regression** (naive) — **forbidden from reading source code.** Can't see how features are implemented. Tests tool behavior with "beginner's mind" by calling MCP tools and evaluating responses. A UAT agent that reads implementation would work *around* bugs instead of *surfacing* them — the ignorance is the value.
+- **Ground truth auditor** (thorough) — **forbidden from skipping edge cases.** Must verify every scenario in the golden master, not sample. Ensures the normalization tiers are correctly applied and no scenario is silently passing.
+- **Coverage auditor** (skeptical) — **forbidden from crossing layer boundaries.** Can't mark a unit test as covering a service-level behavior. Respects the four testing layers (unit/integration/service/E2E) as distinct domains.
+- **Suite updater** (constructive) — **forbidden from inventing scenarios.** Must research the actual feature before writing tests. Can't create test cases without evidence from the codebase or documentation.
+- **Executor** (autonomous) — **forbidden from requesting human judgment mid-flight.** Plans are behavioral contracts ("these truths must hold"). Deviations from the plan are flagged, not silently resolved.
 
-The constraint is the feature. Each role's *epistemological profile* — what it knows, what it's forbidden from knowing — determines its value.
+The constraint is the feature. Each role's knowledge boundary — what it knows, what it's forbidden from knowing — determines its value. An agent without the right constraints is just a fast typist.
 
 ---
 
@@ -544,6 +573,7 @@ Evidence of restraint:
 - **Batch limit intentionally 1.** Clear error message for violations. Expand later when demand justifies it.
 - **Zero TODO/FIXME/HACK in production code.** Code doesn't promise to fix things later — it's fixed now.
 - **Read operations are one-liner pass-throughs, not pipelines.** Complexity only where it's needed.
+- **Six features deliberately rejected** with documented rationale — task reactivation (OmniJS API unreliable), tag writes (out of scope for v1.2), folder writes, undo/dry-run, summary mode, automatic failover. Each has a written reason in DISCARDED-IDEAS.md. Saying no is a design decision.
 
 ---
 
@@ -562,19 +592,3 @@ Evidence of restraint:
 | Read latency | 46ms | 30-60x faster than bridge |
 | Bridge JS tests | 71 | Right ratio for a relay layer |
 
----
-
-## 12. Independent Validation
-
-Two independent assessments reached the same conclusions:
-
-**Career handover (2026-03-20, separate session):**
-- "The project is genuinely strong."
-- "Strong senior is the floor; staff is plausible."
-- "The project has taste."
-- "The codebase does not read like 'Claude wrote some code and then a human tried to rescue it.' It reads like a human defined the system and used AI to increase execution speed."
-
-**Skeptical Tech Lead (this analysis):**
-- Went in looking for: over-engineering, test padding, spaghetti, naive error handling, leaky abstractions, unfaithful test doubles, tech debt.
-- Found: "This is production-grade code. Not 'would be if we had more time' — it's there now."
-- "The codebase is careful, intentional, and well-maintained."
