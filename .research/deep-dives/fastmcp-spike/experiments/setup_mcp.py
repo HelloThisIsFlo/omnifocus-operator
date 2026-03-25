@@ -22,8 +22,8 @@ EXPERIMENT_SCRIPTS = {
     "02": "02_client_logging.py",
     "03": "03_server_logging.py",
     "05": "05_middleware.py",
-    "07": "07_progress.py",
-    "09": "09_elicitation.py",
+    "06": "06_progress.py",
+    "08": "08_elicitation.py",
 }
 
 

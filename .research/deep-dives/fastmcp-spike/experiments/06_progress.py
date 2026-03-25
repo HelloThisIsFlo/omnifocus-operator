@@ -1,16 +1,16 @@
-"""Experiment 07: Progress Reporting — Does the Client Render It?
+"""Experiment 06: Progress Reporting — Does the Client Render It?
 
 QUESTION: Does ctx.report_progress() emit events the client can see?
 This can only be answered by connecting a real client.
 
 HOW TO CONNECT:
   Option A — MCP Inspector:
-    1. Start: uv run python .research/deep-dives/fastmcp-spike/experiments/07_progress.py
+    1. Start: uv run python .research/deep-dives/fastmcp-spike/experiments/06_progress.py
     2. In another terminal: npx @modelcontextprotocol/inspector
     3. Connect via stdio
 
   Option B — Claude Code:
-    1. Run: uv run python .research/deep-dives/fastmcp-spike/experiments/setup_mcp.py add 07
+    1. Run: uv run python .research/deep-dives/fastmcp-spike/experiments/setup_mcp.py add 06
     2. Restart Claude Code (or reload MCP servers)
     3. Ask Claude to call the tools
     4. When done: uv run python .../setup_mcp.py remove

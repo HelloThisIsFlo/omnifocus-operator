@@ -194,13 +194,13 @@ mcp.add_middleware(ToolLoggingMiddleware(file_logger))
 - Add `ToolLoggingMiddleware` class + `create_logger` factory (experiment file is a reference implementation, adapt as needed)
 
 
-## Exp 07: Progress
+## Exp 06: Progress
 
 
-## Exp 08: Dependency Injection
+## Exp 07: Dependency Injection
 
 
-## Exp 09: Elicitation
+## Exp 08: Elicitation
 
 
 ---

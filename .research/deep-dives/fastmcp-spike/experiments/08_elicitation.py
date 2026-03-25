@@ -1,16 +1,16 @@
-"""Experiment 09: Elicitation — "Are You Sure?" Prompts
+"""Experiment 08: Elicitation — "Are You Sure?" Prompts
 
 QUESTION: Can ctx.elicit() add confirmation prompts for destructive operations?
 Does the client actually show the prompt? What happens when you decline?
 
 HOW TO CONNECT:
   Option A — MCP Inspector:
-    1. Start: uv run python .research/deep-dives/fastmcp-spike/experiments/09_elicitation.py
+    1. Start: uv run python .research/deep-dives/fastmcp-spike/experiments/08_elicitation.py
     2. In another terminal: npx @modelcontextprotocol/inspector
     3. Connect via stdio
 
   Option B — Claude Code:
-    1. Run: uv run python .research/deep-dives/fastmcp-spike/experiments/setup_mcp.py add 09
+    1. Run: uv run python .research/deep-dives/fastmcp-spike/experiments/setup_mcp.py add 08
     2. Restart Claude Code (or reload MCP servers)
     3. Ask Claude to call the tools
     4. When done: uv run python .../setup_mcp.py remove

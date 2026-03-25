@@ -15,13 +15,13 @@ Two kinds: **server-interactive** (you connect a client) and **code-interactive*
 | # | Name | Type | Question |
 |---|------|------|----------|
 | 01 | Server & Context | code | Does our migration pattern work? Context inventory? |
-| 02 | Client Logging | **server** | What does the client see when tools log via ctx? |
-| 03 | Server Logging | **server** | stderr hijacked? get_logger()? Dual logging? |
+| 02 | Client vs Server Logging | **server** | ctx.info() vs get_logger() vs StreamHandler(stderr)? |
+| 03 | stderr Hijacking | **server** | Is stderr safe under stdio? Old SDK vs FastMCP v3? |
 | 04 | Test Client | code | Can Client(server) replace 90 lines of plumbing? |
-| 05 | Middleware | **server** | What middleware exists? Replace _log_tool_call()? |
-| 07 | Progress | **server** | Does the client render progress? |
-| 08 | Dependency Injection | code | Depends() vs lifespan — cleaner? |
-| 09 | Elicitation | **server** | ctx.elicit() for "are you sure?" prompts? |
+| 05 | Middleware | **server** | Reusable logging middleware with dual destinations? |
+| 06 | Progress | **server** | Does the client render progress? |
+| 07 | Dependency Injection | code | Depends() vs lifespan — cleaner? |
+| 08 | Elicitation | **server** | ctx.elicit() for "are you sure?" prompts? |
 
 ### Running code-interactive experiments
 

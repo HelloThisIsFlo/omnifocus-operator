@@ -15,7 +15,7 @@ Read these files to understand the spike:
 
 ## Two Interaction Modes
 
-### Server-interactive experiments (02, 03, 05, 07, 09)
+### Server-interactive experiments (02, 03, 05, 06, 08)
 
 The script IS the MCP server. The user connects via MCP Inspector or Claude Code.
 
@@ -30,7 +30,7 @@ The script IS the MCP server. The user connects via MCP Inspector or Claude Code
 
 **Key principle:** You CANNOT run these yourself or test them in-process. The whole point is the user observing what the real client shows. Ask questions like "What did Claude Code show you?" and "Did you see a warning inline?"
 
-### Code-interactive experiments (01, 04, 08)
+### Code-interactive experiments (01, 04, 07)
 
 The script runs standalone and prints structured output. The guide walks through the code.
 
@@ -50,18 +50,18 @@ The script runs standalone and prints structured output. The guide walks through
 | 03 | `03_server_logging.py` | server | stderr hijacked? get_logger()? Dual logging? |
 | 04 | `04_test_client.py` | code | Can Client(server) replace 90 lines of plumbing? |
 | 05 | `05_middleware.py` | server | What middleware exists? Replace _log_tool_call()? |
-| 07 | `07_progress.py` | server | Does the client render progress? |
-| 08 | `08_dependency_injection.py` | code | Depends() vs lifespan — cleaner? |
-| 09 | `09_elicitation.py` | server | ctx.elicit() for destructive op confirmations? |
+| 06 | `06_progress.py` | server | Does the client render progress? |
+| 07 | `07_dependency_injection.py` | code | Depends() vs lifespan — cleaner? |
+| 08 | `08_elicitation.py` | server | ctx.elicit() for destructive op confirmations? |
 
 ## Recommended Order
 
-01 → 02 → 03 → 04 → 05 → 07 → 08 → 09
+01 → 02 → 03 → 04 → 05 → 06 → 07 → 08
 
 - **01** first: sanity check, confirms migration shape works
 - **02 → 03** next: logging is the main driver for the migration
 - **04**: the big DX win for testing
-- **05 → 09**: exploration features (any order is fine)
+- **05 → 08**: exploration features (any order is fine)
 
 ## Per-Experiment Walkthrough Notes
 
@@ -94,17 +94,17 @@ The script runs standalone and prints structured output. The guide walks through
 - "Now open `server.py:50-63` — that's our manual `_log_tool_call()`. Could this middleware replace it?"
 - After `failing_tool`: "What did the client get? Clean error or traceback?"
 
-### 07 — Progress (server)
+### 06 — Progress (server)
 - Call `process_batch` with 5 items. "Do you see progress updates? A bar? Percentage?"
 - "Our add_tasks and edit_tasks process batches. Would progress reporting improve the experience?"
 - Reality check: "Does Claude Code actually render this?"
 
-### 08 — Dependency Injection (code)
+### 07 — Dependency Injection (code)
 - After output: "Look at the two patterns side by side. Is Depends() cleaner?"
 - "The catch: tools that also need ctx.info() need BOTH ctx AND the dependency. That's most of our tools."
 - "And testing: can you override dependencies? Or is the lifespan pattern simpler for testing?"
 
-### 09 — Elicitation (server)
+### 08 — Elicitation (server)
 - Call `edit_completed_task` and ACCEPT. "What did the prompt look like?"
 - Call it again and DECLINE. "What happened? Did the tool handle it?"
 - Call `no_elicitation_fallback`. "Compare: warning-in-response vs interactive prompt. Which is better for agents?"

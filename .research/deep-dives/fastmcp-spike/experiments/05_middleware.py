@@ -1,8 +1,14 @@
-"""Experiment 05: Middleware — Stacking Multiple Middleware
+"""Experiment 05: Middleware — Reusable Logging Middleware with Dual Destinations
 
-QUESTION: Can we stack middleware? How do they compose?
-Could middleware replace our manual log_tool_call() with automatic
-timing + logging to both stderr and file?
+QUESTION: Can middleware replace our manual log_tool_call()? Can we stack them?
+
+PATTERN:
+  - ToolLoggingMiddleware(logger) — one class, inject any logger
+  - create_logger(name, handler, formatter) — factory for logger setup
+  - Two instances: stderr (Claude Desktop) + file (persistent)
+  - Logs tool name, arguments, timing, and errors automatically
+
+  This file is a reference implementation for the migration.
 
 HOW TO CONNECT:
   Option A — MCP Inspector:
@@ -16,9 +22,9 @@ HOW TO CONNECT:
     3. Call the tools
 
 GUIDED WALKTHROUGH:
-  1. Call `fast_tool` — check stderr (Claude Desktop log page) AND /tmp/fastmcp-spike-middleware.log
-     - Do both middleware fire? In what order?
-  2. Call `slow_tool` — does timing show up in both places?
+  1. Call `echo` with {"text": "hello"} — check stderr AND /tmp/fastmcp-spike-middleware.log
+     - Do both middleware fire? Are tool name and arguments logged?
+  2. Call `fast_tool` / `slow_tool` — compare timing in both destinations
   3. Call `failing_tool` — does error handling work across the middleware stack?
   4. Call `check_timing_log` — see the file log contents
 """

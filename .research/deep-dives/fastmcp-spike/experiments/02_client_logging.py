@@ -1,16 +1,15 @@
 """Experiment 02: Client vs Server Logging — Where Does Each One Show Up?
 
-QUESTION: What's the difference between ctx.info() and get_logger()?
-Where does each one appear? Can the Claude Desktop log page replace file logging?
+QUESTION: What's the best way to get diagnostic logs visible on the Claude Desktop
+log page? How do ctx.info(), get_logger(), and plain StreamHandler(stderr) compare?
 
 CONTEXT:
-  FastMCP has two logging mechanisms:
-  - Client logging: ctx.info(), ctx.warning(), etc. — sends notifications/message via protocol
-  - Server logging: get_logger() or Python logging — standard Python logging (stderr/files)
-  - Bridge: get_logger("fastmcp.server.context.to_client") — echoes client-sent messages server-side
+  Three logging paths tested:
+  - ctx.info() / ctx.warning() — MCP protocol notifications (turns out no client renders these)
+  - get_logger() — FastMCP's server-side logger (Rich formatting, no logger name shown)
+  - StreamHandler(stderr) — plain Python logging to stderr (full control, shows on Claude Desktop)
 
-  Our current app uses file-based logging (FileHandler → ~/Library/Logs/omnifocus-operator.log).
-  Question: can we replace that with ctx logging and read it on the Claude Desktop log page?
+  Result: StreamHandler(stderr) is the winner. ctx.info() is useless. See FINDINGS.md.
 
 HOW TO CONNECT:
   Option A — MCP Inspector:
@@ -18,29 +17,27 @@ HOW TO CONNECT:
     2. In another terminal: npx @modelcontextprotocol/inspector
     3. Connect via stdio
 
-  Option B — Claude Code:
+  Option B — Claude Code / Desktop:
     1. Run: uv run python .research/deep-dives/fastmcp-spike/experiments/setup_mcp.py add 02
-    2. Restart Claude Code (or reload MCP servers)
-    3. Ask Claude to call the tools below
-    4. When done: uv run python .../setup_mcp.py remove
+    2. Restart client
+    3. Call the tools
 
 GUIDED WALKTHROUGH:
-  1. Call `compare_ctx_vs_logger` — same message sent via 3 paths.
+  1. Call `compare_ctx_vs_logger` — same message sent via 3 paths (ctx, get_logger, file).
      - Which ones appear on the Claude Desktop log page?
      - Which ones appear in /tmp/fastmcp-spike-02.log?
-     - Can you tell them apart?
 
-  2. Call `ctx_with_structured_data` — tests the extra parameter.
-     - Does structured data appear on the log page? Or just the message string?
-     - Is this useful compared to f-string formatting?
+  2. Call `explore_server_loggers` — compares get_logger() vs named get_logger() vs plain stderr.
+     - Does get_logger() show the logger name? Does plain stderr?
+     - Which levels come through for each?
 
-  3. Call `all_ctx_levels` — all 4 levels in one call.
-     - Which levels appear on the log page? Is debug filtered?
-     - How do they render? Color-coded? Tagged?
+  3. Call `format_showcase` — 11 formatter patterns side by side, plus child logger hierarchy.
+     - Scan the log page and pick the format you like best.
 
-  4. Call `rapid_fire` — 10 messages quickly.
-     - Do all 10 arrive on the log page? In order?
-     - Any visible delay or batching?
+  4. Call `ctx_with_structured_data` — tests the extra parameter on ctx.info().
+     - Does structured data appear? (Mostly academic — ctx is not our path.)
+
+  5. Call `all_ctx_levels` / `rapid_fire` — level filtering and ordering tests.
 """
 
 from __future__ import annotations

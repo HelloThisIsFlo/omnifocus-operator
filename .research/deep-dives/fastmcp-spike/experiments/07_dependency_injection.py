@@ -1,4 +1,4 @@
-"""Experiment 08: Dependency Injection — Depends() vs Lifespan Pattern
+"""Experiment 07: Dependency Injection — Depends() vs Lifespan Pattern
 
 QUESTION: Could Depends() replace our lifespan-based service injection?
 Is it cleaner? More testable?
@@ -8,7 +8,7 @@ WHAT THIS PROVES:
   ergonomics. The guide skill will walk you through whether this is worth
   adopting.
 
-RUN: uv run python .research/deep-dives/fastmcp-spike/experiments/08_dependency_injection.py
+RUN: uv run python .research/deep-dives/fastmcp-spike/experiments/07_dependency_injection.py
 """
 
 from __future__ import annotations
@@ -58,7 +58,7 @@ async def lifespan(app: FastMCP):  # type: ignore[type-arg]
 
 async def main() -> None:
     print("=" * 64)
-    print("  EXPERIMENT 08: Dependency Injection")
+    print("  EXPERIMENT 07: Dependency Injection")
     print("=" * 64)
 
     print(f"\n  Depends() available: {HAS_DEPENDS}")
