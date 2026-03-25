@@ -8,6 +8,18 @@ A Python MCP server that exposes OmniFocus (macOS task manager) as structured ta
 
 Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
 
+## Current Milestone: v1.2.2 FastMCP v3 Migration
+
+**Goal:** Migrate from `mcp.server.fastmcp` to standalone `fastmcp>=3` — infrastructure upgrade with no new tools or behavioral changes.
+
+**Target features:**
+- Dependency swap: `mcp` SDK → `fastmcp>=3` with v3 API patterns
+- Logging rework: dual-handler stderr + file logging
+- Test client migration: `_ClientSessionProxy` → `Client(server)` 3-line pattern
+- Middleware: manual `log_tool_call()` → automatic `ToolLoggingMiddleware`
+- Progress reporting: `ctx.report_progress()` in batch operations
+- Documentation updates for new dependency
+
 ## Requirements
 
 ### Validated
@@ -52,6 +64,14 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 - ✓ 9 fields graduated from VOLATILE/UNCOMPUTED to verified via ancestor-chain inheritance — v1.2.1
 
 ### Active
+
+<!-- v1.2.2 — FastMCP v3 Migration -->
+- [ ] Migrate from mcp.server.fastmcp to fastmcp>=3 standalone package
+- [ ] Dual-handler logging: StreamHandler(stderr) + FileHandler for persistent logs
+- [ ] Test client migration: Client(server) pattern replacing manual plumbing
+- [ ] ToolLoggingMiddleware replacing manual log_tool_call() wiring
+- [ ] Progress reporting via ctx.report_progress() in batch operations
+- [ ] Documentation updates reflecting new dependency
 
 <!-- Future milestones -->
 - [ ] SQL filtering for tasks, projects, tags (v1.3)
@@ -138,4 +158,4 @@ Golden master: 43 scenarios in 7 categories, contract tests verify InMemoryBridg
 | Patch[T]/PatchOrClear[T] type aliases | Make three-way semantics (unset/null/value) visible in annotations. Identical JSON schema, pure readability gain | ✓ Good — v1.2.1, self-documenting models |
 
 ---
-*Last updated: 2026-03-23 after v1.2.1 milestone — architectural cleanup complete, 697 tests, golden master contract testing*
+*Last updated: 2026-03-25 after v1.2.2 milestone start — FastMCP v3 Migration*
