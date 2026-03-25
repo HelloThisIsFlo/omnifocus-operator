@@ -196,6 +196,33 @@ mcp.add_middleware(ToolLoggingMiddleware(file_logger))
 
 ## Exp 06: Progress
 
+**Verdict:** Pass — works beautifully in Claude Code. Worth adding to batch operations.
+
+**How it looks in Claude Code (real output):**
+```
+  ⎿  █▋                   8%
+  ⎿  ███████▉             39%
+  ⎿  █████████████        65%
+  ⎿  ████████████████████ 100%
+```
+
+**Client support:**
+- Claude Code CLI: **YES** — renders a real progress bar with percentage. Looks great.
+- Claude Desktop: no rendering (tested)
+- Cursor: reportedly sends `progressToken` but UI broken (not tested, from research)
+- MCP Inspector: reportedly broken (not tested, from research)
+
+**Observations:**
+- `process_batch` (known total): perfect progress bar with percentage
+- `process_with_messages` (`ctx.info()` + progress): messages are invisible (as expected from exp 02), but progress bar works fine
+- `process_unknown_total` (no total): works but looks weird — just shows a number, no bar. Usable but not as nice.
+
+**Migration impact:**
+- Add `await ctx.report_progress(progress=i, total=total)` to `add_tasks` and `edit_tasks` batch loops
+- Trivial to add — the API no-ops gracefully when the client doesn't send a `progressToken`
+- No fallback needed: clients that don't support it simply don't see it
+
+**Research note:** The background agent reported zero clients support progress. That was wrong — Claude Code CLI renders it perfectly. Always verify with real clients.
 
 ## Exp 07: Dependency Injection
 
