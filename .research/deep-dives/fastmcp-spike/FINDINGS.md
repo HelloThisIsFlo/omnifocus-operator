@@ -351,11 +351,34 @@ Defaults + descriptions (Pydantic Field):
 
 ## Go / No-Go Decision
 
-**Decision:**
+### Scorecard
 
-**Rationale:**
+| Exp | Feature | Verdict | Migration driver? |
+|-----|---------|---------|-------------------|
+| 01 | Server & Context | Clean import change | No — mechanical |
+| 02 | Logging | StreamHandler to stderr | **No** — works on both SDKs |
+| 03 | stderr hijacking | Not hijacked | **No** — was a misdiagnosis |
+| 04 | Test Client | 70 lines → 3 lines | **YES** — big DX win |
+| 05 | Middleware | Replaces manual log_tool_call | **YES** — big DX win |
+| 06 | Progress | Works in Claude Code | Nice-to-have bonus |
+| 07 | Dependency Injection | Keep lifespan | No change needed |
+| 08 | Elicitation | Works in Claude Code, not Desktop | Future — not now |
 
-**Migration scope (if go):**
-- Must-do:
-- Nice-to-have:
-- Future milestone:
+### Decision: GO
+
+The test client simplification (exp 04) and middleware (exp 05) alone justify the migration. Progress reporting (exp 06) is a bonus. Logging was the original driver but turns out to be SDK-independent — still worth improving as part of this milestone.
+
+### Migration scope
+
+**Must-do:**
+- Migrate to FastMCP v3 (`fastmcp` package)
+- Replace `_ClientSessionProxy` + `run_with_client` with `Client(server)` (exp 04)
+- Replace `log_tool_call()` + 6 call sites with `ToolLoggingMiddleware` (exp 05, reference implementation in `experiments/05_middleware.py`)
+- Add `StreamHandler(stderr)` + `FileHandler` dual logging (exp 02/03 — not FastMCP-specific, but part of this milestone)
+
+**Do implement (lower priority but in scope):**
+- Add `ctx.report_progress()` to `add_tasks` / `edit_tasks` batch loops (exp 06)
+- Shorten `ctx.request_context.lifespan_context` → `ctx.lifespan_context` across all tools (exp 01)
+
+**Future milestone:**
+- Elicitation for destructive operations — revisit when Claude Desktop supports it (exp 08)
