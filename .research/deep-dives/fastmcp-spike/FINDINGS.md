@@ -104,8 +104,94 @@ This means:
 
 ## Exp 04: Test Client
 
+**Verdict:** Pass. Massive DX improvement — ~70 lines of test plumbing replaced by 3 lines.
+
+**Before vs after:**
+
+```
+CURRENT conftest.py (lines 439-481, 40+ lines):
+┌──────────────────────────────────────────────────────────┐
+│ class _ClientSessionProxy:                               │
+│     async def _with_session(self, method, args, kwargs): │
+│         s2c_send, s2c_recv = anyio.create_memory_...     │
+│         c2s_send, c2s_recv = anyio.create_memory_...     │
+│         async with anyio.create_task_group() as tg:      │
+│             tg.start_soon(_run_server)                   │
+│             async with ClientSession(...) as session:    │
+│                 await session.initialize()               │
+│                 result = await getattr(session, ...)     │
+│                 tg.cancel_scope.cancel()                 │
+│         return result                                    │
+│     async def call_tool(self, *args, **kwargs):          │
+│     async def list_tools(self, *args, **kwargs):         │
+└──────────────────────────────────────────────────────────┘
+
+FASTMCP v3 (3 lines):
+┌──────────────────────────────────────────────────────────┐
+│ async with Client(server) as client:                     │
+│     result = await client.call_tool("tool", {})          │
+└──────────────────────────────────────────────────────────┘
+```
+
+**What was tested:**
+- Basic tool call + list_tools: works
+- State persistence across calls within a session: works
+- Error handling: tool exceptions wrapped as `ToolError` (raises, not `is_error=True`)
+- Session isolation: lifespan re-runs per `Client()` session, service state shared if externally owned
+
+**Adaptation points (not blockers):**
+- `result.data` returns Pydantic `Root()` objects for list returns instead of raw dicts — need to check extraction pattern for test assertions
+- Error handling: raises `ToolError` instead of returning `CallToolResult(is_error=True)` — tests need different assertion pattern
+- Both are small test refactors, not architectural changes
+
+**Migration impact:**
+- Delete `_ClientSessionProxy` (conftest.py:439-481)
+- Delete `run_with_client` (test_server.py:51-82)
+- Remove `anyio`, `ClientSession`, `SessionMessage` imports from test infra
+- Update test assertions for the two adaptation points above
 
 ## Exp 05: Middleware
+
+**Verdict:** Pass. Huge DX win — replaces manual `log_tool_call()` with automatic, stackable middleware.
+
+**What it replaces:**
+- `server.py:53-63` — manual `log_tool_call()` function
+- 6 call sites where `log_tool_call("tool_name", ...)` is called explicitly at the top of each tool handler
+- Middleware fires automatically for every tool call — no manual wiring
+
+**Pattern (reference implementation in `experiments/05_middleware.py`):**
+```python
+class ToolLoggingMiddleware(Middleware):
+    def __init__(self, logger: logging.Logger) -> None:
+        self._log = logger
+
+    async def on_call_tool(self, context: MiddlewareContext, call_next):
+        tool_name = context.message.name
+        args = context.message.arguments
+        self._log.info(f">>> {tool_name}({args})" if args else f">>> {tool_name}()")
+        start = time.monotonic()
+        try:
+            result = await call_next(context)
+            self._log.info(f"<<< {tool_name} — {elapsed_ms:.1f}ms OK")
+            return result
+        except Exception as e:
+            self._log.error(f"!!! {tool_name} — {elapsed_ms:.1f}ms FAILED: {e}")
+            raise
+
+# One class, two instances — different destinations, same logic
+mcp.add_middleware(ToolLoggingMiddleware(stderr_logger))
+mcp.add_middleware(ToolLoggingMiddleware(file_logger))
+```
+
+**Observations:**
+- Multiple middleware stack and both fire for every call
+- `context.message.name` for tool name, `context.message.arguments` for args (per official docs)
+- Error handling works across the stack — exception propagates through all middleware
+- Clean separation: middleware handles cross-cutting concerns, tools stay focused on business logic
+
+**Migration impact:**
+- Delete `log_tool_call()` and all 6 call sites
+- Add `ToolLoggingMiddleware` class + `create_logger` factory (experiment file is a reference implementation, adapt as needed)
 
 
 ## Exp 07: Progress
