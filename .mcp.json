@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "omnifocus-operator": {
-      "command": "/Users/flo/.local/bin/uv",
+      "command": "uv",
       "args": [
         "run",
         "--directory",
@@ -12,9 +12,8 @@
       ],
       "env": {
         "OMNIFOCUS_REPOSITORY": "hybrid",
-        "OMNIFOCUS_BRIDGE": "real",
-        "OMNIFOCUS_BRIDGE_TIMEOUT": "30",
-        "OMNIFOCUS_LOG_LEVEL": "DEBUG"
+        "OMNIFOCUS_LOG_LEVEL": "DEBUG",
+        "OMNIFOCUS_BRIDGE_TIMEOUT": "10"
       }
     }
   }
