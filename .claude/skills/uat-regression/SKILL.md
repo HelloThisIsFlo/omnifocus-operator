@@ -81,6 +81,21 @@ These apply to ALL test suites AND any ad-hoc verification tasks:
 
 Each suite lists its own domain-specific conventions in its `## Conventions` section.
 
+## Shared Setup Procedures
+
+Reusable setup patterns that suites can reference by name instead of repeating inline.
+
+### Project Discovery
+
+Some suites need real OmniFocus projects (not just inbox tasks). When a suite's setup says "Follow the **Project Discovery** procedure," use this flow:
+
+1. Call `get_all` and scan the projects list. Look for `🧪 GM-` prefixed projects first — these are the golden master test infrastructure.
+2. The suite declares **project profiles** — named requirements like `dated-project: dueDate set, deferDate set, flagged=true`. Match discovered projects against these profiles.
+3. Present candidates to the user in a table (project name, ID, and the fields relevant to the profiles). Ask for confirmation before proceeding.
+4. If the best candidate for a profile is missing required fields, tell the user exactly which field(s) to set and wait for them to fix it.
+5. After confirmation, call `get_project` on each selected project (can be parallel) to get fresh data. Store the field values needed for assertions.
+6. Validate all profiles are satisfied. If any precondition still fails, tell the user which field is wrong and wait.
+
 ## Report Template
 
 After all tests complete, output TWO clearly separated sections. Each section MUST be inside a markdown code block (triple backticks) so the user can copy-paste them independently.

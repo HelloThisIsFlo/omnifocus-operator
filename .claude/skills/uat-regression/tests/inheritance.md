@@ -4,7 +4,7 @@ Tests effective field inheritance — `effectiveDueDate`, `effectiveDeferDate`, 
 
 ## Conventions
 
-- **Project-based.** Unlike other suites, this one creates tasks under real projects (not inbox). The runner auto-discovers suitable projects via `get_all`.
+- **Project-based.** Unlike other suites, this one creates tasks under real projects (not inbox). Uses the shared **Project Discovery** procedure (SKILL.md).
 - **1-item limit.** `edit_tasks` currently accepts exactly 1 item per call.
 - **Read-back required.** Every test uses `get_task` to verify effective fields — inheritance is only observable through reads.
 
@@ -12,27 +12,14 @@ Tests effective field inheritance — `effectiveDueDate`, `effectiveDeferDate`, 
 
 ### Step 1 — Discover Projects
 
-Call `get_all` and scan the projects list. Look for `🧪 GM-` prefixed projects first — these are the existing golden master test infrastructure.
+Follow the **Project Discovery** procedure (SKILL.md). Required profiles:
 
-Find two projects:
-- **Dated project**: has `dueDate`, `deferDate`, `plannedDate`, and `flagged=true` — all four required
-- **Undated project**: `dueDate` null, `deferDate` null, `plannedDate` null, `flagged` false
+- **dated-project**: `dueDate` set, `deferDate` set, `plannedDate` set, `flagged=true` — all four required
+- **undated-project**: `dueDate` null, `deferDate` null, `plannedDate` null, `flagged` false
 
-Present what you found to the user in a table (project name, ID, and field values) and ask for confirmation before proceeding.
+Store the dated project's `dueDate`, `deferDate`, `plannedDate` values — these are the expected inherited values for all assertions.
 
-If the best candidate for the dated project is missing any required field, tell the user exactly which field(s) to set and wait for them to fix it.
-
-### Step 2 — Verify Project Fields
-
-Call `get_project` on both selected IDs (can be parallel) to confirm with fresh data. Store the dated project's `dueDate`, `deferDate`, `plannedDate` values — these are the expected inherited values for all assertions.
-
-Verify:
-- Dated project: `dueDate` is set, `deferDate` is set, `plannedDate` is set, `flagged` is true
-- Undated project: `dueDate` is null, `deferDate` is null, `plannedDate` is null, `flagged` is false
-
-If any precondition fails, tell the user which field is wrong and wait for them to fix it.
-
-### Step 3 — Create Test Hierarchy
+### Step 2 — Create Test Hierarchy
 
 Create this structure using `add_tasks`:
 
