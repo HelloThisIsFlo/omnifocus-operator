@@ -1,44 +1,22 @@
-"""Experiment 03: Server-Side Logging — stderr, get_logger(), FileHandler
+"""Experiment 03: stderr Hijacking — Is stderr safe under stdio transport?
 
-QUESTION: Is stderr still hijacked under stdio transport?
-What's fastmcp.utilities.logging.get_logger()? Can we have dual logging?
+QUESTION: Does stdio transport hijack sys.stderr?
+Our __main__.py comment says "stdio_server() hijacks stderr" — is that true?
+Test with BOTH the old mcp SDK and FastMCP v3 to compare.
 
-CONTEXT:
-  Our current workaround: FileHandler -> ~/Library/Logs/omnifocus-operator.log
-  because stdio_server() hijacks stderr. The question is whether FastMCP v3
-  changes this, and what the recommended server-side logging story is.
+USAGE:
+  # FastMCP v3
+  uv run python experiments/03_server_logging.py new
 
-HOW TO CONNECT:
-  Option A — MCP Inspector:
-    1. Start: uv run python .research/deep-dives/fastmcp-spike/experiments/03_server_logging.py
-    2. In another terminal: npx @modelcontextprotocol/inspector
-    3. Connect via stdio
+  # Old mcp SDK (what our current server uses)
+  uv run python experiments/03_server_logging.py old
 
-  Option B — Claude Code:
-    1. Run: uv run python .research/deep-dives/fastmcp-spike/experiments/setup_mcp.py add 03
-    2. Restart Claude Code (or reload MCP servers)
-    3. Ask Claude to call the tools
-    4. When done: uv run python .../setup_mcp.py remove
+  Then connect via MCP Inspector or setup_mcp.py.
 
 GUIDED WALKTHROUGH:
-  1. Call `test_dual_logging` — this writes to BOTH protocol and file.
-     - Check /tmp/fastmcp-spike-server.log — is the file output there?
-     - Check your client — did the ctx.info() messages arrive?
-     - Both channels should work independently.
-
-  2. Call `test_stderr_write` — attempts to write directly to stderr.
-     - If stdio transport hijacks stderr, this might corrupt the protocol.
-     - Or it might be silently swallowed.
-     - Or FastMCP v3 might have fixed this.
-     - What happened?
-
-  3. Call `test_get_logger` — uses fastmcp.utilities.logging.get_logger().
-     - Check /tmp/fastmcp-spike-server.log for output.
-     - Is get_logger() just a wrapper around logging.getLogger()?
-     - Does it add any special handling?
-
-  4. After running all tools, check the log file:
-     cat /tmp/fastmcp-spike-server.log
+  1. Start with "old", connect, call both tools. Note results.
+  2. Restart with "new", connect, call both tools. Compare.
+  3. If both show stderr is safe, the __main__.py comment was wrong all along.
 """
 
 from __future__ import annotations
@@ -46,119 +24,82 @@ from __future__ import annotations
 import logging
 import sys
 
-from fastmcp import FastMCP, Context
+# ── SDK selection based on CLI arg ───────────────────────────────────
 
-# ── Set up file logging (like our current workaround) ────────────────
+sdk_arg = sys.argv[1] if len(sys.argv) > 1 else "new"
 
-LOG_FILE = "/tmp/fastmcp-spike-server.log"
-
-file_logger = logging.getLogger("spike_server")
-file_logger.setLevel(logging.DEBUG)
-file_logger.propagate = False
-handler = logging.FileHandler(LOG_FILE, mode="w")  # overwrite each run
-handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
-file_logger.addHandler(handler)
-
-file_logger.info("=== Server starting ===")
-file_logger.info(f"Log file: {LOG_FILE}")
-file_logger.info(f"stderr type at startup: {type(sys.stderr).__name__}")
-file_logger.info(f"stderr is __stderr__: {sys.stderr is sys.__stderr__}")
-
-# ── Try get_logger() ─────────────────────────────────────────────────
-
-try:
-    from fastmcp.utilities.logging import get_logger
-    fm_logger = get_logger("spike_fastmcp")
-    file_logger.info(f"get_logger() returned: {type(fm_logger).__name__}, name={fm_logger.name}")
-    HAS_GET_LOGGER = True
-except ImportError as e:
-    file_logger.warning(f"get_logger() import failed: {e}")
-    fm_logger = None
-    HAS_GET_LOGGER = False
-
+if sdk_arg == "old":
+    from mcp.server.fastmcp import Context, FastMCP
+    SDK_LABEL = "old mcp SDK (mcp.server.fastmcp)"
+elif sdk_arg == "new":
+    from fastmcp import FastMCP, Context
+    SDK_LABEL = "FastMCP v3 (fastmcp)"
+else:
+    print(f"Usage: {sys.argv[0]} [old|new]")
+    print("  old = mcp.server.fastmcp (current project)")
+    print("  new = fastmcp (FastMCP v3)")
+    sys.exit(1)
 
 # ── Server ───────────────────────────────────────────────────────────
 
-mcp = FastMCP("server-logging-spike")
+mcp = FastMCP(f"stderr-spike-{sdk_arg}")
 
 
 @mcp.tool()
-async def test_dual_logging(ctx: Context) -> dict[str, str]:
-    """Writes to BOTH protocol (ctx.info) and file (FileHandler)."""
-
-    # Protocol logging — goes to client
-    await ctx.info("PROTOCOL: This message should appear in your client")
-    await ctx.warning("PROTOCOL: This warning should also appear in your client")
-
-    # File logging — goes to /tmp/fastmcp-spike-server.log
-    file_logger.info("FILE: This message should appear in the log file")
-    file_logger.warning("FILE: This warning should appear in the log file")
-
-    return {
-        "status": "dual logging executed",
-        "log_file": LOG_FILE,
-        "instruction": "Check both: your client for protocol messages, and the log file for file messages",
-    }
-
-
-@mcp.tool()
-async def test_stderr_write(ctx: Context) -> dict[str, str]:
-    """Attempts to write directly to stderr under stdio transport.
-
-    This is the key question: does stdio transport still hijack stderr?
-    """
-    file_logger.info(f"stderr type during tool call: {type(sys.stderr).__name__}")
-    file_logger.info(f"stderr is __stderr__: {sys.stderr is sys.__stderr__}")
+async def check_stderr(ctx: Context) -> dict[str, str]:  # type: ignore[type-arg]
+    """Check if stderr is the original or hijacked during a live tool call."""
+    is_original = sys.stderr is sys.__stderr__
 
     try:
-        sys.stderr.write("STDERR: Direct write to stderr\n")
+        sys.stderr.write(f"STDERR TEST: direct write during tool call ({SDK_LABEL})\n")
         sys.stderr.flush()
-        result = "stderr write succeeded (no exception)"
+        write_result = "succeeded"
     except Exception as e:
-        result = f"stderr write failed: {type(e).__name__}: {e}"
-
-    file_logger.info(f"stderr write result: {result}")
-
-    await ctx.info(f"stderr type: {type(sys.stderr).__name__}")
-    await ctx.info(f"stderr write result: {result}")
+        write_result = f"failed: {type(e).__name__}: {e}"
 
     return {
+        "sdk": SDK_LABEL,
         "stderr_type": type(sys.stderr).__name__,
-        "stderr_is_original": sys.stderr is sys.__stderr__,
-        "write_result": result,
-        "instruction": "If stderr is hijacked, the write might corrupt the MCP protocol stream",
+        "stderr_is_original": str(is_original),
+        "stderr_repr": repr(sys.stderr)[:200],
+        "__stderr___repr": repr(sys.__stderr__)[:200],
+        "direct_write": write_result,
+        "verdict": "stderr is SAFE — not hijacked" if is_original else "stderr is HIJACKED",
     }
 
 
 @mcp.tool()
-async def test_get_logger(ctx: Context) -> dict[str, str]:
-    """Tests fastmcp.utilities.logging.get_logger() behavior."""
-    if not HAS_GET_LOGGER or fm_logger is None:
-        return {"status": "get_logger() not available", "error": "import failed"}
+async def check_stderr_with_logging(ctx: Context) -> dict[str, str]:  # type: ignore[type-arg]
+    """Test StreamHandler(stderr) in a real tool call — the production pattern.
 
-    # Write through get_logger()
-    fm_logger.info("GET_LOGGER: Info message from get_logger()")
-    fm_logger.warning("GET_LOGGER: Warning message from get_logger()")
-    fm_logger.debug("GET_LOGGER: Debug message from get_logger()")
+    Uses our chosen format: time + padded level + bracketed name + message.
+    """
+    test_logger = logging.getLogger(f"omnifocus_operator.test_{sdk_arg}")
+    test_logger.setLevel(logging.DEBUG)
+    test_logger.propagate = False
 
-    # Also log to file for comparison
-    file_logger.info("FILE: Logged alongside get_logger() test")
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setFormatter(
+        logging.Formatter(
+            "%(asctime)s %(levelname)-8s [%(name)s] %(message)s", datefmt="%H:%M:%S"
+        )
+    )
+    test_logger.addHandler(handler)
 
-    # Check get_logger() configuration
-    info = {
-        "status": "get_logger() available",
-        "logger_name": fm_logger.name,
-        "logger_level": logging.getLevelName(fm_logger.level),
-        "logger_handlers": [type(h).__name__ for h in fm_logger.handlers],
-        "logger_effective_level": logging.getLevelName(fm_logger.getEffectiveLevel()),
-        "instruction": f"Check {LOG_FILE} for output from all loggers",
+    test_logger.debug(f"Debug: tag cache miss for 'Work' ({SDK_LABEL})")
+    test_logger.info(f"Info: OperatorService.add_task processing ({SDK_LABEL})")
+    test_logger.warning(f"Warning: task is completed, editing anyway ({SDK_LABEL})")
+    test_logger.error(f"Error: bridge timeout, retrying ({SDK_LABEL})")
+
+    test_logger.removeHandler(handler)
+
+    return {
+        "sdk": SDK_LABEL,
+        "status": "all 4 log levels written to stderr via StreamHandler",
+        "verdict": "if you see this response, stderr logging did NOT corrupt the protocol",
+        "check": "look at your client log page — do the 4 messages appear?",
     }
-
-    await ctx.info(f"get_logger() config: {fm_logger.name}, level={logging.getLevelName(fm_logger.level)}")
-
-    return info
 
 
 if __name__ == "__main__":
-    file_logger.info("Starting MCP server on stdio transport...")
     mcp.run(transport="stdio")

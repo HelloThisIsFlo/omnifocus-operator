@@ -21,36 +21,79 @@
 - Optional: shorten `ctx.request_context.lifespan_context` → `ctx.lifespan_context`
 
 
-## Exp 02: Client Logging *(WIP — format selection pending)*
+## Exp 02: Client vs Server Logging
 
-**Verdict (preliminary):** `ctx.info()` / `ctx.warning()` are not useful for us. `StreamHandler` to stderr is the path forward for developer diagnostics.
+**Verdict:** `ctx.info()` is pointless for us. Plain Python `StreamHandler` to stderr is the path forward for developer diagnostics. Not FastMCP-specific — works with old `mcp` SDK too.
 
 **Observations:**
 - Three logging paths tested: `ctx.info()`, `get_logger()`, plain `StreamHandler` to stderr
-- `ctx.info()` → shows on Claude Desktop log page as `notifications/message` AND as FastMCP's internal echo. Not visible to the agent (Claude Code, Claude Desktop both ignore it in conversation)
-- `get_logger()` → writes to stderr via FastMCP's Rich handler. Shows on log page. But: no logger name, effective level INFO (filters debug), no handlers of its own (relies on `fastmcp` root)
-- Plain `StreamHandler(stderr)` → shows on log page. Full control: logger name visible, debug works, custom formatter
-- `file_logger` with `propagate=False` → does NOT appear on log page at all (file only)
-- Research confirmed: no major MCP client renders `notifications/message` in the conversation UI. Claude Code issue #3174 was closed as "not planned"
+- `ctx.info()` → protocol `notifications/message`. No major client renders these in conversation UI. Claude Code issue #3174 closed as "not planned". Research confirmed: only MCP Inspector shows them.
+- `get_logger()` → writes to stderr via FastMCP's Rich handler. No logger name in output, effective level INFO (filters debug), no handlers of its own (relies on `fastmcp` root propagation)
+- Plain `StreamHandler(stderr)` → full control: logger name visible, all levels, custom formatter
+- `FileHandler` with `propagate=False` → file only, never appears on any client log page
 
-**Key insight:**
-- Agent-facing warnings → stay in response payload (our existing design, works everywhere)
-- Developer diagnostics → `StreamHandler` to stderr replaces `FileHandler`, shows on Claude Desktop log page
-- `ctx.info()` → skip. No real-world value today
+**Client visibility matrix:**
 
-**`get_logger()` internals:**
-- `get_logger("foo")` returns `logging.getLogger("fastmcp.foo")` — prefixes with `fastmcp.`
-- No handlers, propagates to `fastmcp` root which has a Rich handler at INFO
+| What | Claude Desktop log page | Claude Code |
+|------|------------------------|-------------|
+| `ctx.info()` / `ctx.warning()` | Shows as `notifications/message` | Invisible |
+| `StreamHandler` to stderr | Shows as captured stderr | Invisible during tool calls ([issue #29035](https://github.com/anthropics/claude-code/issues/29035)) |
+| `FileHandler` to file | Invisible | Tail the file yourself |
+
+**Decisions:**
+- Agent-facing warnings → stay in response payload (our existing design, first-class, works everywhere)
+- Developer diagnostics → dual handler: `StreamHandler(stderr)` primary (Claude Desktop), `FileHandler(~/Library/Logs/omnifocus-operator.log)` fallback
+- `ctx.info()` → skip entirely
+- Logger hierarchy: `omnifocus_operator.service`, `omnifocus_operator.service.add_tasks`, etc.
+- Format (stderr — live debugging):
+  - `%(asctime)s %(levelname)-8s [%(name)s] %(message)s` with `datefmt="%H:%M:%S"`
+  - Produces: `21:04:07 DEBUG    [omnifocus_operator.service] Cache hit for tag 'Work'`
+- Format (file — persistent, needs date for context across sessions):
+  - `%(asctime)s %(levelname)-8s [%(name)s] %(message)s` (default `asctime`, no `datefmt`)
+  - Produces: `2026-03-24 21:04:07,591 DEBUG    [omnifocus_operator.service] Cache hit for tag 'Work'`
+
+**`get_logger()` internals (for reference):**
+- `get_logger("foo")` → `logging.getLogger("fastmcp.foo")` — prefixes with `fastmcp.`
+- No handlers, propagates to `fastmcp` root (Rich handler at INFO)
 - `name=` kwarg vs positional → no difference
 - `.setLevel(DEBUG)` overrides parent's INFO filter
 
-**Still to decide:**
-- Formatter pattern — 11 options tested, format selection pending
-- Whether to keep FileHandler alongside StreamHandler (belt + suspenders)
-- Logger hierarchy design (e.g., `omnifocus_operator.service.add_tasks`)
+**Key surprise:** Logging story is independent of the FastMCP migration. `StreamHandler` to stderr works with the old `mcp` SDK too — we just never checked Claude Desktop's log page before.
 
-## Exp 03: Server Logging
+### Gotcha: `ctx.info()` / `ctx.warning()` is a dead end
 
+FastMCP prominently documents `ctx.info()`, `ctx.warning()`, `ctx.error()` as "client logging" — sending messages from the server to the client. Sounds great. In practice: **no major MCP client shows these to the user or the LLM.**
+
+- Claude Desktop: not in the chat UI. Only visible in the developer log page as raw protocol entries.
+- Claude Code: completely invisible. Issue [#3174](https://github.com/anthropics/claude-code/issues/3174) was filed and **closed as "not planned"**.
+- Cursor: [confirmed not rendered](https://forum.cursor.com/t/bug-report-cursor-ui-not-displaying-mcp-progress-updates/134794).
+- VS Code: only recently added to a developer output pane, not in chat.
+- MCP Inspector: the only client that renders them — and that's a dev tool.
+
+The MCP spec says clients "MAY" present log messages. In practice, none do. Every GitHub example using `ctx.info()` is tutorial/demo code. No production MCP server uses it for meaningful work. Don't waste time trying to make it work — it doesn't.
+
+### Gotcha: Claude Code swallows stderr during tool execution
+
+`StreamHandler` to stderr works beautifully on Claude Desktop's log page. On Claude Code: **stderr output only appears at server startup, not during tool calls.** The MCP log files at `~/Library/Caches/claude-cli-nodejs/.../mcp-logs-*/` confirm this — they log "Calling MCP tool" and "completed successfully" but none of the stderr content.
+
+Open issue: [anthropics/claude-code#29035](https://github.com/anthropics/claude-code/issues/29035). Until resolved, use `FileHandler` as a fallback for Claude Code debugging (`~/Library/Logs/omnifocus-operator.log`).
+
+## Exp 03: stderr Hijacking
+
+**Verdict:** stderr is **NOT hijacked** by either SDK. `StreamHandler(stderr)` is safe under stdio transport.
+
+**Observations:**
+- Tested both SDKs with the same script (`old` / `new` CLI arg):
+  - Old `mcp` SDK (`mcp.server.fastmcp`): `sys.stderr is sys.__stderr__` → `True`
+  - FastMCP v3 (`fastmcp`): `sys.stderr is sys.__stderr__` → `True`
+- Direct `sys.stderr.write()` succeeds, no protocol corruption
+- `StreamHandler(stderr)` with 4 log levels: all written, tool response returned correctly
+- Both SDKs only wrap `stdin` and `stdout` for JSON-RPC — stderr is left untouched
+
+**Correction:**
+- `__main__.py:15` says `"stdio_server() hijacks stderr"` — **this is wrong**
+- The `FileHandler` workaround was never necessary. `StreamHandler(stderr)` was always safe.
+- This comment should be corrected during the migration.
 
 ## Exp 04: Test Client
 
