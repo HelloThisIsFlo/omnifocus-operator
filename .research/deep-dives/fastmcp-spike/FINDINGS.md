@@ -226,6 +226,30 @@ mcp.add_middleware(ToolLoggingMiddleware(file_logger))
 
 ## Exp 07: Dependency Injection
 
+**Verdict:** Keep lifespan pattern. `Depends()` solves a different problem.
+
+### Gotcha: FastMCP has two things called "dependency injection" — they're different lifecycles
+
+FastMCP has a [Lifespan page](https://gofastmcp.com/servers/lifespan) and a [Dependency Injection page](https://gofastmcp.com/servers/dependency-injection). Both are dependency injection. The difference is lifecycle:
+
+| | Lifespan (`ctx.lifespan_context`) | `Depends()` |
+|---|---|---|
+| **Lifecycle** | Per-app — created once at startup, shared across all calls | Per-request — resolved fresh on every tool call |
+| **Analogy** | Spring DI container / singleton services | pytest fixtures |
+| **Use case** | Long-lived stateful services (DB connections, caches, your `OperatorService`) | Stateless factories, config lookups, per-call resources with setup/teardown, hiding params from the LLM |
+| **Example** | `ctx.lifespan_context["service"]` | `db: Session = Depends(get_db_session)` |
+
+You *could* use `Depends()` for everything, but you'd recreate your service on every call — technically works, practically terrible.
+
+FastMCP's `Depends()` is powered by [Docket](https://github.com/chrisguidry/docket)'s DI engine (vendored — no extra install needed). Only background tasks (`@mcp.tool(task=True)`) need the full Docket package.
+
+**What we tested:**
+- Pattern A (lifespan extraction): works, one-liner per tool — `ctx.lifespan_context["service"]`
+- Pattern B (`Depends()` with ctx): **fails** — `Depends()` does NOT auto-inject Context into factory functions
+- Pattern C (`Depends()` with closure): works, but requires a global/closure to hold the service reference
+- Pattern D (ctx + `Depends()` together): works — both can coexist on the same tool signature
+
+**Decision:** Keep lifespan for `OperatorService`. Use `ctx.lifespan_context["service"]` (the v3 shortcut, replacing the old `ctx.request_context.lifespan_context["service"]`). No changes to architecture needed.
 
 ## Exp 08: Elicitation
 
