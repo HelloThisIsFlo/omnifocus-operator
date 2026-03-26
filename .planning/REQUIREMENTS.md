@@ -24,9 +24,9 @@ Requirements for FastMCP v3 Migration. Infrastructure upgrade — no new tools, 
 
 ### Middleware
 
-- [ ] **MW-01**: `ToolLoggingMiddleware` class logs tool entry, exit (with timing), and errors automatically
-- [ ] **MW-02**: `log_tool_call()` function and all 6 call sites deleted from server.py
-- [ ] **MW-03**: Middleware fires for every tool call without manual wiring
+- [x] **MW-01**: `ToolLoggingMiddleware` class logs tool entry, exit (with timing), and errors automatically
+- [x] **MW-02**: `log_tool_call()` function and all 6 call sites deleted from server.py
+- [x] **MW-03**: Middleware fires for every tool call without manual wiring
 
 ### Logging
 
@@ -84,9 +84,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TEST-03 | Phase 30 | Complete |
 | TEST-04 | Phase 30 | Complete |
 | TEST-05 | Phase 30 | Complete |
-| MW-01 | Phase 31 | Pending |
-| MW-02 | Phase 31 | Pending |
-| MW-03 | Phase 31 | Pending |
+| MW-01 | Phase 31 | Complete |
+| MW-02 | Phase 31 | Complete |
+| MW-03 | Phase 31 | Complete |
 | LOG-01 | Phase 31 | Pending |
 | LOG-02 | Phase 31 | Pending |
 | LOG-03 | Phase 31 | Pending |

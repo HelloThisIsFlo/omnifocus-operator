@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2.2
 milestone_name: FastMCP v3 Migration
-status: verifying
-stopped_at: Phase 31 context gathered
-last_updated: "2026-03-26T19:55:59.876Z"
+status: executing
+stopped_at: Completed 31-01-PLAN.md
+last_updated: "2026-03-26T20:19:35.255Z"
 last_activity: 2026-03-26
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 6
+  completed_plans: 5
   percent: 33
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-26)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 30 — test-client-migration
+**Current focus:** Phase 31 — middleware-logging
 
 ## Current Position
 
-Phase: 31
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 31 (middleware-logging) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-03-26
 
 Progress: [███░░░░░░░] 33%
@@ -49,6 +49,7 @@ Progress: [███░░░░░░░] 33%
 *Updated after each plan completion*
 | Phase 30 P01 | 6min | 2 tasks | 2 files |
 | Phase 30 P02 | 5min | 2 tasks | 3 files |
+| Phase 31 P01 | 3min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,8 @@ Recent decisions affecting current work:
 - Progress calls placed after validation, at handler level per D-06
 - [Phase 30]: Keep run_with_client callbacks unchanged for Plan 02 -- they use ClientSession which returns camelCase fields
 - [Phase 30]: Remove repo param from _build_patched_server -- only service needed for lifespan injection
+- [Phase 31]: Middleware receives server logger via injection (D-02) -- all MCP-layer logs under omnifocus_operator namespace
+- [Phase 31]: Response-shape logger.debug() lines preserved in handlers (D-06) -- middleware only sees timing/success
 
 ### Pending Todos
 
@@ -85,5 +88,5 @@ None currently.
 ## Session Continuity
 
 Last activity: 2026-03-26
-Stopped at: Phase 31 context gathered
-Resume file: .planning/phases/31-middleware-logging/31-CONTEXT.md
+Stopped at: Completed 31-01-PLAN.md
+Resume file: None

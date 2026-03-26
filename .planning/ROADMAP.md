@@ -112,8 +112,8 @@
   6. All loggers use `omnifocus_operator.*` namespace hierarchy
   7. The stderr hijacking misdiagnosis comment is removed from `__main__.py`
   8. `ctx.info()` / `ctx.warning()` are not called anywhere in production code
-**Plans:** 2 plans
-- [ ] 31-01-PLAN.md -- ToolLoggingMiddleware creation, server wiring, log_tool_call deletion
+**Plans:** 1/2 plans executed
+- [x] 31-01-PLAN.md -- ToolLoggingMiddleware creation, server wiring, log_tool_call deletion
 - [ ] 31-02-PLAN.md -- Dual-handler logging setup, __name__ convention across all modules
 
 ## Progress
@@ -129,4 +129,4 @@ Phases execute in numeric order: 29 → 30 → 31
 | 18-28 | v1.2.1 | 27/27 | Complete | 2026-03-23 |
 | 29. Dependency Swap & Imports | v1.2.2 | 2/2 | Complete | 2026-03-26 |
 | 30. Test Client Migration | v1.2.2 | 2/2 | Complete    | 2026-03-26 |
-| 31. Middleware & Logging | v1.2.2 | 0/2 | Not started | - |
+| 31. Middleware & Logging | v1.2.2 | 1/2 | In Progress|  |
