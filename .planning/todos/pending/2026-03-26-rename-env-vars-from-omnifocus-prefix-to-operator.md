@@ -35,6 +35,6 @@ Rename all to flat `OPERATOR_` prefix — no `OF_` infix needed since the server
 | `OMNIFOCUS_BRIDGE_TIMEOUT` | `OPERATOR_BRIDGE_TIMEOUT` |
 | `OMNIFOCUS_OFOCUS_PATH` | `OPERATOR_OFOCUS_PATH` |
 
-Also rename the `OMNIFOCUS_CONTAINER` constant if appropriate (though that's an internal constant, not an env var).
+Keep `OMNIFOCUS_CONTAINER` as-is — it's an internal constant referencing the actual OmniFocus app container path, not a configurable env var.
 
 Touches: `__main__.py`, `server.py`, `repository/factory.py`, `repository/hybrid.py`, `bridge/real.py`, plus docs and CLAUDE.md.
