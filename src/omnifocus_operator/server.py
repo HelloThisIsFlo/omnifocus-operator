@@ -223,9 +223,16 @@ def _register_tools(mcp: FastMCP) -> None:
                     messages.append(e["msg"])
             logger.debug("server.add_tasks: validation error: %s", "; ".join(messages))
             raise ValueError("; ".join(messages) or INVALID_INPUT) from None
-        result = await service.add_task(spec)
-        logger.debug("server.add_tasks: returning id=%s, name=%s", result.id, result.name)
-        return [result]
+        # Progress reporting (scaffolding for future batch support per D-05):
+        total = len(items)
+        results: list[AddTaskResult] = []
+        for i, validated in enumerate([spec]):
+            await ctx.report_progress(progress=i, total=total)
+            result = await service.add_task(validated)
+            results.append(result)
+        await ctx.report_progress(progress=total, total=total)
+        logger.debug("server.add_tasks: returning id=%s, name=%s", results[0].id, results[0].name)
+        return results
 
     @mcp.tool(
         annotations=ToolAnnotations(
@@ -295,14 +302,21 @@ def _register_tools(mcp: FastMCP) -> None:
                     messages.append(e["msg"])
             logger.debug("server.edit_tasks: validation error: %s", "; ".join(messages))
             raise ValueError("; ".join(messages) or INVALID_INPUT) from None
-        result = await service.edit_task(spec)
+        # Progress reporting (scaffolding for future batch support per D-05):
+        total = len(items)
+        results: list[EditTaskResult] = []
+        for i, validated in enumerate([spec]):
+            await ctx.report_progress(progress=i, total=total)
+            result = await service.edit_task(validated)
+            results.append(result)
+        await ctx.report_progress(progress=total, total=total)
         logger.debug(
             "server.edit_tasks: returning id=%s, success=%s, warnings=%s",
-            result.id,
-            result.success,
-            result.warnings,
+            results[0].id,
+            results[0].success,
+            results[0].warnings,
         )
-        return [result]
+        return results
 
 
 def create_server() -> FastMCP:
