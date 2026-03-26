@@ -51,7 +51,7 @@ That's it. The server auto-detects your OmniFocus database and starts serving.
 - 🤖 **Agent-first design** — warnings and guidance built into every response
 - 🧪 **534 tests, 94% coverage**, strict mypy
 - 🛡️ **Graceful degradation** — server stays alive, errors educate
-- 📦 **Single runtime dependency** (`mcp>=1.26.0`)
+- 📦 **Single runtime dependency** (`fastmcp>=3.1.1`)
 - 🔄 **Automatic fallback** — SQLite → OmniJS bridge when needed
 
 ---
@@ -118,7 +118,7 @@ All read tools are idempotent. Write tools support full field control including 
 - 🧪 **534 tests, 94% coverage** — strict mypy, no corners cut
 - 🤖 **Agent-first design** — warnings that teach, errors that educate, guidance in every response
 - 🛡️ **Degraded mode** — server stays alive no matter what, always recoverable
-- 📦 **Single runtime dependency** — just `mcp>=1.26.0`, nothing else
+- 📦 **Single runtime dependency** — just `fastmcp>=3.1.1`, nothing else
 
 See the [full documentation](https://hellothisisflo.github.io/omnifocus-operator) for architecture details, examples, and deep dives.
 
