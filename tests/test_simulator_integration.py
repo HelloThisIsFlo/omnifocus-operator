@@ -14,10 +14,8 @@ import sys
 import time
 from typing import TYPE_CHECKING, Any
 
-import anyio
 import pytest
-from mcp.client.session import ClientSession
-from mcp.shared.message import SessionMessage
+from fastmcp import Client
 
 from omnifocus_operator.bridge.errors import BridgeProtocolError, BridgeTimeoutError
 from omnifocus_operator.repository.bridge import BridgeRepository
@@ -28,8 +26,6 @@ from tests.doubles import ConstantMtimeSource, SimulatorBridge
 if TYPE_CHECKING:
     from collections.abc import Generator
     from pathlib import Path
-
-    from mcp.server.fastmcp import FastMCP
 
 
 # ---------------------------------------------------------------------------
@@ -107,51 +103,6 @@ def simulator_process(tmp_path: Path) -> Generator[subprocess.Popen[str], None, 
 def _make_bridge(ipc_dir: Path, *, timeout: float = 5.0) -> SimulatorBridge:
     """Create a SimulatorBridge pointed at *ipc_dir* with a short timeout."""
     return SimulatorBridge(ipc_dir=ipc_dir, timeout=timeout)
-
-
-# ---------------------------------------------------------------------------
-# MCP in-process client helper (mirrors test_server.py pattern)
-# ---------------------------------------------------------------------------
-
-
-async def _run_with_client(
-    server: FastMCP,
-    callback: Any,
-) -> Any:
-    """Run an in-process MCP server and execute *callback* with a ClientSession."""
-    s2c_send, s2c_recv = anyio.create_memory_object_stream[SessionMessage](0)
-    c2s_send, c2s_recv = anyio.create_memory_object_stream[SessionMessage](0)
-
-    result: Any = None
-
-    async with anyio.create_task_group() as tg:
-
-        async def _run_server() -> None:
-            import contextlib  # noqa: PLC0415
-
-            # FastMCP v3 requires the high-level lifespan manager to be entered
-            # before the low-level server can run.
-            lifespan_cm = (
-                server._lifespan_manager()
-                if hasattr(server, "_lifespan_manager")
-                else contextlib.nullcontext()
-            )
-            async with lifespan_cm:
-                await server._mcp_server.run(
-                    c2s_recv,
-                    s2c_send,
-                    server._mcp_server.create_initialization_options(),
-                    raise_exceptions=True,
-                )
-
-        tg.start_soon(_run_server)
-
-        async with ClientSession(s2c_recv, c2s_send) as session:
-            await session.initialize()
-            result = await callback(session)
-            tg.cancel_scope.cancel()
-
-    return result
 
 
 # ---------------------------------------------------------------------------
@@ -359,21 +310,19 @@ class TestMcpIntegration:
 
             server = create_server()
 
-            async def _check(session: ClientSession) -> None:
+            async with Client(server) as client:
                 # Verify get_all tool is available
-                tools_result = await session.list_tools()
-                tool_names = [t.name for t in tools_result.tools]
+                tools = await client.list_tools()
+                tool_names = [t.name for t in tools]
                 assert "get_all" in tool_names
 
                 # Call get_all and verify simulator data comes through
-                result = await session.call_tool("get_all")
-                assert result.structuredContent is not None
-                keys = set(result.structuredContent.keys())
+                result = await client.call_tool("get_all")
+                assert result.structured_content is not None
+                keys = set(result.structured_content.keys())
                 assert keys == {"tasks", "projects", "tags", "folders", "perspectives"}
                 # Verify counts match simulator data
-                assert len(result.structuredContent["tasks"]) == len(SIMULATOR_SNAPSHOT["tasks"])
-
-            await _run_with_client(server, _check)
+                assert len(result.structured_content["tasks"]) == len(SIMULATOR_SNAPSHOT["tasks"])
         finally:
             if proc.stderr:
                 proc.stderr.close()

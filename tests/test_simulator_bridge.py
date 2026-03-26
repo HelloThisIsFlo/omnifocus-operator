@@ -5,11 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, patch
 
-import anyio
 import pytest
-from mcp.client.session import ClientSession
-from mcp.server.fastmcp import FastMCP
-from mcp.shared.message import SessionMessage
+from fastmcp import Client
 
 import omnifocus_operator.bridge as bridge_pkg
 from omnifocus_operator.repository import BridgeRepository
@@ -67,51 +64,6 @@ class TestSimulatorBridge:
         """SimulatorBridge accepts timeout kwargs (inherited from base bridge)."""
         bridge = SimulatorBridge(ipc_dir=tmp_path, timeout=5.0)
         assert bridge._timeout == 5.0
-
-
-# ---------------------------------------------------------------------------
-# Helpers (reused from test_server.py pattern)
-# ---------------------------------------------------------------------------
-
-
-async def _run_with_client(
-    server: FastMCP,
-    callback: Any,
-) -> Any:
-    """Run an in-process MCP server and execute *callback* with a connected ClientSession."""
-    s2c_send, s2c_recv = anyio.create_memory_object_stream[SessionMessage](0)
-    c2s_send, c2s_recv = anyio.create_memory_object_stream[SessionMessage](0)
-
-    result: Any = None
-
-    async with anyio.create_task_group() as tg:
-
-        async def _run_server() -> None:
-            import contextlib  # noqa: PLC0415
-
-            # FastMCP v3 requires the high-level lifespan manager to be entered
-            # before the low-level server can run.
-            lifespan_cm = (
-                server._lifespan_manager()
-                if hasattr(server, "_lifespan_manager")
-                else contextlib.nullcontext()
-            )
-            async with lifespan_cm:
-                await server._mcp_server.run(
-                    c2s_recv,
-                    s2c_send,
-                    server._mcp_server.create_initialization_options(),
-                    raise_exceptions=True,
-                )
-
-        tg.start_soon(_run_server)
-
-        async with ClientSession(s2c_recv, c2s_send) as session:
-            await session.initialize()
-            result = await callback(session)
-            tg.cancel_scope.cancel()
-
-    return result
 
 
 # ---------------------------------------------------------------------------
@@ -173,12 +125,9 @@ class TestLifespan:
         ):
             server = create_server()
 
-            async def _check(session: ClientSession) -> None:
-                # If lifespan completes, we can list tools
-                result = await session.list_tools()
-                assert result.tools is not None
-
-            await _run_with_client(server, _check)
+            async with Client(server) as client:
+                tools = await client.list_tools()
+                assert isinstance(tools, list)
 
     async def test_lifespan_can_serve_get_all(
         self,
@@ -194,11 +143,9 @@ class TestLifespan:
         ):
             server = create_server()
 
-            async def _check(session: ClientSession) -> None:
-                result = await session.call_tool("get_all")
-                assert result.structuredContent is not None
-
-            await _run_with_client(server, _check)
+            async with Client(server) as client:
+                result = await client.call_tool("get_all")
+                assert result.structured_content is not None
 
     async def test_lifespan_sweeps_orphaned_files(
         self,
@@ -221,10 +168,8 @@ class TestLifespan:
         ):
             server = create_server()
 
-            async def _check(session: ClientSession) -> None:
+            async with Client(server) as _client:
                 pass
-
-            await _run_with_client(server, _check)
 
         # Sweep is called with DEFAULT_IPC_DIR (always), not bridge.ipc_dir
         mock_sweep.assert_called_once()
