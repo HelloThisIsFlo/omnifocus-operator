@@ -20,6 +20,7 @@ Switch the server dependency from `mcp>=1.26.0` to `fastmcp>=3.1.1`. Migrate all
 - **D-09:** **Milestone-wide philosophy:** implement as if built from scratch with `fastmcp>=3`. No `mcp.*` imports should remain in src/ if `fastmcp` provides an equivalent. This is not a minimal-impact migration — the code should look native to FastMCP v3. This applies to ALL phases in v1.2.2, not just Phase 29.
 - **D-10:** `Context` type annotation — if FastMCP v3 has a simpler type signature than `Context[Any, Any, Any]`, adopt it. Researcher verifies.
 - **D-11:** Server entry point (`server.run(transport="stdio")`) — if FastMCP v3 has a different idiomatic runner, adopt it. Researcher verifies.
+- **D-12:** Leave `# TODO(Phase NN):` comments in the code for anything that isn't native-v3 yet but belongs to a later phase (e.g., logging setup → Phase 31, test client → Phase 30). The code should make deferred cleanup visible to whoever works on the next phase.
 
 ### Dependency declaration
 - **D-04:** `pyproject.toml` replaces `mcp>=1.26.0` with `fastmcp>=3.1.1` — `mcp` remains available as a transitive dependency
