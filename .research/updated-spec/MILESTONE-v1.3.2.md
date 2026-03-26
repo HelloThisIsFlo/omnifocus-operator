@@ -1,4 +1,4 @@
-# Milestone v1.3.1 -- Ordering & Move Fix
+# Milestone v1.3.2 -- Ordering & Move Fix
 
 ## Goal
 
@@ -65,4 +65,4 @@ See: `2026-03-09-move-no-op-warning-check-ordinal-position-not-just-container.md
 
 ## Tools After This Milestone
 
-Thirteen (unchanged from v1.3): `get_all`, `get_task`, `get_project`, `get_tag`, `add_tasks`, `edit_tasks`, `list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives`, `count_tasks`, `count_projects`.
+Thirteen (unchanged from v1.3.1): `get_all`, `get_task`, `get_project`, `get_tag`, `add_tasks`, `edit_tasks`, `list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives`, `count_tasks`, `count_projects`.
