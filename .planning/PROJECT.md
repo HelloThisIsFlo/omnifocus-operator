@@ -160,4 +160,4 @@ Golden master: 43 scenarios in 7 categories, contract tests verify InMemoryBridg
 | Patch[T]/PatchOrClear[T] type aliases | Make three-way semantics (unset/null/value) visible in annotations. Identical JSON schema, pure readability gain | ✓ Good — v1.2.1, self-documenting models |
 
 ---
-*Last updated: 2026-03-26 after Phase 29 complete — FastMCP v3 dependency swap & imports*
+*Last updated: 2026-03-26 after Phase 30 complete — Test client migration (Client fixture, field renames, ToolError assertions, run_with_client removal)*
