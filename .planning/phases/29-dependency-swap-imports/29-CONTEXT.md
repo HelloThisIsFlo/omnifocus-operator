@@ -15,8 +15,9 @@ Switch the server dependency from `mcp>=1.26.0` to `fastmcp>=3.1.1`. Migrate all
 
 ### Import migration
 - **D-01:** `from mcp.server.fastmcp import FastMCP, Context` → `from fastmcp import FastMCP, Context` (src/ only — test imports are Phase 30)
-- **D-02:** `ToolAnnotations` stays at `from mcp.types import ToolAnnotations` — available via transitive dep, no need to change
+- **D-02:** `ToolAnnotations` — use the idiomatic FastMCP v3 import, not `from mcp.types`. Researcher should verify where `fastmcp` exports it (`from fastmcp import ToolAnnotations` or `from fastmcp.types import ...`)
 - **D-03:** `ctx.request_context.lifespan_context` → `ctx.lifespan_context` shorthand wherever it appears
+- **D-09:** Philosophy: implement as if built from scratch with `fastmcp>=3`. No `mcp.*` imports should remain in src/ if `fastmcp` provides an equivalent. This is not a minimal-impact migration — the code should look native to FastMCP v3.
 
 ### Dependency declaration
 - **D-04:** `pyproject.toml` replaces `mcp>=1.26.0` with `fastmcp>=3.1.1` — `mcp` remains available as a transitive dependency
