@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from omnifocus_operator.models.tag import Tag
     from omnifocus_operator.models.task import Task
 
-logger = logging.getLogger("omnifocus_operator")
+logger = logging.getLogger(__name__)
 
 __all__ = ["Resolver"]
 

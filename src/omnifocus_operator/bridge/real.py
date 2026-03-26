@@ -22,7 +22,7 @@ from omnifocus_operator.bridge.errors import (
 )
 from omnifocus_operator.contracts.protocols import Bridge
 
-logger = logging.getLogger("omnifocus_operator")
+logger = logging.getLogger(__name__)
 
 OMNIFOCUS_CONTAINER: Path = Path.home() / "Library" / "Containers" / "com.omnigroup.OmniFocus4"
 """Root of the OmniFocus 4 sandboxed container on macOS.

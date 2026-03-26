@@ -50,7 +50,7 @@ if TYPE_CHECKING:
 
 __all__ = ["create_server"]
 
-logger = logging.getLogger("omnifocus_operator")
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager

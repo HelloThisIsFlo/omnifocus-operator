@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand
     from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 
-logger = logging.getLogger("omnifocus_operator")
+logger = logging.getLogger(__name__)
 
 __all__ = ["PayloadBuilder"]
 

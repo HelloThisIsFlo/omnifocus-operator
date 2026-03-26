@@ -23,7 +23,7 @@ from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoResult
 from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.repository.bridge_write_mixin import BridgeWriteMixin
 
-logger = logging.getLogger("omnifocus_operator")
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from omnifocus_operator.bridge.mtime import MtimeSource

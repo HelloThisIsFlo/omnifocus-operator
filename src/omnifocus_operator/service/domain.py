@@ -44,7 +44,7 @@ if TYPE_CHECKING:
     from omnifocus_operator.models.task import Task
     from omnifocus_operator.service.resolve import Resolver
 
-logger = logging.getLogger("omnifocus_operator")
+logger = logging.getLogger(__name__)
 
 __all__ = ["DomainLogic"]
 

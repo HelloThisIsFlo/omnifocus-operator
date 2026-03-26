@@ -27,7 +27,7 @@ from typing import Any
 
 from omnifocus_operator.simulator.data import SIMULATOR_SNAPSHOT
 
-logger = logging.getLogger("omnifocus_operator.simulator")
+logger = logging.getLogger(__name__)
 
 _REQUEST_RE: re.Pattern[str] = re.compile(r"^(\d+)_[0-9a-f-]+\.request\.json$")
 """Matches request files: ``<pid>_<uuid>.request.json`` (NOT ``.tmp``)."""

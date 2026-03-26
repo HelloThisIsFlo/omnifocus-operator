@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 __all__ = ["create_repository"]
 
-logger = logging.getLogger("omnifocus_operator")
+logger = logging.getLogger(__name__)
 
 # Default OmniFocus SQLite database path (duplicated from hybrid.py to avoid
 # coupling to a private constant).

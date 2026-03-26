@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 
 __all__ = ["ErrorOperatorService", "OperatorService"]
 
-logger = logging.getLogger("omnifocus_operator")
+logger = logging.getLogger(__name__)
 
 
 class OperatorService(Service):  # explicitly implements Service protocol
