@@ -1,5 +1,19 @@
 # Milestones
 
+## v1.2.2 FastMCP v3 Migration (Shipped: 2026-03-26)
+
+**Phases completed:** 3 phases, 6 plans, 12 tasks
+
+**Key accomplishments:**
+
+- Swapped mcp>=1.26.0 for fastmcp>=3.1.1, migrated all src/ imports to native FastMCP v3 patterns, fixed test infrastructure for lifespan compatibility
+- ctx.report_progress() scaffolding in batch write handlers + all docs updated from mcp>=1.26.0 to fastmcp>=3.1.1
+- Replaced 65-line _ClientSessionProxy with 10-line Client fixture, migrated 40+ fixture-based tests to snake_case fields, ToolError assertions, and flat list_tools()
+- ToolLoggingMiddleware replaces manual log_tool_call() -- automatic entry/exit/error logging for all 6 tools via FastMCP middleware API
+- Dual-handler logging (stderr + 5MB rotating file) with __name__ convention across all 10 modules for per-module log granularity
+
+---
+
 ## v1.2.1 Architectural Cleanup (Shipped: 2026-03-23)
 
 **Phases completed:** 11 phases, 27 plans, 46 tasks

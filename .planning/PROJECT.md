@@ -8,17 +8,9 @@ A Python MCP server that exposes OmniFocus (macOS task manager) as structured ta
 
 Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
 
-## Current Milestone: v1.2.2 FastMCP v3 Migration
+## Current State
 
-**Goal:** Migrate from `mcp.server.fastmcp` to standalone `fastmcp>=3` — infrastructure upgrade with no new tools or behavioral changes.
-
-**Target features:**
-- Dependency swap: `mcp` SDK → `fastmcp>=3` with v3 API patterns
-- Logging rework: dual-handler stderr + file logging
-- Test client migration: `_ClientSessionProxy` → `Client(server)` 3-line pattern
-- Middleware: manual `log_tool_call()` → automatic `ToolLoggingMiddleware`
-- Progress reporting: `ctx.report_progress()` in batch operations
-- Documentation updates for new dependency
+Shipped v1.2.2 (FastMCP v3 Migration) on 2026-03-26. All milestones through v1.2.2 complete. Next milestone not yet planned.
 
 ## Requirements
 
@@ -50,8 +42,11 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 - ✓ Task lifecycle (complete/drop) with no-op detection and educational warnings — v1.2
 - ✓ Bridge script write commands (add_task, edit_task) with request file payloads — v1.2
 - ✓ Write model strictness: `extra="forbid"` catches unknown agent fields at validation time — v1.2.1
-- ✓ FastMCP v3 dependency swap: `fastmcp>=3.1.1` replaces `mcp>=1.26.0`, native imports, `ctx.lifespan_context` shorthand — v1.2.2 Phase 29
-- ✓ Progress reporting in batch write tools via `ctx.report_progress()` — v1.2.2 Phase 29
+- ✓ FastMCP v3 dependency swap: `fastmcp>=3.1.1` replaces `mcp>=1.26.0`, native imports, `ctx.lifespan_context` shorthand — v1.2.2
+- ✓ Progress reporting in batch write tools via `ctx.report_progress()` — v1.2.2
+- ✓ Test client migration: 10-line `Client(server)` fixture replacing 65-line `_ClientSessionProxy`, `pytest.raises(ToolError)` pattern — v1.2.2
+- ✓ ToolLoggingMiddleware: automatic entry/exit/error logging for all tools via FastMCP middleware API — v1.2.2
+- ✓ Dual-handler logging: `StreamHandler(stderr)` + 5MB `RotatingFileHandler` with `__name__` convention across all modules — v1.2.2
 - ✓ Warning string consolidation into agent_messages/ package with AST integrity tests — v1.2.1
 - ✓ Three-layer model taxonomy (Command/RepoPayload/RepoResult/Result) in contracts/ package — v1.2.1
 - ✓ Write pipeline unification: symmetric add/edit signatures, BridgeWriteMixin, exclude_unset — v1.2.1
@@ -67,15 +62,6 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 ### Active
 
-<!-- v1.2.2 — FastMCP v3 Migration -->
-- [ ] Migrate from mcp.server.fastmcp to fastmcp>=3 standalone package
-- [x] Dual-handler logging: StreamHandler(stderr) + FileHandler for persistent logs
-- [x] Test client migration: Client(server) pattern replacing manual plumbing
-- [x] ToolLoggingMiddleware replacing manual log_tool_call() wiring
-- [ ] Progress reporting via ctx.report_progress() in batch operations
-- [ ] Documentation updates reflecting new dependency
-
-<!-- Future milestones -->
 - [ ] SQL filtering for tasks, projects, tags (v1.3)
 - [ ] List/count for all entities (v1.3)
 - [ ] Substring search (v1.3)
@@ -107,14 +93,15 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 ## Context
 
-Shipped v1.2.1 with ~16,381 LOC Python (src + tests), ~215k LOC JS (bridge + deps), ~28k TS (tests).
-Tech stack: Python 3.12, uv, Pydantic v2, FastMCP v3 (standalone), OmniJS bridge, SQLite3 (stdlib).
-697 pytest tests, 26 Vitest tests, UAT passed on all phases.
+Shipped v1.2.2 with ~16,384 LOC Python (src + tests), ~215k LOC JS (bridge + deps), ~28k TS (tests).
+Tech stack: Python 3.12, uv, Pydantic v2, FastMCP v3 (`fastmcp>=3.1.1`), OmniJS bridge, SQLite3 (stdlib).
+708 pytest tests (98% coverage), 26 Vitest tests, UAT passed on all phases.
 Real OmniFocus database: ~2,400 tasks, ~363 projects, ~64 tags, ~79 folders.
 Read path: SQLite (default, ~46ms). Write path: OmniJS bridge with write-through guarantee.
 6 MCP tools: get_all, get_task, get_project, get_tag, add_tasks, edit_tasks.
 Architecture: service/ package (Resolver, DomainLogic, PayloadBuilder, orchestrator), contracts/ package (Command, RepoPayload, Result models), tests/doubles/ (InMemoryBridge, StubBridge, SimulatorBridge).
 Golden master: 43 scenarios in 7 categories, contract tests verify InMemoryBridge matches RealBridge.
+Logging: ToolLoggingMiddleware for automatic tool call logging, dual-handler (stderr + rotating file) under `omnifocus_operator.*` namespace.
 
 ## Constraints
 
@@ -158,6 +145,10 @@ Golden master: 43 scenarios in 7 categories, contract tests verify InMemoryBridg
 | Golden master for contract testing | Capture RealBridge behavior via UAT, commit as fixtures, verify InMemoryBridge matches in CI. Source of truth = OmniFocus actual behavior | ✓ Good — v1.2.1, 43 scenarios, catches drift automatically |
 | Structural import barrier for test doubles | Test doubles in tests/doubles/, production code in src/. Structural impossibility of importing test code in production | ✓ Good — v1.2.1, eliminates a class of mistakes |
 | Patch[T]/PatchOrClear[T] type aliases | Make three-way semantics (unset/null/value) visible in annotations. Identical JSON schema, pure readability gain | ✓ Good — v1.2.1, self-documenting models |
+| FastMCP v3 standalone package | Migrated from `mcp.server.fastmcp` to `fastmcp>=3.1.1` standalone. Native imports, `ctx.lifespan_context` shorthand, `Client(server)` test pattern | ✓ Good — v1.2.2, cleaner API, simpler tests |
+| ToolLoggingMiddleware via cross-cutting concern | FastMCP Middleware base class with injected logger. Zero per-tool wiring needed — new tools get logging automatically | ✓ Good — v1.2.2, eliminated 6 manual log_tool_call() sites |
+| Dual-handler logging (stderr + rotating file) | StreamHandler(stderr) for Claude Desktop visibility + 5MB RotatingFileHandler for persistent debugging. `__name__` convention across all 10 modules | ✓ Good — v1.2.2, observable in both contexts |
+| ToolAnnotations stays at mcp.types | FastMCP doesn't re-export `ToolAnnotations`. Intentional residual `from mcp.types import ToolAnnotations` with TODO | — Pending — revisit when fastmcp re-exports |
 
 ---
-*Last updated: 2026-03-26 after Phase 31 complete — Middleware & Logging (ToolLoggingMiddleware, dual-handler stderr+file logging, __name__ logger convention, log_tool_call() deleted)*
+*Last updated: 2026-03-26 after v1.2.2 milestone — FastMCP v3 Migration shipped*

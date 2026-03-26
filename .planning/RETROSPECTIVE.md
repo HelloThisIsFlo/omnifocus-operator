@@ -196,6 +196,47 @@
 
 ---
 
+## Milestone: v1.2.2 -- FastMCP v3 Migration
+
+**Shipped:** 2026-03-26
+**Phases:** 3 | **Plans:** 6 executed
+
+### What Was Built
+- Dependency swap from `mcp>=1.26.0` to `fastmcp>=3.1.1` with native v3 import patterns
+- Test client migration: 65-line `_ClientSessionProxy` → 10-line `Client(server)` fixture, 40+ tests migrated
+- `ToolLoggingMiddleware` replacing 6 manual `log_tool_call()` call sites
+- Dual-handler logging: stderr (Claude Desktop) + 5MB rotating file with `__name__` convention across 10 modules
+- `ctx.report_progress()` scaffolding in batch write handlers
+
+### What Worked
+- Spike-first approach: 8 experiments in `.research/deep-dives/fastmcp-spike/` eliminated all unknowns before planning — zero surprises during execution
+- Phase consolidation (6 → 3 phases) based on spike findings kept scope tight and execution fast (~3 days)
+- All 3 phases completed in a single day of execution (research and planning happened across prior days)
+- Nyquist validation caught nothing — clean execution with zero gaps, zero rework
+- 708 tests passing at 98% coverage throughout — no regressions from the migration
+
+### What Was Inefficient
+- REQUIREMENTS.md checkboxes for DEP/PROG/DOC groups left unchecked despite being satisfied — documentation drift between phases and requirements tracking
+- SUMMARY.md `requirements_completed` frontmatter missing for some plans — inconsistent artifact quality
+
+### Patterns Established
+- `Client(server)` fixture pattern for FastMCP v3 test infrastructure
+- `pytest.raises(ToolError, match=...)` as idiomatic error assertion pattern
+- Middleware with injected logger for cross-cutting MCP concerns
+- `__name__` logger convention with root logger as dual-handler configuration point
+
+### Key Lessons
+1. **Spike experiments before migration planning** — the FastMCP v3 spike saved significant rework by proving patterns before committing to roadmap structure
+2. **Infrastructure migrations can be fast** — 3 phases, 6 plans, single day of execution when research is thorough
+3. **Phase consolidation from spike findings** — original 6-phase plan was over-planned; spike evidence compressed to 3 phases with better boundaries
+
+### Cost Observations
+- Model mix: ~60% opus (research, spike analysis, planning), ~40% sonnet (execution)
+- Sessions: ~5 across 3 days (research + planning + execution)
+- Notable: Average plan execution of ~4 min — consistent with historical velocity. Total execution ~24 min for all 6 plans.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -206,6 +247,7 @@
 | v1.1 | 4 | 11 | Fastest milestone -- research artifacts enabled single-day execution |
 | v1.2 | 6 | 21 | First write milestone -- decimal phases (16.1, 16.2) for mid-milestone restructuring |
 | v1.2.1 | 11 | 27 | First refactoring milestone -- dependency-ordered phases, golden master contract testing |
+| v1.2.2 | 3 | 6 | First migration milestone -- spike-first approach, phase consolidation from research |
 
 ### Cumulative Quality
 
@@ -215,6 +257,7 @@
 | v1.1 | 339 (313 pytest + 26 vitest) | ~98% | 0 |
 | v1.2 | 527 (501 pytest + 26 vitest) | ~94% | 3 (LIFE-03 deferred, stale docs, tag exclusivity) |
 | v1.2.1 | 723 (697 pytest + 26 vitest) | ~94% | 1 (stale Phase 27 VERIFICATION.md) |
+| v1.2.2 | 734 (708 pytest + 26 vitest) | ~98% | 1 (ToolAnnotations mcp.types residual) |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -225,3 +268,4 @@
 5. Move complexity to Python, keep bridge dumb (established v1.2 -- diff-based tags proved the pattern)
 6. Structural isolation > convention for test boundaries (established v1.2.1 -- physical relocation beats import discipline)
 7. Golden master > targeted mocks for behavioral equivalence (established v1.2.1 -- 43 scenarios catch drift that unit tests miss)
+8. Spike experiments eliminate unknowns before planning (established v1.2.2 -- 8 experiments compressed 6 phases to 3)
