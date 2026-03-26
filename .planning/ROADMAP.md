@@ -89,7 +89,7 @@
   6. README and landing page reflect `fastmcp>=3.1.1` as the runtime dependency
 **Plans:** 2 plans
 Plans:
-- [ ] 29-01-PLAN.md -- Dependency swap, import migration, Context types, lifespan shorthand
+- [x] 29-01-PLAN.md -- Dependency swap, import migration, Context types, lifespan shorthand
 - [ ] 29-02-PLAN.md -- Progress reporting in batch handlers, README and landing page updates
 
 ### Phase 30: Test Client Migration
@@ -130,6 +130,6 @@ Phases execute in numeric order: 29 → 30 → 31
 | 10-13 | v1.1 | 11/11 | Complete | 2026-03-07 |
 | 14-17 | v1.2 | 21/21 | Complete | 2026-03-16 |
 | 18-28 | v1.2.1 | 27/27 | Complete | 2026-03-23 |
-| 29. Dependency Swap & Imports | v1.2.2 | 0/2 | Not started | - |
+| 29. Dependency Swap & Imports | v1.2.2 | 1/2 | In progress | - |
 | 30. Test Client Migration | v1.2.2 | 0/TBD | Not started | - |
 | 31. Middleware & Logging | v1.2.2 | 0/TBD | Not started | - |
