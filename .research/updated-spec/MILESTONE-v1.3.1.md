@@ -15,14 +15,14 @@ Seven new filter parameters on `list_tasks`, each accepts a **string shortcut** 
 | `due` | effective due date (inherited) | `"today"`, `"overdue"`, `"soon"`, `"none"` |
 | `defer` | effective defer date (inherited) | `"today"`, `"none"` |
 | `planned` | effective planned date (inherited if applicable) | `"today"`, `"none"` |
-| `completed` | effective completion date | `"today"`, `"any"` / `"true"` |
-| `dropped` | effective drop date | `"today"`, `"any"` / `"true"` |
+| `completed` | effective completion date | `"today"`, `"any"` |
+| `dropped` | effective drop date | `"today"`, `"any"` |
 | `added` | creation date | `"today"` |
 | `modified` | last modified date | `"today"` |
 
 **Effective dates rule:** Wherever OmniFocus computes an effective (inherited) date, the filter uses it. The agent-facing field names omit "effective" — the system always does the right thing.
 
-Using `completed` or `dropped` as a filter automatically includes those tasks in results (excluded by default). `"any"` and `"true"` are interchangeable.
+Using `completed` or `dropped` as a filter automatically includes those tasks in results (excluded by default).
 
 **Null date rule:** Tasks without a value for the filtered date field are excluded from that filter's results. A task with no due date is not "overdue" — it has no deadline to miss. A task with no defer date is not "becoming available" — it was never deferred. This is SQL-natural (`NULL < x` → NULL/false) and semantically correct across all seven fields. Exception: `added` and `modified` always have values in OmniFocus — the null case doesn't arise for those two.
 
@@ -51,7 +51,7 @@ Units: `d` (day), `w` (week), `m` (month), `y` (year). Count defaults to 1 when 
 
 **Timezone:** All date computations use naive local time (system timezone). OmniFocus supports per-event timezone annotations, but the filter system ignores them — all comparisons use local time. Non-local timezone support is a future improvement; if detected, log a warning.
 
-**`"now"` snapshot:** `"now"` is evaluated once at query start. All date filters in the same query see the same timestamp. This prevents subtle inconsistencies when a query spans multiple date fields (e.g., `due: {before: "now"}` and `defer: {after: "now"}` use the same instant).
+**`"now"` snapshot:** `"now"` is evaluated once at query start. All date filters in the same query see the same timestamp. This prevents subtle inconsistencies when a query spans multiple date fields (e.g., `due: {before: "now"}` and `defer: {after: "now"}` use the same instant). This is a domain/service layer concern — the snapshot is created before filter resolution begins.
 
 **Concrete examples** (assume it's Wednesday 2026-03-25 at 14:00):
 
@@ -69,12 +69,14 @@ One or both of `before`, `after`:
 
 | Key | Accepts | Boundary |
 |-----|---------|----------|
-| `before` | ISO8601 datetime or `"now"` | Exclusive (<) |
-| `after` | ISO8601 datetime or `"now"` | Inclusive (>=) |
+| `before` | ISO8601 datetime, date-only, or `"now"` | Exclusive (<) |
+| `after` | ISO8601 datetime, date-only, or `"now"` | Inclusive (>=) |
+
+**Accepted date formats:** Full datetime (`"2026-03-01T14:00:00"`), date-only (`"2026-03-01"` → resolves to `00:00:00` local time), or `"now"`. Timezone offsets in input are converted to local time. Parsing should be lenient — use a standard date parsing library.
 
 **Why these boundaries:** Ranges compose without gaps or overlaps. "Tasks due in March" = `{after: "2026-03-01", before: "2026-04-01"}` — no T23:59:59 hacks, no off-by-one. Shorthand groups resolve to the same semantics internally (e.g., `{this: "m"}` in March → `>= Mar 1, < Apr 1`). `"overdue"` (`{before: "now"}`) also reads correctly: due date < now = overdue — a task due at this exact moment isn't overdue yet.
 
-Shorthand and absolute groups are mutually exclusive per field. If both `before` and `after` are specified, `after` must be earlier than `before`. Errors are educational.
+Shorthand and absolute groups are mutually exclusive per field. If both `before` and `after` are specified, `after` must be strictly earlier than `before` — equal values produce an empty range (`[x, x)` = nothing) and are treated as an error, not silent empty results. Errors are educational.
 
 ### String Shortcuts
 
@@ -83,8 +85,8 @@ Shorthand and absolute groups are mutually exclusive per field. If both `before`
 | `"today"` | all fields | `{this: "d"}` | Universal. Very natural — agents instinctively reach for this. |
 | `"overdue"` | `due` | `{before: "now"}` | Sugar, but very intention-revealing |
 | `"soon"` | `due` | `{before: "now + threshold"}` | Includes overdue — anything past its due date is by definition past "due soon." See rationale below. |
-| `"any"` / `"true"` | `completed` | no date restriction, include all completed | Replaces old `completed: true` boolean |
-| `"any"` / `"true"` | `dropped` | no date restriction, include all dropped | Symmetric with completed |
+| `"any"` | `completed` | no date restriction, include all completed | Replaces old `completed: true` boolean |
+| `"any"` | `dropped` | no date restriction, include all dropped | Symmetric with completed |
 | `"none"` | `due`, `defer`, `planned` | tasks with no value for this field | Absence filtering — "show tasks with no due date." Only valid on fields where null is possible. `added`/`modified` always have values; `completed`/`dropped` absence = default behavior (excluded). |
 
 ### Due-Soon Threshold Configuration
@@ -96,7 +98,7 @@ Configurable threshold for what counts as "due soon." Options: `today`, `24h`, `
 **`"soon"` includes overdue:** `"soon"` is defined as `{before: "now + threshold"}` — a single upper bound, not a window. Since overdue tasks have due dates before now, and now is before (now + threshold), overdue tasks are naturally included. This is intentional:
 - When someone asks "what's due soon?", they implicitly mean "what needs attention deadline-wise?" — and overdue tasks need even MORE attention.
 - The math is elegant: `"overdue"` = `due < now`, `"soon"` = `due < now + threshold`. "Overdue" is a strict subset of "soon." No special-casing, it falls out of the definition.
-- An agent that wants ONLY the approaching-but-not-yet-overdue tasks can use `due: {after: "now", before: "now + threshold"}` (or `due: {after: "now"}` combined with `due: "soon"` — though per-field filters don't compose that way, so the absolute form is needed).
+- An agent that wants ONLY the approaching-but-not-yet-overdue tasks can use `due: {after: "now", before: "<computed threshold timestamp>"}` — the agent must compute the absolute ISO8601 timestamp since `"now + threshold"` is not valid input syntax.
 - In practice, overdue tasks shouldn't clutter results — if a user has 100 overdue tasks, they have a bigger problem than filter semantics.
 - **This does NOT extend to `{next: ...}`.** `due: {next: "1w"}` is a time window (`>= now, < now + 7d`) — overdue tasks are excluded. `{next: ...}` must stay consistent across all 7 date fields, and "include overdue" is meaningless on `completed`, `added`, etc. `"soon"` is the exception because it's a threshold concept that only exists on `due`.
 
@@ -106,9 +108,9 @@ Configurable threshold for what counts as "due soon." Options: `today`, `24h`, `
 2. Shorthand: exactly one of `this`/`last`/`next`
 3. Absolute: if both `before` and `after`, then `after` must be earlier than `before`
 4. Zero or negative count → error with guidance
-5. String shortcuts are field-specific — `"today"` is universal; `"overdue"` and `"soon"` only on `due`; `"any"`/`"true"` only on `completed`/`dropped`; `"none"` only on `due`/`defer`/`planned`
+5. String shortcuts are field-specific — `"today"` is universal; `"overdue"` and `"soon"` only on `due`; `"any"` only on `completed`/`dropped`; `"none"` only on `due`/`defer`/`planned`
 6. `"none"` on `added`/`modified` → educational error (always have values)
-7. `"none"` on `completed`/`dropped` → educational error (absence = default behavior, those tasks are already excluded)
+7. `"none"` on `completed`/`dropped` → educational error: "To get non-completed tasks, omit the `completed` filter — they're excluded by default. Use `completed: 'any'` to include all completed tasks."
 
 ### SQL Implementation
 
@@ -125,7 +127,7 @@ Configurable threshold for what counts as "due soon." Options: `today`, `24h`, `
 
 ### Changes to Existing Filters
 
-- `urgency` filter removed — absorbed into `due: "overdue"` and `due: "soon"`
+- `urgency` filter parameter removed — absorbed into `due: "overdue"` and `due: "soon"`. The `urgency` field on the Task model is unchanged (still returned in responses as informational).
 - `completed` boolean removed — replaced by `completed` date filter
 - `availability` trimmed to `available`/`blocked` only — `completed`/`dropped` states now expressed via date filters
 
@@ -173,7 +175,7 @@ Realistic scenarios showing how agents compose date filters. These patterns info
 | "What changed today?" | `modified: "today"` | Activity review |
 | "Due soon but I can't even start" | `due: "soon"` + `availability: "blocked"` | Proactive warning — deadline approaching on a blocked task. Agent should surface this. |
 | "Deferred but never picked up" | `defer: {before: "now"}` + `availability: "available"` | Problem detection — tasks that un-deferred and are gathering dust |
-| "Flagged items I've been ignoring" | `flagged: true` + `modified: {before: <7d ago>}` | Wallpaper flag detection — flags that became background noise |
+| "Flagged items I've been ignoring" | `flagged: true` + `modified: {before: "<7 days ago ISO>"}` | Wallpaper flag detection — agent computes absolute date (no "older than N" shorthand) |
 | "What did I drop this week?" | `dropped: {last: "1w"}` | Decision review — shows dropped with a date range, not just `"any"` |
 | "What's due during my vacation?" | `due: {after: "2026-04-01", before: "2026-04-14"}` | Vacation planning (pair with defer query below) |
 | "What's deferred into my vacation?" | `defer: {after: "2026-04-01", before: "2026-04-14"}` | Vacation planning — tasks becoming available while you're away |
@@ -210,7 +212,7 @@ These are the MCP tool description texts that agents see at call time. They are 
 
 > Date filters: `due`, `defer`, `planned`, `completed`, `dropped`, `added`, `modified`. Each accepts a string shortcut or object.
 >
-> String shortcuts: `"today"` (any field), `due: "overdue"` (before now), `due: "soon"` (due-soon threshold), `completed: "any"` / `completed: "true"` (all completed), `dropped: "any"` / `dropped: "true"` (all dropped), `due: "none"` / `defer: "none"` / `planned: "none"` (tasks with no value).
+> String shortcuts: `"today"` (any field), `due: "overdue"` (before now), `due: "soon"` (due-soon threshold), `completed: "any"` (all completed), `dropped: "any"` (all dropped), `due: "none"` / `defer: "none"` / `planned: "none"` (tasks with no value).
 >
 > Object — shorthand (pick one key): `{"this": "w"}` (calendar-aligned), `{"last": "3d"}` (rolling from now), `{"next": "1m"}` (rolling from now). Units: d, w, m, y. Count defaults to 1.
 >
@@ -224,11 +226,11 @@ These are the MCP tool description texts that agents see at call time. They are 
 
 | Parameter | Description |
 |-----------|-------------|
-| `due` | Filter by effective due date (inherited from parent if not set directly). Shortcuts: `"today"`, `"overdue"` (before now), `"soon"` (due-soon threshold, future-only), `"none"` (tasks with no due date). |
+| `due` | Filter by effective due date (inherited from parent if not set directly). Shortcuts: `"today"`, `"overdue"` (before now), `"soon"` (due within threshold — includes overdue), `"none"` (tasks with no due date). |
 | `defer` | Filter by effective defer date (inherited). For timing questions ("what becomes available this week?"), not availability state — use `availability: "blocked"` for unavailable tasks. Shortcuts: `"today"`, `"none"`. |
 | `planned` | Filter by effective planned date. Shortcuts: `"today"`, `"none"`. |
-| `completed` | Filter by completion date. Automatically includes completed tasks (excluded by default). Shortcuts: `"any"` or `"true"` (all completed, no date restriction). |
-| `dropped` | Filter by drop date. Automatically includes dropped tasks (excluded by default). Shortcuts: `"any"` or `"true"` (all dropped, no date restriction). |
+| `completed` | Filter by completion date. Automatically includes completed tasks (excluded by default). Shortcuts: `"any"` (all completed, no date restriction). |
+| `dropped` | Filter by drop date. Automatically includes dropped tasks (excluded by default). Shortcuts: `"any"` (all dropped, no date restriction). |
 | `added` | Filter by creation date. All tasks have a creation date. |
 | `modified` | Filter by last modified date. All tasks have a modification date. |
 
@@ -249,7 +251,7 @@ These are the MCP tool description texts that agents see at call time. They are 
 
 - All date filters use effective (inherited) values where OmniFocus computes them (verified with tasks that inherit due/defer dates from parent projects).
 - Completed/dropped excluded by default; using `completed`/`dropped` date filter includes them automatically.
-- `completed: "any"` and `completed: "true"` are interchangeable — both include all completed tasks.
+- `completed: "any"` includes all completed tasks regardless of completion date.
 - `due: "soon"` respects the configured due-soon threshold.
 - `due: "overdue"` returns tasks with effective due date before now.
 - Date filter shorthand: `{"this": "w"}` (calendar-aligned), `{"last": "3d"}` (rolling from now), `{"next": "1m"}` (rolling from now) all resolve correctly.
