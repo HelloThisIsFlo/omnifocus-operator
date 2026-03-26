@@ -30,11 +30,11 @@ Requirements for FastMCP v3 Migration. Infrastructure upgrade — no new tools, 
 
 ### Logging
 
-- [ ] **LOG-01**: `StreamHandler(stderr)` active for Claude Desktop log visibility
-- [ ] **LOG-02**: `FileHandler(~/Library/Logs/omnifocus-operator.log)` active for persistent debugging
-- [ ] **LOG-03**: Logger hierarchy uses `omnifocus_operator.*` namespace
-- [ ] **LOG-04**: stderr hijacking misdiagnosis comment removed from `__main__.py`
-- [ ] **LOG-05**: `ctx.info()` / `ctx.warning()` not used anywhere
+- [x] **LOG-01**: `StreamHandler(stderr)` active for Claude Desktop log visibility
+- [x] **LOG-02**: `FileHandler(~/Library/Logs/omnifocus-operator.log)` active for persistent debugging
+- [x] **LOG-03**: Logger hierarchy uses `omnifocus_operator.*` namespace
+- [x] **LOG-04**: stderr hijacking misdiagnosis comment removed from `__main__.py`
+- [x] **LOG-05**: `ctx.info()` / `ctx.warning()` not used anywhere
 
 ### Progress
 
@@ -87,11 +87,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MW-01 | Phase 31 | Complete |
 | MW-02 | Phase 31 | Complete |
 | MW-03 | Phase 31 | Complete |
-| LOG-01 | Phase 31 | Pending |
-| LOG-02 | Phase 31 | Pending |
-| LOG-03 | Phase 31 | Pending |
-| LOG-04 | Phase 31 | Pending |
-| LOG-05 | Phase 31 | Pending |
+| LOG-01 | Phase 31 | Complete |
+| LOG-02 | Phase 31 | Complete |
+| LOG-03 | Phase 31 | Complete |
+| LOG-04 | Phase 31 | Complete |
+| LOG-05 | Phase 31 | Complete |
 
 **Coverage:**
 - v1.2.2 requirements: 21 total

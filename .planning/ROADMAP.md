@@ -72,7 +72,7 @@
 
 - [x] **Phase 29: Dependency Swap & Imports** (2/2 plans) — completed 2026-03-26
 - [x] **Phase 30: Test Client Migration** - Replace test plumbing with 3-line Client(server) pattern (completed 2026-03-26)
-- [ ] **Phase 31: Middleware & Logging** - Automatic tool logging via middleware, dual-handler stderr + file logging
+- [x] **Phase 31: Middleware & Logging** - Automatic tool logging via middleware, dual-handler stderr + file logging (completed 2026-03-26)
 
 ## Phase Details
 
@@ -112,9 +112,9 @@
   6. All loggers use `omnifocus_operator.*` namespace hierarchy
   7. The stderr hijacking misdiagnosis comment is removed from `__main__.py`
   8. `ctx.info()` / `ctx.warning()` are not called anywhere in production code
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 - [x] 31-01-PLAN.md -- ToolLoggingMiddleware creation, server wiring, log_tool_call deletion
-- [ ] 31-02-PLAN.md -- Dual-handler logging setup, __name__ convention across all modules
+- [x] 31-02-PLAN.md -- Dual-handler logging setup, __name__ convention across all modules
 
 ## Progress
 
@@ -129,4 +129,4 @@ Phases execute in numeric order: 29 → 30 → 31
 | 18-28 | v1.2.1 | 27/27 | Complete | 2026-03-23 |
 | 29. Dependency Swap & Imports | v1.2.2 | 2/2 | Complete | 2026-03-26 |
 | 30. Test Client Migration | v1.2.2 | 2/2 | Complete    | 2026-03-26 |
-| 31. Middleware & Logging | v1.2.2 | 1/2 | In Progress|  |
+| 31. Middleware & Logging | v1.2.2 | 2/2 | Complete   | 2026-03-26 |
