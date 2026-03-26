@@ -19,6 +19,7 @@ from mcp.client.session import ClientSession
 from mcp.server.fastmcp import FastMCP
 from mcp.shared.message import SessionMessage
 
+from fastmcp.exceptions import ToolError
 from omnifocus_operator.repository import BridgeRepository
 from omnifocus_operator.server import _register_tools, create_server
 from omnifocus_operator.service import OperatorService
@@ -571,62 +572,53 @@ class TestDegradedMode:
 class TestGetByIdTools:
     """Verify get_task, get_project, get_tag MCP tools."""
 
-    async def test_get_task_returns_task(self, client_session: ClientSession) -> None:
-        result = await client_session.call_tool("get_task", {"id": "task-001"})
-        assert result.isError is not True
-        assert result.structuredContent is not None
-        assert result.structuredContent["id"] == "task-001"
-        assert result.structuredContent["name"] == "Test Task"
+    async def test_get_task_returns_task(self, client: Any) -> None:
+        result = await client.call_tool("get_task", {"id": "task-001"})
+        assert result.structured_content is not None
+        assert result.structured_content["id"] == "task-001"
+        assert result.structured_content["name"] == "Test Task"
 
-    async def test_get_task_not_found_returns_error(self, client_session: ClientSession) -> None:
-        result = await client_session.call_tool("get_task", {"id": "nonexistent"})
-        assert result.isError is True
-        text = result.content[0].text  # type: ignore[union-attr]
-        assert "Task not found: nonexistent" in text
+    async def test_get_task_not_found_returns_error(self, client: Any) -> None:
+        with pytest.raises(ToolError, match="Task not found: nonexistent"):
+            await client.call_tool("get_task", {"id": "nonexistent"})
 
-    async def test_get_project_returns_project(self, client_session: ClientSession) -> None:
-        result = await client_session.call_tool("get_project", {"id": "proj-001"})
-        assert result.isError is not True
-        assert result.structuredContent is not None
-        assert result.structuredContent["id"] == "proj-001"
-        assert result.structuredContent["name"] == "Test Project"
+    async def test_get_project_returns_project(self, client: Any) -> None:
+        result = await client.call_tool("get_project", {"id": "proj-001"})
+        assert result.structured_content is not None
+        assert result.structured_content["id"] == "proj-001"
+        assert result.structured_content["name"] == "Test Project"
 
-    async def test_get_project_not_found_returns_error(self, client_session: ClientSession) -> None:
-        result = await client_session.call_tool("get_project", {"id": "nonexistent"})
-        assert result.isError is True
-        text = result.content[0].text  # type: ignore[union-attr]
-        assert "Project not found: nonexistent" in text
+    async def test_get_project_not_found_returns_error(self, client: Any) -> None:
+        with pytest.raises(ToolError, match="Project not found: nonexistent"):
+            await client.call_tool("get_project", {"id": "nonexistent"})
 
-    async def test_get_tag_returns_tag(self, client_session: ClientSession) -> None:
-        result = await client_session.call_tool("get_tag", {"id": "tag-001"})
-        assert result.isError is not True
-        assert result.structuredContent is not None
-        assert result.structuredContent["id"] == "tag-001"
-        assert result.structuredContent["name"] == "Test Tag"
+    async def test_get_tag_returns_tag(self, client: Any) -> None:
+        result = await client.call_tool("get_tag", {"id": "tag-001"})
+        assert result.structured_content is not None
+        assert result.structured_content["id"] == "tag-001"
+        assert result.structured_content["name"] == "Test Tag"
 
-    async def test_get_tag_not_found_returns_error(self, client_session: ClientSession) -> None:
-        result = await client_session.call_tool("get_tag", {"id": "nonexistent"})
-        assert result.isError is True
-        text = result.content[0].text  # type: ignore[union-attr]
-        assert "Tag not found: nonexistent" in text
+    async def test_get_tag_not_found_returns_error(self, client: Any) -> None:
+        with pytest.raises(ToolError, match="Tag not found: nonexistent"):
+            await client.call_tool("get_tag", {"id": "nonexistent"})
 
-    async def test_get_task_has_annotations(self, client_session: ClientSession) -> None:
-        tools_result = await client_session.list_tools()
-        tool = next(t for t in tools_result.tools if t.name == "get_task")
+    async def test_get_task_has_annotations(self, client: Any) -> None:
+        tools = await client.list_tools()
+        tool = next(t for t in tools if t.name == "get_task")
         assert tool.annotations is not None
         assert tool.annotations.readOnlyHint is True
         assert tool.annotations.idempotentHint is True
 
-    async def test_get_project_has_annotations(self, client_session: ClientSession) -> None:
-        tools_result = await client_session.list_tools()
-        tool = next(t for t in tools_result.tools if t.name == "get_project")
+    async def test_get_project_has_annotations(self, client: Any) -> None:
+        tools = await client.list_tools()
+        tool = next(t for t in tools if t.name == "get_project")
         assert tool.annotations is not None
         assert tool.annotations.readOnlyHint is True
         assert tool.annotations.idempotentHint is True
 
-    async def test_get_tag_has_annotations(self, client_session: ClientSession) -> None:
-        tools_result = await client_session.list_tools()
-        tool = next(t for t in tools_result.tools if t.name == "get_tag")
+    async def test_get_tag_has_annotations(self, client: Any) -> None:
+        tools = await client.list_tools()
+        tool = next(t for t in tools if t.name == "get_tag")
         assert tool.annotations is not None
         assert tool.annotations.readOnlyHint is True
         assert tool.annotations.idempotentHint is True
@@ -642,14 +634,14 @@ class TestAddTasks:
 
     # -- Registration & annotations --
 
-    async def test_add_tasks_registered(self, client_session: ClientSession) -> None:
-        tools_result = await client_session.list_tools()
-        names = [t.name for t in tools_result.tools]
+    async def test_add_tasks_registered(self, client: Any) -> None:
+        tools = await client.list_tools()
+        names = [t.name for t in tools]
         assert "add_tasks" in names
 
-    async def test_add_tasks_has_write_annotations(self, client_session: ClientSession) -> None:
-        tools_result = await client_session.list_tools()
-        tool = next(t for t in tools_result.tools if t.name == "add_tasks")
+    async def test_add_tasks_has_write_annotations(self, client: Any) -> None:
+        tools = await client.list_tools()
+        tool = next(t for t in tools if t.name == "add_tasks")
         assert tool.annotations is not None
         assert tool.annotations.readOnlyHint is False
         assert tool.annotations.destructiveHint is False
@@ -657,42 +649,39 @@ class TestAddTasks:
 
     # -- Happy path --
 
-    async def test_add_tasks_minimal(self, client_session: ClientSession) -> None:
+    async def test_add_tasks_minimal(self, client: Any) -> None:
         """Create a task with only a name."""
-        result = await client_session.call_tool("add_tasks", {"items": [{"name": "Buy milk"}]})
-        assert result.isError is not True
-        assert result.structuredContent is not None
+        result = await client.call_tool("add_tasks", {"items": [{"name": "Buy milk"}]})
+        assert result.structured_content is not None
         # FastMCP wraps list return in {"result": [...]}
-        items = result.structuredContent["result"]
+        items = result.structured_content["result"]
         assert isinstance(items, list)
         assert len(items) == 1
         assert items[0]["success"] is True
         assert items[0]["name"] == "Buy milk"
         assert "id" in items[0]
 
-    async def test_add_tasks_with_parent(self, client_session: ClientSession) -> None:
+    async def test_add_tasks_with_parent(self, client: Any) -> None:
         """Create a task under an existing project."""
-        result = await client_session.call_tool(
+        result = await client.call_tool(
             "add_tasks",
             {"items": [{"name": "Sub task", "parent": "proj-001"}]},
         )
-        assert result.isError is not True
-        items = result.structuredContent["result"]
+        items = result.structured_content["result"]
         assert items[0]["success"] is True
 
-    async def test_add_tasks_with_tags(self, client_session: ClientSession) -> None:
+    async def test_add_tasks_with_tags(self, client: Any) -> None:
         """Create a task with tag names resolved."""
-        result = await client_session.call_tool(
+        result = await client.call_tool(
             "add_tasks",
             {"items": [{"name": "Tagged task", "tags": ["Test Tag"]}]},
         )
-        assert result.isError is not True
-        items = result.structuredContent["result"]
+        items = result.structured_content["result"]
         assert items[0]["success"] is True
 
-    async def test_add_tasks_all_fields(self, client_session: ClientSession) -> None:
+    async def test_add_tasks_all_fields(self, client: Any) -> None:
         """Create a task with all optional fields set."""
-        result = await client_session.call_tool(
+        result = await client.call_tool(
             "add_tasks",
             {
                 "items": [
@@ -710,85 +699,73 @@ class TestAddTasks:
                 ]
             },
         )
-        assert result.isError is not True
-        items = result.structuredContent["result"]
+        items = result.structured_content["result"]
         assert items[0]["success"] is True
         assert items[0]["name"] == "Full task"
 
     # -- Constraint enforcement --
 
-    async def test_add_tasks_single_item_constraint(self, client_session: ClientSession) -> None:
+    async def test_add_tasks_single_item_constraint(self, client: Any) -> None:
         """Passing 2 items returns an error."""
-        result = await client_session.call_tool(
-            "add_tasks",
-            {"items": [{"name": "A"}, {"name": "B"}]},
-        )
-        assert result.isError is True
-        text = result.content[0].text  # type: ignore[union-attr]
-        assert "exactly 1 item" in text
+        with pytest.raises(ToolError, match="exactly 1 item"):
+            await client.call_tool(
+                "add_tasks",
+                {"items": [{"name": "A"}, {"name": "B"}]},
+            )
 
-    async def test_add_tasks_empty_array(self, client_session: ClientSession) -> None:
+    async def test_add_tasks_empty_array(self, client: Any) -> None:
         """Passing 0 items returns an error."""
-        result = await client_session.call_tool("add_tasks", {"items": []})
-        assert result.isError is True
-        text = result.content[0].text  # type: ignore[union-attr]
-        assert "exactly 1 item" in text
+        with pytest.raises(ToolError, match="exactly 1 item"):
+            await client.call_tool("add_tasks", {"items": []})
 
     # -- Validation errors --
 
-    async def test_add_tasks_missing_name(self, client_session: ClientSession) -> None:
+    async def test_add_tasks_missing_name(self, client: Any) -> None:
         """Item without name returns error."""
-        result = await client_session.call_tool("add_tasks", {"items": [{"note": "no name"}]})
-        assert result.isError is True
+        with pytest.raises(ToolError):
+            await client.call_tool("add_tasks", {"items": [{"note": "no name"}]})
 
-    async def test_add_tasks_invalid_parent(self, client_session: ClientSession) -> None:
+    async def test_add_tasks_invalid_parent(self, client: Any) -> None:
         """Non-existent parent returns error."""
-        result = await client_session.call_tool(
-            "add_tasks",
-            {"items": [{"name": "Orphan", "parent": "nonexistent-id"}]},
-        )
-        assert result.isError is True
-        text = result.content[0].text  # type: ignore[union-attr]
-        assert "nonexistent-id" in text
+        with pytest.raises(ToolError, match="nonexistent-id"):
+            await client.call_tool(
+                "add_tasks",
+                {"items": [{"name": "Orphan", "parent": "nonexistent-id"}]},
+            )
 
-    async def test_add_tasks_invalid_tag(self, client_session: ClientSession) -> None:
+    async def test_add_tasks_invalid_tag(self, client: Any) -> None:
         """Non-existent tag returns error."""
-        result = await client_session.call_tool(
-            "add_tasks",
-            {"items": [{"name": "Bad tag", "tags": ["Nonexistent Tag"]}]},
-        )
-        assert result.isError is True
-        text = result.content[0].text  # type: ignore[union-attr]
-        assert "Nonexistent Tag" in text
+        with pytest.raises(ToolError, match="Nonexistent Tag"):
+            await client.call_tool(
+                "add_tasks",
+                {"items": [{"name": "Bad tag", "tags": ["Nonexistent Tag"]}]},
+            )
 
     # -- Unknown field rejection (STRCT-01) --
 
-    async def test_add_tasks_unknown_field_names_field(self, client_session: ClientSession) -> None:
+    async def test_add_tasks_unknown_field_names_field(self, client: Any) -> None:
         """Server error message includes the unknown field name, not generic message."""
-        result = await client_session.call_tool(
-            "add_tasks",
-            {"items": [{"name": "Task", "bogusField": "x"}]},
-        )
-        assert result.isError is True
-        text = result.content[0].text  # type: ignore[union-attr]
-        assert "Unknown field 'bogusField'" in text
+        with pytest.raises(ToolError, match="Unknown field 'bogusField'"):
+            await client.call_tool(
+                "add_tasks",
+                {"items": [{"name": "Task", "bogusField": "x"}]},
+            )
 
     # -- Post-write freshness --
 
-    async def test_add_tasks_then_get_all(self, client_session: ClientSession) -> None:
+    async def test_add_tasks_then_get_all(self, client: Any) -> None:
         """After add_tasks, get_all includes the newly created task."""
         # Create a task
-        add_result = await client_session.call_tool(
+        add_result = await client.call_tool(
             "add_tasks",
             {"items": [{"name": "Fresh task"}]},
         )
-        assert add_result.isError is not True
-        new_id = add_result.structuredContent["result"][0]["id"]  # type: ignore[index]
+        new_id = add_result.structured_content["result"][0]["id"]  # type: ignore[index]
 
         # Fetch all and verify the new task appears
-        get_result = await client_session.call_tool("get_all")
-        assert get_result.structuredContent is not None
-        task_ids = [t["id"] for t in get_result.structuredContent["tasks"]]
+        get_result = await client.call_tool("get_all")
+        assert get_result.structured_content is not None
+        task_ids = [t["id"] for t in get_result.structured_content["tasks"]]
         assert new_id in task_ids
 
 
@@ -802,85 +779,73 @@ class TestEditTasks:
 
     # -- Single-item constraint (EDIT-09) --
 
-    async def test_edit_tasks_rejects_empty_array(self, client_session: ClientSession) -> None:
+    async def test_edit_tasks_rejects_empty_array(self, client: Any) -> None:
         """Passing 0 items returns an error."""
-        result = await client_session.call_tool("edit_tasks", {"items": []})
-        assert result.isError is True
-        text = result.content[0].text  # type: ignore[union-attr]
-        assert "exactly 1 item" in text
+        with pytest.raises(ToolError, match="exactly 1 item"):
+            await client.call_tool("edit_tasks", {"items": []})
 
-    async def test_edit_tasks_rejects_multi_item_array(self, client_session: ClientSession) -> None:
+    async def test_edit_tasks_rejects_multi_item_array(self, client: Any) -> None:
         """Passing 2+ items returns an error."""
-        result = await client_session.call_tool(
-            "edit_tasks",
-            {"items": [{"id": "a"}, {"id": "b"}]},
-        )
-        assert result.isError is True
-        text = result.content[0].text  # type: ignore[union-attr]
-        assert "exactly 1 item" in text
+        with pytest.raises(ToolError, match="exactly 1 item"):
+            await client.call_tool(
+                "edit_tasks",
+                {"items": [{"id": "a"}, {"id": "b"}]},
+            )
 
     # -- Unknown field rejection (STRCT-01) --
 
     async def test_edit_tasks_unknown_field_names_field(
-        self, client_session: ClientSession
+        self, client: Any
     ) -> None:
         """Server error message includes the unknown field name, not generic message."""
-        result = await client_session.call_tool(
-            "edit_tasks",
-            {"items": [{"id": "task-001", "bogusField": "x"}]},
-        )
-        assert result.isError is True
-        text = result.content[0].text  # type: ignore[union-attr]
-        assert "Unknown field 'bogusField'" in text
+        with pytest.raises(ToolError, match="Unknown field 'bogusField'"):
+            await client.call_tool(
+                "edit_tasks",
+                {"items": [{"id": "task-001", "bogusField": "x"}]},
+            )
 
     # -- Basic field edit --
 
-    async def test_edit_tasks_basic_name_change(self, client_session: ClientSession) -> None:
+    async def test_edit_tasks_basic_name_change(self, client: Any) -> None:
         """Create a task, edit its name, verify result and persistence."""
         # Create a task
-        add_result = await client_session.call_tool("add_tasks", {"items": [{"name": "Original"}]})
-        assert add_result.isError is not True
-        task_id = add_result.structuredContent["result"][0]["id"]  # type: ignore[index]
+        add_result = await client.call_tool("add_tasks", {"items": [{"name": "Original"}]})
+        task_id = add_result.structured_content["result"][0]["id"]  # type: ignore[index]
 
         # Edit the name
-        edit_result = await client_session.call_tool(
+        edit_result = await client.call_tool(
             "edit_tasks",
             {"items": [{"id": task_id, "name": "Updated"}]},
         )
-        assert edit_result.isError is not True
-        items = edit_result.structuredContent["result"]  # type: ignore[index]
+        items = edit_result.structured_content["result"]  # type: ignore[index]
         assert items[0]["success"] is True
         assert items[0]["name"] == "Updated"
 
         # Verify via get_task
-        get_result = await client_session.call_tool("get_task", {"id": task_id})
-        assert get_result.isError is not True
-        assert get_result.structuredContent["name"] == "Updated"  # type: ignore[index]
+        get_result = await client.call_tool("get_task", {"id": task_id})
+        assert get_result.structured_content["name"] == "Updated"  # type: ignore[index]
 
     # -- Clear a field --
 
-    async def test_edit_tasks_clear_field(self, client_session: ClientSession) -> None:
+    async def test_edit_tasks_clear_field(self, client: Any) -> None:
         """Create task with due date, edit with dueDate=null, verify cleared."""
         # Create task with due date
-        add_result = await client_session.call_tool(
+        add_result = await client.call_tool(
             "add_tasks",
             {"items": [{"name": "Has due", "dueDate": "2026-06-01T12:00:00+00:00"}]},
         )
-        assert add_result.isError is not True
-        task_id = add_result.structuredContent["result"][0]["id"]  # type: ignore[index]
+        task_id = add_result.structured_content["result"][0]["id"]  # type: ignore[index]
 
         # Clear due date
-        edit_result = await client_session.call_tool(
+        edit_result = await client.call_tool(
             "edit_tasks",
             {"items": [{"id": task_id, "dueDate": None}]},
         )
-        assert edit_result.isError is not True
-        assert edit_result.structuredContent["result"][0]["success"] is True  # type: ignore[index]
+        assert edit_result.structured_content["result"][0]["success"] is True  # type: ignore[index]
 
         # Verify due date is cleared
-        get_result = await client_session.call_tool("get_task", {"id": task_id})
-        assert get_result.isError is not True
-        assert get_result.structuredContent["dueDate"] is None  # type: ignore[index]
+        get_result = await client.call_tool("get_task", {"id": task_id})
+        assert get_result.structured_content["dueDate"] is None  # type: ignore[index]
 
     # -- Tag replace --
 
@@ -899,133 +864,120 @@ class TestEditTasks:
             },
         ],
     )
-    async def test_edit_tasks_tag_replace(self, client_session: ClientSession) -> None:
+    async def test_edit_tasks_tag_replace(self, client: Any) -> None:
         """Create task with tags, replace tags via edit."""
         # Create task with original tag
-        add_result = await client_session.call_tool(
+        add_result = await client.call_tool(
             "add_tasks",
             {"items": [{"name": "Tagged", "tags": ["Test Tag"]}]},
         )
-        assert add_result.isError is not True
-        task_id = add_result.structuredContent["result"][0]["id"]  # type: ignore[index]
+        task_id = add_result.structured_content["result"][0]["id"]  # type: ignore[index]
 
         # Replace tags
-        edit_result = await client_session.call_tool(
+        edit_result = await client.call_tool(
             "edit_tasks",
             {"items": [{"id": task_id, "actions": {"tags": {"replace": ["New Tag"]}}}]},
         )
-        assert edit_result.isError is not True
-        assert edit_result.structuredContent["result"][0]["success"] is True  # type: ignore[index]
+        assert edit_result.structured_content["result"][0]["success"] is True  # type: ignore[index]
 
         # Verify tags replaced
-        get_result = await client_session.call_tool("get_task", {"id": task_id})
-        assert get_result.isError is not True
-        tag_names = [t["name"] for t in get_result.structuredContent["tags"]]  # type: ignore[index]
+        get_result = await client.call_tool("get_task", {"id": task_id})
+        tag_names = [t["name"] for t in get_result.structured_content["tags"]]  # type: ignore[index]
         assert "tag-new" in tag_names or "New Tag" in tag_names
         # Original tag should be gone
-        assert "tag-001" not in [t["id"] for t in get_result.structuredContent["tags"]]  # type: ignore[index]
+        assert "tag-001" not in [t["id"] for t in get_result.structured_content["tags"]]  # type: ignore[index]
 
     # -- Move to project --
 
-    async def test_edit_tasks_move_to_project(self, client_session: ClientSession) -> None:
+    async def test_edit_tasks_move_to_project(self, client: Any) -> None:
         """Create task in inbox, move to project via edit."""
         # Create task in inbox (no parent)
-        add_result = await client_session.call_tool(
+        add_result = await client.call_tool(
             "add_tasks", {"items": [{"name": "Inbox task"}]}
         )
-        assert add_result.isError is not True
-        task_id = add_result.structuredContent["result"][0]["id"]  # type: ignore[index]
+        task_id = add_result.structured_content["result"][0]["id"]  # type: ignore[index]
 
         # Move to project
-        edit_result = await client_session.call_tool(
+        edit_result = await client.call_tool(
             "edit_tasks",
             {"items": [{"id": task_id, "actions": {"move": {"ending": "proj-001"}}}]},
         )
-        assert edit_result.isError is not True
-        assert edit_result.structuredContent["result"][0]["success"] is True  # type: ignore[index]
+        assert edit_result.structured_content["result"][0]["success"] is True  # type: ignore[index]
 
         # Verify parent changed
-        get_result = await client_session.call_tool("get_task", {"id": task_id})
-        assert get_result.isError is not True
-        parent = get_result.structuredContent["parent"]  # type: ignore[index]
+        get_result = await client.call_tool("get_task", {"id": task_id})
+        parent = get_result.structured_content["parent"]  # type: ignore[index]
         assert parent is not None
         assert parent["id"] == "proj-001"
 
     # -- Move to inbox --
 
-    async def test_edit_tasks_move_to_inbox(self, client_session: ClientSession) -> None:
+    async def test_edit_tasks_move_to_inbox(self, client: Any) -> None:
         """Create task under project, move to inbox via edit."""
         # Create task under project
-        add_result = await client_session.call_tool(
+        add_result = await client.call_tool(
             "add_tasks",
             {"items": [{"name": "Project task", "parent": "proj-001"}]},
         )
-        assert add_result.isError is not True
-        task_id = add_result.structuredContent["result"][0]["id"]  # type: ignore[index]
+        task_id = add_result.structured_content["result"][0]["id"]  # type: ignore[index]
 
         # Move to inbox
-        edit_result = await client_session.call_tool(
+        edit_result = await client.call_tool(
             "edit_tasks",
             {"items": [{"id": task_id, "actions": {"move": {"ending": None}}}]},
         )
-        assert edit_result.isError is not True
-        assert edit_result.structuredContent["result"][0]["success"] is True  # type: ignore[index]
+        assert edit_result.structured_content["result"][0]["success"] is True  # type: ignore[index]
 
         # Verify parent is null (inbox)
-        get_result = await client_session.call_tool("get_task", {"id": task_id})
-        assert get_result.isError is not True
-        assert get_result.structuredContent["parent"] is None  # type: ignore[index]
+        get_result = await client.call_tool("get_task", {"id": task_id})
+        assert get_result.structured_content["parent"] is None  # type: ignore[index]
 
     # -- Task not found --
 
-    async def test_edit_tasks_not_found(self, client_session: ClientSession) -> None:
+    async def test_edit_tasks_not_found(self, client: Any) -> None:
         """Edit with non-existent ID returns error."""
-        result = await client_session.call_tool(
-            "edit_tasks",
-            {"items": [{"id": "nonexistent-id", "name": "Nope"}]},
-        )
-        assert result.isError is True
-        text = result.content[0].text  # type: ignore[union-attr]
-        assert "nonexistent-id" in text
+        with pytest.raises(ToolError, match="nonexistent-id"):
+            await client.call_tool(
+                "edit_tasks",
+                {"items": [{"id": "nonexistent-id", "name": "Nope"}]},
+            )
 
     # -- Full roundtrip freshness --
 
     async def test_edit_tasks_then_get_all_reflects_change(
-        self, client_session: ClientSession
+        self, client: Any
     ) -> None:
         """After edit, get_all returns updated data."""
         # Create a task
-        add_result = await client_session.call_tool(
+        add_result = await client.call_tool(
             "add_tasks", {"items": [{"name": "Before edit"}]}
         )
-        assert add_result.isError is not True
-        task_id = add_result.structuredContent["result"][0]["id"]  # type: ignore[index]
+        task_id = add_result.structured_content["result"][0]["id"]  # type: ignore[index]
 
         # Edit its name
-        edit_result = await client_session.call_tool(
+        edit_result = await client.call_tool(
             "edit_tasks",
             {"items": [{"id": task_id, "name": "After edit"}]},
         )
-        assert edit_result.isError is not True
 
         # Verify via get_all
-        get_result = await client_session.call_tool("get_all")
-        assert get_result.structuredContent is not None
-        task = next(t for t in get_result.structuredContent["tasks"] if t["id"] == task_id)
+        get_result = await client.call_tool("get_all")
+        assert get_result.structured_content is not None
+        task = next(t for t in get_result.structured_content["tasks"] if t["id"] == task_id)
         assert task["name"] == "After edit"
 
     # -- Registration & annotations --
 
-    async def test_edit_tasks_registered(self, client_session: ClientSession) -> None:
+    async def test_edit_tasks_registered(self, client: Any) -> None:
         """edit_tasks tool is registered."""
-        tools_result = await client_session.list_tools()
-        names = [t.name for t in tools_result.tools]
+        tools = await client.list_tools()
+        names = [t.name for t in tools]
         assert "edit_tasks" in names
 
-    async def test_edit_tasks_has_write_annotations(self, client_session: ClientSession) -> None:
+    async def test_edit_tasks_has_write_annotations(self, client: Any) -> None:
         """edit_tasks has correct write annotations."""
-        tools_result = await client_session.list_tools()
-        tool = next(t for t in tools_result.tools if t.name == "edit_tasks")
+        tools = await client.list_tools()
+        tool = next(t for t in tools if t.name == "edit_tasks")
         assert tool.annotations is not None
         assert tool.annotations.readOnlyHint is False
         assert tool.annotations.destructiveHint is False
@@ -1034,38 +986,36 @@ class TestEditTasks:
     # -- Clean validation error messages --
 
     async def test_edit_tasks_replace_plus_add_clean_error(
-        self, client_session: ClientSession
+        self, client: Any
     ) -> None:
         """Pydantic error for tag mutual exclusion is clean (no type=/input/URL noise)."""
-        result = await client_session.call_tool(
-            "edit_tasks",
-            {"items": [{"id": "task-001", "actions": {"tags": {"replace": ["a"], "add": ["b"]}}}]},
-        )
-        assert result.isError is True
-        text = result.content[0].text  # type: ignore[union-attr]
-        assert "Cannot use 'replace'" in text
+        with pytest.raises(ToolError, match="Cannot use 'replace'") as exc_info:
+            await client.call_tool(
+                "edit_tasks",
+                {"items": [{"id": "task-001", "actions": {"tags": {"replace": ["a"], "add": ["b"]}}}]},
+            )
+        text = str(exc_info.value)
         assert "type=" not in text
         assert "pydantic" not in text.lower()
         assert "input_value" not in text
 
     async def test_edit_tasks_move_multiple_keys_clean_error(
-        self, client_session: ClientSession
+        self, client: Any
     ) -> None:
         """Pydantic error for move multi-key is clean (no type=/input/URL noise)."""
-        result = await client_session.call_tool(
-            "edit_tasks",
-            {
-                "items": [
-                    {
-                        "id": "task-001",
-                        "actions": {"move": {"beginning": "proj-1", "ending": "proj-1"}},
-                    }
-                ]
-            },
-        )
-        assert result.isError is True
-        text = result.content[0].text  # type: ignore[union-attr]
-        assert "exactly one key" in text
+        with pytest.raises(ToolError, match="exactly one key") as exc_info:
+            await client.call_tool(
+                "edit_tasks",
+                {
+                    "items": [
+                        {
+                            "id": "task-001",
+                            "actions": {"move": {"beginning": "proj-1", "ending": "proj-1"}},
+                        }
+                    ]
+                },
+            )
+        text = str(exc_info.value)
         assert "_Unset" not in text
         assert "type=" not in text
         assert "pydantic" not in text.lower()
@@ -1082,67 +1032,60 @@ class TestEditTasksLifecycle:
 
     # -- Lifecycle: complete --
 
-    async def test_edit_tasks_lifecycle_complete(self, client_session: ClientSession) -> None:
+    async def test_edit_tasks_lifecycle_complete(self, client: Any) -> None:
         """lifecycle='complete' on a normal task returns success."""
-        add_result = await client_session.call_tool(
+        add_result = await client.call_tool(
             "add_tasks", {"items": [{"name": "To Complete"}]}
         )
-        assert add_result.isError is not True
-        task_id = add_result.structuredContent["result"][0]["id"]  # type: ignore[index]
+        task_id = add_result.structured_content["result"][0]["id"]  # type: ignore[index]
 
-        edit_result = await client_session.call_tool(
+        edit_result = await client.call_tool(
             "edit_tasks",
             {"items": [{"id": task_id, "actions": {"lifecycle": "complete"}}]},
         )
-        assert edit_result.isError is not True
-        items = edit_result.structuredContent["result"]  # type: ignore[index]
+        items = edit_result.structured_content["result"]  # type: ignore[index]
         assert items[0]["success"] is True
 
         # Verify task is completed via get_task
-        get_result = await client_session.call_tool("get_task", {"id": task_id})
-        assert get_result.isError is not True
-        assert get_result.structuredContent["availability"] == "completed"  # type: ignore[index]
+        get_result = await client.call_tool("get_task", {"id": task_id})
+        assert get_result.structured_content["availability"] == "completed"  # type: ignore[index]
 
     # -- Lifecycle: drop --
 
-    async def test_edit_tasks_lifecycle_drop(self, client_session: ClientSession) -> None:
+    async def test_edit_tasks_lifecycle_drop(self, client: Any) -> None:
         """lifecycle='drop' on a normal task returns success."""
-        add_result = await client_session.call_tool("add_tasks", {"items": [{"name": "To Drop"}]})
-        assert add_result.isError is not True
-        task_id = add_result.structuredContent["result"][0]["id"]  # type: ignore[index]
+        add_result = await client.call_tool("add_tasks", {"items": [{"name": "To Drop"}]})
+        task_id = add_result.structured_content["result"][0]["id"]  # type: ignore[index]
 
-        edit_result = await client_session.call_tool(
+        edit_result = await client.call_tool(
             "edit_tasks",
             {"items": [{"id": task_id, "actions": {"lifecycle": "drop"}}]},
         )
-        assert edit_result.isError is not True
-        items = edit_result.structuredContent["result"]  # type: ignore[index]
+        items = edit_result.structured_content["result"]  # type: ignore[index]
         assert items[0]["success"] is True
 
         # Verify task is dropped
-        get_result = await client_session.call_tool("get_task", {"id": task_id})
-        assert get_result.isError is not True
-        assert get_result.structuredContent["availability"] == "dropped"  # type: ignore[index]
+        get_result = await client.call_tool("get_task", {"id": task_id})
+        assert get_result.structured_content["availability"] == "dropped"  # type: ignore[index]
 
     # -- Lifecycle: invalid value --
 
     async def test_edit_tasks_lifecycle_invalid_clean_error(
-        self, client_session: ClientSession
+        self, client: Any
     ) -> None:
         """lifecycle='invalid' returns clean error echoing the value, without Pydantic internals."""
-        result = await client_session.call_tool(
-            "edit_tasks",
-            {"items": [{"id": "task-001", "actions": {"lifecycle": "invalid"}}]},
-        )
-        assert result.isError is True
-        text = result.content[0].text  # type: ignore[union-attr]
+        with pytest.raises(ToolError, match="must be 'complete' or 'drop'") as exc_info:
+            await client.call_tool(
+                "edit_tasks",
+                {"items": [{"id": "task-001", "actions": {"lifecycle": "invalid"}}]},
+            )
+        text = str(exc_info.value)
         # Must be clean -- no Pydantic internals
         assert "type=" not in text
         assert "pydantic" not in text.lower()
         assert "input_value" not in text
-        # Must echo the invalid value and list allowed values
+        # Must echo the invalid value
         assert "invalid" in text
-        assert "must be 'complete' or 'drop'" in text
 
     # -- Lifecycle: already completed (no-op) --
 
@@ -1158,15 +1101,14 @@ class TestEditTasksLifecycle:
         ],
     )
     async def test_edit_tasks_lifecycle_complete_already_completed(
-        self, client_session: ClientSession
+        self, client: Any
     ) -> None:
         """Completing an already-completed task returns success with warning."""
-        edit_result = await client_session.call_tool(
+        edit_result = await client.call_tool(
             "edit_tasks",
             {"items": [{"id": "completed-task", "actions": {"lifecycle": "complete"}}]},
         )
-        assert edit_result.isError is not True
-        items = edit_result.structuredContent["result"]  # type: ignore[index]
+        items = edit_result.structured_content["result"]  # type: ignore[index]
         assert items[0]["success"] is True
         warnings = items[0].get("warnings", [])
         assert any("already" in w.lower() for w in warnings)
