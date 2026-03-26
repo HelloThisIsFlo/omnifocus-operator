@@ -95,8 +95,8 @@
   3. Server tests use `async with Client(server) as client` for all tool invocations
   4. Error assertions use `pytest.raises(ToolError)` instead of `is_error` boolean checks
   5. All existing tests pass -- zero regressions from client migration
-**Plans:** 2 plans
-- [ ] 30-01-PLAN.md -- Fixture swap, field renames, error assertion migration in conftest.py + test_server.py
+**Plans:** 1/2 plans executed
+- [x] 30-01-PLAN.md -- Fixture swap, field renames, error assertion migration in conftest.py + test_server.py
 - [ ] 30-02-PLAN.md -- run_with_client caller migration, simulator files, dead code + import cleanup
 
 ### Phase 31: Middleware & Logging
@@ -126,5 +126,5 @@ Phases execute in numeric order: 29 → 30 → 31
 | 14-17 | v1.2 | 21/21 | Complete | 2026-03-16 |
 | 18-28 | v1.2.1 | 27/27 | Complete | 2026-03-23 |
 | 29. Dependency Swap & Imports | v1.2.2 | 2/2 | Complete | 2026-03-26 |
-| 30. Test Client Migration | v1.2.2 | 0/2 | Not started | - |
+| 30. Test Client Migration | v1.2.2 | 1/2 | In Progress|  |
 | 31. Middleware & Logging | v1.2.2 | 0/TBD | Not started | - |

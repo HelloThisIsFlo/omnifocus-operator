@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2.2
 milestone_name: FastMCP v3 Migration
-status: planning
-stopped_at: Phase 30 context gathered
-last_updated: "2026-03-26T15:20:28.920Z"
-last_activity: 2026-03-26 — Phase 29 complete
+status: executing
+stopped_at: Completed 30-01-PLAN.md
+last_updated: "2026-03-26T17:54:09.920Z"
+last_activity: 2026-03-26
 progress:
   total_phases: 3
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 4
+  completed_plans: 3
   percent: 33
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-26)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 30 — Test Client Migration
+**Current focus:** Phase 30 — test-client-migration
 
 ## Current Position
 
-Phase: 30 (2 of 3) — Test Client Migration
-Plan: —
-Status: Ready to plan
-Last activity: 2026-03-26 — Phase 29 complete
+Phase: 30 (test-client-migration) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-03-26
 
 Progress: [███░░░░░░░] 33%
 
@@ -47,6 +47,7 @@ Progress: [███░░░░░░░] 33%
 | 29    | 2/2   | 12min | 6min     |
 
 *Updated after each plan completion*
+| Phase 30 P01 | 6min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -63,6 +64,7 @@ Recent decisions affecting current work:
 - Test infrastructure fixed inline for FastMCP v3 lifespan protocol (enter _lifespan_manager())
 - Progress loop iterates over [spec] single-element list as batch scaffolding per D-05
 - Progress calls placed after validation, at handler level per D-06
+- [Phase 30]: Keep run_with_client callbacks unchanged for Plan 02 -- they use ClientSession which returns camelCase fields
 
 ### Pending Todos
 
@@ -81,5 +83,5 @@ None currently.
 ## Session Continuity
 
 Last activity: 2026-03-26
-Stopped at: Phase 30 context gathered
-Resume file: .planning/phases/30-test-client-migration/30-CONTEXT.md
+Stopped at: Completed 30-01-PLAN.md
+Resume file: None
