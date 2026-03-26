@@ -6,6 +6,7 @@ paired memory streams -- no network sockets or subprocesses needed.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -19,7 +20,7 @@ from mcp.server.fastmcp import FastMCP
 from mcp.shared.message import SessionMessage
 
 from omnifocus_operator.repository import BridgeRepository
-from omnifocus_operator.server import _register_tools, app_lifespan, create_server
+from omnifocus_operator.server import _register_tools, create_server
 from omnifocus_operator.service import OperatorService
 from tests.conftest import make_tag_dict, make_task_dict
 from tests.doubles import ConstantMtimeSource, InMemoryBridge, SimulatorBridge
@@ -40,12 +41,15 @@ def _build_patched_server(
     service: OperatorService,
 ) -> FastMCP:
     """Create a FastMCP server with a patched lifespan injecting *service*."""
+    # Use the same FastMCP class as create_server() (fastmcp v3, not mcp.server.fastmcp).
+    # Phase 30 will migrate the top-level import; for now, local import avoids conflict.
+    from fastmcp import FastMCP as FastMCPv3
 
     @asynccontextmanager
-    async def _patched_lifespan(app: FastMCP) -> AsyncIterator[dict[str, Any]]:
+    async def _patched_lifespan(app: FastMCPv3) -> AsyncIterator[dict[str, Any]]:  # type: ignore[override]
         yield {"service": service}
 
-    return FastMCP("omnifocus-operator", lifespan=_patched_lifespan)
+    return FastMCPv3("omnifocus-operator", lifespan=_patched_lifespan)  # type: ignore[return-value]
 
 
 async def run_with_client(
@@ -65,12 +69,21 @@ async def run_with_client(
     async with anyio.create_task_group() as tg:
 
         async def _run_server() -> None:
-            await server._mcp_server.run(
-                c2s_recv,
-                s2c_send,
-                server._mcp_server.create_initialization_options(),
-                raise_exceptions=True,
+            # FastMCP v3 requires the high-level lifespan manager to be entered
+            # before the low-level server can run (it sets _lifespan_result_set).
+            # Phase 30 will migrate to Client(server) which handles this internally.
+            lifespan_cm = (
+                server._lifespan_manager()
+                if hasattr(server, "_lifespan_manager")
+                else contextlib.nullcontext()
             )
+            async with lifespan_cm:
+                await server._mcp_server.run(
+                    c2s_recv,
+                    s2c_send,
+                    server._mcp_server.create_initialization_options(),
+                    raise_exceptions=True,
+                )
 
         tg.start_soon(_run_server)
 
@@ -375,11 +388,11 @@ class TestTOOL03OutputSchema:
             assert "tasks" in props
             assert "projects" in props
 
-            # Check nested Task schema uses camelCase (e.g. dueDate, effectiveFlagged)
-            # The schema should have $defs with Task definition
-            defs = schema.get("$defs", {})
-            assert "Task" in defs, f"Expected Task in $defs, got: {list(defs.keys())}"
-            task_props = defs["Task"].get("properties", {})
+            # Check nested Task schema uses camelCase (e.g. dueDate, effectiveFlagged).
+            # FastMCP v3 inlines definitions rather than using $defs references,
+            # so look for Task properties in the tasks array items schema.
+            tasks_schema = props["tasks"]
+            task_props = tasks_schema.get("items", {}).get("properties", {})
             assert "dueDate" in task_props, (
                 f"Expected camelCase 'dueDate', got: {list(task_props.keys())}"
             )
@@ -444,8 +457,7 @@ class TestIPC06OrphanSweepWiring:
             "omnifocus_operator.bridge.real.sweep_orphaned_files",
             mock_sweep,
         ):
-            server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
-            _register_tools(server)
+            server = create_server()
 
             async def _check(session: ClientSession) -> None:
                 pass
@@ -471,8 +483,7 @@ class TestIPC06OrphanSweepWiring:
             "omnifocus_operator.bridge.real.sweep_orphaned_files",
             mock_sweep,
         ):
-            server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
-            _register_tools(server)
+            server = create_server()
 
             async def _check(session: ClientSession) -> None:
                 pass
@@ -499,8 +510,7 @@ class TestDegradedMode:
             "omnifocus_operator.repository.create_repository",
             side_effect=RuntimeError("repository exploded"),
         ):
-            server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
-            _register_tools(server)
+            server = create_server()
 
             async def _check(session: ClientSession) -> None:
                 result = await session.call_tool("get_all")
@@ -520,8 +530,7 @@ class TestDegradedMode:
             "omnifocus_operator.repository.create_repository",
             side_effect=RuntimeError("repository exploded"),
         ):
-            server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
-            _register_tools(server)
+            server = create_server()
 
             with caplog.at_level(logging.ERROR):
 
@@ -542,8 +551,7 @@ class TestDegradedMode:
             "omnifocus_operator.repository.create_repository",
             side_effect=RuntimeError("repository exploded"),
         ):
-            server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
-            _register_tools(server)
+            server = create_server()
 
             with caplog.at_level(logging.WARNING):
 

@@ -404,7 +404,7 @@ def server(service: Any) -> Any:
     """
     from contextlib import asynccontextmanager  # noqa: PLC0415
 
-    from mcp.server.fastmcp import FastMCP  # noqa: PLC0415
+    from fastmcp import FastMCP  # noqa: PLC0415
 
     from omnifocus_operator.server import _register_tools  # noqa: PLC0415
 
@@ -456,12 +456,15 @@ def client_session(server: Any) -> Any:
             async with anyio.create_task_group() as tg:
 
                 async def _run_server() -> None:
-                    await self._server._mcp_server.run(
-                        c2s_recv,
-                        s2c_send,
-                        self._server._mcp_server.create_initialization_options(),
-                        raise_exceptions=True,
-                    )
+                    # FastMCP v3 requires the high-level lifespan manager to be
+                    # entered before the low-level server can run.
+                    async with self._server._lifespan_manager():
+                        await self._server._mcp_server.run(
+                            c2s_recv,
+                            s2c_send,
+                            self._server._mcp_server.create_initialization_options(),
+                            raise_exceptions=True,
+                        )
 
                 tg.start_soon(_run_server)
 

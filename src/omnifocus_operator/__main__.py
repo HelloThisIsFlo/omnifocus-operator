@@ -12,7 +12,9 @@ def main() -> None:
 
     server = create_server()
 
-    # Log to file — stdio_server() hijacks stderr, so file is the reliable path.
+    # TODO(Phase 31): Redesign logging -- stderr is NOT hijacked (spike exp 03 proved
+    # the misdiagnosis). Phase 31 should add dual-handler (StreamHandler + FileHandler),
+    # proper namespace, the works. See CONTEXT.md deferred ideas.
     log_path = os.path.expanduser("~/Library/Logs/omnifocus-operator.log")
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
     log = logging.getLogger("omnifocus_operator")

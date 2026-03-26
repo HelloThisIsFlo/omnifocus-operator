@@ -13,8 +13,8 @@ import os
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
 
-from mcp.server.fastmcp import Context, FastMCP
-from mcp.types import ToolAnnotations
+from fastmcp import FastMCP, Context
+from mcp.types import ToolAnnotations  # TODO(Phase 30): no fastmcp equivalent; revisit if fastmcp adds re-export
 from pydantic import ValidationError
 
 # NOTE: AllEntities MUST be a runtime import (not TYPE_CHECKING) because
@@ -112,7 +112,7 @@ def _register_tools(mcp: FastMCP) -> None:
     @mcp.tool(
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
-    async def get_all(ctx: Context[Any, Any, Any]) -> AllEntities:
+    async def get_all(ctx: Context) -> AllEntities:
         """Return the full OmniFocus database as structured data.
 
         Returns all tasks, projects, tags, folders, and perspectives as a
@@ -120,7 +120,7 @@ def _register_tools(mcp: FastMCP) -> None:
         """
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
-        service: OperatorService = ctx.request_context.lifespan_context["service"]
+        service: OperatorService = ctx.lifespan_context["service"]
         log_tool_call("get_all")
         result = await service.get_all_data()
         logger.debug(
@@ -134,12 +134,12 @@ def _register_tools(mcp: FastMCP) -> None:
     @mcp.tool(
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
-    async def get_task(id: str, ctx: Context[Any, Any, Any]) -> Task:
+    async def get_task(id: str, ctx: Context) -> Task:
         """Look up a single task by its ID. Returns the full Task object."""
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
         log_tool_call("get_task", id=id)
-        service: OperatorService = ctx.request_context.lifespan_context["service"]
+        service: OperatorService = ctx.lifespan_context["service"]
         result = await service.get_task(id)
         logger.debug("server.get_task: returning name=%s", result.name)
         return result
@@ -147,12 +147,12 @@ def _register_tools(mcp: FastMCP) -> None:
     @mcp.tool(
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
-    async def get_project(id: str, ctx: Context[Any, Any, Any]) -> Project:
+    async def get_project(id: str, ctx: Context) -> Project:
         """Look up a single project by its ID. Returns the full Project object."""
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
         log_tool_call("get_project", id=id)
-        service: OperatorService = ctx.request_context.lifespan_context["service"]
+        service: OperatorService = ctx.lifespan_context["service"]
         result = await service.get_project(id)
         logger.debug("server.get_project: returning name=%s", result.name)
         return result
@@ -160,12 +160,12 @@ def _register_tools(mcp: FastMCP) -> None:
     @mcp.tool(
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
-    async def get_tag(id: str, ctx: Context[Any, Any, Any]) -> Tag:
+    async def get_tag(id: str, ctx: Context) -> Tag:
         """Look up a single tag by its ID. Returns the full Tag object."""
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
         log_tool_call("get_tag", id=id)
-        service: OperatorService = ctx.request_context.lifespan_context["service"]
+        service: OperatorService = ctx.lifespan_context["service"]
         result = await service.get_tag(id)
         logger.debug("server.get_tag: returning name=%s", result.name)
         return result
@@ -177,7 +177,7 @@ def _register_tools(mcp: FastMCP) -> None:
     )
     async def add_tasks(
         items: list[dict[str, Any]],
-        ctx: Context[Any, Any, Any],
+        ctx: Context,
     ) -> list[AddTaskResult]:
         """Create tasks in OmniFocus.
 
@@ -206,7 +206,7 @@ def _register_tools(mcp: FastMCP) -> None:
 
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
-        service: OperatorService = ctx.request_context.lifespan_context["service"]
+        service: OperatorService = ctx.lifespan_context["service"]
         try:
             spec = AddTaskCommand.model_validate(items[0])
         except ValidationError as exc:
@@ -234,7 +234,7 @@ def _register_tools(mcp: FastMCP) -> None:
     )
     async def edit_tasks(
         items: list[dict[str, Any]],
-        ctx: Context[Any, Any, Any],
+        ctx: Context,
     ) -> list[EditTaskResult]:
         """Edit existing tasks in OmniFocus using patch semantics.
 
@@ -274,7 +274,7 @@ def _register_tools(mcp: FastMCP) -> None:
 
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
-        service: OperatorService = ctx.request_context.lifespan_context["service"]
+        service: OperatorService = ctx.lifespan_context["service"]
         try:
             spec = EditTaskCommand.model_validate(items[0])
         except ValidationError as exc:
