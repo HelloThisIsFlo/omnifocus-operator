@@ -1,25 +1,21 @@
 """In-process MCP integration tests for the server package.
 
 Tests verify end-to-end behaviour through the full MCP protocol using
-paired memory streams -- no network sockets or subprocesses needed.
+FastMCP's Client(server) pattern -- no network sockets or subprocesses needed.
 """
 
 from __future__ import annotations
 
-import contextlib
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, patch
 
-import anyio
 import pytest
-from mcp.client.session import ClientSession
-from mcp.server.fastmcp import FastMCP
-from mcp.shared.message import SessionMessage
-
+from fastmcp import Client
 from fastmcp.exceptions import ToolError
+
 from omnifocus_operator.repository import BridgeRepository
 from omnifocus_operator.server import _register_tools, create_server
 from omnifocus_operator.service import OperatorService
@@ -27,9 +23,7 @@ from tests.conftest import make_tag_dict, make_task_dict
 from tests.doubles import ConstantMtimeSource, InMemoryBridge, SimulatorBridge
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Awaitable, Callable
-
-    from omnifocus_operator.repository import Repository
+    from collections.abc import AsyncIterator
 
 
 # ---------------------------------------------------------------------------
@@ -38,62 +32,17 @@ if TYPE_CHECKING:
 
 
 def _build_patched_server(
-    repo: Repository,
     service: OperatorService,
-) -> FastMCP:
+) -> Any:
     """Create a FastMCP server with a patched lifespan injecting *service*."""
-    # Use the same FastMCP class as create_server() (fastmcp v3, not mcp.server.fastmcp).
-    # Phase 30 will migrate the top-level import; for now, local import avoids conflict.
-    from fastmcp import FastMCP as FastMCPv3
+    from fastmcp import FastMCP  # noqa: PLC0415
 
     @asynccontextmanager
-    async def _patched_lifespan(app: FastMCPv3) -> AsyncIterator[dict[str, Any]]:  # type: ignore[override]
+    async def _patched_lifespan(app: FastMCP) -> AsyncIterator[dict[str, Any]]:  # type: ignore[override]
         yield {"service": service}
 
-    return FastMCPv3("omnifocus-operator", lifespan=_patched_lifespan)  # type: ignore[return-value]
+    return FastMCP("omnifocus-operator", lifespan=_patched_lifespan)
 
-
-async def run_with_client(
-    server: FastMCP,
-    callback: Callable[[ClientSession], Awaitable[Any]],
-) -> Any:
-    """Run an in-process MCP server and execute *callback* with a connected ClientSession.
-
-    The server is started in a background task and cancelled after the
-    callback completes.  Returns whatever the callback returns.
-    """
-    s2c_send, s2c_recv = anyio.create_memory_object_stream[SessionMessage](0)
-    c2s_send, c2s_recv = anyio.create_memory_object_stream[SessionMessage](0)
-
-    result: Any = None
-
-    async with anyio.create_task_group() as tg:
-
-        async def _run_server() -> None:
-            # FastMCP v3 requires the high-level lifespan manager to be entered
-            # before the low-level server can run (it sets _lifespan_result_set).
-            # Phase 30 will migrate to Client(server) which handles this internally.
-            lifespan_cm = (
-                server._lifespan_manager()
-                if hasattr(server, "_lifespan_manager")
-                else contextlib.nullcontext()
-            )
-            async with lifespan_cm:
-                await server._mcp_server.run(
-                    c2s_recv,
-                    s2c_send,
-                    server._mcp_server.create_initialization_options(),
-                    raise_exceptions=True,
-                )
-
-        tg.start_soon(_run_server)
-
-        async with ClientSession(s2c_recv, c2s_send) as session:
-            await session.initialize()
-            result = await callback(session)
-            tg.cancel_scope.cancel()
-
-    return result
 
 
 # ---------------------------------------------------------------------------
@@ -126,13 +75,11 @@ class TestARCH01ThreeLayerArchitecture:
 
         server = create_server()
 
-        async def _check(session: ClientSession) -> None:
-            result = await session.call_tool("get_all")
-            assert result.structuredContent is not None
-            keys = set(result.structuredContent.keys())
+        async with Client(server) as client:
+            result = await client.call_tool("get_all")
+            assert result.structured_content is not None
+            keys = set(result.structured_content.keys())
             assert keys == {"tasks", "projects", "tags", "folders", "perspectives"}
-
-        await run_with_client(server, _check)
 
 
 # ---------------------------------------------------------------------------
@@ -165,11 +112,9 @@ class TestARCH02RepositoryInjection:
 
         server = create_server()
 
-        async def _check(session: ClientSession) -> None:
-            result = await session.call_tool("get_all")
-            assert result.structuredContent is not None
-
-        await run_with_client(server, _check)
+        async with Client(server) as client:
+            result = await client.call_tool("get_all")
+            assert result.structured_content is not None
 
     async def test_sqlite_mode_missing_db_enters_error_mode(
         self,
@@ -182,15 +127,11 @@ class TestARCH02RepositoryInjection:
 
         server = create_server()
 
-        async def _check(session: ClientSession) -> None:
-            result = await session.call_tool("get_all")
-            assert result.isError is True
-            text = result.content[0].text  # type: ignore[union-attr]
-            assert "failed to start" in text.lower()
-            assert "OMNIFOCUS_SQLITE_PATH" in text
-            assert "OMNIFOCUS_REPOSITORY=bridge-only" in text
-
-        await run_with_client(server, _check)
+        async with Client(server) as client:
+            with pytest.raises(ToolError, match="(?i)failed to start") as exc_info:
+                await client.call_tool("get_all")
+            assert "OMNIFOCUS_SQLITE_PATH" in str(exc_info.value)
+            assert "OMNIFOCUS_REPOSITORY=bridge-only" in str(exc_info.value)
 
 
 # ---------------------------------------------------------------------------
@@ -223,13 +164,11 @@ class TestTOOL01ListAllStructuredOutput:
 
         server = create_server()
 
-        async def _check(session: ClientSession) -> None:
-            result = await session.call_tool("get_all")
-            assert result.structuredContent is not None
+        async with Client(server) as client:
+            result = await client.call_tool("get_all")
+            assert result.structured_content is not None
             expected_keys = {"tasks", "projects", "tags", "folders", "perspectives"}
-            assert set(result.structuredContent.keys()) == expected_keys
-
-        await run_with_client(server, _check)
+            assert set(result.structured_content.keys()) == expected_keys
 
     async def test_get_all_structured_content_is_camelcase(
         self,
@@ -264,13 +203,13 @@ class TestTOOL01ListAllStructuredOutput:
         service = OperatorService(repository=repo)
 
         # Build a server with a patched lifespan that injects our custom service
-        patched_server = _build_patched_server(repo, service)
+        patched_server = _build_patched_server(service)
         _register_tools(patched_server)
 
-        async def _check(session: ClientSession) -> None:
-            result = await session.call_tool("get_all")
-            assert result.structuredContent is not None
-            tasks = result.structuredContent["tasks"]
+        async with Client(patched_server) as client:
+            result = await client.call_tool("get_all")
+            assert result.structured_content is not None
+            tasks = result.structured_content["tasks"]
             assert len(tasks) == 1
             task = tasks[0]
             # Must use camelCase, not snake_case
@@ -278,8 +217,6 @@ class TestTOOL01ListAllStructuredOutput:
             assert "effectiveFlagged" in task
             assert "due_date" not in task
             assert "effective_flagged" not in task
-
-        await run_with_client(patched_server, _check)
 
 
 # ---------------------------------------------------------------------------
@@ -304,13 +241,11 @@ class TestTOOL02Annotations:
 
         server = create_server()
 
-        async def _check(session: ClientSession) -> None:
-            tools_result = await session.list_tools()
-            get_all = next(t for t in tools_result.tools if t.name == "get_all")
+        async with Client(server) as client:
+            tools = await client.list_tools()
+            get_all = next(t for t in tools if t.name == "get_all")
             assert get_all.annotations is not None
             assert get_all.annotations.readOnlyHint is True
-
-        await run_with_client(server, _check)
 
     async def test_get_all_has_idempotent_hint(
         self,
@@ -326,13 +261,11 @@ class TestTOOL02Annotations:
 
         server = create_server()
 
-        async def _check(session: ClientSession) -> None:
-            tools_result = await session.list_tools()
-            get_all = next(t for t in tools_result.tools if t.name == "get_all")
+        async with Client(server) as client:
+            tools = await client.list_tools()
+            get_all = next(t for t in tools if t.name == "get_all")
             assert get_all.annotations is not None
             assert get_all.annotations.idempotentHint is True
-
-        await run_with_client(server, _check)
 
 
 # ---------------------------------------------------------------------------
@@ -357,12 +290,10 @@ class TestTOOL03OutputSchema:
 
         server = create_server()
 
-        async def _check(session: ClientSession) -> None:
-            tools_result = await session.list_tools()
-            get_all = next(t for t in tools_result.tools if t.name == "get_all")
+        async with Client(server) as client:
+            tools = await client.list_tools()
+            get_all = next(t for t in tools if t.name == "get_all")
             assert get_all.outputSchema is not None
-
-        await run_with_client(server, _check)
 
     async def test_output_schema_uses_camelcase(
         self,
@@ -378,9 +309,9 @@ class TestTOOL03OutputSchema:
 
         server = create_server()
 
-        async def _check(session: ClientSession) -> None:
-            tools_result = await session.list_tools()
-            get_all = next(t for t in tools_result.tools if t.name == "get_all")
+        async with Client(server) as client:
+            tools = await client.list_tools()
+            get_all = next(t for t in tools if t.name == "get_all")
             schema = get_all.outputSchema
             assert schema is not None
 
@@ -398,8 +329,6 @@ class TestTOOL03OutputSchema:
                 f"Expected camelCase 'dueDate', got: {list(task_props.keys())}"
             )
             assert "effectiveFlagged" in task_props
-
-        await run_with_client(server, _check)
 
 
 # ---------------------------------------------------------------------------
@@ -460,10 +389,8 @@ class TestIPC06OrphanSweepWiring:
         ):
             server = create_server()
 
-            async def _check(session: ClientSession) -> None:
-                pass
-
-            await run_with_client(server, _check)
+            async with Client(server) as _client:
+                pass  # Connection triggers lifespan; sweep runs on enter
 
         mock_sweep.assert_called_once()
 
@@ -486,10 +413,8 @@ class TestIPC06OrphanSweepWiring:
         ):
             server = create_server()
 
-            async def _check(session: ClientSession) -> None:
-                pass
-
-            await run_with_client(server, _check)
+            async with Client(server) as _client:
+                pass  # Connection triggers lifespan; sweep runs on enter
 
         mock_sweep.assert_called_once()
 
@@ -506,20 +431,16 @@ class TestDegradedMode:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Tool calls return isError=True with actionable message when startup fails."""
+        """Tool calls raise ToolError with actionable message when startup fails."""
         with patch(
             "omnifocus_operator.repository.create_repository",
             side_effect=RuntimeError("repository exploded"),
         ):
             server = create_server()
 
-            async def _check(session: ClientSession) -> None:
-                result = await session.call_tool("get_all")
-                assert result.isError is True
-                text = result.content[0].text  # type: ignore[union-attr]
-                assert "failed to start" in text.lower()
-
-            await run_with_client(server, _check)
+            async with Client(server) as client:
+                with pytest.raises(ToolError, match="(?i)failed to start"):
+                    await client.call_tool("get_all")
 
     async def test_degraded_mode_logs_traceback_at_error_level(
         self,
@@ -534,11 +455,9 @@ class TestDegradedMode:
             server = create_server()
 
             with caplog.at_level(logging.ERROR):
-
-                async def _check(session: ClientSession) -> None:
-                    await session.call_tool("get_all")
-
-                await run_with_client(server, _check)
+                async with Client(server) as client:
+                    with pytest.raises(ToolError):
+                        await client.call_tool("get_all")
 
         assert any("Fatal error during startup" in r.message for r in caplog.records)
 
@@ -555,11 +474,9 @@ class TestDegradedMode:
             server = create_server()
 
             with caplog.at_level(logging.WARNING):
-
-                async def _check(session: ClientSession) -> None:
-                    await session.call_tool("get_all")
-
-                await run_with_client(server, _check)
+                async with Client(server) as client:
+                    with pytest.raises(ToolError):
+                        await client.call_tool("get_all")
 
         assert any("error mode" in r.message.lower() for r in caplog.records)
 
