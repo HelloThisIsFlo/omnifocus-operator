@@ -6,6 +6,7 @@
 - ✅ **v1.1 HUGE Performance Upgrade** — Phases 10-13 (shipped 2026-03-07)
 - ✅ **v1.2 Writes & Lookups** — Phases 14-17 (shipped 2026-03-16)
 - ✅ **v1.2.1 Architectural Cleanup** — Phases 18-28 (shipped 2026-03-23)
+- 🚧 **v1.2.2 FastMCP v3 Migration** — Phases 29-31 (in progress)
 
 ## Phases
 
@@ -65,19 +66,63 @@
 
 </details>
 
-<details>
-<summary>v1.2.2 FastMCP v3 Migration (Phases 29-31) — IN PROGRESS</summary>
+### 🚧 v1.2.2 FastMCP v3 Migration (In Progress)
 
-- [x] Phase 29: Dependency Swap & Imports (2/2 plans) — completed 2026-03-26
+**Milestone Goal:** Migrate from `mcp.server.fastmcp` to standalone `fastmcp>=3` -- infrastructure upgrade with no new tools or behavioral changes.
 
-</details>
+- [x] **Phase 29: Dependency Swap & Imports** (2/2 plans) — completed 2026-03-26
+- [ ] **Phase 30: Test Client Migration** - Replace test plumbing with 3-line Client(server) pattern
+- [ ] **Phase 31: Middleware & Logging** - Automatic tool logging via middleware, dual-handler stderr + file logging
+
+## Phase Details
+
+### Phase 29: Dependency Swap & Imports
+**Goal**: Server runs on fastmcp>=3 with identical behavior -- all 6 tools functional, progress reporting in batch ops, docs updated
+**Depends on**: Nothing (first phase of v1.2.2)
+**Requirements**: DEP-01, DEP-02, DEP-03, DEP-04, PROG-01, PROG-02, DOC-01, DOC-02
+**Status**: ✓ Complete (2026-03-26)
+**Plans:** 2 plans
+- [x] 29-01-PLAN.md -- Dependency swap, import migration, Context types, lifespan shorthand
+- [x] 29-02-PLAN.md -- Progress reporting in batch handlers, README and landing page updates
+
+### Phase 30: Test Client Migration
+**Goal**: Test infrastructure uses fastmcp's native Client pattern -- all manual plumbing deleted
+**Depends on**: Phase 29
+**Requirements**: TEST-01, TEST-02, TEST-03, TEST-04, TEST-05
+**Success Criteria** (what must be TRUE):
+  1. `_ClientSessionProxy` class no longer exists in conftest.py
+  2. `run_with_client` helper no longer exists in test_server.py
+  3. Server tests use `async with Client(server) as client` for all tool invocations
+  4. Error assertions use `pytest.raises(ToolError)` instead of `is_error` boolean checks
+  5. All existing tests pass -- zero regressions from client migration
+**Plans**: TBD
+
+### Phase 31: Middleware & Logging
+**Goal**: Tool call logging happens automatically via middleware, with dual-handler stderr + file logging under correct namespace
+**Depends on**: Phase 30
+**Requirements**: MW-01, MW-02, MW-03, LOG-01, LOG-02, LOG-03, LOG-04, LOG-05
+**Success Criteria** (what must be TRUE):
+  1. `ToolLoggingMiddleware` logs tool name, timing, and errors for every tool call automatically
+  2. `log_tool_call()` function and its 6 call sites are deleted from server.py
+  3. Adding a new tool requires zero logging boilerplate -- middleware fires without wiring
+  4. Server logs appear on stderr (visible in Claude Desktop logs)
+  5. Server logs are written to `~/Library/Logs/omnifocus-operator.log` for persistent debugging
+  6. All loggers use `omnifocus_operator.*` namespace hierarchy
+  7. The stderr hijacking misdiagnosis comment is removed from `__main__.py`
+  8. `ctx.info()` / `ctx.warning()` are not called anywhere in production code
+**Plans**: TBD
 
 ## Progress
 
-| Milestone | Phases | Plans | Status | Shipped |
-|-----------|--------|-------|--------|---------|
-| v1.0 Foundation | 1-9 | 22/23 | Complete | 2026-03-07 |
-| v1.1 HUGE Performance Upgrade | 10-13 | 11/11 | Complete | 2026-03-07 |
-| v1.2 Writes & Lookups | 14-17 | 21/21 | Complete | 2026-03-16 |
-| v1.2.1 Architectural Cleanup | 18-28 | 27/27 | Complete | 2026-03-23 |
-| v1.2.2 FastMCP v3 Migration | 29-31 | 2/? | In Progress | — |
+**Execution Order:**
+Phases execute in numeric order: 29 → 30 → 31
+
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1-9 | v1.0 | 22/23 | Complete | 2026-03-07 |
+| 10-13 | v1.1 | 11/11 | Complete | 2026-03-07 |
+| 14-17 | v1.2 | 21/21 | Complete | 2026-03-16 |
+| 18-28 | v1.2.1 | 27/27 | Complete | 2026-03-23 |
+| 29. Dependency Swap & Imports | v1.2.2 | 2/2 | Complete | 2026-03-26 |
+| 30. Test Client Migration | v1.2.2 | 0/TBD | Not started | - |
+| 31. Middleware & Logging | v1.2.2 | 0/TBD | Not started | - |
