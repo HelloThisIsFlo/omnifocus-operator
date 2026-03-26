@@ -5,7 +5,7 @@ description = "MCP server exposing OmniFocus as structured task infrastructure f
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "mcp>=1.26.0",
+    "fastmcp>=3.1.1",
 ]
 
 [project.scripts]
@@ -24,10 +24,6 @@ dev = [
     "pytest-cov>=7.0.0",
     "pytest-timeout>=2.4.0",
     "pre-commit>=4.0.0",
-]
-# Spike: FastMCP v3 migration exploration (see .research/deep-dives/fastmcp-spike/)
-spike = [
-    "fastmcp>=3",
 ]
 
 [tool.pytest.ini_options]
