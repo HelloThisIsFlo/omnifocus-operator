@@ -1,18 +1,22 @@
-"""Unit tests for ToolLoggingMiddleware.
+"""Unit tests for ToolLoggingMiddleware and logging setup.
 
 Tests verify that the middleware logs tool entry, exit (with timing),
 and errors correctly. Uses mock MiddlewareContext and call_next to
 isolate middleware behavior from the FastMCP server.
+
+Also tests _configure_logging() dual-handler setup from __main__.py.
 """
 
 from __future__ import annotations
 
 import logging
 import re
+from logging.handlers import RotatingFileHandler
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from omnifocus_operator.__main__ import _configure_logging
 from omnifocus_operator.middleware import ToolLoggingMiddleware
 
 
@@ -143,3 +147,62 @@ async def test_returns_result_from_call_next(
         result = await middleware.on_call_tool(ctx, call_next)
 
     assert result is expected_result
+
+
+# ── Logging setup tests ──────────────────────────────────────────────
+
+
+@pytest.fixture
+def clean_root_logger():
+    """Ensure omnifocus_operator root logger is clean before/after test."""
+    root = logging.getLogger("omnifocus_operator")
+    original_handlers = root.handlers[:]
+    original_level = root.level
+    original_propagate = root.propagate
+    root.handlers.clear()
+
+    yield root
+
+    root.handlers.clear()
+    root.handlers.extend(original_handlers)
+    root.setLevel(original_level)
+    root.propagate = original_propagate
+
+
+def test_configure_logging_attaches_two_handlers(
+    clean_root_logger: logging.Logger,
+) -> None:
+    _configure_logging()
+    assert len(clean_root_logger.handlers) == 2
+
+
+def test_configure_logging_first_handler_is_stream_handler(
+    clean_root_logger: logging.Logger,
+) -> None:
+    _configure_logging()
+    handler = clean_root_logger.handlers[0]
+    assert isinstance(handler, logging.StreamHandler)
+    # Must not be a RotatingFileHandler subclass -- it's the stderr handler
+    assert not isinstance(handler, RotatingFileHandler)
+
+
+def test_configure_logging_second_handler_is_rotating_file(
+    clean_root_logger: logging.Logger,
+) -> None:
+    _configure_logging()
+    handler = clean_root_logger.handlers[1]
+    assert isinstance(handler, RotatingFileHandler)
+
+
+def test_configure_logging_default_level_is_info(
+    clean_root_logger: logging.Logger,
+) -> None:
+    _configure_logging()
+    assert clean_root_logger.level == logging.INFO
+
+
+def test_configure_logging_propagate_is_false(
+    clean_root_logger: logging.Logger,
+) -> None:
+    _configure_logging()
+    assert clean_root_logger.propagate is False
