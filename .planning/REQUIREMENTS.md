@@ -71,33 +71,33 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEP-01 | — | Pending |
-| DEP-02 | — | Pending |
-| DEP-03 | — | Pending |
-| DEP-04 | — | Pending |
-| TEST-01 | — | Pending |
-| TEST-02 | — | Pending |
-| TEST-03 | — | Pending |
-| TEST-04 | — | Pending |
-| TEST-05 | — | Pending |
-| MW-01 | — | Pending |
-| MW-02 | — | Pending |
-| MW-03 | — | Pending |
-| LOG-01 | — | Pending |
-| LOG-02 | — | Pending |
-| LOG-03 | — | Pending |
-| LOG-04 | — | Pending |
-| LOG-05 | — | Pending |
-| PROG-01 | — | Pending |
-| PROG-02 | — | Pending |
-| DOC-01 | — | Pending |
-| DOC-02 | — | Pending |
+| DEP-01 | Phase 29 | Pending |
+| DEP-02 | Phase 29 | Pending |
+| DEP-03 | Phase 29 | Pending |
+| DEP-04 | Phase 29 | Pending |
+| PROG-01 | Phase 29 | Pending |
+| PROG-02 | Phase 29 | Pending |
+| DOC-01 | Phase 29 | Pending |
+| DOC-02 | Phase 29 | Pending |
+| TEST-01 | Phase 30 | Pending |
+| TEST-02 | Phase 30 | Pending |
+| TEST-03 | Phase 30 | Pending |
+| TEST-04 | Phase 30 | Pending |
+| TEST-05 | Phase 30 | Pending |
+| MW-01 | Phase 31 | Pending |
+| MW-02 | Phase 31 | Pending |
+| MW-03 | Phase 31 | Pending |
+| LOG-01 | Phase 31 | Pending |
+| LOG-02 | Phase 31 | Pending |
+| LOG-03 | Phase 31 | Pending |
+| LOG-04 | Phase 31 | Pending |
+| LOG-05 | Phase 31 | Pending |
 
 **Coverage:**
 - v1.2.2 requirements: 21 total
-- Mapped to phases: 0
-- Unmapped: 21 ⚠️
+- Mapped to phases: 21/21
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-25*
-*Last updated: 2026-03-25 after initial definition*
+*Last updated: 2026-03-25 after roadmap revision (6 phases -> 3 phases)*
