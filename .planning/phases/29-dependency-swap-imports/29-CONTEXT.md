@@ -17,7 +17,9 @@ Switch the server dependency from `mcp>=1.26.0` to `fastmcp>=3.1.1`. Migrate all
 - **D-01:** `from mcp.server.fastmcp import FastMCP, Context` → `from fastmcp import FastMCP, Context` (src/ only — test imports are Phase 30)
 - **D-02:** `ToolAnnotations` — use the idiomatic FastMCP v3 import, not `from mcp.types`. Researcher should verify where `fastmcp` exports it (`from fastmcp import ToolAnnotations` or `from fastmcp.types import ...`)
 - **D-03:** `ctx.request_context.lifespan_context` → `ctx.lifespan_context` shorthand wherever it appears
-- **D-09:** Philosophy: implement as if built from scratch with `fastmcp>=3`. No `mcp.*` imports should remain in src/ if `fastmcp` provides an equivalent. This is not a minimal-impact migration — the code should look native to FastMCP v3.
+- **D-09:** **Milestone-wide philosophy:** implement as if built from scratch with `fastmcp>=3`. No `mcp.*` imports should remain in src/ if `fastmcp` provides an equivalent. This is not a minimal-impact migration — the code should look native to FastMCP v3. This applies to ALL phases in v1.2.2, not just Phase 29.
+- **D-10:** `Context` type annotation — if FastMCP v3 has a simpler type signature than `Context[Any, Any, Any]`, adopt it. Researcher verifies.
+- **D-11:** Server entry point (`server.run(transport="stdio")`) — if FastMCP v3 has a different idiomatic runner, adopt it. Researcher verifies.
 
 ### Dependency declaration
 - **D-04:** `pyproject.toml` replaces `mcp>=1.26.0` with `fastmcp>=3.1.1` — `mcp` remains available as a transitive dependency
@@ -84,7 +86,7 @@ No specific requirements — the spike experiments provide reference implementat
 
 - Lifting the batch limit on `add_tasks`/`edit_tasks` — separate concern, different milestone
 - Test client migration from `mcp.client.session` — Phase 30
-- `ctx.info()` / `ctx.warning()` protocol-level logging — Phase 31
+- Logging overhaul — Phase 31. **NOTE FOR PHASE 31:** The current `__main__.py` logging setup (FileHandler only, no StreamHandler) was built on a misdiagnosis ("stdio_server() hijacks stderr" — spike exp 03 proved this wrong). Phase 31 must not just remove the comment (LOG-04) — it must redesign the logging setup as-if-from-scratch per the milestone philosophy (D-09). This means dual-handler (StreamHandler to stderr + FileHandler), proper namespace, the works.
 
 </deferred>
 
