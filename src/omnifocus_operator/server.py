@@ -37,6 +37,7 @@ from omnifocus_operator.contracts.use_cases.edit_task import (
     EditTaskCommand,
     EditTaskResult,
 )
+from omnifocus_operator.middleware import ToolLoggingMiddleware
 from omnifocus_operator.models import (  # noqa: TC001 — FastMCP needs runtime names
     AllEntities,
     Project,
@@ -50,19 +51,6 @@ if TYPE_CHECKING:
 __all__ = ["create_server"]
 
 logger = logging.getLogger("omnifocus_operator")
-
-
-def log_tool_call(name: str, **params: object) -> None:
-    """Log a standardized tool invocation message."""
-    separator = "=" * 80
-    logger.debug("")  # visual spacer before each tool block
-    logger.debug(separator)
-    if params:
-        formatted = ", ".join(f"{key}={value!r}" for key, value in params.items())
-        logger.debug("Tool invoked: %s(%s)", name, formatted)
-    else:
-        logger.debug("Tool invoked: %s", name)
-    logger.debug(separator)
 
 
 @asynccontextmanager
@@ -123,7 +111,6 @@ def _register_tools(mcp: FastMCP) -> None:
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
         service: OperatorService = ctx.lifespan_context["service"]
-        log_tool_call("get_all")
         result = await service.get_all_data()
         logger.debug(
             "server.get_all: returning tasks=%d, projects=%d, tags=%d",
@@ -140,7 +127,6 @@ def _register_tools(mcp: FastMCP) -> None:
         """Look up a single task by its ID. Returns the full Task object."""
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
-        log_tool_call("get_task", id=id)
         service: OperatorService = ctx.lifespan_context["service"]
         result = await service.get_task(id)
         logger.debug("server.get_task: returning name=%s", result.name)
@@ -153,7 +139,6 @@ def _register_tools(mcp: FastMCP) -> None:
         """Look up a single project by its ID. Returns the full Project object."""
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
-        log_tool_call("get_project", id=id)
         service: OperatorService = ctx.lifespan_context["service"]
         result = await service.get_project(id)
         logger.debug("server.get_project: returning name=%s", result.name)
@@ -166,7 +151,6 @@ def _register_tools(mcp: FastMCP) -> None:
         """Look up a single tag by its ID. Returns the full Tag object."""
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
-        log_tool_call("get_tag", id=id)
         service: OperatorService = ctx.lifespan_context["service"]
         result = await service.get_tag(id)
         logger.debug("server.get_tag: returning name=%s", result.name)
@@ -201,7 +185,6 @@ def _register_tools(mcp: FastMCP) -> None:
 
         Returns array of results: [{success, id, name}]
         """
-        log_tool_call("add_tasks", items=len(items))
         if len(items) != 1:
             msg = ADD_TASKS_BATCH_LIMIT.format(count=len(items))
             raise ValueError(msg)
@@ -276,7 +259,6 @@ def _register_tools(mcp: FastMCP) -> None:
 
         Returns array of results: [{success, id, name, warnings?}]
         """
-        log_tool_call("edit_tasks", items=len(items))
         if len(items) != 1:
             msg = EDIT_TASKS_BATCH_LIMIT.format(count=len(items))
             raise ValueError(msg)
@@ -329,4 +311,5 @@ def create_server() -> FastMCP:
     """
     mcp = FastMCP("omnifocus-operator", lifespan=app_lifespan)
     _register_tools(mcp)
+    mcp.add_middleware(ToolLoggingMiddleware(logger))
     return mcp
