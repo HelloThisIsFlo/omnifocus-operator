@@ -72,6 +72,7 @@ Carried forward:
 2. Investigate macOS App Nap impact on OmniFocus responsiveness (v1.6)
 3. Make UAT folder discoverable for verification agents
 4. Investigate `replace: []` bug in production (may not be staleness-related)
+5. Remove misleading "single runtime dependency" messaging from README + landing page
 
 ### Blockers/Concerns
 
