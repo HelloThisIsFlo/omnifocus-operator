@@ -4,7 +4,7 @@ title: Enforce mutually exclusive tags at service layer
 area: service
 priority: low
 files:
-  - src/omnifocus_operator/service.py
+  - src/omnifocus_operator/service/
 ---
 
 ## Problem

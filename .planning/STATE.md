@@ -40,6 +40,10 @@ Carried forward:
 4. Investigate `replace: []` bug in production (may not be staleness-related)
 5. Remove misleading "single runtime dependency" messaging from README + landing page
 
+### Completed Todos (this milestone cycle)
+
+- ~~Migrate to FastMCP v3 standalone package~~ — shipped as v1.2.2
+
 ### Blockers/Concerns
 
 None currently.

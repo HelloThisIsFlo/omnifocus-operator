@@ -5,7 +5,7 @@ area: api-design
 priority: high
 files:
   - src/omnifocus_operator/models/
-  - src/omnifocus_operator/service.py
+  - src/omnifocus_operator/service/
   - src/omnifocus_operator/bridge/bridge.js
   - docs/architecture.md
 ---
@@ -68,4 +68,4 @@ Bridge receives RRULE string (built server-side) + scheduleType, anchorDateKey, 
 
 ## Target
 
-Phase 18 — after lifecycle transitions.
+Future milestone — after filtering infrastructure (v1.3) ships. Original "Phase 18" target was overtaken by v1.2.1 architectural cleanup.

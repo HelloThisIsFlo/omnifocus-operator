@@ -5,7 +5,7 @@ area: bridge
 priority: medium
 files:
   - src/omnifocus_operator/bridge/
-  - src/omnifocus_operator/bridge/real_bridge.py
+  - src/omnifocus_operator/bridge/_real.py
 ---
 
 ## Problem
