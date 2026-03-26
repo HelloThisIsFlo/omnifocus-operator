@@ -65,6 +65,13 @@
 
 </details>
 
+<details>
+<summary>v1.2.2 FastMCP v3 Migration (Phases 29-31) — IN PROGRESS</summary>
+
+- [x] Phase 29: Dependency Swap & Imports (2/2 plans) — completed 2026-03-26
+
+</details>
+
 ## Progress
 
 | Milestone | Phases | Plans | Status | Shipped |
@@ -73,3 +80,4 @@
 | v1.1 HUGE Performance Upgrade | 10-13 | 11/11 | Complete | 2026-03-07 |
 | v1.2 Writes & Lookups | 14-17 | 21/21 | Complete | 2026-03-16 |
 | v1.2.1 Architectural Cleanup | 18-28 | 27/27 | Complete | 2026-03-23 |
+| v1.2.2 FastMCP v3 Migration | 29-31 | 2/? | In Progress | — |

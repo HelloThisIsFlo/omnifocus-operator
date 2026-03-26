@@ -1,32 +1,68 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2.1
-milestone_name: Architectural Cleanup
-status: v1.2.1 milestone complete
-stopped_at: Milestone v1.1 summary generated
-last_updated: "2026-03-23T14:00:00.000Z"
-last_activity: 2026-03-23
+milestone: v1.2.2
+milestone_name: FastMCP v3 Migration
+status: executing
+stopped_at: Completed 29-02-PLAN.md
+last_updated: "2026-03-26T12:06:35.900Z"
+last_activity: 2026-03-26 -- Phase 29 plan 02 complete
 progress:
-  total_phases: 11
-  completed_phases: 11
-  total_plans: 27
-  completed_plans: 27
+  total_phases: 3
+  completed_phases: 0
+  total_plans: 2
+  completed_plans: 2
+  percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-23)
+See: .planning/PROJECT.md (updated 2026-03-25)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Planning next milestone
+**Current focus:** Phase 29 -- dependency-swap-imports (complete)
 
 ## Current Position
 
-Milestone v1.2.1 complete. Next: `/gsd:new-milestone`
+Phase: 29 (dependency-swap-imports) -- COMPLETE
+Plan: 2 of 2 (all complete)
+Status: All plans complete
+Last activity: 2026-03-26 -- Phase 29 plan 02 complete
+
+Progress: [██████████] 100%
+
+## Performance Metrics
+
+**Velocity:**
+
+- Total plans completed: 2
+- Average duration: 6min
+- Total execution time: 12min
+
+**By Phase:**
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| 29    | 2/2   | 12min | 6min     |
+
+*Updated after each plan completion*
 
 ## Accumulated Context
+
+### Decisions
+
+Decisions are logged in PROJECT.md Key Decisions table.
+Recent decisions affecting current work:
+
+- Infrastructure migration only -- no new tools, no behavioral changes
+- Use `pytest.raises(ToolError)` for error assertions, NOT `call_tool_mcp()` -- prefer idiomatic Pythonic patterns over churn minimization
+- Spike reference implementations in `.research/deep-dives/fastmcp-spike/experiments/`
+- Consolidated 6 phases to 3: dep swap absorbs progress+docs, middleware absorbs logging
+- ToolAnnotations stays at mcp.types -- fastmcp does not re-export it
+- Test infrastructure fixed inline for FastMCP v3 lifespan protocol (enter _lifespan_manager())
+- Progress loop iterates over [spec] single-element list as batch scaffolding per D-05
+- Progress calls placed after validation, at handler level per D-06
 
 ### Pending Todos
 
@@ -43,6 +79,6 @@ None currently.
 
 ## Session Continuity
 
-Last activity: 2026-03-23
-Stopped at: Milestone v1.2 summary generated
-Resume file: .planning/reports/MILESTONE_SUMMARY-v1.2.md
+Last activity: 2026-03-26
+Stopped at: Completed 29-02-PLAN.md
+Resume file: .planning/phases/29-dependency-swap-imports/29-02-SUMMARY.md
