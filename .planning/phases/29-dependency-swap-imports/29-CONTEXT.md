@@ -24,6 +24,7 @@ Switch the server dependency from `mcp>=1.26.0` to `fastmcp>=3.1.1`. Migrate all
 
 ### Dependency declaration
 - **D-04:** `pyproject.toml` replaces `mcp>=1.26.0` with `fastmcp>=3.1.1` — `mcp` remains available as a transitive dependency
+- **D-13:** Delete the `spike` dependency group from `pyproject.toml` (lines 28-31) — redundant once main deps include `fastmcp`
 
 ### Progress reporting
 - **D-05:** Add `ctx.report_progress(progress=i, total=total)` to `add_tasks` and `edit_tasks` — even though batch limit is currently 1, add it now as scaffolding for when the limit lifts
@@ -59,6 +60,7 @@ No specific requirements — the spike experiments provide reference implementat
 ### Current implementation
 - `src/omnifocus_operator/server.py` — All tool handlers, import statements, `ToolAnnotations` usage, `ctx.request_context.lifespan_context` calls
 - `src/omnifocus_operator/__main__.py` — Server entry point
+- `docs/index.html` — Landing page (line 1852 references `mcp>=1.26.0` — DOC-02 target)
 
 ### Requirements
 - `.planning/REQUIREMENTS.md` — DEP-01..04, PROG-01..02, DOC-01..02
