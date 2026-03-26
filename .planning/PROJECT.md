@@ -50,6 +50,8 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 - ✓ Task lifecycle (complete/drop) with no-op detection and educational warnings — v1.2
 - ✓ Bridge script write commands (add_task, edit_task) with request file payloads — v1.2
 - ✓ Write model strictness: `extra="forbid"` catches unknown agent fields at validation time — v1.2.1
+- ✓ FastMCP v3 dependency swap: `fastmcp>=3.1.1` replaces `mcp>=1.26.0`, native imports, `ctx.lifespan_context` shorthand — v1.2.2 Phase 29
+- ✓ Progress reporting in batch write tools via `ctx.report_progress()` — v1.2.2 Phase 29
 - ✓ Warning string consolidation into agent_messages/ package with AST integrity tests — v1.2.1
 - ✓ Three-layer model taxonomy (Command/RepoPayload/RepoResult/Result) in contracts/ package — v1.2.1
 - ✓ Write pipeline unification: symmetric add/edit signatures, BridgeWriteMixin, exclude_unset — v1.2.1
@@ -158,4 +160,4 @@ Golden master: 43 scenarios in 7 categories, contract tests verify InMemoryBridg
 | Patch[T]/PatchOrClear[T] type aliases | Make three-way semantics (unset/null/value) visible in annotations. Identical JSON schema, pure readability gain | ✓ Good — v1.2.1, self-documenting models |
 
 ---
-*Last updated: 2026-03-25 after v1.2.2 milestone start — FastMCP v3 Migration*
+*Last updated: 2026-03-26 after Phase 29 complete — FastMCP v3 dependency swap & imports*
