@@ -69,9 +69,9 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 <!-- v1.2.2 — FastMCP v3 Migration -->
 - [ ] Migrate from mcp.server.fastmcp to fastmcp>=3 standalone package
-- [ ] Dual-handler logging: StreamHandler(stderr) + FileHandler for persistent logs
-- [ ] Test client migration: Client(server) pattern replacing manual plumbing
-- [ ] ToolLoggingMiddleware replacing manual log_tool_call() wiring
+- [x] Dual-handler logging: StreamHandler(stderr) + FileHandler for persistent logs
+- [x] Test client migration: Client(server) pattern replacing manual plumbing
+- [x] ToolLoggingMiddleware replacing manual log_tool_call() wiring
 - [ ] Progress reporting via ctx.report_progress() in batch operations
 - [ ] Documentation updates reflecting new dependency
 
@@ -108,7 +108,7 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 ## Context
 
 Shipped v1.2.1 with ~16,381 LOC Python (src + tests), ~215k LOC JS (bridge + deps), ~28k TS (tests).
-Tech stack: Python 3.12, uv, Pydantic v2, MCP SDK (FastMCP), OmniJS bridge, SQLite3 (stdlib).
+Tech stack: Python 3.12, uv, Pydantic v2, FastMCP v3 (standalone), OmniJS bridge, SQLite3 (stdlib).
 697 pytest tests, 26 Vitest tests, UAT passed on all phases.
 Real OmniFocus database: ~2,400 tasks, ~363 projects, ~64 tags, ~79 folders.
 Read path: SQLite (default, ~46ms). Write path: OmniJS bridge with write-through guarantee.
@@ -120,7 +120,7 @@ Golden master: 43 scenarios in 7 categories, contract tests verify InMemoryBridg
 
 - **Language**: Python 3.12+ with async, Pydantic models, MCP SDK
 - **Platform**: macOS only -- OmniFocus is a macOS application
-- **Runtime deps**: `mcp>=1.26.0` only -- zero new deps in v1.1 (stdlib sqlite3)
+- **Runtime deps**: `fastmcp>=3.1.1` only -- zero new deps in v1.1 (stdlib sqlite3)
 - **IPC directory**: `~/Library/Containers/com.omnigroup.OmniFocus4/Data/Documents/omnifocus-operator/` (configurable for dev/test)
 - **SQLite path**: `~/Library/Group Containers/34YW5A3IGP.com.omnigroup.OmniFocus/com.omnigroup.OmniFocus4/OmniFocusDatabase.db`
 - **Field naming**: JSON from OmniFocus is camelCase; Pydantic uses snake_case with camelCase aliases for serialization
@@ -160,4 +160,4 @@ Golden master: 43 scenarios in 7 categories, contract tests verify InMemoryBridg
 | Patch[T]/PatchOrClear[T] type aliases | Make three-way semantics (unset/null/value) visible in annotations. Identical JSON schema, pure readability gain | ✓ Good — v1.2.1, self-documenting models |
 
 ---
-*Last updated: 2026-03-26 after Phase 30 complete — Test client migration (Client fixture, field renames, ToolError assertions, run_with_client removal)*
+*Last updated: 2026-03-26 after Phase 31 complete — Middleware & Logging (ToolLoggingMiddleware, dual-handler stderr+file logging, __name__ logger convention, log_tool_call() deleted)*
