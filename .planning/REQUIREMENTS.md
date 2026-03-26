@@ -17,7 +17,7 @@ Requirements for FastMCP v3 Migration. Infrastructure upgrade — no new tools, 
 ### Test Infrastructure
 
 - [x] **TEST-01**: `_ClientSessionProxy` class deleted from conftest.py
-- [ ] **TEST-02**: `run_with_client` helper deleted from test_server.py
+- [x] **TEST-02**: `run_with_client` helper deleted from test_server.py
 - [x] **TEST-03**: All server tests use `async with Client(server) as client` pattern
 - [x] **TEST-04**: Error assertions use `pytest.raises(ToolError)` instead of `is_error` boolean checks
 - [x] **TEST-05**: All existing tests pass with new test client
@@ -80,7 +80,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DOC-01 | Phase 29 | Pending |
 | DOC-02 | Phase 29 | Pending |
 | TEST-01 | Phase 30 | Complete |
-| TEST-02 | Phase 30 | Pending |
+| TEST-02 | Phase 30 | Complete |
 | TEST-03 | Phase 30 | Complete |
 | TEST-04 | Phase 30 | Complete |
 | TEST-05 | Phase 30 | Complete |
