@@ -127,12 +127,22 @@ async def _run_with_client(
     async with anyio.create_task_group() as tg:
 
         async def _run_server() -> None:
-            await server._mcp_server.run(
-                c2s_recv,
-                s2c_send,
-                server._mcp_server.create_initialization_options(),
-                raise_exceptions=True,
+            import contextlib  # noqa: PLC0415
+
+            # FastMCP v3 requires the high-level lifespan manager to be entered
+            # before the low-level server can run.
+            lifespan_cm = (
+                server._lifespan_manager()
+                if hasattr(server, "_lifespan_manager")
+                else contextlib.nullcontext()
             )
+            async with lifespan_cm:
+                await server._mcp_server.run(
+                    c2s_recv,
+                    s2c_send,
+                    server._mcp_server.create_initialization_options(),
+                    raise_exceptions=True,
+                )
 
         tg.start_soon(_run_server)
 

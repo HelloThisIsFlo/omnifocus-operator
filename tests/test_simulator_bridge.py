@@ -13,7 +13,7 @@ from mcp.shared.message import SessionMessage
 
 import omnifocus_operator.bridge as bridge_pkg
 from omnifocus_operator.repository import BridgeRepository
-from omnifocus_operator.server import _register_tools, app_lifespan
+from omnifocus_operator.server import create_server
 from tests.doubles import ConstantMtimeSource, InMemoryBridge, SimulatorBridge
 
 if TYPE_CHECKING:
@@ -87,12 +87,22 @@ async def _run_with_client(
     async with anyio.create_task_group() as tg:
 
         async def _run_server() -> None:
-            await server._mcp_server.run(
-                c2s_recv,
-                s2c_send,
-                server._mcp_server.create_initialization_options(),
-                raise_exceptions=True,
+            import contextlib  # noqa: PLC0415
+
+            # FastMCP v3 requires the high-level lifespan manager to be entered
+            # before the low-level server can run.
+            lifespan_cm = (
+                server._lifespan_manager()
+                if hasattr(server, "_lifespan_manager")
+                else contextlib.nullcontext()
             )
+            async with lifespan_cm:
+                await server._mcp_server.run(
+                    c2s_recv,
+                    s2c_send,
+                    server._mcp_server.create_initialization_options(),
+                    raise_exceptions=True,
+                )
 
         tg.start_soon(_run_server)
 
@@ -161,8 +171,7 @@ class TestLifespan:
             "omnifocus_operator.repository.create_repository",
             return_value=repo,
         ):
-            server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
-            _register_tools(server)
+            server = create_server()
 
             async def _check(session: ClientSession) -> None:
                 # If lifespan completes, we can list tools
@@ -183,8 +192,7 @@ class TestLifespan:
             "omnifocus_operator.repository.create_repository",
             return_value=repo,
         ):
-            server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
-            _register_tools(server)
+            server = create_server()
 
             async def _check(session: ClientSession) -> None:
                 result = await session.call_tool("get_all")
@@ -211,8 +219,7 @@ class TestLifespan:
                 mock_sweep,
             ),
         ):
-            server = FastMCP("omnifocus-operator", lifespan=app_lifespan)
-            _register_tools(server)
+            server = create_server()
 
             async def _check(session: ClientSession) -> None:
                 pass

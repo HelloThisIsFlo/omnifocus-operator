@@ -810,7 +810,7 @@ name = "omnifocus-operator"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "mcp" },
+    { name = "fastmcp" },
 ]
 
 [package.dev-dependencies]
@@ -823,12 +823,9 @@ dev = [
     { name = "pytest-timeout" },
     { name = "ruff" },
 ]
-spike = [
-    { name = "fastmcp" },
-]
 
 [package.metadata]
-requires-dist = [{ name = "mcp", specifier = ">=1.26.0" }]
+requires-dist = [{ name = "fastmcp", specifier = ">=3.1.1" }]
 
 [package.metadata.requires-dev]
 dev = [
@@ -840,7 +837,6 @@ dev = [
     { name = "pytest-timeout", specifier = ">=2.4.0" },
     { name = "ruff", specifier = ">=0.15.0" },
 ]
-spike = [{ name = "fastmcp", specifier = ">=3" }]
 
 [[package]]
 name = "openapi-pydantic"
