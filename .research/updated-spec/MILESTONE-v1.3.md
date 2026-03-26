@@ -20,21 +20,56 @@ One new MCP tool with optional filter parameters. Primary path uses SQL WHERE cl
 | `flagged` | bool | Flagged tasks |
 | `project` | string | Case-insensitive partial match on project name |
 | `tags` | list (OR) | Tasks with at least one of the specified tags |
-| `due_before` | ISO8601 | Effective due date before this timestamp |
-| `due_after` | ISO8601 | Effective due date after this timestamp |
-| `completed` | bool | Include completed/dropped (default: false) |
 | `has_children` | bool | Parent tasks vs leaf tasks |
 | `estimated_minutes_max` | int | Tasks with estimated duration <= this value |
-| `availability` | enum | `available` (includes blocked? TBD), `blocked`, `completed`, `dropped` |
-| `urgency` | enum | `due_soon` (includes overdue), `overdue`, `none` |
+| `availability` | enum | `available`, `blocked` |
 | `search` | string | Case-insensitive substring match on name and notes (SQL LIKE) |
 | `limit` | int | Maximum number of results to return (default: no limit) |
 | `offset` | int | Skip this many results before returning (default: 0). Requires `limit`. |
 
-**Key design decisions:**
-- Date filters use `effective_due_date` (inherited values), not `due_date` (direct-only). Filtering on `due_date` alone misses ~45% of overdue tasks.
-- `availability: 'available'` semantic: should it include or exclude blocked? The original spec included blocked tasks under "available" for the filter, but this may be revisited. The two-axis model makes these orthogonal.
-- `urgency: 'due_soon'` includes overdue tasks (inclusive semantics).
+**Date filters:**
+
+Seven date filter fields, each accepts a **string shortcut** or **object** (`string | DateFilter`):
+
+| Field | Filters on | String shortcuts |
+|-------|-----------|-----------------|
+| `due` | effective due date | `"overdue"` (before now), `"soon"` (configurable threshold) |
+| `defer` | effective defer date | -- |
+| `planned` | planned date | -- |
+| `completed` | completion date | `"any"` / `"true"` (all completed, no date restriction) |
+| `dropped` | drop date | `"any"` / `"true"` (all dropped, no date restriction) |
+| `added` | creation date | -- |
+| `modified` | last modified date | -- |
+
+Using `completed` or `dropped` as a filter automatically includes those tasks in results (excluded by default). `"any"` and `"true"` are interchangeable.
+
+**Object form — shorthand group** (pick exactly one of `this`, `last`, `next`):
+
+| Key | Value format | Meaning | Examples |
+|-----|-------------|---------|---------|
+| `this` | `unit` | Current calendar period | `"d"` (today), `"w"` (this week), `"m"`, `"y"` |
+| `last` | `[N]unit` | Past N periods | `"3d"`, `"w"` (= last week), `"2m"` |
+| `next` | `[N]unit` | Future N periods | `"3d"`, `"w"`, `"1m"` |
+
+Units: `d` (day), `w` (week), `m` (month), `y` (year). Count defaults to 1 when omitted (`"w"` = `"1w"`). Zero or negative count → error with guidance ("use `last` instead of `next` with negative value").
+
+**Object form — absolute group** (one or both of `before`, `after`):
+
+| Key | Accepts |
+|-----|---------|
+| `before` | ISO8601 datetime or `"now"` |
+| `after` | ISO8601 datetime or `"now"` |
+
+Shorthand and absolute groups are mutually exclusive per field. If both `before` and `after` are specified, `after` must be earlier than `before`. Errors are educational.
+
+**Date filter design decisions:**
+- Date filters on `due` and `defer` use effective (inherited) values, not direct-only. Filtering on direct `due_date` alone misses ~45% of overdue tasks.
+- `"soon"` depends on configurable due-soon threshold — real functionality, not syntactic sugar.
+- `"overdue"` is equivalent to `{"before": "now"}` but more intention-revealing.
+- `urgency` filter removed — absorbed into `due: "overdue"` and `due: "soon"`.
+- `completed` boolean removed — replaced by `completed` date filter (`"any"`/`"true"` for all, object for date-restricted).
+- `availability` trimmed to `available`/`blocked` only — `completed`/`dropped` states expressed via date filters.
+- Follows the MoveAction discriminated-key pattern and the `review_due_within` `[N]unit` duration format.
 - Substring search only -- no fuzzy matching. Fuzzy deferred to v1.4.1.
 
 **SQL implementation (HybridRepository):**
@@ -94,6 +129,8 @@ All hierarchy is flat with ID references (parent_id, folder_id, project_id). No 
 
 - Status values are already translated to snake_case from v1.1.
 - Project `type` is a derived enum: `sequential`, `parallel`, or `single_action`.
+- Date filters use a `string | object` union. String shortcuts for semantic queries (`"overdue"`, `"soon"`, `"any"`/`"true"`), object form for shorthand periods (`this`/`last`/`next` with `[N]unit`) or absolute bounds (`before`/`after` with ISO8601 or `"now"`). Inspired by the MoveAction discriminated-key pattern and the `review_due_within` duration format.
+- `urgency` filter removed — absorbed into `due: "overdue"` and `due: "soon"`. `availability` trimmed to `available`/`blocked` — `completed`/`dropped` expressed via date filters.
 - Counts reuse the same filtering logic as list tools. One code path prevents count/list divergence.
 - SQL-level filtering is the primary path. In-memory filtering exists only for bridge fallback.
 - No fuzzy search. Substring matching via SQL LIKE is sufficient for now. Fuzzy deferred to v1.4.1.
@@ -102,9 +139,16 @@ All hierarchy is flat with ID references (parent_id, folder_id, project_id). No 
 ## Key Acceptance Criteria
 
 - Each filter works individually against real OmniFocus data.
-- Filters combine with AND: flagged + due_before returns only tasks matching both.
-- `effective_due_date` used for date filters (verified with tasks that have inherited due dates).
-- Completed/dropped excluded by default, included with `completed: true`.
+- Filters combine with AND: `flagged` + `due: "overdue"` returns only tasks matching both.
+- Date filters on `due` and `defer` use effective (inherited) values (verified with tasks that have inherited dates).
+- Completed/dropped excluded by default; using `completed`/`dropped` date filter includes them automatically.
+- `completed: "any"` and `completed: "true"` are interchangeable — both include all completed tasks.
+- `due: "soon"` respects the configured due-soon threshold.
+- `due: "overdue"` returns tasks with effective due date before now.
+- Date filter shorthand: `{"this": "w"}`, `{"last": "3d"}`, `{"next": "1m"}` all resolve correctly.
+- Date filter absolute: `{"before": "now"}`, `{"after": "2026-03-01"}` work. Both together define a range.
+- Zero or negative count in shorthand (e.g., `{"next": "0d"}`) returns an educational error.
+- Shorthand and absolute groups are mutually exclusive per field — mixing returns an error.
 - SQL queries use parameterized values (no injection).
 - Filtered SQL queries are measurably faster than full snapshot (~6ms vs ~46ms).
 - Default `list_projects()` returns remaining (active + on_hold), not done/dropped.
@@ -113,7 +157,7 @@ All hierarchy is flat with ID references (parent_id, folder_id, project_id). No 
 - `get_task` with a known ID returns the full Task object (from v1.2 -- no regression).
 - `count_tasks()` equals `len(list_tasks())` for the same filters.
 - Substring search finds case-insensitive matches in name and notes.
-- Tool descriptions are detailed enough for an LLM to call correctly.
+- Tool descriptions are detailed enough for an LLM to call correctly — especially date filter syntax.
 - Bridge fallback produces identical results to SQL path for the same filters.
 - `list_tasks(limit: 5)` returns at most 5 results. `list_tasks(limit: 5, offset: 5)` returns the next page.
 - `count_tasks()` returns total count regardless of `limit`/`offset` — agents can compute total pages.
