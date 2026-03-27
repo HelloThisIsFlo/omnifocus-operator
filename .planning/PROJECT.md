@@ -8,9 +8,17 @@ A Python MCP server that exposes OmniFocus (macOS task manager) as structured ta
 
 Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
 
-## Current State
+## Current Milestone: v1.2.3 Repetition Rule Write Support
 
-Shipped v1.2.2 (FastMCP v3 Migration) on 2026-03-26. All milestones through v1.2.2 complete. Next milestone not yet planned.
+**Goal:** Enable agents to set, modify, and remove repetition rules on tasks via structured fields -- symmetric read/write model, no raw RRULE strings exposed. No new tools.
+
+**Target features:**
+- Structured frequency model with type discriminator (8 frequency types)
+- Root-level repetition fields: schedule, basedOn, end
+- Partial update lifecycle (merge, type-change, clear, create)
+- RRULE parser/builder utilities wired to both read paths
+- Three-layer validation (structural, type-specific, semantic)
+- Read model breaking change: ruleString replaced by structured fields
 
 ## Requirements
 
@@ -151,4 +159,4 @@ Logging: ToolLoggingMiddleware for automatic tool call logging, dual-handler (st
 | ToolAnnotations stays at mcp.types | FastMCP doesn't re-export `ToolAnnotations`. Intentional residual `from mcp.types import ToolAnnotations` with TODO | — Pending — revisit when fastmcp re-exports |
 
 ---
-*Last updated: 2026-03-26 after v1.2.2 milestone — FastMCP v3 Migration shipped*
+*Last updated: 2026-03-27 after v1.2.3 milestone start — Repetition Rule Write Support*
