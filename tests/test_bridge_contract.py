@@ -96,7 +96,7 @@ def _extract_known_ids(
 ) -> tuple[set[str], set[str], set[str]]:
     known_project_ids = {p["id"] for p in initial_state.get("projects", []) if "id" in p}
     known_tag_ids = {t["id"] for t in initial_state.get("tags", []) if "id" in t}
-    known_task_ids: set[str] = set()
+    known_task_ids = {t["id"] for t in initial_state.get("tasks", []) if "id" in t}
     return known_task_ids, known_project_ids, known_tag_ids
 
 
