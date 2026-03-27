@@ -355,6 +355,37 @@ These are concrete examples of why logic stays out of the bridge:
 
 The bridge is ~400 lines of trivial relay code. The rest of the project is ~14,000 lines of validated, typed, tested Python. That's the right split.
 
+## Show-More Principle
+
+In a task manager, error costs are asymmetric:
+
+- **Showing one extra task** = the user glances at it, sees it's irrelevant, moves on. Cost: near zero.
+- **Missing a task** = the user doesn't know what they can't see. They miss a deadline, forget a commitment, lose trust in the tool. Cost: high.
+
+This is the same tradeoff as tuning a classifier: the optimal bias depends on the domain. A spam filter tolerates some missed spam to avoid burying real emails — but for medical screening, you bias hard toward flagging anything suspicious, because missing a diagnosis is catastrophic while a false alarm just means more tests. Task management is closer to medical screening: the cost of a miss far outweighs the cost of showing too much.
+
+**This asymmetry biases every ambiguous design decision toward inclusion.** When a boundary could be inclusive or exclusive, make it inclusive. When "due soon" could exclude or include overdue tasks, include them. When a time period's count is ambiguous, round toward showing more.
+
+This is NOT "show everything." Filters are strict — `flagged: true` means flagged, `project: "Work"` means the Work project. The principle applies specifically to **boundary cases where reasonable people could argue either way.** In those cases, the tiebreaker is always: show the task.
+
+### Applied examples
+
+| Decision | Clean/precise option | Generous option | Chosen |
+|----------|---------------------|-----------------|--------|
+| `available` filter | Only strictly-available tasks | Includes `next` (first available in sequential project) | Generous |
+| `blocked` filter | Only tasks blocked by other tasks | All four blocking reasons (deferred, sequential, parent, on-hold) | Generous |
+| `"soon"` shorthand | Future-only window | Upper-bound threshold — overdue is a natural subset | Generous |
+| Day-snapping (`{last: "3d"}`) | Exactly 3 calendar days | 3 full past days + partial today (N+1 touched) | Generous |
+| `before` boundary | Exclusive (half-open, composable) | Inclusive (agents echo user's dates, it just works) | Generous |
+
+In every case: the generous option means "you might see one extra task." The clean option means "you might miss one."
+
+### When NOT to apply
+
+- **Strict filters are strict.** `flagged: true`, `availability: "available"` — no fuzziness. These aren't boundary cases, they're different questions.
+- **Default exclusions are intentional.** Completed/dropped tasks require an explicit filter. "Show active tasks" is a clear design choice, not an ambiguous boundary.
+- **The principle is a tiebreaker**, not a blanket rule. If the answer is obviously "exclude," exclude.
+
 ## Write API Patterns
 
 ### Patch semantics (edit_tasks)
