@@ -7,6 +7,7 @@
 - ✅ **v1.2 Writes & Lookups** — Phases 14-17 (shipped 2026-03-16)
 - ✅ **v1.2.1 Architectural Cleanup** — Phases 18-28 (shipped 2026-03-23)
 - ✅ **v1.2.2 FastMCP v3 Migration** — Phases 29-31 (shipped 2026-03-26)
+- 🚧 **v1.2.3 Repetition Rule Write Support** — Phases 32-33 (in progress)
 
 ## Phases
 
@@ -75,6 +76,38 @@
 
 </details>
 
+### 🚧 v1.2.3 Repetition Rule Write Support (In Progress)
+
+**Milestone Goal:** Enable agents to set, modify, and remove repetition rules on tasks via structured fields -- symmetric read/write model, no raw RRULE strings exposed. No new tools.
+
+- [ ] **Phase 32: Read Model Rewrite** - Structured frequency fields replace ruleString on both read paths
+- [ ] **Phase 33: Write Model, Validation & Bridge** - add_tasks and edit_tasks support repetition rules with partial updates, type-change detection, and educational errors
+
+## Phase Details
+
+### Phase 32: Read Model Rewrite
+**Goal**: Agents receive structured repetition rule data (frequency type, interval, schedule, basedOn, end) instead of raw RRULE strings from all read tools
+**Depends on**: Phase 31 (v1.2.2 complete)
+**Requirements**: READ-01, READ-02, READ-03, READ-04
+**Success Criteria** (what must be TRUE):
+  1. `get_all`, `get_task`, `get_project` return `repetitionRule` with structured `frequency` (type discriminator + type-specific fields), `schedule`, `basedOn`, and `end` fields -- no `ruleString` visible to agents
+  2. All 8 frequency types (minutely, hourly, daily, weekly, monthly, monthly_day_of_week, monthly_day_in_month, yearly) parse correctly from real OmniFocus data
+  3. Both SQLite and bridge read paths produce identical structured output for the same task (single `rrule/` module, no duplicated parsing logic)
+  4. `parse_rrule` and `build_rrule` round-trip correctly -- parse a string, build it back, parse again, get the same structured result
+**Plans**: TBD
+
+### Phase 33: Write Model, Validation & Bridge
+**Goal**: Agents can create tasks with repetition rules, partially update existing rules (merge within type, clear, change type), and receive educational errors for invalid input -- all through existing `add_tasks` and `edit_tasks` tools
+**Depends on**: Phase 32
+**Requirements**: ADD-01, ADD-02, ADD-03, ADD-04, ADD-05, ADD-06, ADD-07, ADD-08, ADD-09, ADD-10, ADD-11, ADD-12, ADD-13, ADD-14, EDIT-01, EDIT-02, EDIT-03, EDIT-04, EDIT-05, EDIT-06, EDIT-07, EDIT-08, EDIT-09, EDIT-10, EDIT-11, EDIT-12, EDIT-13, EDIT-14, EDIT-15, EDIT-16, VALID-01, VALID-02, VALID-03, VALID-04, VALID-05
+**Success Criteria** (what must be TRUE):
+  1. Agent can create a task with a repetition rule by providing `frequency` (with type), `schedule`, and `basedOn` in `add_tasks` -- the task appears in OmniFocus with the correct recurrence
+  2. Agent can partially update a repeating task's rule (change interval, change schedule, change basedOn, add/remove end condition) without re-sending the entire rule -- omitted frequency fields are preserved from the existing rule when the type doesn't change
+  3. Agent can clear a repetition rule by sending `repetitionRule: null` and can change frequency type by providing a complete new frequency object -- type change with incomplete frequency produces a clear error explaining what's needed
+  4. Invalid input (bad enum values, cross-type fields like `onDays` on daily, out-of-range values) is rejected with educational error messages consistent with existing `agent_messages` patterns
+  5. Tool descriptions for `add_tasks` and `edit_tasks` document the repetition rule schema clearly enough for an LLM to construct valid rules without external documentation
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -84,3 +117,5 @@
 | 14-17 | v1.2 | 21/21 | Complete | 2026-03-16 |
 | 18-28 | v1.2.1 | 27/27 | Complete | 2026-03-23 |
 | 29-31 | v1.2.2 | 6/6 | Complete | 2026-03-26 |
+| 32. Read Model Rewrite | v1.2.3 | 0/TBD | Not started | - |
+| 33. Write Model, Validation & Bridge | v1.2.3 | 0/TBD | Not started | - |

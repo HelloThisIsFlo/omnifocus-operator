@@ -21,7 +21,7 @@ Repetition Rule Write Support. Structured fields replace raw RRULE strings on bo
 - [ ] **ADD-03**: Interval > 1 supported (e.g., every 2 weeks, every 3 months)
 - [ ] **ADD-04**: Weekly frequency supports onDays field with day codes (MO-SU), case-insensitive input normalized to uppercase
 - [ ] **ADD-05**: Weekly frequency without onDays repeats every N weeks from basedOn date
-- [ ] **ADD-06**: monthly_day_of_week supports on field with ordinal/day (e.g., {"second": "tuesday"})
+- [ ] **ADD-06**: monthly_day_of_week supports on field with ordinal/day (e.g., {"second": "tuesday"}), case-insensitive input normalized to lowercase. Valid ordinals: first/second/third/fourth/fifth/last. Valid days: monday-sunday plus weekday/weekend_day
 - [ ] **ADD-07**: monthly_day_in_month supports onDates field (1-31, -1 for last day)
 - [ ] **ADD-08**: monthly_day_in_month with empty/omitted onDates triggers warning suggesting plain monthly type
 - [ ] **ADD-09**: All 3 schedule values work: regularly, regularly_with_catch_up, from_completion
@@ -53,14 +53,14 @@ Repetition Rule Write Support. Structured fields replace raw RRULE strings on bo
 ### Validation (VALID)
 
 - [ ] **VALID-01**: Pydantic rejects invalid structures: missing required fields, bad enum values, end with != 1 key
-- [ ] **VALID-02**: Type-specific constraints: reject fields that don't belong to frequency type (e.g., onDays on daily), valid ranges (interval >= 1, valid day codes, valid ordinals, dayOfMonth -1 to 31 excluding 0, end.occurrences >= 1)
+- [ ] **VALID-02**: Type-specific constraints: reject fields that don't belong to frequency type (e.g., onDays on daily), valid ranges (interval >= 1, valid day codes MO-SU, valid ordinals first/second/third/fourth/fifth/last, dayOfMonth -1 to 31 excluding 0, end.occurrences >= 1)
 - [ ] **VALID-03**: Educational error messages consistent with existing agent_messages patterns
 - [ ] **VALID-04**: Tool descriptions document schema clearly enough for an LLM to construct valid repetition rules
+- [ ] **VALID-05**: End date in the past triggers warning (same style as existing "completed task" warnings)
 
 ## Deferred
 
 - Task reactivation (markIncomplete) -- OmniJS API unreliable (existing deferral from v1.2)
-- minutely/hourly frequency writes -- accept on reads, reject on writes (no practical use in OmniFocus)
 - Repetition rules on projects -- OmniFocus supports this but tasks only for v1.2.3
 
 ## Out of Scope
@@ -116,12 +116,13 @@ Repetition Rule Write Support. Structured fields replace raw RRULE strings on bo
 | VALID-02 | Phase 33 | Pending |
 | VALID-03 | Phase 33 | Pending |
 | VALID-04 | Phase 33 | Pending |
+| VALID-05 | Phase 33 | Pending |
 
 **Coverage:**
-- v1.2.3 requirements: 38 total
-- Mapped to phases: 38
+- v1.2.3 requirements: 39 total
+- Mapped to phases: 39
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-27*
-*Last updated: 2026-03-27 after milestone definition*
+*Last updated: 2026-03-27 after gap analysis — added VALID-05, expanded ADD-06/VALID-02, removed minutely/hourly write deferral*
