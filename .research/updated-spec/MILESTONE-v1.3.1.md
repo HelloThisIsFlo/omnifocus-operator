@@ -33,8 +33,8 @@ Pick exactly one of `this`, `last`, `next`:
 | Key | Value format | Meaning | Examples |
 |-----|-------------|---------|---------|
 | `this` | `unit` | Current calendar period | `"d"` (today), `"w"` (this week), `"m"`, `"y"` |
-| `last` | `[N]unit` | Past N periods (rolling) | `"3d"`, `"w"` (= past 7 days), `"2m"` |
-| `next` | `[N]unit` | Future N periods (rolling) | `"3d"`, `"w"` (= next 7 days), `"1m"` |
+| `last` | `[N]unit` | N full past days + partial today | `"3d"`, `"w"` (= past 7 days + today), `"2m"` |
+| `next` | `[N]unit` | Rest of today + N full future days | `"3d"`, `"w"` (= today + next 7 days), `"1m"` |
 
 Units: `d` (day), `w` (week), `m` (month), `y` (year). Count defaults to 1 when omitted (`"w"` = `"1w"`). Zero or negative count → error with guidance ("use `last` instead of `next` with negative value").
 
@@ -43,9 +43,12 @@ Units: `d` (day), `w` (week), `m` (month), `y` (year). Count defaults to 1 when 
 **Period resolution:**
 
 - **`this`** is **calendar-aligned**. It answers "which period am I in?" — `{this: "w"}` on a Wednesday means Monday 00:00 through Sunday 23:59 (the current calendar week). `{this: "m"}` in March means March 1 through March 31.
-- **`last`/`next`** are **rolling from now**. They answer "how far back/forward?" — `{last: "w"}` means the past 7 days from this moment, not the previous calendar week. `{last: "3d"}` means the past 3 days from now.
+- **`last`/`next`** are **day-snapped rolling from now**. They answer "how far back/forward?" — `{last: "3d"}` means 3 days ago at midnight through now. `{next: "3d"}` means now through 3 days from now at midnight.
+  - **N counts full days beyond today.** Today is always included as a partial bonus day. `{last: "3d"}` = 3 full past days + the partial current day. `{next: "3d"}` = the rest of today + 3 full future days. This means the window touches N+1 calendar days, but the bias is intentional: in a task manager, showing slightly too much is a minor annoyance — missing a task you needed to see is painful.
+  - **Lower/upper bounds snap to midnight; the "now" side stays at now.** `{last: "3d"}` starts at midnight 3 days ago (clean boundary) but ends at now (not tomorrow midnight — "last 3 days" shouldn't include tasks completed tonight). `{next: "3d"}` starts at now (not today midnight — you don't want past tasks) but ends at midnight 4 days from now (clean boundary).
+  - `{last: "w"}` and `{next: "w"}` use the same logic with N=7 days (not calendar-week aligned — that's what `{this: "w"}` is for).
 
-**Why the asymmetry:** "What did I complete this week?" naturally means the current Mon–Sun. But "what did I complete in the last 3 days?" almost always means "from 3 days ago until now", not "the 3 calendar days before today." `this` and `last`/`next` answer fundamentally different questions, so different resolution semantics are more intuitive than forced consistency.
+**Why the asymmetry with `this`:** "What did I complete this week?" naturally means the current Mon–Sun. But "what did I complete in the last 3 days?" almost always means "from 3 days ago until now", not "the 3 calendar days before today." `this` and `last`/`next` answer fundamentally different questions, so different resolution semantics are more intuitive than forced consistency.
 
 **Week start:** ISO 8601 — weeks start on Monday (default). Configurable via `OMNIFOCUS_WEEK_START` environment variable (`monday` or `sunday`). Affects `{this: "w"}` calendar alignment only.
 
@@ -55,13 +58,15 @@ Units: `d` (day), `w` (week), `m` (month), `y` (year). Count defaults to 1 when 
 
 **Concrete examples** (assume it's Wednesday 2026-03-25 at 14:00):
 
-| Expression | Resolves to |
-|-----------|-------------|
-| `{this: "d"}` | `>= 2026-03-25 00:00, < 2026-03-26 00:00` (today) |
-| `{this: "w"}` | `>= 2026-03-23 00:00, < 2026-03-30 00:00` (Mon–Sun) |
-| `{last: "3d"}` | `>= 2026-03-22 14:00, < now` (72 hours back) |
-| `{last: "w"}` | `>= 2026-03-18 14:00, < now` (7 days back) |
-| `{next: "2d"}` | `>= now, < 2026-03-27 14:00` (48 hours forward) |
+| Expression | Resolves to | Days touched | Why |
+|-----------|-------------|--------------|-----|
+| `{this: "d"}` | `>= Wed 00:00, < Thu 00:00` | 1 (Wed) | Calendar-aligned today |
+| `{this: "w"}` | `>= Mon 00:00, < next Mon 00:00` | 7 (Mon–Sun) | Calendar-aligned week |
+| `{last: "1d"}` | `>= Tue 00:00, < now` | 2 (Tue + partial Wed) | "Last day" = yesterday + today. Not just today — that's `"today"`. |
+| `{last: "3d"}` | `>= Sun 00:00, < now` | 4 (Sun, Mon, Tue + partial Wed) | 3 full past days + partial today |
+| `{last: "1w"}` | `>= Tue (last wk) 00:00, < now` | 8 (7 full + partial today) | Rolling 7 days, not calendar week — that's `{this: "w"}` |
+| `{next: "1d"}` | `>= now, < Fri 00:00` | 2 (partial Wed + Thu) | "Next day" = rest of today + tomorrow |
+| `{next: "3d"}` | `>= now, < Sun 00:00` | 4 (partial Wed + Thu, Fri, Sat) | 3 full future days + rest of today |
 
 ### Object Form — Absolute Group
 
@@ -69,14 +74,19 @@ One or both of `before`, `after`:
 
 | Key | Accepts | Boundary |
 |-----|---------|----------|
-| `before` | ISO8601 datetime, date-only, or `"now"` | Exclusive (<) |
+| `before` | ISO8601 datetime, date-only, or `"now"` | Inclusive (<=) |
 | `after` | ISO8601 datetime, date-only, or `"now"` | Inclusive (>=) |
 
-**Accepted date formats:** Full datetime (`"2026-03-01T14:00:00"`), date-only (`"2026-03-01"` → resolves to `00:00:00` local time), or `"now"`. Timezone offsets in input are converted to local time. Parsing should be lenient — use a standard date parsing library.
+**Accepted date formats:** Full datetime (`"2026-03-01T14:00:00"`), date-only (`"2026-03-01"`), or `"now"`. Timezone offsets in input are converted to local time. Parsing should be lenient — use a standard date parsing library.
 
-**Why these boundaries:** Ranges compose without gaps or overlaps. "Tasks due in March" = `{after: "2026-03-01", before: "2026-04-01"}` — no T23:59:59 hacks, no off-by-one. Shorthand groups resolve to the same semantics internally (e.g., `{this: "m"}` in March → `>= Mar 1, < Apr 1`). `"overdue"` (`{before: "now"}`) also reads correctly: due date < now = overdue — a task due at this exact moment isn't overdue yet.
+**Date-only resolution:**
+- `after` with date-only: resolves to `00:00:00` of that date (start of day)
+- `before` with date-only: resolves to `00:00:00` of the **next** date (end of day) — so `before: "2026-03-31"` includes all of March 31 internally, even though the agent-facing contract just says "inclusive"
+- This is an **implementation detail** — the agent sees both boundaries as inclusive and doesn't need to think about time-of-day. The implementation ensures "before March 31" means "through the end of March 31."
 
-Shorthand and absolute groups are mutually exclusive per field. If both `before` and `after` are specified, `after` must be strictly earlier than `before` — equal values produce an empty range (`[x, x)` = nothing) and are treated as an error, not silent empty results. Errors are educational.
+**Why both inclusive:** Agents naturally echo the user's dates. "Tasks due April 1 through April 14" → `{after: "2026-04-01", before: "2026-04-14"}` — just works, no off-by-one. Stress-tested with 300 agent-generated scenarios: exclusive upper bounds caused the most common error class (agents consistently forgot to add +1 day). Inclusive eliminates this entirely. Consistent with the project's "show a little too much rather than miss a task" philosophy.
+
+Shorthand and absolute groups are mutually exclusive per field. If both `before` and `after` are specified, `after` must be strictly earlier than `before` — equal values match a single day (e.g., `{after: "2026-03-15", before: "2026-03-15"}` = just March 15). Errors are educational.
 
 ### String Shortcuts
 
@@ -212,11 +222,11 @@ These are the MCP tool description texts that agents see at call time. They are 
 
 > Date filters: `due`, `defer`, `planned`, `completed`, `dropped`, `added`, `modified`. Each accepts a string shortcut or object.
 >
-> String shortcuts: `"today"` (any field), `due: "overdue"` (before now), `due: "soon"` (due-soon threshold), `completed: "any"` (all completed), `dropped: "any"` (all dropped), `due: "none"` / `defer: "none"` / `planned: "none"` (tasks with no value).
+> String shortcuts: `"today"` (any field), `due: "overdue"` (before now), `due: "soon"` (due-soon threshold — includes overdue), `completed: "any"` (all completed), `dropped: "any"` (all dropped), `due: "none"` / `defer: "none"` / `planned: "none"` (tasks with no value).
 >
-> Object — shorthand (pick one key): `{"this": "w"}` (calendar-aligned), `{"last": "3d"}` (rolling from now), `{"next": "1m"}` (rolling from now). Units: d, w, m, y. Count defaults to 1.
+> Object — shorthand (pick one key): `{"this": "w"}` (calendar-aligned), `{"last": "3d"}` (N past days + partial today), `{"next": "1m"}` (rest of today + N future days). Units: d, w, m, y. Count defaults to 1.
 >
-> Object — absolute: `{"after": "2026-03-01", "before": "2026-04-01"}`. `after` is inclusive (>=), `before` is exclusive (<). Accepts `"now"`. Shorthand and absolute are mutually exclusive per field.
+> Object — absolute: `{"after": "2026-03-01", "before": "2026-03-31"}`. Both inclusive. Accepts `"now"`. Shorthand and absolute are mutually exclusive per field.
 >
 > Tasks with no value for a date field are excluded from that filter. Using `completed` or `dropped` filter auto-includes those tasks.
 >
@@ -245,6 +255,7 @@ These are the MCP tool description texts that agents see at call time. They are 
 - **`"today"` is universal, not field-specific.** Every date field accepts `"today"` because "tasks completed today", "added today", "modified today" are all natural. Equivalent to `{this: "d"}` but more intention-revealing.
 - **Naive local time, not UTC.** All date computations use the system's local timezone. Simpler and matches what users expect. Non-local timezone support is a future improvement.
 - **`"soon"` includes overdue.** Defined as `due < now + threshold` — a single upper bound. Overdue tasks are a strict subset of "soon" by the math. When someone asks "what's due soon?", hiding overdue tasks would be hiding the most urgent items. No double-counting concern: `"overdue"` ⊂ `"soon"`, so agents use one or the other depending on intent, not both.
+- **`last`/`next` are day-snapped, not hour-rolling.** `{last: "3d"}` starts at midnight 3 days ago, not 72 hours ago — nobody thinks in rolling hours when they say "last 3 days." The distant boundary snaps to midnight (clean, stable); the near boundary is `now` (because "last 3 days" shouldn't include tonight, and "next 3 days" shouldn't include this morning). N counts full days beyond today — today is always an extra partial day. This means `{last: "7d"}` touches 8 calendar days, but the bias is deliberate: in a task manager, a missing task is painful, an extra task is a minor annoyance. `before`/`after` exists for when you need exact timestamp precision.
 - **`defer` is for timing, `availability` is for state.** This is the most likely source of agent confusion. `availability: "blocked"` covers 4 blocking reasons (defer, sequential position, parent deps, on-hold tag). `defer` filtering only covers one. The tool descriptions and runtime warnings reinforce this distinction. Validated by multi-model testing: Sonnet correctly used `availability: "blocked"` for "not available" queries while Opus reached for `defer: {after: "now"}` — the spec now makes the correct choice obvious.
 
 ## Key Acceptance Criteria
@@ -254,9 +265,11 @@ These are the MCP tool description texts that agents see at call time. They are 
 - `completed: "any"` includes all completed tasks regardless of completion date.
 - `due: "soon"` respects the configured due-soon threshold.
 - `due: "overdue"` returns tasks with effective due date before now.
-- Date filter shorthand: `{"this": "w"}` (calendar-aligned), `{"last": "3d"}` (rolling from now), `{"next": "1m"}` (rolling from now) all resolve correctly.
-- `{this: "w"}` returns a different range than `{last: "1w"}` — calendar week vs rolling 7 days.
-- Date filter absolute: `{"before": "now"}` (exclusive), `{"after": "2026-03-01"}` (inclusive) work. Both together define a half-open range `[after, before)`.
+- Date filter shorthand: `{"this": "w"}` (calendar-aligned), `{"last": "3d"}` (day-snapped rolling), `{"next": "1m"}` (day-snapped rolling) all resolve correctly.
+- `{this: "w"}` returns a different range than `{last: "1w"}` — calendar week vs rolling 7 days + partial today.
+- `{last: "3d"}` starts at midnight 3 days ago and ends at now — N full past days + partial today. `{next: "3d"}` starts at now and ends at midnight 4 days from now — rest of today + N full future days.
+- Date filter absolute: `{"before": "2026-03-31"}` and `{"after": "2026-03-01"}` are both inclusive. `{after: "2026-04-01", before: "2026-04-14"}` includes April 14.
+- Date-only `before` values resolve to end-of-day internally (agent doesn't see this — just "inclusive").
 - Zero or negative count in shorthand (e.g., `{"next": "0d"}`) returns an educational error.
 - Shorthand and absolute groups are mutually exclusive per field — mixing returns an error.
 - Invalid string shortcuts on wrong fields (e.g., `defer: "soon"`) return educational error.
