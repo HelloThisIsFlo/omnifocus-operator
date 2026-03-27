@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import calendar
 import copy
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -19,6 +20,52 @@ class BridgeCall:
 
     operation: str
     params: dict[str, Any] | None
+
+
+_ANCHOR_DATE_KEY_MAP: dict[str, str] = {
+    "DueDate": "dueDate",
+    "DeferDate": "deferDate",
+    "PlannedDate": "plannedDate",
+}
+
+
+def _parse_rrule_interval(rule_string: str) -> tuple[str, int]:
+    """Parse an RRULE string into (frequency, interval).
+
+    >>> _parse_rrule_interval("FREQ=DAILY;INTERVAL=3")
+    ('DAILY', 3)
+    >>> _parse_rrule_interval("FREQ=WEEKLY")
+    ('WEEKLY', 1)
+    """
+    parts = dict(part.split("=", 1) for part in rule_string.split(";"))
+    return parts["FREQ"], int(parts.get("INTERVAL", "1"))
+
+
+def _advance_date_by_rule(date_str: str, freq: str, interval: int) -> str:
+    """Advance an ISO-8601 date string by one rule period, return `.000Z` format."""
+    dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+    if freq == "MINUTELY":
+        dt += timedelta(minutes=interval)
+    elif freq == "HOURLY":
+        dt += timedelta(hours=interval)
+    elif freq == "DAILY":
+        dt += timedelta(days=interval)
+    elif freq == "WEEKLY":
+        dt += timedelta(weeks=interval)
+    elif freq == "MONTHLY":
+        month = dt.month - 1 + interval
+        year = dt.year + month // 12
+        month = month % 12 + 1
+        day = min(dt.day, calendar.monthrange(year, month)[1])
+        dt = dt.replace(year=year, month=month, day=day)
+    elif freq == "YEARLY":
+        year = dt.year + interval
+        day = min(dt.day, calendar.monthrange(year, dt.month)[1])
+        dt = dt.replace(year=year, day=day)
+    else:
+        msg = f"Unsupported RRULE frequency: {freq}"
+        raise ValueError(msg)
+    return dt.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
 
 class InMemoryBridge(Bridge):
@@ -199,6 +246,26 @@ class InMemoryBridge(Bridge):
             current_id = task.get("parent")  # raw format: string or None
         return None
 
+    def _advance_repeating_task(self, task: dict[str, Any]) -> None:
+        """Advance the anchor date of a repeating task to its next occurrence.
+
+        Reads ``repetitionRule.anchorDateKey`` to determine which date field
+        to advance, parses the RRULE, and writes back to both the direct
+        field and its ``effective*`` counterpart.
+        """
+        rule = task["repetitionRule"]
+        anchor_key = _ANCHOR_DATE_KEY_MAP[rule["anchorDateKey"]]
+        current_date = task.get(anchor_key)
+        if current_date is None:
+            return
+        freq, interval = _parse_rrule_interval(rule["ruleString"])
+        new_date = _advance_date_by_rule(current_date, freq, interval)
+        task[anchor_key] = new_date
+        # Effective field mirrors the direct field (inheritance may override,
+        # but for the task itself they stay in sync).
+        effective_key = f"effective{anchor_key[0].upper()}{anchor_key[1:]}"
+        task[effective_key] = new_date
+
     # ------------------------------------------------------------------
     # Operation handlers
     # ------------------------------------------------------------------
@@ -328,10 +395,13 @@ class InMemoryBridge(Bridge):
                 if tid not in existing_ids:
                     task["tags"].append({"id": tid, "name": self._resolve_tag_name(tid)})
 
-        # Lifecycle — terminal states are mutually exclusive: completing
-        # clears drop dates, dropping clears completion dates.
+        # Lifecycle — repeating tasks advance their anchor date instead of
+        # completing/dropping.  Non-repeating tasks use terminal states
+        # (completing clears drop dates, dropping clears completion dates).
         lifecycle = params.get("lifecycle")
-        if lifecycle == "complete":
+        if lifecycle in ("complete", "drop") and task.get("repetitionRule") is not None:
+            self._advance_repeating_task(task)
+        elif lifecycle == "complete":
             task["status"] = "Completed"
             task["completionDate"] = datetime.now(tz=UTC).isoformat()
             task["effectiveCompletionDate"] = task["completionDate"]

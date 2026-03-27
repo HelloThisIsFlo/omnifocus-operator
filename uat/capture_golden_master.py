@@ -1316,49 +1316,56 @@ def _build_scenarios() -> list[dict[str, Any]]:
             },
         },
         # =================================================================
-        # 08-repetition/ — Lifecycle scenarios (COMMENTED OUT)
+        # 08-repetition/ — Lifecycle scenarios
         #
         # Completing a repeating task creates a new occurrence with ID
         # pattern {originalId}.{n} (e.g. "abc123.0", "abc123.1").
-        # InMemoryBridge doesn't implement this scheme yet.
-        # Uncomment when InMemoryBridge supports repeating-task completion.
+        # The original ID stays on the live (next) occurrence.
         # =================================================================
-        # {
-        #     "folder": "08-repetition",
-        #     "file": "27_complete_repeating",
-        #     "scenario": "08-repetition/27_complete_repeating",
-        #     "description": "Complete a repeating task (new occurrence with .0 ID)",
-        #     "operation": "edit_task",
-        #     "params_fn": lambda: {
-        #         "id": TASK_IDS["repeat_complete_target"],
-        #         "lifecycle": "complete",
-        #     },
-        # },
-        # {
-        #     "folder": "08-repetition",
-        #     "file": "28_drop_repeating",
-        #     "scenario": "08-repetition/28_drop_repeating",
-        #     "description": "Drop a repeating task",
-        #     "operation": "edit_task",
-        #     "params_fn": lambda: {
-        #         "id": TASK_IDS["repeat_drop_target"],
-        #         "lifecycle": "drop",
-        #     },
-        # },
-        # {
-        #     "folder": "08-repetition",
-        #     "file": "29_complete_twice",
-        #     "scenario": "08-repetition/29_complete_twice",
-        #     "description": "Complete a repeating task twice (.0 and .1 IDs)",
-        #     "operation": "edit_task",
-        #     "params_fn": lambda: {
-        #         "id": TASK_IDS["repeat_multi_complete"],
-        #         "lifecycle": "complete",
-        #     },
-        #     # NOTE: This scenario would need a followup to complete again.
-        #     # The first completion creates .0, the second creates .1.
-        #     # Full implementation TBD when InMemoryBridge supports this.
-        # },
+        {
+            "folder": "08-repetition",
+            "file": "27_complete_repeating",
+            "scenario": "08-repetition/27_complete_repeating",
+            "description": "Complete a repeating task (new occurrence with .0 ID)",
+            "operation": "edit_task",
+            "params_fn": lambda: {
+                "id": TASK_IDS["repeat_complete_target"],
+                "lifecycle": "complete",
+            },
+        },
+        {
+            "folder": "08-repetition",
+            "file": "28_drop_repeating",
+            "scenario": "08-repetition/28_drop_repeating",
+            "description": "Drop a repeating task",
+            "operation": "edit_task",
+            "params_fn": lambda: {
+                "id": TASK_IDS["repeat_drop_target"],
+                "lifecycle": "drop",
+            },
+        },
+        {
+            "folder": "08-repetition",
+            "file": "29_complete_first",
+            "scenario": "08-repetition/29_complete_first",
+            "description": "Complete a repeating task — first completion (.0 ID)",
+            "operation": "edit_task",
+            "params_fn": lambda: {
+                "id": TASK_IDS["repeat_multi_complete"],
+                "lifecycle": "complete",
+            },
+        },
+        {
+            "folder": "08-repetition",
+            "file": "30_complete_second",
+            "scenario": "08-repetition/30_complete_second",
+            "description": "Complete same repeating task again — second completion (.1 ID)",
+            "operation": "edit_task",
+            "params_fn": lambda: {
+                "id": TASK_IDS["repeat_multi_complete"],
+                "lifecycle": "complete",
+            },
+        },
     ]
 
 
@@ -1597,7 +1604,7 @@ def _phase_1_introduction() -> None:
     print("  2. The script verifies each entity exists")
     print("  2.5 Repetition rule tasks are created, you paste an OmniJS snippet")
     print("      to set rules, then the script verifies them")
-    print("  3. ~75 scenarios run automatically across 8 categories")
+    print("  3. ~79 scenarios run automatically across 8 categories")
     print("  4. Fixture JSON files are written to tests/golden_master/snapshots/")
     print("     organized in numbered subfolders (01-add/ through 08-repetition/)")
     print("  5. Test tasks are consolidated for easy cleanup")
@@ -1841,7 +1848,7 @@ async def _phase_2_5_repetition_setup(bridge: RealBridge) -> None:
     print()
 
     # Create tasks for each repetition rule config
-    all_rules = REPETITION_RULES  # lifecycle rules are commented out for now
+    all_rules = REPETITION_RULES + REPETITION_LIFECYCLE_RULES
     print(f"  Creating {len(all_rules)} tasks for repetition rule scenarios...")
     print()
 
@@ -1911,7 +1918,7 @@ def _phase_3_confirmation() -> bool:
     print("  Phase 3: Scenario Preview")
     print("-" * 60)
     print()
-    print("The following ~75 scenarios will be executed across 8 categories:")
+    print("The following ~79 scenarios will be executed across 8 categories:")
     print()
     print("  01-add/ (6 scenarios):")
     print("    01. Inbox task (minimal)")
@@ -1973,13 +1980,13 @@ def _phase_3_confirmation() -> bool:
     print("    05a-c. Deep nesting (3 levels)")
     print("    06. Effective dates clear after move to undated project")
     print()
-    print("  08-repetition/ (26 scenarios, +3 commented-out lifecycle):")
+    print("  08-repetition/ (30 scenarios):")
     print("    01-16. RRULE variations (daily, weekly, monthly, yearly, sub-daily,")
     print("           COUNT, UNTIL, fromCompletion, catchUp)")
     print("    17-20. Anchor/config variations (DeferDate, PlannedDate, catchUp=false,")
     print("           all non-default)")
     print("    21-26. Edit-preservation (rename, flag, note, due date, move, add tag)")
-    print("    [27-29 commented out: complete/drop repeating tasks — needs .N ID scheme]")
+    print("    27-30. Lifecycle (complete, drop, complete twice)")
     print()
 
     scenarios = _build_scenarios()
@@ -2031,8 +2038,19 @@ async def _phase_5_consolidation(bridge: RealBridge) -> None:
     cleanup_task_id = result["id"]
     print(f"  Created cleanup task: {cleanup_name}")
 
-    # Move all scenario tasks under the cleanup task
-    for task_id in known_task_ids:
+    # Discover derived occurrence IDs (e.g. "abc123.0", "abc123.1") created
+    # when repeating tasks are completed. These aren't in known_task_ids.
+    state = await _get_all_raw(bridge)
+    all_task_ids_to_clean = set(known_task_ids)
+    for task in state.get("tasks", []):
+        tid = task["id"]
+        # Check if this is a derived occurrence: "{known_id}.{n}"
+        dot_pos = tid.rfind(".")
+        if dot_pos > 0 and tid[:dot_pos] in known_task_ids:
+            all_task_ids_to_clean.add(tid)
+
+    # Move all scenario tasks (including derived occurrences) under the cleanup task
+    for task_id in all_task_ids_to_clean:
         await bridge.send_command(
             "edit_task",
             {"id": task_id, "moveTo": {"position": "ending", "containerId": cleanup_task_id}},
