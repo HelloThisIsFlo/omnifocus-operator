@@ -1,80 +1,174 @@
-# Technology Stack
+# Stack Research: Repetition Rule Write Support
 
-**Project:** OmniFocus Operator v1.2.2 -- FastMCP v3 Migration
-**Researched:** 2026-03-25
+**Domain:** Structured frequency model, RRULE parsing/building, Pydantic discriminated unions
+**Researched:** 2026-03-27
+**Confidence:** HIGH
 
-## Recommended Stack
+## Decision: Zero New Dependencies
 
-### Core Dependency Change
+No new runtime or dev dependencies needed. Everything builds on existing stack:
+- **RRULE parsing/building**: Custom (~200 lines, spike-validated, 79 tests) -- not python-dateutil
+- **Discriminated unions**: Pydantic v2 native -- verified working with project's patterns
+- **Partial update lifecycle**: Existing UNSET/Patch/PatchOrClear infrastructure -- verified compatible
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| `fastmcp` | >=3 (tested: 3.1.1) | MCP server framework + test client | Replaces `mcp.server.fastmcp` with standalone package. Gains: Client test helper, Middleware system, progress reporting, lifespan shortcut |
-| `mcp` | (transitive) | Protocol types (`ToolAnnotations`, `CallToolResult`) | Still needed -- fastmcp depends on it. `ToolAnnotations` is NOT re-exported by fastmcp |
+## Why Custom RRULE Parser, Not python-dateutil
 
-### What Stays Unchanged
+**Recommendation:** Use the custom parser from `.research/deep-dives/rrule-validator/`. Do NOT add python-dateutil.
 
-| Technology | Version | Purpose | Notes |
-|------------|---------|---------|-------|
-| Python | 3.12+ | Runtime | No change |
-| Pydantic | v2 | Models, validation | No change |
-| sqlite3 | stdlib | Read cache | No change |
-| uv | latest | Package manager | No change |
+### Evidence
 
-### New Import Paths
+| Criterion | Custom Parser | python-dateutil |
+|-----------|--------------|-----------------|
+| **Scope match** | Exact: parse string to components, build string from components | Overkill: designed for date occurrence generation, not string manipulation |
+| **Component extraction** | Direct: returns typed dataclass with named fields | Indirect: components stored as private attrs (`_freq`, `_interval`, `_byweekday`), no public API for extraction |
+| **String building** | `build_rrule()` with round-trip validation | No public string builder from components |
+| **OmniFocus subset** | Validates exactly the RRULE keys OmniFocus uses (FREQ, INTERVAL, BYDAY, BYMONTHDAY, BYSETPOS, COUNT, UNTIL) | Full RFC 5545 -- MINUTELY/SECONDLY, BYMINUTE, BYHOUR, BYWEEKNO, BYYEARDAY etc. that OmniFocus ignores |
+| **Dependencies** | Zero (stdlib only) | Adds `python-dateutil` (~150KB, transitive deps) |
+| **Validation** | Type-aware: rejects invalid combos (BYSETPOS without BYDAY, COUNT+UNTIL mutual exclusion) | Silently accepts many invalid combos |
+| **Tested** | 79 tests covering all OmniFocus frequency types | Would need wrapper tests anyway |
+| **Lines** | ~200 lines, fully auditable | ~2,500 lines in `rrule.py` alone |
 
-| Before | After | Notes |
-|--------|-------|-------|
-| `from mcp.server.fastmcp import FastMCP, Context` | `from fastmcp import FastMCP, Context` | Core framework |
-| `from mcp.types import ToolAnnotations` | `from mcp.types import ToolAnnotations` | **Unchanged** -- not re-exported |
-| (new) | `from fastmcp import Client` | Test client |
-| (new) | `from fastmcp.server.middleware import Middleware, MiddlewareContext` | Middleware base |
+### What python-dateutil is good for (but we don't need)
 
-### Dev Dependencies
+- **Date occurrence generation**: "give me the next 10 dates matching this rule" -- OmniFocus handles this internally
+- **Timezone handling**: `DTSTART;TZID=` parsing -- OmniFocus RRULE strings don't use DTSTART
+- **Complex recurrence sets**: EXDATE, EXRULE, multiple RRULE combination -- OmniFocus uses single RRULE only
 
-| Library | Version | Purpose | Change |
-|---------|---------|---------|--------|
-| pytest | >=9.0.2 | Test framework | No change |
-| pytest-asyncio | >=1.3.0 | Async test support | No change |
-| anyio | (was implicit) | Memory streams for test plumbing | **REMOVED** -- no longer needed, Client handles transport |
+### python-dateutil's known problems for our use case
 
-## Alternatives Considered
+- UNTIL dates auto-converted to datetime objects, losing the original string format ([Issue #938](https://github.com/dateutil/dateutil/issues/938))
+- No public API to extract structured components from a parsed rule -- only private attributes
+- `rruleset` serialization to string has known gaps ([Issue #856](https://github.com/dateutil/dateutil/issues/856))
+- Accepts RRULE strings that OmniFocus would reject -- we'd need validation wrapping anyway
 
-| Category | Recommended | Alternative | Why Not |
-|----------|-------------|-------------|---------|
-| Test client | `Client(server)` from fastmcp | Keep `_ClientSessionProxy` | 70 lines of plumbing vs 3 lines. No contest. |
-| Middleware | FastMCP `Middleware` class | Keep manual `log_tool_call()` | 6 call sites + function vs automatic. Middleware is the pattern. |
-| Logging | `StreamHandler(stderr)` + `FileHandler` | `ctx.info()` / `ctx.warning()` | Dead end -- no major client renders protocol log messages |
-| DI pattern | Keep lifespan (`ctx.lifespan_context`) | `Depends()` decorator | Lifespan = per-app singleton. `Depends()` = per-request. Our service is a singleton. |
-| Test method | `call_tool_mcp()` | `call_tool()` (raising) | Preserves existing assertion shapes. Raising variant doubles the diff. |
+### Migration path from spike to production
+
+The spike code is directly portable with these changes:
+1. Replace `RRuleComponents` dataclass with Pydantic `FrequencySpec` discriminated union models
+2. `validate_rrule()` parsing logic maps directly to `parse_rrule(str) -> FrequencySpec`
+3. `build_rrule()` takes a `FrequencySpec` instead of loose kwargs
+4. Wire into existing `ScheduleType` and `AnchorDateKey` enums from `models/enums.py` (spike already notes this)
+
+## Pydantic v2 Discriminated Union Pattern
+
+**Verified working** on Pydantic 2.12.5 (project's current version) with all project conventions.
+
+### Pattern: `Literal` type field as discriminator
+
+```python
+from typing import Literal, Union, Annotated
+from pydantic import Field
+
+class DailyFreq(CommandModel):
+    type: Literal["daily"] = "daily"
+    interval: int = 1
+
+class WeeklyFreq(CommandModel):
+    type: Literal["weekly"] = "weekly"
+    interval: int = 1
+    on_days: list[str] | None = None
+
+FrequencySpec = Annotated[
+    Union[DailyFreq, WeeklyFreq, ...],
+    Field(discriminator="type"),
+]
+```
+
+### Verified compatibility
+
+| Project convention | Works with discriminated unions? | Tested |
+|-------------------|--------------------------------|--------|
+| `alias_generator=to_camel` | YES -- `type` stays `type` after camelCase conversion | Verified |
+| `extra="forbid"` (CommandModel) | YES -- naturally rejects cross-type fields (e.g., `onDays` on `daily`) | Verified |
+| `validate_by_name=True` | YES -- both `on_days` and `onDays` accepted | Verified |
+| UNSET sentinel + `Patch[FrequencySpec]` | YES -- UNSET means "no change to frequency" | Verified |
+| `PatchOrClear[RepetitionRuleCommand]` | YES -- None = remove rule, UNSET = no change | Verified |
+| JSON Schema generation | YES -- generates OpenAPI discriminator mapping with `oneOf` + `propertyName: "type"` | Verified |
+
+### Key insight: extra="forbid" gives type-specific validation for free
+
+When each frequency variant is its own `CommandModel` subclass with `extra="forbid"`, Pydantic automatically rejects fields that don't belong to the discriminated type. Sending `{"type": "daily", "onDays": ["MO"]}` raises `ValidationError: Extra inputs are not permitted`. This eliminates half of "Layer 2: type-specific constraints" from the spec -- field membership validation comes from the model structure, not custom code.
+
+Remaining Layer 2 validations that need custom code:
+- Value range constraints: `interval >= 1`, valid day codes, ordinal values, `dayOfMonth` range
+- Semantic constraints: `BYSETPOS` requires `BYDAY`
+
+### End condition: model_validator pattern (not discriminated union)
+
+The `end` field uses the "key IS the value" pattern from MoveAction, not a discriminated union:
+
+```python
+class EndCondition(CommandModel):
+    date: AwareDatetime | None = None
+    occurrences: int | None = None
+
+    @model_validator(mode="after")
+    def _exactly_one_key(self) -> EndCondition:
+        # ... same pattern as MoveAction._exactly_one_key
+```
+
+This matches the existing MoveAction precedent and keeps the spec's requirement that `end` uses the same "key IS the value" pattern.
+
+## Existing Infrastructure Reuse
+
+### Already exists, no changes needed
+
+| Component | Location | Reuse for v1.2.3 |
+|-----------|----------|-------------------|
+| `ScheduleType` enum | `models/enums.py` | Maps to `schedule` field values |
+| `AnchorDateKey` enum | `models/enums.py` | Maps to `basedOn` field values |
+| `UNSET` / `Patch` / `PatchOrClear` | `contracts/base.py` | Partial update semantics for all repetition fields |
+| `CommandModel` base | `contracts/base.py` | Base class for all frequency variant models |
+| `model_validator` pattern | `contracts/common.py` (MoveAction) | Reuse for EndCondition exactly-one-key validation |
+| `_adapt_repetition_rule()` | `bridge/adapter.py` | Needs modification: parse ruleString into structured fields |
+| `_build_repetition_rule()` | `repository/hybrid.py` | Needs modification: parse ruleString from SQLite into structured fields |
+| `RepetitionRule` model | `models/common.py` | Replace: ruleString -> structured frequency + schedule + basedOn + end fields |
+
+### Needs modification (not new)
+
+| Component | Current | After v1.2.3 |
+|-----------|---------|--------------|
+| `RepetitionRule` model | `rule_string`, `schedule_type`, `anchor_date_key`, `catch_up_automatically` | `frequency: FrequencySpec`, `schedule: ScheduleType`, `based_on: AnchorDateKey`, `end: EndCondition \| None` |
+| Bridge adapter | Passes through raw rule data | Calls `parse_rrule()` on ruleString |
+| SQLite mapper | Passes through raw rule data | Calls `parse_rrule()` on ruleString |
+| Bridge script | Reads repetition rule properties | Also needs write handler for setting repetition rules |
+| EditTaskCommand | No repetition fields | Adds `repetition_rule: PatchOrClear[RepetitionRuleCommand]` |
+| AddTaskCommand | No repetition fields | Adds `repetition_rule: RepetitionRuleSpec \| None` |
+
+## What NOT to Add
+
+| Library | Why Not |
+|---------|---------|
+| `python-dateutil` | Overkill for string-to-components parsing; no public component extraction API; would still need validation wrapping |
+| `icalendar` | Full ICS file parser -- we only need RRULE strings, not VCALENDAR/VEVENT |
+| `ics` (ics.py) | Calendar file library -- entirely wrong scope |
+| `recurring-ical-events` | Event occurrence expansion -- OmniFocus handles this internally |
+| Any RRULE library | The custom parser (~200 lines) is more precise, better tested, and zero-dep |
 
 ## Installation
 
 ```bash
-# Production dependency change
-# pyproject.toml:
-# - "mcp>=1.26.0"
-# + "fastmcp>=3"
-
-uv sync
+# No changes to pyproject.toml
+# Zero new dependencies
 ```
 
-```bash
-# Remove spike dependency group (no longer needed)
-# pyproject.toml: delete [dependency-groups] spike section
-```
+## Version Compatibility
 
-## Dependency Impact
-
-- **Before:** 1 runtime dependency (`mcp>=1.26.0`)
-- **After:** 1 runtime dependency (`fastmcp>=3`)
-- **Transitive:** fastmcp brings `mcp`, `httpx`, `pydantic`, `rich`, `uvicorn`, `websockets`, and others. Heavier transitive tree, but only `fastmcp` is the direct dependency.
-- **Messaging:** "Single runtime dependency" badge/claim remains accurate. Just a different single dependency.
-- **Note:** fastmcp's transitive dependencies include things like `uvicorn` and `websockets` that aren't needed for stdio transport. This is fastmcp's packaging choice, not ours. No action needed.
+| Package | Version | Notes |
+|---------|---------|-------|
+| Pydantic | 2.12.5 (current) | Discriminated unions + alias_generator verified working |
+| FastMCP | >=3.1.1 (current) | No interaction with repetition features |
+| Python | 3.12+ (current) | `type` statements, `Annotated` syntax available |
 
 ## Sources
 
-- Import verification: tested live against fastmcp 3.1.1 (installed in spike group)
-- `ToolAnnotations` not re-exported: confirmed via `from fastmcp import ToolAnnotations` -> ImportError
-- `Client`, `Middleware`, `MiddlewareContext` import paths: confirmed via live import test
-- Spike findings: `.research/deep-dives/fastmcp-spike/FINDINGS.md`
+- [Pydantic v2 Unions docs](https://docs.pydantic.dev/latest/concepts/unions/) -- discriminated union patterns, Field(discriminator=...) syntax (HIGH confidence)
+- [Pydantic issue #11039](https://github.com/pydantic/pydantic/issues/11039) -- alias_generator + discriminated union fix confirmed resolved (HIGH confidence)
+- [python-dateutil rrule docs](https://dateutil.readthedocs.io/en/stable/rrule.html) -- API surface review for comparison (HIGH confidence)
+- [python-dateutil issue #938](https://github.com/dateutil/dateutil/issues/938) -- UNTIL date handling limitation (HIGH confidence)
+- [python-dateutil issue #856](https://github.com/dateutil/dateutil/issues/856) -- rruleset serialization gaps (MEDIUM confidence)
+- Local verification: Pydantic 2.12.5 tested with discriminated union + alias_generator + extra=forbid + UNSET sentinel (HIGH confidence -- ran in project's actual environment)
+
+---
+*Stack research for: OmniFocus Operator v1.2.3 -- Repetition Rule Write Support*
+*Researched: 2026-03-27*

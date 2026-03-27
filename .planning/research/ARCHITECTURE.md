@@ -1,502 +1,484 @@
-# Architecture: FastMCP v3 Migration Integration Map
+# Architecture: Repetition Rule Write Support Integration
 
-**Domain:** Infrastructure migration -- mcp.server.fastmcp to standalone fastmcp>=3
-**Researched:** 2026-03-25
-**Confidence:** HIGH -- spike experiments verified, import paths confirmed against fastmcp 3.1.1
+**Domain:** OmniFocus MCP Server -- repetition rule read/write for existing three-layer architecture
+**Researched:** 2026-03-27
+**Confidence:** HIGH -- based entirely on codebase analysis, no external dependencies
 
-## Current Architecture (Pre-Migration)
+## Executive Summary
+
+Repetition rule support integrates cleanly into the existing architecture. The key insight is that repetition sits at the boundary between two domains: the agent-facing structured model (8 frequency types, 3 root-level fields) and OmniFocus's internal RRULE format (4 bridge parameters). Two standalone utility functions (`parse_rrule`, `build_rrule`) bridge these domains, living in a new `rrule/` package under the models layer.
+
+The read model is a breaking change (replacing `RepetitionRule` with structured fields), but the write model slots into existing patterns: `PatchOrClear[RepetitionRuleSpec]` on commands, bridge payload carries flat RRULE + metadata fields, partial update merge logic lives in `DomainLogic`.
+
+## Recommended Architecture
+
+### New Package: `src/omnifocus_operator/rrule/`
+
+Standalone RRULE parse/build utilities. Belongs at the same level as `models/` and `contracts/` -- NOT inside `service/` or `repository/`. Rationale:
+
+- Both read paths (SQLite adapter in `repository/hybrid.py` and bridge adapter in `bridge/adapter.py`) need `parse_rrule`
+- The write path (`service/domain.py` or `service/payload.py`) needs `build_rrule`
+- Putting it in service would create a reverse dependency (repository importing from service)
+- Putting it in models would bloat a data-definition package with parsing logic
+- Standalone package keeps it testable in isolation with no import entanglements
 
 ```
-__main__.py          -- Entrypoint: logging setup + server.run()
-server.py            -- FastMCP instance, lifespan, tool registration, log_tool_call()
-service/             -- Resolver, DomainLogic, PayloadBuilder, orchestrator
-contracts/           -- Command, RepoPayload, RepoResult, Result models
-repository/          -- HybridRepository, BridgeRepository
-tests/conftest.py    -- _ClientSessionProxy (40 lines), server fixture
-tests/test_server.py -- run_with_client (30 lines), integration tests
-tests/test_simulator_bridge.py    -- _run_with_client (local copy)
-tests/test_simulator_integration.py -- _run_with_client (local copy)
+src/omnifocus_operator/
+├── rrule/                          # NEW PACKAGE
+│   ├── __init__.py                 # Re-exports parse_rrule, build_rrule
+│   ├── parser.py                   # parse_rrule(str) -> FrequencySpec
+│   └── builder.py                  # build_rrule(FrequencySpec) -> str
+├── models/
+│   ├── common.py                   # MODIFIED: RepetitionRule -> structured fields
+│   └── enums.py                    # MODIFIED: ScheduleType gains 3rd value, new enums
+├── contracts/
+│   ├── common.py                   # NEW ADDITION: RepetitionRuleEndAction
+│   └── use_cases/
+│       ├── add_task.py             # MODIFIED: gains repetition_rule field
+│       └── edit_task.py            # MODIFIED: gains repetition_rule field
+├── service/
+│   ├── domain.py                   # MODIFIED: repetition merge/validation logic
+│   └── payload.py                  # MODIFIED: repetition -> RRULE for bridge
+├── repository/
+│   └── hybrid.py                   # MODIFIED: _build_repetition_rule calls parse_rrule
+├── bridge/
+│   └── adapter.py                  # MODIFIED: _adapt_repetition_rule calls parse_rrule
+└── tests/doubles/
+    └── bridge.py                   # MODIFIED: InMemoryBridge handles repetition writes
 ```
 
-## Migration Impact Map
+### Component Boundaries
 
-### Files DELETED (components removed entirely)
+| Component | Responsibility | Communicates With |
+|-----------|---------------|-------------------|
+| `rrule/parser.py` | RRULE string -> `FrequencySpec` Pydantic model | Called by `hybrid.py`, `adapter.py` |
+| `rrule/builder.py` | `FrequencySpec` -> RRULE string | Called by `payload.py` |
+| `models/common.py` | New `RepetitionRule` with structured fields (read model) | Consumed by `Task`, `Project` via `ActionableEntity` |
+| `contracts/.../edit_task.py` | `repetition_rule: PatchOrClear[RepetitionRuleSpec]` on command/payload | Agent -> service boundary |
+| `contracts/.../add_task.py` | `repetition_rule: RepetitionRuleSpec | None` on command/payload | Agent -> service boundary |
+| `service/domain.py` | Merge logic, validation, no-op detection for repetition | Reads current task state, calls `build_rrule` |
+| `service/payload.py` | Converts structured spec -> flat bridge fields via `build_rrule` | Produces repo payload |
+| `bridge/adapter.py` | Converts bridge RRULE + metadata -> structured fields via `parse_rrule` | Bridge read path |
+| `repository/hybrid.py` | Converts SQLite RRULE + columns -> structured fields via `parse_rrule` | SQLite read path |
 
-None. No files are deleted. Code is deleted from within existing files.
+## Data Flow: Complete Paths
 
-### Code DELETED (within existing files)
+### Read Path (SQLite -- primary)
 
-| Location | What | Lines | Replaced By |
-|----------|------|-------|-------------|
-| `server.py:53-63` | `log_tool_call()` function | ~11 | `ToolLoggingMiddleware` |
-| `server.py` (6 sites) | `log_tool_call("tool_name", ...)` calls | 6 | Middleware fires automatically |
-| `conftest.py:435-481` | `_ClientSessionProxy` class | ~47 | `Client(server)` pattern |
-| `conftest.py:420-481` | `client_session` fixture body | ~62 | 3-line Client fixture |
-| `test_server.py:51-82` | `run_with_client()` helper | ~32 | `Client(server)` pattern |
-| `test_server.py:38-48` | `_build_patched_server()` helper | ~11 | Keep or adapt (still needed for tests with custom lifespan) |
-| `test_simulator_bridge.py:77-102` | `_run_with_client()` (local copy) | ~26 | `Client(server)` |
-| `test_simulator_integration.py:117-142` | `_run_with_client()` (local copy) | ~26 | `Client(server)` |
-| `__main__.py:15` | Stderr hijacking misdiagnosis comment | 1 | Removed (was wrong) |
-| `__main__.py:20` | `log.propagate = False` | 1 | Removed (need propagation for dual handler) |
+```
+SQLite row
+  ├── repetitionRuleString: "FREQ=WEEKLY;BYDAY=MO,WE"
+  ├── repetitionScheduleTypeString: "fixed"
+  ├── repetitionAnchorDateKey: "dateDue"
+  └── catchUpAutomatically: 1
 
-### Files MODIFIED
+  → hybrid.py::_build_repetition_rule()
+    ├── Calls parse_rrule("FREQ=WEEKLY;BYDAY=MO,WE") -> FrequencySpec(type="weekly", onDays=["MO","WE"])
+    ├── Maps schedule_type: "fixed" + catchUp=True -> "regularly_with_catch_up"
+    ├── Maps anchor_date_key: "dateDue" -> "due_date"
+    └── Returns structured dict matching new RepetitionRule model
 
-| File | What Changes | Scope |
-|------|-------------|-------|
-| **`server.py`** | Import swap, lifespan_context shortcut, remove log_tool_call, add middleware wiring, add progress reporting | Heavy -- most changes in codebase |
-| **`__main__.py`** | Dual-handler logging (stderr + file), remove misdiagnosis comment | Medium |
-| **`conftest.py`** | Replace `_ClientSessionProxy` with `Client(server)` fixture, update imports | Medium |
-| **`test_server.py`** | Replace `run_with_client` with `Client(server)`, update all assertions | Heavy -- 1164 lines, most test file |
-| **`test_simulator_bridge.py`** | Replace `_run_with_client` with `Client(server)`, update imports | Light |
-| **`test_simulator_integration.py`** | Replace `_run_with_client` with `Client(server)`, update imports | Light |
-| **`pyproject.toml`** | Swap dependency `mcp>=1.26.0` to `fastmcp>=3`, move from spike group to main | Light |
+  → Pydantic validation -> RepetitionRule with:
+    ├── frequency: FrequencySpec(type="weekly", interval=1, on_days=["MO","WE"])
+    ├── schedule: "regularly_with_catch_up"
+    ├── based_on: "due_date"
+    └── end: None
+```
 
-### Files CREATED (new components)
+### Read Path (Bridge -- fallback)
 
-| File | Purpose | Location Decision |
-|------|---------|-------------------|
-| **`middleware.py`** | `ToolLoggingMiddleware` class | `src/omnifocus_operator/middleware.py` -- same level as `server.py`, cross-cutting concern |
+```
+Bridge JSON (raw bridge format):
+  repetitionRule: {
+    ruleString: "FREQ=WEEKLY;BYDAY=MO,WE",
+    scheduleType: "Regularly",         # PascalCase from OmniJS
+    anchorDateKey: "DueDate",          # PascalCase from OmniJS
+    catchUpAutomatically: true
+  }
 
-**Why a new file:** Middleware is a cross-cutting concern separate from tool business logic. It should not live in `server.py` (which owns tool registration and lifespan) or `__main__.py` (which owns entrypoint). A dedicated module keeps it independently testable and composable.
+  → adapter.py::_adapt_repetition_rule()
+    ├── Calls parse_rrule() on ruleString -> FrequencySpec
+    ├── Maps scheduleType + catchUp -> schedule enum
+    ├── Maps anchorDateKey -> basedOn enum
+    ├── Restructures to new shape IN-PLACE
+    └── Result matches new RepetitionRule model for Pydantic
+```
 
-### Files UNCHANGED
+### Write Path (edit_tasks -- partial update)
 
-- `service/` package -- no changes (service layer is below the MCP boundary)
-- `contracts/` package -- no changes (model layer)
-- `repository/` package -- no changes (data layer)
-- `models/` package -- no changes
-- `agent_messages/` package -- no changes
-- `bridge/` package -- no changes
-- `tests/doubles/` -- no changes (InMemoryBridge, StubBridge, SimulatorBridge unaffected)
-- All other test files not listed above -- no changes
+```
+Agent sends:
+  { "repetitionRule": { "frequency": { "type": "weekly", "onDays": ["MO","FR"] } } }
 
-## Integration Points Per Feature
+  → server.py: Pydantic validates -> EditTaskCommand
+    ├── repetition_rule: RepetitionRuleSpec (structured, not UNSET, not None)
 
-### 1. Dependency Swap
+  → service.py::_EditTaskPipeline
+    ├── _verify_task_exists() -> fetches current Task (has existing repetition_rule)
+    ├── _process_repetition() [NEW STEP]
+    │   ├── DomainLogic.process_repetition(spec, current_task)
+    │   │   ├── Current task HAS rule -> merge mode
+    │   │   │   ├── Same type ("weekly") -> merge: onDays=["MO","FR"] replaces old, interval preserved
+    │   │   │   ├── Root fields (schedule, basedOn, end) not in spec -> preserve from existing
+    │   │   │   └── Returns merged RepetitionRuleSpec + build_rrule(merged.frequency) -> RRULE string
+    │   │   ├── Current task has NO rule -> error: "provide complete rule"
+    │   │   └── Type CHANGE -> error if frequency fields incomplete
+    │   └── Returns (rrule_string, schedule, based_on, catch_up, warnings)
 
-**What:** `mcp.server.fastmcp` imports become `fastmcp` imports.
+  → payload.py::PayloadBuilder.build_edit()
+    ├── Receives repetition fields from domain result
+    ├── Adds to EditTaskRepoPayload:
+    │   ├── rule_string: str
+    │   ├── schedule_type: str  (bridge format: "Regularly"/"FromCompletion")
+    │   ├── anchor_date_key: str (bridge format: "DueDate"/"DeferDate"/"PlannedDate")
+    │   └── catch_up_automatically: bool
 
-**Import changes:**
+  → BridgeWriteMixin._send_to_bridge("edit_task", payload)
+    ├── model_dump(by_alias=True, exclude_unset=True)
+    ├── Sends: { ruleString, scheduleType, anchorDateKey, catchUpAutomatically }
+    └── Bridge.js creates new Task.RepetitionRule(...) and assigns
+```
+
+### Write Path (edit_tasks -- clear)
+
+```
+Agent sends:
+  { "repetitionRule": null }
+
+  → EditTaskCommand.repetition_rule = None (PatchOrClear: None means "clear")
+
+  → DomainLogic: null -> set bridge repetition to null
+  → Payload: repetition_rule_clear: true (or equivalent signal)
+  → Bridge: task.repetitionRule = null
+```
+
+### Write Path (add_tasks -- create with rule)
+
+```
+Agent sends:
+  { "name": "Weekly standup",
+    "repetitionRule": {
+      "frequency": { "type": "weekly", "onDays": ["MO"] },
+      "schedule": "regularly_with_catch_up",
+      "basedOn": "due_date"
+    }
+  }
+
+  → AddTaskCommand: validates all required fields present
+  → PayloadBuilder: build_rrule(frequency) -> "FREQ=WEEKLY;BYDAY=MO"
+  → AddTaskRepoPayload gains: ruleString, scheduleType, anchorDateKey, catchUpAutomatically
+  → Bridge creates task AND assigns repetition rule in one step
+```
+
+## Model Taxonomy Changes
+
+### Read Model (models/common.py)
+
+Current `RepetitionRule`:
 ```python
-# server.py
-- from mcp.server.fastmcp import Context, FastMCP
-+ from fastmcp import FastMCP, Context
-
-# mcp.types stays -- fastmcp does NOT re-export ToolAnnotations
-  from mcp.types import ToolAnnotations  # unchanged
+class RepetitionRule(OmniFocusBaseModel):
+    rule_string: str
+    schedule_type: ScheduleType
+    anchor_date_key: AnchorDateKey
+    catch_up_automatically: bool
 ```
 
-**Test imports:**
+New `RepetitionRule` (breaking change):
 ```python
-# conftest.py, test_server.py, test_simulator_*.py
-- from mcp.server.fastmcp import FastMCP
-+ from fastmcp import FastMCP
-
-# These are REMOVED entirely (replaced by Client pattern):
-- from mcp.client.session import ClientSession
-- from mcp.shared.message import SessionMessage
-- import anyio
+class RepetitionRule(OmniFocusBaseModel):
+    """Read model: structured repetition rule on Task/Project."""
+    frequency: FrequencySpec          # Discriminated union by type
+    schedule: Schedule                # "regularly" | "regularly_with_catch_up" | "from_completion"
+    based_on: BasedOn                 # "due_date" | "defer_date" | "planned_date"
+    end: RepetitionEnd | None = None  # {"date": ...} or {"occurrences": N} or None
 ```
 
-**pyproject.toml:**
-```toml
-dependencies = [
--   "mcp>=1.26.0",
-+   "fastmcp>=3",
-]
-# Remove spike dependency group (merged into main)
-```
+`FrequencySpec` is a discriminated union (Pydantic `Discriminator` on `type` field). Eight concrete types, all sharing `type: Literal[...]` and `interval: int = 1`.
 
-**Verified:** `ToolAnnotations` is NOT re-exported by fastmcp -- `from mcp.types import ToolAnnotations` must remain. This works because fastmcp depends on mcp transitively.
+### Command Models (contracts/)
 
-**Architecture impact:** None. Import-only change. No structural changes.
-
-### 2. Lifespan Context Shortcut
-
-**What:** `ctx.request_context.lifespan_context["service"]` becomes `ctx.lifespan_context["service"]`.
-
-**Affected:** 6 tool handlers in `server.py` (one per tool).
-
+**EditTaskCommand** gains:
 ```python
-# All 6 tool handlers
-- service: OperatorService = ctx.request_context.lifespan_context["service"]
-+ service: OperatorService = ctx.lifespan_context["service"]
+repetition_rule: PatchOrClear[RepetitionRuleSpec] = UNSET
 ```
+- UNSET = no change (omitted)
+- None = clear repetition rule
+- RepetitionRuleSpec = set/modify
 
-**Architecture impact:** None. Syntactic shortcut. Both work in v3 (backward compatible). The lifespan pattern itself is unchanged -- `app_lifespan` still yields `{"service": service}`.
-
-### 3. Test Client Migration
-
-**What:** Replace manual memory-stream plumbing with `Client(server)`.
-
-**Before (current):**
+**AddTaskCommand** gains:
 ```python
-# conftest.py -- 47-line _ClientSessionProxy class
-# test_server.py -- 32-line run_with_client helper
-# test_simulator_*.py -- 26-line _run_with_client copies
+repetition_rule: RepetitionRuleSpec | None = None
 ```
+- None = no repetition (default)
+- RepetitionRuleSpec = create with rule
 
-**After:**
+`RepetitionRuleSpec` is the write-side model -- all root fields optional (for partial updates on edit), but frequency.type always required when frequency is provided.
+
+### RepoPayload Models
+
+**EditTaskRepoPayload** gains:
 ```python
-from fastmcp import Client
-
-# conftest.py fixture
-@pytest.fixture
-def client(server: Any) -> Any:
-    return Client(server)
+# Flat fields matching bridge.js expectations (camelCase via alias)
+rule_string: str | None = None
+schedule_type: str | None = None          # Bridge-format: "Regularly", "FromCompletion"
+anchor_date_key: str | None = None        # Bridge-format: "DueDate", etc.
+catch_up_automatically: bool | None = None
+clear_repetition_rule: bool | None = None # Signal to set task.repetitionRule = null
 ```
 
-**Test pattern change:**
+**AddTaskRepoPayload** gains same fields (minus clear).
 
+Flat rather than nested because the bridge expects flat parameters, and the repo payload is bridge-ready by design.
+
+### Enum Changes (models/enums.py)
+
+**Existing `ScheduleType`** -- RETIRE or repurpose. Currently has 2 values (`regularly`, `from_completion`). The new agent-facing model uses 3 values.
+
+**New enums** (or Literal types):
 ```python
-# Before:
-async def test_something(self, client_session):
-    result = await client_session.call_tool("tool", {"arg": "val"})
-    assert result.isError is not True
-    assert result.structuredContent["key"] == "value"
+class Schedule(StrEnum):
+    """Agent-facing schedule type (3 values)."""
+    REGULARLY = "regularly"
+    REGULARLY_WITH_CATCH_UP = "regularly_with_catch_up"
+    FROM_COMPLETION = "from_completion"
 
-# After (two options):
-
-# Option A: call_tool_mcp (minimal diff -- returns raw CallToolResult)
-async def test_something(self, client):
-    async with client:
-        result = await client.call_tool_mcp("tool", {"arg": "val"})
-        assert result.isError is not True
-        assert result.structuredContent["key"] == "value"
-
-# Option B: call_tool (idiomatic v3 -- raises ToolError on error)
-async def test_something(self, client):
-    async with client:
-        result = await client.call_tool("tool", {"arg": "val"})
-        # result is CallToolResult, but errors raise ToolError
+class BasedOn(StrEnum):
+    """Agent-facing anchor date (renamed from AnchorDateKey)."""
+    DUE_DATE = "due_date"
+    DEFER_DATE = "defer_date"
+    PLANNED_DATE = "planned_date"
 ```
 
-**Critical adaptation points:**
+`BasedOn` is functionally identical to `AnchorDateKey` but renamed for agent ergonomics. The old `AnchorDateKey` can stay as an internal alias or be retired.
 
-1. **Error assertions** -- Current tests check `result.isError is True` and inspect `result.content[0].text`. With v3 Client:
-   - `client.call_tool()` raises `ToolError` on error (default `raise_on_error=True`)
-   - `client.call_tool(raise_on_error=False)` returns `CallToolResult` with `isError=True` (same as current)
-   - `client.call_tool_mcp()` always returns raw `CallToolResult` (never raises)
-   - **Recommendation:** Use `call_tool_mcp()` for tests that assert on error responses. Minimal assertion changes.
+### Mapping: Schedule <-> Bridge Format
 
-2. **Structured content** -- Tests access `result.structuredContent["key"]`. `call_tool_mcp()` returns `CallToolResult` which has the same `.structuredContent` attribute. No change needed if using `call_tool_mcp()`.
+| Agent `schedule` value | Bridge `scheduleType` | Bridge `catchUpAutomatically` |
+|------------------------|----------------------|-------------------------------|
+| `regularly` | `Regularly` | `false` |
+| `regularly_with_catch_up` | `Regularly` | `true` |
+| `from_completion` | `FromCompletion` | `false` (ignored by OmniFocus) |
 
-3. **Session lifecycle** -- `Client(server)` must be used as async context manager (`async with client:`). Current `client_session` fixture returns a proxy that works without `async with`. Two approaches:
-   - Fixture returns `Client(server)` object, tests use `async with client:` explicitly
-   - Fixture uses `@pytest.fixture` with `yield` inside `async with Client(server) as c:` (automates lifecycle)
+| Agent `basedOn` value | Bridge `anchorDateKey` | SQLite `repetitionAnchorDateKey` |
+|----------------------|----------------------|----------------------------------|
+| `due_date` | `DueDate` | `dateDue` |
+| `defer_date` | `DeferDate` | `dateToStart` |
+| `planned_date` | `PlannedDate` | `datePlanned` |
 
-**Fixture architecture decision:**
+### Mapping: Schedule <-> SQLite Format
 
-```python
-# Option A: tests manage lifecycle (explicit)
-@pytest.fixture
-def client(server):
-    return Client(server)
+| SQLite `repetitionScheduleTypeString` | SQLite `catchUpAutomatically` | Agent `schedule` |
+|---------------------------------------|-------------------------------|------------------|
+| `fixed` | 1 | `regularly_with_catch_up` |
+| `fixed` | 0 | `regularly` |
+| `from-assigned` | 1 | `regularly_with_catch_up` |
+| `from-assigned` | 0 | `regularly` |
+| `due-after-completion` | any | `from_completion` |
+| `start-after-completion` | any | `from_completion` |
+| `from-completion` | any | `from_completion` |
 
-# Tests:
-async def test_foo(self, client):
-    async with client:
-        result = await client.call_tool_mcp(...)
+Note: the existing `_SCHEDULE_TYPE_MAP` in `hybrid.py` already handles the SQLite string variants but currently maps to the 2-value `ScheduleType`. Needs expansion to factor in `catchUpAutomatically`.
 
-# Option B: fixture manages lifecycle (implicit, cleaner tests)
-@pytest.fixture
-async def client(server):
-    async with Client(server) as c:
-        yield c
+## Partial Update Merge Logic
 
-# Tests:
-async def test_foo(self, client):
-    result = await client.call_tool_mcp(...)
-```
+### Where It Lives: `service/domain.py::DomainLogic`
 
-**Recommendation:** Option B. Tests stay cleaner (no `async with` boilerplate in every test). The fixture handles connect/disconnect. Matches the existing `client_session` fixture pattern where the proxy handled lifecycle.
+New method: `process_repetition(spec, current_task) -> (merged_spec, warnings)`
 
-**Scope of test assertion changes:**
-- `test_server.py`: ~112 uses of `run_with_client` or `client_session` across 1164 lines
-- `test_simulator_bridge.py`: ~4 uses
-- `test_simulator_integration.py`: ~2 uses
+Follows the same pattern as `compute_tag_diff` and `process_move`:
+- Receives the command-layer spec and current task state
+- Returns domain results the orchestrator can merge into the payload
+- Handles all merge/validation/no-op logic
 
-**Tests using `run_with_client` (callback pattern):**
-```python
-# Before:
-async def _check(session: ClientSession) -> None:
-    result = await session.call_tool("get_all")
-    assert result.structuredContent is not None
-await run_with_client(server, _check)
+### Merge Rules
 
-# After (with fixture):
-async with Client(server) as client:
-    result = await client.call_tool_mcp("get_all", {})
-    assert result.structuredContent is not None
-```
+1. **`repetition_rule: UNSET`** (field omitted) -> no change, skip processing
+2. **`repetition_rule: None`** (explicit null) -> clear repetition rule
+3. **`repetition_rule: RepetitionRuleSpec`** with task having NO existing rule:
+   - All required fields must be present: frequency (with type), schedule, basedOn
+   - Missing required fields -> ValueError with educational message
+4. **`repetition_rule: RepetitionRuleSpec`** with task having existing rule:
+   - Root fields: independently updatable. Omitted = preserve from existing
+   - Frequency omitted entirely -> preserve existing frequency
+   - Frequency provided, same type -> merge: omitted fields preserved
+   - Frequency provided, different type -> full replacement: all type-specific fields required
+5. **No-op detection**: merged result identical to current -> warning, skip bridge call
 
-**Tests using `client_session` fixture:**
-```python
-# Before:
-async def test_get_task(self, client_session):
-    result = await client_session.call_tool("get_task", {"id": "task-001"})
+### Integration in _EditTaskPipeline
 
-# After:
-async def test_get_task(self, client):
-    result = await client.call_tool_mcp("get_task", {"id": "task-001"})
-```
-
-### 4. Middleware (ToolLoggingMiddleware)
-
-**What:** Replace manual `log_tool_call()` with automatic middleware.
-
-**New file:** `src/omnifocus_operator/middleware.py`
-
-```python
-# middleware.py
-import logging
-import time
-from typing import Any
-from fastmcp.server.middleware import Middleware, MiddlewareContext
-
-class ToolLoggingMiddleware(Middleware):
-    def __init__(self, logger: logging.Logger) -> None:
-        self._log = logger
-
-    async def on_call_tool(self, context: MiddlewareContext, call_next: Any) -> Any:
-        tool_name = context.message.name
-        args = context.message.arguments
-        self._log.info(...)
-        start = time.monotonic()
-        try:
-            result = await call_next(context)
-            elapsed_ms = (time.monotonic() - start) * 1000
-            self._log.info(...)
-            return result
-        except Exception as e:
-            elapsed_ms = (time.monotonic() - start) * 1000
-            self._log.error(...)
-            raise
-```
-
-**Wiring point -- `server.py:create_server()`:**
-```python
-def create_server() -> FastMCP:
-    mcp = FastMCP("omnifocus-operator", lifespan=app_lifespan)
-    _register_tools(mcp)
-+   # Middleware wired here, not in __main__, because middleware
-+   # is part of the server configuration (same as lifespan and tools)
-+   mcp.add_middleware(ToolLoggingMiddleware(stderr_logger))
-+   mcp.add_middleware(ToolLoggingMiddleware(file_logger))
-    return mcp
-```
-
-**Where do loggers come from?** Two options:
-
-- **Option A:** `create_server()` accepts logger params. `__main__.py` creates and passes them.
-- **Option B:** Logger factory in `middleware.py`, called from `create_server()`.
-- **Option C:** Loggers created in `__main__.py` before `create_server()`, middleware attached after.
-
-**Recommendation:** Option C. Logger setup belongs in `__main__.py` (entrypoint concern). Middleware class lives in `middleware.py`. Wiring happens in `__main__.py`:
-
-```python
-# __main__.py
-server = create_server()
-# ... set up loggers ...
-server.add_middleware(ToolLoggingMiddleware(stderr_logger))
-server.add_middleware(ToolLoggingMiddleware(file_logger))
-server.run(transport="stdio")
-```
-
-This keeps `create_server()` pure (no logging side effects) and lets tests skip middleware entirely. Tests that want to verify middleware can add it explicitly.
-
-**Architecture impact:** Removes cross-cutting concern from tool handlers. Tools become pure business logic -- no logging boilerplate. Middleware handles entry/exit/timing/errors automatically.
-
-### 5. Logging Rework
-
-**What:** Dual-handler logging replacing file-only setup.
-
-**Modified file:** `__main__.py`
+New step `_process_repetition()` added between `_apply_move` and `_build_payload`:
 
 ```python
-# Before:
-log.propagate = False  # REMOVED
-handler = logging.FileHandler(log_path)  # single handler
+class _EditTaskPipeline(_Pipeline):
+    async def execute(self, command: EditTaskCommand) -> EditTaskResult:
+        await self._verify_task_exists()
+        self._validate_and_normalize()
+        self._resolve_actions()
+        self._apply_lifecycle()
+        self._check_completed_status()
+        await self._apply_tag_diff()
+        await self._apply_move()
+        self._process_repetition()     # NEW -- synchronous, no async needed
+        self._build_payload()
 
-# After:
-# Handler 1: stderr (visible in Claude Desktop log page)
-stderr_handler = logging.StreamHandler(sys.stderr)
-stderr_handler.setFormatter(logging.Formatter(
-    "%(asctime)s %(levelname)-8s [%(name)s] %(message)s",
-    datefmt="%H:%M:%S"
-))
-
-# Handler 2: file (persistent, for Claude Code debugging)
-file_handler = logging.FileHandler(log_path)
-file_handler.setFormatter(logging.Formatter(
-    "%(asctime)s %(levelname)-8s [%(name)s] %(message)s"
-))
-
-log.addHandler(stderr_handler)
-log.addHandler(file_handler)
+        if (early := self._detect_noop()) is not None:
+            return early
+        return await self._delegate()
 ```
 
-**Architecture impact:** None on server/service/repository. Only affects `__main__.py` entrypoint. Independent of FastMCP migration (works on both SDKs). Bundled for convenience.
+`_process_repetition` is synchronous because:
+- No resolution needed (no tag/parent name lookup)
+- Current task is already fetched in `_verify_task_exists()`
+- `parse_rrule` and `build_rrule` are pure functions
 
-### 6. Progress Reporting
+### Integration in _AddTaskPipeline
 
-**What:** `ctx.report_progress()` in batch operations.
-
-**Modified:** `server.py` tool handlers for `add_tasks` and `edit_tasks`.
+Simpler: no merge logic, just validate completeness and build:
 
 ```python
-# add_tasks handler (currently single-item, but future-proofed)
-async def add_tasks(items: list[dict[str, Any]], ctx: Context[Any, Any, Any]):
-    ...
-    for i, item in enumerate(validated_items):
-        await ctx.report_progress(progress=i, total=len(validated_items))
-        result = await service.add_task(item)
-        results.append(result)
-    await ctx.report_progress(progress=len(validated_items), total=len(validated_items))
+class _AddTaskPipeline(_Pipeline):
+    async def execute(self, command: AddTaskCommand) -> AddTaskResult:
+        self._validate()
+        await self._resolve_parent()
+        await self._resolve_tags()
+        self._process_repetition()     # NEW -- validate + build RRULE
+        self._build_payload()
+        return await self._delegate()
 ```
 
-**Current limitation:** Both `add_tasks` and `edit_tasks` are limited to 1 item per call (`len(items) != 1` raises). Progress reporting is trivially useful now but becomes meaningful when the batch limit is raised. Adding the pattern now means no code changes when limits are relaxed.
+## No-Op Detection Impact
 
-**Architecture impact:** None. Progress reporting is a presentation concern at the MCP layer. Service layer is unaware of it. Graceful no-op when client doesn't send `progressToken`.
+The existing `_all_fields_match` in `DomainLogic` needs extension to compare repetition rules. Since the repo payload will carry flat RRULE fields, comparison should be done at the structured level before flattening -- or the current task's structured `RepetitionRule` is compared against the merged `RepetitionRuleSpec`.
 
-## Component Boundary Analysis
-
-```
-                    CHANGES                         UNCHANGED
-                    -------                         ---------
-
- __main__.py -----> Logging rework                  service/
-                    Middleware wiring                contracts/
-                                                    repository/
- server.py -------> Import swap                     models/
-                    lifespan_context shortcut        agent_messages/
-                    Remove log_tool_call()           bridge/
-                    Progress reporting
-
- middleware.py ---> NEW: ToolLoggingMiddleware
-
- conftest.py -----> Replace _ClientSessionProxy     tests/doubles/
-                    with Client fixture              tests/test_*.py (non-server)
-
- test_server.py --> Replace run_with_client
-                    Update all assertions
-
- test_simulator_*.py -> Replace _run_with_client
-```
-
-**Key insight:** Changes are confined to the MCP layer (server, entrypoint, tests) and do not penetrate into service, repository, contracts, or models. The three-layer architecture boundary holds perfectly. This is the migration's biggest architectural virtue -- it validates the clean separation.
-
-## Build Order (Dependency Chain)
-
-Phases ordered by dependency: each phase can only start after its dependencies land.
-
-### Phase 1: Dependency Swap + Import Migration
-- Swap `mcp>=1.26.0` to `fastmcp>=3` in pyproject.toml
-- Update all imports (server.py, conftest.py, test_server.py, test_simulator_*.py)
-- Replace `ctx.request_context.lifespan_context` with `ctx.lifespan_context` (6 sites)
-- **Dependency:** None. Foundation for everything else.
-- **Verification:** All existing tests pass with new imports (before any behavior change)
-
-### Phase 2: Test Client Migration
-- Create new `client` fixture using `Client(server)` in conftest.py
-- Migrate test_server.py from `run_with_client` + `client_session` to `Client`
-- Migrate test_simulator_bridge.py and test_simulator_integration.py
-- Delete `_ClientSessionProxy`, `run_with_client`, `_run_with_client` copies
-- Remove `anyio`, `ClientSession`, `SessionMessage` imports from test files
-- **Dependency:** Phase 1 (needs fastmcp installed for `from fastmcp import Client`)
-- **Why before middleware:** Tests need to work before we change server behavior. Middleware changes what gets logged, which could confuse debugging if tests are broken.
-- **Verification:** All tests pass with new client pattern. Exact same assertions (using `call_tool_mcp` for minimal diff).
-
-### Phase 3: Middleware
-- Create `src/omnifocus_operator/middleware.py` with `ToolLoggingMiddleware`
-- Remove `log_tool_call()` function and 6 call sites from `server.py`
-- Wire middleware in `__main__.py` (or `create_server()`)
-- **Dependency:** Phase 1 (needs fastmcp for Middleware base class)
-- **Independent of Phase 2** -- could run in parallel, but sequential is safer
-- **Verification:** Middleware fires on tool calls (visible in logs). All tests pass.
-
-### Phase 4: Logging Rework
-- Replace single FileHandler with dual stderr + file handlers in `__main__.py`
-- Remove misdiagnosis comment
-- Remove `propagate = False`
-- **Dependency:** Phase 3 (middleware loggers need to exist before wiring)
-- **Note:** Technically SDK-independent, but logically after middleware since middleware creates the loggers that get dual destinations
-- **Verification:** Server logs appear on both stderr and file.
-
-### Phase 5: Progress Reporting
-- Add `ctx.report_progress()` to `add_tasks` and `edit_tasks` batch loops
-- **Dependency:** Phase 1 (needs fastmcp Context with report_progress)
-- **Independent of Phases 2-4** -- can land anytime after Phase 1
-- **Verification:** Progress bar visible in Claude Code CLI.
-
-### Phase 6: Documentation
-- Update README.md dependency section
-- Update landing page if needed
-- **Dependency:** All phases complete
-- **Verification:** README matches actual dependencies.
-
-```
-Phase 1: Dep Swap ──┬──> Phase 2: Test Client ──> Phase 3: Middleware ──> Phase 4: Logging
-                    │
-                    └──> Phase 5: Progress (independent)
-                                                                          Phase 6: Docs (last)
-```
-
-## Test Assertion Migration Strategy
-
-**Two categories of test assertions:**
-
-### Category A: Success assertions (majority)
+Add to `_all_fields_match`:
 ```python
-# Current:
-result = await client_session.call_tool("tool", {"arg": "val"})
-assert result.isError is not True
-assert result.structuredContent["key"] == "value"
-
-# Migrated (using call_tool_mcp -- minimal diff):
-result = await client.call_tool_mcp("tool", {"arg": "val"})
-assert result.isError is not True
-assert result.structuredContent["key"] == "value"
+if "rule_string" in fields_set:
+    # Compare existing structured rule against merged spec
+    # This catches "agent sent the same rule that already exists"
+    return False  # Conservative: if repetition fields are set, always send
 ```
-Change: method name only (`call_tool` -> `call_tool_mcp`).
 
-### Category B: Error assertions (~10 tests)
+Conservative approach recommended for v1: if any repetition field is set in the payload, skip no-op detection for repetition. Full structural comparison can come later.
+
+## InMemoryBridge Changes
+
+The `_handle_edit_task` method needs to handle repetition write params:
+
 ```python
-# Current:
-result = await client_session.call_tool("tool", {"arg": "bad"})
-assert result.isError is True
-text = result.content[0].text
-assert "expected error" in text
-
-# Migrated (using call_tool_mcp -- same shape):
-result = await client.call_tool_mcp("tool", {"arg": "bad"})
-assert result.isError is True
-text = result.content[0].text
-assert "expected error" in text
+# In _handle_edit_task:
+if "ruleString" in params:
+    task["repetitionRule"] = {
+        "ruleString": params["ruleString"],
+        "scheduleType": params.get("scheduleType"),
+        "anchorDateKey": params.get("anchorDateKey"),
+        "catchUpAutomatically": params.get("catchUpAutomatically", False),
+    }
+if params.get("clearRepetitionRule"):
+    task["repetitionRule"] = None
 ```
-Change: method name only. `call_tool_mcp` never raises, always returns `CallToolResult`.
 
-**Recommendation:** Use `call_tool_mcp()` uniformly across all test assertions. This preserves the existing assertion shapes and minimizes migration risk. `call_tool()` (the raising variant) can be adopted later if desired, but adds no value for tests.
+Similarly for `_handle_add_task`.
+
+## Golden Master Impact
+
+Per GOLD-01: this milestone adds/modifies bridge operations for repetition rules. Golden master must be re-captured and new contract test scenarios added for:
+- Task with repetition rule (all 8 frequency types if possible via real OmniFocus)
+- Edit task: set repetition rule
+- Edit task: modify repetition rule
+- Edit task: clear repetition rule
+- Add task with repetition rule
+
+## Suggested Build Order
+
+### Phase 1: Read Model Rewrite (foundation -- no write path yet)
+
+1. **`rrule/parser.py`** + tests -- `parse_rrule(str) -> FrequencySpec`
+   - Port from `.research/deep-dives/rrule-validator/rrule_validator.py` (directly portable)
+   - Return Pydantic `FrequencySpec` models instead of dataclass
+   - 79 existing tests from research spike as starting point
+
+2. **New models** -- `FrequencySpec` discriminated union, new `RepetitionRule`, new enums
+   - `Schedule` (3 values), `BasedOn` (3 values)
+   - `FrequencySpec` hierarchy (8 types)
+   - `RepetitionEnd` model (date or occurrences)
+   - New `RepetitionRule` with structured fields
+
+3. **SQLite read path** -- modify `hybrid.py::_build_repetition_rule`
+   - Call `parse_rrule` on `repetitionRuleString`
+   - Map schedule_type + catchUp -> `Schedule` enum
+   - Map anchor_date_key -> `BasedOn` enum
+   - Return dict matching new `RepetitionRule` shape
+
+4. **Bridge read path** -- modify `adapter.py::_adapt_repetition_rule`
+   - Same transformation but from bridge format (PascalCase)
+   - Call `parse_rrule` on ruleString
+   - Result is new-shape dict for Pydantic validation
+
+5. **Tests**: model tests, parser tests, adapter/hybrid integration tests
+
+### Phase 2: Write Model + Bridge + Service
+
+1. **`rrule/builder.py`** + tests -- `build_rrule(FrequencySpec) -> str`
+   - Port from research spike
+   - Round-trip validation: `parse_rrule(build_rrule(spec)) == spec`
+
+2. **Command models** -- `RepetitionRuleSpec` on `EditTaskCommand` and `AddTaskCommand`
+   - Write-side model with all-optional root fields
+   - `PatchOrClear[RepetitionRuleSpec]` on edit, `RepetitionRuleSpec | None` on add
+   - Pydantic validators for type-specific constraints
+
+3. **RepoPayload models** -- flat RRULE fields on `EditTaskRepoPayload` and `AddTaskRepoPayload`
+
+4. **`service/domain.py`** -- `process_repetition()` merge logic
+   - Merge rules implementation
+   - No-op detection extension
+   - Educational warnings
+
+5. **`service/payload.py`** -- `build_edit`/`build_add` gain repetition field handling
+   - Call `build_rrule` for the RRULE string
+   - Map `Schedule` -> bridge scheduleType + catchUp
+   - Map `BasedOn` -> bridge anchorDateKey
+
+6. **`_EditTaskPipeline`** + **`_AddTaskPipeline`** -- wire `_process_repetition` step
+
+7. **InMemoryBridge** -- handle repetition params in `_handle_edit_task` and `_handle_add_task`
+
+8. **Bridge.js** -- handle repetition params in edit_task and add_task commands
+
+9. **Golden master** -- re-capture and add contract test scenarios
+
+10. **Server tool descriptions** -- update docstrings for `add_tasks` and `edit_tasks`
+
+### Why This Order
+
+- Phase 1 is independently shippable and testable -- read model works end-to-end
+- Parser is needed by both read paths, so it must come first
+- Builder is only needed by write path, so it can wait for Phase 2
+- Command models depend on having the structured types from Phase 1
+- Domain merge logic depends on both parser (to read current state) and builder (to produce output)
+- InMemoryBridge and bridge.js are last because they're mechanical -- just accepting the params the service layer sends
 
 ## Anti-Patterns to Avoid
 
-### Do NOT put middleware in server.py
-`server.py` owns tool registration and lifespan. Middleware is a cross-cutting concern. Mixing them creates a module that's responsible for too many things.
+### Don't put RRULE logic in the bridge
+The bridge is a relay. RRULE parsing/building is Python business logic. Bridge receives pre-built RRULE strings.
 
-### Do NOT create per-test Client instances
-The fixture should manage the Client lifecycle. Tests that create their own Clients (e.g., for custom lifespan) should still use `async with Client(server) as client:` explicitly, not raw construction.
+### Don't duplicate mapping logic
+The schedule/basedOn enum mappings between agent format, bridge format, and SQLite format should have exactly one mapping table per direction. Current codebase already has this pattern (`_SCHEDULE_TYPE_MAP`, `_ANCHOR_DATE_MAP`). Extend, don't duplicate.
 
-### Do NOT use ctx.info() / ctx.warning()
-Spike conclusively proved these are dead ends -- no major MCP client renders them. Stick with response-payload warnings (existing pattern) for agent-facing messages and Python logging for developer diagnostics.
+### Don't use model inheritance for frequency types
+Use Pydantic discriminated unions (`Discriminator` on the `type` field), not a class hierarchy. Each frequency type is a standalone model with `type: Literal["weekly"]` etc. Keeps the JSON schema clean for LLM tool descriptions.
 
-### Do NOT migrate to call_tool() (raising variant) during initial migration
-`call_tool_mcp()` preserves existing assertion shapes. Switching to the raising variant simultaneously with infrastructure migration doubles the diff and debugging surface. Adopt it in a follow-up if desired.
+### Don't store structured fields in the repo payload
+The repo payload is bridge-ready. Bridge expects flat `(ruleString, scheduleType, anchorDateKey, catchUpAutomatically)`. The structured -> flat conversion happens in `PayloadBuilder`, not later.
+
+### Don't skip parse_rrule on the read path
+Even though the SQLite row has the RRULE string, it still needs parsing into structured `FrequencySpec`. Don't return the raw string -- the whole point is structured fields in the read model.
 
 ## Sources
 
-- Spike experiments: `.research/deep-dives/fastmcp-spike/FINDINGS.md` (8 experiments, 2026-03-24)
-- Reference implementation: `.research/deep-dives/fastmcp-spike/experiments/05_middleware.py`
-- Import verification: `fastmcp 3.1.1` installed, imports tested live
-- `Client.call_tool` signature: `raise_on_error=True` default confirmed via source inspection
-- `Client.call_tool_mcp`: returns raw `CallToolResult`, never raises -- confirmed via source
-- `ToolAnnotations`: NOT re-exported by fastmcp, must stay at `from mcp.types` -- confirmed live
+- Codebase analysis: all files listed in Component Boundaries table
+- `.research/deep-dives/rrule-validator/rrule_validator.py` -- working parser/builder prototype (79 tests)
+- `.research/deep-dives/repetition-rule/repetition-rule-guide.md` -- OmniJS API reference
+- `docs/architecture.md` lines 480-658 -- pre-designed target architecture
+- `.research/updated-spec/MILESTONE-v1.2.3.md` -- milestone specification
