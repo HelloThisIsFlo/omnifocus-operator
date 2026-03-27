@@ -1,6 +1,16 @@
 # Codebase Showcase — What Makes OmniFocus Operator Impressive
 
-Consolidated from 10 independent analyses, each exploring the codebase through a different lens. Evidence-based, with file paths and code examples.
+Source material for portfolio showcase — technical depth, failure stories, and design principles. Evidence-based, with file paths and code examples.
+
+---
+
+## The Problem
+
+No API. OmniFocus is a macOS desktop app with a proprietary scripting runtime (OmniJS). The only programmatic interface: JavaScript snippets executed inside OmniFocus via IPC — a stdin/stdout bridge to a process you don't control, running in someone else's runtime, with undocumented quirks and no test environment.
+
+AI agents need structured, typed, reliable tool interfaces. OmniFocus offers none of that. No headless mode, no test instance, no way to run automated tests against the real app in CI. The only OmniFocus environment is the user's live task database.
+
+This project bridges that gap: turns a closed desktop app into structured task infrastructure that AI agents can call reliably. Everything below — the architecture, the testing strategy, the agent experience design — is a response to this constraint.
 
 ---
 
@@ -561,7 +571,78 @@ The constraint is the feature. Each role's knowledge boundary — what it knows,
 
 ---
 
-## 10. Taste & Restraint: What's NOT Built
+## 10. What Went Wrong — And What I Learned
+
+The architecture and testing visible in this codebase weren't designed in a vacuum. They're the result of things going wrong and being corrected — and each failure produced a design principle to prevent recurrence.
+
+### Story 1: The Silent Technical Debt Crisis (v1.0 → v1.2 → v1.2.1)
+
+**The first warning (v1.0):** The pattern appeared from day one. During the foundation milestone, agents built the entire system against a bridge script that didn't actually work with real OmniFocus — discovered during UAT when the system was run against the real app and nothing happened. Resolving that incident produced 25+ audit scripts mapping real OmniFocus behavior and a three-reviewer spec validation pattern (senior dev, junior dev, product owner reviewing every important spec). The specs got bulletproof. But as v1.2 would show, bulletproof specs don't prevent architectural decay.
+
+**The crisis (v1.2):** During milestone v1.2 (write operations), autonomous agents planned, discussed, and executed features. The specs were thorough. The tests were comprehensive — including UAT run by a dedicated agent. Everything was green.
+
+Near the end of v1.2, a missed scope item (repetition rules) required inserting a new phase. Normal project management. But when agents tried to implement it, they kept getting confused about where to put the logic. That's when the engineer looked at the production code for the first time.
+
+**What he found:** The create-task flow and edit-task flow were completely asymmetric. On the create path, a `TaskCreateSpec` object was created in the MCP server layer and leaked all the way down through the service to the repository — a presentation-layer concern traveling through every architectural boundary. On the edit path, the opposite: the service calculated bridge-ready payloads (the format the JavaScript bridge expects) and passed them to the repository, which just forwarded them — the bridge's internal implementation details leaking upward. One side leaked down, the other leaked up. The 669-line service file was a monolith mixing responsibilities that should have been separated.
+
+> "I realised I hadn't even been looking at the code at all. I'd trusted the requirements and the tests."
+
+**The key insight — silent technical debt:** In a human team, technical debt is never truly silent. A team member says "this is getting hard to work with." A PR reviewer flags a structural concern. Someone in standup mentions a task took longer than expected. You might choose not to address it, but you always *know*.
+
+Agents never complain. They never say "this is getting messy." They never push back on architecture. If the cleanest path is hard to find, they find a messier path and ship it. The tests pass. The features work. The debt accumulates invisibly.
+
+> "The technical debt was silent, because agents never complain. In a team setting, you may have technical debt, but you always know because a team member will tell you and you can decide what to do. In the agent setting, the agent just does it."
+
+> "If they had asked me the correct question, I had the answer. It's just that I was never asked."
+
+**The decision:** Full stop. Not "fix it later" — a dedicated cleanup milestone (v1.2.1). The initial scope was 5 phases. As each layer of cleanup revealed more problems underneath, it grew to 11 phases. Service decomposition into 5 focused modules. Simulator bridge access restrictions. Test double relocation. Type system cleanup. In-memory bridge restructuring. Golden master testing. Nearly as much work as the original feature implementation.
+
+> "We could have kept pushing, but that's the recipe for disaster — after repetition rules, good luck trying to add more and more."
+
+**What changed:** Not just the code — the design philosophy. The v1.2.1 cleanup didn't just fix the immediate mess; it produced the architectural principle that prevents it from recurring (see "Path of Least Resistance" below).
+
+### Story 2: The Assumptions in the Test Double (v1.2.1)
+
+During the v1.2.1 refactoring, another instance of the same pattern surfaced — quieter, but with deeper implications.
+
+The in-memory bridge (the test double that simulates OmniFocus for automated testing) had been accumulating OmniFocus simulation logic — lifecycle behavior, field inheritance, status computation — over the course of multiple milestones. Agents had built up this logic silently, making assumptions about how OmniFocus behaves without flagging them. Same pattern as Story 1: agents found paths that worked, tests passed, and the assumptions went unquestioned.
+
+This raised a concern: if the test double was built on unverified assumptions about OmniFocus behavior, every test built on top of it was testing against a fiction. How many of those assumptions were wrong?
+
+That concern motivated the golden master approach (detailed in Section 4): capture real OmniFocus behavior, replay it against the in-memory bridge, fix any divergence. The golden master immediately validated the concern — the in-memory bridge had no ancestor-chain walk for effective field inheritance. In OmniFocus, setting a due date on a project causes child tasks to inherit that deadline as their `effectiveDueDate`. The test double returned `null`. It simply didn't implement inheritance.
+
+**The production risk:** The v1.3.1 spec plans date filtering on `effectiveDueDate` (inherited values). Without the golden master fix, date filters would silently miss tasks with inherited deadlines — tests green, product broken.
+
+The golden master wasn't a testing innovation pursued for its own sake. It was built because agents had made assumptions that turned out to hide behavioral gaps — and the only way to know how many gaps was to verify against reality.
+
+### Design Principle: Path of Least Resistance
+
+The overarching lesson from v1.2 and v1.2.1: **design architecture where the path of least resistance is the correct path.** Don't rely on discipline or documentation to prevent corner-cutting — make the structure itself guide agents toward the right decision.
+
+**Concrete example:** Separate result types per operation (`CreateTaskRepoResult`, `EditTaskRepoResult`) instead of a shared `WriteResult`. The fields are identical today. A traditional engineering argument would call this unnecessary duplication.
+
+But with agents, the calculus flips:
+
+- **Duplication is cheap.** Agents don't get bored maintaining four similar classes. They don't forget to update one of them.
+- **Wrong abstraction is expensive.** When those types inevitably diverge, separate types means "add a field to the right type." A shared type means a design decision — exactly the kind agents get wrong, because they lack the context to know when a shared abstraction should split.
+
+> "Duplication is cheap, but a wrong abstraction is expensive — especially when the thing making decisions doesn't have the context to know it's wrong."
+
+This principle has established names: "pit of success" in .NET, poka-yoke in Toyota manufacturing, desire paths in urban planning. Different domains, same insight: don't fight nature — design around it. The architectural quality visible in the current codebase isn't despite the failures — it's *because* of them.
+
+### Spec Quality ≠ Architectural Quality
+
+After the v1.0 phantom bridge incident, spec validation was strengthened: three specialized review agents (senior developer for technical gaps, junior developer for unclear requirements, product owner for product misalignment) review every important spec before execution.
+
+This caught real gaps. But even with bulletproof specs, the v1.2 crisis still happened. The spec solved the *what* — features were correct, UAT passed. But the spec didn't cover the *how* — internal architecture. Agents self-organized the internals, and they organized them badly.
+
+> "The spec was super defined, and the UAT was like magic — I let the agent run for half an hour, later I come back, and the feature is just working. But the spec didn't cover the underlying architecture."
+
+**Two separate problems.** Solving one doesn't solve the other. A spec tells agents what to build; architecture tells them *where to put it*. Both need explicit guidance.
+
+---
+
+## 11. Taste & Restraint: What's NOT Built
 
 The previous career handover assessment said: *"The project has taste. That is the word that best captures it."*
 
@@ -577,7 +658,7 @@ Evidence of restraint:
 
 ---
 
-## 11. The Numbers
+## 12. The Numbers
 
 | Metric | Value | Significance |
 |--------|-------|-------------|
@@ -591,4 +672,24 @@ Evidence of restraint:
 | type: ignore annotations | 0 | Zero escape hatches |
 | Read latency | 46ms | 30-60x faster than bridge |
 | Bridge JS tests | 71 | Right ratio for a relay layer |
+
+---
+
+## 13. Honest Self-Assessment
+
+### What This Project Does NOT Demonstrate
+
+**People and organizational skills (entirely absent):**
+- Stakeholder management and balancing competing priorities
+- Cross-team collaboration and managing inter-team tension
+- Mentoring and leading other engineers
+- Creating psychological safety — making sure other teams don't feel dismissed, while the team feels protected
+- Working under real external deadlines and pressure
+
+**Operational expertise (entirely absent):**
+- Deployment and production operations
+- Horizontal scaling and distributed systems
+- Production-grade logging, observability, and distributed tracing
+
+This is a single-user, locally-running application built by one person, for himself, with no external deadlines. It demonstrates architectural and engineering craft. It does not demonstrate the ability to navigate organizations, lead people, or operate production systems at scale.
 

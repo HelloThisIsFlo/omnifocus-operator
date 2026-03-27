@@ -36,5 +36,7 @@ node_modules/
 # Sandbox (local scratch files)
 .sandbox/
 
+.research/deep-dives/portfolio/working-files/
+
 # OS
 .DS_Store
