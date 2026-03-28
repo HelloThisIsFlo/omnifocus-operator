@@ -1,7 +1,7 @@
 """RRULE parser for OmniFocus repetition rule strings.
 
 Parses the OmniFocus RRULE subset into Pydantic model instances matching
-the Frequency union type. Supports all 8 frequency types including
+the Frequency union type. Supports all 9 frequency types including
 MINUTELY, HOURLY, and BYDAY positional prefix parsing.
 
 Public functions:
@@ -24,6 +24,7 @@ from omnifocus_operator.models.repetition_rule import (
     MonthlyDayOfWeekFrequency,
     MonthlyFrequency,
     WeeklyFrequency,
+    WeeklyOnDaysFrequency,
     YearlyFrequency,
 )
 
@@ -67,14 +68,14 @@ _VALID_FREQS = {
 def parse_rrule(rule_string: str) -> Frequency:
     """Parse an RRULE string into a Frequency model instance.
 
-    Returns a Pydantic model matching one of the 8 frequency subtypes.
+    Returns a Pydantic model matching one of the 9 frequency subtypes.
     Raises ValueError with an educational message on invalid input.
 
     Examples:
         >>> parse_rrule("FREQ=DAILY")
         DailyFrequency(interval=1)
         >>> parse_rrule("FREQ=WEEKLY;BYDAY=MO,WE,FR")
-        WeeklyFrequency(interval=1, on_days=["MO", "WE", "FR"])
+        WeeklyOnDaysFrequency(interval=1, on_days=["MO", "WE", "FR"])
     """
     if not rule_string or not rule_string.strip():
         raise ValueError("RRULE string must not be empty")
@@ -98,8 +99,10 @@ def parse_rrule(rule_string: str) -> Frequency:
     elif freq == "DAILY":
         return DailyFrequency(interval=interval)
     elif freq == "WEEKLY":
-        on_days = parts["BYDAY"].split(",") if "BYDAY" in parts else None
-        return WeeklyFrequency(interval=interval, on_days=on_days)
+        if "BYDAY" in parts:
+            on_days = parts["BYDAY"].split(",")
+            return WeeklyOnDaysFrequency(interval=interval, on_days=on_days)
+        return WeeklyFrequency(interval=interval)
     elif freq == "MONTHLY":
         return _parse_monthly(parts, interval)
     else:  # YEARLY

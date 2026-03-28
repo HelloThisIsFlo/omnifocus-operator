@@ -15,7 +15,7 @@ from omnifocus_operator.models.repetition_rule import (
     Frequency,
     MonthlyDayInMonthFrequency,
     MonthlyDayOfWeekFrequency,
-    WeeklyFrequency,
+    WeeklyOnDaysFrequency,
 )
 from omnifocus_operator.rrule.parser import parse_rrule
 
@@ -45,6 +45,7 @@ _TYPE_TO_FREQ: dict[str, str] = {
     "hourly": "HOURLY",
     "daily": "DAILY",
     "weekly": "WEEKLY",
+    "weekly_on_days": "WEEKLY",
     "monthly": "MONTHLY",
     "monthly_day_of_week": "MONTHLY",
     "monthly_day_in_month": "MONTHLY",
@@ -64,7 +65,7 @@ def build_rrule(
     Includes round-trip validation: parse_rrule(result) must succeed.
 
     Args:
-        frequency: Frequency model instance (any of the 8 subtypes)
+        frequency: Frequency model instance (any of the 9 subtypes)
         end: Optional EndByDate or EndByOccurrences model
 
     Returns:
@@ -85,7 +86,7 @@ def build_rrule(
         parts.append(f"INTERVAL={frequency.interval}")
 
     # Type-specific parts
-    if isinstance(frequency, WeeklyFrequency) and frequency.on_days:
+    if isinstance(frequency, WeeklyOnDaysFrequency):
         parts.append(f"BYDAY={','.join(frequency.on_days)}")
     elif isinstance(frequency, MonthlyDayOfWeekFrequency) and frequency.on:
         parts.append(_build_byday_positional(frequency.on))
