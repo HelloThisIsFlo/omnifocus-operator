@@ -106,7 +106,7 @@ class TestAddTask:
     """Service.add_task validates inputs and delegates to repository."""
 
     async def test_create_minimal(self, service: OperatorService) -> None:
-        """Name-only spec creates task and returns AddTaskResult."""
+        """Name-only command creates task and returns AddTaskResult."""
         result = await service.add_task(AddTaskCommand(name="Buy milk"))
 
         assert isinstance(result, AddTaskResult)
@@ -165,8 +165,8 @@ class TestAddTask:
 
     @pytest.mark.snapshot(tags=[make_tag_dict(id="tag-work", name="Work")])
     async def test_all_fields(self, service: OperatorService) -> None:
-        """Spec with all fields creates task successfully."""
-        spec = AddTaskCommand(
+        """AddTaskCommand with all fields creates task successfully."""
+        command = AddTaskCommand(
             name="Full task",
             parent="proj-001",
             tags=["Work"],
@@ -177,7 +177,7 @@ class TestAddTask:
             estimated_minutes=45.0,
             note="Some note",
         )
-        result = await service.add_task(spec)
+        result = await service.add_task(command)
         assert result.success is True
 
     async def test_empty_name(self, service: OperatorService) -> None:
@@ -974,7 +974,7 @@ class TestEditTask:
 
     @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
     async def test_moveto_anchor_not_found(self, service: OperatorService) -> None:
-        """MoveToSpec with nonexistent anchor raises ValueError (UAT #46)."""
+        """MoveAction with nonexistent anchor raises ValueError (UAT #46)."""
 
         with pytest.raises(ValueError, match="Anchor task not found"):
             await service.edit_task(

@@ -193,7 +193,7 @@ def _register_tools(mcp: FastMCP) -> None:
 
         service: OperatorService = ctx.lifespan_context["service"]
         try:
-            spec = AddTaskCommand.model_validate(items[0])
+            command = AddTaskCommand.model_validate(items[0])
         except ValidationError as exc:
             messages = []
             for e in exc.errors():
@@ -211,7 +211,7 @@ def _register_tools(mcp: FastMCP) -> None:
         # Progress reporting (scaffolding for future batch support per D-05):
         total = len(items)
         results: list[AddTaskResult] = []
-        for i, validated in enumerate([spec]):
+        for i, validated in enumerate([command]):
             await ctx.report_progress(progress=i, total=total)
             result = await service.add_task(validated)
             results.append(result)
@@ -267,7 +267,7 @@ def _register_tools(mcp: FastMCP) -> None:
 
         service: OperatorService = ctx.lifespan_context["service"]
         try:
-            spec = EditTaskCommand.model_validate(items[0])
+            command = EditTaskCommand.model_validate(items[0])
         except ValidationError as exc:
             messages = []
             for e in exc.errors():
@@ -289,7 +289,7 @@ def _register_tools(mcp: FastMCP) -> None:
         # Progress reporting (scaffolding for future batch support per D-05):
         total = len(items)
         results: list[EditTaskResult] = []
-        for i, validated in enumerate([spec]):
+        for i, validated in enumerate([command]):
             await ctx.report_progress(progress=i, total=total)
             result = await service.edit_task(validated)
             results.append(result)

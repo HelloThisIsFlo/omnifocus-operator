@@ -875,26 +875,26 @@ class TestAllEntities:
 # ---------------------------------------------------------------------------
 
 
-class TestWriteModels:
+class TestAddTaskModels:
     """AddTaskCommand and AddTaskResult write models."""
 
-    def test_task_create_spec_minimal(self) -> None:
+    def test_add_task_command_minimal(self) -> None:
         """AddTaskCommand with only name (required) creates valid instance."""
-        spec = AddTaskCommand(name="Buy groceries")
-        assert spec.name == "Buy groceries"
-        assert spec.parent is None
-        assert spec.tags is None
-        assert spec.due_date is None
-        assert spec.defer_date is None
-        assert spec.planned_date is None
-        assert spec.flagged is None
-        assert spec.estimated_minutes is None
-        assert spec.note is None
+        command = AddTaskCommand(name="Buy groceries")
+        assert command.name == "Buy groceries"
+        assert command.parent is None
+        assert command.tags is None
+        assert command.due_date is None
+        assert command.defer_date is None
+        assert command.planned_date is None
+        assert command.flagged is None
+        assert command.estimated_minutes is None
+        assert command.note is None
 
-    def test_task_create_spec_all_fields(self) -> None:
+    def test_add_task_command_all_fields(self) -> None:
         """AddTaskCommand with all fields populated."""
         dt = datetime(2024, 6, 15, 9, 0, tzinfo=UTC)
-        spec = AddTaskCommand(
+        command = AddTaskCommand(
             name="Full task",
             parent="proj-001",
             tags=["errands", "morning"],
@@ -905,32 +905,32 @@ class TestWriteModels:
             estimated_minutes=30.0,
             note="A note",
         )
-        assert spec.name == "Full task"
-        assert spec.parent == "proj-001"
-        assert spec.tags == ["errands", "morning"]
-        assert spec.due_date == dt
-        assert spec.defer_date == dt
-        assert spec.planned_date == dt
-        assert spec.flagged is True
-        assert spec.estimated_minutes == 30.0
-        assert spec.note == "A note"
+        assert command.name == "Full task"
+        assert command.parent == "proj-001"
+        assert command.tags == ["errands", "morning"]
+        assert command.due_date == dt
+        assert command.defer_date == dt
+        assert command.planned_date == dt
+        assert command.flagged is True
+        assert command.estimated_minutes == 30.0
+        assert command.note == "A note"
 
-    def test_task_create_spec_rejects_missing_name(self) -> None:
+    def test_add_task_command_rejects_missing_name(self) -> None:
         """AddTaskCommand without name raises ValidationError."""
         with pytest.raises(ValidationError):
             AddTaskCommand()  # type: ignore[call-arg]
 
-    def test_task_create_spec_camel_case_serialization(self) -> None:
+    def test_add_task_command_camel_case_serialization(self) -> None:
         """AddTaskCommand serializes to camelCase via OmniFocusBaseModel."""
         dt = datetime(2024, 6, 15, 9, 0, tzinfo=UTC)
-        spec = AddTaskCommand(
+        command = AddTaskCommand(
             name="Test",
             due_date=dt,
             defer_date=dt,
             planned_date=dt,
             estimated_minutes=15.0,
         )
-        dumped = spec.model_dump(by_alias=True)
+        dumped = command.model_dump(by_alias=True)
         assert "dueDate" in dumped
         assert "deferDate" in dumped
         assert "plannedDate" in dumped
@@ -939,7 +939,7 @@ class TestWriteModels:
         assert "due_date" not in dumped
         assert "defer_date" not in dumped
 
-    def test_task_create_result_round_trip(self) -> None:
+    def test_add_task_result_round_trip(self) -> None:
         """AddTaskResult parses and serializes correctly."""
         result = AddTaskResult(success=True, id="task-new-001", name="New Task")
         assert result.success is True
@@ -954,18 +954,18 @@ class TestWriteModels:
         assert result2.name == "New Task"
 
 
-class TestActionsSpecLifecycle:
-    """ActionsSpec.lifecycle validates to Literal['complete', 'drop']."""
+class TestEditTaskActionsLifecycle:
+    """EditTaskActions.lifecycle validates to Literal['complete', 'drop']."""
 
     def test_lifecycle_complete_valid(self) -> None:
         """EditTaskActions(lifecycle='complete') validates successfully."""
-        spec = EditTaskActions(lifecycle="complete")
-        assert spec.lifecycle == "complete"
+        actions = EditTaskActions(lifecycle="complete")
+        assert actions.lifecycle == "complete"
 
     def test_lifecycle_drop_valid(self) -> None:
         """EditTaskActions(lifecycle='drop') validates successfully."""
-        spec = EditTaskActions(lifecycle="drop")
-        assert spec.lifecycle == "drop"
+        actions = EditTaskActions(lifecycle="drop")
+        assert actions.lifecycle == "drop"
 
     def test_lifecycle_reopen_rejected(self) -> None:
         """EditTaskActions(lifecycle='reopen') raises ValidationError."""
@@ -978,41 +978,41 @@ class TestActionsSpecLifecycle:
             EditTaskActions(lifecycle="invalid")
 
 
-class TestWriteModelStrictness:
+class TestCommandModelStrictness:
     """Write models reject unknown fields (STRCT-01); read models stay permissive (STRCT-02)."""
 
     # --- STRCT-01: Write models reject unknown fields ---
 
-    def test_task_create_spec_rejects_unknown_field(self) -> None:
+    def test_add_task_command_rejects_unknown_field(self) -> None:
         with pytest.raises(ValidationError, match="bogus_field"):
             AddTaskCommand.model_validate({"name": "Task", "bogus_field": "x"})
 
-    def test_task_edit_spec_rejects_unknown_field(self) -> None:
+    def test_edit_task_command_rejects_unknown_field(self) -> None:
         with pytest.raises(ValidationError, match="bogus_field"):
             EditTaskCommand.model_validate({"id": "t1", "bogus_field": "x"})
 
-    def test_move_to_spec_rejects_unknown_field(self) -> None:
+    def test_move_action_rejects_unknown_field(self) -> None:
         with pytest.raises(ValidationError, match="bogus_field"):
             MoveAction.model_validate({"ending": "p1", "bogus_field": "x"})
 
-    def test_tag_action_spec_rejects_unknown_field(self) -> None:
+    def test_tag_action_rejects_unknown_field(self) -> None:
         with pytest.raises(ValidationError, match="bogus_field"):
             TagAction.model_validate({"add": ["tag1"], "bogus_field": "x"})
 
-    def test_actions_spec_rejects_unknown_field(self) -> None:
+    def test_edit_task_actions_rejects_unknown_field(self) -> None:
         with pytest.raises(ValidationError, match="bogus_field"):
             EditTaskActions.model_validate({"lifecycle": "complete", "bogus_field": "x"})
 
     # --- STRCT-02: Read/result models stay permissive ---
 
-    def test_task_create_result_accepts_unknown_field(self) -> None:
+    def test_add_task_result_accepts_unknown_field(self) -> None:
         result = AddTaskResult.model_validate(
             {"success": True, "id": "t1", "name": "T", "bogus": "x"}
         )
         assert result.success is True
         assert not hasattr(result, "bogus")
 
-    def test_task_edit_result_accepts_unknown_field(self) -> None:
+    def test_edit_task_result_accepts_unknown_field(self) -> None:
         result = EditTaskResult.model_validate(
             {"success": True, "id": "t1", "name": "T", "bogus": "x"}
         )
@@ -1029,25 +1029,25 @@ class TestWriteModelStrictness:
 
     # --- STRCT-03: UNSET sentinel works with extra=forbid ---
 
-    def test_task_edit_spec_unset_defaults_with_forbid(self) -> None:
+    def test_edit_task_command_unset_defaults_with_forbid(self) -> None:
         """All UNSET defaults validate successfully -- they are declared fields, not extra."""
-        spec = EditTaskCommand(id="t1")
-        assert spec.id == "t1"
-        assert isinstance(spec.name, _Unset)
-        assert isinstance(spec.flagged, _Unset)
-        assert isinstance(spec.note, _Unset)
-        assert isinstance(spec.due_date, _Unset)
-        assert isinstance(spec.actions, _Unset)
+        command = EditTaskCommand(id="t1")
+        assert command.id == "t1"
+        assert isinstance(command.name, _Unset)
+        assert isinstance(command.flagged, _Unset)
+        assert isinstance(command.note, _Unset)
+        assert isinstance(command.due_date, _Unset)
+        assert isinstance(command.actions, _Unset)
 
-    def test_task_edit_spec_set_values_with_forbid(self) -> None:
+    def test_edit_task_command_set_values_with_forbid(self) -> None:
         """Setting real values on write models still works under forbid."""
-        spec = EditTaskCommand(id="t1", name="Updated", flagged=True)
-        assert spec.name == "Updated"
-        assert spec.flagged is True
+        command = EditTaskCommand(id="t1", name="Updated", flagged=True)
+        assert command.name == "Updated"
+        assert command.flagged is True
 
-    def test_write_model_accepts_camel_case_alias(self) -> None:
+    def test_command_model_accepts_camel_case_alias(self) -> None:
         """Agents send camelCase -- must be accepted under forbid."""
-        spec = AddTaskCommand.model_validate(
+        command = AddTaskCommand.model_validate(
             {
                 "name": "Test",
                 "dueDate": "2024-06-15T09:00:00Z",
@@ -1055,8 +1055,8 @@ class TestWriteModelStrictness:
                 "estimatedMinutes": 30,
             }
         )
-        assert spec.name == "Test"
-        assert spec.estimated_minutes == 30
+        assert command.name == "Test"
+        assert command.estimated_minutes == 30
 
     # --- Schema generation: agent-visible JSON schema is clean ---
 
