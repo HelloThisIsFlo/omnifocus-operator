@@ -246,25 +246,59 @@ class InMemoryBridge(Bridge):
             current_id = task.get("parent")  # raw format: string or None
         return None
 
-    def _advance_repeating_task(self, task: dict[str, Any]) -> None:
-        """Advance the anchor date of a repeating task to its next occurrence.
+    def _recycle_repeating_task(self, task: dict[str, Any], lifecycle: str) -> str:
+        """Create an archive copy of a repeating task, then advance the original.
 
-        Reads ``repetitionRule.anchorDateKey`` to determine which date field
-        to advance, parses the RRULE, and writes back to both the direct
-        field and its ``effective*`` counterpart.
+        OmniFocus "recycles" repeating tasks: completing/dropping produces a
+        generated task (frozen snapshot with completion/drop timestamp) while
+        the original task advances to its next occurrence.
+
+        Returns the generated task's ID (for inclusion in the response).
         """
+        # 1. Deep-copy as the archive snapshot (keeps original dates)
+        generated = copy.deepcopy(task)
+        # OmniFocus names generated tasks {parentId}.0, .1, .2, ...
+        existing_suffixes = [
+            int(t["id"].rsplit(".", 1)[1])
+            for t in self._tasks
+            if t["id"].startswith(f"{task['id']}.") and t["id"].rsplit(".", 1)[1].isdigit()
+        ]
+        next_suffix = max(existing_suffixes, default=-1) + 1
+        gen_id = f"{task['id']}.{next_suffix}"
+        generated["id"] = gen_id
+        generated["url"] = f"omnifocus:///task/{gen_id}"
+
+        # 2. Stamp lifecycle on the generated copy
+        now = datetime.now(tz=UTC).isoformat()
+        if lifecycle == "complete":
+            generated["completionDate"] = now
+            generated["effectiveCompletionDate"] = now
+        elif lifecycle == "drop":
+            generated["dropDate"] = now
+            generated["effectiveDropDate"] = now
+
+        # 3. Archive copies have catchUpAutomatically = false
+        generated["repetitionRule"] = dict(generated["repetitionRule"])
+        generated["repetitionRule"]["catchUpAutomatically"] = False
+
+        # 4. Insert generated copy at the original's index (before the
+        #    original) so stable sort by name preserves generated-first order
+        idx = self._tasks.index(task)
+        self._tasks.insert(idx, generated)
+
+        # 5. Advance the original task's anchor date (task ref still valid —
+        #    insert shifts it one position right, but the dict is the same)
         rule = task["repetitionRule"]
         anchor_key = _ANCHOR_DATE_KEY_MAP[rule["anchorDateKey"]]
         current_date = task.get(anchor_key)
-        if current_date is None:
-            return
-        freq, interval = _parse_rrule_interval(rule["ruleString"])
-        new_date = _advance_date_by_rule(current_date, freq, interval)
-        task[anchor_key] = new_date
-        # Effective field mirrors the direct field (inheritance may override,
-        # but for the task itself they stay in sync).
-        effective_key = f"effective{anchor_key[0].upper()}{anchor_key[1:]}"
-        task[effective_key] = new_date
+        if current_date is not None:
+            freq, interval = _parse_rrule_interval(rule["ruleString"])
+            new_date = _advance_date_by_rule(current_date, freq, interval)
+            task[anchor_key] = new_date
+            effective_key = f"effective{anchor_key[0].upper()}{anchor_key[1:]}"
+            task[effective_key] = new_date
+
+        return gen_id
 
     # ------------------------------------------------------------------
     # Operation handlers
@@ -395,12 +429,12 @@ class InMemoryBridge(Bridge):
                 if tid not in existing_ids:
                     task["tags"].append({"id": tid, "name": self._resolve_tag_name(tid)})
 
-        # Lifecycle — repeating tasks advance their anchor date instead of
-        # completing/dropping.  Non-repeating tasks use terminal states
-        # (completing clears drop dates, dropping clears completion dates).
+        # Lifecycle — repeating tasks recycle (generate archive copy + advance).
+        # Non-repeating tasks use terminal states (completing clears drop
+        # dates, dropping clears completion dates).
         lifecycle = params.get("lifecycle")
         if lifecycle in ("complete", "drop") and task.get("repetitionRule") is not None:
-            self._advance_repeating_task(task)
+            self._recycle_repeating_task(task, lifecycle)
         elif lifecycle == "complete":
             task["status"] = "Completed"
             task["completionDate"] = datetime.now(tz=UTC).isoformat()

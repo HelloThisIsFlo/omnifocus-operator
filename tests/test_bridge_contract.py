@@ -295,6 +295,18 @@ def _replay_all() -> dict[str, ScenarioResult]:
 
             # Check state
             state = asyncio.run(bridge.send_command("get_all"))
+
+            # Discover generated tasks via dot-suffix convention
+            # (mirrors capture script: OmniFocus names generated tasks
+            # {parentId}.0, .1, ... — scan state for new dot-suffixed IDs)
+            for task in state.get("tasks", []):
+                tid = task["id"]
+                dot_pos = tid.rfind(".")
+                if dot_pos > 0 and tid[:dot_pos] in known_task_ids and tid not in known_task_ids:
+                    known_task_ids.add(tid)
+                    parent_symbolic = id_map.get(tid[:dot_pos], tid[:dot_pos])
+                    id_map[tid] = f"{parent_symbolic}.{tid[dot_pos + 1 :]}"
+
             filtered = filter_to_known_ids(
                 state,
                 known_task_ids,

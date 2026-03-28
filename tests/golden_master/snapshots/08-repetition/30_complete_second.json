@@ -906,6 +906,34 @@
         "note": "",
         "flagged": false,
         "effectiveFlagged": false,
+        "dueDate": "2026-12-01T10:00:00.000Z",
+        "deferDate": null,
+        "effectiveDueDate": "2026-12-01T10:00:00.000Z",
+        "effectiveDeferDate": null,
+        "completionDate": "<set>",
+        "effectiveCompletionDate": "<set>",
+        "plannedDate": null,
+        "effectivePlannedDate": null,
+        "dropDate": null,
+        "effectiveDropDate": null,
+        "estimatedMinutes": null,
+        "hasChildren": false,
+        "inInbox": true,
+        "repetitionRule": {
+          "ruleString": "FREQ=DAILY",
+          "scheduleType": "Regularly",
+          "anchorDateKey": "DueDate",
+          "catchUpAutomatically": false
+        },
+        "project": null,
+        "parent": null,
+        "tags": []
+      },
+      {
+        "name": "GM-Repeat-CompleteTarget",
+        "note": "",
+        "flagged": false,
+        "effectiveFlagged": false,
         "dueDate": "2026-12-02T10:00:00.000Z",
         "deferDate": null,
         "effectiveDueDate": "2026-12-02T10:00:00.000Z",
@@ -980,6 +1008,34 @@
           "scheduleType": "Regularly",
           "anchorDateKey": "DueDate",
           "catchUpAutomatically": true
+        },
+        "project": null,
+        "parent": null,
+        "tags": []
+      },
+      {
+        "name": "GM-Repeat-DropTarget",
+        "note": "",
+        "flagged": false,
+        "effectiveFlagged": false,
+        "dueDate": "2026-12-01T10:00:00.000Z",
+        "deferDate": null,
+        "effectiveDueDate": "2026-12-01T10:00:00.000Z",
+        "effectiveDeferDate": null,
+        "completionDate": null,
+        "effectiveCompletionDate": null,
+        "plannedDate": null,
+        "effectivePlannedDate": null,
+        "dropDate": "<set>",
+        "effectiveDropDate": "<set>",
+        "estimatedMinutes": null,
+        "hasChildren": false,
+        "inInbox": true,
+        "repetitionRule": {
+          "ruleString": "FREQ=DAILY",
+          "scheduleType": "Regularly",
+          "anchorDateKey": "DueDate",
+          "catchUpAutomatically": false
         },
         "project": null,
         "parent": null,
@@ -1240,6 +1296,62 @@
         },
         "project": "$project:test_project",
         "parent": "$project:test_project",
+        "tags": []
+      },
+      {
+        "name": "GM-Repeat-MultiComplete",
+        "note": "",
+        "flagged": false,
+        "effectiveFlagged": false,
+        "dueDate": "2026-12-01T10:00:00.000Z",
+        "deferDate": null,
+        "effectiveDueDate": "2026-12-01T10:00:00.000Z",
+        "effectiveDeferDate": null,
+        "completionDate": "<set>",
+        "effectiveCompletionDate": "<set>",
+        "plannedDate": null,
+        "effectivePlannedDate": null,
+        "dropDate": null,
+        "effectiveDropDate": null,
+        "estimatedMinutes": null,
+        "hasChildren": false,
+        "inInbox": true,
+        "repetitionRule": {
+          "ruleString": "FREQ=DAILY",
+          "scheduleType": "Regularly",
+          "anchorDateKey": "DueDate",
+          "catchUpAutomatically": false
+        },
+        "project": null,
+        "parent": null,
+        "tags": []
+      },
+      {
+        "name": "GM-Repeat-MultiComplete",
+        "note": "",
+        "flagged": false,
+        "effectiveFlagged": false,
+        "dueDate": "2026-12-02T10:00:00.000Z",
+        "deferDate": null,
+        "effectiveDueDate": "2026-12-02T10:00:00.000Z",
+        "effectiveDeferDate": null,
+        "completionDate": "<set>",
+        "effectiveCompletionDate": "<set>",
+        "plannedDate": null,
+        "effectivePlannedDate": null,
+        "dropDate": null,
+        "effectiveDropDate": null,
+        "estimatedMinutes": null,
+        "hasChildren": false,
+        "inInbox": true,
+        "repetitionRule": {
+          "ruleString": "FREQ=DAILY",
+          "scheduleType": "Regularly",
+          "anchorDateKey": "DueDate",
+          "catchUpAutomatically": false
+        },
+        "project": null,
+        "parent": null,
         "tags": []
       },
       {
@@ -1632,5 +1744,7 @@
       }
     ]
   },
-  "created_ids": []
+  "created_ids": [
+    "$task:repeat_multi_complete.1"
+  ]
 }

@@ -1537,6 +1537,19 @@ async def _capture_scenario(
 
     # Capture state after all operations for this scenario
     state = await _get_all_raw(bridge)
+
+    # Discover derived occurrence IDs (e.g. "abc123.0", "abc123.1") created
+    # when repeating tasks are completed. Add them to known_task_ids so they
+    # appear in state_after and are cleaned up in Phase 5.
+    for task in state.get("tasks", []):
+        tid = task["id"]
+        dot_pos = tid.rfind(".")
+        if dot_pos > 0 and tid[:dot_pos] in known_task_ids and tid not in known_task_ids:
+            known_task_ids.add(tid)
+            created_ids.append(tid)
+            parent_symbolic = _id_map.get(tid[:dot_pos], tid[:dot_pos])
+            _id_map[tid] = f"{parent_symbolic}.{tid[dot_pos + 1 :]}"
+
     filtered = filter_to_known_ids(state, known_task_ids, known_project_ids, known_tag_ids)
 
     # Build fixture (params may need resolving for serialization)
@@ -2038,19 +2051,10 @@ async def _phase_5_consolidation(bridge: RealBridge) -> None:
     cleanup_task_id = result["id"]
     print(f"  Created cleanup task: {cleanup_name}")
 
-    # Discover derived occurrence IDs (e.g. "abc123.0", "abc123.1") created
-    # when repeating tasks are completed. These aren't in known_task_ids.
-    state = await _get_all_raw(bridge)
-    all_task_ids_to_clean = set(known_task_ids)
-    for task in state.get("tasks", []):
-        tid = task["id"]
-        # Check if this is a derived occurrence: "{known_id}.{n}"
-        dot_pos = tid.rfind(".")
-        if dot_pos > 0 and tid[:dot_pos] in known_task_ids:
-            all_task_ids_to_clean.add(tid)
-
-    # Move all scenario tasks (including derived occurrences) under the cleanup task
-    for task_id in all_task_ids_to_clean:
+    # Move all scenario tasks under the cleanup task.
+    # Derived occurrence IDs (e.g. "abc123.0") are already in known_task_ids —
+    # they were discovered during Phase 4 capture.
+    for task_id in known_task_ids:
         await bridge.send_command(
             "edit_task",
             {"id": task_id, "moveTo": {"position": "ending", "containerId": cleanup_task_id}},
