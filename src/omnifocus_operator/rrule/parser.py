@@ -52,6 +52,11 @@ _DAY_CODE_TO_NAME: dict[str, str] = {
     "SU": "sunday",
 }
 
+_DAY_GROUP_TO_NAME: dict[frozenset[str], str] = {
+    frozenset({"MO", "TU", "WE", "TH", "FR"}): "weekday",
+    frozenset({"SU", "SA"}): "weekend_day",
+}
+
 _VALID_FREQS = {
     "MINUTELY",
     "HOURLY",
@@ -81,7 +86,7 @@ def parse_rrule(rule_string: str) -> Frequency:
         raise ValueError("RRULE string must not be empty")
 
     parts = _parse_parts(rule_string)
-    _validate_no_bysetpos(parts, rule_string)
+    _validate_bysetpos_freq(parts)
     _validate_end_exclusion(parts)
 
     freq = parts.get("FREQ", "").upper()
@@ -146,13 +151,13 @@ def _parse_parts(rule_string: str) -> dict[str, str]:
     return result
 
 
-def _validate_no_bysetpos(parts: dict[str, str], rule_string: str) -> None:
-    """D-05: Reject BYSETPOS with educational error."""
-    if "BYSETPOS" in parts:
+def _validate_bysetpos_freq(parts: dict[str, str]) -> None:
+    """D-05: BYSETPOS is only valid with FREQ=MONTHLY."""
+    if "BYSETPOS" in parts and parts.get("FREQ", "").upper() != "MONTHLY":
         raise ValueError(
-            "BYSETPOS is not supported. OmniFocus uses positional BYDAY format "
-            f"(e.g., BYDAY=2TU for 'second Tuesday'). "
-            f"Please report this rule string: {rule_string}"
+            "BYSETPOS is only supported with FREQ=MONTHLY. "
+            "OmniFocus uses BYSETPOS for monthly weekday/weekend day rules "
+            "(e.g., BYDAY=MO,TU,WE,TH,FR;BYSETPOS=2 for 'second weekday')."
         )
 
 
@@ -166,7 +171,9 @@ def _parse_monthly(
     parts: dict[str, str],
     interval: int,
 ) -> MonthlyFrequency | MonthlyDayOfWeekFrequency | MonthlyDayInMonthFrequency:
-    """Parse MONTHLY frequency with optional BYDAY or BYMONTHDAY."""
+    """Parse MONTHLY frequency with optional BYDAY, BYSETPOS, or BYMONTHDAY."""
+    if "BYDAY" in parts and "BYSETPOS" in parts:
+        return _parse_monthly_bysetpos(parts["BYDAY"], parts["BYSETPOS"], interval)
     if "BYDAY" in parts:
         return _parse_monthly_byday(parts["BYDAY"], interval)
     if "BYMONTHDAY" in parts:
@@ -209,6 +216,39 @@ def _parse_monthly_byday(
     return MonthlyDayOfWeekFrequency(
         interval=interval,
         on={ordinal: day_name},
+    )
+
+
+def _parse_monthly_bysetpos(
+    byday_value: str,
+    bysetpos_value: str,
+    interval: int,
+) -> MonthlyDayOfWeekFrequency:
+    """Parse BYDAY + BYSETPOS for multi-day positional monthly rules.
+
+    Supports two day groups from the OmniFocus monthly repeat picker:
+    - weekday: MO,TU,WE,TH,FR
+    - weekend_day: SU,SA (or SA,SU)
+    """
+    day_codes = frozenset(byday_value.split(","))
+    day_group_name = _DAY_GROUP_TO_NAME.get(day_codes)
+    if day_group_name is None:
+        raise ValueError(
+            f"Unknown BYDAY day group: {byday_value!r}. "
+            "Supported groups: weekday (MO,TU,WE,TH,FR), weekend_day (SA,SU). "
+            "Please report this rule string."
+        )
+
+    pos = int(bysetpos_value)
+    ordinal = _POS_TO_ORDINAL.get(pos)
+    if ordinal is None:
+        raise ValueError(
+            f"Invalid BYSETPOS position {pos}. Valid positions: 1-5 (first-fifth) or -1 (last)"
+        )
+
+    return MonthlyDayOfWeekFrequency(
+        interval=interval,
+        on={ordinal: day_group_name},
     )
 
 

@@ -40,6 +40,11 @@ _NAME_TO_DAY_CODE: dict[str, str] = {
     "sunday": "SU",
 }
 
+_DAY_GROUP_BYDAY: dict[str, str] = {
+    "weekday": "MO,TU,WE,TH,FR",
+    "weekend_day": "SU,SA",
+}
+
 _TYPE_TO_FREQ: dict[str, str] = {
     "minutely": "MINUTELY",
     "hourly": "HOURLY",
@@ -111,13 +116,24 @@ def build_rrule(
 
 
 def _build_byday_positional(on: dict[str, str]) -> str:
-    """Build BYDAY=NXX from {ordinal: day_name} dict."""
+    """Build BYDAY from {ordinal: day_name} dict.
+
+    For day group values (weekday, weekend_day), emits BYDAY=...;BYSETPOS=N.
+    For single-day values (monday, tuesday, etc.), emits BYDAY=NXX prefix form.
+    """
     if len(on) != 1:
         raise ValueError(f"'on' dict must have exactly one key, got {len(on)}")
     ordinal, day_name = next(iter(on.items()))
     pos = _ORDINAL_TO_POS.get(ordinal)
     if pos is None:
         raise ValueError(f"Unknown ordinal: {ordinal!r}. Valid: {sorted(_ORDINAL_TO_POS.keys())}")
+
+    # Day group values use BYSETPOS form
+    byday_group = _DAY_GROUP_BYDAY.get(day_name)
+    if byday_group is not None:
+        return f"BYDAY={byday_group};BYSETPOS={pos}"
+
+    # Single-day values use prefix form
     day_code = _NAME_TO_DAY_CODE.get(day_name)
     if day_code is None:
         raise ValueError(
