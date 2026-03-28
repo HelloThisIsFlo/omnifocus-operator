@@ -80,6 +80,12 @@ Carried forward:
 6. Refactor Frequency to flat model with type-optional edits (Phase 33.1 — full spec in todo)
 7. Fix repetition rule parsing bug (investigation in progress)
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260328-sh9 | Fix BYSETPOS repetition rule parsing bug | 2026-03-28 | dbd68f6 | [260328-sh9-fix-bysetpos-repetition-rule-parsing-bug](./quick/260328-sh9-fix-bysetpos-repetition-rule-parsing-bug/) |
+
 ### Blockers/Concerns
 
 - BYDAY positional prefix form (`BYDAY=-1SA`) must be handled in Phase 32 parser -- crashes spike parser on real data
@@ -88,6 +94,6 @@ Carried forward:
 
 ## Session Continuity
 
-Last activity: 2026-03-28
+Last activity: 2026-03-28 - Completed quick task 260328-sh9: Fix BYSETPOS repetition rule parsing bug
 Stopped at: Phase 33 context gathered
 Resume file: .planning/phases/33-write-model-validation-bridge/33-CONTEXT.md
