@@ -15,6 +15,11 @@ from omnifocus_operator.models.base import OmniFocusBaseModel
 if TYPE_CHECKING:
     from pydantic import AwareDatetime
 
+    from omnifocus_operator.contracts.use_cases.repetition_rule import (
+        RepetitionRuleAddSpec,
+        RepetitionRuleRepoPayload,
+    )
+
 
 class AddTaskCommand(CommandModel):
     """Agent instruction to create a task."""
@@ -28,6 +33,7 @@ class AddTaskCommand(CommandModel):
     flagged: bool | None = None
     estimated_minutes: float | None = None
     note: str | None = None
+    repetition_rule: RepetitionRuleAddSpec | None = None
 
 
 class AddTaskResult(OmniFocusBaseModel):
@@ -50,6 +56,7 @@ class AddTaskRepoPayload(CommandModel):
     flagged: bool | None = None
     estimated_minutes: float | None = None
     note: str | None = None
+    repetition_rule: RepetitionRuleRepoPayload | None = None
 
 
 class AddTaskRepoResult(OmniFocusBaseModel):

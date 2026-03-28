@@ -21,6 +21,10 @@ if TYPE_CHECKING:
     from pydantic import AwareDatetime
 
     from omnifocus_operator.contracts.common import MoveAction, TagAction
+    from omnifocus_operator.contracts.use_cases.repetition_rule import (
+        RepetitionRuleEditSpec,
+        RepetitionRuleRepoPayload,
+    )
 
 
 class EditTaskActions(CommandModel):
@@ -47,6 +51,9 @@ class EditTaskCommand(CommandModel):
     defer_date: PatchOrClear[AwareDatetime] = UNSET
     planned_date: PatchOrClear[AwareDatetime] = UNSET
     estimated_minutes: PatchOrClear[float] = UNSET
+
+    # Repetition rule (nested spec with own patch semantics)
+    repetition_rule: PatchOrClear[RepetitionRuleEditSpec] = UNSET
 
     # Stateful operations
     actions: Patch[EditTaskActions] = UNSET
@@ -84,6 +91,7 @@ class EditTaskRepoPayload(CommandModel):
     remove_tag_ids: list[str] | None = None
     move_to: MoveToRepoPayload | None = None
     lifecycle: Literal["complete", "drop"] | None = None
+    repetition_rule: RepetitionRuleRepoPayload | None = None
 
 
 class EditTaskRepoResult(OmniFocusBaseModel):

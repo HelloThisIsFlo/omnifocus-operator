@@ -7,6 +7,8 @@ Calls model_rebuild() to resolve forward references from
 
 from pydantic import AwareDatetime
 
+from omnifocus_operator.models.repetition_rule import EndCondition, Frequency
+
 from omnifocus_operator.contracts.base import (
     UNSET,
     CommandModel,
@@ -31,6 +33,11 @@ from omnifocus_operator.contracts.use_cases.edit_task import (
     EditTaskResult,
     MoveToRepoPayload,
 )
+from omnifocus_operator.contracts.use_cases.repetition_rule import (
+    RepetitionRuleAddSpec,
+    RepetitionRuleEditSpec,
+    RepetitionRuleRepoPayload,
+)
 
 # Resolve forward references now that all modules are imported.
 # Models using ``from __future__ import annotations`` need explicit
@@ -49,6 +56,11 @@ _ns: dict[str, type] = {
     "EditTaskRepoPayload": EditTaskRepoPayload,
     "MoveToRepoPayload": MoveToRepoPayload,
     "EditTaskRepoResult": EditTaskRepoResult,
+    "RepetitionRuleAddSpec": RepetitionRuleAddSpec,
+    "RepetitionRuleEditSpec": RepetitionRuleEditSpec,
+    "RepetitionRuleRepoPayload": RepetitionRuleRepoPayload,
+    "Frequency": Frequency,
+    "EndCondition": EndCondition,
 }
 
 # Base and common models
@@ -61,6 +73,11 @@ AddTaskCommand.model_rebuild(_types_namespace=_ns)
 AddTaskResult.model_rebuild(_types_namespace=_ns)
 AddTaskRepoPayload.model_rebuild(_types_namespace=_ns)
 AddTaskRepoResult.model_rebuild(_types_namespace=_ns)
+
+# Repetition rule spec models
+RepetitionRuleAddSpec.model_rebuild(_types_namespace=_ns)
+RepetitionRuleEditSpec.model_rebuild(_types_namespace=_ns)
+RepetitionRuleRepoPayload.model_rebuild(_types_namespace=_ns)
 
 # Edit-task models
 EditTaskActions.model_rebuild(_types_namespace=_ns)
@@ -88,6 +105,9 @@ __all__ = [
     "Patch",
     "PatchOrClear",
     "PatchOrNone",
+    "RepetitionRuleAddSpec",
+    "RepetitionRuleEditSpec",
+    "RepetitionRuleRepoPayload",
     "Repository",
     "Service",
     "TagAction",
