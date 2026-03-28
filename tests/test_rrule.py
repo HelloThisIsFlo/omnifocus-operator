@@ -24,7 +24,7 @@ from omnifocus_operator.models.repetition_rule import (
     WeeklyFrequency,
     YearlyFrequency,
 )
-from omnifocus_operator.rrule import build_rrule, parse_end_condition, parse_rrule
+from omnifocus_operator.rrule import build_rrule, derive_schedule, parse_end_condition, parse_rrule
 
 # ── Frequency Discriminated Union ─────────────────────────────────────
 
@@ -439,3 +439,23 @@ class TestGoldenMasterRuleStrings:
     def test_golden_master_parses(self, rule_string: str):
         result = parse_rrule(rule_string)
         assert hasattr(result, "type")
+
+
+# -- derive_schedule ----------------------------------------------------------
+
+
+class TestDeriveSchedule:
+    """derive_schedule maps (schedule_type, catch_up) to 3-value schedule string."""
+
+    def test_from_completion_without_catch_up(self):
+        assert derive_schedule("from_completion", False) == "from_completion"
+
+    def test_from_completion_with_catch_up_true(self):
+        """Critical regression: from_completion + catch_up=True must NOT raise."""
+        assert derive_schedule("from_completion", True) == "from_completion"
+
+    def test_regularly_without_catch_up(self):
+        assert derive_schedule("regularly", False) == "regularly"
+
+    def test_regularly_with_catch_up(self):
+        assert derive_schedule("regularly", True) == "regularly_with_catch_up"
