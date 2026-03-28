@@ -15,7 +15,7 @@ import logging
 from typing import TYPE_CHECKING, NoReturn, cast
 
 from omnifocus_operator.agent_messages.errors import (
-    REPETITION_NO_EXISTING_RULE,  # forward-declared for Phase 33.1 flat frequency model
+    REPETITION_NO_EXISTING_RULE,
 )
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.protocols import Service

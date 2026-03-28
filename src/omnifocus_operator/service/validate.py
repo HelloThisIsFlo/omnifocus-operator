@@ -30,8 +30,7 @@ __all__ = [
 def validate_task_name(name: str | None) -> None:
     """Raise ValueError if name is empty or whitespace."""
     if not name or not name.strip():
-        msg = "Task name is required"
-        raise ValueError(msg)
+        raise ValueError(err.TASK_NAME_REQUIRED)
 
 
 def validate_task_name_if_set(name: object) -> None:
@@ -43,8 +42,7 @@ def validate_task_name_if_set(name: object) -> None:
     if not is_set(name):
         return
     if not name or not str(name).strip():
-        msg = "Task name cannot be empty"
-        raise ValueError(msg)
+        raise ValueError(err.TASK_NAME_EMPTY)
 
 
 # --- Repetition rule validation ---

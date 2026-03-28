@@ -39,6 +39,12 @@ CIRCULAR_REFERENCE = "Cannot move task: would create circular reference"
 
 NO_POSITION_KEY = "No position key set on move action"
 
+# --- Validation: Task Name ---
+
+TASK_NAME_REQUIRED = "Task name is required"
+
+TASK_NAME_EMPTY = "Task name cannot be empty"
+
 # --- Validation: TagAction ---
 
 TAG_REPLACE_WITH_ADD_REMOVE = (
@@ -52,12 +58,6 @@ TAG_NO_OPERATION = "tags must specify at least one of: add, remove, replace"
 MOVE_EXACTLY_ONE_KEY = "moveTo must have exactly one key (beginning, ending, before, or after)"
 
 # --- Repetition Rule ---
-
-REPETITION_TYPE_CHANGE_INCOMPLETE = (
-    "Changing frequency type requires a complete frequency object. "
-    "You sent type '{new_type}' but the existing rule uses '{old_type}'. "
-    "Provide all required fields for the new type."
-)
 
 REPETITION_NO_EXISTING_RULE = (
     "Cannot partially update a repetition rule -- this task has no existing rule. "

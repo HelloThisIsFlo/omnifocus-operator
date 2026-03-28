@@ -210,10 +210,8 @@ class TestAgentMessages:
             REPETITION_INVALID_INTERVAL,
             REPETITION_INVALID_ON_DATE,
             REPETITION_NO_EXISTING_RULE,
-            REPETITION_TYPE_CHANGE_INCOMPLETE,
         )
 
-        assert "type" in REPETITION_TYPE_CHANGE_INCOMPLETE
         assert "existing" in REPETITION_NO_EXISTING_RULE
         assert len(REPETITION_INVALID_INTERVAL) > 0
         assert len(REPETITION_INVALID_DAY_CODE) > 0
