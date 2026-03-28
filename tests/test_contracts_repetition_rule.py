@@ -9,7 +9,15 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from omnifocus_operator.contracts.base import UNSET, PatchOrClear, is_set
+from omnifocus_operator.contracts.base import is_set
+from omnifocus_operator.contracts.use_cases.add_task import (
+    AddTaskCommand,
+    AddTaskRepoPayload,
+)
+from omnifocus_operator.contracts.use_cases.edit_task import (
+    EditTaskCommand,
+    EditTaskRepoPayload,
+)
 from omnifocus_operator.contracts.use_cases.repetition_rule import (
     RepetitionRuleAddSpec,
     RepetitionRuleEditSpec,
@@ -196,8 +204,6 @@ class TestCommandIntegration:
     """Tests for repetition rule fields on AddTaskCommand/EditTaskCommand."""
 
     def test_add_command_with_repetition_rule(self) -> None:
-        from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand
-
         cmd = AddTaskCommand(
             name="test",
             repetition_rule=RepetitionRuleAddSpec(
@@ -210,27 +216,19 @@ class TestCommandIntegration:
         assert cmd.repetition_rule.frequency.type == "daily"
 
     def test_add_command_without_repetition_rule(self) -> None:
-        from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand
-
         cmd = AddTaskCommand(name="test")
         assert cmd.repetition_rule is None
 
     def test_edit_command_clear_repetition_rule(self) -> None:
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
-
         cmd = EditTaskCommand(id="x", repetition_rule=None)
         assert is_set(cmd.repetition_rule)
         assert cmd.repetition_rule is None
 
     def test_edit_command_unset_repetition_rule(self) -> None:
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
-
         cmd = EditTaskCommand(id="x")
         assert not is_set(cmd.repetition_rule)
 
     def test_edit_command_with_edit_spec(self) -> None:
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
-
         cmd = EditTaskCommand(
             id="x",
             repetition_rule=RepetitionRuleEditSpec(
@@ -245,8 +243,6 @@ class TestRepoPayloadIntegration:
     """Tests for repetition rule fields on AddTaskRepoPayload/EditTaskRepoPayload."""
 
     def test_add_repo_payload_with_repetition_rule(self) -> None:
-        from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoPayload
-
         payload = AddTaskRepoPayload(
             name="test",
             repetition_rule=RepetitionRuleRepoPayload(
@@ -259,8 +255,6 @@ class TestRepoPayloadIntegration:
         assert payload.repetition_rule is not None
 
     def test_edit_repo_payload_with_repetition_rule(self) -> None:
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoPayload
-
         payload = EditTaskRepoPayload(
             id="x",
             repetition_rule=RepetitionRuleRepoPayload(
@@ -273,14 +267,10 @@ class TestRepoPayloadIntegration:
         assert payload.repetition_rule is not None
 
     def test_edit_repo_payload_clear_repetition_rule(self) -> None:
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoPayload
-
         payload = EditTaskRepoPayload(id="x", repetition_rule=None)
         assert payload.repetition_rule is None
 
     def test_edit_repo_payload_dump_with_repetition_rule(self) -> None:
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoPayload
-
         payload = EditTaskRepoPayload(
             id="x",
             repetition_rule=RepetitionRuleRepoPayload(
@@ -295,8 +285,6 @@ class TestRepoPayloadIntegration:
         assert dumped["repetitionRule"]["ruleString"] == "FREQ=DAILY"
 
     def test_edit_repo_payload_dump_without_repetition_rule(self) -> None:
-        from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoPayload
-
         payload = EditTaskRepoPayload(id="x")
         dumped = payload.model_dump(by_alias=True, exclude_unset=True)
         assert "repetitionRule" not in dumped

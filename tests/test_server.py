@@ -1071,7 +1071,7 @@ class TestAddTasksRepetitionRule:
 
     async def test_add_tasks_repetition_rule_unknown_field(self, client: Any) -> None:
         """Extra field on repetitionRule returns 'Unknown field' error."""
-        with pytest.raises(ToolError, match="Unknown field 'repetitionRule.bogusField'"):
+        with pytest.raises(ToolError, match=r"Unknown field 'repetitionRule\.bogusField'"):
             await client.call_tool(
                 "add_tasks",
                 {
@@ -1096,9 +1096,7 @@ class TestEditTasksRepetitionRule:
     async def test_edit_tasks_with_repetition_rule_success(self, client: Any) -> None:
         """Set a repetition rule on an existing task."""
         # Create task first
-        add_result = await client.call_tool(
-            "add_tasks", {"items": [{"name": "Will repeat"}]}
-        )
+        add_result = await client.call_tool("add_tasks", {"items": [{"name": "Will repeat"}]})
         task_id = add_result.structured_content["result"][0]["id"]
 
         edit_result = await client.call_tool(
@@ -1108,7 +1106,11 @@ class TestEditTasksRepetitionRule:
                     {
                         "id": task_id,
                         "repetitionRule": {
-                            "frequency": {"type": "weekly_on_days", "interval": 1, "onDays": ["MO", "FR"]},
+                            "frequency": {
+                                "type": "weekly_on_days",
+                                "interval": 1,
+                                "onDays": ["MO", "FR"],
+                            },
                             "schedule": "regularly",
                             "basedOn": "due_date",
                         },

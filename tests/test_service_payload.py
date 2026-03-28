@@ -19,7 +19,6 @@ from omnifocus_operator.models.repetition_rule import (
     DailyFrequency,
     EndByDate,
     EndByOccurrences,
-    WeeklyOnDaysFrequency,
 )
 from omnifocus_operator.service.payload import PayloadBuilder
 

@@ -35,7 +35,7 @@ from omnifocus_operator.agent_messages.warnings import (
 )
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.use_cases.edit_task import EditTaskResult
-from omnifocus_operator.models.enums import Availability, BasedOn, Schedule
+from omnifocus_operator.models.enums import Availability
 from omnifocus_operator.models.repetition_rule import (
     EndByDate,
     Frequency,
@@ -186,9 +186,7 @@ class DomainLogic:
 
         # Completed or dropped task (D-12: both statuses)
         if task.availability in (Availability.COMPLETED, Availability.DROPPED):
-            warnings.append(
-                REPETITION_ON_COMPLETED_TASK.format(status=task.availability.value)
-            )
+            warnings.append(REPETITION_ON_COMPLETED_TASK.format(status=task.availability.value))
 
         return warnings
 

@@ -118,12 +118,10 @@ def _format_validation_errors(exc: ValidationError) -> list[str]:
             messages.append(LIFECYCLE_INVALID_VALUE.format(value=e.get("input", "unknown")))
         elif e["type"] == "union_tag_invalid":
             loc = e.get("loc", ())
-            if any(str(l) in ("repetitionRule", "frequency") for l in loc):
+            if any(str(part) in ("repetitionRule", "frequency") for part in loc):
                 input_val = e.get("input", {})
                 freq_type = input_val.get("type", "?") if isinstance(input_val, dict) else "?"
-                messages.append(
-                    REPETITION_INVALID_FREQUENCY_TYPE.format(freq_type=freq_type)
-                )
+                messages.append(REPETITION_INVALID_FREQUENCY_TYPE.format(freq_type=freq_type))
             else:
                 messages.append(e["msg"])
         else:
@@ -252,7 +250,7 @@ def _register_tools(mcp: FastMCP) -> None:
                schedule: "regularly", basedOn: "due_date"}
 
         Returns array of results: [{success, id, name, warnings?}]
-        """
+        """  # noqa: E501
         if len(items) != 1:
             msg = ADD_TASKS_BATCH_LIMIT.format(count=len(items))
             raise ValueError(msg)

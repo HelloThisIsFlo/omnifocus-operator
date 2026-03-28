@@ -93,7 +93,14 @@ class TestWarningConsolidation:
 # Error enforcement
 # ---------------------------------------------------------------------------
 
-_ERROR_CONSUMERS = [server, resolve, service_domain, service_orchestrator, service_validate, contracts_common]
+_ERROR_CONSUMERS = [
+    server,
+    resolve,
+    service_domain,
+    service_orchestrator,
+    service_validate,
+    contracts_common,
+]
 
 
 class TestErrorConsolidation:

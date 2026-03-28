@@ -13,8 +13,6 @@ from omnifocus_operator.agent_messages.warnings import (
     LIFECYCLE_REPEATING_COMPLETE,
     LIFECYCLE_REPEATING_DROP,
     REPETITION_EMPTY_ON_DATES,
-    REPETITION_END_DATE_PAST,
-    REPETITION_ON_COMPLETED_TASK,
 )
 from omnifocus_operator.contracts.base import _Unset
 from omnifocus_operator.contracts.common import MoveAction, TagAction
@@ -25,17 +23,17 @@ from omnifocus_operator.contracts.use_cases.edit_task import (
 )
 from omnifocus_operator.contracts.use_cases.repetition_rule import RepetitionRuleRepoPayload
 from omnifocus_operator.models.common import TagRef
-from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
     DailyFrequency,
     EndByDate,
     MonthlyDayInMonthFrequency,
     MonthlyFrequency,
-    WeeklyOnDaysFrequency,
 )
 from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.models.task import Task
 from omnifocus_operator.service.domain import DomainLogic
+from tests.conftest import make_snapshot_dict
+from tests.doubles import InMemoryBridge
 
 from .conftest import make_model_tag_dict, make_model_task_dict, make_snapshot, make_task_dict
 
@@ -567,7 +565,7 @@ class TestNormalizeEmptyOnDates:
         """Custom interval is preserved when normalizing."""
         domain = _domain()
         freq = MonthlyDayInMonthFrequency(interval=3, on_dates=[])
-        result_freq, warnings = domain.normalize_empty_on_dates(freq)
+        result_freq, _warnings = domain.normalize_empty_on_dates(freq)
         assert isinstance(result_freq, MonthlyFrequency)
         assert result_freq.interval == 3
 
@@ -655,9 +653,6 @@ class TestInMemoryBridgeRepetitionRule:
 
     async def test_add_task_with_repetition_rule(self) -> None:
         """add_task with repetitionRule dict -> stored on the task."""
-        from tests.doubles import InMemoryBridge
-        from tests.conftest import make_snapshot_dict
-
         bridge = InMemoryBridge(data=make_snapshot_dict(tasks=[]))
         rule = {
             "ruleString": "FREQ=DAILY",
@@ -675,9 +670,6 @@ class TestInMemoryBridgeRepetitionRule:
 
     async def test_add_task_without_repetition_rule(self) -> None:
         """add_task without repetitionRule -> task has None."""
-        from tests.doubles import InMemoryBridge
-        from tests.conftest import make_snapshot_dict
-
         bridge = InMemoryBridge(data=make_snapshot_dict(tasks=[]))
         result = await bridge.send_command("add_task", {"name": "Plain"})
         data = await bridge.send_command("get_all")
@@ -686,12 +678,7 @@ class TestInMemoryBridgeRepetitionRule:
 
     async def test_edit_task_set_repetition_rule(self) -> None:
         """edit_task with repetitionRule dict -> sets it on the task."""
-        from tests.doubles import InMemoryBridge
-        from tests.conftest import make_snapshot_dict
-
-        bridge = InMemoryBridge(
-            data=make_snapshot_dict(tasks=[make_task_dict(id="t1")])
-        )
+        bridge = InMemoryBridge(data=make_snapshot_dict(tasks=[make_task_dict(id="t1")]))
         rule = {
             "ruleString": "FREQ=WEEKLY",
             "scheduleType": "Regularly",
@@ -705,9 +692,6 @@ class TestInMemoryBridgeRepetitionRule:
 
     async def test_edit_task_clear_repetition_rule(self) -> None:
         """edit_task with repetitionRule=None -> clears the rule."""
-        from tests.doubles import InMemoryBridge
-        from tests.conftest import make_snapshot_dict
-
         bridge = InMemoryBridge(
             data=make_snapshot_dict(
                 tasks=[
@@ -725,14 +709,9 @@ class TestInMemoryBridgeRepetitionRule:
 
     async def test_edit_task_no_repetition_key_preserves(self) -> None:
         """edit_task without repetitionRule key -> no change."""
-        from tests.doubles import InMemoryBridge
-        from tests.conftest import make_snapshot_dict
-
         rule = {"ruleString": "FREQ=DAILY"}
         bridge = InMemoryBridge(
-            data=make_snapshot_dict(
-                tasks=[make_task_dict(id="t1", repetitionRule=rule)]
-            )
+            data=make_snapshot_dict(tasks=[make_task_dict(id="t1", repetitionRule=rule)])
         )
         await bridge.send_command("edit_task", {"id": "t1", "name": "Renamed"})
         data = await bridge.send_command("get_all")

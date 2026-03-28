@@ -18,14 +18,14 @@ from omnifocus_operator.contracts.use_cases.edit_task import (
 from omnifocus_operator.contracts.use_cases.repetition_rule import (
     RepetitionRuleRepoPayload,
 )
-from omnifocus_operator.models.enums import BasedOn, Schedule
-from omnifocus_operator.models.repetition_rule import EndCondition, Frequency
 from omnifocus_operator.rrule.builder import build_rrule
 from omnifocus_operator.rrule.schedule import based_on_to_bridge, schedule_to_bridge
 
 if TYPE_CHECKING:
     from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand
     from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
+    from omnifocus_operator.models.enums import BasedOn, Schedule
+    from omnifocus_operator.models.repetition_rule import EndCondition, Frequency
 
 logger = logging.getLogger(__name__)
 
