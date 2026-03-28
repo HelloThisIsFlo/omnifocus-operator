@@ -50,6 +50,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 32 P01 | 6min | 2 tasks | 5 files |
 | Phase 32 P02 | 9min | 2 tasks | 11 files |
 | Phase 32.1 P01 | 5min | 2 tasks | 4 files |
+| Phase 32.1 P02 | 3min | 2 tasks | 6 files |
 | Phase 32.1 P03 | 7min | 2 tasks | 7 files |
 
 ## Accumulated Context
@@ -64,6 +65,7 @@ Recent decisions affecting current work:
 - ~~[Phase 32]: Used @model_serializer instead of model_dump override for interval=1 omission -- ensures correct nested serialization behavior~~
 - [Phase 32]: Schedule/BasedOn canonical location is enums.py; runtime import in repetition_rule.py for Pydantic validation
 - [Phase 32.1]: jsonschema.validate with FastMCP's exact pipeline (TypeAdapter + compress_schema + to_jsonable_python) for output schema regression testing
+- [Phase 32.1]: from_completion ignores catch_up unconditionally; derive_schedule extracted to rrule/schedule.py as single source of truth
 - [Phase 32.1]: WeeklyOnDaysFrequency uses type='weekly_on_days' as discriminator, on_days is required (follows monthly split pattern)
 
 ### Pending Todos

@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
-from pydantic import AwareDatetime, TypeAdapter, ValidationError
+from pydantic import AwareDatetime, ValidationError
 
 from omnifocus_operator.contracts.base import _Unset
 from omnifocus_operator.contracts.common import MoveAction, TagAction
@@ -36,7 +36,6 @@ from omnifocus_operator.models import (
     Task,
     Urgency,
 )
-from omnifocus_operator.models.repetition_rule import Frequency
 
 from .conftest import (
     make_model_folder_dict,
@@ -1096,37 +1095,3 @@ class TestWriteModelStrictness:
         assert props["remove"]["type"] == "array"
         replace_types = {b.get("type") for b in props["replace"]["anyOf"]}
         assert replace_types == {"array", "null"}
-
-
-# ---------------------------------------------------------------------------
-# Serialization schema tests
-# ---------------------------------------------------------------------------
-
-
-class TestSerializationSchema:
-    """Serialization-mode JSON Schema must preserve property/constraint info.
-
-    FastMCP uses mode="serialization" for outputSchema. If a model uses
-    @model_serializer returning dict[str, Any], Pydantic erases all field
-    info and emits {"type": "object", "additionalProperties": true} —
-    making discriminated unions useless.
-    """
-
-    def test_frequency_branches_have_properties_and_const(self) -> None:
-        """Each Frequency union branch must expose properties with a const type discriminator."""
-        schema = TypeAdapter(Frequency).json_schema(mode="serialization")
-        defs = schema.get("$defs", {})
-
-        # There should be definition entries for the 9 frequency subtypes
-        assert len(defs) == 9, f"Expected 9 $defs branches, got {len(defs)}: {list(defs)}"
-
-        for name, branch in defs.items():
-            # Each branch must have a 'properties' key — not just {"type": "object"}
-            assert "properties" in branch, (
-                f"${name} lost its properties — likely erased by @model_serializer. Got: {branch}"
-            )
-            # The 'type' property must have a const constraint (the discriminator)
-            type_prop = branch["properties"].get("type", {})
-            assert "const" in type_prop, (
-                f"${name}.type missing 'const' constraint — discriminator is gone. Got: {type_prop}"
-            )
