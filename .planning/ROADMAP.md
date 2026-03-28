@@ -81,7 +81,7 @@
 **Milestone Goal:** Enable agents to set, modify, and remove repetition rules on tasks via structured fields -- symmetric read/write model, no raw RRULE strings exposed. No new tools.
 
 - [x] **Phase 32: Read Model Rewrite** - Structured frequency fields replace ruleString on both read paths (completed 2026-03-28)
-- [ ] **Phase 32.1: Output Schema Validation Gap** - Add schema-vs-data validation tests ensuring serialized output conforms to advertised outputSchema (INSERTED)
+- [x] **Phase 32.1: Output Schema Validation Gap** - Add schema-vs-data validation tests ensuring serialized output conforms to advertised outputSchema (INSERTED) (completed 2026-03-28)
 - [ ] **Phase 33: Write Model, Validation & Bridge** - add_tasks and edit_tasks support repetition rules with partial updates, type-change detection, and educational errors
 
 ## Phase Details
@@ -137,5 +137,5 @@ Plans:
 | 18-28 | v1.2.1 | 27/27 | Complete | 2026-03-23 |
 | 29-31 | v1.2.2 | 6/6 | Complete | 2026-03-26 |
 | 32. Read Model Rewrite | v1.2.3 | 2/2 | Complete    | 2026-03-28 |
-| 32.1 Output Schema Validation Gap | v1.2.3 | 3/3 | Complete | 2026-03-28 |
+| 32.1 Output Schema Validation Gap | v1.2.3 | 3/3 | Complete    | 2026-03-28 |
 | 33. Write Model, Validation & Bridge | v1.2.3 | 0/TBD | Not started | - |
