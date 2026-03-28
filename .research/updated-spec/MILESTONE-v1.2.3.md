@@ -50,8 +50,8 @@ Agents see structured fields, never RRULE strings. Read and write use the same s
 
 - Python service layer builds RRULE strings for writes -- bridge stays dumb, receives fully validated spec (ruleString + scheduleType + anchorDateKey + catchUp)
 - Standalone utility functions with Pydantic model interfaces:
-  - `build_rrule(FrequencySpec) -> str` -- structured fields to RRULE string (writes)
-  - `parse_rrule(str) -> FrequencySpec` -- RRULE string to structured fields (reads)
+  - `build_rrule(Frequency) -> str` -- structured fields to RRULE string (writes)
+  - `parse_rrule(str) -> Frequency` -- RRULE string to structured fields (reads)
 - Both SQLite and bridge read paths need RRULE parsing -- standalone function covers both
 - Read model change is a breaking change -- acceptable at this stage (pre-release, single user)
 
@@ -79,7 +79,7 @@ Three layers:
 ### Claude's Discretion
 
 - RRULE utility function module placement and wiring to both read paths
-- Pydantic model structure (discriminated unions, model names, FrequencySpec hierarchy)
+- Pydantic model structure (discriminated unions, model names, ~~FrequencySpec~~ → Frequency hierarchy)
 - Exact warning/error message wording (read existing codebase warnings for style -- user will fine-tune during UAT)
 - Test structure and organization
 - Bridge.js handler implementation details

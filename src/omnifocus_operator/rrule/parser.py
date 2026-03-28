@@ -1,18 +1,31 @@
 """RRULE parser for OmniFocus repetition rule strings.
 
-Parses the OmniFocus RRULE subset into structured dicts matching the
-FrequencySpec model shapes. Supports all 8 frequency types including
+Parses the OmniFocus RRULE subset into Pydantic model instances matching
+the Frequency union type. Supports all 8 frequency types including
 MINUTELY, HOURLY, and BYDAY positional prefix parsing.
 
 Public functions:
-    parse_rrule(rule_string) -> dict[str, Any]
-    parse_end_condition(rule_string) -> dict[str, Any] | None
+    parse_rrule(rule_string) -> Frequency model instance
+    parse_end_condition(rule_string) -> EndByDate | EndByOccurrences | None
 """
 
 from __future__ import annotations
 
 import re
-from typing import Any
+
+from omnifocus_operator.models.repetition_rule import (
+    DailyFrequency,
+    EndByDate,
+    EndByOccurrences,
+    Frequency,
+    HourlyFrequency,
+    MinutelyFrequency,
+    MonthlyDayInMonthFrequency,
+    MonthlyDayOfWeekFrequency,
+    MonthlyFrequency,
+    WeeklyFrequency,
+    YearlyFrequency,
+)
 
 # ── Mapping Tables ───────────────────────────────────────────────────────
 
@@ -51,17 +64,17 @@ _VALID_FREQS = {
 # ── Public API ───────────────────────────────────────────────────────────
 
 
-def parse_rrule(rule_string: str) -> dict[str, Any]:
-    """Parse an RRULE string into a structured frequency dict.
+def parse_rrule(rule_string: str) -> Frequency:
+    """Parse an RRULE string into a Frequency model instance.
 
-    Returns a dict suitable for FrequencySpec model validation.
+    Returns a Pydantic model matching one of the 8 frequency subtypes.
     Raises ValueError with an educational message on invalid input.
 
     Examples:
         >>> parse_rrule("FREQ=DAILY")
-        {"type": "daily"}
+        DailyFrequency(interval=1)
         >>> parse_rrule("FREQ=WEEKLY;BYDAY=MO,WE,FR")
-        {"type": "weekly", "on_days": ["MO", "WE", "FR"]}
+        WeeklyFrequency(interval=1, on_days=["MO", "WE", "FR"])
     """
     if not rule_string or not rule_string.strip():
         raise ValueError("RRULE string must not be empty")
@@ -73,39 +86,32 @@ def parse_rrule(rule_string: str) -> dict[str, Any]:
     freq = parts.get("FREQ", "").upper()
     if freq not in _VALID_FREQS:
         if not freq:
-            raise ValueError(
-                f"FREQ is required in RRULE string: {rule_string!r}"
-            )
-        raise ValueError(
-            f"Unsupported FREQ: {freq!r}. "
-            f"Valid values: {sorted(_VALID_FREQS)}"
-        )
+            raise ValueError(f"FREQ is required in RRULE string: {rule_string!r}")
+        raise ValueError(f"Unsupported FREQ: {freq!r}. Valid values: {sorted(_VALID_FREQS)}")
 
     interval = int(parts.get("INTERVAL", "1"))
 
-    result: dict[str, Any] = {}
-
-    if freq in ("MINUTELY", "HOURLY", "DAILY", "YEARLY"):
-        result["type"] = freq.lower()
+    if freq == "MINUTELY":
+        return MinutelyFrequency(interval=interval)
+    elif freq == "HOURLY":
+        return HourlyFrequency(interval=interval)
+    elif freq == "DAILY":
+        return DailyFrequency(interval=interval)
     elif freq == "WEEKLY":
-        result["type"] = "weekly"
-        if "BYDAY" in parts:
-            result["on_days"] = parts["BYDAY"].split(",")
+        on_days = parts["BYDAY"].split(",") if "BYDAY" in parts else None
+        return WeeklyFrequency(interval=interval, on_days=on_days)
     elif freq == "MONTHLY":
-        result = _parse_monthly(parts)
-    # interval > 1 included in result; interval == 1 omitted (D-08)
-    if interval != 1:
-        result["interval"] = interval
-
-    return result
+        return _parse_monthly(parts, interval)
+    else:  # YEARLY
+        return YearlyFrequency(interval=interval)
 
 
-def parse_end_condition(rule_string: str) -> dict[str, Any] | None:
+def parse_end_condition(rule_string: str) -> EndByDate | EndByOccurrences | None:
     """Extract end condition from an RRULE string.
 
     Returns:
-        {"occurrences": N} for COUNT=N
-        {"date": "ISO-8601"} for UNTIL=...
+        EndByOccurrences for COUNT=N
+        EndByDate for UNTIL=...
         None if no end condition present
     """
     if not rule_string or not rule_string.strip():
@@ -115,9 +121,9 @@ def parse_end_condition(rule_string: str) -> dict[str, Any] | None:
     _validate_end_exclusion(parts)
 
     if "COUNT" in parts:
-        return {"occurrences": int(parts["COUNT"])}
+        return EndByOccurrences(occurrences=int(parts["COUNT"]))
     if "UNTIL" in parts:
-        return {"date": _convert_until_to_iso(parts["UNTIL"])}
+        return EndByDate(date=_convert_until_to_iso(parts["UNTIL"]))
     return None
 
 
@@ -153,16 +159,22 @@ def _validate_end_exclusion(parts: dict[str, str]) -> None:
         raise ValueError("COUNT and UNTIL are mutually exclusive (RFC 5545)")
 
 
-def _parse_monthly(parts: dict[str, str]) -> dict[str, Any]:
+def _parse_monthly(
+    parts: dict[str, str],
+    interval: int,
+) -> MonthlyFrequency | MonthlyDayOfWeekFrequency | MonthlyDayInMonthFrequency:
     """Parse MONTHLY frequency with optional BYDAY or BYMONTHDAY."""
     if "BYDAY" in parts:
-        return _parse_monthly_byday(parts["BYDAY"])
+        return _parse_monthly_byday(parts["BYDAY"], interval)
     if "BYMONTHDAY" in parts:
-        return _parse_monthly_bymonthday(parts["BYMONTHDAY"])
-    return {"type": "monthly"}
+        return _parse_monthly_bymonthday(parts["BYMONTHDAY"], interval)
+    return MonthlyFrequency(interval=interval)
 
 
-def _parse_monthly_byday(byday_value: str) -> dict[str, Any]:
+def _parse_monthly_byday(
+    byday_value: str,
+    interval: int,
+) -> MonthlyDayOfWeekFrequency:
     """Parse BYDAY with required positional prefix for MONTHLY context.
 
     D-05: Only positional prefix form accepted (e.g., 2TU, -1FR).
@@ -187,29 +199,26 @@ def _parse_monthly_byday(byday_value: str) -> dict[str, Any]:
     ordinal = _POS_TO_ORDINAL.get(pos)
     if ordinal is None:
         raise ValueError(
-            f"Invalid BYDAY position {pos}. "
-            f"Valid positions: 1-5 (first-fifth) or -1 (last)"
+            f"Invalid BYDAY position {pos}. Valid positions: 1-5 (first-fifth) or -1 (last)"
         )
 
     day_name = _DAY_CODE_TO_NAME[day_code]
-    return {
-        "type": "monthly_day_of_week",
-        "on": {ordinal: day_name},
-    }
+    return MonthlyDayOfWeekFrequency(
+        interval=interval,
+        on={ordinal: day_name},
+    )
 
 
-def _parse_monthly_bymonthday(bymonthday_value: str) -> dict[str, Any]:
+def _parse_monthly_bymonthday(
+    bymonthday_value: str,
+    interval: int,
+) -> MonthlyDayInMonthFrequency:
     """Parse BYMONTHDAY for monthly_day_in_month frequency."""
     try:
         day = int(bymonthday_value)
-    except ValueError:
-        raise ValueError(
-            f"BYMONTHDAY must be an integer, got {bymonthday_value!r}"
-        )
-    return {
-        "type": "monthly_day_in_month",
-        "on_dates": [day],
-    }
+    except ValueError as err:
+        raise ValueError(f"BYMONTHDAY must be an integer, got {bymonthday_value!r}") from err
+    return MonthlyDayInMonthFrequency(interval=interval, on_dates=[day])
 
 
 def _convert_until_to_iso(raw: str) -> str:
@@ -220,10 +229,5 @@ def _convert_until_to_iso(raw: str) -> str:
     """
     m = _UNTIL_PATTERN.match(raw)
     if not m:
-        raise ValueError(
-            f"UNTIL must match YYYYMMDDTHHMMSSZ format, got {raw!r}"
-        )
-    return (
-        f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
-        f"T{m.group(4)}:{m.group(5)}:{m.group(6)}Z"
-    )
+        raise ValueError(f"UNTIL must match YYYYMMDDTHHMMSSZ format, got {raw!r}")
+    return f"{m.group(1)}-{m.group(2)}-{m.group(3)}T{m.group(4)}:{m.group(5)}:{m.group(6)}Z"

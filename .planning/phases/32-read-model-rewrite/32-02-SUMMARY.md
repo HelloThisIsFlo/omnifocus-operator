@@ -6,7 +6,7 @@ tags: [pydantic, rrule, read-path, adapter, hybrid-repo, enums]
 
 requires:
   - phase: 32-01
-    provides: FrequencySpec discriminated union, RRULE parser/builder, RepetitionRule model, Schedule/BasedOn enums
+    provides: ~~FrequencySpec~~ → Frequency discriminated union, RRULE parser/builder, RepetitionRule model, Schedule/BasedOn enums
 provides:
   - Structured RepetitionRule as canonical model (old 4-field version removed)
   - Both read paths (SQLite + bridge) wired to RRULE parser
@@ -122,7 +122,7 @@ None -- all code is fully wired and functional.
 
 ## Next Phase Readiness
 - Phase 32 complete: structured RepetitionRule is the canonical model across all read paths
-- All types (FrequencySpec, Schedule, BasedOn, EndCondition) ready for Phase 33 (write model)
+- All types (~~FrequencySpec~~ → Frequency, Schedule, BasedOn, EndCondition) ready for Phase 33 (write model)
 - Both read paths produce identical structured output for the same raw data
 
 ---

@@ -11,7 +11,7 @@ Type hierarchy:
     +-- MonthlyDayInMonthFrequency -- type="monthly_day_in_month", on_dates
     +-- YearlyFrequency     -- type="yearly"
 
-    FrequencySpec = Annotated[Union[...], Field(discriminator="type")]
+    Frequency = Annotated[Union[...], Field(discriminator="type")]
 
     EndByDate / EndByOccurrences -- end condition models
     EndCondition = EndByDate | EndByOccurrences
@@ -25,13 +25,12 @@ Enums:
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal, Union
+from typing import Annotated, Any, Literal
 
 from pydantic import Field, model_serializer
 
 from omnifocus_operator.models.base import OmniFocusBaseModel
 from omnifocus_operator.models.enums import BasedOn, Schedule
-
 
 # -- Frequency Base -----------------------------------------------------------
 
@@ -108,19 +107,17 @@ class YearlyFrequency(_FrequencyBase):
     type: Literal["yearly"] = "yearly"
 
 
-# -- FrequencySpec Discriminated Union ----------------------------------------
+# -- Frequency Discriminated Union --------------------------------------------
 
-FrequencySpec = Annotated[
-    Union[
-        MinutelyFrequency,
-        HourlyFrequency,
-        DailyFrequency,
-        WeeklyFrequency,
-        MonthlyFrequency,
-        MonthlyDayOfWeekFrequency,
-        MonthlyDayInMonthFrequency,
-        YearlyFrequency,
-    ],
+Frequency = Annotated[
+    MinutelyFrequency
+    | HourlyFrequency
+    | DailyFrequency
+    | WeeklyFrequency
+    | MonthlyFrequency
+    | MonthlyDayOfWeekFrequency
+    | MonthlyDayInMonthFrequency
+    | YearlyFrequency,
     Field(discriminator="type"),
 ]
 
@@ -153,7 +150,7 @@ class RepetitionRule(OmniFocusBaseModel):
     anchorDateKey, catchUpAutomatically) with parsed, structured data.
     """
 
-    frequency: FrequencySpec
+    frequency: Frequency
     schedule: Schedule
     based_on: BasedOn  # serializes as basedOn
     end: EndCondition | None = None

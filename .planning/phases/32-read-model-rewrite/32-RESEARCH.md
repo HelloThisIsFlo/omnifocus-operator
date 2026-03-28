@@ -31,7 +31,7 @@ The spike parser (`rrule_validator.py`, 79 tests) is directly portable but needs
 
 ### Claude's Discretion
 - RRULE utility function internal structure and wiring to both read paths
-- Pydantic model names and FrequencySpec hierarchy details
+- Pydantic model names and ~~FrequencySpec~~ → Frequency hierarchy details
 - Exact warning/error message wording (existing `agent_messages` patterns as style guide)
 - Test structure and organization
 - Exact module/package layout within the "own module" boundary
@@ -70,18 +70,18 @@ src/omnifocus_operator/
 │   ├── base.py              # OmniFocusBaseModel (unchanged)
 │   ├── common.py            # Remove old RepetitionRule, keep TagRef/ParentRef/ReviewInterval
 │   ├── enums.py             # Remove old ScheduleType (2 values), add new Schedule (3 values)
-│   └── repetition_rule.py   # NEW: structured RepetitionRule + FrequencySpec union + End model
+│   └── repetition_rule.py   # NEW: structured RepetitionRule + Frequency union + End model
 ├── rrule/
 │   ├── __init__.py          # Re-export parse_rrule, build_rrule
-│   ├── parser.py            # parse_rrule(str) -> FrequencySpec
-│   └── builder.py           # build_rrule(FrequencySpec) -> str
+│   ├── parser.py            # parse_rrule(str) -> Frequency
+│   └── builder.py           # build_rrule(Frequency) -> str
 ├── repository/
 │   └── hybrid.py            # Update _build_repetition_rule() to call parser
 └── bridge/
     └── adapter.py           # Update _adapt_repetition_rule() to call parser
 ```
 
-**Key insight:** The `rrule/` module is a standalone utility package -- it depends on the models (FrequencySpec types) but nothing depends on it except the two read paths. Phase 33 will add the builder dependency from the write path.
+**Key insight:** The `rrule/` module is a standalone utility package -- it depends on the models (~~FrequencySpec~~ → Frequency types) but nothing depends on it except the two read paths. Phase 33 will add the builder dependency from the write path.
 
 ### Pattern 1: Discriminated Union for Frequency Types
 
@@ -129,7 +129,7 @@ class YearlyFrequency(OmniFocusBaseModel):
     type: Literal["yearly"] = "yearly"
     interval: int = 1
 
-FrequencySpec = Annotated[
+Frequency = Annotated[
     Union[
         MinutelyFrequency, HourlyFrequency, DailyFrequency, WeeklyFrequency,
         MonthlyFrequency, MonthlyDayOfWeekFrequency, MonthlyDayInMonthFrequency,
@@ -232,7 +232,7 @@ DAY_CODE_TO_NAME = {
 **Decision required for parser:** When BYDAY has a positional prefix AND FREQ=MONTHLY, this is `monthly_day_of_week`. When BYDAY has no prefix AND FREQ=WEEKLY, this is `weekly` with `onDays`.
 
 ### Anti-Patterns to Avoid
-- **Duplicating parse logic between read paths:** Both SQLite and bridge paths MUST call the same parser function. The parser takes a raw RRULE string and returns a FrequencySpec.
+- **Duplicating parse logic between read paths:** Both SQLite and bridge paths MUST call the same parser function. The parser takes a raw RRULE string and returns a ~~FrequencySpec~~ → Frequency.
 - **Putting RRULE parsing in the Pydantic model itself:** The model represents the structured output; the parser is a separate utility that produces dicts the model validates.
 - **Handling `from_completion + catchUp=true` silently:** This is an impossible state. Must crash with ValueError, not silently map to some default.
 
@@ -267,7 +267,7 @@ DAY_CODE_TO_NAME = {
 ### Pitfall 4: model_rebuild() Namespace Must Include New Types
 **What goes wrong:** `models/__init__.py` has a `_ns` dict and `model_rebuild()` calls for forward reference resolution. If new frequency types aren't added, Pydantic raises `PydanticUndefinedAnnotation`
 **Why it happens:** Forward reference resolution in the model hierarchy; TYPE_CHECKING imports
-**How to avoid:** Add new RepetitionRule type (and FrequencySpec subtypes if needed) to `_ns` dict and call `model_rebuild()` on the new model class
+**How to avoid:** Add new RepetitionRule type (and ~~FrequencySpec~~ → Frequency subtypes if needed) to `_ns` dict and call `model_rebuild()` on the new model class
 **Warning signs:** Import-time errors or validation errors mentioning undefined types
 
 ### Pitfall 5: camelCase Alias for `monthlyDayOfWeek` Type Literal
@@ -284,7 +284,7 @@ DAY_CODE_TO_NAME = {
 
 ## Code Examples
 
-### Parse RRULE to FrequencySpec (core parser logic)
+### Parse RRULE to ~~FrequencySpec~~ → Frequency (core parser logic)
 
 ```python
 import re
@@ -301,7 +301,7 @@ _UNTIL_PATTERN = re.compile(r"^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$")
 def parse_rrule(rule_string: str) -> dict[str, Any]:
     """Parse RRULE string into structured frequency dict.
 
-    Returns dict suitable for FrequencySpec model validation.
+    Returns dict suitable for Frequency model validation.
     Raises ValueError with educational message on invalid input.
     """
     parts = dict(p.split("=", 1) for p in rule_string.split(";"))
@@ -460,7 +460,7 @@ def _adapt_repetition_rule(raw: dict[str, Any]) -> None:
 
 | File | Purpose |
 |------|---------|
-| `models/repetition_rule.py` | New RepetitionRule model + FrequencySpec types + End models |
+| `models/repetition_rule.py` | New RepetitionRule model + ~~FrequencySpec~~ → Frequency types + End models |
 | `rrule/__init__.py` | Package init, re-exports |
 | `rrule/parser.py` | `parse_rrule()` function |
 | `rrule/builder.py` | `build_rrule()` function (needed for round-trip testing, used by Phase 33) |

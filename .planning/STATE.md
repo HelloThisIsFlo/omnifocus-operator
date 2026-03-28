@@ -57,7 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- [v1.2.3 start]: Two-phase structure -- read model rewrite (Phase 32) before write model (Phase 33). Write path depends on structured FrequencySpec types from read model.
+- [v1.2.3 start]: Two-phase structure -- read model rewrite (Phase 32) before write model (Phase 33). Write path depends on structured ~~FrequencySpec~~ → Frequency types from read model.
 - [v1.2.3 start]: Custom RRULE parser over python-dateutil -- purpose-built for OmniFocus RRULE subset, 79 spike tests, zero new deps.
 - [Phase 32]: Used @model_serializer instead of model_dump override for interval=1 omission -- ensures correct nested serialization behavior
 - [Phase 32]: Schedule/BasedOn canonical location is enums.py; runtime import in repetition_rule.py for Pydantic validation

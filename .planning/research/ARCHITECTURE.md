@@ -26,8 +26,8 @@ Standalone RRULE parse/build utilities. Belongs at the same level as `models/` a
 src/omnifocus_operator/
 ├── rrule/                          # NEW PACKAGE
 │   ├── __init__.py                 # Re-exports parse_rrule, build_rrule
-│   ├── parser.py                   # parse_rrule(str) -> FrequencySpec
-│   └── builder.py                  # build_rrule(FrequencySpec) -> str
+│   ├── parser.py                   # parse_rrule(str) -> Frequency
+│   └── builder.py                  # build_rrule(Frequency) -> str
 ├── models/
 │   ├── common.py                   # MODIFIED: RepetitionRule -> structured fields
 │   └── enums.py                    # MODIFIED: ScheduleType gains 3rd value, new enums
@@ -51,8 +51,8 @@ src/omnifocus_operator/
 
 | Component | Responsibility | Communicates With |
 |-----------|---------------|-------------------|
-| `rrule/parser.py` | RRULE string -> `FrequencySpec` Pydantic model | Called by `hybrid.py`, `adapter.py` |
-| `rrule/builder.py` | `FrequencySpec` -> RRULE string | Called by `payload.py` |
+| `rrule/parser.py` | RRULE string -> `Frequency` Pydantic model | Called by `hybrid.py`, `adapter.py` |
+| `rrule/builder.py` | `Frequency` -> RRULE string | Called by `payload.py` |
 | `models/common.py` | New `RepetitionRule` with structured fields (read model) | Consumed by `Task`, `Project` via `ActionableEntity` |
 | `contracts/.../edit_task.py` | `repetition_rule: PatchOrClear[RepetitionRuleSpec]` on command/payload | Agent -> service boundary |
 | `contracts/.../add_task.py` | `repetition_rule: RepetitionRuleSpec | None` on command/payload | Agent -> service boundary |
@@ -73,13 +73,13 @@ SQLite row
   └── catchUpAutomatically: 1
 
   → hybrid.py::_build_repetition_rule()
-    ├── Calls parse_rrule("FREQ=WEEKLY;BYDAY=MO,WE") -> FrequencySpec(type="weekly", onDays=["MO","WE"])
+    ├── Calls parse_rrule("FREQ=WEEKLY;BYDAY=MO,WE") -> Frequency(type="weekly", onDays=["MO","WE"])
     ├── Maps schedule_type: "fixed" + catchUp=True -> "regularly_with_catch_up"
     ├── Maps anchor_date_key: "dateDue" -> "due_date"
     └── Returns structured dict matching new RepetitionRule model
 
   → Pydantic validation -> RepetitionRule with:
-    ├── frequency: FrequencySpec(type="weekly", interval=1, on_days=["MO","WE"])
+    ├── frequency: Frequency(type="weekly", interval=1, on_days=["MO","WE"])
     ├── schedule: "regularly_with_catch_up"
     ├── based_on: "due_date"
     └── end: None
@@ -97,7 +97,7 @@ Bridge JSON (raw bridge format):
   }
 
   → adapter.py::_adapt_repetition_rule()
-    ├── Calls parse_rrule() on ruleString -> FrequencySpec
+    ├── Calls parse_rrule() on ruleString -> Frequency
     ├── Maps scheduleType + catchUp -> schedule enum
     ├── Maps anchorDateKey -> basedOn enum
     ├── Restructures to new shape IN-PLACE
@@ -187,13 +187,13 @@ New `RepetitionRule` (breaking change):
 ```python
 class RepetitionRule(OmniFocusBaseModel):
     """Read model: structured repetition rule on Task/Project."""
-    frequency: FrequencySpec          # Discriminated union by type
+    frequency: Frequency              # Discriminated union by type
     schedule: Schedule                # "regularly" | "regularly_with_catch_up" | "from_completion"
     based_on: BasedOn                 # "due_date" | "defer_date" | "planned_date"
     end: RepetitionEnd | None = None  # {"date": ...} or {"occurrences": N} or None
 ```
 
-`FrequencySpec` is a discriminated union (Pydantic `Discriminator` on `type` field). Eight concrete types, all sharing `type: Literal[...]` and `interval: int = 1`.
+`Frequency` is a discriminated union (Pydantic `Discriminator` on `type` field). Eight concrete types, all sharing `type: Literal[...]` and `interval: int = 1`.
 
 ### Command Models (contracts/)
 
@@ -392,14 +392,14 @@ Per GOLD-01: this milestone adds/modifies bridge operations for repetition rules
 
 ### Phase 1: Read Model Rewrite (foundation -- no write path yet)
 
-1. **`rrule/parser.py`** + tests -- `parse_rrule(str) -> FrequencySpec`
+1. **`rrule/parser.py`** + tests -- `parse_rrule(str) -> Frequency`
    - Port from `.research/deep-dives/rrule-validator/rrule_validator.py` (directly portable)
-   - Return Pydantic `FrequencySpec` models instead of dataclass
+   - Return Pydantic `Frequency` models instead of dataclass
    - 79 existing tests from research spike as starting point
 
-2. **New models** -- `FrequencySpec` discriminated union, new `RepetitionRule`, new enums
+2. **New models** -- ~~FrequencySpec~~ → Frequency discriminated union, new `RepetitionRule`, new enums
    - `Schedule` (3 values), `BasedOn` (3 values)
-   - `FrequencySpec` hierarchy (8 types)
+   - ~~FrequencySpec~~ → Frequency hierarchy (8 types)
    - `RepetitionEnd` model (date or occurrences)
    - New `RepetitionRule` with structured fields
 
@@ -418,7 +418,7 @@ Per GOLD-01: this milestone adds/modifies bridge operations for repetition rules
 
 ### Phase 2: Write Model + Bridge + Service
 
-1. **`rrule/builder.py`** + tests -- `build_rrule(FrequencySpec) -> str`
+1. **`rrule/builder.py`** + tests -- `build_rrule(Frequency) -> str`
    - Port from research spike
    - Round-trip validation: `parse_rrule(build_rrule(spec)) == spec`
 
@@ -473,7 +473,7 @@ Use Pydantic discriminated unions (`Discriminator` on the `type` field), not a c
 The repo payload is bridge-ready. Bridge expects flat `(ruleString, scheduleType, anchorDateKey, catchUpAutomatically)`. The structured -> flat conversion happens in `PayloadBuilder`, not later.
 
 ### Don't skip parse_rrule on the read path
-Even though the SQLite row has the RRULE string, it still needs parsing into structured `FrequencySpec`. Don't return the raw string -- the whole point is structured fields in the read model.
+Even though the SQLite row has the RRULE string, it still needs parsing into structured `Frequency`. Don't return the raw string -- the whole point is structured fields in the read model.
 
 ## Sources
 

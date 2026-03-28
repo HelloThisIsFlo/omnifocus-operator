@@ -1,7 +1,7 @@
 """RRULE builder for OmniFocus repetition rules.
 
-Inverse of the parser: takes a frequency dict (or FrequencySpec model
-instance) and produces an RRULE string.
+Inverse of the parser: takes a Frequency model instance and produces
+an RRULE string.
 
 Public function:
     build_rrule(frequency, end=None) -> str
@@ -9,8 +9,14 @@ Public function:
 
 from __future__ import annotations
 
-from typing import Any
-
+from omnifocus_operator.models.repetition_rule import (
+    EndByDate,
+    EndByOccurrences,
+    Frequency,
+    MonthlyDayInMonthFrequency,
+    MonthlyDayOfWeekFrequency,
+    WeeklyFrequency,
+)
 from omnifocus_operator.rrule.parser import parse_rrule
 
 # ── Reverse Mapping Tables ───────────────────────────────────────────────
@@ -50,17 +56,16 @@ _TYPE_TO_FREQ: dict[str, str] = {
 
 
 def build_rrule(
-    frequency: dict[str, Any],
-    end: dict[str, Any] | None = None,
+    frequency: Frequency,
+    end: EndByDate | EndByOccurrences | None = None,
 ) -> str:
-    """Build an RRULE string from a frequency dict and optional end condition.
+    """Build an RRULE string from a Frequency model and optional end condition.
 
-    Accepts both raw dicts and model .model_dump() output.
     Includes round-trip validation: parse_rrule(result) must succeed.
 
     Args:
-        frequency: Dict matching FrequencySpec shapes (must have "type" key)
-        end: Optional end condition dict ({"occurrences": N} or {"date": "ISO-8601"})
+        frequency: Frequency model instance (any of the 8 subtypes)
+        end: Optional EndByDate or EndByOccurrences model
 
     Returns:
         RRULE string (e.g., "FREQ=DAILY;INTERVAL=3")
@@ -68,33 +73,30 @@ def build_rrule(
     Raises:
         ValueError: On invalid input or failed round-trip validation
     """
-    freq_type = frequency.get("type", "")
+    freq_type = frequency.type
     freq_code = _TYPE_TO_FREQ.get(freq_type)
     if freq_code is None:
         raise ValueError(f"Unknown frequency type: {freq_type!r}")
 
     parts: list[str] = [f"FREQ={freq_code}"]
 
-    # Interval (omit when 1 or absent)
-    interval = frequency.get("interval", 1)
-    if interval != 1:
-        parts.append(f"INTERVAL={interval}")
+    # Interval (omit when 1)
+    if frequency.interval != 1:
+        parts.append(f"INTERVAL={frequency.interval}")
 
     # Type-specific parts
-    if freq_type == "weekly" and frequency.get("on_days"):
-        parts.append(f"BYDAY={','.join(frequency['on_days'])}")
-    elif freq_type == "monthly_day_of_week" and frequency.get("on"):
-        parts.append(_build_byday_positional(frequency["on"]))
-    elif freq_type == "monthly_day_in_month" and frequency.get("on_dates"):
-        # BYMONTHDAY supports single value
-        parts.append(f"BYMONTHDAY={frequency['on_dates'][0]}")
+    if isinstance(frequency, WeeklyFrequency) and frequency.on_days:
+        parts.append(f"BYDAY={','.join(frequency.on_days)}")
+    elif isinstance(frequency, MonthlyDayOfWeekFrequency) and frequency.on:
+        parts.append(_build_byday_positional(frequency.on))
+    elif isinstance(frequency, MonthlyDayInMonthFrequency) and frequency.on_dates:
+        parts.append(f"BYMONTHDAY={frequency.on_dates[0]}")
 
     # End condition
-    if end is not None:
-        if "occurrences" in end:
-            parts.append(f"COUNT={end['occurrences']}")
-        elif "date" in end:
-            parts.append(f"UNTIL={_convert_iso_to_until(end['date'])}")
+    if isinstance(end, EndByOccurrences):
+        parts.append(f"COUNT={end.occurrences}")
+    elif isinstance(end, EndByDate):
+        parts.append(f"UNTIL={_convert_iso_to_until(end.date)}")
 
     result = ";".join(parts)
 
@@ -114,15 +116,11 @@ def _build_byday_positional(on: dict[str, str]) -> str:
     ordinal, day_name = next(iter(on.items()))
     pos = _ORDINAL_TO_POS.get(ordinal)
     if pos is None:
-        raise ValueError(
-            f"Unknown ordinal: {ordinal!r}. "
-            f"Valid: {sorted(_ORDINAL_TO_POS.keys())}"
-        )
+        raise ValueError(f"Unknown ordinal: {ordinal!r}. Valid: {sorted(_ORDINAL_TO_POS.keys())}")
     day_code = _NAME_TO_DAY_CODE.get(day_name)
     if day_code is None:
         raise ValueError(
-            f"Unknown day name: {day_name!r}. "
-            f"Valid: {sorted(_NAME_TO_DAY_CODE.keys())}"
+            f"Unknown day name: {day_name!r}. Valid: {sorted(_NAME_TO_DAY_CODE.keys())}"
         )
     return f"BYDAY={pos}{day_code}"
 

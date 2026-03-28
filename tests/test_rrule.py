@@ -6,12 +6,14 @@ import json
 from pathlib import Path
 
 import pytest
+from pydantic import TypeAdapter
 
 from omnifocus_operator.models.repetition_rule import (
     BasedOn,
     DailyFrequency,
     EndByDate,
     EndByOccurrences,
+    Frequency,
     HourlyFrequency,
     MinutelyFrequency,
     MonthlyDayInMonthFrequency,
@@ -24,53 +26,32 @@ from omnifocus_operator.models.repetition_rule import (
 )
 from omnifocus_operator.rrule import build_rrule, parse_end_condition, parse_rrule
 
+# ── Frequency Discriminated Union ─────────────────────────────────────
 
-# ── FrequencySpec Discriminated Union ───────────────────────────────────
 
-
-class TestFrequencySpecDiscriminatedUnion:
-    """FrequencySpec validates via type discriminator."""
+class TestFrequencyDiscriminatedUnion:
+    """Frequency validates via type discriminator."""
 
     def test_daily_validates(self):
-        from pydantic import TypeAdapter
-
-        from omnifocus_operator.models.repetition_rule import FrequencySpec
-
-        ta = TypeAdapter(FrequencySpec)
+        ta = TypeAdapter(Frequency)
         result = ta.validate_python({"type": "daily"})
         assert isinstance(result, DailyFrequency)
 
     def test_weekly_with_on_days_validates(self):
-        from pydantic import TypeAdapter
-
-        from omnifocus_operator.models.repetition_rule import FrequencySpec
-
-        ta = TypeAdapter(FrequencySpec)
+        ta = TypeAdapter(Frequency)
         result = ta.validate_python({"type": "weekly", "on_days": ["MO", "WE"]})
         assert isinstance(result, WeeklyFrequency)
         assert result.on_days == ["MO", "WE"]
 
     def test_monthly_day_of_week_validates(self):
-        from pydantic import TypeAdapter
-
-        from omnifocus_operator.models.repetition_rule import FrequencySpec
-
-        ta = TypeAdapter(FrequencySpec)
-        result = ta.validate_python(
-            {"type": "monthly_day_of_week", "on": {"second": "tuesday"}}
-        )
+        ta = TypeAdapter(Frequency)
+        result = ta.validate_python({"type": "monthly_day_of_week", "on": {"second": "tuesday"}})
         assert isinstance(result, MonthlyDayOfWeekFrequency)
         assert result.on == {"second": "tuesday"}
 
     def test_monthly_day_in_month_validates(self):
-        from pydantic import TypeAdapter
-
-        from omnifocus_operator.models.repetition_rule import FrequencySpec
-
-        ta = TypeAdapter(FrequencySpec)
-        result = ta.validate_python(
-            {"type": "monthly_day_in_month", "on_dates": [15, -1]}
-        )
+        ta = TypeAdapter(Frequency)
+        result = ta.validate_python({"type": "monthly_day_in_month", "on_dates": [15, -1]})
         assert isinstance(result, MonthlyDayInMonthFrequency)
         assert result.on_dates == [15, -1]
 
@@ -208,81 +189,69 @@ class TestRepetitionRuleModel:
 
 
 class TestParseRruleFrequencyTypes:
-    """parse_rrule returns correct dict for each frequency type."""
+    """parse_rrule returns correct Frequency model for each frequency type."""
 
     def test_daily(self):
         result = parse_rrule("FREQ=DAILY")
-        assert result == {"type": "daily"}
+        assert result == DailyFrequency()
 
     def test_weekly_bare(self):
         result = parse_rrule("FREQ=WEEKLY")
-        assert result == {"type": "weekly"}
+        assert result == WeeklyFrequency()
 
     def test_weekly_with_byday(self):
         result = parse_rrule("FREQ=WEEKLY;BYDAY=MO,WE,FR")
-        assert result == {"type": "weekly", "on_days": ["MO", "WE", "FR"]}
+        assert result == WeeklyFrequency(on_days=["MO", "WE", "FR"])
 
     def test_monthly_plain(self):
         result = parse_rrule("FREQ=MONTHLY")
-        assert result == {"type": "monthly"}
+        assert result == MonthlyFrequency()
 
     def test_monthly_day_of_week(self):
         result = parse_rrule("FREQ=MONTHLY;BYDAY=2TU")
-        assert result == {
-            "type": "monthly_day_of_week",
-            "on": {"second": "tuesday"},
-        }
+        assert result == MonthlyDayOfWeekFrequency(on={"second": "tuesday"})
 
     def test_monthly_last_friday(self):
         result = parse_rrule("FREQ=MONTHLY;BYDAY=-1FR")
-        assert result == {
-            "type": "monthly_day_of_week",
-            "on": {"last": "friday"},
-        }
+        assert result == MonthlyDayOfWeekFrequency(on={"last": "friday"})
 
     def test_monthly_day_in_month(self):
         result = parse_rrule("FREQ=MONTHLY;BYMONTHDAY=15")
-        assert result == {
-            "type": "monthly_day_in_month",
-            "on_dates": [15],
-        }
+        assert result == MonthlyDayInMonthFrequency(on_dates=[15])
 
     def test_monthly_last_day(self):
         result = parse_rrule("FREQ=MONTHLY;BYMONTHDAY=-1")
-        assert result == {
-            "type": "monthly_day_in_month",
-            "on_dates": [-1],
-        }
+        assert result == MonthlyDayInMonthFrequency(on_dates=[-1])
 
     def test_yearly(self):
         result = parse_rrule("FREQ=YEARLY")
-        assert result == {"type": "yearly"}
+        assert result == YearlyFrequency()
 
     def test_minutely(self):
         result = parse_rrule("FREQ=MINUTELY;INTERVAL=30")
-        assert result == {"type": "minutely", "interval": 30}
+        assert result == MinutelyFrequency(interval=30)
 
     def test_hourly(self):
         result = parse_rrule("FREQ=HOURLY;INTERVAL=2")
-        assert result == {"type": "hourly", "interval": 2}
+        assert result == HourlyFrequency(interval=2)
 
 
 # ── Parser: Interval ─────────────────────────────────────────────────────
 
 
 class TestParseRruleInterval:
-    def test_interval_1_omitted(self):
-        """D-08: interval=1 not included in result dict."""
+    def test_interval_1_present_on_model(self):
+        """D-08 is now a serialization concern; model always has interval."""
         result = parse_rrule("FREQ=DAILY")
-        assert "interval" not in result
+        assert result.interval == 1
 
-    def test_interval_greater_than_1_included(self):
+    def test_interval_greater_than_1(self):
         result = parse_rrule("FREQ=DAILY;INTERVAL=3")
-        assert result["interval"] == 3
+        assert result.interval == 3
 
-    def test_explicit_interval_1_still_omitted(self):
+    def test_explicit_interval_1(self):
         result = parse_rrule("FREQ=DAILY;INTERVAL=1")
-        assert "interval" not in result
+        assert result.interval == 1
 
 
 # ── Parser: End Conditions ───────────────────────────────────────────────
@@ -291,11 +260,11 @@ class TestParseRruleInterval:
 class TestParseRruleEndConditions:
     def test_count(self):
         result = parse_end_condition("FREQ=WEEKLY;COUNT=10")
-        assert result == {"occurrences": 10}
+        assert result == EndByOccurrences(occurrences=10)
 
     def test_until(self):
         result = parse_end_condition("FREQ=MONTHLY;UNTIL=20261231T000000Z")
-        assert result == {"date": "2026-12-31T00:00:00Z"}
+        assert result == EndByDate(date="2026-12-31T00:00:00Z")
 
     def test_no_end_condition(self):
         result = parse_end_condition("FREQ=DAILY")
@@ -342,60 +311,52 @@ class TestParseRruleErrors:
 
 class TestBuildRrule:
     def test_daily(self):
-        assert build_rrule({"type": "daily"}) == "FREQ=DAILY"
+        assert build_rrule(DailyFrequency()) == "FREQ=DAILY"
 
     def test_daily_with_interval(self):
-        assert build_rrule({"type": "daily", "interval": 3}) == "FREQ=DAILY;INTERVAL=3"
+        assert build_rrule(DailyFrequency(interval=3)) == "FREQ=DAILY;INTERVAL=3"
 
     def test_weekly_with_byday(self):
-        result = build_rrule({"type": "weekly", "on_days": ["MO", "WE", "FR"]})
+        result = build_rrule(WeeklyFrequency(on_days=["MO", "WE", "FR"]))
         assert result == "FREQ=WEEKLY;BYDAY=MO,WE,FR"
 
     def test_weekly_bare(self):
-        assert build_rrule({"type": "weekly"}) == "FREQ=WEEKLY"
+        assert build_rrule(WeeklyFrequency()) == "FREQ=WEEKLY"
 
     def test_monthly_plain(self):
-        assert build_rrule({"type": "monthly"}) == "FREQ=MONTHLY"
+        assert build_rrule(MonthlyFrequency()) == "FREQ=MONTHLY"
 
     def test_monthly_day_of_week(self):
-        result = build_rrule(
-            {"type": "monthly_day_of_week", "on": {"second": "tuesday"}}
-        )
+        result = build_rrule(MonthlyDayOfWeekFrequency(on={"second": "tuesday"}))
         assert result == "FREQ=MONTHLY;BYDAY=2TU"
 
     def test_monthly_last_friday(self):
-        result = build_rrule(
-            {"type": "monthly_day_of_week", "on": {"last": "friday"}}
-        )
+        result = build_rrule(MonthlyDayOfWeekFrequency(on={"last": "friday"}))
         assert result == "FREQ=MONTHLY;BYDAY=-1FR"
 
     def test_monthly_day_in_month(self):
-        result = build_rrule(
-            {"type": "monthly_day_in_month", "on_dates": [15]}
-        )
+        result = build_rrule(MonthlyDayInMonthFrequency(on_dates=[15]))
         assert result == "FREQ=MONTHLY;BYMONTHDAY=15"
 
     def test_monthly_last_day(self):
-        result = build_rrule(
-            {"type": "monthly_day_in_month", "on_dates": [-1]}
-        )
+        result = build_rrule(MonthlyDayInMonthFrequency(on_dates=[-1]))
         assert result == "FREQ=MONTHLY;BYMONTHDAY=-1"
 
     def test_yearly(self):
-        assert build_rrule({"type": "yearly"}) == "FREQ=YEARLY"
+        assert build_rrule(YearlyFrequency()) == "FREQ=YEARLY"
 
     def test_minutely(self):
-        assert build_rrule({"type": "minutely", "interval": 30}) == "FREQ=MINUTELY;INTERVAL=30"
+        assert build_rrule(MinutelyFrequency(interval=30)) == "FREQ=MINUTELY;INTERVAL=30"
 
     def test_hourly(self):
-        assert build_rrule({"type": "hourly", "interval": 2}) == "FREQ=HOURLY;INTERVAL=2"
+        assert build_rrule(HourlyFrequency(interval=2)) == "FREQ=HOURLY;INTERVAL=2"
 
     def test_with_end_count(self):
-        result = build_rrule({"type": "weekly"}, end={"occurrences": 10})
+        result = build_rrule(WeeklyFrequency(), end=EndByOccurrences(occurrences=10))
         assert result == "FREQ=WEEKLY;COUNT=10"
 
     def test_with_end_until(self):
-        result = build_rrule({"type": "monthly"}, end={"date": "2026-12-31T00:00:00Z"})
+        result = build_rrule(MonthlyFrequency(), end=EndByDate(date="2026-12-31T00:00:00Z"))
         assert result == "FREQ=MONTHLY;UNTIL=20261231T000000Z"
 
 
@@ -482,4 +443,4 @@ class TestGoldenMasterRuleStrings:
     @pytest.mark.parametrize("rule_string", _GOLDEN_MASTER_RULES)
     def test_golden_master_parses(self, rule_string: str):
         result = parse_rrule(rule_string)
-        assert "type" in result
+        assert hasattr(result, "type")

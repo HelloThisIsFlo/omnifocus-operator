@@ -6,7 +6,7 @@ tags: [pydantic, discriminated-union, rrule, parser, builder]
 
 requires: []
 provides:
-  - FrequencySpec discriminated union with 8 frequency subtypes
+  - ~~FrequencySpec~~ → Frequency discriminated union with 8 frequency subtypes
   - RRULE parser (parse_rrule, parse_end_condition)
   - RRULE builder (build_rrule) with round-trip validation
   - RepetitionRule model with frequency, schedule, basedOn, end
@@ -47,7 +47,7 @@ completed: 2026-03-28
 
 # Phase 32 Plan 01: RRULE Parser/Builder and Frequency Models Summary
 
-**8-type FrequencySpec discriminated union with RRULE parser/builder, round-trip validated against 15 golden master rule strings**
+**8-type ~~FrequencySpec~~ → Frequency discriminated union with RRULE parser/builder, round-trip validated against 15 golden master rule strings**
 
 ## Performance
 
@@ -58,7 +58,7 @@ completed: 2026-03-28
 - **Files created:** 5
 
 ## Accomplishments
-- Complete type hierarchy: 8 frequency subtypes, FrequencySpec discriminated union, EndCondition models, RepetitionRule model, Schedule/BasedOn enums
+- Complete type hierarchy: 8 frequency subtypes, ~~FrequencySpec~~ → Frequency discriminated union, EndCondition models, RepetitionRule model, Schedule/BasedOn enums
 - RRULE parser handling all 8 frequency types including BYDAY positional prefix (2TU, -1FR), MINUTELY/HOURLY, COUNT/UNTIL end conditions
 - RRULE builder with reverse mapping and round-trip validation
 - 89 tests covering models, parser, builder, round-trips, and all 15 golden master RRULE strings
@@ -71,7 +71,7 @@ Each task was committed atomically (TDD: test then feat):
 2. **Task 2: RRULE parser and builder** - `f78feeb` (test) + `1fa2eca` (feat)
 
 ## Files Created
-- `src/omnifocus_operator/models/repetition_rule.py` - 8 frequency subtypes, FrequencySpec union, EndCondition, RepetitionRule, Schedule, BasedOn
+- `src/omnifocus_operator/models/repetition_rule.py` - 8 frequency subtypes, ~~FrequencySpec~~ → Frequency union, EndCondition, RepetitionRule, Schedule, BasedOn
 - `src/omnifocus_operator/rrule/__init__.py` - Package re-exports
 - `src/omnifocus_operator/rrule/parser.py` - parse_rrule and parse_end_condition
 - `src/omnifocus_operator/rrule/builder.py` - build_rrule with round-trip validation

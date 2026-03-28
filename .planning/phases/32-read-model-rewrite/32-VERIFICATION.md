@@ -27,7 +27,7 @@ re_verification: false
 | 4 | BYDAY without prefix in weekly context parses to `on_days` list | VERIFIED | parser.py WEEKLY branch; tests pass |
 | 5 | COUNT and UNTIL parse to end condition dicts | VERIFIED | `parse_end_condition` in parser.py; `TestParseRruleEndConditions` |
 | 6 | `build_rrule` round-trips with `parse_rrule` for all frequency types | VERIFIED | Spot-check passed; `TestRoundTrip` class (8 types) |
-| 7 | FrequencySpec discriminated union validates and serializes correctly with camelCase aliases | VERIFIED | `TestFrequencySpecDiscriminatedUnion`, `TestFrequencySerialization` |
+| 7 | ~~FrequencySpec~~ → Frequency discriminated union validates and serializes correctly with camelCase aliases | VERIFIED | `TestFrequencySpecDiscriminatedUnion`, `TestFrequencySerialization` |
 | 8 | Interval=1 omitted from serialized output (D-08) | VERIFIED | `@model_serializer` in `_FrequencyBase`; spot-check confirmed |
 | 9 | `Task.repetition_rule` is a RepetitionRule with frequency/schedule/basedOn/end — not ruleString/scheduleType/anchorDateKey/catchUpAutomatically | VERIFIED | `common.py` has no `RepetitionRule`; new model has 4 fields; spot-check confirmed |
 | 10 | SQLite read path (`_build_repetition_rule`) calls `parse_rrule` and returns structured dicts | VERIFIED | `hybrid.py:241` calls `parse_rrule(rule_string)` |
@@ -46,7 +46,7 @@ re_verification: false
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `src/omnifocus_operator/models/repetition_rule.py` | FrequencySpec union, 8 subtypes, EndCondition, RepetitionRule, Schedule, BasedOn | VERIFIED | 159 lines; all exports present |
+| `src/omnifocus_operator/models/repetition_rule.py` | ~~FrequencySpec~~ → Frequency union, 8 subtypes, EndCondition, RepetitionRule, Schedule, BasedOn | VERIFIED | 159 lines; all exports present |
 | `src/omnifocus_operator/rrule/__init__.py` | Re-exports parse_rrule, parse_end_condition, build_rrule | VERIFIED | Confirmed re-exports |
 | `src/omnifocus_operator/rrule/parser.py` | parse_rrule and parse_end_condition | VERIFIED | 229 lines; both functions present with mapping tables |
 | `src/omnifocus_operator/rrule/builder.py` | build_rrule with round-trip validation | VERIFIED | 137 lines; includes parse_rrule call for validation |
@@ -120,7 +120,7 @@ The one item that could benefit from human confirmation is end-to-end data flow 
 
 Phase 32 fully achieves its goal. All read tools now return structured repetition rule data. The key outcomes:
 
-- **Infrastructure (Plan 01):** 8-type FrequencySpec discriminated union, RRULE parser/builder, 89 tests. All created as new files with no modifications to existing code.
+- **Infrastructure (Plan 01):** 8-type ~~FrequencySpec~~ → Frequency discriminated union, RRULE parser/builder, 89 tests. All created as new files with no modifications to existing code.
 - **Integration (Plan 02):** Old 4-field RepetitionRule removed; new structured model wired into both SQLite and bridge read paths. `_derive_schedule` correctly maps the 2-column raw data to the 3-value Schedule enum. 830 tests pass at 97% coverage.
 - **No regressions:** Golden master tests unaffected; all 6 commits confirmed present.
 

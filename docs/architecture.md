@@ -634,13 +634,13 @@ flowchart LR
 
 #### Write Path
 
-- `build_rrule(FrequencySpec) → str` — structured model to RRULE string
+- `build_rrule(Frequency) → str` — structured model to RRULE string
 - Service layer calls `build_rrule()` then sends the RRULE string + metadata to bridge.js
 - Bridge stays dumb — receives `(ruleString, scheduleType, anchorDateKey, catchUp)`, creates `new Task.RepetitionRule()`
 
 #### Read Path
 
-- `parse_rrule(str) → FrequencySpec` — RRULE string to structured model
+- `parse_rrule(str) → Frequency` — RRULE string to structured model
 - Both read paths (SQLite and bridge adapter) call `parse_rrule()` — single parsing implementation, two call sites
 - All parsing in Python, not bridge — see [Dumb Bridge, Smart Python](#dumb-bridge-smart-python)
 

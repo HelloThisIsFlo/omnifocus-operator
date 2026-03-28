@@ -44,9 +44,9 @@ No new runtime or dev dependencies needed. Everything builds on existing stack:
 ### Migration path from spike to production
 
 The spike code is directly portable with these changes:
-1. Replace `RRuleComponents` dataclass with Pydantic `FrequencySpec` discriminated union models
-2. `validate_rrule()` parsing logic maps directly to `parse_rrule(str) -> FrequencySpec`
-3. `build_rrule()` takes a `FrequencySpec` instead of loose kwargs
+1. Replace `RRuleComponents` dataclass with Pydantic `Frequency` discriminated union models
+2. `validate_rrule()` parsing logic maps directly to `parse_rrule(str) -> Frequency`
+3. `build_rrule()` takes a `Frequency` instead of loose kwargs
 4. Wire into existing `ScheduleType` and `AnchorDateKey` enums from `models/enums.py` (spike already notes this)
 
 ## Pydantic v2 Discriminated Union Pattern
@@ -68,7 +68,7 @@ class WeeklyFreq(CommandModel):
     interval: int = 1
     on_days: list[str] | None = None
 
-FrequencySpec = Annotated[
+Frequency = Annotated[
     Union[DailyFreq, WeeklyFreq, ...],
     Field(discriminator="type"),
 ]
@@ -81,7 +81,7 @@ FrequencySpec = Annotated[
 | `alias_generator=to_camel` | YES -- `type` stays `type` after camelCase conversion | Verified |
 | `extra="forbid"` (CommandModel) | YES -- naturally rejects cross-type fields (e.g., `onDays` on `daily`) | Verified |
 | `validate_by_name=True` | YES -- both `on_days` and `onDays` accepted | Verified |
-| UNSET sentinel + `Patch[FrequencySpec]` | YES -- UNSET means "no change to frequency" | Verified |
+| UNSET sentinel + `Patch[Frequency]` | YES -- UNSET means "no change to frequency" | Verified |
 | `PatchOrClear[RepetitionRuleCommand]` | YES -- None = remove rule, UNSET = no change | Verified |
 | JSON Schema generation | YES -- generates OpenAPI discriminator mapping with `oneOf` + `propertyName: "type"` | Verified |
 
@@ -128,7 +128,7 @@ This matches the existing MoveAction precedent and keeps the spec's requirement 
 
 | Component | Current | After v1.2.3 |
 |-----------|---------|--------------|
-| `RepetitionRule` model | `rule_string`, `schedule_type`, `anchor_date_key`, `catch_up_automatically` | `frequency: FrequencySpec`, `schedule: ScheduleType`, `based_on: AnchorDateKey`, `end: EndCondition \| None` |
+| `RepetitionRule` model | `rule_string`, `schedule_type`, `anchor_date_key`, `catch_up_automatically` | `frequency: Frequency`, `schedule: ScheduleType`, `based_on: AnchorDateKey`, `end: EndCondition \| None` |
 | Bridge adapter | Passes through raw rule data | Calls `parse_rrule()` on ruleString |
 | SQLite mapper | Passes through raw rule data | Calls `parse_rrule()` on ruleString |
 | Bridge script | Reads repetition rule properties | Also needs write handler for setting repetition rules |

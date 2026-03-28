@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-This milestone adds structured repetition rule read/write to an existing, well-architected MCP server. The work naturally splits into two ordered phases: a read model rewrite (replacing raw `ruleString` with a structured `FrequencySpec` discriminated union) and a write model + bridge pipeline. Phase 1 is a breaking internal change that ripples across 56+ test files and both read paths (SQLite + bridge). Phase 2 slots cleanly into existing patterns (`PatchOrClear`, `DomainLogic`, `PayloadBuilder`). Zero new runtime dependencies are needed — the spike-validated custom RRULE parser (~200 lines, 79 tests) is directly portable.
+This milestone adds structured repetition rule read/write to an existing, well-architected MCP server. The work naturally splits into two ordered phases: a read model rewrite (replacing raw `ruleString` with a structured `Frequency` discriminated union) and a write model + bridge pipeline. Phase 1 is a breaking internal change that ripples across 56+ test files and both read paths (SQLite + bridge). Phase 2 slots cleanly into existing patterns (`PatchOrClear`, `DomainLogic`, `PayloadBuilder`). Zero new runtime dependencies are needed — the spike-validated custom RRULE parser (~200 lines, 79 tests) is directly portable.
 
 The recommended approach: port the spike RRULE utilities to a standalone `rrule/` package, rewrite the read model first (letting Pydantic validation errors guide the cascade), then build the write model on top. Pydantic v2 discriminated unions with `extra="forbid"` give type-specific field validation for free, matching the existing `CommandModel` patterns exactly.
 
@@ -20,7 +20,7 @@ The key risks are concentrated in Phase 1: the BYDAY positional prefix form (`BY
 Zero new dependencies. Everything builds on existing infrastructure: Pydantic v2.12.5 (discriminated unions + alias_generator verified working), the spike RRULE parser (portable as-is with model type substitution), and the existing `UNSET`/`Patch`/`PatchOrClear` lifecycle pattern. The custom parser wins over `python-dateutil` on every dimension relevant to this use case: scope match, component extraction, string building, OmniFocus-specific subset validation, and zero transitive deps.
 
 **Core technologies:**
-- **Custom RRULE parser** (`rrule/parser.py`, ~200 lines) — parse RRULE strings to typed `FrequencySpec`; purpose-built for OmniFocus's RRULE subset, 79 spike tests, directly portable
+- **Custom RRULE parser** (`rrule/parser.py`, ~200 lines) — parse RRULE strings to typed `Frequency`; purpose-built for OmniFocus's RRULE subset, 79 spike tests, directly portable
 - **Pydantic v2 discriminated unions** — 8 frequency type variants with `type: Literal[...]` discriminator; `extra="forbid"` gives cross-type field rejection for free
 - **Existing `PatchOrClear[T]`** — three-way UNSET/null/value semantics for `repetition_rule` on `EditTaskCommand`; no new infrastructure needed
 - **Existing `DomainLogic`** — merge/no-op detection; new `process_repetition()` follows same pattern as `compute_tag_diff`, `process_move`
@@ -74,7 +74,7 @@ Based on research, the milestone decomposes into exactly 2 phases with a clear d
 
 ### Phase 1: Read Model Rewrite
 
-**Rationale:** The structured frequency model is the foundation for everything else. Write path, command models, merge logic, and bridge handler all depend on having correct `FrequencySpec` types. Phase 1 is independently shippable — read tools work end-to-end with structured output before any write support exists.
+**Rationale:** The structured frequency model is the foundation for everything else. Write path, command models, merge logic, and bridge handler all depend on having correct `Frequency` types. Phase 1 is independently shippable — read tools work end-to-end with structured output before any write support exists.
 
 **Delivers:** Structured `RepetitionRule` in `get_all`, `get_task`, `get_project` responses; both SQLite and bridge read paths return `frequency`, `schedule`, `based_on`, `end` fields instead of `ruleString`.
 
@@ -82,7 +82,7 @@ Based on research, the milestone decomposes into exactly 2 phases with a clear d
 
 **Build order:**
 1. `rrule/parser.py` — port spike, add BYDAY positional prefix and HOURLY/MINUTELY support
-2. New model types — `FrequencySpec` discriminated union, `Schedule`, `BasedOn`, `RepetitionEnd`, new `RepetitionRule`
+2. New model types — `Frequency` discriminated union, `Schedule`, `BasedOn`, `RepetitionEnd`, new `RepetitionRule`
 3. SQLite read path (`hybrid.py::_build_repetition_rule`) — derive 3-value `schedule` from two columns
 4. Bridge read path (`adapter.py::_adapt_repetition_rule`)
 5. Update test fixtures + golden master re-capture (GOLD-01)
@@ -91,7 +91,7 @@ Based on research, the milestone decomposes into exactly 2 phases with a clear d
 
 ### Phase 2: Write Model + Service + Bridge
 
-**Rationale:** Depends on Phase 1's `FrequencySpec` types. Slots cleanly into existing patterns — no new infrastructure, just new fields on existing models and a new pipeline step.
+**Rationale:** Depends on Phase 1's `Frequency` types. Slots cleanly into existing patterns — no new infrastructure, just new fields on existing models and a new pipeline step.
 
 **Delivers:** `add_tasks` and `edit_tasks` accept `repetitionRule` field; partial updates within same frequency type; clear rule via `null`; no-op detection; educational warnings.
 
@@ -112,7 +112,7 @@ Based on research, the milestone decomposes into exactly 2 phases with a clear d
 ### Phase Ordering Rationale
 
 - Parser must precede all other work — both read paths and the builder depend on it
-- Read model must be complete before write model — command/payload types reference `FrequencySpec` from models
+- Read model must be complete before write model — command/payload types reference `Frequency` from models
 - `DomainLogic.process_repetition()` requires both parser (read current state) and builder (produce output) — naturally lands in Phase 2
 - InMemoryBridge and bridge.js are mechanical — last in Phase 2 because they just receive what the service layer sends
 - Golden master re-capture required at end of each phase (GOLD-01 constraint)

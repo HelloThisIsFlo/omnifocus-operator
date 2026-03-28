@@ -43,7 +43,7 @@ Replace the current `RepetitionRule` model (raw `ruleString`, `scheduleType`, `a
 
 ### Claude's Discretion
 - RRULE utility function internal structure and wiring to both read paths
-- Pydantic model names and FrequencySpec hierarchy details
+- Pydantic model names and ~~FrequencySpec~~ → Frequency hierarchy details
 - Exact warning/error message wording (existing `agent_messages` patterns as style guide)
 - Test structure and organization
 - Exact module/package layout within the decided "own module" boundary

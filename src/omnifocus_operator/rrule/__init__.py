@@ -1,9 +1,9 @@
 """RRULE parser and builder for OmniFocus repetition rules.
 
 Public API:
-    parse_rrule(rule_string) -> dict[str, Any]  -- parse RRULE to frequency dict
-    parse_end_condition(rule_string) -> dict[str, Any] | None  -- extract end condition
-    build_rrule(frequency, end=None) -> str  -- build RRULE string from frequency dict
+    parse_rrule(rule_string) -> Frequency  -- parse RRULE to frequency model
+    parse_end_condition(rule_string) -> EndByDate | EndByOccurrences | None
+    build_rrule(frequency, end=None) -> str  -- build RRULE string from frequency model
 """
 
 from omnifocus_operator.rrule.builder import build_rrule

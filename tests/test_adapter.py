@@ -12,6 +12,11 @@ from typing import Any
 import pytest
 
 from omnifocus_operator.bridge.adapter import adapt_snapshot
+from omnifocus_operator.models.repetition_rule import (
+    DailyFrequency,
+    EndByOccurrences,
+    WeeklyFrequency,
+)
 
 
 def _old_task(**overrides: Any) -> dict[str, Any]:
@@ -419,7 +424,7 @@ class TestAdaptRepetitionRule:
         snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
         adapt_snapshot(snapshot)
         rule = raw["repetitionRule"]
-        assert rule["frequency"] == {"type": "daily", "interval": 7}
+        assert rule["frequency"] == DailyFrequency(interval=7)
         assert rule["schedule"] == "regularly"
         assert rule["basedOn"] == "due_date"
 
@@ -436,7 +441,7 @@ class TestAdaptRepetitionRule:
         snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
         adapt_snapshot(snapshot)
         rule = raw["repetitionRule"]
-        assert rule["frequency"] == {"type": "weekly", "on_days": ["MO", "WE", "FR"]}
+        assert rule["frequency"] == WeeklyFrequency(on_days=["MO", "WE", "FR"])
         assert rule["schedule"] == "regularly_with_catch_up"
         assert rule["basedOn"] == "defer_date"
 
@@ -453,7 +458,7 @@ class TestAdaptRepetitionRule:
         snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
         adapt_snapshot(snapshot)
         rule = raw["repetitionRule"]
-        assert rule["frequency"] == {"type": "daily", "interval": 3}
+        assert rule["frequency"] == DailyFrequency(interval=3)
         assert rule["schedule"] == "from_completion"
         assert rule["basedOn"] == "defer_date"
 
@@ -470,7 +475,7 @@ class TestAdaptRepetitionRule:
         snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
         adapt_snapshot(snapshot)
         rule = raw["repetitionRule"]
-        assert rule["end"] == {"occurrences": 5}
+        assert rule["end"] == EndByOccurrences(occurrences=5)
 
     def test_none_schedule_type_nullifies_rule(self) -> None:
         """scheduleType "None" from bridge means no real repetition -- nullify the rule."""
