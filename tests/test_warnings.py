@@ -28,6 +28,29 @@ def _get_upper_snake_constants(module: object) -> set[str]:
 
 _WARNING_CONSUMERS = [service_orchestrator, service_domain, server]
 
+# Forward-declared constants: defined in Plan 33-01, wired in Plan 33-02 (service pipeline).
+# Remove entries from this set as each constant gets wired to a consumer.
+_FORWARD_DECLARED_WARNINGS = {
+    "REPETITION_END_DATE_PAST",
+    "REPETITION_EMPTY_ON_DATES",
+    "REPETITION_NO_OP",
+    "REPETITION_ON_COMPLETED_TASK",
+}
+
+# Forward-declared error constants: defined in Plan 33-01, consumed by
+# service/validate.py (not yet in _ERROR_CONSUMERS) and service/domain.py
+# (wired in Plan 33-02). Remove entries as consumers are registered.
+_FORWARD_DECLARED_ERRORS = {
+    "REPETITION_TYPE_CHANGE_INCOMPLETE",
+    "REPETITION_NO_EXISTING_RULE",
+    "REPETITION_INVALID_INTERVAL",
+    "REPETITION_INVALID_DAY_CODE",
+    "REPETITION_INVALID_ORDINAL",
+    "REPETITION_INVALID_DAY_NAME",
+    "REPETITION_INVALID_ON_DATE",
+    "REPETITION_INVALID_END_OCCURRENCES",
+}
+
 
 def _get_consumer_sources(consumers: list[object]) -> str:
     """Return combined source of all consumer modules."""
@@ -42,6 +65,7 @@ class TestWarningConsolidation:
         source = _get_consumer_sources(_WARNING_CONSUMERS)
         constants = _get_upper_snake_constants(warn_mod)
         unreferenced = {c for c in constants if c not in source}
+        unreferenced -= _FORWARD_DECLARED_WARNINGS
         assert unreferenced == set(), (
             f"Warning constants not referenced in consumer modules: {unreferenced}"
         )
@@ -103,6 +127,7 @@ class TestErrorConsolidation:
         source = _get_consumer_sources(_ERROR_CONSUMERS)
         constants = _get_upper_snake_constants(err_mod)
         unreferenced = {c for c in constants if c not in source}
+        unreferenced -= _FORWARD_DECLARED_ERRORS
         assert unreferenced == set(), (
             f"Error constants not referenced in consumer modules: {unreferenced}"
         )
