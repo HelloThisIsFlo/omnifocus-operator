@@ -109,7 +109,11 @@ Plans:
   3. A regression guard asserts that no union type branch in tool outputs degrades to `{"type": "object", "additionalProperties": true}` -- catches future @model_serializer additions
   4. A naming convention test enforces that models/ has no write-side suffixes and contracts/ uses recognized suffixes -- per docs/architecture.md taxonomy
   5. CLAUDE.md contains rules directing agents to read the naming taxonomy before creating models and to run schema tests after modifying output models
-**Plans**: TBD (run /gsd:plan-phase 32.1 to break down)
+**Plans**: 3/3 plans complete
+Plans:
+- [x] 32.1-01-PLAN.md -- Schema-vs-data validation tests, union regression guard, naming convention enforcement
+- [x] 32.1-02-PLAN.md -- Extract derive_schedule to rrule/schedule.py, fix from_completion crash
+- [x] 32.1-03-PLAN.md -- WeeklyFrequency split: bare weekly + WeeklyOnDaysFrequency
 
 ### Phase 33: Write Model, Validation & Bridge
 **Goal**: Agents can create tasks with repetition rules, partially update existing rules (merge within type, clear, change type), and receive educational errors for invalid input -- all through existing `add_tasks` and `edit_tasks` tools
@@ -133,4 +137,5 @@ Plans:
 | 18-28 | v1.2.1 | 27/27 | Complete | 2026-03-23 |
 | 29-31 | v1.2.2 | 6/6 | Complete | 2026-03-26 |
 | 32. Read Model Rewrite | v1.2.3 | 2/2 | Complete    | 2026-03-28 |
+| 32.1 Output Schema Validation Gap | v1.2.3 | 3/3 | Complete | 2026-03-28 |
 | 33. Write Model, Validation & Bridge | v1.2.3 | 0/TBD | Not started | - |
