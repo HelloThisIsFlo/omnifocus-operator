@@ -27,6 +27,7 @@ from omnifocus_operator.agent_messages.warnings import (
     MOVE_SAME_CONTAINER,
     REPETITION_EMPTY_ON_DATES,
     REPETITION_END_DATE_PAST,
+    REPETITION_NO_OP,
     REPETITION_ON_COMPLETED_TASK,
     TAG_ALREADY_ON_TASK,
     TAG_NOT_ON_TASK,
@@ -508,6 +509,8 @@ class DomainLogic:
         if "repetition_rule" in fields_set:
             if not self._repetition_rule_matches(payload, task):
                 return False
+            # Same repetition rule -- no-op, specific warning
+            warnings.append(REPETITION_NO_OP)
 
         # Check move_to
         if "move_to" in fields_set and payload.move_to is not None:

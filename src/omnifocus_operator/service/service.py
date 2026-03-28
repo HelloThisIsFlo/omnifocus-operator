@@ -14,10 +14,19 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, NoReturn
 
+from omnifocus_operator.agent_messages.errors import (
+    REPETITION_NO_EXISTING_RULE,
+    REPETITION_TYPE_CHANGE_INCOMPLETE,  # forward-declared for Phase 33.1 flat frequency model
+)
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.protocols import Service
 from omnifocus_operator.contracts.use_cases.add_task import AddTaskResult
 from omnifocus_operator.contracts.use_cases.edit_task import EditTaskResult
+from omnifocus_operator.contracts.use_cases.repetition_rule import (
+    RepetitionRuleAddSpec,
+)
+from omnifocus_operator.models.enums import BasedOn, Schedule
+from omnifocus_operator.models.repetition_rule import EndCondition, Frequency
 from omnifocus_operator.service.domain import DomainLogic
 from omnifocus_operator.service.payload import PayloadBuilder
 from omnifocus_operator.service.resolve import Resolver
@@ -30,6 +39,9 @@ from omnifocus_operator.service.validate import (
 if TYPE_CHECKING:
     from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand
     from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
+    from omnifocus_operator.contracts.use_cases.repetition_rule import (
+        RepetitionRuleRepoPayload,
+    )
     from omnifocus_operator.models.project import Project
     from omnifocus_operator.models.snapshot import AllEntities
     from omnifocus_operator.models.tag import Tag
@@ -225,6 +237,7 @@ class _EditTaskPipeline(_Pipeline):
         self._resolve_actions()
         self._apply_lifecycle()
         self._check_completed_status()
+        self._apply_repetition_rule()
         await self._apply_tag_diff()
         await self._apply_move()
         self._build_payload()
@@ -275,6 +288,109 @@ class _EditTaskPipeline(_Pipeline):
             self._lifecycle_action is not None,
         )
 
+    def _apply_repetition_rule(self) -> None:
+        """Merge, validate, and prepare repetition rule for the edit payload.
+
+        Handles: UNSET (no change), None (clear), full set, partial update,
+        same-type merge, type change, and no-existing-rule validation.
+        """
+        self._repetition_rule_payload: RepetitionRuleRepoPayload | None = None
+        self._repetition_rule_clear: bool = False
+        self._repetition_warns: list[str] = []
+
+        spec = self._command.repetition_rule
+
+        # EDIT-03: UNSET = no change
+        if not is_set(spec):
+            return
+
+        # EDIT-02: None = clear the rule
+        if spec is None:
+            self._repetition_rule_clear = True
+            return
+
+        existing = self._task.repetition_rule
+
+        # Resolve each root field, falling back to existing
+        frequency: Frequency | None = (
+            spec.frequency if is_set(spec.frequency) else (existing.frequency if existing else None)
+        )
+        schedule: Schedule | None = (
+            spec.schedule if is_set(spec.schedule) else (existing.schedule if existing else None)
+        )
+        based_on: BasedOn | None = (
+            spec.based_on if is_set(spec.based_on) else (existing.based_on if existing else None)
+        )
+
+        # End: None = clear end, UNSET = preserve, value = set/change
+        end: EndCondition | None
+        if is_set(spec.end):
+            end = spec.end  # EDIT-06/07/08: explicit set or clear (None)
+        elif existing is not None:
+            end = existing.end  # preserve existing
+        else:
+            end = None
+
+        # EDIT-15: Can't partially update without an existing rule
+        if frequency is None or schedule is None or based_on is None:
+            raise ValueError(REPETITION_NO_EXISTING_RULE)
+
+        # Same-type frequency merge (EDIT-09/10/11/12)
+        if is_set(spec.frequency) and existing is not None:
+            if existing.frequency.type == spec.frequency.type:
+                # Same type -- merge omitted sub-fields from existing
+                frequency = self._merge_same_type_frequency(spec.frequency, existing.frequency)
+            # Different type (EDIT-13): full replacement, no merging needed
+            # Pydantic discriminated union ensures complete subtype fields
+
+        # Normalize empty on_dates (D-13)
+        normalized_freq, on_dates_warns = self._domain.normalize_empty_on_dates(frequency)
+        self._repetition_warns.extend(on_dates_warns)
+        frequency = normalized_freq
+
+        # Validate the final frequency
+        synthetic_spec = RepetitionRuleAddSpec(
+            frequency=frequency,
+            schedule=schedule,
+            based_on=based_on,
+            end=end,
+        )
+        validate_repetition_rule_add(synthetic_spec)
+
+        # Check warnings (end date in past, completed/dropped task)
+        self._repetition_warns.extend(
+            self._domain.check_repetition_warnings(end=end, task=self._task)
+        )
+
+        # Build the repo payload
+        self._repetition_rule_payload = self._payload._build_repetition_rule_payload(
+            frequency, schedule, based_on, end
+        )
+
+    def _merge_same_type_frequency(
+        self,
+        submitted: Frequency,
+        existing: Frequency,
+    ) -> Frequency:
+        """Merge submitted frequency with existing for same-type updates.
+
+        For fields not explicitly set on the submitted frequency, use
+        the existing value. This preserves on_days, on, on_dates, interval
+        when only changing one sub-field.
+        """
+        submitted_fields = submitted.model_fields_set
+        existing_dict = existing.model_dump()
+        submitted_dict = submitted.model_dump()
+
+        # Start from existing, overlay with submitted's explicitly-set fields
+        merged = {**existing_dict}
+        for field_name in submitted_fields:
+            if field_name != "type":  # type must always come from submitted
+                merged[field_name] = submitted_dict[field_name]
+
+        # Reconstruct the frequency model
+        return type(submitted).model_validate(merged)
+
     async def _apply_tag_diff(self) -> None:
         self._tag_adds: list[str] | None = None
         self._tag_removes: list[str] | None = None
@@ -307,12 +423,19 @@ class _EditTaskPipeline(_Pipeline):
             self._tag_adds,
             self._tag_removes,
             self._move_to,
+            repetition_rule_payload=self._repetition_rule_payload,
+            repetition_rule_clear=self._repetition_rule_clear,
         )
         logger.debug(
             "OperatorService.edit_task: payload fields_set=%s",
             self._repo_payload.model_fields_set,
         )
-        self._all_warnings = self._lifecycle_warns + self._status_warns + self._tag_warns
+        self._all_warnings = (
+            self._lifecycle_warns
+            + self._status_warns
+            + self._repetition_warns
+            + self._tag_warns
+        )
 
     def _detect_noop(self) -> EditTaskResult | None:
         return self._domain.detect_early_return(

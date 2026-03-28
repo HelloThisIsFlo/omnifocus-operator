@@ -25,6 +25,7 @@ from omnifocus_operator.contracts.use_cases.edit_task import (
 )
 from omnifocus_operator.contracts.use_cases.repetition_rule import (
     RepetitionRuleAddSpec,
+    RepetitionRuleEditSpec,
 )
 from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
@@ -1668,6 +1669,351 @@ class TestEditTask:
         # No "already in this container" warning
         if result.warnings:
             assert not any("already in this container" in w for w in result.warnings)
+
+
+# ---------------------------------------------------------------------------
+# OperatorService.edit_task: repetition rule (EDIT-01 through EDIT-16)
+# ---------------------------------------------------------------------------
+
+# Bridge-format repetition rule fixtures for seeding InMemoryBridge
+_DAILY_RULE = {
+    "ruleString": "FREQ=DAILY",
+    "scheduleType": "Regularly",
+    "anchorDateKey": "DueDate",
+    "catchUpAutomatically": False,
+}
+
+_WEEKLY_ON_DAYS_RULE = {
+    "ruleString": "FREQ=WEEKLY;BYDAY=MO,FR",
+    "scheduleType": "Regularly",
+    "anchorDateKey": "DueDate",
+    "catchUpAutomatically": False,
+}
+
+_WEEKLY_ON_DAYS_INTERVAL2_RULE = {
+    "ruleString": "FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,FR",
+    "scheduleType": "Regularly",
+    "anchorDateKey": "DueDate",
+    "catchUpAutomatically": False,
+}
+
+
+class TestEditTaskRepetitionRule:
+    """Service.edit_task repetition rule: EDIT-01 through EDIT-16."""
+
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="t1", name="Plain")])
+    async def test_set_rule_on_non_repeating_task(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
+        """EDIT-01: Set full rule on non-repeating task."""
+        spec = RepetitionRuleEditSpec(
+            frequency=DailyFrequency(),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+        )
+        result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
+        assert result.success is True
+
+        task = await repo.get_task("t1")
+        assert task is not None
+        assert task.repetition_rule is not None
+        assert task.repetition_rule.frequency.type == "daily"
+        assert task.repetition_rule.schedule == Schedule.REGULARLY
+        assert task.repetition_rule.based_on == BasedOn.DUE_DATE
+
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="t1", name="Repeating", repetitionRule=_DAILY_RULE)]
+    )
+    async def test_clear_rule(self, service: OperatorService, repo: BridgeRepository) -> None:
+        """EDIT-02: repetition_rule=None -> clears rule."""
+        result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=None))
+        assert result.success is True
+
+        task = await repo.get_task("t1")
+        assert task is not None
+        assert task.repetition_rule is None
+
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="t1", name="Repeating", repetitionRule=_DAILY_RULE)]
+    )
+    async def test_unset_no_change(self, service: OperatorService, repo: BridgeRepository) -> None:
+        """EDIT-03: repetition_rule=UNSET (omitted) -> no change."""
+        result = await service.edit_task(EditTaskCommand(id="t1", name="Renamed"))
+        assert result.success is True
+
+        task = await repo.get_task("t1")
+        assert task is not None
+        assert task.repetition_rule is not None
+        assert task.repetition_rule.frequency.type == "daily"
+
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="t1", name="Repeating", repetitionRule=_DAILY_RULE)]
+    )
+    async def test_schedule_only_change(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
+        """EDIT-04: Only schedule set -> preserves frequency/basedOn/end."""
+        spec = RepetitionRuleEditSpec(schedule=Schedule.FROM_COMPLETION)
+        result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
+        assert result.success is True
+
+        task = await repo.get_task("t1")
+        assert task is not None
+        assert task.repetition_rule is not None
+        assert task.repetition_rule.schedule == Schedule.FROM_COMPLETION
+        assert task.repetition_rule.frequency.type == "daily"
+        assert task.repetition_rule.based_on == BasedOn.DUE_DATE
+
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="t1", name="Repeating", repetitionRule=_DAILY_RULE)]
+    )
+    async def test_based_on_only_change(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
+        """EDIT-05: Only based_on set -> preserves frequency/schedule/end."""
+        spec = RepetitionRuleEditSpec(based_on=BasedOn.DEFER_DATE)
+        result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
+        assert result.success is True
+
+        task = await repo.get_task("t1")
+        assert task is not None
+        assert task.repetition_rule is not None
+        assert task.repetition_rule.based_on == BasedOn.DEFER_DATE
+        assert task.repetition_rule.frequency.type == "daily"
+
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="t1", name="Repeating", repetitionRule=_DAILY_RULE)]
+    )
+    async def test_add_end_condition(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
+        """EDIT-06: Only end set -> adds end condition."""
+        spec = RepetitionRuleEditSpec(end=EndByOccurrences(occurrences=10))
+        result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
+        assert result.success is True
+
+        task = await repo.get_task("t1")
+        assert task is not None
+        assert task.repetition_rule is not None
+        assert task.repetition_rule.end is not None
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t1",
+                name="Repeating",
+                repetitionRule={
+                    "ruleString": "FREQ=DAILY;COUNT=5",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": False,
+                },
+            )
+        ]
+    )
+    async def test_clear_end_condition(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
+        """EDIT-07: end=None -> removes end condition."""
+        spec = RepetitionRuleEditSpec(end=None)
+        result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
+        assert result.success is True
+
+        task = await repo.get_task("t1")
+        assert task is not None
+        assert task.repetition_rule is not None
+        assert task.repetition_rule.end is None
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t1",
+                name="Repeating",
+                repetitionRule={
+                    "ruleString": "FREQ=DAILY;UNTIL=20261231T000000Z",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": False,
+                },
+            )
+        ]
+    )
+    async def test_change_end_date_to_occurrences(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
+        """EDIT-08: End changed from date to occurrences."""
+        spec = RepetitionRuleEditSpec(end=EndByOccurrences(occurrences=20))
+        result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
+        assert result.success is True
+
+        task = await repo.get_task("t1")
+        assert task is not None
+        assert task.repetition_rule is not None
+        assert task.repetition_rule.end is not None
+
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="t1", name="Repeating", repetitionRule=_DAILY_RULE)]
+    )
+    async def test_same_type_change_interval(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
+        """EDIT-09/10: Same type, change interval -> merges."""
+        spec = RepetitionRuleEditSpec(frequency=DailyFrequency(interval=5))
+        result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
+        assert result.success is True
+
+        task = await repo.get_task("t1")
+        assert task is not None
+        assert task.repetition_rule is not None
+        assert task.repetition_rule.frequency.type == "daily"
+        assert task.repetition_rule.frequency.interval == 5
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t1",
+                name="Repeating",
+                repetitionRule=_WEEKLY_ON_DAYS_INTERVAL2_RULE,
+            )
+        ]
+    )
+    async def test_same_type_change_on_days(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
+        """EDIT-11: Same type, change on_days -> interval preserved."""
+        spec = RepetitionRuleEditSpec(
+            frequency=WeeklyOnDaysFrequency(on_days=["TU", "TH"])
+        )
+        result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
+        assert result.success is True
+
+        task = await repo.get_task("t1")
+        assert task is not None
+        assert task.repetition_rule is not None
+        assert task.repetition_rule.frequency.type == "weekly_on_days"
+        # interval should be preserved from existing (2)
+        assert task.repetition_rule.frequency.interval == 2
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t1",
+                name="Repeating",
+                repetitionRule={
+                    "ruleString": "FREQ=MONTHLY;BYDAY=2TU",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": False,
+                },
+            )
+        ]
+    )
+    async def test_same_type_change_monthly_on(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
+        """EDIT-12: Same monthly_day_of_week type, change on -> interval preserved."""
+        spec = RepetitionRuleEditSpec(
+            frequency=MonthlyDayOfWeekFrequency(on={"last": "friday"})
+        )
+        result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
+        assert result.success is True
+
+        task = await repo.get_task("t1")
+        assert task is not None
+        assert task.repetition_rule is not None
+        assert task.repetition_rule.frequency.type == "monthly_day_of_week"
+
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="t1", name="Repeating", repetitionRule=_DAILY_RULE)]
+    )
+    async def test_type_change_full_replacement(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
+        """EDIT-13: Different type with full frequency -> replaces entirely."""
+        spec = RepetitionRuleEditSpec(
+            frequency=WeeklyOnDaysFrequency(on_days=["MO", "WE", "FR"])
+        )
+        result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
+        assert result.success is True
+
+        task = await repo.get_task("t1")
+        assert task is not None
+        assert task.repetition_rule is not None
+        assert task.repetition_rule.frequency.type == "weekly_on_days"
+
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="t1", name="Plain")])
+    async def test_partial_update_no_existing_rule_error(
+        self, service: OperatorService
+    ) -> None:
+        """EDIT-15: Partial update on task with no existing rule -> ValueError."""
+        spec = RepetitionRuleEditSpec(schedule=Schedule.FROM_COMPLETION)
+        with pytest.raises(ValueError, match="Cannot partially update"):
+            await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
+
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="t1", name="Repeating", repetitionRule=_DAILY_RULE)]
+    )
+    async def test_noop_same_rule(self, service: OperatorService) -> None:
+        """EDIT-16: Same rule sent back -> no-op with warning."""
+        spec = RepetitionRuleEditSpec(
+            frequency=DailyFrequency(),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+        )
+        result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
+        assert result.success is True
+        assert result.warnings is not None
+        assert any("no changes" in w.lower() for w in result.warnings)
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t1",
+                name="Done",
+                status="Completed",
+                completionDate="2026-01-01T00:00:00.000Z",
+                effectiveCompletionDate="2026-01-01T00:00:00.000Z",
+            )
+        ]
+    )
+    async def test_set_rule_on_completed_task_warns(
+        self, service: OperatorService
+    ) -> None:
+        """D-12: Setting repetition on completed task -> warning."""
+        spec = RepetitionRuleEditSpec(
+            frequency=DailyFrequency(),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+        )
+        result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
+        assert result.success is True
+        assert result.warnings is not None
+        assert any("completed" in w for w in result.warnings)
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t1",
+                name="Dropped",
+                status="Dropped",
+                dropDate="2026-01-01T00:00:00.000Z",
+                effectiveDropDate="2026-01-01T00:00:00.000Z",
+            )
+        ]
+    )
+    async def test_set_rule_on_dropped_task_warns(
+        self, service: OperatorService
+    ) -> None:
+        """D-12: Setting repetition on dropped task -> warning."""
+        spec = RepetitionRuleEditSpec(
+            frequency=DailyFrequency(),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+        )
+        result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
+        assert result.success is True
+        assert result.warnings is not None
+        assert any("dropped" in w for w in result.warnings)
 
 
 # ---------------------------------------------------------------------------
