@@ -17,7 +17,7 @@ affects: [32-02, 33-write-model]
 tech-stack:
   added: []
   patterns:
-    - "@model_serializer for nested serialization control (interval=1 omission)"
+    - "~~@model_serializer for nested serialization control (interval=1 omission)~~ (reverted before UAT — erased serialization schema)"
     - "Discriminated union via Annotated[Union[...], Field(discriminator='type')]"
     - "Reverse mapping tables for bidirectional RRULE conversion"
 
@@ -31,11 +31,11 @@ key-files:
   modified: []
 
 key-decisions:
-  - "Used @model_serializer instead of model_dump override for D-08 interval omission -- ensures correct behavior when frequency is nested inside RepetitionRule"
+  - "~~Used @model_serializer instead of model_dump override for D-08 interval omission -- ensures correct behavior when frequency is nested inside RepetitionRule~~ (reverted before UAT — @model_serializer erased serialization schema)"
   - "Parser returns plain dicts (not model instances) -- keeps parser decoupled from Pydantic, dicts validated at model layer"
 
 patterns-established:
-  - "@model_serializer on _FrequencyBase: interval=1 omission + None-field exclusion, works in nested context"
+  - "~~@model_serializer on _FrequencyBase: interval=1 omission + None-field exclusion, works in nested context~~ (reverted before UAT)"
   - "RRULE mapping tables: _POS_TO_ORDINAL/_DAY_CODE_TO_NAME for parser, reverse tables for builder"
   - "Golden master RRULE test: parametrized test extracting all ruleString values from 08-repetition/ snapshots"
 
@@ -78,25 +78,27 @@ Each task was committed atomically (TDD: test then feat):
 - `tests/test_rrule.py` - 89 tests across 12 test classes
 
 ## Decisions Made
-- Used `@model_serializer` instead of `model_dump` override for D-08 interval omission -- Pydantic's `model_dump` override doesn't propagate to nested models, `@model_serializer` does
+- ~~Used `@model_serializer` instead of `model_dump` override for D-08 interval omission -- Pydantic's `model_dump` override doesn't propagate to nested models, `@model_serializer` does~~ (reverted before UAT — @model_serializer erased serialization schema, breaking MCP outputSchema)
 - Parser returns plain dicts rather than model instances -- keeps parser decoupled from Pydantic; dicts are validated when passed to models in the read path
 
 ## Deviations from Plan
 
 ### Auto-fixed Issues
 
-**1. [Rule 1 - Bug] Switched from model_dump override to @model_serializer**
-- **Found during:** Task 1 (frequency model serialization)
-- **Issue:** Custom `model_dump` override on `_FrequencyBase` did not apply when the frequency model was serialized as a nested field inside `RepetitionRule`. Pydantic calls its internal serializer for nested models, bypassing the Python-level `model_dump` override.
-- **Fix:** Replaced `model_dump` override with `@model_serializer` decorator, which Pydantic respects during both direct and nested serialization.
-- **Files modified:** `src/omnifocus_operator/models/repetition_rule.py`
-- **Verification:** `test_frequency_interval_omission_in_nested_dump` passes
-- **Committed in:** `344d8f4` (Task 1 feat commit)
+~~**1. [Rule 1 - Bug] Switched from model_dump override to @model_serializer**~~
+~~- **Found during:** Task 1 (frequency model serialization)~~
+~~- **Issue:** Custom `model_dump` override on `_FrequencyBase` did not apply when the frequency model was serialized as a nested field inside `RepetitionRule`. Pydantic calls its internal serializer for nested models, bypassing the Python-level `model_dump` override.~~
+~~- **Fix:** Replaced `model_dump` override with `@model_serializer` decorator, which Pydantic respects during both direct and nested serialization.~~
+~~- **Files modified:** `src/omnifocus_operator/models/repetition_rule.py`~~
+~~- **Verification:** `test_frequency_interval_omission_in_nested_dump` passes~~
+~~- **Committed in:** `344d8f4` (Task 1 feat commit)~~
+
+> **Reverted before UAT**: `@model_serializer` erased the serialization-mode JSON Schema, breaking MCP outputSchema validation. `@field_serializer` returning None had the same effect. The fix: remove all custom serializers, let `interval=1` appear in output.
 
 ---
 
-**Total deviations:** 1 auto-fixed (1 bug)
-**Impact on plan:** Essential fix for correct nested serialization. No scope creep.
+**Total deviations:** 1 auto-fixed (1 bug), later reverted before UAT
+**Impact on plan:** ~~Essential fix for correct nested serialization.~~ The serializer approach was correct for nested propagation but broke the JSON Schema contract that FastMCP depends on.
 
 ## Issues Encountered
 None -- all tests passed on first implementation after the serializer fix.

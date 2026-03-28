@@ -62,11 +62,10 @@ class TestFrequencyDiscriminatedUnion:
 class TestFrequencySerialization:
     """model_dump(by_alias=True) produces correct output."""
 
-    def test_daily_interval_1_omits_interval(self):
-        """D-08: interval=1 is the default, omitted from output."""
+    def test_daily_interval_1_included(self):
         d = DailyFrequency().model_dump(by_alias=True)
-        assert "interval" not in d
-        assert d == {"type": "daily"}
+        assert d["interval"] == 1
+        assert d == {"type": "daily", "interval": 1}
 
     def test_daily_interval_3_includes_interval(self):
         d = DailyFrequency(interval=3).model_dump(by_alias=True)
@@ -74,39 +73,37 @@ class TestFrequencySerialization:
 
     def test_weekly_on_days_serializes_as_camel_case(self):
         d = WeeklyFrequency(on_days=["MO"]).model_dump(by_alias=True)
-        assert d == {"type": "weekly", "onDays": ["MO"]}
+        assert d == {"type": "weekly", "interval": 1, "onDays": ["MO"]}
 
-    def test_weekly_no_on_days_excludes_none(self):
+    def test_weekly_no_on_days_is_none(self):
         d = WeeklyFrequency().model_dump(by_alias=True)
-        assert d == {"type": "weekly"}
-        assert "onDays" not in d
+        assert d["onDays"] is None
 
     def test_monthly_day_of_week_type_stays_snake_case(self):
         """Pitfall 5: type value is a Literal, NOT camelCased."""
         d = MonthlyDayOfWeekFrequency().model_dump(by_alias=True)
         assert d["type"] == "monthly_day_of_week"
-        # on=None should be excluded
-        assert "on" not in d
+        assert d["on"] is None
 
-    def test_monthly_day_in_month_on_dates_excluded_when_none(self):
+    def test_monthly_day_in_month_on_dates_is_none(self):
         d = MonthlyDayInMonthFrequency().model_dump(by_alias=True)
-        assert "onDates" not in d
+        assert d["onDates"] is None
 
     def test_minutely_with_interval(self):
         d = MinutelyFrequency(interval=30).model_dump(by_alias=True)
         assert d == {"type": "minutely", "interval": 30}
 
-    def test_hourly_default_interval_omitted(self):
+    def test_hourly_default_interval_included(self):
         d = HourlyFrequency().model_dump(by_alias=True)
-        assert d == {"type": "hourly"}
+        assert d == {"type": "hourly", "interval": 1}
 
     def test_monthly_plain(self):
         d = MonthlyFrequency().model_dump(by_alias=True)
-        assert d == {"type": "monthly"}
+        assert d == {"type": "monthly", "interval": 1}
 
     def test_yearly_plain(self):
         d = YearlyFrequency().model_dump(by_alias=True)
-        assert d == {"type": "yearly"}
+        assert d == {"type": "yearly", "interval": 1}
 
 
 # ── End Condition Models ─────────────────────────────────────────────────
@@ -155,14 +152,14 @@ class TestRepetitionRuleModel:
         assert rule.based_on == "due_date"
         assert isinstance(rule.end, EndByOccurrences)
 
-    def test_no_end_serializes_without_end_key(self):
+    def test_no_end_serializes_as_none(self):
         rule = RepetitionRule(
             frequency=WeeklyFrequency(on_days=["MO", "FR"]),
             schedule=Schedule.FROM_COMPLETION,
             based_on=BasedOn.DEFER_DATE,
         )
-        d = rule.model_dump(by_alias=True, exclude_none=True)
-        assert "end" not in d
+        d = rule.model_dump(by_alias=True)
+        assert d["end"] is None
 
     def test_based_on_serializes_as_camel_case(self):
         rule = RepetitionRule(
@@ -170,19 +167,18 @@ class TestRepetitionRuleModel:
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.PLANNED_DATE,
         )
-        d = rule.model_dump(by_alias=True, exclude_none=True)
+        d = rule.model_dump(by_alias=True)
         assert "basedOn" in d
         assert d["basedOn"] == "planned_date"
 
-    def test_frequency_interval_omission_in_nested_dump(self):
-        """Verify interval=1 omission works through RepetitionRule serialization."""
+    def test_frequency_interval_1_included_in_nested_dump(self):
         rule = RepetitionRule(
             frequency=DailyFrequency(),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
         )
-        d = rule.model_dump(by_alias=True, exclude_none=True)
-        assert "interval" not in d["frequency"]
+        d = rule.model_dump(by_alias=True)
+        assert d["frequency"]["interval"] == 1
 
 
 # ── Parser: Frequency Types ──────────────────────────────────────────────
@@ -241,7 +237,6 @@ class TestParseRruleFrequencyTypes:
 
 class TestParseRruleInterval:
     def test_interval_1_present_on_model(self):
-        """D-08 is now a serialization concern; model always has interval."""
         result = parse_rrule("FREQ=DAILY")
         assert result.interval == 1
 

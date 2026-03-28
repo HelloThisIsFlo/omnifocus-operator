@@ -85,7 +85,8 @@ Not applicable — this phase produces parser/model infrastructure (no rendering
 | RepetitionRule has structured fields, not ruleString (READ-01) | `'ruleString' not in rr.model_dump(by_alias=True)` | Confirmed | PASS |
 | Round-trip parse/build/parse for all 8 types (READ-04) | `parse_rrule(build_rrule(parse_rrule(rrule)))['type'] == expected` | All 8 matched | PASS |
 | Both read paths import from shared rrule module (READ-03) | `'from omnifocus_operator.rrule import' in src` | Both paths confirmed | PASS |
-| interval=1 omitted, interval=3 included (D-08) | `DailyFrequency().model_dump(by_alias=True)` | No `interval` key; `interval=3` present when set | PASS |
+| ~~interval=1 omitted, interval=3 included (D-08)~~ | ~~`DailyFrequency().model_dump(by_alias=True)`~~ | ~~No `interval` key; `interval=3` present when set~~ | ~~PASS~~ |
+| interval=1 included in output (D-08 relaxed before UAT — @model_serializer erased serialization schema) | `DailyFrequency().model_dump(by_alias=True)` | `interval=1` present; schema branches preserve `const` discriminator | PASS |
 
 ---
 

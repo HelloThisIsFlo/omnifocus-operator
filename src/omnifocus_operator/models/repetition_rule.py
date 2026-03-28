@@ -1,7 +1,7 @@
 """Structured repetition rule models for OmniFocus tasks and projects.
 
 Type hierarchy:
-    _FrequencyBase          -- interval field, model_dump override for D-08
+    _FrequencyBase          -- interval field
     +-- MinutelyFrequency   -- type="minutely"
     +-- HourlyFrequency     -- type="hourly"
     +-- DailyFrequency      -- type="daily"
@@ -25,10 +25,9 @@ Enums:
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal
 
-from pydantic import Field, model_serializer
-from pydantic.alias_generators import to_camel
+from pydantic import Field
 
 from omnifocus_operator.models.base import OmniFocusBaseModel
 from omnifocus_operator.models.enums import BasedOn, Schedule
@@ -37,35 +36,9 @@ from omnifocus_operator.models.enums import BasedOn, Schedule
 
 
 class _FrequencyBase(OmniFocusBaseModel):
-    """Base class for all frequency subtypes.
-
-    Handles D-08 (interval=1 omission) and None-field exclusion in model_dump.
-    """
+    """Base class for all frequency subtypes."""
 
     interval: int = 1
-
-    @model_serializer
-    def _serialize(self) -> dict[str, Any]:
-        """Custom serializer for D-08 (interval=1 omission) and None exclusion.
-
-        Uses @model_serializer so custom logic applies both when calling
-        model_dump() directly AND when serialized as a nested model.
-        """
-        d: dict[str, Any] = {}
-        for field_name, field_info in type(self).model_fields.items():
-            value = getattr(self, field_name)
-            if value is None:
-                continue
-            # Use alias if available
-            alias = field_info.alias
-            if alias is None and self.model_config.get("alias_generator"):
-                alias = to_camel(field_name)
-            key = alias if alias else field_name
-            d[key] = value
-        # D-08: omit interval when it equals the default (1)
-        if d.get("interval") == 1:
-            d.pop("interval", None)
-        return d
 
 
 # -- 8 Frequency Subtypes ----------------------------------------------------
