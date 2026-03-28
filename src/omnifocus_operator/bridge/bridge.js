@@ -74,6 +74,23 @@ function adk(s) {
     throw new Error("Unknown AnchorDateKey: " + String(s));
 }
 
+// --- Reverse enum resolvers (write path) ---
+// Write operations receive string values from Python and need to
+// convert them back to OmniJS enum objects for the RepetitionRule constructor.
+
+function reverseRst(s) {
+    if (s === "Regularly") return Task.RepetitionScheduleType.Regularly;
+    if (s === "FromCompletion") return Task.RepetitionScheduleType.FromCompletion;
+    throw new Error("Unknown scheduleType string: " + s);
+}
+
+function reverseAdk(s) {
+    if (s === "DueDate") return Task.AnchorDateKey.DueDate;
+    if (s === "DeferDate") return Task.AnchorDateKey.DeferDate;
+    if (s === "PlannedDate") return Task.AnchorDateKey.PlannedDate;
+    throw new Error("Unknown anchorDateKey string: " + s);
+}
+
 function rr(v) {
     if (!v) return null;
     return {
@@ -249,6 +266,18 @@ function handleAddTask(params) {
             .forEach(tag => task.addTag(tag));
     }
 
+    // Repetition rule (full construction from bridge payload)
+    if (params.hasOwnProperty("repetitionRule") && params.repetitionRule !== null) {
+        var rr = params.repetitionRule;
+        task.repetitionRule = new Task.RepetitionRule(
+            rr.ruleString,
+            null,  // deprecated method param
+            reverseRst(rr.scheduleType),
+            reverseAdk(rr.anchorDateKey),
+            rr.catchUpAutomatically
+        );
+    }
+
     return { id: task.id.primaryKey, name: task.name };
 }
 
@@ -272,6 +301,22 @@ function handleEditTask(params) {
         task.plannedDate = params.plannedDate
             ? new Date(params.plannedDate)
             : null;
+
+    // Repetition rule (set, update, or clear)
+    if (params.hasOwnProperty("repetitionRule")) {
+        if (params.repetitionRule === null) {
+            task.repetitionRule = null;
+        } else {
+            var rr = params.repetitionRule;
+            task.repetitionRule = new Task.RepetitionRule(
+                rr.ruleString,
+                null,  // deprecated method param
+                reverseRst(rr.scheduleType),
+                reverseAdk(rr.anchorDateKey),
+                rr.catchUpAutomatically
+            );
+        }
+    }
 
     // Tag management (diff-based: service computes add/remove sets)
     // OmniFocus bug workaround: removeTags with an array is unreliable,
@@ -393,5 +438,7 @@ if (typeof module !== "undefined") {
         fs: fs,
         rst: rst,
         adk: adk,
+        reverseRst: reverseRst,
+        reverseAdk: reverseAdk,
     };
 }
