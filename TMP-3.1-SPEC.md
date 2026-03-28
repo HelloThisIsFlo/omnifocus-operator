@@ -118,28 +118,64 @@ but this validation can equally live in a service-layer or model validator.
 
 ## Desired End State
 
-A single `Frequency` model:
+Three flat frequency models replacing the 9-subtype discriminated union:
 
 ```python
+# models/repetition_rule.py — READ model
+# OmniFocusBaseModel (no extra="forbid") — represents data, not agent input
 class Frequency(OmniFocusBaseModel):
     type: str                              # required, no default → survives exclude_defaults
     interval: int = 1                      # default 1 → omitted by exclude_defaults
     on_days: list[str] | None = None       # only for weekly_on_days
     on: dict[str, str] | None = None       # only for monthly_day_of_week
     on_dates: list[int] | None = None      # only for monthly_day_in_month
+
+# contracts/ — ADD spec
+# CommandModel (extra="forbid") — validates agent input, catches typos
+# Same fields as read Frequency, but different base class justifies
+# a separate model (see docs/architecture.md decision tree step 4)
+class FrequencyAddSpec(CommandModel):
+    type: str                              # required
+    interval: int = 1
+    on_days: list[str] | None = None
+    on: dict[str, str] | None = None
+    on_dates: list[int] | None = None
+
+# contracts/ — EDIT spec
+# CommandModel (extra="forbid") — validates agent input
+# type is optional: when omitted, service infers from existing task
+class FrequencyEditSpec(CommandModel):
+    type: str | None = None                # optional — inferred from existing
+    interval: int | None = None            # None = preserve existing
+    on_days: list[str] | None = None       # None = preserve existing
+    on: dict[str, str] | None = None
+    on_dates: list[int] | None = None
 ```
+
+### Why three models, not one
+
+The architecture doc (decision tree step 4) establishes that write models always
+inherit `CommandModel` (`extra="forbid"`), while read models inherit
+`OmniFocusBaseModel` (no `extra="forbid"`). This base class difference alone
+justifies a dedicated write model, even when the field shapes are identical.
+
+- `Frequency` (read): `OmniFocusBaseModel` — represents data from SQLite/bridge.
+  No `extra="forbid"` because it's not validating agent input.
+- `FrequencyAddSpec` (write): `CommandModel` — identical fields, but
+  `extra="forbid"` catches agent typos like `{type: "daily", intervel: 3}`.
+- `FrequencyEditSpec` (write): `CommandModel` — different shape (`type` optional),
+  `extra="forbid"` catches typos.
 
 ### What this solves
 
-**Problem 1 (type optional on edit):** The `RepetitionRuleEditSpec` can accept
-frequency as a partial object. When `type` is omitted, the service layer infers
-it from the existing task's frequency. Agent can send `{frequency: {interval: 5}}`
-and the server does the right thing.
+**Problem 1 (type optional on edit):** `FrequencyEditSpec` makes `type` optional.
+When omitted, the service layer infers it from the existing task's frequency.
+Agent can send `{frequency: {interval: 5}}` and the server does the right thing.
 
-**Problem 2 (interval serialization):** `model_dump(exclude_defaults=True)` omits
-`interval=1` (has default) but keeps `type` (no default). No custom serializer.
-Non-applicable fields (`on_days`, `on`, `on_dates`) excluded via
-`model_dump(exclude_none=True)`. Output is clean:
+**Problem 2 (interval serialization):** `model_dump(exclude_defaults=True)` on the
+read `Frequency` omits `interval=1` (has default) but keeps `type` (no default).
+No custom serializer. Non-applicable fields (`on_days`, `on`, `on_dates`) excluded
+via `model_dump(exclude_none=True)`. Output is clean:
 
 ```json
 // Daily, default interval:
@@ -152,8 +188,9 @@ Non-applicable fields (`on_days`, `on`, `on_dates`) excluded via
 {"type": "monthly"}
 ```
 
-**Problem 3 (class count):** 9 classes + base + union → 1 class. Simpler to
-read, maintain, and extend.
+**Problem 3 (class count):** 9 subtype classes + 1 base + 1 union → 3 focused
+classes (1 read + 2 write specs). Net reduction from 11 to 3. Each class has a
+clear purpose and the right validation behavior for its context.
 
 ### What moves where
 
@@ -169,12 +206,17 @@ rewriting service logic."
 This is a cross-cutting refactor affecting:
 
 - **Read model** (`models/repetition_rule.py`): Replace 9 subtypes + union with
-  single Frequency class
-- **RRULE parser** (`rrule/parser.py`): Return flat Frequency instead of specific
-  subtypes
-- **RRULE builder** (`rrule/builder.py`): Accept flat Frequency instead of union
-- **Write models** (`contracts/`): RepetitionRuleAddSpec and RepetitionRuleEditSpec
-  use flat Frequency. EditSpec makes `type` optional for same-type updates
+  single flat `Frequency` class (`OmniFocusBaseModel`)
+- **Write models** (`contracts/`):
+  - New `FrequencyAddSpec` (`CommandModel`, `extra="forbid"`) — same fields as
+    read `Frequency`, type required
+  - New `FrequencyEditSpec` (`CommandModel`, `extra="forbid"`) — type optional,
+    None = preserve existing
+  - `RepetitionRuleAddSpec` embeds `FrequencyAddSpec` (was: `Frequency` union)
+  - `RepetitionRuleEditSpec` embeds `FrequencyEditSpec` (was: `Patch[Frequency]`)
+- **RRULE parser** (`rrule/parser.py`): Return flat `Frequency` instead of
+  specific subtypes
+- **RRULE builder** (`rrule/builder.py`): Accept flat `Frequency` instead of union
 - **Service layer**: Add cross-type field validation (reject `on_days` on `daily`,
   etc.). Update merge logic to handle type-optional frequency edits
 - **Tests**: Update all tests referencing specific frequency subtypes
@@ -198,17 +240,19 @@ from source). Same rationale as Phase 32 D-09.
 
 ## Key Files
 
-- `src/omnifocus_operator/models/repetition_rule.py` — primary refactor target
+- `src/omnifocus_operator/models/repetition_rule.py` — primary refactor target (9 subtypes → flat `Frequency`)
+- `src/omnifocus_operator/contracts/use_cases/add_task.py` — embed `FrequencyAddSpec`
+- `src/omnifocus_operator/contracts/use_cases/edit_task.py` — embed `FrequencyEditSpec` (type optional)
+- `src/omnifocus_operator/contracts/common.py` — or new file for `FrequencyAddSpec`/`FrequencyEditSpec`
 - `src/omnifocus_operator/rrule/parser.py` — update return types
 - `src/omnifocus_operator/rrule/builder.py` — update input types
-- `src/omnifocus_operator/contracts/use_cases/edit_task.py` — make type optional
-  in frequency edit
 - `src/omnifocus_operator/service/service.py` — merge logic for type-optional edits
 - `src/omnifocus_operator/service/validate.py` — cross-type field validation
 - `src/omnifocus_operator/server.py` — update edit_tasks tool description
 - `tests/test_output_schema.py` — verify schema still valid
 - `tests/test_rrule.py` — update frequency type references
 - `tests/test_models.py` — update frequency type references
+- `docs/architecture.md` — update Frequency Types table (lines 508-519) to reflect flat model
 
 ## Depends On
 
