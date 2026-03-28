@@ -162,4 +162,4 @@ Logging: ToolLoggingMiddleware for automatic tool call logging, dual-handler (st
 | ToolAnnotations stays at mcp.types | FastMCP doesn't re-export `ToolAnnotations`. Intentional residual `from mcp.types import ToolAnnotations` with TODO | — Pending — revisit when fastmcp re-exports |
 
 ---
-*Last updated: 2026-03-28 after Phase 32.1 complete — Output Schema Validation Gap (schema-vs-data tests, union regression guards, naming enforcement)*
+*Last updated: 2026-03-28 after Phase 32.1 complete — Output Schema Validation Gap (schema-vs-data tests, union regression guards, naming enforcement, from_completion crash fix, WeeklyFrequency split)*
