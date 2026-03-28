@@ -22,6 +22,7 @@ from omnifocus_operator.models.repetition_rule import (
     RepetitionRule,
     Schedule,
     WeeklyFrequency,
+    WeeklyOnDaysFrequency,
     YearlyFrequency,
 )
 from omnifocus_operator.rrule import build_rrule, parse_end_condition, parse_rrule
@@ -104,6 +105,54 @@ class TestFrequencySerialization:
     def test_yearly_plain(self):
         d = YearlyFrequency().model_dump(by_alias=True)
         assert d == {"type": "yearly", "interval": 1}
+
+
+# ── Weekly Split (Gap Closure) ──────────────────────────────────────────
+
+
+class TestWeeklySplit:
+    """WeeklyFrequency (bare) vs WeeklyOnDaysFrequency (with days)."""
+
+    def test_bare_weekly_has_no_on_days_field(self):
+        """Critical regression test: bare weekly must NOT serialize onDays."""
+        d = WeeklyFrequency().model_dump(by_alias=True)
+        assert d == {"type": "weekly", "interval": 1}
+        assert "onDays" not in d
+
+    def test_weekly_on_days_serializes(self):
+        d = WeeklyOnDaysFrequency(on_days=["MO"]).model_dump(by_alias=True)
+        assert d == {"type": "weekly_on_days", "interval": 1, "onDays": ["MO"]}
+
+    def test_parse_bare_weekly(self):
+        result = parse_rrule("FREQ=WEEKLY")
+        assert isinstance(result, WeeklyFrequency)
+        assert not isinstance(result, WeeklyOnDaysFrequency)
+
+    def test_parse_weekly_with_byday(self):
+        result = parse_rrule("FREQ=WEEKLY;BYDAY=MO,WE")
+        assert isinstance(result, WeeklyOnDaysFrequency)
+        assert result.on_days == ["MO", "WE"]
+
+    def test_build_bare_weekly(self):
+        assert build_rrule(WeeklyFrequency()) == "FREQ=WEEKLY"
+
+    def test_build_weekly_on_days(self):
+        result = build_rrule(WeeklyOnDaysFrequency(on_days=["MO", "WE"]))
+        assert result == "FREQ=WEEKLY;BYDAY=MO,WE"
+
+    def test_round_trip_bare(self):
+        freq = parse_rrule("FREQ=WEEKLY")
+        rebuilt = build_rrule(freq)
+        assert rebuilt == "FREQ=WEEKLY"
+        re_parsed = parse_rrule(rebuilt)
+        assert re_parsed == freq
+
+    def test_round_trip_with_days(self):
+        freq = parse_rrule("FREQ=WEEKLY;BYDAY=MO,WE,FR")
+        rebuilt = build_rrule(freq)
+        assert rebuilt == "FREQ=WEEKLY;BYDAY=MO,WE,FR"
+        re_parsed = parse_rrule(rebuilt)
+        assert re_parsed == freq
 
 
 # ── End Condition Models ─────────────────────────────────────────────────

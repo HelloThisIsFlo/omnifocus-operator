@@ -61,6 +61,11 @@ class WeeklyFrequency(_FrequencyBase):
     on_days: list[str] | None = None  # serializes as onDays
 
 
+class WeeklyOnDaysFrequency(_FrequencyBase):
+    type: Literal["weekly_on_days"] = "weekly_on_days"
+    on_days: list[str]  # required, not optional
+
+
 class MonthlyFrequency(_FrequencyBase):
     type: Literal["monthly"] = "monthly"
 
