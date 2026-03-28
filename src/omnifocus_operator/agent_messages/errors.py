@@ -87,3 +87,9 @@ REPETITION_INVALID_ON_DATE = (
 )
 
 REPETITION_INVALID_END_OCCURRENCES = "End occurrences must be >= 1, got {value}"
+
+REPETITION_INVALID_FREQUENCY_TYPE = (
+    "Invalid frequency type '{freq_type}' -- "
+    "valid types: minutely, hourly, daily, weekly, weekly_on_days, "
+    "monthly, monthly_day_of_week, monthly_day_in_month, yearly"
+)

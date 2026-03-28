@@ -1014,3 +1014,174 @@ class TestEditTasksLifecycle:
         assert items[0]["success"] is True
         warnings = items[0].get("warnings", [])
         assert any("already" in w.lower() for w in warnings)
+
+
+# ---------------------------------------------------------------------------
+# REPET: Repetition rule server-level handling
+# ---------------------------------------------------------------------------
+
+
+class TestAddTasksRepetitionRule:
+    """Verify repetition rule support through the add_tasks MCP tool."""
+
+    async def test_add_tasks_with_repetition_rule_success(self, client: Any) -> None:
+        """Create a task with a valid repetition rule."""
+        result = await client.call_tool(
+            "add_tasks",
+            {
+                "items": [
+                    {
+                        "name": "Repeating task",
+                        "repetitionRule": {
+                            "frequency": {"type": "daily", "interval": 3},
+                            "schedule": "from_completion",
+                            "basedOn": "defer_date",
+                        },
+                    }
+                ]
+            },
+        )
+        items = result.structured_content["result"]
+        assert items[0]["success"] is True
+        assert items[0]["name"] == "Repeating task"
+        assert "id" in items[0]
+
+    async def test_add_tasks_repetition_rule_validation_error(self, client: Any) -> None:
+        """Invalid frequency type returns educational error listing valid types."""
+        with pytest.raises(ToolError, match="Invalid frequency type") as exc_info:
+            await client.call_tool(
+                "add_tasks",
+                {
+                    "items": [
+                        {
+                            "name": "Bad repeat",
+                            "repetitionRule": {
+                                "frequency": {"type": "biweekly", "interval": 1},
+                                "schedule": "regularly",
+                                "basedOn": "due_date",
+                            },
+                        }
+                    ]
+                },
+            )
+        text = str(exc_info.value)
+        assert "biweekly" in text
+        assert "daily" in text
+        assert "weekly_on_days" in text
+
+    async def test_add_tasks_repetition_rule_unknown_field(self, client: Any) -> None:
+        """Extra field on repetitionRule returns 'Unknown field' error."""
+        with pytest.raises(ToolError, match="Unknown field 'repetitionRule.bogusField'"):
+            await client.call_tool(
+                "add_tasks",
+                {
+                    "items": [
+                        {
+                            "name": "Bad field",
+                            "repetitionRule": {
+                                "frequency": {"type": "daily", "interval": 1},
+                                "schedule": "regularly",
+                                "basedOn": "due_date",
+                                "bogusField": "x",
+                            },
+                        }
+                    ]
+                },
+            )
+
+
+class TestEditTasksRepetitionRule:
+    """Verify repetition rule support through the edit_tasks MCP tool."""
+
+    async def test_edit_tasks_with_repetition_rule_success(self, client: Any) -> None:
+        """Set a repetition rule on an existing task."""
+        # Create task first
+        add_result = await client.call_tool(
+            "add_tasks", {"items": [{"name": "Will repeat"}]}
+        )
+        task_id = add_result.structured_content["result"][0]["id"]
+
+        edit_result = await client.call_tool(
+            "edit_tasks",
+            {
+                "items": [
+                    {
+                        "id": task_id,
+                        "repetitionRule": {
+                            "frequency": {"type": "weekly_on_days", "interval": 1, "onDays": ["MO", "FR"]},
+                            "schedule": "regularly",
+                            "basedOn": "due_date",
+                        },
+                    }
+                ]
+            },
+        )
+        items = edit_result.structured_content["result"]
+        assert items[0]["success"] is True
+
+    async def test_edit_tasks_clear_repetition_rule(self, client: Any) -> None:
+        """Setting repetitionRule to null clears it."""
+        # Create task with repetition
+        add_result = await client.call_tool(
+            "add_tasks",
+            {
+                "items": [
+                    {
+                        "name": "Has repeat",
+                        "repetitionRule": {
+                            "frequency": {"type": "daily", "interval": 1},
+                            "schedule": "regularly",
+                            "basedOn": "due_date",
+                        },
+                    }
+                ]
+            },
+        )
+        task_id = add_result.structured_content["result"][0]["id"]
+
+        # Clear the repetition rule
+        edit_result = await client.call_tool(
+            "edit_tasks",
+            {"items": [{"id": task_id, "repetitionRule": None}]},
+        )
+        items = edit_result.structured_content["result"]
+        assert items[0]["success"] is True
+
+        # Verify it was cleared
+        get_result = await client.call_tool("get_task", {"id": task_id})
+        assert get_result.structured_content["repetitionRule"] is None
+
+    async def test_edit_tasks_repetition_partial_update(self, client: Any) -> None:
+        """Partial update changes only the specified root field."""
+        # Create task with repetition rule
+        add_result = await client.call_tool(
+            "add_tasks",
+            {
+                "items": [
+                    {
+                        "name": "Partial update",
+                        "repetitionRule": {
+                            "frequency": {"type": "daily", "interval": 1},
+                            "schedule": "regularly",
+                            "basedOn": "due_date",
+                        },
+                    }
+                ]
+            },
+        )
+        task_id = add_result.structured_content["result"][0]["id"]
+
+        # Partial update: change only schedule
+        edit_result = await client.call_tool(
+            "edit_tasks",
+            {
+                "items": [
+                    {
+                        "id": task_id,
+                        "repetitionRule": {"schedule": "from_completion"},
+                    }
+                ]
+            },
+        )
+        items = edit_result.structured_content["result"]
+        assert items[0]["success"] is True

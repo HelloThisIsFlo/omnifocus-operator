@@ -315,6 +315,31 @@ class TestSchemaValidation:
         data = serialize_like_fastmcp(snapshot)
         jsonschema.validate(data, schema)
 
+    def test_add_task_result_with_warnings_validates(self) -> None:
+        """AddTaskResult with populated warnings list validates against outputSchema."""
+        result = AddTaskResult(
+            success=True,
+            id="task-with-warnings",
+            name="Task With Warnings",
+            warnings=["End date is in the past", "Setting repetition on completed task"],
+        )
+        schema = _TOOL_SCHEMAS["add_tasks"]
+        if schema.get("x-fastmcp-wrap-result", False):
+            data = {"result": serialize_like_fastmcp([result])}
+        else:
+            data = serialize_like_fastmcp([result])
+        jsonschema.validate(data, schema)
+
+    def test_add_task_result_without_warnings_validates(self) -> None:
+        """AddTaskResult with warnings=None validates (optional field)."""
+        result = AddTaskResult(success=True, id="task-no-warnings", name="No Warnings")
+        schema = _TOOL_SCHEMAS["add_tasks"]
+        if schema.get("x-fastmcp-wrap-result", False):
+            data = {"result": serialize_like_fastmcp([result])}
+        else:
+            data = serialize_like_fastmcp([result])
+        jsonschema.validate(data, schema)
+
 
 # ---------------------------------------------------------------------------
 # Union regression guard (D-05, covers SC-3)

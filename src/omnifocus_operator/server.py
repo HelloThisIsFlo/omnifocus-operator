@@ -92,6 +92,45 @@ async def app_lifespan(app: FastMCP) -> AsyncIterator[dict[str, object]]:
         logger.info("Error-mode server shutting down")
 
 
+def _format_validation_errors(exc: ValidationError) -> list[str]:
+    """Extract clean, agent-friendly messages from a Pydantic ValidationError.
+
+    Rewrites common error patterns into educational messages:
+    - ``extra_forbidden`` -> "Unknown field '<path>'"
+    - ``union_tag_invalid`` on frequency -> lists valid frequency types
+    - ``literal_error`` on lifecycle -> echoes the invalid value with valid options
+    - ``_Unset`` sentinel artefacts are suppressed
+    """
+    from omnifocus_operator.agent_messages.errors import REPETITION_INVALID_FREQUENCY_TYPE
+    from omnifocus_operator.agent_messages.warnings import (
+        LIFECYCLE_INVALID_VALUE,
+        UNKNOWN_FIELD,
+    )
+
+    messages: list[str] = []
+    for e in exc.errors():
+        if "_Unset" in e["msg"]:
+            continue
+        if e["type"] == "extra_forbidden":
+            field = ".".join(str(loc) for loc in e["loc"])
+            messages.append(UNKNOWN_FIELD.format(field=field))
+        elif e["type"] == "literal_error" and "lifecycle" in e.get("loc", ()):
+            messages.append(LIFECYCLE_INVALID_VALUE.format(value=e.get("input", "unknown")))
+        elif e["type"] == "union_tag_invalid":
+            loc = e.get("loc", ())
+            if any(str(l) in ("repetitionRule", "frequency") for l in loc):
+                input_val = e.get("input", {})
+                freq_type = input_val.get("type", "?") if isinstance(input_val, dict) else "?"
+                messages.append(
+                    REPETITION_INVALID_FREQUENCY_TYPE.format(freq_type=freq_type)
+                )
+            else:
+                messages.append(e["msg"])
+        else:
+            messages.append(e["msg"])
+    return messages
+
+
 def _register_tools(mcp: FastMCP) -> None:
     """Register all MCP tools on the given server instance.
 
@@ -179,11 +218,40 @@ def _register_tools(mcp: FastMCP) -> None:
         - flagged: Boolean flag
         - estimatedMinutes: Estimated duration in minutes
         - note: Task note text
+        - repetitionRule: Repetition rule (all three root fields required on creation)
+          - frequency (required): Object with "type" discriminator
+            - {type: "minutely", interval: N}
+            - {type: "hourly", interval: N}
+            - {type: "daily", interval: N}
+            - {type: "weekly", interval: N}  -- every N weeks, no specific day constraint
+            - {type: "weekly_on_days", interval: N, onDays: ["MO","WE","FR"]}  -- specific days (MO-SU)
+            - {type: "monthly", interval: N}
+            - {type: "monthly_day_of_week", interval: N, on: {"second": "tuesday"}}
+                ordinals: first/second/third/fourth/fifth/last
+                days: monday-sunday, weekday, weekend_day
+            - {type: "monthly_day_in_month", interval: N, onDates: [1, 15]}
+                valid dates: 1 to 31, use -1 for last day of month
+            - {type: "yearly", interval: N}
+            - interval defaults to 1, omit or set explicitly
+          - schedule (required): "regularly" / "regularly_with_catch_up" / "from_completion"
+          - basedOn (required): "due_date" / "defer_date" / "planned_date"
+          - end: {"date": "ISO-8601"} or {"occurrences": N} -- omit for no end
 
-        These are the only supported fields. Repetition rules, notifications,
-        and sequential/parallel settings are not yet available.
+          Examples:
+            Every 3 days from completion:
+              {frequency: {type: "daily", interval: 3},
+               schedule: "from_completion", basedOn: "defer_date"}
 
-        Returns array of results: [{success, id, name}]
+            Every 2 weeks on Mon and Fri, stop after 10:
+              {frequency: {type: "weekly_on_days", interval: 2, onDays: ["MO", "FR"]},
+               schedule: "regularly", basedOn: "due_date",
+               end: {occurrences: 10}}
+
+            Last Friday of every month:
+              {frequency: {type: "monthly_day_of_week", on: {"last": "friday"}},
+               schedule: "regularly", basedOn: "due_date"}
+
+        Returns array of results: [{success, id, name, warnings?}]
         """
         if len(items) != 1:
             msg = ADD_TASKS_BATCH_LIMIT.format(count=len(items))
@@ -195,17 +263,7 @@ def _register_tools(mcp: FastMCP) -> None:
         try:
             command = AddTaskCommand.model_validate(items[0])
         except ValidationError as exc:
-            messages = []
-            for e in exc.errors():
-                if "_Unset" in e["msg"]:
-                    continue
-                if e["type"] == "extra_forbidden":
-                    from omnifocus_operator.agent_messages.warnings import UNKNOWN_FIELD
-
-                    field = ".".join(str(loc) for loc in e["loc"])
-                    messages.append(UNKNOWN_FIELD.format(field=field))
-                else:
-                    messages.append(e["msg"])
+            messages = _format_validation_errors(exc)
             logger.debug("server.add_tasks: validation error: %s", "; ".join(messages))
             raise ValueError("; ".join(messages) or INVALID_INPUT) from None
         # Progress reporting (scaffolding for future batch support per D-05):
@@ -243,6 +301,27 @@ def _register_tools(mcp: FastMCP) -> None:
         - plannedDate: Planned date ISO 8601 (null to clear)
         - flagged: Boolean flag
         - estimatedMinutes: Estimated duration (null to clear)
+        - repetitionRule: Set, update, or clear a repetition rule
+          - Full rule: same shape as add_tasks (frequency, schedule, basedOn required)
+          - Partial update: send only changed fields, omitted root fields preserved
+            - frequency.type is always required when updating frequency
+            - Same type: omitted frequency fields preserved from existing rule
+            - Different type: full replacement, defaults apply like creation
+          - end: null to clear, omit to preserve
+          - null to clear the repetition rule
+
+          Examples:
+            Change just the schedule:
+              {schedule: "from_completion"}
+
+            Change interval (type required, other frequency fields preserved):
+              {frequency: {type: "daily", interval: 5}}
+
+            Switch to monthly on specific days (schedule/basedOn/end preserved):
+              {frequency: {type: "monthly_day_in_month", onDates: [1, 15]}}
+
+            Clear:
+              null
 
         Actions block (omit to skip, groups stateful operations):
         - actions.tags: Tag operations
@@ -269,21 +348,7 @@ def _register_tools(mcp: FastMCP) -> None:
         try:
             command = EditTaskCommand.model_validate(items[0])
         except ValidationError as exc:
-            messages = []
-            for e in exc.errors():
-                if "_Unset" in e["msg"]:
-                    continue
-                if e["type"] == "extra_forbidden":
-                    from omnifocus_operator.agent_messages.warnings import UNKNOWN_FIELD
-
-                    field = ".".join(str(loc) for loc in e["loc"])
-                    messages.append(UNKNOWN_FIELD.format(field=field))
-                elif e["type"] == "literal_error" and "lifecycle" in e.get("loc", ()):
-                    from omnifocus_operator.agent_messages.warnings import LIFECYCLE_INVALID_VALUE
-
-                    messages.append(LIFECYCLE_INVALID_VALUE.format(value=e.get("input", "unknown")))
-                else:
-                    messages.append(e["msg"])
+            messages = _format_validation_errors(exc)
             logger.debug("server.edit_tasks: validation error: %s", "; ".join(messages))
             raise ValueError("; ".join(messages) or INVALID_INPUT) from None
         # Progress reporting (scaffolding for future batch support per D-05):
