@@ -89,7 +89,9 @@ An external reviewer flagged 4 improvements to the edit_tasks tool description:
 3. **"Full" frequency on type change** — Added "defaults apply like creation" to clarify.
 4. **Type change example** — Added: `{frequency: {type: "monthly_day_in_month", onDates: [1, 15]}}`.
 
-Discussion of point 1 led to the Phase 33.1 decision: flatten the Frequency discriminated union (9 subtypes → 1 class) across read, add, and edit models. Three wins: optional type on edit, interval serialization fix, model simplification. Phase 33 designs for easy evolution by keeping frequency validation in the service layer.
+Discussion of point 1 led to the Phase 33.1 decision: flatten the Frequency discriminated union (9 subtypes → 3 flat classes) across read, add, and edit models. Three wins: optional type on edit, interval serialization fix, model simplification. Phase 33 designs for easy evolution by keeping frequency validation in the service layer.
+
+Further discussion refined the model count: 3 frequency models, not 1. The `extra="forbid"` principle (write models always inherit `CommandModel`, read models inherit `OmniFocusBaseModel`) means even identical field shapes need separate models. Result: `Frequency` (read, `OmniFocusBaseModel`), `FrequencyAddSpec` (write, `CommandModel`), `FrequencyEditSpec` (write, `CommandModel`, type optional). This also led to architecture doc updates reinforcing the base class boundary in three places (split principle, value objects rule, decision tree step 4).
 
 ## Deferred Ideas
 
