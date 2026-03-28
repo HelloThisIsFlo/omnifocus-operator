@@ -81,6 +81,7 @@
 **Milestone Goal:** Enable agents to set, modify, and remove repetition rules on tasks via structured fields -- symmetric read/write model, no raw RRULE strings exposed. No new tools.
 
 - [x] **Phase 32: Read Model Rewrite** - Structured frequency fields replace ruleString on both read paths (completed 2026-03-28)
+- [ ] **Phase 32.1: Output Schema Validation Gap** - Add schema-vs-data validation tests ensuring serialized output conforms to advertised outputSchema (INSERTED)
 - [ ] **Phase 33: Write Model, Validation & Bridge** - add_tasks and edit_tasks support repetition rules with partial updates, type-change detection, and educational errors
 
 ## Phase Details
@@ -98,6 +99,17 @@
 Plans:
 - [x] 32-01-PLAN.md — RRULE parser/builder module + Pydantic frequency models
 - [x] 32-02-PLAN.md — Model swap, read path wiring, test updates
+
+### Phase 32.1: Output Schema Validation Gap (INSERTED)
+**Goal**: Add systemic test safeguards ensuring serialized tool output validates against MCP outputSchema, model naming conventions are programmatically enforced, and future agents have clear rules to follow
+**Depends on**: Phase 32 (serializer fix in commit db4bcb0)
+**Success Criteria** (what must be TRUE):
+  1. For every MCP tool (get_all, get_task, get_project, get_tag, add_tasks, edit_tasks), serialized output from realistic fixtures validates against the tool's outputSchema using a JSON Schema validator (not Pydantic) -- the same validation MCP clients perform
+  2. Test fixtures include tasks with repetitionRule set to actual Frequency values (at minimum DailyFrequency, WeeklyFrequency with onDays, MonthlyDayOfWeekFrequency with on, MonthlyDayInMonthFrequency with onDates) and both EndCondition variants (EndByDate, EndByOccurrences)
+  3. A regression guard asserts that no union type branch in tool outputs degrades to `{"type": "object", "additionalProperties": true}` -- catches future @model_serializer additions
+  4. A naming convention test enforces that models/ has no write-side suffixes and contracts/ uses recognized suffixes -- per docs/architecture.md taxonomy
+  5. CLAUDE.md contains rules directing agents to read the naming taxonomy before creating models and to run schema tests after modifying output models
+**Plans**: TBD (run /gsd:plan-phase 32.1 to break down)
 
 ### Phase 33: Write Model, Validation & Bridge
 **Goal**: Agents can create tasks with repetition rules, partially update existing rules (merge within type, clear, change type), and receive educational errors for invalid input -- all through existing `add_tasks` and `edit_tasks` tools
