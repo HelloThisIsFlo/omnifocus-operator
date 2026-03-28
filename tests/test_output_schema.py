@@ -7,6 +7,7 @@ erasing JSON Schema structure, and enforces models/ vs contracts/ naming rules.
 
 from __future__ import annotations
 
+import asyncio
 import importlib
 import inspect
 import pkgutil
@@ -15,8 +16,6 @@ from typing import Any
 import jsonschema
 import pydantic_core
 import pytest
-from fastmcp.tools.function_parsing import _WrappedResult
-from fastmcp.utilities.json_schema import compress_schema
 from pydantic import BaseModel, TypeAdapter
 
 from omnifocus_operator.contracts.use_cases.add_task import AddTaskResult
@@ -26,6 +25,7 @@ from omnifocus_operator.models.repetition_rule import (
     EndCondition,
     Frequency,
 )
+from omnifocus_operator.server import create_server
 from tests.conftest import (
     make_model_project_dict,
     make_model_snapshot_dict,
@@ -35,10 +35,26 @@ from tests.conftest import (
 )
 
 # ---------------------------------------------------------------------------
-# Tool return type registry
+# Server-sourced output schemas (the real schemas FastMCP serves to clients)
 # ---------------------------------------------------------------------------
 
-TOOL_RETURN_TYPES: dict[str, type] = {
+
+def _load_tool_schemas() -> dict[str, dict[str, Any]]:
+    """Load output schemas from the actual FastMCP server."""
+
+    async def _fetch() -> dict[str, dict[str, Any]]:
+        server = create_server()
+        tools = await server.list_tools()
+        return {t.name: t.output_schema for t in tools}
+
+    return asyncio.run(_fetch())
+
+
+_TOOL_SCHEMAS: dict[str, dict[str, Any]] = _load_tool_schemas()
+
+# Return types used only by TestUnionRegressionGuard for raw $defs inspection
+# (server schemas are fully inlined, so $defs checking requires TypeAdapter).
+_REGRESSION_GUARD_TYPES: dict[str, type] = {
     "get_all": AllEntities,
     "get_task": Task,
     "get_project": Project,
@@ -47,25 +63,9 @@ TOOL_RETURN_TYPES: dict[str, type] = {
     "edit_tasks": list[EditTaskResult],
 }
 
-WRAPPED_TOOLS = {"add_tasks", "edit_tasks"}
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def get_output_schema(return_type: type) -> dict[str, Any]:
-    """Reproduce FastMCP's outputSchema generation pipeline."""
-    schema = TypeAdapter(return_type).json_schema(mode="serialization")
-    return compress_schema(schema, prune_titles=True)
-
-
-def get_wrapped_output_schema(inner_type: type) -> dict[str, Any]:
-    """Reproduce FastMCP's outputSchema for list-returning tools (wrapped)."""
-    wrapped_type = _WrappedResult[inner_type]  # type: ignore[name-defined]
-    schema = TypeAdapter(wrapped_type).json_schema(mode="serialization")
-    schema["x-fastmcp-wrap-result"] = True
-    return compress_schema(schema, prune_titles=True)
 
 
 def serialize_like_fastmcp(value: Any) -> Any:
@@ -214,9 +214,7 @@ _SNAPSHOT = AllEntities.model_validate(
 
 # Write tool result fixtures
 _ADD_TASK_RESULT = AddTaskResult(success=True, id="new-task-001", name="Created Task")
-_EDIT_TASK_RESULT = EditTaskResult(
-    success=True, id="task-001", name="Edited Task", warnings=[]
-)
+_EDIT_TASK_RESULT = EditTaskResult(success=True, id="task-001", name="Edited Task", warnings=[])
 
 # Map tool names to their fixture instances
 _TOOL_FIXTURES: dict[str, Any] = {
@@ -237,17 +235,19 @@ _TOOL_FIXTURES: dict[str, Any] = {
 class TestSchemaValidation:
     """Serialized tool output must validate against the MCP outputSchema."""
 
-    @pytest.mark.parametrize("tool_name", list(TOOL_RETURN_TYPES))
+    def test_all_tools_have_fixtures(self) -> None:
+        """Every registered tool has a fixture and vice versa."""
+        assert set(_TOOL_SCHEMAS.keys()) == set(_TOOL_FIXTURES.keys())
+
+    @pytest.mark.parametrize("tool_name", sorted(_TOOL_SCHEMAS))
     def test_tool_output_validates_against_schema(self, tool_name: str) -> None:
         """For each MCP tool, serialized fixture data validates against outputSchema."""
-        return_type = TOOL_RETURN_TYPES[tool_name]
+        schema = _TOOL_SCHEMAS[tool_name]
         fixture = _TOOL_FIXTURES[tool_name]
 
-        if tool_name in WRAPPED_TOOLS:
-            schema = get_wrapped_output_schema(return_type)
+        if schema.get("x-fastmcp-wrap-result", False):
             data = {"result": serialize_like_fastmcp(fixture)}
         else:
-            schema = get_output_schema(return_type)
             data = serialize_like_fastmcp(fixture)
 
         jsonschema.validate(data, schema)
@@ -269,7 +269,7 @@ class TestSchemaValidation:
                 ],
             )
         )
-        schema = get_output_schema(AllEntities)
+        schema = _TOOL_SCHEMAS["get_all"]
         data = serialize_like_fastmcp(snapshot)
         jsonschema.validate(data, schema)
 
@@ -293,7 +293,7 @@ class TestSchemaValidation:
                 ],
             )
         )
-        schema = get_output_schema(AllEntities)
+        schema = _TOOL_SCHEMAS["get_all"]
         data = serialize_like_fastmcp(snapshot)
         jsonschema.validate(data, schema)
 
@@ -319,8 +319,7 @@ class TestUnionRegressionGuard:
             )
             type_prop = branch["properties"].get("type", {})
             assert "const" in type_prop, (
-                f"${name}.type missing 'const' constraint -- discriminator gone. "
-                f"Got: {type_prop}"
+                f"${name}.type missing 'const' constraint -- discriminator gone. Got: {type_prop}"
             )
 
     def test_end_condition_branches_have_properties(self) -> None:
@@ -340,9 +339,7 @@ class TestUnionRegressionGuard:
             else:
                 branches.append(entry)
 
-        assert len(branches) == 2, (
-            f"Expected 2 EndCondition branches, got {len(branches)}"
-        )
+        assert len(branches) == 2, f"Expected 2 EndCondition branches, got {len(branches)}"
         for branch in branches:
             assert "properties" in branch, (
                 f"EndCondition branch lost its properties -- likely erased by "
@@ -357,7 +354,7 @@ class TestUnionRegressionGuard:
         """No $defs entry in any tool schema should be the erased {type:object} form."""
         erased_form = {"type": "object", "additionalProperties": True}
 
-        for tool_name, return_type in TOOL_RETURN_TYPES.items():
+        for tool_name, return_type in _REGRESSION_GUARD_TYPES.items():
             schema = TypeAdapter(return_type).json_schema(mode="serialization")
             defs = schema.get("$defs", {})
             for def_name, def_schema in defs.items():
