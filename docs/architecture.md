@@ -308,9 +308,10 @@ Write-side models follow a CQRS/DDD-inspired naming convention. Every model's na
 1. Is it a top-level instruction from the agent? → `___Command`
 2. Is it processed data sent to the repository? → `___RepoPayload`
 3. Is it a stateful operation inside the actions block? → `___Action`
-4. Is it a complex nested value object (setter, not a mutation)?
-   - Same shape as read side → no suffix (shared model)
-   - Different shape from read side → `___Spec`
+4. Is it a complex nested value object (setter, not a mutation)? → `___Spec`
+   Write models always inherit `CommandModel` (`extra="forbid"`), read models inherit
+   `OmniFocusBaseModel` (no `extra="forbid"`). This base class difference alone justifies
+   a dedicated write model, even when the field shapes are identical.
      - Same shape across add/edit → `NounSpec` (e.g., `RepetitionRuleSpec`)
      - Different shapes per use case → `NounVerbSpec` (e.g., `RepetitionRuleAddSpec` for all-required, `RepetitionRuleEditSpec` for patchable fields)
 5. Is it the confirmation from the repository? → `___RepoResult`
