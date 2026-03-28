@@ -27,6 +27,7 @@ from omnifocus_operator.contracts.protocols import Repository
 from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoResult
 from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoResult
 from omnifocus_operator.repository.bridge_write_mixin import BridgeWriteMixin
+from omnifocus_operator.rrule import parse_end_condition, parse_rrule
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -213,18 +214,42 @@ _ANCHOR_DATE_MAP = {
 }
 
 
+def _derive_schedule(schedule_type: str, catch_up: bool) -> str:
+    """Derive 3-value schedule from scheduleType + catchUpAutomatically (D-06)."""
+    if schedule_type == "from_completion" and catch_up:
+        raise ValueError(
+            "from_completion + catchUpAutomatically=true is an impossible state. "
+            "This indicates data corruption in the OmniFocus database."
+        )
+    if schedule_type == "from_completion":
+        return "from_completion"
+    if catch_up:
+        return "regularly_with_catch_up"
+    return "regularly"
+
+
 def _build_repetition_rule(row: sqlite3.Row) -> dict[str, Any] | None:
-    """Map SQLite columns to RepetitionRule dict. None if no rule."""
+    """Map SQLite columns to structured RepetitionRule dict. None if no rule."""
     rule_string = row["repetitionRuleString"]
     if not rule_string:
         return None
     schedule_type_raw = row["repetitionScheduleTypeString"]
-    return {
-        "rule_string": rule_string,
-        "schedule_type": _SCHEDULE_TYPE_MAP.get(schedule_type_raw, schedule_type_raw),
-        "anchor_date_key": _ANCHOR_DATE_MAP.get(row["repetitionAnchorDateKey"], "due_date"),
-        "catch_up_automatically": bool(row["catchUpAutomatically"]),
+    catch_up = bool(row["catchUpAutomatically"])
+    anchor_key = _ANCHOR_DATE_MAP.get(row["repetitionAnchorDateKey"], "due_date")
+    schedule_type = _SCHEDULE_TYPE_MAP.get(schedule_type_raw, schedule_type_raw)
+
+    frequency = parse_rrule(rule_string)
+    end = parse_end_condition(rule_string)
+    schedule = _derive_schedule(schedule_type, catch_up)
+
+    result: dict[str, Any] = {
+        "frequency": frequency,
+        "schedule": schedule,
+        "based_on": anchor_key,
     }
+    if end is not None:
+        result["end"] = end
+    return result
 
 
 # -- Review interval --

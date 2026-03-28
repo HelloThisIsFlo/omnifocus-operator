@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from omnifocus_operator.rrule import parse_end_condition, parse_rrule
+
 # ---------------------------------------------------------------------------
 # Mapping tables: old bridge string -> new model value(s)
 # ---------------------------------------------------------------------------
@@ -47,7 +49,8 @@ _FOLDER_AVAILABILITY_MAP: dict[str, str] = {
     "Dropped": "dropped",
 }
 
-# ScheduleType -> snake_case (bridge "None" means no repetition -- nullify the rule)
+# Bridge scheduleType -> internal schedule base value
+# (bridge "None" means no repetition -- nullify the rule)
 _SCHEDULE_TYPE_MAP: dict[str, str] = {
     "Regularly": "regularly",
     "FromCompletion": "from_completion",
@@ -56,7 +59,7 @@ _SCHEDULE_TYPE_MAP: dict[str, str] = {
 # Sentinel for bridge scheduleType "None" -- means no real repetition
 _SCHEDULE_TYPE_NONE = "None"
 
-# AnchorDateKey -> snake_case
+# Bridge anchorDateKey -> snake_case
 _ANCHOR_DATE_KEY_MAP: dict[str, str] = {
     "DueDate": "due_date",
     "DeferDate": "defer_date",
@@ -89,8 +92,27 @@ _FOLDER_AVAILABILITY_VALUES = frozenset(_FOLDER_AVAILABILITY_MAP.values())
 # ---------------------------------------------------------------------------
 
 
+def _derive_schedule(schedule_type: str, catch_up: bool) -> str:
+    """Derive 3-value schedule from scheduleType + catchUpAutomatically (D-06)."""
+    if schedule_type == "from_completion" and catch_up:
+        raise ValueError(
+            "from_completion + catchUpAutomatically=true is an impossible state. "
+            "This indicates data corruption in the OmniFocus database."
+        )
+    if schedule_type == "from_completion":
+        return "from_completion"
+    if catch_up:
+        return "regularly_with_catch_up"
+    return "regularly"
+
+
 def _adapt_repetition_rule(raw: dict[str, Any]) -> None:
-    """Map ScheduleType and AnchorDateKey to snake_case in an entity's repetition rule.
+    """Transform bridge repetition rule to structured model shape.
+
+    Input format (raw bridge):
+        ruleString, scheduleType, anchorDateKey, catchUpAutomatically
+    Output format (model-ready):
+        frequency, schedule, basedOn, end (optional)
 
     If the bridge sends scheduleType ``"None"``, the entire ``repetitionRule``
     is nullified (OmniFocus uses this to indicate no real repetition).
@@ -100,21 +122,38 @@ def _adapt_repetition_rule(raw: dict[str, Any]) -> None:
         return
 
     schedule_type = rule.get("scheduleType")
-    if schedule_type is not None:
-        if schedule_type == _SCHEDULE_TYPE_NONE:
-            raw["repetitionRule"] = None
-            return
-        if schedule_type not in _SCHEDULE_TYPE_MAP:
-            msg = f"Unknown scheduleType: {schedule_type!r}"
-            raise ValueError(msg)
-        rule["scheduleType"] = _SCHEDULE_TYPE_MAP[schedule_type]
+    if schedule_type is None:
+        return
+    if schedule_type == _SCHEDULE_TYPE_NONE:
+        raw["repetitionRule"] = None
+        return
+    if schedule_type not in _SCHEDULE_TYPE_MAP:
+        msg = f"Unknown scheduleType: {schedule_type!r}"
+        raise ValueError(msg)
 
-    anchor_key = rule.get("anchorDateKey")
-    if anchor_key is not None:
-        if anchor_key not in _ANCHOR_DATE_KEY_MAP:
-            msg = f"Unknown anchorDateKey: {anchor_key!r}"
-            raise ValueError(msg)
-        rule["anchorDateKey"] = _ANCHOR_DATE_KEY_MAP[anchor_key]
+    anchor_key_raw = rule.get("anchorDateKey")
+    if anchor_key_raw is not None and anchor_key_raw not in _ANCHOR_DATE_KEY_MAP:
+        msg = f"Unknown anchorDateKey: {anchor_key_raw!r}"
+        raise ValueError(msg)
+
+    schedule_mapped = _SCHEDULE_TYPE_MAP[schedule_type]
+    anchor_mapped = _ANCHOR_DATE_KEY_MAP.get(anchor_key_raw, "due_date") if anchor_key_raw else "due_date"
+    catch_up = rule.get("catchUpAutomatically", False)
+    rule_string = rule.get("ruleString", "")
+
+    frequency = parse_rrule(rule_string)
+    end = parse_end_condition(rule_string)
+    schedule = _derive_schedule(schedule_mapped, catch_up)
+
+    # Build structured dict with camelCase keys (adapter output → Pydantic by_alias)
+    structured: dict[str, Any] = {
+        "frequency": frequency,
+        "schedule": schedule,
+        "basedOn": anchor_mapped,
+    }
+    if end is not None:
+        structured["end"] = end
+    raw["repetitionRule"] = structured
 
 
 def _adapt_parent_ref(raw: dict[str, Any]) -> None:

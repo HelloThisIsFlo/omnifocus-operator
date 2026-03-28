@@ -404,44 +404,82 @@ class TestAdaptTaskParentRef:
 
 
 class TestAdaptRepetitionRule:
-    """Adapter maps ScheduleType and AnchorDateKey to snake_case."""
+    """Adapter transforms bridge repetition rule to structured model shape."""
 
-    def test_schedule_type_mapping(self) -> None:
+    def test_regularly_without_catch_up(self) -> None:
+        """Regularly + catchUp=false -> schedule='regularly'."""
         raw = _old_task(
             repetitionRule={
+                "ruleString": "FREQ=DAILY;INTERVAL=7",
                 "scheduleType": "Regularly",
                 "anchorDateKey": "DueDate",
-                "interval": 7,
-                "steps": 1,
+                "catchUpAutomatically": False,
             }
         )
         snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
         adapt_snapshot(snapshot)
-        assert raw["repetitionRule"]["scheduleType"] == "regularly"
-        assert raw["repetitionRule"]["anchorDateKey"] == "due_date"
+        rule = raw["repetitionRule"]
+        assert rule["frequency"] == {"type": "daily", "interval": 7}
+        assert rule["schedule"] == "regularly"
+        assert rule["basedOn"] == "due_date"
 
-    def test_from_completion_schedule_type(self) -> None:
+    def test_regularly_with_catch_up(self) -> None:
+        """Regularly + catchUp=true -> schedule='regularly_with_catch_up'."""
         raw = _old_task(
             repetitionRule={
-                "scheduleType": "FromCompletion",
+                "ruleString": "FREQ=WEEKLY;BYDAY=MO,WE,FR",
+                "scheduleType": "Regularly",
                 "anchorDateKey": "DeferDate",
-                "interval": 3,
-                "steps": 1,
+                "catchUpAutomatically": True,
             }
         )
         snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
         adapt_snapshot(snapshot)
-        assert raw["repetitionRule"]["scheduleType"] == "from_completion"
-        assert raw["repetitionRule"]["anchorDateKey"] == "defer_date"
+        rule = raw["repetitionRule"]
+        assert rule["frequency"] == {"type": "weekly", "on_days": ["MO", "WE", "FR"]}
+        assert rule["schedule"] == "regularly_with_catch_up"
+        assert rule["basedOn"] == "defer_date"
+
+    def test_from_completion(self) -> None:
+        """FromCompletion + catchUp=false -> schedule='from_completion'."""
+        raw = _old_task(
+            repetitionRule={
+                "ruleString": "FREQ=DAILY;INTERVAL=3",
+                "scheduleType": "FromCompletion",
+                "anchorDateKey": "DeferDate",
+                "catchUpAutomatically": False,
+            }
+        )
+        snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        rule = raw["repetitionRule"]
+        assert rule["frequency"] == {"type": "daily", "interval": 3}
+        assert rule["schedule"] == "from_completion"
+        assert rule["basedOn"] == "defer_date"
+
+    def test_end_condition_parsed(self) -> None:
+        """RRULE with COUNT produces end condition in output."""
+        raw = _old_task(
+            repetitionRule={
+                "ruleString": "FREQ=DAILY;COUNT=5",
+                "scheduleType": "Regularly",
+                "anchorDateKey": "DueDate",
+                "catchUpAutomatically": False,
+            }
+        )
+        snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        rule = raw["repetitionRule"]
+        assert rule["end"] == {"occurrences": 5}
 
     def test_none_schedule_type_nullifies_rule(self) -> None:
         """scheduleType "None" from bridge means no real repetition -- nullify the rule."""
         raw = _old_task(
             repetitionRule={
+                "ruleString": "FREQ=DAILY",
                 "scheduleType": "None",
                 "anchorDateKey": "PlannedDate",
-                "interval": 1,
-                "steps": 1,
+                "catchUpAutomatically": False,
             }
         )
         snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
@@ -457,10 +495,10 @@ class TestAdaptRepetitionRule:
     def test_unknown_schedule_type_raises(self) -> None:
         raw = _old_task(
             repetitionRule={
+                "ruleString": "FREQ=DAILY",
                 "scheduleType": "BogusScheduleType",
                 "anchorDateKey": "DueDate",
-                "interval": 7,
-                "steps": 1,
+                "catchUpAutomatically": False,
             }
         )
         snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
@@ -470,10 +508,10 @@ class TestAdaptRepetitionRule:
     def test_unknown_anchor_date_key_raises(self) -> None:
         raw = _old_task(
             repetitionRule={
+                "ruleString": "FREQ=DAILY",
                 "scheduleType": "Regularly",
                 "anchorDateKey": "BogusAnchorKey",
-                "interval": 7,
-                "steps": 1,
+                "catchUpAutomatically": False,
             }
         )
         snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}

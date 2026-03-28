@@ -592,10 +592,9 @@ class TestTaskRepetition:
         result = await hybrid_repo.get_all()
         task = result.tasks[0]
         assert task.repetition_rule is not None
-        assert task.repetition_rule.rule_string == "FREQ=WEEKLY;INTERVAL=1"
-        assert task.repetition_rule.schedule_type == "regularly"
-        assert task.repetition_rule.anchor_date_key == "due_date"
-        assert task.repetition_rule.catch_up_automatically is True
+        assert task.repetition_rule.frequency.type == "weekly"
+        assert task.repetition_rule.schedule == "regularly_with_catch_up"
+        assert task.repetition_rule.based_on == "due_date"
 
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(tasks=[_minimal_task()])

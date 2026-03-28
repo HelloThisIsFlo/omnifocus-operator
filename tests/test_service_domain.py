@@ -152,10 +152,9 @@ class TestProcessLifecycle:
     def test_repeating_complete(self) -> None:
         task = _make_task(
             repetitionRule={
-                "ruleString": "FREQ=WEEKLY",
-                "scheduleType": "regularly",
-                "anchorDateKey": "due_date",
-                "catchUpAutomatically": False,
+                "frequency": {"type": "weekly"},
+                "schedule": "regularly",
+                "basedOn": "due_date",
             }
         )
         should_call, warnings = _domain().process_lifecycle("complete", task)
@@ -165,10 +164,9 @@ class TestProcessLifecycle:
     def test_repeating_drop(self) -> None:
         task = _make_task(
             repetitionRule={
-                "ruleString": "FREQ=WEEKLY",
-                "scheduleType": "regularly",
-                "anchorDateKey": "due_date",
-                "catchUpAutomatically": False,
+                "frequency": {"type": "weekly"},
+                "schedule": "regularly",
+                "basedOn": "due_date",
             }
         )
         should_call, warnings = _domain().process_lifecycle("drop", task)

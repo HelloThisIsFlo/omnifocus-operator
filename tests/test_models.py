@@ -18,8 +18,8 @@ from omnifocus_operator.contracts.use_cases.edit_task import (
 from omnifocus_operator.models import (
     ActionableEntity,
     AllEntities,
-    AnchorDateKey,
     Availability,
+    BasedOn,
     Folder,
     FolderAvailability,
     OmniFocusBaseModel,
@@ -29,7 +29,7 @@ from omnifocus_operator.models import (
     Project,
     RepetitionRule,
     ReviewInterval,
-    ScheduleType,
+    Schedule,
     Tag,
     TagAvailability,
     TagRef,
@@ -146,27 +146,28 @@ class TestFolderAvailability:
         assert len(FolderAvailability) == 2
 
 
-class TestScheduleType:
-    """ScheduleType enum has exactly 2 members with snake_case values."""
+class TestSchedule:
+    """Schedule enum has exactly 3 members with snake_case values."""
 
-    def test_schedule_type_values(self) -> None:
-        assert ScheduleType.REGULARLY == "regularly"
-        assert ScheduleType.FROM_COMPLETION == "from_completion"
+    def test_schedule_values(self) -> None:
+        assert Schedule.REGULARLY == "regularly"
+        assert Schedule.REGULARLY_WITH_CATCH_UP == "regularly_with_catch_up"
+        assert Schedule.FROM_COMPLETION == "from_completion"
 
-    def test_schedule_type_member_count(self) -> None:
-        assert len(ScheduleType) == 2
+    def test_schedule_member_count(self) -> None:
+        assert len(Schedule) == 3
 
 
-class TestAnchorDateKey:
-    """AnchorDateKey enum has exactly 3 members with snake_case values."""
+class TestBasedOn:
+    """BasedOn enum has exactly 3 members with snake_case values."""
 
-    def test_anchor_date_key_values(self) -> None:
-        assert AnchorDateKey.DUE_DATE == "due_date"
-        assert AnchorDateKey.DEFER_DATE == "defer_date"
-        assert AnchorDateKey.PLANNED_DATE == "planned_date"
+    def test_based_on_values(self) -> None:
+        assert BasedOn.DUE_DATE == "due_date"
+        assert BasedOn.DEFER_DATE == "defer_date"
+        assert BasedOn.PLANNED_DATE == "planned_date"
 
-    def test_anchor_date_key_member_count(self) -> None:
-        assert len(AnchorDateKey) == 3
+    def test_based_on_member_count(self) -> None:
+        assert len(BasedOn) == 3
 
 
 class TestEnumValidation:
@@ -220,33 +221,44 @@ class TestParentRef:
 
 
 class TestRepetitionRule:
-    """RepetitionRule has 4 required typed fields."""
+    """RepetitionRule has frequency, schedule, based_on (required) and end (optional)."""
 
     def test_repetition_rule_full_round_trip(self) -> None:
         data = {
-            "ruleString": "FREQ=DAILY",
-            "scheduleType": "regularly",
-            "anchorDateKey": "due_date",
-            "catchUpAutomatically": True,
+            "frequency": {"type": "daily"},
+            "schedule": "regularly",
+            "basedOn": "due_date",
         }
         rule = RepetitionRule.model_validate(data)
-        assert rule.rule_string == "FREQ=DAILY"
-        assert rule.schedule_type == ScheduleType.REGULARLY
-        assert rule.anchor_date_key == AnchorDateKey.DUE_DATE
-        assert rule.catch_up_automatically is True
+        assert rule.frequency.type == "daily"
+        assert rule.schedule == Schedule.REGULARLY
+        assert rule.based_on == BasedOn.DUE_DATE
+        assert rule.end is None
+
+    def test_repetition_rule_with_end_condition(self) -> None:
+        data = {
+            "frequency": {"type": "weekly", "onDays": ["MO", "WE", "FR"]},
+            "schedule": "regularly_with_catch_up",
+            "basedOn": "defer_date",
+            "end": {"occurrences": 10},
+        }
+        rule = RepetitionRule.model_validate(data)
+        assert rule.frequency.type == "weekly"
+        assert rule.schedule == Schedule.REGULARLY_WITH_CATCH_UP
+        assert rule.based_on == BasedOn.DEFER_DATE
+        assert rule.end is not None
 
     def test_repetition_rule_missing_field_rejected(self) -> None:
-        """All 4 fields are required."""
-        data = {"ruleString": "FREQ=DAILY"}
+        """frequency and schedule are required."""
+        data = {"frequency": {"type": "daily"}}
         with pytest.raises(ValidationError):
             RepetitionRule.model_validate(data)
 
-    def test_repetition_rule_invalid_schedule_type_rejected(self) -> None:
+    def test_repetition_rule_invalid_schedule_rejected(self) -> None:
         data = {
-            "ruleString": "FREQ=DAILY",
-            "scheduleType": "InvalidType",
-            "anchorDateKey": "due_date",
-            "catchUpAutomatically": False,
+            "frequency": {"type": "daily"},
+            "schedule": "InvalidType",
+            "basedOn": "due_date",
         }
         with pytest.raises(ValidationError):
             RepetitionRule.model_validate(data)
@@ -610,18 +622,16 @@ class TestProjectModel:
         """Project with repetitionRule object parses correctly."""
         data = make_model_project_dict(
             repetitionRule={
-                "ruleString": "FREQ=WEEKLY",
-                "scheduleType": "regularly",
-                "anchorDateKey": "due_date",
-                "catchUpAutomatically": False,
+                "frequency": {"type": "weekly"},
+                "schedule": "regularly",
+                "basedOn": "due_date",
             },
         )
         project = Project.model_validate(data)
         assert project.repetition_rule is not None
-        assert project.repetition_rule.rule_string == "FREQ=WEEKLY"
-        assert project.repetition_rule.schedule_type == ScheduleType.REGULARLY
-        assert project.repetition_rule.anchor_date_key == AnchorDateKey.DUE_DATE
-        assert project.repetition_rule.catch_up_automatically is False
+        assert project.repetition_rule.frequency.type == "weekly"
+        assert project.repetition_rule.schedule == Schedule.REGULARLY
+        assert project.repetition_rule.based_on == BasedOn.DUE_DATE
 
     def test_project_nested_review_interval(self) -> None:
         """Project with reviewInterval object parses correctly."""
