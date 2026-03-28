@@ -61,7 +61,8 @@ REPETITION_TYPE_CHANGE_INCOMPLETE = (
 
 REPETITION_NO_EXISTING_RULE = (
     "Cannot partially update a repetition rule -- this task has no existing rule. "
-    "To set a repetition rule, provide all required fields: frequency (with type), schedule, and basedOn."
+    "To set a repetition rule, provide all required fields: "
+    "frequency (with type), schedule, and basedOn."
 )
 
 REPETITION_INVALID_INTERVAL = "Interval must be >= 1, got {value}"
@@ -77,12 +78,12 @@ REPETITION_INVALID_ORDINAL = (
 
 REPETITION_INVALID_DAY_NAME = (
     "Invalid day name '{day}' in on field. "
-    "Valid days: monday, tuesday, wednesday, thursday, friday, saturday, sunday, weekday, weekend_day"
+    "Valid days: monday, tuesday, wednesday, thursday, friday, "
+    "saturday, sunday, weekday, weekend_day"
 )
 
 REPETITION_INVALID_ON_DATE = (
-    "Invalid date value {value} in onDates. "
-    "Valid range: -1, 1 to 31 (use -1 for last day of month)"
+    "Invalid date value {value} in onDates. Valid range: -1, 1 to 31 (use -1 for last day of month)"
 )
 
 REPETITION_INVALID_END_OCCURRENCES = "End occurrences must be >= 1, got {value}"

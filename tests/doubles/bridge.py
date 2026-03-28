@@ -366,6 +366,10 @@ class InMemoryBridge(Bridge):
         task["effectiveDeferDate"] = self._compute_effective_field(task, "deferDate")
         task["effectivePlannedDate"] = self._compute_effective_field(task, "plannedDate")
 
+        # Repetition rule (bridge receives camelCase dict or None)
+        if "repetitionRule" in params:
+            task["repetitionRule"] = params["repetitionRule"]
+
         self._tasks.append(task)
 
         if parent_id is not None:
@@ -416,6 +420,10 @@ class InMemoryBridge(Bridge):
                 task["status"] = "Blocked"
             else:
                 task["status"] = "Available"
+
+        # Repetition rule: set (dict), clear (None), or no change (absent key)
+        if "repetitionRule" in params:
+            task["repetitionRule"] = params["repetitionRule"]
 
         # Tag operations: remove first, then add
         remove_ids = set(params.get("removeTagIds", []))

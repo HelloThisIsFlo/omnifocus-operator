@@ -25,13 +25,25 @@ from omnifocus_operator.agent_messages.warnings import (
     LIFECYCLE_REPEATING_COMPLETE,
     LIFECYCLE_REPEATING_DROP,
     MOVE_SAME_CONTAINER,
+    REPETITION_EMPTY_ON_DATES,
+    REPETITION_END_DATE_PAST,
+    REPETITION_NO_OP,
+    REPETITION_ON_COMPLETED_TASK,
     TAG_ALREADY_ON_TASK,
     TAG_NOT_ON_TASK,
     TAGS_ALREADY_MATCH,
 )
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.use_cases.edit_task import EditTaskResult
-from omnifocus_operator.models.enums import Availability
+from omnifocus_operator.models.enums import Availability, BasedOn, Schedule
+from omnifocus_operator.models.repetition_rule import (
+    EndByDate,
+    Frequency,
+    MonthlyDayInMonthFrequency,
+    MonthlyFrequency,
+)
+from omnifocus_operator.rrule.builder import build_rrule
+from omnifocus_operator.rrule.schedule import based_on_to_bridge, schedule_to_bridge
 
 if TYPE_CHECKING:
     from omnifocus_operator.contracts.common import MoveAction, TagAction
@@ -150,6 +162,50 @@ class DomainLogic:
         ):
             return [EDIT_COMPLETED_TASK.format(status=task.availability.value)]
         return []
+
+    # -- Repetition rule warnings -------------------------------------------
+
+    def check_repetition_warnings(
+        self,
+        end: object | None,
+        task: Task,
+    ) -> list[str]:
+        """Generate warnings for repetition rule edge cases.
+
+        Checks:
+        - End date in the past (VALID-05)
+        - Setting repetition on completed/dropped task (D-12)
+        """
+        warnings: list[str] = []
+
+        # End date in past
+        if isinstance(end, EndByDate):
+            end_dt = datetime.fromisoformat(end.date.replace("Z", "+00:00"))
+            if end_dt < datetime.now(UTC):
+                warnings.append(REPETITION_END_DATE_PAST.format(date=end.date))
+
+        # Completed or dropped task (D-12: both statuses)
+        if task.availability in (Availability.COMPLETED, Availability.DROPPED):
+            warnings.append(
+                REPETITION_ON_COMPLETED_TASK.format(status=task.availability.value)
+            )
+
+        return warnings
+
+    def normalize_empty_on_dates(
+        self,
+        frequency: Frequency,
+    ) -> tuple[Frequency, list[str]]:
+        """Normalize monthly_day_in_month with empty onDates to plain monthly (D-13).
+
+        Returns (possibly-normalized frequency, warnings).
+        """
+        if isinstance(frequency, MonthlyDayInMonthFrequency) and not frequency.on_dates:
+            return (
+                MonthlyFrequency(interval=frequency.interval),
+                [REPETITION_EMPTY_ON_DATES],
+            )
+        return (frequency, [])
 
     # -- Tags --------------------------------------------------------------
 
@@ -449,6 +505,13 @@ class DomainLogic:
         if "lifecycle" in fields_set:
             return False
 
+        # Check repetition_rule
+        if "repetition_rule" in fields_set:
+            if not self._repetition_rule_matches(payload, task):
+                return False
+            # Same repetition rule -- no-op, specific warning
+            warnings.append(REPETITION_NO_OP)
+
         # Check move_to
         if "move_to" in fields_set and payload.move_to is not None:
             position = payload.move_to.position
@@ -464,3 +527,36 @@ class DomainLogic:
                 return False
 
         return True
+
+    def _repetition_rule_matches(
+        self,
+        payload: EditTaskRepoPayload,
+        task: Task,
+    ) -> bool:
+        """Compare repetition rule in payload against task's existing rule.
+
+        Returns True if they match (no-op), False if different.
+        """
+        if payload.repetition_rule is None:
+            # Clear request -- no-op only if task has no rule
+            return task.repetition_rule is None
+
+        # payload has a RepetitionRuleRepoPayload -- compare against existing
+        existing = task.repetition_rule
+        if existing is None:
+            return False  # setting a rule on a task that has none
+
+        # Build bridge-format from existing rule for comparison
+        try:
+            existing_rule_string = build_rrule(existing.frequency, existing.end)
+            existing_schedule_type, existing_catch_up = schedule_to_bridge(existing.schedule)
+            existing_anchor = based_on_to_bridge(existing.based_on)
+        except (ValueError, KeyError):
+            return False  # can't compare -> treat as changed
+
+        return (
+            payload.repetition_rule.rule_string == existing_rule_string
+            and payload.repetition_rule.schedule_type == existing_schedule_type
+            and payload.repetition_rule.anchor_date_key == existing_anchor
+            and payload.repetition_rule.catch_up_automatically == existing_catch_up
+        )

@@ -10,6 +10,17 @@ from datetime import UTC, datetime
 
 from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand
 from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
+from omnifocus_operator.contracts.use_cases.repetition_rule import (
+    RepetitionRuleAddSpec,
+    RepetitionRuleRepoPayload,
+)
+from omnifocus_operator.models.enums import BasedOn, Schedule
+from omnifocus_operator.models.repetition_rule import (
+    DailyFrequency,
+    EndByDate,
+    EndByOccurrences,
+    WeeklyOnDaysFrequency,
+)
 from omnifocus_operator.service.payload import PayloadBuilder
 
 # ---------------------------------------------------------------------------
@@ -234,3 +245,163 @@ class TestBuildEdit:
         )
 
         assert payload.note == "Hello"
+
+
+# ---------------------------------------------------------------------------
+# build_add: repetition rule
+# ---------------------------------------------------------------------------
+
+
+class TestBuildAddRepetitionRule:
+    """PayloadBuilder.build_add with repetition rule specs."""
+
+    def test_no_repetition_rule(self) -> None:
+        """No repetition rule -> payload.repetition_rule is None."""
+        builder = PayloadBuilder()
+        command = AddTaskCommand(name="Plain task")
+        payload = builder.build_add(command, resolved_tag_ids=None)
+        assert payload.repetition_rule is None
+
+    def test_daily_regularly(self) -> None:
+        """Daily frequency with regularly schedule."""
+        builder = PayloadBuilder()
+        spec = RepetitionRuleAddSpec(
+            frequency=DailyFrequency(interval=3),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+        )
+        command = AddTaskCommand(name="Daily", repetition_rule=spec)
+        payload = builder.build_add(command, resolved_tag_ids=None)
+
+        assert payload.repetition_rule is not None
+        assert payload.repetition_rule.rule_string == "FREQ=DAILY;INTERVAL=3"
+        assert payload.repetition_rule.schedule_type == "Regularly"
+        assert payload.repetition_rule.anchor_date_key == "DueDate"
+        assert payload.repetition_rule.catch_up_automatically is False
+
+    def test_from_completion_schedule(self) -> None:
+        """From-completion schedule -> scheduleType=FromCompletion, catchUp=False."""
+        builder = PayloadBuilder()
+        spec = RepetitionRuleAddSpec(
+            frequency=DailyFrequency(),
+            schedule=Schedule.FROM_COMPLETION,
+            based_on=BasedOn.DEFER_DATE,
+        )
+        command = AddTaskCommand(name="FC", repetition_rule=spec)
+        payload = builder.build_add(command, resolved_tag_ids=None)
+
+        assert payload.repetition_rule is not None
+        assert payload.repetition_rule.schedule_type == "FromCompletion"
+        assert payload.repetition_rule.catch_up_automatically is False
+        assert payload.repetition_rule.anchor_date_key == "DeferDate"
+
+    def test_regularly_with_catch_up(self) -> None:
+        """Regularly with catch-up -> scheduleType=Regularly, catchUp=True."""
+        builder = PayloadBuilder()
+        spec = RepetitionRuleAddSpec(
+            frequency=DailyFrequency(),
+            schedule=Schedule.REGULARLY_WITH_CATCH_UP,
+            based_on=BasedOn.DUE_DATE,
+        )
+        command = AddTaskCommand(name="CU", repetition_rule=spec)
+        payload = builder.build_add(command, resolved_tag_ids=None)
+
+        assert payload.repetition_rule is not None
+        assert payload.repetition_rule.schedule_type == "Regularly"
+        assert payload.repetition_rule.catch_up_automatically is True
+
+    def test_with_end_by_occurrences(self) -> None:
+        """End by occurrences -> ruleString contains COUNT."""
+        builder = PayloadBuilder()
+        spec = RepetitionRuleAddSpec(
+            frequency=DailyFrequency(),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+            end=EndByOccurrences(occurrences=10),
+        )
+        command = AddTaskCommand(name="Counted", repetition_rule=spec)
+        payload = builder.build_add(command, resolved_tag_ids=None)
+
+        assert payload.repetition_rule is not None
+        assert "COUNT=10" in payload.repetition_rule.rule_string
+
+    def test_with_end_by_date(self) -> None:
+        """End by date -> ruleString contains UNTIL."""
+        builder = PayloadBuilder()
+        spec = RepetitionRuleAddSpec(
+            frequency=DailyFrequency(),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+            end=EndByDate(date="2026-12-31T00:00:00Z"),
+        )
+        command = AddTaskCommand(name="Dated end", repetition_rule=spec)
+        payload = builder.build_add(command, resolved_tag_ids=None)
+
+        assert payload.repetition_rule is not None
+        assert "UNTIL=" in payload.repetition_rule.rule_string
+
+    def test_defer_date_based_on(self) -> None:
+        """BasedOn.DEFER_DATE -> anchorDateKey=DeferDate."""
+        builder = PayloadBuilder()
+        spec = RepetitionRuleAddSpec(
+            frequency=DailyFrequency(),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DEFER_DATE,
+        )
+        command = AddTaskCommand(name="Deferred", repetition_rule=spec)
+        payload = builder.build_add(command, resolved_tag_ids=None)
+
+        assert payload.repetition_rule is not None
+        assert payload.repetition_rule.anchor_date_key == "DeferDate"
+
+
+# ---------------------------------------------------------------------------
+# build_edit: repetition rule
+# ---------------------------------------------------------------------------
+
+
+class TestBuildEditRepetitionRule:
+    """PayloadBuilder.build_edit with repetition rule parameters."""
+
+    def _build_edit(
+        self,
+        command: EditTaskCommand,
+        repetition_rule_payload: RepetitionRuleRepoPayload | None = None,
+        repetition_rule_clear: bool = False,
+    ):
+        builder = PayloadBuilder()
+        return builder.build_edit(
+            command,
+            lifecycle=None,
+            add_tag_ids=None,
+            remove_tag_ids=None,
+            move_to=None,
+            repetition_rule_payload=repetition_rule_payload,
+            repetition_rule_clear=repetition_rule_clear,
+        )
+
+    def test_no_repetition_change(self) -> None:
+        """No repetition args -> repetition_rule not in fields_set."""
+        command = EditTaskCommand(id="t1")
+        payload = self._build_edit(command)
+        assert "repetition_rule" not in payload.model_fields_set
+
+    def test_set_repetition_rule(self) -> None:
+        """Providing a repo payload -> sets repetition_rule on payload."""
+        repo_payload = RepetitionRuleRepoPayload(
+            rule_string="FREQ=DAILY",
+            schedule_type="Regularly",
+            anchor_date_key="DueDate",
+            catch_up_automatically=False,
+        )
+        command = EditTaskCommand(id="t1")
+        payload = self._build_edit(command, repetition_rule_payload=repo_payload)
+        assert payload.repetition_rule is repo_payload
+        assert "repetition_rule" in payload.model_fields_set
+
+    def test_clear_repetition_rule(self) -> None:
+        """repetition_rule_clear=True -> repetition_rule is None AND in fields_set."""
+        command = EditTaskCommand(id="t1")
+        payload = self._build_edit(command, repetition_rule_clear=True)
+        assert payload.repetition_rule is None
+        assert "repetition_rule" in payload.model_fields_set

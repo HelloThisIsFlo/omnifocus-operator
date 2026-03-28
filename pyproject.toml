@@ -92,6 +92,7 @@ select = ["E", "F", "I", "N", "UP", "B", "SIM", "TCH", "RUF", "PLC0415"]
 # need their types available at runtime (not just for type checkers). Without
 # the real import, model construction fails with NameError.
 "src/omnifocus_operator/models/*.py" = ["TC001"]
+"src/omnifocus_operator/contracts/**/*.py" = ["TC001"]
 
 [tool.ruff.format]
 quote-style = "double"

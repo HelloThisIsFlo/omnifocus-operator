@@ -7,8 +7,6 @@ Calls model_rebuild() to resolve forward references from
 
 from pydantic import AwareDatetime
 
-from omnifocus_operator.models.repetition_rule import EndCondition, Frequency
-
 from omnifocus_operator.contracts.base import (
     UNSET,
     CommandModel,
@@ -38,11 +36,12 @@ from omnifocus_operator.contracts.use_cases.repetition_rule import (
     RepetitionRuleEditSpec,
     RepetitionRuleRepoPayload,
 )
+from omnifocus_operator.models.repetition_rule import EndCondition, Frequency
 
 # Resolve forward references now that all modules are imported.
 # Models using ``from __future__ import annotations`` need explicit
 # type resolution for AwareDatetime and cross-model references.
-_ns: dict[str, type] = {
+_ns: dict[str, type | object] = {
     "AwareDatetime": AwareDatetime,
     "TagAction": TagAction,
     "MoveAction": MoveAction,

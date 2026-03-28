@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from omnifocus_operator.models.enums import BasedOn, Schedule
 
+# -- Forward mapping (read path) -------------------------------------------
+
 
 def derive_schedule(schedule_type: str, catch_up: bool) -> str:
     """Derive 3-value schedule from schedule_type + catch_up flag.
@@ -33,23 +35,27 @@ def derive_schedule(schedule_type: str, catch_up: bool) -> str:
 
 # -- Inverse mappings (write path) ------------------------------------------
 
+_SCHEDULE_TO_BRIDGE: dict[Schedule, tuple[str, bool]] = {
+    Schedule.REGULARLY: ("Regularly", False),
+    Schedule.REGULARLY_WITH_CATCH_UP: ("Regularly", True),
+    Schedule.FROM_COMPLETION: ("FromCompletion", False),
+}
+
+_BASED_ON_TO_BRIDGE: dict[BasedOn, str] = {
+    BasedOn.DUE_DATE: "DueDate",
+    BasedOn.DEFER_DATE: "DeferDate",
+    BasedOn.PLANNED_DATE: "PlannedDate",
+}
+
 
 def schedule_to_bridge(schedule: Schedule) -> tuple[str, bool]:
     """Inverse of derive_schedule: Schedule enum -> (scheduleType, catchUpAutomatically).
 
     Maps the 3-value Schedule enum back to the bridge's 2-field representation.
     """
-    if schedule == Schedule.FROM_COMPLETION:
-        return ("FromCompletion", False)
-    if schedule == Schedule.REGULARLY_WITH_CATCH_UP:
-        return ("Regularly", True)
-    return ("Regularly", False)
+    return _SCHEDULE_TO_BRIDGE[schedule]
 
 
 def based_on_to_bridge(based_on: BasedOn) -> str:
     """BasedOn enum -> OmniJS anchorDateKey string."""
-    return {
-        BasedOn.DUE_DATE: "DueDate",
-        BasedOn.DEFER_DATE: "DeferDate",
-        BasedOn.PLANNED_DATE: "PlannedDate",
-    }[based_on]
+    return _BASED_ON_TO_BRIDGE[based_on]

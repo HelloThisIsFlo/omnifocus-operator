@@ -24,10 +24,10 @@ Repetition Rule Write Support. Structured fields replace raw RRULE strings on bo
 - [x] **ADD-06**: monthly_day_of_week supports on field with ordinal/day (e.g., {"second": "tuesday"}), case-insensitive input normalized to lowercase. Valid ordinals: first/second/third/fourth/fifth/last. Valid days: monday-sunday plus weekday/weekend_day
 - [x] **ADD-07**: monthly_day_in_month supports onDates field (1-31, -1 for last day)
 - [x] **ADD-08**: monthly_day_in_month with empty/omitted onDates triggers warning suggesting plain monthly type
-- [ ] **ADD-09**: All 3 schedule values work: regularly, regularly_with_catch_up, from_completion
-- [ ] **ADD-10**: All 3 basedOn values work: due_date, defer_date, planned_date
-- [ ] **ADD-11**: End by date supported
-- [ ] **ADD-12**: End by occurrences supported
+- [x] **ADD-09**: All 3 schedule values work: regularly, regularly_with_catch_up, from_completion
+- [x] **ADD-10**: All 3 basedOn values work: due_date, defer_date, planned_date
+- [x] **ADD-11**: End by date supported
+- [x] **ADD-12**: End by occurrences supported
 - [x] **ADD-13**: No end (omitted) creates open-ended repetition
 - [x] **ADD-14**: Interval defaults to 1 when omitted
 
@@ -36,19 +36,19 @@ Repetition Rule Write Support. Structured fields replace raw RRULE strings on bo
 - [x] **EDIT-01**: Set repetition rule on non-repeating task (full rule required: frequency with type, schedule, basedOn)
 - [x] **EDIT-02**: Remove repetition rule (repetitionRule: null)
 - [x] **EDIT-03**: Omitting repetitionRule entirely = no change (UNSET semantics)
-- [ ] **EDIT-04**: Change schedule without resending frequency or other root fields
-- [ ] **EDIT-05**: Change basedOn without resending frequency or other root fields
+- [x] **EDIT-04**: Change schedule without resending frequency or other root fields
+- [x] **EDIT-05**: Change basedOn without resending frequency or other root fields
 - [x] **EDIT-06**: Add end condition to task with no end
 - [x] **EDIT-07**: Remove end condition from task that has one
-- [ ] **EDIT-08**: Change end type (date → occurrences, occurrences → date)
-- [ ] **EDIT-09**: Same-type frequency update merges — omitted fields preserved from existing rule
-- [ ] **EDIT-10**: Change frequency interval on same type (other frequency fields preserved)
-- [ ] **EDIT-11**: Change onDays on weekly task (other frequency fields preserved)
-- [ ] **EDIT-12**: Change on field on monthly_day_of_week task (other frequency fields preserved)
+- [x] **EDIT-08**: Change end type (date → occurrences, occurrences → date)
+- [x] **EDIT-09**: Same-type frequency update merges — omitted fields preserved from existing rule
+- [x] **EDIT-10**: Change frequency interval on same type (other frequency fields preserved)
+- [x] **EDIT-11**: Change onDays on weekly task (other frequency fields preserved)
+- [x] **EDIT-12**: Change on field on monthly_day_of_week task (other frequency fields preserved)
 - [x] **EDIT-13**: Change frequency type — full replacement of frequency object required
 - [x] **EDIT-14**: Type change with incomplete frequency → clear error
 - [x] **EDIT-15**: No existing rule + partial update → clear error
-- [ ] **EDIT-16**: No-op detection with educational warning (same rule sent back)
+- [x] **EDIT-16**: No-op detection with educational warning (same rule sent back)
 
 ### Validation (VALID)
 
@@ -90,28 +90,28 @@ Repetition Rule Write Support. Structured fields replace raw RRULE strings on bo
 | ADD-06 | Phase 33 | Complete |
 | ADD-07 | Phase 33 | Complete |
 | ADD-08 | Phase 33 | Complete |
-| ADD-09 | Phase 33 | Pending |
-| ADD-10 | Phase 33 | Pending |
-| ADD-11 | Phase 33 | Pending |
-| ADD-12 | Phase 33 | Pending |
+| ADD-09 | Phase 33 | Complete |
+| ADD-10 | Phase 33 | Complete |
+| ADD-11 | Phase 33 | Complete |
+| ADD-12 | Phase 33 | Complete |
 | ADD-13 | Phase 33 | Complete |
 | ADD-14 | Phase 33 | Complete |
 | EDIT-01 | Phase 33 | Complete |
 | EDIT-02 | Phase 33 | Complete |
 | EDIT-03 | Phase 33 | Complete |
-| EDIT-04 | Phase 33 | Pending |
-| EDIT-05 | Phase 33 | Pending |
+| EDIT-04 | Phase 33 | Complete |
+| EDIT-05 | Phase 33 | Complete |
 | EDIT-06 | Phase 33 | Complete |
 | EDIT-07 | Phase 33 | Complete |
-| EDIT-08 | Phase 33 | Pending |
-| EDIT-09 | Phase 33 | Pending |
-| EDIT-10 | Phase 33 | Pending |
-| EDIT-11 | Phase 33 | Pending |
-| EDIT-12 | Phase 33 | Pending |
+| EDIT-08 | Phase 33 | Complete |
+| EDIT-09 | Phase 33 | Complete |
+| EDIT-10 | Phase 33 | Complete |
+| EDIT-11 | Phase 33 | Complete |
+| EDIT-12 | Phase 33 | Complete |
 | EDIT-13 | Phase 33 | Complete |
 | EDIT-14 | Phase 33 | Complete |
 | EDIT-15 | Phase 33 | Complete |
-| EDIT-16 | Phase 33 | Pending |
+| EDIT-16 | Phase 33 | Complete |
 | VALID-01 | Phase 33 | Complete |
 | VALID-02 | Phase 33 | Complete |
 | VALID-03 | Phase 33 | Complete |

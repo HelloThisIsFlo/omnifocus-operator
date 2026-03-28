@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from omnifocus_operator.agent_messages import errors as err
 from omnifocus_operator.contracts.base import is_set
-from omnifocus_operator.contracts.use_cases.repetition_rule import RepetitionRuleAddSpec
 from omnifocus_operator.models.repetition_rule import (
     EndByOccurrences,
     EndCondition,
@@ -13,6 +14,9 @@ from omnifocus_operator.models.repetition_rule import (
     MonthlyDayOfWeekFrequency,
     WeeklyOnDaysFrequency,
 )
+
+if TYPE_CHECKING:
+    from omnifocus_operator.contracts.use_cases.repetition_rule import RepetitionRuleAddSpec
 
 __all__ = [
     "validate_repetition_rule_add",

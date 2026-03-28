@@ -3,17 +3,20 @@
 Naming: Noun-first (RepetitionRuleAddSpec, not AddRepetitionRuleSpec).
 Nested specs are about the THING (RepetitionRule), not the ACTION.
 Groups them in imports/autocomplete. Top-level commands stay verb-first.
+
+Defines the typed contract for repetition rule creation and editing.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from omnifocus_operator.contracts.base import UNSET, CommandModel, Patch, PatchOrClear
+from omnifocus_operator.contracts.base import (
+    UNSET,
+    CommandModel,
+    Patch,
+    PatchOrClear,
+)
 from omnifocus_operator.models.enums import BasedOn, Schedule
-
-if TYPE_CHECKING:
-    from omnifocus_operator.models.repetition_rule import EndCondition, Frequency
+from omnifocus_operator.models.repetition_rule import EndCondition, Frequency
 
 
 class RepetitionRuleAddSpec(CommandModel):

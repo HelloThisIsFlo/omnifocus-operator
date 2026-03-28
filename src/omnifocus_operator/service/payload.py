@@ -15,6 +15,13 @@ from omnifocus_operator.contracts.use_cases.edit_task import (
     EditTaskRepoPayload,
     MoveToRepoPayload,
 )
+from omnifocus_operator.contracts.use_cases.repetition_rule import (
+    RepetitionRuleRepoPayload,
+)
+from omnifocus_operator.models.enums import BasedOn, Schedule
+from omnifocus_operator.models.repetition_rule import EndCondition, Frequency
+from omnifocus_operator.rrule.builder import build_rrule
+from omnifocus_operator.rrule.schedule import based_on_to_bridge, schedule_to_bridge
 
 if TYPE_CHECKING:
     from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand
@@ -51,6 +58,13 @@ class PayloadBuilder:
             kwargs["estimated_minutes"] = command.estimated_minutes
         if command.note is not None:
             kwargs["note"] = command.note
+        if command.repetition_rule is not None:
+            kwargs["repetition_rule"] = self._build_repetition_rule_payload(
+                command.repetition_rule.frequency,
+                command.repetition_rule.schedule,
+                command.repetition_rule.based_on,
+                command.repetition_rule.end,
+            )
         return AddTaskRepoPayload.model_validate(kwargs)
 
     def build_edit(
@@ -60,6 +74,8 @@ class PayloadBuilder:
         add_tag_ids: list[str] | None,
         remove_tag_ids: list[str] | None,
         move_to: dict[str, object] | None,
+        repetition_rule_payload: RepetitionRuleRepoPayload | None = None,
+        repetition_rule_clear: bool = False,
     ) -> EditTaskRepoPayload:
         """Build edit-task payload from command + domain results."""
         # --- 1. Extract command fields ---
@@ -81,6 +97,12 @@ class PayloadBuilder:
         if move_to is not None:
             kwargs["move_to"] = MoveToRepoPayload.model_validate(move_to)
 
+        # Repetition rule: clear vs set vs no-change
+        if repetition_rule_clear:
+            kwargs["repetition_rule"] = None  # explicit clear
+        elif repetition_rule_payload is not None:
+            kwargs["repetition_rule"] = repetition_rule_payload
+
         # --- 3. Build typed payload ---
         return EditTaskRepoPayload.model_validate(kwargs)
 
@@ -90,6 +112,24 @@ class PayloadBuilder:
             value = getattr(command, field)
             if is_set(value):
                 kwargs[field] = value
+
+    def _build_repetition_rule_payload(
+        self,
+        frequency: Frequency,
+        schedule: Schedule,
+        based_on: BasedOn,
+        end: EndCondition | None,
+    ) -> RepetitionRuleRepoPayload:
+        """Convert structured repetition rule fields to bridge-ready payload."""
+        rule_string = build_rrule(frequency, end)
+        schedule_type, catch_up = schedule_to_bridge(schedule)
+        anchor_date_key = based_on_to_bridge(based_on)
+        return RepetitionRuleRepoPayload(
+            rule_string=rule_string,
+            schedule_type=schedule_type,
+            anchor_date_key=anchor_date_key,
+            catch_up_automatically=catch_up,
+        )
 
     def _add_dates_if_set(self, kwargs: dict[str, object], command: object, *fields: str) -> None:
         """Add non-UNSET date fields, serialized to ISO string."""
