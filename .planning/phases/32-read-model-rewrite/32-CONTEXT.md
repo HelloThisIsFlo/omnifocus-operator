@@ -25,7 +25,7 @@ Replace the current `RepetitionRule` model (raw `ruleString`, `scheduleType`, `a
 - **D-06:** 3-value enum derived from 2 SQLite columns: `regularly` (scheduleType=regularly + catchUp=false), `regularly_with_catch_up` (scheduleType=regularly + catchUp=true), `from_completion` (scheduleType=from_completion + catchUp=false). Combination `from_completion + catchUp=true` is an impossible state — fail-fast with error, not silent handling.
 
 ### RRULE Parser
-- **D-05:** BYDAY positional prefix form only (`BYDAY=2TU`, `BYDAY=-1FR`). BYSETPOS as separate parameter is not supported — clear error message if encountered. OmniFocus always produces the prefix form.
+- **D-05:** BYDAY positional prefix form for single-day rules (`BYDAY=2TU`, `BYDAY=-1FR`). Multi-day day-group rules use BYSETPOS form (`BYDAY=SU,SA;BYSETPOS=1` for "first weekend day", `BYDAY=MO,TU,WE,TH,FR;BYSETPOS=2` for "second weekday"). See quick task 260328-sh9 for root cause and fix.
 - **D-04:** MINUTELY and HOURLY parsed like any other frequency type — simple `{type, interval}` objects. They are real OmniFocus options.
 - **D-07:** Malformed RRULE strings fail-fast with ValueError and educational error message. Consistent with project's fail-fast philosophy.
 
