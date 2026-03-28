@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: resolved
 phase: 32-read-model-rewrite
 source: 32-01-SUMMARY.md, 32-02-SUMMARY.md
 started: 2026-03-28T15:00:00Z
-updated: 2026-03-28T15:10:00Z
+updated: 2026-03-28T16:00:00Z
 retroactive: true
 note: "UAT was performed during phase 32.1 testing cycle. Phase 32 was verified (16/16) but UAT was skipped — issues surfaced when 32.1 exercised the models end-to-end."
 ---
@@ -36,21 +36,19 @@ result: pass
 
 ### 6. WeeklyFrequency omits onDays when unset
 expected: A bare weekly repetition rule (no specific days) serializes as {"type": "weekly", "interval": 1} — no onDays field present
-result: issue
-reported: "WeeklyFrequency emits onDays: null when no specific days are selected. Should split into WeeklyFrequency (bare) and WeeklyOnDaysFrequency (type: weekly_on_days, on_days required) following the monthly pattern."
-severity: major
+result: pass
+resolved_by: "32.1-03-PLAN.md — split into WeeklyFrequency (bare) + WeeklyOnDaysFrequency"
 
 ### 7. from_completion with catchUpAutomatically=true maps correctly
 expected: A from_completion repetition rule with catchUpAutomatically=true maps to the from_completion schedule category without error
-result: issue
-reported: "from_completion + catchUpAutomatically=true crashes instead of mapping. Server throws data corruption error. This is normal OmniFocus behavior — the flag has no effect in from_completion context."
-severity: blocker
+result: pass
+resolved_by: "32.1-02-PLAN.md — extracted derive_schedule to rrule/schedule.py, removed incorrect ValueError"
 
 ## Summary
 
 total: 7
-passed: 5
-issues: 2
+passed: 7
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
@@ -58,7 +56,7 @@ blocked: 0
 ## Gaps
 
 - truth: "A bare weekly repetition rule serializes without onDays field"
-  status: failed
+  status: resolved
   reason: "User reported: WeeklyFrequency emits onDays: null when no specific days are selected."
   severity: major
   test: 6
@@ -71,7 +69,7 @@ blocked: 0
   fix_plan: ".planning/phases/32.1-output-schema-validation-gap/32.1-03-PLAN.md"
 
 - truth: "from_completion + catchUpAutomatically=true maps to from_completion schedule without error"
-  status: failed
+  status: resolved
   reason: "User reported: from_completion + catchUpAutomatically=true crashes. OmniFocus UI legitimately produces this state."
   severity: blocker
   test: 7
