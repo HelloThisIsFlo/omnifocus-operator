@@ -333,10 +333,15 @@ class TestParseRruleErrors:
         with pytest.raises(ValueError, match="positional prefix"):
             parse_rrule("FREQ=MONTHLY;BYDAY=TU")
 
-    def test_bysetpos_rejected(self):
-        """D-05: BYSETPOS raises educational error."""
-        with pytest.raises(ValueError, match="BYSETPOS is not supported"):
-            parse_rrule("FREQ=WEEKLY;BYSETPOS=2")
+    def test_bysetpos_non_monthly_rejected(self):
+        """BYSETPOS is only valid for MONTHLY frequency."""
+        with pytest.raises(ValueError, match="BYSETPOS is only supported with FREQ=MONTHLY"):
+            parse_rrule("FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=2")
+
+    def test_bysetpos_unknown_day_group_rejected(self):
+        """Unknown multi-day BYSETPOS combos raise educational error."""
+        with pytest.raises(ValueError, match="Unknown BYDAY day group"):
+            parse_rrule("FREQ=MONTHLY;BYDAY=MO,WE;BYSETPOS=1")
 
     def test_count_and_until_mutually_exclusive(self):
         with pytest.raises(ValueError, match="mutually exclusive"):
@@ -349,6 +354,61 @@ class TestParseRruleErrors:
     def test_missing_freq(self):
         with pytest.raises(ValueError, match="FREQ is required"):
             parse_rrule("INTERVAL=3")
+
+
+# ── Parser: BYSETPOS (Multi-Day Positional) ─────────────────────────────
+
+
+class TestParseRruleBysetpos:
+    """BYSETPOS with multi-day groups parses to MonthlyDayOfWeekFrequency."""
+
+    def test_first_weekend_day(self):
+        result = parse_rrule("FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=1")
+        assert result == MonthlyDayOfWeekFrequency(on={"first": "weekend_day"})
+
+    def test_second_weekday(self):
+        result = parse_rrule("FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=2")
+        assert result == MonthlyDayOfWeekFrequency(on={"second": "weekday"})
+
+    def test_last_weekend_day_sa_su_order(self):
+        """SA,SU order also recognized as weekend_day group."""
+        result = parse_rrule("FREQ=MONTHLY;BYDAY=SA,SU;BYSETPOS=-1")
+        assert result == MonthlyDayOfWeekFrequency(on={"last": "weekend_day"})
+
+    def test_fifth_weekday(self):
+        result = parse_rrule("FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=5")
+        assert result == MonthlyDayOfWeekFrequency(on={"fifth": "weekday"})
+
+    def test_third_weekend_day(self):
+        result = parse_rrule("FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=3")
+        assert result == MonthlyDayOfWeekFrequency(on={"third": "weekend_day"})
+
+    def test_fourth_weekday(self):
+        result = parse_rrule("FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=4")
+        assert result == MonthlyDayOfWeekFrequency(on={"fourth": "weekday"})
+
+    def test_with_interval(self):
+        result = parse_rrule("FREQ=MONTHLY;INTERVAL=2;BYDAY=SU,SA;BYSETPOS=1")
+        assert result == MonthlyDayOfWeekFrequency(interval=2, on={"first": "weekend_day"})
+
+
+# ── Builder: BYSETPOS ───────────────────────────────────────────────────
+
+
+class TestBuildRruleBysetpos:
+    """Builder emits BYSETPOS form for day group values (weekday/weekend_day)."""
+
+    def test_first_weekend_day(self):
+        result = build_rrule(MonthlyDayOfWeekFrequency(on={"first": "weekend_day"}))
+        assert result == "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=1"
+
+    def test_second_weekday(self):
+        result = build_rrule(MonthlyDayOfWeekFrequency(on={"second": "weekday"}))
+        assert result == "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=2"
+
+    def test_last_weekend_day(self):
+        result = build_rrule(MonthlyDayOfWeekFrequency(on={"last": "weekend_day"}))
+        assert result == "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=-1"
 
 
 # ── Builder ──────────────────────────────────────────────────────────────
@@ -425,6 +485,9 @@ class TestRoundTrip:
             "FREQ=MONTHLY;BYDAY=-1FR",
             "FREQ=MONTHLY;BYMONTHDAY=15",
             "FREQ=MONTHLY;BYMONTHDAY=-1",
+            "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=1",
+            "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=2",
+            "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=-1",
             "FREQ=YEARLY",
         ],
     )
