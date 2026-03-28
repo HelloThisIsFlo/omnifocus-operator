@@ -252,6 +252,34 @@ REPETITION_RULES: list[dict[str, Any]] = [
         "deferDate": "2026-12-01T09:00:00.000Z",
         "dueDate": "2026-12-08T10:00:00.000Z",
     },
+    # --- BYSETPOS multi-day positional (D-05 gap) ---
+    {
+        "key": "repeat_monthly_weekend_day",
+        "name": "GM-Repeat-MonthlyWeekendDay",
+        "ruleString": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=1",
+        "scheduleType": "Regularly",
+        "anchorDateKey": "DueDate",
+        "catchUp": True,
+        "dueDate": "2026-12-01T10:00:00.000Z",
+    },
+    {
+        "key": "repeat_monthly_weekday",
+        "name": "GM-Repeat-MonthlyWeekday",
+        "ruleString": "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=2",
+        "scheduleType": "Regularly",
+        "anchorDateKey": "DueDate",
+        "catchUp": True,
+        "dueDate": "2026-12-01T10:00:00.000Z",
+    },
+    {
+        "key": "repeat_monthly_last_weekend_day",
+        "name": "GM-Repeat-MonthlyLastWeekendDay",
+        "ruleString": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=-1",
+        "scheduleType": "Regularly",
+        "anchorDateKey": "DueDate",
+        "catchUp": True,
+        "dueDate": "2026-12-01T10:00:00.000Z",
+    },
 ]
 
 # Lifecycle scenarios need separate tasks (commented out until InMemoryBridge
@@ -288,7 +316,7 @@ REPETITION_LIFECYCLE_RULES: list[dict[str, Any]] = [
 
 
 def _build_scenarios() -> list[dict[str, Any]]:
-    """Build ~49 scenario definitions across 7 categories using captured IDs."""
+    """Build ~52 scenario definitions across 7 categories using captured IDs."""
     return [
         # =================================================================
         # 01-add/ (6 scenarios)
@@ -1245,14 +1273,48 @@ def _build_scenarios() -> list[dict[str, Any]]:
                 "note": "FREQ=DAILY;INTERVAL=2 FromCompletion DeferDate catchUp=false",
             },
         },
+        # --- BYSETPOS multi-day positional (D-05 gap) ---
+        {
+            "folder": "08-repetition",
+            "file": "21_monthly_weekend_day",
+            "scenario": "08-repetition/21_monthly_weekend_day",
+            "description": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=1 (1st weekend day)",
+            "operation": "edit_task",
+            "params_fn": lambda: {
+                "id": TASK_IDS["repeat_monthly_weekend_day"],
+                "note": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=1",
+            },
+        },
+        {
+            "folder": "08-repetition",
+            "file": "22_monthly_weekday",
+            "scenario": "08-repetition/22_monthly_weekday",
+            "description": "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=2 (2nd weekday)",
+            "operation": "edit_task",
+            "params_fn": lambda: {
+                "id": TASK_IDS["repeat_monthly_weekday"],
+                "note": "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=2",
+            },
+        },
+        {
+            "folder": "08-repetition",
+            "file": "23_monthly_last_weekend_day",
+            "scenario": "08-repetition/23_monthly_last_weekend_day",
+            "description": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=-1 (last weekend day)",
+            "operation": "edit_task",
+            "params_fn": lambda: {
+                "id": TASK_IDS["repeat_monthly_last_weekend_day"],
+                "note": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=-1",
+            },
+        },
         # =================================================================
         # 08-repetition/ — Edit-preservation scenarios (6): edit a task
         # that has a repetition rule, verify rule survives the edit.
         # =================================================================
         {
             "folder": "08-repetition",
-            "file": "21_edit_rename",
-            "scenario": "08-repetition/21_edit_rename",
+            "file": "24_edit_rename",
+            "scenario": "08-repetition/24_edit_rename",
             "description": "Rename a repeating task (rule preserved)",
             "operation": "edit_task",
             "params_fn": lambda: {
@@ -1262,8 +1324,8 @@ def _build_scenarios() -> list[dict[str, Any]]:
         },
         {
             "folder": "08-repetition",
-            "file": "22_edit_flag",
-            "scenario": "08-repetition/22_edit_flag",
+            "file": "25_edit_flag",
+            "scenario": "08-repetition/25_edit_flag",
             "description": "Flag a repeating task (rule preserved)",
             "operation": "edit_task",
             "params_fn": lambda: {
@@ -1273,8 +1335,8 @@ def _build_scenarios() -> list[dict[str, Any]]:
         },
         {
             "folder": "08-repetition",
-            "file": "23_edit_note",
-            "scenario": "08-repetition/23_edit_note",
+            "file": "26_edit_note",
+            "scenario": "08-repetition/26_edit_note",
             "description": "Change note on a repeating task (rule preserved)",
             "operation": "edit_task",
             "params_fn": lambda: {
@@ -1284,8 +1346,8 @@ def _build_scenarios() -> list[dict[str, Any]]:
         },
         {
             "folder": "08-repetition",
-            "file": "24_edit_due_date",
-            "scenario": "08-repetition/24_edit_due_date",
+            "file": "27_edit_due_date",
+            "scenario": "08-repetition/27_edit_due_date",
             "description": "Change due date on a repeating task (rule preserved)",
             "operation": "edit_task",
             "params_fn": lambda: {
@@ -1295,8 +1357,8 @@ def _build_scenarios() -> list[dict[str, Any]]:
         },
         {
             "folder": "08-repetition",
-            "file": "25_edit_move",
-            "scenario": "08-repetition/25_edit_move",
+            "file": "28_edit_move",
+            "scenario": "08-repetition/28_edit_move",
             "description": "Move a repeating task to a project (rule preserved)",
             "operation": "edit_task",
             "params_fn": lambda: {
@@ -1306,8 +1368,8 @@ def _build_scenarios() -> list[dict[str, Any]]:
         },
         {
             "folder": "08-repetition",
-            "file": "26_edit_add_tag",
-            "scenario": "08-repetition/26_edit_add_tag",
+            "file": "29_edit_add_tag",
+            "scenario": "08-repetition/29_edit_add_tag",
             "description": "Add tag to a repeating task (rule preserved)",
             "operation": "edit_task",
             "params_fn": lambda: {
@@ -1324,8 +1386,8 @@ def _build_scenarios() -> list[dict[str, Any]]:
         # =================================================================
         {
             "folder": "08-repetition",
-            "file": "27_complete_repeating",
-            "scenario": "08-repetition/27_complete_repeating",
+            "file": "30_complete_repeating",
+            "scenario": "08-repetition/30_complete_repeating",
             "description": "Complete a repeating task (new occurrence with .0 ID)",
             "operation": "edit_task",
             "params_fn": lambda: {
@@ -1335,8 +1397,8 @@ def _build_scenarios() -> list[dict[str, Any]]:
         },
         {
             "folder": "08-repetition",
-            "file": "28_drop_repeating",
-            "scenario": "08-repetition/28_drop_repeating",
+            "file": "31_drop_repeating",
+            "scenario": "08-repetition/31_drop_repeating",
             "description": "Drop a repeating task",
             "operation": "edit_task",
             "params_fn": lambda: {
@@ -1346,8 +1408,8 @@ def _build_scenarios() -> list[dict[str, Any]]:
         },
         {
             "folder": "08-repetition",
-            "file": "29_complete_first",
-            "scenario": "08-repetition/29_complete_first",
+            "file": "32_complete_first",
+            "scenario": "08-repetition/32_complete_first",
             "description": "Complete a repeating task — first completion (.0 ID)",
             "operation": "edit_task",
             "params_fn": lambda: {
@@ -1357,8 +1419,8 @@ def _build_scenarios() -> list[dict[str, Any]]:
         },
         {
             "folder": "08-repetition",
-            "file": "30_complete_second",
-            "scenario": "08-repetition/30_complete_second",
+            "file": "33_complete_second",
+            "scenario": "08-repetition/33_complete_second",
             "description": "Complete same repeating task again — second completion (.1 ID)",
             "operation": "edit_task",
             "params_fn": lambda: {

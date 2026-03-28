@@ -1,13 +1,13 @@
 {
-  "scenario": "08-repetition/23_edit_note",
-  "description": "Change note on a repeating task (rule preserved)",
+  "scenario": "08-repetition/24_edit_rename",
+  "description": "Rename a repeating task (rule preserved)",
   "operation": "edit_task",
   "params": {
-    "id": "$task:repeat_weekly_bare",
-    "note": "Updated note \u2014 rule should survive"
+    "id": "$task:repeat_daily_simple",
+    "name": "GM-Repeat-DailySimple-Renamed"
   },
   "response": {
-    "name": "GM-Repeat-WeeklyBare"
+    "name": "GM-Repeat-DailySimple-Renamed"
   },
   "state_after": {
     "tasks": [
@@ -932,8 +932,8 @@
       {
         "name": "GM-Repeat-DailyInterval",
         "note": "FREQ=DAILY;INTERVAL=3",
-        "flagged": true,
-        "effectiveFlagged": true,
+        "flagged": false,
+        "effectiveFlagged": false,
         "dueDate": "2026-12-01T10:00:00.000Z",
         "deferDate": null,
         "effectiveDueDate": "2026-12-01T10:00:00.000Z",
@@ -1210,6 +1210,34 @@
         "tags": []
       },
       {
+        "name": "GM-Repeat-MonthlyLastWeekendDay",
+        "note": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=-1",
+        "flagged": false,
+        "effectiveFlagged": false,
+        "dueDate": "2026-12-01T10:00:00.000Z",
+        "deferDate": null,
+        "effectiveDueDate": "2026-12-01T10:00:00.000Z",
+        "effectiveDeferDate": null,
+        "completionDate": null,
+        "effectiveCompletionDate": null,
+        "plannedDate": null,
+        "effectivePlannedDate": null,
+        "dropDate": null,
+        "effectiveDropDate": null,
+        "estimatedMinutes": null,
+        "hasChildren": false,
+        "inInbox": true,
+        "repetitionRule": {
+          "ruleString": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=-1",
+          "scheduleType": "Regularly",
+          "anchorDateKey": "DueDate",
+          "catchUpAutomatically": true
+        },
+        "project": null,
+        "parent": null,
+        "tags": []
+      },
+      {
         "name": "GM-Repeat-MonthlyPlain",
         "note": "FREQ=MONTHLY",
         "flagged": false,
@@ -1229,6 +1257,62 @@
         "inInbox": true,
         "repetitionRule": {
           "ruleString": "FREQ=MONTHLY",
+          "scheduleType": "Regularly",
+          "anchorDateKey": "DueDate",
+          "catchUpAutomatically": true
+        },
+        "project": null,
+        "parent": null,
+        "tags": []
+      },
+      {
+        "name": "GM-Repeat-MonthlyWeekday",
+        "note": "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=2",
+        "flagged": false,
+        "effectiveFlagged": false,
+        "dueDate": "2026-12-01T10:00:00.000Z",
+        "deferDate": null,
+        "effectiveDueDate": "2026-12-01T10:00:00.000Z",
+        "effectiveDeferDate": null,
+        "completionDate": null,
+        "effectiveCompletionDate": null,
+        "plannedDate": null,
+        "effectivePlannedDate": null,
+        "dropDate": null,
+        "effectiveDropDate": null,
+        "estimatedMinutes": null,
+        "hasChildren": false,
+        "inInbox": true,
+        "repetitionRule": {
+          "ruleString": "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=2",
+          "scheduleType": "Regularly",
+          "anchorDateKey": "DueDate",
+          "catchUpAutomatically": true
+        },
+        "project": null,
+        "parent": null,
+        "tags": []
+      },
+      {
+        "name": "GM-Repeat-MonthlyWeekendDay",
+        "note": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=1",
+        "flagged": false,
+        "effectiveFlagged": false,
+        "dueDate": "2026-12-01T10:00:00.000Z",
+        "deferDate": null,
+        "effectiveDueDate": "2026-12-01T10:00:00.000Z",
+        "effectiveDeferDate": null,
+        "completionDate": null,
+        "effectiveCompletionDate": null,
+        "plannedDate": null,
+        "effectivePlannedDate": null,
+        "dropDate": null,
+        "effectiveDropDate": null,
+        "estimatedMinutes": null,
+        "hasChildren": false,
+        "inInbox": true,
+        "repetitionRule": {
+          "ruleString": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=1",
           "scheduleType": "Regularly",
           "anchorDateKey": "DueDate",
           "catchUpAutomatically": true
@@ -1267,7 +1351,7 @@
       },
       {
         "name": "GM-Repeat-WeeklyBare",
-        "note": "Updated note \u2014 rule should survive",
+        "note": "FREQ=WEEKLY",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": "2026-12-01T10:00:00.000Z",

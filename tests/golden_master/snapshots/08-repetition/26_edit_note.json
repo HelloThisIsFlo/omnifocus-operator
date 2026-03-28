@@ -1,13 +1,13 @@
 {
-  "scenario": "08-repetition/09_monthly_last_day",
-  "description": "FREQ=MONTHLY;BYMONTHDAY=-1 repetition rule (last day)",
+  "scenario": "08-repetition/26_edit_note",
+  "description": "Change note on a repeating task (rule preserved)",
   "operation": "edit_task",
   "params": {
-    "id": "$task:repeat_monthly_last_day",
-    "note": "FREQ=MONTHLY;BYMONTHDAY=-1"
+    "id": "$task:repeat_weekly_bare",
+    "note": "Updated note \u2014 rule should survive"
   },
   "response": {
-    "name": "GM-Repeat-MonthlyLastDay"
+    "name": "GM-Repeat-WeeklyBare"
   },
   "state_after": {
     "tasks": [
@@ -763,7 +763,7 @@
       },
       {
         "name": "GM-Repeat-AllNonDefault",
-        "note": "",
+        "note": "FREQ=DAILY;INTERVAL=2 FromCompletion DeferDate catchUp=false",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": "2026-12-08T10:00:00.000Z",
@@ -791,7 +791,7 @@
       },
       {
         "name": "GM-Repeat-AnchorDefer",
-        "note": "",
+        "note": "FREQ=WEEKLY anchor=DeferDate",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": "2026-12-08T10:00:00.000Z",
@@ -819,7 +819,7 @@
       },
       {
         "name": "GM-Repeat-AnchorPlanned",
-        "note": "",
+        "note": "FREQ=DAILY anchor=PlannedDate",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": "2026-12-08T10:00:00.000Z",
@@ -847,7 +847,7 @@
       },
       {
         "name": "GM-Repeat-CatchUpDisabled",
-        "note": "",
+        "note": "FREQ=WEEKLY catchUp=false",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": "2026-12-01T10:00:00.000Z",
@@ -875,7 +875,7 @@
       },
       {
         "name": "GM-Repeat-CatchUpEnabled",
-        "note": "",
+        "note": "FREQ=WEEKLY catchUp=true",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": "2026-12-01T10:00:00.000Z",
@@ -932,8 +932,8 @@
       {
         "name": "GM-Repeat-DailyInterval",
         "note": "FREQ=DAILY;INTERVAL=3",
-        "flagged": false,
-        "effectiveFlagged": false,
+        "flagged": true,
+        "effectiveFlagged": true,
         "dueDate": "2026-12-01T10:00:00.000Z",
         "deferDate": null,
         "effectiveDueDate": "2026-12-01T10:00:00.000Z",
@@ -958,7 +958,7 @@
         "tags": []
       },
       {
-        "name": "GM-Repeat-DailySimple",
+        "name": "GM-Repeat-DailySimple-Renamed",
         "note": "FREQ=DAILY",
         "flagged": false,
         "effectiveFlagged": false,
@@ -1015,7 +1015,7 @@
       },
       {
         "name": "GM-Repeat-FromCompletion",
-        "note": "",
+        "note": "FREQ=DAILY;INTERVAL=3 FromCompletion",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": "2026-12-01T10:00:00.000Z",
@@ -1043,7 +1043,7 @@
       },
       {
         "name": "GM-Repeat-Hourly",
-        "note": "",
+        "note": "FREQ=HOURLY;INTERVAL=2",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": "2026-12-01T10:00:00.000Z",
@@ -1071,7 +1071,7 @@
       },
       {
         "name": "GM-Repeat-Minutely",
-        "note": "",
+        "note": "FREQ=MINUTELY;INTERVAL=30",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": "2026-12-01T10:00:00.000Z",
@@ -1211,7 +1211,7 @@
       },
       {
         "name": "GM-Repeat-MonthlyLastWeekendDay",
-        "note": "",
+        "note": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=-1",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": "2026-12-01T10:00:00.000Z",
@@ -1267,7 +1267,7 @@
       },
       {
         "name": "GM-Repeat-MonthlyWeekday",
-        "note": "",
+        "note": "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=2",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": "2026-12-01T10:00:00.000Z",
@@ -1295,7 +1295,7 @@
       },
       {
         "name": "GM-Repeat-MonthlyWeekendDay",
-        "note": "",
+        "note": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=1",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": "2026-12-01T10:00:00.000Z",
@@ -1351,7 +1351,7 @@
       },
       {
         "name": "GM-Repeat-WeeklyBare",
-        "note": "FREQ=WEEKLY",
+        "note": "Updated note \u2014 rule should survive",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": "2026-12-01T10:00:00.000Z",
@@ -1407,7 +1407,7 @@
       },
       {
         "name": "GM-Repeat-WithCount",
-        "note": "",
+        "note": "FREQ=WEEKLY;COUNT=10",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": "2026-12-01T10:00:00.000Z",
@@ -1435,7 +1435,7 @@
       },
       {
         "name": "GM-Repeat-WithUntil",
-        "note": "",
+        "note": "FREQ=MONTHLY;UNTIL=20261231T000000Z",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": "2026-12-01T10:00:00.000Z",
@@ -1463,7 +1463,7 @@
       },
       {
         "name": "GM-Repeat-Yearly",
-        "note": "",
+        "note": "FREQ=YEARLY",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": "2026-12-01T10:00:00.000Z",
