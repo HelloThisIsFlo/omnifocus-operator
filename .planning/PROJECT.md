@@ -67,6 +67,9 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 - ✓ @pytest.mark.snapshot marker + fixture composition eliminates test boilerplate — v1.2.1
 - ✓ Golden master contract testing: 43 scenarios proving InMemoryBridge ≡ RealBridge equivalence — v1.2.1
 - ✓ 9 fields graduated from VOLATILE/UNCOMPUTED to verified via ancestor-chain inheritance — v1.2.1
+- ✓ Structured RepetitionRule read model: frequency (8 discriminated-union types), schedule, basedOn, end — replaces raw ruleString — v1.2.3
+- ✓ Single rrule/ module (parse_rrule, build_rrule) shared by both SQLite and bridge read paths — v1.2.3
+- ✓ parse/build round-trip correctness for all 8 frequency types — v1.2.3
 
 ### Active
 
@@ -159,4 +162,4 @@ Logging: ToolLoggingMiddleware for automatic tool call logging, dual-handler (st
 | ToolAnnotations stays at mcp.types | FastMCP doesn't re-export `ToolAnnotations`. Intentional residual `from mcp.types import ToolAnnotations` with TODO | — Pending — revisit when fastmcp re-exports |
 
 ---
-*Last updated: 2026-03-27 after v1.2.3 milestone start — Repetition Rule Write Support*
+*Last updated: 2026-03-28 after Phase 32 complete — Read Model Rewrite (structured RepetitionRule replaces ruleString)*
