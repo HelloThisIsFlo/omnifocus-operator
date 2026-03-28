@@ -10,6 +10,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from omnifocus_operator.contracts.base import CommandModel
+from omnifocus_operator.contracts.use_cases.repetition_rule import (
+    RepetitionRuleAddSpec,
+    RepetitionRuleRepoPayload,
+)
 from omnifocus_operator.models.base import OmniFocusBaseModel
 
 if TYPE_CHECKING:
@@ -28,6 +32,7 @@ class AddTaskCommand(CommandModel):
     flagged: bool | None = None
     estimated_minutes: float | None = None
     note: str | None = None
+    repetition_rule: RepetitionRuleAddSpec | None = None
 
 
 class AddTaskResult(OmniFocusBaseModel):
@@ -50,6 +55,7 @@ class AddTaskRepoPayload(CommandModel):
     flagged: bool | None = None
     estimated_minutes: float | None = None
     note: str | None = None
+    repetition_rule: RepetitionRuleRepoPayload | None = None
 
 
 class AddTaskRepoResult(OmniFocusBaseModel):

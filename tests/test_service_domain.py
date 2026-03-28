@@ -12,6 +12,9 @@ from omnifocus_operator.agent_messages.warnings import (
     EDIT_COMPLETED_TASK,
     LIFECYCLE_REPEATING_COMPLETE,
     LIFECYCLE_REPEATING_DROP,
+    REPETITION_EMPTY_ON_DATES,
+    REPETITION_END_DATE_PAST,
+    REPETITION_ON_COMPLETED_TASK,
 )
 from omnifocus_operator.contracts.base import _Unset
 from omnifocus_operator.contracts.common import MoveAction, TagAction
@@ -20,12 +23,21 @@ from omnifocus_operator.contracts.use_cases.edit_task import (
     EditTaskCommand,
     EditTaskRepoPayload,
 )
+from omnifocus_operator.contracts.use_cases.repetition_rule import RepetitionRuleRepoPayload
 from omnifocus_operator.models.common import TagRef
+from omnifocus_operator.models.enums import BasedOn, Schedule
+from omnifocus_operator.models.repetition_rule import (
+    DailyFrequency,
+    EndByDate,
+    MonthlyDayInMonthFrequency,
+    MonthlyFrequency,
+    WeeklyOnDaysFrequency,
+)
 from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.models.task import Task
 from omnifocus_operator.service.domain import DomainLogic
 
-from .conftest import make_model_tag_dict, make_model_task_dict, make_snapshot
+from .conftest import make_model_tag_dict, make_model_task_dict, make_snapshot, make_task_dict
 
 # ---------------------------------------------------------------------------
 # Stubs
@@ -451,3 +463,278 @@ class TestNormalizeClearIntents:
         cmd = EditTaskCommand(id="t1", name="Foo")
         result = domain.normalize_clear_intents(cmd)
         assert result.name == "Foo"
+
+
+# ---------------------------------------------------------------------------
+# check_repetition_warnings
+# ---------------------------------------------------------------------------
+
+
+class TestRepetitionWarnings:
+    """Warning generation for repetition rule edge cases."""
+
+    def test_end_date_in_past_warns(self) -> None:
+        """End date before now -> REPETITION_END_DATE_PAST warning."""
+        domain = _domain()
+        task = _make_task()
+        end = EndByDate(date="2020-01-01T00:00:00Z")
+        warnings = domain.check_repetition_warnings(end=end, task=task)
+        assert len(warnings) == 1
+        assert "2020-01-01" in warnings[0]
+
+    def test_end_date_in_future_no_warn(self) -> None:
+        """End date in future -> no warning."""
+        domain = _domain()
+        task = _make_task()
+        end = EndByDate(date="2099-12-31T00:00:00Z")
+        warnings = domain.check_repetition_warnings(end=end, task=task)
+        assert warnings == []
+
+    def test_no_end_no_warn(self) -> None:
+        """No end condition -> no warning."""
+        domain = _domain()
+        task = _make_task()
+        warnings = domain.check_repetition_warnings(end=None, task=task)
+        assert warnings == []
+
+    def test_completed_task_warns(self) -> None:
+        """Setting repetition on completed task -> warning."""
+        domain = _domain()
+        task = _make_task(availability="completed")
+        warnings = domain.check_repetition_warnings(end=None, task=task)
+        assert len(warnings) == 1
+        assert "completed" in warnings[0]
+
+    def test_dropped_task_warns(self) -> None:
+        """Setting repetition on dropped task -> warning (D-12: both completed AND dropped)."""
+        domain = _domain()
+        task = _make_task(availability="dropped")
+        warnings = domain.check_repetition_warnings(end=None, task=task)
+        assert len(warnings) == 1
+        assert "dropped" in warnings[0]
+
+    def test_available_task_no_warn(self) -> None:
+        """Available task -> no status warning."""
+        domain = _domain()
+        task = _make_task(availability="available")
+        warnings = domain.check_repetition_warnings(end=None, task=task)
+        assert warnings == []
+
+
+# ---------------------------------------------------------------------------
+# normalize_empty_on_dates
+# ---------------------------------------------------------------------------
+
+
+class TestNormalizeEmptyOnDates:
+    """D-13: monthly_day_in_month with empty onDates normalizes to monthly."""
+
+    def test_empty_list(self) -> None:
+        """onDates=[] -> MonthlyFrequency + warning."""
+        domain = _domain()
+        freq = MonthlyDayInMonthFrequency(on_dates=[])
+        result_freq, warnings = domain.normalize_empty_on_dates(freq)
+        assert isinstance(result_freq, MonthlyFrequency)
+        assert result_freq.interval == freq.interval
+        assert len(warnings) == 1
+        assert REPETITION_EMPTY_ON_DATES in warnings[0]
+
+    def test_none_on_dates(self) -> None:
+        """onDates=None -> MonthlyFrequency + warning."""
+        domain = _domain()
+        freq = MonthlyDayInMonthFrequency(on_dates=None)
+        result_freq, warnings = domain.normalize_empty_on_dates(freq)
+        assert isinstance(result_freq, MonthlyFrequency)
+        assert len(warnings) == 1
+
+    def test_non_empty_on_dates_unchanged(self) -> None:
+        """onDates=[15] -> same frequency, no warning."""
+        domain = _domain()
+        freq = MonthlyDayInMonthFrequency(on_dates=[15])
+        result_freq, warnings = domain.normalize_empty_on_dates(freq)
+        assert result_freq is freq
+        assert warnings == []
+
+    def test_non_applicable_type_unchanged(self) -> None:
+        """DailyFrequency -> same frequency, no warning (not applicable)."""
+        domain = _domain()
+        freq = DailyFrequency()
+        result_freq, warnings = domain.normalize_empty_on_dates(freq)
+        assert result_freq is freq
+        assert warnings == []
+
+    def test_preserves_interval(self) -> None:
+        """Custom interval is preserved when normalizing."""
+        domain = _domain()
+        freq = MonthlyDayInMonthFrequency(interval=3, on_dates=[])
+        result_freq, warnings = domain.normalize_empty_on_dates(freq)
+        assert isinstance(result_freq, MonthlyFrequency)
+        assert result_freq.interval == 3
+
+
+# ---------------------------------------------------------------------------
+# _all_fields_match: repetition rule no-op detection
+# ---------------------------------------------------------------------------
+
+
+class TestRepetitionRuleNoOp:
+    """No-op detection with repetition rule field comparison."""
+
+    def test_identical_repetition_is_noop(self) -> None:
+        """Same repetition rule payload as existing -> returns True."""
+        task = _make_task(
+            repetitionRule={
+                "frequency": {"type": "daily", "interval": 1},
+                "schedule": "regularly",
+                "basedOn": "due_date",
+            }
+        )
+        payload = EditTaskRepoPayload.model_validate(
+            {
+                "id": "task-001",
+                "repetition_rule": RepetitionRuleRepoPayload(
+                    rule_string="FREQ=DAILY",
+                    schedule_type="Regularly",
+                    anchor_date_key="DueDate",
+                    catch_up_automatically=False,
+                ),
+            }
+        )
+        result = _domain()._all_fields_match(payload, task, [])
+        assert result is True
+
+    def test_different_repetition_not_noop(self) -> None:
+        """Different repetition rule -> returns False."""
+        task = _make_task(
+            repetitionRule={
+                "frequency": {"type": "daily", "interval": 1},
+                "schedule": "regularly",
+                "basedOn": "due_date",
+            }
+        )
+        payload = EditTaskRepoPayload.model_validate(
+            {
+                "id": "task-001",
+                "repetition_rule": RepetitionRuleRepoPayload(
+                    rule_string="FREQ=DAILY;INTERVAL=3",
+                    schedule_type="Regularly",
+                    anchor_date_key="DueDate",
+                    catch_up_automatically=False,
+                ),
+            }
+        )
+        result = _domain()._all_fields_match(payload, task, [])
+        assert result is False
+
+    def test_clear_when_task_has_rule_not_noop(self) -> None:
+        """Clear (repetition_rule=None) when task has a rule -> not a no-op."""
+        task = _make_task(
+            repetitionRule={
+                "frequency": {"type": "daily"},
+                "schedule": "regularly",
+                "basedOn": "due_date",
+            }
+        )
+        payload = EditTaskRepoPayload.model_validate(
+            {
+                "id": "task-001",
+                "repetition_rule": None,
+            }
+        )
+        result = _domain()._all_fields_match(payload, task, [])
+        assert result is False
+
+
+# ---------------------------------------------------------------------------
+# InMemoryBridge: direct repetitionRule verification
+# ---------------------------------------------------------------------------
+
+
+class TestInMemoryBridgeRepetitionRule:
+    """Direct verification that InMemoryBridge stores/clears repetition rules."""
+
+    async def test_add_task_with_repetition_rule(self) -> None:
+        """add_task with repetitionRule dict -> stored on the task."""
+        from tests.doubles import InMemoryBridge
+        from tests.conftest import make_snapshot_dict
+
+        bridge = InMemoryBridge(data=make_snapshot_dict(tasks=[]))
+        rule = {
+            "ruleString": "FREQ=DAILY",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": False,
+        }
+        result = await bridge.send_command(
+            "add_task", {"name": "Repeating", "repetitionRule": rule}
+        )
+        # Read back
+        data = await bridge.send_command("get_all")
+        task = next(t for t in data["tasks"] if t["id"] == result["id"])
+        assert task["repetitionRule"] == rule
+
+    async def test_add_task_without_repetition_rule(self) -> None:
+        """add_task without repetitionRule -> task has None."""
+        from tests.doubles import InMemoryBridge
+        from tests.conftest import make_snapshot_dict
+
+        bridge = InMemoryBridge(data=make_snapshot_dict(tasks=[]))
+        result = await bridge.send_command("add_task", {"name": "Plain"})
+        data = await bridge.send_command("get_all")
+        task = next(t for t in data["tasks"] if t["id"] == result["id"])
+        assert task["repetitionRule"] is None
+
+    async def test_edit_task_set_repetition_rule(self) -> None:
+        """edit_task with repetitionRule dict -> sets it on the task."""
+        from tests.doubles import InMemoryBridge
+        from tests.conftest import make_snapshot_dict
+
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(tasks=[make_task_dict(id="t1")])
+        )
+        rule = {
+            "ruleString": "FREQ=WEEKLY",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": False,
+        }
+        await bridge.send_command("edit_task", {"id": "t1", "repetitionRule": rule})
+        data = await bridge.send_command("get_all")
+        task = next(t for t in data["tasks"] if t["id"] == "t1")
+        assert task["repetitionRule"] == rule
+
+    async def test_edit_task_clear_repetition_rule(self) -> None:
+        """edit_task with repetitionRule=None -> clears the rule."""
+        from tests.doubles import InMemoryBridge
+        from tests.conftest import make_snapshot_dict
+
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(
+                        id="t1",
+                        repetitionRule={"ruleString": "FREQ=DAILY"},
+                    )
+                ]
+            )
+        )
+        await bridge.send_command("edit_task", {"id": "t1", "repetitionRule": None})
+        data = await bridge.send_command("get_all")
+        task = next(t for t in data["tasks"] if t["id"] == "t1")
+        assert task["repetitionRule"] is None
+
+    async def test_edit_task_no_repetition_key_preserves(self) -> None:
+        """edit_task without repetitionRule key -> no change."""
+        from tests.doubles import InMemoryBridge
+        from tests.conftest import make_snapshot_dict
+
+        rule = {"ruleString": "FREQ=DAILY"}
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[make_task_dict(id="t1", repetitionRule=rule)]
+            )
+        )
+        await bridge.send_command("edit_task", {"id": "t1", "name": "Renamed"})
+        data = await bridge.send_command("get_all")
+        task = next(t for t in data["tasks"] if t["id"] == "t1")
+        assert task["repetitionRule"] == rule

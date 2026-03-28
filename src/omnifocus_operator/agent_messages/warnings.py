@@ -73,3 +73,24 @@ TAGS_ALREADY_MATCH = "Tags already match the requested set -- no tag changes app
 TAG_ALREADY_ON_TASK = "Tag '{display}' ({tag_id}) is already on this task"
 
 TAG_NOT_ON_TASK = "Tag '{display}' ({tag_id}) is not on this task"
+
+# --- Repetition Rule ---
+
+REPETITION_END_DATE_PAST = (
+    "The end date {date} is in the past -- the repetition rule was created, "
+    "but it may not produce any future occurrences."
+)
+
+REPETITION_EMPTY_ON_DATES = (
+    "monthly_day_in_month with empty onDates is equivalent to plain monthly -- "
+    "normalized to monthly frequency. Use type 'monthly' directly next time."
+)
+
+REPETITION_NO_OP = (
+    "The repetition rule is identical to the existing one -- no changes applied."
+)
+
+REPETITION_ON_COMPLETED_TASK = (
+    "Setting a repetition rule on a {status} task -- the rule was applied, "
+    "but it won't produce new occurrences until the task is reactivated."
+)

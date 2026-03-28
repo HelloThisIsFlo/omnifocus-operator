@@ -50,3 +50,16 @@ TAG_NO_OPERATION = "tags must specify at least one of: add, remove, replace"
 # --- Validation: MoveAction ---
 
 MOVE_EXACTLY_ONE_KEY = "moveTo must have exactly one key (beginning, ending, before, or after)"
+
+# --- Repetition Rule ---
+
+REPETITION_TYPE_CHANGE_INCOMPLETE = (
+    "Changing frequency type requires a complete frequency object for the new type. "
+    "When switching types (e.g., daily -> weekly_on_days), provide all required fields "
+    "for the new type -- omitted fields cannot be carried over from a different type."
+)
+
+REPETITION_NO_EXISTING_RULE = (
+    "Cannot partially update a repetition rule on a task that has no existing rule. "
+    "When creating a new repetition rule, provide all required fields: frequency, schedule, basedOn."
+)

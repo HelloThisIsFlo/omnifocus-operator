@@ -15,6 +15,10 @@ from omnifocus_operator.contracts.base import (
     Patch,
     PatchOrClear,
 )
+from omnifocus_operator.contracts.use_cases.repetition_rule import (
+    RepetitionRuleEditSpec,
+    RepetitionRuleRepoPayload,
+)
 from omnifocus_operator.models.base import OmniFocusBaseModel
 
 if TYPE_CHECKING:
@@ -47,6 +51,9 @@ class EditTaskCommand(CommandModel):
     defer_date: PatchOrClear[AwareDatetime] = UNSET
     planned_date: PatchOrClear[AwareDatetime] = UNSET
     estimated_minutes: PatchOrClear[float] = UNSET
+
+    # Repetition rule (null = clear, UNSET = no change)
+    repetition_rule: PatchOrClear[RepetitionRuleEditSpec] = UNSET
 
     # Stateful operations
     actions: Patch[EditTaskActions] = UNSET
@@ -84,6 +91,7 @@ class EditTaskRepoPayload(CommandModel):
     remove_tag_ids: list[str] | None = None
     move_to: MoveToRepoPayload | None = None
     lifecycle: Literal["complete", "drop"] | None = None
+    repetition_rule: RepetitionRuleRepoPayload | None = None
 
 
 class EditTaskRepoResult(OmniFocusBaseModel):
