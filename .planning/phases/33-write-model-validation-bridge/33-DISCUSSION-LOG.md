@@ -80,8 +80,20 @@
 - Exact warning/error message wording
 - RRULE builder inverse function placement
 
+## Post-Discussion Review (External Feedback)
+
+An external reviewer flagged 4 improvements to the edit_tasks tool description:
+
+1. **frequency.type requirement** — Must be explicitly documented. Resolved: type IS required in Phase 33 (discriminated union constraint). Phase 33.1 will make it optional via flat frequency model.
+2. **end clearing** — Added "end: null to clear, omit to preserve" to edit description.
+3. **"Full" frequency on type change** — Added "defaults apply like creation" to clarify.
+4. **Type change example** — Added: `{frequency: {type: "monthly_day_in_month", onDates: [1, 15]}}`.
+
+Discussion of point 1 led to the Phase 33.1 decision: flatten the Frequency discriminated union (9 subtypes → 1 class) across read, add, and edit models. Three wins: optional type on edit, interval serialization fix, model simplification. Phase 33 designs for easy evolution by keeping frequency validation in the service layer.
+
 ## Deferred Ideas
 
-- Architecture doc naming taxonomy update (instructions provided to user for separate agent)
+- Architecture doc naming taxonomy update (completed — committed as b854cae)
+- Phase 33.1: Flat Frequency Model (cross-cutting refactor, read + add + edit)
 - Typed inputSchema for write tools (full context document provided to user for research)
 - Old test names referencing FrequencySpec (from Phase 32.1)

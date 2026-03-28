@@ -15,14 +15,14 @@ Enable agents to create and edit tasks with repetition rules through existing `a
 
 ### Edit Partial Update Design
 - **D-01:** Nested wrapper approach. `EditTaskCommand` gets `repetition_rule: PatchOrClear[RepetitionRuleEditSpec] = UNSET`. The spec has inner `Patch` fields so root-level fields (schedule, basedOn, end) are independently patchable. `null` clears the whole rule. `UNSET` means no change.
-- **D-02:** Frequency merge is a service-layer concern. Pydantic's discriminated union requires `type` on every Frequency instance, so "partial frequency without type" isn't expressible. Service compares submitted type vs existing type: same → merge (preserve omitted frequency fields), different → require full frequency object. No existing rule + partial update → error.
+- **D-02:** Frequency merge is a service-layer concern. In this phase, `type` is required on every frequency update (Pydantic's discriminated union requires it). Service compares submitted type vs existing type: same → merge (preserve omitted frequency fields), different → require full frequency object. No existing rule + partial update → error. **Design for evolution:** Keep frequency validation logic in the service layer (not heavily reliant on Pydantic structural validation) so that Phase 33.1 can swap to a flat frequency model and make `type` optional without rewriting service logic.
 
 ### Write Model Topology
 - **D-03:** Two dedicated spec models in `contracts/`:
   - `RepetitionRuleAddSpec(CommandModel)` — all fields required (frequency, schedule, basedOn), end optional. `extra="forbid"` catches agent typos.
   - `RepetitionRuleEditSpec(CommandModel)` — `Patch[Frequency]`, `Patch[Schedule]`, `Patch[BasedOn]`, `PatchOrClear[EndCondition]` for independent updates.
 - **D-04:** Noun-first naming for nested specs: `RepetitionRuleAddSpec` / `RepetitionRuleEditSpec` (not `AddRepetitionRuleSpec`). Rationale: nested specs are about the THING (RepetitionRule), not the ACTION. Noun-first groups them in imports/autocomplete. Top-level commands remain verb-first (`AddTaskCommand`). Add a comment in the code explaining this convention.
-- **D-05:** Both specs reuse the existing read-side `Frequency` union, `Schedule` enum, `BasedOn` enum, and `EndCondition` union from `models/`. No duplication of these types.
+- **D-05:** Both specs reuse the existing read-side `Frequency` union, `Schedule` enum, `BasedOn` enum, and `EndCondition` union from `models/`. No duplication of these types. Phase 33.1 will flatten the Frequency union into a single model — design specs so this swap is easy (don't couple deeply to the discriminated union structure).
 - **D-06:** `AddTaskCommand` embeds `RepetitionRuleAddSpec | None = None`. `EditTaskCommand` embeds `PatchOrClear[RepetitionRuleEditSpec] = UNSET`.
 
 ### Bridge OmniJS Strategy
@@ -95,17 +95,22 @@ Enable agents to create and edit tasks with repetition rules through existing `a
 ```
 - repetitionRule: Set, update, or clear a repetition rule
   - Full rule: same shape as add_tasks (frequency, schedule, basedOn required)
-  - Partial update: send only changed fields, omitted fields preserved
-    - Same frequency type: omitted frequency fields preserved
-    - Different type: full frequency object required
+  - Partial update: send only changed fields, omitted root fields preserved
+    - frequency.type is always required when updating frequency
+    - Same type: omitted frequency fields preserved from existing rule
+    - Different type: full replacement, defaults apply like creation
+  - end: null to clear, omit to preserve
   - null to clear the repetition rule
 
   Examples:
     Change just the schedule:
       {schedule: "from_completion"}
 
-    Change interval (same type, other fields preserved):
+    Change interval (type required, other frequency fields preserved):
       {frequency: {type: "daily", interval: 5}}
+
+    Switch to monthly on specific days (schedule/basedOn/end preserved):
+      {frequency: {type: "monthly_day_in_month", onDates: [1, 15]}}
 
     Clear:
       null
@@ -133,7 +138,7 @@ Enable agents to create and edit tasks with repetition rules through existing `a
 - `.planning/REQUIREMENTS.md` — ADD-01 through ADD-14, EDIT-01 through EDIT-16, VALID-01 through VALID-05. 35 requirements, all mapped to Phase 33.
 
 ### Architecture & Naming
-- `docs/architecture.md` — Model naming taxonomy (lines 264-317): decision tree for naming, `___Spec` suffix for write-side value objects. Write pipeline diagram (lines 128-158). Repetition rule structure (lines 480-607). Validation layers (lines 651-657). **NOTE:** The naming taxonomy needs updating for noun-first nested specs — see Deferred Ideas.
+- `docs/architecture.md` — Model naming taxonomy (lines 264-317): decision tree for naming, `___Spec` suffix for write-side value objects, noun-first nested specs convention. Write pipeline diagram (lines 128-158). Repetition rule structure (lines 480-607). Validation layers (lines 651-657).
 
 ### OmniJS API
 - `.research/deep-dives/repetition-rule/repetition-rule-guide.md` — Complete OmniJS RepetitionRule API. Constructor signature (lines 38-47), enum values (lines 49-64), read-only properties (lines 65-73), clearing (line 281), modification pattern (Group 4).
@@ -172,7 +177,7 @@ Enable agents to create and edit tasks with repetition rules through existing `a
 ### Reusable Assets
 - `build_rrule(frequency, end)` — already converts Frequency model → RRULE string. Write path calls this directly.
 - `derive_schedule(schedule_type, catch_up)` — forward mapping (read path). Write path needs the inverse (~3 lines).
-- Frequency discriminated union (9 types) — reused directly in both AddSpec and EditSpec.
+- Frequency discriminated union (9 types) — reused in both AddSpec and EditSpec. Phase 33.1 will flatten this; keep coupling light.
 - `_AddTaskPipeline` / `_EditTaskPipeline` — Method Object pattern. New steps slot in naturally.
 - `DomainLogic` — existing warning generation for lifecycle, tags, no-op. Repetition warnings follow same pattern.
 - `PayloadBuilder` — existing `model_dump(by_alias=True, exclude_unset=True)` pattern handles serialization automatically.
@@ -210,7 +215,7 @@ Enable agents to create and edit tasks with repetition rules through existing `a
 <deferred>
 ## Deferred Ideas
 
-- **Architecture doc naming taxonomy update** — The naming taxonomy in `docs/architecture.md` needs updating to reflect noun-first naming for nested specs (`RepetitionRuleAddSpec` / `RepetitionRuleEditSpec`) and the decision tree expansion. Instructions for another agent were provided during discussion — user will handle separately.
+- **Phase 33.1: Flat Frequency Model** — Flatten the 9-subtype discriminated Frequency union into a single `Frequency` class with all fields optional (on_days, on, on_dates). Cross-cutting refactor affecting read, add, and edit models. Three wins: (1) makes `type` optional on same-type edit updates (agent sends `{frequency: {interval: 5}}` without restating type), (2) solves the interval serialization issue from Phase 32.1 (`exclude_defaults` on interval=1 without losing `type`), (3) simplifies the model hierarchy (1 class instead of 9+). Service-layer validation replaces Pydantic structural validation for cross-type field rejection. Non-applicable fields excluded via `exclude_none` at serialization time. Breaking change on read output — acceptable (pre-release, single user).
 - **Typed inputSchema for write tools** — Currently `items: list[dict[str, Any]]` produces opaque inputSchema. Agents get zero schema information; tool docstrings do all the work. Investigating typed parameters with custom error formatting (via FastMCP middleware or other approaches) would give agents schema + educational errors. Full context document was provided during discussion. Not Phase 33 scope.
 - Old test names still reference `FrequencySpec` (carried from Phase 32.1 deferred).
 
