@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
 from omnifocus_operator.models.repetition_rule import (
@@ -19,6 +22,7 @@ from omnifocus_operator.models.repetition_rule import (
     WeeklyFrequency,
     YearlyFrequency,
 )
+from omnifocus_operator.rrule import build_rrule, parse_end_condition, parse_rrule
 
 
 # ── FrequencySpec Discriminated Union ───────────────────────────────────
@@ -198,3 +202,284 @@ class TestRepetitionRuleModel:
         )
         d = rule.model_dump(by_alias=True, exclude_none=True)
         assert "interval" not in d["frequency"]
+
+
+# ── Parser: Frequency Types ──────────────────────────────────────────────
+
+
+class TestParseRruleFrequencyTypes:
+    """parse_rrule returns correct dict for each frequency type."""
+
+    def test_daily(self):
+        result = parse_rrule("FREQ=DAILY")
+        assert result == {"type": "daily"}
+
+    def test_weekly_bare(self):
+        result = parse_rrule("FREQ=WEEKLY")
+        assert result == {"type": "weekly"}
+
+    def test_weekly_with_byday(self):
+        result = parse_rrule("FREQ=WEEKLY;BYDAY=MO,WE,FR")
+        assert result == {"type": "weekly", "on_days": ["MO", "WE", "FR"]}
+
+    def test_monthly_plain(self):
+        result = parse_rrule("FREQ=MONTHLY")
+        assert result == {"type": "monthly"}
+
+    def test_monthly_day_of_week(self):
+        result = parse_rrule("FREQ=MONTHLY;BYDAY=2TU")
+        assert result == {
+            "type": "monthly_day_of_week",
+            "on": {"second": "tuesday"},
+        }
+
+    def test_monthly_last_friday(self):
+        result = parse_rrule("FREQ=MONTHLY;BYDAY=-1FR")
+        assert result == {
+            "type": "monthly_day_of_week",
+            "on": {"last": "friday"},
+        }
+
+    def test_monthly_day_in_month(self):
+        result = parse_rrule("FREQ=MONTHLY;BYMONTHDAY=15")
+        assert result == {
+            "type": "monthly_day_in_month",
+            "on_dates": [15],
+        }
+
+    def test_monthly_last_day(self):
+        result = parse_rrule("FREQ=MONTHLY;BYMONTHDAY=-1")
+        assert result == {
+            "type": "monthly_day_in_month",
+            "on_dates": [-1],
+        }
+
+    def test_yearly(self):
+        result = parse_rrule("FREQ=YEARLY")
+        assert result == {"type": "yearly"}
+
+    def test_minutely(self):
+        result = parse_rrule("FREQ=MINUTELY;INTERVAL=30")
+        assert result == {"type": "minutely", "interval": 30}
+
+    def test_hourly(self):
+        result = parse_rrule("FREQ=HOURLY;INTERVAL=2")
+        assert result == {"type": "hourly", "interval": 2}
+
+
+# ── Parser: Interval ─────────────────────────────────────────────────────
+
+
+class TestParseRruleInterval:
+    def test_interval_1_omitted(self):
+        """D-08: interval=1 not included in result dict."""
+        result = parse_rrule("FREQ=DAILY")
+        assert "interval" not in result
+
+    def test_interval_greater_than_1_included(self):
+        result = parse_rrule("FREQ=DAILY;INTERVAL=3")
+        assert result["interval"] == 3
+
+    def test_explicit_interval_1_still_omitted(self):
+        result = parse_rrule("FREQ=DAILY;INTERVAL=1")
+        assert "interval" not in result
+
+
+# ── Parser: End Conditions ───────────────────────────────────────────────
+
+
+class TestParseRruleEndConditions:
+    def test_count(self):
+        result = parse_end_condition("FREQ=WEEKLY;COUNT=10")
+        assert result == {"occurrences": 10}
+
+    def test_until(self):
+        result = parse_end_condition("FREQ=MONTHLY;UNTIL=20261231T000000Z")
+        assert result == {"date": "2026-12-31T00:00:00Z"}
+
+    def test_no_end_condition(self):
+        result = parse_end_condition("FREQ=DAILY")
+        assert result is None
+
+
+# ── Parser: Errors ───────────────────────────────────────────────────────
+
+
+class TestParseRruleErrors:
+    def test_empty_string(self):
+        with pytest.raises(ValueError, match="must not be empty"):
+            parse_rrule("")
+
+    def test_invalid_freq(self):
+        with pytest.raises(ValueError, match="Unsupported FREQ"):
+            parse_rrule("FREQ=INVALID")
+
+    def test_monthly_byday_without_prefix(self):
+        """D-05: plain BYDAY in monthly context must raise."""
+        with pytest.raises(ValueError, match="positional prefix"):
+            parse_rrule("FREQ=MONTHLY;BYDAY=TU")
+
+    def test_bysetpos_rejected(self):
+        """D-05: BYSETPOS raises educational error."""
+        with pytest.raises(ValueError, match="BYSETPOS is not supported"):
+            parse_rrule("FREQ=WEEKLY;BYSETPOS=2")
+
+    def test_count_and_until_mutually_exclusive(self):
+        with pytest.raises(ValueError, match="mutually exclusive"):
+            parse_rrule("FREQ=DAILY;COUNT=5;UNTIL=20261231T000000Z")
+
+    def test_whitespace_only(self):
+        with pytest.raises(ValueError, match="must not be empty"):
+            parse_rrule("   ")
+
+    def test_missing_freq(self):
+        with pytest.raises(ValueError, match="FREQ is required"):
+            parse_rrule("INTERVAL=3")
+
+
+# ── Builder ──────────────────────────────────────────────────────────────
+
+
+class TestBuildRrule:
+    def test_daily(self):
+        assert build_rrule({"type": "daily"}) == "FREQ=DAILY"
+
+    def test_daily_with_interval(self):
+        assert build_rrule({"type": "daily", "interval": 3}) == "FREQ=DAILY;INTERVAL=3"
+
+    def test_weekly_with_byday(self):
+        result = build_rrule({"type": "weekly", "on_days": ["MO", "WE", "FR"]})
+        assert result == "FREQ=WEEKLY;BYDAY=MO,WE,FR"
+
+    def test_weekly_bare(self):
+        assert build_rrule({"type": "weekly"}) == "FREQ=WEEKLY"
+
+    def test_monthly_plain(self):
+        assert build_rrule({"type": "monthly"}) == "FREQ=MONTHLY"
+
+    def test_monthly_day_of_week(self):
+        result = build_rrule(
+            {"type": "monthly_day_of_week", "on": {"second": "tuesday"}}
+        )
+        assert result == "FREQ=MONTHLY;BYDAY=2TU"
+
+    def test_monthly_last_friday(self):
+        result = build_rrule(
+            {"type": "monthly_day_of_week", "on": {"last": "friday"}}
+        )
+        assert result == "FREQ=MONTHLY;BYDAY=-1FR"
+
+    def test_monthly_day_in_month(self):
+        result = build_rrule(
+            {"type": "monthly_day_in_month", "on_dates": [15]}
+        )
+        assert result == "FREQ=MONTHLY;BYMONTHDAY=15"
+
+    def test_monthly_last_day(self):
+        result = build_rrule(
+            {"type": "monthly_day_in_month", "on_dates": [-1]}
+        )
+        assert result == "FREQ=MONTHLY;BYMONTHDAY=-1"
+
+    def test_yearly(self):
+        assert build_rrule({"type": "yearly"}) == "FREQ=YEARLY"
+
+    def test_minutely(self):
+        assert build_rrule({"type": "minutely", "interval": 30}) == "FREQ=MINUTELY;INTERVAL=30"
+
+    def test_hourly(self):
+        assert build_rrule({"type": "hourly", "interval": 2}) == "FREQ=HOURLY;INTERVAL=2"
+
+    def test_with_end_count(self):
+        result = build_rrule({"type": "weekly"}, end={"occurrences": 10})
+        assert result == "FREQ=WEEKLY;COUNT=10"
+
+    def test_with_end_until(self):
+        result = build_rrule({"type": "monthly"}, end={"date": "2026-12-31T00:00:00Z"})
+        assert result == "FREQ=MONTHLY;UNTIL=20261231T000000Z"
+
+
+# ── Round Trip ───────────────────────────────────────────────────────────
+
+
+class TestRoundTrip:
+    """parse -> build -> parse produces identical results for all frequency types."""
+
+    @pytest.mark.parametrize(
+        "rrule_string",
+        [
+            "FREQ=MINUTELY;INTERVAL=30",
+            "FREQ=HOURLY;INTERVAL=2",
+            "FREQ=DAILY",
+            "FREQ=DAILY;INTERVAL=3",
+            "FREQ=WEEKLY",
+            "FREQ=WEEKLY;BYDAY=MO,WE,FR",
+            "FREQ=MONTHLY",
+            "FREQ=MONTHLY;BYDAY=2TU",
+            "FREQ=MONTHLY;BYDAY=-1FR",
+            "FREQ=MONTHLY;BYMONTHDAY=15",
+            "FREQ=MONTHLY;BYMONTHDAY=-1",
+            "FREQ=YEARLY",
+        ],
+    )
+    def test_round_trip_frequency(self, rrule_string: str):
+        freq = parse_rrule(rrule_string)
+        rebuilt = build_rrule(freq)
+        re_parsed = parse_rrule(rebuilt)
+        assert re_parsed == freq
+
+    @pytest.mark.parametrize(
+        "rrule_string",
+        [
+            "FREQ=WEEKLY;COUNT=10",
+            "FREQ=MONTHLY;UNTIL=20261231T000000Z",
+        ],
+    )
+    def test_round_trip_with_end_condition(self, rrule_string: str):
+        freq = parse_rrule(rrule_string)
+        end = parse_end_condition(rrule_string)
+        rebuilt = build_rrule(freq, end=end)
+        re_parsed_freq = parse_rrule(rebuilt)
+        re_parsed_end = parse_end_condition(rebuilt)
+        assert re_parsed_freq == freq
+        assert re_parsed_end == end
+
+
+# ── Golden Master RRULE Strings ──────────────────────────────────────────
+
+GOLDEN_MASTER_DIR = Path(__file__).parent / "golden_master" / "snapshots" / "08-repetition"
+
+
+def _collect_rule_strings() -> list[str]:
+    """Extract all unique ruleString values from golden master snapshots."""
+    rule_strings: set[str] = set()
+    if not GOLDEN_MASTER_DIR.exists():
+        return []
+    for json_file in sorted(GOLDEN_MASTER_DIR.glob("*.json")):
+        data = json.loads(json_file.read_text())
+        _extract_rule_strings(data, rule_strings)
+    return sorted(rule_strings)
+
+
+def _extract_rule_strings(obj: object, collector: set[str]) -> None:
+    """Recursively find ruleString values in nested JSON."""
+    if isinstance(obj, dict):
+        if "ruleString" in obj and isinstance(obj["ruleString"], str):
+            collector.add(obj["ruleString"])
+        for v in obj.values():
+            _extract_rule_strings(v, collector)
+    elif isinstance(obj, list):
+        for item in obj:
+            _extract_rule_strings(item, collector)
+
+
+_GOLDEN_MASTER_RULES = _collect_rule_strings()
+
+
+class TestGoldenMasterRuleStrings:
+    """Every RRULE string found in golden master snapshots must parse without error."""
+
+    @pytest.mark.parametrize("rule_string", _GOLDEN_MASTER_RULES)
+    def test_golden_master_parses(self, rule_string: str):
+        result = parse_rrule(rule_string)
+        assert "type" in result
