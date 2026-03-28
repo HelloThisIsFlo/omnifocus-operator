@@ -1,12 +1,12 @@
-"""Status enumerations for OmniFocus entities.
+"""Status and repetition enumerations for OmniFocus entities.
 
 Values use snake_case strings matching the new two-axis model:
 - Urgency: time pressure axis (overdue, due_soon, none)
 - Availability: work readiness axis (available, blocked, completed, dropped)
 - TagAvailability: tag availability (available, blocked, dropped)
 - FolderAvailability: folder availability (available, dropped)
-- ScheduleType: repetition schedule type (regularly, from_completion)
-- AnchorDateKey: anchor date for repetition rules (due_date, defer_date, planned_date)
+- Schedule: repetition schedule type (regularly, regularly_with_catch_up, from_completion)
+- BasedOn: anchor date for repetition rules (due_date, defer_date, planned_date)
 """
 
 from enum import StrEnum
@@ -44,15 +44,16 @@ class FolderAvailability(StrEnum):
     DROPPED = "dropped"
 
 
-class ScheduleType(StrEnum):
-    """Repetition schedule type."""
+class Schedule(StrEnum):
+    """Repetition schedule type (3-value, derived from scheduleType + catchUp)."""
 
     REGULARLY = "regularly"
+    REGULARLY_WITH_CATCH_UP = "regularly_with_catch_up"
     FROM_COMPLETION = "from_completion"
 
 
-class AnchorDateKey(StrEnum):
-    """Anchor date key for repetition rules."""
+class BasedOn(StrEnum):
+    """Anchor date for repetition rules."""
 
     DUE_DATE = "due_date"
     DEFER_DATE = "defer_date"

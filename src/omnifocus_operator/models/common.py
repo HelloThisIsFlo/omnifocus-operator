@@ -2,18 +2,13 @@
 
 These models represent nested objects in the bridge JSON output:
 - TagRef: tag reference with id and name
-- RepetitionRule: from bridge rr() function (4 required fields)
+- ParentRef: parent reference with type, id, and name
 - ReviewInterval: from bridge ri() function
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from omnifocus_operator.models.base import OmniFocusBaseModel
-
-if TYPE_CHECKING:
-    from omnifocus_operator.models.enums import AnchorDateKey, ScheduleType
 
 
 class TagRef(OmniFocusBaseModel):
@@ -33,21 +28,6 @@ class ParentRef(OmniFocusBaseModel):
     type: str
     id: str
     name: str
-
-
-class RepetitionRule(OmniFocusBaseModel):
-    """Repetition rule for recurring tasks and projects.
-
-    All 4 fields are required -- the bridge rr() resolver extracts them
-    from OmniFocus's RepetitionRule object. Null repetition rules are
-    represented as None at the parent level (task/project), not as a
-    RepetitionRule with optional fields.
-    """
-
-    rule_string: str
-    schedule_type: ScheduleType
-    anchor_date_key: AnchorDateKey
-    catch_up_automatically: bool
 
 
 class ReviewInterval(OmniFocusBaseModel):

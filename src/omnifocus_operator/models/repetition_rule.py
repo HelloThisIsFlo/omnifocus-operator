@@ -18,41 +18,22 @@ Type hierarchy:
 
     RepetitionRule -- frequency + schedule + based_on + end
 
-Enums defined here (will be reconciled with enums.py in Plan 02):
-    Schedule -- regularly, regularly_with_catch_up, from_completion
-    BasedOn  -- due_date, defer_date, planned_date
+Enums:
+    Schedule -- from enums.py (regularly, regularly_with_catch_up, from_completion)
+    BasedOn  -- from enums.py (due_date, defer_date, planned_date)
 """
 
 from __future__ import annotations
 
-from enum import StrEnum
 from typing import Annotated, Any, Literal, Union
 
 from pydantic import Field, model_serializer
 
 from omnifocus_operator.models.base import OmniFocusBaseModel
+from omnifocus_operator.models.enums import BasedOn, Schedule
 
 
-# ── Enums ────────────────────────────────────────────────────────────────
-
-
-class Schedule(StrEnum):
-    """Repetition schedule type (3-value, derived from scheduleType + catchUp)."""
-
-    REGULARLY = "regularly"
-    REGULARLY_WITH_CATCH_UP = "regularly_with_catch_up"
-    FROM_COMPLETION = "from_completion"
-
-
-class BasedOn(StrEnum):
-    """Anchor date for repetition rules (renamed from AnchorDateKey)."""
-
-    DUE_DATE = "due_date"
-    DEFER_DATE = "defer_date"
-    PLANNED_DATE = "planned_date"
-
-
-# ── Frequency Base ───────────────────────────────────────────────────────
+# -- Frequency Base -----------------------------------------------------------
 
 
 class _FrequencyBase(OmniFocusBaseModel):
@@ -89,7 +70,7 @@ class _FrequencyBase(OmniFocusBaseModel):
         return d
 
 
-# ── 8 Frequency Subtypes ────────────────────────────────────────────────
+# -- 8 Frequency Subtypes ----------------------------------------------------
 
 
 class MinutelyFrequency(_FrequencyBase):
@@ -127,7 +108,7 @@ class YearlyFrequency(_FrequencyBase):
     type: Literal["yearly"] = "yearly"
 
 
-# ── FrequencySpec Discriminated Union ────────────────────────────────────
+# -- FrequencySpec Discriminated Union ----------------------------------------
 
 FrequencySpec = Annotated[
     Union[
@@ -144,7 +125,7 @@ FrequencySpec = Annotated[
 ]
 
 
-# ── End Condition Models ─────────────────────────────────────────────────
+# -- End Condition Models -----------------------------------------------------
 
 
 class EndByDate(OmniFocusBaseModel):
@@ -162,7 +143,7 @@ class EndByOccurrences(OmniFocusBaseModel):
 EndCondition = EndByDate | EndByOccurrences
 
 
-# ── RepetitionRule ───────────────────────────────────────────────────────
+# -- RepetitionRule -----------------------------------------------------------
 
 
 class RepetitionRule(OmniFocusBaseModel):

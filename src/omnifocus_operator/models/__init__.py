@@ -11,18 +11,19 @@ from omnifocus_operator.models.base import (
     OmniFocusBaseModel,
     OmniFocusEntity,
 )
-from omnifocus_operator.models.common import ParentRef, RepetitionRule, ReviewInterval, TagRef
+from omnifocus_operator.models.common import ParentRef, ReviewInterval, TagRef
 from omnifocus_operator.models.enums import (
-    AnchorDateKey,
     Availability,
+    BasedOn,
     FolderAvailability,
-    ScheduleType,
+    Schedule,
     TagAvailability,
     Urgency,
 )
 from omnifocus_operator.models.folder import Folder
 from omnifocus_operator.models.perspective import Perspective
 from omnifocus_operator.models.project import Project
+from omnifocus_operator.models.repetition_rule import RepetitionRule
 from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.models.tag import Tag
 from omnifocus_operator.models.task import Task
@@ -43,8 +44,8 @@ _ns: dict[str, type] = {
     "Availability": Availability,
     "TagAvailability": TagAvailability,
     "FolderAvailability": FolderAvailability,
-    "ScheduleType": ScheduleType,
-    "AnchorDateKey": AnchorDateKey,
+    "Schedule": Schedule,
+    "BasedOn": BasedOn,
     "Task": Task,
     "Project": Project,
     "Tag": Tag,
@@ -63,8 +64,8 @@ AllEntities.model_rebuild(_types_namespace=_ns)
 __all__ = [
     "ActionableEntity",
     "AllEntities",
-    "AnchorDateKey",
     "Availability",
+    "BasedOn",
     "Folder",
     "FolderAvailability",
     "OmniFocusBaseModel",
@@ -74,7 +75,7 @@ __all__ = [
     "Project",
     "RepetitionRule",
     "ReviewInterval",
-    "ScheduleType",
+    "Schedule",
     "Tag",
     "TagAvailability",
     "TagRef",
