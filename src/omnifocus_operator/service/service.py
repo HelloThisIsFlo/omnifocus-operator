@@ -21,7 +21,11 @@ from omnifocus_operator.contracts.use_cases.edit_task import EditTaskResult
 from omnifocus_operator.service.domain import DomainLogic
 from omnifocus_operator.service.payload import PayloadBuilder
 from omnifocus_operator.service.resolve import Resolver
-from omnifocus_operator.service.validate import validate_task_name, validate_task_name_if_set
+from omnifocus_operator.service.validate import (
+    validate_repetition_rule_add,
+    validate_task_name,
+    validate_task_name_if_set,
+)
 
 if TYPE_CHECKING:
     from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand
@@ -141,10 +145,12 @@ class _AddTaskPipeline(_Pipeline):
     async def execute(self, command: AddTaskCommand) -> AddTaskResult:
         """Run the full create-task pipeline."""
         self._command = command
+        self._repetition_warnings: list[str] = []
 
         self._validate()
         await self._resolve_parent()
         await self._resolve_tags()
+        self._validate_repetition_rule()
         self._build_payload()
         return await self._delegate()
 
@@ -173,13 +179,35 @@ class _AddTaskPipeline(_Pipeline):
             self._resolved_tag_ids,
         )
 
+    def _validate_repetition_rule(self) -> None:
+        """Validate and normalize repetition rule if present."""
+        if self._command.repetition_rule is None:
+            return
+
+        spec = self._command.repetition_rule
+
+        # Structural + constraint validation
+        spec = validate_repetition_rule_add(spec)
+
+        # Normalize empty on_dates (D-13)
+        normalized_freq, on_dates_warns = self._domain.normalize_empty_on_dates(spec.frequency)
+        self._repetition_warnings.extend(on_dates_warns)
+        if normalized_freq is not spec.frequency:
+            spec = spec.model_copy(update={"frequency": normalized_freq})
+
+        # Update the command with the normalized spec
+        self._command = self._command.model_copy(update={"repetition_rule": spec})
+
     def _build_payload(self) -> None:
         self._repo_payload = self._payload.build_add(self._command, self._resolved_tag_ids)
 
     async def _delegate(self) -> AddTaskResult:
         logger.debug("OperatorService.add_task: delegating to repository")
         repo_result = await self._repository.add_task(self._repo_payload)
-        return AddTaskResult(success=True, id=repo_result.id, name=repo_result.name)
+        warnings = self._repetition_warnings or None
+        return AddTaskResult(
+            success=True, id=repo_result.id, name=repo_result.name, warnings=warnings
+        )
 
 
 # -- edit_task pipeline (Method Object) ------------------------------------

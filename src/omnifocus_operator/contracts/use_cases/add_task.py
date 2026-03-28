@@ -41,6 +41,7 @@ class AddTaskResult(OmniFocusBaseModel):
     success: bool
     id: str
     name: str
+    warnings: list[str] | None = None
 
 
 class AddTaskRepoPayload(CommandModel):

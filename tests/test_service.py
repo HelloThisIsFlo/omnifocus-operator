@@ -23,6 +23,23 @@ from omnifocus_operator.contracts.use_cases.edit_task import (
     EditTaskActions,
     EditTaskCommand,
 )
+from omnifocus_operator.contracts.use_cases.repetition_rule import (
+    RepetitionRuleAddSpec,
+)
+from omnifocus_operator.models.enums import BasedOn, Schedule
+from omnifocus_operator.models.repetition_rule import (
+    DailyFrequency,
+    EndByDate,
+    EndByOccurrences,
+    HourlyFrequency,
+    MinutelyFrequency,
+    MonthlyDayInMonthFrequency,
+    MonthlyDayOfWeekFrequency,
+    MonthlyFrequency,
+    WeeklyFrequency,
+    WeeklyOnDaysFrequency,
+    YearlyFrequency,
+)
 from omnifocus_operator.service import ErrorOperatorService, OperatorService
 from tests.doubles import ConstantMtimeSource
 
@@ -272,6 +289,231 @@ class TestAddTask:
 
         with pytest.raises(ValidationError, match="bogus_field"):
             AddTaskCommand.model_validate({"name": "Task", "bogus_field": "should be rejected"})
+
+
+# ---------------------------------------------------------------------------
+# OperatorService.add_task: repetition rule (ADD-01 through ADD-14)
+# ---------------------------------------------------------------------------
+
+
+class TestAddTaskRepetitionRule:
+    """Service.add_task with repetition rule configurations."""
+
+    async def test_daily_basic(self, service: OperatorService, repo: BridgeRepository) -> None:
+        """ADD-01: Daily frequency with all root fields -> success."""
+        spec = RepetitionRuleAddSpec(
+            frequency=DailyFrequency(),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+        )
+        result = await service.add_task(AddTaskCommand(name="Daily", repetition_rule=spec))
+        assert result.success is True
+
+        # Verify bridge received correct payload
+        task = await repo.get_task(result.id)
+        assert task is not None
+        assert task.repetition_rule is not None
+        assert task.repetition_rule.frequency.type == "daily"
+
+    async def test_all_9_frequency_types(self, service: OperatorService) -> None:
+        """ADD-02: All 9 frequency types succeed."""
+        frequencies = [
+            MinutelyFrequency(),
+            HourlyFrequency(),
+            DailyFrequency(),
+            WeeklyFrequency(),
+            WeeklyOnDaysFrequency(on_days=["MO", "FR"]),
+            MonthlyFrequency(),
+            MonthlyDayOfWeekFrequency(on={"second": "tuesday"}),
+            MonthlyDayInMonthFrequency(on_dates=[1, 15]),
+            YearlyFrequency(),
+        ]
+        for freq in frequencies:
+            spec = RepetitionRuleAddSpec(
+                frequency=freq,
+                schedule=Schedule.REGULARLY,
+                based_on=BasedOn.DUE_DATE,
+            )
+            result = await service.add_task(
+                AddTaskCommand(name=f"Freq {freq.type}", repetition_rule=spec)
+            )
+            assert result.success is True, f"Failed for type {freq.type}"
+
+    async def test_interval(self, service: OperatorService, repo: BridgeRepository) -> None:
+        """ADD-03: Custom interval preserved."""
+        spec = RepetitionRuleAddSpec(
+            frequency=DailyFrequency(interval=3),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+        )
+        result = await service.add_task(AddTaskCommand(name="Every 3 days", repetition_rule=spec))
+        task = await repo.get_task(result.id)
+        assert task is not None
+        assert task.repetition_rule is not None
+        assert task.repetition_rule.frequency.interval == 3
+
+    async def test_weekly_on_days_normalize(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
+        """ADD-04: on_days normalized to uppercase."""
+        spec = RepetitionRuleAddSpec(
+            frequency=WeeklyOnDaysFrequency(on_days=["mo", "fr"]),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+        )
+        result = await service.add_task(AddTaskCommand(name="Weekly", repetition_rule=spec))
+        task = await repo.get_task(result.id)
+        assert task is not None
+        assert task.repetition_rule is not None
+        # on_days should be uppercase after normalization
+        assert task.repetition_rule.frequency.type == "weekly_on_days"
+
+    async def test_weekly_bare(self, service: OperatorService) -> None:
+        """ADD-05: WeeklyFrequency (no on_days) succeeds."""
+        spec = RepetitionRuleAddSpec(
+            frequency=WeeklyFrequency(),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+        )
+        result = await service.add_task(AddTaskCommand(name="Weekly bare", repetition_rule=spec))
+        assert result.success is True
+
+    async def test_monthly_day_of_week(self, service: OperatorService) -> None:
+        """ADD-06: MonthlyDayOfWeekFrequency succeeds."""
+        spec = RepetitionRuleAddSpec(
+            frequency=MonthlyDayOfWeekFrequency(on={"second": "tuesday"}),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+        )
+        result = await service.add_task(AddTaskCommand(name="2nd Tue", repetition_rule=spec))
+        assert result.success is True
+
+    async def test_monthly_day_in_month(self, service: OperatorService) -> None:
+        """ADD-07: MonthlyDayInMonthFrequency succeeds."""
+        spec = RepetitionRuleAddSpec(
+            frequency=MonthlyDayInMonthFrequency(on_dates=[1, 15]),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+        )
+        result = await service.add_task(AddTaskCommand(name="1st&15th", repetition_rule=spec))
+        assert result.success is True
+
+    async def test_empty_on_dates_normalizes_to_monthly(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
+        """ADD-08: Empty onDates -> normalized to monthly, warning included."""
+        spec = RepetitionRuleAddSpec(
+            frequency=MonthlyDayInMonthFrequency(on_dates=[]),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+        )
+        result = await service.add_task(
+            AddTaskCommand(name="Empty onDates", repetition_rule=spec)
+        )
+        assert result.success is True
+        assert result.warnings is not None
+        assert any("monthly" in w.lower() for w in result.warnings)
+
+        # Verify the stored rule is plain monthly
+        task = await repo.get_task(result.id)
+        assert task is not None
+        assert task.repetition_rule is not None
+        assert task.repetition_rule.frequency.type == "monthly"
+
+    async def test_from_completion_schedule(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
+        """ADD-09: from_completion schedule produces correct bridge payload."""
+        spec = RepetitionRuleAddSpec(
+            frequency=DailyFrequency(),
+            schedule=Schedule.FROM_COMPLETION,
+            based_on=BasedOn.DEFER_DATE,
+        )
+        result = await service.add_task(AddTaskCommand(name="FC", repetition_rule=spec))
+        task = await repo.get_task(result.id)
+        assert task is not None
+        assert task.repetition_rule is not None
+        assert task.repetition_rule.schedule == Schedule.FROM_COMPLETION
+
+    async def test_defer_date_based_on(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
+        """ADD-10: based_on=defer_date -> anchorDateKey=DeferDate."""
+        spec = RepetitionRuleAddSpec(
+            frequency=DailyFrequency(),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DEFER_DATE,
+        )
+        result = await service.add_task(AddTaskCommand(name="Deferred", repetition_rule=spec))
+        task = await repo.get_task(result.id)
+        assert task is not None
+        assert task.repetition_rule is not None
+        assert task.repetition_rule.based_on == BasedOn.DEFER_DATE
+
+    async def test_end_by_date(self, service: OperatorService, repo: BridgeRepository) -> None:
+        """ADD-11: EndByDate -> ruleString contains UNTIL."""
+        spec = RepetitionRuleAddSpec(
+            frequency=DailyFrequency(),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+            end=EndByDate(date="2026-12-31T00:00:00Z"),
+        )
+        result = await service.add_task(AddTaskCommand(name="Until date", repetition_rule=spec))
+        task = await repo.get_task(result.id)
+        assert task is not None
+        assert task.repetition_rule is not None
+        assert task.repetition_rule.end is not None
+
+    async def test_end_by_occurrences(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
+        """ADD-12: EndByOccurrences -> ruleString contains COUNT."""
+        spec = RepetitionRuleAddSpec(
+            frequency=DailyFrequency(),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+            end=EndByOccurrences(occurrences=10),
+        )
+        result = await service.add_task(AddTaskCommand(name="10 times", repetition_rule=spec))
+        task = await repo.get_task(result.id)
+        assert task is not None
+        assert task.repetition_rule is not None
+        assert task.repetition_rule.end is not None
+
+    async def test_no_end_condition(self, service: OperatorService) -> None:
+        """ADD-13: No end condition -> ruleString has no UNTIL/COUNT."""
+        spec = RepetitionRuleAddSpec(
+            frequency=DailyFrequency(),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+        )
+        result = await service.add_task(AddTaskCommand(name="Forever", repetition_rule=spec))
+        assert result.success is True
+
+    async def test_default_interval(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
+        """ADD-14: Omitted interval defaults to 1."""
+        spec = RepetitionRuleAddSpec(
+            frequency=DailyFrequency(),  # interval defaults to 1
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+        )
+        result = await service.add_task(AddTaskCommand(name="Default", repetition_rule=spec))
+        task = await repo.get_task(result.id)
+        assert task is not None
+        assert task.repetition_rule is not None
+        assert task.repetition_rule.frequency.interval == 1
+
+    async def test_invalid_interval_rejected(self, service: OperatorService) -> None:
+        """Invalid interval (0) -> ValueError."""
+        spec = RepetitionRuleAddSpec(
+            frequency=DailyFrequency(interval=0),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+        )
+        with pytest.raises(ValueError, match="interval"):
+            await service.add_task(AddTaskCommand(name="Bad", repetition_rule=spec))
 
 
 # ---------------------------------------------------------------------------
