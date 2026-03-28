@@ -45,10 +45,10 @@ result: issue
 reported: "service/validate.py excluded because old validate_task_name/validate_task_name_if_set use inline msg strings. Need to convert those to constants in errors.py, then add validate to _ERROR_CONSUMERS list."
 severity: major
 
-### 7. Golden master snapshots stale
-expected: Golden master tests pass after bridge JS modifications
+### 7. Golden master write path coverage
+expected: Golden master tests exercise the full write path including repetition rule handling in add/edit
 result: issue
-reported: "Bridge JS handleAddTask/handleEditTask modified with repetition rule handling. Golden master snapshots not refreshed. Need to run and update."
+reported: "Golden master tests don't cover the write path — repetition rule handling in handleAddTask/handleEditTask is not exercised. Need new golden master test cases for repetition rule operations, but snapshot refresh is human-only."
 severity: major
 
 ## Summary
@@ -106,15 +106,15 @@ blocked: 0
     - "Import constants in validate.py"
     - "Add 'validate' to _ERROR_CONSUMERS"
 
-- truth: "Golden master snapshots reflect current bridge JS behavior"
+- truth: "Golden master tests exercise the full write path including repetition rule handling"
   status: failed
-  reason: "User reported: handleAddTask/handleEditTask modified with repetition rule handling, snapshots not refreshed"
+  reason: "User reported: golden master tests don't cover write path — repetition rule handling in handleAddTask/handleEditTask not exercised. Need new test cases, but snapshot refresh is human-only."
   severity: major
   test: 7
-  root_cause: "Bridge JS modified in Plan 03 but golden master refresh not performed"
+  root_cause: "Golden master test suite lacks write-path coverage for repetition rule operations added in Phase 33"
   artifacts:
     - path: "src/omnifocus_operator/bridge/bridge.js"
-      issue: "handleAddTask/handleEditTask modified"
+      issue: "handleAddTask/handleEditTask repetition rule handling not exercised by golden master"
   missing:
-    - "Run golden master tests to identify failures"
-    - "Refresh snapshots"
+    - "Add golden master test cases that exercise repetition rule add/edit write paths"
+    - "IMPORTANT: Agent creates test cases only — snapshot capture/refresh is human-only (extends SAFE-01/02)"
