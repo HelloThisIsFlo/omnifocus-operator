@@ -78,6 +78,7 @@ Carried forward:
 4. Investigate `replace: []` bug in production (may not be staleness-related)
 5. Remove misleading "single runtime dependency" messaging from README + landing page
 6. Refactor Frequency to flat model with type-optional edits (Phase 33.1 — full spec in todo)
+7. Fix repetition rule parsing bug (investigation in progress)
 
 ### Blockers/Concerns
 
