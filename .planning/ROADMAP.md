@@ -81,7 +81,7 @@
 **Milestone Goal:** Enable agents to set, modify, and remove repetition rules on tasks via structured fields -- symmetric read/write model, no raw RRULE strings exposed. No new tools.
 
 - [x] **Phase 32: Read Model Rewrite** - Structured frequency fields replace ruleString on both read paths (completed 2026-03-28)
-- [ ] **Phase 32.1: Output Schema Validation Gap** - Add schema-vs-data validation tests ensuring serialized output conforms to advertised outputSchema (INSERTED)
+- [x] **Phase 32.1: Output Schema Validation Gap** - Add schema-vs-data validation tests ensuring serialized output conforms to advertised outputSchema (INSERTED) (completed 2026-03-28)
 - [ ] **Phase 33: Write Model, Validation & Bridge** - add_tasks and edit_tasks support repetition rules with partial updates, type-change detection, and educational errors
 
 ## Phase Details
@@ -109,9 +109,9 @@ Plans:
   3. A regression guard asserts that no union type branch in tool outputs degrades to `{"type": "object", "additionalProperties": true}` -- catches future @model_serializer additions
   4. A naming convention test enforces that models/ has no write-side suffixes and contracts/ uses recognized suffixes -- per docs/architecture.md taxonomy
   5. CLAUDE.md contains rules directing agents to read the naming taxonomy before creating models and to run schema tests after modifying output models
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 Plans:
-- [ ] 32.1-01-PLAN.md — Schema validation tests, union regression guard, naming convention enforcement, CLAUDE.md rules
+- [x] 32.1-01-PLAN.md — Schema validation tests, union regression guard, naming convention enforcement, CLAUDE.md rules
 
 ### Phase 33: Write Model, Validation & Bridge
 **Goal**: Agents can create tasks with repetition rules, partially update existing rules (merge within type, clear, change type), and receive educational errors for invalid input -- all through existing `add_tasks` and `edit_tasks` tools
