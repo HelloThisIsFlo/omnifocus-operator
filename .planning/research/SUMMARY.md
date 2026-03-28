@@ -21,7 +21,7 @@ Zero new dependencies. Everything builds on existing infrastructure: Pydantic v2
 
 **Core technologies:**
 - **Custom RRULE parser** (`rrule/parser.py`, ~200 lines) — parse RRULE strings to typed `Frequency`; purpose-built for OmniFocus's RRULE subset, 79 spike tests, directly portable
-- **Pydantic v2 discriminated unions** — 8 frequency type variants with `type: Literal[...]` discriminator; `extra="forbid"` gives cross-type field rejection for free
+- **Pydantic v2 discriminated unions** — 9 frequency type variants with `type: Literal[...]` discriminator; `extra="forbid"` gives cross-type field rejection for free
 - **Existing `PatchOrClear[T]`** — three-way UNSET/null/value semantics for `repetition_rule` on `EditTaskCommand`; no new infrastructure needed
 - **Existing `DomainLogic`** — merge/no-op detection; new `process_repetition()` follows same pattern as `compute_tag_diff`, `process_move`
 

@@ -17,7 +17,8 @@ Agents see structured fields, never RRULE strings. Read and write use the same s
 | `minutely` | -- | |
 | `hourly` | -- | |
 | `daily` | -- | |
-| `weekly` | `onDays`: list of two-letter codes (MO-SU) | Case-insensitive input, normalized to uppercase. Omitted = repeats every N weeks from basedOn date |
+| `weekly` | -- | Repeats every N weeks from basedOn date (no day constraint) |
+| `weekly_on_days` | `onDays`: list of two-letter codes (MO-SU) | Case-insensitive input, normalized to uppercase |
 | `monthly` | -- | Plain monthly by calendar date |
 | `monthly_day_of_week` | `on`: `{"ordinal": "day"}` | Key = first/second/third/fourth/fifth/last. Value = monday-sunday/weekday/weekend_day. Case-insensitive, normalized lowercase. Reads like English: `"on": {"second": "tuesday"}` |
 | `monthly_day_in_month` | `onDates`: list of ints (1-31, -1 for last day) | Empty/omitted triggers warning suggesting plain `monthly` type |

@@ -18,7 +18,7 @@ Features agents expect when a task management API supports repetition rules. Mis
 | All 3 anchor dates | `due_date`, `defer_date`, `planned_date` -- already in the read model as enums | Low | Existing enums |
 | Symmetric read/write model | Same shape for reads and writes. Microsoft Graph does this with `patternedRecurrence`. Todoist does NOT (read-only `is_recurring` + natural language write), and it's a pain point | Med | Read model rewrite from ruleString to structured fields |
 | Type-specific validation | Reject `onDays` on a `daily` frequency, require `on` for `monthly_day_of_week`. Microsoft Graph returns 400 for wrong-type fields | Med | Pydantic discriminated union or model validators |
-| Educational error messages | Consistent with existing patterns. "You sent `onDays` but this frequency type is `daily`. onDays is only valid for `weekly`." | Low | Existing agent_messages pattern |
+| Educational error messages | Consistent with existing patterns. "You sent `onDays` but this frequency type is `daily`. onDays is only valid for `weekly_on_days`." | Low | Existing agent_messages pattern |
 
 ## Differentiators
 
@@ -39,7 +39,7 @@ Features to explicitly NOT build. Either wrong scope, wrong abstraction, or acti
 
 | Anti-Feature | Why Avoid | What to Do Instead |
 |--------------|-----------|-------------------|
-| Natural language recurrence input ("every Monday") | Not this server's job. Server exposes primitives; the agent/LLM interprets user intent into structured fields. Adding NLP creates a second parsing layer with inevitable edge cases | Accept structured JSON only. Agent translates "every Monday" to `{"type": "weekly", "onDays": ["MO"]}` |
+| Natural language recurrence input ("every Monday") | Not this server's job. Server exposes primitives; the agent/LLM interprets user intent into structured fields. Adding NLP creates a second parsing layer with inevitable edge cases | Accept structured JSON only. Agent translates "every Monday" to `{"type": "weekly_on_days", "onDays": ["MO"]}` |
 | RRULE string passthrough on writes | Defeats the purpose of structured fields. If agents could pass raw RRULE, they'd skip validation, and the structured model becomes dead code | Only accept structured frequency object. RRULE is an internal transport detail between service and bridge |
 | RRULE string in read model (keeping ruleString) | Agents don't need it. Two representations = confusion about which is authoritative. Breaking change is acceptable pre-v2 | Remove `ruleString` from read model entirely. Structured fields ARE the read model |
 | Cross-type field inference | If agent sends `type: "monthly"` with `onDays: ["MO"]`, don't silently convert to `monthly_day_of_week`. Ambiguous intent | Reject with clear error: "Did you mean `monthly_day_of_week` with `on: {first: monday}`?" |

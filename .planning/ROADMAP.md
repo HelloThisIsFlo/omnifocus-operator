@@ -92,7 +92,7 @@
 **Requirements**: READ-01, READ-02, READ-03, READ-04
 **Success Criteria** (what must be TRUE):
   1. `get_all`, `get_task`, `get_project` return `repetitionRule` with structured `frequency` (type discriminator + type-specific fields), `schedule`, `basedOn`, and `end` fields -- no `ruleString` visible to agents
-  2. All 8 frequency types (minutely, hourly, daily, weekly, monthly, monthly_day_of_week, monthly_day_in_month, yearly) parse correctly from real OmniFocus data
+  2. All 9 frequency types (minutely, hourly, daily, weekly, weekly_on_days, monthly, monthly_day_of_week, monthly_day_in_month, yearly) parse correctly from real OmniFocus data
   3. Both SQLite and bridge read paths produce identical structured output for the same task (single `rrule/` module, no duplicated parsing logic)
   4. `parse_rrule` and `build_rrule` round-trip correctly -- parse a string, build it back, parse again, get the same structured result
 **Plans:** 2/2 plans complete
@@ -105,7 +105,7 @@ Plans:
 **Depends on**: Phase 32 (serializer fix in commit db4bcb0)
 **Success Criteria** (what must be TRUE):
   1. For every MCP tool (get_all, get_task, get_project, get_tag, add_tasks, edit_tasks), serialized output from realistic fixtures validates against the tool's outputSchema using a JSON Schema validator (not Pydantic) -- the same validation MCP clients perform
-  2. Test fixtures include tasks with repetitionRule set to actual Frequency values (at minimum DailyFrequency, WeeklyFrequency with onDays, MonthlyDayOfWeekFrequency with on, MonthlyDayInMonthFrequency with onDates) and both EndCondition variants (EndByDate, EndByOccurrences)
+  2. Test fixtures include tasks with repetitionRule set to actual Frequency values (at minimum DailyFrequency, WeeklyFrequency (bare), WeeklyOnDaysFrequency with onDays, MonthlyDayOfWeekFrequency with on, MonthlyDayInMonthFrequency with onDates) and both EndCondition variants (EndByDate, EndByOccurrences)
   3. A regression guard asserts that no union type branch in tool outputs degrades to `{"type": "object", "additionalProperties": true}` -- catches future @model_serializer additions
   4. A naming convention test enforces that models/ has no write-side suffixes and contracts/ uses recognized suffixes -- per docs/architecture.md taxonomy
   5. CLAUDE.md contains rules directing agents to read the naming taxonomy before creating models and to run schema tests after modifying output models

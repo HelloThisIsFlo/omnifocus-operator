@@ -147,7 +147,7 @@ Within the object, each sub-field (`schedule`, `basedOn`, `end`, `frequency`) al
 
 **Why it happens:** Existing edit fields are flat (name, note, dates). This is the first nested discriminated union with partial update semantics. The `Patch[T]`/`PatchOrClear[T]` type aliases work for flat fields but need careful composition for nested objects.
 
-**Consequences:** Wrong merge = user sends `{"frequency": {"type": "weekly"}}` to change a biweekly-MO-WE rule to weekly, expecting `onDays` preserved. If merge logic resets onDays, rule silently changes meaning.
+**Consequences:** Wrong merge = user sends `{"frequency": {"type": "weekly_on_days"}}` to change a biweekly-MO-WE rule's interval, expecting `onDays` preserved. If merge logic resets onDays, rule silently changes meaning. Note: since the weekly split, sending bare `"weekly"` to an existing `"weekly_on_days"` rule is a type change, not a same-type merge.
 
 **Prevention:**
 - Define merge semantics in a lookup table, not scattered conditionals
@@ -162,7 +162,7 @@ Within the object, each sub-field (`schedule`, `basedOn`, `end`, `frequency`) al
 
 ### Pitfall 7: Frequency Type Discriminator Mismatch Between Read and Write
 
-**What goes wrong:** The spec defines 8 frequency types (`minutely`, `hourly`, `daily`, `weekly`, `monthly`, `monthly_day_of_week`, `monthly_day_in_month`, `yearly`). But RRULE has only 6 FREQ values (`MINUTELY`, `HOURLY`, `DAILY`, `WEEKLY`, `MONTHLY`, `YEARLY`). The `monthly` vs `monthly_day_of_week` vs `monthly_day_in_month` distinction is determined by which RRULE modifiers are present:
+**What goes wrong:** The spec defines 9 frequency types (`minutely`, `hourly`, `daily`, `weekly`, `weekly_on_days`, `monthly`, `monthly_day_of_week`, `monthly_day_in_month`, `yearly`). But RRULE has only 6 FREQ values (`MINUTELY`, `HOURLY`, `DAILY`, `WEEKLY`, `MONTHLY`, `YEARLY`). The `monthly` vs `monthly_day_of_week` vs `monthly_day_in_month` distinction is determined by which RRULE modifiers are present:
 
 | Type | RRULE Pattern |
 |------|--------------|
@@ -304,7 +304,7 @@ Currently `_SCHEDULE_TYPE_MAP` in `hybrid.py` maps both `"fixed"` and `"from-ass
 **Prevention:**
 - GOLD-01 constraint: "any phase that adds or modifies bridge operations must re-capture golden master"
 - Plan new golden master categories: set repetition rule, modify rule, clear rule
-- Capture at minimum: daily, weekly-with-days, monthly-by-date, monthly-day-of-week, from-completion
+- Capture at minimum: daily, weekly-bare, weekly-with-days, monthly-by-date, monthly-day-of-week, from-completion
 
 ---
 
@@ -356,8 +356,8 @@ Derived from real OmniFocus data (352 repeating tasks, 49 distinct ruleStrings):
 |-------|--------------|----------------|
 | `FREQ=DAILY` | Simplest case | `daily` |
 | `FREQ=DAILY;INTERVAL=88` | Max observed interval | `daily` |
-| `FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR` | 5-day BYDAY list (weekdays) | `weekly` |
-| `FREQ=WEEKLY;INTERVAL=2;BYDAY=TU,TH` | Interval + BYDAY combined | `weekly` |
+| `FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR` | 5-day BYDAY list (weekdays) | `weekly_on_days` |
+| `FREQ=WEEKLY;INTERVAL=2;BYDAY=TU,TH` | Interval + BYDAY combined | `weekly_on_days` |
 | `FREQ=MONTHLY` | Plain monthly (no modifiers) | `monthly` |
 | `FREQ=MONTHLY;BYMONTHDAY=14` | Specific day of month | `monthly_day_in_month` |
 | `FREQ=MONTHLY;BYMONTHDAY=-1` | Last day of month | `monthly_day_in_month` |

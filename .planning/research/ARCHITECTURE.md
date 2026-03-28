@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-Repetition rule support integrates cleanly into the existing architecture. The key insight is that repetition sits at the boundary between two domains: the agent-facing structured model (8 frequency types, 3 root-level fields) and OmniFocus's internal RRULE format (4 bridge parameters). Two standalone utility functions (`parse_rrule`, `build_rrule`) bridge these domains, living in a new `rrule/` package under the models layer.
+Repetition rule support integrates cleanly into the existing architecture. The key insight is that repetition sits at the boundary between two domains: the agent-facing structured model (9 frequency types, 3 root-level fields) and OmniFocus's internal RRULE format (4 bridge parameters). Two standalone utility functions (`parse_rrule`, `build_rrule`) bridge these domains, living in a new `rrule/` package under the models layer.
 
 The read model is a breaking change (replacing `RepetitionRule` with structured fields), but the write model slots into existing patterns: `PatchOrClear[RepetitionRuleSpec]` on commands, bridge payload carries flat RRULE + metadata fields, partial update merge logic lives in `DomainLogic`.
 
@@ -73,13 +73,13 @@ SQLite row
   └── catchUpAutomatically: 1
 
   → hybrid.py::_build_repetition_rule()
-    ├── Calls parse_rrule("FREQ=WEEKLY;BYDAY=MO,WE") -> Frequency(type="weekly", onDays=["MO","WE"])
+    ├── Calls parse_rrule("FREQ=WEEKLY;BYDAY=MO,WE") -> Frequency(type="weekly_on_days", onDays=["MO","WE"])
     ├── Maps schedule_type: "fixed" + catchUp=True -> "regularly_with_catch_up"
     ├── Maps anchor_date_key: "dateDue" -> "due_date"
     └── Returns structured dict matching new RepetitionRule model
 
   → Pydantic validation -> RepetitionRule with:
-    ├── frequency: Frequency(type="weekly", interval=1, on_days=["MO","WE"])
+    ├── frequency: Frequency(type="weekly_on_days", interval=1, on_days=["MO","WE"])
     ├── schedule: "regularly_with_catch_up"
     ├── based_on: "due_date"
     └── end: None
@@ -108,7 +108,7 @@ Bridge JSON (raw bridge format):
 
 ```
 Agent sends:
-  { "repetitionRule": { "frequency": { "type": "weekly", "onDays": ["MO","FR"] } } }
+  { "repetitionRule": { "frequency": { "type": "weekly_on_days", "onDays": ["MO","FR"] } } }
 
   → server.py: Pydantic validates -> EditTaskCommand
     ├── repetition_rule: RepetitionRuleSpec (structured, not UNSET, not None)
@@ -118,7 +118,7 @@ Agent sends:
     ├── _process_repetition() [NEW STEP]
     │   ├── DomainLogic.process_repetition(spec, current_task)
     │   │   ├── Current task HAS rule -> merge mode
-    │   │   │   ├── Same type ("weekly") -> merge: onDays=["MO","FR"] replaces old, interval preserved
+    │   │   │   ├── Same type ("weekly_on_days") -> merge: onDays=["MO","FR"] replaces old, interval preserved
     │   │   │   ├── Root fields (schedule, basedOn, end) not in spec -> preserve from existing
     │   │   │   └── Returns merged RepetitionRuleSpec + build_rrule(merged.frequency) -> RRULE string
     │   │   ├── Current task has NO rule -> error: "provide complete rule"
@@ -158,7 +158,7 @@ Agent sends:
 Agent sends:
   { "name": "Weekly standup",
     "repetitionRule": {
-      "frequency": { "type": "weekly", "onDays": ["MO"] },
+      "frequency": { "type": "weekly_on_days", "onDays": ["MO"] },
       "schedule": "regularly_with_catch_up",
       "basedOn": "due_date"
     }
@@ -382,7 +382,7 @@ Similarly for `_handle_add_task`.
 ## Golden Master Impact
 
 Per GOLD-01: this milestone adds/modifies bridge operations for repetition rules. Golden master must be re-captured and new contract test scenarios added for:
-- Task with repetition rule (all 8 frequency types if possible via real OmniFocus)
+- Task with repetition rule (all 9 frequency types if possible via real OmniFocus)
 - Edit task: set repetition rule
 - Edit task: modify repetition rule
 - Edit task: clear repetition rule
@@ -467,7 +467,7 @@ The bridge is a relay. RRULE parsing/building is Python business logic. Bridge r
 The schedule/basedOn enum mappings between agent format, bridge format, and SQLite format should have exactly one mapping table per direction. Current codebase already has this pattern (`_SCHEDULE_TYPE_MAP`, `_ANCHOR_DATE_MAP`). Extend, don't duplicate.
 
 ### Don't use model inheritance for frequency types
-Use Pydantic discriminated unions (`Discriminator` on the `type` field), not a class hierarchy. Each frequency type is a standalone model with `type: Literal["weekly"]` etc. Keeps the JSON schema clean for LLM tool descriptions.
+Use Pydantic discriminated unions (`Discriminator` on the `type` field), not a class hierarchy. Each frequency type is a standalone model with `type: Literal["weekly"]` / `type: Literal["weekly_on_days"]` etc. Keeps the JSON schema clean for LLM tool descriptions.
 
 ### Don't store structured fields in the repo payload
 The repo payload is bridge-ready. Bridge expects flat `(ruleString, scheduleType, anchorDateKey, catchUpAutomatically)`. The structured -> flat conversion happens in `PayloadBuilder`, not later.

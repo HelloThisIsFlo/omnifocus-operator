@@ -66,10 +66,14 @@ class DailyFreq(CommandModel):
 class WeeklyFreq(CommandModel):
     type: Literal["weekly"] = "weekly"
     interval: int = 1
-    on_days: list[str] | None = None
+
+class WeeklyOnDaysFreq(CommandModel):
+    type: Literal["weekly_on_days"] = "weekly_on_days"
+    interval: int = 1
+    on_days: list[str]  # required, not optional
 
 Frequency = Annotated[
-    Union[DailyFreq, WeeklyFreq, ...],
+    Union[DailyFreq, WeeklyFreq, WeeklyOnDaysFreq, ...],
     Field(discriminator="type"),
 ]
 ```

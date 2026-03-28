@@ -10,14 +10,14 @@ Repetition Rule Write Support. Structured fields replace raw RRULE strings on bo
 ### Read Model (READ)
 
 - [x] **READ-01**: RepetitionRule read model exposes structured frequency fields (type, interval, onDays, etc.) instead of ruleString
-- [x] **READ-02**: All 8 frequency types correctly parsed from RRULE strings (minutely, hourly, daily, weekly, monthly, monthly_day_of_week, monthly_day_in_month, yearly)
+- [x] **READ-02**: All 9 frequency types correctly parsed from RRULE strings (minutely, hourly, daily, weekly, weekly_on_days, monthly, monthly_day_of_week, monthly_day_in_month, yearly)
 - [x] **READ-03**: Both SQLite and bridge read paths share a single rrule module for parsing (no duplicated logic)
 - [x] **READ-04**: parse_rrule and build_rrule round-trip correctly for all frequency types
 
 ### Creation — add_tasks (ADD)
 
 - [ ] **ADD-01**: Create task with repetition rule using structured fields (frequency with type, schedule, basedOn all required)
-- [ ] **ADD-02**: All 8 frequency types supported for creation
+- [ ] **ADD-02**: All 9 frequency types supported for creation
 - [ ] **ADD-03**: Interval > 1 supported (e.g., every 2 weeks, every 3 months)
 - [ ] **ADD-04**: Weekly frequency supports onDays field with day codes (MO-SU), case-insensitive input normalized to uppercase
 - [ ] **ADD-05**: Weekly frequency without onDays repeats every N weeks from basedOn date

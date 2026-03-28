@@ -13,7 +13,7 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 **Goal:** Enable agents to set, modify, and remove repetition rules on tasks via structured fields -- symmetric read/write model, no raw RRULE strings exposed. No new tools.
 
 **Target features:**
-- Structured frequency model with type discriminator (8 frequency types)
+- Structured frequency model with type discriminator (9 frequency types)
 - Root-level repetition fields: schedule, basedOn, end
 - Partial update lifecycle (merge, type-change, clear, create)
 - RRULE parser/builder utilities wired to both read paths
@@ -67,9 +67,9 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 - ✓ @pytest.mark.snapshot marker + fixture composition eliminates test boilerplate — v1.2.1
 - ✓ Golden master contract testing: 43 scenarios proving InMemoryBridge ≡ RealBridge equivalence — v1.2.1
 - ✓ 9 fields graduated from VOLATILE/UNCOMPUTED to verified via ancestor-chain inheritance — v1.2.1
-- ✓ Structured RepetitionRule read model: frequency (8 discriminated-union types), schedule, basedOn, end — replaces raw ruleString — v1.2.3
+- ✓ Structured RepetitionRule read model: frequency (9 discriminated-union types), schedule, basedOn, end — replaces raw ruleString — v1.2.3
 - ✓ Single rrule/ module (parse_rrule, build_rrule) shared by both SQLite and bridge read paths — v1.2.3
-- ✓ parse/build round-trip correctness for all 8 frequency types — v1.2.3
+- ✓ parse/build round-trip correctness for all 9 frequency types — v1.2.3
 
 ### Active
 
