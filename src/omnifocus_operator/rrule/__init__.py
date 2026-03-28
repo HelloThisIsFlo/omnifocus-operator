@@ -8,5 +8,6 @@ Public API:
 
 from omnifocus_operator.rrule.builder import build_rrule
 from omnifocus_operator.rrule.parser import parse_end_condition, parse_rrule
+from omnifocus_operator.rrule.schedule import derive_schedule
 
-__all__ = ["build_rrule", "parse_end_condition", "parse_rrule"]
+__all__ = ["build_rrule", "derive_schedule", "parse_end_condition", "parse_rrule"]

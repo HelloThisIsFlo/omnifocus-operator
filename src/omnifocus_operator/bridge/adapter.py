@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from omnifocus_operator.rrule import parse_end_condition, parse_rrule
+from omnifocus_operator.rrule import derive_schedule, parse_end_condition, parse_rrule
 
 # ---------------------------------------------------------------------------
 # Mapping tables: old bridge string -> new model value(s)
@@ -92,20 +92,6 @@ _FOLDER_AVAILABILITY_VALUES = frozenset(_FOLDER_AVAILABILITY_MAP.values())
 # ---------------------------------------------------------------------------
 
 
-def _derive_schedule(schedule_type: str, catch_up: bool) -> str:
-    """Derive 3-value schedule from scheduleType + catchUpAutomatically (D-06)."""
-    if schedule_type == "from_completion" and catch_up:
-        raise ValueError(
-            "from_completion + catchUpAutomatically=true is an impossible state. "
-            "This indicates data corruption in the OmniFocus database."
-        )
-    if schedule_type == "from_completion":
-        return "from_completion"
-    if catch_up:
-        return "regularly_with_catch_up"
-    return "regularly"
-
-
 def _adapt_repetition_rule(raw: dict[str, Any]) -> None:
     """Transform bridge repetition rule to structured model shape.
 
@@ -145,7 +131,7 @@ def _adapt_repetition_rule(raw: dict[str, Any]) -> None:
 
     frequency = parse_rrule(rule_string)
     end = parse_end_condition(rule_string)
-    schedule = _derive_schedule(schedule_mapped, catch_up)
+    schedule = derive_schedule(schedule_mapped, catch_up)
 
     # Build structured dict with camelCase keys (adapter output → Pydantic by_alias)
     structured: dict[str, Any] = {

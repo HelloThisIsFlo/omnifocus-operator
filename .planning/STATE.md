@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.2.3
 milestone_name: Repetition Rule Write Support
-status: verifying
-stopped_at: Completed 32.1-01-PLAN.md
-last_updated: "2026-03-28T14:08:11.373Z"
+status: executing
+stopped_at: Completed 32.1-02-PLAN.md
+last_updated: "2026-03-28T16:26:35Z"
 last_activity: 2026-03-28
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 1
   total_plans: 3
   completed_plans: 3
   percent: 0
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 
 ## Current Position
 
-Phase: 33
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 32.1 (output-schema-validation-gap) -- EXECUTING
+Plan: 2 of 3
+Status: Executing Phase 32.1
 Last activity: 2026-03-28
 
 Progress: [░░░░░░░░░░] 0%
@@ -49,7 +49,7 @@ Progress: [░░░░░░░░░░] 0%
 *Updated after each plan completion*
 | Phase 32 P01 | 6min | 2 tasks | 5 files |
 | Phase 32 P02 | 9min | 2 tasks | 11 files |
-| Phase 32.1 P01 | 5min | 2 tasks | 4 files |
+| Phase 32.1 P02 | 3min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -62,7 +62,7 @@ Recent decisions affecting current work:
 - [v1.2.3 start]: Custom RRULE parser over python-dateutil -- purpose-built for OmniFocus RRULE subset, 79 spike tests, zero new deps.
 - ~~[Phase 32]: Used @model_serializer instead of model_dump override for interval=1 omission -- ensures correct nested serialization behavior~~
 - [Phase 32]: Schedule/BasedOn canonical location is enums.py; runtime import in repetition_rule.py for Pydantic validation
-- [Phase 32.1]: jsonschema.validate with FastMCP's exact pipeline (TypeAdapter + compress_schema + to_jsonable_python) for output schema regression testing
+- [Phase 32.1]: from_completion ignores catch_up unconditionally; derive_schedule extracted to rrule/schedule.py as single source of truth
 
 ### Pending Todos
 
@@ -83,5 +83,5 @@ Carried forward:
 ## Session Continuity
 
 Last activity: 2026-03-28
-Stopped at: Completed 32.1-01-PLAN.md
+Stopped at: Completed 32.1-02-PLAN.md
 Resume file: None
