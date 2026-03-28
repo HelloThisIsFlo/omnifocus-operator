@@ -44,7 +44,6 @@ def _build_patched_server(
     return FastMCP("omnifocus-operator", lifespan=_patched_lifespan)
 
 
-
 # ---------------------------------------------------------------------------
 # ARCH-01: Three-layer architecture (MCP tool -> Service -> Repository)
 # ---------------------------------------------------------------------------
@@ -128,7 +127,7 @@ class TestARCH02RepositoryInjection:
         server = create_server()
 
         async with Client(server) as client:
-            with pytest.raises(ToolError, match="(?i)failed to start") as exc_info:
+            with pytest.raises(ToolError, match=r"(?i)failed to start") as exc_info:
                 await client.call_tool("get_all")
             assert "OMNIFOCUS_SQLITE_PATH" in str(exc_info.value)
             assert "OMNIFOCUS_REPOSITORY=bridge-only" in str(exc_info.value)
@@ -439,7 +438,7 @@ class TestDegradedMode:
             server = create_server()
 
             async with Client(server) as client:
-                with pytest.raises(ToolError, match="(?i)failed to start"):
+                with pytest.raises(ToolError, match=r"(?i)failed to start"):
                     await client.call_tool("get_all")
 
     async def test_degraded_mode_logs_traceback_at_error_level(
@@ -711,9 +710,7 @@ class TestEditTasks:
 
     # -- Unknown field rejection (STRCT-01) --
 
-    async def test_edit_tasks_unknown_field_names_field(
-        self, client: Any
-    ) -> None:
+    async def test_edit_tasks_unknown_field_names_field(self, client: Any) -> None:
         """Server error message includes the unknown field name, not generic message."""
         with pytest.raises(ToolError, match="Unknown field 'bogusField'"):
             await client.call_tool(
@@ -809,9 +806,7 @@ class TestEditTasks:
     async def test_edit_tasks_move_to_project(self, client: Any) -> None:
         """Create task in inbox, move to project via edit."""
         # Create task in inbox (no parent)
-        add_result = await client.call_tool(
-            "add_tasks", {"items": [{"name": "Inbox task"}]}
-        )
+        add_result = await client.call_tool("add_tasks", {"items": [{"name": "Inbox task"}]})
         task_id = add_result.structured_content["result"][0]["id"]  # type: ignore[index]
 
         # Move to project
@@ -861,18 +856,14 @@ class TestEditTasks:
 
     # -- Full roundtrip freshness --
 
-    async def test_edit_tasks_then_get_all_reflects_change(
-        self, client: Any
-    ) -> None:
+    async def test_edit_tasks_then_get_all_reflects_change(self, client: Any) -> None:
         """After edit, get_all returns updated data."""
         # Create a task
-        add_result = await client.call_tool(
-            "add_tasks", {"items": [{"name": "Before edit"}]}
-        )
+        add_result = await client.call_tool("add_tasks", {"items": [{"name": "Before edit"}]})
         task_id = add_result.structured_content["result"][0]["id"]  # type: ignore[index]
 
         # Edit its name
-        edit_result = await client.call_tool(
+        await client.call_tool(
             "edit_tasks",
             {"items": [{"id": task_id, "name": "After edit"}]},
         )
@@ -902,23 +893,23 @@ class TestEditTasks:
 
     # -- Clean validation error messages --
 
-    async def test_edit_tasks_replace_plus_add_clean_error(
-        self, client: Any
-    ) -> None:
+    async def test_edit_tasks_replace_plus_add_clean_error(self, client: Any) -> None:
         """Pydantic error for tag mutual exclusion is clean (no type=/input/URL noise)."""
         with pytest.raises(ToolError, match="Cannot use 'replace'") as exc_info:
             await client.call_tool(
                 "edit_tasks",
-                {"items": [{"id": "task-001", "actions": {"tags": {"replace": ["a"], "add": ["b"]}}}]},
+                {
+                    "items": [
+                        {"id": "task-001", "actions": {"tags": {"replace": ["a"], "add": ["b"]}}}
+                    ]
+                },
             )
         text = str(exc_info.value)
         assert "type=" not in text
         assert "pydantic" not in text.lower()
         assert "input_value" not in text
 
-    async def test_edit_tasks_move_multiple_keys_clean_error(
-        self, client: Any
-    ) -> None:
+    async def test_edit_tasks_move_multiple_keys_clean_error(self, client: Any) -> None:
         """Pydantic error for move multi-key is clean (no type=/input/URL noise)."""
         with pytest.raises(ToolError, match="exactly one key") as exc_info:
             await client.call_tool(
@@ -951,9 +942,7 @@ class TestEditTasksLifecycle:
 
     async def test_edit_tasks_lifecycle_complete(self, client: Any) -> None:
         """lifecycle='complete' on a normal task returns success."""
-        add_result = await client.call_tool(
-            "add_tasks", {"items": [{"name": "To Complete"}]}
-        )
+        add_result = await client.call_tool("add_tasks", {"items": [{"name": "To Complete"}]})
         task_id = add_result.structured_content["result"][0]["id"]  # type: ignore[index]
 
         edit_result = await client.call_tool(
@@ -987,9 +976,7 @@ class TestEditTasksLifecycle:
 
     # -- Lifecycle: invalid value --
 
-    async def test_edit_tasks_lifecycle_invalid_clean_error(
-        self, client: Any
-    ) -> None:
+    async def test_edit_tasks_lifecycle_invalid_clean_error(self, client: Any) -> None:
         """lifecycle='invalid' returns clean error echoing the value, without Pydantic internals."""
         with pytest.raises(ToolError, match="must be 'complete' or 'drop'") as exc_info:
             await client.call_tool(
@@ -1017,9 +1004,7 @@ class TestEditTasksLifecycle:
             ),
         ],
     )
-    async def test_edit_tasks_lifecycle_complete_already_completed(
-        self, client: Any
-    ) -> None:
+    async def test_edit_tasks_lifecycle_complete_already_completed(self, client: Any) -> None:
         """Completing an already-completed task returns success with warning."""
         edit_result = await client.call_tool(
             "edit_tasks",

@@ -37,7 +37,9 @@ def _configure_logging() -> None:
     log_path = os.path.expanduser("~/Library/Logs/omnifocus-operator.log")
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
     file_handler = RotatingFileHandler(
-        log_path, maxBytes=5_000_000, backupCount=3,
+        log_path,
+        maxBytes=5_000_000,
+        backupCount=3,
     )
     file_handler.setFormatter(logging.Formatter(fmt))
     root.addHandler(file_handler)

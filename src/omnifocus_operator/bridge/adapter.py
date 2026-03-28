@@ -137,7 +137,9 @@ def _adapt_repetition_rule(raw: dict[str, Any]) -> None:
         raise ValueError(msg)
 
     schedule_mapped = _SCHEDULE_TYPE_MAP[schedule_type]
-    anchor_mapped = _ANCHOR_DATE_KEY_MAP.get(anchor_key_raw, "due_date") if anchor_key_raw else "due_date"
+    anchor_mapped = (
+        _ANCHOR_DATE_KEY_MAP.get(anchor_key_raw, "due_date") if anchor_key_raw else "due_date"
+    )
     catch_up = rule.get("catchUpAutomatically", False)
     rule_string = rule.get("ruleString", "")
 

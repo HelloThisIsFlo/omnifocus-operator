@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-import logging
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from fastmcp.server.middleware import Middleware, MiddlewareContext
+
+if TYPE_CHECKING:
+    import logging
 
 __all__ = ["ToolLoggingMiddleware"]
 
@@ -21,9 +23,7 @@ class ToolLoggingMiddleware(Middleware):
     def __init__(self, logger: logging.Logger) -> None:
         self._log = logger
 
-    async def on_call_tool(
-        self, context: MiddlewareContext, call_next: Any
-    ) -> Any:
+    async def on_call_tool(self, context: MiddlewareContext, call_next: Any) -> Any:
         tool_name = context.message.name
         args = context.message.arguments
         # D-04: Log full arguments at INFO on entry

@@ -104,9 +104,11 @@ async def test_logs_error_with_timing(
     ctx = _make_context("add_tasks")
     call_next = AsyncMock(side_effect=ValueError("something broke"))
 
-    with caplog.at_level(logging.INFO, logger="test.middleware"):
-        with pytest.raises(ValueError, match="something broke"):
-            await middleware.on_call_tool(ctx, call_next)
+    with (
+        caplog.at_level(logging.INFO, logger="test.middleware"),
+        pytest.raises(ValueError, match="something broke"),
+    ):
+        await middleware.on_call_tool(ctx, call_next)
 
     error_line = caplog.records[1].message
     assert "!!! add_tasks" in error_line
@@ -125,9 +127,11 @@ async def test_reraises_original_exception(
     original_error = RuntimeError("database connection lost")
     call_next = AsyncMock(side_effect=original_error)
 
-    with caplog.at_level(logging.INFO, logger="test.middleware"):
-        with pytest.raises(RuntimeError) as exc_info:
-            await middleware.on_call_tool(ctx, call_next)
+    with (
+        caplog.at_level(logging.INFO, logger="test.middleware"),
+        pytest.raises(RuntimeError) as exc_info,
+    ):
+        await middleware.on_call_tool(ctx, call_next)
 
     assert exc_info.value is original_error
 
