@@ -31,3 +31,8 @@ See @README.md for project overview.
 
 - **Refactoring phases**: UAT should focus on **developer experience**, not "does it still work" (tests cover that). Walk the developer through the result room by room — package layout, naming conventions, import patterns, boundary signatures. The question is "does this make sense to the person who'll maintain it?"
 - **Feature phases**: UAT should focus on **user-observable behavior** — does the feature work as expected from the agent's perspective?
+
+## Model Conventions
+
+- **Before creating any new Pydantic model**: Read `docs/architecture.md` naming taxonomy (search "Model Naming Taxonomy"). Models in `models/` must NOT use write-side suffixes (`Command`, `Result`, `RepoPayload`, `RepoResult`, `Action`, `Spec`). Models in `contracts/` must use one of those suffixes.
+- **After modifying any model that appears in tool output**: Run `uv run pytest tests/test_output_schema.py -x -q` to verify serialized output still validates against MCP outputSchema. This catches `@model_serializer` and `@field_serializer` additions that erase JSON Schema structure.

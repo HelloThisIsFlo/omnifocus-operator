@@ -7,6 +7,9 @@ erasing JSON Schema structure, and enforces models/ vs contracts/ naming rules.
 
 from __future__ import annotations
 
+import importlib
+import inspect
+import pkgutil
 from typing import Any
 
 import jsonschema
@@ -14,7 +17,7 @@ import pydantic_core
 import pytest
 from fastmcp.tools.function_parsing import _WrappedResult
 from fastmcp.utilities.json_schema import compress_schema
-from pydantic import TypeAdapter
+from pydantic import BaseModel, TypeAdapter
 
 from omnifocus_operator.contracts.use_cases.add_task import AddTaskResult
 from omnifocus_operator.contracts.use_cases.edit_task import EditTaskResult
@@ -362,3 +365,76 @@ class TestUnionRegressionGuard:
                     f"Tool '{tool_name}' has erased $defs entry '{def_name}' -- "
                     f"likely caused by @model_serializer returning dict[str, Any]"
                 )
+
+
+# ---------------------------------------------------------------------------
+# Naming convention enforcement (D-06, covers SC-4)
+# ---------------------------------------------------------------------------
+
+WRITE_SUFFIXES = ("Command", "Result", "RepoPayload", "RepoResult", "Action", "Spec")
+
+# models/ classes exempt from "no write-side suffix" check:
+# Private/internal base classes are already filtered by leading underscore.
+MODELS_EXEMPT: set[str] = {
+    "OmniFocusBaseModel",
+    "OmniFocusEntity",
+    "ActionableEntity",
+}
+
+# contracts/ classes exempt from "must have write-side suffix" check:
+CONTRACTS_EXEMPT: set[str] = {
+    "CommandModel",
+    "EditTaskActions",
+}
+
+
+def _scan_package_models(package_name: str) -> list[tuple[str, type]]:
+    """Discover all public Pydantic BaseModel subclasses in a package."""
+    pkg = importlib.import_module(package_name)
+    results: list[tuple[str, type]] = []
+    for _importer, modname, _ispkg in pkgutil.walk_packages(
+        pkg.__path__, prefix=f"{package_name}."
+    ):
+        mod = importlib.import_module(modname)
+        for name, obj in inspect.getmembers(mod, inspect.isclass):
+            if (
+                issubclass(obj, BaseModel)
+                and obj is not BaseModel
+                and obj.__module__ == modname
+                and not name.startswith("_")
+            ):
+                results.append((name, obj))
+    return results
+
+
+class TestNamingConvention:
+    """Programmatic enforcement of models/ vs contracts/ naming rules."""
+
+    def test_models_package_has_no_write_suffixes(self) -> None:
+        """No public class in models/ should end with a write-side suffix."""
+        models = _scan_package_models("omnifocus_operator.models")
+        violations = []
+        for name, _cls in models:
+            if name in MODELS_EXEMPT:
+                continue
+            if any(name.endswith(suffix) for suffix in WRITE_SUFFIXES):
+                violations.append(name)
+        assert not violations, (
+            f"models/ classes with write-side suffixes "
+            f"(see docs/architecture.md naming taxonomy): {violations}"
+        )
+
+    def test_contracts_package_uses_recognized_suffixes(self) -> None:
+        """Every public class in contracts/ must end with a recognized suffix."""
+        contracts = _scan_package_models("omnifocus_operator.contracts")
+        violations = []
+        for name, _cls in contracts:
+            if name in CONTRACTS_EXEMPT:
+                continue
+            if not any(name.endswith(suffix) for suffix in WRITE_SUFFIXES):
+                violations.append(name)
+        assert not violations, (
+            f"contracts/ classes missing recognized suffix "
+            f"(see docs/architecture.md naming taxonomy). "
+            f"Expected one of: {WRITE_SUFFIXES}. Violations: {violations}"
+        )
