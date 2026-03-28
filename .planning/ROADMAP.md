@@ -94,9 +94,9 @@
   2. All 8 frequency types (minutely, hourly, daily, weekly, monthly, monthly_day_of_week, monthly_day_in_month, yearly) parse correctly from real OmniFocus data
   3. Both SQLite and bridge read paths produce identical structured output for the same task (single `rrule/` module, no duplicated parsing logic)
   4. `parse_rrule` and `build_rrule` round-trip correctly -- parse a string, build it back, parse again, get the same structured result
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
-- [ ] 32-01-PLAN.md — RRULE parser/builder module + Pydantic frequency models
+- [x] 32-01-PLAN.md — RRULE parser/builder module + Pydantic frequency models
 - [ ] 32-02-PLAN.md — Model swap, read path wiring, test updates
 
 ### Phase 33: Write Model, Validation & Bridge
@@ -120,5 +120,5 @@ Plans:
 | 14-17 | v1.2 | 21/21 | Complete | 2026-03-16 |
 | 18-28 | v1.2.1 | 27/27 | Complete | 2026-03-23 |
 | 29-31 | v1.2.2 | 6/6 | Complete | 2026-03-26 |
-| 32. Read Model Rewrite | v1.2.3 | 0/2 | Not started | - |
+| 32. Read Model Rewrite | v1.2.3 | 1/2 | In Progress|  |
 | 33. Write Model, Validation & Bridge | v1.2.3 | 0/TBD | Not started | - |

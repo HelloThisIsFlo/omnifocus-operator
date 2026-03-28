@@ -9,10 +9,10 @@ Repetition Rule Write Support. Structured fields replace raw RRULE strings on bo
 
 ### Read Model (READ)
 
-- [ ] **READ-01**: RepetitionRule read model exposes structured frequency fields (type, interval, onDays, etc.) instead of ruleString
-- [ ] **READ-02**: All 8 frequency types correctly parsed from RRULE strings (minutely, hourly, daily, weekly, monthly, monthly_day_of_week, monthly_day_in_month, yearly)
+- [x] **READ-01**: RepetitionRule read model exposes structured frequency fields (type, interval, onDays, etc.) instead of ruleString
+- [x] **READ-02**: All 8 frequency types correctly parsed from RRULE strings (minutely, hourly, daily, weekly, monthly, monthly_day_of_week, monthly_day_in_month, yearly)
 - [ ] **READ-03**: Both SQLite and bridge read paths share a single rrule module for parsing (no duplicated logic)
-- [ ] **READ-04**: parse_rrule and build_rrule round-trip correctly for all frequency types
+- [x] **READ-04**: parse_rrule and build_rrule round-trip correctly for all frequency types
 
 ### Creation — add_tasks (ADD)
 
@@ -78,10 +78,10 @@ Repetition Rule Write Support. Structured fields replace raw RRULE strings on bo
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| READ-01 | Phase 32 | Pending |
-| READ-02 | Phase 32 | Pending |
+| READ-01 | Phase 32 | Complete |
+| READ-02 | Phase 32 | Complete |
 | READ-03 | Phase 32 | Pending |
-| READ-04 | Phase 32 | Pending |
+| READ-04 | Phase 32 | Complete |
 | ADD-01 | Phase 33 | Pending |
 | ADD-02 | Phase 33 | Pending |
 | ADD-03 | Phase 33 | Pending |
