@@ -5,7 +5,8 @@ Type hierarchy:
     +-- MinutelyFrequency   -- type="minutely"
     +-- HourlyFrequency     -- type="hourly"
     +-- DailyFrequency      -- type="daily"
-    +-- WeeklyFrequency     -- type="weekly", on_days
+    +-- WeeklyFrequency     -- type="weekly" (bare, no on_days)
+    +-- WeeklyOnDaysFrequency -- type="weekly_on_days", on_days (required)
     +-- MonthlyFrequency    -- type="monthly"
     +-- MonthlyDayOfWeekFrequency  -- type="monthly_day_of_week", on
     +-- MonthlyDayInMonthFrequency -- type="monthly_day_in_month", on_dates
@@ -41,7 +42,7 @@ class _FrequencyBase(OmniFocusBaseModel):
     interval: int = 1
 
 
-# -- 8 Frequency Subtypes ----------------------------------------------------
+# -- 9 Frequency Subtypes ----------------------------------------------------
 
 
 class MinutelyFrequency(_FrequencyBase):
@@ -58,7 +59,11 @@ class DailyFrequency(_FrequencyBase):
 
 class WeeklyFrequency(_FrequencyBase):
     type: Literal["weekly"] = "weekly"
-    on_days: list[str] | None = None  # serializes as onDays
+
+
+class WeeklyOnDaysFrequency(_FrequencyBase):
+    type: Literal["weekly_on_days"] = "weekly_on_days"
+    on_days: list[str]  # required, not optional
 
 
 class MonthlyFrequency(_FrequencyBase):
@@ -86,6 +91,7 @@ Frequency = Annotated[
     | HourlyFrequency
     | DailyFrequency
     | WeeklyFrequency
+    | WeeklyOnDaysFrequency
     | MonthlyFrequency
     | MonthlyDayOfWeekFrequency
     | MonthlyDayInMonthFrequency

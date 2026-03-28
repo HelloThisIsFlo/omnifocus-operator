@@ -22,6 +22,7 @@ from omnifocus_operator.models.repetition_rule import (
     RepetitionRule,
     Schedule,
     WeeklyFrequency,
+    WeeklyOnDaysFrequency,
     YearlyFrequency,
 )
 from omnifocus_operator.rrule import build_rrule, derive_schedule, parse_end_condition, parse_rrule
@@ -37,10 +38,10 @@ class TestFrequencyDiscriminatedUnion:
         result = ta.validate_python({"type": "daily"})
         assert isinstance(result, DailyFrequency)
 
-    def test_weekly_with_on_days_validates(self):
+    def test_weekly_on_days_validates(self):
         ta = TypeAdapter(Frequency)
-        result = ta.validate_python({"type": "weekly", "on_days": ["MO", "WE"]})
-        assert isinstance(result, WeeklyFrequency)
+        result = ta.validate_python({"type": "weekly_on_days", "on_days": ["MO", "WE"]})
+        assert isinstance(result, WeeklyOnDaysFrequency)
         assert result.on_days == ["MO", "WE"]
 
     def test_monthly_day_of_week_validates(self):
@@ -72,12 +73,13 @@ class TestFrequencySerialization:
         assert d["interval"] == 3
 
     def test_weekly_on_days_serializes_as_camel_case(self):
-        d = WeeklyFrequency(on_days=["MO"]).model_dump(by_alias=True)
-        assert d == {"type": "weekly", "interval": 1, "onDays": ["MO"]}
+        d = WeeklyOnDaysFrequency(on_days=["MO"]).model_dump(by_alias=True)
+        assert d == {"type": "weekly_on_days", "interval": 1, "onDays": ["MO"]}
 
-    def test_weekly_no_on_days_is_none(self):
+    def test_weekly_bare_has_no_on_days_field(self):
         d = WeeklyFrequency().model_dump(by_alias=True)
-        assert d["onDays"] is None
+        assert d == {"type": "weekly", "interval": 1}
+        assert "onDays" not in d
 
     def test_monthly_day_of_week_type_stays_snake_case(self):
         """Pitfall 5: type value is a Literal, NOT camelCased."""
@@ -104,6 +106,54 @@ class TestFrequencySerialization:
     def test_yearly_plain(self):
         d = YearlyFrequency().model_dump(by_alias=True)
         assert d == {"type": "yearly", "interval": 1}
+
+
+# ── Weekly Split (Gap Closure) ──────────────────────────────────────────
+
+
+class TestWeeklySplit:
+    """WeeklyFrequency (bare) vs WeeklyOnDaysFrequency (with days)."""
+
+    def test_bare_weekly_has_no_on_days_field(self):
+        """Critical regression test: bare weekly must NOT serialize onDays."""
+        d = WeeklyFrequency().model_dump(by_alias=True)
+        assert d == {"type": "weekly", "interval": 1}
+        assert "onDays" not in d
+
+    def test_weekly_on_days_serializes(self):
+        d = WeeklyOnDaysFrequency(on_days=["MO"]).model_dump(by_alias=True)
+        assert d == {"type": "weekly_on_days", "interval": 1, "onDays": ["MO"]}
+
+    def test_parse_bare_weekly(self):
+        result = parse_rrule("FREQ=WEEKLY")
+        assert isinstance(result, WeeklyFrequency)
+        assert not isinstance(result, WeeklyOnDaysFrequency)
+
+    def test_parse_weekly_with_byday(self):
+        result = parse_rrule("FREQ=WEEKLY;BYDAY=MO,WE")
+        assert isinstance(result, WeeklyOnDaysFrequency)
+        assert result.on_days == ["MO", "WE"]
+
+    def test_build_bare_weekly(self):
+        assert build_rrule(WeeklyFrequency()) == "FREQ=WEEKLY"
+
+    def test_build_weekly_on_days(self):
+        result = build_rrule(WeeklyOnDaysFrequency(on_days=["MO", "WE"]))
+        assert result == "FREQ=WEEKLY;BYDAY=MO,WE"
+
+    def test_round_trip_bare(self):
+        freq = parse_rrule("FREQ=WEEKLY")
+        rebuilt = build_rrule(freq)
+        assert rebuilt == "FREQ=WEEKLY"
+        re_parsed = parse_rrule(rebuilt)
+        assert re_parsed == freq
+
+    def test_round_trip_with_days(self):
+        freq = parse_rrule("FREQ=WEEKLY;BYDAY=MO,WE,FR")
+        rebuilt = build_rrule(freq)
+        assert rebuilt == "FREQ=WEEKLY;BYDAY=MO,WE,FR"
+        re_parsed = parse_rrule(rebuilt)
+        assert re_parsed == freq
 
 
 # ── End Condition Models ─────────────────────────────────────────────────
@@ -154,7 +204,7 @@ class TestRepetitionRuleModel:
 
     def test_no_end_serializes_as_none(self):
         rule = RepetitionRule(
-            frequency=WeeklyFrequency(on_days=["MO", "FR"]),
+            frequency=WeeklyOnDaysFrequency(on_days=["MO", "FR"]),
             schedule=Schedule.FROM_COMPLETION,
             based_on=BasedOn.DEFER_DATE,
         )
@@ -197,7 +247,7 @@ class TestParseRruleFrequencyTypes:
 
     def test_weekly_with_byday(self):
         result = parse_rrule("FREQ=WEEKLY;BYDAY=MO,WE,FR")
-        assert result == WeeklyFrequency(on_days=["MO", "WE", "FR"])
+        assert result == WeeklyOnDaysFrequency(on_days=["MO", "WE", "FR"])
 
     def test_monthly_plain(self):
         result = parse_rrule("FREQ=MONTHLY")
@@ -312,7 +362,7 @@ class TestBuildRrule:
         assert build_rrule(DailyFrequency(interval=3)) == "FREQ=DAILY;INTERVAL=3"
 
     def test_weekly_with_byday(self):
-        result = build_rrule(WeeklyFrequency(on_days=["MO", "WE", "FR"]))
+        result = build_rrule(WeeklyOnDaysFrequency(on_days=["MO", "WE", "FR"]))
         assert result == "FREQ=WEEKLY;BYDAY=MO,WE,FR"
 
     def test_weekly_bare(self):

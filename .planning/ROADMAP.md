@@ -81,7 +81,7 @@
 **Milestone Goal:** Enable agents to set, modify, and remove repetition rules on tasks via structured fields -- symmetric read/write model, no raw RRULE strings exposed. No new tools.
 
 - [x] **Phase 32: Read Model Rewrite** - Structured frequency fields replace ruleString on both read paths (completed 2026-03-28)
-- [ ] **Phase 32.1: Output Schema Validation Gap** - Add schema-vs-data validation tests ensuring serialized output conforms to advertised outputSchema (INSERTED) (gap closure in progress)
+- [ ] **Phase 32.1: Output Schema Validation Gap** - Add schema-vs-data validation tests ensuring serialized output conforms to advertised outputSchema (INSERTED)
 - [ ] **Phase 33: Write Model, Validation & Bridge** - add_tasks and edit_tasks support repetition rules with partial updates, type-change detection, and educational errors
 
 ## Phase Details
@@ -109,11 +109,11 @@ Plans:
   3. A regression guard asserts that no union type branch in tool outputs degrades to `{"type": "object", "additionalProperties": true}` -- catches future @model_serializer additions
   4. A naming convention test enforces that models/ has no write-side suffixes and contracts/ uses recognized suffixes -- per docs/architecture.md taxonomy
   5. CLAUDE.md contains rules directing agents to read the naming taxonomy before creating models and to run schema tests after modifying output models
-**Plans:** 3 plans (1 complete, 2 gap closure)
+**Plans**: 3/3 plans complete
 Plans:
-- [x] 32.1-01-PLAN.md — Schema validation tests, union regression guard, naming convention enforcement, CLAUDE.md rules
-- [ ] 32.1-02-PLAN.md — Fix from_completion + catchUpAutomatically=true crash, DRY _derive_schedule
-- [ ] 32.1-03-PLAN.md — Split WeeklyFrequency into bare + on_days variants, update schema tests for 9 branches
+- [x] 32.1-01-PLAN.md -- Schema-vs-data validation tests, union regression guard, naming convention enforcement
+- [x] 32.1-02-PLAN.md -- Extract derive_schedule to rrule/schedule.py, fix from_completion crash
+- [x] 32.1-03-PLAN.md -- WeeklyFrequency split: bare weekly + WeeklyOnDaysFrequency
 
 ### Phase 33: Write Model, Validation & Bridge
 **Goal**: Agents can create tasks with repetition rules, partially update existing rules (merge within type, clear, change type), and receive educational errors for invalid input -- all through existing `add_tasks` and `edit_tasks` tools
@@ -137,5 +137,5 @@ Plans:
 | 18-28 | v1.2.1 | 27/27 | Complete | 2026-03-23 |
 | 29-31 | v1.2.2 | 6/6 | Complete | 2026-03-26 |
 | 32. Read Model Rewrite | v1.2.3 | 2/2 | Complete    | 2026-03-28 |
-| 32.1 Output Schema Validation Gap | v1.2.3 | 2/3 | In progress | - |
+| 32.1 Output Schema Validation Gap | v1.2.3 | 3/3 | Complete | 2026-03-28 |
 | 33. Write Model, Validation & Bridge | v1.2.3 | 0/TBD | Not started | - |

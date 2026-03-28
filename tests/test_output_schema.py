@@ -87,9 +87,15 @@ def _make_repetition_rule_dict(variant: str) -> dict[str, Any]:
             "basedOn": "due_date",
             "end": None,
         },
+        "weekly_bare": {
+            "frequency": {"type": "weekly", "interval": 1},
+            "schedule": "regularly",
+            "basedOn": "due_date",
+            "end": None,
+        },
         "weekly_with_days": {
             "frequency": {
-                "type": "weekly",
+                "type": "weekly_on_days",
                 "interval": 1,
                 "onDays": ["MO", "WE", "FR"],
             },
@@ -131,6 +137,13 @@ _TASK_DAILY = Task.model_validate(
         id="task-daily",
         name="Daily Task",
         repetitionRule=_make_repetition_rule_dict("daily"),
+    )
+)
+_TASK_WEEKLY_BARE = Task.model_validate(
+    make_model_task_dict(
+        id="task-weekly-bare",
+        name="Weekly Bare Task",
+        repetitionRule=_make_repetition_rule_dict("weekly_bare"),
     )
 )
 _TASK_WEEKLY = Task.model_validate(
@@ -178,6 +191,11 @@ _SNAPSHOT = AllEntities.model_validate(
                 id="task-daily",
                 name="Daily Task",
                 repetitionRule=_make_repetition_rule_dict("daily"),
+            ),
+            make_model_task_dict(
+                id="task-weekly-bare",
+                name="Weekly Bare Task",
+                repetitionRule=_make_repetition_rule_dict("weekly_bare"),
             ),
             make_model_task_dict(
                 id="task-weekly",
@@ -254,7 +272,7 @@ class TestSchemaValidation:
 
     @pytest.mark.parametrize(
         "variant",
-        ["daily", "weekly_with_days", "monthly_day_of_week", "monthly_day_in_month"],
+        ["daily", "weekly_bare", "weekly_with_days", "monthly_day_of_week", "monthly_day_in_month"],
     )
     def test_repetition_rule_variants_validate(self, variant: str) -> None:
         """Each frequency type validates when serialized inside an AllEntities snapshot."""
@@ -311,7 +329,7 @@ class TestUnionRegressionGuard:
         schema = TypeAdapter(Frequency).json_schema(mode="serialization")
         defs = schema.get("$defs", {})
 
-        assert len(defs) == 8, f"Expected 8 $defs branches, got {len(defs)}: {list(defs)}"
+        assert len(defs) == 9, f"Expected 9 $defs branches, got {len(defs)}: {list(defs)}"
 
         for name, branch in defs.items():
             assert "properties" in branch, (
