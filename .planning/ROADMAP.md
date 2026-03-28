@@ -82,7 +82,7 @@
 
 - [x] **Phase 32: Read Model Rewrite** - Structured frequency fields replace ruleString on both read paths (completed 2026-03-28)
 - [x] **Phase 32.1: Output Schema Validation Gap** - Add schema-vs-data validation tests ensuring serialized output conforms to advertised outputSchema (INSERTED) (completed 2026-03-28)
-- [ ] **Phase 33: Write Model, Validation & Bridge** - add_tasks and edit_tasks support repetition rules with partial updates, type-change detection, and educational errors
+- [x] **Phase 33: Write Model, Validation & Bridge** - add_tasks and edit_tasks support repetition rules with partial updates, type-change detection, and educational errors (completed 2026-03-28)
 
 ## Phase Details
 
@@ -129,7 +129,7 @@ Plans:
 Plans:
 - [x] 33-01-PLAN.md — Contracts (specs, repo payload), inverse mappings, validation functions, agent messages
 - [x] 33-02-PLAN.md — Service pipeline (payload builder, domain logic, pipeline steps, InMemoryBridge)
-- [ ] 33-03-PLAN.md — Bridge JS, tool descriptions, server error handling, output schema validation
+- [x] 33-03-PLAN.md — Bridge JS, tool descriptions, server error handling, output schema validation
 
 ## Progress
 
@@ -142,4 +142,4 @@ Plans:
 | 29-31 | v1.2.2 | 6/6 | Complete | 2026-03-26 |
 | 32. Read Model Rewrite | v1.2.3 | 2/2 | Complete    | 2026-03-28 |
 | 32.1 Output Schema Validation Gap | v1.2.3 | 3/3 | Complete    | 2026-03-28 |
-| 33. Write Model, Validation & Bridge | v1.2.3 | 2/3 | In Progress|  |
+| 33. Write Model, Validation & Bridge | v1.2.3 | 3/3 | Complete   | 2026-03-28 |

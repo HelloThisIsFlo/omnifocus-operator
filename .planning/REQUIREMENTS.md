@@ -55,7 +55,7 @@ Repetition Rule Write Support. Structured fields replace raw RRULE strings on bo
 - [x] **VALID-01**: Pydantic rejects invalid structures: missing required fields, bad enum values, end with != 1 key
 - [x] **VALID-02**: Type-specific constraints: reject fields that don't belong to frequency type (e.g., onDays on daily), valid ranges (interval >= 1, valid day codes MO-SU, valid ordinals first/second/third/fourth/fifth/last, dayOfMonth -1 to 31 excluding 0, end.occurrences >= 1)
 - [x] **VALID-03**: Educational error messages consistent with existing agent_messages patterns
-- [ ] **VALID-04**: Tool descriptions document schema clearly enough for an LLM to construct valid repetition rules
+- [x] **VALID-04**: Tool descriptions document schema clearly enough for an LLM to construct valid repetition rules
 - [x] **VALID-05**: End date in the past triggers warning (same style as existing "completed task" warnings)
 
 ## Deferred
@@ -115,7 +115,7 @@ Repetition Rule Write Support. Structured fields replace raw RRULE strings on bo
 | VALID-01 | Phase 33 | Complete |
 | VALID-02 | Phase 33 | Complete |
 | VALID-03 | Phase 33 | Complete |
-| VALID-04 | Phase 33 | Pending |
+| VALID-04 | Phase 33 | Complete |
 | VALID-05 | Phase 33 | Complete |
 
 **Coverage:**

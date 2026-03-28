@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2.3
 milestone_name: Repetition Rule Write Support
 status: executing
-stopped_at: Completed 33-01-PLAN.md and 33-02-PLAN.md (merged from parallel worktrees)
-last_updated: "2026-03-28T21:48:32.341Z"
+stopped_at: Completed 33-03-PLAN.md
+last_updated: "2026-03-28T22:15:26.579Z"
 last_activity: 2026-03-28
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 8
-  completed_plans: 6
+  completed_plans: 7
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 ## Current Position
 
 Phase: 33 (write-model-validation-bridge) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-03-28
 
@@ -54,6 +54,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 32.1 P03 | 7min | 2 tasks | 7 files |
 | Phase 33 P01 | 9min | 2 tasks | 12 files |
 | Phase 33 P02 | 15min | 3 tasks | 15 files |
+| Phase 33 P03 | 10min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,8 @@ Recent decisions affecting current work:
 - [Phase 33]: Same-type frequency merge uses model_fields_set overlay -- existing dict + submitted explicitly-set fields
 - [Phase 33]: Edit path validates merged result via synthetic RepetitionRuleAddSpec
 - [Phase 33]: No-op detection rebuilds bridge-format from existing RepetitionRule model for comparison
+- [Phase 33]: Extracted _format_validation_errors as shared helper -- deduplicated add_tasks/edit_tasks error handling
+- [Phase 33]: REPETITION_INVALID_FREQUENCY_TYPE constant for server-level discriminator error formatting
 
 ### Pending Todos
 
@@ -101,5 +104,5 @@ Carried forward:
 ## Session Continuity
 
 Last activity: 2026-03-28 - Completed quick task 260328-sh9: Fix BYSETPOS repetition rule parsing bug
-Stopped at: Completed 33-01-PLAN.md and 33-02-PLAN.md (merged from parallel worktrees)
+Stopped at: Completed 33-03-PLAN.md
 Resume file: None
