@@ -120,5 +120,5 @@ Plans:
 | 14-17 | v1.2 | 21/21 | Complete | 2026-03-16 |
 | 18-28 | v1.2.1 | 27/27 | Complete | 2026-03-23 |
 | 29-31 | v1.2.2 | 6/6 | Complete | 2026-03-26 |
-| 32. Read Model Rewrite | v1.2.3 | 2/2 | Complete   | 2026-03-28 |
+| 32. Read Model Rewrite | v1.2.3 | 2/2 | Complete    | 2026-03-28 |
 | 33. Write Model, Validation & Bridge | v1.2.3 | 0/TBD | Not started | - |
