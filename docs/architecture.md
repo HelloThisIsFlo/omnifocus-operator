@@ -284,7 +284,7 @@ Write-side models follow a CQRS/DDD-inspired naming convention. Every model's na
 | Suffix | Role | When to use | Examples |
 |--------|------|-------------|---------|
 | `___Action` | Stateful mutation in the actions block | Nested operation that mutates relative to current state | `TagAction`, `MoveAction` |
-| `___Spec` | Write-side value object (desired state) | Nested setter with different shape from its read counterpart (e.g. partial update semantics) | `RepetitionRuleSpec` (future) |
+| `___Spec` | Write-side value object (desired state) | Nested setter with different shape from its read counterpart | `RepetitionRuleAddSpec`, `RepetitionRuleEditSpec` |
 
 #### Read-side models
 
@@ -294,12 +294,14 @@ Write-side models follow a CQRS/DDD-inspired naming convention. Every model's na
 
 #### Naming rules
 
-- **Verb-first** for all write-side models: `AddTask___`, `EditTask___` (not `TaskAdd___`)
+- **Verb-first** for top-level write-side models: `AddTask___`, `EditTask___` (not `TaskAdd___`)
 - **Write-side verb matches tool verb**: tool is `add_tasks` → models are `AddTask*`; tool is `edit_tasks` → models are `EditTask*`
 - **Noun-only** for read entities: `Task`, `Project`, `Tag` (no verb, no suffix)
 - **Value objects** within commands are suffix-free when unambiguous (`TagAction`, `MoveAction`), or use `___Spec` when a read-side model of the same name exists with a different shape
 - **Base class**: `CommandModel` — all command-layer models inherit this (`extra="forbid"`, strict validation)
 - **Repo qualifier**: Both inbound and outbound models at the repository boundary use `Repo` prefix for symmetry and clarity
+- **Noun-first for nested specs**: When a nested value object needs a verb qualifier (different shapes per use case), the domain noun leads: `RepetitionRuleAddSpec`, `RepetitionRuleEditSpec` (not `AddRepetitionRuleSpec`). Top-level models are verb-first (`AddTaskCommand`); nested specs are noun-first because they represent the THING in different contexts, not different actions.
+- **Verb qualifier only when needed**: If a spec has the same shape for both add and edit, use plain `___Spec` (no verb). Only add `Add`/`Edit` qualifier when shapes diverge (e.g., all-required vs patchable fields).
 
 #### Decision tree for naming a new write-side model
 
@@ -308,13 +310,15 @@ Write-side models follow a CQRS/DDD-inspired naming convention. Every model's na
 3. Is it a stateful operation inside the actions block? → `___Action`
 4. Is it a complex nested value object (setter, not a mutation)?
    - Same shape as read side → no suffix (shared model)
-   - Different shape from read side (e.g. partial update optionality) → `___Spec`
+   - Different shape from read side → `___Spec`
+     - Same shape across add/edit → `NounSpec` (e.g., `RepetitionRuleSpec`)
+     - Different shapes per use case → `NounVerbSpec` (e.g., `RepetitionRuleAddSpec` for all-required, `RepetitionRuleEditSpec` for patchable fields)
 5. Is it the confirmation from the repository? → `___RepoResult`
 6. Is it the enriched outcome returned to the agent? → `___Result`
 
 #### Ubiquitous language
 
-> "The agent sends a **command**. The service validates, resolves, and builds a **repo payload**. The repository forwards to the bridge and returns a **repo result**. The service enriches this into a **result** for the agent. Within a command, **actions** mutate state; **specs** describe desired state for complex nested objects."
+> "The agent sends a **command**. The service validates, resolves, and builds a **repo payload**. The repository forwards to the bridge and returns a **repo result**. The service enriches this into a **result** for the agent. Within a command, **actions** mutate state; **specs** describe desired state for complex nested objects. When a spec needs different shapes per use case, the domain noun leads with a verb qualifier: RepetitionRuleAddSpec (creation shape) vs RepetitionRuleEditSpec (partial update shape)."
 
 ## Dumb Bridge, Smart Python
 
@@ -479,7 +483,7 @@ All agent-facing text — warnings and errors — is centralized in `agent_messa
 
 ## Repetition Rule: Structured Fields, Not RRULE Strings
 
-> **Status:** Not yet implemented. The current read model still exposes raw `rule_string`, `schedule_type`, and `anchor_date_key` fields. This section describes the target architecture.
+> **Status:** Read model implemented (v1.2.3) — `RepetitionRule` with structured `Frequency` types and `parse_rrule()`. Write model in progress (v1.2.3).
 
 Agents never see RRULE strings. The read and write models expose repetition as structured, type-discriminated fields. The RRULE string is an internal serialization detail between the service layer and the bridge.
 
