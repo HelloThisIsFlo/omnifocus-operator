@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2.3
 milestone_name: Repetition Rule Write Support
 status: executing
-stopped_at: Phase 33 context gathered
-last_updated: "2026-03-28T19:15:39.017Z"
+stopped_at: Completed 33-02-PLAN.md
+last_updated: "2026-03-28T21:48:32.341Z"
 last_activity: 2026-03-28
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 8
+  completed_plans: 6
   percent: 0
 ---
 
@@ -52,6 +52,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 32.1 P01 | 5min | 2 tasks | 4 files |
 | Phase 32.1 P02 | 3min | 2 tasks | 6 files |
 | Phase 32.1 P03 | 7min | 2 tasks | 7 files |
+| Phase 33 P02 | 15min | 3 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,9 @@ Recent decisions affecting current work:
 - [Phase 32.1]: jsonschema.validate with FastMCP's exact pipeline (TypeAdapter + compress_schema + to_jsonable_python) for output schema regression testing
 - [Phase 32.1]: from_completion ignores catch_up unconditionally; derive_schedule extracted to rrule/schedule.py as single source of truth
 - [Phase 32.1]: WeeklyOnDaysFrequency uses type='weekly_on_days' as discriminator, on_days is required (follows monthly split pattern)
+- [Phase 33]: Same-type frequency merge uses model_fields_set overlay -- existing dict + submitted explicitly-set fields
+- [Phase 33]: Edit path validates merged result via synthetic RepetitionRuleAddSpec
+- [Phase 33]: No-op detection rebuilds bridge-format from existing RepetitionRule model for comparison
 
 ### Pending Todos
 
@@ -95,5 +99,5 @@ Carried forward:
 ## Session Continuity
 
 Last activity: 2026-03-28 - Completed quick task 260328-sh9: Fix BYSETPOS repetition rule parsing bug
-Stopped at: Phase 33 context gathered
-Resume file: .planning/phases/33-write-model-validation-bridge/33-CONTEXT.md
+Stopped at: Completed 33-02-PLAN.md
+Resume file: None
