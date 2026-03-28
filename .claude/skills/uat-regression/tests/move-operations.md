@@ -38,15 +38,15 @@ UAT-MoveOps-Alt (second parent, in inbox, no children)
 
 Create parents first, then level-1 children (can be parallel), then T2a (needs T2 to exist first). Store all IDs.
 
-### Manual Actions
+### Automated Setup Actions
 
-Ask the user to:
-1. **Complete** T3-CompletedMove (check it off in OmniFocus)
-2. **Drop** T4-DroppedMove (right-click > Drop)
+After creating all tasks, run these lifecycle actions:
+1. `edit_tasks` on T3-CompletedMove: `actions: { lifecycle: "complete" }`
+2. `edit_tasks` on T4-DroppedMove: `actions: { lifecycle: "drop" }`
 
-Tell them: "Please complete T3-CompletedMove and drop T4-DroppedMove in OmniFocus. Let me know when done."
+Verify T3 shows `availability: "completed"` and T4 shows `availability: "dropped"` via `get_task`.
 
-Wait for confirmation before proceeding. Then tell them: "Running all tests now. I'll report results when done."
+Then tell the user: "Setup complete. Running all tests now. I'll report results when done."
 
 ## Tests
 

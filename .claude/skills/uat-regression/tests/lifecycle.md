@@ -29,16 +29,16 @@ UAT-Lifecycle (parent)
 
 Create the parent first, then all children (can be parallel). Store all IDs.
 
-### Manual Actions
+### Automated Setup Actions
 
-Ask the user to:
-1. **Drop** T3-CrossStateA (right-click > Drop)
-2. **Complete** T4-CrossStateB (check it off)
-3. **Add a repeat rule** to T5-Repeating (e.g., "Repeat every week" — any rule works)
+After creating all tasks, run these setup actions:
+1. `edit_tasks` on T3-CrossStateA: `actions: { lifecycle: "drop" }`
+2. `edit_tasks` on T4-CrossStateB: `actions: { lifecycle: "complete" }`
+3. `edit_tasks` on T5-Repeating: `repetitionRule: { frequency: { type: "weekly" }, schedule: "regularly", basedOn: "due_date" }`, `dueDate: "2026-06-15T12:00:00Z"`
 
-Tell them: "Please drop T3-CrossStateA, complete T4-CrossStateB, and add any repeat rule to T5-Repeating in OmniFocus. Let me know when done."
+Verify T3 shows `availability: "dropped"`, T4 shows `availability: "completed"`, and T5 has a `repetitionRule` via `get_task`.
 
-Wait for confirmation before proceeding. Then tell them: "Running all tests now. I'll report results when done."
+Then tell the user: "Setup complete. Running all tests now. I'll report results when done."
 
 ## Tests
 

@@ -26,15 +26,15 @@ UAT-EditOps (parent)
 
 Create the parent first, then all children (can be parallel). Store all IDs.
 
-### Manual Actions
+### Automated Setup Actions
 
-Ask the user to:
-1. **Complete** T4-StatusComplete (check it off in OmniFocus)
-2. **Drop** T5-StatusDrop (right-click > Drop)
+After creating all tasks, run these lifecycle actions:
+1. `edit_tasks` on T4-StatusComplete: `actions: { lifecycle: "complete" }`
+2. `edit_tasks` on T5-StatusDrop: `actions: { lifecycle: "drop" }`
 
-Tell them: "Please complete T4-StatusComplete and drop T5-StatusDrop in OmniFocus. Let me know when done."
+Verify T4 shows `availability: "completed"` and T5 shows `availability: "dropped"` via `get_task`.
 
-Wait for confirmation before proceeding to tests. Then tell them: "Running all tests now. I'll report results when done."
+Then tell the user: "Setup complete. Running all tests now. I'll report results when done."
 
 ## Tests
 
