@@ -28,6 +28,7 @@ from __future__ import annotations
 from typing import Annotated, Any, Literal
 
 from pydantic import Field, model_serializer
+from pydantic.alias_generators import to_camel
 
 from omnifocus_operator.models.base import OmniFocusBaseModel
 from omnifocus_operator.models.enums import BasedOn, Schedule
@@ -58,8 +59,6 @@ class _FrequencyBase(OmniFocusBaseModel):
             # Use alias if available
             alias = field_info.alias
             if alias is None and self.model_config.get("alias_generator"):
-                from pydantic.alias_generators import to_camel
-
                 alias = to_camel(field_name)
             key = alias if alias else field_name
             d[key] = value
