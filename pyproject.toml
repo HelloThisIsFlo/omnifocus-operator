@@ -24,6 +24,7 @@ dev = [
     "pytest-cov>=7.0.0",
     "pytest-timeout>=2.4.0",
     "pre-commit>=4.0.0",
+    "jsonschema>=4.23.0",
 ]
 
 [tool.pytest.ini_options]
