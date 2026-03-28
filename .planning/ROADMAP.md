@@ -125,12 +125,13 @@ Plans:
   3. Agent can clear a repetition rule by sending `repetitionRule: null` and can change frequency type by providing a complete new frequency object -- type change with incomplete frequency produces a clear error explaining what's needed
   4. Invalid input (bad enum values, cross-type fields like `onDays` on daily, out-of-range values) is rejected with educational error messages consistent with existing `agent_messages` patterns
   5. Tool descriptions for `add_tasks` and `edit_tasks` document the repetition rule schema clearly enough for an LLM to construct valid rules without external documentation
-**Plans**: 4 plans
+**Plans**: 5 plans
 Plans:
 - [x] 33-01-PLAN.md — Contracts (specs, repo payload), inverse mappings, validation functions, agent messages
 - [x] 33-02-PLAN.md — Service pipeline (payload builder, domain logic, pipeline steps, InMemoryBridge)
 - [x] 33-03-PLAN.md — Bridge JS, tool descriptions, server error handling, output schema validation
 - [x] 33-04-PLAN.md — Gap closure: remove scaffolding, dead code, extract validate.py inline strings
+- [ ] 33-05-PLAN.md — Gap closure: fix multi-value BYMONTHDAY + no-op warning suppression
 
 ## Progress
 
@@ -143,4 +144,4 @@ Plans:
 | 29-31 | v1.2.2 | 6/6 | Complete | 2026-03-26 |
 | 32. Read Model Rewrite | v1.2.3 | 2/2 | Complete    | 2026-03-28 |
 | 32.1 Output Schema Validation Gap | v1.2.3 | 3/3 | Complete    | 2026-03-28 |
-| 33. Write Model, Validation & Bridge | v1.2.3 | 4/4 | Complete   | 2026-03-28 |
+| 33. Write Model, Validation & Bridge | v1.2.3 | 4/5 | In Progress | |
