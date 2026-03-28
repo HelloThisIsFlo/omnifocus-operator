@@ -1117,8 +1117,8 @@ class TestSerializationSchema:
         schema = TypeAdapter(Frequency).json_schema(mode="serialization")
         defs = schema.get("$defs", {})
 
-        # There should be definition entries for the 8 frequency subtypes
-        assert len(defs) == 8, f"Expected 8 $defs branches, got {len(defs)}: {list(defs)}"
+        # There should be definition entries for the 9 frequency subtypes
+        assert len(defs) == 9, f"Expected 9 $defs branches, got {len(defs)}: {list(defs)}"
 
         for name, branch in defs.items():
             # Each branch must have a 'properties' key — not just {"type": "object"}

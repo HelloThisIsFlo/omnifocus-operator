@@ -15,7 +15,7 @@ from omnifocus_operator.bridge.adapter import adapt_snapshot
 from omnifocus_operator.models.repetition_rule import (
     DailyFrequency,
     EndByOccurrences,
-    WeeklyFrequency,
+    WeeklyOnDaysFrequency,
 )
 
 
@@ -441,7 +441,7 @@ class TestAdaptRepetitionRule:
         snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
         adapt_snapshot(snapshot)
         rule = raw["repetitionRule"]
-        assert rule["frequency"] == WeeklyFrequency(on_days=["MO", "WE", "FR"])
+        assert rule["frequency"] == WeeklyOnDaysFrequency(on_days=["MO", "WE", "FR"])
         assert rule["schedule"] == "regularly_with_catch_up"
         assert rule["basedOn"] == "defer_date"
 
