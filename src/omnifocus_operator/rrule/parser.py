@@ -256,12 +256,17 @@ def _parse_monthly_bymonthday(
     bymonthday_value: str,
     interval: int,
 ) -> MonthlyDayInMonthFrequency:
-    """Parse BYMONTHDAY for monthly_day_in_month frequency."""
+    """Parse BYMONTHDAY for monthly_day_in_month frequency.
+
+    Supports comma-separated values per RFC 5545 (e.g., "1,15,-1").
+    """
     try:
-        day = int(bymonthday_value)
+        days = [int(d) for d in bymonthday_value.split(",")]
     except ValueError as err:
-        raise ValueError(f"BYMONTHDAY must be an integer, got {bymonthday_value!r}") from err
-    return MonthlyDayInMonthFrequency(interval=interval, on_dates=[day])
+        raise ValueError(
+            f"BYMONTHDAY values must be integers (comma-separated), got {bymonthday_value!r}"
+        ) from err
+    return MonthlyDayInMonthFrequency(interval=interval, on_dates=days)
 
 
 def _convert_until_to_iso(raw: str) -> str:
