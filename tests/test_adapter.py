@@ -462,6 +462,22 @@ class TestAdaptRepetitionRule:
         assert rule["schedule"] == "from_completion"
         assert rule["basedOn"] == "defer_date"
 
+    def test_from_completion_with_catch_up_true(self) -> None:
+        """FromCompletion + catchUp=true must NOT crash -- catch_up is irrelevant."""
+        raw = _old_task(
+            repetitionRule={
+                "ruleString": "FREQ=DAILY;INTERVAL=3",
+                "scheduleType": "FromCompletion",
+                "anchorDateKey": "DeferDate",
+                "catchUpAutomatically": True,
+            }
+        )
+        snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        rule = raw["repetitionRule"]
+        assert rule["schedule"] == "from_completion"
+        assert rule["frequency"] == DailyFrequency(interval=3)
+
     def test_end_condition_parsed(self) -> None:
         """RRULE with COUNT produces end condition in output."""
         raw = _old_task(
