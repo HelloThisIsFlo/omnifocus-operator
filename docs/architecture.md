@@ -55,7 +55,7 @@ omnifocus_operator/
         errors.py        -- Centralized error message constants
 ```
 
-**Split principle:** `models/` = what OmniFocus IS (domain entities). `contracts/` = what you can DO (operations, boundaries). Everything else = how it's done (implementations).
+**Split principle:** `models/` = what OmniFocus IS (domain entities, `OmniFocusBaseModel`). `contracts/` = what you can DO (operations, boundaries, `CommandModel` with `extra="forbid"`). Everything else = how it's done (implementations). Never embed a `models/` class directly in a `contracts/` command — the base class difference (`extra="forbid"`) means write-side models always need their own class, even with identical fields.
 
 ## Dependency Direction
 
@@ -297,7 +297,7 @@ Write-side models follow a CQRS/DDD-inspired naming convention. Every model's na
 - **Verb-first** for top-level write-side models: `AddTask___`, `EditTask___` (not `TaskAdd___`)
 - **Write-side verb matches tool verb**: tool is `add_tasks` → models are `AddTask*`; tool is `edit_tasks` → models are `EditTask*`
 - **Noun-only** for read entities: `Task`, `Project`, `Tag` (no verb, no suffix)
-- **Value objects** within commands are suffix-free when unambiguous (`TagAction`, `MoveAction`), or use `___Spec` when a read-side model of the same name exists with a different shape
+- **Value objects** within commands are suffix-free when unambiguous (`TagAction`, `MoveAction`), or use `___Spec` when a read-side model of the same name exists. All value objects live in `contracts/` and inherit `CommandModel` — never reuse a read model from `models/` directly in a command
 - **Base class**: `CommandModel` — all command-layer models inherit this (`extra="forbid"`, strict validation)
 - **Repo qualifier**: Both inbound and outbound models at the repository boundary use `Repo` prefix for symmetry and clarity
 - **Noun-first for nested specs**: When a nested value object needs a verb qualifier (different shapes per use case), the domain noun leads: `RepetitionRuleAddSpec`, `RepetitionRuleEditSpec` (not `AddRepetitionRuleSpec`). Top-level models are verb-first (`AddTaskCommand`); nested specs are noun-first because they represent the THING in different contexts, not different actions.
