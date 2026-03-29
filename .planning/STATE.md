@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.2.3
 milestone_name: Repetition Rule Write Support
 status: executing
-stopped_at: Completed 33.1-01-PLAN.md
-last_updated: "2026-03-29T12:47:40.041Z"
+stopped_at: Completed 33.1-02-PLAN.md
+last_updated: "2026-03-29T13:15:36.816Z"
 last_activity: 2026-03-29
 progress:
   total_phases: 4
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 ## Current Position
 
 Phase: 33.1 (refactor-frequency-to-flat-model-with-type-optional-edits) — EXECUTING
-Plan: 1 of 3
-Status: Completed 33.1-01-PLAN.md
+Plan: 2 of 3
+Status: Completed 33.1-02-PLAN.md
 Last activity: 2026-03-29
 
 Progress: [░░░░░░░░░░] 0%
@@ -58,6 +58,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 33 P04 | 2min | 1 task | 5 files |
 | Phase 33 P05 | 5min | 2 tasks | 5 files |
 | Phase 33.1 P01 | 7min | 2 tasks | 9 files |
+| Phase 33.1 P02 | 24min | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,8 @@ Recent decisions affecting current work:
 - [Phase 33]: Inline no-op comparison in _apply_repetition_rule rather than extracting to domain
 - [Phase 33.1]: Shared validation constants (_VALID_DAY_CODES etc.) in models, imported by contracts -- avoids duplication
 - [Phase 33.1]: @field_serializer on RepetitionRule.frequency (parent model) for interval=1 suppression -- avoids schema erasure
+- [Phase 33.1]: auto_clear_monthly_mutual_exclusion operates on merged dict before Frequency.model_validate() to avoid validator rejection
+- [Phase 33.1]: FrequencyEditSpec is pure patch container (no validators), validation fires on Frequency construction from merged result
 
 ### Pending Todos
 
@@ -115,5 +118,5 @@ Carried forward:
 ## Session Continuity
 
 Last activity: 2026-03-28 - Completed Phase 33 Plan 04: gap closure cleanup
-Stopped at: Completed 33.1-01-PLAN.md
+Stopped at: Completed 33.1-02-PLAN.md
 Resume file: None

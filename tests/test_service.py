@@ -24,22 +24,16 @@ from omnifocus_operator.contracts.use_cases.edit_task import (
     EditTaskCommand,
 )
 from omnifocus_operator.contracts.use_cases.repetition_rule import (
+    FrequencyAddSpec,
+    FrequencyEditSpec,
     RepetitionRuleAddSpec,
     RepetitionRuleEditSpec,
 )
 from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
-    DailyFrequency,
     EndByDate,
     EndByOccurrences,
-    HourlyFrequency,
-    MinutelyFrequency,
-    MonthlyDayInMonthFrequency,
-    MonthlyDayOfWeekFrequency,
-    MonthlyFrequency,
-    WeeklyFrequency,
-    WeeklyOnDaysFrequency,
-    YearlyFrequency,
+    Frequency,
 )
 from omnifocus_operator.service import ErrorOperatorService, OperatorService
 from tests.doubles import ConstantMtimeSource
@@ -303,7 +297,7 @@ class TestAddTaskRepetitionRule:
     async def test_daily_basic(self, service: OperatorService, repo: BridgeRepository) -> None:
         """ADD-01: Daily frequency with all root fields -> success."""
         spec = RepetitionRuleAddSpec(
-            frequency=DailyFrequency(),
+            frequency=FrequencyAddSpec(type="daily"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
         )
@@ -316,18 +310,18 @@ class TestAddTaskRepetitionRule:
         assert task.repetition_rule is not None
         assert task.repetition_rule.frequency.type == "daily"
 
-    async def test_all_9_frequency_types(self, service: OperatorService) -> None:
-        """ADD-02: All 9 frequency types succeed."""
+    async def test_all_6_frequency_types(self, service: OperatorService) -> None:
+        """ADD-02: All 6 frequency types succeed."""
         frequencies = [
-            MinutelyFrequency(),
-            HourlyFrequency(),
-            DailyFrequency(),
-            WeeklyFrequency(),
-            WeeklyOnDaysFrequency(on_days=["MO", "FR"]),
-            MonthlyFrequency(),
-            MonthlyDayOfWeekFrequency(on={"second": "tuesday"}),
-            MonthlyDayInMonthFrequency(on_dates=[1, 15]),
-            YearlyFrequency(),
+            FrequencyAddSpec(type="minutely"),
+            FrequencyAddSpec(type="hourly"),
+            FrequencyAddSpec(type="daily"),
+            FrequencyAddSpec(type="weekly"),
+            FrequencyAddSpec(type="weekly", on_days=["MO", "FR"]),
+            FrequencyAddSpec(type="monthly"),
+            FrequencyAddSpec(type="monthly", on={"second": "tuesday"}),
+            FrequencyAddSpec(type="monthly", on_dates=[1, 15]),
+            FrequencyAddSpec(type="yearly"),
         ]
         for freq in frequencies:
             spec = RepetitionRuleAddSpec(
@@ -343,7 +337,7 @@ class TestAddTaskRepetitionRule:
     async def test_interval(self, service: OperatorService, repo: BridgeRepository) -> None:
         """ADD-03: Custom interval preserved."""
         spec = RepetitionRuleAddSpec(
-            frequency=DailyFrequency(interval=3),
+            frequency=FrequencyAddSpec(type="daily", interval=3),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
         )
@@ -358,7 +352,7 @@ class TestAddTaskRepetitionRule:
     ) -> None:
         """ADD-04: on_days normalized to uppercase."""
         spec = RepetitionRuleAddSpec(
-            frequency=WeeklyOnDaysFrequency(on_days=["mo", "fr"]),
+            frequency=FrequencyAddSpec(type="weekly", on_days=["mo", "fr"]),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
         )
@@ -367,12 +361,13 @@ class TestAddTaskRepetitionRule:
         assert task is not None
         assert task.repetition_rule is not None
         # on_days should be uppercase after normalization
-        assert task.repetition_rule.frequency.type == "weekly_on_days"
+        assert task.repetition_rule.frequency.type == "weekly"
+        assert task.repetition_rule.frequency.on_days == ["MO", "FR"]
 
     async def test_weekly_bare(self, service: OperatorService) -> None:
         """ADD-05: WeeklyFrequency (no on_days) succeeds."""
         spec = RepetitionRuleAddSpec(
-            frequency=WeeklyFrequency(),
+            frequency=FrequencyAddSpec(type="weekly"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
         )
@@ -380,9 +375,9 @@ class TestAddTaskRepetitionRule:
         assert result.success is True
 
     async def test_monthly_day_of_week(self, service: OperatorService) -> None:
-        """ADD-06: MonthlyDayOfWeekFrequency succeeds."""
+        """ADD-06: Monthly with on (day-of-week pattern) succeeds."""
         spec = RepetitionRuleAddSpec(
-            frequency=MonthlyDayOfWeekFrequency(on={"second": "tuesday"}),
+            frequency=FrequencyAddSpec(type="monthly", on={"second": "tuesday"}),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
         )
@@ -390,9 +385,9 @@ class TestAddTaskRepetitionRule:
         assert result.success is True
 
     async def test_monthly_day_in_month(self, service: OperatorService) -> None:
-        """ADD-07: MonthlyDayInMonthFrequency succeeds."""
+        """ADD-07: Monthly with on_dates (day-in-month pattern) succeeds."""
         spec = RepetitionRuleAddSpec(
-            frequency=MonthlyDayInMonthFrequency(on_dates=[1, 15]),
+            frequency=FrequencyAddSpec(type="monthly", on_dates=[1, 15]),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
         )
@@ -404,7 +399,7 @@ class TestAddTaskRepetitionRule:
     ) -> None:
         """ADD-08: Empty onDates -> normalized to monthly, warning included."""
         spec = RepetitionRuleAddSpec(
-            frequency=MonthlyDayInMonthFrequency(on_dates=[]),
+            frequency=FrequencyAddSpec(type="monthly", on_dates=[]),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
         )
@@ -424,7 +419,7 @@ class TestAddTaskRepetitionRule:
     ) -> None:
         """ADD-09: from_completion schedule produces correct bridge payload."""
         spec = RepetitionRuleAddSpec(
-            frequency=DailyFrequency(),
+            frequency=FrequencyAddSpec(type="daily"),
             schedule=Schedule.FROM_COMPLETION,
             based_on=BasedOn.DEFER_DATE,
         )
@@ -439,7 +434,7 @@ class TestAddTaskRepetitionRule:
     ) -> None:
         """ADD-10: based_on=defer_date -> anchorDateKey=DeferDate."""
         spec = RepetitionRuleAddSpec(
-            frequency=DailyFrequency(),
+            frequency=FrequencyAddSpec(type="daily"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DEFER_DATE,
         )
@@ -452,7 +447,7 @@ class TestAddTaskRepetitionRule:
     async def test_end_by_date(self, service: OperatorService, repo: BridgeRepository) -> None:
         """ADD-11: EndByDate -> ruleString contains UNTIL."""
         spec = RepetitionRuleAddSpec(
-            frequency=DailyFrequency(),
+            frequency=FrequencyAddSpec(type="daily"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
             end=EndByDate(date="2026-12-31T00:00:00Z"),
@@ -468,7 +463,7 @@ class TestAddTaskRepetitionRule:
     ) -> None:
         """ADD-12: EndByOccurrences -> ruleString contains COUNT."""
         spec = RepetitionRuleAddSpec(
-            frequency=DailyFrequency(),
+            frequency=FrequencyAddSpec(type="daily"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
             end=EndByOccurrences(occurrences=10),
@@ -482,7 +477,7 @@ class TestAddTaskRepetitionRule:
     async def test_no_end_condition(self, service: OperatorService) -> None:
         """ADD-13: No end condition -> ruleString has no UNTIL/COUNT."""
         spec = RepetitionRuleAddSpec(
-            frequency=DailyFrequency(),
+            frequency=FrequencyAddSpec(type="daily"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
         )
@@ -492,7 +487,7 @@ class TestAddTaskRepetitionRule:
     async def test_default_interval(self, service: OperatorService, repo: BridgeRepository) -> None:
         """ADD-14: Omitted interval defaults to 1."""
         spec = RepetitionRuleAddSpec(
-            frequency=DailyFrequency(),  # interval defaults to 1
+            frequency=FrequencyAddSpec(type="daily"),  # interval defaults to 1
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
         )
@@ -503,14 +498,9 @@ class TestAddTaskRepetitionRule:
         assert task.repetition_rule.frequency.interval == 1
 
     async def test_invalid_interval_rejected(self, service: OperatorService) -> None:
-        """Invalid interval (0) -> ValueError."""
-        spec = RepetitionRuleAddSpec(
-            frequency=DailyFrequency(interval=0),
-            schedule=Schedule.REGULARLY,
-            based_on=BasedOn.DUE_DATE,
-        )
-        with pytest.raises(ValueError, match=r"(?i)interval"):
-            await service.add_task(AddTaskCommand(name="Bad", repetition_rule=spec))
+        """Invalid interval (0) -> ValueError from model validator."""
+        with pytest.raises(ValueError, match=r"(?i)interval|greater than or equal"):
+            FrequencyAddSpec(type="daily", interval=0)
 
 
 # ---------------------------------------------------------------------------
@@ -1703,7 +1693,7 @@ class TestEditTaskRepetitionRule:
     ) -> None:
         """EDIT-01: Set full rule on non-repeating task."""
         spec = RepetitionRuleEditSpec(
-            frequency=DailyFrequency(),
+            frequency=FrequencyEditSpec(type="daily"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
         )
@@ -1854,7 +1844,7 @@ class TestEditTaskRepetitionRule:
         self, service: OperatorService, repo: BridgeRepository
     ) -> None:
         """EDIT-09/10: Same type, change interval -> merges."""
-        spec = RepetitionRuleEditSpec(frequency=DailyFrequency(interval=5))
+        spec = RepetitionRuleEditSpec(frequency=FrequencyEditSpec(interval=5))
         result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
         assert result.success is True
 
@@ -1877,14 +1867,15 @@ class TestEditTaskRepetitionRule:
         self, service: OperatorService, repo: BridgeRepository
     ) -> None:
         """EDIT-11: Same type, change on_days -> interval preserved."""
-        spec = RepetitionRuleEditSpec(frequency=WeeklyOnDaysFrequency(on_days=["TU", "TH"]))
+        spec = RepetitionRuleEditSpec(frequency=FrequencyEditSpec(on_days=["TU", "TH"]))
         result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
         assert result.success is True
 
         task = await repo.get_task("t1")
         assert task is not None
         assert task.repetition_rule is not None
-        assert task.repetition_rule.frequency.type == "weekly_on_days"
+        assert task.repetition_rule.frequency.type == "weekly"
+        assert task.repetition_rule.frequency.on_days == ["TU", "TH"]
         # interval should be preserved from existing (2)
         assert task.repetition_rule.frequency.interval == 2
 
@@ -1906,14 +1897,14 @@ class TestEditTaskRepetitionRule:
         self, service: OperatorService, repo: BridgeRepository
     ) -> None:
         """EDIT-12: Same monthly_day_of_week type, change on -> interval preserved."""
-        spec = RepetitionRuleEditSpec(frequency=MonthlyDayOfWeekFrequency(on={"last": "friday"}))
+        spec = RepetitionRuleEditSpec(frequency=FrequencyEditSpec(on={"last": "friday"}))
         result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
         assert result.success is True
 
         task = await repo.get_task("t1")
         assert task is not None
         assert task.repetition_rule is not None
-        assert task.repetition_rule.frequency.type == "monthly_day_of_week"
+        assert task.repetition_rule.frequency.type == "monthly"
 
     @pytest.mark.snapshot(
         tasks=[make_task_dict(id="t1", name="Repeating", repetitionRule=_DAILY_RULE)]
@@ -1922,14 +1913,15 @@ class TestEditTaskRepetitionRule:
         self, service: OperatorService, repo: BridgeRepository
     ) -> None:
         """EDIT-13: Different type with full frequency -> replaces entirely."""
-        spec = RepetitionRuleEditSpec(frequency=WeeklyOnDaysFrequency(on_days=["MO", "WE", "FR"]))
+        spec = RepetitionRuleEditSpec(frequency=FrequencyEditSpec(type="weekly", on_days=["MO", "WE", "FR"]))
         result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
         assert result.success is True
 
         task = await repo.get_task("t1")
         assert task is not None
         assert task.repetition_rule is not None
-        assert task.repetition_rule.frequency.type == "weekly_on_days"
+        assert task.repetition_rule.frequency.type == "weekly"
+        assert task.repetition_rule.frequency.on_days == ["MO", "WE", "FR"]
 
     @pytest.mark.snapshot(tasks=[make_task_dict(id="t1", name="Plain")])
     async def test_partial_update_no_existing_rule_error(self, service: OperatorService) -> None:
@@ -1944,7 +1936,7 @@ class TestEditTaskRepetitionRule:
     async def test_noop_same_rule(self, service: OperatorService) -> None:
         """EDIT-16: Same rule sent back -> no-op with warning."""
         spec = RepetitionRuleEditSpec(
-            frequency=DailyFrequency(),
+            frequency=FrequencyEditSpec(type="daily"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
         )
@@ -1959,7 +1951,7 @@ class TestEditTaskRepetitionRule:
     async def test_noop_same_rule_with_other_field_change(self, service: OperatorService) -> None:
         """EDIT-16 gap: Same rule + name change -> no-op warning AND name applied."""
         spec = RepetitionRuleEditSpec(
-            frequency=DailyFrequency(),
+            frequency=FrequencyEditSpec(type="daily"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
         )
@@ -1985,7 +1977,7 @@ class TestEditTaskRepetitionRule:
     async def test_set_rule_on_completed_task_warns(self, service: OperatorService) -> None:
         """D-12: Setting repetition on completed task -> warning."""
         spec = RepetitionRuleEditSpec(
-            frequency=DailyFrequency(),
+            frequency=FrequencyEditSpec(type="daily"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
         )
@@ -2008,7 +2000,7 @@ class TestEditTaskRepetitionRule:
     async def test_set_rule_on_dropped_task_warns(self, service: OperatorService) -> None:
         """D-12: Setting repetition on dropped task -> warning."""
         spec = RepetitionRuleEditSpec(
-            frequency=DailyFrequency(),
+            frequency=FrequencyEditSpec(type="daily"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
         )

@@ -11,12 +11,12 @@ from datetime import UTC, datetime
 from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand
 from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 from omnifocus_operator.contracts.use_cases.repetition_rule import (
+    FrequencyAddSpec,
     RepetitionRuleAddSpec,
     RepetitionRuleRepoPayload,
 )
 from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
-    DailyFrequency,
     EndByDate,
     EndByOccurrences,
 )
@@ -265,7 +265,7 @@ class TestBuildAddRepetitionRule:
         """Daily frequency with regularly schedule."""
         builder = PayloadBuilder()
         spec = RepetitionRuleAddSpec(
-            frequency=DailyFrequency(interval=3),
+            frequency=FrequencyAddSpec(type="daily", interval=3),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
         )
@@ -282,7 +282,7 @@ class TestBuildAddRepetitionRule:
         """From-completion schedule -> scheduleType=FromCompletion, catchUp=False."""
         builder = PayloadBuilder()
         spec = RepetitionRuleAddSpec(
-            frequency=DailyFrequency(),
+            frequency=FrequencyAddSpec(type="daily"),
             schedule=Schedule.FROM_COMPLETION,
             based_on=BasedOn.DEFER_DATE,
         )
@@ -298,7 +298,7 @@ class TestBuildAddRepetitionRule:
         """Regularly with catch-up -> scheduleType=Regularly, catchUp=True."""
         builder = PayloadBuilder()
         spec = RepetitionRuleAddSpec(
-            frequency=DailyFrequency(),
+            frequency=FrequencyAddSpec(type="daily"),
             schedule=Schedule.REGULARLY_WITH_CATCH_UP,
             based_on=BasedOn.DUE_DATE,
         )
@@ -313,7 +313,7 @@ class TestBuildAddRepetitionRule:
         """End by occurrences -> ruleString contains COUNT."""
         builder = PayloadBuilder()
         spec = RepetitionRuleAddSpec(
-            frequency=DailyFrequency(),
+            frequency=FrequencyAddSpec(type="daily"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
             end=EndByOccurrences(occurrences=10),
@@ -328,7 +328,7 @@ class TestBuildAddRepetitionRule:
         """End by date -> ruleString contains UNTIL."""
         builder = PayloadBuilder()
         spec = RepetitionRuleAddSpec(
-            frequency=DailyFrequency(),
+            frequency=FrequencyAddSpec(type="daily"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
             end=EndByDate(date="2026-12-31T00:00:00Z"),
@@ -343,7 +343,7 @@ class TestBuildAddRepetitionRule:
         """BasedOn.DEFER_DATE -> anchorDateKey=DeferDate."""
         builder = PayloadBuilder()
         spec = RepetitionRuleAddSpec(
-            frequency=DailyFrequency(),
+            frequency=FrequencyAddSpec(type="daily"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DEFER_DATE,
         )

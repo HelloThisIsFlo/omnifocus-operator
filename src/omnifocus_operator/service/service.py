@@ -12,7 +12,7 @@ delegate to repository. All heavy lifting lives in the extracted modules:
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, NoReturn, cast
+from typing import TYPE_CHECKING, Any, NoReturn
 
 from omnifocus_operator.agent_messages.errors import (
     REPETITION_NO_EXISTING_RULE,
@@ -25,15 +25,15 @@ from omnifocus_operator.contracts.protocols import Service
 from omnifocus_operator.contracts.use_cases.add_task import AddTaskResult
 from omnifocus_operator.contracts.use_cases.edit_task import EditTaskResult
 from omnifocus_operator.contracts.use_cases.repetition_rule import (
-    RepetitionRuleAddSpec,
+    FrequencyEditSpec,
 )
+from omnifocus_operator.models.repetition_rule import Frequency
 from omnifocus_operator.rrule.builder import build_rrule
 from omnifocus_operator.rrule.schedule import based_on_to_bridge, schedule_to_bridge
 from omnifocus_operator.service.domain import DomainLogic
 from omnifocus_operator.service.payload import PayloadBuilder
 from omnifocus_operator.service.resolve import Resolver
 from omnifocus_operator.service.validate import (
-    validate_repetition_rule_add,
     validate_task_name,
     validate_task_name_if_set,
 )
@@ -45,8 +45,8 @@ if TYPE_CHECKING:
         RepetitionRuleRepoPayload,
     )
     from omnifocus_operator.models.enums import BasedOn, Schedule
+    from omnifocus_operator.models.repetition_rule import EndCondition
     from omnifocus_operator.models.project import Project
-    from omnifocus_operator.models.repetition_rule import EndCondition, Frequency
     from omnifocus_operator.models.snapshot import AllEntities
     from omnifocus_operator.models.tag import Tag
     from omnifocus_operator.models.task import Task
@@ -166,7 +166,7 @@ class _AddTaskPipeline(_Pipeline):
         self._validate()
         await self._resolve_parent()
         await self._resolve_tags()
-        self._validate_repetition_rule()
+        self._process_repetition_rule()
         self._build_payload()
         return await self._delegate()
 
@@ -195,21 +195,30 @@ class _AddTaskPipeline(_Pipeline):
             self._resolved_tag_ids,
         )
 
-    def _validate_repetition_rule(self) -> None:
-        """Validate and normalize repetition rule if present."""
+    def _process_repetition_rule(self) -> None:
+        """Normalize repetition rule if present.
+
+        FrequencyAddSpec has model validators that already validated
+        the spec on construction. We only need to normalize empty
+        specialization fields here.
+        """
         if self._command.repetition_rule is None:
             return
 
         spec = self._command.repetition_rule
 
-        # Structural + constraint validation
-        spec = validate_repetition_rule_add(spec)
+        # Convert FrequencyAddSpec to Frequency for normalization
+        freq = Frequency.model_validate(spec.frequency.model_dump())
 
-        # Normalize empty on_dates (D-13)
-        normalized_freq, on_dates_warns = self._domain.normalize_empty_on_dates(spec.frequency)
-        self._repetition_warnings.extend(on_dates_warns)
-        if normalized_freq is not spec.frequency:
-            spec = spec.model_copy(update={"frequency": normalized_freq})
+        # Normalize empty specialization fields (D-17)
+        normalized_freq, spec_warns = self._domain.normalize_empty_specialization_fields(freq)
+        self._repetition_warnings.extend(spec_warns)
+        if normalized_freq is not freq:
+            # Rebuild the spec with normalized frequency
+            from omnifocus_operator.contracts.use_cases.repetition_rule import FrequencyAddSpec
+
+            new_freq_spec = FrequencyAddSpec.model_validate(normalized_freq.model_dump())
+            spec = spec.model_copy(update={"frequency": new_freq_spec})
 
         # Update the command with the normalized spec
         self._command = self._command.model_copy(update={"repetition_rule": spec})
@@ -297,6 +306,8 @@ class _EditTaskPipeline(_Pipeline):
 
         Handles: UNSET (no change), None (clear), full set, partial update,
         same-type merge, type change, and no-existing-rule validation.
+
+        Uses is_set() on FrequencyEditSpec fields for merge (D-11).
         """
         self._repetition_rule_payload: RepetitionRuleRepoPayload | None = None
         self._repetition_rule_clear: bool = False
@@ -315,15 +326,7 @@ class _EditTaskPipeline(_Pipeline):
 
         existing = self._task.repetition_rule
 
-        # Resolve each root field, falling back to existing
-        # cast() needed: mypy resolves Annotated[Union[...], Field(discriminator=...)]
-        # through TypeGuard as _FrequencyBase instead of the full Frequency union
-        frequency: Frequency | None = cast(
-            "Frequency | None",
-            spec.frequency
-            if is_set(spec.frequency)
-            else (existing.frequency if existing else None),
-        )
+        # Resolve root fields, falling back to existing
         schedule: Schedule | None = (
             spec.schedule if is_set(spec.schedule) else (existing.schedule if existing else None)
         )
@@ -340,38 +343,40 @@ class _EditTaskPipeline(_Pipeline):
         else:
             end = None
 
+        # Handle frequency
+        frequency: Frequency | None = None
+        if is_set(spec.frequency):
+            edit_spec: FrequencyEditSpec = spec.frequency
+
+            if existing is not None:
+                # Determine type: use edit_spec.type if is_set(), else existing
+                if is_set(edit_spec.type):
+                    effective_type = edit_spec.type
+                else:
+                    effective_type = existing.frequency.type
+
+                if is_set(edit_spec.type) and edit_spec.type != existing.frequency.type:
+                    # Type change (D-09): full replacement with defaults
+                    frequency = self._build_frequency_from_edit_spec(edit_spec, effective_type)
+                else:
+                    # Same type (explicit or inferred) -> merge (EDIT-09)
+                    frequency = self._merge_frequency(edit_spec, existing.frequency)
+            else:
+                # No existing rule (EDIT-15)
+                if not is_set(edit_spec.type):
+                    raise ValueError(REPETITION_NO_EXISTING_RULE)
+                frequency = self._build_frequency_from_edit_spec(edit_spec, edit_spec.type)
+        else:
+            # Frequency UNSET -> use existing
+            frequency = existing.frequency if existing else None
+
         # EDIT-15: Can't partially update without an existing rule
         if frequency is None or schedule is None or based_on is None:
             raise ValueError(REPETITION_NO_EXISTING_RULE)
 
-        # Same-type frequency merge (EDIT-09/10/11/12)
-        submitted_freq = cast(
-            "Frequency | None",
-            spec.frequency if is_set(spec.frequency) else None,
-        )
-        if (
-            submitted_freq is not None
-            and existing is not None
-            and existing.frequency.type == submitted_freq.type
-        ):
-            # Same type -- merge omitted sub-fields from existing
-            frequency = self._merge_same_type_frequency(submitted_freq, existing.frequency)
-        # Different type (EDIT-13): full replacement, no merging needed
-        # Pydantic discriminated union ensures complete subtype fields
-
-        # Normalize empty on_dates (D-13)
-        normalized_freq, on_dates_warns = self._domain.normalize_empty_on_dates(frequency)
-        self._repetition_warns.extend(on_dates_warns)
-        frequency = normalized_freq
-
-        # Validate the final frequency
-        synthetic_spec = RepetitionRuleAddSpec(
-            frequency=frequency,
-            schedule=schedule,
-            based_on=based_on,
-            end=end,
-        )
-        validate_repetition_rule_add(synthetic_spec)
+        # Normalize empty specialization fields (D-17)
+        frequency, spec_warns = self._domain.normalize_empty_specialization_fields(frequency)
+        self._repetition_warns.extend(spec_warns)
 
         # Check warnings (end date in past, completed/dropped task)
         self._repetition_warns.extend(
@@ -402,29 +407,67 @@ class _EditTaskPipeline(_Pipeline):
                     self._repetition_warns.append(REPETITION_NO_OP)
                     self._repetition_rule_payload = None
 
-    def _merge_same_type_frequency(
+    def _merge_frequency(
         self,
-        submitted: Frequency,
+        edit_spec: FrequencyEditSpec,
         existing: Frequency,
     ) -> Frequency:
-        """Merge submitted frequency with existing for same-type updates.
+        """Merge edit spec with existing frequency for same-type updates.
 
-        For fields not explicitly set on the submitted frequency, use
-        the existing value. This preserves on_days, on, on_dates, interval
-        when only changing one sub-field.
+        Uses is_set() TypeGuard on FrequencyEditSpec fields (D-11).
+        UNSET = preserve from existing, None = clear, value = set.
         """
-        submitted_fields = submitted.model_fields_set
-        existing_dict = existing.model_dump()
-        submitted_dict = submitted.model_dump()
+        merged: dict[str, Any] = {}
 
-        # Start from existing, overlay with submitted's explicitly-set fields
-        merged = {**existing_dict}
-        for field_name in submitted_fields:
-            if field_name != "type":  # type must always come from submitted
-                merged[field_name] = submitted_dict[field_name]
+        # Type: always from existing (same-type merge only called when types match)
+        merged["type"] = existing.type
 
-        # Reconstruct the frequency model
-        return type(submitted).model_validate(merged)
+        # Interval
+        merged["interval"] = edit_spec.interval if is_set(edit_spec.interval) else existing.interval
+
+        # Specialization fields: UNSET=preserve, None=clear, value=set
+        for field_name in ("on_days", "on", "on_dates"):
+            edit_val = getattr(edit_spec, field_name)
+            if is_set(edit_val):
+                merged[field_name] = edit_val  # None (clear) or value (set)
+            else:
+                merged[field_name] = getattr(existing, field_name)  # preserve
+
+        # Auto-clear monthly mutual exclusion (D-08)
+        merged, auto_clear_warns = self._domain.auto_clear_monthly_mutual_exclusion(merged)
+        self._repetition_warns.extend(auto_clear_warns)
+
+        # Construct Frequency -> @model_validator fires -> catches cross-type violations
+        return Frequency.model_validate(merged)
+
+    def _build_frequency_from_edit_spec(
+        self,
+        edit_spec: FrequencyEditSpec,
+        freq_type: str,
+    ) -> Frequency:
+        """Build a Frequency from an edit spec for type change or new rule.
+
+        Full replacement with defaults: UNSET fields get defaults (like creation),
+        not preserved from existing.
+        """
+        merged: dict[str, Any] = {"type": freq_type}
+
+        # Interval: use if set, else default to 1
+        merged["interval"] = edit_spec.interval if is_set(edit_spec.interval) else 1
+
+        # Specialization fields: use if set (and not None), else default to None
+        for field_name in ("on_days", "on", "on_dates"):
+            edit_val = getattr(edit_spec, field_name)
+            if is_set(edit_val):
+                merged[field_name] = edit_val
+            # else: defaults to None (not included in dict -> Frequency default)
+
+        # Auto-clear monthly mutual exclusion (D-08)
+        merged, auto_clear_warns = self._domain.auto_clear_monthly_mutual_exclusion(merged)
+        self._repetition_warns.extend(auto_clear_warns)
+
+        # Construct Frequency -> @model_validator fires
+        return Frequency.model_validate(merged)
 
     async def _apply_tag_diff(self) -> None:
         self._tag_adds: list[str] | None = None
