@@ -1157,6 +1157,29 @@ class TestAddTasksRepetitionRule:
         assert "date" in text
         assert "occurrences" in text
 
+    async def test_add_tasks_end_unknown_keys_clean_error(self, client: Any) -> None:
+        """end with unrecognized keys returns actionable error."""
+        with pytest.raises(ToolError, match="end requires either") as exc_info:
+            await client.call_tool(
+                "add_tasks",
+                {
+                    "items": [
+                        {
+                            "name": "Bad end keys",
+                            "repetitionRule": {
+                                "frequency": {"type": "daily"},
+                                "schedule": "regularly",
+                                "basedOn": "due_date",
+                                "end": {"bogus": "value"},
+                            },
+                        }
+                    ]
+                },
+            )
+        text = str(exc_info.value)
+        assert "date" in text
+        assert "occurrences" in text
+
 
 class TestEditTasksRepetitionRule:
     """Verify repetition rule support through the edit_tasks MCP tool."""
@@ -1325,6 +1348,79 @@ class TestEditTasksRepetitionRule:
                                 "schedule": "regularly",
                                 "basedOn": "due_date",
                                 "end": {},
+                            },
+                        }
+                    ]
+                },
+            )
+        text = str(exc_info.value)
+        assert "date" in text
+        assert "occurrences" in text
+
+    async def test_edit_tasks_invalid_frequency_type_clean_error(self, client: Any) -> None:
+        """Invalid frequency type on edit returns educational error listing valid types."""
+        add_result = await client.call_tool("add_tasks", {"items": [{"name": "For edit"}]})
+        task_id = add_result.structured_content["result"][0]["id"]
+
+        with pytest.raises(ToolError, match="Invalid frequency type") as exc_info:
+            await client.call_tool(
+                "edit_tasks",
+                {
+                    "items": [
+                        {
+                            "id": task_id,
+                            "repetitionRule": {
+                                "frequency": {"type": "fortnightly"},
+                            },
+                        }
+                    ]
+                },
+            )
+        text = str(exc_info.value)
+        assert "fortnightly" in text
+        assert "daily" in text
+        assert "weekly" in text
+
+    async def test_edit_tasks_repetition_rule_unknown_field(self, client: Any) -> None:
+        """Extra field on repetitionRule in edit returns 'Unknown field' error."""
+        add_result = await client.call_tool("add_tasks", {"items": [{"name": "For edit"}]})
+        task_id = add_result.structured_content["result"][0]["id"]
+
+        with pytest.raises(ToolError, match=r"Unknown field '.*bogusField'"):
+            await client.call_tool(
+                "edit_tasks",
+                {
+                    "items": [
+                        {
+                            "id": task_id,
+                            "repetitionRule": {
+                                "frequency": {"type": "daily"},
+                                "schedule": "regularly",
+                                "basedOn": "due_date",
+                                "bogusField": "x",
+                            },
+                        }
+                    ]
+                },
+            )
+
+    async def test_edit_tasks_end_unknown_keys_clean_error(self, client: Any) -> None:
+        """end with unrecognized keys on edit returns actionable error."""
+        add_result = await client.call_tool("add_tasks", {"items": [{"name": "For edit"}]})
+        task_id = add_result.structured_content["result"][0]["id"]
+
+        with pytest.raises(ToolError, match="end requires either") as exc_info:
+            await client.call_tool(
+                "edit_tasks",
+                {
+                    "items": [
+                        {
+                            "id": task_id,
+                            "repetitionRule": {
+                                "frequency": {"type": "daily"},
+                                "schedule": "regularly",
+                                "basedOn": "due_date",
+                                "end": {"bogus": "value"},
                             },
                         }
                     ]
