@@ -21,6 +21,7 @@ from pydantic import BaseModel, TypeAdapter
 from omnifocus_operator.contracts.use_cases.add_task import AddTaskResult
 from omnifocus_operator.contracts.use_cases.edit_task import EditTaskResult
 from omnifocus_operator.models import AllEntities, Project, Tag, Task
+from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
     EndCondition,
     Frequency,
@@ -342,9 +343,7 @@ class TestSchemaValidation:
         jsonschema.validate(data, schema)
 
     def test_interval_1_suppressed_in_serialized_output(self) -> None:
-        """Frequency with interval=1 should omit interval from serialized output (exclude_defaults)."""
-        from omnifocus_operator.models.enums import BasedOn, Schedule
-
+        """Frequency with interval=1 should omit interval from output."""
         rule = RepetitionRule(
             frequency=Frequency(type="daily", interval=1),
             schedule=Schedule.REGULARLY,
@@ -358,8 +357,6 @@ class TestSchemaValidation:
 
     def test_interval_non_default_preserved_in_serialized_output(self) -> None:
         """Frequency with interval!=1 should include interval in serialized output."""
-        from omnifocus_operator.models.enums import BasedOn, Schedule
-
         rule = RepetitionRule(
             frequency=Frequency(type="daily", interval=3),
             schedule=Schedule.REGULARLY,
@@ -398,16 +395,19 @@ class TestUnionRegressionGuard:
     """Union types must not degrade to {"type":"object","additionalProperties":true}."""
 
     def test_frequency_is_flat_model_with_type_enum(self) -> None:
-        """Frequency schema must be a single object with type as enum (not a discriminated union)."""
+        """Frequency schema must be a flat object with type enum."""
         schema = TypeAdapter(Frequency).json_schema(mode="serialization")
 
         # Flat model: no $defs branches (no discriminated union)
         assert "$defs" not in schema or len(schema.get("$defs", {})) == 0, (
-            f"Frequency should be a flat model without $defs branches. Got $defs: {list(schema.get('$defs', {}).keys())}"
+            "Frequency should be a flat model without $defs branches. "
+            f"Got $defs: {list(schema.get('$defs', {}).keys())}"
         )
 
         # Must be an object type with properties
-        assert schema.get("type") == "object", f"Frequency schema should be object type. Got: {schema}"
+        assert schema.get("type") == "object", (
+            f"Frequency schema should be object type. Got: {schema}"
+        )
         assert "properties" in schema, f"Frequency schema missing properties. Got: {schema}"
 
         # type field must have enum constraint with exactly 6 values

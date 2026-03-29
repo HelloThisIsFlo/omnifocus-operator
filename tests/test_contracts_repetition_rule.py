@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from omnifocus_operator.contracts.base import UNSET, is_set
+from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.use_cases.add_task import (
     AddTaskCommand,
     AddTaskRepoPayload,
@@ -30,7 +30,6 @@ from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
     EndByDate,
     EndByOccurrences,
-    Frequency,
 )
 
 

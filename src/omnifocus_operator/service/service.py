@@ -24,6 +24,7 @@ from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.protocols import Service
 from omnifocus_operator.contracts.use_cases.add_task import AddTaskResult
 from omnifocus_operator.contracts.use_cases.edit_task import EditTaskResult
+from omnifocus_operator.contracts.use_cases.repetition_rule import FrequencyAddSpec
 from omnifocus_operator.models.repetition_rule import Frequency
 from omnifocus_operator.rrule.builder import build_rrule
 from omnifocus_operator.rrule.schedule import based_on_to_bridge, schedule_to_bridge
@@ -213,8 +214,6 @@ class _AddTaskPipeline(_Pipeline):
         self._repetition_warnings.extend(spec_warns)
         if normalized_freq is not freq:
             # Rebuild the spec with normalized frequency
-            from omnifocus_operator.contracts.use_cases.repetition_rule import FrequencyAddSpec
-
             new_freq_spec = FrequencyAddSpec.model_validate(normalized_freq.model_dump())
             spec = spec.model_copy(update={"frequency": new_freq_spec})
 

@@ -9,12 +9,17 @@ Public function:
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from omnifocus_operator.models.repetition_rule import (
     EndByDate,
     EndByOccurrences,
     Frequency,
 )
 from omnifocus_operator.rrule.parser import parse_rrule
+
+if TYPE_CHECKING:
+    from omnifocus_operator.contracts.use_cases.repetition_rule import FrequencyAddSpec
 
 # ── Reverse Mapping Tables ───────────────────────────────────────────────
 
@@ -56,7 +61,7 @@ _TYPE_TO_FREQ: dict[str, str] = {
 
 
 def build_rrule(
-    frequency: Frequency,
+    frequency: Frequency | FrequencyAddSpec,
     end: EndByDate | EndByOccurrences | None = None,
 ) -> str:
     """Build an RRULE string from a flat Frequency model and optional end condition.

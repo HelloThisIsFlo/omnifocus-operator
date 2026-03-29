@@ -148,7 +148,7 @@ class TestValidateEnd:
         assert end.occurrences == 10
 
     def test_occurrences_zero_rejected(self) -> None:
-        with pytest.raises(ValueError, match="occurrences|greater than or equal"):
+        with pytest.raises(ValueError, match=r"occurrences|greater than or equal"):
             EndByOccurrences(occurrences=0)
 
     def test_valid_interval_one(self) -> None:

@@ -24,6 +24,7 @@ from omnifocus_operator.rrule.schedule import based_on_to_bridge, schedule_to_br
 if TYPE_CHECKING:
     from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand
     from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
+    from omnifocus_operator.contracts.use_cases.repetition_rule import FrequencyAddSpec
     from omnifocus_operator.models.enums import BasedOn, Schedule
     from omnifocus_operator.models.repetition_rule import EndCondition, Frequency
 
@@ -115,7 +116,7 @@ class PayloadBuilder:
 
     def _build_repetition_rule_payload(
         self,
-        frequency: Frequency,
+        frequency: Frequency | FrequencyAddSpec,
         schedule: Schedule,
         based_on: BasedOn,
         end: EndCondition | None,

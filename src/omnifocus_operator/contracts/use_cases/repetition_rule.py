@@ -25,11 +25,11 @@ from omnifocus_operator.contracts.base import (
 )
 from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
-    EndCondition,
-    FrequencyType,
     _VALID_DAY_CODES,
     _VALID_DAY_NAMES,
     _VALID_ORDINALS,
+    EndCondition,
+    FrequencyType,
 )
 
 
@@ -55,8 +55,7 @@ class FrequencyAddSpec(CommandModel):
             )
         if self.on is not None and self.type != "monthly":
             raise ValueError(
-                f"on is not valid for type '{self.type}'. "
-                "on can only be used with type 'monthly'."
+                f"on is not valid for type '{self.type}'. on can only be used with type 'monthly'."
             )
         if self.on_dates is not None and self.type != "monthly":
             raise ValueError(
