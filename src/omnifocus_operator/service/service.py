@@ -20,8 +20,6 @@ from omnifocus_operator.agent_messages.errors import (
 from omnifocus_operator.agent_messages.warnings import (
     REPETITION_NO_OP,
 )
-from omnifocus_operator.rrule.builder import build_rrule
-from omnifocus_operator.rrule.schedule import based_on_to_bridge, schedule_to_bridge
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.protocols import Service
 from omnifocus_operator.contracts.use_cases.add_task import AddTaskResult
@@ -29,6 +27,8 @@ from omnifocus_operator.contracts.use_cases.edit_task import EditTaskResult
 from omnifocus_operator.contracts.use_cases.repetition_rule import (
     RepetitionRuleAddSpec,
 )
+from omnifocus_operator.rrule.builder import build_rrule
+from omnifocus_operator.rrule.schedule import based_on_to_bridge, schedule_to_bridge
 from omnifocus_operator.service.domain import DomainLogic
 from omnifocus_operator.service.payload import PayloadBuilder
 from omnifocus_operator.service.resolve import Resolver
