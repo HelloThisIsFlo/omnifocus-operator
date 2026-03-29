@@ -172,7 +172,7 @@ class TestEndByOccurrencesValidation:
     """Field(ge=1) on EndByOccurrences.occurrences."""
 
     def test_zero_raises(self):
-        with pytest.raises(ValidationError, match="greater than or equal to 1"):
+        with pytest.raises(ValidationError, match="End occurrences must be >= 1"):
             EndByOccurrences(occurrences=0)
 
     def test_one_is_valid(self):
