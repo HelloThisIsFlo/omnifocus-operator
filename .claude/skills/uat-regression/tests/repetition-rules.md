@@ -56,24 +56,24 @@ These tests create NEW tasks (under UAT-RepetitionRule parent) with repetition r
 3. PASS if: `repetitionRule.frequency.type` is `"daily"`, `frequency.interval` is `3`, `schedule` is `"regularly"`, `basedOn` is `"due_date"`, `end` is `null`, and response does NOT contain a `ruleString` field
 
 #### Test 1b: Weekly on days — case normalization + catch-up + end by occurrences
-1. `add_tasks` with name "R1b-WeeklyDays", parent=UAT-RepetitionRule, `dueDate: "2026-06-01T12:00:00Z"`, `repetitionRule: { frequency: { type: "weekly_on_days", onDays: ["mo", "we", "fr"] }, schedule: "regularly_with_catch_up", basedOn: "due_date", end: { occurrences: 5 } }`
+1. `add_tasks` with name "R1b-WeeklyDays", parent=UAT-RepetitionRule, `dueDate: "2026-06-01T12:00:00Z"`, `repetitionRule: { frequency: { type: "weekly", onDays: ["mo", "we", "fr"] }, schedule: "regularly_with_catch_up", basedOn: "due_date", end: { occurrences: 5 } }`
 2. `get_task` on the created task
-3. PASS if: `frequency.type` is `"weekly_on_days"`, `frequency.onDays` is `["MO", "WE", "FR"]` (uppercase), `schedule` is `"regularly_with_catch_up"`, `end.occurrences` is `5`
+3. PASS if: `frequency.type` is `"weekly"`, `frequency.onDays` is `["MO", "WE", "FR"]` (uppercase), `schedule` is `"regularly_with_catch_up"`, `end.occurrences` is `5`
 
 #### Test 1c: Monthly day of week — from_completion + end by date
-1. `add_tasks` with name "R1c-MonthlyDoW", parent=UAT-RepetitionRule, `dueDate: "2026-06-01T12:00:00Z"`, `repetitionRule: { frequency: { type: "monthly_day_of_week", on: { "second": "tuesday" } }, schedule: "from_completion", basedOn: "due_date", end: { date: "2026-12-31T00:00:00Z" } }`
+1. `add_tasks` with name "R1c-MonthlyDoW", parent=UAT-RepetitionRule, `dueDate: "2026-06-01T12:00:00Z"`, `repetitionRule: { frequency: { type: "monthly", on: { "second": "tuesday" } }, schedule: "from_completion", basedOn: "due_date", end: { date: "2026-12-31T00:00:00Z" } }`
 2. `get_task` on the created task
-3. PASS if: `frequency.type` is `"monthly_day_of_week"`, `frequency.on` is `{ "second": "tuesday" }`, `schedule` is `"from_completion"`, `end.date` is present
+3. PASS if: `frequency.type` is `"monthly"`, `frequency.on` is `{ "second": "tuesday" }`, `schedule` is `"from_completion"`, `end.date` is present
 
 #### Test 1d: Monthly day in month — defer_date basedOn
-1. `add_tasks` with name "R1d-MonthlyDiM", parent=UAT-RepetitionRule, `deferDate: "2026-06-01T12:00:00Z"`, `repetitionRule: { frequency: { type: "monthly_day_in_month", onDates: [1, 15, -1] }, schedule: "regularly", basedOn: "defer_date" }`
+1. `add_tasks` with name "R1d-MonthlyDiM", parent=UAT-RepetitionRule, `deferDate: "2026-06-01T12:00:00Z"`, `repetitionRule: { frequency: { type: "monthly", onDates: [1, 15, -1] }, schedule: "regularly", basedOn: "defer_date" }`
 2. `get_task` on the created task
-3. PASS if: `frequency.type` is `"monthly_day_in_month"`, `frequency.onDates` contains `1`, `15`, `-1`, `basedOn` is `"defer_date"`
+3. PASS if: `frequency.type` is `"monthly"`, `frequency.onDates` contains `1`, `15`, `-1`, `basedOn` is `"defer_date"`
 
 #### Test 1e: Yearly — planned_date basedOn
 1. `add_tasks` with name "R1e-Yearly", parent=UAT-RepetitionRule, `dueDate: "2026-06-01T12:00:00Z"`, `repetitionRule: { frequency: { type: "yearly" }, schedule: "regularly", basedOn: "planned_date" }`
 2. `get_task` on the created task
-3. PASS if: `frequency.type` is `"yearly"`, `frequency.interval` is `1` (default), `basedOn` is `"planned_date"`
+3. PASS if: `frequency.type` is `"yearly"`, `frequency.interval` is `1` or omitted (default), `basedOn` is `"planned_date"`
 
 ### 2. Edit — Set & Clear
 
@@ -91,28 +91,27 @@ These tests create NEW tasks (under UAT-RepetitionRule parent) with repetition r
 
 ### 3. Partial Updates
 
-First, set up T3-Partial with a rule: `repetitionRule: { frequency: { type: "weekly_on_days", onDays: ["MO", "WE"], interval: 2 }, schedule: "regularly", basedOn: "due_date", end: { occurrences: 10 } }`, `dueDate: "2026-06-15T12:00:00Z"`
+First, set up T3-Partial with a rule: `repetitionRule: { frequency: { type: "weekly", onDays: ["MO", "WE"], interval: 2 }, schedule: "regularly", basedOn: "due_date", end: { occurrences: 10 } }`, `dueDate: "2026-06-15T12:00:00Z"`
 
 Then run each test sequentially (each builds on the previous state):
 
 #### Test 3a: Schedule only change
 1. Edit T3: `repetitionRule: { schedule: "from_completion" }`
 2. `get_task` T3
-3. PASS if: `schedule` is `"from_completion"`, `frequency` still `weekly_on_days` with `onDays: ["MO", "WE"]` and `interval: 2`, `basedOn` still `"due_date"`, `end.occurrences` still `10`
+3. PASS if: `schedule` is `"from_completion"`, `frequency` still `weekly` with `onDays: ["MO", "WE"]` and `interval: 2`, `basedOn` still `"due_date"`, `end.occurrences` still `10`
 
 #### Test 3b: BasedOn only change
 1. Edit T3: `repetitionRule: { basedOn: "defer_date" }`
 2. `get_task` T3
 3. PASS if: `basedOn` is `"defer_date"`, all other fields preserved from 3a
 
-#### Test 3c: Interval + onDays update (same type)
-Note: `weekly_on_days` requires `onDays` at the Pydantic level, so you can't omit it even for a partial update. This test verifies you can change interval while re-specifying the existing onDays.
-1. Edit T3: `repetitionRule: { frequency: { type: "weekly_on_days", onDays: ["MO", "WE"], interval: 4 } }`
+#### Test 3c: Interval only (type inferred, onDays preserved)
+1. Edit T3: `repetitionRule: { frequency: { interval: 4 } }`
 2. `get_task` T3
-3. PASS if: `frequency.interval` is `4`, `frequency.onDays` still `["MO", "WE"]`
+3. PASS if: `frequency.interval` is `4`, `frequency.type` still `"weekly"`, `frequency.onDays` still `["MO", "WE"]` (preserved)
 
-#### Test 3d: onDays change (same-type merge — interval preserved)
-1. Edit T3: `repetitionRule: { frequency: { type: "weekly_on_days", onDays: ["TU", "TH"] } }`
+#### Test 3d: onDays change (interval preserved)
+1. Edit T3: `repetitionRule: { frequency: { onDays: ["TU", "TH"] } }`
 2. `get_task` T3
 3. PASS if: `frequency.onDays` is `["TU", "TH"]`, `frequency.interval` still `4` (preserved from 3c)
 
@@ -135,11 +134,11 @@ Note: `weekly_on_days` requires `onDays` at the Pydantic level, so you can't omi
 
 ### 4. Type Change
 
-#### Test 4a: Daily to weekly_on_days (full replacement)
+#### Test 4a: Daily to weekly with onDays (full replacement)
 1. Edit T4-TypeChange: `repetitionRule: { frequency: { type: "daily" }, schedule: "regularly", basedOn: "due_date" }`, `dueDate: "2026-06-15T12:00:00Z"`
-2. Edit T4: `repetitionRule: { frequency: { type: "weekly_on_days", onDays: ["MO", "FR"], interval: 2 } }`
+2. Edit T4: `repetitionRule: { frequency: { type: "weekly", onDays: ["MO", "FR"], interval: 2 } }`
 3. `get_task` T4
-4. PASS if: `frequency.type` is `"weekly_on_days"`, `onDays` is `["MO", "FR"]`, `interval` is `2`
+4. PASS if: `frequency.type` is `"weekly"`, `onDays` is `["MO", "FR"]`, `interval` is `2`
 
 ### 5. No-Op Detection
 
@@ -177,18 +176,25 @@ First, set up T5-NoOp with a rule: `repetitionRule: { frequency: { type: "daily"
 
 ### 8. Normalization & Warnings
 
-#### Test 8a: Empty onDates normalized to monthly
-1. `add_tasks` with name "R8a-EmptyOnDates", parent=UAT-RepetitionRule, `dueDate: "2026-06-01T12:00:00Z"`, `repetitionRule: { frequency: { type: "monthly_day_in_month", onDates: [] }, schedule: "regularly", basedOn: "due_date" }`
+#### Test 8a: Empty onDates normalized to plain monthly
+1. `add_tasks` with name "R8a-EmptyOnDates", parent=UAT-RepetitionRule, `dueDate: "2026-06-01T12:00:00Z"`, `repetitionRule: { frequency: { type: "monthly", onDates: [] }, schedule: "regularly", basedOn: "due_date" }`
 2. Check response for warning containing "equivalent to plain 'monthly'"
 3. `get_task` on created task
-4. PASS if: warning present AND `frequency.type` is `"monthly"` (normalized)
+4. PASS if: warning present AND `frequency.type` is `"monthly"` with no `onDates` field (normalized)
 
 #### Test 8b: End date in the past
 1. Edit T12-EndPast: `repetitionRule: { frequency: { type: "daily" }, schedule: "regularly", basedOn: "due_date", end: { date: "2020-01-01T00:00:00Z" } }`, `dueDate: "2026-06-15T12:00:00Z"`
 2. PASS if: success with warning containing "end date" and "in the past"
 
-#### Test 8c: Rule without anchor date (common agent mistake)
-1. `add_tasks` with name "R8c-NoAnchor", parent=UAT-RepetitionRule, `repetitionRule: { frequency: { type: "daily" }, schedule: "regularly", basedOn: "due_date" }` — NO `dueDate` set
+#### Test 8c: Mutual exclusion auto-clear (on → onDates)
+1. `add_tasks` with name "R8c-MutualExcl", parent=UAT-RepetitionRule, `dueDate: "2026-06-01T12:00:00Z"`, `repetitionRule: { frequency: { type: "monthly", on: { "last": "friday" } }, schedule: "regularly", basedOn: "due_date" }`
+2. Edit R8c: `repetitionRule: { frequency: { onDates: [15] } }`
+3. Check response for warning containing "mutually exclusive" and "auto" or "cleared"
+4. `get_task` on R8c
+5. PASS if: warning present AND `frequency.onDates` is `[15]` AND `frequency.on` is absent
+
+#### Test 8d: Rule without anchor date (common agent mistake)
+1. `add_tasks` with name "R8d-NoAnchor", parent=UAT-RepetitionRule, `repetitionRule: { frequency: { type: "daily" }, schedule: "regularly", basedOn: "due_date" }` — NO `dueDate` set
 2. PASS if: either a warning about missing anchor date OR silent success (document whichever behavior occurs — this tests what agents will actually encounter)
 
 ### 9. Validation Errors
@@ -200,19 +206,19 @@ Run each INDIVIDUALLY (they will error):
 2. PASS if: error containing "Interval must be >= 1"
 
 #### Test 9b: Invalid day code
-1. `edit_tasks` on T10: `repetitionRule: { frequency: { type: "weekly_on_days", onDays: ["XX"] }, schedule: "regularly", basedOn: "due_date" }`
+1. `edit_tasks` on T10: `repetitionRule: { frequency: { type: "weekly", onDays: ["XX"] }, schedule: "regularly", basedOn: "due_date" }`
 2. PASS if: error containing "Invalid day code"
 
 #### Test 9c: Invalid ordinal
-1. `edit_tasks` on T10: `repetitionRule: { frequency: { type: "monthly_day_of_week", on: { "sixth": "tuesday" } }, schedule: "regularly", basedOn: "due_date" }`
+1. `edit_tasks` on T10: `repetitionRule: { frequency: { type: "monthly", on: { "sixth": "tuesday" } }, schedule: "regularly", basedOn: "due_date" }`
 2. PASS if: error containing "Invalid ordinal"
 
 #### Test 9d: Invalid day name
-1. `edit_tasks` on T10: `repetitionRule: { frequency: { type: "monthly_day_of_week", on: { "second": "funday" } }, schedule: "regularly", basedOn: "due_date" }`
+1. `edit_tasks` on T10: `repetitionRule: { frequency: { type: "monthly", on: { "second": "funday" } }, schedule: "regularly", basedOn: "due_date" }`
 2. PASS if: error containing "Invalid day name"
 
 #### Test 9e: Invalid onDate
-1. `edit_tasks` on T10: `repetitionRule: { frequency: { type: "monthly_day_in_month", onDates: [0] }, schedule: "regularly", basedOn: "due_date" }`
+1. `edit_tasks` on T10: `repetitionRule: { frequency: { type: "monthly", onDates: [0] }, schedule: "regularly", basedOn: "due_date" }`
 2. PASS if: error containing "Invalid date value"
 
 #### Test 9f: Invalid end occurrences
@@ -252,29 +258,30 @@ Run INDIVIDUALLY:
 | # | Test | Description | Result |
 |---|------|-------------|--------|
 | 1a | Create: daily + interval | Daily freq, interval=3, regularly, due_date; verify structured round-trip, no ruleString | |
-| 1b | Create: weekly_on_days | onDays case-normalized to uppercase; regularly_with_catch_up; end by occurrences | |
-| 1c | Create: monthly_day_of_week | on={"second":"tuesday"}; from_completion; end by date | |
-| 1d | Create: monthly_day_in_month | onDates=[1,15,-1]; defer_date basedOn | |
-| 1e | Create: yearly | Yearly freq; planned_date basedOn | |
+| 1b | Create: weekly + onDays | onDays case-normalized to uppercase; regularly_with_catch_up; end by occurrences | |
+| 1c | Create: monthly + on | on={"second":"tuesday"}; from_completion; end by date | |
+| 1d | Create: monthly + onDates | onDates=[1,15,-1]; defer_date basedOn | |
+| 1e | Create: yearly | Yearly freq; planned_date basedOn; interval is 1 or omitted | |
 | 2a | Edit: set rule | Set complete rule on non-repeating task | |
 | 2b | Edit: clear rule | Set then clear with null; get_task confirms gone | |
 | 3a | Partial: schedule only | Change schedule; frequency/basedOn/end preserved | |
 | 3b | Partial: basedOn only | Change basedOn; others preserved | |
-| 3c | Partial: interval + onDays | Change interval with existing onDays re-specified (Pydantic requires onDays) | |
-| 3d | Partial: onDays (same type) | Change onDays; interval preserved via same-type merge (model_fields_set) | |
+| 3c | Partial: interval only | Change interval; type inferred, onDays preserved | |
+| 3d | Partial: onDays only | Change onDays; interval preserved via same-type merge | |
 | 3e | Partial: add end | Add end condition; others preserved | |
 | 3f | Partial: change end type | Date to occurrences | |
 | 3g | Partial: clear end | end: null; others preserved | |
-| 4a | Type change: daily to weekly | Full frequency replacement; no merging | |
+| 4a | Type change: daily to weekly + onDays | Full frequency replacement; no merging | |
 | 5a | No-op: identical rule | Same rule back returns "identical" warning | |
 | 5b | No-op: omitted + field edit | No repetition warning; field change applied | |
 | 6a | Status: completed task | Set rule on completed task; "completed" warning | |
 | 6b | Status: dropped task | Set rule on dropped task; "dropped" warning | |
 | 7a | Lifecycle: complete repeating | Complete repeating task; "next occurrence created" | |
 | 7b | Lifecycle: drop repeating | Drop repeating task; "occurrence was skipped" | |
-| 8a | Normalize: empty onDates | Empty onDates normalized to monthly; warning present | |
+| 8a | Normalize: empty onDates | Empty onDates normalized to plain monthly; warning present | |
 | 8b | Warning: end date past | End date in past; "no future occurrences" warning | |
-| 8c | Edge: rule without anchor date | Create with basedOn: due_date but no dueDate; document behavior | |
+| 8c | Mutual exclusion: on→onDates | Set on, then edit with onDates; auto-clear warning, on absent | |
+| 8d | Edge: rule without anchor date | Create with basedOn: due_date but no dueDate; document behavior | |
 | 9a | Error: invalid interval | interval=0 returns clean error | |
 | 9b | Error: invalid day code | onDays=["XX"] returns clean error | |
 | 9c | Error: invalid ordinal | on={"sixth":...} returns clean error | |
