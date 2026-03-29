@@ -70,7 +70,7 @@ No filters. Returns all perspectives (built-in + custom) with `id` (null for bui
 
 ### Pydantic Model Considerations
 
-All models are already defined from v1.0/v1.1. This milestone adds:
+All models needed for filtering are already defined from v1.0/v1.1. This milestone adds:
 - `project_name` as a derived field on Task (resolved from snapshot/join)
 - Ensure all entity models cover every field needed by the filters
 
@@ -108,4 +108,4 @@ All hierarchy is flat with ID references (parent_id, folder_id, project_id). No 
 
 ## Tools After This Milestone
 
-Thirteen: `list_all`, `get_task`, `get_project`, `get_tag`, `add_tasks`, `edit_tasks`, `list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives`, `count_tasks`, `count_projects`.
+Thirteen: `get_all`, `get_task`, `get_project`, `get_tag`, `add_tasks`, `edit_tasks`, `list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives`, `count_tasks`, `count_projects`.

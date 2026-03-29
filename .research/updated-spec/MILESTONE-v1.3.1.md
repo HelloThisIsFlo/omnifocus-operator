@@ -50,7 +50,7 @@ Units: `d` (day), `w` (week), `m` (month), `y` (year). Count defaults to 1 when 
 
 **Why the asymmetry with `this`:** "What did I complete this week?" naturally means the current Mon–Sun. But "what did I complete in the last 3 days?" almost always means "from 3 days ago until now", not "the 3 calendar days before today." `this` and `last`/`next` answer fundamentally different questions, so different resolution semantics are more intuitive than forced consistency.
 
-**Week start:** ISO 8601 — weeks start on Monday (default). Configurable via `OMNIFOCUS_WEEK_START` environment variable (`monday` or `sunday`). Affects `{this: "w"}` calendar alignment only.
+**Week start:** ISO 8601 — weeks start on Monday (default). Configurable via `OPERATOR_WEEK_START` environment variable (`monday` or `sunday`). Affects `{this: "w"}` calendar alignment only.
 
 **Timezone:** All date computations use naive local time (system timezone). OmniFocus supports per-event timezone annotations, but the filter system ignores them — all comparisons use local time. Non-local timezone support is a future improvement; if detected, log a warning.
 
