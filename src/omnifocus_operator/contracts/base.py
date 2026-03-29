@@ -1,8 +1,7 @@
-"""Base contract infrastructure: CommandModel, UNSET sentinel.
+"""Base contract infrastructure: StrictModel, CommandModel, QueryModel, UNSET sentinel.
 
-CommandModel is the base class for all command-layer models (agent instructions,
-repo payloads). It inherits OmniFocusBaseModel's camelCase aliasing and adds
-extra="forbid" to reject unknown fields at validation time.
+StrictModel is the base for all agent-facing contract models with extra="forbid".
+CommandModel (write-side) and QueryModel (read-side) are siblings that inherit from it.
 """
 
 from __future__ import annotations
@@ -76,14 +75,24 @@ def is_set[T](value: T | _Unset) -> TypeGuard[T]:
     return not isinstance(value, _Unset)
 
 
-class CommandModel(OmniFocusBaseModel):
-    """Base for all command-layer models. Rejects unknown fields at validation time."""
+class StrictModel(OmniFocusBaseModel):
+    """Base for all agent-facing contract models. Rejects unknown fields."""
 
     model_config = ConfigDict(extra="forbid")
+
+
+class CommandModel(StrictModel):
+    """Write-side contracts: commands, payloads, results, specs, actions."""
 
     def changed_fields(self) -> dict[str, Any]:
         """Return only fields explicitly set by the caller (UNSET values excluded)."""
         return {name: value for name, value in self.__dict__.items() if is_set(value)}
 
 
-__all__ = ["UNSET", "CommandModel", "Patch", "PatchOrClear", "PatchOrNone", "_Unset", "is_set"]
+class QueryModel(StrictModel):
+    """Read-side contracts: query filters and pagination."""
+
+    pass
+
+
+__all__ = ["UNSET", "CommandModel", "Patch", "PatchOrClear", "PatchOrNone", "QueryModel", "StrictModel", "_Unset", "is_set"]
