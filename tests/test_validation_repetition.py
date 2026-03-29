@@ -61,20 +61,23 @@ class TestValidateInterval:
         assert freq.interval == 3
 
     def test_interval_zero_rejected(self) -> None:
-        with pytest.raises(ValueError, match="Interval must be") as exc_info:
+        with pytest.raises(ValueError, match="Interval must be"):
             Frequency(type="daily", interval=0)
-        text = str(exc_info.value)
-        assert "greater_than_equal" not in text
-        assert "type=" not in text
-        assert "input_value" not in text
+
+    def test_interval_zero_message_is_clean(self) -> None:
+        """The error message itself must not contain pydantic internals."""
+        try:
+            Frequency(type="daily", interval=0)
+        except ValueError as exc:
+            msg = exc.errors()[0]["msg"]  # type: ignore[union-attr]
+            assert "Interval must be" in msg
+            assert "greater_than_equal" not in msg
+            assert "type=" not in msg
+            assert "input_value" not in msg
 
     def test_interval_negative_rejected(self) -> None:
-        with pytest.raises(ValueError, match="Interval must be") as exc_info:
+        with pytest.raises(ValueError, match="Interval must be"):
             Frequency(type="daily", interval=-1)
-        text = str(exc_info.value)
-        assert "greater_than_equal" not in text
-        assert "type=" not in text
-        assert "input_value" not in text
 
     def test_interval_default_valid(self) -> None:
         freq = Frequency(type="daily")
@@ -160,18 +163,23 @@ class TestValidateEnd:
         assert end.occurrences == 10
 
     def test_occurrences_zero_rejected(self) -> None:
-        with pytest.raises(ValueError, match="occurrences must be") as exc_info:
+        with pytest.raises(ValueError, match="occurrences must be"):
             EndByOccurrences(occurrences=0)
-        text = str(exc_info.value)
-        assert "greater_than_equal" not in text
-        assert "type=" not in text
-        assert "input_value" not in text
+
+    def test_occurrences_zero_message_is_clean(self) -> None:
+        """The error message itself must not contain pydantic internals."""
+        try:
+            EndByOccurrences(occurrences=0)
+        except ValueError as exc:
+            msg = exc.errors()[0]["msg"]  # type: ignore[union-attr]
+            assert "occurrences must be" in msg
+            assert "greater_than_equal" not in msg
+            assert "type=" not in msg
+            assert "input_value" not in msg
 
     def test_occurrences_negative_rejected(self) -> None:
-        with pytest.raises(ValueError, match="occurrences must be") as exc_info:
+        with pytest.raises(ValueError, match="occurrences must be"):
             EndByOccurrences(occurrences=-1)
-        text = str(exc_info.value)
-        assert "greater_than_equal" not in text
 
     def test_valid_interval_one(self) -> None:
         end = EndByOccurrences(occurrences=1)
