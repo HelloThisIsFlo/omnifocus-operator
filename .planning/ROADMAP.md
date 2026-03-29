@@ -109,7 +109,7 @@
   3. ListResult[T] includes items list and total_count integer, and serializes correctly via FastMCP (test_output_schema passes)
   4. query_builder pure functions produce parameterized SQL strings (no string interpolation of user values) for task and project queries
   5. Repository and Service protocols declare list method signatures that downstream phases implement
-**Plans:** 2 plans
+**Plans:** 0/2 plans executed
 Plans:
 - [ ] 34-01-PLAN.md — Query contracts, ListResult[T], protocol extensions
 - [ ] 34-02-PLAN.md — Parameterized SQL query builder (TDD)
@@ -171,7 +171,7 @@ Phases execute in numeric order: 34 → 35 → 36 → 37 → 38
 | 18-28 | v1.2.1 | 27/27 | Complete | 2026-03-23 |
 | 29-31 | v1.2.2 | 6/6 | Complete | 2026-03-26 |
 | 32-33.1 | v1.2.3 | 15/15 | Complete | 2026-03-29 |
-| 34. Contracts and Query Foundation | v1.3 | 0/2 | Not started | - |
+| 34. Contracts and Query Foundation | v1.3 | 0/2 | Planned    |  |
 | 35. SQL Repository | v1.3 | 0/0 | Not started | - |
 | 36. In-Memory Fallback | v1.3 | 0/0 | Not started | - |
 | 37. Service Orchestration | v1.3 | 0/0 | Not started | - |
