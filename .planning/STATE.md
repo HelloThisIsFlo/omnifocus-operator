@@ -60,11 +60,8 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 33.1 P01 | 7min | 2 tasks | 9 files |
 | Phase 33.1 P02 | 24min | 2 tasks | 14 files |
 | Phase 33.1 P03 | 5min | 2 tasks | 2 files |
-<<<<<<< HEAD
 | Phase 33.1 P04 | 5min | 2 tasks | 7 files |
-=======
 | Phase 33.1 P05 | 4min | 2 tasks | 5 files |
->>>>>>> worktree-agent-ab08cb2f
 
 ## Accumulated Context
 
@@ -126,9 +123,5 @@ Carried forward:
 ## Session Continuity
 
 Last activity: 2026-03-28 - Completed Phase 33 Plan 04: gap closure cleanup
-<<<<<<< HEAD
-Stopped at: Completed 33.1-04-PLAN.md
-=======
 Stopped at: Completed 33.1-05-PLAN.md
->>>>>>> worktree-agent-ab08cb2f
 Resume file: None
