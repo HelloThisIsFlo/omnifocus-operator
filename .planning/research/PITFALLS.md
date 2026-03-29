@@ -148,14 +148,14 @@ Mistakes that cause result divergence between read paths, data loss via silent o
 
 ### Pitfall 9: `project` Filter Requires a JOIN That Doesn't Exist Yet
 
-**What goes wrong:** `list_tasks(project="Renovations")` needs to match tasks by their containing project's name. But the current `_TASKS_SQL` query doesn't join to project names. The task row has `containingProjectInfo` (a ProjectInfo FK) but not the project name directly.
+**What goes wrong:** `list_tasks(project="Renovations")` needs to match tasks by their containing project's name at any nesting depth (not just direct children). The current `_TASKS_SQL` query doesn't join to project names. The task row has `containingProjectInfo` (a ProjectInfo FK) but not the project name directly.
 
 **Prevention:**
 - **The SQL query needs a LEFT JOIN to ProjectInfo and then to Task** (since projects are stored as Task rows with a ProjectInfo entry). Something like: `LEFT JOIN ProjectInfo pi2 ON t.containingProjectInfo = pi2.pk LEFT JOIN Task pt ON pi2.task = pt.persistentIdentifier WHERE pt.name LIKE ?`.
 - **For in-memory:** The Task model doesn't currently have a `project_name` field. The spec notes "project_name as a derived field on Task (resolved from snapshot/join)." This needs to be either: (a) added as a field populated during snapshot loading, or (b) resolved at filter time by looking up the parent chain.
 - **Inbox tasks have no project.** `containingProjectInfo IS NULL` for inbox tasks. A `project` filter with an INNER JOIN would exclude all inbox tasks. Must use LEFT JOIN and handle NULL.
 
-**Detection:** Test filtering by project name on inbox tasks (should not match). Test partial match ("Renov" matches "Renovations"). Test case insensitivity.
+**Detection:** Test filtering by project name on inbox tasks (should not match). Test partial match ("Renov" matches "Renovations"). Test case insensitivity. Test deeply nested tasks (task inside action group inside project must still match).
 
 ---
 

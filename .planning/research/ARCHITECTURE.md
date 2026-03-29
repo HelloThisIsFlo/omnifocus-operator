@@ -63,7 +63,7 @@ No standalone `count_tasks` or `count_projects` tools. Instead, `ListResult` alw
 | `repository/hybrid.py` | Add list methods using query_builder for SQL generation |
 | `repository/bridge.py` | Add list methods using filter.py for in-memory filtering |
 | `service/service.py` | Add list/count pipelines, new read delegation methods |
-| `server.py` | Register 7 new tools (list_tasks, list_projects, list_tags, list_folders, list_perspectives, count_tasks, count_projects) |
+| `server.py` | Register 5 new tools (list_tasks, list_projects, list_tags, list_folders, list_perspectives) |
 | `service/resolve.py` | Add tag-name-to-ID resolution helper for filter use (or reuse existing `resolve_tags`) |
 | `models/__init__.py` | Export any new result models |
 
@@ -136,7 +136,7 @@ Key SQL column mappings for Task filters:
 |-------------|--------------|-------|
 | `inbox` | `t.inInbox` | Boolean (0/1) |
 | `flagged` | `t.flagged` | Boolean (0/1) |
-| `project` | Join through `containingProjectInfo` -> `ProjectInfo.task` -> `Task.name` | Case-insensitive LIKE on project name |
+| `project` | Join through `containingProjectInfo` -> `ProjectInfo.task` -> `Task.name` | Case-insensitive LIKE on project name; returns all tasks at any nesting depth within matching project |
 | `tags` | `TaskToTag` join table | Subquery: task IN (SELECT task FROM TaskToTag WHERE tag IN (?)) |
 | `has_children` | `t.childrenCount` | `> 0` for true, `= 0` for false |
 | `estimated_minutes_max` | `t.estimatedMinutes` | `<= ?` |
@@ -211,7 +211,7 @@ Each filter maps to a predicate function operating on the Task Pydantic model (n
 
 ```python
 # contracts/use_cases/list_tasks.py
-class ListTasksQuery(CommandModel):
+class ListTasksQuery(QueryModel):
     """Validated filter + pagination parameters for task listing."""
     inbox: bool | None = None
     flagged: bool | None = None
@@ -452,10 +452,10 @@ This reuses `Resolver.resolve_tags()` which already handles case-insensitive nam
 
 ### Project Name Filter: Partial Match at Repository Level
 
-The `project` filter is a case-insensitive partial match on project name. This stays in the repository:
+The `project` filter is a case-insensitive partial match on project name. Returns all tasks at any nesting depth within the matching project (not just direct children). This stays in the repository:
 
-- **SQL path:** JOIN through `containingProjectInfo` -> `ProjectInfo.task` -> `Task.name`, LIKE `%query%`
-- **In-memory path:** Check `task.parent.name` with Python `in` operator (case-insensitive)
+- **SQL path:** JOIN through `containingProjectInfo` -> `ProjectInfo.task` -> `Task.name`, LIKE `%query%`. The `containingProjectInfo` field points to the root project for all tasks regardless of nesting depth, so no parent-chain walking is needed.
+- **In-memory path:** Walk the parent chain to find the containing project, match name with Python case-insensitive `in` operator.
 
 Not pre-resolved in service because partial matching is a repository concern.
 
