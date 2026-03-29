@@ -12,7 +12,10 @@ from omnifocus_operator.agent_messages.warnings import (
     EDIT_COMPLETED_TASK,
     LIFECYCLE_REPEATING_COMPLETE,
     LIFECYCLE_REPEATING_DROP,
+    REPETITION_AUTO_CLEAR_ON_DATES,
+    REPETITION_EMPTY_ON,
     REPETITION_EMPTY_ON_DATES,
+    REPETITION_EMPTY_ON_DAYS,
 )
 from omnifocus_operator.contracts.base import _Unset
 from omnifocus_operator.contracts.common import MoveAction, TagAction
@@ -24,10 +27,8 @@ from omnifocus_operator.contracts.use_cases.edit_task import (
 from omnifocus_operator.contracts.use_cases.repetition_rule import RepetitionRuleRepoPayload
 from omnifocus_operator.models.common import TagRef
 from omnifocus_operator.models.repetition_rule import (
-    DailyFrequency,
     EndByDate,
-    MonthlyDayInMonthFrequency,
-    MonthlyFrequency,
+    Frequency,
 )
 from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.models.task import Task
@@ -520,54 +521,116 @@ class TestRepetitionWarnings:
 
 
 # ---------------------------------------------------------------------------
-# normalize_empty_on_dates
+# normalize_empty_specialization_fields
 # ---------------------------------------------------------------------------
 
 
-class TestNormalizeEmptyOnDates:
-    """D-13: monthly_day_in_month with empty onDates normalizes to monthly."""
+class TestNormalizeEmptySpecializationFields:
+    """D-17: Empty specialization fields normalize to None + warning."""
 
-    def test_empty_list(self) -> None:
-        """onDates=[] -> MonthlyFrequency + warning."""
+    def test_empty_on_dates(self) -> None:
+        """monthly with onDates=[] -> on_dates=None + warning."""
         domain = _domain()
-        freq = MonthlyDayInMonthFrequency(on_dates=[])
-        result_freq, warnings = domain.normalize_empty_on_dates(freq)
-        assert isinstance(result_freq, MonthlyFrequency)
-        assert result_freq.interval == freq.interval
+        freq = Frequency(type="monthly", on_dates=[])
+        result_freq, warnings = domain.normalize_empty_specialization_fields(freq)
+        assert result_freq.on_dates is None
         assert len(warnings) == 1
         assert REPETITION_EMPTY_ON_DATES in warnings[0]
-
-    def test_none_on_dates(self) -> None:
-        """onDates=None -> MonthlyFrequency + warning."""
-        domain = _domain()
-        freq = MonthlyDayInMonthFrequency(on_dates=None)
-        result_freq, warnings = domain.normalize_empty_on_dates(freq)
-        assert isinstance(result_freq, MonthlyFrequency)
-        assert len(warnings) == 1
 
     def test_non_empty_on_dates_unchanged(self) -> None:
         """onDates=[15] -> same frequency, no warning."""
         domain = _domain()
-        freq = MonthlyDayInMonthFrequency(on_dates=[15])
-        result_freq, warnings = domain.normalize_empty_on_dates(freq)
+        freq = Frequency(type="monthly", on_dates=[15])
+        result_freq, warnings = domain.normalize_empty_specialization_fields(freq)
         assert result_freq is freq
         assert warnings == []
 
     def test_non_applicable_type_unchanged(self) -> None:
-        """DailyFrequency -> same frequency, no warning (not applicable)."""
+        """Daily -> same frequency, no warning (not applicable)."""
         domain = _domain()
-        freq = DailyFrequency()
-        result_freq, warnings = domain.normalize_empty_on_dates(freq)
+        freq = Frequency(type="daily")
+        result_freq, warnings = domain.normalize_empty_specialization_fields(freq)
         assert result_freq is freq
         assert warnings == []
 
     def test_preserves_interval(self) -> None:
         """Custom interval is preserved when normalizing."""
         domain = _domain()
-        freq = MonthlyDayInMonthFrequency(interval=3, on_dates=[])
-        result_freq, _warnings = domain.normalize_empty_on_dates(freq)
-        assert isinstance(result_freq, MonthlyFrequency)
+        freq = Frequency(type="monthly", interval=3, on_dates=[])
+        result_freq, _warnings = domain.normalize_empty_specialization_fields(freq)
+        assert result_freq.on_dates is None
         assert result_freq.interval == 3
+
+    def test_empty_on_days(self) -> None:
+        """weekly with onDays=[] -> on_days=None + warning."""
+        domain = _domain()
+        freq = Frequency(type="weekly", on_days=[])
+        result_freq, warnings = domain.normalize_empty_specialization_fields(freq)
+        assert result_freq.on_days is None
+        assert len(warnings) == 1
+        assert REPETITION_EMPTY_ON_DAYS in warnings[0]
+
+    def test_empty_on(self) -> None:
+        """monthly with on={} -> on=None + warning."""
+        domain = _domain()
+        freq = Frequency(type="monthly", on={})
+        result_freq, warnings = domain.normalize_empty_specialization_fields(freq)
+        assert result_freq.on is None
+        assert len(warnings) == 1
+        assert REPETITION_EMPTY_ON in warnings[0]
+
+    def test_non_empty_on_days_unchanged(self) -> None:
+        """onDays=["MO"] -> same frequency, no warning."""
+        domain = _domain()
+        freq = Frequency(type="weekly", on_days=["MO"])
+        result_freq, warnings = domain.normalize_empty_specialization_fields(freq)
+        assert result_freq is freq
+        assert warnings == []
+
+
+# ---------------------------------------------------------------------------
+# auto_clear_monthly_mutual_exclusion
+# ---------------------------------------------------------------------------
+
+
+class TestAutoClearMonthlyMutualExclusion:
+    """D-08: Auto-clear monthly on/on_dates mutual exclusion on merge path."""
+
+    def test_both_set_clears_on_dates(self) -> None:
+        """on + on_dates on monthly -> auto-clear on_dates."""
+        domain = _domain()
+        merged = {"type": "monthly", "on": {"first": "monday"}, "on_dates": [1]}
+        result, warnings = domain.auto_clear_monthly_mutual_exclusion(merged)
+        assert result["on"] == {"first": "monday"}
+        assert result["on_dates"] is None
+        assert len(warnings) == 1
+        assert REPETITION_AUTO_CLEAR_ON_DATES in warnings[0]
+
+    def test_only_on_set_no_change(self) -> None:
+        """Only on set -> no change."""
+        domain = _domain()
+        merged = {"type": "monthly", "on": {"first": "monday"}, "on_dates": None}
+        result, warnings = domain.auto_clear_monthly_mutual_exclusion(merged)
+        assert result["on"] == {"first": "monday"}
+        assert result["on_dates"] is None
+        assert warnings == []
+
+    def test_only_on_dates_set_no_change(self) -> None:
+        """Only on_dates set -> no change."""
+        domain = _domain()
+        merged = {"type": "monthly", "on": None, "on_dates": [1, 15]}
+        result, warnings = domain.auto_clear_monthly_mutual_exclusion(merged)
+        assert result["on"] is None
+        assert result["on_dates"] == [1, 15]
+        assert warnings == []
+
+    def test_non_monthly_no_change(self) -> None:
+        """Non-monthly type -> no change."""
+        domain = _domain()
+        merged = {"type": "weekly", "on_days": ["MO"]}
+        result, warnings = domain.auto_clear_monthly_mutual_exclusion(merged)
+        assert result == merged
+        assert warnings == []
 
 
 # ---------------------------------------------------------------------------

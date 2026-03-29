@@ -1,7 +1,9 @@
-"""Tests for repetition rule validation functions.
+"""Tests for repetition rule validation -- model validators and agent messages.
 
-Tests validate_repetition_rule_add and internal validators for interval,
-day codes, ordinals, day names, on_dates ranges, and end occurrences.
+With the flat Frequency model, all input validation has migrated to Pydantic
+model validators on Frequency/FrequencyAddSpec. These tests verify:
+- Model validator behavior (cross-type, day codes, ordinals, on_dates, interval)
+- Agent message constants exist and contain expected content
 """
 
 from __future__ import annotations
@@ -21,16 +23,15 @@ from omnifocus_operator.agent_messages.warnings import (
     REPETITION_NO_OP,
     REPETITION_ON_COMPLETED_TASK,
 )
-from omnifocus_operator.contracts.use_cases.repetition_rule import RepetitionRuleAddSpec
+from omnifocus_operator.contracts.use_cases.repetition_rule import (
+    FrequencyAddSpec,
+    RepetitionRuleAddSpec,
+)
 from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
-    DailyFrequency,
     EndByOccurrences,
-    MonthlyDayInMonthFrequency,
-    MonthlyDayOfWeekFrequency,
-    WeeklyOnDaysFrequency,
+    Frequency,
 )
-from omnifocus_operator.service.validate import validate_repetition_rule_add
 
 
 def _make_spec(
@@ -41,7 +42,7 @@ def _make_spec(
 ) -> RepetitionRuleAddSpec:
     """Helper to create a spec with defaults."""
     if frequency is None:
-        frequency = DailyFrequency()
+        frequency = FrequencyAddSpec(type="daily")
     return RepetitionRuleAddSpec(
         frequency=frequency,
         schedule=schedule,
@@ -51,146 +52,164 @@ def _make_spec(
 
 
 class TestValidateInterval:
-    """Tests for interval validation (>= 1)."""
+    """Tests for interval validation (>= 1) via model validators."""
 
     def test_valid_interval(self) -> None:
-        spec = _make_spec(frequency=DailyFrequency(interval=3))
-        result = validate_repetition_rule_add(spec)
-        assert result.frequency.interval == 3
+        freq = Frequency(type="daily", interval=3)
+        assert freq.interval == 3
 
     def test_interval_zero_rejected(self) -> None:
-        spec = _make_spec(frequency=DailyFrequency(interval=0))
-        with pytest.raises(ValueError, match=r"[Ii]nterval"):
-            validate_repetition_rule_add(spec)
+        with pytest.raises(ValueError, match=r"[Ii]nterval|greater than or equal"):
+            Frequency(type="daily", interval=0)
 
     def test_interval_negative_rejected(self) -> None:
-        spec = _make_spec(frequency=DailyFrequency(interval=-1))
-        with pytest.raises(ValueError, match=r"[Ii]nterval"):
-            validate_repetition_rule_add(spec)
+        with pytest.raises(ValueError, match=r"[Ii]nterval|greater than or equal"):
+            Frequency(type="daily", interval=-1)
 
     def test_interval_default_valid(self) -> None:
-        spec = _make_spec(frequency=DailyFrequency())
-        result = validate_repetition_rule_add(spec)
-        assert result.frequency.interval == 1
+        freq = Frequency(type="daily")
+        assert freq.interval == 1
 
 
 class TestValidateOnDays:
-    """Tests for WeeklyOnDaysFrequency day codes."""
+    """Tests for day code validation via model field validators."""
 
     def test_valid_uppercase(self) -> None:
-        spec = _make_spec(frequency=WeeklyOnDaysFrequency(on_days=["MO", "WE"]))
-        result = validate_repetition_rule_add(spec)
-        assert result.frequency.on_days == ["MO", "WE"]
+        freq = Frequency(type="weekly", on_days=["MO", "WE"])
+        assert freq.on_days == ["MO", "WE"]
 
     def test_normalizes_lowercase_to_uppercase(self) -> None:
-        spec = _make_spec(frequency=WeeklyOnDaysFrequency(on_days=["mo", "we"]))
-        result = validate_repetition_rule_add(spec)
-        assert result.frequency.on_days == ["MO", "WE"]
+        freq = Frequency(type="weekly", on_days=["mo", "we"])
+        assert freq.on_days == ["MO", "WE"]
 
     def test_invalid_day_code_rejected(self) -> None:
-        spec = _make_spec(frequency=WeeklyOnDaysFrequency(on_days=["XX"]))
         with pytest.raises(ValueError, match="day code"):
-            validate_repetition_rule_add(spec)
+            Frequency(type="weekly", on_days=["XX"])
 
     def test_mixed_case_valid(self) -> None:
-        spec = _make_spec(frequency=WeeklyOnDaysFrequency(on_days=["Mo", "Fr"]))
-        result = validate_repetition_rule_add(spec)
-        assert result.frequency.on_days == ["MO", "FR"]
+        freq = Frequency(type="weekly", on_days=["Mo", "Fr"])
+        assert freq.on_days == ["MO", "FR"]
 
 
 class TestValidateMonthlyDayOfWeek:
-    """Tests for MonthlyDayOfWeekFrequency ordinal/day validation."""
+    """Tests for on dict ordinal/day validation via model field validators."""
 
     def test_valid_on(self) -> None:
-        spec = _make_spec(frequency=MonthlyDayOfWeekFrequency(on={"second": "tuesday"}))
-        result = validate_repetition_rule_add(spec)
-        assert result.frequency.on == {"second": "tuesday"}
+        freq = Frequency(type="monthly", on={"second": "tuesday"})
+        assert freq.on == {"second": "tuesday"}
 
     def test_invalid_ordinal_rejected(self) -> None:
-        spec = _make_spec(frequency=MonthlyDayOfWeekFrequency(on={"invalid": "tuesday"}))
         with pytest.raises(ValueError, match="ordinal"):
-            validate_repetition_rule_add(spec)
+            Frequency(type="monthly", on={"invalid": "tuesday"})
 
     def test_invalid_day_name_rejected(self) -> None:
-        spec = _make_spec(frequency=MonthlyDayOfWeekFrequency(on={"first": "badday"}))
         with pytest.raises(ValueError, match="day name"):
-            validate_repetition_rule_add(spec)
+            Frequency(type="monthly", on={"first": "badday"})
 
     def test_last_weekday_valid(self) -> None:
-        spec = _make_spec(frequency=MonthlyDayOfWeekFrequency(on={"last": "weekday"}))
-        result = validate_repetition_rule_add(spec)
-        assert result.frequency.on == {"last": "weekday"}
+        freq = Frequency(type="monthly", on={"last": "weekday"})
+        assert freq.on == {"last": "weekday"}
 
     def test_none_on_valid(self) -> None:
-        """MonthlyDayOfWeekFrequency with on=None is valid (bare monthly pattern)."""
-        spec = _make_spec(frequency=MonthlyDayOfWeekFrequency(on=None))
-        result = validate_repetition_rule_add(spec)
-        assert result.frequency.on is None
+        """Monthly with on=None is valid (bare monthly pattern)."""
+        freq = Frequency(type="monthly", on=None)
+        assert freq.on is None
 
 
 class TestValidateMonthlyDayInMonth:
-    """Tests for MonthlyDayInMonthFrequency on_dates range validation."""
+    """Tests for on_dates range validation via model field validators."""
 
     def test_valid_dates(self) -> None:
-        spec = _make_spec(frequency=MonthlyDayInMonthFrequency(on_dates=[-1, 15]))
-        result = validate_repetition_rule_add(spec)
-        assert result.frequency.on_dates == [-1, 15]
+        freq = Frequency(type="monthly", on_dates=[-1, 15])
+        assert freq.on_dates == [-1, 15]
 
     def test_zero_rejected(self) -> None:
-        spec = _make_spec(frequency=MonthlyDayInMonthFrequency(on_dates=[0]))
         with pytest.raises(ValueError, match="date value"):
-            validate_repetition_rule_add(spec)
+            Frequency(type="monthly", on_dates=[0])
 
     def test_out_of_range_rejected(self) -> None:
-        spec = _make_spec(frequency=MonthlyDayInMonthFrequency(on_dates=[32]))
         with pytest.raises(ValueError, match="date value"):
-            validate_repetition_rule_add(spec)
+            Frequency(type="monthly", on_dates=[32])
 
     def test_negative_one_valid(self) -> None:
         """on_dates=[-1] means last day of month, valid."""
-        spec = _make_spec(frequency=MonthlyDayInMonthFrequency(on_dates=[-1]))
-        result = validate_repetition_rule_add(spec)
-        assert result.frequency.on_dates == [-1]
+        freq = Frequency(type="monthly", on_dates=[-1])
+        assert freq.on_dates == [-1]
 
     def test_none_on_dates_valid(self) -> None:
-        """on_dates=None is valid (bare monthly_day_in_month)."""
-        spec = _make_spec(frequency=MonthlyDayInMonthFrequency(on_dates=None))
-        result = validate_repetition_rule_add(spec)
-        assert result.frequency.on_dates is None
+        """on_dates=None is valid (bare monthly)."""
+        freq = Frequency(type="monthly", on_dates=None)
+        assert freq.on_dates is None
 
 
 class TestValidateEnd:
-    """Tests for end condition validation."""
+    """Tests for end condition validation via model field constraints."""
 
     def test_valid_end_by_occurrences(self) -> None:
-        spec = _make_spec(end=EndByOccurrences(occurrences=10))
-        result = validate_repetition_rule_add(spec)
-        assert result.end.occurrences == 10
+        end = EndByOccurrences(occurrences=10)
+        assert end.occurrences == 10
 
     def test_occurrences_zero_rejected(self) -> None:
-        spec = _make_spec(end=EndByOccurrences(occurrences=0))
-        with pytest.raises(ValueError, match="occurrences"):
-            validate_repetition_rule_add(spec)
-
-    def test_none_end_valid(self) -> None:
-        spec = _make_spec(end=None)
-        result = validate_repetition_rule_add(spec)
-        assert result.end is None
+        with pytest.raises(ValueError, match="occurrences|greater than or equal"):
+            EndByOccurrences(occurrences=0)
 
     def test_valid_interval_one(self) -> None:
-        spec = _make_spec(end=EndByOccurrences(occurrences=1))
-        result = validate_repetition_rule_add(spec)
-        assert result.end.occurrences == 1
+        end = EndByOccurrences(occurrences=1)
+        assert end.occurrences == 1
 
 
 class TestCrossTypeDetection:
-    """Tests for cross-type field detection (D-05 gap: Pydantic won't reject)."""
+    """Tests for cross-type field detection via model validators (D-07)."""
 
     def test_daily_with_valid_fields(self) -> None:
         """Normal daily frequency passes validation."""
-        spec = _make_spec(frequency=DailyFrequency(interval=2))
-        result = validate_repetition_rule_add(spec)
-        assert result.frequency.type == "daily"
+        freq = Frequency(type="daily", interval=2)
+        assert freq.type == "daily"
+
+    def test_on_days_on_daily_rejected(self) -> None:
+        """on_days with type daily -> cross-type error."""
+        with pytest.raises(ValueError, match="on_days is not valid"):
+            Frequency(type="daily", on_days=["MO"])
+
+    def test_on_on_weekly_rejected(self) -> None:
+        """on dict with type weekly -> cross-type error."""
+        with pytest.raises(ValueError, match="on is not valid"):
+            Frequency(type="weekly", on={"first": "monday"})
+
+    def test_on_dates_on_weekly_rejected(self) -> None:
+        """on_dates with type weekly -> cross-type error."""
+        with pytest.raises(ValueError, match="on_dates is not valid"):
+            Frequency(type="weekly", on_dates=[1])
+
+    def test_on_and_on_dates_mutually_exclusive(self) -> None:
+        """on + on_dates on monthly -> mutual exclusion error."""
+        with pytest.raises(ValueError, match="mutually exclusive"):
+            Frequency(type="monthly", on={"first": "monday"}, on_dates=[1])
+
+
+class TestFrequencyAddSpec:
+    """Tests for FrequencyAddSpec model validators (same as Frequency)."""
+
+    def test_valid_daily(self) -> None:
+        spec = FrequencyAddSpec(type="daily")
+        assert spec.type == "daily"
+        assert spec.interval == 1
+
+    def test_valid_weekly_with_days(self) -> None:
+        spec = FrequencyAddSpec(type="weekly", on_days=["MO", "FR"])
+        assert spec.on_days == ["MO", "FR"]
+
+    def test_normalizes_day_codes(self) -> None:
+        spec = FrequencyAddSpec(type="weekly", on_days=["mo", "fr"])
+        assert spec.on_days == ["MO", "FR"]
+
+    def test_cross_type_rejected(self) -> None:
+        with pytest.raises(ValueError, match="on_days is not valid"):
+            FrequencyAddSpec(type="daily", on_days=["MO"])
+
+    def test_used_in_spec(self) -> None:
+        spec = _make_spec(frequency=FrequencyAddSpec(type="daily", interval=3))
+        assert spec.frequency.interval == 3
 
 
 class TestAgentMessages:
