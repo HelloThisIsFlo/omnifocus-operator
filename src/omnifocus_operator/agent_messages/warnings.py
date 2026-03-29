@@ -111,6 +111,13 @@ REPETITION_NO_OP = (
     "Omit repetitionRule from the request if you don't want to change it."
 )
 
+REPETITION_ANCHOR_DATE_MISSING = (
+    "basedOn is '{based_on}' but no {date_field} is set on this task -- "
+    "OmniFocus will fall back to the task's creation date as the anchor. "
+    "Set a {date_field} for predictable repetition scheduling, or confirm "
+    "with the user that creation-date anchoring is intended."
+)
+
 REPETITION_ON_COMPLETED_TASK = (
     "Setting a repetition rule on a {status} task -- the rule was applied, "
     "but confirm with the user that they intended to modify a {status} task's repetition."

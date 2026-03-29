@@ -25,6 +25,7 @@ from omnifocus_operator.agent_messages.warnings import (
     LIFECYCLE_REPEATING_COMPLETE,
     LIFECYCLE_REPEATING_DROP,
     MOVE_SAME_CONTAINER,
+    REPETITION_ANCHOR_DATE_MISSING,
     REPETITION_AUTO_CLEAR_ON,
     REPETITION_AUTO_CLEAR_ON_DATES,
     REPETITION_EMPTY_ON,
@@ -56,6 +57,7 @@ if TYPE_CHECKING:
     )
     from omnifocus_operator.contracts.use_cases.repetition_rule import FrequencyEditSpec
     from omnifocus_operator.models.common import TagRef
+    from omnifocus_operator.models.enums import BasedOn
     from omnifocus_operator.models.task import Task
     from omnifocus_operator.service.resolve import Resolver
 
@@ -192,6 +194,31 @@ class DomainLogic:
             warnings.append(REPETITION_ON_COMPLETED_TASK.format(status=task.availability.value))
 
         return warnings
+
+    def check_anchor_date_warning(
+        self,
+        based_on: BasedOn,
+        effective_dates: dict[str, object],
+    ) -> list[str]:
+        """Warn if basedOn references an anchor date that isn't set on the task.
+
+        OmniFocus falls back to the task's creation date when the anchor date
+        is missing -- this is rarely the user's intent.
+        """
+        _anchor_map: dict[str, tuple[str, str]] = {
+            "due_date": ("due_date", "dueDate"),
+            "defer_date": ("defer_date", "deferDate"),
+            "planned_date": ("planned_date", "plannedDate"),
+        }
+        snake_key, camel_display = _anchor_map[based_on.value]
+        if effective_dates.get(snake_key) is None:
+            return [
+                REPETITION_ANCHOR_DATE_MISSING.format(
+                    based_on=based_on.value,
+                    date_field=camel_display,
+                )
+            ]
+        return []
 
     def normalize_empty_specialization_fields(
         self,
