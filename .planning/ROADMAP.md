@@ -144,8 +144,8 @@ Plans:
 - [x] 33.1-01-PLAN.md — Flat Frequency model, write specs (FrequencyAddSpec/FrequencyEditSpec), parser/builder update
 - [x] 33.1-02-PLAN.md — Service layer migration (validate.py, domain.py, service.py merge rewrite)
 - [x] 33.1-03-PLAN.md — Server tool descriptions (D-14/D-15), error handling, output schema tests
-- [ ] 33.1-04-PLAN.md — Gap closure: fix validation error quality (interval, occurrences, end:{})
-- [ ] 33.1-05-PLAN.md — Gap closure: anchor date missing warning for basedOn
+- [x] 33.1-04-PLAN.md — Gap closure: fix validation error quality (interval, occurrences, end:{})
+- [x] 33.1-05-PLAN.md — Gap closure: anchor date missing warning for basedOn
 
 ## Progress
 
@@ -159,4 +159,4 @@ Plans:
 | 32. Read Model Rewrite | v1.2.3 | 2/2 | Complete    | 2026-03-28 |
 | 32.1 Output Schema Validation Gap | v1.2.3 | 3/3 | Complete    | 2026-03-28 |
 | 33. Write Model, Validation & Bridge | v1.2.3 | 5/5 | In Progress | |
-| 33.1 Refactor Frequency to flat model | v1.2.3 | 4/5 | In Progress | |
+| 33.1 Refactor Frequency to flat model | v1.2.3 | 5/5 | In Progress | |

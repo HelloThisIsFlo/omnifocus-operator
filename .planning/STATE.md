@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.2.3
 milestone_name: Repetition Rule Write Support
 status: completed
-stopped_at: Completed 33.1-04-PLAN.md
+stopped_at: Completed 33.1-05-PLAN.md
 last_updated: "2026-03-29T15:28:00.799Z"
 last_activity: 2026-03-29
 progress:
@@ -60,7 +60,11 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 33.1 P01 | 7min | 2 tasks | 9 files |
 | Phase 33.1 P02 | 24min | 2 tasks | 14 files |
 | Phase 33.1 P03 | 5min | 2 tasks | 2 files |
+<<<<<<< HEAD
 | Phase 33.1 P04 | 5min | 2 tasks | 7 files |
+=======
+| Phase 33.1 P05 | 4min | 2 tasks | 5 files |
+>>>>>>> worktree-agent-ab08cb2f
 
 ## Accumulated Context
 
@@ -89,7 +93,11 @@ Recent decisions affecting current work:
 - [Phase 33.1]: auto_clear_monthly_mutual_exclusion operates on merged dict before Frequency.model_validate() to avoid validator rejection
 - [Phase 33.1]: FrequencyEditSpec is pure patch container (no validators), validation fires on Frequency construction from merged result
 - [Phase 33.1]: Consolidated literal_error handling: lifecycle and frequency type share one elif branch with loc-based dispatch
+<<<<<<< HEAD
 - [Phase 33.1]: @field_validator replaces Field(ge=1) for interval/occurrences -- clean error messages at cost of JSON Schema minimum constraint
+=======
+- [Phase 33.1]: Anchor map uses snake_case key for lookup, camelCase display for agent-facing message
+>>>>>>> worktree-agent-ab08cb2f
 
 ### Pending Todos
 
@@ -120,5 +128,9 @@ Carried forward:
 ## Session Continuity
 
 Last activity: 2026-03-28 - Completed Phase 33 Plan 04: gap closure cleanup
+<<<<<<< HEAD
 Stopped at: Completed 33.1-04-PLAN.md
+=======
+Stopped at: Completed 33.1-05-PLAN.md
+>>>>>>> worktree-agent-ab08cb2f
 Resume file: None

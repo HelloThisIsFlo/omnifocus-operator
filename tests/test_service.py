@@ -2153,3 +2153,77 @@ class TestErrorOperatorService:
         service = ErrorOperatorService(ValueError("x"))
 
         assert "_repository" not in service.__dict__
+
+
+# ---------------------------------------------------------------------------
+# Anchor Date Warning (DomainLogic.check_anchor_date_warning)
+# ---------------------------------------------------------------------------
+
+
+class TestAnchorDateWarning:
+    """Unit tests for DomainLogic.check_anchor_date_warning."""
+
+    @pytest.fixture
+    def domain(self) -> DomainLogic:
+        """DomainLogic with mock dependencies (method is pure, doesn't use them)."""
+        from omnifocus_operator.service.domain import DomainLogic
+
+        return DomainLogic(repo=AsyncMock(), resolver=AsyncMock())
+
+    def test_due_date_missing_returns_warning(self, domain: DomainLogic) -> None:
+        warnings = domain.check_anchor_date_warning(
+            based_on=BasedOn.DUE_DATE,
+            effective_dates={"due_date": None, "defer_date": None, "planned_date": None},
+        )
+        assert len(warnings) == 1
+        assert "due_date" in warnings[0]
+        assert "dueDate" in warnings[0]
+
+    def test_due_date_present_no_warning(self, domain: DomainLogic) -> None:
+        some_dt = datetime(2026, 6, 1, tzinfo=UTC)
+        warnings = domain.check_anchor_date_warning(
+            based_on=BasedOn.DUE_DATE,
+            effective_dates={"due_date": some_dt, "defer_date": None, "planned_date": None},
+        )
+        assert warnings == []
+
+    def test_defer_date_missing_returns_warning(self, domain: DomainLogic) -> None:
+        warnings = domain.check_anchor_date_warning(
+            based_on=BasedOn.DEFER_DATE,
+            effective_dates={"due_date": None, "defer_date": None, "planned_date": None},
+        )
+        assert len(warnings) == 1
+        assert "defer_date" in warnings[0]
+        assert "deferDate" in warnings[0]
+
+    def test_defer_date_present_no_warning(self, domain: DomainLogic) -> None:
+        some_dt = datetime(2026, 6, 1, tzinfo=UTC)
+        warnings = domain.check_anchor_date_warning(
+            based_on=BasedOn.DEFER_DATE,
+            effective_dates={"due_date": None, "defer_date": some_dt, "planned_date": None},
+        )
+        assert warnings == []
+
+    def test_planned_date_missing_returns_warning(self, domain: DomainLogic) -> None:
+        warnings = domain.check_anchor_date_warning(
+            based_on=BasedOn.PLANNED_DATE,
+            effective_dates={"due_date": None, "defer_date": None, "planned_date": None},
+        )
+        assert len(warnings) == 1
+        assert "planned_date" in warnings[0]
+        assert "plannedDate" in warnings[0]
+
+    def test_planned_date_present_no_warning(self, domain: DomainLogic) -> None:
+        some_dt = datetime(2026, 6, 1, tzinfo=UTC)
+        warnings = domain.check_anchor_date_warning(
+            based_on=BasedOn.PLANNED_DATE,
+            effective_dates={"due_date": None, "defer_date": None, "planned_date": some_dt},
+        )
+        assert warnings == []
+
+    def test_warning_mentions_creation_date_fallback(self, domain: DomainLogic) -> None:
+        warnings = domain.check_anchor_date_warning(
+            based_on=BasedOn.DUE_DATE,
+            effective_dates={"due_date": None, "defer_date": None, "planned_date": None},
+        )
+        assert "creation date" in warnings[0]

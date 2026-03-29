@@ -1255,3 +1255,98 @@ class TestEditTasksRepetitionRule:
         )
         items = edit_result.structured_content["result"]
         assert items[0]["success"] is True
+
+
+class TestAnchorDateWarning:
+    """Verify anchor date missing warning through add_tasks and edit_tasks MCP tools."""
+
+    async def test_add_tasks_repetition_anchor_date_missing_warning(
+        self, client: Any
+    ) -> None:
+        """Add task with basedOn='due_date' but no dueDate produces warning."""
+        result = await client.call_tool(
+            "add_tasks",
+            {
+                "items": [
+                    {
+                        "name": "Missing anchor",
+                        "repetitionRule": {
+                            "frequency": {"type": "daily"},
+                            "schedule": "regularly",
+                            "basedOn": "due_date",
+                        },
+                    }
+                ]
+            },
+        )
+        items = result.structured_content["result"]
+        assert items[0]["success"] is True
+        assert items[0]["warnings"] is not None
+        warnings = items[0]["warnings"]
+        assert any("basedOn is 'due_date'" in w for w in warnings)
+        assert any("dueDate" in w for w in warnings)
+
+    async def test_add_tasks_repetition_anchor_date_present_no_warning(
+        self, client: Any
+    ) -> None:
+        """Add task with basedOn='due_date' AND dueDate set produces no anchor warning."""
+        result = await client.call_tool(
+            "add_tasks",
+            {
+                "items": [
+                    {
+                        "name": "Has anchor date",
+                        "dueDate": "2026-06-01T12:00:00Z",
+                        "repetitionRule": {
+                            "frequency": {"type": "daily"},
+                            "schedule": "regularly",
+                            "basedOn": "due_date",
+                        },
+                    }
+                ]
+            },
+        )
+        items = result.structured_content["result"]
+        assert items[0]["success"] is True
+        # No warnings at all, or no anchor-related warning
+        warnings = items[0].get("warnings") or []
+        assert not any("basedOn" in w for w in warnings)
+
+    async def test_edit_tasks_repetition_anchor_date_existing_task_has_date(
+        self, client: Any
+    ) -> None:
+        """Edit task that already has dueDate, set basedOn='due_date' -> no anchor warning."""
+        # Create task with dueDate
+        add_result = await client.call_tool(
+            "add_tasks",
+            {
+                "items": [
+                    {
+                        "name": "Has due date",
+                        "dueDate": "2026-06-01T12:00:00Z",
+                    }
+                ]
+            },
+        )
+        task_id = add_result.structured_content["result"][0]["id"]
+
+        # Edit: add repetition rule with basedOn=due_date
+        edit_result = await client.call_tool(
+            "edit_tasks",
+            {
+                "items": [
+                    {
+                        "id": task_id,
+                        "repetitionRule": {
+                            "frequency": {"type": "daily"},
+                            "schedule": "regularly",
+                            "basedOn": "due_date",
+                        },
+                    }
+                ]
+            },
+        )
+        items = edit_result.structured_content["result"]
+        assert items[0]["success"] is True
+        warnings = items[0].get("warnings") or []
+        assert not any("basedOn" in w for w in warnings)

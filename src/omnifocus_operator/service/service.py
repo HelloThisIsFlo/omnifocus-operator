@@ -220,6 +220,16 @@ class _AddTaskPipeline(_Pipeline):
         # Update the command with the normalized spec
         self._command = self._command.model_copy(update={"repetition_rule": spec})
 
+        # Check anchor date warning (VALID-05)
+        effective_dates = {
+            "due_date": self._command.due_date,
+            "defer_date": self._command.defer_date,
+            "planned_date": self._command.planned_date,
+        }
+        self._repetition_warnings.extend(
+            self._domain.check_anchor_date_warning(spec.based_on, effective_dates)
+        )
+
     def _build_payload(self) -> None:
         self._repo_payload = self._payload.build_add(self._command, self._resolved_tag_ids)
 
@@ -378,6 +388,16 @@ class _EditTaskPipeline(_Pipeline):
         # Check warnings (end date in past, completed/dropped task)
         self._repetition_warns.extend(
             self._domain.check_repetition_warnings(end=end, task=self._task)
+        )
+
+        # Check anchor date warning (VALID-05)
+        effective_dates = {
+            "due_date": self._command.due_date if is_set(self._command.due_date) else self._task.due_date,
+            "defer_date": self._command.defer_date if is_set(self._command.defer_date) else self._task.defer_date,
+            "planned_date": self._command.planned_date if is_set(self._command.planned_date) else self._task.planned_date,
+        }
+        self._repetition_warns.extend(
+            self._domain.check_anchor_date_warning(based_on, effective_dates)
         )
 
         # Build the repo payload
