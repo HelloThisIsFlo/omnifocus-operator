@@ -1,6 +1,6 @@
 # Repetition Rules Test Suite
 
-Tests repetition rule creation, read model, editing (set/clear/partial update/type change), no-op detection, status warnings, lifecycle interactions, normalization, validation errors, and combo scenarios for `add_tasks` and `edit_tasks`.
+Tests repetition rule creation, read model, editing (set/clear/partial update/type change), no-op detection, status warnings, lifecycle interactions, normalization, validation errors, combo scenarios, and regression guards for `add_tasks` and `edit_tasks`.
 
 ## Conventions
 
@@ -74,6 +74,11 @@ These tests create NEW tasks (under UAT-RepetitionRule parent) with repetition r
 1. `add_tasks` with name "R1e-Yearly", parent=UAT-RepetitionRule, `dueDate: "2026-06-01T12:00:00Z"`, `repetitionRule: { frequency: { type: "yearly" }, schedule: "regularly", basedOn: "planned_date" }`
 2. `get_task` on the created task
 3. PASS if: `frequency.type` is `"yearly"`, `frequency.interval` is `1` or omitted (default), `basedOn` is `"planned_date"`
+
+#### Test 1f: Interval=1 suppression — default interval omitted from output
+1. `add_tasks` with name "R1f-DefaultInterval", parent=UAT-RepetitionRule, `dueDate: "2026-06-01T12:00:00Z"`, `repetitionRule: { frequency: { type: "daily" }, schedule: "regularly", basedOn: "due_date" }`
+2. `get_task` on the created task
+3. PASS if: `frequency` object contains `type` but does NOT contain an `interval` field (default interval=1 is suppressed from output)
 
 ### 2. Edit — Set & Clear
 
@@ -162,6 +167,10 @@ First, set up T5-NoOp with a rule: `repetitionRule: { frequency: { type: "daily"
 1. Edit T7-StatusDrop: `repetitionRule: { frequency: { type: "daily" }, schedule: "regularly", basedOn: "due_date" }`
 2. PASS if: success with warning mentioning "dropped"
 
+#### Test 6c: No duplicate status warning (regression)
+1. Edit T6-StatusComplete: `repetitionRule: { frequency: { type: "weekly" }, schedule: "regularly", basedOn: "due_date" }`, `dueDate: "2026-06-15T12:00:00Z"`
+2. PASS if: exactly 1 warning fires mentioning "completed" — NOT 2 separate warnings (one generic "editing a completed task" and one repetition-specific). Previously these fired as a duplicate pair; the fix merged them into a single warning.
+
 ### 7. Lifecycle x Repetition
 
 #### Test 7a: Complete a repeating task
@@ -195,7 +204,14 @@ First, set up T5-NoOp with a rule: `repetitionRule: { frequency: { type: "daily"
 
 #### Test 8d: Rule without anchor date (common agent mistake)
 1. `add_tasks` with name "R8d-NoAnchor", parent=UAT-RepetitionRule, `repetitionRule: { frequency: { type: "daily" }, schedule: "regularly", basedOn: "due_date" }` — NO `dueDate` set
-2. PASS if: either a warning about missing anchor date OR silent success (document whichever behavior occurs — this tests what agents will actually encounter)
+2. PASS if: warning mentioning "basedOn" and the missing date field (e.g., "no dueDate is set"). OmniFocus silently falls back to the creation date as anchor — the warning closes the gap between the agent's mental model and actual behavior.
+
+#### Test 8e: Reverse mutual exclusion auto-clear (onDates → on)
+1. `add_tasks` with name "R8e-ReverseExcl", parent=UAT-RepetitionRule, `dueDate: "2026-06-01T12:00:00Z"`, `repetitionRule: { frequency: { type: "monthly", onDates: [1, 15] }, schedule: "regularly", basedOn: "due_date" }`
+2. Edit R8e: `repetitionRule: { frequency: { on: { "second": "tuesday" } } }`
+3. Check response for warning containing "mutually exclusive" and "auto" or "cleared"
+4. `get_task` on R8e
+5. PASS if: warning present AND `frequency.on` is `{ "second": "tuesday" }` AND `frequency.onDates` is absent. Mirror of test 8c (which tests on → onDates).
 
 ### 9. Validation Errors
 
@@ -228,6 +244,10 @@ Run each INDIVIDUALLY (they will error):
 #### Test 9g: Partial update on non-repeating task
 1. `edit_tasks` on T10 (has no rule): `repetitionRule: { schedule: "from_completion" }`
 2. PASS if: error containing "no existing rule"
+
+#### Test 9h: Invalid frequency type
+1. `edit_tasks` on T10: `repetitionRule: { frequency: { type: "century" }, schedule: "regularly", basedOn: "due_date" }`
+2. PASS if: error containing "Invalid frequency type"
 
 ### 10. Clean Error Format
 
@@ -262,6 +282,7 @@ Run INDIVIDUALLY:
 | 1c | Create: monthly + on | on={"second":"tuesday"}; from_completion; end by date | |
 | 1d | Create: monthly + onDates | onDates=[1,15,-1]; defer_date basedOn | |
 | 1e | Create: yearly | Yearly freq; planned_date basedOn; interval is 1 or omitted | |
+| 1f | Create: interval=1 suppression | Default interval omitted from output (not serialized as 1) | |
 | 2a | Edit: set rule | Set complete rule on non-repeating task | |
 | 2b | Edit: clear rule | Set then clear with null; get_task confirms gone | |
 | 3a | Partial: schedule only | Change schedule; frequency/basedOn/end preserved | |
@@ -276,12 +297,14 @@ Run INDIVIDUALLY:
 | 5b | No-op: omitted + field edit | No repetition warning; field change applied | |
 | 6a | Status: completed task | Set rule on completed task; "completed" warning | |
 | 6b | Status: dropped task | Set rule on dropped task; "dropped" warning | |
+| 6c | Status: no duplicate warning | Set rule on completed task; exactly 1 warning, not 2 (regression) | |
 | 7a | Lifecycle: complete repeating | Complete repeating task; "next occurrence created" | |
 | 7b | Lifecycle: drop repeating | Drop repeating task; "occurrence was skipped" | |
 | 8a | Normalize: empty onDates | Empty onDates normalized to plain monthly; warning present | |
 | 8b | Warning: end date past | End date in past; "no future occurrences" warning | |
 | 8c | Mutual exclusion: on→onDates | Set on, then edit with onDates; auto-clear warning, on absent | |
-| 8d | Edge: rule without anchor date | Create with basedOn: due_date but no dueDate; document behavior | |
+| 8d | Warning: missing anchor date | Create with basedOn: due_date but no dueDate; warning about fallback to creation date | |
+| 8e | Mutual exclusion: onDates→on | Set onDates, then edit with on; auto-clear warning, onDates absent (reverse of 8c) | |
 | 9a | Error: invalid interval | interval=0 returns clean error | |
 | 9b | Error: invalid day code | onDays=["XX"] returns clean error | |
 | 9c | Error: invalid ordinal | on={"sixth":...} returns clean error | |
@@ -289,6 +312,7 @@ Run INDIVIDUALLY:
 | 9e | Error: invalid onDate | onDates=[0] returns clean error | |
 | 9f | Error: invalid end occurrences | occurrences=0 returns clean error | |
 | 9g | Error: no existing rule | Partial update on non-repeating task errors | |
+| 9h | Error: invalid frequency type | type="century" returns clean error | |
 | 10a | Clean error format | Missing type field; no pydantic internals leaked | |
 | 10b | Clean error: empty end | end: {} returns clean error | |
 | 11a | Combo: rule + field edit | Set rule and flagged in same call; both applied | |

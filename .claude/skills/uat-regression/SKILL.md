@@ -13,7 +13,7 @@ Run UAT regression tests for OmniFocus Operator MCP tools against live OmniFocus
 
 | Suite | File | Tests | Covers |
 |-------|------|------:|--------|
-| **v1.2 Combined** *(composite)* | `tests/v1.2-combined.md` | 138 | **Full milestone regression** — lookups, creation, edits, tags, moves, lifecycle, integration, inheritance, repetition rules |
+| **v1.2 Combined** *(composite)* | `tests/v1.2-combined.md` | 143 | **Full milestone regression** — lookups, creation, edits, tags, moves, lifecycle, integration, inheritance, repetition rules |
 | Read Lookups | `tests/read-lookups.md` | 7 | get_task, get_project, get_tag — happy path + not-found errors |
 | Task Creation | `tests/task-creation.md` | 14 | add_tasks — inbox, parent, all fields, tag resolution, errors, batch limit |
 | Integration Flows | `tests/integration-flows.md` | 8 | End-to-end write-through: create→edit→move→tags→lifecycle→get_all |
@@ -22,7 +22,7 @@ Run UAT regression tests for OmniFocus Operator MCP tools against live OmniFocus
 | Move Operations | `tests/move-operations.md` | 16 | All 5 move modes, cross-level, circular refs, completed/dropped movement |
 | Lifecycle | `tests/lifecycle.md` | 12 | Complete, drop, cross-state, repeating tasks, validation |
 | Inheritance | `tests/inheritance.md` | 8 | Effective field inheritance — dueDate, deferDate, plannedDate, flagged from projects through task chains |
-| Repetition Rules | `tests/repetition-rules.md` | 35 | Creation, read model, set/clear/partial update/type change, no-ops, status warnings, lifecycle, normalization, validation errors, combos |
+| Repetition Rules | `tests/repetition-rules.md` | 40 | Creation, read model, set/clear/partial update/type change, no-ops, status warnings, lifecycle, normalization, validation errors, combos, regression guards |
 
 ## Flow
 
