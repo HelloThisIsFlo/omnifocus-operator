@@ -19,15 +19,15 @@ from omnifocus_operator.agent_messages.warnings import (
     REPETITION_EMPTY_ON_DAYS,
 )
 from omnifocus_operator.contracts.base import _Unset
-from omnifocus_operator.contracts.common import MoveAction, TagAction
+from omnifocus_operator.contracts.shared.actions import MoveAction, TagAction
+from omnifocus_operator.contracts.shared.repetition_rule import (
+    FrequencyEditSpec,
+    RepetitionRuleRepoPayload,
+)
 from omnifocus_operator.contracts.use_cases.edit_task import (
     EditTaskActions,
     EditTaskCommand,
     EditTaskRepoPayload,
-)
-from omnifocus_operator.contracts.use_cases.repetition_rule import (
-    FrequencyEditSpec,
-    RepetitionRuleRepoPayload,
 )
 from omnifocus_operator.models.common import TagRef
 from omnifocus_operator.models.repetition_rule import (

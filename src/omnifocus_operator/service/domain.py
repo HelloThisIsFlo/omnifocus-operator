@@ -52,15 +52,15 @@ from omnifocus_operator.rrule.builder import build_rrule
 from omnifocus_operator.rrule.schedule import based_on_to_bridge, schedule_to_bridge
 
 if TYPE_CHECKING:
-    from omnifocus_operator.contracts.common import MoveAction, TagAction
     from omnifocus_operator.contracts.protocols import Repository
+    from omnifocus_operator.contracts.shared.actions import MoveAction, TagAction
+    from omnifocus_operator.contracts.shared.repetition_rule import (
+        FrequencyEditSpec,
+        RepetitionRuleRepoPayload,
+    )
     from omnifocus_operator.contracts.use_cases.edit_task import (
         EditTaskCommand,
         EditTaskRepoPayload,
-    )
-    from omnifocus_operator.contracts.use_cases.repetition_rule import (
-        FrequencyEditSpec,
-        RepetitionRuleRepoPayload,
     )
     from omnifocus_operator.models.common import TagRef
     from omnifocus_operator.models.enums import BasedOn

@@ -8,13 +8,13 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand
-from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
-from omnifocus_operator.contracts.use_cases.repetition_rule import (
+from omnifocus_operator.contracts.shared.repetition_rule import (
     FrequencyAddSpec,
     RepetitionRuleAddSpec,
     RepetitionRuleRepoPayload,
 )
+from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand
+from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
 from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
     EndByDate,

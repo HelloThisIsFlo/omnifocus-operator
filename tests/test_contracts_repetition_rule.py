@@ -11,6 +11,13 @@ import pytest
 from pydantic import ValidationError
 
 from omnifocus_operator.contracts.base import is_set
+from omnifocus_operator.contracts.shared.repetition_rule import (
+    FrequencyAddSpec,
+    FrequencyEditSpec,
+    RepetitionRuleAddSpec,
+    RepetitionRuleEditSpec,
+    RepetitionRuleRepoPayload,
+)
 from omnifocus_operator.contracts.use_cases.add_task import (
     AddTaskCommand,
     AddTaskRepoPayload,
@@ -18,13 +25,6 @@ from omnifocus_operator.contracts.use_cases.add_task import (
 from omnifocus_operator.contracts.use_cases.edit_task import (
     EditTaskCommand,
     EditTaskRepoPayload,
-)
-from omnifocus_operator.contracts.use_cases.repetition_rule import (
-    FrequencyAddSpec,
-    FrequencyEditSpec,
-    RepetitionRuleAddSpec,
-    RepetitionRuleEditSpec,
-    RepetitionRuleRepoPayload,
 )
 from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (

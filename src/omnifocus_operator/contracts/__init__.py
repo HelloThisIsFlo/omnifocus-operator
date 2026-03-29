@@ -15,8 +15,13 @@ from omnifocus_operator.contracts.base import (
     PatchOrNone,
     _Unset,
 )
-from omnifocus_operator.contracts.common import MoveAction, TagAction
 from omnifocus_operator.contracts.protocols import Bridge, Repository, Service
+from omnifocus_operator.contracts.shared.actions import MoveAction, TagAction
+from omnifocus_operator.contracts.shared.repetition_rule import (
+    RepetitionRuleAddSpec,
+    RepetitionRuleEditSpec,
+    RepetitionRuleRepoPayload,
+)
 from omnifocus_operator.contracts.use_cases.add_task import (
     AddTaskCommand,
     AddTaskRepoPayload,
@@ -30,11 +35,6 @@ from omnifocus_operator.contracts.use_cases.edit_task import (
     EditTaskRepoResult,
     EditTaskResult,
     MoveToRepoPayload,
-)
-from omnifocus_operator.contracts.use_cases.repetition_rule import (
-    RepetitionRuleAddSpec,
-    RepetitionRuleEditSpec,
-    RepetitionRuleRepoPayload,
 )
 from omnifocus_operator.models.repetition_rule import EndCondition, Frequency
 

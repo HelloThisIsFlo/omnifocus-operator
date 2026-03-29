@@ -21,7 +21,7 @@ from omnifocus_operator.agent_messages.warnings import (
     REPETITION_NO_OP,
 )
 from omnifocus_operator.contracts.base import UNSET
-from omnifocus_operator.contracts.use_cases.repetition_rule import (
+from omnifocus_operator.contracts.shared.repetition_rule import (
     FrequencyAddSpec,
     FrequencyEditSpec,
     RepetitionRuleAddSpec,

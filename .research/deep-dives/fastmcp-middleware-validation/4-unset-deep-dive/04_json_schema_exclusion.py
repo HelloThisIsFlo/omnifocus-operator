@@ -29,12 +29,12 @@ from typing import Any
 import fastmcp
 from fastmcp import Client
 
-from omnifocus_operator.contracts.common import MoveAction, TagAction
+from omnifocus_operator.contracts.shared.actions import MoveAction, TagAction
 from omnifocus_operator.contracts.use_cases.edit_task import (
     EditTaskActions,
     EditTaskCommand,
 )
-from omnifocus_operator.contracts.use_cases.repetition_rule import RepetitionRuleEditSpec
+from omnifocus_operator.contracts.shared.repetition_rule import RepetitionRuleEditSpec
 
 # ---------------------------------------------------------------------------
 # Helpers

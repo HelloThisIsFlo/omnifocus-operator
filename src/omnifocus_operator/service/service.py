@@ -22,9 +22,9 @@ from omnifocus_operator.agent_messages.warnings import (
 )
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.protocols import Service
+from omnifocus_operator.contracts.shared.repetition_rule import FrequencyAddSpec
 from omnifocus_operator.contracts.use_cases.add_task import AddTaskResult
 from omnifocus_operator.contracts.use_cases.edit_task import EditTaskResult
-from omnifocus_operator.contracts.use_cases.repetition_rule import FrequencyAddSpec
 from omnifocus_operator.models.repetition_rule import Frequency
 from omnifocus_operator.service.domain import DomainLogic
 from omnifocus_operator.service.payload import PayloadBuilder
@@ -35,12 +35,12 @@ from omnifocus_operator.service.validate import (
 )
 
 if TYPE_CHECKING:
-    from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand
-    from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
-    from omnifocus_operator.contracts.use_cases.repetition_rule import (
+    from omnifocus_operator.contracts.shared.repetition_rule import (
         FrequencyEditSpec,
         RepetitionRuleRepoPayload,
     )
+    from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand
+    from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
     from omnifocus_operator.models.enums import BasedOn, Schedule
     from omnifocus_operator.models.project import Project
     from omnifocus_operator.models.repetition_rule import EndCondition

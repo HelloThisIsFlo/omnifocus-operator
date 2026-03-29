@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from omnifocus_operator.contracts.base import CommandModel
-from omnifocus_operator.contracts.use_cases.repetition_rule import (
+from omnifocus_operator.contracts.shared.repetition_rule import (
     RepetitionRuleAddSpec,
     RepetitionRuleRepoPayload,
 )

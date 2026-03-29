@@ -17,17 +17,17 @@ from pydantic import ValidationError
 
 from omnifocus_operator.bridge import BridgeError
 from omnifocus_operator.bridge.mtime import MtimeSource
-from omnifocus_operator.contracts.common import MoveAction, TagAction
-from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand, AddTaskResult
-from omnifocus_operator.contracts.use_cases.edit_task import (
-    EditTaskActions,
-    EditTaskCommand,
-)
-from omnifocus_operator.contracts.use_cases.repetition_rule import (
+from omnifocus_operator.contracts.shared.actions import MoveAction, TagAction
+from omnifocus_operator.contracts.shared.repetition_rule import (
     FrequencyAddSpec,
     FrequencyEditSpec,
     RepetitionRuleAddSpec,
     RepetitionRuleEditSpec,
+)
+from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand, AddTaskResult
+from omnifocus_operator.contracts.use_cases.edit_task import (
+    EditTaskActions,
+    EditTaskCommand,
 )
 from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (

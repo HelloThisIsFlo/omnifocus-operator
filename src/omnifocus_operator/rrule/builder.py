@@ -19,7 +19,7 @@ from omnifocus_operator.models.repetition_rule import (
 from omnifocus_operator.rrule.parser import parse_rrule
 
 if TYPE_CHECKING:
-    from omnifocus_operator.contracts.use_cases.repetition_rule import FrequencyAddSpec
+    from omnifocus_operator.contracts.shared.repetition_rule import FrequencyAddSpec
 
 # ── Reverse Mapping Tables ───────────────────────────────────────────────
 

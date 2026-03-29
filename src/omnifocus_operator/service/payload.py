@@ -10,21 +10,21 @@ import logging
 from typing import TYPE_CHECKING
 
 from omnifocus_operator.contracts.base import is_set
+from omnifocus_operator.contracts.shared.repetition_rule import (
+    RepetitionRuleRepoPayload,
+)
 from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoPayload
 from omnifocus_operator.contracts.use_cases.edit_task import (
     EditTaskRepoPayload,
     MoveToRepoPayload,
 )
-from omnifocus_operator.contracts.use_cases.repetition_rule import (
-    RepetitionRuleRepoPayload,
-)
 from omnifocus_operator.rrule.builder import build_rrule
 from omnifocus_operator.rrule.schedule import based_on_to_bridge, schedule_to_bridge
 
 if TYPE_CHECKING:
+    from omnifocus_operator.contracts.shared.repetition_rule import FrequencyAddSpec
     from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand
     from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
-    from omnifocus_operator.contracts.use_cases.repetition_rule import FrequencyAddSpec
     from omnifocus_operator.models.enums import BasedOn, Schedule
     from omnifocus_operator.models.repetition_rule import EndCondition, Frequency
 
