@@ -84,13 +84,39 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (populated during roadmap creation) | | |
+| TASK-01 | Phase 35 | Pending |
+| TASK-02 | Phase 35 | Pending |
+| TASK-03 | Phase 35 | Pending |
+| TASK-04 | Phase 35 | Pending |
+| TASK-05 | Phase 35 | Pending |
+| TASK-06 | Phase 35 | Pending |
+| TASK-07 | Phase 35 | Pending |
+| TASK-08 | Phase 35 | Pending |
+| TASK-09 | Phase 35 | Pending |
+| TASK-10 | Phase 35 | Pending |
+| TASK-11 | Phase 35 | Pending |
+| PROJ-01 | Phase 35 | Pending |
+| PROJ-02 | Phase 35 | Pending |
+| PROJ-03 | Phase 35 | Pending |
+| PROJ-04 | Phase 35 | Pending |
+| PROJ-05 | Phase 35 | Pending |
+| PROJ-06 | Phase 35 | Pending |
+| PROJ-07 | Phase 35 | Pending |
+| BROWSE-01 | Phase 35 | Pending |
+| BROWSE-02 | Phase 35 | Pending |
+| BROWSE-03 | Phase 35 | Pending |
+| INFRA-01 | Phase 34 | Pending |
+| INFRA-02 | Phase 35 | Pending |
+| INFRA-03 | Phase 36 | Pending |
+| INFRA-04 | Phase 34 | Pending |
+| INFRA-05 | Phase 38 | Pending |
+| INFRA-06 | Phase 37 | Pending |
 
 **Coverage:**
 - v1.3 requirements: 25 total
-- Mapped to phases: 0
-- Unmapped: 25
+- Mapped to phases: 25
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-29*
-*Last updated: 2026-03-29 after initial definition*
+*Last updated: 2026-03-29 after roadmap creation*
