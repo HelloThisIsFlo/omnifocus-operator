@@ -24,6 +24,7 @@ from omnifocus_operator.models import AllEntities, Project, Tag, Task
 from omnifocus_operator.models.repetition_rule import (
     EndCondition,
     Frequency,
+    RepetitionRule,
 )
 from omnifocus_operator.server import create_server
 from tests.conftest import (
@@ -95,7 +96,7 @@ def _make_repetition_rule_dict(variant: str) -> dict[str, Any]:
         },
         "weekly_with_days": {
             "frequency": {
-                "type": "weekly_on_days",
+                "type": "weekly",
                 "interval": 1,
                 "onDays": ["MO", "WE", "FR"],
             },
@@ -103,9 +104,9 @@ def _make_repetition_rule_dict(variant: str) -> dict[str, Any]:
             "basedOn": "defer_date",
             "end": {"occurrences": 10},
         },
-        "monthly_day_of_week": {
+        "monthly_on": {
             "frequency": {
-                "type": "monthly_day_of_week",
+                "type": "monthly",
                 "interval": 1,
                 "on": {"second": "tuesday"},
             },
@@ -113,9 +114,9 @@ def _make_repetition_rule_dict(variant: str) -> dict[str, Any]:
             "basedOn": "due_date",
             "end": {"date": "2025-12-31"},
         },
-        "monthly_day_in_month": {
+        "monthly_on_dates": {
             "frequency": {
-                "type": "monthly_day_in_month",
+                "type": "monthly",
                 "interval": 2,
                 "onDates": [1, 15, -1],
             },
@@ -153,18 +154,18 @@ _TASK_WEEKLY = Task.model_validate(
         repetitionRule=_make_repetition_rule_dict("weekly_with_days"),
     )
 )
-_TASK_MONTHLY_DOW = Task.model_validate(
+_TASK_MONTHLY_ON = Task.model_validate(
     make_model_task_dict(
-        id="task-mdow",
-        name="Monthly DOW Task",
-        repetitionRule=_make_repetition_rule_dict("monthly_day_of_week"),
+        id="task-mon",
+        name="Monthly On Task",
+        repetitionRule=_make_repetition_rule_dict("monthly_on"),
     )
 )
-_TASK_MONTHLY_DIM = Task.model_validate(
+_TASK_MONTHLY_ON_DATES = Task.model_validate(
     make_model_task_dict(
-        id="task-mdim",
-        name="Monthly DIM Task",
-        repetitionRule=_make_repetition_rule_dict("monthly_day_in_month"),
+        id="task-mod",
+        name="Monthly On Dates Task",
+        repetitionRule=_make_repetition_rule_dict("monthly_on_dates"),
     )
 )
 _TASK_PLAIN = Task.model_validate(
@@ -203,14 +204,14 @@ _SNAPSHOT = AllEntities.model_validate(
                 repetitionRule=_make_repetition_rule_dict("weekly_with_days"),
             ),
             make_model_task_dict(
-                id="task-mdow",
-                name="Monthly DOW Task",
-                repetitionRule=_make_repetition_rule_dict("monthly_day_of_week"),
+                id="task-mon",
+                name="Monthly On Task",
+                repetitionRule=_make_repetition_rule_dict("monthly_on"),
             ),
             make_model_task_dict(
-                id="task-mdim",
-                name="Monthly DIM Task",
-                repetitionRule=_make_repetition_rule_dict("monthly_day_in_month"),
+                id="task-mod",
+                name="Monthly On Dates Task",
+                repetitionRule=_make_repetition_rule_dict("monthly_on_dates"),
             ),
             make_model_task_dict(
                 id="task-plain",
@@ -272,7 +273,7 @@ class TestSchemaValidation:
 
     @pytest.mark.parametrize(
         "variant",
-        ["daily", "weekly_bare", "weekly_with_days", "monthly_day_of_week", "monthly_day_in_month"],
+        ["daily", "weekly_bare", "weekly_with_days", "monthly_on", "monthly_on_dates"],
     )
     def test_repetition_rule_variants_validate(self, variant: str) -> None:
         """Each frequency type validates when serialized inside an AllEntities snapshot."""
@@ -294,7 +295,7 @@ class TestSchemaValidation:
     def test_end_conditions_validate(self) -> None:
         """EndByDate and EndByOccurrences both validate inside AllEntities."""
         # EndByOccurrences: weekly_with_days has end.occurrences=10
-        # EndByDate: monthly_day_of_week has end.date="2025-12-31"
+        # EndByDate: monthly_on has end.date="2025-12-31"
         snapshot = AllEntities.model_validate(
             make_model_snapshot_dict(
                 tasks=[
@@ -306,7 +307,7 @@ class TestSchemaValidation:
                     make_model_task_dict(
                         id="task-end-date",
                         name="End by date",
-                        repetitionRule=_make_repetition_rule_dict("monthly_day_of_week"),
+                        repetitionRule=_make_repetition_rule_dict("monthly_on"),
                     ),
                 ],
             )
@@ -340,6 +341,53 @@ class TestSchemaValidation:
             data = serialize_like_fastmcp([result])
         jsonschema.validate(data, schema)
 
+    def test_interval_1_suppressed_in_serialized_output(self) -> None:
+        """Frequency with interval=1 should omit interval from serialized output (exclude_defaults)."""
+        from omnifocus_operator.models.enums import BasedOn, Schedule
+
+        rule = RepetitionRule(
+            frequency=Frequency(type="daily", interval=1),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+        )
+        data = serialize_like_fastmcp(rule)
+        assert "interval" not in data["frequency"], (
+            f"interval=1 should be suppressed in serialized output. Got: {data['frequency']}"
+        )
+        assert data["frequency"]["type"] == "daily"
+
+    def test_interval_non_default_preserved_in_serialized_output(self) -> None:
+        """Frequency with interval!=1 should include interval in serialized output."""
+        from omnifocus_operator.models.enums import BasedOn, Schedule
+
+        rule = RepetitionRule(
+            frequency=Frequency(type="daily", interval=3),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+        )
+        data = serialize_like_fastmcp(rule)
+        assert data["frequency"]["interval"] == 3, (
+            f"interval=3 should be preserved in serialized output. Got: {data['frequency']}"
+        )
+        assert data["frequency"]["type"] == "daily"
+
+    def test_interval_1_validates_against_output_schema(self) -> None:
+        """Task with interval=1 frequency validates against outputSchema (interval omitted)."""
+        task = Task.model_validate(
+            make_model_task_dict(
+                id="task-interval-1",
+                name="Interval 1 Task",
+                repetitionRule={
+                    "frequency": {"type": "daily", "interval": 1},
+                    "schedule": "regularly",
+                    "basedOn": "due_date",
+                },
+            )
+        )
+        schema = _TOOL_SCHEMAS["get_task"]
+        data = serialize_like_fastmcp(task)
+        jsonschema.validate(data, schema)
+
 
 # ---------------------------------------------------------------------------
 # Union regression guard (D-05, covers SC-3)
@@ -349,21 +397,43 @@ class TestSchemaValidation:
 class TestUnionRegressionGuard:
     """Union types must not degrade to {"type":"object","additionalProperties":true}."""
 
-    def test_frequency_branches_have_properties_and_const(self) -> None:
-        """Each Frequency union branch must expose properties with a const type discriminator."""
+    def test_frequency_is_flat_model_with_type_enum(self) -> None:
+        """Frequency schema must be a single object with type as enum (not a discriminated union)."""
         schema = TypeAdapter(Frequency).json_schema(mode="serialization")
-        defs = schema.get("$defs", {})
 
-        assert len(defs) == 9, f"Expected 9 $defs branches, got {len(defs)}: {list(defs)}"
+        # Flat model: no $defs branches (no discriminated union)
+        assert "$defs" not in schema or len(schema.get("$defs", {})) == 0, (
+            f"Frequency should be a flat model without $defs branches. Got $defs: {list(schema.get('$defs', {}).keys())}"
+        )
 
-        for name, branch in defs.items():
-            assert "properties" in branch, (
-                f"${name} lost its properties -- likely erased by @model_serializer. Got: {branch}"
-            )
-            type_prop = branch["properties"].get("type", {})
-            assert "const" in type_prop, (
-                f"${name}.type missing 'const' constraint -- discriminator gone. Got: {type_prop}"
-            )
+        # Must be an object type with properties
+        assert schema.get("type") == "object", f"Frequency schema should be object type. Got: {schema}"
+        assert "properties" in schema, f"Frequency schema missing properties. Got: {schema}"
+
+        # type field must have enum constraint with exactly 6 values
+        type_prop = schema["properties"].get("type", {})
+        assert "enum" in type_prop, (
+            f"Frequency.type should have enum constraint (from Literal). Got: {type_prop}"
+        )
+        expected_types = ["minutely", "hourly", "daily", "weekly", "monthly", "yearly"]
+        assert sorted(type_prop["enum"]) == sorted(expected_types), (
+            f"Expected 6 frequency types {expected_types}, got: {type_prop['enum']}"
+        )
+
+        # Optional specialization fields must be present
+        props = schema["properties"]
+        assert "onDays" in props, "Missing onDays field in Frequency schema"
+        assert "on" in props, "Missing on field in Frequency schema"
+        assert "onDates" in props, "Missing onDates field in Frequency schema"
+
+        # interval must have minimum constraint of 1 and default of 1
+        interval_prop = props.get("interval", {})
+        assert interval_prop.get("minimum") == 1, (
+            f"Frequency.interval should have minimum=1. Got: {interval_prop}"
+        )
+        assert interval_prop.get("default") == 1, (
+            f"Frequency.interval should have default=1. Got: {interval_prop}"
+        )
 
     def test_end_condition_branches_have_properties(self) -> None:
         """EndCondition union branches must have properties, not just {type: object}."""
