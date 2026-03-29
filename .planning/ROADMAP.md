@@ -7,7 +7,7 @@
 - ✅ **v1.2 Writes & Lookups** — Phases 14-17 (shipped 2026-03-16)
 - ✅ **v1.2.1 Architectural Cleanup** — Phases 18-28 (shipped 2026-03-23)
 - ✅ **v1.2.2 FastMCP v3 Migration** — Phases 29-31 (shipped 2026-03-26)
-- 🚧 **v1.2.3 Repetition Rule Write Support** — Phases 32-33 (in progress)
+- ✅ **v1.2.3 Repetition Rule Write Support** — Phases 32-33.1 (shipped 2026-03-29)
 
 ## Phases
 
@@ -76,76 +76,15 @@
 
 </details>
 
-### v1.2.3 Repetition Rule Write Support (In Progress)
+<details>
+<summary>✅ v1.2.3 Repetition Rule Write Support (Phases 32-33.1) — SHIPPED 2026-03-29</summary>
 
-**Milestone Goal:** Enable agents to set, modify, and remove repetition rules on tasks via structured fields -- symmetric read/write model, no raw RRULE strings exposed. No new tools.
+- [x] Phase 32: Read Model Rewrite (2/2 plans) — completed 2026-03-28
+- [x] Phase 32.1: Output Schema Validation Gap (3/3 plans) — completed 2026-03-28
+- [x] Phase 33: Write Model, Validation & Bridge (5/5 plans) — completed 2026-03-28
+- [x] Phase 33.1: Flat Frequency Refactor (5/5 plans) — completed 2026-03-29
 
-- [x] **Phase 32: Read Model Rewrite** - Structured frequency fields replace ruleString on both read paths (completed 2026-03-28)
-- [x] **Phase 32.1: Output Schema Validation Gap** - Add schema-vs-data validation tests ensuring serialized output conforms to advertised outputSchema (INSERTED) (completed 2026-03-28)
-- [x] **Phase 33: Write Model, Validation & Bridge** - add_tasks and edit_tasks support repetition rules with partial updates, type-change detection, and educational errors (completed 2026-03-28)
-
-## Phase Details
-
-### Phase 32: Read Model Rewrite
-**Goal**: Agents receive structured repetition rule data (frequency type, interval, schedule, basedOn, end) instead of raw RRULE strings from all read tools
-**Depends on**: Phase 31 (v1.2.2 complete)
-**Requirements**: READ-01, READ-02, READ-03, READ-04
-**Success Criteria** (what must be TRUE):
-  1. `get_all`, `get_task`, `get_project` return `repetitionRule` with structured `frequency` (type discriminator + type-specific fields), `schedule`, `basedOn`, and `end` fields -- no `ruleString` visible to agents
-  2. All 9 frequency types (minutely, hourly, daily, weekly, weekly_on_days, monthly, monthly_day_of_week, monthly_day_in_month, yearly) parse correctly from real OmniFocus data
-  3. Both SQLite and bridge read paths produce identical structured output for the same task (single `rrule/` module, no duplicated parsing logic)
-  4. `parse_rrule` and `build_rrule` round-trip correctly -- parse a string, build it back, parse again, get the same structured result
-**Plans:** 2/2 plans complete
-Plans:
-- [x] 32-01-PLAN.md — RRULE parser/builder module + Pydantic frequency models
-- [x] 32-02-PLAN.md — Model swap, read path wiring, test updates
-
-### Phase 32.1: Output Schema Validation Gap (INSERTED)
-**Goal**: Add systemic test safeguards ensuring serialized tool output validates against MCP outputSchema, model naming conventions are programmatically enforced, and future agents have clear rules to follow
-**Depends on**: Phase 32 (serializer fix in commit db4bcb0)
-**Success Criteria** (what must be TRUE):
-  1. For every MCP tool (get_all, get_task, get_project, get_tag, add_tasks, edit_tasks), serialized output from realistic fixtures validates against the tool's outputSchema using a JSON Schema validator (not Pydantic) -- the same validation MCP clients perform
-  2. Test fixtures include tasks with repetitionRule set to actual Frequency values (at minimum DailyFrequency, WeeklyFrequency (bare), WeeklyOnDaysFrequency with onDays, MonthlyDayOfWeekFrequency with on, MonthlyDayInMonthFrequency with onDates) and both EndCondition variants (EndByDate, EndByOccurrences)
-  3. A regression guard asserts that no union type branch in tool outputs degrades to `{"type": "object", "additionalProperties": true}` -- catches future @model_serializer additions
-  4. A naming convention test enforces that models/ has no write-side suffixes and contracts/ uses recognized suffixes -- per docs/architecture.md taxonomy
-  5. CLAUDE.md contains rules directing agents to read the naming taxonomy before creating models and to run schema tests after modifying output models
-**Plans**: 3/3 plans complete
-Plans:
-- [x] 32.1-01-PLAN.md -- Schema-vs-data validation tests, union regression guard, naming convention enforcement
-- [x] 32.1-02-PLAN.md -- Extract derive_schedule to rrule/schedule.py, fix from_completion crash
-- [x] 32.1-03-PLAN.md -- WeeklyFrequency split: bare weekly + WeeklyOnDaysFrequency
-
-### Phase 33: Write Model, Validation & Bridge
-**Goal**: Agents can create tasks with repetition rules, partially update existing rules (merge within type, clear, change type), and receive educational errors for invalid input -- all through existing `add_tasks` and `edit_tasks` tools
-**Depends on**: Phase 32
-**Requirements**: ADD-01, ADD-02, ADD-03, ADD-04, ADD-05, ADD-06, ADD-07, ADD-08, ADD-09, ADD-10, ADD-11, ADD-12, ADD-13, ADD-14, EDIT-01, EDIT-02, EDIT-03, EDIT-04, EDIT-05, EDIT-06, EDIT-07, EDIT-08, EDIT-09, EDIT-10, EDIT-11, EDIT-12, EDIT-13, EDIT-14, EDIT-15, EDIT-16, VALID-01, VALID-02, VALID-03, VALID-04, VALID-05
-**Success Criteria** (what must be TRUE):
-  1. Agent can create a task with a repetition rule by providing `frequency` (with type), `schedule`, and `basedOn` in `add_tasks` -- the task appears in OmniFocus with the correct recurrence
-  2. Agent can partially update a repeating task's rule (change interval, change schedule, change basedOn, add/remove end condition) without re-sending the entire rule -- omitted frequency fields are preserved from the existing rule when the type doesn't change
-  3. Agent can clear a repetition rule by sending `repetitionRule: null` and can change frequency type by providing a complete new frequency object -- type change with incomplete frequency produces a clear error explaining what's needed
-  4. Invalid input (bad enum values, cross-type fields like `onDays` on daily, out-of-range values) is rejected with educational error messages consistent with existing `agent_messages` patterns
-  5. Tool descriptions for `add_tasks` and `edit_tasks` document the repetition rule schema clearly enough for an LLM to construct valid rules without external documentation
-**Plans**: 5 plans
-Plans:
-- [x] 33-01-PLAN.md — Contracts (specs, repo payload), inverse mappings, validation functions, agent messages
-- [x] 33-02-PLAN.md — Service pipeline (payload builder, domain logic, pipeline steps, InMemoryBridge)
-- [x] 33-03-PLAN.md — Bridge JS, tool descriptions, server error handling, output schema validation
-- [x] 33-04-PLAN.md — Gap closure: remove scaffolding, dead code, extract validate.py inline strings
-- [ ] 33-05-PLAN.md — Gap closure: fix multi-value BYMONTHDAY + no-op warning suppression
-
-### Phase 33.1: Refactor Frequency to flat model with type-optional edits (INSERTED)
-
-**Goal:** Replace 9-subtype discriminated Frequency union with single flat model (6 types), proper CommandModel write specs, type-optional edits, validation migration to model validators
-**Requirements**: ADD-01 through ADD-14, EDIT-01 through EDIT-16, VALID-01 through VALID-05 (inherited from Phase 33, preserved by refactor)
-**Depends on:** Phase 33
-**Plans:** 5/5 plans complete
-
-Plans:
-- [x] 33.1-01-PLAN.md — Flat Frequency model, write specs (FrequencyAddSpec/FrequencyEditSpec), parser/builder update
-- [x] 33.1-02-PLAN.md — Service layer migration (validate.py, domain.py, service.py merge rewrite)
-- [x] 33.1-03-PLAN.md — Server tool descriptions (D-14/D-15), error handling, output schema tests
-- [x] 33.1-04-PLAN.md — Gap closure: fix validation error quality (interval, occurrences, end:{})
-- [x] 33.1-05-PLAN.md — Gap closure: anchor date missing warning for basedOn
+</details>
 
 ## Progress
 
@@ -158,5 +97,5 @@ Plans:
 | 29-31 | v1.2.2 | 6/6 | Complete | 2026-03-26 |
 | 32. Read Model Rewrite | v1.2.3 | 2/2 | Complete    | 2026-03-28 |
 | 32.1 Output Schema Validation Gap | v1.2.3 | 3/3 | Complete    | 2026-03-28 |
-| 33. Write Model, Validation & Bridge | v1.2.3 | 5/5 | In Progress | |
+| 33. Write Model, Validation & Bridge | v1.2.3 | 5/5 | Complete    | 2026-03-28 |
 | 33.1 Refactor Frequency to flat model | v1.2.3 | 5/5 | Complete    | 2026-03-29 |

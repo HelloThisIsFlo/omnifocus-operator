@@ -1,5 +1,22 @@
 # Milestones
 
+## v1.2.3 Repetition Rule Write Support (Shipped: 2026-03-29)
+
+**Phases completed:** 4 phases, 15 plans, 30 tasks
+
+**Key accomplishments:**
+
+- Structured RepetitionRule read model — RRULE parser/builder with round-trip validation, ruleString replaced by frequency/schedule/basedOn/end on both read paths
+- Output schema regression guards — jsonschema validates all 6 tools' serialized output, union erasure guards, naming convention enforcement
+- Full repetition rule write pipeline — add/edit support with partial updates, same-type merge, type-change detection, educational errors
+- Flat Frequency model — 9-subtype discriminated union refactored to single flat model with 6 types, type-optional edits, clean validation errors
+- Anchor date warnings — proactive guidance when basedOn references an unset date, with creation-date fallback explanation
+
+**Stats:** 211 commits, 214 files changed, +89k/-1.3k lines, 3 days (2026-03-26 → 2026-03-29)
+**Tests:** 1,113 pytest at milestone completion (up from 708)
+
+---
+
 ## v1.2.2 FastMCP v3 Migration (Shipped: 2026-03-26)
 
 **Phases completed:** 3 phases, 6 plans, 12 tasks

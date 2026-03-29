@@ -237,6 +237,53 @@
 
 ---
 
+## Milestone: v1.2.3 -- Repetition Rule Write Support
+
+**Shipped:** 2026-03-29
+**Phases:** 4 | **Plans:** 15 executed
+
+### What Was Built
+- Structured RepetitionRule read model with RRULE parser/builder, replacing raw ruleString on both read paths
+- Output schema regression guards (jsonschema validates all 6 tools' output against MCP outputSchema)
+- Full repetition rule write pipeline: add/edit with partial updates, same-type merge, type-change detection
+- Flat Frequency model (6 types) replacing 9-subtype discriminated union, enabling type-optional edits
+- Educational validation errors and anchor date warnings
+
+### What Worked
+- Two-phase structure (read model Phase 32 before write model Phase 33) — clean dependency ordering, write path built on validated read types
+- Custom RRULE parser research spike (79 tests) meant zero implementation surprises — purpose-built for OmniFocus subset
+- Phase 33.1 insertion (flat Frequency refactor) was the right call — 9-subtype union was fundamentally incompatible with type-optional edits; early refactor prevented escalating complexity
+- Output schema validation (Phase 32.1) caught a real regression during development — @model_serializer was erasing JSON Schema structure
+- UAT found 2 genuine bugs (multi-value BYMONTHDAY, no-op warning suppression) that unit tests missed
+
+### What Was Inefficient
+- Phase 33 grew to 5 plans (originally scoped as 3) due to gap closure — validation error quality and BYMONTHDAY edge cases discovered during execution
+- 9-subtype discriminated union (Phase 33) was replaced entirely by flat model (Phase 33.1) — ~2 plans of union-specific work thrown away
+- ROADMAP.md Phase 33 status and 33-05 checkbox not updated after completion — documentation drift
+- SUMMARY frontmatter `requirements_completed` underutilized — only 12/39 REQ-IDs populated across all SUMMARYs
+
+### Patterns Established
+- Flat Frequency model with type discriminator and optional specialization fields (on_days, on, on_dates)
+- FrequencyEditSpec as pure patch container — no validators, validation deferred to Frequency construction from merged result
+- `is_set()` merge pattern: existing dict + submitted explicitly-set fields
+- `auto_clear_monthly_mutual_exclusion` — operates on merged dict before model validation
+- @field_validator over Field(ge=1) for agent-facing error quality
+- @field_serializer on parent model (RepetitionRule.frequency) to avoid schema erasure
+
+### Key Lessons
+1. **Discriminated unions are poor write models** — Pydantic requires the discriminator for construction, making partial updates impossible. Flat models with optional fields are better for write paths
+2. **Output schema testing catches real bugs** — the jsonschema-vs-data approach found @model_serializer erasure that Pydantic validation alone would miss
+3. **Research spikes prevent rework** — custom RRULE parser had zero surprises because spike tested 79 cases first
+4. **UAT finds what unit tests miss** — both BYMONTHDAY multi-value and no-op suppression were real user-observable bugs invisible to unit tests
+5. **Insert phases early when architecture doesn't fit** — Phase 33.1 was inserted urgently after Phase 33 exposed the union's limitations; the refactor was cheaper than workarounds
+
+### Cost Observations
+- Model mix: ~70% opus (research, planning, complex phases), ~30% sonnet (execution)
+- Sessions: ~8-10 across 3 days
+- Notable: Average plan execution of ~7.7 min — slightly higher than historical ~4 min due to Phase 33.1 P02 (24 min service layer rewrite). Total execution ~116 min for 15 plans.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -248,6 +295,7 @@
 | v1.2 | 6 | 21 | First write milestone -- decimal phases (16.1, 16.2) for mid-milestone restructuring |
 | v1.2.1 | 11 | 27 | First refactoring milestone -- dependency-ordered phases, golden master contract testing |
 | v1.2.2 | 3 | 6 | First migration milestone -- spike-first approach, phase consolidation from research |
+| v1.2.3 | 4 | 15 | First domain-feature milestone -- research spike → read model → write model → refactor arc |
 
 ### Cumulative Quality
 
@@ -258,6 +306,7 @@
 | v1.2 | 527 (501 pytest + 26 vitest) | ~94% | 3 (LIFE-03 deferred, stale docs, tag exclusivity) |
 | v1.2.1 | 723 (697 pytest + 26 vitest) | ~94% | 1 (stale Phase 27 VERIFICATION.md) |
 | v1.2.2 | 734 (708 pytest + 26 vitest) | ~98% | 1 (ToolAnnotations mcp.types residual) |
+| v1.2.3 | 1,139 (1,113 pytest + 26 vitest) | ~94% | 6 (all cosmetic/documentation) |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -269,3 +318,5 @@
 6. Structural isolation > convention for test boundaries (established v1.2.1 -- physical relocation beats import discipline)
 7. Golden master > targeted mocks for behavioral equivalence (established v1.2.1 -- 43 scenarios catch drift that unit tests miss)
 8. Spike experiments eliminate unknowns before planning (established v1.2.2 -- 8 experiments compressed 6 phases to 3)
+9. Output schema testing catches bugs Pydantic alone misses (established v1.2.3 -- jsonschema-vs-data caught @model_serializer schema erasure)
+10. Discriminated unions are poor write models; flat models enable partial updates (established v1.2.3 -- Phase 33.1 refactor was cheaper than workarounds)

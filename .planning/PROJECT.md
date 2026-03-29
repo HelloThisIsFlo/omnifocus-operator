@@ -8,17 +8,10 @@ A Python MCP server that exposes OmniFocus (macOS task manager) as structured ta
 
 Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
 
-## Current Milestone: v1.2.3 Repetition Rule Write Support
+## Current State
 
-**Goal:** Enable agents to set, modify, and remove repetition rules on tasks via structured fields -- symmetric read/write model, no raw RRULE strings exposed. No new tools.
-
-**Target features:**
-- Structured frequency model with type discriminator (9 frequency types)
-- Root-level repetition fields: schedule, basedOn, end
-- Partial update lifecycle (merge, type-change, clear, create)
-- RRULE parser/builder utilities wired to both read paths
-- Three-layer validation (structural, type-specific, semantic)
-- Read model breaking change: ruleString replaced by structured fields
+**Shipped:** v1.2.3 (2026-03-29) — Repetition Rule Write Support
+**Next:** Planning next milestone
 
 ## Requirements
 
@@ -70,6 +63,10 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 - ✓ Structured RepetitionRule read model: frequency (9 discriminated-union types), schedule, basedOn, end — replaces raw ruleString — v1.2.3
 - ✓ Single rrule/ module (parse_rrule, build_rrule) shared by both SQLite and bridge read paths — v1.2.3
 - ✓ parse/build round-trip correctness for all 9 frequency types — v1.2.3
+- ✓ Repetition rule write support: add/edit tasks with structured frequency fields, partial updates, type-change detection — v1.2.3
+- ✓ Flat Frequency model (6 types) with type-optional edits and educational validation errors — v1.2.3
+- ✓ Output schema regression guards: jsonschema validates all 6 tools' serialized output against MCP outputSchema — v1.2.3
+- ✓ Anchor date warnings: proactive guidance when basedOn references an unset date — v1.2.3
 
 ### Active
 
@@ -104,13 +101,14 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 ## Context
 
-Shipped v1.2.2 with ~16,384 LOC Python (src + tests), ~215k LOC JS (bridge + deps), ~28k TS (tests).
+Shipped v1.2.3 with ~6,601 LOC Python (src/), ~215k LOC JS (bridge + deps), ~28k TS (tests).
 Tech stack: Python 3.12, uv, Pydantic v2, FastMCP v3 (`fastmcp>=3.1.1`), OmniJS bridge, SQLite3 (stdlib).
-708 pytest tests (98% coverage), 26 Vitest tests, UAT passed on all phases.
+1,113 pytest tests, 26 Vitest tests, UAT passed on all phases.
 Real OmniFocus database: ~2,400 tasks, ~363 projects, ~64 tags, ~79 folders.
 Read path: SQLite (default, ~46ms). Write path: OmniJS bridge with write-through guarantee.
 6 MCP tools: get_all, get_task, get_project, get_tag, add_tasks, edit_tasks.
 Architecture: service/ package (Resolver, DomainLogic, PayloadBuilder, orchestrator), contracts/ package (Command, RepoPayload, Result models), tests/doubles/ (InMemoryBridge, StubBridge, SimulatorBridge).
+RRULE: rrule/ module (parse_rrule, build_rrule) shared by both read paths, flat Frequency model with 6 types, FrequencyAddSpec/FrequencyEditSpec command models.
 Golden master: 43 scenarios in 7 categories, contract tests verify InMemoryBridge matches RealBridge.
 Logging: ToolLoggingMiddleware for automatic tool call logging, dual-handler (stderr + rotating file) under `omnifocus_operator.*` namespace.
 
@@ -160,6 +158,11 @@ Logging: ToolLoggingMiddleware for automatic tool call logging, dual-handler (st
 | ToolLoggingMiddleware via cross-cutting concern | FastMCP Middleware base class with injected logger. Zero per-tool wiring needed — new tools get logging automatically | ✓ Good — v1.2.2, eliminated 6 manual log_tool_call() sites |
 | Dual-handler logging (stderr + rotating file) | StreamHandler(stderr) for Claude Desktop visibility + 5MB RotatingFileHandler for persistent debugging. `__name__` convention across all 10 modules | ✓ Good — v1.2.2, observable in both contexts |
 | ToolAnnotations stays at mcp.types | FastMCP doesn't re-export `ToolAnnotations`. Intentional residual `from mcp.types import ToolAnnotations` with TODO | — Pending — revisit when fastmcp re-exports |
+| Custom RRULE parser over python-dateutil | Purpose-built for OmniFocus RRULE subset, 79 spike tests, zero new deps. Round-trip validated against 15 golden master strings | ✓ Good — v1.2.3, precise and dependency-free |
+| Flat Frequency model over discriminated union | 9-subtype union made type-optional edits impossible (Pydantic requires discriminator). Single flat model with optional specialization fields solves merge cleanly | ✓ Good — v1.2.3, enabled the entire edit merge flow |
+| @field_validator over Field(ge=1) for interval/occurrences | Custom validators produce clean educational errors; Field constraints generate opaque Pydantic messages | ✓ Good — v1.2.3, agent-facing error quality |
+| FrequencyEditSpec as pure patch container | No validators on edit spec — validation fires on Frequency construction from merged result. Keeps edit path flexible | ✓ Good — v1.2.3, clean separation of patch vs validation |
+| Output schema regression via jsonschema | Test serialized output with same JSON Schema validator MCP clients use, not Pydantic. Catches @model_serializer schema erasure | ✓ Good — v1.2.3, caught real regression during development |
 
 ---
-*Last updated: 2026-03-29 after Phase 33.1 complete — Flat Frequency model refactor (9-subtype union → single flat model with 6 types, type-optional edits, custom validation errors, anchor date warnings, 1090 tests)*
+*Last updated: 2026-03-29 after v1.2.3 milestone — Repetition Rule Write Support shipped*
