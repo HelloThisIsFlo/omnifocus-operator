@@ -54,6 +54,7 @@ if TYPE_CHECKING:
         EditTaskCommand,
         EditTaskRepoPayload,
     )
+    from omnifocus_operator.contracts.use_cases.repetition_rule import FrequencyEditSpec
     from omnifocus_operator.models.common import TagRef
     from omnifocus_operator.models.task import Task
     from omnifocus_operator.service.resolve import Resolver
@@ -208,7 +209,11 @@ class DomainLogic:
         warnings: list[str] = []
         updates: dict[str, Any] = {}
 
-        if frequency.type == "weekly" and frequency.on_days is not None and len(frequency.on_days) == 0:
+        if (
+            frequency.type == "weekly"
+            and frequency.on_days is not None
+            and len(frequency.on_days) == 0
+        ):
             updates["on_days"] = None
             warnings.append(REPETITION_EMPTY_ON_DAYS)
 
@@ -216,7 +221,11 @@ class DomainLogic:
             updates["on"] = None
             warnings.append(REPETITION_EMPTY_ON)
 
-        if frequency.type == "monthly" and frequency.on_dates is not None and len(frequency.on_dates) == 0:
+        if (
+            frequency.type == "monthly"
+            and frequency.on_dates is not None
+            and len(frequency.on_dates) == 0
+        ):
             updates["on_dates"] = None
             warnings.append(REPETITION_EMPTY_ON_DATES)
 
@@ -225,35 +234,49 @@ class DomainLogic:
 
         return (frequency, warnings)
 
-    def auto_clear_monthly_mutual_exclusion(
+    def merge_frequency(
         self,
-        merged: dict[str, Any],
-    ) -> tuple[dict[str, Any], list[str]]:
-        """Auto-clear monthly mutual exclusion (D-08).
+        edit_spec: FrequencyEditSpec,
+        existing: Frequency,
+    ) -> tuple[Frequency, list[str]]:
+        """Merge edit spec with existing frequency for same-type updates (D-08, D-11).
 
-        Operates on the merged dict BEFORE Frequency construction,
-        so the model validator doesn't reject the combination.
+        Uses is_set() on edit spec fields to determine provenance:
+        UNSET = preserve from existing, None = clear, value = set.
 
-        If type is monthly and both on and on_dates are set:
-        - If on was explicitly set in the edit spec, clear on_dates
-        - If on_dates was explicitly set in the edit spec, clear on
+        Handles monthly mutual exclusion: if both on and on_dates end up
+        set after merge, auto-clears whichever was NOT explicitly set
+        by the agent. If both were agent-set, on takes precedence.
 
-        Returns (possibly-modified merged dict, warnings).
+        Returns (merged Frequency, warnings).
         """
         warnings: list[str] = []
+        merged: dict[str, Any] = {"type": existing.type}
 
-        if merged.get("type") != "monthly":
-            return merged, warnings
+        # Interval
+        merged["interval"] = edit_spec.interval if is_set(edit_spec.interval) else existing.interval
 
-        has_on = merged.get("on") is not None
-        has_on_dates = merged.get("on_dates") is not None
+        # Specialization fields: UNSET=preserve, None=clear, value=set
+        for field_name in ("on_days", "on", "on_dates"):
+            edit_val = getattr(edit_spec, field_name)
+            if is_set(edit_val):
+                merged[field_name] = edit_val
+            else:
+                merged[field_name] = getattr(existing, field_name)
 
-        if has_on and has_on_dates:
-            # Default: clear on_dates (on takes precedence)
-            merged = {**merged, "on_dates": None}
-            warnings.append(REPETITION_AUTO_CLEAR_ON_DATES)
+        # Monthly mutual exclusion (D-08): auto-clear based on provenance
+        if existing.type == "monthly":
+            has_on = merged.get("on") is not None
+            has_on_dates = merged.get("on_dates") is not None
+            if has_on and has_on_dates:
+                if is_set(edit_spec.on_dates) and not is_set(edit_spec.on):
+                    merged["on"] = None
+                    warnings.append(REPETITION_AUTO_CLEAR_ON)
+                else:
+                    merged["on_dates"] = None
+                    warnings.append(REPETITION_AUTO_CLEAR_ON_DATES)
 
-        return merged, warnings
+        return Frequency.model_validate(merged), warnings
 
     # -- Tags --------------------------------------------------------------
 

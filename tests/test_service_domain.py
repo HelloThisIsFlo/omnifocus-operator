@@ -12,6 +12,7 @@ from omnifocus_operator.agent_messages.warnings import (
     EDIT_COMPLETED_TASK,
     LIFECYCLE_REPEATING_COMPLETE,
     LIFECYCLE_REPEATING_DROP,
+    REPETITION_AUTO_CLEAR_ON,
     REPETITION_AUTO_CLEAR_ON_DATES,
     REPETITION_EMPTY_ON,
     REPETITION_EMPTY_ON_DATES,
@@ -24,7 +25,10 @@ from omnifocus_operator.contracts.use_cases.edit_task import (
     EditTaskCommand,
     EditTaskRepoPayload,
 )
-from omnifocus_operator.contracts.use_cases.repetition_rule import RepetitionRuleRepoPayload
+from omnifocus_operator.contracts.use_cases.repetition_rule import (
+    FrequencyEditSpec,
+    RepetitionRuleRepoPayload,
+)
 from omnifocus_operator.models.common import TagRef
 from omnifocus_operator.models.repetition_rule import (
     EndByDate,
@@ -589,47 +593,76 @@ class TestNormalizeEmptySpecializationFields:
 
 
 # ---------------------------------------------------------------------------
-# auto_clear_monthly_mutual_exclusion
+# merge_frequency
 # ---------------------------------------------------------------------------
 
 
-class TestAutoClearMonthlyMutualExclusion:
-    """D-08: Auto-clear monthly on/on_dates mutual exclusion on merge path."""
+class TestMergeFrequency:
+    """D-08/D-11: Merge edit spec with existing frequency, incl. monthly auto-clear."""
 
-    def test_both_set_clears_on_dates(self) -> None:
-        """on + on_dates on monthly -> auto-clear on_dates."""
+    def test_agent_set_on_clears_existing_on_dates(self) -> None:
+        """Agent sets on, existing has on_dates -> auto-clear on_dates."""
         domain = _domain()
-        merged = {"type": "monthly", "on": {"first": "monday"}, "on_dates": [1]}
-        result, warnings = domain.auto_clear_monthly_mutual_exclusion(merged)
-        assert result["on"] == {"first": "monday"}
-        assert result["on_dates"] is None
+        existing = Frequency(type="monthly", on_dates=[1, 15])
+        edit_spec = FrequencyEditSpec(on={"last": "friday"})
+        result, warnings = domain.merge_frequency(edit_spec, existing)
+        assert result.on == {"last": "friday"}
+        assert result.on_dates is None
         assert len(warnings) == 1
         assert REPETITION_AUTO_CLEAR_ON_DATES in warnings[0]
 
-    def test_only_on_set_no_change(self) -> None:
-        """Only on set -> no change."""
+    def test_agent_set_on_dates_clears_existing_on(self) -> None:
+        """Agent sets on_dates, existing has on -> auto-clear on."""
         domain = _domain()
-        merged = {"type": "monthly", "on": {"first": "monday"}, "on_dates": None}
-        result, warnings = domain.auto_clear_monthly_mutual_exclusion(merged)
-        assert result["on"] == {"first": "monday"}
-        assert result["on_dates"] is None
+        existing = Frequency(type="monthly", on={"second": "tuesday"})
+        edit_spec = FrequencyEditSpec(on_dates=[1, 15])
+        result, warnings = domain.merge_frequency(edit_spec, existing)
+        assert result.on is None
+        assert result.on_dates == [1, 15]
+        assert len(warnings) == 1
+        assert REPETITION_AUTO_CLEAR_ON in warnings[0]
+
+    def test_agent_set_both_on_takes_precedence(self) -> None:
+        """Agent sets both on and on_dates -> on takes precedence, clear on_dates."""
+        domain = _domain()
+        existing = Frequency(type="monthly")
+        edit_spec = FrequencyEditSpec(on={"first": "monday"}, on_dates=[1])
+        result, warnings = domain.merge_frequency(edit_spec, existing)
+        assert result.on == {"first": "monday"}
+        assert result.on_dates is None
+        assert len(warnings) == 1
+        assert REPETITION_AUTO_CLEAR_ON_DATES in warnings[0]
+
+    def test_no_conflict_no_warning(self) -> None:
+        """Agent sets on, existing has no on_dates -> no auto-clear needed."""
+        domain = _domain()
+        existing = Frequency(type="monthly")
+        edit_spec = FrequencyEditSpec(on={"first": "monday"})
+        result, warnings = domain.merge_frequency(edit_spec, existing)
+        assert result.on == {"first": "monday"}
+        assert result.on_dates is None
         assert warnings == []
 
-    def test_only_on_dates_set_no_change(self) -> None:
-        """Only on_dates set -> no change."""
+    def test_preserves_unset_fields_from_existing(self) -> None:
+        """UNSET fields preserved from existing (D-11)."""
         domain = _domain()
-        merged = {"type": "monthly", "on": None, "on_dates": [1, 15]}
-        result, warnings = domain.auto_clear_monthly_mutual_exclusion(merged)
-        assert result["on"] is None
-        assert result["on_dates"] == [1, 15]
+        existing = Frequency(type="weekly", interval=2, on_days=["MO", "FR"])
+        edit_spec = FrequencyEditSpec(interval=3)
+        result, warnings = domain.merge_frequency(edit_spec, existing)
+        assert result.type == "weekly"
+        assert result.interval == 3
+        assert result.on_days == ["MO", "FR"]
         assert warnings == []
 
-    def test_non_monthly_no_change(self) -> None:
-        """Non-monthly type -> no change."""
+    def test_none_clears_field(self) -> None:
+        """Explicit None clears a specialization field."""
         domain = _domain()
-        merged = {"type": "weekly", "on_days": ["MO"]}
-        result, warnings = domain.auto_clear_monthly_mutual_exclusion(merged)
-        assert result == merged
+        existing = Frequency(type="weekly", interval=2, on_days=["MO", "FR"])
+        edit_spec = FrequencyEditSpec(on_days=None)
+        result, warnings = domain.merge_frequency(edit_spec, existing)
+        assert result.type == "weekly"
+        assert result.interval == 2
+        assert result.on_days is None
         assert warnings == []
 
 

@@ -24,9 +24,6 @@ from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.protocols import Service
 from omnifocus_operator.contracts.use_cases.add_task import AddTaskResult
 from omnifocus_operator.contracts.use_cases.edit_task import EditTaskResult
-from omnifocus_operator.contracts.use_cases.repetition_rule import (
-    FrequencyEditSpec,
-)
 from omnifocus_operator.models.repetition_rule import Frequency
 from omnifocus_operator.rrule.builder import build_rrule
 from omnifocus_operator.rrule.schedule import based_on_to_bridge, schedule_to_bridge
@@ -42,11 +39,12 @@ if TYPE_CHECKING:
     from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand
     from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
     from omnifocus_operator.contracts.use_cases.repetition_rule import (
+        FrequencyEditSpec,
         RepetitionRuleRepoPayload,
     )
     from omnifocus_operator.models.enums import BasedOn, Schedule
-    from omnifocus_operator.models.repetition_rule import EndCondition
     from omnifocus_operator.models.project import Project
+    from omnifocus_operator.models.repetition_rule import EndCondition
     from omnifocus_operator.models.snapshot import AllEntities
     from omnifocus_operator.models.tag import Tag
     from omnifocus_operator.models.task import Task
@@ -412,33 +410,10 @@ class _EditTaskPipeline(_Pipeline):
         edit_spec: FrequencyEditSpec,
         existing: Frequency,
     ) -> Frequency:
-        """Merge edit spec with existing frequency for same-type updates.
-
-        Uses is_set() TypeGuard on FrequencyEditSpec fields (D-11).
-        UNSET = preserve from existing, None = clear, value = set.
-        """
-        merged: dict[str, Any] = {}
-
-        # Type: always from existing (same-type merge only called when types match)
-        merged["type"] = existing.type
-
-        # Interval
-        merged["interval"] = edit_spec.interval if is_set(edit_spec.interval) else existing.interval
-
-        # Specialization fields: UNSET=preserve, None=clear, value=set
-        for field_name in ("on_days", "on", "on_dates"):
-            edit_val = getattr(edit_spec, field_name)
-            if is_set(edit_val):
-                merged[field_name] = edit_val  # None (clear) or value (set)
-            else:
-                merged[field_name] = getattr(existing, field_name)  # preserve
-
-        # Auto-clear monthly mutual exclusion (D-08)
-        merged, auto_clear_warns = self._domain.auto_clear_monthly_mutual_exclusion(merged)
-        self._repetition_warns.extend(auto_clear_warns)
-
-        # Construct Frequency -> @model_validator fires -> catches cross-type violations
-        return Frequency.model_validate(merged)
+        """Merge edit spec with existing frequency for same-type updates."""
+        frequency, merge_warns = self._domain.merge_frequency(edit_spec, existing)
+        self._repetition_warns.extend(merge_warns)
+        return frequency
 
     def _build_frequency_from_edit_spec(
         self,
@@ -462,11 +437,9 @@ class _EditTaskPipeline(_Pipeline):
                 merged[field_name] = edit_val
             # else: defaults to None (not included in dict -> Frequency default)
 
-        # Auto-clear monthly mutual exclusion (D-08)
-        merged, auto_clear_warns = self._domain.auto_clear_monthly_mutual_exclusion(merged)
-        self._repetition_warns.extend(auto_clear_warns)
-
-        # Construct Frequency -> @model_validator fires
+        # Construct Frequency -> @model_validator fires (catches cross-type
+        # violations and mutual exclusion — no auto-clear here since all
+        # fields come from the agent, not merged with existing)
         return Frequency.model_validate(merged)
 
     async def _apply_tag_diff(self) -> None:
