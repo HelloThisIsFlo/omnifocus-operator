@@ -8,10 +8,21 @@ A Python MCP server that exposes OmniFocus (macOS task manager) as structured ta
 
 Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
 
+## Current Milestone: v1.3 Read Tools
+
+**Goal:** Give agents the ability to query, filter, browse, and count OmniFocus entities — tasks, projects, tags, folders, and perspectives.
+
+**Target features:**
+- `list_tasks(...)` with SQL filters (inbox, flagged, project, tags, has_children, estimated_minutes_max, availability, search, limit/offset)
+- `list_projects(...)` with filters (status shorthands, folder, review_due_within, flagged, limit/offset)
+- `list_tags(status?)` / `list_folders(status?)` — status-filtered entity lists
+- `list_perspectives()` — all perspectives (built-in + custom)
+- `count_tasks(...)` / `count_projects(...)` — same filters as list, returns integer
+
 ## Current State
 
 **Shipped:** v1.2.3 (2026-03-29) — Repetition Rule Write Support
-**Next:** Planning next milestone
+**Next:** v1.3 Read Tools
 
 ## Requirements
 
@@ -70,9 +81,12 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 ### Active
 
-- [ ] SQL filtering for tasks, projects, tags (v1.3)
-- [ ] List/count for all entities (v1.3)
-- [ ] Substring search (v1.3)
+- [ ] SQL filtering for tasks with 10 filter parameters (v1.3)
+- [ ] SQL filtering for projects with 6 filter parameters (v1.3)
+- [ ] List tags, folders with status filter (v1.3)
+- [ ] List perspectives (v1.3)
+- [ ] Count tasks/projects reusing list filter logic (v1.3)
+- [ ] Substring search on task name and notes (v1.3)
 - [ ] Field selection, task deletion, notes append (v1.4)
 - [ ] Fuzzy search (v1.4.1)
 - [ ] TaskPaper output format (v1.4.2)
@@ -165,4 +179,22 @@ Logging: ToolLoggingMiddleware for automatic tool call logging, dual-handler (st
 | Output schema regression via jsonschema | Test serialized output with same JSON Schema validator MCP clients use, not Pydantic. Catches @model_serializer schema erasure | ✓ Good — v1.2.3, caught real regression during development |
 
 ---
-*Last updated: 2026-03-29 after v1.2.3 milestone — Repetition Rule Write Support shipped*
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd:transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd:complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
+---
+*Last updated: 2026-03-29 after v1.3 milestone started — Read Tools*

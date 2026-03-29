@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2.3
-milestone_name: Repetition Rule Write Support
-status: shipped
-stopped_at: Milestone complete
-last_updated: "2026-03-29T18:33:42.124Z"
+milestone: v1.3
+milestone_name: Read Tools
+status: defining_requirements
+stopped_at: null
+last_updated: "2026-03-29"
 last_activity: 2026-03-29
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 15
-  completed_plans: 15
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,44 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-29)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Planning next milestone
+**Current focus:** v1.3 Read Tools — defining requirements
 
 ## Current Position
 
-Phase: —
+Phase: Not started (defining requirements)
 Plan: —
-Status: v1.2.3 shipped
-Last activity: 2026-03-29
-
-Progress: [██████████] 100%
-
-## Performance Metrics
-
-**Velocity (v1.2.3):**
-
-- Total plans completed: 15
-- Average duration: ~7 min/plan
-- Total execution time: ~116 min
-
-**By Phase:**
-
-| Plan | Duration | Tasks | Files |
-|------|----------|-------|-------|
-| Phase 32 P01 | 6min | 2 tasks | 5 files |
-| Phase 32 P02 | 9min | 2 tasks | 11 files |
-| Phase 32.1 P01 | 5min | 2 tasks | 4 files |
-| Phase 32.1 P02 | 3min | 2 tasks | 6 files |
-| Phase 32.1 P03 | 7min | 2 tasks | 7 files |
-| Phase 33 P01 | 9min | 2 tasks | 12 files |
-| Phase 33 P02 | 15min | 3 tasks | 15 files |
-| Phase 33 P03 | 10min | 2 tasks | 5 files |
-| Phase 33 P04 | 2min | 1 task | 5 files |
-| Phase 33 P05 | 5min | 2 tasks | 5 files |
-| Phase 33.1 P01 | 7min | 2 tasks | 9 files |
-| Phase 33.1 P02 | 24min | 2 tasks | 14 files |
-| Phase 33.1 P03 | 5min | 2 tasks | 2 files |
-| Phase 33.1 P04 | 5min | 2 tasks | 7 files |
-| Phase 33.1 P05 | 4min | 2 tasks | 5 files |
+Status: Defining requirements
+Last activity: 2026-03-29 — Milestone v1.3 started
 
 ## Accumulated Context
 
@@ -75,6 +45,6 @@ Carried forward:
 
 ## Session Continuity
 
-Last activity: 2026-03-29 - Milestone v1.2.3 shipped
-Stopped at: Milestone complete
+Last activity: 2026-03-29 — Milestone v1.3 started
+Stopped at: Defining requirements
 Resume file: None
