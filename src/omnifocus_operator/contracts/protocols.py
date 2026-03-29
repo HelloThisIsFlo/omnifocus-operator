@@ -23,7 +23,14 @@ if TYPE_CHECKING:
         EditTaskRepoResult,
         EditTaskResult,
     )
-    from omnifocus_operator.models import AllEntities, Project, Tag, Task
+    from omnifocus_operator.contracts.use_cases.list_entities import (
+        ListFoldersQuery,
+        ListProjectsQuery,
+        ListResult,
+        ListTagsQuery,
+        ListTasksQuery,
+    )
+    from omnifocus_operator.models import AllEntities, Folder, Perspective, Project, Tag, Task
 
 
 @runtime_checkable
@@ -42,6 +49,16 @@ class Service(Protocol):
 
     async def edit_task(self, command: EditTaskCommand) -> EditTaskResult: ...
 
+    async def list_tasks(self, query: ListTasksQuery) -> ListResult[Task]: ...
+
+    async def list_projects(self, query: ListProjectsQuery) -> ListResult[Project]: ...
+
+    async def list_tags(self, query: ListTagsQuery) -> ListResult[Tag]: ...
+
+    async def list_folders(self, query: ListFoldersQuery) -> ListResult[Folder]: ...
+
+    async def list_perspectives(self) -> ListResult[Perspective]: ...
+
 
 @runtime_checkable
 class Repository(Protocol):
@@ -58,6 +75,16 @@ class Repository(Protocol):
     async def add_task(self, payload: AddTaskRepoPayload) -> AddTaskRepoResult: ...
 
     async def edit_task(self, payload: EditTaskRepoPayload) -> EditTaskRepoResult: ...
+
+    async def list_tasks(self, query: ListTasksQuery) -> ListResult[Task]: ...
+
+    async def list_projects(self, query: ListProjectsQuery) -> ListResult[Project]: ...
+
+    async def list_tags(self, query: ListTagsQuery) -> ListResult[Tag]: ...
+
+    async def list_folders(self, query: ListFoldersQuery) -> ListResult[Folder]: ...
+
+    async def list_perspectives(self) -> ListResult[Perspective]: ...
 
 
 @runtime_checkable
