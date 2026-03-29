@@ -392,9 +392,15 @@ class _EditTaskPipeline(_Pipeline):
 
         # Check anchor date warning (VALID-05)
         effective_dates = {
-            "due_date": self._command.due_date if is_set(self._command.due_date) else self._task.due_date,
-            "defer_date": self._command.defer_date if is_set(self._command.defer_date) else self._task.defer_date,
-            "planned_date": self._command.planned_date if is_set(self._command.planned_date) else self._task.planned_date,
+            "due_date": self._command.due_date
+            if is_set(self._command.due_date)
+            else self._task.due_date,
+            "defer_date": self._command.defer_date
+            if is_set(self._command.defer_date)
+            else self._task.defer_date,
+            "planned_date": self._command.planned_date
+            if is_set(self._command.planned_date)
+            else self._task.planned_date,
         }
         self._repetition_warns.extend(
             self._domain.check_anchor_date_warning(based_on, effective_dates)
