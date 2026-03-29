@@ -50,9 +50,8 @@ result: pass
 
 ### 11. Create: monthly_day_in_month (1d)
 expected: onDates=[1, 15, -1] round-trips correctly
-result: issue
-reported: "onDates returned as [1] — values 15 and -1 were silently dropped. No warning or error, data just vanishes."
-severity: blocker
+result: pass
+note: fixed in 852385a (gap closure 33-05) — confirmed after server restart
 
 ### 12. Create: yearly (1e)
 expected: Yearly freq; planned_date basedOn
@@ -171,15 +170,14 @@ result: pass
 
 ### 40. Combo: no-op rule + name change (11b)
 expected: No-op warning present alongside name change
-result: issue
-reported: "Name changed correctly, but warnings: null. No-op detection for repetition rules is suppressed when other fields are also modified in the same call."
-severity: major
+result: pass
+note: fixed in 456b2a6 (gap closure 33-05) — confirmed after server restart
 
 ## Summary
 
 total: 37
-passed: 30
-issues: 3
+passed: 32
+issues: 1
 pending: 0
 skipped: 1
 blocked: 0
@@ -203,20 +201,9 @@ blocked: 0
 ### Open
 
 - truth: "onDates=[1, 15, -1] round-trips correctly for monthly_day_in_month"
-  status: failed
-  reason: "User reported: onDates returned as [1] — values 15 and -1 were silently dropped. No warning or error, data just vanishes."
-  severity: blocker
+  status: resolved
   test: 11
-  root_cause: "Two independent bugs in rrule module: builder (line 99) hardcodes on_dates[0], parser (lines 261-264) calls int() on raw string instead of splitting on commas"
-  artifacts:
-    - path: "src/omnifocus_operator/rrule/builder.py"
-      issue: "Line 99: parts.append(f'BYMONTHDAY={frequency.on_dates[0]}') — only emits first value"
-    - path: "src/omnifocus_operator/rrule/parser.py"
-      issue: "Lines 261-264: _parse_monthly_bymonthday() calls int(bymonthday_value) — cannot parse comma-separated values"
-  missing:
-    - "Builder: emit all values comma-separated per RFC 5545"
-    - "Parser: split on commas before parsing each int"
-    - "Add multi-value BYMONTHDAY test coverage"
+  fix: "852385a (gap closure 33-05) — builder emits comma-separated, parser splits"
   debug_session: ".planning/debug/ondates-silently-dropped.md"
 
 - truth: "Partial update with only interval on same-type frequency merges without requiring all fields"
@@ -232,18 +219,7 @@ blocked: 0
     - "Phase 33.1: flat FrequencyEditSpec with optional type resolves this"
 
 - truth: "No-op repetition rule warning fires even when other task fields are modified in same call"
-  status: failed
-  reason: "User reported: Name changed correctly, but warnings: null. No-op detection for repetition rules is suppressed when other fields are also modified in the same call."
-  severity: major
+  status: resolved
   test: 40
-  root_cause: "REPETITION_NO_OP only generated inside _all_fields_match (domain.py line 511), which short-circuits at line 496 when any other field differs (e.g. name). _apply_repetition_rule (service.py) never performs its own no-op detection."
-  artifacts:
-    - path: "src/omnifocus_operator/service/domain.py"
-      issue: "Lines 507-511: REPETITION_NO_OP only appended inside _all_fields_match, unreachable when other fields differ"
-    - path: "src/omnifocus_operator/service/service.py"
-      issue: "Lines 290-379: _apply_repetition_rule lacks its own no-op detection"
-  missing:
-    - "Move repetition no-op detection into _apply_repetition_rule itself"
-    - "Compare built payload against existing rule after merge"
-    - "Append REPETITION_NO_OP and skip repo update if match"
+  fix: "456b2a6 (gap closure 33-05) — moved no-op detection into _apply_repetition_rule"
   debug_session: ".planning/debug/noop-rep-rule-warning-lost.md"
