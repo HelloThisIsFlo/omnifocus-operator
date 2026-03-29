@@ -76,8 +76,7 @@ class Frequency(OmniFocusBaseModel):
             )
         if self.on is not None and self.type != "monthly":
             raise ValueError(
-                f"on is not valid for type '{self.type}'. "
-                "on can only be used with type 'monthly'."
+                f"on is not valid for type '{self.type}'. on can only be used with type 'monthly'."
             )
         if self.on_dates is not None and self.type != "monthly":
             raise ValueError(

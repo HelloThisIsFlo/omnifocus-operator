@@ -540,9 +540,7 @@ class TestBuildRrule:
         assert result == "FREQ=WEEKLY;COUNT=10"
 
     def test_with_end_until(self):
-        result = build_rrule(
-            Frequency(type="monthly"), end=EndByDate(date="2026-12-31T00:00:00Z")
-        )
+        result = build_rrule(Frequency(type="monthly"), end=EndByDate(date="2026-12-31T00:00:00Z"))
         assert result == "FREQ=MONTHLY;UNTIL=20261231T000000Z"
 
 
