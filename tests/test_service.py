@@ -33,7 +33,6 @@ from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
     EndByDate,
     EndByOccurrences,
-    Frequency,
 )
 from omnifocus_operator.service import ErrorOperatorService, OperatorService
 from tests.doubles import ConstantMtimeSource
@@ -1907,13 +1906,53 @@ class TestEditTaskRepetitionRule:
         assert task.repetition_rule.frequency.type == "monthly"
 
     @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t1",
+                name="Repeating",
+                repetitionRule={
+                    "ruleString": "FREQ=MONTHLY;BYDAY=2TU",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": False,
+                },
+            )
+        ]
+    )
+    async def test_auto_clear_on_when_on_dates_set(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
+        """D-08: Send onDates on monthly task with existing on -> auto-clears on.
+
+        The agent sends {frequency: {onDates: [1, 15]}} to switch from a
+        weekday pattern (on: {"second": "tuesday"}) to date-based. The existing
+        'on' field should auto-clear, and the new onDates should be applied.
+        """
+        spec = RepetitionRuleEditSpec(frequency=FrequencyEditSpec(on_dates=[1, 15]))
+        result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
+        assert result.success is True
+
+        task = await repo.get_task("t1")
+        assert task is not None
+        assert task.repetition_rule is not None
+        assert task.repetition_rule.frequency.type == "monthly"
+        # Agent sent on_dates -> on should be auto-cleared
+        assert task.repetition_rule.frequency.on is None
+        assert task.repetition_rule.frequency.on_dates == [1, 15]
+        # Should have auto-clear warning
+        assert result.warnings is not None
+        assert any("on was automatically cleared" in w for w in result.warnings)
+
+    @pytest.mark.snapshot(
         tasks=[make_task_dict(id="t1", name="Repeating", repetitionRule=_DAILY_RULE)]
     )
     async def test_type_change_full_replacement(
         self, service: OperatorService, repo: BridgeRepository
     ) -> None:
         """EDIT-13: Different type with full frequency -> replaces entirely."""
-        spec = RepetitionRuleEditSpec(frequency=FrequencyEditSpec(type="weekly", on_days=["MO", "WE", "FR"]))
+        spec = RepetitionRuleEditSpec(
+            frequency=FrequencyEditSpec(type="weekly", on_days=["MO", "WE", "FR"])
+        )
         result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
         assert result.success is True
 
