@@ -570,7 +570,7 @@ class TestRealBridgeSafety:
     ) -> None:
         """RealBridge() raises RuntimeError when PYTEST_CURRENT_TEST is set."""
         assert os.environ.get("PYTEST_CURRENT_TEST") is not None
-        monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
+        monkeypatch.setenv("OPERATOR_IPC_DIR", str(tmp_path))
         with pytest.raises(RuntimeError, match="PYTEST_CURRENT_TEST"):
             RealBridge(ipc_dir=tmp_path)
 
@@ -579,7 +579,7 @@ class TestRealBridgeSafety:
     ) -> None:
         """RealBridge() succeeds when PYTEST_CURRENT_TEST is NOT set."""
         monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
-        monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
+        monkeypatch.setenv("OPERATOR_IPC_DIR", str(tmp_path))
         bridge = RealBridge(ipc_dir=tmp_path)
         assert hasattr(bridge, "ipc_dir")
         assert bridge.ipc_dir == tmp_path

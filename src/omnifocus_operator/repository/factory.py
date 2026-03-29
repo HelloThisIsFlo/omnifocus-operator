@@ -1,10 +1,10 @@
 """Repository factory -- creates the appropriate repository implementation.
 
 The ``create_repository`` function selects a repository based on a string type
-identifier (typically from the ``OMNIFOCUS_REPOSITORY`` environment variable).
+identifier (typically from the ``OPERATOR_REPOSITORY`` environment variable).
 
 Production code always creates a ``RealBridge`` directly -- the bridge factory
-and ``OMNIFOCUS_BRIDGE`` env var are no longer used.
+and ``OPERATOR_BRIDGE`` env var are no longer used.
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ def create_repository(repo_type: str | None = None) -> Repository:
     ----------
     repo_type:
         One of ``"hybrid"`` or ``"bridge-only"``.
-        If *None*, reads ``OMNIFOCUS_REPOSITORY`` env var (default ``"hybrid"``).
+        If *None*, reads ``OPERATOR_REPOSITORY`` env var (default ``"hybrid"``).
 
     Returns
     -------
@@ -52,7 +52,7 @@ def create_repository(repo_type: str | None = None) -> Repository:
         When hybrid mode is selected but the database file is missing.
     """
     if repo_type is None:
-        repo_type = os.environ.get("OMNIFOCUS_REPOSITORY", "hybrid")
+        repo_type = os.environ.get("OPERATOR_REPOSITORY", "hybrid")
 
     match repo_type:
         case "hybrid":
@@ -68,9 +68,9 @@ def _create_real_bridge() -> Bridge:
     """Create a RealBridge reading config from environment variables."""
     from omnifocus_operator.bridge.real import DEFAULT_IPC_DIR, RealBridge
 
-    ipc_dir_str = os.environ.get("OMNIFOCUS_IPC_DIR")
+    ipc_dir_str = os.environ.get("OPERATOR_IPC_DIR")
     ipc_dir = Path(ipc_dir_str) if ipc_dir_str else DEFAULT_IPC_DIR
-    timeout = float(os.environ.get("OMNIFOCUS_BRIDGE_TIMEOUT", "10"))
+    timeout = float(os.environ.get("OPERATOR_BRIDGE_TIMEOUT", "10"))
     logger.debug(
         "Creating RealBridge: timeout=%.1fs, ipc_dir=%s",
         timeout,
@@ -83,7 +83,7 @@ def _create_hybrid_repository() -> Repository:
     """Create a HybridRepository with path validation."""
     from omnifocus_operator.repository.hybrid import HybridRepository
 
-    db_path = os.environ.get("OMNIFOCUS_SQLITE_PATH", _DEFAULT_DB_PATH)
+    db_path = os.environ.get("OPERATOR_SQLITE_PATH", _DEFAULT_DB_PATH)
 
     if not os.path.exists(db_path):
         msg = (
@@ -91,10 +91,10 @@ def _create_hybrid_repository() -> Repository:
             f"  {db_path}\n"
             f"\n"
             f"To fix this:\n"
-            f"  Set OMNIFOCUS_SQLITE_PATH to the correct database location.\n"
+            f"  Set OPERATOR_SQLITE_PATH to the correct database location.\n"
             f"\n"
             f"As a temporary workaround:\n"
-            f"  Set OMNIFOCUS_REPOSITORY=bridge-only to use the OmniJS bridge\n"
+            f"  Set OPERATOR_REPOSITORY=bridge-only to use the OmniJS bridge\n"
             f"  (slower, no 'blocked' availability)."
         )
         raise FileNotFoundError(msg)
@@ -116,11 +116,11 @@ def _create_bridge_repository() -> Repository:  # pragma: no cover
     bridge = _create_real_bridge()
 
     mtime_source: MtimeSource
-    ofocus_path = os.environ.get("OMNIFOCUS_OFOCUS_PATH", str(DEFAULT_OFOCUS_PATH))
+    ofocus_path = os.environ.get("OPERATOR_OFOCUS_PATH", str(DEFAULT_OFOCUS_PATH))
     if not os.path.exists(ofocus_path):
         logger.error(
             "OmniFocus .ofocus bundle not found at: %s — "
-            "set OMNIFOCUS_OFOCUS_PATH or verify OmniFocus 4 is installed.",
+            "set OPERATOR_OFOCUS_PATH or verify OmniFocus 4 is installed.",
             ofocus_path,
         )
         raise FileNotFoundError(f"OmniFocus .ofocus bundle not found: {ofocus_path}")
@@ -129,7 +129,7 @@ def _create_bridge_repository() -> Repository:  # pragma: no cover
     logger.warning(
         "Running in bridge mode — 'blocked' availability is not available, "
         "and reads are slower (~500ms vs ~50ms). "
-        "Set OMNIFOCUS_REPOSITORY=hybrid for full functionality."
+        "Set OPERATOR_REPOSITORY=hybrid for full functionality."
     )
 
     return BridgeRepository(bridge=bridge, mtime_source=mtime_source)

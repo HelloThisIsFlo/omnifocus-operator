@@ -484,7 +484,7 @@ class HybridRepository(BridgeWriteMixin, Repository):
         if db_path is not None:
             self._db_path = str(db_path)
         else:
-            self._db_path = os.environ.get("OMNIFOCUS_SQLITE_PATH", _DEFAULT_DB_PATH)
+            self._db_path = os.environ.get("OPERATOR_SQLITE_PATH", _DEFAULT_DB_PATH)
         if bridge is None:
             msg = "HybridRepository requires a bridge"
             raise ValueError(msg)

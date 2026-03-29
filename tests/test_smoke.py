@@ -25,7 +25,7 @@ def test_default_bridge_refused_during_pytest(
     """SAFE-01: RealBridge() is refused during automated testing."""
     from omnifocus_operator.bridge.real import RealBridge
 
-    monkeypatch.setenv("OMNIFOCUS_IPC_DIR", str(tmp_path))
+    monkeypatch.setenv("OPERATOR_IPC_DIR", str(tmp_path))
     with pytest.raises(RuntimeError, match="PYTEST_CURRENT_TEST"):
         RealBridge(ipc_dir=tmp_path)
 

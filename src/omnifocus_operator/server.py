@@ -3,7 +3,7 @@
 The server uses a lifespan context manager to wire the three-layer
 architecture: ``FastMCP tool -> OperatorService -> Repository``.
 The repository implementation is selected via ``create_repository()``,
-which reads ``OMNIFOCUS_REPOSITORY`` (default ``"hybrid"``).
+which reads ``OPERATOR_REPOSITORY`` (default ``"hybrid"``).
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ async def app_lifespan(app: FastMCP) -> AsyncIterator[dict[str, object]]:
 
     1. IPC sweep runs first (always, regardless of repository mode).
     2. ``create_repository()`` selects the repository based on
-       ``OMNIFOCUS_REPOSITORY`` env var (default ``"hybrid"``).
+       ``OPERATOR_REPOSITORY`` env var (default ``"hybrid"``).
     3. Startup errors are caught and served through ``ErrorOperatorService``.
     """
     # IPC sweep always runs -- cleans orphaned files from dead processes.
@@ -74,7 +74,7 @@ async def app_lifespan(app: FastMCP) -> AsyncIterator[dict[str, object]]:
         from omnifocus_operator.repository import create_repository
         from omnifocus_operator.service import OperatorService
 
-        repo_type = os.environ.get("OMNIFOCUS_REPOSITORY")
+        repo_type = os.environ.get("OPERATOR_REPOSITORY")
         logger.info("Repository type: %s", repo_type or "hybrid (default)")
 
         repository = create_repository(repo_type)

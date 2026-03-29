@@ -230,7 +230,7 @@ sequenceDiagram
   - WAL-based freshness detection: 50ms poll, 2s timeout after writes
   - No caching layer on top — 46ms is fast enough
   - Marks stale after writes; next read waits for fresh WAL mtime
-- **BridgeRepository** (fallback via `OMNIFOCUS_REPOSITORY=bridge`): OmniJS bridge dump
+- **BridgeRepository** (fallback via `OPERATOR_REPOSITORY=bridge`): OmniJS bridge dump
   - mtime-based cache invalidation; checks file mtime before each read, serves cached snapshot if unchanged
   - Concurrent reads coalesce into a single bridge dump
 - **InMemoryRepository** (tests): no caching (returns constructor snapshot as-is)

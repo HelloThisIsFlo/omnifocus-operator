@@ -52,7 +52,7 @@ DEFAULT_OFOCUS_PATH: Path = (
 """Default path to the OmniFocus 4 ``.ofocus`` database bundle.
 
 Used by ``FileMtimeSource`` to detect when the database has changed.
-Override via the ``OMNIFOCUS_OFOCUS_PATH`` environment variable.
+Override via the ``OPERATOR_OFOCUS_PATH`` environment variable.
 """
 
 _IPC_FILE_RE: re.Pattern[str] = re.compile(r"^(\d+)_[0-9a-f-]+\.(request|response)\.json(\.tmp)?$")

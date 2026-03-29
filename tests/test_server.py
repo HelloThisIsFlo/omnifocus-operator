@@ -87,7 +87,7 @@ class TestARCH01ThreeLayerArchitecture:
 
 
 class TestARCH02RepositoryInjection:
-    """Verify repository selection through OMNIFOCUS_REPOSITORY env var."""
+    """Verify repository selection through OPERATOR_REPOSITORY env var."""
 
     async def test_bridge_mode_via_env_var(
         self,
@@ -121,16 +121,16 @@ class TestARCH02RepositoryInjection:
         tmp_path: Any,
     ) -> None:
         """FALL-03: SQLite not found -> error-serving mode with actionable message."""
-        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "hybrid")
-        monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(tmp_path / "missing.db"))
+        monkeypatch.setenv("OPERATOR_REPOSITORY", "hybrid")
+        monkeypatch.setenv("OPERATOR_SQLITE_PATH", str(tmp_path / "missing.db"))
 
         server = create_server()
 
         async with Client(server) as client:
             with pytest.raises(ToolError, match=r"(?i)failed to start") as exc_info:
                 await client.call_tool("get_all")
-            assert "OMNIFOCUS_SQLITE_PATH" in str(exc_info.value)
-            assert "OMNIFOCUS_REPOSITORY=bridge-only" in str(exc_info.value)
+            assert "OPERATOR_SQLITE_PATH" in str(exc_info.value)
+            assert "OPERATOR_REPOSITORY=bridge-only" in str(exc_info.value)
 
 
 # ---------------------------------------------------------------------------
@@ -372,7 +372,7 @@ class TestIPC06OrphanSweepWiring:
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Any,
     ) -> None:
-        """IPC sweep runs regardless of OMNIFOCUS_REPOSITORY setting."""
+        """IPC sweep runs regardless of OPERATOR_REPOSITORY setting."""
         bridge = SimulatorBridge(ipc_dir=tmp_path)
         repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         monkeypatch.setattr(
@@ -401,8 +401,8 @@ class TestIPC06OrphanSweepWiring:
         """IPC sweep runs even when using sqlite repository mode."""
         db_file = tmp_path / "OmniFocusDatabase.db"
         db_file.touch()
-        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "hybrid")
-        monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(db_file))
+        monkeypatch.setenv("OPERATOR_REPOSITORY", "hybrid")
+        monkeypatch.setenv("OPERATOR_SQLITE_PATH", str(db_file))
 
         mock_sweep = AsyncMock()
 

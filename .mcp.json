@@ -11,9 +11,9 @@
         "omnifocus_operator"
       ],
       "env": {
-        "OMNIFOCUS_REPOSITORY": "hybrid",
-        "OMNIFOCUS_LOG_LEVEL": "DEBUG",
-        "OMNIFOCUS_BRIDGE_TIMEOUT": "10"
+        "OPERATOR_REPOSITORY": "hybrid",
+        "OPERATOR_LOG_LEVEL": "DEBUG",
+        "OPERATOR_BRIDGE_TIMEOUT": "10"
       }
     }
   }

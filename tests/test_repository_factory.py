@@ -31,7 +31,7 @@ class TestCreateRepositoryHybridMode:
     ) -> None:
         db_file = tmp_path / "OmniFocusDatabase.db"
         db_file.touch()
-        monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(db_file))
+        monkeypatch.setenv("OPERATOR_SQLITE_PATH", str(db_file))
         _stub_real_bridge(monkeypatch, tmp_path)
 
         repo = create_repository("hybrid")
@@ -40,9 +40,9 @@ class TestCreateRepositoryHybridMode:
     def test_none_defaults_to_hybrid(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         db_file = tmp_path / "OmniFocusDatabase.db"
         db_file.touch()
-        monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(db_file))
+        monkeypatch.setenv("OPERATOR_SQLITE_PATH", str(db_file))
         _stub_real_bridge(monkeypatch, tmp_path)
-        monkeypatch.delenv("OMNIFOCUS_REPOSITORY", raising=False)
+        monkeypatch.delenv("OPERATOR_REPOSITORY", raising=False)
 
         repo = create_repository(None)
         assert isinstance(repo, HybridRepository)
@@ -52,8 +52,8 @@ class TestCreateRepositoryHybridMode:
     ) -> None:
         ofocus_bundle = tmp_path / "OmniFocus.ofocus"
         ofocus_bundle.mkdir()
-        monkeypatch.setenv("OMNIFOCUS_REPOSITORY", "bridge-only")
-        monkeypatch.setenv("OMNIFOCUS_OFOCUS_PATH", str(ofocus_bundle))
+        monkeypatch.setenv("OPERATOR_REPOSITORY", "bridge-only")
+        monkeypatch.setenv("OPERATOR_OFOCUS_PATH", str(ofocus_bundle))
         _stub_real_bridge(monkeypatch, tmp_path)
 
         repo = create_repository()
@@ -64,7 +64,7 @@ class TestCreateRepositoryHybridMode:
     ) -> None:
         custom_db = tmp_path / "custom.db"
         custom_db.touch()
-        monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(custom_db))
+        monkeypatch.setenv("OPERATOR_SQLITE_PATH", str(custom_db))
         _stub_real_bridge(monkeypatch, tmp_path)
 
         repo = create_repository("hybrid")
@@ -79,7 +79,7 @@ class TestCreateRepositoryBridgeMode:
     ) -> None:
         ofocus_bundle = tmp_path / "OmniFocus.ofocus"
         ofocus_bundle.mkdir()
-        monkeypatch.setenv("OMNIFOCUS_OFOCUS_PATH", str(ofocus_bundle))
+        monkeypatch.setenv("OPERATOR_OFOCUS_PATH", str(ofocus_bundle))
         _stub_real_bridge(monkeypatch, tmp_path)
 
         repo = create_repository("bridge-only")
@@ -93,7 +93,7 @@ class TestCreateRepositoryBridgeMode:
     ) -> None:
         ofocus_bundle = tmp_path / "OmniFocus.ofocus"
         ofocus_bundle.mkdir()
-        monkeypatch.setenv("OMNIFOCUS_OFOCUS_PATH", str(ofocus_bundle))
+        monkeypatch.setenv("OPERATOR_OFOCUS_PATH", str(ofocus_bundle))
         _stub_real_bridge(monkeypatch, tmp_path)
 
         with caplog.at_level(logging.WARNING):
@@ -113,7 +113,7 @@ class TestCreateRepositoryErrors:
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         missing_path = tmp_path / "nonexistent.db"
-        monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(missing_path))
+        monkeypatch.setenv("OPERATOR_SQLITE_PATH", str(missing_path))
 
         with pytest.raises(FileNotFoundError):
             create_repository("hybrid")
@@ -122,7 +122,7 @@ class TestCreateRepositoryErrors:
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         missing_path = tmp_path / "nonexistent.db"
-        monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(missing_path))
+        monkeypatch.setenv("OPERATOR_SQLITE_PATH", str(missing_path))
 
         with pytest.raises(FileNotFoundError, match=str(missing_path)):
             create_repository("hybrid")
@@ -131,25 +131,25 @@ class TestCreateRepositoryErrors:
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         missing_path = tmp_path / "nonexistent.db"
-        monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(missing_path))
+        monkeypatch.setenv("OPERATOR_SQLITE_PATH", str(missing_path))
 
-        with pytest.raises(FileNotFoundError, match="OMNIFOCUS_SQLITE_PATH"):
+        with pytest.raises(FileNotFoundError, match="OPERATOR_SQLITE_PATH"):
             create_repository("hybrid")
 
     def test_file_not_found_contains_bridge_workaround(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         missing_path = tmp_path / "nonexistent.db"
-        monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(missing_path))
+        monkeypatch.setenv("OPERATOR_SQLITE_PATH", str(missing_path))
 
-        with pytest.raises(FileNotFoundError, match="OMNIFOCUS_REPOSITORY=bridge-only"):
+        with pytest.raises(FileNotFoundError, match="OPERATOR_REPOSITORY=bridge-only"):
             create_repository("hybrid")
 
     def test_file_not_found_distinguishes_fix_vs_workaround(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         missing_path = tmp_path / "nonexistent.db"
-        monkeypatch.setenv("OMNIFOCUS_SQLITE_PATH", str(missing_path))
+        monkeypatch.setenv("OPERATOR_SQLITE_PATH", str(missing_path))
 
         with pytest.raises(FileNotFoundError) as exc_info:
             create_repository("hybrid")

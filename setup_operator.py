@@ -85,11 +85,11 @@ def _prompt_value(label: str, default: str) -> str:
 def _gather_config() -> dict[str, str]:
     print("Configuration (Enter = default):")
     return {
-        "OMNIFOCUS_REPOSITORY": _prompt_choice("Repository", ["hybrid", "bridge-only"], "hybrid"),
-        "OMNIFOCUS_LOG_LEVEL": _prompt_choice(
+        "OPERATOR_REPOSITORY": _prompt_choice("Repository", ["hybrid", "bridge-only"], "hybrid"),
+        "OPERATOR_LOG_LEVEL": _prompt_choice(
             "Log level", ["DEBUG", "INFO", "WARNING", "ERROR"], "DEBUG"
         ),
-        "OMNIFOCUS_BRIDGE_TIMEOUT": _prompt_value("Bridge timeout in seconds", "10"),
+        "OPERATOR_BRIDGE_TIMEOUT": _prompt_value("Bridge timeout in seconds", "10"),
     }
 
 
