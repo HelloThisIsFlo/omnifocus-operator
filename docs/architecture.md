@@ -484,9 +484,9 @@ All agent-facing text — warnings and errors — is centralized in `agent_messa
 
 ## Repetition Rule: Structured Fields, Not RRULE Strings
 
-> **Status:** Read model implemented (v1.2.3) — `RepetitionRule` with structured `Frequency` types and `parse_rrule()`. Write model in progress (v1.2.3).
+> **Status:** Read + write models implemented (v1.2.3) — flat `Frequency` model, `parse_rrule()`, `build_rrule()`. Type optional on edits.
 
-Agents never see RRULE strings. The read and write models expose repetition as structured, type-discriminated fields. The RRULE string is an internal serialization detail between the service layer and the bridge.
+Agents never see RRULE strings. The read and write models expose repetition as structured fields with a flat frequency model. The RRULE string is an internal serialization detail between the service layer and the bridge.
 
 Why top-level (not inside `actions`): setting a repetition rule is idempotent — same input always produces the same result, regardless of current state. Follows the same pattern as `due_date`, `note` — set, clear, or leave unchanged.
 
@@ -494,9 +494,9 @@ Why top-level (not inside `actions`): setting a repetition rule is idempotent �
 
 ```
 repetitionRule
-├── frequency                    -- nested, type-discriminated
-│   ├── type                     -- discriminator (required)
-│   ├── interval                 -- every N of that type (default: 1)
+├── frequency                    -- flat model, type + optional fields
+│   ├── type                     -- required on read/add, optional on edit (inferred from existing)
+│   ├── interval                 -- every N of that type (default: 1, omitted in output when 1)
 │   └── onDays / on / onDates    -- type-specific (see below)
 ├── schedule                     -- "regularly" | "regularly_with_catch_up" | "from_completion"
 ├── basedOn                      -- "due_date" | "defer_date" | "planned_date"
@@ -506,24 +506,25 @@ repetitionRule
 - `schedule` — three values; collapses scheduleType + catchUpAutomatically into one field
 - `basedOn` — renamed from anchorDateKey to match OmniFocus UI language ("based on due date"). See [OmniFocus Concepts](omnifocus-concepts.md#dates) for date semantics
 - `end` — "key IS the value" pattern (same as [actions.move](#task-movement-actionsmove)): exactly one key, omit for no end
-- `frequency.interval` — nested (tightly coupled with type: "every 2 weeks" is one concept)
+- `frequency.interval` — nested (tightly coupled with type: "every 2 weeks" is one concept). Omitted from read output when 1 (the default)
 
 ### Frequency Types
 
-Eight types, with `type` as the Pydantic discriminator:
+Nine types sharing a single flat model. Each type-specific field is unique to its type (no ambiguity — `onDays` only appears on `weekly_on_days`, etc.):
 
-| Type | Day field | Example |
-|------|-----------|---------|
+| Type | Extra field | Example |
+|------|-------------|---------|
 | `minutely` | — | Every 30 minutes |
 | `hourly` | — | Every 2 hours |
 | `daily` | — | Every 3 days |
-| `weekly` | `onDays`: `string[]` — two-letter codes (MO–SU), optional | Every 2 weeks on Mon, Fri |
+| `weekly` | — | Every 2 weeks (no day constraint) |
+| `weekly_on_days` | `onDays`: `string[]` — two-letter codes (MO–SU) | Every 2 weeks on Mon, Fri |
 | `monthly` | — | Every month (from basedOn date) |
 | `monthly_day_of_week` | `on`: `object` — single `{ordinal: dayName}` | The 2nd Tuesday of every month |
 | `monthly_day_in_month` | `onDates`: `int[]` — day numbers (1–31, -1 = last) | The 1st and 15th of every month |
 | `yearly` | — | Every year |
 
-Each frequency type that needs day specification uses a **type-specific field name** — no polymorphism:
+Cross-type fields are rejected with an educational error. Each type-specific field name is unique — no polymorphism:
 
 ```json
 // weekly → onDays: array of two-letter day codes (case-insensitive, normalized to uppercase)
@@ -555,7 +556,7 @@ Each frequency type that needs day specification uses a **type-specific field na
 ```json
 {
   "repetitionRule": {
-    "frequency": { "type": "weekly", "interval": 2, "onDays": ["MO", "FR"] },
+    "frequency": { "type": "weekly_on_days", "interval": 2, "onDays": ["MO", "FR"] },
     "schedule": "regularly_with_catch_up",
     "basedOn": "due_date"
   }
@@ -566,7 +567,7 @@ Each frequency type that needs day specification uses a **type-specific field na
 ```json
 {
   "repetitionRule": {
-    "frequency": { "type": "monthly_day_of_week", "interval": 1, "on": {"last": "friday"} },
+    "frequency": { "type": "monthly_day_of_week", "on": {"last": "friday"} },
     "schedule": "regularly",
     "basedOn": "due_date",
     "end": { "occurrences": 12 }
@@ -578,7 +579,7 @@ Each frequency type that needs day specification uses a **type-specific field na
 ```json
 {
   "repetitionRule": {
-    "frequency": { "type": "monthly_day_in_month", "interval": 1, "onDates": [1, 15] },
+    "frequency": { "type": "monthly_day_in_month", "onDates": [1, 15] },
     "schedule": "regularly_with_catch_up",
     "basedOn": "planned_date",
     "end": { "date": "2026-12-31" }
@@ -594,19 +595,22 @@ Repetition rules support targeted partial updates on `edit_tasks`, following two
 
 1. **Root-level fields are independently updatable** — change `schedule`, `basedOn`, or `end` without resending other fields
 2. **Frequency object uses type as the merge boundary:**
+   - `type` optional on same-type updates — inferred from existing task
    - Same type → merge (omitted fields preserved from existing rule)
-   - Type changes → full replacement required (no cross-type inference)
-   - `type` is always required in the frequency object
+   - Type changes → `type` required + full replacement (defaults apply like creation)
 
 ```json
 // Change only basedOn (everything else preserved):
 { "repetitionRule": { "basedOn": "defer_date" } }
 
-// Add Friday to existing weekly schedule (interval preserved):
-{ "repetitionRule": { "frequency": { "type": "weekly", "onDays": ["TH", "FR"] } } }
+// Change interval on existing task (type inferred from existing):
+{ "repetitionRule": { "frequency": { "interval": 5 } } }
 
-// Switch from weekly to monthly (full frequency object required):
-{ "repetitionRule": { "frequency": { "type": "monthly_day_in_month", "interval": 1, "onDates": [15] } } }
+// Update days on a weekly_on_days task (type inferred):
+{ "repetitionRule": { "frequency": { "onDays": ["TH", "FR"] } } }
+
+// Switch from weekly to monthly (type required for type change):
+{ "repetitionRule": { "frequency": { "type": "monthly_day_in_month", "onDates": [15] } } }
 ```
 
 No existing rule + partial update → error: "Task has no repetition rule. Provide a complete rule."
