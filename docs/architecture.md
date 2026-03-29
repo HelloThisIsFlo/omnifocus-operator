@@ -470,7 +470,8 @@ These are concrete examples of why logic stays out of the bridge:
 | Null-means-clear mapping | Service | Business logic, not transport |
 | RRULE string generation | Service | Structured fields → RRULE string (see [RRULE Utility Layer](#rrule-utility-layer)) |
 | Lifecycle (complete/drop) | Service + Bridge | Service validates state, bridge executes `markComplete()`/`drop()` |
-| Validation (all of it) | Service | Three layers, all before bridge call |
+| Validation (structural) | Contract models | Pydantic validators on specs — value ranges, enum membership, field constraints |
+| Validation (semantic) | Service | State checks, no-op detection, cross-entity resolution |
 
 ### The Result
 
@@ -801,9 +802,9 @@ flowchart LR
 
 Three layers, all before bridge execution:
 
-1. **Pydantic structural** — required fields, enum values, `end` has exactly one key
-2. **Type-specific constraints** — reject fields that don't belong to given frequency type; value ranges (interval >= 1, valid day codes, valid ordinals, dayOfMonth -1 to 31 excluding 0)
-3. **Service semantic** — no existing rule + partial update, type change + incomplete frequency, no-op detection with educational warnings
+1. **Pydantic structural** (contract model validators) — required fields, enum values, `end` has exactly one key
+2. **Type-specific constraints** (contract model validators) — reject fields that don't belong to given frequency type; value ranges (interval >= 1, valid day codes, valid ordinals, dayOfMonth -1 to 31 excluding 0)
+3. **Service semantic** (service layer) — no existing rule + partial update, type change + incomplete frequency, no-op detection with educational warnings
 
 ## Design Rationale
 
