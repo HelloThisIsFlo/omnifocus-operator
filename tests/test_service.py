@@ -35,6 +35,7 @@ from omnifocus_operator.models.repetition_rule import (
     EndByOccurrences,
 )
 from omnifocus_operator.service import ErrorOperatorService, OperatorService
+from omnifocus_operator.service.domain import DomainLogic
 from tests.doubles import ConstantMtimeSource
 
 from .conftest import make_project_dict, make_tag_dict, make_task_dict
@@ -2166,8 +2167,6 @@ class TestAnchorDateWarning:
     @pytest.fixture
     def domain(self) -> DomainLogic:
         """DomainLogic with mock dependencies (method is pure, doesn't use them)."""
-        from omnifocus_operator.service.domain import DomainLogic
-
         return DomainLogic(repo=AsyncMock(), resolver=AsyncMock())
 
     def test_due_date_missing_returns_warning(self, domain: DomainLogic) -> None:
