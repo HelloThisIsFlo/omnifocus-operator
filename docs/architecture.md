@@ -494,10 +494,10 @@ Why top-level (not inside `actions`): setting a repetition rule is idempotent �
 
 ```
 repetitionRule
-├── frequency                    -- flat model, type + optional fields
+├── frequency                    -- flat model, 6 types + optional specialization fields
 │   ├── type                     -- required on read/add, optional on edit (inferred from existing)
 │   ├── interval                 -- every N of that type (default: 1, omitted in output when 1)
-│   └── onDays / on / onDates    -- type-specific (see below)
+│   └── onDays / on / onDates    -- optional specialization (see below)
 ├── schedule                     -- "regularly" | "regularly_with_catch_up" | "from_completion"
 ├── basedOn                      -- "due_date" | "defer_date" | "planned_date"
 └── end                          -- optional: {"date": "ISO-8601"} or {"occurrences": N}
@@ -510,32 +510,29 @@ repetitionRule
 
 ### Frequency Types
 
-Nine types sharing a single flat model. Each type-specific field is unique to its type (no ambiguity — `onDays` only appears on `weekly_on_days`, etc.):
+Six types sharing a single flat model. Optional fields specialize the base type — no sub-types needed:
 
-| Type | Extra field | Example |
-|------|-------------|---------|
+| Type | Optional fields | Example |
+|------|-----------------|---------|
 | `minutely` | — | Every 30 minutes |
 | `hourly` | — | Every 2 hours |
 | `daily` | — | Every 3 days |
-| `weekly` | — | Every 2 weeks (no day constraint) |
-| `weekly_on_days` | `onDays`: `string[]` — two-letter codes (MO–SU) | Every 2 weeks on Mon, Fri |
-| `monthly` | — | Every month (from basedOn date) |
-| `monthly_day_of_week` | `on`: `object` — single `{ordinal: dayName}` | The 2nd Tuesday of every month |
-| `monthly_day_in_month` | `onDates`: `int[]` — day numbers (1–31, -1 = last) | The 1st and 15th of every month |
+| `weekly` | `onDays`: `string[]` — two-letter codes (MO–SU) | Every 2 weeks; optionally on specific days |
+| `monthly` | `on`: `object` — `{ordinal: dayName}`, OR `onDates`: `int[]` — day numbers (1–31, -1 = last) | Every month; optionally on nth weekday or specific dates |
 | `yearly` | — | Every year |
 
-Cross-type fields are rejected with an educational error. Each type-specific field name is unique — no polymorphism:
+`on` and `onDates` are mutually exclusive on `monthly` — you specify a weekday pattern OR specific dates, not both. Cross-type fields are rejected with an educational error.
 
 ```json
 // weekly → onDays: array of two-letter day codes (case-insensitive, normalized to uppercase)
 "onDays": ["MO", "WE", "FR"]
 
-// monthly_day_of_week → on: single key-value object (reads like English: "on the second Tuesday")
+// monthly → on: single key-value object (reads like English: "on the second Tuesday")
 // Keys: first, second, third, fourth, fifth, last
 // Values: monday–sunday, weekday, weekend_day (case-insensitive, normalized to lowercase)
 "on": {"second": "tuesday"}
 
-// monthly_day_in_month → onDates: array of integers (1–31, -1 for last day)
+// monthly → onDates: array of integers (1–31, -1 for last day)
 "onDates": [1, 15, -1]
 ```
 
@@ -556,7 +553,7 @@ Cross-type fields are rejected with an educational error. Each type-specific fie
 ```json
 {
   "repetitionRule": {
-    "frequency": { "type": "weekly_on_days", "interval": 2, "onDays": ["MO", "FR"] },
+    "frequency": { "type": "weekly", "interval": 2, "onDays": ["MO", "FR"] },
     "schedule": "regularly_with_catch_up",
     "basedOn": "due_date"
   }
@@ -567,7 +564,7 @@ Cross-type fields are rejected with an educational error. Each type-specific fie
 ```json
 {
   "repetitionRule": {
-    "frequency": { "type": "monthly_day_of_week", "on": {"last": "friday"} },
+    "frequency": { "type": "monthly", "on": {"last": "friday"} },
     "schedule": "regularly",
     "basedOn": "due_date",
     "end": { "occurrences": 12 }
@@ -575,11 +572,11 @@ Cross-type fields are rejected with an educational error. Each type-specific fie
 }
 ```
 
-**Monthly (specific days)** — the 1st and 15th of every month, until a date:
+**Monthly (specific dates)** — the 1st and 15th of every month, until a date:
 ```json
 {
   "repetitionRule": {
-    "frequency": { "type": "monthly_day_in_month", "onDates": [1, 15] },
+    "frequency": { "type": "monthly", "onDates": [1, 15] },
     "schedule": "regularly_with_catch_up",
     "basedOn": "planned_date",
     "end": { "date": "2026-12-31" }
@@ -598,6 +595,7 @@ Repetition rules support targeted partial updates on `edit_tasks`, following two
    - `type` optional on same-type updates — inferred from existing task
    - Same type → merge (omitted fields preserved from existing rule)
    - Type changes → `type` required + full replacement (defaults apply like creation)
+   - Specialization fields (`onDays`, `on`, `onDates`) can be added or cleared without changing type
 
 ```json
 // Change only basedOn (everything else preserved):
@@ -606,11 +604,17 @@ Repetition rules support targeted partial updates on `edit_tasks`, following two
 // Change interval on existing task (type inferred from existing):
 { "repetitionRule": { "frequency": { "interval": 5 } } }
 
-// Update days on a weekly_on_days task (type inferred):
-{ "repetitionRule": { "frequency": { "onDays": ["TH", "FR"] } } }
+// Add specific days to a weekly task (no type change needed):
+{ "repetitionRule": { "frequency": { "onDays": ["MO", "WE", "FR"] } } }
 
-// Switch from weekly to monthly (type required for type change):
-{ "repetitionRule": { "frequency": { "type": "monthly_day_in_month", "onDates": [15] } } }
+// Remove day constraint from weekly (clear the field):
+{ "repetitionRule": { "frequency": { "onDays": null } } }
+
+// Switch from date-based to weekday-based monthly:
+{ "repetitionRule": { "frequency": { "onDates": null, "on": {"last": "friday"} } } }
+
+// Switch from daily to weekly (type required for type change):
+{ "repetitionRule": { "frequency": { "type": "weekly", "onDays": ["MO", "FR"] } } }
 ```
 
 No existing rule + partial update → error: "Task has no repetition rule. Provide a complete rule."
