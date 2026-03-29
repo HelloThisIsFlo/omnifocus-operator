@@ -3,12 +3,8 @@ repos:
     rev: v0.15.4
     hooks:
       - id: ruff-check
-        args: [--fix]
-      - id: ruff-check
-        alias: ruff-check-all
         name: ruff check (full repo)
-        stages: [pre-push]
-        args: []
+        args: [--fix]
         pass_filenames: false
       - id: ruff-format
   - repo: local
