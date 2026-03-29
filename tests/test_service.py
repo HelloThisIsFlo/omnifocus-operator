@@ -1956,9 +1956,7 @@ class TestEditTaskRepetitionRule:
     @pytest.mark.snapshot(
         tasks=[make_task_dict(id="t1", name="Repeating", repetitionRule=_DAILY_RULE)]
     )
-    async def test_noop_same_rule_with_other_field_change(
-        self, service: OperatorService
-    ) -> None:
+    async def test_noop_same_rule_with_other_field_change(self, service: OperatorService) -> None:
         """EDIT-16 gap: Same rule + name change -> no-op warning AND name applied."""
         spec = RepetitionRuleEditSpec(
             frequency=DailyFrequency(),
