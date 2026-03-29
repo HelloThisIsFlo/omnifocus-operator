@@ -15,19 +15,18 @@ from omnifocus_operator.agent_messages.errors import (
     REPETITION_INVALID_ON_DATE,
     REPETITION_NO_EXISTING_RULE,
 )
-from omnifocus_operator.agent_messages.errors import (
-    REPETITION_INVALID_INTERVAL,
-    REPETITION_INVALID_END_OCCURRENCES,
-)
 from omnifocus_operator.agent_messages.warnings import (
     REPETITION_EMPTY_ON_DATES,
     REPETITION_END_DATE_PAST,
     REPETITION_NO_OP,
     REPETITION_ON_COMPLETED_TASK,
 )
+from omnifocus_operator.contracts.base import UNSET
 from omnifocus_operator.contracts.use_cases.repetition_rule import (
     FrequencyAddSpec,
+    FrequencyEditSpec,
     RepetitionRuleAddSpec,
+    RepetitionRuleEditSpec,
 )
 from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
@@ -242,6 +241,62 @@ class TestFrequencyAddSpec:
     def test_used_in_spec(self) -> None:
         spec = _make_spec(frequency=FrequencyAddSpec(type="daily", interval=3))
         assert spec.frequency.interval == 3
+
+
+class TestFrequencyEditSpecInterval:
+    """Tests for interval validation on FrequencyEditSpec (edit path)."""
+
+    def test_interval_zero_rejected(self) -> None:
+        with pytest.raises(ValueError, match="Interval must be"):
+            FrequencyEditSpec(type="daily", interval=0)
+
+    def test_interval_valid(self) -> None:
+        spec = FrequencyEditSpec(type="daily", interval=3)
+        assert spec.interval == 3
+
+    def test_interval_unset_default(self) -> None:
+        spec = FrequencyEditSpec()
+        assert spec.interval is UNSET
+
+
+class TestRepetitionRuleEditSpecEnd:
+    """Tests for end validator on RepetitionRuleEditSpec."""
+
+    def test_occurrences_zero_rejected(self) -> None:
+        with pytest.raises(ValueError, match="occurrences must be"):
+            RepetitionRuleEditSpec(end={"occurrences": 0})
+
+    def test_empty_dict_rejected(self) -> None:
+        with pytest.raises(ValueError, match="end requires either"):
+            RepetitionRuleEditSpec(end={})
+
+    def test_occurrences_valid(self) -> None:
+        spec = RepetitionRuleEditSpec(end={"occurrences": 5})
+        assert spec.end.occurrences == 5  # type: ignore[union-attr]
+
+    def test_none_passes(self) -> None:
+        spec = RepetitionRuleEditSpec(end=None)
+        assert spec.end is None
+
+    def test_unset_default(self) -> None:
+        spec = RepetitionRuleEditSpec()
+        assert spec.end is UNSET
+
+
+class TestRepetitionRuleAddSpecEnd:
+    """Tests for end validator on RepetitionRuleAddSpec."""
+
+    def test_occurrences_zero_rejected(self) -> None:
+        with pytest.raises(ValueError, match="occurrences must be"):
+            _make_spec(end={"occurrences": 0})
+
+    def test_empty_dict_rejected(self) -> None:
+        with pytest.raises(ValueError, match="end requires either"):
+            _make_spec(end={})
+
+    def test_none_passes(self) -> None:
+        spec = _make_spec(end=None)
+        assert spec.end is None
 
 
 class TestAgentMessages:

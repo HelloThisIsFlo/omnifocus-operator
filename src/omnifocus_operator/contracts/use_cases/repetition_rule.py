@@ -9,11 +9,15 @@ Defines the typed contract for repetition rule creation and editing.
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import Field, field_validator, model_validator
 
 from omnifocus_operator.agent_messages.errors import (
     REPETITION_INVALID_DAY_CODE,
     REPETITION_INVALID_DAY_NAME,
+    REPETITION_INVALID_END_EMPTY,
+    REPETITION_INVALID_END_OCCURRENCES,
     REPETITION_INVALID_INTERVAL,
     REPETITION_INVALID_ON_DATE,
     REPETITION_INVALID_ORDINAL,
@@ -121,8 +125,9 @@ class FrequencyAddSpec(CommandModel):
 class FrequencyEditSpec(CommandModel):
     """Patch-semantics frequency spec for editing a repetition rule.
 
-    Pure patch container -- NO validators. Cross-type validation fires
-    when the merged Frequency is constructed in the service layer.
+    Single-field boundary checks (interval >= 1) are validated here.
+    Cross-type validation fires when the merged Frequency is constructed
+    in the service layer.
     """
 
     type: Patch[FrequencyType] = UNSET
@@ -130,6 +135,13 @@ class FrequencyEditSpec(CommandModel):
     on_days: PatchOrClear[list[str]] = UNSET
     on: PatchOrClear[dict[str, str]] = UNSET
     on_dates: PatchOrClear[list[int]] = UNSET
+
+    @field_validator("interval", mode="before")
+    @classmethod
+    def _validate_interval(cls, v: int) -> int:
+        if isinstance(v, int) and v < 1:
+            raise ValueError(REPETITION_INVALID_INTERVAL.format(value=v))
+        return v
 
 
 class RepetitionRuleAddSpec(CommandModel):
@@ -140,19 +152,47 @@ class RepetitionRuleAddSpec(CommandModel):
     based_on: BasedOn
     end: EndCondition | None = None
 
+    @field_validator("end", mode="before")
+    @classmethod
+    def _validate_end(cls, v: Any) -> Any:
+        if v is None or not isinstance(v, dict):
+            return v
+        if "occurrences" in v:
+            occ = v["occurrences"]
+            if isinstance(occ, int) and occ < 1:
+                raise ValueError(REPETITION_INVALID_END_OCCURRENCES.format(value=occ))
+            return v
+        if "date" in v:
+            return v
+        raise ValueError(REPETITION_INVALID_END_EMPTY)
+
 
 class RepetitionRuleEditSpec(CommandModel):
     """Patch-semantics spec for editing a repetition rule.
 
     All fields default to UNSET (no change). Root-level fields (schedule,
     basedOn, end) are independently patchable. Frequency uses FrequencyEditSpec
-    with Patch/PatchOrClear fields and no validators.
+    with Patch/PatchOrClear fields.
     """
 
     frequency: Patch[FrequencyEditSpec] = UNSET
     schedule: Patch[Schedule] = UNSET
     based_on: Patch[BasedOn] = UNSET
     end: PatchOrClear[EndCondition] = UNSET
+
+    @field_validator("end", mode="before")
+    @classmethod
+    def _validate_end(cls, v: Any) -> Any:
+        if v is None or not isinstance(v, dict):
+            return v
+        if "occurrences" in v:
+            occ = v["occurrences"]
+            if isinstance(occ, int) and occ < 1:
+                raise ValueError(REPETITION_INVALID_END_OCCURRENCES.format(value=occ))
+            return v
+        if "date" in v:
+            return v
+        raise ValueError(REPETITION_INVALID_END_EMPTY)
 
 
 class RepetitionRuleRepoPayload(CommandModel):

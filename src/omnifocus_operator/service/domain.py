@@ -11,6 +11,9 @@ import logging
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
 from omnifocus_operator.agent_messages.errors import (
     ANCHOR_TASK_NOT_FOUND,
     CIRCULAR_REFERENCE,
@@ -198,7 +201,7 @@ class DomainLogic:
     def check_anchor_date_warning(
         self,
         based_on: BasedOn,
-        effective_dates: dict[str, object],
+        effective_dates: Mapping[str, object],
     ) -> list[str]:
         """Warn if basedOn references an anchor date that isn't set on the task.
 

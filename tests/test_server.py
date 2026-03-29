@@ -1256,13 +1256,89 @@ class TestEditTasksRepetitionRule:
         items = edit_result.structured_content["result"]
         assert items[0]["success"] is True
 
+    async def test_edit_tasks_interval_zero_clean_error(self, client: Any) -> None:
+        """interval=0 on edit returns clean error without pydantic internals."""
+        add_result = await client.call_tool("add_tasks", {"items": [{"name": "For edit"}]})
+        task_id = add_result.structured_content["result"][0]["id"]
+
+        with pytest.raises(ToolError, match="Interval must be") as exc_info:
+            await client.call_tool(
+                "edit_tasks",
+                {
+                    "items": [
+                        {
+                            "id": task_id,
+                            "repetitionRule": {
+                                "frequency": {"type": "daily", "interval": 0},
+                                "schedule": "regularly",
+                                "basedOn": "due_date",
+                            },
+                        }
+                    ]
+                },
+            )
+        text = str(exc_info.value)
+        assert "type=" not in text
+        assert "pydantic" not in text.lower()
+        assert "input_value" not in text
+
+    async def test_edit_tasks_end_occurrences_zero_clean_error(self, client: Any) -> None:
+        """end:{occurrences: 0} on edit returns clean error without '_Unset' noise."""
+        add_result = await client.call_tool("add_tasks", {"items": [{"name": "For edit"}]})
+        task_id = add_result.structured_content["result"][0]["id"]
+
+        with pytest.raises(ToolError, match="occurrences must be") as exc_info:
+            await client.call_tool(
+                "edit_tasks",
+                {
+                    "items": [
+                        {
+                            "id": task_id,
+                            "repetitionRule": {
+                                "frequency": {"type": "daily"},
+                                "schedule": "regularly",
+                                "basedOn": "due_date",
+                                "end": {"occurrences": 0},
+                            },
+                        }
+                    ]
+                },
+            )
+        text = str(exc_info.value)
+        assert "_Unset" not in text
+        assert "Field required" not in text
+
+    async def test_edit_tasks_end_empty_object_clean_error(self, client: Any) -> None:
+        """end:{} on edit returns actionable error explaining what's needed."""
+        add_result = await client.call_tool("add_tasks", {"items": [{"name": "For edit"}]})
+        task_id = add_result.structured_content["result"][0]["id"]
+
+        with pytest.raises(ToolError, match="end requires either") as exc_info:
+            await client.call_tool(
+                "edit_tasks",
+                {
+                    "items": [
+                        {
+                            "id": task_id,
+                            "repetitionRule": {
+                                "frequency": {"type": "daily"},
+                                "schedule": "regularly",
+                                "basedOn": "due_date",
+                                "end": {},
+                            },
+                        }
+                    ]
+                },
+            )
+        text = str(exc_info.value)
+        assert "date" in text
+        assert "occurrences" in text
+
 
 class TestAnchorDateWarning:
     """Verify anchor date missing warning through add_tasks and edit_tasks MCP tools."""
 
-    async def test_add_tasks_repetition_anchor_date_missing_warning(
-        self, client: Any
-    ) -> None:
+    async def test_add_tasks_repetition_anchor_date_missing_warning(self, client: Any) -> None:
         """Add task with basedOn='due_date' but no dueDate produces warning."""
         result = await client.call_tool(
             "add_tasks",
@@ -1286,9 +1362,7 @@ class TestAnchorDateWarning:
         assert any("basedOn is 'due_date'" in w for w in warnings)
         assert any("dueDate" in w for w in warnings)
 
-    async def test_add_tasks_repetition_anchor_date_present_no_warning(
-        self, client: Any
-    ) -> None:
+    async def test_add_tasks_repetition_anchor_date_present_no_warning(self, client: Any) -> None:
         """Add task with basedOn='due_date' AND dueDate set produces no anchor warning."""
         result = await client.call_tool(
             "add_tasks",
