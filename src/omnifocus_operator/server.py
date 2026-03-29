@@ -114,11 +114,11 @@ def _format_validation_errors(exc: ValidationError) -> list[str]:
         if e["type"] == "extra_forbidden":
             field = ".".join(str(loc) for loc in e["loc"])
             messages.append(UNKNOWN_FIELD.format(field=field))
-        elif e["type"] == "literal_error" and "lifecycle" in e.get("loc", ()):
-            messages.append(LIFECYCLE_INVALID_VALUE.format(value=e.get("input", "unknown")))
         elif e["type"] == "literal_error":
             loc = e.get("loc", ())
-            if any(str(part) in ("repetitionRule", "frequency", "type") for part in loc):
+            if "lifecycle" in loc:
+                messages.append(LIFECYCLE_INVALID_VALUE.format(value=e.get("input", "unknown")))
+            elif any(str(part) in ("repetitionRule", "frequency", "type") for part in loc):
                 freq_type = e.get("input", "?")
                 messages.append(REPETITION_INVALID_FREQUENCY_TYPE.format(freq_type=freq_type))
             else:
@@ -216,37 +216,34 @@ def _register_tools(mcp: FastMCP) -> None:
         - estimatedMinutes: Estimated duration in minutes
         - note: Task note text
         - repetitionRule: Repetition rule (all three root fields required on creation)
-          - frequency (required): Object with "type" discriminator
+          - frequency (required): Object with "type" + optional specialization fields
             - {type: "minutely", interval: N}
             - {type: "hourly", interval: N}
             - {type: "daily", interval: N}
-            - {type: "weekly", interval: N}  -- every N weeks, no specific day constraint
-            - {type: "weekly_on_days", interval: N, onDays: ["MO","WE","FR"]}  -- specific days (MO-SU)
-            - {type: "monthly", interval: N}
-            - {type: "monthly_day_of_week", interval: N, on: {"second": "tuesday"}}
+            - {type: "weekly", interval: N}  -- optionally add onDays
+            - {type: "weekly", interval: N, onDays: ["MO","WE","FR"]}  -- specific days (MO-SU)
+            - {type: "monthly", interval: N}  -- optionally add on or onDates
+            - {type: "monthly", interval: N, on: {"second": "tuesday"}}
                 ordinals: first/second/third/fourth/fifth/last
                 days: monday-sunday, weekday, weekend_day
-            - {type: "monthly_day_in_month", interval: N, onDates: [1, 15]}
+            - {type: "monthly", interval: N, onDates: [1, 15]}
                 valid dates: 1 to 31, use -1 for last day of month
             - {type: "yearly", interval: N}
             - interval defaults to 1, omit or set explicitly
+            - on and onDates are mutually exclusive
           - schedule (required): "regularly" / "regularly_with_catch_up" / "from_completion"
           - basedOn (required): "due_date" / "defer_date" / "planned_date"
           - end: {"date": "ISO-8601"} or {"occurrences": N} -- omit for no end
 
           Examples:
             Every 3 days from completion:
-              {frequency: {type: "daily", interval: 3},
-               schedule: "from_completion", basedOn: "defer_date"}
+              {frequency: {type: "daily", interval: 3}, schedule: "from_completion", basedOn: "defer_date"}
 
             Every 2 weeks on Mon and Fri, stop after 10:
-              {frequency: {type: "weekly_on_days", interval: 2, onDays: ["MO", "FR"]},
-               schedule: "regularly", basedOn: "due_date",
-               end: {occurrences: 10}}
+              {frequency: {type: "weekly", interval: 2, onDays: ["MO", "FR"]}, schedule: "regularly", basedOn: "due_date", end: {occurrences: 10}}
 
             Last Friday of every month:
-              {frequency: {type: "monthly_day_of_week", on: {"last": "friday"}},
-               schedule: "regularly", basedOn: "due_date"}
+              {frequency: {type: "monthly", on: {"last": "friday"}}, schedule: "regularly", basedOn: "due_date"}
 
         Returns array of results: [{success, id, name, warnings?}]
         """  # noqa: E501
@@ -301,21 +298,30 @@ def _register_tools(mcp: FastMCP) -> None:
         - repetitionRule: Set, update, or clear a repetition rule
           - Full rule: same shape as add_tasks (frequency, schedule, basedOn required)
           - Partial update: send only changed fields, omitted root fields preserved
-            - frequency.type is always required when updating frequency
+            - frequency.type optional (inferred from existing task)
+            - frequency.type required when changing to a different type
             - Same type: omitted frequency fields preserved from existing rule
             - Different type: full replacement, defaults apply like creation
+            - onDays/on/onDates: null to clear, omit to preserve
+            - on and onDates are mutually exclusive -- setting one auto-clears the other
           - end: null to clear, omit to preserve
           - null to clear the repetition rule
 
           Examples:
-            Change just the schedule:
-              {schedule: "from_completion"}
+            Change just the interval (type inferred from existing):
+              {frequency: {interval: 5}}
 
-            Change interval (type required, other frequency fields preserved):
-              {frequency: {type: "daily", interval: 5}}
+            Add specific days to a weekly task (no type change):
+              {frequency: {onDays: ["MO", "WE", "FR"]}}
 
-            Switch to monthly on specific days (schedule/basedOn/end preserved):
-              {frequency: {type: "monthly_day_in_month", onDates: [1, 15]}}
+            Remove day constraint from weekly:
+              {frequency: {onDays: null}}
+
+            Switch monthly from dates to weekday pattern (onDates auto-cleared):
+              {frequency: {on: {"last": "friday"}}}
+
+            Change from daily to weekly (type required):
+              {frequency: {type: "weekly", onDays: ["MO", "FR"]}}
 
             Clear:
               null

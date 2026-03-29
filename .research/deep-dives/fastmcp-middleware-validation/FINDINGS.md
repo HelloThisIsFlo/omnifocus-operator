@@ -11,11 +11,11 @@
 - Zero regression in error quality. UNSET works cleanly. Validated E2E.
 
 **Caveats (minimal but worth knowing):**
-- **Test updates are the bulk of the work** -- tests asserting on validation error paths need updating: errors arrive as `ToolError` (middleware) instead of `ValueError` (handler), and `loc` paths gain an `items.0.` prefix. Mechanical but tedious.
-- **Unknown field message diff** -- `Unknown field 'bogusField'` → `Unknown field 'items.0.bogusField'`. Strictly more informative, but differs from today. One-liner fix in `_format_validation_errors` if exact parity matters.
+- **Test updates are the bulk of the work** -- tests asserting on validation error paths need updating: errors arrive as `ToolError` (middleware) instead of `ValueError` (handler). Mechanical but tedious.
+- **`items.0.` loc prefix must be stripped** -- With `list[Model]` params, Pydantic error locations include the list wrapper path (`items`, `0`, `fieldName`). Strip the leading `items.N.` in `_format_validation_errors` so agents see the same field paths they're used to. One-liner: skip first two `loc` elements when they match the `items.N` pattern. Consistency with what agents have already learned from previous errors is worth more than technical accuracy in the loc path.
 - **Implicit coupling to FastMCP internals** -- relies on validation happening inside `call_next()` (`FunctionTool.run()` → `type_adapter.validate_python()`). If a future FastMCP version moves validation before middleware, the catch wouldn't fire. Unlikely (would be a breaking change), but it's an undocumented internal, not a contract. Add a canary test to catch this early.
 
-**Post-migration follow-up: trim tool docstrings.** The 45-line field-by-field docstrings on `add_tasks`/`edit_tasks` were compensating for the missing schema. With rich inputSchema, agents get field info from the schema itself. Docstrings should be trimmed to: purpose, batch limits, patch semantics, and examples. Remove field-by-field enumeration — it's now redundant context-window tax and a maintenance drift risk. (This was the original motivation for the research.)
+**Post-migration: restructure tool docstrings.** The 45-line field-by-field docstrings on `add_tasks`/`edit_tasks` were compensating for the missing schema. With rich inputSchema, agents get structural field info from the schema itself. Remove structural field documentation (field names, types, required/optional) — it's now redundant context-window tax and a maintenance drift risk. Keep behavioral documentation the schema can't express: partial update semantics (omit vs null vs value), when to use which frequency type, examples, batch limits. That's the teaching layer. (This was the original motivation for the research.)
 
 Everything below is the evidence trail: what we tested, what we found, why the other 5 approaches don't work or are strictly worse.
 
@@ -145,7 +145,7 @@ Six approaches were tested. Approach 1 is the end game. Approach 2 is a low-risk
    - Use `ctx["expected_tags"]` for `union_tag_invalid` instead of manual extraction from `e["input"]`
 4. **Handler signatures**: `items: list[dict[str, Any]]` → `items: list[AddTaskCommand]` / `items: list[EditTaskCommand]`
 5. **Handler bodies**: remove try/except + `model_validate()` block. Use typed `items[0]` directly.
-6. **Trim tool docstrings**: remove field-by-field enumeration (now redundant with rich schema). Keep: purpose, batch limits, patch semantics, examples.
+6. **Restructure tool docstrings**: remove structural field documentation (now redundant with rich schema). Keep behavioral documentation the schema can't express: partial update semantics, frequency type guidance, examples, batch limits.
 
 **What doesn't change:**
 - Command models (`AddTaskCommand`, `EditTaskCommand`) -- untouched
@@ -180,7 +180,7 @@ This would let filtering match on `e["type"] == "omitted_field_sentinel"` — ev
 
 1. **Broken `$ref` in discriminator mapping** -- FastMCP inlines `$defs` but leaves stale `#/$defs/DailyFrequency` paths in the discriminator `mapping` field. Most clients ignore this, but worth noting. (Script: `1-schema-generation/01`)
 
-2. **`items.0.` loc prefix** -- With `list[Model]` params, Pydantic error locations include the list index path (`items`, `0`, `fieldName`). The current path is just `fieldName`. This affects the "Unknown field" message formatting. The prefix is accurate and arguably better, but differs from today's output. (Script: `5-integration/03`)
+2. **`items.0.` loc prefix — strip it** -- With `list[Model]` params, Pydantic error locations include the list index path (`items`, `0`, `fieldName`). Strip the leading `items.N.` in the error formatter to maintain agent-facing parity. (Script: `5-integration/03`)
 
 3. **Pydantic lax mode coercion** -- `flagged: "yes"` silently passes as `True`. This is existing behavior regardless of approach. `strict_input_validation=True` on FastMCP would add JSON Schema pre-validation, but may be too strict for agent use. (Script: `2-error-flow/03`)
 

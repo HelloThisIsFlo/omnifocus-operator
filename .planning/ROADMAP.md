@@ -138,12 +138,12 @@ Plans:
 **Goal:** Replace 9-subtype discriminated Frequency union with single flat model (6 types), proper CommandModel write specs, type-optional edits, validation migration to model validators
 **Requirements**: ADD-01 through ADD-14, EDIT-01 through EDIT-16, VALID-01 through VALID-05 (inherited from Phase 33, preserved by refactor)
 **Depends on:** Phase 33
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans executed
 
 Plans:
 - [x] 33.1-01-PLAN.md — Flat Frequency model, write specs (FrequencyAddSpec/FrequencyEditSpec), parser/builder update
 - [x] 33.1-02-PLAN.md — Service layer migration (validate.py, domain.py, service.py merge rewrite)
-- [ ] 33.1-03-PLAN.md — Server tool descriptions (D-14/D-15), error handling, output schema tests
+- [x] 33.1-03-PLAN.md — Server tool descriptions (D-14/D-15), error handling, output schema tests
 
 ## Progress
 
