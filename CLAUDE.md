@@ -34,5 +34,5 @@ See @README.md for project overview.
 
 ## Model Conventions
 
-- **Before creating any new Pydantic model**: Read `docs/architecture.md` naming taxonomy (search "Model Naming Taxonomy"). Models in `models/` must NOT use write-side suffixes (`Command`, `Result`, `RepoPayload`, `RepoResult`, `Action`, `Spec`). Models in `contracts/` must use one of those suffixes.
+- **Before creating any new Pydantic model**: Read `docs/architecture.md` naming taxonomy (search "Model taxonomy"). Models in `models/` use no suffix (core) or `Read` suffix (output-boundary variant). Models in `contracts/` must use a write-side suffix (`Command`, `Result`, `RepoPayload`, `RepoResult`, `Action`, `Spec`).
 - **After modifying any model that appears in tool output**: Run `uv run pytest tests/test_output_schema.py -x -q` to verify serialized output still validates against MCP outputSchema. This catches `@model_serializer` and `@field_serializer` additions that erase JSON Schema structure.
