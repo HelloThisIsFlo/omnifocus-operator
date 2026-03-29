@@ -145,3 +145,13 @@ Plans:
 | 32. Read Model Rewrite | v1.2.3 | 2/2 | Complete    | 2026-03-28 |
 | 32.1 Output Schema Validation Gap | v1.2.3 | 3/3 | Complete    | 2026-03-28 |
 | 33. Write Model, Validation & Bridge | v1.2.3 | 5/5 | In Progress | |
+
+### Phase 33.1: Refactor Frequency to flat model with type-optional edits (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 33
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 33.1 to break down)

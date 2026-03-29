@@ -99,6 +99,10 @@ Carried forward:
 |---|-------------|------|--------|-----------|
 | 260328-sh9 | Fix BYSETPOS repetition rule parsing bug | 2026-03-28 | dbd68f6 | [260328-sh9-fix-bysetpos-repetition-rule-parsing-bug](./quick/260328-sh9-fix-bysetpos-repetition-rule-parsing-bug/) |
 
+### Roadmap Evolution
+
+- Phase 33.1 inserted after Phase 33: Refactor Frequency to flat model with type-optional edits (URGENT)
+
 ### Blockers/Concerns
 
 - BYDAY positional prefix form (`BYDAY=-1SA`) must be handled in Phase 32 parser -- crashes spike parser on real data
