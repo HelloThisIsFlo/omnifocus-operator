@@ -15,6 +15,10 @@ from omnifocus_operator.agent_messages.errors import (
     REPETITION_INVALID_ON_DATE,
     REPETITION_NO_EXISTING_RULE,
 )
+from omnifocus_operator.agent_messages.errors import (
+    REPETITION_INVALID_INTERVAL,
+    REPETITION_INVALID_END_OCCURRENCES,
+)
 from omnifocus_operator.agent_messages.warnings import (
     REPETITION_EMPTY_ON_DATES,
     REPETITION_END_DATE_PAST,
@@ -57,12 +61,20 @@ class TestValidateInterval:
         assert freq.interval == 3
 
     def test_interval_zero_rejected(self) -> None:
-        with pytest.raises(ValueError, match=r"[Ii]nterval|greater than or equal"):
+        with pytest.raises(ValueError, match="Interval must be") as exc_info:
             Frequency(type="daily", interval=0)
+        text = str(exc_info.value)
+        assert "greater_than_equal" not in text
+        assert "type=" not in text
+        assert "input_value" not in text
 
     def test_interval_negative_rejected(self) -> None:
-        with pytest.raises(ValueError, match=r"[Ii]nterval|greater than or equal"):
+        with pytest.raises(ValueError, match="Interval must be") as exc_info:
             Frequency(type="daily", interval=-1)
+        text = str(exc_info.value)
+        assert "greater_than_equal" not in text
+        assert "type=" not in text
+        assert "input_value" not in text
 
     def test_interval_default_valid(self) -> None:
         freq = Frequency(type="daily")
@@ -148,8 +160,18 @@ class TestValidateEnd:
         assert end.occurrences == 10
 
     def test_occurrences_zero_rejected(self) -> None:
-        with pytest.raises(ValueError, match=r"occurrences|greater than or equal"):
+        with pytest.raises(ValueError, match="occurrences must be") as exc_info:
             EndByOccurrences(occurrences=0)
+        text = str(exc_info.value)
+        assert "greater_than_equal" not in text
+        assert "type=" not in text
+        assert "input_value" not in text
+
+    def test_occurrences_negative_rejected(self) -> None:
+        with pytest.raises(ValueError, match="occurrences must be") as exc_info:
+            EndByOccurrences(occurrences=-1)
+        text = str(exc_info.value)
+        assert "greater_than_equal" not in text
 
     def test_valid_interval_one(self) -> None:
         end = EndByOccurrences(occurrences=1)
@@ -204,6 +226,10 @@ class TestFrequencyAddSpec:
     def test_cross_type_rejected(self) -> None:
         with pytest.raises(ValueError, match="on_days is not valid"):
             FrequencyAddSpec(type="daily", on_days=["MO"])
+
+    def test_interval_zero_rejected(self) -> None:
+        with pytest.raises(ValueError, match="Interval must be"):
+            FrequencyAddSpec(type="daily", interval=0)
 
     def test_used_in_spec(self) -> None:
         spec = _make_spec(frequency=FrequencyAddSpec(type="daily", interval=3))
