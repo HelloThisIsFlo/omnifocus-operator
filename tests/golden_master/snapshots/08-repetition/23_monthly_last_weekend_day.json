@@ -902,57 +902,6 @@
         "tags": []
       },
       {
-        "name": "GM-Repeat-ComboTarget",
-        "note": "",
-        "flagged": false,
-        "effectiveFlagged": false,
-        "dueDate": "2026-12-01T10:00:00.000Z",
-        "deferDate": null,
-        "effectiveDueDate": "2026-12-01T10:00:00.000Z",
-        "effectiveDeferDate": null,
-        "completionDate": null,
-        "effectiveCompletionDate": null,
-        "plannedDate": null,
-        "effectivePlannedDate": null,
-        "dropDate": null,
-        "effectiveDropDate": null,
-        "estimatedMinutes": null,
-        "hasChildren": false,
-        "inInbox": true,
-        "repetitionRule": null,
-        "project": null,
-        "parent": null,
-        "tags": []
-      },
-      {
-        "name": "GM-Repeat-CompleteTarget",
-        "note": "",
-        "flagged": false,
-        "effectiveFlagged": false,
-        "dueDate": "2026-12-01T10:00:00.000Z",
-        "deferDate": null,
-        "effectiveDueDate": "2026-12-01T10:00:00.000Z",
-        "effectiveDeferDate": null,
-        "completionDate": null,
-        "effectiveCompletionDate": null,
-        "plannedDate": null,
-        "effectivePlannedDate": null,
-        "dropDate": null,
-        "effectiveDropDate": null,
-        "estimatedMinutes": null,
-        "hasChildren": false,
-        "inInbox": true,
-        "repetitionRule": {
-          "ruleString": "FREQ=DAILY",
-          "scheduleType": "Regularly",
-          "anchorDateKey": "DueDate",
-          "catchUpAutomatically": true
-        },
-        "project": null,
-        "parent": null,
-        "tags": []
-      },
-      {
         "name": "GM-Repeat-DailyInterval",
         "note": "FREQ=DAILY;INTERVAL=3",
         "flagged": false,
@@ -983,34 +932,6 @@
       {
         "name": "GM-Repeat-DailySimple",
         "note": "FREQ=DAILY",
-        "flagged": false,
-        "effectiveFlagged": false,
-        "dueDate": "2026-12-01T10:00:00.000Z",
-        "deferDate": null,
-        "effectiveDueDate": "2026-12-01T10:00:00.000Z",
-        "effectiveDeferDate": null,
-        "completionDate": null,
-        "effectiveCompletionDate": null,
-        "plannedDate": null,
-        "effectivePlannedDate": null,
-        "dropDate": null,
-        "effectiveDropDate": null,
-        "estimatedMinutes": null,
-        "hasChildren": false,
-        "inInbox": true,
-        "repetitionRule": {
-          "ruleString": "FREQ=DAILY",
-          "scheduleType": "Regularly",
-          "anchorDateKey": "DueDate",
-          "catchUpAutomatically": true
-        },
-        "project": null,
-        "parent": null,
-        "tags": []
-      },
-      {
-        "name": "GM-Repeat-DropTarget",
-        "note": "",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": "2026-12-01T10:00:00.000Z",
@@ -1340,57 +1261,6 @@
           "anchorDateKey": "DueDate",
           "catchUpAutomatically": true
         },
-        "project": null,
-        "parent": null,
-        "tags": []
-      },
-      {
-        "name": "GM-Repeat-MultiComplete",
-        "note": "",
-        "flagged": false,
-        "effectiveFlagged": false,
-        "dueDate": "2026-12-01T10:00:00.000Z",
-        "deferDate": null,
-        "effectiveDueDate": "2026-12-01T10:00:00.000Z",
-        "effectiveDeferDate": null,
-        "completionDate": null,
-        "effectiveCompletionDate": null,
-        "plannedDate": null,
-        "effectivePlannedDate": null,
-        "dropDate": null,
-        "effectiveDropDate": null,
-        "estimatedMinutes": null,
-        "hasChildren": false,
-        "inInbox": true,
-        "repetitionRule": {
-          "ruleString": "FREQ=DAILY",
-          "scheduleType": "Regularly",
-          "anchorDateKey": "DueDate",
-          "catchUpAutomatically": true
-        },
-        "project": null,
-        "parent": null,
-        "tags": []
-      },
-      {
-        "name": "GM-Repeat-SetTarget",
-        "note": "",
-        "flagged": false,
-        "effectiveFlagged": false,
-        "dueDate": "2026-12-01T10:00:00.000Z",
-        "deferDate": null,
-        "effectiveDueDate": "2026-12-01T10:00:00.000Z",
-        "effectiveDeferDate": null,
-        "completionDate": null,
-        "effectiveCompletionDate": null,
-        "plannedDate": null,
-        "effectivePlannedDate": null,
-        "dropDate": null,
-        "effectiveDropDate": null,
-        "estimatedMinutes": null,
-        "hasChildren": false,
-        "inInbox": true,
-        "repetitionRule": null,
         "project": null,
         "parent": null,
         "tags": []
@@ -1757,5 +1627,18 @@
       }
     ]
   },
-  "created_ids": []
+  "created_ids": [
+    "$task:repeat_monthly_last_weekend_day"
+  ],
+  "setup_operation": "add_task",
+  "setup_params": {
+    "name": "GM-Repeat-MonthlyLastWeekendDay",
+    "dueDate": "2026-12-01T10:00:00.000Z",
+    "repetitionRule": {
+      "ruleString": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=-1",
+      "scheduleType": "Regularly",
+      "anchorDateKey": "DueDate",
+      "catchUpAutomatically": true
+    }
+  }
 }

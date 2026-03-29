@@ -59,328 +59,6 @@ known_tag_ids: set[str] = set()
 _id_map: dict[str, str] = {}
 
 
-# ---------------------------------------------------------------------------
-# Repetition rule definitions (Phase 2.5)
-#
-# Each entry defines a task to create with a repetition rule via add_task.
-# The nested `repetitionRule` dict is passed directly to the bridge.
-# ---------------------------------------------------------------------------
-
-REPETITION_RULES: list[dict[str, Any]] = [
-    # --- RRULE frequency/modifier variations ---
-    {
-        "key": "repeat_daily_simple",
-        "name": "GM-Repeat-DailySimple",
-        "repetitionRule": {
-            "ruleString": "FREQ=DAILY",
-            "scheduleType": "Regularly",
-            "anchorDateKey": "DueDate",
-            "catchUpAutomatically": True,
-        },
-        "dueDate": "2026-12-01T10:00:00.000Z",
-    },
-    {
-        "key": "repeat_daily_interval",
-        "name": "GM-Repeat-DailyInterval",
-        "repetitionRule": {
-            "ruleString": "FREQ=DAILY;INTERVAL=3",
-            "scheduleType": "Regularly",
-            "anchorDateKey": "DueDate",
-            "catchUpAutomatically": True,
-        },
-        "dueDate": "2026-12-01T10:00:00.000Z",
-    },
-    {
-        "key": "repeat_weekly_bare",
-        "name": "GM-Repeat-WeeklyBare",
-        "repetitionRule": {
-            "ruleString": "FREQ=WEEKLY",
-            "scheduleType": "Regularly",
-            "anchorDateKey": "DueDate",
-            "catchUpAutomatically": True,
-        },
-        "dueDate": "2026-12-01T10:00:00.000Z",
-    },
-    {
-        "key": "repeat_weekly_days",
-        "name": "GM-Repeat-WeeklyDays",
-        "repetitionRule": {
-            "ruleString": "FREQ=WEEKLY;BYDAY=MO,WE,FR",
-            "scheduleType": "Regularly",
-            "anchorDateKey": "DueDate",
-            "catchUpAutomatically": True,
-        },
-        "dueDate": "2026-12-01T10:00:00.000Z",
-    },
-    {
-        "key": "repeat_monthly_plain",
-        "name": "GM-Repeat-MonthlyPlain",
-        "repetitionRule": {
-            "ruleString": "FREQ=MONTHLY",
-            "scheduleType": "Regularly",
-            "anchorDateKey": "DueDate",
-            "catchUpAutomatically": True,
-        },
-        "dueDate": "2026-12-15T10:00:00.000Z",
-    },
-    {
-        "key": "repeat_monthly_day_of_week",
-        "name": "GM-Repeat-MonthlyDayOfWeek",
-        "repetitionRule": {
-            "ruleString": "FREQ=MONTHLY;BYDAY=2TU",
-            "scheduleType": "Regularly",
-            "anchorDateKey": "DueDate",
-            "catchUpAutomatically": True,
-        },
-        "dueDate": "2026-12-09T10:00:00.000Z",  # a Tuesday
-    },
-    {
-        "key": "repeat_monthly_last_weekday",
-        "name": "GM-Repeat-MonthlyLastWeekday",
-        "repetitionRule": {
-            "ruleString": "FREQ=MONTHLY;BYDAY=-1FR",
-            "scheduleType": "Regularly",
-            "anchorDateKey": "DueDate",
-            "catchUpAutomatically": True,
-        },
-        "dueDate": "2026-12-25T10:00:00.000Z",  # last Friday of Dec 2026
-    },
-    {
-        "key": "repeat_monthly_day_in_month",
-        "name": "GM-Repeat-MonthlyDayInMonth",
-        "repetitionRule": {
-            "ruleString": "FREQ=MONTHLY;BYMONTHDAY=15",
-            "scheduleType": "Regularly",
-            "anchorDateKey": "DueDate",
-            "catchUpAutomatically": True,
-        },
-        "dueDate": "2026-12-15T10:00:00.000Z",
-    },
-    {
-        "key": "repeat_monthly_last_day",
-        "name": "GM-Repeat-MonthlyLastDay",
-        "repetitionRule": {
-            "ruleString": "FREQ=MONTHLY;BYMONTHDAY=-1",
-            "scheduleType": "Regularly",
-            "anchorDateKey": "DueDate",
-            "catchUpAutomatically": True,
-        },
-        "dueDate": "2026-12-31T10:00:00.000Z",
-    },
-    {
-        "key": "repeat_yearly",
-        "name": "GM-Repeat-Yearly",
-        "repetitionRule": {
-            "ruleString": "FREQ=YEARLY",
-            "scheduleType": "Regularly",
-            "anchorDateKey": "DueDate",
-            "catchUpAutomatically": True,
-        },
-        "dueDate": "2026-12-01T10:00:00.000Z",
-    },
-    {
-        "key": "repeat_minutely",
-        "name": "GM-Repeat-Minutely",
-        "repetitionRule": {
-            "ruleString": "FREQ=MINUTELY;INTERVAL=30",
-            "scheduleType": "Regularly",
-            "anchorDateKey": "DueDate",
-            "catchUpAutomatically": True,
-        },
-        "dueDate": "2026-12-01T10:00:00.000Z",
-    },
-    {
-        "key": "repeat_hourly",
-        "name": "GM-Repeat-Hourly",
-        "repetitionRule": {
-            "ruleString": "FREQ=HOURLY;INTERVAL=2",
-            "scheduleType": "Regularly",
-            "anchorDateKey": "DueDate",
-            "catchUpAutomatically": True,
-        },
-        "dueDate": "2026-12-01T10:00:00.000Z",
-    },
-    {
-        "key": "repeat_with_count",
-        "name": "GM-Repeat-WithCount",
-        "repetitionRule": {
-            "ruleString": "FREQ=WEEKLY;COUNT=10",
-            "scheduleType": "Regularly",
-            "anchorDateKey": "DueDate",
-            "catchUpAutomatically": True,
-        },
-        "dueDate": "2026-12-01T10:00:00.000Z",
-    },
-    {
-        "key": "repeat_with_until",
-        "name": "GM-Repeat-WithUntil",
-        "repetitionRule": {
-            "ruleString": "FREQ=MONTHLY;UNTIL=20261231T000000Z",
-            "scheduleType": "Regularly",
-            "anchorDateKey": "DueDate",
-            "catchUpAutomatically": True,
-        },
-        "dueDate": "2026-12-01T10:00:00.000Z",
-    },
-    {
-        "key": "repeat_from_completion",
-        "name": "GM-Repeat-FromCompletion",
-        "repetitionRule": {
-            "ruleString": "FREQ=DAILY;INTERVAL=3",
-            "scheduleType": "FromCompletion",
-            "anchorDateKey": "DueDate",
-            "catchUpAutomatically": True,
-        },
-        "dueDate": "2026-12-01T10:00:00.000Z",
-    },
-    {
-        "key": "repeat_catchup_enabled",
-        "name": "GM-Repeat-CatchUpEnabled",
-        "repetitionRule": {
-            "ruleString": "FREQ=WEEKLY",
-            "scheduleType": "Regularly",
-            "anchorDateKey": "DueDate",
-            "catchUpAutomatically": True,
-        },
-        "dueDate": "2026-12-01T10:00:00.000Z",
-    },
-    # --- Anchor date and config variations ---
-    {
-        "key": "repeat_anchor_defer",
-        "name": "GM-Repeat-AnchorDefer",
-        "repetitionRule": {
-            "ruleString": "FREQ=WEEKLY",
-            "scheduleType": "Regularly",
-            "anchorDateKey": "DeferDate",
-            "catchUpAutomatically": True,
-        },
-        "deferDate": "2026-12-01T09:00:00.000Z",
-        "dueDate": "2026-12-08T10:00:00.000Z",
-    },
-    {
-        "key": "repeat_anchor_planned",
-        "name": "GM-Repeat-AnchorPlanned",
-        "repetitionRule": {
-            "ruleString": "FREQ=DAILY",
-            "scheduleType": "Regularly",
-            "anchorDateKey": "PlannedDate",
-            "catchUpAutomatically": True,
-        },
-        "plannedDate": "2026-12-01T09:00:00.000Z",
-        "dueDate": "2026-12-08T10:00:00.000Z",
-    },
-    {
-        "key": "repeat_catchup_disabled",
-        "name": "GM-Repeat-CatchUpDisabled",
-        "repetitionRule": {
-            "ruleString": "FREQ=WEEKLY",
-            "scheduleType": "Regularly",
-            "anchorDateKey": "DueDate",
-            "catchUpAutomatically": False,
-        },
-        "dueDate": "2026-12-01T10:00:00.000Z",
-    },
-    {
-        "key": "repeat_all_non_default",
-        "name": "GM-Repeat-AllNonDefault",
-        "repetitionRule": {
-            "ruleString": "FREQ=DAILY;INTERVAL=2",
-            "scheduleType": "FromCompletion",
-            "anchorDateKey": "DeferDate",
-            "catchUpAutomatically": False,
-        },
-        "deferDate": "2026-12-01T09:00:00.000Z",
-        "dueDate": "2026-12-08T10:00:00.000Z",
-    },
-    # --- BYSETPOS multi-day positional (D-05 gap) ---
-    {
-        "key": "repeat_monthly_weekend_day",
-        "name": "GM-Repeat-MonthlyWeekendDay",
-        "repetitionRule": {
-            "ruleString": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=1",
-            "scheduleType": "Regularly",
-            "anchorDateKey": "DueDate",
-            "catchUpAutomatically": True,
-        },
-        "dueDate": "2026-12-01T10:00:00.000Z",
-    },
-    {
-        "key": "repeat_monthly_weekday",
-        "name": "GM-Repeat-MonthlyWeekday",
-        "repetitionRule": {
-            "ruleString": "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=2",
-            "scheduleType": "Regularly",
-            "anchorDateKey": "DueDate",
-            "catchUpAutomatically": True,
-        },
-        "dueDate": "2026-12-01T10:00:00.000Z",
-    },
-    {
-        "key": "repeat_monthly_last_weekend_day",
-        "name": "GM-Repeat-MonthlyLastWeekendDay",
-        "repetitionRule": {
-            "ruleString": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=-1",
-            "scheduleType": "Regularly",
-            "anchorDateKey": "DueDate",
-            "catchUpAutomatically": True,
-        },
-        "dueDate": "2026-12-01T10:00:00.000Z",
-    },
-]
-
-# Lifecycle scenarios need separate tasks (commented out until InMemoryBridge
-# supports the .N ID scheme for completed repeating tasks).
-REPETITION_LIFECYCLE_RULES: list[dict[str, Any]] = [
-    {
-        "key": "repeat_complete_target",
-        "name": "GM-Repeat-CompleteTarget",
-        "repetitionRule": {
-            "ruleString": "FREQ=DAILY",
-            "scheduleType": "Regularly",
-            "anchorDateKey": "DueDate",
-            "catchUpAutomatically": True,
-        },
-        "dueDate": "2026-12-01T10:00:00.000Z",
-    },
-    {
-        "key": "repeat_drop_target",
-        "name": "GM-Repeat-DropTarget",
-        "repetitionRule": {
-            "ruleString": "FREQ=DAILY",
-            "scheduleType": "Regularly",
-            "anchorDateKey": "DueDate",
-            "catchUpAutomatically": True,
-        },
-        "dueDate": "2026-12-01T10:00:00.000Z",
-    },
-    {
-        "key": "repeat_multi_complete",
-        "name": "GM-Repeat-MultiComplete",
-        "repetitionRule": {
-            "ruleString": "FREQ=DAILY",
-            "scheduleType": "Regularly",
-            "anchorDateKey": "DueDate",
-            "catchUpAutomatically": True,
-        },
-        "dueDate": "2026-12-01T10:00:00.000Z",
-    },
-]
-
-# Write-path targets: tasks created WITHOUT rules, used for SET/REPLACE/CLEAR scenarios.
-REPETITION_WRITE_TARGETS: list[dict[str, Any]] = [
-    {
-        "key": "repeat_set_target",
-        "name": "GM-Repeat-SetTarget",
-        "dueDate": "2026-12-01T10:00:00.000Z",
-    },
-    {
-        "key": "repeat_combo_target",
-        "name": "GM-Repeat-ComboTarget",
-        "dueDate": "2026-12-01T10:00:00.000Z",
-    },
-]
-
-
 def _build_scenarios() -> list[dict[str, Any]]:
     """Build ~52 scenario definitions across 7 categories using captured IDs."""
     return [
@@ -1114,20 +792,33 @@ def _build_scenarios() -> list[dict[str, Any]]:
             },
         },
         # =================================================================
-        # 08-repetition/ — Read scenarios (23): verify repetition rules
-        # captured correctly. Tasks created in Phase 2.5 with rules set
-        # via add_task. Each scenario does a minimal edit (set note) to
-        # trigger state capture including the repetitionRule field.
+        # 08-repetition/ — Read scenarios (23): each scenario creates its
+        # own repeating task via add_task, then does a minimal edit (set
+        # note) to trigger state capture including the repetitionRule.
         # =================================================================
         {
             "folder": "08-repetition",
             "file": "01_daily_simple",
             "scenario": "08-repetition/01_daily_simple",
             "description": "FREQ=DAILY repetition rule",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_daily_simple"],
-                "note": "FREQ=DAILY",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-DailySimple",
+                "dueDate": "2026-12-01T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=DAILY",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_daily_simple",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_daily_simple"],
+                    "note": "FREQ=DAILY",
+                },
             },
         },
         {
@@ -1135,10 +826,24 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "02_daily_interval",
             "scenario": "08-repetition/02_daily_interval",
             "description": "FREQ=DAILY;INTERVAL=3 repetition rule",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_daily_interval"],
-                "note": "FREQ=DAILY;INTERVAL=3",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-DailyInterval",
+                "dueDate": "2026-12-01T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=DAILY;INTERVAL=3",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_daily_interval",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_daily_interval"],
+                    "note": "FREQ=DAILY;INTERVAL=3",
+                },
             },
         },
         {
@@ -1146,10 +851,24 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "03_weekly_bare",
             "scenario": "08-repetition/03_weekly_bare",
             "description": "FREQ=WEEKLY repetition rule (no BYDAY)",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_weekly_bare"],
-                "note": "FREQ=WEEKLY",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-WeeklyBare",
+                "dueDate": "2026-12-01T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=WEEKLY",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_weekly_bare",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_weekly_bare"],
+                    "note": "FREQ=WEEKLY",
+                },
             },
         },
         {
@@ -1157,10 +876,24 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "04_weekly_days",
             "scenario": "08-repetition/04_weekly_days",
             "description": "FREQ=WEEKLY;BYDAY=MO,WE,FR repetition rule",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_weekly_days"],
-                "note": "FREQ=WEEKLY;BYDAY=MO,WE,FR",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-WeeklyDays",
+                "dueDate": "2026-12-01T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=WEEKLY;BYDAY=MO,WE,FR",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_weekly_days",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_weekly_days"],
+                    "note": "FREQ=WEEKLY;BYDAY=MO,WE,FR",
+                },
             },
         },
         {
@@ -1168,10 +901,24 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "05_monthly_plain",
             "scenario": "08-repetition/05_monthly_plain",
             "description": "FREQ=MONTHLY repetition rule",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_monthly_plain"],
-                "note": "FREQ=MONTHLY",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-MonthlyPlain",
+                "dueDate": "2026-12-15T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=MONTHLY",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_monthly_plain",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_monthly_plain"],
+                    "note": "FREQ=MONTHLY",
+                },
             },
         },
         {
@@ -1179,10 +926,24 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "06_monthly_day_of_week",
             "scenario": "08-repetition/06_monthly_day_of_week",
             "description": "FREQ=MONTHLY;BYDAY=2TU repetition rule (positional)",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_monthly_day_of_week"],
-                "note": "FREQ=MONTHLY;BYDAY=2TU",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-MonthlyDayOfWeek",
+                "dueDate": "2026-12-09T10:00:00.000Z",  # a Tuesday
+                "repetitionRule": {
+                    "ruleString": "FREQ=MONTHLY;BYDAY=2TU",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_monthly_day_of_week",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_monthly_day_of_week"],
+                    "note": "FREQ=MONTHLY;BYDAY=2TU",
+                },
             },
         },
         {
@@ -1190,10 +951,24 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "07_monthly_last_weekday",
             "scenario": "08-repetition/07_monthly_last_weekday",
             "description": "FREQ=MONTHLY;BYDAY=-1FR repetition rule (negative prefix)",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_monthly_last_weekday"],
-                "note": "FREQ=MONTHLY;BYDAY=-1FR",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-MonthlyLastWeekday",
+                "dueDate": "2026-12-25T10:00:00.000Z",  # last Friday of Dec 2026
+                "repetitionRule": {
+                    "ruleString": "FREQ=MONTHLY;BYDAY=-1FR",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_monthly_last_weekday",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_monthly_last_weekday"],
+                    "note": "FREQ=MONTHLY;BYDAY=-1FR",
+                },
             },
         },
         {
@@ -1201,10 +976,24 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "08_monthly_day_in_month",
             "scenario": "08-repetition/08_monthly_day_in_month",
             "description": "FREQ=MONTHLY;BYMONTHDAY=15 repetition rule",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_monthly_day_in_month"],
-                "note": "FREQ=MONTHLY;BYMONTHDAY=15",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-MonthlyDayInMonth",
+                "dueDate": "2026-12-15T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=MONTHLY;BYMONTHDAY=15",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_monthly_day_in_month",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_monthly_day_in_month"],
+                    "note": "FREQ=MONTHLY;BYMONTHDAY=15",
+                },
             },
         },
         {
@@ -1212,10 +1001,24 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "09_monthly_last_day",
             "scenario": "08-repetition/09_monthly_last_day",
             "description": "FREQ=MONTHLY;BYMONTHDAY=-1 repetition rule (last day)",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_monthly_last_day"],
-                "note": "FREQ=MONTHLY;BYMONTHDAY=-1",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-MonthlyLastDay",
+                "dueDate": "2026-12-31T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=MONTHLY;BYMONTHDAY=-1",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_monthly_last_day",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_monthly_last_day"],
+                    "note": "FREQ=MONTHLY;BYMONTHDAY=-1",
+                },
             },
         },
         {
@@ -1223,10 +1026,24 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "10_yearly",
             "scenario": "08-repetition/10_yearly",
             "description": "FREQ=YEARLY repetition rule",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_yearly"],
-                "note": "FREQ=YEARLY",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-Yearly",
+                "dueDate": "2026-12-01T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=YEARLY",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_yearly",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_yearly"],
+                    "note": "FREQ=YEARLY",
+                },
             },
         },
         {
@@ -1234,10 +1051,24 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "11_minutely",
             "scenario": "08-repetition/11_minutely",
             "description": "FREQ=MINUTELY;INTERVAL=30 repetition rule (sub-daily)",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_minutely"],
-                "note": "FREQ=MINUTELY;INTERVAL=30",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-Minutely",
+                "dueDate": "2026-12-01T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=MINUTELY;INTERVAL=30",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_minutely",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_minutely"],
+                    "note": "FREQ=MINUTELY;INTERVAL=30",
+                },
             },
         },
         {
@@ -1245,10 +1076,24 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "12_hourly",
             "scenario": "08-repetition/12_hourly",
             "description": "FREQ=HOURLY;INTERVAL=2 repetition rule (sub-daily)",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_hourly"],
-                "note": "FREQ=HOURLY;INTERVAL=2",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-Hourly",
+                "dueDate": "2026-12-01T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=HOURLY;INTERVAL=2",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_hourly",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_hourly"],
+                    "note": "FREQ=HOURLY;INTERVAL=2",
+                },
             },
         },
         {
@@ -1256,10 +1101,24 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "13_with_count",
             "scenario": "08-repetition/13_with_count",
             "description": "FREQ=WEEKLY;COUNT=10 repetition rule (end by occurrences)",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_with_count"],
-                "note": "FREQ=WEEKLY;COUNT=10",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-WithCount",
+                "dueDate": "2026-12-01T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=WEEKLY;COUNT=10",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_with_count",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_with_count"],
+                    "note": "FREQ=WEEKLY;COUNT=10",
+                },
             },
         },
         {
@@ -1267,10 +1126,24 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "14_with_until",
             "scenario": "08-repetition/14_with_until",
             "description": "FREQ=MONTHLY;UNTIL=20261231T000000Z repetition rule (end by date)",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_with_until"],
-                "note": "FREQ=MONTHLY;UNTIL=20261231T000000Z",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-WithUntil",
+                "dueDate": "2026-12-01T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=MONTHLY;UNTIL=20261231T000000Z",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_with_until",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_with_until"],
+                    "note": "FREQ=MONTHLY;UNTIL=20261231T000000Z",
+                },
             },
         },
         {
@@ -1278,10 +1151,24 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "15_from_completion",
             "scenario": "08-repetition/15_from_completion",
             "description": "FromCompletion schedule type",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_from_completion"],
-                "note": "FREQ=DAILY;INTERVAL=3 FromCompletion",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-FromCompletion",
+                "dueDate": "2026-12-01T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=DAILY;INTERVAL=3",
+                    "scheduleType": "FromCompletion",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_from_completion",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_from_completion"],
+                    "note": "FREQ=DAILY;INTERVAL=3 FromCompletion",
+                },
             },
         },
         {
@@ -1289,21 +1176,51 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "16_catchup_enabled",
             "scenario": "08-repetition/16_catchup_enabled",
             "description": "Regularly + catchUpAutomatically=true",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_catchup_enabled"],
-                "note": "FREQ=WEEKLY catchUp=true",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-CatchUpEnabled",
+                "dueDate": "2026-12-01T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=WEEKLY",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_catchup_enabled",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_catchup_enabled"],
+                    "note": "FREQ=WEEKLY catchUp=true",
+                },
             },
         },
+        # --- Anchor date and config variations ---
         {
             "folder": "08-repetition",
             "file": "17_anchor_defer",
             "scenario": "08-repetition/17_anchor_defer",
             "description": "Repetition anchored on DeferDate",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_anchor_defer"],
-                "note": "FREQ=WEEKLY anchor=DeferDate",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-AnchorDefer",
+                "deferDate": "2026-12-01T09:00:00.000Z",
+                "dueDate": "2026-12-08T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=WEEKLY",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DeferDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_anchor_defer",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_anchor_defer"],
+                    "note": "FREQ=WEEKLY anchor=DeferDate",
+                },
             },
         },
         {
@@ -1311,10 +1228,25 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "18_anchor_planned",
             "scenario": "08-repetition/18_anchor_planned",
             "description": "Repetition anchored on PlannedDate",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_anchor_planned"],
-                "note": "FREQ=DAILY anchor=PlannedDate",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-AnchorPlanned",
+                "plannedDate": "2026-12-01T09:00:00.000Z",
+                "dueDate": "2026-12-08T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=DAILY",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "PlannedDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_anchor_planned",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_anchor_planned"],
+                    "note": "FREQ=DAILY anchor=PlannedDate",
+                },
             },
         },
         {
@@ -1322,10 +1254,24 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "19_catchup_disabled",
             "scenario": "08-repetition/19_catchup_disabled",
             "description": "Regularly + catchUpAutomatically=false",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_catchup_disabled"],
-                "note": "FREQ=WEEKLY catchUp=false",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-CatchUpDisabled",
+                "dueDate": "2026-12-01T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=WEEKLY",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": False,
+                },
+            },
+            "capture_id_as": "repeat_catchup_disabled",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_catchup_disabled"],
+                    "note": "FREQ=WEEKLY catchUp=false",
+                },
             },
         },
         {
@@ -1333,10 +1279,25 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "20_all_non_default",
             "scenario": "08-repetition/20_all_non_default",
             "description": "All non-default: FromCompletion + DeferDate + catchUp=false",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_all_non_default"],
-                "note": "FREQ=DAILY;INTERVAL=2 FromCompletion DeferDate catchUp=false",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-AllNonDefault",
+                "deferDate": "2026-12-01T09:00:00.000Z",
+                "dueDate": "2026-12-08T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=DAILY;INTERVAL=2",
+                    "scheduleType": "FromCompletion",
+                    "anchorDateKey": "DeferDate",
+                    "catchUpAutomatically": False,
+                },
+            },
+            "capture_id_as": "repeat_all_non_default",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_all_non_default"],
+                    "note": "FREQ=DAILY;INTERVAL=2 FromCompletion DeferDate catchUp=false",
+                },
             },
         },
         # --- BYSETPOS multi-day positional (D-05 gap) ---
@@ -1345,10 +1306,24 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "21_monthly_weekend_day",
             "scenario": "08-repetition/21_monthly_weekend_day",
             "description": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=1 (1st weekend day)",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_monthly_weekend_day"],
-                "note": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=1",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-MonthlyWeekendDay",
+                "dueDate": "2026-12-01T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=1",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_monthly_weekend_day",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_monthly_weekend_day"],
+                    "note": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=1",
+                },
             },
         },
         {
@@ -1356,10 +1331,24 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "22_monthly_weekday",
             "scenario": "08-repetition/22_monthly_weekday",
             "description": "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=2 (2nd weekday)",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_monthly_weekday"],
-                "note": "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=2",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-MonthlyWeekday",
+                "dueDate": "2026-12-01T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=2",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_monthly_weekday",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_monthly_weekday"],
+                    "note": "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=2",
+                },
             },
         },
         {
@@ -1367,25 +1356,54 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "23_monthly_last_weekend_day",
             "scenario": "08-repetition/23_monthly_last_weekend_day",
             "description": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=-1 (last weekend day)",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_monthly_last_weekend_day"],
-                "note": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=-1",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-MonthlyLastWeekendDay",
+                "dueDate": "2026-12-01T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=-1",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_monthly_last_weekend_day",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_monthly_last_weekend_day"],
+                    "note": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=-1",
+                },
             },
         },
         # =================================================================
-        # 08-repetition/ — Edit-preservation scenarios (6): edit a task
-        # that has a repetition rule, verify rule survives the edit.
+        # 08-repetition/ — Edit-preservation scenarios (6): create a task
+        # with a repetition rule, then edit a non-rule field. The rule
+        # must survive the edit unchanged.
         # =================================================================
         {
             "folder": "08-repetition",
             "file": "24_edit_rename",
             "scenario": "08-repetition/24_edit_rename",
             "description": "Rename a repeating task (rule preserved)",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_daily_simple"],
-                "name": "GM-Repeat-DailySimple-Renamed",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-EditRename",
+                "dueDate": "2026-12-01T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=DAILY",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_edit_rename",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_edit_rename"],
+                    "name": "GM-Repeat-EditRename-Renamed",
+                },
             },
         },
         {
@@ -1393,10 +1411,24 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "25_edit_flag",
             "scenario": "08-repetition/25_edit_flag",
             "description": "Flag a repeating task (rule preserved)",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_daily_interval"],
-                "flagged": True,
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-EditFlag",
+                "dueDate": "2026-12-01T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=DAILY;INTERVAL=3",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_edit_flag",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_edit_flag"],
+                    "flagged": True,
+                },
             },
         },
         {
@@ -1404,10 +1436,24 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "26_edit_note",
             "scenario": "08-repetition/26_edit_note",
             "description": "Change note on a repeating task (rule preserved)",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_weekly_bare"],
-                "note": "Updated note — rule should survive",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-EditNote",
+                "dueDate": "2026-12-01T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=WEEKLY",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_edit_note",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_edit_note"],
+                    "note": "Updated note — rule should survive",
+                },
             },
         },
         {
@@ -1415,10 +1461,24 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "27_edit_due_date",
             "scenario": "08-repetition/27_edit_due_date",
             "description": "Change due date on a repeating task (rule preserved)",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_weekly_days"],
-                "dueDate": "2027-01-15T10:00:00.000Z",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-EditDueDate",
+                "dueDate": "2026-12-01T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=WEEKLY;BYDAY=MO,WE,FR",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_edit_due_date",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_edit_due_date"],
+                    "dueDate": "2027-01-15T10:00:00.000Z",
+                },
             },
         },
         {
@@ -1426,10 +1486,24 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "28_edit_move",
             "scenario": "08-repetition/28_edit_move",
             "description": "Move a repeating task to a project (rule preserved)",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_monthly_plain"],
-                "moveTo": {"position": "ending", "containerId": GM_PROJECT_ID},
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-EditMove",
+                "dueDate": "2026-12-15T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=MONTHLY",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_edit_move",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_edit_move"],
+                    "moveTo": {"position": "ending", "containerId": GM_PROJECT_ID},
+                },
             },
         },
         {
@@ -1437,28 +1511,57 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "29_edit_add_tag",
             "scenario": "08-repetition/29_edit_add_tag",
             "description": "Add tag to a repeating task (rule preserved)",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_monthly_day_of_week"],
-                "addTagIds": [GM_TAG1_ID],
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-EditAddTag",
+                "dueDate": "2026-12-09T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=MONTHLY;BYDAY=2TU",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_edit_add_tag",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_edit_add_tag"],
+                    "addTagIds": [GM_TAG1_ID],
+                },
             },
         },
         # =================================================================
         # 08-repetition/ — Lifecycle scenarios
         #
-        # Completing a repeating task creates a new occurrence with ID
-        # pattern {originalId}.{n} (e.g. "abc123.0", "abc123.1").
-        # The original ID stays on the live (next) occurrence.
+        # Each creates its own repeating task, then applies the lifecycle
+        # operation. Completing creates a new occurrence with ID pattern
+        # {originalId}.{n} (e.g. "abc123.0", "abc123.1").
+        # Scenario 33 chains on 32's task for the second completion.
         # =================================================================
         {
             "folder": "08-repetition",
             "file": "30_complete_repeating",
             "scenario": "08-repetition/30_complete_repeating",
             "description": "Complete a repeating task (new occurrence with .0 ID)",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_complete_target"],
-                "lifecycle": "complete",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-CompleteTarget",
+                "dueDate": "2026-12-01T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=DAILY",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_complete_target",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_complete_target"],
+                    "lifecycle": "complete",
+                },
             },
         },
         {
@@ -1466,10 +1569,24 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "31_drop_repeating",
             "scenario": "08-repetition/31_drop_repeating",
             "description": "Drop a repeating task",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_drop_target"],
-                "lifecycle": "drop",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-DropTarget",
+                "dueDate": "2026-12-01T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=DAILY",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_drop_target",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_drop_target"],
+                    "lifecycle": "drop",
+                },
             },
         },
         {
@@ -1477,10 +1594,24 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "32_complete_first",
             "scenario": "08-repetition/32_complete_first",
             "description": "Complete a repeating task — first completion (.0 ID)",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_multi_complete"],
-                "lifecycle": "complete",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-MultiComplete",
+                "dueDate": "2026-12-01T10:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=DAILY",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+            "capture_id_as": "repeat_multi_complete",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_multi_complete"],
+                    "lifecycle": "complete",
+                },
             },
         },
         {
@@ -1496,6 +1627,10 @@ def _build_scenarios() -> list[dict[str, Any]]:
         },
         # =================================================================
         # 08-repetition/ — Write scenarios: add/set/replace/clear
+        #
+        # Scenario 34 creates with a rule inline. Scenarios 35-37 chain
+        # on the same task (SET → REPLACE → CLEAR). Scenario 38 creates
+        # its own task.
         # =================================================================
         {
             "folder": "08-repetition",
@@ -1521,14 +1656,22 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "35_edit_set_rule",
             "scenario": "08-repetition/35_edit_set_rule",
             "description": "SET repetition rule where none existed",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_set_target"],
-                "repetitionRule": {
-                    "ruleString": "FREQ=WEEKLY",
-                    "scheduleType": "Regularly",
-                    "anchorDateKey": "DueDate",
-                    "catchUpAutomatically": True,
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-SetTarget",
+                "dueDate": "2026-12-01T10:00:00.000Z",
+            },
+            "capture_id_as": "repeat_set_target",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_set_target"],
+                    "repetitionRule": {
+                        "ruleString": "FREQ=WEEKLY",
+                        "scheduleType": "Regularly",
+                        "anchorDateKey": "DueDate",
+                        "catchUpAutomatically": True,
+                    },
                 },
             },
         },
@@ -1564,16 +1707,24 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "file": "38_edit_set_rule_combo",
             "scenario": "08-repetition/38_edit_set_rule_combo",
             "description": "SET repetition rule + rename + flag in same call",
-            "operation": "edit_task",
-            "params_fn": lambda: {
-                "id": TASK_IDS["repeat_combo_target"],
-                "name": "GM-Repeat-ComboTarget-Edited",
-                "flagged": True,
-                "repetitionRule": {
-                    "ruleString": "FREQ=DAILY;INTERVAL=3",
-                    "scheduleType": "Regularly",
-                    "anchorDateKey": "DueDate",
-                    "catchUpAutomatically": True,
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-ComboTarget",
+                "dueDate": "2026-12-01T10:00:00.000Z",
+            },
+            "capture_id_as": "repeat_combo_target",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["repeat_combo_target"],
+                    "name": "GM-Repeat-ComboTarget-Edited",
+                    "flagged": True,
+                    "repetitionRule": {
+                        "ruleString": "FREQ=DAILY;INTERVAL=3",
+                        "scheduleType": "Regularly",
+                        "anchorDateKey": "DueDate",
+                        "catchUpAutomatically": True,
+                    },
                 },
             },
         },
@@ -1645,7 +1796,7 @@ def _normalize_initial_state(state: dict[str, Any]) -> dict[str, Any]:
     on every capture.
     """
     result: dict[str, Any] = {}
-    # Tasks may be present in initial state (e.g. repetition-rule tasks from Phase 2.5)
+    # Tasks may be present in initial state if any are created during setup
     result["tasks"] = [
         {k: v for k, v in t.items() if k not in _INITIAL_STATE_STRIP_TASK}
         for t in state.get("tasks", [])
@@ -1826,8 +1977,6 @@ def _phase_1_introduction() -> None:
     print("What will happen:")
     print("  1. You verify 3 projects and 2 tags exist in OmniFocus")
     print("  2. The script verifies each entity exists")
-    print("  2.5 Repetition rule tasks are created with rules via add_task,")
-    print("      plus write-target tasks without rules, then verified")
     print("  3. Scenarios run automatically across 8 categories")
     print("  4. Fixture JSON files are written to tests/golden_master/snapshots/")
     print("     organized in numbered subfolders (01-add/ through 08-repetition/)")
@@ -2034,100 +2183,6 @@ async def _check_leftover_tasks(bridge: RealBridge) -> None:
         print()
 
 
-async def _phase_2_5_repetition_setup(bridge: RealBridge) -> None:
-    """Create repetition-rule tasks via add_task (with rules) and write-target tasks (without).
-
-    Flow:
-    1. Create all rule tasks with repetitionRule passed directly to add_task
-    2. Create write-target tasks without rules (for SET/REPLACE/CLEAR scenarios)
-    3. Verify via get_all that rule tasks have non-null repetitionRule
-       and write targets have null repetitionRule
-    """
-    print("-" * 60)
-    print("  Phase 2.5: Repetition Rule Setup")
-    print("-" * 60)
-    print()
-
-    # 1. Create tasks with repetition rules
-    all_rules = REPETITION_RULES + REPETITION_LIFECYCLE_RULES
-    print(f"  Creating {len(all_rules)} tasks with repetition rules...")
-    print()
-
-    for rule in all_rules:
-        add_params: dict[str, Any] = {
-            "name": rule["name"],
-            "repetitionRule": rule["repetitionRule"],
-        }
-        if "dueDate" in rule:
-            add_params["dueDate"] = rule["dueDate"]
-        if "deferDate" in rule:
-            add_params["deferDate"] = rule["deferDate"]
-        if "plannedDate" in rule:
-            add_params["plannedDate"] = rule["plannedDate"]
-
-        result = await bridge.send_command("add_task", add_params)
-        task_id = result["id"]
-        TASK_IDS[rule["key"]] = task_id
-        _id_map[task_id] = f"$task:{rule['key']}"
-        known_task_ids.add(task_id)
-        print(f"    Created: {rule['name']} (ID: {task_id})")
-
-    print()
-
-    # 2. Create write-target tasks (no repetition rule)
-    print(f"  Creating {len(REPETITION_WRITE_TARGETS)} write-target tasks (no rule)...")
-    print()
-
-    for target in REPETITION_WRITE_TARGETS:
-        add_params = {"name": target["name"]}
-        if "dueDate" in target:
-            add_params["dueDate"] = target["dueDate"]
-
-        result = await bridge.send_command("add_task", add_params)
-        task_id = result["id"]
-        TASK_IDS[target["key"]] = task_id
-        _id_map[task_id] = f"$task:{target['key']}"
-        known_task_ids.add(task_id)
-        print(f"    Created: {target['name']} (ID: {task_id})")
-
-    print()
-
-    # 3. Verify all tasks
-    print("  Verifying repetition rules...")
-    state = await _get_all_raw(bridge)
-    tasks_by_id = {t["id"]: t for t in state.get("tasks", [])}
-    errors: list[str] = []
-
-    for rule in all_rules:
-        task_id = TASK_IDS[rule["key"]]
-        task = tasks_by_id.get(task_id)
-        if task is None:
-            errors.append(f"    {rule['name']}: task not found (ID: {task_id})")
-        elif not task.get("repetitionRule"):
-            errors.append(f"    {rule['name']}: repetitionRule is null")
-
-    for target in REPETITION_WRITE_TARGETS:
-        task_id = TASK_IDS[target["key"]]
-        task = tasks_by_id.get(task_id)
-        if task is None:
-            errors.append(f"    {target['name']}: task not found (ID: {task_id})")
-        elif task.get("repetitionRule"):
-            errors.append(f"    {target['name']}: expected null repetitionRule but got one")
-
-    if errors:
-        print(f"  ✗ {len(errors)} verification error(s):")
-        for e in errors:
-            print(e)
-        print()
-        raise SystemExit("Phase 2.5 failed — aborting capture.")
-
-    print(
-        f"  ✓ All {len(all_rules)} rule tasks verified, "
-        f"{len(REPETITION_WRITE_TARGETS)} write targets confirmed null."
-    )
-    print()
-
-
 def _phase_3_confirmation() -> bool:
     """Show scenario list and ask user to confirm."""
     print("-" * 60)
@@ -2329,14 +2384,11 @@ async def main() -> int:
         # Phase 2: Manual setup (creates project/tags, verifies they exist)
         await _phase_2_manual_setup(bridge)
 
-        # Check for leftover tasks BEFORE creating repetition tasks --
+        # Check for leftover tasks before capturing initial state --
         # otherwise hasChildren etc. reflect stale data
         await _check_leftover_tasks(bridge)
 
-        # Phase 2.5: Create repetition-rule tasks + OmniJS snippet
-        await _phase_2_5_repetition_setup(bridge)
-
-        # Capture initial state (includes repetition tasks with rules set)
+        # Capture initial state (projects + tags only; tasks created during scenarios)
         await _capture_initial_state(bridge)
 
         # Phase 3: Confirmation
