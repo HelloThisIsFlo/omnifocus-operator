@@ -117,8 +117,3 @@ REPETITION_ANCHOR_DATE_MISSING = (
     "Set a {date_field} for predictable repetition scheduling, or confirm "
     "with the user that creation-date anchoring is intended."
 )
-
-REPETITION_ON_COMPLETED_TASK = (
-    "Setting a repetition rule on a {status} task -- the rule was applied, "
-    "but confirm with the user that they intended to modify a {status} task's repetition."
-)

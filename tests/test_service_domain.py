@@ -500,22 +500,6 @@ class TestRepetitionWarnings:
         warnings = domain.check_repetition_warnings(end=None, task=task)
         assert warnings == []
 
-    def test_completed_task_warns(self) -> None:
-        """Setting repetition on completed task -> warning."""
-        domain = _domain()
-        task = _make_task(availability="completed")
-        warnings = domain.check_repetition_warnings(end=None, task=task)
-        assert len(warnings) == 1
-        assert "completed" in warnings[0]
-
-    def test_dropped_task_warns(self) -> None:
-        """Setting repetition on dropped task -> warning (D-12: both completed AND dropped)."""
-        domain = _domain()
-        task = _make_task(availability="dropped")
-        warnings = domain.check_repetition_warnings(end=None, task=task)
-        assert len(warnings) == 1
-        assert "dropped" in warnings[0]
-
     def test_available_task_no_warn(self) -> None:
         """Available task -> no status warning."""
         domain = _domain()

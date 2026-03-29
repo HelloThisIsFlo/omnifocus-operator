@@ -2053,7 +2053,7 @@ class TestEditTaskRepetitionRule:
         ]
     )
     async def test_set_rule_on_completed_task_warns(self, service: OperatorService) -> None:
-        """D-12: Setting repetition on completed task -> warning."""
+        """Setting repetition on completed task -> generic EDIT_COMPLETED_TASK warning."""
         spec = RepetitionRuleEditSpec(
             frequency=FrequencyEditSpec(type="daily"),
             schedule=Schedule.REGULARLY,
@@ -2076,7 +2076,7 @@ class TestEditTaskRepetitionRule:
         ]
     )
     async def test_set_rule_on_dropped_task_warns(self, service: OperatorService) -> None:
-        """D-12: Setting repetition on dropped task -> warning."""
+        """Setting repetition on dropped task -> generic EDIT_COMPLETED_TASK warning."""
         spec = RepetitionRuleEditSpec(
             frequency=FrequencyEditSpec(type="daily"),
             schedule=Schedule.REGULARLY,

@@ -19,7 +19,6 @@ from omnifocus_operator.agent_messages.warnings import (
     REPETITION_EMPTY_ON_DATES,
     REPETITION_END_DATE_PAST,
     REPETITION_NO_OP,
-    REPETITION_ON_COMPLETED_TASK,
 )
 from omnifocus_operator.contracts.base import UNSET
 from omnifocus_operator.contracts.use_cases.repetition_rule import (
@@ -349,4 +348,3 @@ class TestAgentMessages:
         assert len(REPETITION_END_DATE_PAST) > 0
         assert "monthly" in REPETITION_EMPTY_ON_DATES
         assert len(REPETITION_NO_OP) > 0
-        assert len(REPETITION_ON_COMPLETED_TASK) > 0

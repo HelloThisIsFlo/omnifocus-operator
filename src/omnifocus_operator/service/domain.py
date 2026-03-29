@@ -36,7 +36,6 @@ from omnifocus_operator.agent_messages.warnings import (
     REPETITION_EMPTY_ON_DAYS,
     REPETITION_END_DATE_PAST,
     REPETITION_NO_OP,
-    REPETITION_ON_COMPLETED_TASK,
     TAG_ALREADY_ON_TASK,
     TAG_NOT_ON_TASK,
     TAGS_ALREADY_MATCH,
@@ -182,7 +181,6 @@ class DomainLogic:
 
         Checks:
         - End date in the past (VALID-05)
-        - Setting repetition on completed/dropped task (D-12)
         """
         warnings: list[str] = []
 
@@ -191,10 +189,6 @@ class DomainLogic:
             end_dt = datetime.fromisoformat(end.date.replace("Z", "+00:00"))
             if end_dt < datetime.now(UTC):
                 warnings.append(REPETITION_END_DATE_PAST.format(date=end.date))
-
-        # Completed or dropped task (D-12: both statuses)
-        if task.availability in (Availability.COMPLETED, Availability.DROPPED):
-            warnings.append(REPETITION_ON_COMPLETED_TASK.format(status=task.availability.value))
 
         return warnings
 
