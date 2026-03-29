@@ -1,23 +1,16 @@
 """Structured repetition rule models for OmniFocus tasks and projects.
 
-Type hierarchy:
-    _FrequencyBase          -- interval field
-    +-- MinutelyFrequency   -- type="minutely"
-    +-- HourlyFrequency     -- type="hourly"
-    +-- DailyFrequency      -- type="daily"
-    +-- WeeklyFrequency     -- type="weekly" (bare, no on_days)
-    +-- WeeklyOnDaysFrequency -- type="weekly_on_days", on_days (required)
-    +-- MonthlyFrequency    -- type="monthly"
-    +-- MonthlyDayOfWeekFrequency  -- type="monthly_day_of_week", on
-    +-- MonthlyDayInMonthFrequency -- type="monthly_day_in_month", on_dates
-    +-- YearlyFrequency     -- type="yearly"
-
-    Frequency = Annotated[Union[...], Field(discriminator="type")]
+Flat model:
+    FrequencyType   -- Literal type alias for 6 frequency types
+    Frequency       -- flat model with type + optional specialization fields
+                       @model_validator for cross-type checks
+                       @field_validator for day code / ordinal / on_dates normalization
 
     EndByDate / EndByOccurrences -- end condition models
     EndCondition = EndByDate | EndByOccurrences
 
-    RepetitionRule -- frequency + schedule + based_on + end
+    RepetitionRule  -- frequency + schedule + based_on + end
+                       @field_serializer for interval=1 suppression via exclude_defaults
 
 Enums:
     Schedule -- from enums.py (regularly, regularly_with_catch_up, from_completion)
@@ -26,78 +19,117 @@ Enums:
 
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Any, Literal
 
-from pydantic import Field
+from pydantic import Field, field_serializer, field_validator, model_validator
 
+from omnifocus_operator.agent_messages.errors import (
+    REPETITION_INVALID_DAY_CODE,
+    REPETITION_INVALID_DAY_NAME,
+    REPETITION_INVALID_ON_DATE,
+    REPETITION_INVALID_ORDINAL,
+)
 from omnifocus_operator.models.base import OmniFocusBaseModel
 from omnifocus_operator.models.enums import BasedOn, Schedule
 
-# -- Frequency Base -----------------------------------------------------------
+# -- Frequency Type -----------------------------------------------------------
+
+FrequencyType = Literal["minutely", "hourly", "daily", "weekly", "monthly", "yearly"]
+
+_VALID_DAY_CODES = {"MO", "TU", "WE", "TH", "FR", "SA", "SU"}
+_VALID_ORDINALS = {"first", "second", "third", "fourth", "fifth", "last"}
+_VALID_DAY_NAMES = {
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+    "weekday",
+    "weekend_day",
+}
 
 
-class _FrequencyBase(OmniFocusBaseModel):
-    """Base class for all frequency subtypes."""
-
-    interval: int = 1
+# -- Frequency Model ---------------------------------------------------------
 
 
-# -- 9 Frequency Subtypes ----------------------------------------------------
+class Frequency(OmniFocusBaseModel):
+    """Flat frequency model with 6 types and optional specialization fields.
 
+    Cross-type validation: on_days only with weekly, on/on_dates only with monthly.
+    on and on_dates are mutually exclusive.
+    """
 
-class MinutelyFrequency(_FrequencyBase):
-    type: Literal["minutely"] = "minutely"
+    type: FrequencyType  # required, NO default -- survives exclude_defaults
+    interval: int = Field(default=1, ge=1)
+    on_days: list[str] | None = None
+    on: dict[str, str] | None = None
+    on_dates: list[int] | None = None
 
+    @model_validator(mode="after")
+    def _check_cross_type_fields(self) -> Frequency:
+        if self.on_days is not None and self.type != "weekly":
+            raise ValueError(
+                f"on_days is not valid for type '{self.type}'. "
+                "on_days can only be used with type 'weekly'."
+            )
+        if self.on is not None and self.type != "monthly":
+            raise ValueError(
+                f"on is not valid for type '{self.type}'. "
+                "on can only be used with type 'monthly'."
+            )
+        if self.on_dates is not None and self.type != "monthly":
+            raise ValueError(
+                f"on_dates is not valid for type '{self.type}'. "
+                "on_dates can only be used with type 'monthly'."
+            )
+        if self.on is not None and self.on_dates is not None:
+            raise ValueError(
+                "on and on_dates are mutually exclusive on monthly frequency. "
+                "Use on for day-of-week patterns (e.g., {'second': 'tuesday'}) "
+                "or onDates for specific dates (e.g., [1, 15])."
+            )
+        return self
 
-class HourlyFrequency(_FrequencyBase):
-    type: Literal["hourly"] = "hourly"
+    @field_validator("on_days", mode="before")
+    @classmethod
+    def _normalize_day_codes(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        normalized = []
+        for code in value:
+            upper = code.upper()
+            if upper not in _VALID_DAY_CODES:
+                raise ValueError(REPETITION_INVALID_DAY_CODE.format(code=code))
+            normalized.append(upper)
+        return normalized
 
+    @field_validator("on", mode="before")
+    @classmethod
+    def _normalize_on(cls, value: dict[str, str] | None) -> dict[str, str] | None:
+        if value is None:
+            return None
+        normalized = {}
+        for ordinal, day_name in value.items():
+            lower_ordinal = ordinal.lower()
+            lower_day = day_name.lower()
+            if lower_ordinal not in _VALID_ORDINALS:
+                raise ValueError(REPETITION_INVALID_ORDINAL.format(ordinal=ordinal))
+            if lower_day not in _VALID_DAY_NAMES:
+                raise ValueError(REPETITION_INVALID_DAY_NAME.format(day=day_name))
+            normalized[lower_ordinal] = lower_day
+        return normalized
 
-class DailyFrequency(_FrequencyBase):
-    type: Literal["daily"] = "daily"
-
-
-class WeeklyFrequency(_FrequencyBase):
-    type: Literal["weekly"] = "weekly"
-
-
-class WeeklyOnDaysFrequency(_FrequencyBase):
-    type: Literal["weekly_on_days"] = "weekly_on_days"
-    on_days: list[str]  # required, not optional
-
-
-class MonthlyFrequency(_FrequencyBase):
-    type: Literal["monthly"] = "monthly"
-
-
-class MonthlyDayOfWeekFrequency(_FrequencyBase):
-    type: Literal["monthly_day_of_week"] = "monthly_day_of_week"
-    on: dict[str, str] | None = None  # {"second": "tuesday"}
-
-
-class MonthlyDayInMonthFrequency(_FrequencyBase):
-    type: Literal["monthly_day_in_month"] = "monthly_day_in_month"
-    on_dates: list[int] | None = None  # serializes as onDates
-
-
-class YearlyFrequency(_FrequencyBase):
-    type: Literal["yearly"] = "yearly"
-
-
-# -- Frequency Discriminated Union --------------------------------------------
-
-Frequency = Annotated[
-    MinutelyFrequency
-    | HourlyFrequency
-    | DailyFrequency
-    | WeeklyFrequency
-    | WeeklyOnDaysFrequency
-    | MonthlyFrequency
-    | MonthlyDayOfWeekFrequency
-    | MonthlyDayInMonthFrequency
-    | YearlyFrequency,
-    Field(discriminator="type"),
-]
+    @field_validator("on_dates", mode="before")
+    @classmethod
+    def _validate_on_dates(cls, value: list[int] | None) -> list[int] | None:
+        if value is None:
+            return None
+        for v in value:
+            if v == 0 or v < -1 or v > 31:
+                raise ValueError(REPETITION_INVALID_ON_DATE.format(value=v))
+        return value
 
 
 # -- End Condition Models -----------------------------------------------------
@@ -112,7 +144,7 @@ class EndByDate(OmniFocusBaseModel):
 class EndByOccurrences(OmniFocusBaseModel):
     """End condition: repeat a fixed number of times."""
 
-    occurrences: int
+    occurrences: int = Field(ge=1)
 
 
 EndCondition = EndByDate | EndByOccurrences
@@ -126,9 +158,27 @@ class RepetitionRule(OmniFocusBaseModel):
 
     Replaces the old 4-field model (ruleString, scheduleType,
     anchorDateKey, catchUpAutomatically) with parsed, structured data.
+
+    The @field_serializer on frequency calls model_dump(exclude_defaults=True)
+    to suppress interval=1 in serialized output (type has no default, so it
+    always appears).
     """
 
     frequency: Frequency
     schedule: Schedule
     based_on: BasedOn  # serializes as basedOn
     end: EndCondition | None = None
+
+    @field_serializer("frequency")
+    def _serialize_frequency(self, freq: Frequency, _info: Any) -> dict[str, Any]:
+        return freq.model_dump(exclude_defaults=True, by_alias=True)
+
+
+__all__ = [
+    "EndByDate",
+    "EndByOccurrences",
+    "EndCondition",
+    "Frequency",
+    "FrequencyType",
+    "RepetitionRule",
+]
