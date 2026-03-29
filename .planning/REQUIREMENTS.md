@@ -42,7 +42,7 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 - [ ] **INFRA-01**: SQL queries use parameterized values (no SQL injection)
 - [ ] **INFRA-02**: Filtered SQL queries measurably faster than full snapshot (<6ms vs ~46ms)
 - [ ] **INFRA-03**: Bridge fallback produces identical results to SQL path for same filters
-- [ ] **INFRA-04**: List responses include total_count reflecting total matches ignoring limit/offset
+- [ ] **INFRA-04**: list_tasks and list_projects responses include total_count reflecting total matches ignoring limit/offset
 - [ ] **INFRA-05**: Tool descriptions detailed enough for an LLM to call correctly
 - [ ] **INFRA-06**: Educational error messages for invalid filter values
 
