@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2.3
 milestone_name: Repetition Rule Write Support
 status: completed
-stopped_at: Completed 33.1-05-PLAN.md
-last_updated: "2026-03-29T15:28:00.799Z"
+stopped_at: Completed 33.1-04-PLAN.md
+last_updated: "2026-03-29T15:38:17.986Z"
 last_activity: 2026-03-29
 progress:
   total_phases: 4
   completed_phases: 4
-  total_plans: 13
-  completed_plans: 14
+  total_plans: 15
+  completed_plans: 15
   percent: 0
 ---
 
@@ -93,11 +93,9 @@ Recent decisions affecting current work:
 - [Phase 33.1]: auto_clear_monthly_mutual_exclusion operates on merged dict before Frequency.model_validate() to avoid validator rejection
 - [Phase 33.1]: FrequencyEditSpec is pure patch container (no validators), validation fires on Frequency construction from merged result
 - [Phase 33.1]: Consolidated literal_error handling: lifecycle and frequency type share one elif branch with loc-based dispatch
-<<<<<<< HEAD
+
 - [Phase 33.1]: @field_validator replaces Field(ge=1) for interval/occurrences -- clean error messages at cost of JSON Schema minimum constraint
-=======
 - [Phase 33.1]: Anchor map uses snake_case key for lookup, camelCase display for agent-facing message
->>>>>>> worktree-agent-ab08cb2f
 
 ### Pending Todos
 
