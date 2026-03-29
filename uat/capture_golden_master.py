@@ -62,8 +62,8 @@ _id_map: dict[str, str] = {}
 # ---------------------------------------------------------------------------
 # Repetition rule definitions (Phase 2.5)
 #
-# Each entry defines a task to create and the repetition rule to set via
-# OmniJS (since the bridge has no write API for repetition rules).
+# Each entry defines a task to create with a repetition rule via add_task.
+# The nested `repetitionRule` dict is passed directly to the bridge.
 # ---------------------------------------------------------------------------
 
 REPETITION_RULES: list[dict[str, Any]] = [
@@ -71,184 +71,224 @@ REPETITION_RULES: list[dict[str, Any]] = [
     {
         "key": "repeat_daily_simple",
         "name": "GM-Repeat-DailySimple",
-        "ruleString": "FREQ=DAILY",
-        "scheduleType": "Regularly",
-        "anchorDateKey": "DueDate",
-        "catchUp": True,
+        "repetitionRule": {
+            "ruleString": "FREQ=DAILY",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": True,
+        },
         "dueDate": "2026-12-01T10:00:00.000Z",
     },
     {
         "key": "repeat_daily_interval",
         "name": "GM-Repeat-DailyInterval",
-        "ruleString": "FREQ=DAILY;INTERVAL=3",
-        "scheduleType": "Regularly",
-        "anchorDateKey": "DueDate",
-        "catchUp": True,
+        "repetitionRule": {
+            "ruleString": "FREQ=DAILY;INTERVAL=3",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": True,
+        },
         "dueDate": "2026-12-01T10:00:00.000Z",
     },
     {
         "key": "repeat_weekly_bare",
         "name": "GM-Repeat-WeeklyBare",
-        "ruleString": "FREQ=WEEKLY",
-        "scheduleType": "Regularly",
-        "anchorDateKey": "DueDate",
-        "catchUp": True,
+        "repetitionRule": {
+            "ruleString": "FREQ=WEEKLY",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": True,
+        },
         "dueDate": "2026-12-01T10:00:00.000Z",
     },
     {
         "key": "repeat_weekly_days",
         "name": "GM-Repeat-WeeklyDays",
-        "ruleString": "FREQ=WEEKLY;BYDAY=MO,WE,FR",
-        "scheduleType": "Regularly",
-        "anchorDateKey": "DueDate",
-        "catchUp": True,
+        "repetitionRule": {
+            "ruleString": "FREQ=WEEKLY;BYDAY=MO,WE,FR",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": True,
+        },
         "dueDate": "2026-12-01T10:00:00.000Z",
     },
     {
         "key": "repeat_monthly_plain",
         "name": "GM-Repeat-MonthlyPlain",
-        "ruleString": "FREQ=MONTHLY",
-        "scheduleType": "Regularly",
-        "anchorDateKey": "DueDate",
-        "catchUp": True,
+        "repetitionRule": {
+            "ruleString": "FREQ=MONTHLY",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": True,
+        },
         "dueDate": "2026-12-15T10:00:00.000Z",
     },
     {
         "key": "repeat_monthly_day_of_week",
         "name": "GM-Repeat-MonthlyDayOfWeek",
-        "ruleString": "FREQ=MONTHLY;BYDAY=2TU",
-        "scheduleType": "Regularly",
-        "anchorDateKey": "DueDate",
-        "catchUp": True,
+        "repetitionRule": {
+            "ruleString": "FREQ=MONTHLY;BYDAY=2TU",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": True,
+        },
         "dueDate": "2026-12-09T10:00:00.000Z",  # a Tuesday
     },
     {
         "key": "repeat_monthly_last_weekday",
         "name": "GM-Repeat-MonthlyLastWeekday",
-        "ruleString": "FREQ=MONTHLY;BYDAY=-1FR",
-        "scheduleType": "Regularly",
-        "anchorDateKey": "DueDate",
-        "catchUp": True,
+        "repetitionRule": {
+            "ruleString": "FREQ=MONTHLY;BYDAY=-1FR",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": True,
+        },
         "dueDate": "2026-12-25T10:00:00.000Z",  # last Friday of Dec 2026
     },
     {
         "key": "repeat_monthly_day_in_month",
         "name": "GM-Repeat-MonthlyDayInMonth",
-        "ruleString": "FREQ=MONTHLY;BYMONTHDAY=15",
-        "scheduleType": "Regularly",
-        "anchorDateKey": "DueDate",
-        "catchUp": True,
+        "repetitionRule": {
+            "ruleString": "FREQ=MONTHLY;BYMONTHDAY=15",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": True,
+        },
         "dueDate": "2026-12-15T10:00:00.000Z",
     },
     {
         "key": "repeat_monthly_last_day",
         "name": "GM-Repeat-MonthlyLastDay",
-        "ruleString": "FREQ=MONTHLY;BYMONTHDAY=-1",
-        "scheduleType": "Regularly",
-        "anchorDateKey": "DueDate",
-        "catchUp": True,
+        "repetitionRule": {
+            "ruleString": "FREQ=MONTHLY;BYMONTHDAY=-1",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": True,
+        },
         "dueDate": "2026-12-31T10:00:00.000Z",
     },
     {
         "key": "repeat_yearly",
         "name": "GM-Repeat-Yearly",
-        "ruleString": "FREQ=YEARLY",
-        "scheduleType": "Regularly",
-        "anchorDateKey": "DueDate",
-        "catchUp": True,
+        "repetitionRule": {
+            "ruleString": "FREQ=YEARLY",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": True,
+        },
         "dueDate": "2026-12-01T10:00:00.000Z",
     },
     {
         "key": "repeat_minutely",
         "name": "GM-Repeat-Minutely",
-        "ruleString": "FREQ=MINUTELY;INTERVAL=30",
-        "scheduleType": "Regularly",
-        "anchorDateKey": "DueDate",
-        "catchUp": True,
+        "repetitionRule": {
+            "ruleString": "FREQ=MINUTELY;INTERVAL=30",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": True,
+        },
         "dueDate": "2026-12-01T10:00:00.000Z",
     },
     {
         "key": "repeat_hourly",
         "name": "GM-Repeat-Hourly",
-        "ruleString": "FREQ=HOURLY;INTERVAL=2",
-        "scheduleType": "Regularly",
-        "anchorDateKey": "DueDate",
-        "catchUp": True,
+        "repetitionRule": {
+            "ruleString": "FREQ=HOURLY;INTERVAL=2",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": True,
+        },
         "dueDate": "2026-12-01T10:00:00.000Z",
     },
     {
         "key": "repeat_with_count",
         "name": "GM-Repeat-WithCount",
-        "ruleString": "FREQ=WEEKLY;COUNT=10",
-        "scheduleType": "Regularly",
-        "anchorDateKey": "DueDate",
-        "catchUp": True,
+        "repetitionRule": {
+            "ruleString": "FREQ=WEEKLY;COUNT=10",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": True,
+        },
         "dueDate": "2026-12-01T10:00:00.000Z",
     },
     {
         "key": "repeat_with_until",
         "name": "GM-Repeat-WithUntil",
-        "ruleString": "FREQ=MONTHLY;UNTIL=20261231T000000Z",
-        "scheduleType": "Regularly",
-        "anchorDateKey": "DueDate",
-        "catchUp": True,
+        "repetitionRule": {
+            "ruleString": "FREQ=MONTHLY;UNTIL=20261231T000000Z",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": True,
+        },
         "dueDate": "2026-12-01T10:00:00.000Z",
     },
     {
         "key": "repeat_from_completion",
         "name": "GM-Repeat-FromCompletion",
-        "ruleString": "FREQ=DAILY;INTERVAL=3",
-        "scheduleType": "FromCompletion",
-        "anchorDateKey": "DueDate",
-        "catchUp": True,
+        "repetitionRule": {
+            "ruleString": "FREQ=DAILY;INTERVAL=3",
+            "scheduleType": "FromCompletion",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": True,
+        },
         "dueDate": "2026-12-01T10:00:00.000Z",
     },
     {
         "key": "repeat_catchup_enabled",
         "name": "GM-Repeat-CatchUpEnabled",
-        "ruleString": "FREQ=WEEKLY",
-        "scheduleType": "Regularly",
-        "anchorDateKey": "DueDate",
-        "catchUp": True,
+        "repetitionRule": {
+            "ruleString": "FREQ=WEEKLY",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": True,
+        },
         "dueDate": "2026-12-01T10:00:00.000Z",
     },
     # --- Anchor date and config variations ---
     {
         "key": "repeat_anchor_defer",
         "name": "GM-Repeat-AnchorDefer",
-        "ruleString": "FREQ=WEEKLY",
-        "scheduleType": "Regularly",
-        "anchorDateKey": "DeferDate",
-        "catchUp": True,
+        "repetitionRule": {
+            "ruleString": "FREQ=WEEKLY",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DeferDate",
+            "catchUpAutomatically": True,
+        },
         "deferDate": "2026-12-01T09:00:00.000Z",
         "dueDate": "2026-12-08T10:00:00.000Z",
     },
     {
         "key": "repeat_anchor_planned",
         "name": "GM-Repeat-AnchorPlanned",
-        "ruleString": "FREQ=DAILY",
-        "scheduleType": "Regularly",
-        "anchorDateKey": "PlannedDate",
-        "catchUp": True,
+        "repetitionRule": {
+            "ruleString": "FREQ=DAILY",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "PlannedDate",
+            "catchUpAutomatically": True,
+        },
         "plannedDate": "2026-12-01T09:00:00.000Z",
         "dueDate": "2026-12-08T10:00:00.000Z",
     },
     {
         "key": "repeat_catchup_disabled",
         "name": "GM-Repeat-CatchUpDisabled",
-        "ruleString": "FREQ=WEEKLY",
-        "scheduleType": "Regularly",
-        "anchorDateKey": "DueDate",
-        "catchUp": False,
+        "repetitionRule": {
+            "ruleString": "FREQ=WEEKLY",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": False,
+        },
         "dueDate": "2026-12-01T10:00:00.000Z",
     },
     {
         "key": "repeat_all_non_default",
         "name": "GM-Repeat-AllNonDefault",
-        "ruleString": "FREQ=DAILY;INTERVAL=2",
-        "scheduleType": "FromCompletion",
-        "anchorDateKey": "DeferDate",
-        "catchUp": False,
+        "repetitionRule": {
+            "ruleString": "FREQ=DAILY;INTERVAL=2",
+            "scheduleType": "FromCompletion",
+            "anchorDateKey": "DeferDate",
+            "catchUpAutomatically": False,
+        },
         "deferDate": "2026-12-01T09:00:00.000Z",
         "dueDate": "2026-12-08T10:00:00.000Z",
     },
@@ -256,28 +296,34 @@ REPETITION_RULES: list[dict[str, Any]] = [
     {
         "key": "repeat_monthly_weekend_day",
         "name": "GM-Repeat-MonthlyWeekendDay",
-        "ruleString": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=1",
-        "scheduleType": "Regularly",
-        "anchorDateKey": "DueDate",
-        "catchUp": True,
+        "repetitionRule": {
+            "ruleString": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=1",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": True,
+        },
         "dueDate": "2026-12-01T10:00:00.000Z",
     },
     {
         "key": "repeat_monthly_weekday",
         "name": "GM-Repeat-MonthlyWeekday",
-        "ruleString": "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=2",
-        "scheduleType": "Regularly",
-        "anchorDateKey": "DueDate",
-        "catchUp": True,
+        "repetitionRule": {
+            "ruleString": "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=2",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": True,
+        },
         "dueDate": "2026-12-01T10:00:00.000Z",
     },
     {
         "key": "repeat_monthly_last_weekend_day",
         "name": "GM-Repeat-MonthlyLastWeekendDay",
-        "ruleString": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=-1",
-        "scheduleType": "Regularly",
-        "anchorDateKey": "DueDate",
-        "catchUp": True,
+        "repetitionRule": {
+            "ruleString": "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=-1",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": True,
+        },
         "dueDate": "2026-12-01T10:00:00.000Z",
     },
 ]
@@ -288,28 +334,48 @@ REPETITION_LIFECYCLE_RULES: list[dict[str, Any]] = [
     {
         "key": "repeat_complete_target",
         "name": "GM-Repeat-CompleteTarget",
-        "ruleString": "FREQ=DAILY",
-        "scheduleType": "Regularly",
-        "anchorDateKey": "DueDate",
-        "catchUp": True,
+        "repetitionRule": {
+            "ruleString": "FREQ=DAILY",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": True,
+        },
         "dueDate": "2026-12-01T10:00:00.000Z",
     },
     {
         "key": "repeat_drop_target",
         "name": "GM-Repeat-DropTarget",
-        "ruleString": "FREQ=DAILY",
-        "scheduleType": "Regularly",
-        "anchorDateKey": "DueDate",
-        "catchUp": True,
+        "repetitionRule": {
+            "ruleString": "FREQ=DAILY",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": True,
+        },
         "dueDate": "2026-12-01T10:00:00.000Z",
     },
     {
         "key": "repeat_multi_complete",
         "name": "GM-Repeat-MultiComplete",
-        "ruleString": "FREQ=DAILY",
-        "scheduleType": "Regularly",
-        "anchorDateKey": "DueDate",
-        "catchUp": True,
+        "repetitionRule": {
+            "ruleString": "FREQ=DAILY",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": True,
+        },
+        "dueDate": "2026-12-01T10:00:00.000Z",
+    },
+]
+
+# Write-path targets: tasks created WITHOUT rules, used for SET/REPLACE/CLEAR scenarios.
+REPETITION_WRITE_TARGETS: list[dict[str, Any]] = [
+    {
+        "key": "repeat_set_target",
+        "name": "GM-Repeat-SetTarget",
+        "dueDate": "2026-12-01T10:00:00.000Z",
+    },
+    {
+        "key": "repeat_combo_target",
+        "name": "GM-Repeat-ComboTarget",
         "dueDate": "2026-12-01T10:00:00.000Z",
     },
 ]
@@ -1048,9 +1114,9 @@ def _build_scenarios() -> list[dict[str, Any]]:
             },
         },
         # =================================================================
-        # 08-repetition/ — Read scenarios (20): verify repetition rules
+        # 08-repetition/ — Read scenarios (23): verify repetition rules
         # captured correctly. Tasks created in Phase 2.5 with rules set
-        # via OmniJS. Each scenario does a minimal edit (set note) to
+        # via add_task. Each scenario does a minimal edit (set note) to
         # trigger state capture including the repetitionRule field.
         # =================================================================
         {
@@ -1428,6 +1494,89 @@ def _build_scenarios() -> list[dict[str, Any]]:
                 "lifecycle": "complete",
             },
         },
+        # =================================================================
+        # 08-repetition/ — Write scenarios: add/set/replace/clear
+        # =================================================================
+        {
+            "folder": "08-repetition",
+            "file": "34_add_with_rule",
+            "scenario": "08-repetition/34_add_with_rule",
+            "description": "add_task with repetitionRule (all non-default fields)",
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Repeat-AddWithRule",
+                "dueDate": "2026-12-01T10:00:00.000Z",
+                "deferDate": "2026-11-25T09:00:00.000Z",
+                "repetitionRule": {
+                    "ruleString": "FREQ=DAILY;INTERVAL=2",
+                    "scheduleType": "FromCompletion",
+                    "anchorDateKey": "DeferDate",
+                    "catchUpAutomatically": False,
+                },
+            },
+            "capture_id_as": "repeat_add_with_rule",
+        },
+        {
+            "folder": "08-repetition",
+            "file": "35_edit_set_rule",
+            "scenario": "08-repetition/35_edit_set_rule",
+            "description": "SET repetition rule where none existed",
+            "operation": "edit_task",
+            "params_fn": lambda: {
+                "id": TASK_IDS["repeat_set_target"],
+                "repetitionRule": {
+                    "ruleString": "FREQ=WEEKLY",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+        },
+        {
+            "folder": "08-repetition",
+            "file": "36_edit_replace_rule",
+            "scenario": "08-repetition/36_edit_replace_rule",
+            "description": "REPLACE repetition rule — all fields change",
+            "operation": "edit_task",
+            "params_fn": lambda: {
+                "id": TASK_IDS["repeat_set_target"],
+                "repetitionRule": {
+                    "ruleString": "FREQ=MONTHLY;BYMONTHDAY=15",
+                    "scheduleType": "FromCompletion",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": False,
+                },
+            },
+        },
+        {
+            "folder": "08-repetition",
+            "file": "37_edit_clear_rule",
+            "scenario": "08-repetition/37_edit_clear_rule",
+            "description": "CLEAR repetition rule to null",
+            "operation": "edit_task",
+            "params_fn": lambda: {
+                "id": TASK_IDS["repeat_set_target"],
+                "repetitionRule": None,
+            },
+        },
+        {
+            "folder": "08-repetition",
+            "file": "38_edit_set_rule_combo",
+            "scenario": "08-repetition/38_edit_set_rule_combo",
+            "description": "SET repetition rule + rename + flag in same call",
+            "operation": "edit_task",
+            "params_fn": lambda: {
+                "id": TASK_IDS["repeat_combo_target"],
+                "name": "GM-Repeat-ComboTarget-Edited",
+                "flagged": True,
+                "repetitionRule": {
+                    "ruleString": "FREQ=DAILY;INTERVAL=3",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": True,
+                },
+            },
+        },
     ]
 
 
@@ -1677,9 +1826,9 @@ def _phase_1_introduction() -> None:
     print("What will happen:")
     print("  1. You verify 3 projects and 2 tags exist in OmniFocus")
     print("  2. The script verifies each entity exists")
-    print("  2.5 Repetition rule tasks are created, you paste an OmniJS snippet")
-    print("      to set rules, then the script verifies them")
-    print("  3. ~79 scenarios run automatically across 8 categories")
+    print("  2.5 Repetition rule tasks are created with rules via add_task,")
+    print("      plus write-target tasks without rules, then verified")
+    print("  3. Scenarios run automatically across 8 categories")
     print("  4. Fixture JSON files are written to tests/golden_master/snapshots/")
     print("     organized in numbered subfolders (01-add/ through 08-repetition/)")
     print("  5. Test tasks are consolidated for easy cleanup")
@@ -1885,50 +2034,30 @@ async def _check_leftover_tasks(bridge: RealBridge) -> None:
         print()
 
 
-def _generate_omnijs_snippet(rules: list[dict[str, Any]]) -> str:
-    """Generate an OmniJS snippet that sets repetition rules on pre-created tasks.
-
-    Uses the real OmniFocus IDs from TASK_IDS (populated during task creation).
-    """
-    lines = ["(function() {", "    var t;", ""]
-    for rule in rules:
-        task_id = TASK_IDS[rule["key"]]
-        schedule_type = f"Task.RepetitionScheduleType.{rule['scheduleType']}"
-        anchor_key = f"Task.AnchorDateKey.{rule['anchorDateKey']}"
-        catch_up = "true" if rule["catchUp"] else "false"
-        lines.append(f"    // {rule['name']}")
-        lines.append(f'    t = Task.byIdentifier("{task_id}");')
-        lines.append(
-            f"    t.repetitionRule = new Task.RepetitionRule("
-            f'"{rule["ruleString"]}", null, {schedule_type}, {anchor_key}, {catch_up});'
-        )
-        lines.append("")
-    lines.append(f'    return "Set {len(rules)} repetition rules successfully";')
-    lines.append("})()")
-    return "\n".join(lines)
-
-
 async def _phase_2_5_repetition_setup(bridge: RealBridge) -> None:
-    """Create repetition-rule tasks and guide user through setting rules via OmniJS.
+    """Create repetition-rule tasks via add_task (with rules) and write-target tasks (without).
 
     Flow:
-    1. Create all tasks that need repetition rules via add_task
-    2. Print an OmniJS snippet for the user to paste in OmniFocus automation console
-    3. Wait for user confirmation
-    4. Verify each task has a non-null repetitionRule via get_all
+    1. Create all rule tasks with repetitionRule passed directly to add_task
+    2. Create write-target tasks without rules (for SET/REPLACE/CLEAR scenarios)
+    3. Verify via get_all that rule tasks have non-null repetitionRule
+       and write targets have null repetitionRule
     """
     print("-" * 60)
     print("  Phase 2.5: Repetition Rule Setup")
     print("-" * 60)
     print()
 
-    # Create tasks for each repetition rule config
+    # 1. Create tasks with repetition rules
     all_rules = REPETITION_RULES + REPETITION_LIFECYCLE_RULES
-    print(f"  Creating {len(all_rules)} tasks for repetition rule scenarios...")
+    print(f"  Creating {len(all_rules)} tasks with repetition rules...")
     print()
 
     for rule in all_rules:
-        add_params: dict[str, Any] = {"name": rule["name"]}
+        add_params: dict[str, Any] = {
+            "name": rule["name"],
+            "repetitionRule": rule["repetitionRule"],
+        }
         if "dueDate" in rule:
             add_params["dueDate"] = rule["dueDate"]
         if "deferDate" in rule:
@@ -1945,46 +2074,58 @@ async def _phase_2_5_repetition_setup(bridge: RealBridge) -> None:
 
     print()
 
-    # Generate and display OmniJS snippet
-    snippet = _generate_omnijs_snippet(all_rules)
-    print("  Now paste the following into the OmniFocus Automation Console")
-    print("  (Automation menu → Show Console, or ⌃⌘C):")
-    print()
-    print("  " + "-" * 50)
-    for line in snippet.split("\n"):
-        print(f"  {line}")
-    print("  " + "-" * 50)
+    # 2. Create write-target tasks (no repetition rule)
+    print(f"  Creating {len(REPETITION_WRITE_TARGETS)} write-target tasks (no rule)...")
     print()
 
-    # Wait for user and verify
-    while True:
-        input("  Press Enter after pasting the snippet... ")
+    for target in REPETITION_WRITE_TARGETS:
+        add_params = {"name": target["name"]}
+        if "dueDate" in target:
+            add_params["dueDate"] = target["dueDate"]
+
+        result = await bridge.send_command("add_task", add_params)
+        task_id = result["id"]
+        TASK_IDS[target["key"]] = task_id
+        _id_map[task_id] = f"$task:{target['key']}"
+        known_task_ids.add(task_id)
+        print(f"    Created: {target['name']} (ID: {task_id})")
+
+    print()
+
+    # 3. Verify all tasks
+    print("  Verifying repetition rules...")
+    state = await _get_all_raw(bridge)
+    tasks_by_id = {t["id"]: t for t in state.get("tasks", [])}
+    errors: list[str] = []
+
+    for rule in all_rules:
+        task_id = TASK_IDS[rule["key"]]
+        task = tasks_by_id.get(task_id)
+        if task is None:
+            errors.append(f"    {rule['name']}: task not found (ID: {task_id})")
+        elif not task.get("repetitionRule"):
+            errors.append(f"    {rule['name']}: repetitionRule is null")
+
+    for target in REPETITION_WRITE_TARGETS:
+        task_id = TASK_IDS[target["key"]]
+        task = tasks_by_id.get(task_id)
+        if task is None:
+            errors.append(f"    {target['name']}: task not found (ID: {task_id})")
+        elif task.get("repetitionRule"):
+            errors.append(f"    {target['name']}: expected null repetitionRule but got one")
+
+    if errors:
+        print(f"  ✗ {len(errors)} verification error(s):")
+        for e in errors:
+            print(e)
         print()
-        print("  Verifying repetition rules...")
+        raise SystemExit("Phase 2.5 failed — aborting capture.")
 
-        state = await _get_all_raw(bridge)
-        tasks_by_id = {t["id"]: t for t in state.get("tasks", [])}
-        missing: list[str] = []
-
-        for rule in all_rules:
-            task_id = TASK_IDS[rule["key"]]
-            task = tasks_by_id.get(task_id)
-            if task is None:
-                missing.append(f"    {rule['name']}: task not found (ID: {task_id})")
-            elif not task.get("repetitionRule"):
-                missing.append(f"    {rule['name']}: repetitionRule is null")
-
-        if not missing:
-            print(f"  ✓ All {len(all_rules)} tasks have repetition rules set.")
-            print()
-            return
-
-        print(f"  ⚠ {len(missing)} task(s) missing repetition rules:")
-        for m in missing:
-            print(m)
-        print()
-        print("  Please re-paste the snippet and try again.")
-        print()
+    print(
+        f"  ✓ All {len(all_rules)} rule tasks verified, "
+        f"{len(REPETITION_WRITE_TARGETS)} write targets confirmed null."
+    )
+    print()
 
 
 def _phase_3_confirmation() -> bool:
@@ -1993,7 +2134,7 @@ def _phase_3_confirmation() -> bool:
     print("  Phase 3: Scenario Preview")
     print("-" * 60)
     print()
-    print("The following ~79 scenarios will be executed across 8 categories:")
+    print("The following ~84 scenarios will be executed across 8 categories:")
     print()
     print("  01-add/ (6 scenarios):")
     print("    01. Inbox task (minimal)")
@@ -2055,13 +2196,14 @@ def _phase_3_confirmation() -> bool:
     print("    05a-c. Deep nesting (3 levels)")
     print("    06. Effective dates clear after move to undated project")
     print()
-    print("  08-repetition/ (30 scenarios):")
-    print("    01-16. RRULE variations (daily, weekly, monthly, yearly, sub-daily,")
-    print("           COUNT, UNTIL, fromCompletion, catchUp)")
-    print("    17-20. Anchor/config variations (DeferDate, PlannedDate, catchUp=false,")
-    print("           all non-default)")
-    print("    21-26. Edit-preservation (rename, flag, note, due date, move, add tag)")
-    print("    27-30. Lifecycle (complete, drop, complete twice)")
+    print("  08-repetition/ (38 scenarios):")
+    print("    01-23. RRULE variations (daily, weekly, monthly, yearly, sub-daily,")
+    print("           COUNT, UNTIL, fromCompletion, catchUp, anchor, BYSETPOS)")
+    print("    24-29. Edit-preservation (rename, flag, note, due date, move, add tag)")
+    print("    30-33. Lifecycle (complete, drop, complete twice)")
+    print("    34.    add_task with repetitionRule")
+    print("    35-37. SET → REPLACE → CLEAR lifecycle")
+    print("    38.    SET rule + rename + flag combo")
     print()
 
     scenarios = _build_scenarios()
