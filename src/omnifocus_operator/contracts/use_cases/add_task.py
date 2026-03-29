@@ -19,11 +19,6 @@ from omnifocus_operator.models.base import OmniFocusBaseModel
 if TYPE_CHECKING:
     from pydantic import AwareDatetime
 
-    from omnifocus_operator.contracts.use_cases.repetition_rule import (
-        RepetitionRuleAddSpec,
-        RepetitionRuleRepoPayload,
-    )
-
 
 class AddTaskCommand(CommandModel):
     """Agent instruction to create a task."""

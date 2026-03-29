@@ -26,8 +26,6 @@ from omnifocus_operator.contracts.use_cases.add_task import AddTaskResult
 from omnifocus_operator.contracts.use_cases.edit_task import EditTaskResult
 from omnifocus_operator.contracts.use_cases.repetition_rule import FrequencyAddSpec
 from omnifocus_operator.models.repetition_rule import Frequency
-from omnifocus_operator.rrule.builder import build_rrule
-from omnifocus_operator.rrule.schedule import based_on_to_bridge, schedule_to_bridge
 from omnifocus_operator.service.domain import DomainLogic
 from omnifocus_operator.service.payload import PayloadBuilder
 from omnifocus_operator.service.resolve import Resolver
@@ -411,24 +409,15 @@ class _EditTaskPipeline(_Pipeline):
             frequency, schedule, based_on, end
         )
 
-        # No-op detection: skip redundant repo call if rule is unchanged
-        if existing is not None and self._repetition_rule_payload is not None:
-            try:
-                existing_rule_string = build_rrule(existing.frequency, existing.end)
-                existing_schedule_type, existing_catch_up = schedule_to_bridge(existing.schedule)
-                existing_anchor = based_on_to_bridge(existing.based_on)
-            except (ValueError, KeyError):
-                pass  # can't compare -> treat as changed
-            else:
-                rp = self._repetition_rule_payload
-                if (
-                    rp.rule_string == existing_rule_string
-                    and rp.schedule_type == existing_schedule_type
-                    and rp.anchor_date_key == existing_anchor
-                    and rp.catch_up_automatically == existing_catch_up
-                ):
-                    self._repetition_warns.append(REPETITION_NO_OP)
-                    self._repetition_rule_payload = None
+        if (
+            existing is not None
+            and self._repetition_rule_payload is not None
+            and self._domain.repetition_payload_matches_existing(
+                self._repetition_rule_payload, existing
+            )
+        ):
+            self._repetition_warns.append(REPETITION_NO_OP)
+            self._repetition_rule_payload = None
 
     def _merge_frequency(
         self,

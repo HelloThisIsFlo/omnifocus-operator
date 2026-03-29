@@ -46,6 +46,7 @@ from omnifocus_operator.models.enums import Availability
 from omnifocus_operator.models.repetition_rule import (
     EndByDate,
     Frequency,
+    RepetitionRule,
 )
 from omnifocus_operator.rrule.builder import build_rrule
 from omnifocus_operator.rrule.schedule import based_on_to_bridge, schedule_to_bridge
@@ -57,7 +58,10 @@ if TYPE_CHECKING:
         EditTaskCommand,
         EditTaskRepoPayload,
     )
-    from omnifocus_operator.contracts.use_cases.repetition_rule import FrequencyEditSpec
+    from omnifocus_operator.contracts.use_cases.repetition_rule import (
+        FrequencyEditSpec,
+        RepetitionRuleRepoPayload,
+    )
     from omnifocus_operator.models.common import TagRef
     from omnifocus_operator.models.enums import BasedOn
     from omnifocus_operator.models.task import Task
@@ -633,25 +637,34 @@ class DomainLogic:
         Returns True if they match (no-op), False if different.
         """
         if payload.repetition_rule is None:
-            # Clear request -- no-op only if task has no rule
             return task.repetition_rule is None
 
-        # payload has a RepetitionRuleRepoPayload -- compare against existing
         existing = task.repetition_rule
         if existing is None:
-            return False  # setting a rule on a task that has none
+            return False
 
-        # Build bridge-format from existing rule for comparison
+        return self.repetition_payload_matches_existing(payload.repetition_rule, existing)
+
+    def repetition_payload_matches_existing(
+        self,
+        payload: RepetitionRuleRepoPayload,
+        existing: RepetitionRule,
+    ) -> bool:
+        """Check if a repo payload is equivalent to an existing rule.
+
+        Converts the existing RepetitionRule to bridge format and compares
+        all four fields. Returns False if the existing rule can't be converted
+        (e.g. unsupported frequency) — treat as changed to be safe.
+        """
         try:
             existing_rule_string = build_rrule(existing.frequency, existing.end)
             existing_schedule_type, existing_catch_up = schedule_to_bridge(existing.schedule)
             existing_anchor = based_on_to_bridge(existing.based_on)
         except (ValueError, KeyError):
-            return False  # can't compare -> treat as changed
-
+            return False
         return (
-            payload.repetition_rule.rule_string == existing_rule_string
-            and payload.repetition_rule.schedule_type == existing_schedule_type
-            and payload.repetition_rule.anchor_date_key == existing_anchor
-            and payload.repetition_rule.catch_up_automatically == existing_catch_up
+            payload.rule_string == existing_rule_string
+            and payload.schedule_type == existing_schedule_type
+            and payload.anchor_date_key == existing_anchor
+            and payload.catch_up_automatically == existing_catch_up
         )

@@ -53,6 +53,82 @@ _VALID_DAY_NAMES = {
 }
 
 
+# -- Shared validation functions ----------------------------------------------
+# Standalone logic shared by Frequency (read model) and FrequencyAddSpec /
+# FrequencyEditSpec (write contracts). Pydantic validators can't be inherited
+# across unrelated class hierarchies, so each class wires thin decorator
+# delegates that call these functions.
+
+
+def validate_interval(v: int) -> int:
+    if isinstance(v, int) and v < 1:
+        raise ValueError(REPETITION_INVALID_INTERVAL.format(value=v))
+    return v
+
+
+def normalize_day_codes(value: list[str] | None) -> list[str] | None:
+    if value is None:
+        return None
+    normalized = []
+    for code in value:
+        upper = code.upper()
+        if upper not in _VALID_DAY_CODES:
+            raise ValueError(REPETITION_INVALID_DAY_CODE.format(code=code))
+        normalized.append(upper)
+    return normalized
+
+
+def normalize_on(value: dict[str, str] | None) -> dict[str, str] | None:
+    if value is None:
+        return None
+    normalized = {}
+    for ordinal, day_name in value.items():
+        lower_ordinal = ordinal.lower()
+        lower_day = day_name.lower()
+        if lower_ordinal not in _VALID_ORDINALS:
+            raise ValueError(REPETITION_INVALID_ORDINAL.format(ordinal=ordinal))
+        if lower_day not in _VALID_DAY_NAMES:
+            raise ValueError(REPETITION_INVALID_DAY_NAME.format(day=day_name))
+        normalized[lower_ordinal] = lower_day
+    return normalized
+
+
+def validate_on_dates(value: list[int] | None) -> list[int] | None:
+    if value is None:
+        return None
+    for v in value:
+        if v == 0 or v < -1 or v > 31:
+            raise ValueError(REPETITION_INVALID_ON_DATE.format(value=v))
+    return value
+
+
+def check_frequency_cross_type_fields(
+    type_: str,
+    on_days: list[str] | None,
+    on: dict[str, str] | None,
+    on_dates: list[int] | None,
+) -> None:
+    if on_days is not None and type_ != "weekly":
+        raise ValueError(
+            f"on_days is not valid for type '{type_}'. on_days can only be used with type 'weekly'."
+        )
+    if on is not None and type_ != "monthly":
+        raise ValueError(
+            f"on is not valid for type '{type_}'. on can only be used with type 'monthly'."
+        )
+    if on_dates is not None and type_ != "monthly":
+        raise ValueError(
+            f"on_dates is not valid for type '{type_}'. "
+            "on_dates can only be used with type 'monthly'."
+        )
+    if on is not None and on_dates is not None:
+        raise ValueError(
+            "on and on_dates are mutually exclusive on monthly frequency. "
+            "Use on for day-of-week patterns (e.g., {'second': 'tuesday'}) "
+            "or onDates for specific dates (e.g., [1, 15])."
+        )
+
+
 # -- Frequency Model ---------------------------------------------------------
 
 
@@ -71,73 +147,28 @@ class Frequency(OmniFocusBaseModel):
 
     @model_validator(mode="after")
     def _check_cross_type_fields(self) -> Frequency:
-        if self.on_days is not None and self.type != "weekly":
-            raise ValueError(
-                f"on_days is not valid for type '{self.type}'. "
-                "on_days can only be used with type 'weekly'."
-            )
-        if self.on is not None and self.type != "monthly":
-            raise ValueError(
-                f"on is not valid for type '{self.type}'. on can only be used with type 'monthly'."
-            )
-        if self.on_dates is not None and self.type != "monthly":
-            raise ValueError(
-                f"on_dates is not valid for type '{self.type}'. "
-                "on_dates can only be used with type 'monthly'."
-            )
-        if self.on is not None and self.on_dates is not None:
-            raise ValueError(
-                "on and on_dates are mutually exclusive on monthly frequency. "
-                "Use on for day-of-week patterns (e.g., {'second': 'tuesday'}) "
-                "or onDates for specific dates (e.g., [1, 15])."
-            )
+        check_frequency_cross_type_fields(self.type, self.on_days, self.on, self.on_dates)
         return self
 
     @field_validator("interval", mode="before")
     @classmethod
     def _validate_interval(cls, v: int) -> int:
-        if isinstance(v, int) and v < 1:
-            raise ValueError(REPETITION_INVALID_INTERVAL.format(value=v))
-        return v
+        return validate_interval(v)
 
     @field_validator("on_days", mode="before")
     @classmethod
     def _normalize_day_codes(cls, value: list[str] | None) -> list[str] | None:
-        if value is None:
-            return None
-        normalized = []
-        for code in value:
-            upper = code.upper()
-            if upper not in _VALID_DAY_CODES:
-                raise ValueError(REPETITION_INVALID_DAY_CODE.format(code=code))
-            normalized.append(upper)
-        return normalized
+        return normalize_day_codes(value)
 
     @field_validator("on", mode="before")
     @classmethod
     def _normalize_on(cls, value: dict[str, str] | None) -> dict[str, str] | None:
-        if value is None:
-            return None
-        normalized = {}
-        for ordinal, day_name in value.items():
-            lower_ordinal = ordinal.lower()
-            lower_day = day_name.lower()
-            if lower_ordinal not in _VALID_ORDINALS:
-                raise ValueError(REPETITION_INVALID_ORDINAL.format(ordinal=ordinal))
-            if lower_day not in _VALID_DAY_NAMES:
-                raise ValueError(REPETITION_INVALID_DAY_NAME.format(day=day_name))
-            normalized[lower_ordinal] = lower_day
-        return normalized
+        return normalize_on(value)
 
     @field_validator("on_dates", mode="before")
     @classmethod
     def _validate_on_dates(cls, value: list[int] | None) -> list[int] | None:
-        if value is None:
-            return None
-        for v in value:
-            if v == 0 or v < -1 or v > 31:
-                raise ValueError(REPETITION_INVALID_ON_DATE.format(value=v))
-        return value
+        return validate_on_dates(value)
 
 
 # -- End Condition Models -----------------------------------------------------
@@ -196,4 +227,9 @@ __all__ = [
     "Frequency",
     "FrequencyType",
     "RepetitionRule",
+    "check_frequency_cross_type_fields",
+    "normalize_day_codes",
+    "normalize_on",
+    "validate_interval",
+    "validate_on_dates",
 ]

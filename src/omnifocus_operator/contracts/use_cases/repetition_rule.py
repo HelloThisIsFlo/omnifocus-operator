@@ -14,14 +14,9 @@ from typing import Any, get_args
 from pydantic import Field, field_validator, model_validator
 
 from omnifocus_operator.agent_messages.errors import (
-    REPETITION_INVALID_DAY_CODE,
-    REPETITION_INVALID_DAY_NAME,
     REPETITION_INVALID_END_EMPTY,
     REPETITION_INVALID_END_OCCURRENCES,
     REPETITION_INVALID_FREQUENCY_TYPE,
-    REPETITION_INVALID_INTERVAL,
-    REPETITION_INVALID_ON_DATE,
-    REPETITION_INVALID_ORDINAL,
 )
 from omnifocus_operator.contracts.base import (
     UNSET,
@@ -31,19 +26,42 @@ from omnifocus_operator.contracts.base import (
 )
 from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
-    _VALID_DAY_CODES,
-    _VALID_DAY_NAMES,
-    _VALID_ORDINALS,
     EndCondition,
     FrequencyType,
+    check_frequency_cross_type_fields,
+    normalize_day_codes,
+    normalize_on,
+    validate_interval,
+    validate_on_dates,
 )
+
+
+def _validate_frequency_type(v: object) -> object:
+    """Shared pre-validator for frequency type across Add and Edit specs."""
+    if isinstance(v, str) and v not in get_args(FrequencyType):
+        raise ValueError(REPETITION_INVALID_FREQUENCY_TYPE.format(freq_type=v))
+    return v
+
+
+def _validate_end_condition(v: Any) -> Any:
+    """Shared pre-validator for end condition across Add and Edit specs."""
+    if v is None or not isinstance(v, dict):
+        return v
+    if "occurrences" in v:
+        occ = v["occurrences"]
+        if isinstance(occ, int) and occ < 1:
+            raise ValueError(REPETITION_INVALID_END_OCCURRENCES.format(value=occ))
+        return v
+    if "date" in v:
+        return v
+    raise ValueError(REPETITION_INVALID_END_EMPTY)
 
 
 class FrequencyAddSpec(CommandModel):
     """All-required frequency spec for creating a repetition rule.
 
     Same field shapes as Frequency, with extra="forbid" from CommandModel.
-    Includes the same cross-type validators and field normalizers as Frequency.
+    Validators delegate to shared functions in models.repetition_rule.
     """
 
     type: FrequencyType
@@ -55,79 +73,32 @@ class FrequencyAddSpec(CommandModel):
     @field_validator("type", mode="before")
     @classmethod
     def _validate_type(cls, v: object) -> object:
-        if isinstance(v, str) and v not in get_args(FrequencyType):
-            raise ValueError(REPETITION_INVALID_FREQUENCY_TYPE.format(freq_type=v))
-        return v
+        return _validate_frequency_type(v)
 
     @field_validator("interval", mode="before")
     @classmethod
     def _validate_interval(cls, v: int) -> int:
-        if isinstance(v, int) and v < 1:
-            raise ValueError(REPETITION_INVALID_INTERVAL.format(value=v))
-        return v
+        return validate_interval(v)
 
     @model_validator(mode="after")
     def _check_cross_type_fields(self) -> FrequencyAddSpec:
-        if self.on_days is not None and self.type != "weekly":
-            raise ValueError(
-                f"on_days is not valid for type '{self.type}'. "
-                "on_days can only be used with type 'weekly'."
-            )
-        if self.on is not None and self.type != "monthly":
-            raise ValueError(
-                f"on is not valid for type '{self.type}'. on can only be used with type 'monthly'."
-            )
-        if self.on_dates is not None and self.type != "monthly":
-            raise ValueError(
-                f"on_dates is not valid for type '{self.type}'. "
-                "on_dates can only be used with type 'monthly'."
-            )
-        if self.on is not None and self.on_dates is not None:
-            raise ValueError(
-                "on and on_dates are mutually exclusive on monthly frequency. "
-                "Use on for day-of-week patterns (e.g., {'second': 'tuesday'}) "
-                "or onDates for specific dates (e.g., [1, 15])."
-            )
+        check_frequency_cross_type_fields(self.type, self.on_days, self.on, self.on_dates)
         return self
 
     @field_validator("on_days", mode="before")
     @classmethod
     def _normalize_day_codes(cls, value: list[str] | None) -> list[str] | None:
-        if value is None:
-            return None
-        normalized = []
-        for code in value:
-            upper = code.upper()
-            if upper not in _VALID_DAY_CODES:
-                raise ValueError(REPETITION_INVALID_DAY_CODE.format(code=code))
-            normalized.append(upper)
-        return normalized
+        return normalize_day_codes(value)
 
     @field_validator("on", mode="before")
     @classmethod
     def _normalize_on(cls, value: dict[str, str] | None) -> dict[str, str] | None:
-        if value is None:
-            return None
-        normalized = {}
-        for ordinal, day_name in value.items():
-            lower_ordinal = ordinal.lower()
-            lower_day = day_name.lower()
-            if lower_ordinal not in _VALID_ORDINALS:
-                raise ValueError(REPETITION_INVALID_ORDINAL.format(ordinal=ordinal))
-            if lower_day not in _VALID_DAY_NAMES:
-                raise ValueError(REPETITION_INVALID_DAY_NAME.format(day=day_name))
-            normalized[lower_ordinal] = lower_day
-        return normalized
+        return normalize_on(value)
 
     @field_validator("on_dates", mode="before")
     @classmethod
     def _validate_on_dates(cls, value: list[int] | None) -> list[int] | None:
-        if value is None:
-            return None
-        for v in value:
-            if v == 0 or v < -1 or v > 31:
-                raise ValueError(REPETITION_INVALID_ON_DATE.format(value=v))
-        return value
+        return validate_on_dates(value)
 
 
 class FrequencyEditSpec(CommandModel):
@@ -147,16 +118,12 @@ class FrequencyEditSpec(CommandModel):
     @field_validator("type", mode="before")
     @classmethod
     def _validate_type(cls, v: object) -> object:
-        if isinstance(v, str) and v not in get_args(FrequencyType):
-            raise ValueError(REPETITION_INVALID_FREQUENCY_TYPE.format(freq_type=v))
-        return v
+        return _validate_frequency_type(v)
 
     @field_validator("interval", mode="before")
     @classmethod
     def _validate_interval(cls, v: int) -> int:
-        if isinstance(v, int) and v < 1:
-            raise ValueError(REPETITION_INVALID_INTERVAL.format(value=v))
-        return v
+        return validate_interval(v)
 
 
 class RepetitionRuleAddSpec(CommandModel):
@@ -170,16 +137,7 @@ class RepetitionRuleAddSpec(CommandModel):
     @field_validator("end", mode="before")
     @classmethod
     def _validate_end(cls, v: Any) -> Any:
-        if v is None or not isinstance(v, dict):
-            return v
-        if "occurrences" in v:
-            occ = v["occurrences"]
-            if isinstance(occ, int) and occ < 1:
-                raise ValueError(REPETITION_INVALID_END_OCCURRENCES.format(value=occ))
-            return v
-        if "date" in v:
-            return v
-        raise ValueError(REPETITION_INVALID_END_EMPTY)
+        return _validate_end_condition(v)
 
 
 class RepetitionRuleEditSpec(CommandModel):
@@ -198,16 +156,7 @@ class RepetitionRuleEditSpec(CommandModel):
     @field_validator("end", mode="before")
     @classmethod
     def _validate_end(cls, v: Any) -> Any:
-        if v is None or not isinstance(v, dict):
-            return v
-        if "occurrences" in v:
-            occ = v["occurrences"]
-            if isinstance(occ, int) and occ < 1:
-                raise ValueError(REPETITION_INVALID_END_OCCURRENCES.format(value=occ))
-            return v
-        if "date" in v:
-            return v
-        raise ValueError(REPETITION_INVALID_END_EMPTY)
+        return _validate_end_condition(v)
 
 
 class RepetitionRuleRepoPayload(CommandModel):

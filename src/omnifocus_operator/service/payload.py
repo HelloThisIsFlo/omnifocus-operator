@@ -98,9 +98,8 @@ class PayloadBuilder:
         if move_to is not None:
             kwargs["move_to"] = MoveToRepoPayload.model_validate(move_to)
 
-        # Repetition rule: clear vs set vs no-change
         if repetition_rule_clear:
-            kwargs["repetition_rule"] = None  # explicit clear
+            kwargs["repetition_rule"] = None
         elif repetition_rule_payload is not None:
             kwargs["repetition_rule"] = repetition_rule_payload
 
