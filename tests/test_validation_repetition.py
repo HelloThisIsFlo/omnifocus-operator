@@ -12,8 +12,6 @@ import pytest
 
 from omnifocus_operator.agent_messages.errors import (
     REPETITION_INVALID_DAY_CODE,
-    REPETITION_INVALID_END_OCCURRENCES,
-    REPETITION_INVALID_INTERVAL,
     REPETITION_INVALID_ON_DATE,
     REPETITION_NO_EXISTING_RULE,
 )
@@ -217,10 +215,8 @@ class TestAgentMessages:
 
     def test_error_constants_exist(self) -> None:
         assert "existing" in REPETITION_NO_EXISTING_RULE
-        assert len(REPETITION_INVALID_INTERVAL) > 0
         assert len(REPETITION_INVALID_DAY_CODE) > 0
         assert len(REPETITION_INVALID_ON_DATE) > 0
-        assert len(REPETITION_INVALID_END_OCCURRENCES) > 0
 
     def test_warning_constants_exist(self) -> None:
         assert len(REPETITION_END_DATE_PAST) > 0

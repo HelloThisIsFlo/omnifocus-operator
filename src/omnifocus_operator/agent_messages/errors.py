@@ -65,8 +65,6 @@ REPETITION_NO_EXISTING_RULE = (
     "frequency (with type), schedule, and basedOn."
 )
 
-REPETITION_INVALID_INTERVAL = "Interval must be >= 1, got {value}"
-
 REPETITION_INVALID_DAY_CODE = (
     "Invalid day code '{code}' in onDays. Valid codes: MO, TU, WE, TH, FR, SA, SU"
 )
@@ -85,8 +83,6 @@ REPETITION_INVALID_DAY_NAME = (
 REPETITION_INVALID_ON_DATE = (
     "Invalid date value {value} in onDates. Valid range: -1, 1 to 31 (use -1 for last day of month)"
 )
-
-REPETITION_INVALID_END_OCCURRENCES = "End occurrences must be >= 1, got {value}"
 
 REPETITION_INVALID_FREQUENCY_TYPE = (
     "Invalid frequency type '{freq_type}' -- "

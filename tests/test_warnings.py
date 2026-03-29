@@ -12,6 +12,8 @@ from omnifocus_operator import server
 from omnifocus_operator.agent_messages import errors as err_mod
 from omnifocus_operator.agent_messages import warnings as warn_mod
 from omnifocus_operator.contracts import common as contracts_common
+from omnifocus_operator.contracts.use_cases import repetition_rule as contracts_repetition_rule
+from omnifocus_operator.models import repetition_rule as models_repetition_rule
 from omnifocus_operator.service import domain as service_domain
 from omnifocus_operator.service import resolve
 from omnifocus_operator.service import service as service_orchestrator
@@ -100,6 +102,8 @@ _ERROR_CONSUMERS = [
     service_orchestrator,
     service_validate,
     contracts_common,
+    contracts_repetition_rule,
+    models_repetition_rule,
 ]
 
 

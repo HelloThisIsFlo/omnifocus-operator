@@ -1067,7 +1067,7 @@ class TestAddTasksRepetitionRule:
         text = str(exc_info.value)
         assert "biweekly" in text
         assert "daily" in text
-        assert "weekly_on_days" in text
+        assert "weekly" in text
 
     async def test_add_tasks_repetition_rule_unknown_field(self, client: Any) -> None:
         """Extra field on repetitionRule returns 'Unknown field' error."""
@@ -1107,7 +1107,7 @@ class TestEditTasksRepetitionRule:
                         "id": task_id,
                         "repetitionRule": {
                             "frequency": {
-                                "type": "weekly_on_days",
+                                "type": "weekly",
                                 "interval": 1,
                                 "onDays": ["MO", "FR"],
                             },
