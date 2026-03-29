@@ -9,15 +9,16 @@ Public function:
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from omnifocus_operator.models.repetition_rule import (
     EndByDate,
     EndByOccurrences,
-    Frequency,
-    MonthlyDayInMonthFrequency,
-    MonthlyDayOfWeekFrequency,
-    WeeklyOnDaysFrequency,
 )
 from omnifocus_operator.rrule.parser import parse_rrule
+
+if TYPE_CHECKING:
+    from omnifocus_operator.models.repetition_rule import Frequency
 
 # ── Reverse Mapping Tables ───────────────────────────────────────────────
 
@@ -50,10 +51,7 @@ _TYPE_TO_FREQ: dict[str, str] = {
     "hourly": "HOURLY",
     "daily": "DAILY",
     "weekly": "WEEKLY",
-    "weekly_on_days": "WEEKLY",
     "monthly": "MONTHLY",
-    "monthly_day_of_week": "MONTHLY",
-    "monthly_day_in_month": "MONTHLY",
     "yearly": "YEARLY",
 }
 
@@ -70,7 +68,7 @@ def build_rrule(
     Includes round-trip validation: parse_rrule(result) must succeed.
 
     Args:
-        frequency: Frequency model instance (any of the 9 subtypes)
+        frequency: Flat Frequency model instance (6 types)
         end: Optional EndByDate or EndByOccurrences model
 
     Returns:
@@ -79,10 +77,9 @@ def build_rrule(
     Raises:
         ValueError: On invalid input or failed round-trip validation
     """
-    freq_type = frequency.type
-    freq_code = _TYPE_TO_FREQ.get(freq_type)
+    freq_code = _TYPE_TO_FREQ.get(frequency.type)
     if freq_code is None:
-        raise ValueError(f"Unknown frequency type: {freq_type!r}")
+        raise ValueError(f"Unknown frequency type: {frequency.type!r}")
 
     parts: list[str] = [f"FREQ={freq_code}"]
 
@@ -90,12 +87,12 @@ def build_rrule(
     if frequency.interval != 1:
         parts.append(f"INTERVAL={frequency.interval}")
 
-    # Type-specific parts
-    if isinstance(frequency, WeeklyOnDaysFrequency):
+    # Type-specific parts using type field checks (not isinstance)
+    if frequency.type == "weekly" and frequency.on_days:
         parts.append(f"BYDAY={','.join(frequency.on_days)}")
-    elif isinstance(frequency, MonthlyDayOfWeekFrequency) and frequency.on:
+    elif frequency.type == "monthly" and frequency.on:
         parts.append(_build_byday_positional(frequency.on))
-    elif isinstance(frequency, MonthlyDayInMonthFrequency) and frequency.on_dates:
+    elif frequency.type == "monthly" and frequency.on_dates:
         parts.append(f"BYMONTHDAY={','.join(str(d) for d in frequency.on_dates)}")
 
     # End condition

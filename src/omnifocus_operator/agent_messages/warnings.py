@@ -82,8 +82,28 @@ REPETITION_END_DATE_PAST = (
 )
 
 REPETITION_EMPTY_ON_DATES = (
-    "monthly_day_in_month with empty onDates is equivalent to plain 'monthly'. "
-    "The rule was created as monthly. Use type 'monthly' directly next time."
+    "monthly with empty onDates is equivalent to plain monthly (no date constraint). "
+    "The empty onDates was ignored. Omit onDates or use type 'monthly' directly next time."
+)
+
+REPETITION_EMPTY_ON_DAYS = (
+    "weekly with empty onDays is equivalent to plain weekly (no day constraint). "
+    "The empty onDays was ignored. Omit onDays or use type 'weekly' directly next time."
+)
+
+REPETITION_EMPTY_ON = (
+    "monthly with empty on is equivalent to plain monthly (no weekday constraint). "
+    "The empty on was ignored. Omit on or use type 'monthly' directly next time."
+)
+
+REPETITION_AUTO_CLEAR_ON_DATES = (
+    "on and onDates are mutually exclusive on monthly. "
+    "Since on was set, onDates was automatically cleared."
+)
+
+REPETITION_AUTO_CLEAR_ON = (
+    "on and onDates are mutually exclusive on monthly. "
+    "Since onDates was set, on was automatically cleared."
 )
 
 REPETITION_NO_OP = (

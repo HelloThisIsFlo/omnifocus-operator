@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from omnifocus_operator.agent_messages.errors import (
     ANCHOR_TASK_NOT_FOUND,
@@ -25,7 +25,11 @@ from omnifocus_operator.agent_messages.warnings import (
     LIFECYCLE_REPEATING_COMPLETE,
     LIFECYCLE_REPEATING_DROP,
     MOVE_SAME_CONTAINER,
+    REPETITION_AUTO_CLEAR_ON,
+    REPETITION_AUTO_CLEAR_ON_DATES,
+    REPETITION_EMPTY_ON,
     REPETITION_EMPTY_ON_DATES,
+    REPETITION_EMPTY_ON_DAYS,
     REPETITION_END_DATE_PAST,
     REPETITION_NO_OP,
     REPETITION_ON_COMPLETED_TASK,
@@ -39,8 +43,6 @@ from omnifocus_operator.models.enums import Availability
 from omnifocus_operator.models.repetition_rule import (
     EndByDate,
     Frequency,
-    MonthlyDayInMonthFrequency,
-    MonthlyFrequency,
 )
 from omnifocus_operator.rrule.builder import build_rrule
 from omnifocus_operator.rrule.schedule import based_on_to_bridge, schedule_to_bridge
@@ -190,20 +192,68 @@ class DomainLogic:
 
         return warnings
 
-    def normalize_empty_on_dates(
+    def normalize_empty_specialization_fields(
         self,
         frequency: Frequency,
     ) -> tuple[Frequency, list[str]]:
-        """Normalize monthly_day_in_month with empty onDates to plain monthly (D-13).
+        """Normalize empty specialization fields to None + warning (D-17).
+
+        Handles all 3 fields:
+        - weekly with on_days=[] -> on_days=None + warning
+        - monthly with on={} -> on=None + warning
+        - monthly with on_dates=[] -> on_dates=None + warning
 
         Returns (possibly-normalized frequency, warnings).
         """
-        if isinstance(frequency, MonthlyDayInMonthFrequency) and not frequency.on_dates:
-            return (
-                MonthlyFrequency(interval=frequency.interval),
-                [REPETITION_EMPTY_ON_DATES],
-            )
-        return (frequency, [])
+        warnings: list[str] = []
+        updates: dict[str, Any] = {}
+
+        if frequency.type == "weekly" and frequency.on_days is not None and len(frequency.on_days) == 0:
+            updates["on_days"] = None
+            warnings.append(REPETITION_EMPTY_ON_DAYS)
+
+        if frequency.type == "monthly" and frequency.on is not None and len(frequency.on) == 0:
+            updates["on"] = None
+            warnings.append(REPETITION_EMPTY_ON)
+
+        if frequency.type == "monthly" and frequency.on_dates is not None and len(frequency.on_dates) == 0:
+            updates["on_dates"] = None
+            warnings.append(REPETITION_EMPTY_ON_DATES)
+
+        if updates:
+            frequency = frequency.model_copy(update=updates)
+
+        return (frequency, warnings)
+
+    def auto_clear_monthly_mutual_exclusion(
+        self,
+        merged: dict[str, Any],
+    ) -> tuple[dict[str, Any], list[str]]:
+        """Auto-clear monthly mutual exclusion (D-08).
+
+        Operates on the merged dict BEFORE Frequency construction,
+        so the model validator doesn't reject the combination.
+
+        If type is monthly and both on and on_dates are set:
+        - If on was explicitly set in the edit spec, clear on_dates
+        - If on_dates was explicitly set in the edit spec, clear on
+
+        Returns (possibly-modified merged dict, warnings).
+        """
+        warnings: list[str] = []
+
+        if merged.get("type") != "monthly":
+            return merged, warnings
+
+        has_on = merged.get("on") is not None
+        has_on_dates = merged.get("on_dates") is not None
+
+        if has_on and has_on_dates:
+            # Default: clear on_dates (on takes precedence)
+            merged = {**merged, "on_dates": None}
+            warnings.append(REPETITION_AUTO_CLEAR_ON_DATES)
+
+        return merged, warnings
 
     # -- Tags --------------------------------------------------------------
 

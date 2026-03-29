@@ -97,7 +97,7 @@ def _format_validation_errors(exc: ValidationError) -> list[str]:
 
     Rewrites common error patterns into educational messages:
     - ``extra_forbidden`` -> "Unknown field '<path>'"
-    - ``union_tag_invalid`` on frequency -> lists valid frequency types
+    - ``literal_error`` on frequency type -> lists valid frequency types
     - ``literal_error`` on lifecycle -> echoes the invalid value with valid options
     - ``_Unset`` sentinel artefacts are suppressed
     """
@@ -116,11 +116,10 @@ def _format_validation_errors(exc: ValidationError) -> list[str]:
             messages.append(UNKNOWN_FIELD.format(field=field))
         elif e["type"] == "literal_error" and "lifecycle" in e.get("loc", ()):
             messages.append(LIFECYCLE_INVALID_VALUE.format(value=e.get("input", "unknown")))
-        elif e["type"] == "union_tag_invalid":
+        elif e["type"] == "literal_error":
             loc = e.get("loc", ())
-            if any(str(part) in ("repetitionRule", "frequency") for part in loc):
-                input_val = e.get("input", {})
-                freq_type = input_val.get("type", "?") if isinstance(input_val, dict) else "?"
+            if any(str(part) in ("repetitionRule", "frequency", "type") for part in loc):
+                freq_type = e.get("input", "?")
                 messages.append(REPETITION_INVALID_FREQUENCY_TYPE.format(freq_type=freq_type))
             else:
                 messages.append(e["msg"])
