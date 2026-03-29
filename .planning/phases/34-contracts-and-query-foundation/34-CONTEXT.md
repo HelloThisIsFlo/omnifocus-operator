@@ -10,6 +10,24 @@ Typed query contracts and SQL generation as independently testable pure function
 
 **Requirements:** INFRA-01 (parameterized SQL), INFRA-04 (total_count in list responses)
 
+### Models Created (exhaustive list)
+
+| Model | Location | Base class | Purpose |
+|-------|----------|------------|---------|
+| `QueryModel` | `contracts/base.py` | `StrictModel` | Read-side base class (`extra="forbid"`). Sits next to `CommandModel`. Documented in architecture.md but not yet created. |
+| `ListTasksQuery` | `contracts/use_cases/list_entities.py` | `QueryModel` | 9 filter fields: in_inbox, flagged, project, tags, estimated_minutes_max, availability, search, limit, offset |
+| `ListProjectsQuery` | `contracts/use_cases/list_entities.py` | `QueryModel` | 5 filter fields: availability, folder, review_due_within, flagged, limit, offset |
+| `ListTagsQuery` | `contracts/use_cases/list_entities.py` | `QueryModel` | 1 filter field: availability |
+| `ListFoldersQuery` | `contracts/use_cases/list_entities.py` | `QueryModel` | 1 filter field: availability |
+| `ListResult[T]` | `contracts/use_cases/list_entities.py` | `OmniFocusBaseModel` | Generic result container: items, total, hasMore |
+
+No `ListPerspectivesQuery` — perspectives have no filters (D-09).
+
+### Other Artifacts Created (not models)
+
+- **Protocol extensions** (`contracts/protocols.py`): list method signatures added to existing Repository and Service protocols
+- **Query builder** (`repository/query_builder.py`): Pure functions producing parameterized SQL for task and project queries
+
 </domain>
 
 <decisions>
