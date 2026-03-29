@@ -6,54 +6,42 @@ import json
 from pathlib import Path
 
 import pytest
-from pydantic import TypeAdapter
+from pydantic import ValidationError
 
 from omnifocus_operator.models.repetition_rule import (
     BasedOn,
-    DailyFrequency,
     EndByDate,
     EndByOccurrences,
     Frequency,
-    HourlyFrequency,
-    MinutelyFrequency,
-    MonthlyDayInMonthFrequency,
-    MonthlyDayOfWeekFrequency,
-    MonthlyFrequency,
     RepetitionRule,
     Schedule,
-    WeeklyFrequency,
-    WeeklyOnDaysFrequency,
-    YearlyFrequency,
 )
 from omnifocus_operator.rrule import build_rrule, derive_schedule, parse_end_condition, parse_rrule
 
-# ── Frequency Discriminated Union ─────────────────────────────────────
+# ── Frequency Flat Model ─────────────────────────────────────────────────
 
 
-class TestFrequencyDiscriminatedUnion:
-    """Frequency validates via type discriminator."""
+class TestFrequencyFlatModel:
+    """Frequency validates with type field and optional specialization fields."""
 
     def test_daily_validates(self):
-        ta = TypeAdapter(Frequency)
-        result = ta.validate_python({"type": "daily"})
-        assert isinstance(result, DailyFrequency)
+        result = Frequency(type="daily")
+        assert result.type == "daily"
+        assert result.interval == 1
 
-    def test_weekly_on_days_validates(self):
-        ta = TypeAdapter(Frequency)
-        result = ta.validate_python({"type": "weekly_on_days", "on_days": ["MO", "WE"]})
-        assert isinstance(result, WeeklyOnDaysFrequency)
+    def test_weekly_with_on_days_validates(self):
+        result = Frequency(type="weekly", on_days=["MO", "WE"])
+        assert result.type == "weekly"
         assert result.on_days == ["MO", "WE"]
 
-    def test_monthly_day_of_week_validates(self):
-        ta = TypeAdapter(Frequency)
-        result = ta.validate_python({"type": "monthly_day_of_week", "on": {"second": "tuesday"}})
-        assert isinstance(result, MonthlyDayOfWeekFrequency)
+    def test_monthly_with_on_validates(self):
+        result = Frequency(type="monthly", on={"second": "tuesday"})
+        assert result.type == "monthly"
         assert result.on == {"second": "tuesday"}
 
-    def test_monthly_day_in_month_validates(self):
-        ta = TypeAdapter(Frequency)
-        result = ta.validate_python({"type": "monthly_day_in_month", "on_dates": [15, -1]})
-        assert isinstance(result, MonthlyDayInMonthFrequency)
+    def test_monthly_with_on_dates_validates(self):
+        result = Frequency(type="monthly", on_dates=[15, -1])
+        assert result.type == "monthly"
         assert result.on_dates == [15, -1]
 
 
@@ -63,82 +51,164 @@ class TestFrequencyDiscriminatedUnion:
 class TestFrequencySerialization:
     """model_dump(by_alias=True) produces correct output."""
 
-    def test_daily_interval_1_included(self):
-        d = DailyFrequency().model_dump(by_alias=True)
-        assert d["interval"] == 1
-        assert d == {"type": "daily", "interval": 1}
+    def test_daily_default_interval(self):
+        d = Frequency(type="daily").model_dump(by_alias=True)
+        assert d == {"type": "daily", "interval": 1, "onDays": None, "on": None, "onDates": None}
 
     def test_daily_interval_3_includes_interval(self):
-        d = DailyFrequency(interval=3).model_dump(by_alias=True)
+        d = Frequency(type="daily", interval=3).model_dump(by_alias=True)
         assert d["interval"] == 3
 
     def test_weekly_on_days_serializes_as_camel_case(self):
-        d = WeeklyOnDaysFrequency(on_days=["MO"]).model_dump(by_alias=True)
-        assert d == {"type": "weekly_on_days", "interval": 1, "onDays": ["MO"]}
+        d = Frequency(type="weekly", on_days=["MO"]).model_dump(by_alias=True)
+        assert d["onDays"] == ["MO"]
 
-    def test_weekly_bare_has_no_on_days_field(self):
-        d = WeeklyFrequency().model_dump(by_alias=True)
-        assert d == {"type": "weekly", "interval": 1}
-        assert "onDays" not in d
+    def test_weekly_bare_has_none_on_days(self):
+        d = Frequency(type="weekly").model_dump(by_alias=True)
+        assert d["onDays"] is None
 
-    def test_monthly_day_of_week_type_stays_snake_case(self):
-        """Pitfall 5: type value is a Literal, NOT camelCased."""
-        d = MonthlyDayOfWeekFrequency().model_dump(by_alias=True)
-        assert d["type"] == "monthly_day_of_week"
-        assert d["on"] is None
+    def test_monthly_with_on_type_stays_snake_case(self):
+        """Type value is a Literal, NOT camelCased."""
+        d = Frequency(type="monthly", on={"second": "tuesday"}).model_dump(by_alias=True)
+        assert d["type"] == "monthly"
+        assert d["on"] == {"second": "tuesday"}
 
-    def test_monthly_day_in_month_on_dates_is_none(self):
-        d = MonthlyDayInMonthFrequency().model_dump(by_alias=True)
-        assert d["onDates"] is None
+    def test_monthly_with_on_dates(self):
+        d = Frequency(type="monthly", on_dates=[15, -1]).model_dump(by_alias=True)
+        assert d["onDates"] == [15, -1]
 
     def test_minutely_with_interval(self):
-        d = MinutelyFrequency(interval=30).model_dump(by_alias=True)
-        assert d == {"type": "minutely", "interval": 30}
+        d = Frequency(type="minutely", interval=30).model_dump(by_alias=True)
+        assert d["type"] == "minutely"
+        assert d["interval"] == 30
 
-    def test_hourly_default_interval_included(self):
-        d = HourlyFrequency().model_dump(by_alias=True)
-        assert d == {"type": "hourly", "interval": 1}
+    def test_hourly_default_interval(self):
+        d = Frequency(type="hourly").model_dump(by_alias=True)
+        assert d["type"] == "hourly"
+        assert d["interval"] == 1
 
     def test_monthly_plain(self):
-        d = MonthlyFrequency().model_dump(by_alias=True)
-        assert d == {"type": "monthly", "interval": 1}
+        d = Frequency(type="monthly").model_dump(by_alias=True)
+        assert d["type"] == "monthly"
 
     def test_yearly_plain(self):
-        d = YearlyFrequency().model_dump(by_alias=True)
-        assert d == {"type": "yearly", "interval": 1}
+        d = Frequency(type="yearly").model_dump(by_alias=True)
+        assert d["type"] == "yearly"
 
 
-# ── Weekly Split (Gap Closure) ──────────────────────────────────────────
+# ── Frequency Cross-Type Validation ──────────────────────────────────────
+
+
+class TestFrequencyCrossTypeValidation:
+    """@model_validator rejects cross-type fields and mutual exclusion."""
+
+    def test_on_days_with_daily_raises(self):
+        with pytest.raises(ValidationError, match="on_days is not valid for type 'daily'"):
+            Frequency(type="daily", on_days=["MO"])
+
+    def test_on_with_weekly_raises(self):
+        with pytest.raises(ValidationError, match="on is not valid for type 'weekly'"):
+            Frequency(type="weekly", on={"first": "monday"})
+
+    def test_on_dates_with_daily_raises(self):
+        with pytest.raises(ValidationError, match="on_dates is not valid for type 'daily'"):
+            Frequency(type="daily", on_dates=[1])
+
+    def test_on_and_on_dates_mutual_exclusion(self):
+        with pytest.raises(ValidationError, match="mutually exclusive"):
+            Frequency(type="monthly", on={"first": "monday"}, on_dates=[1])
+
+    def test_on_days_with_weekly_succeeds(self):
+        f = Frequency(type="weekly", on_days=["MO"])
+        assert f.on_days == ["MO"]
+
+    def test_on_with_monthly_succeeds(self):
+        f = Frequency(type="monthly", on={"first": "monday"})
+        assert f.on == {"first": "monday"}
+
+    def test_on_dates_with_monthly_succeeds(self):
+        f = Frequency(type="monthly", on_dates=[1])
+        assert f.on_dates == [1]
+
+
+# ── RepetitionRule @field_serializer ──────────────────────────────────────
+
+
+class TestRepetitionRuleFieldSerializer:
+    """@field_serializer on RepetitionRule suppresses interval=1 via exclude_defaults."""
+
+    def test_interval_1_omitted_from_serialized_frequency(self):
+        rule = RepetitionRule(
+            frequency=Frequency(type="daily", interval=1),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+        )
+        d = rule.model_dump(by_alias=True)
+        assert d["frequency"] == {"type": "daily"}
+
+    def test_interval_3_included_in_serialized_frequency(self):
+        rule = RepetitionRule(
+            frequency=Frequency(type="daily", interval=3),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+        )
+        d = rule.model_dump(by_alias=True)
+        assert d["frequency"] == {"type": "daily", "interval": 3}
+
+    def test_weekly_with_on_days_serialized(self):
+        rule = RepetitionRule(
+            frequency=Frequency(type="weekly", on_days=["MO", "FR"]),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+        )
+        d = rule.model_dump(by_alias=True)
+        assert d["frequency"] == {"type": "weekly", "onDays": ["MO", "FR"]}
+
+
+# ── EndByOccurrences ge=1 ────────────────────────────────────────────────
+
+
+class TestEndByOccurrencesValidation:
+    """Field(ge=1) on EndByOccurrences.occurrences."""
+
+    def test_zero_raises(self):
+        with pytest.raises(ValidationError, match="greater than or equal to 1"):
+            EndByOccurrences(occurrences=0)
+
+    def test_one_is_valid(self):
+        e = EndByOccurrences(occurrences=1)
+        assert e.occurrences == 1
+
+
+# ── Weekly Split (Flat Model) ────────────────────────────────────────────
 
 
 class TestWeeklySplit:
-    """WeeklyFrequency (bare) vs WeeklyOnDaysFrequency (with days)."""
+    """Weekly bare vs weekly with on_days using flat model."""
 
-    def test_bare_weekly_has_no_on_days_field(self):
-        """Critical regression test: bare weekly must NOT serialize onDays."""
-        d = WeeklyFrequency().model_dump(by_alias=True)
-        assert d == {"type": "weekly", "interval": 1}
-        assert "onDays" not in d
+    def test_bare_weekly_has_none_on_days(self):
+        d = Frequency(type="weekly").model_dump(by_alias=True)
+        assert d["onDays"] is None
 
-    def test_weekly_on_days_serializes(self):
-        d = WeeklyOnDaysFrequency(on_days=["MO"]).model_dump(by_alias=True)
-        assert d == {"type": "weekly_on_days", "interval": 1, "onDays": ["MO"]}
+    def test_weekly_with_on_days_serializes(self):
+        d = Frequency(type="weekly", on_days=["MO"]).model_dump(by_alias=True)
+        assert d["onDays"] == ["MO"]
 
     def test_parse_bare_weekly(self):
         result = parse_rrule("FREQ=WEEKLY")
-        assert isinstance(result, WeeklyFrequency)
-        assert not isinstance(result, WeeklyOnDaysFrequency)
+        assert result.type == "weekly"
+        assert result.on_days is None
 
     def test_parse_weekly_with_byday(self):
         result = parse_rrule("FREQ=WEEKLY;BYDAY=MO,WE")
-        assert isinstance(result, WeeklyOnDaysFrequency)
+        assert result.type == "weekly"
         assert result.on_days == ["MO", "WE"]
 
     def test_build_bare_weekly(self):
-        assert build_rrule(WeeklyFrequency()) == "FREQ=WEEKLY"
+        assert build_rrule(Frequency(type="weekly")) == "FREQ=WEEKLY"
 
     def test_build_weekly_on_days(self):
-        result = build_rrule(WeeklyOnDaysFrequency(on_days=["MO", "WE"]))
+        result = build_rrule(Frequency(type="weekly", on_days=["MO", "WE"]))
         assert result == "FREQ=WEEKLY;BYDAY=MO,WE"
 
     def test_round_trip_bare(self):
@@ -192,7 +262,7 @@ class TestBasedOnEnum:
 class TestRepetitionRuleModel:
     def test_full_rule_validates(self):
         rule = RepetitionRule(
-            frequency=DailyFrequency(interval=3),
+            frequency=Frequency(type="daily", interval=3),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
             end=EndByOccurrences(occurrences=10),
@@ -204,7 +274,7 @@ class TestRepetitionRuleModel:
 
     def test_no_end_serializes_as_none(self):
         rule = RepetitionRule(
-            frequency=WeeklyOnDaysFrequency(on_days=["MO", "FR"]),
+            frequency=Frequency(type="weekly", on_days=["MO", "FR"]),
             schedule=Schedule.FROM_COMPLETION,
             based_on=BasedOn.DEFER_DATE,
         )
@@ -213,7 +283,7 @@ class TestRepetitionRuleModel:
 
     def test_based_on_serializes_as_camel_case(self):
         rule = RepetitionRule(
-            frequency=DailyFrequency(),
+            frequency=Frequency(type="daily"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.PLANNED_DATE,
         )
@@ -221,69 +291,70 @@ class TestRepetitionRuleModel:
         assert "basedOn" in d
         assert d["basedOn"] == "planned_date"
 
-    def test_frequency_interval_1_included_in_nested_dump(self):
+    def test_frequency_interval_1_excluded_via_serializer(self):
+        """@field_serializer uses exclude_defaults -- interval=1 omitted."""
         rule = RepetitionRule(
-            frequency=DailyFrequency(),
+            frequency=Frequency(type="daily"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
         )
         d = rule.model_dump(by_alias=True)
-        assert d["frequency"]["interval"] == 1
+        assert "interval" not in d["frequency"]
 
 
 # ── Parser: Frequency Types ──────────────────────────────────────────────
 
 
 class TestParseRruleFrequencyTypes:
-    """parse_rrule returns correct Frequency model for each frequency type."""
+    """parse_rrule returns correct flat Frequency for each type."""
 
     def test_daily(self):
         result = parse_rrule("FREQ=DAILY")
-        assert result == DailyFrequency()
+        assert result == Frequency(type="daily")
 
     def test_weekly_bare(self):
         result = parse_rrule("FREQ=WEEKLY")
-        assert result == WeeklyFrequency()
+        assert result == Frequency(type="weekly")
 
     def test_weekly_with_byday(self):
         result = parse_rrule("FREQ=WEEKLY;BYDAY=MO,WE,FR")
-        assert result == WeeklyOnDaysFrequency(on_days=["MO", "WE", "FR"])
+        assert result == Frequency(type="weekly", on_days=["MO", "WE", "FR"])
 
     def test_monthly_plain(self):
         result = parse_rrule("FREQ=MONTHLY")
-        assert result == MonthlyFrequency()
+        assert result == Frequency(type="monthly")
 
     def test_monthly_day_of_week(self):
         result = parse_rrule("FREQ=MONTHLY;BYDAY=2TU")
-        assert result == MonthlyDayOfWeekFrequency(on={"second": "tuesday"})
+        assert result == Frequency(type="monthly", on={"second": "tuesday"})
 
     def test_monthly_last_friday(self):
         result = parse_rrule("FREQ=MONTHLY;BYDAY=-1FR")
-        assert result == MonthlyDayOfWeekFrequency(on={"last": "friday"})
+        assert result == Frequency(type="monthly", on={"last": "friday"})
 
     def test_monthly_day_in_month(self):
         result = parse_rrule("FREQ=MONTHLY;BYMONTHDAY=15")
-        assert result == MonthlyDayInMonthFrequency(on_dates=[15])
+        assert result == Frequency(type="monthly", on_dates=[15])
 
     def test_monthly_last_day(self):
         result = parse_rrule("FREQ=MONTHLY;BYMONTHDAY=-1")
-        assert result == MonthlyDayInMonthFrequency(on_dates=[-1])
+        assert result == Frequency(type="monthly", on_dates=[-1])
 
     def test_monthly_bymonthday_multi_values(self):
         result = parse_rrule("FREQ=MONTHLY;BYMONTHDAY=1,15,-1")
-        assert result == MonthlyDayInMonthFrequency(on_dates=[1, 15, -1])
+        assert result == Frequency(type="monthly", on_dates=[1, 15, -1])
 
     def test_yearly(self):
         result = parse_rrule("FREQ=YEARLY")
-        assert result == YearlyFrequency()
+        assert result == Frequency(type="yearly")
 
     def test_minutely(self):
         result = parse_rrule("FREQ=MINUTELY;INTERVAL=30")
-        assert result == MinutelyFrequency(interval=30)
+        assert result == Frequency(type="minutely", interval=30)
 
     def test_hourly(self):
         result = parse_rrule("FREQ=HOURLY;INTERVAL=2")
-        assert result == HourlyFrequency(interval=2)
+        assert result == Frequency(type="hourly", interval=2)
 
 
 # ── Parser: Interval ─────────────────────────────────────────────────────
@@ -364,36 +435,36 @@ class TestParseRruleErrors:
 
 
 class TestParseRruleBysetpos:
-    """BYSETPOS with multi-day groups parses to MonthlyDayOfWeekFrequency."""
+    """BYSETPOS with multi-day groups parses to monthly with on field."""
 
     def test_first_weekend_day(self):
         result = parse_rrule("FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=1")
-        assert result == MonthlyDayOfWeekFrequency(on={"first": "weekend_day"})
+        assert result == Frequency(type="monthly", on={"first": "weekend_day"})
 
     def test_second_weekday(self):
         result = parse_rrule("FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=2")
-        assert result == MonthlyDayOfWeekFrequency(on={"second": "weekday"})
+        assert result == Frequency(type="monthly", on={"second": "weekday"})
 
     def test_last_weekend_day_sa_su_order(self):
         """SA,SU order also recognized as weekend_day group."""
         result = parse_rrule("FREQ=MONTHLY;BYDAY=SA,SU;BYSETPOS=-1")
-        assert result == MonthlyDayOfWeekFrequency(on={"last": "weekend_day"})
+        assert result == Frequency(type="monthly", on={"last": "weekend_day"})
 
     def test_fifth_weekday(self):
         result = parse_rrule("FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=5")
-        assert result == MonthlyDayOfWeekFrequency(on={"fifth": "weekday"})
+        assert result == Frequency(type="monthly", on={"fifth": "weekday"})
 
     def test_third_weekend_day(self):
         result = parse_rrule("FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=3")
-        assert result == MonthlyDayOfWeekFrequency(on={"third": "weekend_day"})
+        assert result == Frequency(type="monthly", on={"third": "weekend_day"})
 
     def test_fourth_weekday(self):
         result = parse_rrule("FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=4")
-        assert result == MonthlyDayOfWeekFrequency(on={"fourth": "weekday"})
+        assert result == Frequency(type="monthly", on={"fourth": "weekday"})
 
     def test_with_interval(self):
         result = parse_rrule("FREQ=MONTHLY;INTERVAL=2;BYDAY=SU,SA;BYSETPOS=1")
-        assert result == MonthlyDayOfWeekFrequency(interval=2, on={"first": "weekend_day"})
+        assert result == Frequency(type="monthly", interval=2, on={"first": "weekend_day"})
 
 
 # ── Builder: BYSETPOS ───────────────────────────────────────────────────
@@ -403,15 +474,15 @@ class TestBuildRruleBysetpos:
     """Builder emits BYSETPOS form for day group values (weekday/weekend_day)."""
 
     def test_first_weekend_day(self):
-        result = build_rrule(MonthlyDayOfWeekFrequency(on={"first": "weekend_day"}))
+        result = build_rrule(Frequency(type="monthly", on={"first": "weekend_day"}))
         assert result == "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=1"
 
     def test_second_weekday(self):
-        result = build_rrule(MonthlyDayOfWeekFrequency(on={"second": "weekday"}))
+        result = build_rrule(Frequency(type="monthly", on={"second": "weekday"}))
         assert result == "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=2"
 
     def test_last_weekend_day(self):
-        result = build_rrule(MonthlyDayOfWeekFrequency(on={"last": "weekend_day"}))
+        result = build_rrule(Frequency(type="monthly", on={"last": "weekend_day"}))
         assert result == "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=-1"
 
 
@@ -420,56 +491,58 @@ class TestBuildRruleBysetpos:
 
 class TestBuildRrule:
     def test_daily(self):
-        assert build_rrule(DailyFrequency()) == "FREQ=DAILY"
+        assert build_rrule(Frequency(type="daily")) == "FREQ=DAILY"
 
     def test_daily_with_interval(self):
-        assert build_rrule(DailyFrequency(interval=3)) == "FREQ=DAILY;INTERVAL=3"
+        assert build_rrule(Frequency(type="daily", interval=3)) == "FREQ=DAILY;INTERVAL=3"
 
     def test_weekly_with_byday(self):
-        result = build_rrule(WeeklyOnDaysFrequency(on_days=["MO", "WE", "FR"]))
+        result = build_rrule(Frequency(type="weekly", on_days=["MO", "WE", "FR"]))
         assert result == "FREQ=WEEKLY;BYDAY=MO,WE,FR"
 
     def test_weekly_bare(self):
-        assert build_rrule(WeeklyFrequency()) == "FREQ=WEEKLY"
+        assert build_rrule(Frequency(type="weekly")) == "FREQ=WEEKLY"
 
     def test_monthly_plain(self):
-        assert build_rrule(MonthlyFrequency()) == "FREQ=MONTHLY"
+        assert build_rrule(Frequency(type="monthly")) == "FREQ=MONTHLY"
 
     def test_monthly_day_of_week(self):
-        result = build_rrule(MonthlyDayOfWeekFrequency(on={"second": "tuesday"}))
+        result = build_rrule(Frequency(type="monthly", on={"second": "tuesday"}))
         assert result == "FREQ=MONTHLY;BYDAY=2TU"
 
     def test_monthly_last_friday(self):
-        result = build_rrule(MonthlyDayOfWeekFrequency(on={"last": "friday"}))
+        result = build_rrule(Frequency(type="monthly", on={"last": "friday"}))
         assert result == "FREQ=MONTHLY;BYDAY=-1FR"
 
     def test_monthly_day_in_month(self):
-        result = build_rrule(MonthlyDayInMonthFrequency(on_dates=[15]))
+        result = build_rrule(Frequency(type="monthly", on_dates=[15]))
         assert result == "FREQ=MONTHLY;BYMONTHDAY=15"
 
     def test_monthly_last_day(self):
-        result = build_rrule(MonthlyDayInMonthFrequency(on_dates=[-1]))
+        result = build_rrule(Frequency(type="monthly", on_dates=[-1]))
         assert result == "FREQ=MONTHLY;BYMONTHDAY=-1"
 
     def test_monthly_day_in_month_multi_values(self):
-        result = build_rrule(MonthlyDayInMonthFrequency(on_dates=[1, 15, -1]))
+        result = build_rrule(Frequency(type="monthly", on_dates=[1, 15, -1]))
         assert result == "FREQ=MONTHLY;BYMONTHDAY=1,15,-1"
 
     def test_yearly(self):
-        assert build_rrule(YearlyFrequency()) == "FREQ=YEARLY"
+        assert build_rrule(Frequency(type="yearly")) == "FREQ=YEARLY"
 
     def test_minutely(self):
-        assert build_rrule(MinutelyFrequency(interval=30)) == "FREQ=MINUTELY;INTERVAL=30"
+        assert build_rrule(Frequency(type="minutely", interval=30)) == "FREQ=MINUTELY;INTERVAL=30"
 
     def test_hourly(self):
-        assert build_rrule(HourlyFrequency(interval=2)) == "FREQ=HOURLY;INTERVAL=2"
+        assert build_rrule(Frequency(type="hourly", interval=2)) == "FREQ=HOURLY;INTERVAL=2"
 
     def test_with_end_count(self):
-        result = build_rrule(WeeklyFrequency(), end=EndByOccurrences(occurrences=10))
+        result = build_rrule(Frequency(type="weekly"), end=EndByOccurrences(occurrences=10))
         assert result == "FREQ=WEEKLY;COUNT=10"
 
     def test_with_end_until(self):
-        result = build_rrule(MonthlyFrequency(), end=EndByDate(date="2026-12-31T00:00:00Z"))
+        result = build_rrule(
+            Frequency(type="monthly"), end=EndByDate(date="2026-12-31T00:00:00Z")
+        )
         assert result == "FREQ=MONTHLY;UNTIL=20261231T000000Z"
 
 

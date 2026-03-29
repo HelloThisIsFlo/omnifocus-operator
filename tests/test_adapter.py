@@ -13,9 +13,8 @@ import pytest
 
 from omnifocus_operator.bridge.adapter import adapt_snapshot
 from omnifocus_operator.models.repetition_rule import (
-    DailyFrequency,
     EndByOccurrences,
-    WeeklyOnDaysFrequency,
+    Frequency,
 )
 
 
@@ -424,7 +423,7 @@ class TestAdaptRepetitionRule:
         snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
         adapt_snapshot(snapshot)
         rule = raw["repetitionRule"]
-        assert rule["frequency"] == DailyFrequency(interval=7)
+        assert rule["frequency"] == Frequency(type="daily", interval=7)
         assert rule["schedule"] == "regularly"
         assert rule["basedOn"] == "due_date"
 
@@ -441,7 +440,7 @@ class TestAdaptRepetitionRule:
         snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
         adapt_snapshot(snapshot)
         rule = raw["repetitionRule"]
-        assert rule["frequency"] == WeeklyOnDaysFrequency(on_days=["MO", "WE", "FR"])
+        assert rule["frequency"] == Frequency(type="weekly", on_days=["MO", "WE", "FR"])
         assert rule["schedule"] == "regularly_with_catch_up"
         assert rule["basedOn"] == "defer_date"
 
@@ -458,7 +457,7 @@ class TestAdaptRepetitionRule:
         snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
         adapt_snapshot(snapshot)
         rule = raw["repetitionRule"]
-        assert rule["frequency"] == DailyFrequency(interval=3)
+        assert rule["frequency"] == Frequency(type="daily", interval=3)
         assert rule["schedule"] == "from_completion"
         assert rule["basedOn"] == "defer_date"
 
@@ -476,7 +475,7 @@ class TestAdaptRepetitionRule:
         adapt_snapshot(snapshot)
         rule = raw["repetitionRule"]
         assert rule["schedule"] == "from_completion"
-        assert rule["frequency"] == DailyFrequency(interval=3)
+        assert rule["frequency"] == Frequency(type="daily", interval=3)
 
     def test_end_condition_parsed(self) -> None:
         """RRULE with COUNT produces end condition in output."""

@@ -1,7 +1,8 @@
 """Tests for repetition rule contract models.
 
 Tests RepetitionRuleAddSpec, RepetitionRuleEditSpec, RepetitionRuleRepoPayload,
-and their integration into AddTaskCommand/EditTaskCommand and repo payload models.
+FrequencyAddSpec, FrequencyEditSpec, and their integration into
+AddTaskCommand/EditTaskCommand and repo payload models.
 """
 
 from __future__ import annotations
@@ -9,7 +10,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from omnifocus_operator.contracts.base import is_set
+from omnifocus_operator.contracts.base import UNSET, is_set
 from omnifocus_operator.contracts.use_cases.add_task import (
     AddTaskCommand,
     AddTaskRepoPayload,
@@ -19,23 +20,17 @@ from omnifocus_operator.contracts.use_cases.edit_task import (
     EditTaskRepoPayload,
 )
 from omnifocus_operator.contracts.use_cases.repetition_rule import (
+    FrequencyAddSpec,
+    FrequencyEditSpec,
     RepetitionRuleAddSpec,
     RepetitionRuleEditSpec,
     RepetitionRuleRepoPayload,
 )
 from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
-    DailyFrequency,
     EndByDate,
     EndByOccurrences,
-    HourlyFrequency,
-    MinutelyFrequency,
-    MonthlyDayInMonthFrequency,
-    MonthlyDayOfWeekFrequency,
-    MonthlyFrequency,
-    WeeklyFrequency,
-    WeeklyOnDaysFrequency,
-    YearlyFrequency,
+    Frequency,
 )
 
 
@@ -44,7 +39,7 @@ class TestRepetitionRuleAddSpec:
 
     def test_valid_minimal(self) -> None:
         spec = RepetitionRuleAddSpec(
-            frequency=DailyFrequency(),
+            frequency=FrequencyAddSpec(type="daily"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
         )
@@ -63,20 +58,20 @@ class TestRepetitionRuleAddSpec:
     def test_missing_schedule_raises(self) -> None:
         with pytest.raises(ValidationError):
             RepetitionRuleAddSpec(
-                frequency=DailyFrequency(),
+                frequency=FrequencyAddSpec(type="daily"),
                 based_on=BasedOn.DUE_DATE,
             )
 
     def test_missing_based_on_raises(self) -> None:
         with pytest.raises(ValidationError):
             RepetitionRuleAddSpec(
-                frequency=DailyFrequency(),
+                frequency=FrequencyAddSpec(type="daily"),
                 schedule=Schedule.REGULARLY,
             )
 
     def test_with_end_by_date(self) -> None:
         spec = RepetitionRuleAddSpec(
-            frequency=DailyFrequency(),
+            frequency=FrequencyAddSpec(type="daily"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
             end=EndByDate(date="2026-12-31T00:00:00Z"),
@@ -86,7 +81,7 @@ class TestRepetitionRuleAddSpec:
 
     def test_end_none_is_valid(self) -> None:
         spec = RepetitionRuleAddSpec(
-            frequency=DailyFrequency(),
+            frequency=FrequencyAddSpec(type="daily"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
             end=None,
@@ -96,7 +91,7 @@ class TestRepetitionRuleAddSpec:
     def test_extra_field_rejected(self) -> None:
         with pytest.raises(ValidationError, match="extra"):
             RepetitionRuleAddSpec(
-                frequency=DailyFrequency(),
+                frequency=FrequencyAddSpec(type="daily"),
                 schedule=Schedule.REGULARLY,
                 based_on=BasedOn.DUE_DATE,
                 extra_field="x",
@@ -105,35 +100,117 @@ class TestRepetitionRuleAddSpec:
     @pytest.mark.parametrize(
         "frequency",
         [
-            MinutelyFrequency(),
-            HourlyFrequency(),
-            DailyFrequency(),
-            WeeklyFrequency(),
-            WeeklyOnDaysFrequency(on_days=["MO", "WE"]),
-            MonthlyFrequency(),
-            MonthlyDayOfWeekFrequency(on={"second": "tuesday"}),
-            MonthlyDayInMonthFrequency(on_dates=[1, 15]),
-            YearlyFrequency(),
+            FrequencyAddSpec(type="minutely"),
+            FrequencyAddSpec(type="hourly"),
+            FrequencyAddSpec(type="daily"),
+            FrequencyAddSpec(type="weekly"),
+            FrequencyAddSpec(type="weekly", on_days=["MO", "WE"]),
+            FrequencyAddSpec(type="monthly"),
+            FrequencyAddSpec(type="monthly", on={"second": "tuesday"}),
+            FrequencyAddSpec(type="monthly", on_dates=[1, 15]),
+            FrequencyAddSpec(type="yearly"),
         ],
         ids=[
             "minutely",
             "hourly",
             "daily",
             "weekly",
-            "weekly_on_days",
+            "weekly_with_days",
             "monthly",
-            "monthly_day_of_week",
-            "monthly_day_in_month",
+            "monthly_with_on",
+            "monthly_with_on_dates",
             "yearly",
         ],
     )
-    def test_all_9_frequency_types_valid(self, frequency: object) -> None:
+    def test_all_6_frequency_types_valid(self, frequency: FrequencyAddSpec) -> None:
         spec = RepetitionRuleAddSpec(
             frequency=frequency,
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
         )
         assert spec.frequency.type == frequency.type
+
+
+class TestFrequencyAddSpecValidation:
+    """FrequencyAddSpec has the same validators as Frequency."""
+
+    def test_cross_type_on_days_with_daily_raises(self) -> None:
+        with pytest.raises(ValidationError, match="on_days is not valid for type 'daily'"):
+            FrequencyAddSpec(type="daily", on_days=["MO"])
+
+    def test_cross_type_on_with_weekly_raises(self) -> None:
+        with pytest.raises(ValidationError, match="on is not valid for type 'weekly'"):
+            FrequencyAddSpec(type="weekly", on={"first": "monday"})
+
+    def test_mutual_exclusion_raises(self) -> None:
+        with pytest.raises(ValidationError, match="mutually exclusive"):
+            FrequencyAddSpec(type="monthly", on={"first": "monday"}, on_dates=[1])
+
+    def test_extra_field_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="extra"):
+            FrequencyAddSpec(type="daily", bogus="x")
+
+
+class TestFrequencyEditSpec:
+    """FrequencyEditSpec is a pure patch container with no validators."""
+
+    def test_all_unset_is_valid(self) -> None:
+        spec = FrequencyEditSpec()
+        assert not is_set(spec.type)
+        assert not is_set(spec.interval)
+        assert not is_set(spec.on_days)
+        assert not is_set(spec.on)
+        assert not is_set(spec.on_dates)
+
+    def test_type_only(self) -> None:
+        spec = FrequencyEditSpec(type="weekly")
+        assert spec.type == "weekly"
+        assert not is_set(spec.interval)
+
+    def test_interval_only(self) -> None:
+        spec = FrequencyEditSpec(interval=5)
+        assert spec.interval == 5
+        assert not is_set(spec.type)
+
+    def test_on_days_set(self) -> None:
+        spec = FrequencyEditSpec(on_days=["MO", "FR"])
+        assert spec.on_days == ["MO", "FR"]
+
+    def test_on_days_clear(self) -> None:
+        """PatchOrClear: None means clear on_days."""
+        spec = FrequencyEditSpec(on_days=None)
+        assert is_set(spec.on_days)
+        assert spec.on_days is None
+
+    def test_on_set(self) -> None:
+        spec = FrequencyEditSpec(on={"first": "monday"})
+        assert spec.on == {"first": "monday"}
+
+    def test_on_clear(self) -> None:
+        spec = FrequencyEditSpec(on=None)
+        assert is_set(spec.on)
+        assert spec.on is None
+
+    def test_on_dates_set(self) -> None:
+        spec = FrequencyEditSpec(on_dates=[1, 15])
+        assert spec.on_dates == [1, 15]
+
+    def test_on_dates_clear(self) -> None:
+        spec = FrequencyEditSpec(on_dates=None)
+        assert is_set(spec.on_dates)
+        assert spec.on_dates is None
+
+    def test_no_cross_type_validation(self) -> None:
+        """FrequencyEditSpec is a patch container -- can set on_days without type."""
+        spec = FrequencyEditSpec(on_days=["MO"])
+        assert spec.on_days == ["MO"]
+        assert not is_set(spec.type)
+
+    def test_no_mutual_exclusion_validation(self) -> None:
+        """FrequencyEditSpec allows both on and on_dates (service layer validates after merge)."""
+        spec = FrequencyEditSpec(on={"first": "monday"}, on_dates=[1])
+        assert spec.on == {"first": "monday"}
+        assert spec.on_dates == [1]
 
 
 class TestRepetitionRuleEditSpec:
@@ -154,8 +231,8 @@ class TestRepetitionRuleEditSpec:
         assert not is_set(spec.end)
 
     def test_frequency_only(self) -> None:
-        spec = RepetitionRuleEditSpec(frequency=DailyFrequency(interval=5))
-        assert spec.frequency.type == "daily"
+        spec = RepetitionRuleEditSpec(frequency=FrequencyEditSpec(interval=5))
+        assert is_set(spec.frequency)
         assert spec.frequency.interval == 5
         assert not is_set(spec.schedule)
 
@@ -207,7 +284,7 @@ class TestCommandIntegration:
         cmd = AddTaskCommand(
             name="test",
             repetition_rule=RepetitionRuleAddSpec(
-                frequency=DailyFrequency(),
+                frequency=FrequencyAddSpec(type="daily"),
                 schedule=Schedule.REGULARLY,
                 based_on=BasedOn.DUE_DATE,
             ),

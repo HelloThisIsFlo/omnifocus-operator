@@ -1,7 +1,7 @@
 """RRULE builder for OmniFocus repetition rules.
 
-Inverse of the parser: takes a Frequency model instance and produces
-an RRULE string.
+Inverse of the parser: takes a flat Frequency model instance and produces
+an RRULE string. Uses type string checks (not isinstance) for dispatch.
 
 Public function:
     build_rrule(frequency, end=None) -> str
@@ -13,9 +13,6 @@ from omnifocus_operator.models.repetition_rule import (
     EndByDate,
     EndByOccurrences,
     Frequency,
-    MonthlyDayInMonthFrequency,
-    MonthlyDayOfWeekFrequency,
-    WeeklyOnDaysFrequency,
 )
 from omnifocus_operator.rrule.parser import parse_rrule
 
@@ -50,10 +47,7 @@ _TYPE_TO_FREQ: dict[str, str] = {
     "hourly": "HOURLY",
     "daily": "DAILY",
     "weekly": "WEEKLY",
-    "weekly_on_days": "WEEKLY",
     "monthly": "MONTHLY",
-    "monthly_day_of_week": "MONTHLY",
-    "monthly_day_in_month": "MONTHLY",
     "yearly": "YEARLY",
 }
 
@@ -65,12 +59,12 @@ def build_rrule(
     frequency: Frequency,
     end: EndByDate | EndByOccurrences | None = None,
 ) -> str:
-    """Build an RRULE string from a Frequency model and optional end condition.
+    """Build an RRULE string from a flat Frequency model and optional end condition.
 
     Includes round-trip validation: parse_rrule(result) must succeed.
 
     Args:
-        frequency: Frequency model instance (any of the 9 subtypes)
+        frequency: Flat Frequency model instance (one of 6 types)
         end: Optional EndByDate or EndByOccurrences model
 
     Returns:
@@ -91,11 +85,11 @@ def build_rrule(
         parts.append(f"INTERVAL={frequency.interval}")
 
     # Type-specific parts
-    if isinstance(frequency, WeeklyOnDaysFrequency):
+    if frequency.type == "weekly" and frequency.on_days:
         parts.append(f"BYDAY={','.join(frequency.on_days)}")
-    elif isinstance(frequency, MonthlyDayOfWeekFrequency) and frequency.on:
+    elif frequency.type == "monthly" and frequency.on:
         parts.append(_build_byday_positional(frequency.on))
-    elif isinstance(frequency, MonthlyDayInMonthFrequency) and frequency.on_dates:
+    elif frequency.type == "monthly" and frequency.on_dates:
         parts.append(f"BYMONTHDAY={','.join(str(d) for d in frequency.on_dates)}")
 
     # End condition

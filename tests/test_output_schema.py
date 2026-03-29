@@ -95,7 +95,7 @@ def _make_repetition_rule_dict(variant: str) -> dict[str, Any]:
         },
         "weekly_with_days": {
             "frequency": {
-                "type": "weekly_on_days",
+                "type": "weekly",
                 "interval": 1,
                 "onDays": ["MO", "WE", "FR"],
             },
@@ -105,7 +105,7 @@ def _make_repetition_rule_dict(variant: str) -> dict[str, Any]:
         },
         "monthly_day_of_week": {
             "frequency": {
-                "type": "monthly_day_of_week",
+                "type": "monthly",
                 "interval": 1,
                 "on": {"second": "tuesday"},
             },
@@ -115,7 +115,7 @@ def _make_repetition_rule_dict(variant: str) -> dict[str, Any]:
         },
         "monthly_day_in_month": {
             "frequency": {
-                "type": "monthly_day_in_month",
+                "type": "monthly",
                 "interval": 2,
                 "onDates": [1, 15, -1],
             },
@@ -349,21 +349,20 @@ class TestSchemaValidation:
 class TestUnionRegressionGuard:
     """Union types must not degrade to {"type":"object","additionalProperties":true}."""
 
-    def test_frequency_branches_have_properties_and_const(self) -> None:
-        """Each Frequency union branch must expose properties with a const type discriminator."""
+    def test_frequency_has_properties_and_type_enum(self) -> None:
+        """Flat Frequency model must expose properties with type as enum of 6 values."""
         schema = TypeAdapter(Frequency).json_schema(mode="serialization")
-        defs = schema.get("$defs", {})
 
-        assert len(defs) == 9, f"Expected 9 $defs branches, got {len(defs)}: {list(defs)}"
-
-        for name, branch in defs.items():
-            assert "properties" in branch, (
-                f"${name} lost its properties -- likely erased by @model_serializer. Got: {branch}"
-            )
-            type_prop = branch["properties"].get("type", {})
-            assert "const" in type_prop, (
-                f"${name}.type missing 'const' constraint -- discriminator gone. Got: {type_prop}"
-            )
+        assert "properties" in schema, (
+            f"Frequency lost its properties -- likely erased by @model_serializer. Got: {schema}"
+        )
+        type_prop = schema["properties"].get("type", {})
+        assert "enum" in type_prop, (
+            f"Frequency.type missing 'enum' constraint. Got: {type_prop}"
+        )
+        assert len(type_prop["enum"]) == 6, (
+            f"Expected 6 frequency types, got {len(type_prop['enum'])}: {type_prop['enum']}"
+        )
 
     def test_end_condition_branches_have_properties(self) -> None:
         """EndCondition union branches must have properties, not just {type: object}."""

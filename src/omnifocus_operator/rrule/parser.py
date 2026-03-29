@@ -1,8 +1,8 @@
 """RRULE parser for OmniFocus repetition rule strings.
 
-Parses the OmniFocus RRULE subset into Pydantic model instances matching
-the Frequency union type. Supports all 9 frequency types including
-MINUTELY, HOURLY, and BYDAY positional prefix parsing.
+Parses the OmniFocus RRULE subset into flat Frequency model instances
+with 6 frequency types. Supports MINUTELY, HOURLY, and BYDAY positional
+prefix parsing.
 
 Public functions:
     parse_rrule(rule_string) -> Frequency model instance
@@ -14,18 +14,9 @@ from __future__ import annotations
 import re
 
 from omnifocus_operator.models.repetition_rule import (
-    DailyFrequency,
     EndByDate,
     EndByOccurrences,
     Frequency,
-    HourlyFrequency,
-    MinutelyFrequency,
-    MonthlyDayInMonthFrequency,
-    MonthlyDayOfWeekFrequency,
-    MonthlyFrequency,
-    WeeklyFrequency,
-    WeeklyOnDaysFrequency,
-    YearlyFrequency,
 )
 
 # ── Mapping Tables ───────────────────────────────────────────────────────
@@ -71,16 +62,16 @@ _VALID_FREQS = {
 
 
 def parse_rrule(rule_string: str) -> Frequency:
-    """Parse an RRULE string into a Frequency model instance.
+    """Parse an RRULE string into a flat Frequency model instance.
 
-    Returns a Pydantic model matching one of the 9 frequency subtypes.
+    Returns a Frequency(type=...) with optional specialization fields.
     Raises ValueError with an educational message on invalid input.
 
     Examples:
         >>> parse_rrule("FREQ=DAILY")
-        DailyFrequency(interval=1)
+        Frequency(type='daily', interval=1)
         >>> parse_rrule("FREQ=WEEKLY;BYDAY=MO,WE,FR")
-        WeeklyOnDaysFrequency(interval=1, on_days=["MO", "WE", "FR"])
+        Frequency(type='weekly', interval=1, on_days=['MO', 'WE', 'FR'])
     """
     if not rule_string or not rule_string.strip():
         raise ValueError("RRULE string must not be empty")
@@ -98,20 +89,20 @@ def parse_rrule(rule_string: str) -> Frequency:
     interval = int(parts.get("INTERVAL", "1"))
 
     if freq == "MINUTELY":
-        return MinutelyFrequency(interval=interval)
+        return Frequency(type="minutely", interval=interval)
     elif freq == "HOURLY":
-        return HourlyFrequency(interval=interval)
+        return Frequency(type="hourly", interval=interval)
     elif freq == "DAILY":
-        return DailyFrequency(interval=interval)
+        return Frequency(type="daily", interval=interval)
     elif freq == "WEEKLY":
         if "BYDAY" in parts:
             on_days = parts["BYDAY"].split(",")
-            return WeeklyOnDaysFrequency(interval=interval, on_days=on_days)
-        return WeeklyFrequency(interval=interval)
+            return Frequency(type="weekly", interval=interval, on_days=on_days)
+        return Frequency(type="weekly", interval=interval)
     elif freq == "MONTHLY":
         return _parse_monthly(parts, interval)
     else:  # YEARLY
-        return YearlyFrequency(interval=interval)
+        return Frequency(type="yearly", interval=interval)
 
 
 def parse_end_condition(rule_string: str) -> EndByDate | EndByOccurrences | None:
@@ -170,7 +161,7 @@ def _validate_end_exclusion(parts: dict[str, str]) -> None:
 def _parse_monthly(
     parts: dict[str, str],
     interval: int,
-) -> MonthlyFrequency | MonthlyDayOfWeekFrequency | MonthlyDayInMonthFrequency:
+) -> Frequency:
     """Parse MONTHLY frequency with optional BYDAY, BYSETPOS, or BYMONTHDAY."""
     if "BYDAY" in parts and "BYSETPOS" in parts:
         return _parse_monthly_bysetpos(parts["BYDAY"], parts["BYSETPOS"], interval)
@@ -178,13 +169,13 @@ def _parse_monthly(
         return _parse_monthly_byday(parts["BYDAY"], interval)
     if "BYMONTHDAY" in parts:
         return _parse_monthly_bymonthday(parts["BYMONTHDAY"], interval)
-    return MonthlyFrequency(interval=interval)
+    return Frequency(type="monthly", interval=interval)
 
 
 def _parse_monthly_byday(
     byday_value: str,
     interval: int,
-) -> MonthlyDayOfWeekFrequency:
+) -> Frequency:
     """Parse BYDAY with required positional prefix for MONTHLY context.
 
     D-05: Only positional prefix form accepted (e.g., 2TU, -1FR).
@@ -213,7 +204,8 @@ def _parse_monthly_byday(
         )
 
     day_name = _DAY_CODE_TO_NAME[day_code]
-    return MonthlyDayOfWeekFrequency(
+    return Frequency(
+        type="monthly",
         interval=interval,
         on={ordinal: day_name},
     )
@@ -223,7 +215,7 @@ def _parse_monthly_bysetpos(
     byday_value: str,
     bysetpos_value: str,
     interval: int,
-) -> MonthlyDayOfWeekFrequency:
+) -> Frequency:
     """Parse BYDAY + BYSETPOS for multi-day positional monthly rules.
 
     Supports two day groups from the OmniFocus monthly repeat picker:
@@ -246,7 +238,8 @@ def _parse_monthly_bysetpos(
             f"Invalid BYSETPOS position {pos}. Valid positions: 1-5 (first-fifth) or -1 (last)"
         )
 
-    return MonthlyDayOfWeekFrequency(
+    return Frequency(
+        type="monthly",
         interval=interval,
         on={ordinal: day_group_name},
     )
@@ -255,8 +248,8 @@ def _parse_monthly_bysetpos(
 def _parse_monthly_bymonthday(
     bymonthday_value: str,
     interval: int,
-) -> MonthlyDayInMonthFrequency:
-    """Parse BYMONTHDAY for monthly_day_in_month frequency.
+) -> Frequency:
+    """Parse BYMONTHDAY for monthly frequency with specific dates.
 
     Supports comma-separated values per RFC 5545 (e.g., "1,15,-1").
     """
@@ -266,7 +259,7 @@ def _parse_monthly_bymonthday(
         raise ValueError(
             f"BYMONTHDAY values must be integers (comma-separated), got {bymonthday_value!r}"
         ) from err
-    return MonthlyDayInMonthFrequency(interval=interval, on_dates=days)
+    return Frequency(type="monthly", interval=interval, on_dates=days)
 
 
 def _convert_until_to_iso(raw: str) -> str:
