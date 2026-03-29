@@ -91,7 +91,7 @@
 
 **Milestone Goal:** Give agents the ability to query, filter, browse, and count OmniFocus entities — tasks, projects, tags, folders, and perspectives.
 
-- [ ] **Phase 34: Contracts and Query Foundation** — Typed query models, ListResult container, query builder, protocol extensions
+- [x] **Phase 34: Contracts and Query Foundation** — Typed query models, ListResult container, query builder, protocol extensions (completed 2026-03-29)
 - [ ] **Phase 35: SQL Repository** — HybridRepository list methods with filtered SQL queries for all 5 entity types
 - [ ] **Phase 36: In-Memory Fallback** — BridgeRepository list methods with filter.py predicates mirroring SQL semantics
 - [ ] **Phase 37: Service Orchestration** — List pipelines with resolution, shorthand expansion, default exclusions, validation
@@ -109,7 +109,7 @@
   3. ListResult[T] includes items list and total_count integer, and serializes correctly via FastMCP (test_output_schema passes)
   4. query_builder pure functions produce parameterized SQL strings (no string interpolation of user values) for task and project queries
   5. Repository and Service protocols declare list method signatures that downstream phases implement
-**Plans:** 0/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [ ] 34-01-PLAN.md — Query contracts, ListResult[T], protocol extensions
 - [ ] 34-02-PLAN.md — Parameterized SQL query builder (TDD)
@@ -171,7 +171,7 @@ Phases execute in numeric order: 34 → 35 → 36 → 37 → 38
 | 18-28 | v1.2.1 | 27/27 | Complete | 2026-03-23 |
 | 29-31 | v1.2.2 | 6/6 | Complete | 2026-03-26 |
 | 32-33.1 | v1.2.3 | 15/15 | Complete | 2026-03-29 |
-| 34. Contracts and Query Foundation | v1.3 | 0/2 | Planned    |  |
+| 34. Contracts and Query Foundation | v1.3 | 0/2 | Complete    | 2026-03-29 |
 | 35. SQL Repository | v1.3 | 0/0 | Not started | - |
 | 36. In-Memory Fallback | v1.3 | 0/0 | Not started | - |
 | 37. Service Orchestration | v1.3 | 0/0 | Not started | - |
