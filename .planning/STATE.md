@@ -2,15 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Read Tools
-status: ready_to_plan
-stopped_at: null
-last_updated: "2026-03-29"
-last_activity: 2026-03-29
+status: planning
+stopped_at: Completed 34-01-PLAN.md
+last_updated: "2026-03-29T22:44:34.656Z"
+last_activity: 2026-03-29 — Roadmap created for v1.3
 progress:
-  total_phases: 5
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
   percent: 0
 ---
 
@@ -35,6 +31,7 @@ Progress: [░░░░░░░░░░] 0%
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed: 0 (this milestone)
 - Cumulative: 102 plans across v1.0-v1.2.3
 
@@ -45,10 +42,12 @@ Progress: [░░░░░░░░░░] 0%
 ### Decisions
 
 Recent decisions affecting current work:
+
 - No standalone count tools — total_count embedded in ListResult
 - Query models inherit QueryModel (not CommandModel) — read-side taxonomy
 - Service resolves all shorthands before repository layer — prevents SQL/in-memory drift
 - Bridge fallback parity is a hard requirement — cross-path equivalence tests mandatory
+- [Phase 34]: StrictModel extracted as shared base for CommandModel/QueryModel; Query suffix added to contract naming convention
 
 ### Pending Todos
 
@@ -68,5 +67,5 @@ None yet.
 ## Session Continuity
 
 Last activity: 2026-03-29 — Roadmap created
-Stopped at: Roadmap complete, Phase 34 ready to plan
+Stopped at: Completed 34-01-PLAN.md
 Resume file: None
