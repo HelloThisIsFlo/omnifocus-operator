@@ -1944,6 +1944,44 @@ class TestEditTaskRepetitionRule:
         assert any("on was automatically cleared" in w for w in result.warnings)
 
     @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t1",
+                name="Repeating",
+                repetitionRule={
+                    "ruleString": "FREQ=MONTHLY;BYMONTHDAY=1,15",
+                    "scheduleType": "Regularly",
+                    "anchorDateKey": "DueDate",
+                    "catchUpAutomatically": False,
+                },
+            )
+        ]
+    )
+    async def test_auto_clear_on_dates_when_on_set(
+        self, service: OperatorService, repo: BridgeRepository
+    ) -> None:
+        """D-08: Send on on monthly task with existing onDates -> auto-clears onDates.
+
+        The agent sends {frequency: {on: {"last": "friday"}}} to switch from a
+        date-based pattern (onDates: [1, 15]) to weekday. The existing
+        'onDates' field should auto-clear, and the new on should be applied.
+        """
+        spec = RepetitionRuleEditSpec(frequency=FrequencyEditSpec(on={"last": "friday"}))
+        result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
+        assert result.success is True
+
+        task = await repo.get_task("t1")
+        assert task is not None
+        assert task.repetition_rule is not None
+        assert task.repetition_rule.frequency.type == "monthly"
+        # Agent sent on -> on_dates should be auto-cleared
+        assert task.repetition_rule.frequency.on == {"last": "friday"}
+        assert task.repetition_rule.frequency.on_dates is None
+        # Should have auto-clear warning
+        assert result.warnings is not None
+        assert any("onDates was automatically cleared" in w for w in result.warnings)
+
+    @pytest.mark.snapshot(
         tasks=[make_task_dict(id="t1", name="Repeating", repetitionRule=_DAILY_RULE)]
     )
     async def test_type_change_full_replacement(
