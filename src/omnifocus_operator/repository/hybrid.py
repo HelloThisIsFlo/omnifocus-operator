@@ -26,7 +26,16 @@ from zoneinfo import ZoneInfo
 from omnifocus_operator.contracts.protocols import Repository
 from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoResult
 from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoResult
+from omnifocus_operator.contracts.use_cases.list_entities import (
+    ListProjectsQuery,
+    ListResult,
+    ListTasksQuery,
+)
 from omnifocus_operator.repository.bridge_write_mixin import BridgeWriteMixin
+from omnifocus_operator.repository.query_builder import (
+    build_list_projects_sql,
+    build_list_tasks_sql,
+)
 from omnifocus_operator.rrule import derive_schedule, parse_end_condition, parse_rrule
 
 if TYPE_CHECKING:
@@ -428,6 +437,50 @@ def _map_perspective_row(row: sqlite3.Row) -> dict[str, Any]:
     }
 
 
+# -- Shared lookup builders --
+
+
+def _build_tag_name_lookup(conn: sqlite3.Connection) -> dict[str, str]:
+    """Execute _TAGS_SQL and return {tag_id: tag_name}."""
+    tag_rows = conn.execute(_TAGS_SQL).fetchall()
+    return {row["persistentIdentifier"]: row["name"] for row in tag_rows}
+
+
+def _build_task_tag_map(
+    conn: sqlite3.Connection,
+    tag_name_lookup: dict[str, str],
+) -> dict[str, list[dict[str, str]]]:
+    """Execute _TASK_TO_TAG_SQL and return {task_id: [{id, name}]}."""
+    task_tag_rows = conn.execute(_TASK_TO_TAG_SQL).fetchall()
+    task_tag_map: dict[str, list[dict[str, str]]] = {}
+    for row in task_tag_rows:
+        task_id = row["task"]
+        tag_id = row["tag"]
+        tag_name = tag_name_lookup.get(tag_id, "")
+        if task_id not in task_tag_map:
+            task_tag_map[task_id] = []
+        task_tag_map[task_id].append({"id": tag_id, "name": tag_name})
+    return task_tag_map
+
+
+def _build_project_info_lookup(conn: sqlite3.Connection) -> dict[str, dict[str, str]]:
+    """Execute ProjectInfo JOIN query, return {pi_pk: {id, name}}."""
+    pi_rows = conn.execute(
+        "SELECT pi.pk, pi.task, t.name FROM ProjectInfo pi "
+        "JOIN Task t ON pi.task = t.persistentIdentifier"
+    ).fetchall()
+    return {
+        pi_row["pk"]: {"id": pi_row["task"], "name": pi_row["name"]}
+        for pi_row in pi_rows
+    }
+
+
+def _build_task_name_lookup(conn: sqlite3.Connection) -> dict[str, str]:
+    """Execute SELECT persistentIdentifier, name FROM Task, return {task_id: name}."""
+    rows = conn.execute("SELECT persistentIdentifier, name FROM Task").fetchall()
+    return {r["persistentIdentifier"]: r["name"] for r in rows}
+
+
 # -- Repository --
 
 
@@ -531,42 +584,13 @@ class HybridRepository(BridgeWriteMixin, Repository):
         conn = sqlite3.connect(f"file:{self._db_path}?mode=ro", uri=True)
         conn.row_factory = sqlite3.Row
         try:
-            # 1. Read tags first (needed for tag name lookup)
-            tag_rows = conn.execute(_TAGS_SQL).fetchall()
-            tag_name_lookup: dict[str, str] = {}
-            for row in tag_rows:
-                tag_name_lookup[row["persistentIdentifier"]] = row["name"]
+            # 1. Build shared lookups
+            tag_name_lookup = _build_tag_name_lookup(conn)
+            task_tag_map = _build_task_tag_map(conn, tag_name_lookup)
+            project_info_lookup = _build_project_info_lookup(conn)
+            task_name_lookup = _build_task_name_lookup(conn)
 
-            # 2. Build task->tags mapping from join table
-            task_tag_rows = conn.execute(_TASK_TO_TAG_SQL).fetchall()
-            task_tag_map: dict[str, list[dict[str, str]]] = {}
-            for row in task_tag_rows:
-                task_id = row["task"]
-                tag_id = row["tag"]
-                tag_name = tag_name_lookup.get(tag_id, "")
-                if task_id not in task_tag_map:
-                    task_tag_map[task_id] = []
-                task_tag_map[task_id].append({"id": tag_id, "name": tag_name})
-
-            # 3. Build project info lookup: ProjectInfo.pk -> {id, name}
-            project_info_lookup: dict[str, dict[str, str]] = {}
-            pi_rows = conn.execute(
-                "SELECT pi.pk, pi.task, t.name FROM ProjectInfo pi "
-                "JOIN Task t ON pi.task = t.persistentIdentifier"
-            ).fetchall()
-            for pi_row in pi_rows:
-                project_info_lookup[pi_row["pk"]] = {
-                    "id": pi_row["task"],
-                    "name": pi_row["name"],
-                }
-
-            # 4. Build task name lookup: persistentIdentifier -> name
-            task_name_rows = conn.execute("SELECT persistentIdentifier, name FROM Task").fetchall()
-            task_name_lookup: dict[str, str] = {
-                r["persistentIdentifier"]: r["name"] for r in task_name_rows
-            }
-
-            # 5. Read all entity types
+            # 2. Read all entity types
             tasks = [
                 _map_task_row(row, task_tag_map, project_info_lookup, task_name_lookup)
                 for row in conn.execute(_TASKS_SQL).fetchall()
@@ -575,6 +599,7 @@ class HybridRepository(BridgeWriteMixin, Repository):
                 _map_project_row(row, task_tag_map)
                 for row in conn.execute(_PROJECTS_SQL).fetchall()
             ]
+            tag_rows = conn.execute(_TAGS_SQL).fetchall()
             tags = [_map_tag_row(row) for row in tag_rows]
             folders = [_map_folder_row(row) for row in conn.execute(_FOLDERS_SQL).fetchall()]
             perspectives = [
@@ -713,3 +738,77 @@ class HybridRepository(BridgeWriteMixin, Repository):
         if result is None:
             return None
         return Tag.model_validate(result)
+
+    # -- List operations --
+
+    def _list_tasks_sync(self, query: ListTasksQuery) -> ListResult[Task]:
+        """Synchronous filtered task listing from SQLite."""
+        conn = sqlite3.connect(f"file:{self._db_path}?mode=ro", uri=True)
+        conn.row_factory = sqlite3.Row
+        try:
+            # Build all 4 lookups (tag_name_lookup MUST come before task_tag_map)
+            tag_name_lookup = _build_tag_name_lookup(conn)
+            task_tag_map = _build_task_tag_map(conn, tag_name_lookup)
+            project_info_lookup = _build_project_info_lookup(conn)
+            task_name_lookup = _build_task_name_lookup(conn)
+
+            # Build parameterized SQL
+            data_q, count_q = build_list_tasks_sql(query)
+
+            # Execute
+            data_rows = conn.execute(data_q.sql, data_q.params).fetchall()
+            count_row = conn.execute(count_q.sql, count_q.params).fetchone()
+
+            # Map rows to Task models
+            tasks = [
+                Task.model_validate(
+                    _map_task_row(row, task_tag_map, project_info_lookup, task_name_lookup)
+                )
+                for row in data_rows
+            ]
+
+            total = count_row[0] if count_row else 0
+            offset = query.offset or 0
+            has_more = (offset + len(tasks)) < total
+
+            return ListResult(items=tasks, total=total, has_more=has_more)
+        finally:
+            conn.close()
+
+    async def list_tasks(self, query: ListTasksQuery) -> ListResult[Task]:
+        """Return filtered, paginated tasks from the SQLite cache."""
+        return await asyncio.to_thread(self._list_tasks_sync, query)
+
+    def _list_projects_sync(self, query: ListProjectsQuery) -> ListResult[Project]:
+        """Synchronous filtered project listing from SQLite."""
+        conn = sqlite3.connect(f"file:{self._db_path}?mode=ro", uri=True)
+        conn.row_factory = sqlite3.Row
+        try:
+            # Build lookups (projects use _map_project_row with 2 params: row, tag_lookup)
+            tag_name_lookup = _build_tag_name_lookup(conn)
+            task_tag_map = _build_task_tag_map(conn, tag_name_lookup)
+
+            # Build parameterized SQL
+            data_q, count_q = build_list_projects_sql(query)
+
+            # Execute
+            data_rows = conn.execute(data_q.sql, data_q.params).fetchall()
+            count_row = conn.execute(count_q.sql, count_q.params).fetchone()
+
+            # Map rows to Project models
+            projects = [
+                Project.model_validate(_map_project_row(row, task_tag_map))
+                for row in data_rows
+            ]
+
+            total = count_row[0] if count_row else 0
+            offset = query.offset or 0
+            has_more = (offset + len(projects)) < total
+
+            return ListResult(items=projects, total=total, has_more=has_more)
+        finally:
+            conn.close()
+
+    async def list_projects(self, query: ListProjectsQuery) -> ListResult[Project]:
+        """Return filtered, paginated projects from the SQLite cache."""
+        return await asyncio.to_thread(self._list_projects_sync, query)
