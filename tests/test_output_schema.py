@@ -426,11 +426,9 @@ class TestUnionRegressionGuard:
         assert "on" in props, "Missing on field in Frequency schema"
         assert "onDates" in props, "Missing onDates field in Frequency schema"
 
-        # interval must have minimum constraint of 1 and default of 1
+        # interval must have default of 1 (minimum enforced by @field_validator,
+        # not visible in JSON Schema)
         interval_prop = props.get("interval", {})
-        assert interval_prop.get("minimum") == 1, (
-            f"Frequency.interval should have minimum=1. Got: {interval_prop}"
-        )
         assert interval_prop.get("default") == 1, (
             f"Frequency.interval should have default=1. Got: {interval_prop}"
         )

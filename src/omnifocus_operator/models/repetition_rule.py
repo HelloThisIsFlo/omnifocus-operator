@@ -26,6 +26,8 @@ from pydantic import Field, field_serializer, field_validator, model_validator
 from omnifocus_operator.agent_messages.errors import (
     REPETITION_INVALID_DAY_CODE,
     REPETITION_INVALID_DAY_NAME,
+    REPETITION_INVALID_END_OCCURRENCES,
+    REPETITION_INVALID_INTERVAL,
     REPETITION_INVALID_ON_DATE,
     REPETITION_INVALID_ORDINAL,
 )
@@ -62,7 +64,7 @@ class Frequency(OmniFocusBaseModel):
     """
 
     type: FrequencyType  # required, NO default -- survives exclude_defaults
-    interval: int = Field(default=1, ge=1)
+    interval: int = Field(default=1)
     on_days: list[str] | None = None
     on: dict[str, str] | None = None
     on_dates: list[int] | None = None
@@ -90,6 +92,13 @@ class Frequency(OmniFocusBaseModel):
                 "or onDates for specific dates (e.g., [1, 15])."
             )
         return self
+
+    @field_validator("interval", mode="before")
+    @classmethod
+    def _validate_interval(cls, v: int) -> int:
+        if isinstance(v, int) and v < 1:
+            raise ValueError(REPETITION_INVALID_INTERVAL.format(value=v))
+        return v
 
     @field_validator("on_days", mode="before")
     @classmethod
@@ -143,7 +152,14 @@ class EndByDate(OmniFocusBaseModel):
 class EndByOccurrences(OmniFocusBaseModel):
     """End condition: repeat a fixed number of times."""
 
-    occurrences: int = Field(ge=1)
+    occurrences: int
+
+    @field_validator("occurrences", mode="before")
+    @classmethod
+    def _validate_occurrences(cls, v: int) -> int:
+        if isinstance(v, int) and v < 1:
+            raise ValueError(REPETITION_INVALID_END_OCCURRENCES.format(value=v))
+        return v
 
 
 EndCondition = EndByDate | EndByOccurrences

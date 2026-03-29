@@ -14,6 +14,7 @@ from pydantic import Field, field_validator, model_validator
 from omnifocus_operator.agent_messages.errors import (
     REPETITION_INVALID_DAY_CODE,
     REPETITION_INVALID_DAY_NAME,
+    REPETITION_INVALID_INTERVAL,
     REPETITION_INVALID_ON_DATE,
     REPETITION_INVALID_ORDINAL,
 )
@@ -41,10 +42,17 @@ class FrequencyAddSpec(CommandModel):
     """
 
     type: FrequencyType
-    interval: int = Field(default=1, ge=1)
+    interval: int = Field(default=1)
     on_days: list[str] | None = None
     on: dict[str, str] | None = None
     on_dates: list[int] | None = None
+
+    @field_validator("interval", mode="before")
+    @classmethod
+    def _validate_interval(cls, v: int) -> int:
+        if isinstance(v, int) and v < 1:
+            raise ValueError(REPETITION_INVALID_INTERVAL.format(value=v))
+        return v
 
     @model_validator(mode="after")
     def _check_cross_type_fields(self) -> FrequencyAddSpec:

@@ -100,15 +100,47 @@ def _format_validation_errors(exc: ValidationError) -> list[str]:
     - ``literal_error`` on frequency type -> lists valid frequency types
     - ``literal_error`` on lifecycle -> echoes the invalid value with valid options
     - ``_Unset`` sentinel artefacts are suppressed
+    - Union errors on ``end``: filters "missing" noise from non-matching branches
+    - Empty ``end: {}`` -> actionable message listing valid end condition shapes
     """
-    from omnifocus_operator.agent_messages.errors import REPETITION_INVALID_FREQUENCY_TYPE
+    from omnifocus_operator.agent_messages.errors import (
+        REPETITION_INVALID_END_EMPTY,
+        REPETITION_INVALID_FREQUENCY_TYPE,
+    )
     from omnifocus_operator.agent_messages.warnings import (
         LIFECYCLE_INVALID_VALUE,
         UNKNOWN_FIELD,
     )
 
+    raw_errors = exc.errors()
+
+    # --- Pre-process: detect union errors under "end" loc -----------------
+    # Group errors by whether their loc path contains "end"
+    end_errors = []
+    other_errors = []
+    for e in raw_errors:
+        loc_parts = [str(p) for p in e.get("loc", ())]
+        if "end" in loc_parts:
+            end_errors.append(e)
+        else:
+            other_errors.append(e)
+
+    # Handle end errors specially if present
+    processed_end_messages: list[str] = []
+    if end_errors:
+        all_missing = all(e["type"] == "missing" for e in end_errors)
+        if all_missing:
+            # end: {} -- both union branches failed with "Field required"
+            processed_end_messages.append(REPETITION_INVALID_END_EMPTY)
+        else:
+            # Mix of missing + value_error: keep only non-missing errors
+            for e in end_errors:
+                if e["type"] != "missing":
+                    processed_end_messages.append(e["msg"])
+
+    # --- Process non-end errors normally ----------------------------------
     messages: list[str] = []
-    for e in exc.errors():
+    for e in other_errors:
         if "_Unset" in e["msg"]:
             continue
         if e["type"] == "extra_forbidden":
@@ -125,6 +157,9 @@ def _format_validation_errors(exc: ValidationError) -> list[str]:
                 messages.append(e["msg"])
         else:
             messages.append(e["msg"])
+
+    # Append processed end messages
+    messages.extend(processed_end_messages)
     return messages
 
 

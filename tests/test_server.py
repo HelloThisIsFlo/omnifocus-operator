@@ -1089,6 +1089,74 @@ class TestAddTasksRepetitionRule:
                 },
             )
 
+    async def test_add_tasks_interval_zero_clean_error(self, client: Any) -> None:
+        """interval=0 returns clean error without pydantic internals."""
+        with pytest.raises(ToolError, match="Interval must be") as exc_info:
+            await client.call_tool(
+                "add_tasks",
+                {
+                    "items": [
+                        {
+                            "name": "Bad interval",
+                            "repetitionRule": {
+                                "frequency": {"type": "daily", "interval": 0},
+                                "schedule": "regularly",
+                                "basedOn": "due_date",
+                            },
+                        }
+                    ]
+                },
+            )
+        text = str(exc_info.value)
+        assert "type=" not in text
+        assert "pydantic" not in text.lower()
+        assert "input_value" not in text
+
+    async def test_add_tasks_end_occurrences_zero_clean_error(self, client: Any) -> None:
+        """end:{occurrences: 0} returns clean error without 'Field required' noise."""
+        with pytest.raises(ToolError, match="occurrences must be") as exc_info:
+            await client.call_tool(
+                "add_tasks",
+                {
+                    "items": [
+                        {
+                            "name": "Bad occurrences",
+                            "repetitionRule": {
+                                "frequency": {"type": "daily"},
+                                "schedule": "regularly",
+                                "basedOn": "due_date",
+                                "end": {"occurrences": 0},
+                            },
+                        }
+                    ]
+                },
+            )
+        text = str(exc_info.value)
+        assert "Field required" not in text
+
+    async def test_add_tasks_end_empty_object_clean_error(self, client: Any) -> None:
+        """end:{} returns actionable error explaining what's needed."""
+        with pytest.raises(ToolError, match="end requires either") as exc_info:
+            await client.call_tool(
+                "add_tasks",
+                {
+                    "items": [
+                        {
+                            "name": "Empty end",
+                            "repetitionRule": {
+                                "frequency": {"type": "daily"},
+                                "schedule": "regularly",
+                                "basedOn": "due_date",
+                                "end": {},
+                            },
+                        }
+                    ]
+                },
+            )
+        text = str(exc_info.value)
+        assert "date" in text
+        assert "occurrences" in text
+
 
 class TestEditTasksRepetitionRule:
     """Verify repetition rule support through the edit_tasks MCP tool."""
