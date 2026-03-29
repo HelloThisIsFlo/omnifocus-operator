@@ -263,63 +263,179 @@ Write tools use domain-native verbs, not CRUD:
 
 ### Model taxonomy (CQRS/DDD-inspired)
 
-Write-side models follow a CQRS/DDD-inspired naming convention. Every model's name indicates its layer and role. Read-side models (entities, value objects) use bare names with no suffix.
+Every model's name indicates its layer and role. Write-side models use suffixes that signal their boundary and direction. Read-side models use bare names by default; a `Read` suffix is added only when the output boundary needs a different shape than the core model.
 
-#### Agent boundary (agent ↔ service)
+**Core model as gravitational center:** The core model (no suffix, `models/`) is the canonical representation of each concept. Every boundary model relates to it directionally:
 
-| Suffix | Role | Direction | Examples |
-|--------|------|-----------|---------|
-| `___Command` | Top-level write instruction | Inbound | `AddTaskCommand`, `EditTaskCommand` |
-| `___Result` | Outcome returned to agent | Outbound | `AddTaskResult`, `EditTaskResult` |
+- **Inbound (write):** A valid write spec is **constructable** into a core model instance — spec fields map to core fields, with service-supplied defaults and resolution.
+- **Outbound (read):** A read model is **derivable** from a core model instance — transformation may suppress defaults, add computed fields, or reshape for ergonomics.
 
-#### Repository boundary (service ↔ repository)
+Neither direction requires lossless round-tripping. The core model is the source of truth; boundary models are projections. See [Structure Over Discipline](structure-over-discipline.md) for why this is pre-documented rather than left to agent judgment.
 
-| Suffix | Role | Direction | Examples |
-|--------|------|-----------|---------|
-| `___RepoPayload` | Processed, bridge-ready data | Inbound | `AddTaskRepoPayload`, `EditTaskRepoPayload` |
-| `___RepoResult` | Minimal confirmation from bridge | Outbound | `AddTaskRepoResult`, `EditTaskRepoResult` |
+#### Core models
 
-#### Value objects (nested within commands)
-
-| Suffix | Role | When to use | Examples |
-|--------|------|-------------|---------|
-| `___Action` | Stateful mutation in the actions block | Nested operation that mutates relative to current state | `TagAction`, `MoveAction` |
-| `___Spec` | Write-side value object (desired state) | Nested setter with different shape from its read counterpart | `RepetitionRuleAddSpec`, `RepetitionRuleEditSpec` |
-
-#### Read-side models
+The canonical representation of each concept — no suffix, lives in `models/`, inherits `OmniFocusBaseModel`. Used internally by service, parser, builder. Also serves as the read output model by default (see [Read models](#read-models) for when this changes).
 
 | Suffix | Role | Examples |
 |--------|------|---------|
-| No suffix | Domain entity or shared value object | `Task`, `Project`, `Tag`, `TagRef`, `RepetitionRule` |
+| No suffix | Canonical domain entity or value object | `Task`, `Project`, `Tag`, `Frequency`, `RepetitionRule` |
+
+#### Read models
+
+Output-boundary variant of a core model — `Read` suffix, lives in `models/`, inherits `OmniFocusBaseModel`. Introduced only when read output needs a different shape (suppressed defaults, computed fields, reshaped for ergonomics). Separate class, not a subclass — derivable from the core model. When no `<noun>Read` exists, the core model serves directly as the read model.
+
+**Why "suppressed defaults" can't stay on the core model:** FastMCP serializes tool output via `pydantic_core.to_jsonable_python`, which has no `exclude_defaults` parameter. You don't control the serialization call. A `@field_serializer` on the parent can work as a workaround (see `RepetitionRule.frequency`), but when the concept is used in multiple places or the suppression is intrinsic to the read representation, a `<noun>Read` with the behavior built in is the principled path.
+
+| Suffix | Role | Examples |
+|--------|------|---------|
+| `<noun>Read` | Output-boundary variant, derivable from core | `FrequencyRead` (hypothetical — not yet needed) |
+
+#### Write-side models
+
+All write-side models live in `contracts/`, inherit `CommandModel` (`extra="forbid"`).
+
+##### Agent boundary (agent ↔ service)
+
+| Suffix | Role | Direction | Examples |
+|--------|------|-----------|---------|
+| `<verb><noun>Command` | Top-level write instruction | Inbound | `AddTaskCommand`, `EditTaskCommand` |
+| `<verb><noun>Result` | Outcome returned to agent | Outbound | `AddTaskResult`, `EditTaskResult` |
+
+##### Repository boundary (service ↔ repository)
+
+| Suffix | Role | Direction | Examples |
+|--------|------|-----------|---------|
+| `<verb><noun>RepoPayload` | Processed, bridge-ready data | Inbound | `AddTaskRepoPayload`, `EditTaskRepoPayload` |
+| `<verb><noun>RepoResult` | Minimal confirmation from bridge | Outbound | `AddTaskRepoResult`, `EditTaskRepoResult` |
+
+##### Value objects (nested within commands)
+
+| Suffix | Role | When to use | Examples |
+|--------|------|-------------|---------|
+| `<noun>Action` | Stateful mutation in the actions block | Nested operation that mutates relative to current state | `TagAction`, `MoveAction` |
+| `<noun>Spec` | Write-side value object (desired state) | Nested setter with different shape from its read counterpart | `RepetitionRuleAddSpec`, `RepetitionRuleEditSpec` |
 
 #### Naming rules
 
-- **Verb-first** for top-level write-side models: `AddTask___`, `EditTask___` (not `TaskAdd___`)
+- **Verb-first** for top-level write-side models: `<verb><noun>Command` — e.g., `AddTaskCommand`, `EditTaskCommand` (not `TaskAddCommand`)
 - **Write-side verb matches tool verb**: tool is `add_tasks` → models are `AddTask*`; tool is `edit_tasks` → models are `EditTask*`
-- **Noun-only** for read entities: `Task`, `Project`, `Tag` (no verb, no suffix)
-- **Value objects** within commands are suffix-free when unambiguous (`TagAction`, `MoveAction`), or use `___Spec` when a read-side model of the same name exists. All value objects live in `contracts/` and inherit `CommandModel` — never reuse a read model from `models/` directly in a command
+- **Noun-only** for core models: `Task`, `Project`, `Tag` (no verb, no suffix)
+- **Value objects** within commands are suffix-free when unambiguous (`TagAction`, `MoveAction`), or use `<noun>Spec` when a read-side model of the same name exists. All value objects live in `contracts/` and inherit `CommandModel` — never reuse a read model from `models/` directly in a command
 - **Base class**: `CommandModel` — all command-layer models inherit this (`extra="forbid"`, strict validation)
 - **Repo qualifier**: Both inbound and outbound models at the repository boundary use `Repo` prefix for symmetry and clarity
 - **Noun-first for nested specs**: When a nested value object needs a verb qualifier (different shapes per use case), the domain noun leads: `RepetitionRuleAddSpec`, `RepetitionRuleEditSpec` (not `AddRepetitionRuleSpec`). Top-level models are verb-first (`AddTaskCommand`); nested specs are noun-first because they represent the THING in different contexts, not different actions.
-- **Verb qualifier only when needed**: If a spec has the same shape for both add and edit, use plain `___Spec` (no verb). Only add `Add`/`Edit` qualifier when shapes diverge (e.g., all-required vs patchable fields).
+- **Verb qualifier only when needed**: If a spec has the same shape for both add and edit, use plain `<noun>Spec` (no verb). Only add `Add`/`Edit` qualifier when shapes diverge (e.g., all-required vs patchable fields).
+- **Read suffix only when needed**: Use the core model directly for read output (the common case). Only introduce `<noun>Read` when the output boundary requires a different shape. A `<noun>Read` is a separate class (not a subclass of the core model), inherits `OmniFocusBaseModel`, lives in `models/`, and must be derivable from the core model.
 
-#### Decision tree for naming a new write-side model
+#### Decision tree for naming a new model
 
-1. Is it a top-level instruction from the agent? → `___Command`
-2. Is it processed data sent to the repository? → `___RepoPayload`
-3. Is it a stateful operation inside the actions block? → `___Action`
-4. Is it a complex nested value object (setter, not a mutation)? → `___Spec`
+**Read-side** (lives in `models/`, inherits `OmniFocusBaseModel`):
+
+1. Is the read output shape identical to the core model? → Use the core model directly (no suffix)
+2. Does the read output need a different shape (suppressed defaults, computed fields, reshaped for ergonomics)? → `<noun>Read` (separate class, derivable from core)
+
+**Write-side** (lives in `contracts/`, inherits `CommandModel`):
+
+1. Is it a top-level instruction from the agent? → `<verb><noun>Command`
+2. Is it processed data sent to the repository? → `<verb><noun>RepoPayload`
+3. Is it a stateful operation inside the actions block? → `<noun>Action`
+4. Is it a complex nested value object (setter, not a mutation)? → `<noun>Spec`
    Write models always inherit `CommandModel` (`extra="forbid"`), read models inherit
    `OmniFocusBaseModel` (no `extra="forbid"`). This base class difference alone justifies
    a dedicated write model, even when the field shapes are identical.
-     - Same shape across add/edit → `NounSpec` (e.g., `RepetitionRuleSpec`)
-     - Different shapes per use case → `NounVerbSpec` (e.g., `RepetitionRuleAddSpec` for all-required, `RepetitionRuleEditSpec` for patchable fields)
-5. Is it the confirmation from the repository? → `___RepoResult`
-6. Is it the enriched outcome returned to the agent? → `___Result`
+     - Same shape across add/edit → `<noun>Spec` (e.g., `RepetitionRuleSpec`)
+     - Different shapes per use case → `<noun><verb>Spec` (e.g., `RepetitionRuleAddSpec` for all-required, `RepetitionRuleEditSpec` for patchable fields)
+5. Is it the confirmation from the repository? → `<verb><noun>RepoResult`
+6. Is it the enriched outcome returned to the agent? → `<verb><noun>Result`
 
 #### Ubiquitous language
 
-> "The agent sends a **command**. The service validates, resolves, and builds a **repo payload**. The repository forwards to the bridge and returns a **repo result**. The service enriches this into a **result** for the agent. Within a command, **actions** mutate state; **specs** describe desired state for complex nested objects. When a spec needs different shapes per use case, the domain noun leads with a verb qualifier: RepetitionRuleAddSpec (creation shape) vs RepetitionRuleEditSpec (partial update shape)."
+> "The agent sends a **command**. The service validates, resolves, and builds a **repo payload**. The repository forwards to the bridge and returns a **repo result**. The service enriches this into a **result** for the agent. Within a command, **actions** mutate state; **specs** describe desired state for complex nested objects. When a spec needs different shapes per use case, the domain noun leads with a verb qualifier: RepetitionRuleAddSpec (creation shape) vs RepetitionRuleEditSpec (partial update shape). For read output, the **core model** is used directly unless the output boundary needs a different shape — then a **read model** (`<noun>Read`) provides the variant, derivable from the core."
+
+#### Taxonomy examples
+
+Three scenarios exercising different parts of the taxonomy. Use these to verify your understanding before naming a new model.
+
+##### Scenario A: Location (nested, read differs from core, same add/edit shape)
+
+> Locations are nested inside tasks — not a standalone tool. A location has: `name` (string), `latitude` (float), `longitude` (float), `radius` (int, defaults to 100 meters).
+>
+> Read output (radius is default → suppressed):
+> ```json
+> {"name": "Office", "latitude": 37.7749, "longitude": -122.4194}
+> ```
+> Read output (radius is non-default → included):
+> ```json
+> {"name": "Office", "latitude": 37.7749, "longitude": -122.4194, "radius": 200}
+> ```
+> Write input (same shape for add and edit):
+> ```json
+> {"name": "Office", "latitude": 37.7749, "longitude": -122.4194, "radius": 200}
+> ```
+
+**Answer:** 3 models.
+
+| Model | Category | Location | Base class | Why |
+|-------|----------|----------|------------|-----|
+| `Location` | Core | `models/` | `OmniFocusBaseModel` | Canonical representation, `radius` defaults to 100 |
+| `LocationRead` | Read | `models/` | `OmniFocusBaseModel` | Read output suppresses default radius — different shape than core |
+| `LocationSpec` | Write-side value object | `contracts/` | `CommandModel` | Nested setter; same shape for add/edit → no verb qualifier |
+
+##### Scenario B: Priority (nested, read matches core, add/edit shapes differ)
+
+> Priorities are nested inside tasks — not a standalone tool. A priority has: `level` (string), `score` (int).
+>
+> Read output:
+> ```json
+> {"level": "high", "score": 85}
+> ```
+> Write input for add (all fields required):
+> ```json
+> {"level": "high", "score": 85}
+> ```
+> Write input for edit (patch — only provide what changes):
+> ```json
+> {"level": "critical"}
+> ```
+
+**Answer:** 3 models. No `PriorityRead` — read shape matches core.
+
+| Model | Category | Location | Base class | Why |
+|-------|----------|----------|------------|-----|
+| `Priority` | Core (also serves as read) | `models/` | `OmniFocusBaseModel` | Canonical representation, read shape is identical |
+| `PriorityAddSpec` | Write-side value object | `contracts/` | `CommandModel` | All-required shape for add |
+| `PriorityEditSpec` | Write-side value object | `contracts/` | `CommandModel` | Patchable shape for edit — shapes diverge → verb qualifier |
+
+##### Scenario C: Reminder (top-level tool, full pipeline)
+
+> `Reminder` is a new entity with its own tools: `add_reminders` and `edit_reminders`. Goes through the full three-layer architecture (server → service → repository). A reminder has: `id` (string), `message` (string), `triggerAt` (datetime).
+>
+> Read output:
+> ```json
+> {"id": "rem_abc123", "message": "Call dentist", "triggerAt": "2026-04-01T09:00:00Z"}
+> ```
+> Write input for `add_reminders`:
+> ```json
+> {"message": "Call dentist", "triggerAt": "2026-04-01T09:00:00Z"}
+> ```
+> Write input for `edit_reminders` (patch semantics):
+> ```json
+> {"id": "rem_abc123", "triggerAt": "2026-04-15T09:00:00Z"}
+> ```
+
+**Answer:** 9 models. No `ReminderRead` — read shape matches core. No nested specs — fields sit directly on the commands.
+
+| Model | Category | Location | Base class |
+|-------|----------|----------|------------|
+| `Reminder` | Core (also serves as read) | `models/` | `OmniFocusBaseModel` |
+| `AddReminderCommand` | Agent boundary, inbound | `contracts/` | `CommandModel` |
+| `EditReminderCommand` | Agent boundary, inbound | `contracts/` | `CommandModel` |
+| `AddReminderResult` | Agent boundary, outbound | `contracts/` | `CommandModel` |
+| `EditReminderResult` | Agent boundary, outbound | `contracts/` | `CommandModel` |
+| `AddReminderRepoPayload` | Repo boundary, inbound | `contracts/` | `CommandModel` |
+| `EditReminderRepoPayload` | Repo boundary, inbound | `contracts/` | `CommandModel` |
+| `AddReminderRepoResult` | Repo boundary, outbound | `contracts/` | `CommandModel` |
+| `EditReminderRepoResult` | Repo boundary, outbound | `contracts/` | `CommandModel` |
 
 ## Dumb Bridge, Smart Python
 
