@@ -1386,7 +1386,7 @@ class TestEditTasksRepetitionRule:
         add_result = await client.call_tool("add_tasks", {"items": [{"name": "For edit"}]})
         task_id = add_result.structured_content["result"][0]["id"]
 
-        with pytest.raises(ToolError, match=r"Unknown field '.*bogusField'"):
+        with pytest.raises(ToolError, match=r"Unknown field 'repetitionRule\.bogusField'"):
             await client.call_tool(
                 "edit_tasks",
                 {

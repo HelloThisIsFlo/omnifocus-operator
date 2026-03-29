@@ -92,6 +92,28 @@ async def app_lifespan(app: FastMCP) -> AsyncIterator[dict[str, object]]:
         logger.info("Error-mode server shutting down")
 
 
+def _clean_loc(loc: tuple[str | int, ...]) -> tuple[str | int, ...]:
+    """Strip Pydantic union-branch noise from a validation error loc path.
+
+    ``Patch[T]`` expands to ``T | _Unset``, causing Pydantic to prefix each
+    branch's errors with the model class name (``EditTaskActions``), validator
+    wrapper (``function-after[...]``), or type check (``is-instance[...]``).
+    This keeps only real field names and integer indices.
+    """
+    return tuple(
+        part
+        for part in loc
+        if isinstance(part, int)
+        or (
+            isinstance(part, str)
+            and not part[0].isupper()
+            and not part.startswith("function-")
+            and not part.startswith("is-instance")
+            and not part.startswith("literal[")
+        )
+    )
+
+
 def _format_validation_errors(exc: ValidationError) -> list[str]:
     """Extract clean, agent-friendly messages from a Pydantic ValidationError.
 
@@ -116,11 +138,11 @@ def _format_validation_errors(exc: ValidationError) -> list[str]:
             continue
         if e["type"] == "missing":
             continue
+        loc = _clean_loc(e.get("loc", ()))
         if e["type"] == "extra_forbidden":
-            field = ".".join(str(loc) for loc in e["loc"])
+            field = ".".join(str(part) for part in loc)
             messages.append(UNKNOWN_FIELD.format(field=field))
         elif e["type"] == "literal_error":
-            loc = e.get("loc", ())
             if "lifecycle" in loc:
                 messages.append(LIFECYCLE_INVALID_VALUE.format(value=e.get("input", "unknown")))
             elif any(str(part) in ("repetitionRule", "frequency", "type") for part in loc):
