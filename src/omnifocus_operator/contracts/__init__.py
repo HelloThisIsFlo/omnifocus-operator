@@ -13,6 +13,8 @@ from omnifocus_operator.contracts.base import (
     Patch,
     PatchOrClear,
     PatchOrNone,
+    QueryModel,
+    StrictModel,
     _Unset,
 )
 from omnifocus_operator.contracts.common import MoveAction, TagAction
@@ -30,6 +32,13 @@ from omnifocus_operator.contracts.use_cases.edit_task import (
     EditTaskRepoResult,
     EditTaskResult,
     MoveToRepoPayload,
+)
+from omnifocus_operator.contracts.use_cases.list_entities import (
+    ListFoldersQuery,
+    ListProjectsQuery,
+    ListResult,
+    ListTagsQuery,
+    ListTasksQuery,
 )
 from omnifocus_operator.contracts.use_cases.repetition_rule import (
     RepetitionRuleAddSpec,
@@ -60,12 +69,28 @@ _ns: dict[str, type | object] = {
     "RepetitionRuleRepoPayload": RepetitionRuleRepoPayload,
     "Frequency": Frequency,
     "EndCondition": EndCondition,
+    "ListResult": ListResult,
+    "ListTasksQuery": ListTasksQuery,
+    "ListProjectsQuery": ListProjectsQuery,
+    "ListTagsQuery": ListTagsQuery,
+    "ListFoldersQuery": ListFoldersQuery,
+    "QueryModel": QueryModel,
+    "StrictModel": StrictModel,
 }
 
 # Base and common models
+StrictModel.model_rebuild(_types_namespace=_ns)
 CommandModel.model_rebuild(_types_namespace=_ns)
+QueryModel.model_rebuild(_types_namespace=_ns)
 TagAction.model_rebuild(_types_namespace=_ns)
 MoveAction.model_rebuild(_types_namespace=_ns)
+
+# List-entity models
+ListResult.model_rebuild(_types_namespace=_ns)
+ListTasksQuery.model_rebuild(_types_namespace=_ns)
+ListProjectsQuery.model_rebuild(_types_namespace=_ns)
+ListTagsQuery.model_rebuild(_types_namespace=_ns)
+ListFoldersQuery.model_rebuild(_types_namespace=_ns)
 
 # Create-task models
 AddTaskCommand.model_rebuild(_types_namespace=_ns)
@@ -99,16 +124,23 @@ __all__ = [
     "EditTaskRepoPayload",
     "EditTaskRepoResult",
     "EditTaskResult",
+    "ListFoldersQuery",
+    "ListProjectsQuery",
+    "ListResult",
+    "ListTagsQuery",
+    "ListTasksQuery",
     "MoveAction",
     "MoveToRepoPayload",
     "Patch",
     "PatchOrClear",
     "PatchOrNone",
+    "QueryModel",
     "RepetitionRuleAddSpec",
     "RepetitionRuleEditSpec",
     "RepetitionRuleRepoPayload",
     "Repository",
     "Service",
+    "StrictModel",
     "TagAction",
     "_Unset",
 ]

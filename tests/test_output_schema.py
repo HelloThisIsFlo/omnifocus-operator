@@ -479,9 +479,9 @@ class TestUnionRegressionGuard:
 # Naming convention enforcement (D-06, covers SC-4)
 # ---------------------------------------------------------------------------
 
-WRITE_SUFFIXES = ("Command", "Result", "RepoPayload", "RepoResult", "Action", "Spec")
+CONTRACT_SUFFIXES = ("Command", "Result", "RepoPayload", "RepoResult", "Action", "Spec", "Query")
 
-# models/ classes exempt from "no write-side suffix" check:
+# models/ classes exempt from "no contract suffix" check:
 # Private/internal base classes are already filtered by leading underscore.
 MODELS_EXEMPT: set[str] = {
     "OmniFocusBaseModel",
@@ -489,10 +489,12 @@ MODELS_EXEMPT: set[str] = {
     "ActionableEntity",
 }
 
-# contracts/ classes exempt from "must have write-side suffix" check:
+# contracts/ classes exempt from "must have contract suffix" check:
 CONTRACTS_EXEMPT: set[str] = {
     "CommandModel",
     "EditTaskActions",
+    "QueryModel",
+    "StrictModel",
 }
 
 
@@ -518,17 +520,17 @@ def _scan_package_models(package_name: str) -> list[tuple[str, type]]:
 class TestNamingConvention:
     """Programmatic enforcement of models/ vs contracts/ naming rules."""
 
-    def test_models_package_has_no_write_suffixes(self) -> None:
-        """No public class in models/ should end with a write-side suffix."""
+    def test_models_package_has_no_contract_suffixes(self) -> None:
+        """No public class in models/ should end with a contract suffix."""
         models = _scan_package_models("omnifocus_operator.models")
         violations = []
         for name, _cls in models:
             if name in MODELS_EXEMPT:
                 continue
-            if any(name.endswith(suffix) for suffix in WRITE_SUFFIXES):
+            if any(name.endswith(suffix) for suffix in CONTRACT_SUFFIXES):
                 violations.append(name)
         assert not violations, (
-            f"models/ classes with write-side suffixes "
+            f"models/ classes with contract suffixes "
             f"(see docs/architecture.md naming taxonomy): {violations}"
         )
 
@@ -539,10 +541,10 @@ class TestNamingConvention:
         for name, _cls in contracts:
             if name in CONTRACTS_EXEMPT:
                 continue
-            if not any(name.endswith(suffix) for suffix in WRITE_SUFFIXES):
+            if not any(name.endswith(suffix) for suffix in CONTRACT_SUFFIXES):
                 violations.append(name)
         assert not violations, (
             f"contracts/ classes missing recognized suffix "
             f"(see docs/architecture.md naming taxonomy). "
-            f"Expected one of: {WRITE_SUFFIXES}. Violations: {violations}"
+            f"Expected one of: {CONTRACT_SUFFIXES}. Violations: {violations}"
         )
