@@ -12,6 +12,7 @@ from omnifocus_operator import server
 from omnifocus_operator.agent_messages import errors as err_mod
 from omnifocus_operator.agent_messages import warnings as warn_mod
 from omnifocus_operator.contracts import common as contracts_common
+from omnifocus_operator.contracts.use_cases import edit_task as contracts_edit_task
 from omnifocus_operator.contracts.use_cases import repetition_rule as contracts_repetition_rule
 from omnifocus_operator.models import repetition_rule as models_repetition_rule
 from omnifocus_operator.service import domain as service_domain
@@ -29,7 +30,7 @@ def _get_upper_snake_constants(module: object) -> set[str]:
 # Warning enforcement
 # ---------------------------------------------------------------------------
 
-_WARNING_CONSUMERS = [service_orchestrator, service_domain, server]
+_WARNING_CONSUMERS = [service_orchestrator, service_domain, server, contracts_edit_task]
 
 
 def _get_consumer_sources(consumers: list[object]) -> str:

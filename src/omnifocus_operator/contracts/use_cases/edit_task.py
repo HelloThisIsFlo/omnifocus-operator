@@ -9,6 +9,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
+from pydantic import field_validator
+
+from omnifocus_operator.agent_messages.warnings import LIFECYCLE_INVALID_VALUE
 from omnifocus_operator.contracts.base import (
     UNSET,
     CommandModel,
@@ -33,6 +36,13 @@ class EditTaskActions(CommandModel):
     tags: Patch[TagAction] = UNSET
     move: Patch[MoveAction] = UNSET
     lifecycle: Patch[Literal["complete", "drop"]] = UNSET
+
+    @field_validator("lifecycle", mode="before")
+    @classmethod
+    def _validate_lifecycle(cls, v: object) -> object:
+        if isinstance(v, str) and v not in ("complete", "drop"):
+            raise ValueError(LIFECYCLE_INVALID_VALUE.format(value=v))
+        return v
 
 
 class EditTaskCommand(CommandModel):

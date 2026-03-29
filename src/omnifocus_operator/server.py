@@ -117,20 +117,13 @@ def _clean_loc(loc: tuple[str | int, ...]) -> tuple[str | int, ...]:
 def _format_validation_errors(exc: ValidationError) -> list[str]:
     """Extract clean, agent-friendly messages from a Pydantic ValidationError.
 
-    Rewrites common error patterns into educational messages:
-    - ``extra_forbidden`` -> "Unknown field '<path>'"
-    - ``literal_error`` on frequency type -> lists valid frequency types
-    - ``literal_error`` on lifecycle -> echoes the invalid value with valid options
+    Filters noise and rewrites common error patterns:
     - ``_Unset`` sentinel artefacts are suppressed
     - ``missing`` errors are suppressed (union branch noise from non-matching types)
+    - ``extra_forbidden`` -> "Unknown field '<path>'"
+    - Everything else passes through (model validators produce clean messages at source)
     """
-    from omnifocus_operator.agent_messages.errors import (
-        REPETITION_INVALID_FREQUENCY_TYPE,
-    )
-    from omnifocus_operator.agent_messages.warnings import (
-        LIFECYCLE_INVALID_VALUE,
-        UNKNOWN_FIELD,
-    )
+    from omnifocus_operator.agent_messages.warnings import UNKNOWN_FIELD
 
     messages: list[str] = []
     for e in exc.errors():
@@ -142,14 +135,6 @@ def _format_validation_errors(exc: ValidationError) -> list[str]:
         if e["type"] == "extra_forbidden":
             field = ".".join(str(part) for part in loc)
             messages.append(UNKNOWN_FIELD.format(field=field))
-        elif e["type"] == "literal_error":
-            if "lifecycle" in loc:
-                messages.append(LIFECYCLE_INVALID_VALUE.format(value=e.get("input", "unknown")))
-            elif any(str(part) in ("repetitionRule", "frequency", "type") for part in loc):
-                freq_type = e.get("input", "?")
-                messages.append(REPETITION_INVALID_FREQUENCY_TYPE.format(freq_type=freq_type))
-            else:
-                messages.append(e["msg"])
         else:
             messages.append(e["msg"])
     return messages

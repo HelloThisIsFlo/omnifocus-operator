@@ -243,6 +243,44 @@ class TestFrequencyAddSpec:
         assert spec.frequency.interval == 3
 
 
+class TestFrequencyAddSpecType:
+    """Tests for frequency type validation on FrequencyAddSpec."""
+
+    def test_invalid_type_rejected(self) -> None:
+        with pytest.raises(ValueError, match="Invalid frequency type"):
+            FrequencyAddSpec(type="biweekly")
+
+    def test_valid_type_passes(self) -> None:
+        spec = FrequencyAddSpec(type="weekly")
+        assert spec.type == "weekly"
+
+    def test_message_includes_value_and_valid_types(self) -> None:
+        try:
+            FrequencyAddSpec(type="biweekly")
+        except ValueError as exc:
+            msg = exc.errors()[0]["msg"]  # type: ignore[union-attr]
+            assert "biweekly" in msg
+            assert "daily" in msg
+            assert "weekly" in msg
+            assert "monthly" in msg
+
+
+class TestFrequencyEditSpecType:
+    """Tests for frequency type validation on FrequencyEditSpec."""
+
+    def test_invalid_type_rejected(self) -> None:
+        with pytest.raises(ValueError, match="Invalid frequency type"):
+            FrequencyEditSpec(type="fortnightly")
+
+    def test_valid_type_passes(self) -> None:
+        spec = FrequencyEditSpec(type="daily")
+        assert spec.type == "daily"
+
+    def test_unset_default_passes(self) -> None:
+        spec = FrequencyEditSpec()
+        assert spec.type is UNSET
+
+
 class TestFrequencyEditSpecInterval:
     """Tests for interval validation on FrequencyEditSpec (edit path)."""
 

@@ -977,6 +977,16 @@ class TestEditTaskActionsLifecycle:
         with pytest.raises(ValidationError):
             EditTaskActions(lifecycle="invalid")
 
+    def test_lifecycle_invalid_message_is_clean(self) -> None:
+        """The error message must be educational, not raw Pydantic internals."""
+        try:
+            EditTaskActions(lifecycle="bogus")
+        except ValidationError as exc:
+            msg = exc.errors()[0]["msg"]
+            assert "must be 'complete' or 'drop'" in msg
+            assert "bogus" in msg
+            assert "literal" not in msg.lower()
+
 
 class TestCommandModelStrictness:
     """Write models reject unknown fields (STRCT-01); read models stay permissive (STRCT-02)."""

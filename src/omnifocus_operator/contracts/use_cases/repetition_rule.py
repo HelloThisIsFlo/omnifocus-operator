@@ -9,7 +9,7 @@ Defines the typed contract for repetition rule creation and editing.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, get_args
 
 from pydantic import Field, field_validator, model_validator
 
@@ -18,6 +18,7 @@ from omnifocus_operator.agent_messages.errors import (
     REPETITION_INVALID_DAY_NAME,
     REPETITION_INVALID_END_EMPTY,
     REPETITION_INVALID_END_OCCURRENCES,
+    REPETITION_INVALID_FREQUENCY_TYPE,
     REPETITION_INVALID_INTERVAL,
     REPETITION_INVALID_ON_DATE,
     REPETITION_INVALID_ORDINAL,
@@ -50,6 +51,13 @@ class FrequencyAddSpec(CommandModel):
     on_days: list[str] | None = None
     on: dict[str, str] | None = None
     on_dates: list[int] | None = None
+
+    @field_validator("type", mode="before")
+    @classmethod
+    def _validate_type(cls, v: object) -> object:
+        if isinstance(v, str) and v not in get_args(FrequencyType):
+            raise ValueError(REPETITION_INVALID_FREQUENCY_TYPE.format(freq_type=v))
+        return v
 
     @field_validator("interval", mode="before")
     @classmethod
@@ -135,6 +143,13 @@ class FrequencyEditSpec(CommandModel):
     on_days: PatchOrClear[list[str]] = UNSET
     on: PatchOrClear[dict[str, str]] = UNSET
     on_dates: PatchOrClear[list[int]] = UNSET
+
+    @field_validator("type", mode="before")
+    @classmethod
+    def _validate_type(cls, v: object) -> object:
+        if isinstance(v, str) and v not in get_args(FrequencyType):
+            raise ValueError(REPETITION_INVALID_FREQUENCY_TYPE.format(freq_type=v))
+        return v
 
     @field_validator("interval", mode="before")
     @classmethod
