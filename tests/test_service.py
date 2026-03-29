@@ -1954,6 +1954,26 @@ class TestEditTaskRepetitionRule:
         assert any("no changes" in w.lower() for w in result.warnings)
 
     @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="t1", name="Repeating", repetitionRule=_DAILY_RULE)]
+    )
+    async def test_noop_same_rule_with_other_field_change(
+        self, service: OperatorService
+    ) -> None:
+        """EDIT-16 gap: Same rule + name change -> no-op warning AND name applied."""
+        spec = RepetitionRuleEditSpec(
+            frequency=DailyFrequency(),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+        )
+        result = await service.edit_task(
+            EditTaskCommand(id="t1", name="Renamed", repetition_rule=spec)
+        )
+        assert result.success is True
+        assert result.warnings is not None
+        assert any("no changes" in w.lower() for w in result.warnings)
+        assert result.name == "Renamed"
+
+    @pytest.mark.snapshot(
         tasks=[
             make_task_dict(
                 id="t1",
