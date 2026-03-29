@@ -92,3 +92,7 @@ REPETITION_INVALID_FREQUENCY_TYPE = (
 REPETITION_INVALID_INTERVAL = "Interval must be >= 1 (got {value})"
 
 REPETITION_INVALID_END_OCCURRENCES = "End occurrences must be >= 1 (got {value})"
+
+REPETITION_INVALID_END_EMPTY = (
+    "end requires either 'date' (ISO-8601 string) or 'occurrences' (integer >= 1)"
+)
