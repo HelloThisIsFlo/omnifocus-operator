@@ -610,8 +610,8 @@ Repetition rules support targeted partial updates on `edit_tasks`, following two
 // Remove day constraint from weekly (clear the field):
 { "repetitionRule": { "frequency": { "onDays": null } } }
 
-// Switch from date-based to weekday-based monthly:
-{ "repetitionRule": { "frequency": { "onDates": null, "on": {"last": "friday"} } } }
+// Switch from date-based to weekday-based monthly (onDates auto-cleared):
+{ "repetitionRule": { "frequency": { "on": {"last": "friday"} } } }
 
 // Switch from daily to weekly (type required for type change):
 { "repetitionRule": { "frequency": { "type": "weekly", "onDays": ["MO", "FR"] } } }
