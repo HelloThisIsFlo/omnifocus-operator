@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2.3
 milestone_name: Repetition Rule Write Support
 status: executing
-stopped_at: Phase 33.1 context gathered
-last_updated: "2026-03-29T10:42:53.344Z"
+stopped_at: Completed 33.1-01-PLAN.md
+last_updated: "2026-03-29T12:47:40.041Z"
 last_activity: 2026-03-29
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 10
-  completed_plans: 10
+  total_plans: 13
+  completed_plans: 11
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 ## Current Position
 
 Phase: 33 (write-model-validation-bridge) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-03-29
 
@@ -57,6 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 33 P03 | 10min | 2 tasks | 5 files |
 | Phase 33 P04 | 2min | 1 task | 5 files |
 | Phase 33 P05 | 5min | 2 tasks | 5 files |
+| Phase 33.1 P01 | 7min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,8 @@ Recent decisions affecting current work:
 - [Phase 33]: REPETITION_INVALID_FREQUENCY_TYPE constant for server-level discriminator error formatting
 - [Phase 33 P04]: REPETITION_TYPE_CHANGE_INCOMPLETE removed -- will be re-created in Phase 33.1
 - [Phase 33]: Inline no-op comparison in _apply_repetition_rule rather than extracting to domain
+- [Phase 33.1]: Shared validation constants (_VALID_DAY_CODES etc.) in models, imported by contracts -- avoids duplication
+- [Phase 33.1]: @field_serializer on RepetitionRule.frequency (parent model) for interval=1 suppression -- avoids schema erasure
 
 ### Pending Todos
 
@@ -112,5 +115,5 @@ Carried forward:
 ## Session Continuity
 
 Last activity: 2026-03-28 - Completed Phase 33 Plan 04: gap closure cleanup
-Stopped at: Phase 33.1 context gathered
-Resume file: .planning/phases/33.1-refactor-frequency-to-flat-model-with-type-optional-edits/33.1-CONTEXT.md
+Stopped at: Completed 33.1-01-PLAN.md
+Resume file: None
