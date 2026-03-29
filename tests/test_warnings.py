@@ -30,7 +30,7 @@ def _get_upper_snake_constants(module: object) -> set[str]:
 # Warning enforcement
 # ---------------------------------------------------------------------------
 
-_WARNING_CONSUMERS = [service_orchestrator, service_domain, server, contracts_edit_task]
+_WARNING_CONSUMERS = [service_orchestrator, service_domain, server]
 
 
 def _get_consumer_sources(consumers: list[object]) -> str:
@@ -103,6 +103,7 @@ _ERROR_CONSUMERS = [
     service_orchestrator,
     service_validate,
     contracts_common,
+    contracts_edit_task,
     contracts_repetition_rule,
     models_repetition_rule,
 ]

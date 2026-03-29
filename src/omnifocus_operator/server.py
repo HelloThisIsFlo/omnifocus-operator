@@ -123,7 +123,7 @@ def _format_validation_errors(exc: ValidationError) -> list[str]:
     - ``extra_forbidden`` -> "Unknown field '<path>'"
     - Everything else passes through (model validators produce clean messages at source)
     """
-    from omnifocus_operator.agent_messages.warnings import UNKNOWN_FIELD
+    from omnifocus_operator.agent_messages.errors import UNKNOWN_FIELD
 
     messages: list[str] = []
     for e in exc.errors():

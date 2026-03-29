@@ -39,6 +39,14 @@ CIRCULAR_REFERENCE = "Cannot move task: would create circular reference"
 
 NO_POSITION_KEY = "No position key set on move action"
 
+# --- Validation: Lifecycle ---
+
+LIFECYCLE_INVALID_VALUE = "Invalid lifecycle action '{value}' -- must be 'complete' or 'drop'"
+
+# --- Validation: Unknown Field ---
+
+UNKNOWN_FIELD = "Unknown field '{field}'"
+
 # --- Validation: Task Name ---
 
 TASK_NAME_REQUIRED = "Task name is required"
