@@ -17,6 +17,11 @@ from typing import TYPE_CHECKING, NoReturn, cast
 from omnifocus_operator.agent_messages.errors import (
     REPETITION_NO_EXISTING_RULE,
 )
+from omnifocus_operator.agent_messages.warnings import (
+    REPETITION_NO_OP,
+)
+from omnifocus_operator.rrule.builder import build_rrule
+from omnifocus_operator.rrule.schedule import based_on_to_bridge, schedule_to_bridge
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.protocols import Service
 from omnifocus_operator.contracts.use_cases.add_task import AddTaskResult
@@ -377,6 +382,25 @@ class _EditTaskPipeline(_Pipeline):
         self._repetition_rule_payload = self._payload._build_repetition_rule_payload(
             frequency, schedule, based_on, end
         )
+
+        # No-op detection: skip redundant repo call if rule is unchanged
+        if existing is not None and self._repetition_rule_payload is not None:
+            try:
+                existing_rule_string = build_rrule(existing.frequency, existing.end)
+                existing_schedule_type, existing_catch_up = schedule_to_bridge(existing.schedule)
+                existing_anchor = based_on_to_bridge(existing.based_on)
+            except (ValueError, KeyError):
+                pass  # can't compare -> treat as changed
+            else:
+                rp = self._repetition_rule_payload
+                if (
+                    rp.rule_string == existing_rule_string
+                    and rp.schedule_type == existing_schedule_type
+                    and rp.anchor_date_key == existing_anchor
+                    and rp.catch_up_automatically == existing_catch_up
+                ):
+                    self._repetition_warns.append(REPETITION_NO_OP)
+                    self._repetition_rule_payload = None
 
     def _merge_same_type_frequency(
         self,

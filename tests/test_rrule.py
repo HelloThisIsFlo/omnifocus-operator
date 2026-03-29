@@ -269,6 +269,10 @@ class TestParseRruleFrequencyTypes:
         result = parse_rrule("FREQ=MONTHLY;BYMONTHDAY=-1")
         assert result == MonthlyDayInMonthFrequency(on_dates=[-1])
 
+    def test_monthly_bymonthday_multi_values(self):
+        result = parse_rrule("FREQ=MONTHLY;BYMONTHDAY=1,15,-1")
+        assert result == MonthlyDayInMonthFrequency(on_dates=[1, 15, -1])
+
     def test_yearly(self):
         result = parse_rrule("FREQ=YEARLY")
         assert result == YearlyFrequency()
@@ -447,6 +451,10 @@ class TestBuildRrule:
         result = build_rrule(MonthlyDayInMonthFrequency(on_dates=[-1]))
         assert result == "FREQ=MONTHLY;BYMONTHDAY=-1"
 
+    def test_monthly_day_in_month_multi_values(self):
+        result = build_rrule(MonthlyDayInMonthFrequency(on_dates=[1, 15, -1]))
+        assert result == "FREQ=MONTHLY;BYMONTHDAY=1,15,-1"
+
     def test_yearly(self):
         assert build_rrule(YearlyFrequency()) == "FREQ=YEARLY"
 
@@ -485,6 +493,7 @@ class TestRoundTrip:
             "FREQ=MONTHLY;BYDAY=-1FR",
             "FREQ=MONTHLY;BYMONTHDAY=15",
             "FREQ=MONTHLY;BYMONTHDAY=-1",
+            "FREQ=MONTHLY;BYMONTHDAY=1,15,-1",
             "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=1",
             "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=2",
             "FREQ=MONTHLY;BYDAY=SU,SA;BYSETPOS=-1",

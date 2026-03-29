@@ -96,7 +96,7 @@ def build_rrule(
     elif isinstance(frequency, MonthlyDayOfWeekFrequency) and frequency.on:
         parts.append(_build_byday_positional(frequency.on))
     elif isinstance(frequency, MonthlyDayInMonthFrequency) and frequency.on_dates:
-        parts.append(f"BYMONTHDAY={frequency.on_dates[0]}")
+        parts.append(f"BYMONTHDAY={','.join(str(d) for d in frequency.on_dates)}")
 
     # End condition
     if isinstance(end, EndByOccurrences):
