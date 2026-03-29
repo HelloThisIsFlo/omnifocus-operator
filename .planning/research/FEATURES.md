@@ -14,15 +14,14 @@ Features the v1.3 spec requires. Missing = milestone incomplete.
 | `list_tags(status?)` | Tag discovery for agents | Low | Simple WHERE on dateHidden/allowsNextAction |
 | `list_folders(status?)` | Folder structure browsing | Low | Simple WHERE on dateHidden |
 | `list_perspectives()` | Perspective discovery | Low | No filters, plist parsing already exists |
-| `count_tasks(...)` | Quick counts for planning | Low | Same filter path, return total_count |
-| `count_projects(...)` | Project count by status | Low | Same filter path, return total_count |
+| `total_count` in ListResult | Quick counts without separate tools | Low | Embedded in list response, agents read total_count |
 | AND combination of filters | All filters compose with AND | Med | Builder pattern handles naturally |
 | Completed/dropped excluded by default | Standard OmniFocus UX | Low | Default WHERE clauses |
 | Parameterized queries | No SQL injection | Low | `?` placeholders throughout |
 | Bridge fallback parity | BridgeRepository must match SQL results | Med | In-memory filtering on AllEntities snapshot |
 | LIMIT/OFFSET pagination | Spec requirement on list_tasks/list_projects | Low | SQL LIMIT/OFFSET, Python slice for bridge |
 | Substring search (name + notes) | Case-insensitive search via LIKE | Low | `%term%` on name and plainTextNote |
-| `count_tasks() == len(list_tasks())` parity | Spec AC: one code path prevents divergence | Low | Shared filter logic |
+| `total_count` reflects total matches ignoring limit/offset | Response shape guarantee | Low | Single query, single code path |
 | Tool descriptions for LLM discoverability | Spec AC: agent can call tools correctly | Med | Detailed descriptions per spec |
 
 ## Differentiators
@@ -86,12 +85,14 @@ CF epoch conversion (existing _CF_EPOCH, _parse_timestamp)
 3. **list_tasks (HybridRepository)** -- scalar filters first (inbox, flagged, has_children, availability, estimated_minutes_max), then tag subquery and search
 4. **list_tasks (BridgeRepository)** -- in-memory fallback, equivalence tested
 5. **list_projects for both repos** -- same pattern, adds status shorthands and review_due_within
-6. **count_tasks / count_projects** -- thin wrappers on list infrastructure
-7. **list_tags / list_folders / list_perspectives** -- simplest tools
+6. **list_tags / list_folders / list_perspectives** -- simplest tools, query models with status list (OR logic)
 8. **Service pipelines + server registration** -- wire everything up
 9. **Cross-path equivalence tests** -- spec requirement
 
 Defer entirely to v1.3.1: All date filtering (due, defer, planned, completed, dropped, added, modified).
+
+Note: No standalone count tools. `list_tasks`/`list_projects` return `ListResult` with `total_count` — agents get counts via `list_tasks(flagged: true, limit: 1)` and read `total_count`.
+Note: `list_tags` and `list_folders` status filter accepts a list with OR logic (e.g., `["active", "on_hold"]`), defaulting to remaining. Uses `ListTagsQuery`/`ListFoldersQuery` models.
 
 ## Sources
 

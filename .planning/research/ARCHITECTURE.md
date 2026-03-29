@@ -35,14 +35,9 @@ repository protocol: list_tasks(query) -> ListResult[Task]
         Return ListResult(items=[Task, ...], total_count=N)
 ```
 
-### count_tasks / count_projects
+### Counting (no separate tools)
 
-Same pipeline, same query model, different return type. Two implementation strategies, pick one:
-
-- **Recommended: shared code path.** `list_tasks` and `count_tasks` call the same service pipeline. The pipeline returns `ListResult` which always includes `total_count`. `count_tasks` tool returns just the count. `list_tasks` tool returns the items. This guarantees count/list parity (spec requirement: `count_tasks() == len(list_tasks())` for same filters).
-- **Alternative: SQL COUNT(*).** HybridRepository could run `SELECT COUNT(*)` instead of `SELECT *` for count operations. ~50% faster on large result sets. But introduces a second code path that could diverge. Not worth the risk for a ~2,400-task database.
-
-Decision: **shared code path.** Performance is irrelevant at this scale. Correctness guarantee is valuable.
+No standalone `count_tasks` or `count_projects` tools. Instead, `ListResult` always includes `total_count` — the total number of matching results ignoring limit/offset. Agents compute counts via `list_tasks(flagged: true, limit: 1)` and read `total_count`. This makes count/list divergence impossible by construction — one query, one code path, one result.
 
 ## Component Boundaries
 
@@ -52,7 +47,9 @@ Decision: **shared code path.** Performance is irrelevant at this scale. Correct
 |-----------|----------|----------------|---------|
 | `ListTasksQuery` | `contracts/use_cases/list_tasks.py` | Validated filter parameters for task listing | New use case, follows existing pattern |
 | `ListProjectsQuery` | `contracts/use_cases/list_projects.py` | Validated filter parameters for project listing | New use case |
-| `ListResult[T]` | `contracts/use_cases/list_common.py` | Generic result container with items + total_count | Shared by list/count, both entity types |
+| `ListTagsQuery` | `contracts/use_cases/list_tags.py` | Validated status filter for tag listing | New use case, status list with OR logic |
+| `ListFoldersQuery` | `contracts/use_cases/list_folders.py` | Validated status filter for folder listing | New use case, status list with OR logic |
+| `ListResult[T]` | `contracts/use_cases/list_common.py` | Generic result container with items + total_count | Shared by both entity types |
 | `_ListTasksPipeline` | `service/service.py` | Filter resolution, default exclusions, delegation | Method Object pattern (established convention) |
 | `_ListProjectsPipeline` | `service/service.py` | Same for projects | Method Object pattern |
 | `query_builder.py` | `repository/query_builder.py` | Query model -> (SQL string, params tuple) | SQL generation needs dedicated module, not inline in hybrid.py |
@@ -228,7 +225,7 @@ class ListTasksQuery(CommandModel):
     offset: int | None = None
 ```
 
-Open question: Should `ListTasksQuery` inherit `CommandModel` (which has `extra="forbid"`)? Yes -- agent sends these params, unknown params should error. But there's a naming tension: it's not a "command." The `extra="forbid"` behavior is what matters, not the base class name. Pragmatic answer: inherit `CommandModel` for the behavior, accept the naming imperfection. Or introduce a `QueryModel` alias. Lean toward `CommandModel` -- don't proliferate base classes for a naming quibble.
+**Resolved:** `ListTasksQuery` inherits `QueryModel` (not `CommandModel`). The CQRS taxonomy (see `docs/architecture.md`) introduces `StrictModel` → `QueryModel` for read-side contracts, alongside `StrictModel` → `CommandModel` for write-side. Both provide `extra="forbid"` via `StrictModel`.
 
 ### Pattern 2: ListResult as Generic Container
 
@@ -244,11 +241,9 @@ class ListResult(OmniFocusBaseModel, Generic[T]):
     total_count: int
 ```
 
-**Why:** Both list_tasks and list_projects need the same structure. count_tasks just reads `total_count`. Agents get pagination info without a separate call.
+**Why:** Both list_tasks and list_projects need the same structure. Agents get pagination info without a separate call. "How many flagged tasks?" → `list_tasks(flagged: true, limit: 1)`, read `total_count`. No separate count tools needed.
 
 **MCP tool return:** The server layer returns `ListResult[Task]` directly -- FastMCP handles Pydantic serialization. The agent sees `{"items": [...], "totalCount": N}` (camelCase via alias).
-
-For count tools, the server returns just the integer (or a thin wrapper). Not a `ListResult` -- no point returning an empty items list.
 
 ### Pattern 3: Query Builder as Pure Function Module
 
@@ -286,15 +281,17 @@ class _ListTasksPipeline(_Pipeline):
 
 ### Pattern 5: Simpler Tools Without Pipelines (Tags, Folders, Perspectives)
 
-**What:** `list_tags`, `list_folders`, `list_perspectives` are simple enough to NOT need pipelines. Single filter (status), no pagination, no cross-entity resolution. Direct pass-through from service to repository.
+**What:** `list_tags`, `list_folders`, `list_perspectives` are simple enough to NOT need pipelines. Status filter with OR logic, no pagination, no cross-entity resolution. Direct pass-through from service to repository using query models.
 
-**Why:** Method Object pattern is for multi-step orchestration. A single-filter list is a one-liner. Don't over-pattern it.
+**Why:** Method Object pattern is for multi-step orchestration. A status-filtered list is a one-liner. Don't over-pattern it.
 
 ```python
 # In OperatorService
-async def list_tags(self, status: str | None = None) -> list[Tag]:
-    return await self._repository.list_tags(status)
+async def list_tags(self, query: ListTagsQuery) -> list[Tag]:
+    return await self._repository.list_tags(query)
 ```
+
+Note: `list_tags` and `list_folders` accept a `status` list with OR logic (e.g., `["active", "on_hold"]`), defaulting to `remaining` (active + on_hold). Uses `ListTagsQuery`/`ListFoldersQuery` models inheriting `QueryModel`, consistent with the CQRS taxonomy.
 
 ## Anti-Patterns to Avoid
 
@@ -352,8 +349,8 @@ class Repository(Protocol):
     # New list methods
     async def list_tasks(self, query: ListTasksQuery) -> ListResult[Task]: ...
     async def list_projects(self, query: ListProjectsQuery) -> ListResult[Project]: ...
-    async def list_tags(self, status: str | None = None) -> list[Tag]: ...
-    async def list_folders(self, status: str | None = None) -> list[Folder]: ...
+    async def list_tags(self, query: ListTagsQuery) -> list[Tag]: ...
+    async def list_folders(self, query: ListFoldersQuery) -> list[Folder]: ...
     async def list_perspectives(self) -> list[Perspective]: ...
 
     # Existing writes
@@ -373,14 +370,12 @@ class Service(Protocol):
     async def add_task(self, command: AddTaskCommand) -> AddTaskResult: ...
     async def edit_task(self, command: EditTaskCommand) -> EditTaskResult: ...
 
-    # New list/count methods
+    # New list methods (no separate count tools — total_count embedded in ListResult)
     async def list_tasks(self, query: ListTasksQuery) -> ListResult[Task]: ...
     async def list_projects(self, query: ListProjectsQuery) -> ListResult[Project]: ...
-    async def list_tags(self, status: str | None = None) -> list[Tag]: ...
-    async def list_folders(self, status: str | None = None) -> list[Folder]: ...
+    async def list_tags(self, query: ListTagsQuery) -> list[Tag]: ...
+    async def list_folders(self, query: ListFoldersQuery) -> list[Folder]: ...
     async def list_perspectives(self) -> list[Perspective]: ...
-    async def count_tasks(self, query: ListTasksQuery) -> int: ...
-    async def count_projects(self, query: ListProjectsQuery) -> int: ...
 ```
 
 ## Suggested Build Order
@@ -410,14 +405,13 @@ Rationale: Repository is the core data path. Test with InMemoryBridge (via Bridg
 
 10. **_ListTasksPipeline** -- tag resolution, default exclusions, pagination validation, delegation
 11. **_ListProjectsPipeline** -- status shorthand expansion, folder resolution, delegation
-12. **Simple list pass-throughs** (tags, folders, perspectives)
-13. **count_tasks / count_projects** -- thin wrappers calling list pipeline, returning total_count
+12. **Simple list pass-throughs** (tags, folders, perspectives) -- using ListTagsQuery/ListFoldersQuery
 
 Rationale: Service depends on repository. Pipelines are thin for reads.
 
 ### Phase 4: Server Layer (tool registration)
 
-14. **Register all 7 new tools** in server.py
+14. **Register all 5 new tools** in server.py
 15. **Tool descriptions** -- detailed enough for LLM discoverability (spec has proposed descriptions)
 16. **Validation error formatting** for filter params
 

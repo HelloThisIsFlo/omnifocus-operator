@@ -7,9 +7,9 @@
 
 ## Executive Summary
 
-v1.3 adds 7 new read tools (`list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives`, `count_tasks`, `count_projects`) to the existing three-layer architecture. The core challenge is not the feature set — it's maintaining identical semantics across two read paths: SQL (HybridRepository) and in-memory filtering (BridgeRepository fallback). Every filter must produce the same results regardless of which path executes it.
+v1.3 adds 5 new read tools (`list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives`) to the existing three-layer architecture. No separate count tools — `ListResult` embeds `total_count` in every list response. The core challenge is not the feature set — it's maintaining identical semantics across two read paths: SQL (HybridRepository) and in-memory filtering (BridgeRepository fallback). Every filter must produce the same results regardless of which path executes it.
 
-The recommended approach is clean layer separation: service layer handles all resolution and expansion (tag names to IDs, status shorthands, duration parsing, default exclusions), repositories receive only concrete unambiguous values. SQL generation is extracted to a pure-function `query_builder.py` module; in-memory filtering lives in a separate `filter.py` module. Both receive the same resolved `ListTasksQuery` / `ListProjectsQuery` models. Count tools share the same code path as list tools — `count_tasks()` calls the list pipeline and returns `total_count` from `ListResult`.
+The recommended approach is clean layer separation: service layer handles all resolution and expansion (tag names to IDs, status shorthands, duration parsing, default exclusions), repositories receive only concrete unambiguous values. SQL generation is extracted to a pure-function `query_builder.py` module; in-memory filtering lives in a separate `filter.py` module. Both receive the same resolved query models (`ListTasksQuery`, `ListProjectsQuery`, `ListTagsQuery`, `ListFoldersQuery` — all inheriting `QueryModel`). Counting is embedded: `ListResult` always includes `total_count`, making separate count tools unnecessary.
 
 The critical risk is filter semantic drift between SQL and in-memory paths — bugs are invisible until someone compares both paths side-by-side. Prevention requires: explicit NULL handling in both paths, LIKE escaping, deterministic ORDER BY for pagination, shared shorthand expansion at the service layer, and parametrized cross-path equivalence tests. No new dependencies are needed. Everything builds on the existing codebase.
 
@@ -17,7 +17,7 @@ The critical risk is filter semantic drift between SQL and in-memory paths — b
 
 ### Recommended Stack
 
-No new dependencies. The existing stack (Python 3.12+, FastMCP, Pydantic v2, stdlib sqlite3) is sufficient. Two new internal modules are introduced: `repository/query_builder.py` (pure SQL generation) and `repository/filter.py` (in-memory predicates). New contract models: `ListTasksQuery`, `ListProjectsQuery`, `ListResult[T]`.
+No new dependencies. The existing stack (Python 3.12+, FastMCP, Pydantic v2, stdlib sqlite3) is sufficient. Two new internal modules are introduced: `repository/query_builder.py` (pure SQL generation) and `repository/filter.py` (in-memory predicates). New contract models: `ListTasksQuery`, `ListProjectsQuery`, `ListTagsQuery`, `ListFoldersQuery` (all inherit `QueryModel`), `ListResult[T]` (inherits `OmniFocusBaseModel`).
 
 **Core technologies:**
 - `sqlite3` (stdlib): filtered SQL via dynamic WHERE clause builder — parameterized `?` placeholders throughout, no injection risk
@@ -31,8 +31,7 @@ No new dependencies. The existing stack (Python 3.12+, FastMCP, Pydantic v2, std
 **Must have (table stakes):**
 - `list_tasks` with 10 filters: inbox, flagged, project, tags, has_children, estimated_minutes_max, availability, search, limit, offset
 - `list_projects` with 6 filters: status, folder, review_due_within, flagged, limit, offset
-- `count_tasks` / `count_projects` — same filter code path as list, return total_count only
-- `list_tags`, `list_folders` with optional status filter; `list_perspectives` with no filters
+- `list_tags`, `list_folders` with status list filter (OR logic, default: remaining); `list_perspectives` with no filters
 - Bridge fallback parity — BridgeRepository produces identical results to SQL path
 - Default exclusion of completed/dropped tasks
 - Parameterized queries throughout
@@ -74,7 +73,7 @@ Extend the existing three-layer architecture with no new layers. Service layer g
 ### Phase 1: Contracts and Query Foundation
 
 **Rationale:** Everything else depends on typed query models and the query builder. Pure functions, no database needed — immediately testable.
-**Delivers:** `ListTasksQuery`, `ListProjectsQuery`, `ListResult[T]`, `query_builder.py`, protocol extensions on Repository and Service
+**Delivers:** `ListTasksQuery`, `ListProjectsQuery`, `ListTagsQuery`, `ListFoldersQuery`, `ListResult[T]`, `query_builder.py`, protocol extensions on Repository and Service
 **Addresses:** Typed filter contracts; ARCHITECTURE Patterns 1, 2, 3
 **Avoids:** Pitfall 1 (divergence) — establishes the single source of truth for filter parameters before any repository code is written
 
@@ -95,21 +94,21 @@ Extend the existing three-layer architecture with no new layers. Service layer g
 ### Phase 4: Service Layer — Orchestration
 
 **Rationale:** Service depends on both repository paths being complete.
-**Delivers:** `_ListTasksPipeline`, `_ListProjectsPipeline`, count_tasks/count_projects wrappers, simple list pass-throughs
+**Delivers:** `_ListTasksPipeline`, `_ListProjectsPipeline`, simple list pass-throughs (tags, folders, perspectives via query models)
 **Uses:** `Resolver.resolve_tags()` (existing); Method Object pattern (established)
 **Avoids:** Pitfall 5 (count/list divergence via shared code path), Pitfall 6 (shorthand expansion in one place), Pitfall 7 (CF epoch resolution for review_due_within), Pitfall 10 (default exclusion as removable clause), Pitfall 11 (offset without limit validation)
 
 ### Phase 5: Server Registration and Integration Testing
 
 **Rationale:** Outermost layer wires everything together; integration and cross-path equivalence tests run here.
-**Delivers:** 7 new tool registrations, LLM-oriented descriptions with enumerated values and examples, full equivalence test suite
+**Delivers:** 5 new tool registrations, LLM-oriented descriptions with enumerated values and examples, full equivalence test suite
 **Avoids:** Pitfall 12 (tool description quality and LLM calling errors)
 
 ### Phase Ordering Rationale
 
 - Bottom-up dependency order: contracts -> SQL repository -> in-memory repository -> service -> server
 - Cross-path equivalence tests are only meaningful once both repository paths exist — Phase 3 must complete before Phase 5 validation
-- Count tools share the list pipeline; implementing count as a thin wrapper in Phase 4 eliminates divergence risk by construction
+- No separate count tools — `total_count` embedded in `ListResult` eliminates divergence risk by construction
 - Simple tools (list_tags, list_folders, list_perspectives) slot into Phase 2 as low-complexity deliverables alongside the SQL path
 
 ### Research Flags
