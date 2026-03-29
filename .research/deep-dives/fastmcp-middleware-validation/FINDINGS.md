@@ -13,7 +13,9 @@
 **Caveats (minimal but worth knowing):**
 - **Test updates are the bulk of the work** -- tests asserting on validation error paths need updating: errors arrive as `ToolError` (middleware) instead of `ValueError` (handler), and `loc` paths gain an `items.0.` prefix. Mechanical but tedious.
 - **Unknown field message diff** -- `Unknown field 'bogusField'` → `Unknown field 'items.0.bogusField'`. Strictly more informative, but differs from today. One-liner fix in `_format_validation_errors` if exact parity matters.
-- **Implicit coupling to FastMCP internals** -- relies on validation happening inside `call_next()` (`FunctionTool.run()` → `type_adapter.validate_python()`). If a future FastMCP version moves validation before middleware, the catch wouldn't fire. Unlikely (would be a breaking change), but it's an undocumented internal, not a contract.
+- **Implicit coupling to FastMCP internals** -- relies on validation happening inside `call_next()` (`FunctionTool.run()` → `type_adapter.validate_python()`). If a future FastMCP version moves validation before middleware, the catch wouldn't fire. Unlikely (would be a breaking change), but it's an undocumented internal, not a contract. Add a canary test to catch this early.
+
+**Post-migration follow-up: trim tool docstrings.** The 45-line field-by-field docstrings on `add_tasks`/`edit_tasks` were compensating for the missing schema. With rich inputSchema, agents get field info from the schema itself. Docstrings should be trimmed to: purpose, batch limits, patch semantics, and examples. Remove field-by-field enumeration — it's now redundant context-window tax and a maintenance drift risk. (This was the original motivation for the research.)
 
 Everything below is the evidence trail: what we tested, what we found, why the other 5 approaches don't work or are strictly worse.
 
@@ -137,29 +139,30 @@ Six approaches were tested. Approach 1 is the end game. Approach 2 is a low-risk
 **What changes:**
 1. **New middleware**: `ValidationReformatterMiddleware` in `middleware.py`
    - `on_call_tool`: catch `ValidationError` → `_format_validation_errors()` → `ToolError`
-2. **Handler signatures**: `items: list[dict[str, Any]]` → `items: list[AddTaskCommand]` / `items: list[EditTaskCommand]`
-3. **Handler bodies**: remove try/except + `model_validate()` block. Use typed `items[0]` directly.
-4. **`_format_validation_errors`**: stays in `server.py`, used by the middleware. Optionally improve:
-   - Filter `_Unset` via `ctx.get("class")` instead of string matching on msg
-   - Use `ctx["expected_tags"]` for `union_tag_invalid`
+2. **Move `_format_validation_errors`** out of `server.py` into the middleware module (or a shared module). Keeping it in `server.py` while the middleware imports it creates an inverted dependency.
+3. **Improve `_format_validation_errors`** while moving it:
+   - Filter `_Unset` noise via `e.get("ctx", {}).get("class") == "_Unset"` instead of fragile `"_Unset" in e["msg"]` string matching. Pydantic doesn't guarantee message stability across versions; `ctx` is structural.
+   - Use `ctx["expected_tags"]` for `union_tag_invalid` instead of manual extraction from `e["input"]`
+4. **Handler signatures**: `items: list[dict[str, Any]]` → `items: list[AddTaskCommand]` / `items: list[EditTaskCommand]`
+5. **Handler bodies**: remove try/except + `model_validate()` block. Use typed `items[0]` directly.
+6. **Trim tool docstrings**: remove field-by-field enumeration (now redundant with rich schema). Keep: purpose, batch limits, patch semantics, examples.
 
 **What doesn't change:**
 - Command models (`AddTaskCommand`, `EditTaskCommand`) -- untouched
 - `_Unset`, `Patch[T]`, `PatchOrClear[T]` -- untouched
 - Agent-facing error messages -- 10/12 identical, 2 improved
 - Service layer -- untouched
-- Tool docstrings -- stay (FastMCP uses them for tool description)
 
 **Migration path:**
-1. Add `ValidationReformatterMiddleware` (one file)
+1. Add `ValidationReformatterMiddleware` + move/improve `_format_validation_errors` into middleware module
 2. Change `add_tasks` signature + remove try/except (surgical)
 3. Change `edit_tasks` signature + remove try/except (surgical)
-4. Update tests that check validation error paths
-5. Optionally: improve `_format_validation_errors` with ctx-based filtering
+4. Trim tool docstrings
+5. Update tests that check validation error paths
 
 ### Optional Enhancement: Custom UNSET Error Type
 
-Change `_Unset.__get_pydantic_core_schema__` to use `custom_error_schema` wrapper:
+Separate from the `ctx`-based filtering above (which is included in the migration), this changes `_Unset` itself to produce a custom error type:
 ```python
 return core_schema.custom_error_schema(
     core_schema.is_instance_schema(cls),
@@ -167,15 +170,11 @@ return core_schema.custom_error_schema(
     custom_error_message="This field was omitted (no change)",
 )
 ```
-Then filter in `_format_validation_errors` via `e["type"] == "omitted_field_sentinel"` instead of `"_Unset" in e["msg"]`.
+This would let filtering match on `e["type"] == "omitted_field_sentinel"` — even more robust than `ctx`-based. But it modifies `_Unset` internals, so it's a separate decision from the middleware migration.
 
-### Stepping Stone (Approach 2) -- Optional
+### Stepping Stone (Approach 2) -- Not Recommended
 
-If the handler refactor feels too large for one phase, deploy approach 2 first as a zero-risk schema improvement:
-1. Add `SchemaInjectionMiddleware` with `on_list_tools` (one file)
-2. No handler changes at all
-3. Agents immediately get rich schemas
-4. Later: migrate to approach 1 for full cleanup
+~~Originally offered as an incremental first step.~~ Dropped after review panel feedback: the full migration is surgical (two signature changes, two try/except removals), so a temporary intermediate creates more churn than it saves. Go straight to Approach 1.
 
 ## Gotchas
 
