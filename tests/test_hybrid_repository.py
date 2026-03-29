@@ -1661,3 +1661,119 @@ class TestLocalDatetimeParsing:
         assert task.added.hour == 12
         assert task.modified is not None
         assert task.modified.hour == 12
+
+
+# ============================================================================
+# LIST TASKS / LIST PROJECTS TESTS (Task 1 - basic method existence + behavior)
+# ============================================================================
+
+from omnifocus_operator.contracts.use_cases.list_entities import (
+    ListProjectsQuery,
+    ListResult,
+    ListTasksQuery,
+)
+from omnifocus_operator.models.enums import Availability
+
+
+class TestListTasksBasic:
+    """Basic tests proving list_tasks exists and works on HybridRepository."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task({"persistentIdentifier": "t-avail", "blocked": 0}),
+            _minimal_task({"persistentIdentifier": "t-blocked", "blocked": 1}),
+            _minimal_task(
+                {"persistentIdentifier": "t-completed", "dateCompleted": _NOW_CF}
+            ),
+        ],
+    )
+    async def test_list_tasks_default_excludes_completed(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """Default query returns available + blocked, excludes completed."""
+        result = await hybrid_repo.list_tasks(ListTasksQuery())
+        assert isinstance(result, ListResult)
+        assert result.total == 2
+        ids = {t.id for t in result.items}
+        assert "t-avail" in ids
+        assert "t-blocked" in ids
+        assert "t-completed" not in ids
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task({"persistentIdentifier": "t-flag", "flagged": 1}),
+            _minimal_task({"persistentIdentifier": "t-noflag", "flagged": 0}),
+        ],
+    )
+    async def test_list_tasks_flagged_filter(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """Flagged filter returns only flagged tasks."""
+        result = await hybrid_repo.list_tasks(ListTasksQuery(flagged=True))
+        assert result.total == 1
+        assert result.items[0].id == "t-flag"
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task({"persistentIdentifier": "t1"}),
+            _minimal_task({"persistentIdentifier": "t2"}),
+            _minimal_task({"persistentIdentifier": "t3"}),
+        ],
+    )
+    async def test_list_tasks_pagination(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """Pagination with limit returns correct has_more and total."""
+        result = await hybrid_repo.list_tasks(ListTasksQuery(limit=2))
+        assert len(result.items) == 2
+        assert result.total == 3
+        assert result.has_more is True
+
+
+class TestListProjectsBasic:
+    """Basic tests proving list_projects exists and works on HybridRepository."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        projects=[
+            _minimal_project(
+                {"persistentIdentifier": "p-active", "project_info": {"effectiveStatus": "active"}}
+            ),
+            _minimal_project(
+                {
+                    "persistentIdentifier": "p-dropped",
+                    "project_info": {"effectiveStatus": "dropped"},
+                }
+            ),
+        ],
+    )
+    async def test_list_projects_default_remaining(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """Default query returns remaining (available + blocked), excludes dropped."""
+        result = await hybrid_repo.list_projects(ListProjectsQuery())
+        assert isinstance(result, ListResult)
+        assert result.total == 1
+        assert result.items[0].id == "p-active"
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        projects=[
+            _minimal_project(
+                {"persistentIdentifier": "p-flag", "flagged": 1}
+            ),
+            _minimal_project(
+                {"persistentIdentifier": "p-noflag", "flagged": 0}
+            ),
+        ],
+    )
+    async def test_list_projects_flagged_filter(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """Flagged filter returns only flagged projects."""
+        result = await hybrid_repo.list_projects(ListProjectsQuery(flagged=True))
+        assert result.total == 1
+        assert result.items[0].id == "p-flag"
