@@ -391,6 +391,26 @@ In every case: the generous option means "you might see one extra task." The cle
 - **Default exclusions are intentional.** Completed/dropped tasks require an explicit filter. "Show active tasks" is a clear design choice, not an ambiguous boundary.
 - **The principle is a tiebreaker**, not a blanket rule. If the answer is obviously "exclude," exclude.
 
+## Structure Over Discipline
+
+*Designing architecture for agents who always take the shortest path.*
+
+Design the architecture so the path of least resistance leads to the right outcome. Agents optimize
+for least resistance uniformly and instantly — they don't leave legible patterns you can learn from.
+So: pave first. Make the structure guide toward the right choice, not discipline or documentation.
+
+In practice:
+
+- **Prefer duplication over shared abstractions** when paths will diverge — separate types per
+  operation, separate classes even when fields match today. Agents won't recognize when a shared
+  abstraction is the wrong fit.
+- **Use the type system to make wrong states unrepresentable** — distinct types at each boundary,
+  sentinel types for ambiguous states. If the wrong choice doesn't compile, agents can't take it.
+- **Make module boundaries self-documenting** — when the module name tells you where new code goes,
+  agents don't need to make judgment calls about placement.
+
+**Full writeup with examples:** [Structure Over Discipline](structure-over-discipline.md)
+
 ## Write API Patterns
 
 ### Patch semantics (edit_tasks)
