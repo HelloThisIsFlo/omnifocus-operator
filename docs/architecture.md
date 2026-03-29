@@ -490,28 +490,6 @@ Agents never see RRULE strings. The read and write models expose repetition as s
 
 Why top-level (not inside `actions`): setting a repetition rule is idempotent — same input always produces the same result, regardless of current state. Follows the same pattern as `due_date`, `note` — set, clear, or leave unchanged.
 
-### Frequency Model Hierarchy
-
-Three models, one concept:
-
-```
-Frequency(OmniFocusBaseModel)          -- domain model, canonical representation
-                                          validation (cross-type, value ranges, mutual exclusion)
-                                          used internally by service, parser, builder
-                                          used directly for read output (in RepetitionRule.frequency)
-
-FrequencyAddSpec(CommandModel)         -- agent input boundary for creation
-                                          same fields as Frequency, extra="forbid"
-
-FrequencyEditSpec(CommandModel)        -- agent input boundary for editing
-                                          Patch/PatchOrClear fields, no validation
-                                          service resolves to Frequency after merge
-```
-
-`Frequency` is the domain model — it defines what a valid frequency IS. The write specs are input boundary objects that exist only to receive and constrain agent input. The service always works with `Frequency` internally.
-
-**Future: `FrequencyRead`** — If read output ever needs frequency-specific serialization beyond what `RepetitionRule.@field_serializer` provides, introduce `FrequencyRead(Frequency)` as a subclass. The service continues to work with `Frequency`; the read output boundary wraps in `FrequencyRead`. This keeps the domain model clean and the read-specific behavior at the output boundary. Do not add `FrequencyRead` until a concrete need arises — but when it does, this is the path.
-
 ### Repetition Rule Structure
 
 ```
