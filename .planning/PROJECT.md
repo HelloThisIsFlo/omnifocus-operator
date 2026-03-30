@@ -22,7 +22,7 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 ## Current State
 
 **Shipped:** v1.2.3 (2026-03-29) — Repetition Rule Write Support
-**Next:** v1.3 Read Tools — Phase 35 complete (SQL repository list methods)
+**Next:** v1.3 Read Tools — Phase 35.1 complete (read-side contract boundary split)
 
 ## Requirements
 
@@ -197,4 +197,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-30 after Phase 35 complete — SQL Repository list methods*
+*Last updated: 2026-03-30 after Phase 35.1 complete — Read-side contract boundary split (RepoQuery/ListRepoResult)*
