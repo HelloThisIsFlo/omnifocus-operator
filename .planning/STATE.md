@@ -21,7 +21,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-29)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 34 — contracts-and-query-foundation
+**Current focus:** Phase 35 — sql-repository
 
 ## Current Position
 
