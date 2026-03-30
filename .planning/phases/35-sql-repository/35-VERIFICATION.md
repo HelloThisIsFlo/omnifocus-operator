@@ -94,7 +94,7 @@ human_verification:
 | PROJ-02 | 35-01-PLAN | Agent can use status shorthands | SATISFIED (redesigned) | Original shorthands replaced by uniform `availability` enum list per D-03. Same expressiveness, simpler contract. |
 | PROJ-03 | 35-01-PLAN | Default project listing returns remaining | SATISFIED | `test_list_projects_default_remaining` passes; default availability=[AVAILABLE, BLOCKED]. |
 | PROJ-04 | 35-01-PLAN | Agent can list projects filtered by folder name | SATISFIED | `test_list_projects_folder_filter` passes; LIKE subquery on Folder.name. |
-| PROJ-05 | 35-01-PLAN | Agent can list projects with reviews due within a duration | PARTIALLY SATISFIED | Timestamp comparison implemented (`nextReviewDate <= ?`). Duration parsing (1w, 2m, now) and error messages are service-layer concerns deferred to Phase 37. Repository layer does raw timestamp comparison. |
+| PROJ-05 | 35-01-PLAN | Agent can list projects with reviews due within a duration | PARTIALLY SATISFIED | Timestamp comparison implemented (`nextReviewDate <= ?`). Duration parsing (1w, 2m, now) and error messages are service-layer concerns deferred to ~~Phase 37~~ Phase 36. Repository layer does raw timestamp comparison. |
 | PROJ-06 | 35-01-PLAN | Agent can list projects filtered by flagged status | SATISFIED | `test_list_projects_flagged` passes. |
 | PROJ-07 | 35-01-PLAN | Agent can paginate project results | SATISFIED | `test_list_projects_pagination` passes. |
 | BROWSE-01 | 35-02-PLAN | Agent can list tags filtered by status list with OR logic | SATISFIED | `test_list_tags_default_excludes_dropped` passes; fetch-all + Python filter with OR semantics via set membership. |
@@ -104,7 +104,7 @@ human_verification:
 
 **Deferred (not blocking this phase):**
 - TASK-05: Dropped per D-11, deferred to future milestone. Correctly marked Pending in REQUIREMENTS.md.
-- PROJ-05 duration parsing: "1w", "2m", "now" shorthand expansion and validation is a service layer concern (Phase 37). Repository accepts raw timestamp strings.
+- PROJ-05 duration parsing: "1w", "2m", "now" shorthand expansion and validation is a service layer concern (~~Phase 37~~ Phase 36). Repository accepts raw timestamp strings.
 
 ### Anti-Patterns Found
 
@@ -128,7 +128,7 @@ No gaps found. All must-haves verified. All automated checks pass.
 
 **Note on TASK-05:** This requirement is intentionally deferred (not a gap). D-11 in the Phase 34 context explicitly states `has_children` was dropped due to no clear agent use case. REQUIREMENTS.md correctly marks it Pending. This is tracked and not forgotten.
 
-**Note on PROJ-05 partial:** Duration parsing ("1w", "2m") is a service-layer concern scoped to Phase 37. The repository layer correctly accepts raw ISO timestamp strings and compares them. The full PROJ-05 requirement will be fully satisfied when Phase 37 implements the service layer.
+**Note on PROJ-05 partial:** Duration parsing ("1w", "2m") is a service-layer concern scoped to ~~Phase 37~~ Phase 36. The repository layer correctly accepts raw ISO timestamp strings and compares them. The full PROJ-05 requirement will be fully satisfied when ~~Phase 37~~ Phase 36 implements the service layer.
 
 ---
 

@@ -87,7 +87,7 @@ None - no external service configuration required.
 
 ## Next Phase Readiness
 - HybridRepository fully satisfies Repository protocol for all 5 list methods
-- Ready for Phase 36 (BridgeRepository fallback) and Phase 37 (Service layer wiring)
+- Ready for ~~Phase 36~~ (BridgeRepository fallback — delivered in Phase 35.2) and ~~Phase 37~~ (Service layer wiring — now Phase 36)
 
 ---
 *Phase: 35-sql-repository*

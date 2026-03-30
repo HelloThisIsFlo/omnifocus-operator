@@ -22,10 +22,10 @@ HybridRepository list methods with filtered SQL queries for all 5 entity types. 
 
 ### NOT in scope
 
-- BridgeRepository list methods (Phase 36)
-- Service layer orchestration (Phase 37)
-- MCP tool registration (Phase 38)
-- InMemoryBridge list methods (Phase 36)
+- BridgeRepository list methods (~~Phase 36~~ delivered in Phase 35.2)
+- Service layer orchestration (~~Phase 37~~ now Phase 36)
+- MCP tool registration (~~Phase 38~~ now Phase 37)
+- InMemoryBridge list methods (~~Phase 36~~ delivered in Phase 35.2)
 
 </domain>
 
