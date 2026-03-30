@@ -134,10 +134,11 @@ Plans:
 **Goal:** Read-side contracts split at the service boundary (RepoQuery/RepoResult) with contracts/use_cases/ reorganized into per-use-case packages
 **Requirements**: INFRA-08, INFRA-09, INFRA-10, INFRA-11
 **Depends on:** Phase 35
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 35.1 to break down)
+- [ ] 35.1-01-PLAN.md — Create per-use-case packages, new RepoQuery/ListRepoResult models, tests
+- [ ] 35.1-02-PLAN.md — Migrate imports, update protocol/repository signatures, delete old files
 
 ### Phase 36: In-Memory Fallback
 **Goal**: BridgeRepository produces identical filtered results to the SQL path for every filter combination
@@ -187,6 +188,7 @@ Phases execute in numeric order: 34 → 35 → 36 → 37 → 38
 | 32-33.1 | v1.2.3 | 15/15 | Complete | 2026-03-29 |
 | 34. Contracts and Query Foundation | v1.3 | 0/2 | Complete    | 2026-03-29 |
 | 35. SQL Repository | v1.3 | 2/2 | Complete    | 2026-03-30 |
+| 35.1 Contract Boundary Split | v1.3 | 0/2 | Not started | - |
 | 36. In-Memory Fallback | v1.3 | 0/0 | Not started | - |
 | 37. Service Orchestration | v1.3 | 0/0 | Not started | - |
 | 38. Server Registration and Integration | v1.3 | 0/0 | Not started | - |
