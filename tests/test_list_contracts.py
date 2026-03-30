@@ -20,6 +20,11 @@ from omnifocus_operator.contracts import (
     QueryModel,
     StrictModel,
 )
+from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult
+from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersRepoQuery
+from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsRepoQuery
+from omnifocus_operator.contracts.use_cases.list.tags import ListTagsRepoQuery
+from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
 from omnifocus_operator.models import Task
 from omnifocus_operator.models.base import OmniFocusBaseModel
 from omnifocus_operator.models.enums import Availability, FolderAvailability, TagAvailability
@@ -253,3 +258,135 @@ class TestQueryModelCamelCaseAliases:
     def test_list_projects_query_camel_case_construction(self) -> None:
         query = ListProjectsQuery(reviewDueWithin="2w")
         assert query.review_due_within == "2w"
+
+
+# ---------------------------------------------------------------------------
+# RepoQuery models: defaults, validation, field parity
+# ---------------------------------------------------------------------------
+
+
+class TestRepoQueryDefaults:
+    """Verify each RepoQuery model has correct default values matching its Query counterpart."""
+
+    def test_list_tasks_repo_query_default_availability(self) -> None:
+        query = ListTasksRepoQuery()
+        assert query.availability == [Availability.AVAILABLE, Availability.BLOCKED]
+
+    def test_list_tasks_repo_query_other_fields_default_none(self) -> None:
+        query = ListTasksRepoQuery()
+        assert query.in_inbox is None
+        assert query.flagged is None
+        assert query.project is None
+        assert query.tags is None
+        assert query.estimated_minutes_max is None
+        assert query.search is None
+        assert query.limit is None
+        assert query.offset is None
+
+    def test_list_projects_repo_query_default_availability(self) -> None:
+        query = ListProjectsRepoQuery()
+        assert query.availability == [Availability.AVAILABLE, Availability.BLOCKED]
+
+    def test_list_projects_repo_query_other_fields_default_none(self) -> None:
+        query = ListProjectsRepoQuery()
+        assert query.folder is None
+        assert query.review_due_within is None
+        assert query.flagged is None
+        assert query.limit is None
+        assert query.offset is None
+
+    def test_list_tags_repo_query_default_availability(self) -> None:
+        query = ListTagsRepoQuery()
+        assert query.availability == [TagAvailability.AVAILABLE, TagAvailability.BLOCKED]
+
+    def test_list_folders_repo_query_default_availability(self) -> None:
+        query = ListFoldersRepoQuery()
+        assert query.availability == [FolderAvailability.AVAILABLE]
+
+
+class TestRepoQueryRejection:
+    """Verify all RepoQuery models reject unknown fields (extra=forbid via QueryModel)."""
+
+    def test_list_tasks_repo_query_rejects_unknown_field(self) -> None:
+        with pytest.raises(ValidationError, match="unknown_field"):
+            ListTasksRepoQuery(unknown_field="x")
+
+    def test_list_projects_repo_query_rejects_unknown_field(self) -> None:
+        with pytest.raises(ValidationError, match="unknown_field"):
+            ListProjectsRepoQuery(unknown_field="x")
+
+    def test_list_tags_repo_query_rejects_unknown_field(self) -> None:
+        with pytest.raises(ValidationError, match="unknown_field"):
+            ListTagsRepoQuery(unknown_field="x")
+
+    def test_list_folders_repo_query_rejects_unknown_field(self) -> None:
+        with pytest.raises(ValidationError, match="unknown_field"):
+            ListFoldersRepoQuery(unknown_field="x")
+
+
+class TestRepoQueryFieldParity:
+    """Verify RepoQuery models have identical field names to their Query counterparts.
+
+    These structural contracts break if someone adds a field to Query but forgets
+    RepoQuery or vice versa -- the key value of the split.
+    """
+
+    def test_tasks_field_parity(self) -> None:
+        assert set(ListTasksRepoQuery.model_fields.keys()) == set(
+            ListTasksQuery.model_fields.keys()
+        )
+
+    def test_projects_field_parity(self) -> None:
+        assert set(ListProjectsRepoQuery.model_fields.keys()) == set(
+            ListProjectsQuery.model_fields.keys()
+        )
+
+    def test_tags_field_parity(self) -> None:
+        assert set(ListTagsRepoQuery.model_fields.keys()) == set(
+            ListTagsQuery.model_fields.keys()
+        )
+
+    def test_folders_field_parity(self) -> None:
+        assert set(ListFoldersRepoQuery.model_fields.keys()) == set(
+            ListFoldersQuery.model_fields.keys()
+        )
+
+
+# ---------------------------------------------------------------------------
+# ListRepoResult
+# ---------------------------------------------------------------------------
+
+
+class TestListRepoResult:
+    """Verify ListRepoResult construction, serialization, and field parity."""
+
+    def test_construction(self) -> None:
+        result = ListRepoResult[str](items=["a", "b"], total=2, has_more=False)
+        assert result.items == ["a", "b"]
+        assert result.total == 2
+        assert result.has_more is False
+
+    def test_camel_case_serialization(self) -> None:
+        result = ListRepoResult[str](items=[], total=5, has_more=True)
+        dumped = result.model_dump(by_alias=True)
+        assert "hasMore" in dumped
+        assert dumped["hasMore"] is True
+        assert "items" in dumped
+        assert "total" in dumped
+
+    def test_with_task_model(self) -> None:
+        task_data = make_model_task_dict()
+        task = Task(**task_data)
+        result = ListRepoResult[Task](items=[task], total=1, has_more=False)
+        dumped = result.model_dump(by_alias=True)
+        assert len(dumped["items"]) == 1
+        assert dumped["items"][0]["name"] == "Test Task"
+
+    def test_fields_match_list_result(self) -> None:
+        """ListRepoResult has the same fields as ListResult (items, total, has_more)."""
+        assert set(ListRepoResult[str].model_fields.keys()) == set(
+            ListResult[str].model_fields.keys()
+        )
+
+    def test_inherits_omnifocus_base_model(self) -> None:
+        assert issubclass(ListRepoResult, OmniFocusBaseModel)
