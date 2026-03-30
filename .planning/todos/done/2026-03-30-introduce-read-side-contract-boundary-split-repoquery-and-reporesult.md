@@ -46,4 +46,4 @@ Without the split, the repo receives ambiguous instructions and there's no place
 
 **Already done:** `docs/model-taxonomy.md` extracted and updated with the new taxonomy (service boundary principle, RepoQuery/RepoResult, `<noun>Filter` pattern, Scenarios D/E/F). `docs/architecture.md` package structure updated.
 
-**Related:** Pairs with the existing "Migrate tag filter to accept names at repository level" todo — that becomes Phase 35.2 (behavioral change using the new RepoQuery contract). This todo is Phase 35.1 (structural refactor enabling it).
+**Related:** Pairs with the "Uniform name-vs-ID resolution at service boundary for all list filters" todo — that becomes Phase 35.2 (behavioral change using the new RepoQuery contract). This todo is Phase 35.1 (structural refactor enabling it).
