@@ -132,7 +132,7 @@ def build_list_tasks_sql(query: ListTasksQuery) -> tuple[SqlQuery, SqlQuery]:
     if query.project is not None:
         conditions.append(
             "t.containingProjectInfo IN ("
-            "SELECT pi2.task FROM ProjectInfo pi2 "
+            "SELECT pi2.pk FROM ProjectInfo pi2 "
             "JOIN Task t2 ON pi2.task = t2.persistentIdentifier "
             "WHERE t2.name LIKE ? COLLATE NOCASE)"
         )
