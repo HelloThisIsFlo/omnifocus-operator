@@ -29,8 +29,19 @@ See @README.md for project overview.
 
 ## UAT Guidelines
 
-- **Refactoring phases**: UAT should focus on **developer experience**, not "does it still work" (tests cover that). Walk the developer through the result room by room — package layout, naming conventions, import patterns, boundary signatures. The question is "does this make sense to the person who'll maintain it?"
-- **Feature phases**: UAT should focus on **user-observable behavior** — does the feature work as expected from the agent's perspective?
+- **Shared rules** (apply to both refactoring and feature UAT):
+  - Every step must include exact file path and line range — the developer jumps straight to the code, no searching.
+  - Adaptive granularity — split or merge steps based on scope. Small change = fewer steps. Large change = one step per semantic block.
+  - **New conventions** get their own step — one per new pattern introduced (base classes, protocols, extracted helpers), with a concrete example.
+- **Refactoring phases**: UAT should focus on **developer experience**, not "does it still work" (tests cover that). The overarching question: "does this make sense to the person who'll maintain it?" Rooms to cover:
+  - **Directory structure & public API** — show the final layout. If small, one step. If large, split per module with exports/signatures at each boundary.
+  - **Semantic code walkthrough** — walk through refactored code by semantic block. Point the developer to the code and ask them to explain what it does. If their understanding is correct, pass. If not, the code isn't clear enough — that's a fail. Tests comprehensibility, not just correctness.
+  - **Naming audit** — for renamed things, show old → new grouped by domain.
+- **Feature phases**: UAT has two parts, in order:
+  1. **Test walkthrough** — Walk the developer through the tests room by room before running anything. Split by semantic domain, not by test class — e.g., for a filtering feature, separate steps for status/availability filters, join-based filters (tags, projects), date filters, simple filters, and pagination. The question is "do these tests exercise real scenarios, and do you see any gaps?"
+  2. **Run the suite** — Only after the walkthrough. Now `pytest` is meaningful because the developer has seen what's actually being verified.
+
+  End-to-end behavior testing (does the MCP tool work from the agent's perspective?) applies when the feature is wired all the way through. For repository-only or service-only phases, the test walkthrough IS the UAT.
 
 ## Model Conventions
 
