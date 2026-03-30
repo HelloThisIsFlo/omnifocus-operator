@@ -530,8 +530,7 @@ class TestNamingConvention:
             if any(name.endswith(suffix) for suffix in CONTRACT_SUFFIXES):
                 violations.append(name)
         assert not violations, (
-            f"models/ classes with contract suffixes "
-            f"(see docs/architecture.md naming taxonomy): {violations}"
+            f"models/ classes with contract suffixes (see docs/model-taxonomy.md): {violations}"
         )
 
     def test_contracts_package_uses_recognized_suffixes(self) -> None:
@@ -545,6 +544,6 @@ class TestNamingConvention:
                 violations.append(name)
         assert not violations, (
             f"contracts/ classes missing recognized suffix "
-            f"(see docs/architecture.md naming taxonomy). "
+            f"(see docs/model-taxonomy.md). "
             f"Expected one of: {CONTRACT_SUFFIXES}. Violations: {violations}"
         )
