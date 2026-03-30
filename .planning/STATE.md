@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Read Tools
 status: executing
-stopped_at: Completed 35-02-PLAN.md
-last_updated: "2026-03-30T00:17:27.347Z"
+stopped_at: Phase 35.1 context gathered
+last_updated: "2026-03-30T18:35:17.439Z"
 last_activity: 2026-03-30
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 2
   total_plans: 4
   completed_plans: 4
@@ -59,6 +59,10 @@ Recent decisions affecting current work:
 - [Phase 35]: list_projects only needs tag lookups (not project_info/task_name) since _map_project_row takes 2 params
 - [Phase 35]: Fetch-all + Python filter for tags/folders/perspectives per D-01a (no query builder needed for small collections)
 
+### Roadmap Evolution
+
+- Phase 35.1 inserted after Phase 35: Introduce read-side contract boundary split (RepoQuery / RepoResult) (URGENT)
+
 ### Pending Todos
 
 Carried forward:
@@ -80,5 +84,5 @@ None yet.
 ## Session Continuity
 
 Last activity: 2026-03-30 -- Plan 35-01 completed
-Stopped at: Completed 35-02-PLAN.md
-Resume file: None
+Stopped at: Phase 35.1 context gathered
+Resume file: .planning/phases/35.1-introduce-read-side-contract-boundary-split-repoquery-reporesult/35.1-CONTEXT.md
