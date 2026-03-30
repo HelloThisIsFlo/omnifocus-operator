@@ -25,12 +25,12 @@ class ListTasksQuery(QueryModel):
 
 
 class ListTasksRepoQuery(QueryModel):
-    """Repo-facing query -- identical fields today, diverges in Phase 35.2 (per D-01d)."""
+    """Repo-facing query -- IDs only, service resolves names before passing."""
 
     in_inbox: bool | None = None
     flagged: bool | None = None
-    project: str | None = None
-    tags: list[str] | None = None  # names today, Phase 35.2 adds tag_ids
+    project_ids: list[str] | None = None
+    tag_ids: list[str] | None = None
     estimated_minutes_max: int | None = None
     availability: list[Availability] = Field(
         default_factory=lambda: [Availability.AVAILABLE, Availability.BLOCKED]

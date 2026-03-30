@@ -9,17 +9,19 @@ class ListResult[T](OmniFocusBaseModel):
     """Agent-facing result container for all list operations.
 
     Uniform shape for all 5 list tools. Non-paginated: total=len(items), has_more=False.
+    Includes optional warnings for agent guidance (e.g. name resolution ambiguity).
     """
 
     items: list[T]
     total: int
     has_more: bool
+    warnings: list[str] | None = None
 
 
 class ListRepoResult[T](OmniFocusBaseModel):
-    """Repo-facing result container -- identical to ListResult today.
+    """Repo-facing result container -- no warnings field.
 
-    No warnings field (added to ListResult in Phase 37 per D-02).
+    Warnings are a service/agent concern, not a repository concern (D-02d).
     """
 
     items: list[T]

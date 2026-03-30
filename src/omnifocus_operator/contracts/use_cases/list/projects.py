@@ -22,12 +22,12 @@ class ListProjectsQuery(QueryModel):
 
 
 class ListProjectsRepoQuery(QueryModel):
-    """Repo-facing query -- identical fields today, diverges in Phase 35.2."""
+    """Repo-facing query -- IDs only, service resolves names before passing."""
 
     availability: list[Availability] = Field(
         default_factory=lambda: [Availability.AVAILABLE, Availability.BLOCKED]
     )
-    folder: str | None = None
+    folder_ids: list[str] | None = None
     review_due_within: str | None = None
     flagged: bool | None = None
     limit: int | None = None
