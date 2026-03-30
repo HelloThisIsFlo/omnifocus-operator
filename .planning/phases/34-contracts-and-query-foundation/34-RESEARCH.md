@@ -257,7 +257,7 @@ class Repository(Protocol):
 
 **What goes wrong:** `ListResult[T]` serialization doesn't validate against the MCP outputSchema that FastMCP advertises.
 **Why it happens:** Generic models produce slightly different JSON Schema than concrete models. FastMCP inlines `$defs` in output schemas.
-**How to avoid:** After creating `ListResult[T]`, verify by running `uv run pytest tests/test_output_schema.py -x -q`. Note: this test currently only covers existing tools. New list tools will be registered in Phase 38, but the ListResult model structure should be validated now.
+**How to avoid:** After creating `ListResult[T]`, verify by running `uv run pytest tests/test_output_schema.py -x -q`. Note: this test currently only covers existing tools. New list tools will be registered in ~~Phase 38~~ Phase 37, but the ListResult model structure should be validated now.
 **Warning signs:** Schema validation errors, missing `hasMore` in output, `has_more` appearing instead of `hasMore`.
 
 ### Pitfall 3: Availability Filter SQL Complexity
