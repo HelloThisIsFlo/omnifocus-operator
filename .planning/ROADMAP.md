@@ -129,6 +129,16 @@ Plans:
 - [x] 35-01-PLAN.md — list_tasks + list_projects with query builder, lookups, pagination
 - [x] 35-02-PLAN.md — list_tags + list_folders + list_perspectives with fetch-all + Python filter
 
+### Phase 35.2: Uniform name-vs-ID resolution at service boundary for all list filters (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 35
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 35.2 to break down)
+
 ### Phase 35.1: Introduce read-side contract boundary split (RepoQuery / RepoResult) (INSERTED)
 
 **Goal:** Read-side contracts split at the service boundary (RepoQuery/RepoResult) with contracts/use_cases/ reorganized into per-use-case packages

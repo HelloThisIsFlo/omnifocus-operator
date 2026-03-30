@@ -66,6 +66,7 @@ Recent decisions affecting current work:
 ### Roadmap Evolution
 
 - Phase 35.1 inserted after Phase 35: Introduce read-side contract boundary split (RepoQuery / RepoResult) (URGENT)
+- Phase 35.2 inserted after Phase 35: Uniform name-vs-ID resolution at service boundary for all list filters (URGENT)
 
 ### Pending Todos
 
