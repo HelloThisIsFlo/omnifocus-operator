@@ -276,8 +276,8 @@ class TestRepoQueryDefaults:
         query = ListTasksRepoQuery()
         assert query.in_inbox is None
         assert query.flagged is None
-        assert query.project is None
-        assert query.tags is None
+        assert query.project_ids is None
+        assert query.tag_ids is None
         assert query.estimated_minutes_max is None
         assert query.search is None
         assert query.limit is None
@@ -289,7 +289,7 @@ class TestRepoQueryDefaults:
 
     def test_list_projects_repo_query_other_fields_default_none(self) -> None:
         query = ListProjectsRepoQuery()
-        assert query.folder is None
+        assert query.folder_ids is None
         assert query.review_due_within is None
         assert query.flagged is None
         assert query.limit is None
@@ -325,21 +325,42 @@ class TestRepoQueryRejection:
 
 
 class TestRepoQueryFieldParity:
-    """Verify RepoQuery models have identical field names to their Query counterparts.
+    """Verify RepoQuery models have correct field relationships to their Query counterparts.
 
-    These structural contracts break if someone adds a field to Query but forgets
-    RepoQuery or vice versa -- the key value of the split.
+    After Phase 35.2, RepoQuery uses ID-list fields (project_ids, tag_ids, folder_ids)
+    while Query uses name strings (project, tags, folder). Shared fields must still match.
     """
 
-    def test_tasks_field_parity(self) -> None:
-        assert set(ListTasksRepoQuery.model_fields.keys()) == set(
-            ListTasksQuery.model_fields.keys()
-        )
+    def test_tasks_shared_fields_match(self) -> None:
+        """Non-filter fields (pagination, availability, etc.) must match between Query and RepoQuery."""
+        query_fields = set(ListTasksQuery.model_fields.keys())
+        repo_fields = set(ListTasksRepoQuery.model_fields.keys())
+        # Fields that diverged: Query has project/tags, RepoQuery has project_ids/tag_ids
+        query_only = {"project", "tags"}
+        repo_only = {"project_ids", "tag_ids"}
+        assert query_fields - query_only == repo_fields - repo_only
 
-    def test_projects_field_parity(self) -> None:
-        assert set(ListProjectsRepoQuery.model_fields.keys()) == set(
-            ListProjectsQuery.model_fields.keys()
-        )
+    def test_tasks_repo_query_has_id_fields(self) -> None:
+        """RepoQuery must have ID-list fields, not name fields."""
+        repo_fields = set(ListTasksRepoQuery.model_fields.keys())
+        assert "project_ids" in repo_fields
+        assert "tag_ids" in repo_fields
+        assert "project" not in repo_fields
+        assert "tags" not in repo_fields
+
+    def test_projects_shared_fields_match(self) -> None:
+        """Non-filter fields must match between Query and RepoQuery."""
+        query_fields = set(ListProjectsQuery.model_fields.keys())
+        repo_fields = set(ListProjectsRepoQuery.model_fields.keys())
+        query_only = {"folder"}
+        repo_only = {"folder_ids"}
+        assert query_fields - query_only == repo_fields - repo_only
+
+    def test_projects_repo_query_has_id_fields(self) -> None:
+        """RepoQuery must have ID-list fields, not name fields."""
+        repo_fields = set(ListProjectsRepoQuery.model_fields.keys())
+        assert "folder_ids" in repo_fields
+        assert "folder" not in repo_fields
 
     def test_tags_field_parity(self) -> None:
         assert set(ListTagsRepoQuery.model_fields.keys()) == set(ListTagsQuery.model_fields.keys())
@@ -380,11 +401,13 @@ class TestListRepoResult:
         assert len(dumped["items"]) == 1
         assert dumped["items"][0]["name"] == "Test Task"
 
-    def test_fields_match_list_result(self) -> None:
-        """ListRepoResult has the same fields as ListResult (items, total, has_more)."""
-        assert set(ListRepoResult[str].model_fields.keys()) == set(
-            ListResult[str].model_fields.keys()
-        )
+    def test_fields_subset_of_list_result(self) -> None:
+        """ListRepoResult has items/total/has_more but NOT warnings (D-02d)."""
+        repo_fields = set(ListRepoResult[str].model_fields.keys())
+        result_fields = set(ListResult[str].model_fields.keys())
+        assert repo_fields == {"items", "total", "has_more"}
+        assert "warnings" in result_fields
+        assert "warnings" not in repo_fields
 
     def test_inherits_omnifocus_base_model(self) -> None:
         assert issubclass(ListRepoResult, OmniFocusBaseModel)

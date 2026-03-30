@@ -119,23 +119,23 @@ def build_list_tasks_sql(query: ListTasksRepoQuery) -> tuple[SqlQuery, SqlQuery]
         conditions.append("t.flagged = ?")
         params.append(1 if query.flagged else 0)
 
-    if query.project is not None:
+    if query.project_ids is not None and len(query.project_ids) > 0:
+        placeholders = ",".join("?" * len(query.project_ids))
         conditions.append(
-            "t.containingProjectInfo IN ("
-            "SELECT pi2.pk FROM ProjectInfo pi2 "
-            "JOIN Task t2 ON pi2.task = t2.persistentIdentifier "
-            "WHERE t2.name LIKE ? COLLATE NOCASE)"
+            f"t.containingProjectInfo IN ("
+            f"SELECT pi2.pk FROM ProjectInfo pi2 "
+            f"WHERE pi2.task IN ({placeholders}))"
         )
-        params.append(f"%{query.project}%")
+        params.extend(query.project_ids)
 
-    if query.tags is not None and len(query.tags) > 0:
-        placeholders = ",".join("?" * len(query.tags))
+    if query.tag_ids is not None and len(query.tag_ids) > 0:
+        placeholders = ",".join("?" * len(query.tag_ids))
         conditions.append(
             f"t.persistentIdentifier IN ("
             f"SELECT ttg.task FROM TaskToTag ttg "
             f"WHERE ttg.tag IN ({placeholders}))"
         )
-        params.extend(query.tags)
+        params.extend(query.tag_ids)
 
     if query.estimated_minutes_max is not None:
         conditions.append("t.estimatedMinutes <= ?")
@@ -191,13 +191,10 @@ def build_list_projects_sql(
     if avail_clause:
         conditions.append(avail_clause)
 
-    if query.folder is not None:
-        conditions.append(
-            "pi.folder IN ("
-            "SELECT f.persistentIdentifier FROM Folder f "
-            "WHERE f.name LIKE ? COLLATE NOCASE)"
-        )
-        params.append(f"%{query.folder}%")
+    if query.folder_ids is not None and len(query.folder_ids) > 0:
+        placeholders = ",".join("?" * len(query.folder_ids))
+        conditions.append(f"pi.folder IN ({placeholders})")
+        params.extend(query.folder_ids)
 
     if query.review_due_within is not None:
         conditions.append("pi.nextReviewDate IS NOT NULL AND pi.nextReviewDate <= ?")

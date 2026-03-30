@@ -94,25 +94,32 @@ class TestTasksFlaggedFilter:
 
 
 class TestTasksProjectFilter:
-    def test_project_subquery(self):
-        query = ListTasksRepoQuery(project="Work")
+    def test_project_ids_subquery(self):
+        query = ListTasksRepoQuery(project_ids=["proj-id-1"])
         data_q, _ = build_list_tasks_sql(query)
         assert "t.containingProjectInfo IN" in data_q.sql
         assert "ProjectInfo pi2" in data_q.sql
-        assert "LIKE ? COLLATE NOCASE" in data_q.sql
-        assert "%Work%" in data_q.params
+        assert "pi2.task IN (?)" in data_q.sql
+        assert "proj-id-1" in data_q.params
+
+    def test_multiple_project_ids(self):
+        query = ListTasksRepoQuery(project_ids=["proj-1", "proj-2"])
+        data_q, _ = build_list_tasks_sql(query)
+        assert "pi2.task IN (?,?)" in data_q.sql
+        assert "proj-1" in data_q.params
+        assert "proj-2" in data_q.params
 
 
 class TestTasksTagsFilter:
     def test_single_tag(self):
-        query = ListTasksRepoQuery(tags=["id1"])
+        query = ListTasksRepoQuery(tag_ids=["id1"])
         data_q, _ = build_list_tasks_sql(query)
         assert "TaskToTag" in data_q.sql
         assert "IN (?)" in data_q.sql
         assert "id1" in data_q.params
 
     def test_multiple_tags(self):
-        query = ListTasksRepoQuery(tags=["id1", "id2", "id3"])
+        query = ListTasksRepoQuery(tag_ids=["id1", "id2", "id3"])
         data_q, _ = build_list_tasks_sql(query)
         assert "IN (?,?,?)" in data_q.sql
         assert "id1" in data_q.params
@@ -234,17 +241,18 @@ class TestTasksCombinedFilters:
     def test_multiple_filters_with_limit(self):
         query = ListTasksRepoQuery(
             flagged=True,
-            project="Work",
+            project_ids=["proj-id-1"],
             search="urgent",
             limit=5,
         )
         data_q, count_q = build_list_tasks_sql(query)
         assert "t.flagged = ?" in data_q.sql
+        assert "pi2.task IN (?)" in data_q.sql
         assert "LIKE ? COLLATE NOCASE" in data_q.sql
         assert "LIMIT ?" in data_q.sql
-        # Verify param ordering: flagged, project, search(x2), availability, limit
+        # Verify param ordering: flagged, project_ids, search(x2), availability, limit
         assert 1 in data_q.params  # flagged
-        assert "%Work%" in data_q.params  # project
+        assert "proj-id-1" in data_q.params  # project_ids
         assert "%urgent%" in data_q.params  # search
         assert 5 in data_q.params  # limit
         # Count query should NOT have LIMIT
@@ -267,8 +275,8 @@ class TestTasksCombinedFilters:
         query = ListTasksRepoQuery(
             in_inbox=True,
             flagged=True,
-            project="Work",
-            tags=["tag1"],
+            project_ids=["proj-id-1"],
+            tag_ids=["tag1"],
             estimated_minutes_max=60,
             search="foo",
             limit=10,
@@ -277,7 +285,7 @@ class TestTasksCombinedFilters:
         data_q, _ = build_list_tasks_sql(query)
         _assert_parameterized(data_q.sql)
         # User values should be in params, not in SQL
-        assert "Work" not in data_q.sql
+        assert "proj-id-1" not in data_q.sql
         assert "tag1" not in data_q.sql
         assert "foo" not in data_q.sql
 
@@ -346,13 +354,18 @@ class TestProjectsAvailabilityFilter:
 
 
 class TestProjectsFolderFilter:
-    def test_folder_subquery(self):
-        query = ListProjectsRepoQuery(folder="Home")
+    def test_single_folder_id(self):
+        query = ListProjectsRepoQuery(folder_ids=["folder-id-1"])
         data_q, _ = build_list_projects_sql(query)
-        assert "pi.folder IN" in data_q.sql
-        assert "Folder f" in data_q.sql
-        assert "LIKE ? COLLATE NOCASE" in data_q.sql
-        assert "%Home%" in data_q.params
+        assert "pi.folder IN (?)" in data_q.sql
+        assert "folder-id-1" in data_q.params
+
+    def test_multiple_folder_ids(self):
+        query = ListProjectsRepoQuery(folder_ids=["folder-1", "folder-2"])
+        data_q, _ = build_list_projects_sql(query)
+        assert "pi.folder IN (?,?)" in data_q.sql
+        assert "folder-1" in data_q.params
+        assert "folder-2" in data_q.params
 
 
 class TestProjectsReviewDueWithinFilter:
@@ -397,29 +410,29 @@ class TestProjectsLimitOffset:
 class TestProjectsCombinedFilters:
     def test_folder_and_flagged_with_limit(self):
         query = ListProjectsRepoQuery(
-            folder="Home",
+            folder_ids=["folder-id-1"],
             flagged=True,
             limit=5,
         )
         data_q, _ = build_list_projects_sql(query)
-        assert "pi.folder IN" in data_q.sql
+        assert "pi.folder IN (?)" in data_q.sql
         assert "t.flagged = ?" in data_q.sql
         assert "LIMIT ?" in data_q.sql
-        assert "%Home%" in data_q.params
+        assert "folder-id-1" in data_q.params
         assert 1 in data_q.params  # flagged
         assert 5 in data_q.params  # limit
 
     def test_all_params_use_placeholders(self):
         """No user values should appear in SQL string itself."""
         query = ListProjectsRepoQuery(
-            folder="Home",
+            folder_ids=["folder-id-1"],
             flagged=True,
             review_due_within="2026-04-05",
             limit=10,
         )
         data_q, _ = build_list_projects_sql(query)
         _assert_parameterized(data_q.sql)
-        assert "Home" not in data_q.sql
+        assert "folder-id-1" not in data_q.sql
         assert "2026-04-05" not in data_q.sql
 
 
