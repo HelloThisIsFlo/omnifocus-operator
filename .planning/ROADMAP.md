@@ -124,9 +124,9 @@ Plans:
   3. HybridRepository.list_tags and list_folders return entities filtered by status list with OR logic, defaulting to remaining
   4. HybridRepository.list_perspectives returns all perspectives (built-in + custom) with id, name, and builtin flag
   5. Filtered SQL queries execute measurably faster than full snapshot load
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
-- [ ] 35-01-PLAN.md — list_tasks + list_projects with query builder, lookups, pagination
+- [x] 35-01-PLAN.md — list_tasks + list_projects with query builder, lookups, pagination
 - [ ] 35-02-PLAN.md — list_tags + list_folders + list_perspectives with fetch-all + Python filter
 
 ### Phase 36: In-Memory Fallback
@@ -175,7 +175,7 @@ Phases execute in numeric order: 34 → 35 → 36 → 37 → 38
 | 29-31 | v1.2.2 | 6/6 | Complete | 2026-03-26 |
 | 32-33.1 | v1.2.3 | 15/15 | Complete | 2026-03-29 |
 | 34. Contracts and Query Foundation | v1.3 | 0/2 | Complete    | 2026-03-29 |
-| 35. SQL Repository | v1.3 | 0/2 | Not started | - |
+| 35. SQL Repository | v1.3 | 1/2 | In Progress|  |
 | 36. In-Memory Fallback | v1.3 | 0/0 | Not started | - |
 | 37. Service Orchestration | v1.3 | 0/0 | Not started | - |
 | 38. Server Registration and Integration | v1.3 | 0/0 | Not started | - |

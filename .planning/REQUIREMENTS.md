@@ -9,27 +9,27 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 
 ### Task Querying
 
-- [ ] **TASK-01**: Agent can list tasks filtered by inbox status
-- [ ] **TASK-02**: Agent can list tasks filtered by flagged status
-- [ ] **TASK-03**: Agent can list tasks filtered by project name (case-insensitive partial match, returns all tasks at any nesting depth within matching project)
-- [ ] **TASK-04**: Agent can list tasks filtered by tags (OR logic -- at least one matching tag)
+- [x] **TASK-01**: Agent can list tasks filtered by inbox status
+- [x] **TASK-02**: Agent can list tasks filtered by flagged status
+- [x] **TASK-03**: Agent can list tasks filtered by project name (case-insensitive partial match, returns all tasks at any nesting depth within matching project)
+- [x] **TASK-04**: Agent can list tasks filtered by tags (OR logic -- at least one matching tag)
 - [ ] **TASK-05**: Agent can list tasks filtered by has_children (parent tasks vs leaf tasks)
-- [ ] **TASK-06**: Agent can list tasks filtered by estimated_minutes_max
-- [ ] **TASK-07**: Agent can list tasks filtered by availability (available/blocked)
-- [ ] **TASK-08**: Agent can search tasks by case-insensitive substring in name and notes
-- [ ] **TASK-09**: Agent can paginate task results with limit and offset (offset requires limit)
-- [ ] **TASK-10**: Agent can combine multiple task filters with AND logic
-- [ ] **TASK-11**: Completed/dropped tasks excluded from task list results by default
+- [x] **TASK-06**: Agent can list tasks filtered by estimated_minutes_max
+- [x] **TASK-07**: Agent can list tasks filtered by availability (available/blocked)
+- [x] **TASK-08**: Agent can search tasks by case-insensitive substring in name and notes
+- [x] **TASK-09**: Agent can paginate task results with limit and offset (offset requires limit)
+- [x] **TASK-10**: Agent can combine multiple task filters with AND logic
+- [x] **TASK-11**: Completed/dropped tasks excluded from task list results by default
 
 ### Project Querying
 
-- [ ] **PROJ-01**: Agent can list projects filtered by status (active, on_hold, done, dropped)
-- [ ] **PROJ-02**: Agent can use status shorthands (remaining, available, all) for project listing
-- [ ] **PROJ-03**: Default project listing returns remaining (active + on_hold), not done/dropped
-- [ ] **PROJ-04**: Agent can list projects filtered by folder name (case-insensitive partial match)
-- [ ] **PROJ-05**: Agent can list projects with reviews due within a duration (now, 1w, 2m); invalid values return helpful error messages
-- [ ] **PROJ-06**: Agent can list projects filtered by flagged status
-- [ ] **PROJ-07**: Agent can paginate project results with limit and offset
+- [x] **PROJ-01**: Agent can list projects filtered by status (active, on_hold, done, dropped)
+- [x] **PROJ-02**: Agent can use status shorthands (remaining, available, all) for project listing
+- [x] **PROJ-03**: Default project listing returns remaining (active + on_hold), not done/dropped
+- [x] **PROJ-04**: Agent can list projects filtered by folder name (case-insensitive partial match)
+- [x] **PROJ-05**: Agent can list projects with reviews due within a duration (now, 1w, 2m); invalid values return helpful error messages
+- [x] **PROJ-06**: Agent can list projects filtered by flagged status
+- [x] **PROJ-07**: Agent can paginate project results with limit and offset
 
 ### Entity Browsing
 
@@ -40,7 +40,7 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 ### Query Infrastructure
 
 - [x] **INFRA-01**: SQL queries use parameterized values (no SQL injection)
-- [ ] **INFRA-02**: Filtered SQL queries measurably faster than full snapshot (<6ms vs ~46ms)
+- [x] **INFRA-02**: Filtered SQL queries measurably faster than full snapshot (<6ms vs ~46ms)
 - [ ] **INFRA-03**: Bridge fallback produces identical results to SQL path for same filters
 - [x] **INFRA-04**: list_tasks and list_projects responses include total_count reflecting total matches ignoring limit/offset
 - [ ] **INFRA-05**: Tool descriptions detailed enough for an LLM to call correctly
@@ -84,29 +84,29 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TASK-01 | Phase 35 | Pending |
-| TASK-02 | Phase 35 | Pending |
-| TASK-03 | Phase 35 | Pending |
-| TASK-04 | Phase 35 | Pending |
+| TASK-01 | Phase 35 | Complete |
+| TASK-02 | Phase 35 | Complete |
+| TASK-03 | Phase 35 | Complete |
+| TASK-04 | Phase 35 | Complete |
 | TASK-05 | Phase 35 | Pending |
-| TASK-06 | Phase 35 | Pending |
-| TASK-07 | Phase 35 | Pending |
-| TASK-08 | Phase 35 | Pending |
-| TASK-09 | Phase 35 | Pending |
-| TASK-10 | Phase 35 | Pending |
-| TASK-11 | Phase 35 | Pending |
-| PROJ-01 | Phase 35 | Pending |
-| PROJ-02 | Phase 35 | Pending |
-| PROJ-03 | Phase 35 | Pending |
-| PROJ-04 | Phase 35 | Pending |
-| PROJ-05 | Phase 35 | Pending |
-| PROJ-06 | Phase 35 | Pending |
-| PROJ-07 | Phase 35 | Pending |
+| TASK-06 | Phase 35 | Complete |
+| TASK-07 | Phase 35 | Complete |
+| TASK-08 | Phase 35 | Complete |
+| TASK-09 | Phase 35 | Complete |
+| TASK-10 | Phase 35 | Complete |
+| TASK-11 | Phase 35 | Complete |
+| PROJ-01 | Phase 35 | Complete |
+| PROJ-02 | Phase 35 | Complete |
+| PROJ-03 | Phase 35 | Complete |
+| PROJ-04 | Phase 35 | Complete |
+| PROJ-05 | Phase 35 | Complete |
+| PROJ-06 | Phase 35 | Complete |
+| PROJ-07 | Phase 35 | Complete |
 | BROWSE-01 | Phase 35 | Pending |
 | BROWSE-02 | Phase 35 | Pending |
 | BROWSE-03 | Phase 35 | Pending |
 | INFRA-01 | Phase 34 | Complete |
-| INFRA-02 | Phase 35 | Pending |
+| INFRA-02 | Phase 35 | Complete |
 | INFRA-03 | Phase 36 | Pending |
 | INFRA-04 | Phase 34 | Complete |
 | INFRA-05 | Phase 38 | Pending |
