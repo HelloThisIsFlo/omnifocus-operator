@@ -11,24 +11,34 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 if TYPE_CHECKING:
     from typing import Any
 
-    from omnifocus_operator.contracts.use_cases.add_task import (
+    from omnifocus_operator.contracts.use_cases.add.tasks import (
         AddTaskCommand,
         AddTaskRepoPayload,
         AddTaskRepoResult,
         AddTaskResult,
     )
-    from omnifocus_operator.contracts.use_cases.edit_task import (
+    from omnifocus_operator.contracts.use_cases.edit.tasks import (
         EditTaskCommand,
         EditTaskRepoPayload,
         EditTaskRepoResult,
         EditTaskResult,
     )
-    from omnifocus_operator.contracts.use_cases.list_entities import (
+    from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult, ListResult
+    from omnifocus_operator.contracts.use_cases.list.folders import (
         ListFoldersQuery,
+        ListFoldersRepoQuery,
+    )
+    from omnifocus_operator.contracts.use_cases.list.projects import (
         ListProjectsQuery,
-        ListResult,
+        ListProjectsRepoQuery,
+    )
+    from omnifocus_operator.contracts.use_cases.list.tags import (
         ListTagsQuery,
+        ListTagsRepoQuery,
+    )
+    from omnifocus_operator.contracts.use_cases.list.tasks import (
         ListTasksQuery,
+        ListTasksRepoQuery,
     )
     from omnifocus_operator.models import AllEntities, Folder, Perspective, Project, Tag, Task
 
@@ -76,15 +86,15 @@ class Repository(Protocol):
 
     async def edit_task(self, payload: EditTaskRepoPayload) -> EditTaskRepoResult: ...
 
-    async def list_tasks(self, query: ListTasksQuery) -> ListResult[Task]: ...
+    async def list_tasks(self, query: ListTasksRepoQuery) -> ListRepoResult[Task]: ...
 
-    async def list_projects(self, query: ListProjectsQuery) -> ListResult[Project]: ...
+    async def list_projects(self, query: ListProjectsRepoQuery) -> ListRepoResult[Project]: ...
 
-    async def list_tags(self, query: ListTagsQuery) -> ListResult[Tag]: ...
+    async def list_tags(self, query: ListTagsRepoQuery) -> ListRepoResult[Tag]: ...
 
-    async def list_folders(self, query: ListFoldersQuery) -> ListResult[Folder]: ...
+    async def list_folders(self, query: ListFoldersRepoQuery) -> ListRepoResult[Folder]: ...
 
-    async def list_perspectives(self) -> ListResult[Perspective]: ...
+    async def list_perspectives(self) -> ListRepoResult[Perspective]: ...
 
 
 @runtime_checkable

@@ -24,13 +24,13 @@ from omnifocus_operator.contracts.shared.repetition_rule import (
     RepetitionRuleEditSpec,
     RepetitionRuleRepoPayload,
 )
-from omnifocus_operator.contracts.use_cases.add_task import (
+from omnifocus_operator.contracts.use_cases.add.tasks import (
     AddTaskCommand,
     AddTaskRepoPayload,
     AddTaskRepoResult,
     AddTaskResult,
 )
-from omnifocus_operator.contracts.use_cases.edit_task import (
+from omnifocus_operator.contracts.use_cases.edit.tasks import (
     EditTaskActions,
     EditTaskCommand,
     EditTaskRepoPayload,
@@ -38,12 +38,22 @@ from omnifocus_operator.contracts.use_cases.edit_task import (
     EditTaskResult,
     MoveToRepoPayload,
 )
-from omnifocus_operator.contracts.use_cases.list_entities import (
+from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult, ListResult
+from omnifocus_operator.contracts.use_cases.list.folders import (
     ListFoldersQuery,
+    ListFoldersRepoQuery,
+)
+from omnifocus_operator.contracts.use_cases.list.projects import (
     ListProjectsQuery,
-    ListResult,
+    ListProjectsRepoQuery,
+)
+from omnifocus_operator.contracts.use_cases.list.tags import (
     ListTagsQuery,
+    ListTagsRepoQuery,
+)
+from omnifocus_operator.contracts.use_cases.list.tasks import (
     ListTasksQuery,
+    ListTasksRepoQuery,
 )
 from omnifocus_operator.models.repetition_rule import EndCondition, Frequency
 
@@ -70,10 +80,15 @@ _ns: dict[str, type | object] = {
     "Frequency": Frequency,
     "EndCondition": EndCondition,
     "ListResult": ListResult,
+    "ListRepoResult": ListRepoResult,
     "ListTasksQuery": ListTasksQuery,
+    "ListTasksRepoQuery": ListTasksRepoQuery,
     "ListProjectsQuery": ListProjectsQuery,
+    "ListProjectsRepoQuery": ListProjectsRepoQuery,
     "ListTagsQuery": ListTagsQuery,
+    "ListTagsRepoQuery": ListTagsRepoQuery,
     "ListFoldersQuery": ListFoldersQuery,
+    "ListFoldersRepoQuery": ListFoldersRepoQuery,
     "QueryModel": QueryModel,
     "StrictModel": StrictModel,
 }
@@ -87,10 +102,15 @@ MoveAction.model_rebuild(_types_namespace=_ns)
 
 # List-entity models
 ListResult.model_rebuild(_types_namespace=_ns)
+ListRepoResult.model_rebuild(_types_namespace=_ns)
 ListTasksQuery.model_rebuild(_types_namespace=_ns)
+ListTasksRepoQuery.model_rebuild(_types_namespace=_ns)
 ListProjectsQuery.model_rebuild(_types_namespace=_ns)
+ListProjectsRepoQuery.model_rebuild(_types_namespace=_ns)
 ListTagsQuery.model_rebuild(_types_namespace=_ns)
+ListTagsRepoQuery.model_rebuild(_types_namespace=_ns)
 ListFoldersQuery.model_rebuild(_types_namespace=_ns)
+ListFoldersRepoQuery.model_rebuild(_types_namespace=_ns)
 
 # Create-task models
 AddTaskCommand.model_rebuild(_types_namespace=_ns)
@@ -125,10 +145,14 @@ __all__ = [
     "EditTaskRepoResult",
     "EditTaskResult",
     "ListFoldersQuery",
+    "ListFoldersRepoQuery",
     "ListProjectsQuery",
-    "ListResult",
+    "ListProjectsRepoQuery",
+    "ListRepoResult",
     "ListTagsQuery",
+    "ListTagsRepoQuery",
     "ListTasksQuery",
+    "ListTasksRepoQuery",
     "MoveAction",
     "MoveToRepoPayload",
     "Patch",
