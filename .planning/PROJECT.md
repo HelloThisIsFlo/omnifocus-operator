@@ -22,7 +22,7 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 ## Current State
 
 **Shipped:** v1.2.3 (2026-03-29) — Repetition Rule Write Support
-**Next:** v1.3 Read Tools — Phase 34 complete (contracts + query builder)
+**Next:** v1.3 Read Tools — Phase 35 complete (SQL repository list methods)
 
 ## Requirements
 
@@ -81,10 +81,10 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 ### Active
 
-- [ ] SQL filtering for tasks with 10 filter parameters (v1.3)
-- [ ] SQL filtering for projects with 6 filter parameters (v1.3)
-- [ ] List tags, folders with status filter (v1.3)
-- [ ] List perspectives (v1.3)
+- [x] SQL filtering for tasks with 10 filter parameters (v1.3) — Validated in Phase 35: SQL Repository
+- [x] SQL filtering for projects with 6 filter parameters (v1.3) — Validated in Phase 35: SQL Repository
+- [x] List tags, folders with status filter (v1.3) — Validated in Phase 35: SQL Repository
+- [x] List perspectives (v1.3) — Validated in Phase 35: SQL Repository
 - [ ] Count tasks/projects reusing list filter logic (v1.3)
 - [ ] Substring search on task name and notes (v1.3)
 - [ ] Field selection, task deletion, notes append (v1.4)
@@ -117,7 +117,7 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 Shipped v1.2.3 with ~6,601 LOC Python (src/), ~215k LOC JS (bridge + deps), ~28k TS (tests).
 Tech stack: Python 3.12, uv, Pydantic v2, FastMCP v3 (`fastmcp>=3.1.1`), OmniJS bridge, SQLite3 (stdlib).
-1,113 pytest tests, 26 Vitest tests, UAT passed on all phases.
+1,228 pytest tests, 26 Vitest tests, UAT passed on all phases.
 Real OmniFocus database: ~2,400 tasks, ~363 projects, ~64 tags, ~79 folders.
 Read path: SQLite (default, ~46ms). Write path: OmniJS bridge with write-through guarantee.
 6 MCP tools: get_all, get_task, get_project, get_tag, add_tasks, edit_tasks.
@@ -197,4 +197,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-29 after v1.3 milestone started — Read Tools*
+*Last updated: 2026-03-30 after Phase 35 complete — SQL Repository list methods*
