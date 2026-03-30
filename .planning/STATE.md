@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Read Tools
-status: executing
-stopped_at: Completed 35.2-01-PLAN.md
-last_updated: "2026-03-30T22:56:48.791Z"
+status: verifying
+stopped_at: Completed 35.2-02-PLAN.md
+last_updated: "2026-03-30T23:08:07.931Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 7
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
   percent: 20
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-03-29)
 
 Phase: 35.2 (uniform-name-vs-id-resolution-at-service-boundary-for-all-list-filters) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-03-30
 
 Progress: [██░░░░░░░░] 20%
@@ -64,6 +64,8 @@ Recent decisions affecting current work:
 - [Phase 35.1]: Clean break import migration: no re-exports from old paths, old files deleted immediately
 - [Phase 35.2]: RepoQuery field parity tests replaced with divergence-aware assertions -- RepoQuery deliberately differs from Query
 - [Phase 35.2]: Project filter SQL uses pi2.task IN (?) subquery; folder filter simplified to direct pi.folder IN (?)
+- [Phase 35.2]: _ReadPipeline as separate base from _Pipeline for read-side Method Objects
+- [Phase 35.2]: BridgeRepository gets fetch-all + Python filter list methods as fallback path
 
 ### Roadmap Evolution
 
@@ -91,5 +93,5 @@ None yet.
 ## Session Continuity
 
 Last activity: 2026-03-30 -- Plan 35-01 completed
-Stopped at: Completed 35.2-01-PLAN.md
+Stopped at: Completed 35.2-02-PLAN.md
 Resume file: None
