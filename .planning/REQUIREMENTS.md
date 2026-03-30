@@ -44,10 +44,10 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 - [ ] **INFRA-05**: Tool descriptions detailed enough for an LLM to call correctly
 - [ ] **INFRA-06**: Educational error messages for invalid filter values
 - [ ] **INFRA-07**: When a name-based filter (project, folder, tags) returns zero results, emit a "did you mean?" warning with close matches from the full entity list — see [design todo](../todos/pending/2026-03-30-add-did-you-mean-suggestions-for-zero-result-name-filters.md)
-- [ ] **INFRA-08**: Read-side contracts split at the service boundary — agent-facing query models (`List<Noun>Query`) and repo-facing query models (`List<Noun>RepoQuery`) are separate types for tasks, projects, tags, and folders
-- [ ] **INFRA-09**: Read-side result containers split at the service boundary — `ListResult[T]` (agent-facing) and `ListRepoResult[T]` (repo-facing) are separate generic types
+- [x] **INFRA-08**: Read-side contracts split at the service boundary — agent-facing query models (`List<Noun>Query`) and repo-facing query models (`List<Noun>RepoQuery`) are separate types for tasks, projects, tags, and folders
+- [x] **INFRA-09**: Read-side result containers split at the service boundary — `ListResult[T]` (agent-facing) and `ListRepoResult[T]` (repo-facing) are separate generic types
 - [ ] **INFRA-10**: Repository protocol signatures use repo-boundary types (`RepoQuery`/`ListRepoResult`), Service protocol signatures use agent-boundary types (`Query`/`ListResult`)
-- [ ] **INFRA-11**: `contracts/use_cases/` organized into per-use-case packages (`list/`, `add/`, `edit/`) with all imports updated to new paths
+- [x] **INFRA-11**: `contracts/use_cases/` organized into per-use-case packages (`list/`, `add/`, `edit/`) with all imports updated to new paths
 
 ## Future Requirements
 
@@ -117,10 +117,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-05 | Phase 38 | Pending |
 | INFRA-06 | Phase 37 | Pending |
 | INFRA-07 | Phase 37 | Pending |
-| INFRA-08 | Phase 35.1 | Pending |
-| INFRA-09 | Phase 35.1 | Pending |
+| INFRA-08 | Phase 35.1 | Complete |
+| INFRA-09 | Phase 35.1 | Complete |
 | INFRA-10 | Phase 35.1 | Pending |
-| INFRA-11 | Phase 35.1 | Pending |
+| INFRA-11 | Phase 35.1 | Complete |
 
 **Coverage:**
 - v1.3 requirements: 28 total (PROJ-03 merged into PROJ-02, TASK-05 deferred)

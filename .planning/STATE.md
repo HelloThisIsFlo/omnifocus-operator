@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Read Tools
 status: executing
-stopped_at: Phase 35.1 context gathered
-last_updated: "2026-03-30T18:35:17.439Z"
+stopped_at: Completed 35.1-01-PLAN.md
+last_updated: "2026-03-30T20:22:20.633Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 6
+  completed_plans: 5
   percent: 20
 ---
 
@@ -21,12 +21,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-29)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 35 — sql-repository
+**Current focus:** Phase 35.1 — introduce-read-side-contract-boundary-split-repoquery-reporesult
 
 ## Current Position
 
-Phase: 36
-Plan: Not started
+Phase: 35.1 (introduce-read-side-contract-boundary-split-repoquery-reporesult) — EXECUTING
+Plan: 2 of 2
 Status: Ready to execute
 Last activity: 2026-03-30
 
@@ -58,6 +58,8 @@ Recent decisions affecting current work:
 - [Phase 35]: Shared lookup helpers extracted as module-level functions for reuse across _read_all and list methods
 - [Phase 35]: list_projects only needs tag lookups (not project_info/task_name) since _map_project_row takes 2 params
 - [Phase 35]: Fetch-all + Python filter for tags/folders/perspectives per D-01a (no query builder needed for small collections)
+- [Phase 35.1]: RepoQuery fields use names (not IDs) -- identical to Query today, Structure Over Discipline
+- [Phase 35.1]: Per-use-case package structure: contracts/use_cases/{verb}/ with __init__.py re-exports
 
 ### Roadmap Evolution
 
@@ -84,5 +86,5 @@ None yet.
 ## Session Continuity
 
 Last activity: 2026-03-30 -- Plan 35-01 completed
-Stopped at: Phase 35.1 context gathered
-Resume file: .planning/phases/35.1-introduce-read-side-contract-boundary-split-repoquery-reporesult/35.1-CONTEXT.md
+Stopped at: Completed 35.1-01-PLAN.md
+Resume file: None
