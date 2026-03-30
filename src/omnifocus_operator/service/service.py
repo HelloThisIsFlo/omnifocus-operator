@@ -18,6 +18,8 @@ from omnifocus_operator.agent_messages.errors import (
     REPETITION_NO_EXISTING_RULE,
 )
 from omnifocus_operator.agent_messages.warnings import (
+    FILTER_DID_YOU_MEAN,
+    FILTER_NO_MATCH,
     REPETITION_NO_OP,
 )
 from omnifocus_operator.contracts.base import is_set
@@ -25,6 +27,19 @@ from omnifocus_operator.contracts.protocols import Service
 from omnifocus_operator.contracts.shared.repetition_rule import FrequencyAddSpec
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskResult
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
+from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult, ListResult
+from omnifocus_operator.contracts.use_cases.list.folders import (
+    ListFoldersRepoQuery,
+)
+from omnifocus_operator.contracts.use_cases.list.projects import (
+    ListProjectsRepoQuery,
+)
+from omnifocus_operator.contracts.use_cases.list.tags import (
+    ListTagsRepoQuery,
+)
+from omnifocus_operator.contracts.use_cases.list.tasks import (
+    ListTasksRepoQuery,
+)
 from omnifocus_operator.models.repetition_rule import Frequency
 from omnifocus_operator.service.domain import DomainLogic
 from omnifocus_operator.service.payload import PayloadBuilder
@@ -41,7 +56,6 @@ if TYPE_CHECKING:
     )
     from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskCommand
     from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskCommand
-    from omnifocus_operator.contracts.use_cases.list.common import ListResult
     from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersQuery
     from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsQuery
     from omnifocus_operator.contracts.use_cases.list.tags import ListTagsQuery
@@ -136,22 +150,46 @@ class OperatorService(Service):  # explicitly implements Service protocol
         )
         return await pipeline.execute(command)
 
-    # -- list stubs (not yet implemented) ------------------------------------
+    # -- list_tasks: delegates to _ListTasksPipeline (Method Object) --------
 
     async def list_tasks(self, query: ListTasksQuery) -> ListResult[Task]:
-        raise NotImplementedError("list_tasks not implemented yet")
+        """List tasks with name-to-ID resolution for project and tag filters."""
+        pipeline = _ListTasksPipeline(
+            self._resolver,
+            self._domain,
+            self._repository,
+        )
+        return await pipeline.execute(query)
+
+    # -- list_projects: delegates to _ListProjectsPipeline (Method Object) --
 
     async def list_projects(self, query: ListProjectsQuery) -> ListResult[Project]:
-        raise NotImplementedError("list_projects not implemented yet")
+        """List projects with name-to-ID resolution for folder filter."""
+        pipeline = _ListProjectsPipeline(
+            self._resolver,
+            self._domain,
+            self._repository,
+        )
+        return await pipeline.execute(query)
+
+    # -- list pass-throughs (no entity-reference filters to resolve) ---------
 
     async def list_tags(self, query: ListTagsQuery) -> ListResult[Tag]:
-        raise NotImplementedError("list_tags not implemented yet")
+        """List tags -- inline pass-through (no entity-reference filters)."""
+        repo_query = ListTagsRepoQuery(availability=query.availability)
+        repo_result = await self._repository.list_tags(repo_query)
+        return ListResult(items=repo_result.items, total=repo_result.total, has_more=repo_result.has_more)
 
     async def list_folders(self, query: ListFoldersQuery) -> ListResult[Folder]:
-        raise NotImplementedError("list_folders not implemented yet")
+        """List folders -- inline pass-through (no entity-reference filters)."""
+        repo_query = ListFoldersRepoQuery(availability=query.availability)
+        repo_result = await self._repository.list_folders(repo_query)
+        return ListResult(items=repo_result.items, total=repo_result.total, has_more=repo_result.has_more)
 
     async def list_perspectives(self) -> ListResult[Perspective]:
-        raise NotImplementedError("list_perspectives not implemented yet")
+        """List perspectives -- inline pass-through (no filters)."""
+        repo_result = await self._repository.list_perspectives()
+        return ListResult(items=repo_result.items, total=repo_result.total, has_more=repo_result.has_more)
 
 
 # -- Pipeline base ---------------------------------------------------------
@@ -171,6 +209,159 @@ class _Pipeline:
         self._domain = domain
         self._payload = payload
         self._repository = repository
+
+
+# -- Read pipeline base ----------------------------------------------------
+
+
+class _ReadPipeline:
+    """Shared dependencies for read-side list pipelines."""
+
+    def __init__(
+        self,
+        resolver: Resolver,
+        domain: DomainLogic,
+        repository: Repository,
+    ) -> None:
+        self._resolver = resolver
+        self._domain = domain
+        self._repository = repository
+        self._warnings: list[str] = []
+
+    def _build_warning(self, entity_type: str, value: str, entity_names: list[str]) -> str:
+        """Build a did-you-mean or no-match warning for a failed resolution."""
+        suggestions = self._domain.suggest_close_matches(value, entity_names)
+        if suggestions:
+            return FILTER_DID_YOU_MEAN.format(
+                entity_type=entity_type,
+                value=value,
+                suggestions=", ".join(suggestions),
+            )
+        return FILTER_NO_MATCH.format(entity_type=entity_type, value=value)
+
+    def _result_from_repo[T](self, repo_result: ListRepoResult[T]) -> ListResult[T]:
+        """Convert ListRepoResult to ListResult with accumulated warnings."""
+        return ListResult(
+            items=repo_result.items,
+            total=repo_result.total,
+            has_more=repo_result.has_more,
+            warnings=self._warnings or None,
+        )
+
+
+# -- list_tasks pipeline (Method Object) ------------------------------------
+
+
+class _ListTasksPipeline(_ReadPipeline):
+    """Method object for list_tasks -- resolve project + tags to IDs, then delegate."""
+
+    async def execute(self, query: ListTasksQuery) -> ListResult[Task]:
+        """Run the full list-tasks pipeline."""
+        self._query = query
+        self._all_data = await self._repository.get_all()
+
+        self._resolve_project()
+        self._resolve_tags()
+        self._build_repo_query()
+        return await self._delegate()
+
+    def _resolve_project(self) -> None:
+        self._project_ids: list[str] | None = None
+        if self._query.project is None:
+            return
+        resolved = self._resolver.resolve_filter(self._query.project, self._all_data.projects)
+        if resolved:
+            self._project_ids = resolved
+        else:
+            # No match -- skip filter, warn
+            self._warnings.append(
+                self._build_warning(
+                    "project",
+                    self._query.project,
+                    [p.name for p in self._all_data.projects],
+                )
+            )
+
+    def _resolve_tags(self) -> None:
+        self._tag_ids: list[str] | None = None
+        if self._query.tags is None:
+            return
+        resolved = self._resolver.resolve_filter_list(self._query.tags, self._all_data.tags)
+        unresolved = self._resolver.find_unresolved(self._query.tags, self._all_data.tags)
+        if resolved:
+            self._tag_ids = resolved
+        for value in unresolved:
+            self._warnings.append(
+                self._build_warning(
+                    "tag",
+                    value,
+                    [t.name for t in self._all_data.tags],
+                )
+            )
+
+    def _build_repo_query(self) -> None:
+        self._repo_query = ListTasksRepoQuery(
+            in_inbox=self._query.in_inbox,
+            flagged=self._query.flagged,
+            project_ids=self._project_ids,
+            tag_ids=self._tag_ids,
+            estimated_minutes_max=self._query.estimated_minutes_max,
+            availability=self._query.availability,
+            search=self._query.search,
+            limit=self._query.limit,
+            offset=self._query.offset,
+        )
+
+    async def _delegate(self) -> ListResult[Task]:
+        repo_result = await self._repository.list_tasks(self._repo_query)
+        return self._result_from_repo(repo_result)
+
+
+# -- list_projects pipeline (Method Object) ---------------------------------
+
+
+class _ListProjectsPipeline(_ReadPipeline):
+    """Method object for list_projects -- resolve folder to IDs, then delegate."""
+
+    async def execute(self, query: ListProjectsQuery) -> ListResult[Project]:
+        """Run the full list-projects pipeline."""
+        self._query = query
+        self._all_data = await self._repository.get_all()
+
+        self._resolve_folder()
+        self._build_repo_query()
+        return await self._delegate()
+
+    def _resolve_folder(self) -> None:
+        self._folder_ids: list[str] | None = None
+        if self._query.folder is None:
+            return
+        resolved = self._resolver.resolve_filter(self._query.folder, self._all_data.folders)
+        if resolved:
+            self._folder_ids = resolved
+        else:
+            # No match -- skip filter, warn
+            self._warnings.append(
+                self._build_warning(
+                    "folder",
+                    self._query.folder,
+                    [f.name for f in self._all_data.folders],
+                )
+            )
+
+    def _build_repo_query(self) -> None:
+        self._repo_query = ListProjectsRepoQuery(
+            availability=self._query.availability,
+            folder_ids=self._folder_ids,
+            review_due_within=self._query.review_due_within,
+            flagged=self._query.flagged,
+            limit=self._query.limit,
+            offset=self._query.offset,
+        )
+
+    async def _delegate(self) -> ListResult[Project]:
+        repo_result = await self._repository.list_projects(self._repo_query)
+        return self._result_from_repo(repo_result)
 
 
 # -- add_task pipeline (Method Object) -------------------------------------

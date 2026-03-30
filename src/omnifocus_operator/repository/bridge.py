@@ -20,6 +20,7 @@ from omnifocus_operator.bridge.adapter import adapt_snapshot
 from omnifocus_operator.contracts.protocols import Repository
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskRepoResult
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskRepoResult
+from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult
 from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.repository.bridge_write_mixin import BridgeWriteMixin
 
@@ -30,7 +31,6 @@ if TYPE_CHECKING:
     from omnifocus_operator.contracts.protocols import Bridge
     from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskRepoPayload
     from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskRepoPayload
-    from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult
     from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersRepoQuery
     from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsRepoQuery
     from omnifocus_operator.contracts.use_cases.list.tags import ListTagsRepoQuery
@@ -132,19 +132,90 @@ class BridgeRepository(BridgeWriteMixin, Repository):
         return EditTaskRepoResult(id=result["id"], name=result["name"])
 
     async def list_tasks(self, query: ListTasksRepoQuery) -> ListRepoResult[Task]:
-        raise NotImplementedError("list_tasks not implemented yet")
+        """Fetch-all + Python filter for tasks (fallback path)."""
+        all_entities = await self.get_all()
+        items = list(all_entities.tasks)
+
+        if query.in_inbox is not None:
+            items = [t for t in items if t.in_inbox == query.in_inbox]
+        if query.flagged is not None:
+            items = [t for t in items if t.flagged == query.flagged]
+        if query.project_ids is not None:
+            pid_set = set(query.project_ids)
+            items = [t for t in items if t.parent is not None and t.parent.id in pid_set]
+        if query.tag_ids is not None:
+            tid_set = set(query.tag_ids)
+            items = [t for t in items if any(tag.id in tid_set for tag in t.tags)]
+        if query.estimated_minutes_max is not None:
+            items = [
+                t for t in items
+                if t.estimated_minutes is not None and t.estimated_minutes <= query.estimated_minutes_max
+            ]
+        if query.availability:
+            avail_set = set(query.availability)
+            items = [t for t in items if t.availability in avail_set]
+        if query.search is not None:
+            lower_search = query.search.lower()
+            items = [
+                t for t in items
+                if lower_search in t.name.lower() or (t.note and lower_search in t.note.lower())
+            ]
+
+        total = len(items)
+        offset = query.offset or 0
+        if offset:
+            items = items[offset:]
+        if query.limit is not None:
+            items = items[: query.limit]
+
+        return ListRepoResult(items=items, total=total, has_more=(offset + len(items)) < total)
 
     async def list_projects(self, query: ListProjectsRepoQuery) -> ListRepoResult[Project]:
-        raise NotImplementedError("list_projects not implemented yet")
+        """Fetch-all + Python filter for projects (fallback path)."""
+        all_entities = await self.get_all()
+        items = list(all_entities.projects)
+
+        if query.availability:
+            avail_set = set(query.availability)
+            items = [p for p in items if p.availability in avail_set]
+        if query.folder_ids is not None:
+            fid_set = set(query.folder_ids)
+            items = [p for p in items if p.folder is not None and p.folder in fid_set]
+        if query.flagged is not None:
+            items = [p for p in items if p.flagged == query.flagged]
+
+        total = len(items)
+        offset = query.offset or 0
+        if offset:
+            items = items[offset:]
+        if query.limit is not None:
+            items = items[: query.limit]
+
+        return ListRepoResult(items=items, total=total, has_more=(offset + len(items)) < total)
 
     async def list_tags(self, query: ListTagsRepoQuery) -> ListRepoResult[Tag]:
-        raise NotImplementedError("list_tags not implemented yet")
+        """Fetch-all + Python filter for tags."""
+        all_entities = await self.get_all()
+        items = list(all_entities.tags)
+        if query.availability:
+            avail_set = set(query.availability)
+            items = [t for t in items if t.availability in avail_set]
+        return ListRepoResult(items=items, total=len(items), has_more=False)
 
     async def list_folders(self, query: ListFoldersRepoQuery) -> ListRepoResult[Folder]:
-        raise NotImplementedError("list_folders not implemented yet")
+        """Fetch-all + Python filter for folders."""
+        all_entities = await self.get_all()
+        items = list(all_entities.folders)
+        if query.availability:
+            avail_set = set(query.availability)
+            items = [f for f in items if f.availability in avail_set]
+        return ListRepoResult(items=items, total=len(items), has_more=False)
 
     async def list_perspectives(self) -> ListRepoResult[Perspective]:
-        raise NotImplementedError("list_perspectives not implemented yet")
+        """Fetch-all for perspectives (no filters)."""
+        all_entities = await self.get_all()
+        items = list(all_entities.perspectives)
+        return ListRepoResult(items=items, total=len(items), has_more=False)
 
     async def _refresh(self, current_mtime: int) -> AllEntities:
         """Fetch fresh data from the bridge and update cache state.
