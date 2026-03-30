@@ -28,9 +28,9 @@ class QueryModel(StrictModel):
 |------------|------|---------|---------|
 | `StrictModel` | — | Shared `extra="forbid"` validation | Never used directly |
 | `CommandModel` | Write | Commands, payloads, results, specs, actions | `AddTaskCommand`, `EditTaskRepoPayload`, ... |
-| `QueryModel` | Read | Query filters and pagination | `ListTasksQuery`, `ListProjectsQuery`, ... |
+| `QueryModel` | Read | Query filters and pagination | `ListTasksQuery`, `ListTasksRepoQuery`, ... |
 
-This follows CQRS convention: **commands** change state, **queries** request information. Both need strict input validation at the agent boundary, but they serve different architectural roles and have different pipeline characteristics (see [Why query models are shared across layers](#why-query-models-are-shared-across-layers)).
+This follows CQRS convention: **commands** change state, **queries** request information. Both need strict input validation at the agent boundary, but they serve different architectural roles and have different pipeline characteristics.
 
 ## Overview
 
@@ -44,7 +44,13 @@ Every model's name indicates its layer and role. The taxonomy follows CQRS: **wr
 
 Neither direction requires lossless round-tripping. The core model is the source of truth; boundary models are projections. See [Structure Over Discipline](structure-over-discipline.md) for why this is pre-documented rather than left to agent judgment.
 
-## Core models
+**Service boundary principle:** Input models split at the service boundary — both write-side and read-side. The agent-facing model and the repo-facing model are always separate types, even when their fields are identical today. This follows [Structure Over Discipline](structure-over-discipline.md): the split exists so divergence is "add a field," not a design decision. Output result containers use shared generics (`ListResult[T]`, `ListRepoResult[T]`). Simple reads (get by ID) pass a plain string through every layer — no query model needed.
+
+## Models
+
+Every model falls into one of three categories: core (the domain truth), write-side (commands and their pipeline), or read-side (queries and their pipeline). Each category has its own conventions, base classes, and boundary models.
+
+### Core models
 
 The canonical representation of each concept — no suffix, lives in `models/`, inherits `OmniFocusBaseModel`. Used internally by service, parser, builder. Also serves as the read output model by default (see [Output models](#output-models) for when this changes).
 
@@ -52,53 +58,76 @@ The canonical representation of each concept — no suffix, lives in `models/`, 
 |--------|------|---------|
 | No suffix | Canonical domain entity or value object | `Task`, `Project`, `Tag`, `Frequency`, `RepetitionRule` |
 
-## Write-side models
+### Write-side models
 
 All write-side models live in `contracts/`, inherit `CommandModel`.
 
-### Agent boundary (agent ↔ service)
+#### Agent boundary (agent ↔ service)
 
 | Suffix | Role | Direction | Examples |
 |--------|------|-----------|---------|
 | `<verb><noun>Command` | Top-level write instruction | Inbound | `AddTaskCommand`, `EditTaskCommand` |
 | `<verb><noun>Result` | Outcome returned to agent | Outbound | `AddTaskResult`, `EditTaskResult` |
 
-### Repository boundary (service ↔ repository)
+#### Repository boundary (service ↔ repository)
 
 | Suffix | Role | Direction | Examples |
 |--------|------|-----------|---------|
 | `<verb><noun>RepoPayload` | Processed, bridge-ready data | Inbound | `AddTaskRepoPayload`, `EditTaskRepoPayload` |
 | `<verb><noun>RepoResult` | Minimal confirmation from bridge | Outbound | `AddTaskRepoResult`, `EditTaskRepoResult` |
 
-### Value objects (nested within commands)
+#### Value objects (nested within commands)
 
 | Suffix | Role | When to use | Examples |
 |--------|------|-------------|---------|
 | `<noun>Action` | Stateful mutation in the actions block | Nested operation that mutates relative to current state | `TagAction`, `MoveAction` |
 | `<noun>Spec` | Write-side value object (desired state) | Nested setter with different shape from its read counterpart | `RepetitionRuleAddSpec`, `RepetitionRuleEditSpec` |
 
-## Read-side models
+### Read-side models
 
-**Boundary adaptation principle:** `Spec` is to `Command` what `Read` is to `Query`. Both exist to enable fluent interaction with the core model at different boundaries — `Spec` adapts nested shapes for input ergonomics (what the agent sends), `Read` adapts nested shapes for output ergonomics (what the agent receives). The core model is the canonical representation; boundary variants provide the shapes that make each direction natural.
+**Boundary adaptation principle:** The read side mirrors the write side at every boundary. `Spec` is to `Command` what `Read` is to `Query` — both adapt shapes for their respective direction. `RepoQuery` is to `Query` what `RepoPayload` is to `Command` — both carry resolved, unambiguous data for the repository. The core model is the canonical representation; boundary variants provide the shapes that make each direction natural.
 
 The full parallel:
 
 | Concern | Write-side | Read-side |
 |---------|-----------|-----------|
-| Top-level contract | `<verb><noun>Command` | `List<Noun>Query` |
-| Nested shape variant | `<noun>Spec` — adapts input for complex fields | `<noun>Read` — adapts output for complex fields |
-| Base class | `CommandModel` | `QueryModel` (query), `OmniFocusBaseModel` (output) |
+| Top-level agent contract | `<verb><noun>Command` | `List<Noun>Query` |
+| Top-level repo contract | `<verb><noun>RepoPayload` | `List<Noun>RepoQuery` |
+| Agent-facing result | `<verb><noun>Result` | `ListResult[T]` |
+| Repo-facing result | `<verb><noun>RepoResult` | `ListRepoResult[T]` |
+| Nested input value object | `<noun>Spec` — desired state for complex fields | `<noun>Filter` — complex selection criteria |
+| Nested output variant | — | `<noun>Read` — adapts output for complex fields |
+| Base class (input) | `CommandModel` | `QueryModel` |
+| Base class (output) | `CommandModel` | `OmniFocusBaseModel` |
 | Lives in | `contracts/` | `contracts/` (query), `models/` (output) |
 
-### Query models (input)
+#### Agent boundary (agent ↔ service)
 
-Query models live in `contracts/use_cases/`, inherit `QueryModel`. They carry filter parameters and pagination through the full pipeline (server → service → repository).
+| Suffix | Role | Direction | Examples |
+|--------|------|-----------|---------|
+| `List<Noun>Query` | Validated filter + pagination from agent | Inbound | `ListTasksQuery`, `ListProjectsQuery` |
+| `ListResult[T]` | Result container returned to agent (items + total_count + warnings) | Outbound | `ListResult[Task]`, `ListResult[Project]` |
 
-| Suffix | Role | Examples |
-|--------|------|---------|
-| `List<Noun>Query` | Validated filter + pagination parameters | `ListTasksQuery`, `ListProjectsQuery`, `ListTagsQuery`, `ListFoldersQuery` |
+`ListResult[T]` inherits `OmniFocusBaseModel`, not `QueryModel` — it's outbound and system-constructed, not validated against agent input. The `T` is a core model or `<noun>Read` variant.
 
-### Output models
+#### Value objects (nested within queries)
+
+| Suffix | Role | When to use | Examples |
+|--------|------|-------------|---------|
+| `<noun>Filter` | Complex selection criteria nested in a query | Agent-friendly filter with multiple input shapes that the service resolves before the repo | `DateFilter` |
+
+`<noun>Filter` is the read-side counterpart of `<noun>Spec`. A Spec describes desired state for a complex write field; a Filter describes selection criteria for a complex query dimension. The service resolves the filter into concrete repo query fields — the filter object itself doesn't appear on the repo query.
+
+#### Repository boundary (service ↔ repository)
+
+| Suffix | Role | Direction | Examples |
+|--------|------|-----------|---------|
+| `List<Noun>RepoQuery` | Resolved, repo-ready filter parameters | Inbound | `ListTasksRepoQuery`, `ListProjectsRepoQuery` |
+| `ListRepoResult[T]` | Minimal result from repository (items + total_count, no warnings) | Outbound | `ListRepoResult[Task]`, `ListRepoResult[Project]` |
+
+`ListRepoResult[T]` inherits `OmniFocusBaseModel`. The service enriches it into a `ListResult[T]` (adding warnings, "did you mean?" suggestions, etc.) before returning to the agent — mirroring how `RepoResult` is enriched into `Result` on the write side.
+
+#### Output models
 
 The core model serves directly as read output by default. When the output boundary needs a different shape (suppressed defaults, computed fields, reshaped for ergonomics), introduce a `<noun>Read` variant — separate class, not a subclass, derivable from the core model.
 
@@ -109,38 +138,6 @@ The core model serves directly as read output by default. When the output bounda
 
 **Why "suppressed defaults" can't stay on the core model:** FastMCP serializes tool output via `pydantic_core.to_jsonable_python`, which has no `exclude_defaults` parameter. You don't control the serialization call. A `@field_serializer` on the parent can work as a workaround (see `RepetitionRule.frequency`), but when the concept is used in multiple places or the suppression is intrinsic to the read representation, a `<noun>Read` with the behavior built in is the principled path.
 
-### Result container
-
-| Model | Role | Base class | Examples |
-|-------|------|------------|---------|
-| `ListResult[T]` | Generic result container (items + total_count) | `OmniFocusBaseModel` | `ListResult[Task]`, `ListResult[Project]` |
-
-`ListResult[T]` inherits `OmniFocusBaseModel`, not `QueryModel` — it's outbound and system-constructed, not validated against agent input. The `T` is a core model or `<noun>Read` variant.
-
-### Why query models are shared across layers
-
-Write-side models need separate types at each boundary because the **shape genuinely changes** between layers:
-
-```
-AddTaskCommand          →  Service transforms  →  AddTaskRepoPayload
-  parent: str (name)         resolves, builds        parent_id: str (ID)
-  tags: ["Work"]             restructures            tag_ids: ["id1"]
-  (agent-friendly shape)                             (bridge-ready shape)
-```
-
-Read-side query models don't need this split because the **shape stays the same**. Service resolves values (tag names → IDs, status shorthand expansion, default exclusions) but the model structure is identical before and after:
-
-```
-ListTasksQuery          →  Service refines    →  ListTasksQuery (same model)
-  tags: ["Work"]             resolves values       tags: ["id1"]
-  flagged: true              applies defaults      flagged: true
-  (same fields, same types throughout)
-```
-
-The fundamental difference: writes are **transformative** (command → payload requires restructuring for the bridge), reads are **refinements** (filter values get resolved but the contract shape is stable). A separate `ListTasksRepoQuery` would duplicate 95% of the fields for the sake of one resolved value — the wrong tradeoff.
-
-This mirrors how existing simple reads already work: `get_task(task_id: str)` passes the same string through every layer without a `GetTaskRepoQuery`.
-
 ## Naming rules
 
 - **Verb-first** for top-level write-side models: `<verb><noun>Command` — e.g., `AddTaskCommand`, `EditTaskCommand` (not `TaskAddCommand`)
@@ -148,48 +145,68 @@ This mirrors how existing simple reads already work: `get_task(task_id: str)` pa
 - **Noun-only** for core models: `Task`, `Project`, `Tag` (no verb, no suffix)
 - **Value objects** within commands are suffix-free when unambiguous (`TagAction`, `MoveAction`), or use `<noun>Spec` when a read-side model of the same name exists. All value objects live in `contracts/` and inherit `CommandModel` — never reuse a read model from `models/` directly in a command
 - **Base classes**: `CommandModel` for write-side, `QueryModel` for read-side queries — both inherit `StrictModel` (`extra="forbid"`, strict validation). `ListResult` inherits `OmniFocusBaseModel` (outbound, no strict validation)
-- **Repo qualifier**: Both inbound and outbound models at the repository boundary use `Repo` prefix for symmetry and clarity
+- **Repo qualifier**: Both inbound and outbound models at the repository boundary use `Repo` prefix — write-side (`<verb><noun>RepoPayload`) and read-side (`List<Noun>RepoQuery`) alike
 - **Noun-first for nested specs**: When a nested value object needs a verb qualifier (different shapes per use case), the domain noun leads: `RepetitionRuleAddSpec`, `RepetitionRuleEditSpec` (not `AddRepetitionRuleSpec`). Top-level models are verb-first (`AddTaskCommand`); nested specs are noun-first because they represent the THING in different contexts, not different actions.
 - **Verb qualifier only when needed**: If a spec has the same shape for both add and edit, use plain `<noun>Spec` (no verb). Only add `Add`/`Edit` qualifier when shapes diverge (e.g., all-required vs patchable fields).
+- **Filter for complex query dimensions**: `<noun>Filter` for nested selection criteria in queries — the read-side counterpart of `<noun>Spec`. Lives in `contracts/`, inherits `QueryModel`. The service resolves it into concrete repo query fields.
 - **Read suffix only when needed**: Use the core model directly for read output (the common case). Only introduce `<noun>Read` when the output boundary requires a different shape. A `<noun>Read` is a separate class (not a subclass of the core model), inherits `OmniFocusBaseModel`, lives in `models/`, and must be derivable from the core model.
+- **Shared generics for result containers**: `ListResult[T]` (agent-facing, includes warnings) and `ListRepoResult[T]` (repo-facing, no warnings) — not per-entity concrete types
 
 ## Decision tree for naming a new model
 
-**Read-side:**
+### Read-side
 
 *Query input* (lives in `contracts/use_cases/`, inherits `QueryModel`):
 
-1. Is it a validated filter + pagination model for a list operation? → `List<Noun>Query` (e.g., `ListTasksQuery`)
-2. Is it a result container for list operations? → `ListResult[T]` (inherits `OmniFocusBaseModel`, not `QueryModel` — outbound, no validation needed)
+1. Is it an agent-facing filter + pagination model? → `List<Noun>Query`
+2. Is it a repo-facing resolved query? → `List<Noun>RepoQuery`
+3. Is it a complex nested selection criteria within a query? → `<noun>Filter` (e.g., `DateFilter`)
+
+*Result containers* (live in `contracts/use_cases/`, inherit `OmniFocusBaseModel` — outbound, no validation needed):
+
+4. Is it the result container returned to the agent? → `ListResult[T]` (includes warnings)
+5. Is it the result container from the repository? → `ListRepoResult[T]` (no warnings)
 
 *Query output* (lives in `models/`, inherits `OmniFocusBaseModel`):
 
-3. Is the read output shape identical to the core model? → Use the core model directly (no suffix)
-4. Does the read output need a different shape (suppressed defaults, computed fields, reshaped for ergonomics)? → `<noun>Read` (separate class, derivable from core)
+6. Is the read output shape identical to the core model? → Use the core model directly (no suffix)
+7. Does the read output need a different shape (suppressed defaults, computed fields, reshaped for ergonomics)? → `<noun>Read` (separate class, derivable from core)
 
-**Write-side** (lives in `contracts/`, inherits `CommandModel`):
+### Write-side
+
+Lives in `contracts/`, inherits `CommandModel`.
+
+*Agent boundary:*
 
 1. Is it a top-level instruction from the agent? → `<verb><noun>Command`
-2. Is it processed data sent to the repository? → `<verb><noun>RepoPayload`
-3. Is it a stateful operation inside the actions block? → `<noun>Action`
-4. Is it a complex nested value object (setter, not a mutation)? → `<noun>Spec`
+2. Is it the enriched outcome returned to the agent? → `<verb><noun>Result`
+
+*Repository boundary:*
+
+3. Is it processed data sent to the repository? → `<verb><noun>RepoPayload`
+4. Is it the confirmation from the repository? → `<verb><noun>RepoResult`
+
+*Value objects (nested within commands):*
+
+5. Is it a stateful operation inside the actions block? → `<noun>Action`
+6. Is it a complex nested value object (setter, not a mutation)? → `<noun>Spec`
    Write models inherit `CommandModel`, read output models inherit
    `OmniFocusBaseModel` (no `extra="forbid"`). This base class difference alone justifies
    a dedicated write model, even when the field shapes are identical.
      - Same shape across add/edit → `<noun>Spec` (e.g., `RepetitionRuleSpec`)
      - Different shapes per use case → `<noun><verb>Spec` (e.g., `RepetitionRuleAddSpec` for all-required, `RepetitionRuleEditSpec` for patchable fields)
-5. Is it the confirmation from the repository? → `<verb><noun>RepoResult`
-6. Is it the enriched outcome returned to the agent? → `<verb><noun>Result`
 
 ## Ubiquitous language
 
-> "The agent sends a **command** (write) or a **query** (read). For writes: the service validates, resolves, and builds a **repo payload**. The repository forwards to the bridge and returns a **repo result**. The service enriches this into a **result** for the agent. Within a command, **actions** mutate state; **specs** describe desired state for complex nested objects. When a spec needs different shapes per use case, the domain noun leads with a verb qualifier: RepetitionRuleAddSpec (creation shape) vs RepetitionRuleEditSpec (partial update shape). For filtered reads: the agent sends a **query** that travels unchanged through all layers — the service refines values but doesn't reshape. The repository returns a **list result** with items and total count. For read output, the **core model** is used directly unless the output boundary needs a different shape — then a **read model** (`<noun>Read`) provides the variant, derivable from the core."
+> "The agent sends a **command** (write) or a **query** (read). For writes: the service validates, resolves, and builds a **repo payload**. The repository forwards to the bridge and returns a **repo result**. The service enriches this into a **result** for the agent. Within a command, **actions** mutate state; **specs** describe desired state for complex nested objects. When a spec needs different shapes per use case, the domain noun leads with a verb qualifier: RepetitionRuleAddSpec (creation shape) vs RepetitionRuleEditSpec (partial update shape). For filtered reads: the agent sends a **query**. Within a query, **filters** describe complex selection criteria for dimensions that need multiple input shapes (e.g., date ranges with shortcuts, periods, or absolute bounds). The service validates, resolves filters into concrete parameters, and transforms the query into a **repo query** — mirroring the write-side pattern. The repository returns a **list repo result** (items + total count). The service enriches this into a **list result** for the agent (adding warnings and suggestions). Simple reads (get by ID) pass a plain string through every layer — no query model needed. For read output, the **core model** is used directly unless the output boundary needs a different shape — then a **read model** (`<noun>Read`) provides the variant, derivable from the core."
 
 ## Taxonomy examples
 
-Four scenarios exercising different parts of the taxonomy. Use these to verify your understanding before naming a new model.
+Six scenarios exercising different parts of the taxonomy — three write-side, three read-side. Use these to verify your understanding before naming a new model.
 
-### Scenario A: Location (nested, read differs from core, same add/edit shape)
+### Write-side examples
+
+#### Scenario A: Location (nested, read differs from core, same add/edit shape)
 
 > Locations are nested inside tasks — not a standalone tool. A location has: `name` (string), `latitude` (float), `longitude` (float), `radius` (int, defaults to 100 meters).
 >
@@ -214,7 +231,7 @@ Four scenarios exercising different parts of the taxonomy. Use these to verify y
 | `LocationRead` | Read | `models/` | `OmniFocusBaseModel` | Read output suppresses default radius — different shape than core |
 | `LocationSpec` | Write-side value object | `contracts/` | `CommandModel` | Nested setter; same shape for add/edit → no verb qualifier |
 
-### Scenario B: Priority (nested, read matches core, add/edit shapes differ)
+#### Scenario B: Priority (nested, read matches core, add/edit shapes differ)
 
 > Priorities are nested inside tasks — not a standalone tool. A priority has: `level` (string), `score` (int).
 >
@@ -239,7 +256,7 @@ Four scenarios exercising different parts of the taxonomy. Use these to verify y
 | `PriorityAddSpec` | Write-side value object | `contracts/` | `CommandModel` | All-required shape for add |
 | `PriorityEditSpec` | Write-side value object | `contracts/` | `CommandModel` | Patchable shape for edit — shapes diverge → verb qualifier |
 
-### Scenario C: Reminder (top-level tool, full pipeline)
+#### Scenario C: Reminder (top-level tool, full pipeline)
 
 > `Reminder` is a new entity with its own tools: `add_reminders` and `edit_reminders`. Goes through the full three-layer architecture (server → service → repository). A reminder has: `id` (string), `message` (string), `triggerAt` (datetime).
 >
@@ -270,9 +287,11 @@ Four scenarios exercising different parts of the taxonomy. Use these to verify y
 | `AddReminderRepoResult` | Repo boundary, outbound | `contracts/` | `CommandModel` |
 | `EditReminderRepoResult` | Repo boundary, outbound | `contracts/` | `CommandModel` |
 
-### Scenario D: Filtered task listing (query, shared across layers)
+### Read-side examples
 
-> `list_tasks` is a read operation with filters. The agent sends filter parameters (flagged, tags, search, limit). The same query model travels through server → service → repository — the service resolves tag names to IDs and applies default exclusions, but the model shape doesn't change. Repository returns `ListResult[Task]`.
+#### Scenario D: Filtered task listing (full read pipeline)
+
+> `list_tasks` is a read operation with filters. Goes through the full three-layer architecture (server → service → repository). The agent can filter by flagged, tags, project, search term, and limit. Tag filters accept names or IDs. Unrecognized names produce "did you mean?" warnings in the response.
 >
 > Query input:
 > ```json
@@ -280,12 +299,56 @@ Four scenarios exercising different parts of the taxonomy. Use these to verify y
 > ```
 > Result:
 > ```json
-> {"items": [...], "total_count": 47}
+> {"items": [...], "total_count": 47, "warnings": ["Tag 'Wrk' not found — did you mean 'Work'?"]}
 > ```
 
-**Answer:** 2 models. No separate repo-boundary query model — shape doesn't change between layers (see [Why query models are shared across layers](#why-query-models-are-shared-across-layers)).
+**Answer:** 4 models. Input models split at the service boundary; result containers use shared generics.
 
 | Model | Category | Location | Base class | Why |
 |-------|----------|----------|------------|-----|
-| `ListTasksQuery` | Query contract | `contracts/use_cases/` | `QueryModel` | Validated filter + pagination, shared across all layers |
-| `ListResult[Task]` | Result container | `contracts/use_cases/` | `OmniFocusBaseModel` | Generic outbound container — not agent input, no `extra="forbid"` |
+| `ListTasksQuery` | Agent-facing query | `contracts/use_cases/` | `QueryModel` | Validated filter + pagination from the agent |
+| `ListTasksRepoQuery` | Repo-facing query | `contracts/use_cases/` | `QueryModel` | Resolved, repo-ready parameters — separate type even if fields are identical today |
+| `ListResult[Task]` | Agent-facing result | `contracts/use_cases/` | `OmniFocusBaseModel` | Generic container with items + total_count + warnings |
+| `ListRepoResult[Task]` | Repo-facing result | `contracts/use_cases/` | `OmniFocusBaseModel` | Generic container with items + total_count, no warnings |
+
+#### Scenario E: Simple get by ID (no query model)
+
+> `get_task` looks up a single task by its ID. Takes a single string ID, returns the task.
+>
+> Input:
+> ```
+> get_task("oRx3bL_UYq7")
+> ```
+> Output:
+> ```json
+> {"id": "oRx3bL_UYq7", "name": "Review Q3 roadmap", "flagged": true, "tags": [...]}
+> ```
+
+**Answer:** 0 query/result models. The ID passes as a plain string through every layer. The output is the core model directly.
+
+| Model | Category | Location | Base class | Why |
+|-------|----------|----------|------------|-----|
+| `Task` | Core (also serves as read output) | `models/` | `OmniFocusBaseModel` | No query model needed — simple reads don't split |
+
+#### Scenario F: Filtered task listing with nested filter (read pipeline + Filter)
+
+> `list_tasks` supports date filtering across seven date dimensions (due, defer, completed, etc.). Each date field accepts three styles: semantic shortcuts (`"overdue"`, `"today"`), shorthand periods (`{"this": "w"}`, `{"last": "3d"}`), or absolute bounds (`{"after": "2026-03-01", "before": "2026-03-31"}`). The agent picks whichever style is most natural.
+>
+> Query input:
+> ```json
+> {"due": {"this": "w"}, "flagged": true, "limit": 20}
+> ```
+> Result:
+> ```json
+> {"items": [...], "total_count": 5}
+> ```
+
+**Answer:** 5 models. The 4 query/result models from Scenario D, plus a `DateFilter` value object nested in the query.
+
+| Model | Category | Location | Base class | Why |
+|-------|----------|----------|------------|-----|
+| `ListTasksQuery` | Agent-facing query | `contracts/use_cases/` | `QueryModel` | Validated filter + pagination — `due`, `defer`, etc. each accept a `DateFilter` |
+| `DateFilter` | Read-side value object | `contracts/use_cases/` | `QueryModel` | Nested filter with three input shapes (shortcut, period, bounds) — reused across 7 date dimensions |
+| `ListTasksRepoQuery` | Repo-facing query | `contracts/use_cases/` | `QueryModel` | Resolved, repo-ready — date filters flattened to concrete `after`/`before` timestamps |
+| `ListResult[Task]` | Agent-facing result | `contracts/use_cases/` | `OmniFocusBaseModel` | Generic container with items + total_count + warnings |
+| `ListRepoResult[Task]` | Repo-facing result | `contracts/use_cases/` | `OmniFocusBaseModel` | Generic container with items + total_count, no warnings |
