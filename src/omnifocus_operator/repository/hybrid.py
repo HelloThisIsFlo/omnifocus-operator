@@ -27,10 +27,6 @@ from omnifocus_operator.contracts.protocols import Repository
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskRepoResult
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskRepoResult
 from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult
-from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersRepoQuery
-from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsRepoQuery
-from omnifocus_operator.contracts.use_cases.list.tags import ListTagsRepoQuery
-from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
 from omnifocus_operator.repository.bridge_write_mixin import BridgeWriteMixin
 from omnifocus_operator.repository.query_builder import (
     build_list_projects_sql,
@@ -44,6 +40,10 @@ if TYPE_CHECKING:
     from omnifocus_operator.contracts.protocols import Bridge
     from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskRepoPayload
     from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskRepoPayload
+    from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersRepoQuery
+    from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsRepoQuery
+    from omnifocus_operator.contracts.use_cases.list.tags import ListTagsRepoQuery
+    from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
 
 import logging
 
@@ -471,10 +471,7 @@ def _build_project_info_lookup(conn: sqlite3.Connection) -> dict[str, dict[str, 
         "SELECT pi.pk, pi.task, t.name FROM ProjectInfo pi "
         "JOIN Task t ON pi.task = t.persistentIdentifier"
     ).fetchall()
-    return {
-        pi_row["pk"]: {"id": pi_row["task"], "name": pi_row["name"]}
-        for pi_row in pi_rows
-    }
+    return {pi_row["pk"]: {"id": pi_row["task"], "name": pi_row["name"]} for pi_row in pi_rows}
 
 
 def _build_task_name_lookup(conn: sqlite3.Connection) -> dict[str, str]:
@@ -799,8 +796,7 @@ class HybridRepository(BridgeWriteMixin, Repository):
 
             # Map rows to Project models
             projects = [
-                Project.model_validate(_map_project_row(row, task_tag_map))
-                for row in data_rows
+                Project.model_validate(_map_project_row(row, task_tag_map)) for row in data_rows
             ]
 
             total = count_row[0] if count_row else 0

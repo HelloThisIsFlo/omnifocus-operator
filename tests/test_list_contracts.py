@@ -342,9 +342,7 @@ class TestRepoQueryFieldParity:
         )
 
     def test_tags_field_parity(self) -> None:
-        assert set(ListTagsRepoQuery.model_fields.keys()) == set(
-            ListTagsQuery.model_fields.keys()
-        )
+        assert set(ListTagsRepoQuery.model_fields.keys()) == set(ListTagsQuery.model_fields.keys())
 
     def test_folders_field_parity(self) -> None:
         assert set(ListFoldersRepoQuery.model_fields.keys()) == set(

@@ -1979,7 +1979,8 @@ class TestListTasks:
     )
     async def test_list_tasks_availability_completed(self, hybrid_repo: HybridRepository) -> None:
         """TASK-07: availability=[COMPLETED] returns only completed tasks."""
-        result = await hybrid_repo.list_tasks(ListTasksRepoQuery(availability=[Availability.COMPLETED]))
+        query = ListTasksRepoQuery(availability=[Availability.COMPLETED])
+        result = await hybrid_repo.list_tasks(query)
         assert result.total == 1
         assert result.items[0].id == "t-done"
 
@@ -2426,7 +2427,8 @@ class TestListTags:
     )
     async def test_list_tags_filter_dropped_only(self, hybrid_repo: HybridRepository) -> None:
         """Filter for dropped-only returns 1 tag."""
-        result = await hybrid_repo.list_tags(ListTagsRepoQuery(availability=[TagAvailability.DROPPED]))
+        query = ListTagsRepoQuery(availability=[TagAvailability.DROPPED])
+        result = await hybrid_repo.list_tags(query)
         assert len(result.items) == 1
         assert result.items[0].id == "tag-dropped"
 
