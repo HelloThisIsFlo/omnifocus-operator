@@ -33,9 +33,9 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 
 ### Entity Browsing
 
-- [ ] **BROWSE-01**: Agent can list tags filtered by status list with OR logic (active, on_hold, dropped); defaults to remaining (active + on_hold)
-- [ ] **BROWSE-02**: Agent can list folders filtered by status list with OR logic; defaults to remaining (active + on_hold)
-- [ ] **BROWSE-03**: Agent can list all perspectives (built-in + custom) with id, name, builtin flag
+- [x] **BROWSE-01**: Agent can list tags filtered by status list with OR logic (active, on_hold, dropped); defaults to remaining (active + on_hold)
+- [x] **BROWSE-02**: Agent can list folders filtered by status list with OR logic; defaults to remaining (active + on_hold)
+- [x] **BROWSE-03**: Agent can list all perspectives (built-in + custom) with id, name, builtin flag
 
 ### Query Infrastructure
 
@@ -102,9 +102,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROJ-05 | Phase 35 | Complete |
 | PROJ-06 | Phase 35 | Complete |
 | PROJ-07 | Phase 35 | Complete |
-| BROWSE-01 | Phase 35 | Pending |
-| BROWSE-02 | Phase 35 | Pending |
-| BROWSE-03 | Phase 35 | Pending |
+| BROWSE-01 | Phase 35 | Complete |
+| BROWSE-02 | Phase 35 | Complete |
+| BROWSE-03 | Phase 35 | Complete |
 | INFRA-01 | Phase 34 | Complete |
 | INFRA-02 | Phase 35 | Complete |
 | INFRA-03 | Phase 36 | Pending |

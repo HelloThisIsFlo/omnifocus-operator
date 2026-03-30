@@ -92,7 +92,7 @@
 **Milestone Goal:** Give agents the ability to query, filter, browse, and count OmniFocus entities — tasks, projects, tags, folders, and perspectives.
 
 - [x] **Phase 34: Contracts and Query Foundation** — Typed query models, ListResult container, query builder, protocol extensions (completed 2026-03-29)
-- [ ] **Phase 35: SQL Repository** — HybridRepository list methods with filtered SQL queries for all 5 entity types
+- [x] **Phase 35: SQL Repository** — HybridRepository list methods with filtered SQL queries for all 5 entity types (completed 2026-03-30)
 - [ ] **Phase 36: In-Memory Fallback** — BridgeRepository list methods with filter.py predicates mirroring SQL semantics
 - [ ] **Phase 37: Service Orchestration** — List pipelines with resolution, shorthand expansion, default exclusions, validation
 - [ ] **Phase 38: Server Registration and Integration** — 5 new MCP tools wired end-to-end with cross-path equivalence validation
@@ -124,10 +124,10 @@ Plans:
   3. HybridRepository.list_tags and list_folders return entities filtered by status list with OR logic, defaulting to remaining
   4. HybridRepository.list_perspectives returns all perspectives (built-in + custom) with id, name, and builtin flag
   5. Filtered SQL queries execute measurably faster than full snapshot load
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [x] 35-01-PLAN.md — list_tasks + list_projects with query builder, lookups, pagination
-- [ ] 35-02-PLAN.md — list_tags + list_folders + list_perspectives with fetch-all + Python filter
+- [x] 35-02-PLAN.md — list_tags + list_folders + list_perspectives with fetch-all + Python filter
 
 ### Phase 36: In-Memory Fallback
 **Goal**: BridgeRepository produces identical filtered results to the SQL path for every filter combination
@@ -175,7 +175,7 @@ Phases execute in numeric order: 34 → 35 → 36 → 37 → 38
 | 29-31 | v1.2.2 | 6/6 | Complete | 2026-03-26 |
 | 32-33.1 | v1.2.3 | 15/15 | Complete | 2026-03-29 |
 | 34. Contracts and Query Foundation | v1.3 | 0/2 | Complete    | 2026-03-29 |
-| 35. SQL Repository | v1.3 | 1/2 | In Progress|  |
+| 35. SQL Repository | v1.3 | 2/2 | Complete   | 2026-03-30 |
 | 36. In-Memory Fallback | v1.3 | 0/0 | Not started | - |
 | 37. Service Orchestration | v1.3 | 0/0 | Not started | - |
 | 38. Server Registration and Integration | v1.3 | 0/0 | Not started | - |
