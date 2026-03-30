@@ -117,10 +117,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BROWSE-03 | Phase 35 | Complete |
 | INFRA-01 | Phase 34 | Complete |
 | INFRA-02 | Phase 35 | Complete |
-| INFRA-03 | Phase 36 | Pending |
+| INFRA-03 | Phase 36 (merged) | Pending |
 | INFRA-04 | Phase 34 | Complete |
-| INFRA-05 | Phase 38 | Pending |
-| INFRA-06 | Phase 37 | Pending |
+| INFRA-05 | Phase 37 (was 38) | Pending |
+| INFRA-06 | Phase 36 (merged) | Pending |
 | INFRA-07 | Phase 35.2 | Complete |
 | INFRA-08 | Phase 35.1 | Complete |
 | INFRA-09 | Phase 35.1 | Complete |

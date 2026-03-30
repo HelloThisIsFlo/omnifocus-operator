@@ -8,7 +8,7 @@
 - ✅ **v1.2.1 Architectural Cleanup** — Phases 18-28 (shipped 2026-03-23)
 - ✅ **v1.2.2 FastMCP v3 Migration** — Phases 29-31 (shipped 2026-03-26)
 - ✅ **v1.2.3 Repetition Rule Write Support** — Phases 32-33.1 (shipped 2026-03-29)
-- 🚧 **v1.3 Read Tools** — Phases 34-38 (in progress)
+- 🚧 **v1.3 Read Tools** — Phases 34-37 (in progress)
 
 ## Phases
 
@@ -93,9 +93,8 @@
 
 - [x] **Phase 34: Contracts and Query Foundation** — Typed query models, ListResult container, query builder, protocol extensions (completed 2026-03-29)
 - [x] **Phase 35: SQL Repository** — HybridRepository list methods with filtered SQL queries for all 5 entity types (completed 2026-03-30)
-- [ ] **Phase 36: In-Memory Fallback** — BridgeRepository list methods with filter.py predicates mirroring SQL semantics
-- [ ] **Phase 37: Service Orchestration** — List pipelines with shorthand expansion, default exclusions, validation, "did you mean?" suggestions
-- [ ] **Phase 38: Server Registration and Integration** — 5 new MCP tools wired end-to-end with cross-path equivalence validation
+- [ ] **Phase 36: Service Orchestration + Cross-Path Equivalence** — Validation, defaults, shorthand expansion, cross-path equivalence tests (merges old Phases 36+37)
+- [ ] **Phase 37: Server Registration and Integration** — 5 new MCP tools wired end-to-end
 
 ## Phase Details
 
@@ -151,31 +150,21 @@ Plans:
 - [x] 35.1-01-PLAN.md — Create per-use-case packages, new RepoQuery/ListRepoResult models, tests
 - [x] 35.1-02-PLAN.md — Migrate imports, update protocol/repository signatures, delete old files
 
-### Phase 36: In-Memory Fallback
-**Goal**: BridgeRepository produces identical filtered results to the SQL path for every filter combination
-**Depends on**: Phase 35
-**Requirements**: INFRA-03
+### Phase 36: Service Orchestration + Cross-Path Equivalence (MERGED from old Phases 36+37)
+**Goal**: Service layer adds validation, defaults, and shorthand expansion to existing pipelines; cross-path equivalence tests prove BridgeRepository matches SQL path
+**Depends on**: Phase 35.2
+**Requirements**: INFRA-03, INFRA-06
 **Success Criteria** (what must be TRUE):
-  1. BridgeRepository implements the same list methods as HybridRepository using in-memory predicates
-  2. Each predicate in filter.py mirrors its SQL counterpart (same case semantics, NULL handling, OR/AND logic)
-  3. Cross-path equivalence tests confirm SQL and in-memory paths return identical results for the same query inputs
-**Plans**: TBD
-
-### Phase 37: Service Orchestration
-**Goal**: Service layer resolves agent-friendly inputs into concrete repository queries with validation and defaults
-**Depends on**: Phase 36
-**Requirements**: INFRA-06, INFRA-07
-**Success Criteria** (what must be TRUE):
-  1. _ListTasksPipeline applies default completed/dropped exclusion and validates offset-requires-limit
-  2. _ListProjectsPipeline expands status shorthands (remaining, available, all), parses review_due_within durations, and validates inputs
-  3. Simple list pass-throughs (tags, folders, perspectives) forward query models to the repository without unnecessary pipeline overhead
+  1. Cross-path equivalence tests confirm SQL and in-memory paths return identical results for the same query inputs
+  2. _ListTasksPipeline applies default completed/dropped exclusion and validates offset-requires-limit
+  3. _ListProjectsPipeline expands status shorthands (remaining, available, all), parses review_due_within durations, and validates inputs
   4. Invalid filter values produce educational error messages that tell the agent what went wrong and what valid values look like
-  5. When a name-based filter (project, folder, tags) returns zero results, the service emits a "did you mean?" warning with close matches (using difflib or similar) by fetching the full entity list and computing similarity
+**Notes**: BridgeRepository list methods already implemented in Phase 35.2 (deviation). Pass-throughs (old SC#3) and did-you-mean (old INFRA-07) already delivered in Phase 35.2.
 **Plans**: TBD
 
-### Phase 38: Server Registration and Integration
+### Phase 37: Server Registration and Integration (was Phase 38)
 **Goal**: Agents can call 5 new MCP tools that return filtered, paginated entity lists with total counts
-**Depends on**: Phase 37
+**Depends on**: Phase 36
 **Requirements**: INFRA-05
 **Success Criteria** (what must be TRUE):
   1. list_tasks, list_projects, list_tags, list_folders, list_perspectives are registered as MCP tools and callable via Client
@@ -187,7 +176,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 34 -> 35 -> 36 -> 37 -> 38
+Phases execute in numeric order: 34 → 35 → 35.1 → 35.2 → 36 → 37
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -201,6 +190,5 @@ Phases execute in numeric order: 34 -> 35 -> 36 -> 37 -> 38
 | 35. SQL Repository | v1.3 | 2/2 | Complete    | 2026-03-30 |
 | 35.1 Contract Boundary Split | v1.3 | 2/2 | Complete    | 2026-03-30 |
 | 35.2 Uniform Name/ID Resolution | v1.3 | 2/2 | Complete    | 2026-03-30 |
-| 36. In-Memory Fallback | v1.3 | 0/0 | Not started | - |
-| 37. Service Orchestration | v1.3 | 0/0 | Not started | - |
-| 38. Server Registration and Integration | v1.3 | 0/0 | Not started | - |
+| 36. Service Orchestration + Cross-Path Equivalence | v1.3 | 0/0 | Not started | - |
+| 37. Server Registration and Integration | v1.3 | 0/0 | Not started | - |
