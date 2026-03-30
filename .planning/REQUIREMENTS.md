@@ -13,7 +13,6 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 - [x] **TASK-02**: Agent can list tasks filtered by flagged status
 - [x] **TASK-03**: Agent can list tasks filtered by project name (case-insensitive partial match, returns all tasks at any nesting depth within matching project)
 - [x] **TASK-04**: Agent can list tasks filtered by tags (OR logic -- at least one matching tag)
-- [ ] **TASK-05**: Agent can list tasks filtered by has_children (parent tasks vs leaf tasks)
 - [x] **TASK-06**: Agent can list tasks filtered by estimated_minutes_max
 - [x] **TASK-07**: Agent can list tasks filtered by availability (available/blocked)
 - [x] **TASK-08**: Agent can search tasks by case-insensitive substring in name and notes
@@ -23,9 +22,8 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 
 ### Project Querying
 
-- [x] **PROJ-01**: Agent can list projects filtered by status (active, on_hold, done, dropped)
-- [x] **PROJ-02**: Agent can use status shorthands (remaining, available, all) for project listing
-- [x] **PROJ-03**: Default project listing returns remaining (active + on_hold), not done/dropped
+- [x] **PROJ-01**: Agent can list projects filtered by availability list (available, blocked, completed, dropped) with OR logic (Phase 34 D-03: replaces original status filter with uniform availability across all entities)
+- [x] **PROJ-02**: Default project listing returns available + blocked, excluding completed/dropped (Phase 34 D-03: uniform defaults across all entities; supersedes original PROJ-02 status shorthands and PROJ-03 default behavior)
 - [x] **PROJ-04**: Agent can list projects filtered by folder name (case-insensitive partial match)
 - [x] **PROJ-05**: Agent can list projects with reviews due within a duration (now, 1w, 2m); invalid values return helpful error messages
 - [x] **PROJ-06**: Agent can list projects filtered by flagged status
@@ -46,6 +44,10 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 - [ ] **INFRA-05**: Tool descriptions detailed enough for an LLM to call correctly
 - [ ] **INFRA-06**: Educational error messages for invalid filter values
 - [ ] **INFRA-07**: When a name-based filter (project, folder, tags) returns zero results, emit a "did you mean?" warning with close matches from the full entity list — see [design todo](../todos/pending/2026-03-30-add-did-you-mean-suggestions-for-zero-result-name-filters.md)
+- [ ] **INFRA-08**: Read-side contracts split at the service boundary — agent-facing query models (`List<Noun>Query`) and repo-facing query models (`List<Noun>RepoQuery`) are separate types for tasks, projects, tags, and folders
+- [ ] **INFRA-09**: Read-side result containers split at the service boundary — `ListResult[T]` (agent-facing) and `ListRepoResult[T]` (repo-facing) are separate generic types
+- [ ] **INFRA-10**: Repository protocol signatures use repo-boundary types (`RepoQuery`/`ListRepoResult`), Service protocol signatures use agent-boundary types (`Query`/`ListResult`)
+- [ ] **INFRA-11**: `contracts/use_cases/` organized into per-use-case packages (`list/`, `add/`, `edit/`) with all imports updated to new paths
 
 ## Future Requirements
 
@@ -58,6 +60,10 @@ Deferred to future milestones. Tracked but not in current roadmap.
 - **DATE-03**: Agent can filter tasks by completion date range
 - **DATE-04**: Agent can filter tasks by added/modified date
 - **DATE-05**: Agent can filter projects by date ranges
+
+### Task Filtering (deferred from v1.3)
+
+- **TASK-05**: Agent can list tasks filtered by has_children (parent tasks vs leaf tasks) — deferred per Phase 34 D-11, no clear agent use case identified
 
 ### Search & Output (v1.4+)
 
@@ -89,7 +95,6 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TASK-02 | Phase 35 | Complete |
 | TASK-03 | Phase 35 | Complete |
 | TASK-04 | Phase 35 | Complete |
-| TASK-05 | Phase 35 | Pending |
 | TASK-06 | Phase 35 | Complete |
 | TASK-07 | Phase 35 | Complete |
 | TASK-08 | Phase 35 | Complete |
@@ -98,7 +103,6 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TASK-11 | Phase 35 | Complete |
 | PROJ-01 | Phase 35 | Complete |
 | PROJ-02 | Phase 35 | Complete |
-| PROJ-03 | Phase 35 | Complete |
 | PROJ-04 | Phase 35 | Complete |
 | PROJ-05 | Phase 35 | Complete |
 | PROJ-06 | Phase 35 | Complete |
@@ -113,12 +117,16 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-05 | Phase 38 | Pending |
 | INFRA-06 | Phase 37 | Pending |
 | INFRA-07 | Phase 37 | Pending |
+| INFRA-08 | Phase 35.1 | Pending |
+| INFRA-09 | Phase 35.1 | Pending |
+| INFRA-10 | Phase 35.1 | Pending |
+| INFRA-11 | Phase 35.1 | Pending |
 
 **Coverage:**
-- v1.3 requirements: 26 total
-- Mapped to phases: 26
+- v1.3 requirements: 28 total (PROJ-03 merged into PROJ-02, TASK-05 deferred)
+- Mapped to phases: 28
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-29*
-*Last updated: 2026-03-29 after roadmap creation*
+*Last updated: 2026-03-30 after Phase 35.1 context gathering*
