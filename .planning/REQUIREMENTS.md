@@ -45,7 +45,7 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 - [x] **INFRA-04**: list_tasks and list_projects responses include total_count reflecting total matches ignoring limit/offset
 - [ ] **INFRA-05**: Tool descriptions detailed enough for an LLM to call correctly
 - [ ] **INFRA-06**: Educational error messages for invalid filter values
-- [ ] **INFRA-07**: When a name-based filter (project, folder, tags) returns zero results, emit a "did you mean?" warning with close matches from the full entity list
+- [ ] **INFRA-07**: When a name-based filter (project, folder, tags) returns zero results, emit a "did you mean?" warning with close matches from the full entity list — see [design todo](../todos/pending/2026-03-30-add-did-you-mean-suggestions-for-zero-result-name-filters.md)
 
 ## Future Requirements
 
