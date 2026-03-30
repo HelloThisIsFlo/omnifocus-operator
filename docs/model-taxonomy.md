@@ -27,10 +27,12 @@ class QueryModel(StrictModel):
 | Base class | Side | Purpose | Used by |
 |------------|------|---------|---------|
 | `StrictModel` | — | Shared `extra="forbid"` validation | Never used directly |
-| `CommandModel` | Write | Commands, payloads, results, specs, actions | `AddTaskCommand`, `EditTaskRepoPayload`, ... |
-| `QueryModel` | Read | Query filters and pagination | `ListTasksQuery`, `ListTasksRepoQuery`, ... |
+| `CommandModel` | Write (inbound) | Commands, payloads, specs, actions | `AddTaskCommand`, `EditTaskRepoPayload`, `LocationSpec`, ... |
+| `QueryModel` | Read (inbound) | Query filters and pagination | `ListTasksQuery`, `ListTasksRepoQuery`, `DateFilter`, ... |
 
-This follows CQRS convention: **commands** change state, **queries** request information. Both need strict input validation at the agent boundary, but they serve different architectural roles and have different pipeline characteristics.
+Outbound models (results on both sides) inherit `OmniFocusBaseModel` directly — they're system-constructed and don't need `extra="forbid"` validation. This applies to write-side results (`AddTaskResult`, `EditTaskRepoResult`), read-side result containers (`ListResult[T]`, `ListRepoResult[T]`), and core models.
+
+This follows CQRS convention: **commands** change state, **queries** request information. Strict input validation (`extra="forbid"`) applies to inbound models at every boundary; outbound models are system-constructed projections.
 
 ## Overview
 
@@ -60,7 +62,7 @@ The canonical representation of each concept — no suffix, lives in `models/`, 
 
 ### Write-side models
 
-All write-side models live in `contracts/`, inherit `CommandModel`.
+All write-side models live in `contracts/`. Inbound models (commands, payloads, specs, actions) inherit `CommandModel`; outbound models (results) inherit `OmniFocusBaseModel`.
 
 #### Agent boundary (agent ↔ service)
 
@@ -69,6 +71,8 @@ All write-side models live in `contracts/`, inherit `CommandModel`.
 | `<verb><noun>Command` | Top-level write instruction | Inbound | `AddTaskCommand`, `EditTaskCommand` |
 | `<verb><noun>Result` | Outcome returned to agent | Outbound | `AddTaskResult`, `EditTaskResult` |
 
+`<verb><noun>Result` inherits `OmniFocusBaseModel`, not `CommandModel` — it's outbound and system-constructed, not validated against agent input.
+
 #### Repository boundary (service ↔ repository)
 
 | Suffix | Role | Direction | Examples |
@@ -76,12 +80,18 @@ All write-side models live in `contracts/`, inherit `CommandModel`.
 | `<verb><noun>RepoPayload` | Processed, bridge-ready data | Inbound | `AddTaskRepoPayload`, `EditTaskRepoPayload` |
 | `<verb><noun>RepoResult` | Minimal confirmation from bridge | Outbound | `AddTaskRepoResult`, `EditTaskRepoResult` |
 
+`<verb><noun>RepoResult` inherits `OmniFocusBaseModel` — outbound, same as `<verb><noun>Result`.
+
 #### Value objects (nested within commands)
 
 | Suffix | Role | When to use | Examples |
 |--------|------|-------------|---------|
 | `<noun>Action` | Stateful mutation in the actions block | Nested operation that mutates relative to current state | `TagAction`, `MoveAction` |
 | `<noun>Spec` | Write-side value object (desired state) | Nested setter with different shape from its read counterpart | `RepetitionRuleAddSpec`, `RepetitionRuleEditSpec` |
+
+A nested write input always needs its own `<noun>Spec` — even when its fields are identical to the core model. `CommandModel` enforces `extra="forbid"` at every nesting level; embedding a core model (`OmniFocusBaseModel`) in a command would leave a gap where unknown fields are silently accepted on the nested object.
+
+Value objects are agent-boundary concepts. A `<noun>Spec` travels on the `Command`, not on the `RepoPayload` — the pipeline resolves the Spec into the core model (or flat fields) before the repo boundary. Similarly, a `<noun>Filter` travels on the `Query`, not on the `RepoQuery`. Nested value objects never need their own repo-boundary models.
 
 ### Read-side models
 
@@ -98,7 +108,7 @@ The full parallel:
 | Nested input value object | `<noun>Spec` — desired state for complex fields | `<noun>Filter` — complex selection criteria |
 | Nested output variant | — | `<noun>Read` — adapts output for complex fields |
 | Base class (input) | `CommandModel` | `QueryModel` |
-| Base class (output) | `CommandModel` | `OmniFocusBaseModel` |
+| Base class (output) | `OmniFocusBaseModel` | `OmniFocusBaseModel` |
 | Lives in | `contracts/` | `contracts/` (query), `models/` (output) |
 
 #### Agent boundary (agent ↔ service)
@@ -144,7 +154,7 @@ The core model serves directly as read output by default. When the output bounda
 - **Write-side verb matches tool verb**: tool is `add_tasks` → models are `AddTask*`; tool is `edit_tasks` → models are `EditTask*`
 - **Noun-only** for core models: `Task`, `Project`, `Tag` (no verb, no suffix)
 - **Value objects** within commands are suffix-free when unambiguous (`TagAction`, `MoveAction`), or use `<noun>Spec` when a read-side model of the same name exists. All value objects live in `contracts/` and inherit `CommandModel` — never reuse a read model from `models/` directly in a command
-- **Base classes**: `CommandModel` for write-side, `QueryModel` for read-side queries — both inherit `StrictModel` (`extra="forbid"`, strict validation). `ListResult` inherits `OmniFocusBaseModel` (outbound, no strict validation)
+- **Base classes**: `CommandModel` for write-side inbound (commands, payloads, specs, actions), `QueryModel` for read-side inbound (queries, filters) — both inherit `StrictModel` (`extra="forbid"`). All outbound models (results, result containers) inherit `OmniFocusBaseModel` — system-constructed, no strict validation needed
 - **Repo qualifier**: Both inbound and outbound models at the repository boundary use `Repo` prefix — write-side (`<verb><noun>RepoPayload`) and read-side (`List<Noun>RepoQuery`) alike
 - **Noun-first for nested specs**: When a nested value object needs a verb qualifier (different shapes per use case), the domain noun leads: `RepetitionRuleAddSpec`, `RepetitionRuleEditSpec` (not `AddRepetitionRuleSpec`). Top-level models are verb-first (`AddTaskCommand`); nested specs are noun-first because they represent the THING in different contexts, not different actions.
 - **Verb qualifier only when needed**: If a spec has the same shape for both add and edit, use plain `<noun>Spec` (no verb). Only add `Add`/`Edit` qualifier when shapes diverge (e.g., all-required vs patchable fields).
@@ -174,17 +184,17 @@ The core model serves directly as read output by default. When the output bounda
 
 ### Write-side
 
-Lives in `contracts/`, inherits `CommandModel`.
+Lives in `contracts/`. Inbound models inherit `CommandModel`; outbound models (results) inherit `OmniFocusBaseModel`.
 
 *Agent boundary:*
 
-1. Is it a top-level instruction from the agent? → `<verb><noun>Command`
-2. Is it the enriched outcome returned to the agent? → `<verb><noun>Result`
+1. Is it a top-level instruction from the agent? → `<verb><noun>Command` (inherits `CommandModel`)
+2. Is it the enriched outcome returned to the agent? → `<verb><noun>Result` (inherits `OmniFocusBaseModel`)
 
 *Repository boundary:*
 
-3. Is it processed data sent to the repository? → `<verb><noun>RepoPayload`
-4. Is it the confirmation from the repository? → `<verb><noun>RepoResult`
+3. Is it processed data sent to the repository? → `<verb><noun>RepoPayload` (inherits `CommandModel`)
+4. Is it the confirmation from the repository? → `<verb><noun>RepoResult` (inherits `OmniFocusBaseModel`)
 
 *Value objects (nested within commands):*
 
@@ -280,12 +290,12 @@ Six scenarios exercising different parts of the taxonomy — three write-side, t
 | `Reminder` | Core (also serves as read) | `models/` | `OmniFocusBaseModel` |
 | `AddReminderCommand` | Agent boundary, inbound | `contracts/` | `CommandModel` |
 | `EditReminderCommand` | Agent boundary, inbound | `contracts/` | `CommandModel` |
-| `AddReminderResult` | Agent boundary, outbound | `contracts/` | `CommandModel` |
-| `EditReminderResult` | Agent boundary, outbound | `contracts/` | `CommandModel` |
+| `AddReminderResult` | Agent boundary, outbound | `contracts/` | `OmniFocusBaseModel` |
+| `EditReminderResult` | Agent boundary, outbound | `contracts/` | `OmniFocusBaseModel` |
 | `AddReminderRepoPayload` | Repo boundary, inbound | `contracts/` | `CommandModel` |
 | `EditReminderRepoPayload` | Repo boundary, inbound | `contracts/` | `CommandModel` |
-| `AddReminderRepoResult` | Repo boundary, outbound | `contracts/` | `CommandModel` |
-| `EditReminderRepoResult` | Repo boundary, outbound | `contracts/` | `CommandModel` |
+| `AddReminderRepoResult` | Repo boundary, outbound | `contracts/` | `OmniFocusBaseModel` |
+| `EditReminderRepoResult` | Repo boundary, outbound | `contracts/` | `OmniFocusBaseModel` |
 
 ### Read-side examples
 
