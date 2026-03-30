@@ -45,6 +45,7 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 - [x] **INFRA-04**: list_tasks and list_projects responses include total_count reflecting total matches ignoring limit/offset
 - [ ] **INFRA-05**: Tool descriptions detailed enough for an LLM to call correctly
 - [ ] **INFRA-06**: Educational error messages for invalid filter values
+- [ ] **INFRA-07**: When a name-based filter (project, folder, tags) returns zero results, emit a "did you mean?" warning with close matches from the full entity list
 
 ## Future Requirements
 
@@ -111,10 +112,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-04 | Phase 34 | Complete |
 | INFRA-05 | Phase 38 | Pending |
 | INFRA-06 | Phase 37 | Pending |
+| INFRA-07 | Phase 37 | Pending |
 
 **Coverage:**
-- v1.3 requirements: 25 total
-- Mapped to phases: 25
+- v1.3 requirements: 26 total
+- Mapped to phases: 26
 - Unmapped: 0
 
 ---

@@ -94,7 +94,7 @@
 - [x] **Phase 34: Contracts and Query Foundation** — Typed query models, ListResult container, query builder, protocol extensions (completed 2026-03-29)
 - [x] **Phase 35: SQL Repository** — HybridRepository list methods with filtered SQL queries for all 5 entity types (completed 2026-03-30)
 - [ ] **Phase 36: In-Memory Fallback** — BridgeRepository list methods with filter.py predicates mirroring SQL semantics
-- [ ] **Phase 37: Service Orchestration** — List pipelines with resolution, shorthand expansion, default exclusions, validation
+- [ ] **Phase 37: Service Orchestration** — List pipelines with shorthand expansion, default exclusions, validation, "did you mean?" suggestions
 - [ ] **Phase 38: Server Registration and Integration** — 5 new MCP tools wired end-to-end with cross-path equivalence validation
 
 ## Phase Details
@@ -142,12 +142,13 @@ Plans:
 ### Phase 37: Service Orchestration
 **Goal**: Service layer resolves agent-friendly inputs into concrete repository queries with validation and defaults
 **Depends on**: Phase 36
-**Requirements**: INFRA-06
+**Requirements**: INFRA-06, INFRA-07
 **Success Criteria** (what must be TRUE):
-  1. _ListTasksPipeline resolves tag names to IDs, applies default completed/dropped exclusion, and validates offset-requires-limit
+  1. _ListTasksPipeline applies default completed/dropped exclusion and validates offset-requires-limit
   2. _ListProjectsPipeline expands status shorthands (remaining, available, all), parses review_due_within durations, and validates inputs
   3. Simple list pass-throughs (tags, folders, perspectives) forward query models to the repository without unnecessary pipeline overhead
   4. Invalid filter values produce educational error messages that tell the agent what went wrong and what valid values look like
+  5. When a name-based filter (project, folder, tags) returns zero results, the service emits a "did you mean?" warning with close matches (using difflib or similar) by fetching the full entity list and computing similarity
 **Plans**: TBD
 
 ### Phase 38: Server Registration and Integration
