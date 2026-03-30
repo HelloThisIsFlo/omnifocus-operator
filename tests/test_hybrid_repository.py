@@ -2370,3 +2370,318 @@ class TestListPerformance:
             f"Filtered ({filtered_time:.3f}s) should be faster than "
             f"full snapshot ({full_time:.3f}s)"
         )
+
+
+# ============================================================================
+# LIST TAGS / LIST FOLDERS / LIST PERSPECTIVES TESTS (Plan 02)
+# ============================================================================
+
+from omnifocus_operator.contracts.use_cases.list_entities import (
+    ListFoldersQuery,
+    ListTagsQuery,
+)
+from omnifocus_operator.models.enums import FolderAvailability, TagAvailability
+
+
+class TestListTags:
+    """Tests for HybridRepository.list_tags -- fetch-all + Python filter."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tags=[
+            _minimal_tag({"persistentIdentifier": "tag-avail", "allowsNextAction": 1}),
+            _minimal_tag(
+                {
+                    "persistentIdentifier": "tag-blocked",
+                    "name": "Blocked Tag",
+                    "allowsNextAction": 0,
+                }
+            ),
+            _minimal_tag(
+                {
+                    "persistentIdentifier": "tag-dropped",
+                    "name": "Dropped Tag",
+                    "dateHidden": _EARLIER_CF,
+                }
+            ),
+        ],
+    )
+    async def test_list_tags_default_excludes_dropped(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """Default query returns available + blocked tags, excludes dropped."""
+        result = await hybrid_repo.list_tags(ListTagsQuery())
+        ids = {t.id for t in result.items}
+        assert ids == {"tag-avail", "tag-blocked"}
+        assert "tag-dropped" not in ids
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tags=[
+            _minimal_tag({"persistentIdentifier": "tag-avail", "allowsNextAction": 1}),
+            _minimal_tag(
+                {
+                    "persistentIdentifier": "tag-blocked",
+                    "allowsNextAction": 0,
+                }
+            ),
+            _minimal_tag(
+                {
+                    "persistentIdentifier": "tag-dropped",
+                    "dateHidden": _EARLIER_CF,
+                }
+            ),
+        ],
+    )
+    async def test_list_tags_filter_available_only(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """Filter for available-only returns 1 tag."""
+        result = await hybrid_repo.list_tags(
+            ListTagsQuery(availability=[TagAvailability.AVAILABLE])
+        )
+        assert len(result.items) == 1
+        assert result.items[0].id == "tag-avail"
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tags=[
+            _minimal_tag({"persistentIdentifier": "tag-avail", "allowsNextAction": 1}),
+            _minimal_tag(
+                {
+                    "persistentIdentifier": "tag-blocked",
+                    "allowsNextAction": 0,
+                }
+            ),
+            _minimal_tag(
+                {
+                    "persistentIdentifier": "tag-dropped",
+                    "dateHidden": _EARLIER_CF,
+                }
+            ),
+        ],
+    )
+    async def test_list_tags_filter_dropped_only(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """Filter for dropped-only returns 1 tag."""
+        result = await hybrid_repo.list_tags(
+            ListTagsQuery(availability=[TagAvailability.DROPPED])
+        )
+        assert len(result.items) == 1
+        assert result.items[0].id == "tag-dropped"
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tags=[
+            _minimal_tag({"persistentIdentifier": "tag-avail", "allowsNextAction": 1}),
+            _minimal_tag(
+                {
+                    "persistentIdentifier": "tag-blocked",
+                    "allowsNextAction": 0,
+                }
+            ),
+            _minimal_tag(
+                {
+                    "persistentIdentifier": "tag-dropped",
+                    "dateHidden": _EARLIER_CF,
+                }
+            ),
+        ],
+    )
+    async def test_list_tags_all_availability(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """All availability values returns all 3 tags."""
+        result = await hybrid_repo.list_tags(
+            ListTagsQuery(
+                availability=[
+                    TagAvailability.AVAILABLE,
+                    TagAvailability.BLOCKED,
+                    TagAvailability.DROPPED,
+                ]
+            )
+        )
+        assert len(result.items) == 3
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tags=[
+            _minimal_tag({"persistentIdentifier": "tag-avail", "allowsNextAction": 1}),
+            _minimal_tag(
+                {
+                    "persistentIdentifier": "tag-blocked",
+                    "allowsNextAction": 0,
+                }
+            ),
+        ],
+    )
+    async def test_list_tags_result_shape(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """ListResult has has_more=False and total=len(items)."""
+        result = await hybrid_repo.list_tags(ListTagsQuery())
+        assert result.has_more is False
+        assert result.total == len(result.items)
+        assert result.total == 2
+
+
+class TestListFolders:
+    """Tests for HybridRepository.list_folders -- fetch-all + Python filter."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        folders=[
+            _minimal_folder({"persistentIdentifier": "folder-avail"}),
+            _minimal_folder(
+                {
+                    "persistentIdentifier": "folder-dropped",
+                    "name": "Dropped Folder",
+                    "dateHidden": _EARLIER_CF,
+                }
+            ),
+        ],
+    )
+    async def test_list_folders_default_excludes_dropped(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """Default query returns only available folders, excludes dropped."""
+        result = await hybrid_repo.list_folders(ListFoldersQuery())
+        assert len(result.items) == 1
+        assert result.items[0].id == "folder-avail"
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        folders=[
+            _minimal_folder({"persistentIdentifier": "folder-avail"}),
+            _minimal_folder(
+                {
+                    "persistentIdentifier": "folder-dropped",
+                    "dateHidden": _EARLIER_CF,
+                }
+            ),
+        ],
+    )
+    async def test_list_folders_filter_dropped(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """Filter for dropped-only returns 1 folder."""
+        result = await hybrid_repo.list_folders(
+            ListFoldersQuery(availability=[FolderAvailability.DROPPED])
+        )
+        assert len(result.items) == 1
+        assert result.items[0].id == "folder-dropped"
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        folders=[
+            _minimal_folder({"persistentIdentifier": "folder-avail"}),
+            _minimal_folder(
+                {
+                    "persistentIdentifier": "folder-dropped",
+                    "dateHidden": _EARLIER_CF,
+                }
+            ),
+        ],
+    )
+    async def test_list_folders_all(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """All availability values returns all 2 folders."""
+        result = await hybrid_repo.list_folders(
+            ListFoldersQuery(
+                availability=[FolderAvailability.AVAILABLE, FolderAvailability.DROPPED]
+            )
+        )
+        assert len(result.items) == 2
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        folders=[
+            _minimal_folder({"persistentIdentifier": "folder-avail"}),
+        ],
+    )
+    async def test_list_folders_result_shape(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """ListResult has has_more=False and total=len(items)."""
+        result = await hybrid_repo.list_folders(ListFoldersQuery())
+        assert result.has_more is False
+        assert result.total == len(result.items)
+        assert result.total == 1
+
+
+class TestListPerspectives:
+    """Tests for HybridRepository.list_perspectives -- fetch-all, no filter."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        perspectives=[
+            {
+                "persistentIdentifier": "persp-001",
+                "valueData": _make_perspective_plist("Custom View"),
+            },
+            {
+                "persistentIdentifier": None,
+                "valueData": _make_perspective_plist("Inbox"),
+            },
+        ],
+    )
+    async def test_list_perspectives_returns_all(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """list_perspectives returns all perspectives."""
+        result = await hybrid_repo.list_perspectives()
+        assert len(result.items) == 2
+        names = {p.name for p in result.items}
+        assert names == {"Custom View", "Inbox"}
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        perspectives=[
+            {
+                "persistentIdentifier": "persp-custom",
+                "valueData": _make_perspective_plist("My Custom"),
+            },
+            {
+                "persistentIdentifier": None,
+                "valueData": _make_perspective_plist("Forecast"),
+            },
+        ],
+    )
+    async def test_list_perspectives_builtin_flag(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """Custom perspectives have builtin=False, built-in have builtin=True."""
+        result = await hybrid_repo.list_perspectives()
+        by_name = {p.name: p for p in result.items}
+        assert by_name["My Custom"].builtin is False
+        assert by_name["My Custom"].id == "persp-custom"
+        assert by_name["Forecast"].builtin is True
+        assert by_name["Forecast"].id is None
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        perspectives=[
+            {
+                "persistentIdentifier": "persp-001",
+                "valueData": _make_perspective_plist("View A"),
+            },
+            {
+                "persistentIdentifier": "persp-002",
+                "valueData": _make_perspective_plist("View B"),
+            },
+            {
+                "persistentIdentifier": None,
+                "valueData": _make_perspective_plist("Built-in"),
+            },
+        ],
+    )
+    async def test_list_perspectives_result_shape(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """ListResult has has_more=False and total matches item count."""
+        result = await hybrid_repo.list_perspectives()
+        assert result.has_more is False
+        assert result.total == len(result.items)
+        assert result.total == 3
