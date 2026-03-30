@@ -71,6 +71,7 @@ Carried forward:
 6. Migrate write tools to typed params with validation middleware (Approach 1 from fastmcp-middleware-validation research)
 7. Migrate tag filter to accept names at repository level (contract consistency — urgent, before phase 36)
 8. Add "did you mean?" suggestions for zero-result name filters (INFRA-07, Phase 37)
+9. Reorganize test suite into unit/integration/golden-master folders
 
 ### Blockers/Concerns
 
