@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Read Tools
-status: executing
-stopped_at: Completed 35.1-01-PLAN.md
-last_updated: "2026-03-30T20:22:20.633Z"
+status: verifying
+stopped_at: Completed 35.1-02-PLAN.md
+last_updated: "2026-03-30T20:31:30.316Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 6
   percent: 20
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-03-29)
 
 Phase: 35.1 (introduce-read-side-contract-boundary-split-repoquery-reporesult) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-03-30
 
 Progress: [██░░░░░░░░] 20%
@@ -60,6 +60,8 @@ Recent decisions affecting current work:
 - [Phase 35]: Fetch-all + Python filter for tags/folders/perspectives per D-01a (no query builder needed for small collections)
 - [Phase 35.1]: RepoQuery fields use names (not IDs) -- identical to Query today, Structure Over Discipline
 - [Phase 35.1]: Per-use-case package structure: contracts/use_cases/{verb}/ with __init__.py re-exports
+- [Phase 35.1]: Service protocol list signatures unchanged (Query/ListResult) per D-06 -- service wiring is Phase 37
+- [Phase 35.1]: Clean break import migration: no re-exports from old paths, old files deleted immediately
 
 ### Roadmap Evolution
 
@@ -86,5 +88,5 @@ None yet.
 ## Session Continuity
 
 Last activity: 2026-03-30 -- Plan 35-01 completed
-Stopped at: Completed 35.1-01-PLAN.md
+Stopped at: Completed 35.1-02-PLAN.md
 Resume file: None
