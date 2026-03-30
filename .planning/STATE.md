@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Read Tools
-status: verifying
-stopped_at: Phase 35.2 context gathered
-last_updated: "2026-03-30T22:21:55.633Z"
+status: executing
+stopped_at: Completed 35.2-01-PLAN.md
+last_updated: "2026-03-30T22:56:48.791Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 7
   completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 8
+  completed_plans: 7
   percent: 20
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-29)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 35.1 — introduce-read-side-contract-boundary-split-repoquery-reporesult
+**Current focus:** Phase 35.2 — uniform-name-vs-id-resolution-at-service-boundary-for-all-list-filters
 
 ## Current Position
 
-Phase: 36
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 35.2 (uniform-name-vs-id-resolution-at-service-boundary-for-all-list-filters) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-03-30
 
 Progress: [██░░░░░░░░] 20%
@@ -62,6 +62,8 @@ Recent decisions affecting current work:
 - [Phase 35.1]: Per-use-case package structure: contracts/use_cases/{verb}/ with __init__.py re-exports
 - [Phase 35.1]: Service protocol list signatures unchanged (Query/ListResult) per D-06 -- service wiring is Phase 37
 - [Phase 35.1]: Clean break import migration: no re-exports from old paths, old files deleted immediately
+- [Phase 35.2]: RepoQuery field parity tests replaced with divergence-aware assertions -- RepoQuery deliberately differs from Query
+- [Phase 35.2]: Project filter SQL uses pi2.task IN (?) subquery; folder filter simplified to direct pi.folder IN (?)
 
 ### Roadmap Evolution
 
@@ -89,5 +91,5 @@ None yet.
 ## Session Continuity
 
 Last activity: 2026-03-30 -- Plan 35-01 completed
-Stopped at: Phase 35.2 context gathered
-Resume file: .planning/phases/35.2-uniform-name-vs-id-resolution-at-service-boundary-for-all-list-filters/35.2-CONTEXT.md
+Stopped at: Completed 35.2-01-PLAN.md
+Resume file: None

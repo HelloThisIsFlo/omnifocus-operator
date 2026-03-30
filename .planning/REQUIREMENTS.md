@@ -50,8 +50,8 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 - [x] **INFRA-11**: `contracts/use_cases/` organized into per-use-case packages (`list/`, `add/`, `edit/`) with all imports updated to new paths
 - [ ] **INFRA-12**: Service layer resolves all name-based filter values (project, folder, tags) to entity IDs before passing to the repository — resolution cascade: ID match → substring match (case-insensitive) → no match (skip filter + warn)
 - [ ] **INFRA-13**: Agent can pass either a name or an ID in any entity-reference filter field — the service resolves both uniformly (ID match takes priority, then substring match)
-- [ ] **INFRA-14**: RepoQuery models use ID-only fields (`project_ids: list[str]`, `folder_ids: list[str]`, `tag_ids: list[str]`) — no name strings cross the repository boundary
-- [ ] **INFRA-15**: `ListResult[T]` includes an optional `warnings: list[str] | None` field for attaching agent guidance (e.g., "did you mean?" suggestions)
+- [x] **INFRA-14**: RepoQuery models use ID-only fields (`project_ids: list[str]`, `folder_ids: list[str]`, `tag_ids: list[str]`) — no name strings cross the repository boundary
+- [x] **INFRA-15**: `ListResult[T]` includes an optional `warnings: list[str] | None` field for attaching agent guidance (e.g., "did you mean?" suggestions)
 - [ ] **INFRA-16**: Service list methods for all 5 entity types are callable (not `NotImplementedError`) — tasks and projects via pipelines with resolution, tags/folders/perspectives via inline pass-throughs
 
 ## Future Requirements
@@ -128,8 +128,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-11 | Phase 35.1 | Complete |
 | INFRA-12 | Phase 35.2 | Pending |
 | INFRA-13 | Phase 35.2 | Pending |
-| INFRA-14 | Phase 35.2 | Pending |
-| INFRA-15 | Phase 35.2 | Pending |
+| INFRA-14 | Phase 35.2 | Complete |
+| INFRA-15 | Phase 35.2 | Complete |
 | INFRA-16 | Phase 35.2 | Pending |
 
 **Coverage:**
