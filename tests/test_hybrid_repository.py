@@ -2164,7 +2164,7 @@ class TestListProjects:
         projects=[
             _minimal_project(
                 {
-                    "persistentIdentifier": "p-personal",
+                    "persistentIdentifier": "p-in-folder",
                     "project_info": {
                         "effectiveStatus": "active",
                         "folder": "fold-personal",
@@ -2182,16 +2182,16 @@ class TestListProjects:
             _minimal_folder(
                 {
                     "persistentIdentifier": "fold-personal",
-                    "name": "Personal Projects",
+                    "name": "My Personal Projects",
                 }
             ),
         ],
     )
     async def test_list_projects_folder_filter(self, hybrid_repo: HybridRepository) -> None:
         """PROJ-04: folder filter matches by folder name (case-insensitive partial)."""
-        result = await hybrid_repo.list_projects(ListProjectsQuery(folder="personal"))
+        result = await hybrid_repo.list_projects(ListProjectsQuery(folder="my personal"))
         assert result.total == 1
-        assert result.items[0].id == "p-personal"
+        assert result.items[0].id == "p-in-folder"
 
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(
