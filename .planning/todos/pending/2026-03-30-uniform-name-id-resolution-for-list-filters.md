@@ -1,6 +1,6 @@
 ---
 created: 2026-03-30T10:39:56.173Z
-updated: 2026-03-30T21:30:00.000Z
+updated: 2026-03-30T21:45:00.000Z
 title: Uniform name-vs-ID resolution at service boundary for all list filters
 area: service, contracts
 files:
@@ -24,44 +24,54 @@ The repo contract is split between "pass human-readable strings" (project/folder
 
 ## Solution
 
-**Principle**: The service layer determines whether the agent passed a name or an ID. The RepoQuery is always explicit about which one it received.
+**Principle**: The service layer resolves ALL entity references to IDs. The RepoQuery is always IDs-only. The repo does pure data retrieval — no name matching, no LIKE, no ambiguity.
 
 **Agent-facing Query** (unchanged): Single field per dimension. Agent passes whatever they have — name or ID.
 
-**Service layer**: For each name-based filter, fetches the entity list (cheap — SQLite cached), checks if the string matches any entity's ID.
-- Match → it's an ID → route to the ID field on RepoQuery
-- No match → it's a name → route to the name field on RepoQuery
+**Service layer resolution cascade** (for each entity reference filter):
 
-**RepoQuery fields** — explicit, mutually exclusive:
+1. **ID match** — string matches an entity ID → resolve to that single ID
+2. **Substring match** (case-insensitive) — replicates current LIKE behavior in Python → resolve to one or more IDs
+3. **No match** → fuzzy match via `difflib.get_close_matches` → attach "did you mean?" warning (see related todo)
 
-| Filter | RepoQuery fields | Repo behavior |
-|--------|-----------------|---------------|
-| project | `project_name` / `project_id` (exclusive) | name → LIKE match, ID → exact match |
-| folder | `folder_name` / `folder_id` (exclusive) | name → LIKE match, ID → exact match |
-| tags | `tag_ids` only | always exact ID match |
+All entities are already in memory (fetched for ID checking). Substring matching and fuzzy matching are trivial in Python with these counts (~300 projects, ~79 folders, ~64 tags).
 
-**Why tags are ID-only**: Project/folder name matching is a query semantic (partial LIKE match — "Work" matches "Work Projects", "Homework"). Tag name matching is just entity resolution (find the tag named exactly "Errand", get its ID). The repo doesn't need tag name matching — the service resolves all tag references (names or IDs, case-insensitive) down to IDs before the repo sees them. Mixing names and IDs in the agent's tag list works naturally — the service resolves each entry individually.
+**RepoQuery fields** — IDs only, uniform across all filters:
 
-**Validation**: Pydantic model validator on RepoQuery enforces mutual exclusivity for project and folder fields (exactly one of name/ID, not both).
+| Filter | RepoQuery field | Type |
+|--------|----------------|------|
+| project | `project_ids` | `list[str]` (one for exact, multiple for substring match) |
+| folder | `folder_ids` | `list[str]` (one for exact, multiple for substring match) |
+| tags | `tag_ids` | `list[str]` (resolved from names/IDs, case-insensitive) |
+
+Repo does `WHERE x IN (?, ?, ?)` for all of them. Uniform, simple.
 
 ## Example flow
 
 ```
-Agent Query              Service                    RepoQuery
-────────────            ─────────────              ──────────────────────
-project: "Work"     →   not an ID → name        →  project_name: "Work"
-                                                    project_id: None
+Agent Query              Service                          RepoQuery
+────────────            ──────────────────               ──────────────
+project: "Work"     →   not an ID                     →  project_ids: ["p1", "p2", "p3"]
+                         substring match: "Work",
+                         "Work Projects", "Homework"
 
-project: "pJK.."    →   matches ID → ID         →  project_name: None
-                                                    project_id: "pJK.."
+project: "pJK.."    →   matches ID                    →  project_ids: ["pJK.."]
 
-tags: ["Errand",    →   resolve each:            →  tag_ids: ["abc", "xyz"]
+project: "Personl"  →   not an ID, no substring match →  (skip / empty)
+                         fuzzy: "Did you mean Personal?"
+                         → warning attached
+
+tags: ["Errand",    →   resolve each:                 →  tag_ids: ["abc", "xyz"]
        "kFj9xL5"]       "Errand" → name → "abc"
                          "kFj9xL5" → ID → "xyz"
+
+tags: ["Erand"]     →   not an ID, no exact match     →  (skip / empty)
+                         fuzzy: "Did you mean Errand?"
+                         → warning attached
 ```
 
 ## Scope
 
 - This is the first real behavioral divergence between Query and RepoQuery (Phase 35.1 created the structural split)
 - Candidate for Phase 35.2
-- Related: "did-you-mean" suggestions todo depends on this (service already has entity lists from resolution)
+- Related: "did-you-mean" suggestions todo — fires during step 3 of the resolution cascade above
