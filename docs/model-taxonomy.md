@@ -350,7 +350,7 @@ Six scenarios exercising different parts of the taxonomy — three write-side, t
 > ```
 > Result:
 > ```json
-> {"items": [...], "total_count": 5}
+> {"items": [...], "total_count": 5, "warnings": []}
 > ```
 
 **Answer:** 5 models. The 4 query/result models from Scenario D, plus a `DateFilter` value object nested in the query.
