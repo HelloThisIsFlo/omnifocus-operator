@@ -69,6 +69,7 @@ Carried forward:
 4. Investigate `replace: []` bug in production (may not be staleness-related)
 5. Remove misleading "single runtime dependency" messaging from README + landing page
 6. Migrate write tools to typed params with validation middleware (Approach 1 from fastmcp-middleware-validation research)
+7. Migrate tag filter to accept names at repository level (contract consistency — urgent, before phase 36)
 
 ### Blockers/Concerns
 
