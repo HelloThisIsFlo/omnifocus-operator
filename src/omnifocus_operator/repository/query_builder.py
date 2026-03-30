@@ -11,10 +11,8 @@ from typing import TYPE_CHECKING, Any, NamedTuple
 from omnifocus_operator.models.enums import Availability
 
 if TYPE_CHECKING:
-    from omnifocus_operator.contracts.use_cases.list_entities import (
-        ListProjectsQuery,
-        ListTasksQuery,
-    )
+    from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsRepoQuery
+    from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
 
 __all__ = ["SqlQuery", "build_list_projects_sql", "build_list_tasks_sql"]
 
@@ -103,7 +101,7 @@ def _build_availability_clause(
 # ---------------------------------------------------------------------------
 
 
-def build_list_tasks_sql(query: ListTasksQuery) -> tuple[SqlQuery, SqlQuery]:
+def build_list_tasks_sql(query: ListTasksRepoQuery) -> tuple[SqlQuery, SqlQuery]:
     """Build parameterized SQL for task listing.
 
     Returns (data_query, count_query). All user values use ? placeholders.
@@ -179,7 +177,7 @@ def build_list_tasks_sql(query: ListTasksQuery) -> tuple[SqlQuery, SqlQuery]:
 
 
 def build_list_projects_sql(
-    query: ListProjectsQuery,
+    query: ListProjectsRepoQuery,
 ) -> tuple[SqlQuery, SqlQuery]:
     """Build parameterized SQL for project listing.
 

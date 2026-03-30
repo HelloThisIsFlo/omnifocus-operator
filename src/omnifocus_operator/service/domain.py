@@ -41,7 +41,7 @@ from omnifocus_operator.agent_messages.warnings import (
     TAGS_ALREADY_MATCH,
 )
 from omnifocus_operator.contracts.base import is_set
-from omnifocus_operator.contracts.use_cases.edit_task import EditTaskResult
+from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
 from omnifocus_operator.models.enums import Availability
 from omnifocus_operator.models.repetition_rule import (
     EndByDate,
@@ -58,7 +58,7 @@ if TYPE_CHECKING:
         FrequencyEditSpec,
         RepetitionRuleRepoPayload,
     )
-    from omnifocus_operator.contracts.use_cases.edit_task import (
+    from omnifocus_operator.contracts.use_cases.edit.tasks import (
         EditTaskCommand,
         EditTaskRepoPayload,
     )

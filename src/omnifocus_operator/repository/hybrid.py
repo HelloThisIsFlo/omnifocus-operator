@@ -24,15 +24,13 @@ from typing import TYPE_CHECKING, Any
 from zoneinfo import ZoneInfo
 
 from omnifocus_operator.contracts.protocols import Repository
-from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoResult
-from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoResult
-from omnifocus_operator.contracts.use_cases.list_entities import (
-    ListFoldersQuery,
-    ListProjectsQuery,
-    ListResult,
-    ListTagsQuery,
-    ListTasksQuery,
-)
+from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskRepoResult
+from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskRepoResult
+from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult
+from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersRepoQuery
+from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsRepoQuery
+from omnifocus_operator.contracts.use_cases.list.tags import ListTagsRepoQuery
+from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
 from omnifocus_operator.repository.bridge_write_mixin import BridgeWriteMixin
 from omnifocus_operator.repository.query_builder import (
     build_list_projects_sql,
@@ -44,8 +42,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from omnifocus_operator.contracts.protocols import Bridge
-    from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoPayload
-    from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoPayload
+    from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskRepoPayload
+    from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskRepoPayload
 
 import logging
 
@@ -745,7 +743,7 @@ class HybridRepository(BridgeWriteMixin, Repository):
 
     # -- List operations --
 
-    def _list_tasks_sync(self, query: ListTasksQuery) -> ListResult[Task]:
+    def _list_tasks_sync(self, query: ListTasksRepoQuery) -> ListRepoResult[Task]:
         """Synchronous filtered task listing from SQLite."""
         conn = sqlite3.connect(f"file:{self._db_path}?mode=ro", uri=True)
         conn.row_factory = sqlite3.Row
@@ -775,15 +773,15 @@ class HybridRepository(BridgeWriteMixin, Repository):
             offset = query.offset or 0
             has_more = (offset + len(tasks)) < total
 
-            return ListResult(items=tasks, total=total, has_more=has_more)
+            return ListRepoResult(items=tasks, total=total, has_more=has_more)
         finally:
             conn.close()
 
-    async def list_tasks(self, query: ListTasksQuery) -> ListResult[Task]:
+    async def list_tasks(self, query: ListTasksRepoQuery) -> ListRepoResult[Task]:
         """Return filtered, paginated tasks from the SQLite cache."""
         return await asyncio.to_thread(self._list_tasks_sync, query)
 
-    def _list_projects_sync(self, query: ListProjectsQuery) -> ListResult[Project]:
+    def _list_projects_sync(self, query: ListProjectsRepoQuery) -> ListRepoResult[Project]:
         """Synchronous filtered project listing from SQLite."""
         conn = sqlite3.connect(f"file:{self._db_path}?mode=ro", uri=True)
         conn.row_factory = sqlite3.Row
@@ -809,17 +807,17 @@ class HybridRepository(BridgeWriteMixin, Repository):
             offset = query.offset or 0
             has_more = (offset + len(projects)) < total
 
-            return ListResult(items=projects, total=total, has_more=has_more)
+            return ListRepoResult(items=projects, total=total, has_more=has_more)
         finally:
             conn.close()
 
-    async def list_projects(self, query: ListProjectsQuery) -> ListResult[Project]:
+    async def list_projects(self, query: ListProjectsRepoQuery) -> ListRepoResult[Project]:
         """Return filtered, paginated projects from the SQLite cache."""
         return await asyncio.to_thread(self._list_projects_sync, query)
 
     # -- Simple list operations (fetch-all + Python filter) --
 
-    def _list_tags_sync(self, query: ListTagsQuery) -> ListResult[Tag]:
+    def _list_tags_sync(self, query: ListTagsRepoQuery) -> ListRepoResult[Tag]:
         """Synchronous tag listing: fetch all, filter by availability in Python."""
         conn = sqlite3.connect(f"file:{self._db_path}?mode=ro", uri=True)
         conn.row_factory = sqlite3.Row
@@ -828,15 +826,15 @@ class HybridRepository(BridgeWriteMixin, Repository):
             all_tags = [Tag.model_validate(_map_tag_row(row)) for row in rows]
             avail_set = set(query.availability)
             filtered = [t for t in all_tags if t.availability in avail_set]
-            return ListResult(items=filtered, total=len(filtered), has_more=False)
+            return ListRepoResult(items=filtered, total=len(filtered), has_more=False)
         finally:
             conn.close()
 
-    async def list_tags(self, query: ListTagsQuery) -> ListResult[Tag]:
+    async def list_tags(self, query: ListTagsRepoQuery) -> ListRepoResult[Tag]:
         """Return tags filtered by availability from the SQLite cache."""
         return await asyncio.to_thread(self._list_tags_sync, query)
 
-    def _list_folders_sync(self, query: ListFoldersQuery) -> ListResult[Folder]:
+    def _list_folders_sync(self, query: ListFoldersRepoQuery) -> ListRepoResult[Folder]:
         """Synchronous folder listing: fetch all, filter by availability in Python."""
         conn = sqlite3.connect(f"file:{self._db_path}?mode=ro", uri=True)
         conn.row_factory = sqlite3.Row
@@ -845,25 +843,25 @@ class HybridRepository(BridgeWriteMixin, Repository):
             all_folders = [Folder.model_validate(_map_folder_row(row)) for row in rows]
             avail_set = set(query.availability)
             filtered = [f for f in all_folders if f.availability in avail_set]
-            return ListResult(items=filtered, total=len(filtered), has_more=False)
+            return ListRepoResult(items=filtered, total=len(filtered), has_more=False)
         finally:
             conn.close()
 
-    async def list_folders(self, query: ListFoldersQuery) -> ListResult[Folder]:
+    async def list_folders(self, query: ListFoldersRepoQuery) -> ListRepoResult[Folder]:
         """Return folders filtered by availability from the SQLite cache."""
         return await asyncio.to_thread(self._list_folders_sync, query)
 
-    def _list_perspectives_sync(self) -> ListResult[Perspective]:
+    def _list_perspectives_sync(self) -> ListRepoResult[Perspective]:
         """Synchronous perspective listing: fetch all, no filtering."""
         conn = sqlite3.connect(f"file:{self._db_path}?mode=ro", uri=True)
         conn.row_factory = sqlite3.Row
         try:
             rows = conn.execute(_PERSPECTIVES_SQL).fetchall()
             perspectives = [Perspective.model_validate(_map_perspective_row(row)) for row in rows]
-            return ListResult(items=perspectives, total=len(perspectives), has_more=False)
+            return ListRepoResult(items=perspectives, total=len(perspectives), has_more=False)
         finally:
             conn.close()
 
-    async def list_perspectives(self) -> ListResult[Perspective]:
+    async def list_perspectives(self) -> ListRepoResult[Perspective]:
         """Return all perspectives from the SQLite cache."""
         return await asyncio.to_thread(self._list_perspectives_sync)

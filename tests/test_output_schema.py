@@ -18,8 +18,8 @@ import pydantic_core
 import pytest
 from pydantic import BaseModel, TypeAdapter
 
-from omnifocus_operator.contracts.use_cases.add_task import AddTaskResult
-from omnifocus_operator.contracts.use_cases.edit_task import EditTaskResult
+from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskResult
+from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
 from omnifocus_operator.models import AllEntities, Project, Tag, Task
 from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (

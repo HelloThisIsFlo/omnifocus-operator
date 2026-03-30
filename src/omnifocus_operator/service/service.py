@@ -23,8 +23,8 @@ from omnifocus_operator.agent_messages.warnings import (
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.protocols import Service
 from omnifocus_operator.contracts.shared.repetition_rule import FrequencyAddSpec
-from omnifocus_operator.contracts.use_cases.add_task import AddTaskResult
-from omnifocus_operator.contracts.use_cases.edit_task import EditTaskResult
+from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskResult
+from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
 from omnifocus_operator.models.repetition_rule import Frequency
 from omnifocus_operator.service.domain import DomainLogic
 from omnifocus_operator.service.payload import PayloadBuilder
@@ -39,15 +39,13 @@ if TYPE_CHECKING:
         FrequencyEditSpec,
         RepetitionRuleRepoPayload,
     )
-    from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand
-    from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
-    from omnifocus_operator.contracts.use_cases.list_entities import (
-        ListFoldersQuery,
-        ListProjectsQuery,
-        ListResult,
-        ListTagsQuery,
-        ListTasksQuery,
-    )
+    from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskCommand
+    from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskCommand
+    from omnifocus_operator.contracts.use_cases.list.common import ListResult
+    from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersQuery
+    from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsQuery
+    from omnifocus_operator.contracts.use_cases.list.tags import ListTagsQuery
+    from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksQuery
     from omnifocus_operator.models.enums import BasedOn, Schedule
     from omnifocus_operator.models.folder import Folder
     from omnifocus_operator.models.perspective import Perspective

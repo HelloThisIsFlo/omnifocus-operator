@@ -9,8 +9,8 @@ from pydantic import AwareDatetime, ValidationError
 
 from omnifocus_operator.contracts.base import _Unset
 from omnifocus_operator.contracts.shared.actions import MoveAction, TagAction
-from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand, AddTaskResult
-from omnifocus_operator.contracts.use_cases.edit_task import (
+from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskCommand, AddTaskResult
+from omnifocus_operator.contracts.use_cases.edit.tasks import (
     EditTaskActions,
     EditTaskCommand,
     EditTaskResult,

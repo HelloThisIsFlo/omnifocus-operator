@@ -24,8 +24,8 @@ from omnifocus_operator.contracts.shared.repetition_rule import (
     RepetitionRuleAddSpec,
     RepetitionRuleEditSpec,
 )
-from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand, AddTaskResult
-from omnifocus_operator.contracts.use_cases.edit_task import (
+from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskCommand, AddTaskResult
+from omnifocus_operator.contracts.use_cases.edit.tasks import (
     EditTaskActions,
     EditTaskCommand,
 )

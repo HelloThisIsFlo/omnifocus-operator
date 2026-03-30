@@ -18,8 +18,8 @@ from typing import TYPE_CHECKING, Any
 
 from omnifocus_operator.bridge.adapter import adapt_snapshot
 from omnifocus_operator.contracts.protocols import Repository
-from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoResult
-from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoResult
+from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskRepoResult
+from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskRepoResult
 from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.repository.bridge_write_mixin import BridgeWriteMixin
 
@@ -28,15 +28,13 @@ logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from omnifocus_operator.bridge.mtime import MtimeSource
     from omnifocus_operator.contracts.protocols import Bridge
-    from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoPayload
-    from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoPayload
-    from omnifocus_operator.contracts.use_cases.list_entities import (
-        ListFoldersQuery,
-        ListProjectsQuery,
-        ListResult,
-        ListTagsQuery,
-        ListTasksQuery,
-    )
+    from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskRepoPayload
+    from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskRepoPayload
+    from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult
+    from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersRepoQuery
+    from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsRepoQuery
+    from omnifocus_operator.contracts.use_cases.list.tags import ListTagsRepoQuery
+    from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
     from omnifocus_operator.models.folder import Folder
     from omnifocus_operator.models.perspective import Perspective
     from omnifocus_operator.models.project import Project
@@ -133,19 +131,19 @@ class BridgeRepository(BridgeWriteMixin, Repository):
         logger.debug("BridgeRepository.edit_task: cache invalidated, id=%s", result.get("id"))
         return EditTaskRepoResult(id=result["id"], name=result["name"])
 
-    async def list_tasks(self, query: ListTasksQuery) -> ListResult[Task]:
+    async def list_tasks(self, query: ListTasksRepoQuery) -> ListRepoResult[Task]:
         raise NotImplementedError("list_tasks not implemented yet")
 
-    async def list_projects(self, query: ListProjectsQuery) -> ListResult[Project]:
+    async def list_projects(self, query: ListProjectsRepoQuery) -> ListRepoResult[Project]:
         raise NotImplementedError("list_projects not implemented yet")
 
-    async def list_tags(self, query: ListTagsQuery) -> ListResult[Tag]:
+    async def list_tags(self, query: ListTagsRepoQuery) -> ListRepoResult[Tag]:
         raise NotImplementedError("list_tags not implemented yet")
 
-    async def list_folders(self, query: ListFoldersQuery) -> ListResult[Folder]:
+    async def list_folders(self, query: ListFoldersRepoQuery) -> ListRepoResult[Folder]:
         raise NotImplementedError("list_folders not implemented yet")
 
-    async def list_perspectives(self) -> ListResult[Perspective]:
+    async def list_perspectives(self) -> ListRepoResult[Perspective]:
         raise NotImplementedError("list_perspectives not implemented yet")
 
     async def _refresh(self, current_mtime: int) -> AllEntities:
