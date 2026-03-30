@@ -131,13 +131,14 @@ Plans:
 
 ### Phase 35.2: Uniform name-vs-ID resolution at service boundary for all list filters (INSERTED)
 
-**Goal:** Service layer resolves all entity references to IDs via a resolution cascade (ID match → substring → fuzzy "did you mean?"), RepoQuery becomes IDs-only, query builder uses WHERE IN uniformly
+**Goal:** Service layer resolves all entity references to IDs via a resolution cascade (ID match -> substring -> fuzzy "did you mean?"), RepoQuery becomes IDs-only, query builder uses WHERE IN uniformly
 **Requirements**: INFRA-07, INFRA-12, INFRA-13, INFRA-14, INFRA-15, INFRA-16
 **Depends on:** Phase 35
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 35.2 to break down)
+- [ ] 35.2-01-PLAN.md — RepoQuery ID-only fields, ListResult warnings, query builder WHERE IN rewrite
+- [ ] 35.2-02-PLAN.md — Resolution cascade, did-you-mean warnings, list pipelines + pass-throughs
 
 ### Phase 35.1: Introduce read-side contract boundary split (RepoQuery / RepoResult) (INSERTED)
 
@@ -186,7 +187,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 34 → 35 → 36 → 37 → 38
+Phases execute in numeric order: 34 -> 35 -> 36 -> 37 -> 38
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -199,6 +200,7 @@ Phases execute in numeric order: 34 → 35 → 36 → 37 → 38
 | 34. Contracts and Query Foundation | v1.3 | 0/2 | Complete    | 2026-03-29 |
 | 35. SQL Repository | v1.3 | 2/2 | Complete    | 2026-03-30 |
 | 35.1 Contract Boundary Split | v1.3 | 2/2 | Complete    | 2026-03-30 |
+| 35.2 Uniform Name/ID Resolution | v1.3 | 0/2 | Not started | - |
 | 36. In-Memory Fallback | v1.3 | 0/0 | Not started | - |
 | 37. Service Orchestration | v1.3 | 0/0 | Not started | - |
 | 38. Server Registration and Integration | v1.3 | 0/0 | Not started | - |
