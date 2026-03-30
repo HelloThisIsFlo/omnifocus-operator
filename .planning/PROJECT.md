@@ -22,7 +22,7 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 ## Current State
 
 **Shipped:** v1.2.3 (2026-03-29) — Repetition Rule Write Support
-**Next:** v1.3 Read Tools — Phase 35.1 complete (read-side contract boundary split)
+**Next:** v1.3 Read Tools — Phase 35.2 complete (uniform name/ID resolution at service boundary)
 
 ## Requirements
 
@@ -197,4 +197,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-30 after Phase 35.1 complete — Read-side contract boundary split (RepoQuery/ListRepoResult)*
+*Last updated: 2026-03-30 after Phase 35.2 complete — Uniform name/ID resolution at service boundary*
