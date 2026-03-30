@@ -131,8 +131,8 @@ Plans:
 
 ### Phase 35.2: Uniform name-vs-ID resolution at service boundary for all list filters (INSERTED)
 
-**Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
+**Goal:** Service layer resolves all entity references to IDs via a resolution cascade (ID match → substring → fuzzy "did you mean?"), RepoQuery becomes IDs-only, query builder uses WHERE IN uniformly
+**Requirements**: INFRA-07, INFRA-12, INFRA-13, INFRA-14, INFRA-15, INFRA-16
 **Depends on:** Phase 35
 **Plans:** 0 plans
 

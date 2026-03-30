@@ -48,6 +48,11 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 - [x] **INFRA-09**: Read-side result containers split at the service boundary — `ListResult[T]` (agent-facing) and `ListRepoResult[T]` (repo-facing) are separate generic types
 - [x] **INFRA-10**: Repository protocol signatures use repo-boundary types (`RepoQuery`/`ListRepoResult`), Service protocol signatures use agent-boundary types (`Query`/`ListResult`)
 - [x] **INFRA-11**: `contracts/use_cases/` organized into per-use-case packages (`list/`, `add/`, `edit/`) with all imports updated to new paths
+- [ ] **INFRA-12**: Service layer resolves all name-based filter values (project, folder, tags) to entity IDs before passing to the repository — resolution cascade: ID match → substring match (case-insensitive) → no match (skip filter + warn)
+- [ ] **INFRA-13**: Agent can pass either a name or an ID in any entity-reference filter field — the service resolves both uniformly (ID match takes priority, then substring match)
+- [ ] **INFRA-14**: RepoQuery models use ID-only fields (`project_ids: list[str]`, `folder_ids: list[str]`, `tag_ids: list[str]`) — no name strings cross the repository boundary
+- [ ] **INFRA-15**: `ListResult[T]` includes an optional `warnings: list[str] | None` field for attaching agent guidance (e.g., "did you mean?" suggestions)
+- [ ] **INFRA-16**: Service list methods for all 5 entity types are callable (not `NotImplementedError`) — tasks and projects via pipelines with resolution, tags/folders/perspectives via inline pass-throughs
 
 ## Future Requirements
 
@@ -116,17 +121,22 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-04 | Phase 34 | Complete |
 | INFRA-05 | Phase 38 | Pending |
 | INFRA-06 | Phase 37 | Pending |
-| INFRA-07 | Phase 37 | Pending |
+| INFRA-07 | Phase 35.2 | Pending |
 | INFRA-08 | Phase 35.1 | Complete |
 | INFRA-09 | Phase 35.1 | Complete |
 | INFRA-10 | Phase 35.1 | Complete |
 | INFRA-11 | Phase 35.1 | Complete |
+| INFRA-12 | Phase 35.2 | Pending |
+| INFRA-13 | Phase 35.2 | Pending |
+| INFRA-14 | Phase 35.2 | Pending |
+| INFRA-15 | Phase 35.2 | Pending |
+| INFRA-16 | Phase 35.2 | Pending |
 
 **Coverage:**
-- v1.3 requirements: 28 total (PROJ-03 merged into PROJ-02, TASK-05 deferred)
-- Mapped to phases: 28
+- v1.3 requirements: 33 total (PROJ-03 merged into PROJ-02, TASK-05 deferred)
+- Mapped to phases: 33
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-29*
-*Last updated: 2026-03-30 after Phase 35.1 context gathering*
+*Last updated: 2026-03-30 after Phase 35.2 context gathering*
