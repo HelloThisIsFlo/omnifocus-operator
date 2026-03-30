@@ -27,8 +27,10 @@ from omnifocus_operator.contracts.protocols import Repository
 from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoResult
 from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoResult
 from omnifocus_operator.contracts.use_cases.list_entities import (
+    ListFoldersQuery,
     ListProjectsQuery,
     ListResult,
+    ListTagsQuery,
     ListTasksQuery,
 )
 from omnifocus_operator.repository.bridge_write_mixin import BridgeWriteMixin
@@ -47,6 +49,8 @@ if TYPE_CHECKING:
 
 import logging
 
+from omnifocus_operator.models.folder import Folder
+from omnifocus_operator.models.perspective import Perspective
 from omnifocus_operator.models.project import Project
 from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.models.tag import Tag
@@ -812,3 +816,54 @@ class HybridRepository(BridgeWriteMixin, Repository):
     async def list_projects(self, query: ListProjectsQuery) -> ListResult[Project]:
         """Return filtered, paginated projects from the SQLite cache."""
         return await asyncio.to_thread(self._list_projects_sync, query)
+
+    # -- Simple list operations (fetch-all + Python filter) --
+
+    def _list_tags_sync(self, query: ListTagsQuery) -> ListResult[Tag]:
+        """Synchronous tag listing: fetch all, filter by availability in Python."""
+        conn = sqlite3.connect(f"file:{self._db_path}?mode=ro", uri=True)
+        conn.row_factory = sqlite3.Row
+        try:
+            rows = conn.execute(_TAGS_SQL).fetchall()
+            all_tags = [Tag.model_validate(_map_tag_row(row)) for row in rows]
+            avail_set = set(query.availability)
+            filtered = [t for t in all_tags if t.availability in avail_set]
+            return ListResult(items=filtered, total=len(filtered), has_more=False)
+        finally:
+            conn.close()
+
+    async def list_tags(self, query: ListTagsQuery) -> ListResult[Tag]:
+        """Return tags filtered by availability from the SQLite cache."""
+        return await asyncio.to_thread(self._list_tags_sync, query)
+
+    def _list_folders_sync(self, query: ListFoldersQuery) -> ListResult[Folder]:
+        """Synchronous folder listing: fetch all, filter by availability in Python."""
+        conn = sqlite3.connect(f"file:{self._db_path}?mode=ro", uri=True)
+        conn.row_factory = sqlite3.Row
+        try:
+            rows = conn.execute(_FOLDERS_SQL).fetchall()
+            all_folders = [Folder.model_validate(_map_folder_row(row)) for row in rows]
+            avail_set = set(query.availability)
+            filtered = [f for f in all_folders if f.availability in avail_set]
+            return ListResult(items=filtered, total=len(filtered), has_more=False)
+        finally:
+            conn.close()
+
+    async def list_folders(self, query: ListFoldersQuery) -> ListResult[Folder]:
+        """Return folders filtered by availability from the SQLite cache."""
+        return await asyncio.to_thread(self._list_folders_sync, query)
+
+    def _list_perspectives_sync(self) -> ListResult[Perspective]:
+        """Synchronous perspective listing: fetch all, no filtering."""
+        conn = sqlite3.connect(f"file:{self._db_path}?mode=ro", uri=True)
+        conn.row_factory = sqlite3.Row
+        try:
+            rows = conn.execute(_PERSPECTIVES_SQL).fetchall()
+            perspectives = [Perspective.model_validate(_map_perspective_row(row)) for row in rows]
+            return ListResult(items=perspectives, total=len(perspectives), has_more=False)
+        finally:
+            conn.close()
+
+    async def list_perspectives(self) -> ListResult[Perspective]:
+        """Return all perspectives from the SQLite cache."""
+        return await asyncio.to_thread(self._list_perspectives_sync)
