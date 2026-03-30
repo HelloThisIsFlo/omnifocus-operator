@@ -25,7 +25,6 @@ from omnifocus_operator.models.base import OmniFocusBaseModel
 from omnifocus_operator.models.enums import Availability, FolderAvailability, TagAvailability
 from tests.conftest import make_model_task_dict
 
-
 # ---------------------------------------------------------------------------
 # StrictModel hierarchy
 # ---------------------------------------------------------------------------

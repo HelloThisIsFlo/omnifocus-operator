@@ -6,13 +6,15 @@ All user-provided values use ? placeholders (INFRA-01: no SQL injection).
 
 from __future__ import annotations
 
-from typing import Any, NamedTuple
+from typing import TYPE_CHECKING, Any, NamedTuple
 
-from omnifocus_operator.contracts.use_cases.list_entities import (
-    ListProjectsQuery,
-    ListTasksQuery,
-)
 from omnifocus_operator.models.enums import Availability
+
+if TYPE_CHECKING:
+    from omnifocus_operator.contracts.use_cases.list_entities import (
+        ListProjectsQuery,
+        ListTasksQuery,
+    )
 
 __all__ = ["SqlQuery", "build_list_projects_sql", "build_list_tasks_sql"]
 
@@ -51,9 +53,7 @@ _PROJECTS_BASE = (
 )
 
 _PROJECTS_COUNT_BASE = (
-    "SELECT COUNT(*)\n"
-    "FROM Task t\n"
-    "JOIN ProjectInfo pi ON t.persistentIdentifier = pi.task"
+    "SELECT COUNT(*)\nFROM Task t\nJOIN ProjectInfo pi ON t.persistentIdentifier = pi.task"
 )
 
 
@@ -65,12 +65,8 @@ _TASK_AVAILABILITY_CLAUSES: dict[Availability, str] = {
     Availability.AVAILABLE: (
         "(t.blocked = 0 AND t.dateCompleted IS NULL AND t.dateHidden IS NULL)"
     ),
-    Availability.BLOCKED: (
-        "(t.blocked != 0 AND t.dateCompleted IS NULL AND t.dateHidden IS NULL)"
-    ),
-    Availability.COMPLETED: (
-        "(t.dateCompleted IS NOT NULL AND t.dateHidden IS NULL)"
-    ),
+    Availability.BLOCKED: ("(t.blocked != 0 AND t.dateCompleted IS NULL AND t.dateHidden IS NULL)"),
+    Availability.COMPLETED: ("(t.dateCompleted IS NOT NULL AND t.dateHidden IS NULL)"),
     Availability.DROPPED: "(t.dateHidden IS NOT NULL)",
 }
 
@@ -80,16 +76,12 @@ _PROJECT_AVAILABILITY_CLAUSES: dict[Availability, str] = {
         " AND t.dateCompleted IS NULL AND t.dateHidden IS NULL)"
     ),
     Availability.BLOCKED: (
-        "(pi.effectiveStatus = 'inactive'"
-        " AND t.dateCompleted IS NULL AND t.dateHidden IS NULL)"
+        "(pi.effectiveStatus = 'inactive' AND t.dateCompleted IS NULL AND t.dateHidden IS NULL)"
     ),
     Availability.COMPLETED: (
-        "(t.dateCompleted IS NOT NULL AND t.dateHidden IS NULL"
-        " AND pi.effectiveStatus != 'dropped')"
+        "(t.dateCompleted IS NOT NULL AND t.dateHidden IS NULL AND pi.effectiveStatus != 'dropped')"
     ),
-    Availability.DROPPED: (
-        "(t.dateHidden IS NOT NULL OR pi.effectiveStatus = 'dropped')"
-    ),
+    Availability.DROPPED: ("(t.dateHidden IS NOT NULL OR pi.effectiveStatus = 'dropped')"),
 }
 
 
@@ -152,16 +144,12 @@ def build_list_tasks_sql(query: ListTasksQuery) -> tuple[SqlQuery, SqlQuery]:
         params.append(query.estimated_minutes_max)
 
     # Availability (no user params)
-    avail_clause = _build_availability_clause(
-        query.availability, _TASK_AVAILABILITY_CLAUSES
-    )
+    avail_clause = _build_availability_clause(query.availability, _TASK_AVAILABILITY_CLAUSES)
     if avail_clause:
         conditions.append(avail_clause)
 
     if query.search is not None:
-        conditions.append(
-            "(t.name LIKE ? COLLATE NOCASE OR t.plainTextNote LIKE ? COLLATE NOCASE)"
-        )
+        conditions.append("(t.name LIKE ? COLLATE NOCASE OR t.plainTextNote LIKE ? COLLATE NOCASE)")
         params.append(f"%{query.search}%")
         params.append(f"%{query.search}%")
 
@@ -201,9 +189,7 @@ def build_list_projects_sql(
     params: list[Any] = []
 
     # Availability (no user params)
-    avail_clause = _build_availability_clause(
-        query.availability, _PROJECT_AVAILABILITY_CLAUSES
-    )
+    avail_clause = _build_availability_clause(query.availability, _PROJECT_AVAILABILITY_CLAUSES)
     if avail_clause:
         conditions.append(avail_clause)
 
@@ -216,9 +202,7 @@ def build_list_projects_sql(
         params.append(f"%{query.folder}%")
 
     if query.review_due_within is not None:
-        conditions.append(
-            "pi.nextReviewDate IS NOT NULL AND pi.nextReviewDate <= ?"
-        )
+        conditions.append("pi.nextReviewDate IS NOT NULL AND pi.nextReviewDate <= ?")
         params.append(query.review_due_within)
 
     if query.flagged is not None:

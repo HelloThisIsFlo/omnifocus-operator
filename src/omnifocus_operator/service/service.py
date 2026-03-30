@@ -41,7 +41,16 @@ if TYPE_CHECKING:
     )
     from omnifocus_operator.contracts.use_cases.add_task import AddTaskCommand
     from omnifocus_operator.contracts.use_cases.edit_task import EditTaskCommand
+    from omnifocus_operator.contracts.use_cases.list_entities import (
+        ListFoldersQuery,
+        ListProjectsQuery,
+        ListResult,
+        ListTagsQuery,
+        ListTasksQuery,
+    )
     from omnifocus_operator.models.enums import BasedOn, Schedule
+    from omnifocus_operator.models.folder import Folder
+    from omnifocus_operator.models.perspective import Perspective
     from omnifocus_operator.models.project import Project
     from omnifocus_operator.models.repetition_rule import EndCondition
     from omnifocus_operator.models.snapshot import AllEntities
@@ -128,6 +137,23 @@ class OperatorService(Service):  # explicitly implements Service protocol
             self._repository,
         )
         return await pipeline.execute(command)
+
+    # -- list stubs (not yet implemented) ------------------------------------
+
+    async def list_tasks(self, query: ListTasksQuery) -> ListResult[Task]:
+        raise NotImplementedError("list_tasks not implemented yet")
+
+    async def list_projects(self, query: ListProjectsQuery) -> ListResult[Project]:
+        raise NotImplementedError("list_projects not implemented yet")
+
+    async def list_tags(self, query: ListTagsQuery) -> ListResult[Tag]:
+        raise NotImplementedError("list_tags not implemented yet")
+
+    async def list_folders(self, query: ListFoldersQuery) -> ListResult[Folder]:
+        raise NotImplementedError("list_folders not implemented yet")
+
+    async def list_perspectives(self) -> ListResult[Perspective]:
+        raise NotImplementedError("list_perspectives not implemented yet")
 
 
 # -- Pipeline base ---------------------------------------------------------

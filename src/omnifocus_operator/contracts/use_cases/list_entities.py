@@ -6,8 +6,6 @@ and the uniform ListResult[T] response shape.
 
 from __future__ import annotations
 
-from typing import Generic, TypeVar
-
 from pydantic import Field
 
 from omnifocus_operator.contracts.base import QueryModel
@@ -18,10 +16,8 @@ from omnifocus_operator.models.enums import (
     TagAvailability,
 )
 
-T = TypeVar("T")
 
-
-class ListResult(OmniFocusBaseModel, Generic[T]):
+class ListResult[T](OmniFocusBaseModel):
     """Generic result container for all list operations.
 
     Uniform shape for all 5 list tools. Non-paginated: total=len(items), has_more=False.

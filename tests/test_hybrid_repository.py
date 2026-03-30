@@ -24,6 +24,14 @@ import pytest
 from omnifocus_operator.contracts.protocols import Repository
 from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoPayload, AddTaskRepoResult
 from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoPayload
+from omnifocus_operator.contracts.use_cases.list_entities import (
+    ListFoldersQuery,
+    ListProjectsQuery,
+    ListResult,
+    ListTagsQuery,
+    ListTasksQuery,
+)
+from omnifocus_operator.models.enums import Availability, FolderAvailability, TagAvailability
 from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.repository.hybrid import _FRESHNESS_TIMEOUT, HybridRepository
 from tests.doubles import InMemoryBridge, StubBridge
@@ -1667,13 +1675,6 @@ class TestLocalDatetimeParsing:
 # LIST TASKS / LIST PROJECTS TESTS (Task 1 - basic method existence + behavior)
 # ============================================================================
 
-from omnifocus_operator.contracts.use_cases.list_entities import (
-    ListProjectsQuery,
-    ListResult,
-    ListTasksQuery,
-)
-from omnifocus_operator.models.enums import Availability
-
 
 class TestListTasksBasic:
     """Basic tests proving list_tasks exists and works on HybridRepository."""
@@ -1683,9 +1684,7 @@ class TestListTasksBasic:
         tasks=[
             _minimal_task({"persistentIdentifier": "t-avail", "blocked": 0}),
             _minimal_task({"persistentIdentifier": "t-blocked", "blocked": 1}),
-            _minimal_task(
-                {"persistentIdentifier": "t-completed", "dateCompleted": _NOW_CF}
-            ),
+            _minimal_task({"persistentIdentifier": "t-completed", "dateCompleted": _NOW_CF}),
         ],
     )
     async def test_list_tasks_default_excludes_completed(
@@ -1707,9 +1706,7 @@ class TestListTasksBasic:
             _minimal_task({"persistentIdentifier": "t-noflag", "flagged": 0}),
         ],
     )
-    async def test_list_tasks_flagged_filter(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_tasks_flagged_filter(self, hybrid_repo: HybridRepository) -> None:
         """Flagged filter returns only flagged tasks."""
         result = await hybrid_repo.list_tasks(ListTasksQuery(flagged=True))
         assert result.total == 1
@@ -1723,9 +1720,7 @@ class TestListTasksBasic:
             _minimal_task({"persistentIdentifier": "t3"}),
         ],
     )
-    async def test_list_tasks_pagination(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_tasks_pagination(self, hybrid_repo: HybridRepository) -> None:
         """Pagination with limit returns correct has_more and total."""
         result = await hybrid_repo.list_tasks(ListTasksQuery(limit=2))
         assert len(result.items) == 2
@@ -1750,9 +1745,7 @@ class TestListProjectsBasic:
             ),
         ],
     )
-    async def test_list_projects_default_remaining(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_projects_default_remaining(self, hybrid_repo: HybridRepository) -> None:
         """Default query returns remaining (available + blocked), excludes dropped."""
         result = await hybrid_repo.list_projects(ListProjectsQuery())
         assert isinstance(result, ListResult)
@@ -1762,17 +1755,11 @@ class TestListProjectsBasic:
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(
         projects=[
-            _minimal_project(
-                {"persistentIdentifier": "p-flag", "flagged": 1}
-            ),
-            _minimal_project(
-                {"persistentIdentifier": "p-noflag", "flagged": 0}
-            ),
+            _minimal_project({"persistentIdentifier": "p-flag", "flagged": 1}),
+            _minimal_project({"persistentIdentifier": "p-noflag", "flagged": 0}),
         ],
     )
-    async def test_list_projects_flagged_filter(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_projects_flagged_filter(self, hybrid_repo: HybridRepository) -> None:
         """Flagged filter returns only flagged projects."""
         result = await hybrid_repo.list_projects(ListProjectsQuery(flagged=True))
         assert result.total == 1
@@ -1792,12 +1779,8 @@ class TestListTasks:
         tasks=[
             _minimal_task({"persistentIdentifier": "t-avail", "blocked": 0}),
             _minimal_task({"persistentIdentifier": "t-blocked", "blocked": 1}),
-            _minimal_task(
-                {"persistentIdentifier": "t-completed", "dateCompleted": _NOW_CF}
-            ),
-            _minimal_task(
-                {"persistentIdentifier": "t-dropped", "dateHidden": _NOW_CF}
-            ),
+            _minimal_task({"persistentIdentifier": "t-completed", "dateCompleted": _NOW_CF}),
+            _minimal_task({"persistentIdentifier": "t-dropped", "dateHidden": _NOW_CF}),
         ],
     )
     async def test_list_tasks_default_excludes_completed_dropped(
@@ -1816,9 +1799,7 @@ class TestListTasks:
             _minimal_task({"persistentIdentifier": "t-noflag", "flagged": 0}),
         ],
     )
-    async def test_list_tasks_flagged_true(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_tasks_flagged_true(self, hybrid_repo: HybridRepository) -> None:
         """TASK-02: flagged=True returns only flagged tasks."""
         result = await hybrid_repo.list_tasks(ListTasksQuery(flagged=True))
         assert result.total == 1
@@ -1832,9 +1813,7 @@ class TestListTasks:
             _minimal_task({"persistentIdentifier": "t-noflag", "flagged": 0}),
         ],
     )
-    async def test_list_tasks_flagged_false(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_tasks_flagged_false(self, hybrid_repo: HybridRepository) -> None:
         """TASK-02: flagged=False returns only unflagged tasks."""
         result = await hybrid_repo.list_tasks(ListTasksQuery(flagged=False))
         assert result.total == 1
@@ -1847,9 +1826,7 @@ class TestListTasks:
             _minimal_task({"persistentIdentifier": "t-noninbox", "inInbox": 0}),
         ],
     )
-    async def test_list_tasks_in_inbox(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_tasks_in_inbox(self, hybrid_repo: HybridRepository) -> None:
         """TASK-01: in_inbox=True returns only inbox tasks."""
         result = await hybrid_repo.list_tasks(ListTasksQuery(in_inbox=True))
         assert result.total == 1
@@ -1881,9 +1858,7 @@ class TestListTasks:
             ),
         ],
     )
-    async def test_list_tasks_project_filter(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_tasks_project_filter(self, hybrid_repo: HybridRepository) -> None:
         """TASK-03: project filter matches by project name (case-insensitive partial)."""
         result = await hybrid_repo.list_tasks(ListTasksQuery(project="work"))
         assert result.total == 1
@@ -1904,9 +1879,7 @@ class TestListTasks:
             {"task": "t2", "tag": "tag-002"},
         ],
     )
-    async def test_list_tasks_tags_filter(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_tasks_tags_filter(self, hybrid_repo: HybridRepository) -> None:
         """TASK-04: tags filter returns tasks with matching tag (OR logic for multiple)."""
         # Single tag
         result_one = await hybrid_repo.list_tasks(ListTasksQuery(tags=["tag-001"]))
@@ -1914,32 +1887,20 @@ class TestListTasks:
         assert result_one.items[0].id == "t1"
 
         # Multiple tags (OR logic)
-        result_both = await hybrid_repo.list_tasks(
-            ListTasksQuery(tags=["tag-001", "tag-002"])
-        )
+        result_both = await hybrid_repo.list_tasks(ListTasksQuery(tags=["tag-001", "tag-002"]))
         assert result_both.total == 2
 
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(
         tasks=[
-            _minimal_task(
-                {"persistentIdentifier": "t-15", "estimatedMinutes": 15}
-            ),
-            _minimal_task(
-                {"persistentIdentifier": "t-30", "estimatedMinutes": 30}
-            ),
-            _minimal_task(
-                {"persistentIdentifier": "t-60", "estimatedMinutes": 60}
-            ),
+            _minimal_task({"persistentIdentifier": "t-15", "estimatedMinutes": 15}),
+            _minimal_task({"persistentIdentifier": "t-30", "estimatedMinutes": 30}),
+            _minimal_task({"persistentIdentifier": "t-60", "estimatedMinutes": 60}),
         ],
     )
-    async def test_list_tasks_estimated_minutes_max(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_tasks_estimated_minutes_max(self, hybrid_repo: HybridRepository) -> None:
         """TASK-06: estimated_minutes_max returns tasks with estimate <= threshold."""
-        result = await hybrid_repo.list_tasks(
-            ListTasksQuery(estimated_minutes_max=30)
-        )
+        result = await hybrid_repo.list_tasks(ListTasksQuery(estimated_minutes_max=30))
         assert result.total == 2
         ids = {t.id for t in result.items}
         assert ids == {"t-15", "t-30"}
@@ -1947,36 +1908,24 @@ class TestListTasks:
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(
         tasks=[
-            _minimal_task(
-                {"persistentIdentifier": "t-done", "dateCompleted": _NOW_CF}
-            ),
+            _minimal_task({"persistentIdentifier": "t-done", "dateCompleted": _NOW_CF}),
             _minimal_task({"persistentIdentifier": "t-avail"}),
         ],
     )
-    async def test_list_tasks_availability_completed(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_tasks_availability_completed(self, hybrid_repo: HybridRepository) -> None:
         """TASK-07: availability=[COMPLETED] returns only completed tasks."""
-        result = await hybrid_repo.list_tasks(
-            ListTasksQuery(availability=[Availability.COMPLETED])
-        )
+        result = await hybrid_repo.list_tasks(ListTasksQuery(availability=[Availability.COMPLETED]))
         assert result.total == 1
         assert result.items[0].id == "t-done"
 
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(
         tasks=[
-            _minimal_task(
-                {"persistentIdentifier": "t-buy", "name": "Buy groceries"}
-            ),
-            _minimal_task(
-                {"persistentIdentifier": "t-write", "name": "Write report"}
-            ),
+            _minimal_task({"persistentIdentifier": "t-buy", "name": "Buy groceries"}),
+            _minimal_task({"persistentIdentifier": "t-write", "name": "Write report"}),
         ],
     )
-    async def test_list_tasks_search_name(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_tasks_search_name(self, hybrid_repo: HybridRepository) -> None:
         """TASK-08: search matches task name (case-insensitive)."""
         result = await hybrid_repo.list_tasks(ListTasksQuery(search="buy"))
         assert result.total == 1
@@ -1995,9 +1944,7 @@ class TestListTasks:
             _minimal_task({"persistentIdentifier": "t-plain", "name": "Other task"}),
         ],
     )
-    async def test_list_tasks_search_notes(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_tasks_search_notes(self, hybrid_repo: HybridRepository) -> None:
         """TASK-08: search matches in plainTextNote (case-insensitive)."""
         result = await hybrid_repo.list_tasks(ListTasksQuery(search="dentist"))
         assert result.total == 1
@@ -2005,14 +1952,9 @@ class TestListTasks:
 
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(
-        tasks=[
-            _minimal_task({"persistentIdentifier": f"t-{i}"})
-            for i in range(5)
-        ],
+        tasks=[_minimal_task({"persistentIdentifier": f"t-{i}"}) for i in range(5)],
     )
-    async def test_list_tasks_pagination_limit(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_tasks_pagination_limit(self, hybrid_repo: HybridRepository) -> None:
         """TASK-09: limit returns at most N items with correct total and has_more."""
         result = await hybrid_repo.list_tasks(ListTasksQuery(limit=2))
         assert len(result.items) == 2
@@ -2021,14 +1963,9 @@ class TestListTasks:
 
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(
-        tasks=[
-            _minimal_task({"persistentIdentifier": f"t-{i}"})
-            for i in range(5)
-        ],
+        tasks=[_minimal_task({"persistentIdentifier": f"t-{i}"}) for i in range(5)],
     )
-    async def test_list_tasks_pagination_offset(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_tasks_pagination_offset(self, hybrid_repo: HybridRepository) -> None:
         """TASK-09: limit+offset paginates correctly, has_more=False at end."""
         result = await hybrid_repo.list_tasks(ListTasksQuery(limit=2, offset=3))
         assert len(result.items) == 2
@@ -2061,13 +1998,9 @@ class TestListTasks:
             ),
         ],
     )
-    async def test_list_tasks_combined_filters(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_tasks_combined_filters(self, hybrid_repo: HybridRepository) -> None:
         """TASK-10: Multiple filters combine with AND logic."""
-        result = await hybrid_repo.list_tasks(
-            ListTasksQuery(flagged=True, in_inbox=True)
-        )
+        result = await hybrid_repo.list_tasks(ListTasksQuery(flagged=True, in_inbox=True))
         assert result.total == 1
         assert result.items[0].id == "t-both"
 
@@ -2075,9 +2008,7 @@ class TestListTasks:
     @pytest.mark.hybrid_db(
         tasks=[_minimal_task({"persistentIdentifier": "t-unflagged", "flagged": 0})],
     )
-    async def test_list_tasks_no_results(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_tasks_no_results(self, hybrid_repo: HybridRepository) -> None:
         """No matching tasks returns empty list with total=0, has_more=False."""
         result = await hybrid_repo.list_tasks(ListTasksQuery(flagged=True))
         assert result.items == []
@@ -2126,9 +2057,7 @@ class TestListProjects:
             ),
         ],
     )
-    async def test_list_projects_default_remaining(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_projects_default_remaining(self, hybrid_repo: HybridRepository) -> None:
         """PROJ-03: Default returns remaining (available + blocked), excludes dropped."""
         result = await hybrid_repo.list_projects(ListProjectsQuery())
         assert result.total == 2
@@ -2191,13 +2120,9 @@ class TestListProjects:
             ),
         ],
     )
-    async def test_list_projects_folder_filter(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_projects_folder_filter(self, hybrid_repo: HybridRepository) -> None:
         """PROJ-04: folder filter matches by folder name (case-insensitive partial)."""
-        result = await hybrid_repo.list_projects(
-            ListProjectsQuery(folder="personal")
-        )
+        result = await hybrid_repo.list_projects(ListProjectsQuery(folder="personal"))
         assert result.total == 1
         assert result.items[0].id == "p-personal"
 
@@ -2224,9 +2149,7 @@ class TestListProjects:
             ),
         ],
     )
-    async def test_list_projects_review_due_within(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_projects_review_due_within(self, hybrid_repo: HybridRepository) -> None:
         """PROJ-05: review_due_within returns projects with nextReviewDate <= threshold."""
         result = await hybrid_repo.list_projects(
             ListProjectsQuery(review_due_within="2026-04-01T00:00:00+00:00")
@@ -2237,17 +2160,11 @@ class TestListProjects:
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(
         projects=[
-            _minimal_project(
-                {"persistentIdentifier": "p-flag", "flagged": 1}
-            ),
-            _minimal_project(
-                {"persistentIdentifier": "p-noflag", "flagged": 0}
-            ),
+            _minimal_project({"persistentIdentifier": "p-flag", "flagged": 1}),
+            _minimal_project({"persistentIdentifier": "p-noflag", "flagged": 0}),
         ],
     )
-    async def test_list_projects_flagged(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_projects_flagged(self, hybrid_repo: HybridRepository) -> None:
         """PROJ-06: flagged=True returns only flagged projects."""
         result = await hybrid_repo.list_projects(ListProjectsQuery(flagged=True))
         assert result.total == 1
@@ -2255,14 +2172,9 @@ class TestListProjects:
 
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(
-        projects=[
-            _minimal_project({"persistentIdentifier": f"p-{i}"})
-            for i in range(5)
-        ],
+        projects=[_minimal_project({"persistentIdentifier": f"p-{i}"}) for i in range(5)],
     )
-    async def test_list_projects_pagination(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_projects_pagination(self, hybrid_repo: HybridRepository) -> None:
         """PROJ-07: limit returns at most N items with correct has_more and total."""
         result = await hybrid_repo.list_projects(ListProjectsQuery(limit=2))
         assert len(result.items) == 2
@@ -2274,9 +2186,7 @@ class TestListPerformance:
     """Performance comparison: filtered query vs full snapshot."""
 
     @pytest.mark.asyncio
-    async def test_filtered_faster_than_full_snapshot(
-        self, tmp_path: Path
-    ) -> None:
+    async def test_filtered_faster_than_full_snapshot(self, tmp_path: Path) -> None:
         """INFRA-02: Filtered query executes faster than full get_all() snapshot."""
         # Generate performance seed data
         tasks = []
@@ -2335,9 +2245,7 @@ class TestListPerformance:
                 )
             )
             if i % 5 == 0:
-                task_tags_data.append(
-                    {"task": f"perf-task-{i}", "tag": f"perf-tag-{i % 15}"}
-                )
+                task_tags_data.append({"task": f"perf-task-{i}", "tag": f"perf-tag-{i % 15}"})
 
         db_path = create_test_db(
             tmp_path,
@@ -2376,12 +2284,6 @@ class TestListPerformance:
 # LIST TAGS / LIST FOLDERS / LIST PERSPECTIVES TESTS (Plan 02)
 # ============================================================================
 
-from omnifocus_operator.contracts.use_cases.list_entities import (
-    ListFoldersQuery,
-    ListTagsQuery,
-)
-from omnifocus_operator.models.enums import FolderAvailability, TagAvailability
-
 
 class TestListTags:
     """Tests for HybridRepository.list_tags -- fetch-all + Python filter."""
@@ -2406,9 +2308,7 @@ class TestListTags:
             ),
         ],
     )
-    async def test_list_tags_default_excludes_dropped(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_tags_default_excludes_dropped(self, hybrid_repo: HybridRepository) -> None:
         """Default query returns available + blocked tags, excludes dropped."""
         result = await hybrid_repo.list_tags(ListTagsQuery())
         ids = {t.id for t in result.items}
@@ -2433,9 +2333,7 @@ class TestListTags:
             ),
         ],
     )
-    async def test_list_tags_filter_available_only(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_tags_filter_available_only(self, hybrid_repo: HybridRepository) -> None:
         """Filter for available-only returns 1 tag."""
         result = await hybrid_repo.list_tags(
             ListTagsQuery(availability=[TagAvailability.AVAILABLE])
@@ -2461,13 +2359,9 @@ class TestListTags:
             ),
         ],
     )
-    async def test_list_tags_filter_dropped_only(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_tags_filter_dropped_only(self, hybrid_repo: HybridRepository) -> None:
         """Filter for dropped-only returns 1 tag."""
-        result = await hybrid_repo.list_tags(
-            ListTagsQuery(availability=[TagAvailability.DROPPED])
-        )
+        result = await hybrid_repo.list_tags(ListTagsQuery(availability=[TagAvailability.DROPPED]))
         assert len(result.items) == 1
         assert result.items[0].id == "tag-dropped"
 
@@ -2489,9 +2383,7 @@ class TestListTags:
             ),
         ],
     )
-    async def test_list_tags_all_availability(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_tags_all_availability(self, hybrid_repo: HybridRepository) -> None:
         """All availability values returns all 3 tags."""
         result = await hybrid_repo.list_tags(
             ListTagsQuery(
@@ -2516,9 +2408,7 @@ class TestListTags:
             ),
         ],
     )
-    async def test_list_tags_result_shape(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_tags_result_shape(self, hybrid_repo: HybridRepository) -> None:
         """ListResult has has_more=False and total=len(items)."""
         result = await hybrid_repo.list_tags(ListTagsQuery())
         assert result.has_more is False
@@ -2562,9 +2452,7 @@ class TestListFolders:
             ),
         ],
     )
-    async def test_list_folders_filter_dropped(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_folders_filter_dropped(self, hybrid_repo: HybridRepository) -> None:
         """Filter for dropped-only returns 1 folder."""
         result = await hybrid_repo.list_folders(
             ListFoldersQuery(availability=[FolderAvailability.DROPPED])
@@ -2584,9 +2472,7 @@ class TestListFolders:
             ),
         ],
     )
-    async def test_list_folders_all(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_folders_all(self, hybrid_repo: HybridRepository) -> None:
         """All availability values returns all 2 folders."""
         result = await hybrid_repo.list_folders(
             ListFoldersQuery(
@@ -2601,9 +2487,7 @@ class TestListFolders:
             _minimal_folder({"persistentIdentifier": "folder-avail"}),
         ],
     )
-    async def test_list_folders_result_shape(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_folders_result_shape(self, hybrid_repo: HybridRepository) -> None:
         """ListResult has has_more=False and total=len(items)."""
         result = await hybrid_repo.list_folders(ListFoldersQuery())
         assert result.has_more is False
@@ -2627,9 +2511,7 @@ class TestListPerspectives:
             },
         ],
     )
-    async def test_list_perspectives_returns_all(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_perspectives_returns_all(self, hybrid_repo: HybridRepository) -> None:
         """list_perspectives returns all perspectives."""
         result = await hybrid_repo.list_perspectives()
         assert len(result.items) == 2
@@ -2649,9 +2531,7 @@ class TestListPerspectives:
             },
         ],
     )
-    async def test_list_perspectives_builtin_flag(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_perspectives_builtin_flag(self, hybrid_repo: HybridRepository) -> None:
         """Custom perspectives have builtin=False, built-in have builtin=True."""
         result = await hybrid_repo.list_perspectives()
         by_name = {p.name: p for p in result.items}
@@ -2677,9 +2557,7 @@ class TestListPerspectives:
             },
         ],
     )
-    async def test_list_perspectives_result_shape(
-        self, hybrid_repo: HybridRepository
-    ) -> None:
+    async def test_list_perspectives_result_shape(self, hybrid_repo: HybridRepository) -> None:
         """ListResult has has_more=False and total matches item count."""
         result = await hybrid_repo.list_perspectives()
         assert result.has_more is False

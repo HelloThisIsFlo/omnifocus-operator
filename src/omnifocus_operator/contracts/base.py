@@ -95,4 +95,14 @@ class QueryModel(StrictModel):
     pass
 
 
-__all__ = ["UNSET", "CommandModel", "Patch", "PatchOrClear", "PatchOrNone", "QueryModel", "StrictModel", "_Unset", "is_set"]
+__all__ = [
+    "UNSET",
+    "CommandModel",
+    "Patch",
+    "PatchOrClear",
+    "PatchOrNone",
+    "QueryModel",
+    "StrictModel",
+    "_Unset",
+    "is_set",
+]

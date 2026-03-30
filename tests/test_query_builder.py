@@ -7,8 +7,6 @@ field, combination, and edge case.
 
 from __future__ import annotations
 
-import pytest
-
 from omnifocus_operator.contracts.use_cases.list_entities import (
     ListProjectsQuery,
     ListTasksQuery,
@@ -20,7 +18,6 @@ from omnifocus_operator.repository.query_builder import (
     build_list_tasks_sql,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -30,7 +27,7 @@ def _assert_parameterized(sql: str) -> None:
     """Assert SQL uses ? placeholders and no f-string interpolation."""
     # Should not contain Python f-string markers in actual SQL
     assert "f'" not in sql
-    assert "f\"" not in sql
+    assert 'f"' not in sql
 
 
 # ===========================================================================
@@ -170,9 +167,7 @@ class TestTasksAvailabilityFilter:
 
     def test_available_and_blocked(self):
         """Default combo should produce OR of two conditions."""
-        query = ListTasksQuery(
-            availability=[Availability.AVAILABLE, Availability.BLOCKED]
-        )
+        query = ListTasksQuery(availability=[Availability.AVAILABLE, Availability.BLOCKED])
         data_q, _ = build_list_tasks_sql(query)
         assert " OR " in data_q.sql
 
@@ -260,7 +255,7 @@ class TestTasksCombinedFilters:
     def test_count_query_same_where_as_data_query(self):
         """Count query should have identical WHERE clauses (minus LIMIT/OFFSET)."""
         query = ListTasksQuery(flagged=True, search="test", limit=10, offset=5)
-        data_q, count_q = build_list_tasks_sql(query)
+        _data_q, count_q = build_list_tasks_sql(query)
         # Both should have the same filter params (minus limit/offset)
         # Count params should be a subset of data params
         assert "t.flagged = ?" in count_q.sql
@@ -347,9 +342,7 @@ class TestProjectsAvailabilityFilter:
         assert "t.dateHidden IS NOT NULL" in data_q.sql or "dropped" in data_q.sql
 
     def test_available_and_blocked_produces_or(self):
-        query = ListProjectsQuery(
-            availability=[Availability.AVAILABLE, Availability.BLOCKED]
-        )
+        query = ListProjectsQuery(availability=[Availability.AVAILABLE, Availability.BLOCKED])
         data_q, _ = build_list_projects_sql(query)
         assert " OR " in data_q.sql
 

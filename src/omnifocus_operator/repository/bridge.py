@@ -30,6 +30,15 @@ if TYPE_CHECKING:
     from omnifocus_operator.contracts.protocols import Bridge
     from omnifocus_operator.contracts.use_cases.add_task import AddTaskRepoPayload
     from omnifocus_operator.contracts.use_cases.edit_task import EditTaskRepoPayload
+    from omnifocus_operator.contracts.use_cases.list_entities import (
+        ListFoldersQuery,
+        ListProjectsQuery,
+        ListResult,
+        ListTagsQuery,
+        ListTasksQuery,
+    )
+    from omnifocus_operator.models.folder import Folder
+    from omnifocus_operator.models.perspective import Perspective
     from omnifocus_operator.models.project import Project
     from omnifocus_operator.models.tag import Tag
     from omnifocus_operator.models.task import Task
@@ -123,6 +132,21 @@ class BridgeRepository(BridgeWriteMixin, Repository):
         self._cached = None  # Visible cache invalidation
         logger.debug("BridgeRepository.edit_task: cache invalidated, id=%s", result.get("id"))
         return EditTaskRepoResult(id=result["id"], name=result["name"])
+
+    async def list_tasks(self, query: ListTasksQuery) -> ListResult[Task]:
+        raise NotImplementedError("list_tasks not implemented yet")
+
+    async def list_projects(self, query: ListProjectsQuery) -> ListResult[Project]:
+        raise NotImplementedError("list_projects not implemented yet")
+
+    async def list_tags(self, query: ListTagsQuery) -> ListResult[Tag]:
+        raise NotImplementedError("list_tags not implemented yet")
+
+    async def list_folders(self, query: ListFoldersQuery) -> ListResult[Folder]:
+        raise NotImplementedError("list_folders not implemented yet")
+
+    async def list_perspectives(self) -> ListResult[Perspective]:
+        raise NotImplementedError("list_perspectives not implemented yet")
 
     async def _refresh(self, current_mtime: int) -> AllEntities:
         """Fetch fresh data from the bridge and update cache state.
