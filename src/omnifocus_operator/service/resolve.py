@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from omnifocus_operator.agent_messages.errors import (
     AMBIGUOUS_TAG,
@@ -14,10 +14,23 @@ from omnifocus_operator.agent_messages.errors import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from omnifocus_operator.contracts.protocols import Repository
     from omnifocus_operator.models.project import Project
     from omnifocus_operator.models.tag import Tag
     from omnifocus_operator.models.task import Task
+
+
+@runtime_checkable
+class _HasIdAndName(Protocol):
+    """Duck-typed protocol for entities with .id and .name attributes."""
+
+    @property
+    def id(self) -> str: ...
+
+    @property
+    def name(self) -> str: ...
 
 logger = logging.getLogger(__name__)
 
@@ -109,3 +122,57 @@ class Resolver:
             return id_match.id
         msg = TAG_NOT_FOUND.format(name=name)
         raise ValueError(msg)
+
+    # -- Read-side resolution (filter cascade) --------------------------------
+
+    def resolve_filter(self, value: str, entities: Sequence[_HasIdAndName]) -> list[str]:
+        """Resolve a single filter value to entity IDs via the cascade.
+
+        Steps:
+        1. ID match: if value matches any entity's .id exactly, return [value]
+        2. Substring match: case-insensitive substring check, return all matching IDs
+        3. No match: return []
+        """
+        # Step 1: exact ID match
+        if any(e.id == value for e in entities):
+            logger.debug("Resolver.resolve_filter: '%s' matched as ID", value)
+            return [value]
+
+        # Step 2: case-insensitive substring match
+        lower_value = value.lower()
+        matches = [e.id for e in entities if lower_value in e.name.lower()]
+        if matches:
+            logger.debug(
+                "Resolver.resolve_filter: '%s' substring matched %d entities",
+                value,
+                len(matches),
+            )
+            return matches
+
+        # Step 3: no match
+        logger.debug("Resolver.resolve_filter: '%s' no match found", value)
+        return []
+
+    def resolve_filter_list(
+        self, values: list[str], entities: Sequence[_HasIdAndName]
+    ) -> list[str]:
+        """Resolve multiple filter values, accumulating all matched IDs.
+
+        Each value is resolved independently through the cascade.
+        Returns a flat deduplicated list of all resolved IDs.
+        Values that don't resolve are simply not included.
+        """
+        seen: set[str] = set()
+        result: list[str] = []
+        for value in values:
+            for eid in self.resolve_filter(value, entities):
+                if eid not in seen:
+                    seen.add(eid)
+                    result.append(eid)
+        return result
+
+    def find_unresolved(
+        self, values: list[str], entities: Sequence[_HasIdAndName]
+    ) -> list[str]:
+        """Return values that did not resolve to any entity ID."""
+        return [v for v in values if not self.resolve_filter(v, entities)]

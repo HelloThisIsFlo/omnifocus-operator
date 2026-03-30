@@ -111,3 +111,16 @@ REPETITION_ANCHOR_DATE_MISSING = (
     "Set a {date_field} for predictable repetition scheduling, or confirm "
     "with the user that creation-date anchoring is intended."
 )
+
+# --- Filter Resolution ---
+
+FILTER_NO_MATCH = (
+    "No {entity_type} found matching '{value}'. "
+    "This filter was skipped."
+)
+
+FILTER_DID_YOU_MEAN = (
+    "No {entity_type} found matching '{value}'. "
+    "Did you mean: {suggestions}? "
+    "This filter was skipped."
+)

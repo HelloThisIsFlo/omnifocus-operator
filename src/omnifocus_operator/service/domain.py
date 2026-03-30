@@ -7,6 +7,7 @@ merge into the final response.
 
 from __future__ import annotations
 
+import difflib
 import logging
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
@@ -99,6 +100,18 @@ class DomainLogic:
     def __init__(self, repo: Repository, resolver: Resolver) -> None:
         self._repo = repo
         self._resolver = resolver
+
+    # -- Read-side: fuzzy suggestions ----------------------------------------
+
+    def suggest_close_matches(
+        self,
+        value: str,
+        entity_names: list[str],
+        n: int = 3,
+        cutoff: float = 0.6,
+    ) -> list[str]:
+        """Return close name matches for a failed resolution."""
+        return difflib.get_close_matches(value, entity_names, n=n, cutoff=cutoff)
 
     # -- Clear-intent normalization ----------------------------------------
 

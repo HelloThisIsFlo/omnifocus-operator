@@ -15,6 +15,8 @@ from omnifocus_operator.service.validate import validate_task_name, validate_tas
 from tests.doubles import ConstantMtimeSource, InMemoryBridge
 
 from .conftest import (
+    make_model_project_dict,
+    make_model_tag_dict,
     make_project_dict,
     make_snapshot_dict,
     make_tag_dict,
@@ -218,3 +220,125 @@ class TestResolver:
         """Multiple tag names resolve in order."""
         result = await resolver.resolve_tags(["Work", "Home"])
         assert result == ["tag-work", "tag-home"]
+
+
+# ---------------------------------------------------------------------------
+# Read-side filter resolution (resolve_filter / resolve_filter_list / find_unresolved)
+# ---------------------------------------------------------------------------
+
+
+class TestResolveFilter:
+    """Resolution cascade: ID match -> substring match -> empty list."""
+
+    def test_id_match(self, resolver: Resolver) -> None:
+        """Value matching an entity's .id exactly returns [that_id]."""
+        from omnifocus_operator.models.project import Project
+
+        entities = [
+            Project.model_validate(make_model_project_dict(id="proj-1", name="Work Projects")),
+        ]
+        result = resolver.resolve_filter("proj-1", entities)
+        assert result == ["proj-1"]
+
+    def test_substring_match(self, resolver: Resolver) -> None:
+        """Substring of name matches all entities containing it."""
+        from omnifocus_operator.models.project import Project
+
+        entities = [
+            Project.model_validate(make_model_project_dict(id="p1", name="Work Projects")),
+            Project.model_validate(make_model_project_dict(id="p2", name="Homework")),
+            Project.model_validate(make_model_project_dict(id="p3", name="Personal")),
+        ]
+        result = resolver.resolve_filter("Work", entities)
+        assert set(result) == {"p1", "p2"}
+
+    def test_case_insensitive(self, resolver: Resolver) -> None:
+        """Substring match is case-insensitive."""
+        from omnifocus_operator.models.project import Project
+
+        entities = [
+            Project.model_validate(make_model_project_dict(id="p1", name="Work Projects")),
+        ]
+        result = resolver.resolve_filter("work", entities)
+        assert result == ["p1"]
+
+    def test_no_match(self, resolver: Resolver) -> None:
+        """No matching entity returns empty list."""
+        from omnifocus_operator.models.project import Project
+
+        entities = [
+            Project.model_validate(make_model_project_dict(id="p1", name="Work")),
+        ]
+        result = resolver.resolve_filter("zzzzz", entities)
+        assert result == []
+
+    def test_id_takes_priority_over_substring(self, resolver: Resolver) -> None:
+        """If value is both an ID and a substring of another name, returns only the ID match."""
+        from omnifocus_operator.models.tag import Tag
+
+        entities = [
+            Tag.model_validate(make_model_tag_dict(id="work", name="Office")),
+            Tag.model_validate(make_model_tag_dict(id="tag-2", name="work-related")),
+        ]
+        result = resolver.resolve_filter("work", entities)
+        assert result == ["work"]
+
+
+class TestResolveFilterList:
+    """Multi-value resolution: resolve each independently, return flat deduped list."""
+
+    def test_multi_value_resolve(self, resolver: Resolver) -> None:
+        """Multiple values resolve independently, returning flat deduped ID list."""
+        from omnifocus_operator.models.tag import Tag
+
+        entities = [
+            Tag.model_validate(make_model_tag_dict(id="tag-errand", name="Errand")),
+            Tag.model_validate(make_model_tag_dict(id="some-id", name="Other")),
+        ]
+        result = resolver.resolve_filter_list(["Errand", "some-id"], entities)
+        assert set(result) == {"tag-errand", "some-id"}
+
+    def test_deduplication(self, resolver: Resolver) -> None:
+        """Same entity resolved by different values is deduplicated."""
+        from omnifocus_operator.models.tag import Tag
+
+        entities = [
+            Tag.model_validate(make_model_tag_dict(id="tag-work", name="Work")),
+        ]
+        # "tag-work" matches by ID, "Work" matches by substring -- both resolve to same entity
+        result = resolver.resolve_filter_list(["tag-work", "Work"], entities)
+        assert result == ["tag-work"]
+
+    def test_unresolved_values_excluded(self, resolver: Resolver) -> None:
+        """Values that don't resolve are simply not included."""
+        from omnifocus_operator.models.tag import Tag
+
+        entities = [
+            Tag.model_validate(make_model_tag_dict(id="tag-work", name="Work")),
+        ]
+        result = resolver.resolve_filter_list(["Work", "Nonexistent"], entities)
+        assert result == ["tag-work"]
+
+
+class TestFindUnresolved:
+    """Detect values that produced no matches."""
+
+    def test_find_unresolved(self, resolver: Resolver) -> None:
+        """Returns values that produced no matches."""
+        from omnifocus_operator.models.tag import Tag
+
+        entities = [
+            Tag.model_validate(make_model_tag_dict(id="tag-work", name="Work")),
+        ]
+        result = resolver.find_unresolved(["Work", "Nonexistent", "zzz"], entities)
+        assert result == ["Nonexistent", "zzz"]
+
+    def test_all_resolved(self, resolver: Resolver) -> None:
+        """When all values resolve, returns empty list."""
+        from omnifocus_operator.models.tag import Tag
+
+        entities = [
+            Tag.model_validate(make_model_tag_dict(id="tag-work", name="Work")),
+        ]
+        result = resolver.find_unresolved(["Work"], entities)
+        assert result == []
