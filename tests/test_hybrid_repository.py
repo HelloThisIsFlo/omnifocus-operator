@@ -1867,6 +1867,73 @@ class TestListTasks:
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(
         tasks=[
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t-work-lower",
+                    "containingProjectInfo": "pi-proj-work-lower",
+                }
+            ),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t-work-upper",
+                    "containingProjectInfo": "pi-proj-work-upper",
+                }
+            ),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t-personal",
+                    "containingProjectInfo": "pi-proj-personal",
+                }
+            ),
+        ],
+        projects=[
+            _minimal_project(
+                {
+                    "persistentIdentifier": "proj-work-lower",
+                    "name": "work errands",
+                    "project_info": {
+                        "pk": "pi-proj-work-lower",
+                        "task": "proj-work-lower",
+                        "effectiveStatus": "active",
+                    },
+                }
+            ),
+            _minimal_project(
+                {
+                    "persistentIdentifier": "proj-work-upper",
+                    "name": "WORK Projects",
+                    "project_info": {
+                        "pk": "pi-proj-work-upper",
+                        "task": "proj-work-upper",
+                        "effectiveStatus": "active",
+                    },
+                }
+            ),
+            _minimal_project(
+                {
+                    "persistentIdentifier": "proj-personal",
+                    "name": "Personal",
+                    "project_info": {
+                        "pk": "pi-proj-personal",
+                        "task": "proj-personal",
+                        "effectiveStatus": "active",
+                    },
+                }
+            ),
+        ],
+    )
+    async def test_list_tasks_project_filter_case_insensitive(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """TASK-03: project filter matches multiple projects across capitalizations."""
+        result = await hybrid_repo.list_tasks(ListTasksQuery(project="work"))
+        assert result.total == 2
+        ids = {t.id for t in result.items}
+        assert ids == {"t-work-lower", "t-work-upper"}
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tasks=[
             _minimal_task({"persistentIdentifier": "t1"}),
             _minimal_task({"persistentIdentifier": "t2"}),
         ],
