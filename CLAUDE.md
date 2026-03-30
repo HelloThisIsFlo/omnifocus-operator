@@ -29,6 +29,11 @@ See @README.md for project overview.
 
 ## UAT Guidelines
 
+- **Philosophy**: UAT answers "can I work with this codebase?" — not just "does it work." This means contract consistency, naming clarity, and architectural coherence are all in scope. Specifically:
+  - **Design discussions are first-class UAT outcomes.** When the developer spots an inconsistency (e.g., some filters use names, others use IDs), that's not a tangent — it's the point. Go deep: pros/cons, where it lives architecturally, whether to fix now or capture for later.
+  - **UAT surfaces downstream decisions.** A contract inconsistency in the repo layer affects every layer above it. Catching it during repo UAT prevents locking in the wrong contract for service/server phases. Actively look for decisions that affect downstream phases.
+  - **Every design discussion ends with a concrete outcome**: a todo, a new requirement, a fix now, or a deliberate "this is fine" with reasoning. Never just "noted" and move on.
+  - **Don't rush past concerns.** If the developer wants to discuss, that's the most valuable part. Don't log-and-move-on. Don't defer to "future phases" when the developer says it's relevant now.
 - **Shared rules** (apply to both refactoring and feature UAT):
   - Every step must include exact file path and line range — the developer jumps straight to the code, no searching.
   - Adaptive granularity — split or merge steps based on scope. Small change = fewer steps. Large change = one step per semantic block.
