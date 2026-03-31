@@ -45,7 +45,7 @@ class FolderAvailability(StrEnum):
 
 
 class Schedule(StrEnum):
-    """Repetition schedule type (3-value, derived from scheduleType + catchUp)."""
+    """Repetition schedule type."""
 
     REGULARLY = "regularly"
     REGULARLY_WITH_CATCH_UP = "regularly_with_catch_up"

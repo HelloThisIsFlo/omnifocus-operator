@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 
 from omnifocus_operator.agent_messages.errors import (
     MOVE_EXACTLY_ONE_KEY,
@@ -22,12 +22,25 @@ class TagAction(CommandModel):
     """Tag operations for task editing.
 
     Either ``replace`` (standalone) or ``add``/``remove`` (combinable).
-    Incompatible modes are rejected by the model validator.
+    Incompatible modes are rejected.
     """
 
-    add: Patch[list[str]] = UNSET
-    remove: Patch[list[str]] = UNSET
-    replace: PatchOrNone[list[str]] = UNSET
+    add: Patch[list[str]] = Field(
+        default=UNSET,
+        description="Tag names (case-insensitive) or IDs to add; you can mix both. "
+        "Non-existent names are rejected. Ambiguous names return an error.",
+    )
+    remove: Patch[list[str]] = Field(
+        default=UNSET,
+        description="Tag names (case-insensitive) or IDs to remove; you can mix both. "
+        "Non-existent names are rejected. Ambiguous names return an error.",
+    )
+    replace: PatchOrNone[list[str]] = Field(
+        default=UNSET,
+        description="Replace all tags with this list. Tag names (case-insensitive) or IDs; you can mix both. "
+        "Non-existent names are rejected. Ambiguous names return an error. "
+        "Pass null or [] to clear all tags.",
+    )
 
     @model_validator(mode="after")
     def _validate_incompatible_tag_edit_modes(self) -> TagAction:
@@ -50,7 +63,7 @@ class MoveAction(CommandModel):
     and the reference point:
 
     - ``beginning``/``ending``: ID of the container (project or task),
-      or ``None`` for inbox.
+      or ``null`` for inbox.
     - ``before``/``after``: ID of a sibling task (parent is inferred).
     """
 
