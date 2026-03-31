@@ -229,5 +229,5 @@ Phases execute in numeric order: 34 → 35 → 35.1 → 35.2 → 36 → 37
 | 35.2 Uniform Name/ID Resolution | v1.3 | 2/2 | Complete    | 2026-03-30 |
 | 36. Service Orchestration + Cross-Path Equivalence | v1.3 | 2/2 | Complete    | 2026-03-31 |
 | 36.1 Write Tool Schema Migration | v1.3 | 2/2 | Complete | 2026-03-31 |
-| 36.2 Agent-Facing Documentation Sweep | v1.3 | 3/3 | Complete   | 2026-03-31 |
+| 36.2 Agent-Facing Documentation Sweep | v1.3 | 3/3 | Complete    | 2026-03-31 |
 | 37. Server Registration and Integration | v1.3 | 0/0 | Not started | - |

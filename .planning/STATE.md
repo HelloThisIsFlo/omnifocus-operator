@@ -4,7 +4,7 @@ milestone: v1.3
 milestone_name: Read Tools
 status: executing
 stopped_at: Completed 36.2-03-PLAN.md
-last_updated: "2026-03-31T23:37:54.516Z"
+last_updated: "2026-03-31T23:50:04.316Z"
 last_activity: 2026-03-31
 progress:
   total_phases: 8
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2026-03-29)
 
 ## Current Position
 
-Phase: 36.2 (sweep-agent-facing-schema-descriptions-and-tool-documentation) — EXECUTING
-Plan: 2 of 3
+Phase: 37
+Plan: Not started
 Status: Ready to execute
 Last activity: 2026-03-31
 
