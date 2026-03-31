@@ -167,14 +167,17 @@ Plans:
 - [x] 36-02-PLAN.md — Cross-path equivalence tests for all 5 entity types
 
 ### Phase 37: Server Registration and Integration (was Phase 38)
-**Goal**: Agents can call 5 new MCP tools that return filtered, paginated entity lists with total counts
+**Goal**: Agents can call 5 new MCP tools that return filtered, paginated entity lists with total counts, and search across all entity types
 **Depends on**: Phase 36
-**Requirements**: INFRA-05
+**Requirements**: INFRA-05, SRCH-01, SRCH-02, SRCH-03, SRCH-04
 **Success Criteria** (what must be TRUE):
   1. list_tasks, list_projects, list_tags, list_folders, list_perspectives are registered as MCP tools and callable via Client
   2. Tool descriptions enumerate all valid filter values and include enough context for an LLM to call correctly without external docs
   3. Paginated responses include total_count reflecting total matches (not just the page size)
   4. End-to-end integration tests confirm the full path from MCP tool call through service to repository and back
+  5. list_projects supports `search` filter — case-insensitive substring on name + notes (same implementation as list_tasks)
+  6. list_tags, list_folders, list_perspectives support `search` filter — case-insensitive substring on name (same implementation as list_tasks, name only)
+  7. list_perspectives has `ListPerspectivesQuery` / `ListPerspectivesRepoQuery` query models following the model taxonomy
 **Plans**: TBD
 
 ## Progress
