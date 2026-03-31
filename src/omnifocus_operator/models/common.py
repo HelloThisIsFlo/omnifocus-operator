@@ -1,14 +1,4 @@
-"""Common models and entity base classes.
-
-Standalone nested types:
-- TagRef: tag reference with id and name
-- ParentRef: parent reference with type, id, and name
-- ReviewInterval: from bridge ri() function
-
-Entity base classes (moved here to break circular imports with base.py):
-- OmniFocusEntity: id, name, url, added, modified
-- ActionableEntity: urgency, availability, dates, flags, tags, repetition
-"""
+"""Common models: entity base classes, nested reference types."""
 
 from __future__ import annotations
 
@@ -49,11 +39,7 @@ class ReviewInterval(OmniFocusBaseModel):
 
 
 class OmniFocusEntity(OmniFocusBaseModel):
-    """Entity with identity and universal fields shared by all OmniFocus object types.
-
-    All four entity types (Task, Project, Tag, Folder) have these fields.
-    Perspective does NOT inherit from this class (nullable id, no lifecycle fields).
-    """
+    """Base fields shared by all OmniFocus entity types: id, name, url, timestamps."""
 
     id: str
     name: str
@@ -63,12 +49,7 @@ class OmniFocusEntity(OmniFocusBaseModel):
 
 
 class ActionableEntity(OmniFocusEntity):
-    """Shared fields for Task and Project (status axes, dates, flags, relationships).
-
-    Fields here are present on BOTH tasks and projects.
-    Entity-specific fields (e.g. inInbox for Task, folder for Project) live on
-    the concrete model classes.
-    """
+    """Shared fields for tasks and projects: status, dates, flags, tags, repetition rules."""
 
     # Two-axis status model
     urgency: Urgency
@@ -79,24 +60,50 @@ class ActionableEntity(OmniFocusEntity):
 
     # Flags
     flagged: bool
-    effective_flagged: bool
+    effective_flagged: bool = Field(
+        description="Inherited from parent project if not set directly on this task.",
+    )
 
     # Dates (all optional, timezone-aware)
-    due_date: AwareDatetime | None = None
-    defer_date: AwareDatetime | None = None
-    planned_date: AwareDatetime | None = None
+    due_date: AwareDatetime | None = Field(
+        default=None,
+        description="Deadline with real consequences if missed.",
+    )
+    defer_date: AwareDatetime | None = Field(
+        default=None,
+        description="Task cannot be acted on until this date; hidden from most views until then.",
+    )
+    planned_date: AwareDatetime | None = Field(
+        default=None,
+        description="When the user intends to work on this. No urgency signal, no penalty for missing it.",
+    )
     completion_date: AwareDatetime | None = None
     drop_date: AwareDatetime | None = None
-    effective_due_date: AwareDatetime | None = None
-    effective_defer_date: AwareDatetime | None = None
-    effective_planned_date: AwareDatetime | None = None
+    effective_due_date: AwareDatetime | None = Field(
+        default=None,
+        description="Inherited from parent project or task if not set directly on this entity.",
+    )
+    effective_defer_date: AwareDatetime | None = Field(
+        default=None,
+        description="Inherited from parent project or task if not set directly on this entity.",
+    )
+    effective_planned_date: AwareDatetime | None = Field(
+        default=None,
+        description="Inherited from parent project or task if not set directly on this entity.",
+    )
     # effective_completion_date is only present on Task, not Project
-    effective_drop_date: AwareDatetime | None = None
+    effective_drop_date: AwareDatetime | None = Field(
+        default=None,
+        description="Inherited from parent project or task if not set directly on this entity.",
+    )
 
     # Metadata
     estimated_minutes: float | None = None
     has_children: bool
 
     # Relationships
-    tags: list[TagRef] = Field(default_factory=list)  # Tag references (id + name objects)
+    tags: list[TagRef] = Field(
+        default_factory=list,
+        description="Tags applied to this entity, each with id and name.",
+    )
     repetition_rule: RepetitionRule | None = None

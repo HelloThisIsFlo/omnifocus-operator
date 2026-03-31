@@ -178,11 +178,11 @@ Plans:
   4. Tag resolution, timezone requirements, and partial repetitionRule edge case are documented at both tool and field level where applicable
   5. Read tool descriptions include camelCase note and response shape hints; read-side model fields failing the fluency test have Field(description=...)
   6. test_output_schema.py passes after all changes
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [x] 36.2-01-PLAN.md — Write-side contract docstring cleanup + Field(description=...) on dates, tags
-- [ ] 36.2-02-PLAN.md — Read-side model docstring cleanup + Field(description=...) on effective_* fields
+- [x] 36.2-02-PLAN.md — Read-side model docstring cleanup + Field(description=...) on effective_* fields
 - [ ] 36.2-03-PLAN.md — Server tool docstrings: approved verbatim write tools + read tool response hints
 
 ### Phase 36.1: Migrate write tools to typed params with validation middleware (INSERTED)
