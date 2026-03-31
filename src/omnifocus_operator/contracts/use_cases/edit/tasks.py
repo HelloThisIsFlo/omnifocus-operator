@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import AwareDatetime, field_validator
+from pydantic import AwareDatetime, Field, field_validator
 
 from omnifocus_operator.agent_messages.errors import LIFECYCLE_INVALID_VALUE
 from omnifocus_operator.contracts.base import (
@@ -56,9 +56,22 @@ class EditTaskCommand(CommandModel):
 
     # Clearable fields (None = clear the value)
     note: PatchOrClear[str] = UNSET
-    due_date: PatchOrClear[AwareDatetime] = UNSET
-    defer_date: PatchOrClear[AwareDatetime] = UNSET
-    planned_date: PatchOrClear[AwareDatetime] = UNSET
+    due_date: PatchOrClear[AwareDatetime] = Field(
+        default=UNSET,
+        description="Deadline with real consequences if missed. Not for intentions -- use plannedDate instead. "
+        "Requires timezone (ISO 8601 with offset or Z); naive datetimes are rejected.",
+    )
+    defer_date: PatchOrClear[AwareDatetime] = Field(
+        default=UNSET,
+        description="Task cannot be acted on until this date. Hidden from most views until then. "
+        "Not for 'I don't want to work on it yet' -- use plannedDate for that. "
+        "Requires timezone (ISO 8601 with offset or Z); naive datetimes are rejected.",
+    )
+    planned_date: PatchOrClear[AwareDatetime] = Field(
+        default=UNSET,
+        description="When you intend to work on this task. No urgency signal, no visibility change, no penalty for missing it. "
+        "Requires timezone (ISO 8601 with offset or Z); naive datetimes are rejected.",
+    )
     estimated_minutes: PatchOrClear[float] = UNSET
 
     # Repetition rule (nested spec with own patch semantics; null = clear, UNSET = no change)
