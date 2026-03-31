@@ -1,11 +1,4 @@
-"""Create-task contracts: command, repo payload, repo result, result.
-
-Defines the full typed contract for the create-task use case across
-both the agent boundary (Command/Result) and the repository boundary
-(RepoPayload/RepoResult).
-
-Relocated from contracts/use_cases/add_task.py to per-use-case package.
-"""
+"""Create-task contracts: command, result, repo payload."""
 
 from __future__ import annotations
 
@@ -20,8 +13,6 @@ from omnifocus_operator.models.base import OmniFocusBaseModel
 
 
 class AddTaskCommand(CommandModel):
-    """Agent instruction to create a task."""
-
     name: str = Field(min_length=1)
 
     @field_validator("name", mode="before")

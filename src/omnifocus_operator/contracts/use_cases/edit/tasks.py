@@ -1,11 +1,4 @@
-"""Edit-task contracts: command, actions, repo payload, repo result, result.
-
-Defines the full typed contract for the edit-task use case across
-both the agent boundary (Command/Result) and the repository boundary
-(RepoPayload/RepoResult).
-
-Relocated from contracts/use_cases/edit_task.py to per-use-case package.
-"""
+"""Edit-task contracts: command, actions, result, repo payload."""
 
 from __future__ import annotations
 
@@ -44,8 +37,6 @@ class EditTaskActions(CommandModel):
 
 
 class EditTaskCommand(CommandModel):
-    """Agent instruction to edit a task (patch semantics)."""
-
     # Required -- which task to edit
     id: str
 

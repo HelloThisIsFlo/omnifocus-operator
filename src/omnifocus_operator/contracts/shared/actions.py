@@ -22,7 +22,7 @@ class TagAction(CommandModel):
     """Tag operations for task editing.
 
     Either ``replace`` (standalone) or ``add``/``remove`` (combinable).
-    Incompatible modes are rejected by the model validator.
+    Incompatible modes are rejected.
     """
 
     add: Patch[list[str]] = UNSET
@@ -50,7 +50,7 @@ class MoveAction(CommandModel):
     and the reference point:
 
     - ``beginning``/``ending``: ID of the container (project or task),
-      or ``None`` for inbox.
+      or ``null`` for inbox.
     - ``before``/``after``: ID of a sibling task (parent is inferred).
     """
 

@@ -1,11 +1,4 @@
-"""Repetition rule write contracts: add spec, edit spec, repo payload.
-
-Naming: Noun-first (RepetitionRuleAddSpec, not AddRepetitionRuleSpec).
-Nested specs are about the THING (RepetitionRule), not the ACTION.
-Groups them in imports/autocomplete. Top-level commands stay verb-first.
-
-Defines the typed contract for repetition rule creation and editing.
-"""
+"""Repetition rule write contracts: add and edit specs."""
 
 from __future__ import annotations
 
@@ -58,11 +51,7 @@ def _validate_end_condition(v: Any) -> Any:
 
 
 class FrequencyAddSpec(CommandModel):
-    """All-required frequency spec for creating a repetition rule.
-
-    Same field shapes as Frequency, with extra="forbid" from CommandModel.
-    Validators delegate to shared functions in models.repetition_rule.
-    """
+    """Frequency specification for creating a repetition rule."""
 
     type: FrequencyType
     interval: int = Field(default=1)
@@ -102,12 +91,7 @@ class FrequencyAddSpec(CommandModel):
 
 
 class FrequencyEditSpec(CommandModel):
-    """Patch-semantics frequency spec for editing a repetition rule.
-
-    Single-field boundary checks (interval >= 1) are validated here.
-    Cross-type validation fires when the merged Frequency is constructed
-    in the service layer.
-    """
+    """Patch individual frequency sub-fields; omit fields to leave unchanged."""
 
     type: Patch[FrequencyType] = UNSET
     interval: Patch[int] = UNSET
@@ -141,12 +125,7 @@ class RepetitionRuleAddSpec(CommandModel):
 
 
 class RepetitionRuleEditSpec(CommandModel):
-    """Patch-semantics spec for editing a repetition rule.
-
-    All fields default to UNSET (no change). Root-level fields (schedule,
-    basedOn, end) are independently patchable. Frequency uses FrequencyEditSpec
-    with Patch/PatchOrClear fields.
-    """
+    """Patch repetition rule fields; omit fields to leave unchanged, set to null to clear."""
 
     frequency: Patch[FrequencyEditSpec] = UNSET
     schedule: Patch[Schedule] = UNSET
