@@ -161,6 +161,9 @@ def build_list_tasks_sql(query: ListTasksRepoQuery) -> tuple[SqlQuery, SqlQuery]
 
     # -- Data query --
     data_sql = _TASKS_BASE + where_suffix
+
+    # Deterministic ordering for pagination (ORDER BY before LIMIT/OFFSET)
+    data_sql += " ORDER BY t.persistentIdentifier"
     data_params = list(params)
 
     if query.limit is not None:
@@ -215,6 +218,9 @@ def build_list_projects_sql(
 
     # -- Data query --
     data_sql = _PROJECTS_BASE + where_clause
+
+    # Deterministic ordering for pagination (ORDER BY before LIMIT/OFFSET)
+    data_sql += " ORDER BY t.persistentIdentifier"
     data_params = list(params)
 
     if query.limit is not None:

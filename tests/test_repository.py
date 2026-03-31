@@ -16,10 +16,12 @@ from pydantic import ValidationError
 
 from omnifocus_operator.bridge.errors import BridgeError
 from omnifocus_operator.bridge.mtime import FileMtimeSource
+from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsRepoQuery
+from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
 from omnifocus_operator.repository import BridgeRepository, Repository
 from tests.doubles import InMemoryBridge
 
-from .conftest import make_snapshot_dict
+from .conftest import make_project_dict, make_snapshot_dict, make_task_dict
 
 # ---------------------------------------------------------------------------
 # Test doubles
@@ -374,3 +376,95 @@ class TestBridgeRepositoryProtocol:
         repo = BridgeRepository(bridge=bridge, mtime_source=mtime)
 
         assert isinstance(repo, Repository)
+
+
+# ---------------------------------------------------------------------------
+# Deterministic ordering for pagination
+# ---------------------------------------------------------------------------
+
+
+class TestDeterministicOrdering:
+    """Pagination returns items sorted by ID for deterministic page boundaries."""
+
+    @pytest.fixture
+    def unordered_task_repo(self) -> BridgeRepository:
+        """Repo with tasks inserted in non-alphabetical ID order."""
+        data = make_snapshot_dict(
+            tasks=[
+                make_task_dict(id="task-cherry", name="Cherry"),
+                make_task_dict(id="task-apple", name="Apple"),
+                make_task_dict(id="task-banana", name="Banana"),
+                make_task_dict(id="task-elderberry", name="Elderberry"),
+                make_task_dict(id="task-date", name="Date"),
+            ],
+            projects=[],
+        )
+        return BridgeRepository(
+            bridge=InMemoryBridge(data=data),
+            mtime_source=FakeMtimeSource(mtime_ns=1),
+        )
+
+    @pytest.fixture
+    def unordered_project_repo(self) -> BridgeRepository:
+        """Repo with projects inserted in non-alphabetical ID order."""
+        data = make_snapshot_dict(
+            tasks=[],
+            projects=[
+                make_project_dict(id="proj-zebra", name="Zebra"),
+                make_project_dict(id="proj-alpha", name="Alpha"),
+                make_project_dict(id="proj-mango", name="Mango"),
+                make_project_dict(id="proj-beta", name="Beta"),
+                make_project_dict(id="proj-gamma", name="Gamma"),
+            ],
+        )
+        return BridgeRepository(
+            bridge=InMemoryBridge(data=data),
+            mtime_source=FakeMtimeSource(mtime_ns=1),
+        )
+
+    async def test_list_tasks_paginated_sorted_by_id(
+        self, unordered_task_repo: BridgeRepository
+    ) -> None:
+        """Tasks are sorted by ID so offset/limit produces deterministic pages."""
+        page1 = await unordered_task_repo.list_tasks(ListTasksRepoQuery(limit=3))
+        page2 = await unordered_task_repo.list_tasks(ListTasksRepoQuery(limit=3, offset=3))
+
+        page1_ids = [t.id for t in page1.items]
+        page2_ids = [t.id for t in page2.items]
+
+        assert page1_ids == ["task-apple", "task-banana", "task-cherry"]
+        assert page2_ids == ["task-date", "task-elderberry"]
+        assert page1.has_more is True
+        assert page2.has_more is False
+
+    async def test_list_projects_paginated_sorted_by_id(
+        self, unordered_project_repo: BridgeRepository
+    ) -> None:
+        """Projects are sorted by ID so offset/limit produces deterministic pages."""
+        page1 = await unordered_project_repo.list_projects(ListProjectsRepoQuery(limit=3))
+        page2 = await unordered_project_repo.list_projects(ListProjectsRepoQuery(limit=3, offset=3))
+
+        page1_ids = [p.id for p in page1.items]
+        page2_ids = [p.id for p in page2.items]
+
+        assert page1_ids == ["proj-alpha", "proj-beta", "proj-gamma"]
+        assert page2_ids == ["proj-mango", "proj-zebra"]
+        assert page1.has_more is True
+        assert page2.has_more is False
+
+    async def test_list_tasks_consecutive_pages_no_overlap(
+        self, unordered_task_repo: BridgeRepository
+    ) -> None:
+        """Consecutive pages cover all items exactly once with no overlap."""
+        all_ids: list[str] = []
+        offset = 0
+        while True:
+            page = await unordered_task_repo.list_tasks(ListTasksRepoQuery(limit=2, offset=offset))
+            all_ids.extend(t.id for t in page.items)
+            if not page.has_more:
+                break
+            offset += len(page.items)
+
+        assert all_ids == sorted(all_ids)
+        assert len(all_ids) == 5
+        assert len(set(all_ids)) == 5  # no duplicates

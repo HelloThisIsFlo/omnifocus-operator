@@ -218,6 +218,15 @@ class TestTasksLimitOffset:
         assert "LIMIT" not in count_q.sql
         assert "OFFSET" not in count_q.sql
 
+    def test_order_by_before_limit(self):
+        """ORDER BY must appear before LIMIT for deterministic pagination."""
+        query = ListTasksRepoQuery(limit=10)
+        data_q, _ = build_list_tasks_sql(query)
+        assert "ORDER BY t.persistentIdentifier" in data_q.sql
+        order_pos = data_q.sql.index("ORDER BY")
+        limit_pos = data_q.sql.index("LIMIT")
+        assert order_pos < limit_pos
+
     def test_limit_zero_produces_limit_zero(self):
         """limit=0 means count-only; data query should have LIMIT 0."""
         query = ListTasksRepoQuery(limit=0)
@@ -230,6 +239,13 @@ class TestTasksLimitOffset:
         query = ListTasksRepoQuery(offset=5)
         data_q, _ = build_list_tasks_sql(query)
         assert "OFFSET" not in data_q.sql
+
+    def test_order_by_always_present(self):
+        """ORDER BY is always present on data queries for deterministic results."""
+        query = ListTasksRepoQuery()
+        data_q, count_q = build_list_tasks_sql(query)
+        assert "ORDER BY t.persistentIdentifier" in data_q.sql
+        assert "ORDER BY" not in count_q.sql
 
 
 class TestTasksCombinedFilters:
@@ -409,6 +425,22 @@ class TestProjectsLimitOffset:
         assert "LIMIT ?" in data_q.sql
         assert "OFFSET ?" in data_q.sql
         assert "LIMIT" not in count_q.sql
+
+    def test_order_by_before_limit(self):
+        """ORDER BY must appear before LIMIT for deterministic pagination."""
+        query = ListProjectsRepoQuery(limit=20)
+        data_q, _ = build_list_projects_sql(query)
+        assert "ORDER BY t.persistentIdentifier" in data_q.sql
+        order_pos = data_q.sql.index("ORDER BY")
+        limit_pos = data_q.sql.index("LIMIT")
+        assert order_pos < limit_pos
+
+    def test_order_by_always_present(self):
+        """ORDER BY is always present on data queries for deterministic results."""
+        query = ListProjectsRepoQuery()
+        data_q, count_q = build_list_projects_sql(query)
+        assert "ORDER BY t.persistentIdentifier" in data_q.sql
+        assert "ORDER BY" not in count_q.sql
 
 
 class TestProjectsCombinedFilters:

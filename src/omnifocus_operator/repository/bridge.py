@@ -165,6 +165,10 @@ class BridgeRepository(BridgeWriteMixin, Repository):
             ]
 
         total = len(items)
+
+        # Deterministic ordering for pagination
+        items.sort(key=lambda t: t.id)
+
         offset = query.offset or 0
         if offset:
             items = items[offset:]
@@ -194,6 +198,10 @@ class BridgeRepository(BridgeWriteMixin, Repository):
             ]
 
         total = len(items)
+
+        # Deterministic ordering for pagination
+        items.sort(key=lambda p: p.id)
+
         offset = query.offset or 0
         if offset:
             items = items[offset:]

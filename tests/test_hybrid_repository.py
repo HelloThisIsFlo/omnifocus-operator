@@ -2256,6 +2256,85 @@ class TestListProjects:
         assert result.has_more is True
 
 
+class TestDeterministicOrdering:
+    """Pagination returns items sorted by persistentIdentifier for deterministic pages."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task({"persistentIdentifier": "t-cherry"}),
+            _minimal_task({"persistentIdentifier": "t-apple"}),
+            _minimal_task({"persistentIdentifier": "t-banana"}),
+            _minimal_task({"persistentIdentifier": "t-elderberry"}),
+            _minimal_task({"persistentIdentifier": "t-date"}),
+        ],
+    )
+    async def test_list_tasks_paginated_sorted_by_id(self, hybrid_repo: HybridRepository) -> None:
+        """Tasks are sorted by persistentIdentifier so offset/limit is deterministic."""
+        page1 = await hybrid_repo.list_tasks(ListTasksRepoQuery(limit=3))
+        page2 = await hybrid_repo.list_tasks(ListTasksRepoQuery(limit=3, offset=3))
+
+        page1_ids = [t.id for t in page1.items]
+        page2_ids = [t.id for t in page2.items]
+
+        assert page1_ids == ["t-apple", "t-banana", "t-cherry"]
+        assert page2_ids == ["t-date", "t-elderberry"]
+        assert page1.has_more is True
+        assert page2.has_more is False
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        projects=[
+            _minimal_project({"persistentIdentifier": "p-zebra"}),
+            _minimal_project({"persistentIdentifier": "p-alpha"}),
+            _minimal_project({"persistentIdentifier": "p-mango"}),
+            _minimal_project({"persistentIdentifier": "p-beta"}),
+            _minimal_project({"persistentIdentifier": "p-gamma"}),
+        ],
+    )
+    async def test_list_projects_paginated_sorted_by_id(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """Projects are sorted by persistentIdentifier so offset/limit is deterministic."""
+        page1 = await hybrid_repo.list_projects(ListProjectsRepoQuery(limit=3))
+        page2 = await hybrid_repo.list_projects(ListProjectsRepoQuery(limit=3, offset=3))
+
+        page1_ids = [p.id for p in page1.items]
+        page2_ids = [p.id for p in page2.items]
+
+        assert page1_ids == ["p-alpha", "p-beta", "p-gamma"]
+        assert page2_ids == ["p-mango", "p-zebra"]
+        assert page1.has_more is True
+        assert page2.has_more is False
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task({"persistentIdentifier": "t-cherry"}),
+            _minimal_task({"persistentIdentifier": "t-apple"}),
+            _minimal_task({"persistentIdentifier": "t-banana"}),
+            _minimal_task({"persistentIdentifier": "t-elderberry"}),
+            _minimal_task({"persistentIdentifier": "t-date"}),
+        ],
+    )
+    async def test_list_tasks_consecutive_pages_no_overlap(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """Consecutive pages cover all items exactly once with no overlap."""
+        all_ids: list[str] = []
+        offset = 0
+        while True:
+            page = await hybrid_repo.list_tasks(ListTasksRepoQuery(limit=2, offset=offset))
+            all_ids.extend(t.id for t in page.items)
+            if not page.has_more:
+                break
+            offset += len(page.items)
+
+        assert all_ids == sorted(all_ids)
+        assert len(all_ids) == 5
+        assert len(set(all_ids)) == 5  # no duplicates
+
+
 class TestListPerformance:
     """Performance comparison: filtered query vs full snapshot."""
 
