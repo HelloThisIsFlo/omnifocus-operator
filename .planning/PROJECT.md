@@ -22,7 +22,7 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 ## Current State
 
 **Shipped:** v1.2.3 (2026-03-29) — Repetition Rule Write Support
-**Next:** v1.3 Read Tools — Phase 35.2 complete (uniform name/ID resolution at service boundary)
+**Next:** v1.3 Read Tools — Phase 36 complete (service orchestration + cross-path equivalence)
 
 ## Requirements
 
