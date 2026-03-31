@@ -78,15 +78,11 @@ exclude = [".research", ".claude"]
 select = ["E", "F", "I", "N", "UP", "B", "SIM", "TCH", "RUF", "PLC0415"]
 
 [tool.ruff.lint.per-file-ignores]
-# Intentional late imports: deferred startup, per-request service access, graceful degradation
+# Intentional late imports: deferred so monkeypatch can intercept before binding
 "src/omnifocus_operator/server.py" = ["PLC0415"]
-# Intentional late imports: lazy factory pattern
 "src/omnifocus_operator/repository/factory.py" = ["PLC0415"]
-# Intentional late import: entry point deferral
-"src/omnifocus_operator/__main__.py" = ["PLC0415"]
-# Intentional late imports: smoke tests verifying modules are importable
+# Intentional late imports: the import IS the test (verifying importability / broken paths)
 "tests/test_smoke.py" = ["PLC0415"]
-# Intentional late imports: negative import tests verifying old paths are removed
 "tests/test_bridge.py" = ["PLC0415"]
 # Intentional late imports: circular dependency breakers (contracts <-> service.validate)
 "src/omnifocus_operator/contracts/use_cases/list/projects.py" = ["PLC0415"]

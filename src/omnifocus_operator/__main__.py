@@ -7,6 +7,8 @@ import os
 import sys
 from logging.handlers import RotatingFileHandler
 
+from omnifocus_operator.server import create_server
+
 
 def _configure_logging() -> None:
     """Configure root omnifocus_operator logger with dual handlers.
@@ -48,9 +50,6 @@ def _configure_logging() -> None:
 def main() -> None:
     """Run the OmniFocus Operator MCP server."""
     _configure_logging()
-
-    from omnifocus_operator.server import create_server
-
     server = create_server()
     server.run(transport="stdio")
 
