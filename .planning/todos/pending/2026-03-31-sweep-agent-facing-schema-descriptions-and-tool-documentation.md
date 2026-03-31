@@ -17,11 +17,11 @@ During 36.1 UAT, several documentation gaps surfaced that affect agent experienc
 3. **Tag name vs ID resolution undocumented** — Tool description says "tag names or tag IDs" but doesn't state resolution priority. Document: ID match takes priority over name match.
 4. **Date timezone behavior undocumented** — Tool descriptions say "ISO 8601" but don't specify whether naive datetimes are accepted or how they're interpreted.
 
-5. **Read tool descriptions need review** — get_all, get_task, get_project, get_tag tool docstrings should also be audited for agent-usefulness. The sweep covers all tools, not just write tools.
+5. **Tool descriptions written pre-schema** — All tool docstrings were authored before the inputSchema was visible to agents. Now that agents see the schema (field names, types, defaults, constraints), much of the prose may be redundant. The sweep should eliminate duplication and focus descriptions on what the schema *can't* express: behavioral nuances, edge cases, resolution strategies.
 
 ## Solution
 
 - Full sweep of all model docstrings that appear in inputSchema — rewrite to be agent-facing or remove
-- Review and update tool descriptions for ALL tools (read and write) — not just the ones with known gaps
-- Update tool descriptions for repetitionRule, tags, and date fields
+- Review ALL tool descriptions (read and write) against their schemas — cut what the schema already communicates, add what it can't
+- Fix the specific gaps: repetitionRule creation vs edit, tag resolution priority, date timezone behavior
 - Scope: models in `models/` and `contracts/` that appear in tool schemas, plus tool docstrings in `server.py`
