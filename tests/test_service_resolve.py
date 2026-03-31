@@ -9,6 +9,8 @@ from __future__ import annotations
 import pytest
 
 from omnifocus_operator.contracts.base import UNSET
+from omnifocus_operator.models.project import Project
+from omnifocus_operator.models.tag import Tag
 from omnifocus_operator.repository import BridgeRepository
 from omnifocus_operator.service.resolve import Resolver
 from omnifocus_operator.service.validate import validate_task_name, validate_task_name_if_set
@@ -232,7 +234,6 @@ class TestResolveFilter:
 
     def test_id_match(self, resolver: Resolver) -> None:
         """Value matching an entity's .id exactly returns [that_id]."""
-        from omnifocus_operator.models.project import Project
 
         entities = [
             Project.model_validate(make_model_project_dict(id="proj-1", name="Work Projects")),
@@ -242,7 +243,6 @@ class TestResolveFilter:
 
     def test_substring_match(self, resolver: Resolver) -> None:
         """Substring of name matches all entities containing it."""
-        from omnifocus_operator.models.project import Project
 
         entities = [
             Project.model_validate(make_model_project_dict(id="p1", name="Work Projects")),
@@ -254,7 +254,6 @@ class TestResolveFilter:
 
     def test_case_insensitive(self, resolver: Resolver) -> None:
         """Substring match is case-insensitive."""
-        from omnifocus_operator.models.project import Project
 
         entities = [
             Project.model_validate(make_model_project_dict(id="p1", name="Work Projects")),
@@ -264,7 +263,6 @@ class TestResolveFilter:
 
     def test_substring_match_with_emoji_prefix(self, resolver: Resolver) -> None:
         """Substring match works when entity names contain emoji."""
-        from omnifocus_operator.models.project import Project
 
         entities = [
             Project.model_validate(make_model_project_dict(id="p1", name="🏠 Home Renovation")),
@@ -275,7 +273,6 @@ class TestResolveFilter:
 
     def test_no_match(self, resolver: Resolver) -> None:
         """No matching entity returns empty list."""
-        from omnifocus_operator.models.project import Project
 
         entities = [
             Project.model_validate(make_model_project_dict(id="p1", name="Work")),
@@ -285,7 +282,6 @@ class TestResolveFilter:
 
     def test_id_takes_priority_over_substring(self, resolver: Resolver) -> None:
         """If value is both an ID and a substring of another name, returns only the ID match."""
-        from omnifocus_operator.models.tag import Tag
 
         entities = [
             Tag.model_validate(make_model_tag_dict(id="work", name="Office")),
@@ -300,7 +296,6 @@ class TestResolveFilterList:
 
     def test_multi_value_resolve(self, resolver: Resolver) -> None:
         """Multiple values resolve independently, returning flat deduped ID list."""
-        from omnifocus_operator.models.tag import Tag
 
         entities = [
             Tag.model_validate(make_model_tag_dict(id="tag-errand", name="Errand")),
@@ -311,7 +306,6 @@ class TestResolveFilterList:
 
     def test_deduplication(self, resolver: Resolver) -> None:
         """Same entity resolved by different values is deduplicated."""
-        from omnifocus_operator.models.tag import Tag
 
         entities = [
             Tag.model_validate(make_model_tag_dict(id="tag-work", name="Work")),
@@ -322,7 +316,6 @@ class TestResolveFilterList:
 
     def test_unresolved_values_excluded(self, resolver: Resolver) -> None:
         """Values that don't resolve are simply not included."""
-        from omnifocus_operator.models.tag import Tag
 
         entities = [
             Tag.model_validate(make_model_tag_dict(id="tag-work", name="Work")),
@@ -336,7 +329,6 @@ class TestFindUnresolved:
 
     def test_find_unresolved(self, resolver: Resolver) -> None:
         """Returns values that produced no matches."""
-        from omnifocus_operator.models.tag import Tag
 
         entities = [
             Tag.model_validate(make_model_tag_dict(id="tag-work", name="Work")),
@@ -346,7 +338,6 @@ class TestFindUnresolved:
 
     def test_all_resolved(self, resolver: Resolver) -> None:
         """When all values resolve, returns empty list."""
-        from omnifocus_operator.models.tag import Tag
 
         entities = [
             Tag.model_validate(make_model_tag_dict(id="tag-work", name="Work")),

@@ -148,8 +148,10 @@ class BridgeRepository(BridgeWriteMixin, Repository):
             items = [t for t in items if any(tag.id in tid_set for tag in t.tags)]
         if query.estimated_minutes_max is not None:
             items = [
-                t for t in items
-                if t.estimated_minutes is not None and t.estimated_minutes <= query.estimated_minutes_max
+                t
+                for t in items
+                if t.estimated_minutes is not None
+                and t.estimated_minutes <= query.estimated_minutes_max
             ]
         if query.availability:
             avail_set = set(query.availability)
@@ -157,7 +159,8 @@ class BridgeRepository(BridgeWriteMixin, Repository):
         if query.search is not None:
             lower_search = query.search.lower()
             items = [
-                t for t in items
+                t
+                for t in items
                 if lower_search in t.name.lower() or (t.note and lower_search in t.note.lower())
             ]
 

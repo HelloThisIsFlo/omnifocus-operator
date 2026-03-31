@@ -32,6 +32,7 @@ class _HasIdAndName(Protocol):
     @property
     def name(self) -> str: ...
 
+
 logger = logging.getLogger(__name__)
 
 __all__ = ["Resolver"]
@@ -171,8 +172,6 @@ class Resolver:
                     result.append(eid)
         return result
 
-    def find_unresolved(
-        self, values: list[str], entities: Sequence[_HasIdAndName]
-    ) -> list[str]:
+    def find_unresolved(self, values: list[str], entities: Sequence[_HasIdAndName]) -> list[str]:
         """Return values that did not resolve to any entity ID."""
         return [v for v in values if not self.resolve_filter(v, entities)]

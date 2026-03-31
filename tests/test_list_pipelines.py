@@ -12,13 +12,14 @@ Uses InMemoryBridge (per SAFE-01) via the conftest fixture chain.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
 from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersQuery
 from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsQuery
 from omnifocus_operator.contracts.use_cases.list.tags import ListTagsQuery
 from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksQuery
-from omnifocus_operator.service import OperatorService
 
 from .conftest import (
     make_folder_dict,
@@ -27,6 +28,9 @@ from .conftest import (
     make_tag_dict,
     make_task_dict,
 )
+
+if TYPE_CHECKING:
+    from omnifocus_operator.service import OperatorService
 
 
 # ---------------------------------------------------------------------------

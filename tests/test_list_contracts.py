@@ -332,7 +332,7 @@ class TestRepoQueryFieldParity:
     """
 
     def test_tasks_shared_fields_match(self) -> None:
-        """Non-filter fields (pagination, availability, etc.) must match between Query and RepoQuery."""
+        """Non-filter fields (pagination, availability, etc.) must match."""
         query_fields = set(ListTasksQuery.model_fields.keys())
         repo_fields = set(ListTasksRepoQuery.model_fields.keys())
         # Fields that diverged: Query has project/tags, RepoQuery has project_ids/tag_ids

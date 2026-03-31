@@ -1954,7 +1954,9 @@ class TestListTasks:
         assert result_one.items[0].id == "t1"
 
         # Multiple tags (OR logic)
-        result_both = await hybrid_repo.list_tasks(ListTasksRepoQuery(tag_ids=["tag-001", "tag-002"]))
+        result_both = await hybrid_repo.list_tasks(
+            ListTasksRepoQuery(tag_ids=["tag-001", "tag-002"])
+        )
         assert result_both.total == 2
 
     @pytest.mark.asyncio
@@ -2190,7 +2192,9 @@ class TestListProjects:
     )
     async def test_list_projects_folder_filter(self, hybrid_repo: HybridRepository) -> None:
         """PROJ-04: folder filter matches by folder ID."""
-        result = await hybrid_repo.list_projects(ListProjectsRepoQuery(folder_ids=["fold-personal"]))
+        result = await hybrid_repo.list_projects(
+            ListProjectsRepoQuery(folder_ids=["fold-personal"])
+        )
         assert result.total == 1
         assert result.items[0].id == "p-in-folder"
 
