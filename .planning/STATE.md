@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Read Tools
 status: verifying
-stopped_at: Completed 36.1-02-PLAN.md
-last_updated: "2026-03-31T20:52:37.338Z"
+stopped_at: Phase 36.2 context gathered
+last_updated: "2026-03-31T22:42:44.645Z"
 last_activity: 2026-03-31
 progress:
-  total_phases: 7
+  total_phases: 8
   completed_phases: 6
   total_plans: 12
   completed_plans: 12
@@ -80,6 +80,7 @@ Recent decisions affecting current work:
 - Phase 35.2 inserted after Phase 35: Uniform name-vs-ID resolution at service boundary for all list filters (URGENT)
 - Old Phases 36 (In-Memory Fallback) + 37 (Service Orchestration) merged into Phase 36; old Phase 38 renumbered to 37
 - Phase 36.1 inserted after Phase 36: Migrate write tools to typed params with validation middleware (URGENT)
+- Phase 36.2 inserted after Phase 36: Sweep agent-facing schema descriptions and tool documentation (URGENT)
 
 ### Pending Todos
 
@@ -109,5 +110,5 @@ None yet.
 ## Session Continuity
 
 Last activity: 2026-03-31 - Completed quick task 260331-v9q: Tighten schema field constraints
-Stopped at: Completed 36.1-02-PLAN.md
-Resume file: None
+Stopped at: Phase 36.2 context gathered
+Resume file: .planning/phases/36.2-sweep-agent-facing-schema-descriptions-and-tool-documentation/36.2-CONTEXT.md
