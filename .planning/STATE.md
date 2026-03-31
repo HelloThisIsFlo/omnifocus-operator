@@ -84,6 +84,7 @@ Carried forward:
 5. Remove misleading "single runtime dependency" messaging from README + landing page
 6. Migrate write tools to typed params with validation middleware (Approach 1 from fastmcp-middleware-validation research)
 7. Reorganize test suite into unit/integration/golden-master folders
+8. Add search tool for projects symmetric with task search (v1.3+)
 
 ### Blockers/Concerns
 
