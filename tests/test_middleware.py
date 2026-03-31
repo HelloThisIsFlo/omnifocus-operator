@@ -24,10 +24,10 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from pydantic import BaseModel, ConfigDict
+from fastmcp.exceptions import ToolError
+from pydantic import BaseModel, ConfigDict, ValidationError
 
 from omnifocus_operator.__main__ import _configure_logging
-from omnifocus_operator.agent_messages.errors import UNKNOWN_FIELD
 from omnifocus_operator.middleware import (
     ToolLoggingMiddleware,
     _clean_loc,
@@ -247,8 +247,6 @@ class _TestListWrapper(BaseModel):
 
 def _capture_validation_error(model: type[BaseModel], data: dict[str, Any]) -> Any:
     """Validate data against model, return the ValidationError."""
-    from pydantic import ValidationError
-
     try:
         model.model_validate(data)
     except ValidationError as exc:
@@ -328,9 +326,7 @@ class TestFormatValidationErrors:
 
     def test_single_error_produces_task_1_prefix(self) -> None:
         """WRIT-04: error at items.0 produces 'Task 1:' prefix."""
-        exc = _capture_validation_error(
-            _TestListWrapper, {"items": [{"bogus": "x"}]}
-        )
+        exc = _capture_validation_error(_TestListWrapper, {"items": [{"bogus": "x"}]})
         messages = _format_validation_errors(exc)
         task_1_msgs = [m for m in messages if m.startswith("Task 1:")]
         assert len(task_1_msgs) >= 1, f"Expected 'Task 1:' prefix, got: {messages}"
@@ -354,9 +350,7 @@ class TestFormatValidationErrors:
 
     def test_extra_forbidden_produces_unknown_field(self) -> None:
         """extra_forbidden error produces 'Unknown field' message."""
-        exc = _capture_validation_error(
-            _TestListWrapper, {"items": [{"bogus": "x"}]}
-        )
+        exc = _capture_validation_error(_TestListWrapper, {"items": [{"bogus": "x"}]})
         messages = _format_validation_errors(exc)
         unknown_msgs = [m for m in messages if "Unknown field" in m]
         assert len(unknown_msgs) >= 1, f"Expected 'Unknown field' message, got: {messages}"
@@ -377,14 +371,15 @@ class TestUnsetFiltering:
         exc = _capture_validation_error(_TestModel, {"bogus": "x"})
         # Monkey-patch the errors to inject an _Unset ctx entry
         original_errors = exc.errors()
-        patched = original_errors + [
+        patched = [
+            *original_errors,
             {
                 "type": "is_instance_of",
                 "loc": ("items", 0, "name"),
                 "msg": "Input should be an instance of _Unset",
                 "input": "test",
                 "ctx": {"class": "_Unset"},
-            }
+            },
         ]
         # Replace the errors method
         exc.errors = lambda: patched  # type: ignore[assignment]
@@ -402,14 +397,15 @@ class TestUnsetFiltering:
         exc = _capture_validation_error(_TestModel, {"bogus": "x"})
         original_errors = exc.errors()
         # Add an error with _Unset in msg but no ctx.class
-        patched = original_errors + [
+        patched = [
+            *original_errors,
             {
                 "type": "value_error",
                 "loc": ("name",),
                 "msg": "Something about _Unset is wrong",
                 "input": "test",
                 "ctx": {},  # No "class" key
-            }
+            },
         ]
         exc.errors = lambda: patched  # type: ignore[assignment]
         messages = _format_validation_errors(exc)
@@ -421,7 +417,6 @@ class TestUnsetFiltering:
     def test_mix_of_unset_and_real_errors_returns_only_real(self) -> None:
         """WRIT-05: mix of UNSET and real errors returns only the real errors."""
         exc = _capture_validation_error(_TestModel, {"bogus": "x"})
-        original_errors = exc.errors()
         real_error = {
             "type": "value_error",
             "loc": ("name",),
@@ -453,8 +448,6 @@ class TestLoggingIntegration:
     ) -> None:
         """Trigger a validation error through the full middleware stack,
         verify the ToolError message appears in log output."""
-        from fastmcp.exceptions import ToolError
-
         with (
             caplog.at_level(logging.DEBUG, logger="omnifocus_operator.server"),
             pytest.raises(ToolError),

@@ -410,7 +410,10 @@ def server(service: Any) -> Any:
 
     from fastmcp import FastMCP  # noqa: PLC0415
 
-    from omnifocus_operator.middleware import ToolLoggingMiddleware, ValidationReformatterMiddleware  # noqa: PLC0415
+    from omnifocus_operator.middleware import (  # noqa: PLC0415
+        ToolLoggingMiddleware,
+        ValidationReformatterMiddleware,
+    )
     from omnifocus_operator.server import _register_tools  # noqa: PLC0415
 
     @asynccontextmanager

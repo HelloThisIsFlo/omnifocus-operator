@@ -17,6 +17,7 @@ from fastmcp import Context, FastMCP
 from mcp.types import (
     ToolAnnotations,  # TODO(Phase 30): no fastmcp equivalent; revisit if fastmcp adds re-export
 )
+
 # NOTE: AllEntities MUST be a runtime import (not TYPE_CHECKING) because
 # FastMCP introspects the return type annotation at registration time to
 # generate outputSchema.  With `from __future__ import annotations` the
@@ -26,11 +27,11 @@ from omnifocus_operator.agent_messages.errors import (
     ADD_TASKS_BATCH_LIMIT,
     EDIT_TASKS_BATCH_LIMIT,
 )
-from omnifocus_operator.contracts.use_cases.add.tasks import (
+from omnifocus_operator.contracts.use_cases.add.tasks import (  # noqa: TC001 — FastMCP resolves param annotations at runtime
     AddTaskCommand,
     AddTaskResult,
 )
-from omnifocus_operator.contracts.use_cases.edit.tasks import (
+from omnifocus_operator.contracts.use_cases.edit.tasks import (  # noqa: TC001
     EditTaskCommand,
     EditTaskResult,
 )
@@ -331,5 +332,5 @@ def create_server() -> FastMCP:
     mcp = FastMCP("omnifocus-operator", lifespan=app_lifespan)
     _register_tools(mcp)
     mcp.add_middleware(ValidationReformatterMiddleware())  # innermost (added first)
-    mcp.add_middleware(ToolLoggingMiddleware(logger))       # outermost (added second)
+    mcp.add_middleware(ToolLoggingMiddleware(logger))  # outermost (added second)
     return mcp

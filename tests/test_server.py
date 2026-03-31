@@ -1566,7 +1566,6 @@ class TestSchemaRichness:
         # WRIT-03: No snake_case leakage in property names.
         # Note: "due_date" etc. appear legitimately as enum values in basedOn,
         # so we check for JSON property keys ('"key":' pattern) not bare strings.
-        import json as _json
 
         schema = add_tool.inputSchema
         property_keys = set(_extract_all_property_keys(schema))
@@ -1586,7 +1585,13 @@ class TestSchemaRichness:
 
         # Key fields present (camelCase)
         for field in (
-            "id", "name", "dueDate", "flagged", "estimatedMinutes", "repetitionRule", "actions",
+            "id",
+            "name",
+            "dueDate",
+            "flagged",
+            "estimatedMinutes",
+            "repetitionRule",
+            "actions",
         ):
             assert field in schema_json, f"Missing field '{field}' in edit_tasks inputSchema"
 
