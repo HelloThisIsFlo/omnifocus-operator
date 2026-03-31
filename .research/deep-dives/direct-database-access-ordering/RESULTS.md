@@ -150,7 +150,9 @@ ORDER BY c.parent, c.rank ASC, c.persistentIdentifier ASC
 
 ## Edge Cases
 
-- **Negative ranks**: Normal. The `+ 2147483648` shift in sort_path handles them correctly.
+- **Drag-and-drop reordering**: CTE correctly tracks manual reorganization — re-parenting, nesting changes, and negative ranks from drag-and-drop all handled. Verified via semi-interactive experiment: 6 tasks created flat in scrambled order, manually reorganized into 3-level hierarchy, CTE output matched target exactly (6/6 checks passed).
+- **Task moves between parents**: Atomic from the CTE's perspective — parent and rank are updated together in the SQLite cache. Verified as part of the reorder experiment (tasks moved between parents, CTE picked up new structure immediately).
+- **Negative ranks**: Normal. The `+ 2147483648` shift in sort_path handles them correctly. Confirmed with real reorganized data: REORDER-1 got rank=-1,069,498,304 after being moved before a positive-rank sibling.
 - **Inbox tasks (106 roots, 177 total)**: NOT reached by the project-anchored CTE. **Strategy B validated**: extend the CTE with a second anchor for inbox roots (`parent IS NULL AND containingProjectInfo IS NULL AND NOT a project`), prefix with `ZZZZZZZZZZ/` to sort after projects. Inbox has real nesting (up to 4 levels), and the recursive step handles it identically to project trees. One gotcha: the recursive step picks up completed children — filter with `dateCompleted IS NULL` in the outer WHERE (already done in the combined CTE). Performance: 0.8ms inbox-only, 6.0ms combined.
 - **Orphan tasks (71 non-inbox)**: Parent exists in DB but parent itself is an orphan (cascading chain from deleted/corrupted project trees). Not reachable by CTE. These are edge-case data — not expected in normal operation.
 - **Action groups**: Correctly traversed by the CTE recursive step (verified 10/10 sampled).
@@ -204,6 +206,11 @@ NULL for 5001/5007 rows (99.9%). OmniFocus does not persist custom task ordering
 - [x] Performance — 4.7ms avg for full CTE, well under 100ms target
 - [x] Action groups — correctly traversed by recursive step
 - [x] Works for all entity types — tasks (CTE), projects/folders/tags (simple `ORDER BY parent, rank`)
+- [x] Drag-and-drop reordering — CTE tracks manual reorganization (6 tasks, 3-level nesting, negative ranks)
+- [x] Task moves between parents — parent/rank updates atomic in SQLite cache
+- [x] Inbox ordering — Strategy B validated (ZZZZZZZZZZ prefix, 4-level nesting, 6ms combined)
+- [x] 32-bit rank range — all tables fit, printf('%010d') safe
+- [x] rankInTask binary encoding — fully decoded (byte-level fractional indexing)
 
 ## Scripts
 
@@ -215,6 +222,8 @@ NULL for 5001/5007 rows (99.9%). OmniFocus does not persist custom task ordering
 | `2-hierarchy/multi_project_cte.py` | 2+ | Multi-project CTE, filtered queries, performance, edge cases, proposed SQL |
 | `3-other-entities/entity_ordering.py` | 3 | Projects, folders, tags, TaskToTag rank columns |
 | `2-hierarchy/inbox_ordering.py` | 2+ | Inbox CTE, nesting depth, Strategy B combined CTE, coverage check |
+| `2-hierarchy/reorder_validation.py` | 2+ | Semi-interactive: CTE vs manual drag-and-drop reordering (--after mode) |
 | `3-other-entities/rankintask_decoding.py` | 3+ | rankInTask binary encoding, fractional indexing scheme, byte sort proof |
 
 All scripts: read-only (`?mode=ro`), self-contained, runnable for verification.
+`reorder_validation.py` is semi-interactive — requires human intervention in OmniFocus between runs.
