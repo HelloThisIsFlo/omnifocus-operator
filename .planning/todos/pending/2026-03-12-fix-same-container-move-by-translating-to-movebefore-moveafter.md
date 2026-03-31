@@ -45,6 +45,16 @@ Apply this translation whenever the target container has at least one child, reg
 
 Service layer (`edit_tasks` flow). The bridge stays dumb — it receives `moveBefore`/`moveAfter` calls, which it already supports. No bridge changes needed.
 
+### Ordering research — FULLY RESOLVED
+
+Deep dive completed: `.research/deep-dives/direct-database-access-ordering/RESULTS.md`
+
+**No remaining unknowns.** Finding first/last child is trivial:
+- First child: `SELECT persistentIdentifier FROM Task WHERE parent = ? ORDER BY rank ASC LIMIT 1`
+- Last child: `SELECT persistentIdentifier FROM Task WHERE parent = ? ORDER BY rank DESC LIMIT 1`
+- `rank` is unique within parent, determines UI order — confirmed across all entity types
+- Works correctly even after drag-and-drop reordering (negative ranks handled)
+
 ## Related
 
 - **[Add position field to expose child task ordering](2026-03-08-add-position-field-to-expose-child-task-ordering.md)** — the position feature and this fix share a dependency on ordering data. Position field is a read-side feature (agents see ordering); this is a write-side fix (moves actually reorder). Consider implementing in the same milestone phase since they touch similar infrastructure.

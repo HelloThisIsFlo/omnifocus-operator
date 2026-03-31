@@ -10,10 +10,17 @@ files:
 
 The edit_tasks move no-op detection only checks if the task is already a child of the target parent. It doesn't distinguish beginning vs ending position — so moving the last child to "beginning" of the same parent gets flagged as a no-op when it would actually reorder.
 
-## Solution
+## Solution — FULLY RESEARCHED
 
-- Query sibling order (SQLite rank column or snapshot children list) to determine current ordinal position
-- Compare requested position (beginning/ending) against actual position before flagging no-op
+Deep dive completed: `.research/deep-dives/direct-database-access-ordering/RESULTS.md`
+
+**No remaining unknowns.** The research confirmed how to determine ordinal position.
+
+- Query sibling rank to determine current ordinal position:
+  - First child = `MIN(rank)` among siblings with same parent
+  - Last child = `MAX(rank)` among siblings with same parent
+  - Compare task's rank against min/max to determine if it's already at beginning/ending
+- Alternatively, compute full ordinal via `ROW_NUMBER() OVER (PARTITION BY parent ORDER BY rank)` and check if 0 (first) or max (last)
 - Low priority — the warning is transparent about the limitation
 
 ## Related
