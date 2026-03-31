@@ -163,52 +163,31 @@ def _register_tools(mcp: FastMCP) -> None:
         items: list[AddTaskCommand],
         ctx: Context,
     ) -> list[AddTaskResult]:
-        """Create tasks in OmniFocus.
+        """Create tasks in OmniFocus. Limited to 1 item per call.
 
-        Accepts an array of task objects. Currently limited to 1 item per call.
+        Tags accept names (case-insensitive) or IDs; you can mix both.
+        Non-existent names are rejected. Ambiguous names (case-insensitive
+        collision) return an error.
 
-        Each item accepts:
-        - name (required): Task name
-        - parent: Project or task ID to place task under (omit for inbox)
-        - tags: List of tag names (case-insensitive) or tag IDs
-        - dueDate: Due date (ISO 8601)
-        - deferDate: Defer/start date (ISO 8601)
-        - plannedDate: Planned date (ISO 8601)
-        - flagged: Boolean flag
-        - estimatedMinutes: Estimated duration in minutes
-        - note: Task note text
-        - repetitionRule: Repetition rule (all three root fields required on creation)
-          - frequency (required): Object with "type" + optional specialization fields
-            - {type: "minutely", interval: N}
-            - {type: "hourly", interval: N}
-            - {type: "daily", interval: N}
-            - {type: "weekly", interval: N}  -- optionally add onDays
-            - {type: "weekly", interval: N, onDays: ["MO","WE","FR"]}  -- specific days (MO-SU)
-            - {type: "monthly", interval: N}  -- optionally add on or onDates
-            - {type: "monthly", interval: N, on: {"second": "tuesday"}}
-                ordinals: first/second/third/fourth/fifth/last
-                days: monday-sunday, weekday, weekend_day
-            - {type: "monthly", interval: N, onDates: [1, 15]}
-                valid dates: 1 to 31, use -1 for last day of month
-            - {type: "yearly", interval: N}
-            - interval defaults to 1, omit or set explicitly
-            - on and onDates are mutually exclusive
-          - schedule (required): "regularly" / "regularly_with_catch_up" / "from_completion"
-          - basedOn (required): "due_date" / "defer_date" / "planned_date"
-          - end: {"date": "ISO-8601"} or {"occurrences": N} -- omit for no end
+        All date fields require timezone info (ISO 8601 with offset or Z).
+        Naive datetimes are rejected.
 
-          Examples:
-            Every 3 days from completion:
-              {frequency: {type: "daily", interval: 3}, schedule: "from_completion", basedOn: "defer_date"}
+        repetitionRule requires all three root fields (frequency, schedule,
+        basedOn) when creating. on and onDates within frequency are
+        mutually exclusive.
 
-            Every 2 weeks on Mon and Fri, stop after 10:
-              {frequency: {type: "weekly", interval: 2, onDays: ["MO", "FR"]}, schedule: "regularly", basedOn: "due_date", end: {occurrences: 10}}
+        Examples (repetitionRule):
+          Every 3 days from completion:
+            {frequency: {type: "daily", interval: 3}, schedule: "from_completion", basedOn: "defer_date"}
 
-            Last Friday of every month:
-              {frequency: {type: "monthly", on: {"last": "friday"}}, schedule: "regularly", basedOn: "due_date"}
+          Every 2 weeks on Mon and Fri, stop after 10:
+            {frequency: {type: "weekly", interval: 2, onDays: ["MO", "FR"]}, schedule: "regularly", basedOn: "due_date", end: {occurrences: 10}}
 
-        Returns array of results: [{success, id, name, warnings?}]
-        """  # noqa: E501
+          Last Friday of every month:
+            {frequency: {type: "monthly", on: {"last": "friday"}}, schedule: "regularly", basedOn: "due_date"}
+
+        Returns: [{success, id, name, warnings?}]
+        """
         if len(items) != 1:
             msg = ADD_TASKS_BATCH_LIMIT.format(count=len(items))
             raise ValueError(msg)
@@ -237,66 +216,63 @@ def _register_tools(mcp: FastMCP) -> None:
         items: list[EditTaskCommand],
         ctx: Context,
     ) -> list[EditTaskResult]:
-        """Edit existing tasks in OmniFocus using patch semantics.
+        """Edit existing tasks in OmniFocus using patch semantics. Limited to 1 item per call.
 
-        Accepts an array of edit objects. Currently limited to 1 item per call.
+        Patch contract: omit a field to leave it unchanged, set to null to
+        clear it, set to a value to update.
 
-        Each item requires:
-        - id (required): Task ID to edit
+        Tags (in all tag fields) accept names (case-insensitive) or IDs;
+        you can mix both. Non-existent names are rejected. Ambiguous names
+        (case-insensitive collision) return an error.
 
-        Optional fields (omit to leave unchanged, set null to clear):
-        - name: New task name (cannot be empty)
-        - note: Task note text (null to clear)
-        - dueDate: Due date ISO 8601 (null to clear)
-        - deferDate: Defer/start date ISO 8601 (null to clear)
-        - plannedDate: Planned date ISO 8601 (null to clear)
-        - flagged: Boolean flag
-        - estimatedMinutes: Estimated duration (null to clear)
-        - repetitionRule: Set, update, or clear a repetition rule
-          - Full rule: same shape as add_tasks (frequency, schedule, basedOn required)
-          - Partial update: send only changed fields, omitted root fields preserved
-            - frequency.type optional (inferred from existing task)
-            - frequency.type required when changing to a different type
-            - Same type: omitted frequency fields preserved from existing rule
-            - Different type: full replacement, defaults apply like creation
-            - onDays/on/onDates: null to clear, omit to preserve
-            - on and onDates are mutually exclusive -- setting one auto-clears the other
-          - end: null to clear, omit to preserve
-          - null to clear the repetition rule
+        All date fields require timezone info (ISO 8601 with offset or Z).
+        Naive datetimes are rejected.
 
-          Examples:
-            Change just the interval (type inferred from existing):
-              {frequency: {interval: 5}}
+        repetitionRule partial updates:
+          - Task has no existing rule: all three root fields required
+            (frequency, schedule, basedOn) -- same as creation.
+          - Task has existing rule: omitted root fields are preserved.
+          - frequency.type can be omitted (inferred from existing rule)
+            unless changing to a different type.
+          - Same type: omitted frequency sub-fields preserved.
+          - Different type: full replacement with creation defaults.
+          - on and onDates are mutually exclusive -- setting one clears
+            the other.
+          - null clears the entire repetition rule.
 
-            Add specific days to a weekly task (no type change):
-              {frequency: {onDays: ["MO", "WE", "FR"]}}
+        Examples (repetitionRule):
+          Change just the interval (type inferred from existing):
+            {frequency: {interval: 5}}
 
-            Remove day constraint from weekly:
-              {frequency: {onDays: null}}
+          Add specific days to a weekly task (no type change):
+            {frequency: {onDays: ["MO", "WE", "FR"]}}
 
-            Switch monthly from dates to weekday pattern (onDates auto-cleared):
-              {frequency: {on: {"last": "friday"}}}
+          Remove day constraint from weekly:
+            {frequency: {onDays: null}}
 
-            Change from daily to weekly (type required):
-              {frequency: {type: "weekly", onDays: ["MO", "FR"]}}
+          Switch monthly from dates to weekday pattern (onDates auto-cleared):
+            {frequency: {on: {"last": "friday"}}}
 
-            Clear:
-              null
+          Change from daily to weekly (type required):
+            {frequency: {type: "weekly", onDays: ["MO", "FR"]}}
 
-        Actions block (omit to skip, groups stateful operations):
-        - actions.tags: Tag operations
-          - {"replace": ["tag1"]} -- replace all tags (null or [] to clear)
-          - {"add": ["tag1"], "remove": ["tag2"]} -- incremental (combinable)
-          - {"add": ["tag1"]} or {"remove": ["tag1"]} -- add-only or remove-only
-        - actions.move: Task movement (exactly one key)
-          - {"ending": "<parentId>"} / {"beginning": "<parentId>"}
-          - {"before": "<taskId>"} / {"after": "<taskId>"}
-          - {"ending": null} / {"beginning": null} -- move to inbox
-        - actions.lifecycle: Task lifecycle action
-          - "complete" -- mark task as complete
-          - "drop" -- drop/skip task
+          Clear:
+            null
 
-        Returns array of results: [{success, id, name, warnings?}]
+        actions.move: exactly one key must be set. ending/beginning with
+        null moves to inbox.
+
+        actions.lifecycle:
+          - "complete": marks the task as complete.
+          - "drop": skips/cancels the task without completing it.
+          On repeating tasks, both actions apply to the current occurrence
+          only -- the next occurrence is automatically created. Dropping an
+          entire repeating sequence is not supported via this API.
+
+        actions.tags: replace is standalone. add/remove are combinable with
+        each other but not with replace.
+
+        Returns: [{success, id, name, warnings?}]
         """
         if len(items) != 1:
             msg = EDIT_TASKS_BATCH_LIMIT.format(count=len(items))
