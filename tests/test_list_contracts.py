@@ -7,9 +7,15 @@ and the StrictModel/CommandModel/QueryModel inheritance hierarchy.
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from pydantic import ValidationError
 
+from omnifocus_operator.agent_messages.errors import (
+    OFFSET_REQUIRES_LIMIT,
+    REVIEW_DUE_WITHIN_INVALID,
+)
 from omnifocus_operator.contracts import (
     CommandModel,
     ListFoldersQuery,
@@ -256,7 +262,7 @@ class TestOffsetRequiresLimit:
     """Verify offset-without-limit raises educational ValueError."""
 
     def test_tasks_offset_without_limit_raises(self) -> None:
-        with pytest.raises(ValidationError, match="offset requires limit"):
+        with pytest.raises(ValidationError, match=re.escape(OFFSET_REQUIRES_LIMIT)):
             ListTasksQuery(offset=5)
 
     def test_tasks_offset_with_limit_succeeds(self) -> None:
@@ -270,7 +276,7 @@ class TestOffsetRequiresLimit:
         assert query.offset is None
 
     def test_projects_offset_without_limit_raises(self) -> None:
-        with pytest.raises(ValidationError, match="offset requires limit"):
+        with pytest.raises(ValidationError, match=re.escape(OFFSET_REQUIRES_LIMIT)):
             ListProjectsQuery(offset=5)
 
     def test_projects_offset_with_limit_succeeds(self) -> None:
@@ -322,19 +328,23 @@ class TestReviewDueFilter:
         assert query.review_due_within.unit is None
 
     def test_invalid_string_raises(self) -> None:
-        with pytest.raises(ValidationError, match="valid formats"):
+        expected = REVIEW_DUE_WITHIN_INVALID.format(value="banana")
+        with pytest.raises(ValidationError, match=re.escape(expected)):
             ListProjectsQuery(review_due_within="banana")
 
     def test_empty_string_raises(self) -> None:
-        with pytest.raises(ValidationError):
+        expected = REVIEW_DUE_WITHIN_INVALID.format(value="")
+        with pytest.raises(ValidationError, match=re.escape(expected)):
             ListProjectsQuery(review_due_within="")
 
     def test_zero_amount_raises(self) -> None:
-        with pytest.raises(ValidationError):
+        expected = REVIEW_DUE_WITHIN_INVALID.format(value="0w")
+        with pytest.raises(ValidationError, match=re.escape(expected)):
             ListProjectsQuery(review_due_within="0w")
 
     def test_negative_amount_raises(self) -> None:
-        with pytest.raises(ValidationError):
+        expected = REVIEW_DUE_WITHIN_INVALID.format(value="-1w")
+        with pytest.raises(ValidationError, match=re.escape(expected)):
             ListProjectsQuery(review_due_within="-1w")
 
     def test_direct_construction(self) -> None:
