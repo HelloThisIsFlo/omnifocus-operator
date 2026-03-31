@@ -197,7 +197,7 @@ Plans:
 ### Phase 37: Server Registration and Integration (was Phase 38)
 **Goal**: Agents can call 5 new MCP tools that return filtered, paginated entity lists with total counts, and search across all entity types
 **Depends on**: Phase 36
-**Requirements**: INFRA-05, SRCH-01, SRCH-02, SRCH-03, SRCH-04, RTOOL-01, RTOOL-02, RTOOL-03
+**Requirements**: INFRA-05, SRCH-01, SRCH-02, SRCH-03, SRCH-04, RTOOL-01, RTOOL-02, RTOOL-03, DOC-10, DOC-11, DOC-12, DOC-13
 **Success Criteria** (what must be TRUE):
   1. list_tasks, list_projects, list_tags, list_folders, list_perspectives are registered as MCP tools and callable via Client
   2. Tool descriptions enumerate all valid filter values and include enough context for an LLM to call correctly without external docs
