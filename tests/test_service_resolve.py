@@ -262,6 +262,17 @@ class TestResolveFilter:
         result = resolver.resolve_filter("work", entities)
         assert result == ["p1"]
 
+    def test_substring_match_with_emoji_prefix(self, resolver: Resolver) -> None:
+        """Substring match works when entity names contain emoji."""
+        from omnifocus_operator.models.project import Project
+
+        entities = [
+            Project.model_validate(make_model_project_dict(id="p1", name="🏠 Home Renovation")),
+            Project.model_validate(make_model_project_dict(id="p2", name="🔧 Work Projects")),
+        ]
+        result = resolver.resolve_filter("Home", entities)
+        assert result == ["p1"]
+
     def test_no_match(self, resolver: Resolver) -> None:
         """No matching entity returns empty list."""
         from omnifocus_operator.models.project import Project
