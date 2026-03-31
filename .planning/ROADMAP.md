@@ -171,10 +171,11 @@ Plans:
 **Goal:** Write tools expose rich inputSchema via typed params, with validation middleware reformatting errors into clean agent-friendly messages
 **Requirements**: WRIT-01, WRIT-02, WRIT-03, WRIT-04, WRIT-05, WRIT-06, WRIT-07, WRIT-08, WRIT-09, WRIT-10, WRIT-11
 **Depends on:** Phase 36
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 36.1 to break down)
+- [ ] 36.1-01-PLAN.md — Middleware creation, handler migration, test fixture update
+- [ ] 36.1-02-PLAN.md — Schema richness tests and canary test
 
 ### Phase 37: Server Registration and Integration (was Phase 38)
 **Goal**: Agents can call 5 new MCP tools that return filtered, paginated entity lists with total counts, and search across all entity types
