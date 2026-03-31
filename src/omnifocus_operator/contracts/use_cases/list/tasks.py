@@ -5,6 +5,7 @@ from __future__ import annotations
 from pydantic import Field, model_validator
 
 from omnifocus_operator.contracts.base import QueryModel
+from omnifocus_operator.contracts.use_cases.list._validators import validate_offset_requires_limit
 from omnifocus_operator.models.enums import Availability
 
 
@@ -25,8 +26,6 @@ class ListTasksQuery(QueryModel):
 
     @model_validator(mode="after")
     def _check_offset_requires_limit(self) -> ListTasksQuery:
-        from omnifocus_operator.service.validate import validate_offset_requires_limit
-
         validate_offset_requires_limit(self.limit, self.offset)
         return self
 

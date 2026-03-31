@@ -14,6 +14,8 @@ from omnifocus_operator.agent_messages import warnings as warn_mod
 from omnifocus_operator.contracts.shared import actions as contracts_common
 from omnifocus_operator.contracts.shared import repetition_rule as contracts_repetition_rule
 from omnifocus_operator.contracts.use_cases.edit import tasks as contracts_edit_task
+from omnifocus_operator.contracts.use_cases.list import _validators as contracts_list_validators
+from omnifocus_operator.contracts.use_cases.list import projects as contracts_list_projects
 from omnifocus_operator.models import repetition_rule as models_repetition_rule
 from omnifocus_operator.service import domain as service_domain
 from omnifocus_operator.service import resolve
@@ -105,6 +107,8 @@ _ERROR_CONSUMERS = [
     contracts_common,
     contracts_edit_task,
     contracts_repetition_rule,
+    contracts_list_validators,
+    contracts_list_projects,
     models_repetition_rule,
 ]
 
