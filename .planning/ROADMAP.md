@@ -194,5 +194,5 @@ Phases execute in numeric order: 34 → 35 → 35.1 → 35.2 → 36 → 37
 | 35. SQL Repository | v1.3 | 2/2 | Complete    | 2026-03-30 |
 | 35.1 Contract Boundary Split | v1.3 | 2/2 | Complete    | 2026-03-30 |
 | 35.2 Uniform Name/ID Resolution | v1.3 | 2/2 | Complete    | 2026-03-30 |
-| 36. Service Orchestration + Cross-Path Equivalence | v1.3 | 2/2 | Complete   | 2026-03-31 |
+| 36. Service Orchestration + Cross-Path Equivalence | v1.3 | 2/2 | Complete    | 2026-03-31 |
 | 37. Server Registration and Integration | v1.3 | 0/0 | Not started | - |
