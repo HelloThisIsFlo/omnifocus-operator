@@ -218,7 +218,8 @@ class TestQueryModelAcceptance:
         )
         assert query.availability == [Availability.AVAILABLE, Availability.COMPLETED]
         assert query.folder == "Personal"
-        assert query.review_due_within == "1w"
+        assert query.review_due_within is not None
+        assert query.review_due_within.amount == 1
         assert query.flagged is True
         assert query.limit == 20
         assert query.offset == 0
@@ -369,7 +370,8 @@ class TestQueryModelCamelCaseAliases:
 
     def test_list_projects_query_camel_case_construction(self) -> None:
         query = ListProjectsQuery(reviewDueWithin="2w")
-        assert query.review_due_within == "2w"
+        assert query.review_due_within is not None
+        assert query.review_due_within.amount == 2
 
 
 # ---------------------------------------------------------------------------
@@ -402,7 +404,7 @@ class TestRepoQueryDefaults:
     def test_list_projects_repo_query_other_fields_default_none(self) -> None:
         query = ListProjectsRepoQuery()
         assert query.folder_ids is None
-        assert query.review_due_within is None
+        assert query.review_due_before is None
         assert query.flagged is None
         assert query.limit is None
         assert query.offset is None
@@ -464,8 +466,10 @@ class TestRepoQueryFieldParity:
         """Non-filter fields must match between Query and RepoQuery."""
         query_fields = set(ListProjectsQuery.model_fields.keys())
         repo_fields = set(ListProjectsRepoQuery.model_fields.keys())
-        query_only = {"folder"}
-        repo_only = {"folder_ids"}
+        # Fields that diverged: Query has folder/review_due_within,
+        # RepoQuery has folder_ids/review_due_before
+        query_only = {"folder", "review_due_within"}
+        repo_only = {"folder_ids", "review_due_before"}
         assert query_fields - query_only == repo_fields - repo_only
 
     def test_projects_repo_query_has_id_fields(self) -> None:

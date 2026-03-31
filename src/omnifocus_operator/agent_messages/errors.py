@@ -104,3 +104,12 @@ REPETITION_INVALID_END_OCCURRENCES = "End occurrences must be >= 1 (got {value})
 REPETITION_INVALID_END_EMPTY = (
     "end requires either 'date' (ISO-8601 string) or 'occurrences' (integer >= 1)"
 )
+
+# --- Validation: List Query ---
+
+OFFSET_REQUIRES_LIMIT = "offset requires limit -- set limit before using offset"
+
+REVIEW_DUE_WITHIN_INVALID = (
+    "Invalid review_due_within '{value}' -- "
+    "valid formats: 'now', or a number followed by d/w/m/y (e.g. '1w', '2m', '30d')"
+)

@@ -9,8 +9,10 @@ from omnifocus_operator.contracts.use_cases.list.folders import (
     ListFoldersRepoQuery,
 )
 from omnifocus_operator.contracts.use_cases.list.projects import (
+    DurationUnit,
     ListProjectsQuery,
     ListProjectsRepoQuery,
+    ReviewDueFilter,
 )
 from omnifocus_operator.contracts.use_cases.list.tags import (
     ListTagsQuery,
@@ -22,6 +24,7 @@ from omnifocus_operator.contracts.use_cases.list.tasks import (
 )
 
 __all__ = [
+    "DurationUnit",
     "ListFoldersQuery",
     "ListFoldersRepoQuery",
     "ListProjectsQuery",
@@ -32,4 +35,5 @@ __all__ = [
     "ListTagsRepoQuery",
     "ListTasksQuery",
     "ListTasksRepoQuery",
+    "ReviewDueFilter",
 ]

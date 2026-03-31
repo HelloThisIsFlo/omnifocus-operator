@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from omnifocus_operator.contracts.base import QueryModel
 from omnifocus_operator.models.enums import Availability
@@ -22,6 +22,13 @@ class ListTasksQuery(QueryModel):
     search: str | None = None  # case-insensitive substring in name+notes
     limit: int | None = None
     offset: int | None = None
+
+    @model_validator(mode="after")
+    def _check_offset_requires_limit(self) -> ListTasksQuery:
+        from omnifocus_operator.service.validate import validate_offset_requires_limit
+
+        validate_offset_requires_limit(self.limit, self.offset)
+        return self
 
 
 class ListTasksRepoQuery(QueryModel):
