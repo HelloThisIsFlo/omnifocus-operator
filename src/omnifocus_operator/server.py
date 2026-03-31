@@ -17,8 +17,6 @@ from fastmcp import Context, FastMCP
 from mcp.types import (
     ToolAnnotations,  # TODO(Phase 30): no fastmcp equivalent; revisit if fastmcp adds re-export
 )
-from pydantic import ValidationError
-
 # NOTE: AllEntities MUST be a runtime import (not TYPE_CHECKING) because
 # FastMCP introspects the return type annotation at registration time to
 # generate outputSchema.  With `from __future__ import annotations` the
@@ -27,7 +25,6 @@ from pydantic import ValidationError
 from omnifocus_operator.agent_messages.errors import (
     ADD_TASKS_BATCH_LIMIT,
     EDIT_TASKS_BATCH_LIMIT,
-    INVALID_INPUT,
 )
 from omnifocus_operator.contracts.use_cases.add.tasks import (
     AddTaskCommand,
@@ -37,7 +34,7 @@ from omnifocus_operator.contracts.use_cases.edit.tasks import (
     EditTaskCommand,
     EditTaskResult,
 )
-from omnifocus_operator.middleware import ToolLoggingMiddleware
+from omnifocus_operator.middleware import ToolLoggingMiddleware, ValidationReformatterMiddleware
 from omnifocus_operator.models import (  # noqa: TC001 — FastMCP needs runtime names
     AllEntities,
     Project,
@@ -90,54 +87,6 @@ async def app_lifespan(app: FastMCP) -> AsyncIterator[dict[str, object]]:
         error_service = ErrorOperatorService(exc)
         yield {"service": error_service}
         logger.info("Error-mode server shutting down")
-
-
-def _clean_loc(loc: tuple[str | int, ...]) -> tuple[str | int, ...]:
-    """Strip Pydantic union-branch noise from a validation error loc path.
-
-    ``Patch[T]`` expands to ``T | _Unset``, causing Pydantic to prefix each
-    branch's errors with the model class name (``EditTaskActions``), validator
-    wrapper (``function-after[...]``), or type check (``is-instance[...]``).
-    This keeps only real field names and integer indices.
-    """
-    return tuple(
-        part
-        for part in loc
-        if isinstance(part, int)
-        or (
-            isinstance(part, str)
-            and not part[0].isupper()
-            and not part.startswith("function-")
-            and not part.startswith("is-instance")
-            and not part.startswith("literal[")
-        )
-    )
-
-
-def _format_validation_errors(exc: ValidationError) -> list[str]:
-    """Extract clean, agent-friendly messages from a Pydantic ValidationError.
-
-    Filters noise and rewrites common error patterns:
-    - ``_Unset`` sentinel artefacts are suppressed
-    - ``missing`` errors are suppressed (union branch noise from non-matching types)
-    - ``extra_forbidden`` -> "Unknown field '<path>'"
-    - Everything else passes through (model validators produce clean messages at source)
-    """
-    from omnifocus_operator.agent_messages.errors import UNKNOWN_FIELD
-
-    messages: list[str] = []
-    for e in exc.errors():
-        if "_Unset" in e["msg"]:
-            continue
-        if e["type"] == "missing":
-            continue
-        loc = _clean_loc(e.get("loc", ()))
-        if e["type"] == "extra_forbidden":
-            field = ".".join(str(part) for part in loc)
-            messages.append(UNKNOWN_FIELD.format(field=field))
-        else:
-            messages.append(e["msg"])
-    return messages
 
 
 def _register_tools(mcp: FastMCP) -> None:
@@ -391,5 +340,6 @@ def create_server() -> FastMCP:
     """
     mcp = FastMCP("omnifocus-operator", lifespan=app_lifespan)
     _register_tools(mcp)
-    mcp.add_middleware(ToolLoggingMiddleware(logger))
+    mcp.add_middleware(ValidationReformatterMiddleware())  # innermost (added first)
+    mcp.add_middleware(ToolLoggingMiddleware(logger))       # outermost (added second)
     return mcp
