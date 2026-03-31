@@ -103,8 +103,8 @@ def _register_tools(mcp: FastMCP) -> None:
     async def get_all(ctx: Context) -> AllEntities:
         """Return the full OmniFocus database as structured data.
 
-        Returns all tasks, projects, tags, folders, and perspectives as a
-        single snapshot.  The response uses camelCase field names.
+        Response contains: tasks, projects, tags, folders, perspectives arrays.
+        The response uses camelCase field names.
         """
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
@@ -122,7 +122,14 @@ def _register_tools(mcp: FastMCP) -> None:
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
     async def get_task(id: str, ctx: Context) -> Task:
-        """Look up a single task by its ID. Returns the full Task object."""
+        """Look up a single task by its ID.
+
+        Key fields: urgency, availability, dueDate, deferDate, plannedDate,
+        effectiveDueDate (inherited from parent), flagged, effectiveFlagged,
+        tags (array of {id, name}), parent ({type, id, name} or null for inbox),
+        repetitionRule, inInbox.
+        The response uses camelCase field names.
+        """
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
         service: OperatorService = ctx.lifespan_context["service"]
@@ -134,7 +141,14 @@ def _register_tools(mcp: FastMCP) -> None:
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
     async def get_project(id: str, ctx: Context) -> Project:
-        """Look up a single project by its ID. Returns the full Project object."""
+        """Look up a single project by its ID.
+
+        Key fields: urgency, availability, dueDate, deferDate, plannedDate,
+        effectiveDueDate (inherited from parent), flagged, effectiveFlagged,
+        tags (array of {id, name}), nextTask (ID of first available task),
+        folder (name or null), reviewInterval, nextReviewDate.
+        The response uses camelCase field names.
+        """
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
         service: OperatorService = ctx.lifespan_context["service"]
@@ -146,7 +160,12 @@ def _register_tools(mcp: FastMCP) -> None:
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
     async def get_tag(id: str, ctx: Context) -> Tag:
-        """Look up a single tag by its ID. Returns the full Tag object."""
+        """Look up a single tag by its ID.
+
+        Key fields: availability, childrenAreMutuallyExclusive (child tags
+        behave like radio buttons when true), parent (parent tag name or null).
+        The response uses camelCase field names.
+        """
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
         service: OperatorService = ctx.lifespan_context["service"]
