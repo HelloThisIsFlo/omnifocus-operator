@@ -31,6 +31,26 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 
+def _extract_all_property_keys(schema: dict[str, Any]) -> list[str]:
+    """Recursively extract all JSON Schema property keys from a schema dict."""
+    keys: list[str] = []
+    if isinstance(schema, dict):
+        if "properties" in schema:
+            keys.extend(schema["properties"].keys())
+            for v in schema["properties"].values():
+                keys.extend(_extract_all_property_keys(v))
+        if "$defs" in schema:
+            for v in schema["$defs"].values():
+                keys.extend(_extract_all_property_keys(v))
+        if "items" in schema:
+            keys.extend(_extract_all_property_keys(schema["items"]))
+        for key in ("anyOf", "oneOf", "allOf"):
+            if key in schema:
+                for item in schema[key]:
+                    keys.extend(_extract_all_property_keys(item))
+    return keys
+
+
 def _build_patched_server(
     service: OperatorService,
 ) -> Any:
@@ -1520,3 +1540,98 @@ class TestAnchorDateWarning:
         assert items[0]["success"] is True
         warnings = items[0].get("warnings") or []
         assert not any("basedOn" in w for w in warnings)
+
+
+# ---------------------------------------------------------------------------
+# WRIT-01/02/03: Schema richness — inputSchema exposes typed fields
+# ---------------------------------------------------------------------------
+
+
+class TestSchemaRichness:
+    """Verify that add_tasks and edit_tasks expose rich inputSchema with camelCase aliases."""
+
+    async def test_add_tasks_schema_has_rich_input_schema(self, client: Any) -> None:
+        """WRIT-01: add_tasks inputSchema contains typed fields with camelCase aliases."""
+        tools = await client.list_tools()
+        add_tool = next(t for t in tools if t.name == "add_tasks")
+        schema_json = __import__("json").dumps(add_tool.inputSchema)
+
+        # Schema should be substantial (rich, not just {"items": {}})
+        assert len(schema_json) > 500, f"Schema too small ({len(schema_json)} chars)"
+
+        # Key fields present (camelCase)
+        for field in ("name", "dueDate", "flagged", "estimatedMinutes", "repetitionRule", "tags"):
+            assert field in schema_json, f"Missing field '{field}' in add_tasks inputSchema"
+
+        # WRIT-03: No snake_case leakage in property names.
+        # Note: "due_date" etc. appear legitimately as enum values in basedOn,
+        # so we check for JSON property keys ('"key":' pattern) not bare strings.
+        import json as _json
+
+        schema = add_tool.inputSchema
+        property_keys = set(_extract_all_property_keys(schema))
+        for snake in ("due_date", "defer_date", "estimated_minutes", "planned_date"):
+            assert snake not in property_keys, (
+                f"snake_case property '{snake}' leaked into add_tasks inputSchema"
+            )
+
+    async def test_edit_tasks_schema_has_rich_input_schema(self, client: Any) -> None:
+        """WRIT-02: edit_tasks inputSchema contains typed fields with camelCase aliases."""
+        tools = await client.list_tools()
+        edit_tool = next(t for t in tools if t.name == "edit_tasks")
+        schema_json = __import__("json").dumps(edit_tool.inputSchema)
+
+        # Schema should be substantial
+        assert len(schema_json) > 500, f"Schema too small ({len(schema_json)} chars)"
+
+        # Key fields present (camelCase)
+        for field in (
+            "id", "name", "dueDate", "flagged", "estimatedMinutes", "repetitionRule", "actions",
+        ):
+            assert field in schema_json, f"Missing field '{field}' in edit_tasks inputSchema"
+
+        # WRIT-03: No snake_case leakage in property names
+        schema = edit_tool.inputSchema
+        property_keys = set(_extract_all_property_keys(schema))
+        for snake in ("due_date", "defer_date", "estimated_minutes", "planned_date"):
+            assert snake not in property_keys, (
+                f"snake_case property '{snake}' leaked into edit_tasks inputSchema"
+            )
+
+
+# ---------------------------------------------------------------------------
+# WRIT-11: Canary — middleware catches ValidationError from call_next()
+# ---------------------------------------------------------------------------
+
+
+class TestCanaryMiddleware:
+    """Guard against FastMCP moving validation outside the middleware chain."""
+
+    async def test_canary_middleware_catches_validation_error(self, client: Any) -> None:
+        """Guard: FastMCP validation must happen inside call_next() so middleware can catch it.
+
+        This test verifies that ValidationReformatterMiddleware catches ValidationError
+        raised by FastMCP's internal type_adapter.validate_python() during tool dispatch.
+        If this test fails after a FastMCP upgrade, it means validation moved BEFORE the
+        middleware chain -- the middleware architecture needs rethinking.
+
+        What to do if this fails:
+        1. Check FastMCP changelog for validation pipeline changes
+        2. The middleware approach may no longer work -- validation errors will bypass it
+        3. Options: move validation back to handlers, or hook into FastMCP's new pipeline
+        """
+        with pytest.raises(ToolError) as exc_info:
+            await client.call_tool("add_tasks", {"items": [{"bogus": "field"}]})
+
+        error_msg = str(exc_info.value)
+        # Middleware reformatted the error with "Task N:" prefix
+        assert "Task 1:" in error_msg, (
+            f"Expected 'Task 1:' prefix from middleware formatting, got: {error_msg}"
+        )
+        # No raw Pydantic internals leaking
+        assert "validation error" not in error_msg.lower(), (
+            f"Raw Pydantic 'validation error' leaked through middleware: {error_msg}"
+        )
+        assert "ValidationError" not in error_msg, (
+            f"Raw Pydantic 'ValidationError' leaked through middleware: {error_msg}"
+        )
