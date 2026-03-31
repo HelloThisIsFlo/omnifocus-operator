@@ -58,15 +58,15 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 
 ### Agent-Facing Documentation
 
-- [ ] **DOC-01**: Model docstrings visible in JSON Schema contain no implementation details — no references to validators, `extra='forbid'`, CommandModel, service layer, bridge internals, UNSET, or Patch/PatchOrClear
+- [x] **DOC-01**: Model docstrings visible in JSON Schema contain no implementation details — no references to validators, `extra='forbid'`, CommandModel, service layer, bridge internals, UNSET, or Patch/PatchOrClear
 - [ ] **DOC-02**: Write tool docstrings (add_tasks, edit_tasks) use approved verbatim text from CONTEXT.md — no field-by-field listings redundant with inputSchema
 - [ ] **DOC-03**: All three date fields (dueDate, deferDate, plannedDate) have `Field(description=...)` on both write-side commands and read-side models, faithful to `docs/omnifocus-concepts.md`
 - [ ] **DOC-04**: Tag resolution behavior (names or IDs, case-insensitive, non-existent rejected, ambiguous errors) documented in tool descriptions and on tag-accepting fields via `Field(description=...)`
 - [ ] **DOC-05**: Timezone requirement (ISO 8601 with offset or Z, naive rejected) documented in tool descriptions and on date `Field(description=...)`
 - [ ] **DOC-06**: Partial repetitionRule on task with no existing rule documented in edit_tasks tool description (all three root fields required when no rule exists)
 - [ ] **DOC-07**: All four read tool descriptions include camelCase field names note and hint at response shape (key non-obvious fields)
-- [ ] **DOC-08**: `Field(description=...)` added to read-side model fields that fail the fluency test — at minimum: `effective_due_date`, `effective_defer_date`, `effective_planned_date`, `effective_flagged`, `children_are_mutually_exclusive`, `next_task`
-- [ ] **DOC-09**: No Python conventions leak into JSON-facing schema descriptions — `None` → `null`, no UNSET references, no validator/model-internal language
+- [x] **DOC-08**: `Field(description=...)` added to read-side model fields that fail the fluency test — at minimum: `effective_due_date`, `effective_defer_date`, `effective_planned_date`, `effective_flagged`, `children_are_mutually_exclusive`, `next_task`
+- [x] **DOC-09**: No Python conventions leak into JSON-facing schema descriptions — `None` → `null`, no UNSET references, no validator/model-internal language
 
 ### List Tool Documentation
 
@@ -195,15 +195,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RTOOL-01 | Phase 37 | Pending |
 | RTOOL-02 | Phase 37 | Pending |
 | RTOOL-03 | Phase 37 | Pending |
-| DOC-01 | Phase 36.2 | Pending |
+| DOC-01 | Phase 36.2 | Complete |
 | DOC-02 | Phase 36.2 | Pending |
 | DOC-03 | Phase 36.2 | Pending |
 | DOC-04 | Phase 36.2 | Pending |
 | DOC-05 | Phase 36.2 | Pending |
 | DOC-06 | Phase 36.2 | Pending |
 | DOC-07 | Phase 36.2 | Pending |
-| DOC-08 | Phase 36.2 | Pending |
-| DOC-09 | Phase 36.2 | Pending |
+| DOC-08 | Phase 36.2 | Complete |
+| DOC-09 | Phase 36.2 | Complete |
 | DOC-10 | Phase 37 | Pending |
 | DOC-11 | Phase 37 | Pending |
 | DOC-12 | Phase 37 | Pending |
