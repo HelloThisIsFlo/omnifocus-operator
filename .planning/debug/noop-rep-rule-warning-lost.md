@@ -1,5 +1,5 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "No-op repetition rule warning doesn't fire when other field changes are present in edit_tasks"
 created: 2026-03-28T00:00:00Z
 updated: 2026-03-28T00:00:00Z

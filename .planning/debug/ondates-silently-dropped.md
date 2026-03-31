@@ -1,5 +1,5 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "monthly_day_in_month with onDates=[1, 15, -1] loses 15 and -1 on round-trip"
 created: 2026-03-28T00:00:00Z
 updated: 2026-03-28T00:00:00Z
