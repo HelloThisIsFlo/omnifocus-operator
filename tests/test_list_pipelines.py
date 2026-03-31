@@ -12,6 +12,7 @@ Uses InMemoryBridge (per SAFE-01) via the conftest fixture chain.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
@@ -276,3 +277,110 @@ class TestNoNotImplementedError:
     async def test_list_perspectives_callable(self, service: OperatorService) -> None:
         result = await service.list_perspectives()
         assert result is not None
+
+
+# ---------------------------------------------------------------------------
+# ReviewDueFilter pipeline expansion
+# ---------------------------------------------------------------------------
+
+
+class TestReviewDueFilterExpansion:
+    """Verify _ListProjectsPipeline expands ReviewDueFilter to datetime."""
+
+    def test_expand_review_due_1w(self) -> None:
+        """1w -> now + 7 days."""
+        from omnifocus_operator.contracts.use_cases.list.projects import (
+            DurationUnit,
+            ReviewDueFilter,
+        )
+        from omnifocus_operator.service.service import _ListProjectsPipeline
+
+        f = ReviewDueFilter(amount=1, unit=DurationUnit.WEEKS)
+        result = _ListProjectsPipeline._expand_review_due(f)
+        expected = datetime.now(UTC) + timedelta(weeks=1)
+        assert abs((result - expected).total_seconds()) < 2
+
+    def test_expand_review_due_now(self) -> None:
+        """'now' -> approximately current time."""
+        from omnifocus_operator.contracts.use_cases.list.projects import ReviewDueFilter
+        from omnifocus_operator.service.service import _ListProjectsPipeline
+
+        f = ReviewDueFilter(amount=None, unit=None)
+        result = _ListProjectsPipeline._expand_review_due(f)
+        now = datetime.now(UTC)
+        assert abs((result - now).total_seconds()) < 2
+
+    def test_expand_review_due_30d(self) -> None:
+        """30d -> now + 30 days."""
+        from omnifocus_operator.contracts.use_cases.list.projects import (
+            DurationUnit,
+            ReviewDueFilter,
+        )
+        from omnifocus_operator.service.service import _ListProjectsPipeline
+
+        f = ReviewDueFilter(amount=30, unit=DurationUnit.DAYS)
+        result = _ListProjectsPipeline._expand_review_due(f)
+        expected = datetime.now(UTC) + timedelta(days=30)
+        assert abs((result - expected).total_seconds()) < 2
+
+    def test_expand_review_due_2m(self) -> None:
+        """2m -> now + 2 months (calendar arithmetic)."""
+        from omnifocus_operator.contracts.use_cases.list.projects import (
+            DurationUnit,
+            ReviewDueFilter,
+        )
+        from omnifocus_operator.service.service import _ListProjectsPipeline
+
+        f = ReviewDueFilter(amount=2, unit=DurationUnit.MONTHS)
+        result = _ListProjectsPipeline._expand_review_due(f)
+        # Should be roughly 60 days from now
+        assert result > datetime.now(UTC) + timedelta(days=50)
+        assert result < datetime.now(UTC) + timedelta(days=70)
+
+    def test_expand_review_due_1y(self) -> None:
+        """1y -> now + 1 year."""
+        from omnifocus_operator.contracts.use_cases.list.projects import (
+            DurationUnit,
+            ReviewDueFilter,
+        )
+        from omnifocus_operator.service.service import _ListProjectsPipeline
+
+        f = ReviewDueFilter(amount=1, unit=DurationUnit.YEARS)
+        result = _ListProjectsPipeline._expand_review_due(f)
+        assert result > datetime.now(UTC) + timedelta(days=360)
+        assert result < datetime.now(UTC) + timedelta(days=370)
+
+    @pytest.mark.snapshot(
+        tasks=[],
+        projects=[
+            make_project_dict(id="proj-1", name="Review Soon"),
+            make_project_dict(id="proj-2", name="No Review"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_pipeline_filters_by_review_due(self, service: OperatorService) -> None:
+        """Full pipeline test: review_due_within='1y' includes projects with past review dates."""
+        # Default nextReviewDate is 2024-01-17, which is in the past.
+        # "1y" expands to ~now + 1 year, so projects with past review dates should match.
+        result = await service.list_projects(ListProjectsQuery(review_due_within="1y"))
+        proj_ids = {p.id for p in result.items}
+        assert "proj-1" in proj_ids
+        assert "proj-2" in proj_ids
+
+    @pytest.mark.snapshot(
+        tasks=[],
+        projects=[
+            make_project_dict(id="proj-1", name="Review Soon"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_pipeline_none_review_due_passes_through(
+        self, service: OperatorService
+    ) -> None:
+        """No review_due_within -> no filtering by review date."""
+        result = await service.list_projects(ListProjectsQuery())
+        assert len(result.items) == 1

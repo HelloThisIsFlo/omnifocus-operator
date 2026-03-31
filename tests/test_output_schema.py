@@ -479,7 +479,7 @@ class TestUnionRegressionGuard:
 # Naming convention enforcement (D-06, covers SC-4)
 # ---------------------------------------------------------------------------
 
-CONTRACT_SUFFIXES = ("Command", "Result", "RepoPayload", "RepoResult", "Action", "Spec", "Query")
+CONTRACT_SUFFIXES = ("Command", "Result", "RepoPayload", "RepoResult", "Action", "Spec", "Query", "Filter")
 
 # models/ classes exempt from "no contract suffix" check:
 # Private/internal base classes are already filtered by leading underscore.

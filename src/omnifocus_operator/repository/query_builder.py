@@ -6,9 +6,12 @@ All user-provided values use ? placeholders (INFRA-01: no SQL injection).
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, NamedTuple
 
 from omnifocus_operator.models.enums import Availability
+
+_CF_EPOCH = datetime(2001, 1, 1, tzinfo=UTC)
 
 if TYPE_CHECKING:
     from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsRepoQuery
@@ -196,9 +199,10 @@ def build_list_projects_sql(
         conditions.append(f"pi.folder IN ({placeholders})")
         params.extend(query.folder_ids)
 
-    if query.review_due_within is not None:
+    if query.review_due_before is not None:
         conditions.append("pi.nextReviewDate IS NOT NULL AND pi.nextReviewDate <= ?")
-        params.append(query.review_due_within)
+        cf_seconds = (query.review_due_before - _CF_EPOCH).total_seconds()
+        params.append(cf_seconds)
 
     if query.flagged is not None:
         conditions.append("t.flagged = ?")

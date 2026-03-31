@@ -2206,7 +2206,7 @@ class TestListProjects:
                     "persistentIdentifier": "p-review-soon",
                     "project_info": {
                         "effectiveStatus": "active",
-                        "nextReviewDate": "2026-03-15T00:00:00+00:00",
+                        "nextReviewDate": _cf_epoch(datetime(2026, 3, 15, tzinfo=UTC)),
                     },
                 }
             ),
@@ -2215,16 +2215,18 @@ class TestListProjects:
                     "persistentIdentifier": "p-review-later",
                     "project_info": {
                         "effectiveStatus": "active",
-                        "nextReviewDate": "2026-06-01T00:00:00+00:00",
+                        "nextReviewDate": _cf_epoch(datetime(2026, 6, 1, tzinfo=UTC)),
                     },
                 }
             ),
         ],
     )
-    async def test_list_projects_review_due_within(self, hybrid_repo: HybridRepository) -> None:
-        """PROJ-05: review_due_within returns projects with nextReviewDate <= threshold."""
+    async def test_list_projects_review_due_before(self, hybrid_repo: HybridRepository) -> None:
+        """PROJ-05: review_due_before returns projects with nextReviewDate <= threshold."""
         result = await hybrid_repo.list_projects(
-            ListProjectsRepoQuery(review_due_within="2026-04-01T00:00:00+00:00")
+            ListProjectsRepoQuery(
+                review_due_before=datetime(2026, 4, 1, tzinfo=UTC),
+            )
         )
         assert result.total == 1
         assert result.items[0].id == "p-review-soon"

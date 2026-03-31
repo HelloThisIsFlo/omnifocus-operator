@@ -11,7 +11,9 @@ delegate to repository. All heavy lifting lives in the extracted modules:
 
 from __future__ import annotations
 
+import calendar
 import logging
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any, NoReturn
 
 from omnifocus_operator.agent_messages.errors import (
@@ -32,7 +34,9 @@ from omnifocus_operator.contracts.use_cases.list.folders import (
     ListFoldersRepoQuery,
 )
 from omnifocus_operator.contracts.use_cases.list.projects import (
+    DurationUnit,
     ListProjectsRepoQuery,
+    ReviewDueFilter,
 )
 from omnifocus_operator.contracts.use_cases.list.tags import (
     ListTagsRepoQuery,
@@ -356,14 +360,42 @@ class _ListProjectsPipeline(_ReadPipeline):
             )
 
     def _build_repo_query(self) -> None:
+        review_due_before: datetime | None = None
+        if self._query.review_due_within is not None:
+            review_due_before = self._expand_review_due(self._query.review_due_within)
+
         self._repo_query = ListProjectsRepoQuery(
             availability=self._query.availability,
             folder_ids=self._folder_ids,
-            review_due_within=self._query.review_due_within,
+            review_due_before=review_due_before,
             flagged=self._query.flagged,
             limit=self._query.limit,
             offset=self._query.offset,
         )
+
+    @staticmethod
+    def _expand_review_due(f: ReviewDueFilter) -> datetime:
+        """Expand ReviewDueFilter to a concrete datetime threshold."""
+        now = datetime.now(UTC)
+        if f.amount is None:
+            return now
+        unit = f.unit
+        amount = f.amount
+        if unit == DurationUnit.DAYS:
+            return now + timedelta(days=amount)
+        if unit == DurationUnit.WEEKS:
+            return now + timedelta(weeks=amount)
+        if unit == DurationUnit.MONTHS:
+            # Manual calendar arithmetic (no dateutil dependency)
+            month = now.month + amount
+            year = now.year + (month - 1) // 12
+            month = (month - 1) % 12 + 1
+            day = min(now.day, calendar.monthrange(year, month)[1])
+            return now.replace(year=year, month=month, day=day)
+        # unit == DurationUnit.YEARS
+        year = now.year + amount
+        day = min(now.day, calendar.monthrange(year, now.month)[1])
+        return now.replace(year=year, day=day)
 
     async def _delegate(self) -> ListResult[Project]:
         repo_result = await self._repository.list_projects(self._repo_query)

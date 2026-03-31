@@ -186,6 +186,13 @@ class BridgeRepository(BridgeWriteMixin, Repository):
             items = [p for p in items if p.folder is not None and p.folder in fid_set]
         if query.flagged is not None:
             items = [p for p in items if p.flagged == query.flagged]
+        if query.review_due_before is not None:
+            items = [
+                p
+                for p in items
+                if p.next_review_date is not None
+                and p.next_review_date <= query.review_due_before
+            ]
 
         total = len(items)
         offset = query.offset or 0

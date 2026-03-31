@@ -7,6 +7,8 @@ field, combination, and edge case.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsRepoQuery
 from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
 from omnifocus_operator.models.enums import Availability
@@ -368,13 +370,15 @@ class TestProjectsFolderFilter:
         assert "folder-2" in data_q.params
 
 
-class TestProjectsReviewDueWithinFilter:
-    def test_review_due_within(self):
-        query = ListProjectsRepoQuery(review_due_within="2026-04-05T00:00:00Z")
+class TestProjectsReviewDueBeforeFilter:
+    def test_review_due_before_converts_to_cf_epoch(self):
+        dt = datetime(2026, 4, 7, tzinfo=UTC)
+        query = ListProjectsRepoQuery(review_due_before=dt)
         data_q, _ = build_list_projects_sql(query)
         assert "pi.nextReviewDate IS NOT NULL" in data_q.sql
         assert "pi.nextReviewDate <= ?" in data_q.sql
-        assert "2026-04-05T00:00:00Z" in data_q.params
+        expected_cf = (dt - datetime(2001, 1, 1, tzinfo=UTC)).total_seconds()
+        assert expected_cf in data_q.params
 
 
 class TestProjectsFlaggedFilter:
@@ -427,13 +431,12 @@ class TestProjectsCombinedFilters:
         query = ListProjectsRepoQuery(
             folder_ids=["folder-id-1"],
             flagged=True,
-            review_due_within="2026-04-05",
+            review_due_before=datetime(2026, 4, 5, tzinfo=UTC),
             limit=10,
         )
         data_q, _ = build_list_projects_sql(query)
         _assert_parameterized(data_q.sql)
         assert "folder-id-1" not in data_q.sql
-        assert "2026-04-05" not in data_q.sql
 
 
 # ===========================================================================
