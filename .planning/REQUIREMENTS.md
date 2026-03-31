@@ -56,6 +56,18 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 - [x] **WRIT-10**: Validation errors are logged by the tool logger with timing and the reformatted error
 - [x] **WRIT-11**: Canary test detects if a FastMCP upgrade moves validation outside the middleware chain -- with clear failure message explaining what broke and what to do
 
+### Agent-Facing Documentation
+
+- [ ] **DOC-01**: Model docstrings visible in JSON Schema contain no implementation details — no references to validators, `extra='forbid'`, CommandModel, service layer, bridge internals, UNSET, or Patch/PatchOrClear
+- [ ] **DOC-02**: Write tool docstrings (add_tasks, edit_tasks) use approved verbatim text from CONTEXT.md — no field-by-field listings redundant with inputSchema
+- [ ] **DOC-03**: All three date fields (dueDate, deferDate, plannedDate) have `Field(description=...)` on both write-side commands and read-side models, faithful to `docs/omnifocus-concepts.md`
+- [ ] **DOC-04**: Tag resolution behavior (names or IDs, case-insensitive, non-existent rejected, ambiguous errors) documented in tool descriptions and on tag-accepting fields via `Field(description=...)`
+- [ ] **DOC-05**: Timezone requirement (ISO 8601 with offset or Z, naive rejected) documented in tool descriptions and on date `Field(description=...)`
+- [ ] **DOC-06**: Partial repetitionRule on task with no existing rule documented in edit_tasks tool description (all three root fields required when no rule exists)
+- [ ] **DOC-07**: All four read tool descriptions include camelCase field names note and hint at response shape (key non-obvious fields)
+- [ ] **DOC-08**: `Field(description=...)` added to read-side model fields that fail the fluency test — at minimum: `effective_due_date`, `effective_defer_date`, `effective_planned_date`, `effective_flagged`, `children_are_mutually_exclusive`, `next_task`
+- [ ] **DOC-09**: No Python conventions leak into JSON-facing schema descriptions — `None` → `null`, no UNSET references, no validator/model-internal language
+
 ### Read Tool Registration
 
 - [ ] **RTOOL-01**: `list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives` use typed query model parameters -- rich inputSchema auto-generated from query models (not `dict[str, Any]`)
@@ -176,12 +188,21 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RTOOL-01 | Phase 37 | Pending |
 | RTOOL-02 | Phase 37 | Pending |
 | RTOOL-03 | Phase 37 | Pending |
+| DOC-01 | Phase 36.2 | Pending |
+| DOC-02 | Phase 36.2 | Pending |
+| DOC-03 | Phase 36.2 | Pending |
+| DOC-04 | Phase 36.2 | Pending |
+| DOC-05 | Phase 36.2 | Pending |
+| DOC-06 | Phase 36.2 | Pending |
+| DOC-07 | Phase 36.2 | Pending |
+| DOC-08 | Phase 36.2 | Pending |
+| DOC-09 | Phase 36.2 | Pending |
 
 **Coverage:**
-- v1.3 requirements: 51 total (PROJ-03 merged into PROJ-02, TASK-05 deferred, +4 SRCH, +11 WRIT, +3 RTOOL)
-- Mapped to phases: 51
+- v1.3 requirements: 60 total (PROJ-03 merged into PROJ-02, TASK-05 deferred, +4 SRCH, +11 WRIT, +3 RTOOL, +9 DOC)
+- Mapped to phases: 60
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-29*
-*Last updated: 2026-03-31 added WRIT-01..11 for Phase 36.1, RTOOL-01..03 for Phase 37*
+*Last updated: 2026-04-01 added DOC-01..09 for Phase 36.2*

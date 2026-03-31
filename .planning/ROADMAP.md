@@ -166,6 +166,23 @@ Plans:
 - [x] 36-01-PLAN.md — Validation, ReviewDueFilter, educational errors, pipeline + repo updates
 - [x] 36-02-PLAN.md — Cross-path equivalence tests for all 5 entity types
 
+### Phase 36.2: Sweep agent-facing schema descriptions and tool documentation (INSERTED)
+
+**Goal:** Agent-facing descriptions (tool docstrings, model docstrings, Field annotations) contain only behavioral guidance — no implementation leakage, no redundancy with inputSchema, no gaps in tag resolution / timezone / partial repetitionRule behavior
+**Requirements**: DOC-01, DOC-02, DOC-03, DOC-04, DOC-05, DOC-06, DOC-07, DOC-08, DOC-09
+**Depends on:** Phase 36.1
+**Success Criteria** (what must be TRUE):
+  1. No model docstring visible in JSON Schema references validators, extra='forbid', CommandModel, service layer, bridge internals, UNSET, or Patch/PatchOrClear
+  2. add_tasks and edit_tasks tool docstrings match approved verbatim text — field listings removed, behavioral rules and examples preserved
+  3. All three date fields have Field(description=...) faithful to docs/omnifocus-concepts.md on both write and read models
+  4. Tag resolution, timezone requirements, and partial repetitionRule edge case are documented at both tool and field level where applicable
+  5. Read tool descriptions include camelCase note and response shape hints; read-side model fields failing the fluency test have Field(description=...)
+  6. test_output_schema.py passes after all changes
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 36.2 to break down)
+
 ### Phase 36.1: Migrate write tools to typed params with validation middleware (INSERTED)
 
 **Goal:** Write tools expose rich inputSchema via typed params, with validation middleware reformatting errors into clean agent-friendly messages
@@ -209,4 +226,6 @@ Phases execute in numeric order: 34 → 35 → 35.1 → 35.2 → 36 → 37
 | 35.1 Contract Boundary Split | v1.3 | 2/2 | Complete    | 2026-03-30 |
 | 35.2 Uniform Name/ID Resolution | v1.3 | 2/2 | Complete    | 2026-03-30 |
 | 36. Service Orchestration + Cross-Path Equivalence | v1.3 | 2/2 | Complete    | 2026-03-31 |
+| 36.1 Write Tool Schema Migration | v1.3 | 2/2 | Complete | 2026-03-31 |
+| 36.2 Agent-Facing Documentation Sweep | v1.3 | 0/0 | Context gathered | - |
 | 37. Server Registration and Integration | v1.3 | 0/0 | Not started | - |
