@@ -178,12 +178,12 @@ Plans:
   4. Tag resolution, timezone requirements, and partial repetitionRule edge case are documented at both tool and field level where applicable
   5. Read tool descriptions include camelCase note and response shape hints; read-side model fields failing the fluency test have Field(description=...)
   6. test_output_schema.py passes after all changes
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 36.2-01-PLAN.md — Write-side contract docstring cleanup + Field(description=...) on dates, tags
 - [x] 36.2-02-PLAN.md — Read-side model docstring cleanup + Field(description=...) on effective_* fields
-- [ ] 36.2-03-PLAN.md — Server tool docstrings: approved verbatim write tools + read tool response hints
+- [x] 36.2-03-PLAN.md — Server tool docstrings: approved verbatim write tools + read tool response hints
 
 ### Phase 36.1: Migrate write tools to typed params with validation middleware (INSERTED)
 
@@ -229,5 +229,5 @@ Phases execute in numeric order: 34 → 35 → 35.1 → 35.2 → 36 → 37
 | 35.2 Uniform Name/ID Resolution | v1.3 | 2/2 | Complete    | 2026-03-30 |
 | 36. Service Orchestration + Cross-Path Equivalence | v1.3 | 2/2 | Complete    | 2026-03-31 |
 | 36.1 Write Tool Schema Migration | v1.3 | 2/2 | Complete | 2026-03-31 |
-| 36.2 Agent-Facing Documentation Sweep | v1.3 | 1/3 | In Progress|  |
+| 36.2 Agent-Facing Documentation Sweep | v1.3 | 3/3 | Complete   | 2026-03-31 |
 | 37. Server Registration and Integration | v1.3 | 0/0 | Not started | - |
