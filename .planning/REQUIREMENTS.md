@@ -35,6 +35,13 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 - [x] **BROWSE-02**: Agent can list folders filtered by status list with OR logic; defaults to remaining (active + on_hold)
 - [x] **BROWSE-03**: Agent can list all perspectives (built-in + custom) with id, name, builtin flag
 
+### Entity Search
+
+- [ ] **SRCH-01**: Agent can search projects by case-insensitive substring in name and notes — same implementation as TASK-08
+- [ ] **SRCH-02**: Agent can search tags by case-insensitive substring in name — same implementation as TASK-08 (name only, tags have no notes)
+- [ ] **SRCH-03**: Agent can search folders by case-insensitive substring in name — same implementation as TASK-08 (name only, folders have no notes)
+- [ ] **SRCH-04**: Agent can search perspectives by case-insensitive substring in name — same implementation as TASK-08 (name only). Requires introducing `ListPerspectivesQuery` / `ListPerspectivesRepoQuery`.
+
 ### Query Infrastructure
 
 - [x] **INFRA-01**: SQL queries use parameterized values (no SQL injection)
@@ -120,6 +127,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-03 | Phase 36 (merged) | Complete |
 | INFRA-04 | Phase 34 | Complete |
 | INFRA-05 | Phase 37 (was 38) | Pending |
+| SRCH-01 | Phase 37 | Pending |
+| SRCH-02 | Phase 37 | Pending |
+| SRCH-03 | Phase 37 | Pending |
+| SRCH-04 | Phase 37 | Pending |
 | INFRA-06 | Phase 36 (merged) | Complete |
 | INFRA-07 | Phase 35.2 | Complete |
 | INFRA-08 | Phase 35.1 | Complete |
@@ -133,10 +144,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-16 | Phase 35.2 | Complete |
 
 **Coverage:**
-- v1.3 requirements: 33 total (PROJ-03 merged into PROJ-02, TASK-05 deferred)
-- Mapped to phases: 33
+- v1.3 requirements: 37 total (PROJ-03 merged into PROJ-02, TASK-05 deferred, +4 SRCH)
+- Mapped to phases: 37
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-29*
-*Last updated: 2026-03-30 after Phase 35.2 context gathering*
+*Last updated: 2026-03-31 added SRCH-01..04 entity search requirements for Phase 37*
