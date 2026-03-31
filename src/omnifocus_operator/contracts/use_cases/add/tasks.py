@@ -23,18 +23,19 @@ class AddTaskCommand(CommandModel):
     """Agent instruction to create a task."""
 
     name: str = Field(min_length=1)
-    parent: str | None = None
-    tags: list[str] | None = None
-    due_date: AwareDatetime | None = None
-    defer_date: AwareDatetime | None = None
-    planned_date: AwareDatetime | None = None
-    flagged: bool = False
 
     @field_validator("name", mode="before")
     @classmethod
     def _strip_name(cls, v: object) -> object:
         """Strip whitespace before min_length check."""
         return v.strip() if isinstance(v, str) else v
+
+    parent: str | None = None
+    tags: list[str] | None = None
+    due_date: AwareDatetime | None = None
+    defer_date: AwareDatetime | None = None
+    planned_date: AwareDatetime | None = None
+    flagged: bool = False
     estimated_minutes: float | None = None
     note: str | None = None
     repetition_rule: RepetitionRuleAddSpec | None = None

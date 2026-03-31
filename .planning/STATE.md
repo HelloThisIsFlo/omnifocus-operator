@@ -96,12 +96,18 @@ Carried forward:
 9. Sweep agent-facing schema descriptions and tool documentation
 10. ~~Tighten schema field constraints: flagged default and name min_length~~ (DONE: quick-260331-v9q)
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260331-v9q | Tighten schema field constraints: flagged default and name min_length | 2026-03-31 | b064078 | [260331-v9q-tighten-schema-field-constraints-flagged](./quick/260331-v9q-tighten-schema-field-constraints-flagged/) |
+
 ### Blockers/Concerns
 
 None yet.
 
 ## Session Continuity
 
-Last activity: 2026-03-30 -- Plan 35-01 completed
+Last activity: 2026-03-31 - Completed quick task 260331-v9q: Tighten schema field constraints
 Stopped at: Completed 36.1-02-PLAN.md
 Resume file: None
