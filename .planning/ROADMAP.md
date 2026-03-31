@@ -93,7 +93,7 @@
 
 - [x] **Phase 34: Contracts and Query Foundation** — Typed query models, ListResult container, query builder, protocol extensions (completed 2026-03-29)
 - [x] **Phase 35: SQL Repository** — HybridRepository list methods with filtered SQL queries for all 5 entity types (completed 2026-03-30)
-- [ ] **Phase 36: Service Orchestration + Cross-Path Equivalence** — Validation, defaults, shorthand expansion, cross-path equivalence tests (merges old Phases 36+37)
+- [ ] **Phase 36: Service Orchestration + Cross-Path Equivalence** — Validation, defaults, duration parsing, cross-path equivalence tests (merges old Phases 36+37)
 - [ ] **Phase 37: Server Registration and Integration** — 5 new MCP tools wired end-to-end
 
 ## Phase Details
@@ -151,13 +151,13 @@ Plans:
 - [x] 35.1-02-PLAN.md — Migrate imports, update protocol/repository signatures, delete old files
 
 ### Phase 36: Service Orchestration + Cross-Path Equivalence (MERGED from old Phases 36+37)
-**Goal**: Service layer adds validation, defaults, and shorthand expansion to existing pipelines; cross-path equivalence tests prove BridgeRepository matches SQL path
+**Goal**: Service layer adds validation, defaults, and duration parsing to existing pipelines; cross-path equivalence tests prove BridgeRepository matches SQL path
 **Depends on**: Phase 35.2
 **Requirements**: INFRA-03, INFRA-06
 **Success Criteria** (what must be TRUE):
   1. Cross-path equivalence tests confirm SQL and in-memory paths return identical results for the same query inputs
   2. _ListTasksPipeline applies default completed/dropped exclusion and validates offset-requires-limit
-  3. _ListProjectsPipeline expands status shorthands (remaining, available, all), parses review_due_within durations, and validates inputs
+  3. _ListProjectsPipeline parses review_due_within durations (via ReviewDueFilter) and validates inputs
   4. Invalid filter values produce educational error messages that tell the agent what went wrong and what valid values look like
 **Notes**: BridgeRepository list methods already implemented in Phase 35.2 (deviation). Pass-throughs (old SC#3) and did-you-mean (old INFRA-07) already delivered in Phase 35.2.
 **Plans**: TBD
