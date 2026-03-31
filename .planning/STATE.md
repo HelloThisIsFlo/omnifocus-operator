@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Read Tools
 status: verifying
-stopped_at: Completed 36-02-PLAN.md
-last_updated: "2026-03-31T13:28:59.229Z"
+stopped_at: Phase 36.1 context gathered
+last_updated: "2026-03-31T18:32:57.520Z"
 last_activity: 2026-03-31
 progress:
-  total_phases: 6
+  total_phases: 7
   completed_phases: 5
   total_plans: 10
   completed_plans: 10
@@ -76,6 +76,7 @@ Recent decisions affecting current work:
 - Phase 35.1 inserted after Phase 35: Introduce read-side contract boundary split (RepoQuery / RepoResult) (URGENT)
 - Phase 35.2 inserted after Phase 35: Uniform name-vs-ID resolution at service boundary for all list filters (URGENT)
 - Old Phases 36 (In-Memory Fallback) + 37 (Service Orchestration) merged into Phase 36; old Phase 38 renumbered to 37
+- Phase 36.1 inserted after Phase 36: Migrate write tools to typed params with validation middleware (URGENT)
 
 ### Pending Todos
 
@@ -97,5 +98,5 @@ None yet.
 ## Session Continuity
 
 Last activity: 2026-03-30 -- Plan 35-01 completed
-Stopped at: Completed 36-02-PLAN.md
-Resume file: None
+Stopped at: Phase 36.1 context gathered
+Resume file: .planning/phases/36.1-migrate-write-tools-to-typed-params-with-validation-middleware/36.1-CONTEXT.md
