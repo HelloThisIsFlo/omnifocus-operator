@@ -93,7 +93,7 @@
 
 - [x] **Phase 34: Contracts and Query Foundation** — Typed query models, ListResult container, query builder, protocol extensions (completed 2026-03-29)
 - [x] **Phase 35: SQL Repository** — HybridRepository list methods with filtered SQL queries for all 5 entity types (completed 2026-03-30)
-- [ ] **Phase 36: Service Orchestration + Cross-Path Equivalence** — Validation, defaults, duration parsing, cross-path equivalence tests (merges old Phases 36+37)
+- [x] **Phase 36: Service Orchestration + Cross-Path Equivalence** — Validation, defaults, duration parsing, cross-path equivalence tests (merges old Phases 36+37) (completed 2026-03-31)
 - [ ] **Phase 37: Server Registration and Integration** — 5 new MCP tools wired end-to-end
 
 ## Phase Details
@@ -160,11 +160,11 @@ Plans:
   3. _ListProjectsPipeline parses review_due_within durations (via ReviewDueFilter) and validates inputs
   4. Invalid filter values produce educational error messages that tell the agent what went wrong and what valid values look like
 **Notes**: BridgeRepository list methods already implemented in Phase 35.2 (deviation). Pass-throughs (old SC#3) and did-you-mean (old INFRA-07) already delivered in Phase 35.2.
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 36-01-PLAN.md — Validation, ReviewDueFilter, educational errors, pipeline + repo updates
-- [ ] 36-02-PLAN.md — Cross-path equivalence tests for all 5 entity types
+- [x] 36-02-PLAN.md — Cross-path equivalence tests for all 5 entity types
 
 ### Phase 37: Server Registration and Integration (was Phase 38)
 **Goal**: Agents can call 5 new MCP tools that return filtered, paginated entity lists with total counts
@@ -194,5 +194,5 @@ Phases execute in numeric order: 34 → 35 → 35.1 → 35.2 → 36 → 37
 | 35. SQL Repository | v1.3 | 2/2 | Complete    | 2026-03-30 |
 | 35.1 Contract Boundary Split | v1.3 | 2/2 | Complete    | 2026-03-30 |
 | 35.2 Uniform Name/ID Resolution | v1.3 | 2/2 | Complete    | 2026-03-30 |
-| 36. Service Orchestration + Cross-Path Equivalence | v1.3 | 1/2 | In Progress|  |
+| 36. Service Orchestration + Cross-Path Equivalence | v1.3 | 2/2 | Complete   | 2026-03-31 |
 | 37. Server Registration and Integration | v1.3 | 0/0 | Not started | - |
