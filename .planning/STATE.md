@@ -94,7 +94,7 @@ Carried forward:
 7. Reorganize test suite into unit/integration/golden-master folders
 8. Add search tool for projects symmetric with task search (v1.3+)
 9. Sweep agent-facing schema descriptions and tool documentation
-10. Tighten schema field constraints: flagged default and name min_length
+10. ~~Tighten schema field constraints: flagged default and name min_length~~ (DONE: quick-260331-v9q)
 
 ### Blockers/Concerns
 
