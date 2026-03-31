@@ -160,7 +160,11 @@ Plans:
   3. _ListProjectsPipeline parses review_due_within durations (via ReviewDueFilter) and validates inputs
   4. Invalid filter values produce educational error messages that tell the agent what went wrong and what valid values look like
 **Notes**: BridgeRepository list methods already implemented in Phase 35.2 (deviation). Pass-throughs (old SC#3) and did-you-mean (old INFRA-07) already delivered in Phase 35.2.
-**Plans**: TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 36-01-PLAN.md — Validation, ReviewDueFilter, educational errors, pipeline + repo updates
+- [ ] 36-02-PLAN.md — Cross-path equivalence tests for all 5 entity types
 
 ### Phase 37: Server Registration and Integration (was Phase 38)
 **Goal**: Agents can call 5 new MCP tools that return filtered, paginated entity lists with total counts
@@ -190,5 +194,5 @@ Phases execute in numeric order: 34 → 35 → 35.1 → 35.2 → 36 → 37
 | 35. SQL Repository | v1.3 | 2/2 | Complete    | 2026-03-30 |
 | 35.1 Contract Boundary Split | v1.3 | 2/2 | Complete    | 2026-03-30 |
 | 35.2 Uniform Name/ID Resolution | v1.3 | 2/2 | Complete    | 2026-03-30 |
-| 36. Service Orchestration + Cross-Path Equivalence | v1.3 | 0/0 | Not started | - |
+| 36. Service Orchestration + Cross-Path Equivalence | v1.3 | 0/2 | In progress | - |
 | 37. Server Registration and Integration | v1.3 | 0/0 | Not started | - |
