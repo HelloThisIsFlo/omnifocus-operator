@@ -151,7 +151,7 @@ ORDER BY c.parent, c.rank ASC, c.persistentIdentifier ASC
 ## Edge Cases
 
 - **Negative ranks**: Normal. The `+ 2147483648` shift in sort_path handles them correctly.
-- **Inbox tasks (106)**: NOT reached by the project-anchored CTE (they have no projectInfo and no parent in a project). Current task queries already exclude inbox via `WHERE pi.task IS NULL` filter. If inbox ordering is needed later, use Strategy B (synthetic sort_path with `ZZZZZZZZZZ/` prefix — sorts inbox tasks at the end).
+- **Inbox tasks (106 roots, 177 total)**: NOT reached by the project-anchored CTE. **Strategy B validated**: extend the CTE with a second anchor for inbox roots (`parent IS NULL AND containingProjectInfo IS NULL AND NOT a project`), prefix with `ZZZZZZZZZZ/` to sort after projects. Inbox has real nesting (up to 4 levels), and the recursive step handles it identically to project trees. One gotcha: the recursive step picks up completed children — filter with `dateCompleted IS NULL` in the outer WHERE (already done in the combined CTE). Performance: 0.8ms inbox-only, 6.0ms combined.
 - **Orphan tasks (71 non-inbox)**: Parent exists in DB but parent itself is an orphan (cascading chain from deleted/corrupted project trees). Not reachable by CTE. These are edge-case data — not expected in normal operation.
 - **Action groups**: Correctly traversed by the CTE recursive step (verified 10/10 sampled).
 - **rank=0**: Most common global value (334 tasks) but always unique within parent. The CTE handles this fine since sort_path includes the full ancestor chain.
@@ -214,6 +214,7 @@ NULL for 5001/5007 rows (99.9%). OmniFocus does not persist custom task ordering
 | `2-hierarchy/hierarchy_ordering.py` | 2 | Flat vs CTE ordering, creationOrdinal, depth interleaving |
 | `2-hierarchy/multi_project_cte.py` | 2+ | Multi-project CTE, filtered queries, performance, edge cases, proposed SQL |
 | `3-other-entities/entity_ordering.py` | 3 | Projects, folders, tags, TaskToTag rank columns |
+| `2-hierarchy/inbox_ordering.py` | 2+ | Inbox CTE, nesting depth, Strategy B combined CTE, coverage check |
 | `3-other-entities/rankintask_decoding.py` | 3+ | rankInTask binary encoding, fractional indexing scheme, byte sort proof |
 
 All scripts: read-only (`?mode=ro`), self-contained, runnable for verification.
