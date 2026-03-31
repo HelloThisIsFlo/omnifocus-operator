@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Read Tools
-status: verifying
-stopped_at: Phase 36 context gathered
-last_updated: "2026-03-31T12:49:09.917Z"
-last_activity: 2026-03-30
+status: executing
+stopped_at: Completed 36-01-PLAN.md
+last_updated: "2026-03-31T13:19:11.519Z"
+last_activity: 2026-03-31
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 8
-  completed_plans: 8
+  total_plans: 10
+  completed_plans: 9
   percent: 20
 ---
 
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-03-29)
 
 ## Current Position
 
-Phase: 36
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-03-30
+Phase: 36 (Service Orchestration + Cross-Path Equivalence) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-03-31
 
 Progress: [██░░░░░░░░] 20%
 
@@ -66,6 +66,9 @@ Recent decisions affecting current work:
 - [Phase 35.2]: Project filter SQL uses pi2.task IN (?) subquery; folder filter simplified to direct pi.folder IN (?)
 - [Phase 35.2]: _ReadPipeline as separate base from _Pipeline for read-side Method Objects
 - [Phase 35.2]: BridgeRepository gets fetch-all + Python filter list methods as fallback path
+- [Phase 36]: ReviewDueFilter uses QueryModel base -- first <noun>Filter pattern in codebase
+- [Phase 36]: Calendar arithmetic for months/years without dateutil dependency
+- [Phase 36]: CF epoch conversion in query builder (not pipeline) -- keeps datetime types in Python as long as possible
 
 ### Roadmap Evolution
 
@@ -93,5 +96,5 @@ None yet.
 ## Session Continuity
 
 Last activity: 2026-03-30 -- Plan 35-01 completed
-Stopped at: Phase 36 context gathered
-Resume file: .planning/phases/36-service-orchestration-cross-path-equivalence-merged-from-old-phases-36-37/36-CONTEXT.md
+Stopped at: Completed 36-01-PLAN.md
+Resume file: None

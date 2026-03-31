@@ -42,7 +42,7 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 - [ ] **INFRA-03**: Bridge fallback produces identical results to SQL path for same filters
 - [x] **INFRA-04**: list_tasks and list_projects responses include total_count reflecting total matches ignoring limit/offset
 - [ ] **INFRA-05**: Tool descriptions detailed enough for an LLM to call correctly
-- [ ] **INFRA-06**: Educational error messages for invalid filter values
+- [x] **INFRA-06**: Educational error messages for invalid filter values
 - [x] **INFRA-07**: When a name-based filter (project, folder, tags) returns zero results, emit a "did you mean?" warning with close matches from the full entity list — see [design todo](../todos/pending/2026-03-30-add-did-you-mean-suggestions-for-zero-result-name-filters.md)
 - [x] **INFRA-08**: Read-side contracts split at the service boundary — agent-facing query models (`List<Noun>Query`) and repo-facing query models (`List<Noun>RepoQuery`) are separate types for tasks, projects, tags, and folders
 - [x] **INFRA-09**: Read-side result containers split at the service boundary — `ListResult[T]` (agent-facing) and `ListRepoResult[T]` (repo-facing) are separate generic types
@@ -120,7 +120,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-03 | Phase 36 (merged) | Pending |
 | INFRA-04 | Phase 34 | Complete |
 | INFRA-05 | Phase 37 (was 38) | Pending |
-| INFRA-06 | Phase 36 (merged) | Pending |
+| INFRA-06 | Phase 36 (merged) | Complete |
 | INFRA-07 | Phase 35.2 | Complete |
 | INFRA-08 | Phase 35.1 | Complete |
 | INFRA-09 | Phase 35.1 | Complete |
