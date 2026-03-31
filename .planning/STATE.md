@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Read Tools
 status: verifying
-stopped_at: Phase 36.1 context gathered
-last_updated: "2026-03-31T18:32:57.520Z"
+stopped_at: Completed 36.1-01-PLAN.md
+last_updated: "2026-03-31T20:17:50.578Z"
 last_activity: 2026-03-31
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 10
-  completed_plans: 10
+  total_plans: 12
+  completed_plans: 11
   percent: 20
 ---
 
@@ -70,6 +70,8 @@ Recent decisions affecting current work:
 - [Phase 36]: Calendar arithmetic for months/years without dateutil dependency
 - [Phase 36]: CF epoch conversion in query builder (not pipeline) -- keeps datetime types in Python as long as possible
 - [Phase 36]: Tests assert against expected data, parametrization proves equivalence by construction
+- [Phase 36.1]: ValidationReformatterMiddleware registered before ToolLoggingMiddleware (LIFO order) so logging sees the reformatted ToolError
+- [Phase 36.1]: D-08a: ctx-based _Unset filtering replaces fragile string-based check
 
 ### Roadmap Evolution
 
@@ -98,5 +100,5 @@ None yet.
 ## Session Continuity
 
 Last activity: 2026-03-30 -- Plan 35-01 completed
-Stopped at: Phase 36.1 context gathered
-Resume file: .planning/phases/36.1-migrate-write-tools-to-typed-params-with-validation-middleware/36.1-CONTEXT.md
+Stopped at: Completed 36.1-01-PLAN.md
+Resume file: None
