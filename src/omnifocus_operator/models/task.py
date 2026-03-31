@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import AwareDatetime
+from pydantic import AwareDatetime, Field
 
 from omnifocus_operator.models.common import ActionableEntity, ParentRef
 
@@ -14,7 +14,10 @@ class Task(ActionableEntity):
     in_inbox: bool
 
     # Dates (task-only -- always null on projects)
-    effective_completion_date: AwareDatetime | None = None
+    effective_completion_date: AwareDatetime | None = Field(
+        default=None,
+        description="Inherited from parent project or task if not set directly on this task.",
+    )
 
     # Parent reference (None = inbox task)
     parent: ParentRef | None = None

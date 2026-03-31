@@ -60,24 +60,50 @@ class ActionableEntity(OmniFocusEntity):
 
     # Flags
     flagged: bool
-    effective_flagged: bool
+    effective_flagged: bool = Field(
+        description="Inherited from parent project if not set directly on this task.",
+    )
 
     # Dates (all optional, timezone-aware)
-    due_date: AwareDatetime | None = None
-    defer_date: AwareDatetime | None = None
-    planned_date: AwareDatetime | None = None
+    due_date: AwareDatetime | None = Field(
+        default=None,
+        description="Deadline with real consequences if missed.",
+    )
+    defer_date: AwareDatetime | None = Field(
+        default=None,
+        description="Task cannot be acted on until this date; hidden from most views until then.",
+    )
+    planned_date: AwareDatetime | None = Field(
+        default=None,
+        description="When the user intends to work on this. No urgency signal, no penalty for missing it.",
+    )
     completion_date: AwareDatetime | None = None
     drop_date: AwareDatetime | None = None
-    effective_due_date: AwareDatetime | None = None
-    effective_defer_date: AwareDatetime | None = None
-    effective_planned_date: AwareDatetime | None = None
+    effective_due_date: AwareDatetime | None = Field(
+        default=None,
+        description="Inherited from parent project or task if not set directly on this entity.",
+    )
+    effective_defer_date: AwareDatetime | None = Field(
+        default=None,
+        description="Inherited from parent project or task if not set directly on this entity.",
+    )
+    effective_planned_date: AwareDatetime | None = Field(
+        default=None,
+        description="Inherited from parent project or task if not set directly on this entity.",
+    )
     # effective_completion_date is only present on Task, not Project
-    effective_drop_date: AwareDatetime | None = None
+    effective_drop_date: AwareDatetime | None = Field(
+        default=None,
+        description="Inherited from parent project or task if not set directly on this entity.",
+    )
 
     # Metadata
     estimated_minutes: float | None = None
     has_children: bool
 
     # Relationships
-    tags: list[TagRef] = Field(default_factory=list)  # Tag references (id + name objects)
+    tags: list[TagRef] = Field(
+        default_factory=list,
+        description="Tags applied to this entity, each with id and name.",
+    )
     repetition_rule: RepetitionRule | None = None

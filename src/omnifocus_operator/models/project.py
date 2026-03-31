@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import AwareDatetime
+from pydantic import AwareDatetime, Field
 
 from omnifocus_operator.models.common import ActionableEntity, ReviewInterval
 
@@ -16,5 +16,8 @@ class Project(ActionableEntity):
     review_interval: ReviewInterval
 
     # Relationships
-    next_task: str | None = None
+    next_task: str | None = Field(
+        default=None,
+        description="ID of the first available task in this project, if any.",
+    )
     folder: str | None = None
