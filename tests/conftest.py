@@ -405,10 +405,12 @@ def server(service: Any) -> Any:
     Note: Return type is ``Any`` to avoid importing ``FastMCP`` at module
     level.  Actual return: ``FastMCP``.
     """
+    import logging  # noqa: PLC0415
     from contextlib import asynccontextmanager  # noqa: PLC0415
 
     from fastmcp import FastMCP  # noqa: PLC0415
 
+    from omnifocus_operator.middleware import ToolLoggingMiddleware, ValidationReformatterMiddleware  # noqa: PLC0415
     from omnifocus_operator.server import _register_tools  # noqa: PLC0415
 
     @asynccontextmanager
@@ -417,6 +419,8 @@ def server(service: Any) -> Any:
 
     srv = FastMCP("omnifocus-operator", lifespan=_patched_lifespan)
     _register_tools(srv)
+    srv.add_middleware(ValidationReformatterMiddleware())
+    srv.add_middleware(ToolLoggingMiddleware(logging.getLogger("omnifocus_operator.server")))
     return srv
 
 

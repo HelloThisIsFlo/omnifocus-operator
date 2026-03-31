@@ -8,7 +8,7 @@ consumer modules.
 import ast
 import inspect
 
-from omnifocus_operator import server
+from omnifocus_operator import middleware, server
 from omnifocus_operator.agent_messages import errors as err_mod
 from omnifocus_operator.agent_messages import warnings as warn_mod
 from omnifocus_operator.contracts.shared import actions as contracts_common
@@ -99,6 +99,7 @@ class TestWarningConsolidation:
 # ---------------------------------------------------------------------------
 
 _ERROR_CONSUMERS = [
+    middleware,
     server,
     resolve,
     service_domain,

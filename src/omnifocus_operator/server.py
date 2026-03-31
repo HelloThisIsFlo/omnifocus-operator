@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import os
 from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from fastmcp import Context, FastMCP
 from mcp.types import (
@@ -159,7 +159,7 @@ def _register_tools(mcp: FastMCP) -> None:
         ),
     )
     async def add_tasks(
-        items: list[dict[str, Any]],
+        items: list[AddTaskCommand],
         ctx: Context,
     ) -> list[AddTaskResult]:
         """Create tasks in OmniFocus.
@@ -215,12 +215,7 @@ def _register_tools(mcp: FastMCP) -> None:
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
         service: OperatorService = ctx.lifespan_context["service"]
-        try:
-            command = AddTaskCommand.model_validate(items[0])
-        except ValidationError as exc:
-            messages = _format_validation_errors(exc)
-            logger.debug("server.add_tasks: validation error: %s", "; ".join(messages))
-            raise ValueError("; ".join(messages) or INVALID_INPUT) from None
+        command = items[0]
         # Progress reporting (scaffolding for future batch support per D-05):
         total = len(items)
         results: list[AddTaskResult] = []
@@ -238,7 +233,7 @@ def _register_tools(mcp: FastMCP) -> None:
         ),
     )
     async def edit_tasks(
-        items: list[dict[str, Any]],
+        items: list[EditTaskCommand],
         ctx: Context,
     ) -> list[EditTaskResult]:
         """Edit existing tasks in OmniFocus using patch semantics.
@@ -309,12 +304,7 @@ def _register_tools(mcp: FastMCP) -> None:
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
         service: OperatorService = ctx.lifespan_context["service"]
-        try:
-            command = EditTaskCommand.model_validate(items[0])
-        except ValidationError as exc:
-            messages = _format_validation_errors(exc)
-            logger.debug("server.edit_tasks: validation error: %s", "; ".join(messages))
-            raise ValueError("; ".join(messages) or INVALID_INPUT) from None
+        command = items[0]
         # Progress reporting (scaffolding for future batch support per D-05):
         total = len(items)
         results: list[EditTaskResult] = []
