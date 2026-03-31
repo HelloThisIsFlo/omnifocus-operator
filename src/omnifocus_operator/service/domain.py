@@ -41,6 +41,7 @@ from omnifocus_operator.agent_messages.warnings import (
     TAG_NOT_ON_TASK,
     TAGS_ALREADY_MATCH,
 )
+from omnifocus_operator.config import FUZZY_MATCH_CUTOFF, FUZZY_MATCH_MAX_SUGGESTIONS
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
 from omnifocus_operator.models.enums import Availability
@@ -107,8 +108,8 @@ class DomainLogic:
         self,
         value: str,
         entity_names: list[str],
-        n: int = 3,
-        cutoff: float = 0.6,
+        n: int = FUZZY_MATCH_MAX_SUGGESTIONS,
+        cutoff: float = FUZZY_MATCH_CUTOFF,
     ) -> list[str]:
         """Return close name matches for a failed resolution."""
         return difflib.get_close_matches(value, entity_names, n=n, cutoff=cutoff)
