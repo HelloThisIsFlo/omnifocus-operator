@@ -44,8 +44,8 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 
 ### Write Tool Schema & Validation
 
-- [ ] **WRIT-01**: `add_tasks` inputSchema exposes all `AddTaskCommand` fields with types, enums, and constraints (52+ schema entries vs current 2)
-- [ ] **WRIT-02**: `edit_tasks` inputSchema exposes all `EditTaskCommand` fields with types, enums, and constraints (61+ schema entries vs current 2)
+- [x] **WRIT-01**: `add_tasks` inputSchema exposes all `AddTaskCommand` fields with types, enums, and constraints (52+ schema entries vs current 2)
+- [x] **WRIT-02**: `edit_tasks` inputSchema exposes all `EditTaskCommand` fields with types, enums, and constraints (61+ schema entries vs current 2)
 - [x] **WRIT-03**: Schema field names use camelCase aliases matching the existing API contract (no snake_case leakage)
 - [x] **WRIT-04**: Validation errors use `"Task N: field"` location format (readable for agents, scales to future batches)
 - [x] **WRIT-05**: UNSET sentinel noise filtered from validation errors (no `_Unset` artifacts in agent-facing messages)
@@ -54,7 +54,7 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 - [x] **WRIT-08**: All previously valid `add_tasks` / `edit_tasks` inputs produce identical results (no functional regression)
 - [x] **WRIT-09**: Error messages maintain functional parity with pre-migration output and remain agent-friendly -- no internal model names, Pydantic internals, or implementation details leak into validation errors or warnings
 - [x] **WRIT-10**: Validation errors are logged by the tool logger with timing and the reformatted error
-- [ ] **WRIT-11**: Canary test detects if a FastMCP upgrade moves validation outside the middleware chain -- with clear failure message explaining what broke and what to do
+- [x] **WRIT-11**: Canary test detects if a FastMCP upgrade moves validation outside the middleware chain -- with clear failure message explaining what broke and what to do
 
 ### Read Tool Registration
 
@@ -162,8 +162,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-14 | Phase 35.2 | Complete |
 | INFRA-15 | Phase 35.2 | Complete |
 | INFRA-16 | Phase 35.2 | Complete |
-| WRIT-01 | Phase 36.1 | Pending |
-| WRIT-02 | Phase 36.1 | Pending |
+| WRIT-01 | Phase 36.1 | Complete |
+| WRIT-02 | Phase 36.1 | Complete |
 | WRIT-03 | Phase 36.1 | Complete |
 | WRIT-04 | Phase 36.1 | Complete |
 | WRIT-05 | Phase 36.1 | Complete |
@@ -172,7 +172,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | WRIT-08 | Phase 36.1 | Complete |
 | WRIT-09 | Phase 36.1 | Complete |
 | WRIT-10 | Phase 36.1 | Complete |
-| WRIT-11 | Phase 36.1 | Pending |
+| WRIT-11 | Phase 36.1 | Complete |
 | RTOOL-01 | Phase 37 | Pending |
 | RTOOL-02 | Phase 37 | Pending |
 | RTOOL-03 | Phase 37 | Pending |
