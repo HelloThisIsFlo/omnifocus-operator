@@ -88,11 +88,23 @@ select = ["E", "F", "I", "N", "UP", "B", "SIM", "TCH", "RUF", "PLC0415"]
 "tests/test_smoke.py" = ["PLC0415"]
 # Intentional late imports: negative import tests verifying old paths are removed
 "tests/test_bridge.py" = ["PLC0415"]
-# TC001 wants to move imports behind TYPE_CHECKING, but Pydantic model fields
-# need their types available at runtime (not just for type checkers). Without
-# the real import, model construction fails with NameError.
-"src/omnifocus_operator/models/*.py" = ["TC001"]
-"src/omnifocus_operator/contracts/**/*.py" = ["TC001"]
+# Intentional late imports: circular dependency breakers (contracts <-> service.validate)
+"src/omnifocus_operator/contracts/use_cases/list/projects.py" = ["PLC0415"]
+"src/omnifocus_operator/contracts/use_cases/list/tasks.py" = ["PLC0415"]
+"src/omnifocus_operator/service/validate.py" = ["PLC0415"]
+
+[tool.ruff.lint.flake8-type-checking]
+# Pydantic evaluates type annotations at runtime for validation/serialization.
+# Tell ruff not to flag imports used in classes inheriting from these bases.
+runtime-evaluated-base-classes = [
+    "pydantic.BaseModel",
+    "omnifocus_operator.models.base.OmniFocusBaseModel",
+    "omnifocus_operator.models.common.OmniFocusEntity",
+    "omnifocus_operator.models.common.ActionableEntity",
+    "omnifocus_operator.contracts.base.StrictModel",
+    "omnifocus_operator.contracts.base.CommandModel",
+    "omnifocus_operator.contracts.base.QueryModel",
+]
 
 [tool.ruff.format]
 quote-style = "double"

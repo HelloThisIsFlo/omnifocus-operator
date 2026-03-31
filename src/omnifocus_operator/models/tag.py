@@ -6,12 +6,8 @@ Tag has 3 own fields + inherited from OmniFocusEntity.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from omnifocus_operator.models.base import OmniFocusEntity
-
-if TYPE_CHECKING:
-    from omnifocus_operator.models.enums import TagAvailability
+from omnifocus_operator.models.common import OmniFocusEntity
+from omnifocus_operator.models.enums import TagAvailability
 
 
 class Tag(OmniFocusEntity):

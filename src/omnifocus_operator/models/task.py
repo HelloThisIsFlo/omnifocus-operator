@@ -6,14 +6,9 @@ Task has 3 own fields + inherited from ActionableEntity and OmniFocusEntity.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pydantic import AwareDatetime
 
-from omnifocus_operator.models.base import ActionableEntity
-
-if TYPE_CHECKING:
-    from pydantic import AwareDatetime
-
-    from omnifocus_operator.models.common import ParentRef
+from omnifocus_operator.models.common import ActionableEntity, ParentRef
 
 
 class Task(ActionableEntity):

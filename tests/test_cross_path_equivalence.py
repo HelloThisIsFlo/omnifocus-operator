@@ -9,29 +9,38 @@ Proves INFRA-03: bridge fallback path is equivalent to the SQL path.
 
 from __future__ import annotations
 
+import plistlib
 import sqlite3
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult
 from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersRepoQuery
 from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsRepoQuery
 from omnifocus_operator.contracts.use_cases.list.tags import ListTagsRepoQuery
 from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
 from omnifocus_operator.models.enums import (
-    Availability,
     FolderAvailability,
     TagAvailability,
 )
 from omnifocus_operator.repository.bridge import BridgeRepository
 from omnifocus_operator.repository.hybrid import HybridRepository
+from tests.conftest import (
+    make_folder_dict,
+    make_perspective_dict,
+    make_project_dict,
+    make_snapshot_dict,
+    make_tag_dict,
+    make_task_dict,
+)
+from tests.doubles import ConstantMtimeSource, InMemoryBridge
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from omnifocus_operator.contracts.protocols import Repository
+    from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult
 
 # ---------------------------------------------------------------------------
 # Core Foundation epoch constant
@@ -236,16 +245,6 @@ def _dt_to_iso(dt: datetime) -> str:
 
 async def seed_bridge_repo(data: dict[str, Any]) -> BridgeRepository:
     """Translate neutral data to bridge format and return a seeded BridgeRepository."""
-    from tests.conftest import (
-        make_folder_dict,
-        make_perspective_dict,
-        make_project_dict,
-        make_snapshot_dict,
-        make_tag_dict,
-        make_task_dict,
-    )
-    from tests.doubles import ConstantMtimeSource, InMemoryBridge
-
     # Build tag lookup for inline tag refs on tasks
     tag_lookup = {t["id"]: t["name"] for t in data["tags"]}
 
@@ -365,9 +364,6 @@ _SQLITE_PROJECT_EFFECTIVE_STATUS = {
 
 async def seed_sqlite_repo(data: dict[str, Any], tmp_path: Path) -> HybridRepository:
     """Translate neutral data to SQLite format and return a seeded HybridRepository."""
-    import plistlib
-
-    from tests.doubles import InMemoryBridge
 
     db_path = tmp_path / "cross_path_test.db"
     conn = sqlite3.connect(str(db_path))
@@ -643,9 +639,7 @@ class TestListTasksCrossPath:
     @pytest.mark.asyncio
     async def test_list_tasks_by_project(self, cross_repo: Repository) -> None:
         """Project filter returns only tasks in that project."""
-        result = await cross_repo.list_tasks(
-            ListTasksRepoQuery(project_ids=["proj-1"])
-        )
+        result = await cross_repo.list_tasks(ListTasksRepoQuery(project_ids=["proj-1"]))
         items = sorted(result.items, key=lambda x: x.id)
         assert len(items) == 2
         assert [t.id for t in items] == ["task-2", "task-4"]
@@ -656,9 +650,7 @@ class TestListTasksCrossPath:
     @pytest.mark.asyncio
     async def test_list_tasks_by_tags(self, cross_repo: Repository) -> None:
         """Tag filter returns tasks with that tag."""
-        result = await cross_repo.list_tasks(
-            ListTasksRepoQuery(tag_ids=["tag-1"])
-        )
+        result = await cross_repo.list_tasks(ListTasksRepoQuery(tag_ids=["tag-1"]))
         items = sorted(result.items, key=lambda x: x.id)
         assert len(items) == 2
         assert [t.id for t in items] == ["task-1", "task-2"]
@@ -666,9 +658,7 @@ class TestListTasksCrossPath:
     @pytest.mark.asyncio
     async def test_list_tasks_inbox(self, cross_repo: Repository) -> None:
         """Inbox filter returns only inbox tasks."""
-        result = await cross_repo.list_tasks(
-            ListTasksRepoQuery(in_inbox=True)
-        )
+        result = await cross_repo.list_tasks(ListTasksRepoQuery(in_inbox=True))
         items = sorted(result.items, key=lambda x: x.id)
         assert len(items) == 1
         assert items[0].id == "task-1"
@@ -677,9 +667,7 @@ class TestListTasksCrossPath:
     @pytest.mark.asyncio
     async def test_list_tasks_search(self, cross_repo: Repository) -> None:
         """Search filter matches on name substring."""
-        result = await cross_repo.list_tasks(
-            ListTasksRepoQuery(search="keyword")
-        )
+        result = await cross_repo.list_tasks(ListTasksRepoQuery(search="keyword"))
         items = sorted(result.items, key=lambda x: x.id)
         assert len(items) == 1
         assert items[0].id == "task-1"
@@ -688,9 +676,7 @@ class TestListTasksCrossPath:
     @pytest.mark.asyncio
     async def test_list_tasks_pagination(self, cross_repo: Repository) -> None:
         """Pagination returns limited items but total reflects all matches."""
-        result = await cross_repo.list_tasks(
-            ListTasksRepoQuery(limit=1)
-        )
+        result = await cross_repo.list_tasks(ListTasksRepoQuery(limit=1))
         assert len(result.items) == 1
         assert result.total == 4
         assert result.has_more is True
@@ -715,9 +701,7 @@ class TestListProjectsCrossPath:
     @pytest.mark.asyncio
     async def test_list_projects_by_folder(self, cross_repo: Repository) -> None:
         """Folder filter returns only projects in that folder."""
-        result = await cross_repo.list_projects(
-            ListProjectsRepoQuery(folder_ids=["folder-1"])
-        )
+        result = await cross_repo.list_projects(ListProjectsRepoQuery(folder_ids=["folder-1"]))
         items = sorted(result.items, key=lambda x: x.id)
         assert len(items) == 2
         assert [p.id for p in items] == ["proj-1", "proj-3"]
@@ -727,9 +711,7 @@ class TestListProjectsCrossPath:
     @pytest.mark.asyncio
     async def test_list_projects_flagged(self, cross_repo: Repository) -> None:
         """Flagged filter returns only flagged projects."""
-        result = await cross_repo.list_projects(
-            ListProjectsRepoQuery(flagged=True)
-        )
+        result = await cross_repo.list_projects(ListProjectsRepoQuery(flagged=True))
         items = sorted(result.items, key=lambda x: x.id)
         assert len(items) == 1
         assert items[0].id == "proj-1"
@@ -739,9 +721,7 @@ class TestListProjectsCrossPath:
     async def test_list_projects_review_due(self, cross_repo: Repository) -> None:
         """Review due before filter returns projects with next review before threshold."""
         threshold = datetime(2026, 4, 1, 0, 0, 0, tzinfo=UTC)
-        result = await cross_repo.list_projects(
-            ListProjectsRepoQuery(review_due_before=threshold)
-        )
+        result = await cross_repo.list_projects(ListProjectsRepoQuery(review_due_before=threshold))
         items = sorted(result.items, key=lambda x: x.id)
         # proj-1 has review on 2026-03-20 (before threshold)
         # proj-3 has review on 2026-01-10 (before threshold)

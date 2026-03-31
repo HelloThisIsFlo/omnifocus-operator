@@ -6,14 +6,9 @@ Project has 5 own fields + inherited from ActionableEntity and OmniFocusEntity.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pydantic import AwareDatetime
 
-from omnifocus_operator.models.base import ActionableEntity
-
-if TYPE_CHECKING:
-    from pydantic import AwareDatetime
-
-    from omnifocus_operator.models.common import ReviewInterval
+from omnifocus_operator.models.common import ActionableEntity, ReviewInterval
 
 
 class Project(ActionableEntity):

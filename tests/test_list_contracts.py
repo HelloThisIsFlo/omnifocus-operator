@@ -22,7 +22,11 @@ from omnifocus_operator.contracts import (
 )
 from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult
 from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersRepoQuery
-from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsRepoQuery
+from omnifocus_operator.contracts.use_cases.list.projects import (
+    DurationUnit,
+    ListProjectsRepoQuery,
+    ReviewDueFilter,
+)
 from omnifocus_operator.contracts.use_cases.list.tags import ListTagsRepoQuery
 from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
 from omnifocus_operator.models import Task
@@ -284,7 +288,6 @@ class TestReviewDueFilter:
     """Verify review_due_within parsing on ListProjectsQuery."""
 
     def test_1w_parses_to_weeks(self) -> None:
-        from omnifocus_operator.contracts.use_cases.list.projects import DurationUnit
 
         query = ListProjectsQuery(review_due_within="1w")
         assert query.review_due_within is not None
@@ -292,7 +295,6 @@ class TestReviewDueFilter:
         assert query.review_due_within.unit == DurationUnit.WEEKS
 
     def test_2m_parses_to_months(self) -> None:
-        from omnifocus_operator.contracts.use_cases.list.projects import DurationUnit
 
         query = ListProjectsQuery(review_due_within="2m")
         assert query.review_due_within is not None
@@ -300,7 +302,6 @@ class TestReviewDueFilter:
         assert query.review_due_within.unit == DurationUnit.MONTHS
 
     def test_30d_parses_to_days(self) -> None:
-        from omnifocus_operator.contracts.use_cases.list.projects import DurationUnit
 
         query = ListProjectsQuery(review_due_within="30d")
         assert query.review_due_within is not None
@@ -308,7 +309,6 @@ class TestReviewDueFilter:
         assert query.review_due_within.unit == DurationUnit.DAYS
 
     def test_1y_parses_to_years(self) -> None:
-        from omnifocus_operator.contracts.use_cases.list.projects import DurationUnit
 
         query = ListProjectsQuery(review_due_within="1y")
         assert query.review_due_within is not None
@@ -338,17 +338,12 @@ class TestReviewDueFilter:
             ListProjectsQuery(review_due_within="-1w")
 
     def test_direct_construction(self) -> None:
-        from omnifocus_operator.contracts.use_cases.list.projects import (
-            DurationUnit,
-            ReviewDueFilter,
-        )
 
         f = ReviewDueFilter(amount=1, unit=DurationUnit.WEEKS)
         assert f.amount == 1
         assert f.unit == DurationUnit.WEEKS
 
     def test_direct_construction_now(self) -> None:
-        from omnifocus_operator.contracts.use_cases.list.projects import ReviewDueFilter
 
         f = ReviewDueFilter(amount=None, unit=None)
         assert f.amount is None

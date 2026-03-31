@@ -6,12 +6,8 @@ Folder has 2 own fields + inherited from OmniFocusEntity.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from omnifocus_operator.models.base import OmniFocusEntity
-
-if TYPE_CHECKING:
-    from omnifocus_operator.models.enums import FolderAvailability
+from omnifocus_operator.models.common import OmniFocusEntity
+from omnifocus_operator.models.enums import FolderAvailability
 
 
 class Folder(OmniFocusEntity):

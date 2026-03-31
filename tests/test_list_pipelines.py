@@ -18,9 +18,14 @@ from typing import TYPE_CHECKING
 import pytest
 
 from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersQuery
-from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsQuery
+from omnifocus_operator.contracts.use_cases.list.projects import (
+    DurationUnit,
+    ListProjectsQuery,
+    ReviewDueFilter,
+)
 from omnifocus_operator.contracts.use_cases.list.tags import ListTagsQuery
 from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksQuery
+from omnifocus_operator.service.service import _ListProjectsPipeline
 
 from .conftest import (
     make_folder_dict,
@@ -289,11 +294,6 @@ class TestReviewDueFilterExpansion:
 
     def test_expand_review_due_1w(self) -> None:
         """1w -> now + 7 days."""
-        from omnifocus_operator.contracts.use_cases.list.projects import (
-            DurationUnit,
-            ReviewDueFilter,
-        )
-        from omnifocus_operator.service.service import _ListProjectsPipeline
 
         f = ReviewDueFilter(amount=1, unit=DurationUnit.WEEKS)
         result = _ListProjectsPipeline._expand_review_due(f)
@@ -302,8 +302,6 @@ class TestReviewDueFilterExpansion:
 
     def test_expand_review_due_now(self) -> None:
         """'now' -> approximately current time."""
-        from omnifocus_operator.contracts.use_cases.list.projects import ReviewDueFilter
-        from omnifocus_operator.service.service import _ListProjectsPipeline
 
         f = ReviewDueFilter(amount=None, unit=None)
         result = _ListProjectsPipeline._expand_review_due(f)
@@ -312,11 +310,6 @@ class TestReviewDueFilterExpansion:
 
     def test_expand_review_due_30d(self) -> None:
         """30d -> now + 30 days."""
-        from omnifocus_operator.contracts.use_cases.list.projects import (
-            DurationUnit,
-            ReviewDueFilter,
-        )
-        from omnifocus_operator.service.service import _ListProjectsPipeline
 
         f = ReviewDueFilter(amount=30, unit=DurationUnit.DAYS)
         result = _ListProjectsPipeline._expand_review_due(f)
@@ -325,11 +318,6 @@ class TestReviewDueFilterExpansion:
 
     def test_expand_review_due_2m(self) -> None:
         """2m -> now + 2 months (calendar arithmetic)."""
-        from omnifocus_operator.contracts.use_cases.list.projects import (
-            DurationUnit,
-            ReviewDueFilter,
-        )
-        from omnifocus_operator.service.service import _ListProjectsPipeline
 
         f = ReviewDueFilter(amount=2, unit=DurationUnit.MONTHS)
         result = _ListProjectsPipeline._expand_review_due(f)
@@ -339,11 +327,6 @@ class TestReviewDueFilterExpansion:
 
     def test_expand_review_due_1y(self) -> None:
         """1y -> now + 1 year."""
-        from omnifocus_operator.contracts.use_cases.list.projects import (
-            DurationUnit,
-            ReviewDueFilter,
-        )
-        from omnifocus_operator.service.service import _ListProjectsPipeline
 
         f = ReviewDueFilter(amount=1, unit=DurationUnit.YEARS)
         result = _ListProjectsPipeline._expand_review_due(f)
@@ -378,9 +361,7 @@ class TestReviewDueFilterExpansion:
         folders=[],
         perspectives=[],
     )
-    async def test_pipeline_none_review_due_passes_through(
-        self, service: OperatorService
-    ) -> None:
+    async def test_pipeline_none_review_due_passes_through(self, service: OperatorService) -> None:
         """No review_due_within -> no filtering by review date."""
         result = await service.list_projects(ListProjectsQuery())
         assert len(result.items) == 1

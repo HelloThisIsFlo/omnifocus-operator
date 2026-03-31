@@ -9,9 +9,9 @@ Relocated from contracts/use_cases/edit_task.py to per-use-case package.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
-from pydantic import field_validator
+from pydantic import AwareDatetime, field_validator
 
 from omnifocus_operator.agent_messages.errors import LIFECYCLE_INVALID_VALUE
 from omnifocus_operator.contracts.base import (
@@ -20,16 +20,12 @@ from omnifocus_operator.contracts.base import (
     Patch,
     PatchOrClear,
 )
+from omnifocus_operator.contracts.shared.actions import MoveAction, TagAction
 from omnifocus_operator.contracts.shared.repetition_rule import (
     RepetitionRuleEditSpec,
     RepetitionRuleRepoPayload,
 )
 from omnifocus_operator.models.base import OmniFocusBaseModel
-
-if TYPE_CHECKING:
-    from pydantic import AwareDatetime
-
-    from omnifocus_operator.contracts.shared.actions import MoveAction, TagAction
 
 
 class EditTaskActions(CommandModel):

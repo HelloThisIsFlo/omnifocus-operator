@@ -9,7 +9,7 @@ Relocated from contracts/use_cases/add_task.py to per-use-case package.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pydantic import AwareDatetime
 
 from omnifocus_operator.contracts.base import CommandModel
 from omnifocus_operator.contracts.shared.repetition_rule import (
@@ -17,9 +17,6 @@ from omnifocus_operator.contracts.shared.repetition_rule import (
     RepetitionRuleRepoPayload,
 )
 from omnifocus_operator.models.base import OmniFocusBaseModel
-
-if TYPE_CHECKING:
-    from pydantic import AwareDatetime
 
 
 class AddTaskCommand(CommandModel):

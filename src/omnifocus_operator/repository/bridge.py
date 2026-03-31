@@ -190,8 +190,7 @@ class BridgeRepository(BridgeWriteMixin, Repository):
             items = [
                 p
                 for p in items
-                if p.next_review_date is not None
-                and p.next_review_date <= query.review_due_before
+                if p.next_review_date is not None and p.next_review_date <= query.review_due_before
             ]
 
         total = len(items)

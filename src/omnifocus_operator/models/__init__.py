@@ -6,12 +6,14 @@ re-exported here for convenient importing.
 
 from pydantic import AwareDatetime
 
-from omnifocus_operator.models.base import (
+from omnifocus_operator.models.base import OmniFocusBaseModel
+from omnifocus_operator.models.common import (
     ActionableEntity,
-    OmniFocusBaseModel,
     OmniFocusEntity,
+    ParentRef,
+    ReviewInterval,
+    TagRef,
 )
-from omnifocus_operator.models.common import ParentRef, ReviewInterval, TagRef
 from omnifocus_operator.models.enums import (
     Availability,
     BasedOn,
