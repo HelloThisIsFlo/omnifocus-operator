@@ -59,7 +59,7 @@ class AddTaskRepoPayload(CommandModel):
     due_date: str | None = None
     defer_date: str | None = None
     planned_date: str | None = None
-    flagged: bool | None = None
+    flagged: bool = False
     estimated_minutes: float | None = None
     note: str | None = None
     repetition_rule: RepetitionRuleRepoPayload | None = None
