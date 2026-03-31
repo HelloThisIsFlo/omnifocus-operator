@@ -1,10 +1,18 @@
-"""Unit tests for ToolLoggingMiddleware and logging setup.
+"""Unit tests for ToolLoggingMiddleware, ValidationReformatterMiddleware helpers, and logging setup.
 
 Tests verify that the middleware logs tool entry, exit (with timing),
 and errors correctly. Uses mock MiddlewareContext and call_next to
 isolate middleware behavior from the FastMCP server.
 
 Also tests _configure_logging() dual-handler setup from __main__.py.
+
+Additionally tests the middleware helper functions:
+- _format_validation_errors (WRIT-04: "Task N:" format)
+- _strip_items_prefix
+- _extract_item_index
+- _clean_loc
+- UNSET sentinel filtering (WRIT-05: ctx-based, not string-based)
+- Logging integration (WRIT-10: ToolError appears in captured logs)
 """
 
 from __future__ import annotations
@@ -12,12 +20,21 @@ from __future__ import annotations
 import logging
 import re
 from logging.handlers import RotatingFileHandler
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from pydantic import BaseModel, ConfigDict
 
 from omnifocus_operator.__main__ import _configure_logging
-from omnifocus_operator.middleware import ToolLoggingMiddleware
+from omnifocus_operator.agent_messages.errors import UNKNOWN_FIELD
+from omnifocus_operator.middleware import (
+    ToolLoggingMiddleware,
+    _clean_loc,
+    _extract_item_index,
+    _format_validation_errors,
+    _strip_items_prefix,
+)
 
 
 def _make_context(tool_name: str, arguments: dict[str, object] | None = None) -> MagicMock:
@@ -210,3 +227,244 @@ def test_configure_logging_propagate_is_false(
 ) -> None:
     _configure_logging()
     assert clean_root_logger.propagate is False
+
+
+# ── Helpers for constructing real ValidationErrors ─────────────────────
+
+
+class _TestModel(BaseModel):
+    """Minimal model for testing validation error formatting."""
+
+    name: str
+    model_config = ConfigDict(extra="forbid")
+
+
+class _TestListWrapper(BaseModel):
+    """Wrapper that mimics list-typed tool params (items: list[Model])."""
+
+    items: list[_TestModel]
+
+
+def _capture_validation_error(model: type[BaseModel], data: dict[str, Any]) -> Any:
+    """Validate data against model, return the ValidationError."""
+    from pydantic import ValidationError
+
+    try:
+        model.model_validate(data)
+    except ValidationError as exc:
+        return exc
+    raise AssertionError(f"Expected ValidationError, but {model.__name__} validated successfully")
+
+
+# ── _strip_items_prefix ────────────────────────────────────────────────
+
+
+class TestStripItemsPrefix:
+    """Unit tests for _strip_items_prefix."""
+
+    def test_strips_items_and_index(self) -> None:
+        assert _strip_items_prefix(("items", 0, "name")) == ("name",)
+
+    def test_strips_items_with_nested_path(self) -> None:
+        assert _strip_items_prefix(("items", 1, "dueDate", "nested")) == ("dueDate", "nested")
+
+    def test_no_items_prefix_unchanged(self) -> None:
+        assert _strip_items_prefix(("name",)) == ("name",)
+
+    def test_empty_tuple_unchanged(self) -> None:
+        assert _strip_items_prefix(()) == ()
+
+
+# ── _extract_item_index ────────────────────────────────────────────────
+
+
+class TestExtractItemIndex:
+    """Unit tests for _extract_item_index."""
+
+    def test_extracts_index_zero(self) -> None:
+        assert _extract_item_index(("items", 0, "name")) == 0
+
+    def test_extracts_index_five(self) -> None:
+        assert _extract_item_index(("items", 5, "field")) == 5
+
+    def test_no_items_prefix_returns_none(self) -> None:
+        assert _extract_item_index(("name",)) is None
+
+    def test_empty_tuple_returns_none(self) -> None:
+        assert _extract_item_index(()) is None
+
+
+# ── _clean_loc ─────────────────────────────────────────────────────────
+
+
+class TestCleanLoc:
+    """Unit tests for _clean_loc -- strips Pydantic union-branch noise."""
+
+    def test_keeps_field_names_and_integers(self) -> None:
+        assert _clean_loc(("items", 0, "name")) == ("items", 0, "name")
+
+    def test_strips_uppercase_class_names(self) -> None:
+        # Pydantic injects model class names like "EditTaskActions"
+        assert _clean_loc(("items", 0, "EditTaskActions", "tags")) == ("items", 0, "tags")
+
+    def test_strips_function_prefix(self) -> None:
+        assert _clean_loc(("function-after[validate]", "name")) == ("name",)
+
+    def test_strips_is_instance_prefix(self) -> None:
+        assert _clean_loc(("is-instance[str]", "value")) == ("value",)
+
+    def test_strips_literal_prefix(self) -> None:
+        assert _clean_loc(("literal[complete]",)) == ()
+
+    def test_empty_tuple(self) -> None:
+        assert _clean_loc(()) == ()
+
+
+# ── _format_validation_errors (WRIT-04) ───────────────────────────────
+
+
+class TestFormatValidationErrors:
+    """Unit tests for _format_validation_errors -- 'Task N:' format."""
+
+    def test_single_error_produces_task_1_prefix(self) -> None:
+        """WRIT-04: error at items.0 produces 'Task 1:' prefix."""
+        exc = _capture_validation_error(
+            _TestListWrapper, {"items": [{"bogus": "x"}]}
+        )
+        messages = _format_validation_errors(exc)
+        task_1_msgs = [m for m in messages if m.startswith("Task 1:")]
+        assert len(task_1_msgs) >= 1, f"Expected 'Task 1:' prefix, got: {messages}"
+
+    def test_third_item_produces_task_3_prefix(self) -> None:
+        """WRIT-04: error at items.2 produces 'Task 3:' prefix."""
+        exc = _capture_validation_error(
+            _TestListWrapper,
+            {"items": [{"name": "ok"}, {"name": "ok"}, {"bogus": "x"}]},
+        )
+        messages = _format_validation_errors(exc)
+        task_3_msgs = [m for m in messages if m.startswith("Task 3:")]
+        assert len(task_3_msgs) >= 1, f"Expected 'Task 3:' prefix, got: {messages}"
+
+    def test_error_without_items_prefix_has_no_task_prefix(self) -> None:
+        """Error on a non-list field has no 'Task N:' prefix."""
+        exc = _capture_validation_error(_TestModel, {"bogus": "x"})
+        messages = _format_validation_errors(exc)
+        for msg in messages:
+            assert not msg.startswith("Task "), f"Unexpected 'Task' prefix in: {msg}"
+
+    def test_extra_forbidden_produces_unknown_field(self) -> None:
+        """extra_forbidden error produces 'Unknown field' message."""
+        exc = _capture_validation_error(
+            _TestListWrapper, {"items": [{"bogus": "x"}]}
+        )
+        messages = _format_validation_errors(exc)
+        unknown_msgs = [m for m in messages if "Unknown field" in m]
+        assert len(unknown_msgs) >= 1, f"Expected 'Unknown field' message, got: {messages}"
+        # Should include the field name
+        assert any("bogus" in m for m in unknown_msgs), (
+            f"Expected field name 'bogus' in message, got: {unknown_msgs}"
+        )
+
+
+# ── UNSET filtering (WRIT-05) ─────────────────────────────────────────
+
+
+class TestUnsetFiltering:
+    """Unit tests for UNSET sentinel filtering -- ctx-based, not string-based (D-08a)."""
+
+    def test_unset_ctx_class_errors_are_filtered_out(self) -> None:
+        """WRIT-05: errors with ctx.class='_Unset' are excluded from output."""
+        exc = _capture_validation_error(_TestModel, {"bogus": "x"})
+        # Monkey-patch the errors to inject an _Unset ctx entry
+        original_errors = exc.errors()
+        patched = original_errors + [
+            {
+                "type": "is_instance_of",
+                "loc": ("items", 0, "name"),
+                "msg": "Input should be an instance of _Unset",
+                "input": "test",
+                "ctx": {"class": "_Unset"},
+            }
+        ]
+        # Replace the errors method
+        exc.errors = lambda: patched  # type: ignore[assignment]
+        messages = _format_validation_errors(exc)
+        # The _Unset error should be filtered out
+        for msg in messages:
+            assert "_Unset" not in msg, f"_Unset error was not filtered: {msg}"
+
+    def test_unset_in_msg_but_not_ctx_is_not_filtered(self) -> None:
+        """WRIT-05: filtering uses ctx, not string matching (D-08a).
+
+        An error mentioning '_Unset' in msg but without ctx.class='_Unset'
+        should NOT be filtered out.
+        """
+        exc = _capture_validation_error(_TestModel, {"bogus": "x"})
+        original_errors = exc.errors()
+        # Add an error with _Unset in msg but no ctx.class
+        patched = original_errors + [
+            {
+                "type": "value_error",
+                "loc": ("name",),
+                "msg": "Something about _Unset is wrong",
+                "input": "test",
+                "ctx": {},  # No "class" key
+            }
+        ]
+        exc.errors = lambda: patched  # type: ignore[assignment]
+        messages = _format_validation_errors(exc)
+        # The error mentioning _Unset should still appear (not filtered)
+        assert any("_Unset" in m for m in messages), (
+            f"Error with _Unset in msg was incorrectly filtered: {messages}"
+        )
+
+    def test_mix_of_unset_and_real_errors_returns_only_real(self) -> None:
+        """WRIT-05: mix of UNSET and real errors returns only the real errors."""
+        exc = _capture_validation_error(_TestModel, {"bogus": "x"})
+        original_errors = exc.errors()
+        real_error = {
+            "type": "value_error",
+            "loc": ("name",),
+            "msg": "Real validation failure",
+            "input": "test",
+        }
+        unset_error = {
+            "type": "is_instance_of",
+            "loc": ("name",),
+            "msg": "Input should be an instance of _Unset",
+            "input": "test",
+            "ctx": {"class": "_Unset"},
+        }
+        exc.errors = lambda: [unset_error, real_error]  # type: ignore[assignment]
+        messages = _format_validation_errors(exc)
+        assert len(messages) == 1
+        assert "Real validation failure" in messages[0]
+
+
+# ── Logging integration (WRIT-10) ─────────────────────────────────────
+
+
+class TestLoggingIntegration:
+    """WRIT-10: Validation ToolErrors appear in captured logs via logging middleware."""
+
+    @pytest.mark.asyncio
+    async def test_validation_error_appears_in_logs(
+        self, client: Any, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Trigger a validation error through the full middleware stack,
+        verify the ToolError message appears in log output."""
+        from fastmcp.exceptions import ToolError
+
+        with (
+            caplog.at_level(logging.DEBUG, logger="omnifocus_operator.server"),
+            pytest.raises(ToolError),
+        ):
+            await client.call_tool("add_tasks", {"items": [{"bogus": "field"}]})
+
+        # The logging middleware should have logged the error
+        error_records = [r for r in caplog.records if r.levelno >= logging.ERROR]
+        assert len(error_records) >= 1, "Expected at least one ERROR log record"
+        error_text = " ".join(r.message for r in error_records)
+        # The logged error should contain the reformatted ToolError content
+        assert "add_tasks" in error_text, f"Expected 'add_tasks' in error log, got: {error_text}"
+        assert "FAILED" in error_text, f"Expected 'FAILED' in error log, got: {error_text}"
