@@ -902,7 +902,6 @@ flowchart TD
     <li><strong>Async safety</strong> &mdash; <code class="c-blue">asyncio.to_thread()</code> wraps blocking I/O; <code class="c-blue">asyncio.Lock()</code> serializes concurrent refreshes</li>
     <li><strong>Cache invalidation</strong> &mdash; WAL-based mtime tracking (50ms poll, 2s timeout after writes)</li>
     <li><strong>Graceful degradation</strong> &mdash; <code class="c-blue">ErrorOperatorService</code> keeps server alive on startup failure</li>
-    <li><strong>Single runtime dep</strong> &mdash; <code class="c-blue">mcp>=1.26.0</code> (uses built-in FastMCP, not standalone package)</li>
   </ul>
 </div>
 

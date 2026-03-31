@@ -5,7 +5,6 @@
 ![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue?logo=python&logoColor=white)
 ![Tests 534](https://img.shields.io/badge/tests-534-brightgreen)
 ![Coverage 94%](https://img.shields.io/badge/coverage-94%25-brightgreen)
-![Dependencies 1](https://img.shields.io/badge/deps-1-blue)
 ![License MIT](https://img.shields.io/badge/license-MIT-green)
 
 Production-grade MCP server exposing OmniFocus as structured task infrastructure for AI agents. Agent-first design, SQLite-cached performance, 534 tests.
@@ -51,7 +50,6 @@ That's it. The server auto-detects your OmniFocus database and starts serving.
 - 🤖 **Agent-first design** — warnings and guidance built into every response
 - 🧪 **534 tests, 94% coverage**, strict mypy
 - 🛡️ **Graceful degradation** — server stays alive, errors educate
-- 📦 **Single runtime dependency** (`fastmcp>=3.1.1`)
 - 🔄 **Automatic fallback** — SQLite → OmniJS bridge when needed
 
 ---
@@ -118,7 +116,6 @@ All read tools are idempotent. Write tools support full field control including 
 - 🧪 **534 tests, 94% coverage** — strict mypy, no corners cut
 - 🤖 **Agent-first design** — warnings that teach, errors that educate, guidance in every response
 - 🛡️ **Degraded mode** — server stays alive no matter what, always recoverable
-- 📦 **Single runtime dependency** — just `fastmcp>=3.1.1`, nothing else
 
 See the [full documentation](https://hellothisisflo.github.io/omnifocus-operator) for architecture details, examples, and deep dives.
 

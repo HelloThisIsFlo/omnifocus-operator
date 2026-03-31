@@ -177,8 +177,6 @@ graph TD
 
 Protocol-based dependency injection. Three repository implementations. Three bridge implementations. Swap any layer without touching the others.
 
-Single runtime dependency: `mcp>=1.26.0`.
-
 ---
 
 ## 🛠️ Available Tools
