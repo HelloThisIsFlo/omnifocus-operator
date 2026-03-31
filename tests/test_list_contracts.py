@@ -243,6 +243,118 @@ class TestQueryModelAcceptance:
 
 
 # ---------------------------------------------------------------------------
+# Offset-requires-limit validation
+# ---------------------------------------------------------------------------
+
+
+class TestOffsetRequiresLimit:
+    """Verify offset-without-limit raises educational ValueError."""
+
+    def test_tasks_offset_without_limit_raises(self) -> None:
+        with pytest.raises(ValidationError, match="offset requires limit"):
+            ListTasksQuery(offset=5)
+
+    def test_tasks_offset_with_limit_succeeds(self) -> None:
+        query = ListTasksQuery(offset=5, limit=10)
+        assert query.offset == 5
+        assert query.limit == 10
+
+    def test_tasks_limit_without_offset_succeeds(self) -> None:
+        query = ListTasksQuery(limit=10)
+        assert query.limit == 10
+        assert query.offset is None
+
+    def test_projects_offset_without_limit_raises(self) -> None:
+        with pytest.raises(ValidationError, match="offset requires limit"):
+            ListProjectsQuery(offset=5)
+
+    def test_projects_offset_with_limit_succeeds(self) -> None:
+        query = ListProjectsQuery(offset=5, limit=10)
+        assert query.offset == 5
+        assert query.limit == 10
+
+
+# ---------------------------------------------------------------------------
+# ReviewDueFilter validation
+# ---------------------------------------------------------------------------
+
+
+class TestReviewDueFilter:
+    """Verify review_due_within parsing on ListProjectsQuery."""
+
+    def test_1w_parses_to_weeks(self) -> None:
+        from omnifocus_operator.contracts.use_cases.list.projects import DurationUnit
+
+        query = ListProjectsQuery(review_due_within="1w")
+        assert query.review_due_within is not None
+        assert query.review_due_within.amount == 1
+        assert query.review_due_within.unit == DurationUnit.WEEKS
+
+    def test_2m_parses_to_months(self) -> None:
+        from omnifocus_operator.contracts.use_cases.list.projects import DurationUnit
+
+        query = ListProjectsQuery(review_due_within="2m")
+        assert query.review_due_within is not None
+        assert query.review_due_within.amount == 2
+        assert query.review_due_within.unit == DurationUnit.MONTHS
+
+    def test_30d_parses_to_days(self) -> None:
+        from omnifocus_operator.contracts.use_cases.list.projects import DurationUnit
+
+        query = ListProjectsQuery(review_due_within="30d")
+        assert query.review_due_within is not None
+        assert query.review_due_within.amount == 30
+        assert query.review_due_within.unit == DurationUnit.DAYS
+
+    def test_1y_parses_to_years(self) -> None:
+        from omnifocus_operator.contracts.use_cases.list.projects import DurationUnit
+
+        query = ListProjectsQuery(review_due_within="1y")
+        assert query.review_due_within is not None
+        assert query.review_due_within.amount == 1
+        assert query.review_due_within.unit == DurationUnit.YEARS
+
+    def test_now_parses_to_none_amount_and_unit(self) -> None:
+        query = ListProjectsQuery(review_due_within="now")
+        assert query.review_due_within is not None
+        assert query.review_due_within.amount is None
+        assert query.review_due_within.unit is None
+
+    def test_invalid_string_raises(self) -> None:
+        with pytest.raises(ValidationError, match="valid formats"):
+            ListProjectsQuery(review_due_within="banana")
+
+    def test_empty_string_raises(self) -> None:
+        with pytest.raises(ValidationError):
+            ListProjectsQuery(review_due_within="")
+
+    def test_zero_amount_raises(self) -> None:
+        with pytest.raises(ValidationError):
+            ListProjectsQuery(review_due_within="0w")
+
+    def test_negative_amount_raises(self) -> None:
+        with pytest.raises(ValidationError):
+            ListProjectsQuery(review_due_within="-1w")
+
+    def test_direct_construction(self) -> None:
+        from omnifocus_operator.contracts.use_cases.list.projects import (
+            DurationUnit,
+            ReviewDueFilter,
+        )
+
+        f = ReviewDueFilter(amount=1, unit=DurationUnit.WEEKS)
+        assert f.amount == 1
+        assert f.unit == DurationUnit.WEEKS
+
+    def test_direct_construction_now(self) -> None:
+        from omnifocus_operator.contracts.use_cases.list.projects import ReviewDueFilter
+
+        f = ReviewDueFilter(amount=None, unit=None)
+        assert f.amount is None
+        assert f.unit is None
+
+
+# ---------------------------------------------------------------------------
 # Query model camelCase alias support
 # ---------------------------------------------------------------------------
 
