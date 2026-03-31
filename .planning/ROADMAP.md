@@ -166,10 +166,20 @@ Plans:
 - [x] 36-01-PLAN.md — Validation, ReviewDueFilter, educational errors, pipeline + repo updates
 - [x] 36-02-PLAN.md — Cross-path equivalence tests for all 5 entity types
 
+### Phase 36.1: Migrate write tools to typed params with validation middleware (INSERTED)
+
+**Goal:** Write tools expose rich inputSchema via typed params, with validation middleware reformatting errors into clean agent-friendly messages
+**Requirements**: WRIT-01, WRIT-02, WRIT-03, WRIT-04, WRIT-05, WRIT-06, WRIT-07, WRIT-08, WRIT-09, WRIT-10, WRIT-11
+**Depends on:** Phase 36
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 36.1 to break down)
+
 ### Phase 37: Server Registration and Integration (was Phase 38)
 **Goal**: Agents can call 5 new MCP tools that return filtered, paginated entity lists with total counts, and search across all entity types
 **Depends on**: Phase 36
-**Requirements**: INFRA-05, SRCH-01, SRCH-02, SRCH-03, SRCH-04
+**Requirements**: INFRA-05, SRCH-01, SRCH-02, SRCH-03, SRCH-04, RTOOL-01, RTOOL-02, RTOOL-03
 **Success Criteria** (what must be TRUE):
   1. list_tasks, list_projects, list_tags, list_folders, list_perspectives are registered as MCP tools and callable via Client
   2. Tool descriptions enumerate all valid filter values and include enough context for an LLM to call correctly without external docs

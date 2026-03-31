@@ -42,6 +42,26 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 - [ ] **SRCH-03**: Agent can search folders by case-insensitive substring in name — same implementation as TASK-08 (name only, folders have no notes)
 - [ ] **SRCH-04**: Agent can search perspectives by case-insensitive substring in name — same implementation as TASK-08 (name only). Requires introducing `ListPerspectivesQuery` / `ListPerspectivesRepoQuery`.
 
+### Write Tool Schema & Validation
+
+- [ ] **WRIT-01**: `add_tasks` inputSchema exposes all `AddTaskCommand` fields with types, enums, and constraints (52+ schema entries vs current 2)
+- [ ] **WRIT-02**: `edit_tasks` inputSchema exposes all `EditTaskCommand` fields with types, enums, and constraints (61+ schema entries vs current 2)
+- [ ] **WRIT-03**: Schema field names use camelCase aliases matching the existing API contract (no snake_case leakage)
+- [ ] **WRIT-04**: Validation errors use `"Task N: field"` location format (readable for agents, scales to future batches)
+- [ ] **WRIT-05**: UNSET sentinel noise filtered from validation errors (no `_Unset` artifacts in agent-facing messages)
+- [ ] **WRIT-06**: Unknown fields produce `"Unknown field '<name>'"` error messages
+- [ ] **WRIT-07**: Validation errors surface as `ToolError` with clean, agent-readable messages (no raw Pydantic output)
+- [ ] **WRIT-08**: All previously valid `add_tasks` / `edit_tasks` inputs produce identical results (no functional regression)
+- [ ] **WRIT-09**: Error messages maintain functional parity with pre-migration output and remain agent-friendly -- no internal model names, Pydantic internals, or implementation details leak into validation errors or warnings
+- [ ] **WRIT-10**: Validation errors are logged by the tool logger with timing and the reformatted error
+- [ ] **WRIT-11**: Canary test detects if a FastMCP upgrade moves validation outside the middleware chain -- with clear failure message explaining what broke and what to do
+
+### Read Tool Registration
+
+- [ ] **RTOOL-01**: `list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives` use typed query model parameters -- rich inputSchema auto-generated from query models (not `dict[str, Any]`)
+- [ ] **RTOOL-02**: Schema field names use camelCase aliases matching the API contract across all read tools
+- [ ] **RTOOL-03**: Validation errors on read tools are agent-friendly via `ValidationReformatterMiddleware` -- consistent error surface across read and write tools
+
 ### Query Infrastructure
 
 - [x] **INFRA-01**: SQL queries use parameterized values (no SQL injection)
@@ -142,12 +162,26 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-14 | Phase 35.2 | Complete |
 | INFRA-15 | Phase 35.2 | Complete |
 | INFRA-16 | Phase 35.2 | Complete |
+| WRIT-01 | Phase 36.1 | Pending |
+| WRIT-02 | Phase 36.1 | Pending |
+| WRIT-03 | Phase 36.1 | Pending |
+| WRIT-04 | Phase 36.1 | Pending |
+| WRIT-05 | Phase 36.1 | Pending |
+| WRIT-06 | Phase 36.1 | Pending |
+| WRIT-07 | Phase 36.1 | Pending |
+| WRIT-08 | Phase 36.1 | Pending |
+| WRIT-09 | Phase 36.1 | Pending |
+| WRIT-10 | Phase 36.1 | Pending |
+| WRIT-11 | Phase 36.1 | Pending |
+| RTOOL-01 | Phase 37 | Pending |
+| RTOOL-02 | Phase 37 | Pending |
+| RTOOL-03 | Phase 37 | Pending |
 
 **Coverage:**
-- v1.3 requirements: 37 total (PROJ-03 merged into PROJ-02, TASK-05 deferred, +4 SRCH)
-- Mapped to phases: 37
+- v1.3 requirements: 51 total (PROJ-03 merged into PROJ-02, TASK-05 deferred, +4 SRCH, +11 WRIT, +3 RTOOL)
+- Mapped to phases: 51
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-29*
-*Last updated: 2026-03-31 added SRCH-01..04 entity search requirements for Phase 37*
+*Last updated: 2026-03-31 added WRIT-01..11 for Phase 36.1, RTOOL-01..03 for Phase 37*
