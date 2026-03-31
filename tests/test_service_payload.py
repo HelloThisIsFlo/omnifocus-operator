@@ -31,7 +31,7 @@ class TestBuildAdd:
     """PayloadBuilder.build_add assembles AddTaskRepoPayload."""
 
     def test_build_add_minimal(self) -> None:
-        """Name-only command produces payload with only name."""
+        """Name-only command produces payload with name and flagged=False."""
         builder = PayloadBuilder()
         command = AddTaskCommand(name="Buy milk")
         payload = builder.build_add(command, resolved_tag_ids=None)
@@ -42,7 +42,7 @@ class TestBuildAdd:
         assert payload.due_date is None
         assert payload.defer_date is None
         assert payload.planned_date is None
-        assert payload.flagged is None
+        assert payload.flagged is False
         assert payload.estimated_minutes is None
         assert payload.note is None
 

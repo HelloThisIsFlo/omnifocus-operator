@@ -53,6 +53,16 @@ class EditTaskCommand(CommandModel):
     name: Patch[str] = UNSET
     flagged: Patch[bool] = UNSET
 
+    @field_validator("name", mode="before")
+    @classmethod
+    def _validate_name(cls, v: object) -> object:
+        """Strip whitespace and reject empty names. Passes _Unset through."""
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                raise ValueError("Task name cannot be empty")
+        return v
+
     # Clearable fields (None = clear the value)
     note: PatchOrClear[str] = UNSET
     due_date: PatchOrClear[AwareDatetime] = UNSET

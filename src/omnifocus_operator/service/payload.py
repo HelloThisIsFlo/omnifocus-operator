@@ -53,8 +53,7 @@ class PayloadBuilder:
             kwargs["defer_date"] = command.defer_date.isoformat()
         if command.planned_date is not None:
             kwargs["planned_date"] = command.planned_date.isoformat()
-        if command.flagged is not None:
-            kwargs["flagged"] = command.flagged
+        kwargs["flagged"] = command.flagged
         if command.estimated_minutes is not None:
             kwargs["estimated_minutes"] = command.estimated_minutes
         if command.note is not None:

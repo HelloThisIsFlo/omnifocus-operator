@@ -193,14 +193,14 @@ class TestAddTask:
         assert result.success is True
 
     async def test_empty_name(self, service: OperatorService) -> None:
-        """Empty string name raises ValueError."""
-        with pytest.raises(ValueError, match="Task name is required"):
-            await service.add_task(AddTaskCommand(name=""))
+        """Empty string name raises ValidationError at model level."""
+        with pytest.raises(ValidationError):
+            AddTaskCommand(name="")
 
     async def test_whitespace_name(self, service: OperatorService) -> None:
-        """Whitespace-only name raises ValueError."""
-        with pytest.raises(ValueError, match="Task name is required"):
-            await service.add_task(AddTaskCommand(name="   "))
+        """Whitespace-only name raises ValidationError at model level."""
+        with pytest.raises(ValidationError):
+            AddTaskCommand(name="   ")
 
     async def test_validation_before_write(self) -> None:
         """Validation error prevents repository.add_task from being called."""
@@ -803,16 +803,14 @@ class TestEditTask:
             await service.edit_task(EditTaskCommand(id="nonexistent"))
 
     async def test_empty_name(self, service: OperatorService) -> None:
-        """Empty name raises ValueError."""
-
-        with pytest.raises(ValueError, match="Task name cannot be empty"):
-            await service.edit_task(EditTaskCommand(id="task-001", name=""))
+        """Empty name raises ValidationError at model level."""
+        with pytest.raises(ValidationError):
+            EditTaskCommand(id="task-001", name="")
 
     async def test_whitespace_name(self, service: OperatorService) -> None:
-        """Whitespace-only name raises ValueError."""
-
-        with pytest.raises(ValueError, match="Task name cannot be empty"):
-            await service.edit_task(EditTaskCommand(id="task-001", name="   "))
+        """Whitespace-only name raises ValidationError at model level."""
+        with pytest.raises(ValidationError):
+            EditTaskCommand(id="task-001", name="   ")
 
     @pytest.mark.snapshot(
         tasks=[make_task_dict(id="task-001", name="Task", tags=[])],

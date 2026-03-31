@@ -887,7 +887,7 @@ class TestAddTaskModels:
         assert command.due_date is None
         assert command.defer_date is None
         assert command.planned_date is None
-        assert command.flagged is None
+        assert command.flagged is False
         assert command.estimated_minutes is None
         assert command.note is None
 

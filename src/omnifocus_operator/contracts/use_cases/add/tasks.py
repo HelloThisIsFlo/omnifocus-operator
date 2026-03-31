@@ -9,7 +9,7 @@ Relocated from contracts/use_cases/add_task.py to per-use-case package.
 
 from __future__ import annotations
 
-from pydantic import AwareDatetime
+from pydantic import AwareDatetime, Field, field_validator
 
 from omnifocus_operator.contracts.base import CommandModel
 from omnifocus_operator.contracts.shared.repetition_rule import (
@@ -22,13 +22,19 @@ from omnifocus_operator.models.base import OmniFocusBaseModel
 class AddTaskCommand(CommandModel):
     """Agent instruction to create a task."""
 
-    name: str
+    name: str = Field(min_length=1)
     parent: str | None = None
     tags: list[str] | None = None
     due_date: AwareDatetime | None = None
     defer_date: AwareDatetime | None = None
     planned_date: AwareDatetime | None = None
-    flagged: bool | None = None
+    flagged: bool = False
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def _strip_name(cls, v: object) -> object:
+        """Strip whitespace before min_length check."""
+        return v.strip() if isinstance(v, str) else v
     estimated_minutes: float | None = None
     note: str | None = None
     repetition_rule: RepetitionRuleAddSpec | None = None
