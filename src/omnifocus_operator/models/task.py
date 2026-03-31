@@ -1,8 +1,4 @@
-"""Task model -- represents a single OmniFocus task.
-
-Maps to the flattenedTasks.map() output in the bridge script.
-Task has 3 own fields + inherited from ActionableEntity and OmniFocusEntity.
-"""
+"""Task model -- represents a single OmniFocus task."""
 
 from __future__ import annotations
 
@@ -12,17 +8,7 @@ from omnifocus_operator.models.common import ActionableEntity, ParentRef
 
 
 class Task(ActionableEntity):
-    """A single OmniFocus task with all fields.
-
-    Inherits shared fields from ActionableEntity (urgency, availability,
-    dates, flags, etc.) and OmniFocusEntity (url, added, modified).
-    Adds task-specific fields (inbox, completion, parent reference).
-
-    Fields unique to Task (not on Project):
-    - in_inbox: whether task is in inbox
-    - effective_completion_date: only meaningful on tasks (always null on projects)
-    - parent: reference to containing project or parent task, None for inbox
-    """
+    """A single OmniFocus task with all fields."""
 
     # Inbox
     in_inbox: bool

@@ -1,14 +1,4 @@
-"""Common models and entity base classes.
-
-Standalone nested types:
-- TagRef: tag reference with id and name
-- ParentRef: parent reference with type, id, and name
-- ReviewInterval: from bridge ri() function
-
-Entity base classes (moved here to break circular imports with base.py):
-- OmniFocusEntity: id, name, url, added, modified
-- ActionableEntity: urgency, availability, dates, flags, tags, repetition
-"""
+"""Common models: entity base classes, nested reference types."""
 
 from __future__ import annotations
 
@@ -49,11 +39,7 @@ class ReviewInterval(OmniFocusBaseModel):
 
 
 class OmniFocusEntity(OmniFocusBaseModel):
-    """Entity with identity and universal fields shared by all OmniFocus object types.
-
-    All four entity types (Task, Project, Tag, Folder) have these fields.
-    Perspective does NOT inherit from this class (nullable id, no lifecycle fields).
-    """
+    """Base fields shared by all OmniFocus entity types: id, name, url, timestamps."""
 
     id: str
     name: str
@@ -63,12 +49,7 @@ class OmniFocusEntity(OmniFocusBaseModel):
 
 
 class ActionableEntity(OmniFocusEntity):
-    """Shared fields for Task and Project (status axes, dates, flags, relationships).
-
-    Fields here are present on BOTH tasks and projects.
-    Entity-specific fields (e.g. inInbox for Task, folder for Project) live on
-    the concrete model classes.
-    """
+    """Shared fields for tasks and projects: status, dates, flags, tags, repetition rules."""
 
     # Two-axis status model
     urgency: Urgency
