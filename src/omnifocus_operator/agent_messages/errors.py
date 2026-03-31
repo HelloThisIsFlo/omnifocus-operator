@@ -107,7 +107,7 @@ REPETITION_INVALID_END_EMPTY = (
 
 # --- Validation: List Query ---
 
-OFFSET_REQUIRES_LIMIT = "offset requires limit -- set limit before using offset"
+OFFSET_REQUIRES_LIMIT = "offset requires limit -- set limit when using offset"
 
 REVIEW_DUE_WITHIN_INVALID = (
     "Invalid review_due_within '{value}' -- "
