@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Read Tools
 status: executing
-stopped_at: "Completed quick task 260401-hz9: Replace opaque on: dict with OrdinalWeekday"
-last_updated: "2026-04-01T12:51:19.095Z"
-last_activity: 2026-04-01
+stopped_at: Phase 36.3 context gathered
+last_updated: "2026-04-01T16:56:27.702Z"
+last_activity: 2026-03-31
 progress:
-  total_phases: 8
+  total_phases: 9
   completed_phases: 7
   total_plans: 15
   completed_plans: 15
@@ -85,6 +85,7 @@ Recent decisions affecting current work:
 - Old Phases 36 (In-Memory Fallback) + 37 (Service Orchestration) merged into Phase 36; old Phase 38 renumbered to 37
 - Phase 36.1 inserted after Phase 36: Migrate write tools to typed params with validation middleware (URGENT)
 - Phase 36.2 inserted after Phase 36: Sweep agent-facing schema descriptions and tool documentation (URGENT)
+- Phase 36.3 inserted after Phase 36: Centralize field descriptions into constants like warnings and errors (URGENT)
 
 ### Pending Todos
 
@@ -121,5 +122,5 @@ None yet.
 ## Session Continuity
 
 Last activity: 2026-04-01 - Completed quick task 260401-hz9: Replace opaque on: dict with OrdinalWeekday model
-Stopped at: Completed quick task 260401-hz9: Replace opaque on: dict with OrdinalWeekday
-Resume file: None
+Stopped at: Phase 36.3 context gathered
+Resume file: .planning/phases/36.3-centralize-field-descriptions-into-constants-like-warnings-and-errors/36.3-CONTEXT.md
