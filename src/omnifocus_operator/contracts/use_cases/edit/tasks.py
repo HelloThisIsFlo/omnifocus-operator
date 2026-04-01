@@ -7,10 +7,16 @@ from typing import Literal
 from pydantic import AwareDatetime, Field, field_validator
 
 from omnifocus_operator.agent_messages.descriptions import (
+    DATE_EXAMPLE,
     DEFER_DATE_WRITE,
     DUE_DATE_WRITE,
     EDIT_TASK_ACTIONS_DOC,
     EDIT_TASK_RESULT_DOC,
+    ESTIMATED_MINUTES_EDIT,
+    FLAGGED_EDIT_COMMAND,
+    ID_EDIT_COMMAND,
+    NAME_EDIT_COMMAND,
+    NOTE_EDIT_COMMAND,
     PLANNED_DATE_WRITE,
 )
 from omnifocus_operator.agent_messages.errors import LIFECYCLE_INVALID_VALUE
@@ -45,11 +51,11 @@ class EditTaskActions(CommandModel):
 
 class EditTaskCommand(CommandModel):
     # Required -- which task to edit
-    id: str
+    id: str = Field(description=ID_EDIT_COMMAND)
 
     # Value-only fields (no None -- these can't be "cleared")
-    name: Patch[str] = UNSET
-    flagged: Patch[bool] = UNSET
+    name: Patch[str] = Field(default=UNSET, description=NAME_EDIT_COMMAND)
+    flagged: Patch[bool] = Field(default=UNSET, description=FLAGGED_EDIT_COMMAND)
 
     @field_validator("name", mode="before")
     @classmethod
@@ -62,20 +68,25 @@ class EditTaskCommand(CommandModel):
         return v
 
     # Clearable fields (None = clear the value)
-    note: PatchOrClear[str] = UNSET
+    note: PatchOrClear[str] = Field(default=UNSET, description=NOTE_EDIT_COMMAND)
     due_date: PatchOrClear[AwareDatetime] = Field(
         default=UNSET,
         description=DUE_DATE_WRITE,
+        examples=[DATE_EXAMPLE],
     )
     defer_date: PatchOrClear[AwareDatetime] = Field(
         default=UNSET,
         description=DEFER_DATE_WRITE,
+        examples=[DATE_EXAMPLE],
     )
     planned_date: PatchOrClear[AwareDatetime] = Field(
         default=UNSET,
         description=PLANNED_DATE_WRITE,
+        examples=[DATE_EXAMPLE],
     )
-    estimated_minutes: PatchOrClear[float] = UNSET
+    estimated_minutes: PatchOrClear[float] = Field(
+        default=UNSET, description=ESTIMATED_MINUTES_EDIT
+    )
 
     # Repetition rule (nested spec with own patch semantics; null = clear, UNSET = no change)
     repetition_rule: PatchOrClear[RepetitionRuleEditSpec] = UNSET

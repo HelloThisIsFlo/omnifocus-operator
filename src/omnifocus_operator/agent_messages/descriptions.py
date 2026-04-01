@@ -33,49 +33,36 @@ EFFECTIVE_COMPLETION_DATE = (
 
 # --- Dates: Write-Side ---
 
+DATE_EXAMPLE = "2026-03-15T17:00:00Z"
+
 DUE_DATE_WRITE = (
-    "Deadline with real consequences if missed. "
-    "Not for intentions -- use plannedDate instead. "
-    "Requires timezone (ISO 8601 with offset or Z); naive datetimes are rejected."
+    "Deadline with real consequences if missed. Not for intentions -- use plannedDate instead."
 )
 
 DEFER_DATE_WRITE = (
     "Task cannot be acted on until this date. "
     "Hidden from most views until then. "
-    "Not for 'I don't want to work on it yet' -- use plannedDate for that. "
-    "Requires timezone (ISO 8601 with offset or Z); naive datetimes are rejected."
+    "Not for 'I don't want to work on it yet' -- use plannedDate for that."
 )
 
 PLANNED_DATE_WRITE = (
     "When you intend to work on this task. "
-    "No urgency signal, no visibility change, no penalty for missing it. "
-    "Requires timezone (ISO 8601 with offset or Z); naive datetimes are rejected."
+    "No urgency signal, no visibility change, no penalty for missing it."
 )
 
 # --- Tags ---
 
-TAGS_ADD_COMMAND = (
-    "Tag names (case-insensitive) or IDs; you can mix both in one list. "
-    "Non-existent names are rejected. "
-    "Ambiguous names (case-insensitive collision) return an error."
-)
+TAGS_ADD_COMMAND = "Tag names (case-insensitive) or IDs; you can mix both."
 
 TAGS_OUTPUT = "Tags applied to this entity, each with id and name."
 
-TAG_ACTION_ADD = (
-    "Tag names (case-insensitive) or IDs to add; you can mix both. "
-    "Non-existent names are rejected. Ambiguous names return an error."
-)
+TAG_ACTION_ADD = "Tag names (case-insensitive) or IDs to add; you can mix both."
 
-TAG_ACTION_REMOVE = (
-    "Tag names (case-insensitive) or IDs to remove; you can mix both. "
-    "Non-existent names are rejected. Ambiguous names return an error."
-)
+TAG_ACTION_REMOVE = "Tag names (case-insensitive) or IDs to remove; you can mix both."
 
 TAG_ACTION_REPLACE = (
     "Replace all tags with this list. Tag names (case-insensitive) or IDs; "
-    "you can mix both. Non-existent names are rejected. Ambiguous names return an error. "
-    "Pass null or [] to clear all tags."
+    "you can mix both. Pass null or [] to clear all tags."
 )
 
 CHILDREN_ARE_MUTUALLY_EXCLUSIVE = (
@@ -84,9 +71,21 @@ CHILDREN_ARE_MUTUALLY_EXCLUSIVE = (
 
 # --- Repetition ---
 
-ON_DAYS = "Days of the week for weekly recurrence."
+ON_DAYS = (
+    "Days of the week for weekly recurrence. "
+    "Only valid when type is 'weekly'; rejected for other types."
+)
 
-ON_DATE = "Days of the month. Use -1 for last day."
+ON_DATE = (
+    "Days of the month. Valid values: -1 (last day of month), 1-31. "
+    "Mutually exclusive with on (day-of-week patterns)."
+)
+
+ON_WEEKDAY_PATTERN = (
+    "Ordinal weekday pattern for monthly recurrence (e.g. last friday). "
+    "Optional -- omit to repeat on the calendar date. "
+    "Mutually exclusive with onDates."
+)
 
 END_BY_DATE_DATE = "Repeat until this date."
 
@@ -95,6 +94,26 @@ END_BY_DATE_DATE = "Repeat until this date."
 PARENT = "Project or task ID to place this task under. Omit for inbox."
 
 NEXT_TASK = "ID of the first available task in this project, if any."
+
+# --- Fields: Previously Bare ---
+
+ESTIMATED_MINUTES = "Time estimate in minutes."
+
+FLAGGED = "Mark task for priority attention. Surfaces in Flagged perspective."
+
+NAME_ADD_COMMAND = "Task name. Leading/trailing whitespace is stripped."
+
+NAME_EDIT_COMMAND = "New task name. Leading/trailing whitespace is stripped; empty names rejected."
+
+NOTE_ADD_COMMAND = "Plain-text note attached to the task."
+
+NOTE_EDIT_COMMAND = "Plain-text note. Set to null to clear."
+
+ID_EDIT_COMMAND = "OmniFocus task ID to edit."
+
+FLAGGED_EDIT_COMMAND = "Mark task for priority attention. Surfaces in Flagged perspective."
+
+ESTIMATED_MINUTES_EDIT = "Time estimate in minutes. Set to null to clear."
 
 # --- Class Docstrings: Entities ---
 
@@ -131,9 +150,25 @@ TAG_AVAILABILITY_DOC = "Availability status for tags."
 
 FOLDER_AVAILABILITY_DOC = "Availability status for folders."
 
-SCHEDULE_DOC = "Repetition schedule type."
+SCHEDULE_DOC = (
+    "Repetition schedule type. "
+    "[WIP: day-of-week edge cases under review]\n\n"
+    "- regularly: fixed calendar dates; every missed "
+    "occurrence must be individually resolved\n"
+    "- regularly_with_catch_up: fixed calendar dates, "
+    "but skips overdue to next future date\n"
+    "- from_completion: next date calculated from when "
+    "you complete this occurrence"
+)
 
-BASED_ON_DOC = "Anchor date for repetition rules."
+BASED_ON_DOC = (
+    "Which date field anchors the repetition schedule. "
+    "Other date fields shift relatively, preserving their "
+    "current offset from the anchor.\n\n"
+    "- due_date: schedule based on due date\n"
+    "- defer_date: schedule based on defer date\n"
+    "- planned_date: schedule based on planned date"
+)
 
 # --- Class Docstrings: Repetition ---
 
@@ -212,6 +247,11 @@ REVIEW_DUE_FILTER_DOC = "Parsed duration for review_due_within filter."
 GET_ALL_TOOL_DOC = (
     "Return the full OmniFocus database as structured data.\n"
     "\n"
+    "WARNING: This is a last-resort/debugging tool. Prefer list_tasks or\n"
+    "list_projects for filtered, paginated results. get_all returns the\n"
+    "entire database and should only be used when you need a complete\n"
+    "snapshot.\n"
+    "\n"
     "Response contains: tasks, projects, tags, folders, perspectives arrays.\n"
     "The response uses camelCase field names."
 )
@@ -250,9 +290,6 @@ ADD_TASKS_TOOL_DOC = (
     "Tags accept names (case-insensitive) or IDs; you can mix both.\n"
     "Non-existent names are rejected. Ambiguous names (case-insensitive\n"
     "collision) return an error.\n"
-    "\n"
-    "All date fields require timezone info (ISO 8601 with offset or Z).\n"
-    "Naive datetimes are rejected.\n"
     "\n"
     "repetitionRule requires all three root fields (frequency, schedule,\n"
     "basedOn) when creating. on and onDates within frequency are\n"
@@ -300,9 +337,6 @@ EDIT_TASKS_TOOL_DOC = (
     "Tags (in all tag fields) accept names (case-insensitive) or IDs;\n"
     "you can mix both. Non-existent names are rejected. Ambiguous names\n"
     "(case-insensitive collision) return an error.\n"
-    "\n"
-    "All date fields require timezone info (ISO 8601 with offset or Z).\n"
-    "Naive datetimes are rejected.\n"
     "\n"
     "repetitionRule partial updates:\n"
     "  - Task has no existing rule: all three root fields required\n"
