@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Read Tools
 status: executing
-stopped_at: Completed 36.3-01-PLAN.md
-last_updated: "2026-04-01T17:47:17.456Z"
+stopped_at: Completed 36.3-02-PLAN.md
+last_updated: "2026-04-01T17:52:24.802Z"
 last_activity: 2026-03-31
 progress:
   total_phases: 9
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 17
-  completed_plans: 16
+  completed_plans: 17
   percent: 20
 ---
 
@@ -78,6 +78,7 @@ Recent decisions affecting current work:
 - [Phase quick-260401-i0f]: date_type alias (from datetime import date as date_type) to avoid field name shadowing in EndByDate
 - [Phase quick-260401-hz9]: OrdinalWeekday core model uses extra='forbid' -- value objects where field names define valid vocabulary
 - [Phase 36.3]: D-05 docstring cleanup applied during centralization: 7 class docstrings trimmed of implementation details
+- [Phase 36.3]: 21 internal classes in exception list covering base classes, protocols, repo-boundary models, and sentinels
 
 ### Roadmap Evolution
 
@@ -116,6 +117,7 @@ Carried forward:
 | Phase 36.2 P03 | 3min | 2 tasks | 1 files | | |
 | 260401-hz9 | Replace opaque on: dict with typed OrdinalWeekday | 2026-04-01 | cf0d426 | Verified | [260401-hz9-replace-opaque-on-dict-with-ordinalweekd](./quick/260401-hz9-replace-opaque-on-dict-with-ordinalweekd/) |
 | Phase 36.3 P01 | 8min | 2 tasks | 20 files |
+| Phase 36.3 P02 | 3min | 1 tasks | 1 files |
 
 ### Blockers/Concerns
 
@@ -124,5 +126,5 @@ None yet.
 ## Session Continuity
 
 Last activity: 2026-04-01 - Completed quick task 260401-hz9: Replace opaque on: dict with OrdinalWeekday model
-Stopped at: Completed 36.3-01-PLAN.md
+Stopped at: Completed 36.3-02-PLAN.md
 Resume file: None

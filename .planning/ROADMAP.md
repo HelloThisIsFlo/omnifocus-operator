@@ -171,11 +171,11 @@ Plans:
 **Goal:** Extract all agent-visible Field(description=...) strings and class docstrings into centralized `agent_messages/descriptions.py`, following errors.py/warnings.py pattern. Enforcement tests ensure no inline descriptions sneak back in.
 **Requirements**: DESC-01, DESC-02, DESC-03, DESC-04, DESC-05, DESC-06
 **Depends on:** Phase 36.2
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 36.3-01-PLAN.md — Create descriptions.py constants + migrate all consumer files
-- [ ] 36.3-02-PLAN.md — Enforcement tests (consolidation + exception-list scanner)
+- [x] 36.3-02-PLAN.md — Enforcement tests (consolidation + exception-list scanner)
 
 ### Phase 36.2: Sweep agent-facing schema descriptions and tool documentation (INSERTED)
 
@@ -241,5 +241,5 @@ Phases execute in numeric order: 34 → 35 → 35.1 → 35.2 → 36 → 37
 | 36. Service Orchestration + Cross-Path Equivalence | v1.3 | 2/2 | Complete    | 2026-03-31 |
 | 36.1 Write Tool Schema Migration | v1.3 | 2/2 | Complete | 2026-03-31 |
 | 36.2 Agent-Facing Documentation Sweep | v1.3 | 3/3 | Complete    | 2026-03-31 |
-| 36.3 Description Centralization | v1.3 | 1/2 | In Progress|  |
+| 36.3 Description Centralization | v1.3 | 2/2 | Complete   | 2026-04-01 |
 | 37. Server Registration and Integration | v1.3 | 0/0 | Not started | - |
