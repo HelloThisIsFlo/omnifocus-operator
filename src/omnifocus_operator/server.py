@@ -35,7 +35,10 @@ from omnifocus_operator.contracts.use_cases.edit.tasks import (  # noqa: TC001
     EditTaskCommand,
     EditTaskResult,
 )
-from omnifocus_operator.middleware import ToolLoggingMiddleware, ValidationReformatterMiddleware
+from omnifocus_operator.middleware import (
+    ToolLoggingMiddleware,
+    ValidationReformatterMiddleware,
+)
 from omnifocus_operator.models import (  # noqa: TC001 — FastMCP needs runtime names
     AllEntities,
     Project,
@@ -197,13 +200,34 @@ def _register_tools(mcp: FastMCP) -> None:
 
         Examples (repetitionRule):
           Every 3 days from completion:
-            {frequency: {type: "daily", interval: 3}, schedule: "from_completion", basedOn: "defer_date"}
+            {
+              frequency: {type: "daily", interval: 3},
+              schedule: "from_completion",
+              basedOn: "defer_date"
+            }
 
           Every 2 weeks on Mon and Fri, stop after 10:
-            {frequency: {type: "weekly", interval: 2, onDays: ["MO", "FR"]}, schedule: "regularly", basedOn: "due_date", end: {occurrences: 10}}
+            {
+              frequency: {
+                type: "weekly",
+                interval: 2,
+                onDays: ["MO", "FR"]
+              },
+              schedule: "regularly",
+              basedOn: "due_date",
+              end: {occurrences: 10}
+            }
 
           Last Friday of every month:
-            {frequency: {type: "monthly", on: {"last": "friday"}}, schedule: "regularly", basedOn: "due_date"}
+            {
+              frequency: {
+                type: "monthly",
+                on: {"last": "friday"}
+              },
+              schedule: "regularly",
+              basedOn: "due_date"
+            }
+
 
         Returns: [{success, id, name, warnings?}]
         """
@@ -290,6 +314,7 @@ def _register_tools(mcp: FastMCP) -> None:
 
         actions.tags: replace is standalone. add/remove are combinable with
         each other but not with replace.
+
 
         Returns: [{success, id, name, warnings?}]
         """

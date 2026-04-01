@@ -28,22 +28,26 @@ class AddTaskCommand(CommandModel):
     tags: list[str] | None = Field(
         default=None,
         description="Tag names (case-insensitive) or IDs; you can mix both in one list. "
-        "Non-existent names are rejected. Ambiguous names (case-insensitive collision) return an error.",
+        "Non-existent names are rejected. "
+        "Ambiguous names (case-insensitive collision) return an error.",
     )
     due_date: AwareDatetime | None = Field(
         default=None,
-        description="Deadline with real consequences if missed. Not for intentions -- use plannedDate instead. "
+        description="Deadline with real consequences if missed. "
+        "Not for intentions -- use plannedDate instead. "
         "Requires timezone (ISO 8601 with offset or Z); naive datetimes are rejected.",
     )
     defer_date: AwareDatetime | None = Field(
         default=None,
-        description="Task cannot be acted on until this date. Hidden from most views until then. "
+        description="Task cannot be acted on until this date. "
+        "Hidden from most views until then. "
         "Not for 'I don't want to work on it yet' -- use plannedDate for that. "
         "Requires timezone (ISO 8601 with offset or Z); naive datetimes are rejected.",
     )
     planned_date: AwareDatetime | None = Field(
         default=None,
-        description="When you intend to work on this task. No urgency signal, no visibility change, no penalty for missing it. "
+        description="When you intend to work on this task. "
+        "No urgency signal, no visibility change, no penalty for missing it. "
         "Requires timezone (ISO 8601 with offset or Z); naive datetimes are rejected.",
     )
     flagged: bool = False

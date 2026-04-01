@@ -37,8 +37,8 @@ class TagAction(CommandModel):
     )
     replace: PatchOrNone[list[str]] = Field(
         default=UNSET,
-        description="Replace all tags with this list. Tag names (case-insensitive) or IDs; you can mix both. "
-        "Non-existent names are rejected. Ambiguous names return an error. "
+        description="Replace all tags with this list. Tag names (case-insensitive) or IDs; "
+        "you can mix both. Non-existent names are rejected. Ambiguous names return an error. "
         "Pass null or [] to clear all tags.",
     )
 

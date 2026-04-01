@@ -75,7 +75,8 @@ class ActionableEntity(OmniFocusEntity):
     )
     planned_date: AwareDatetime | None = Field(
         default=None,
-        description="When the user intends to work on this. No urgency signal, no penalty for missing it.",
+        description="When the user intends to work on this. "
+        "No urgency signal, no penalty for missing it.",
     )
     completion_date: AwareDatetime | None = None
     drop_date: AwareDatetime | None = None

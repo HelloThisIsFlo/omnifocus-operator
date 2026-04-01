@@ -13,6 +13,7 @@ class Tag(OmniFocusEntity):
 
     availability: TagAvailability  # Tag availability (available/blocked/dropped)
     children_are_mutually_exclusive: bool = Field(
-        description="When true, child tags behave like radio buttons -- assigning one removes siblings.",
+        description="When true, child tags behave like radio buttons "
+        "-- assigning one removes siblings.",
     )
     parent: str | None = None
