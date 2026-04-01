@@ -107,6 +107,7 @@ Carried forward:
 11. Reserve Literal and Annotated types for contract models only
 12. Centralize field descriptions into constants like warnings and errors
 13. Improve MCP tool schema descriptions and field documentation
+14. Clarify repetition schedule and repeat mode edge cases
 
 ### Quick Tasks Completed
 
