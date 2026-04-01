@@ -9,6 +9,7 @@ import ast
 import inspect
 import pathlib
 
+from omnifocus_operator import server as server_mod
 from omnifocus_operator.agent_messages import descriptions as desc_mod
 from omnifocus_operator.contracts.shared import actions as contracts_actions
 from omnifocus_operator.contracts.shared import repetition_rule as contracts_repetition_rule
@@ -48,6 +49,7 @@ _CONSUMER_MODULES = [
     contracts_list_projects,
     contracts_list_tags,
     contracts_list_folders,
+    server_mod,
 ]
 
 
@@ -106,9 +108,7 @@ class TestDescriptionConsolidation:
         assert len(constants) > 0, "No constants found in descriptions module"
         for name in constants:
             value = getattr(desc_mod, name)
-            assert isinstance(value, str), (
-                f"{name} is {type(value).__name__}, expected str"
-            )
+            assert isinstance(value, str), f"{name} is {type(value).__name__}, expected str"
             assert len(value) > 0, f"{name} is an empty string"
 
     def test_all_description_constants_referenced_in_consumers(self) -> None:
@@ -146,9 +146,7 @@ class TestDescriptionConsolidation:
                     if kw.arg != "description":
                         continue
                     # String literal or f-string = bad
-                    if isinstance(kw.value, ast.Constant) and isinstance(
-                        kw.value.value, str
-                    ):
+                    if isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str):
                         violations.append(
                             f"{mod.__name__} line {kw.value.lineno}: "
                             f"inline description string in Field()"
@@ -208,12 +206,97 @@ _SRC_ROOT = pathlib.Path(__file__).resolve().parent.parent / "src" / "omnifocus_
 _SKIP_FILES = {"__init__.py", "base.py", "_validators.py"}
 
 
+# ---------------------------------------------------------------------------
+# Tool description enforcement tests (DESC-07)
+# ---------------------------------------------------------------------------
+
+_SERVER_PATH = _SRC_ROOT / "server.py"
+
+
+class TestToolDescriptionEnforcement:
+    """Ensure MCP tool functions use centralized description constants (DESC-07)."""
+
+    def _get_tool_decorated_functions(self) -> list[tuple[ast.FunctionDef, ast.Call]]:
+        """Return (func_node, decorator_call) for every @mcp.tool(...) function."""
+        source = _SERVER_PATH.read_text()
+        tree = ast.parse(source)
+        results: list[tuple[ast.FunctionDef, ast.Call]] = []
+
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            for decorator in node.decorator_list:
+                if not isinstance(decorator, ast.Call):
+                    continue
+                # Match mcp.tool(...)
+                if (
+                    isinstance(decorator.func, ast.Attribute)
+                    and decorator.func.attr == "tool"
+                    and isinstance(decorator.func.value, ast.Name)
+                    and decorator.func.value.id == "mcp"
+                ):
+                    results.append((node, decorator))
+        return results
+
+    def test_tool_functions_use_centralized_descriptions(self) -> None:
+        """Every @mcp.tool() must pass description=<Name> (constant ref, not string literal)."""
+        tools = self._get_tool_decorated_functions()
+        assert len(tools) >= 6, f"Expected at least 6 tools, found {len(tools)}"
+
+        violations: list[str] = []
+        for func, decorator in tools:
+            desc_kwarg = None
+            for kw in decorator.keywords:
+                if kw.arg == "description":
+                    desc_kwarg = kw
+                    break
+
+            if desc_kwarg is None:
+                violations.append(
+                    f"Tool '{func.name}' (line {func.lineno}): "
+                    f"missing description= kwarg in @mcp.tool()"
+                )
+            elif not isinstance(desc_kwarg.value, ast.Name):
+                violations.append(
+                    f"Tool '{func.name}' (line {func.lineno}): "
+                    f"description= must be a constant reference (Name), "
+                    f"not {type(desc_kwarg.value).__name__}"
+                )
+
+        assert violations == [], "Tool functions not using centralized descriptions:\n" + "\n".join(
+            f"  - {v}" for v in violations
+        )
+
+    def test_tool_functions_have_no_inline_docstrings(self) -> None:
+        """@mcp.tool() functions must not have inline docstrings (prevents drift)."""
+        tools = self._get_tool_decorated_functions()
+        violations: list[str] = []
+
+        for func, _decorator in tools:
+            if (
+                func.body
+                and isinstance(func.body[0], ast.Expr)
+                and isinstance(func.body[0].value, ast.Constant)
+                and isinstance(func.body[0].value.value, str)
+            ):
+                violations.append(
+                    f"Tool '{func.name}' (line {func.lineno}): "
+                    f"has inline docstring — use description= kwarg instead"
+                )
+
+        assert violations == [], (
+            "Tool functions with inline docstrings (should use description= kwarg):\n"
+            + "\n".join(f"  - {v}" for v in violations)
+        )
+
+
 class TestDescriptionEnforcement:
     """Ensure new classes default to requiring centralized descriptions (DESC-06)."""
 
     def test_new_classes_require_centralized_descriptions(self) -> None:
-        """Scan ALL classes in models/ and contracts/. Non-excepted classes must use __doc__ = CONSTANT.
+        """Scan ALL classes in models/ and contracts/.
 
+        Non-excepted classes must use __doc__ = CONSTANT.
         This ensures new classes added in future phases are caught by default --
         they must either be excepted or centralized.
         """
@@ -272,7 +355,6 @@ class TestDescriptionEnforcement:
                         # The exception list is the primary guardrail.
                         pass
 
-        assert violations == [], (
-            "Classes not using centralized descriptions:\n"
-            + "\n".join(f"  - {v}" for v in violations)
+        assert violations == [], "Classes not using centralized descriptions:\n" + "\n".join(
+            f"  - {v}" for v in violations
         )

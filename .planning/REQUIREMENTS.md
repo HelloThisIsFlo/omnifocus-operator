@@ -76,6 +76,7 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 - [x] **DESC-04**: Every constant in `descriptions.py` is a non-empty string and is referenced in at least one consumer module (no dead constants)
 - [x] **DESC-05**: JSON Schema output is identical before and after centralization — no functional regression (both inputSchema from tool registration and model_json_schema() on output models)
 - [x] **DESC-06**: Enforcement test scans all classes in `models/` and `contracts/` with an exception list for known internal classes — new classes default to "must use centralized descriptions" unless explicitly excepted
+- [ ] **DESC-07**: All `@mcp.tool()` function docstrings in `server.py` use constants from `descriptions.py` — no inline tool description strings. Enforcement test catches new tools with inline docstrings.
 
 ### List Tool Documentation
 
@@ -220,6 +221,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DESC-04 | Phase 36.3 | Complete |
 | DESC-05 | Phase 36.3 | Complete |
 | DESC-06 | Phase 36.3 | Complete |
+| DESC-07 | Phase 36.3 | Pending |
 | DOC-10 | Phase 37 | Pending |
 | DOC-11 | Phase 37 | Pending |
 | DOC-12 | Phase 37 | Pending |
@@ -227,10 +229,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DOC-14 | Phase 37 | Pending |
 
 **Coverage:**
-- v1.3 requirements: 71 total (PROJ-03 merged into PROJ-02, TASK-05 deferred, +4 SRCH, +11 WRIT, +3 RTOOL, +13 DOC, +1 DOC-14, +6 DESC)
+- v1.3 requirements: 72 total (PROJ-03 merged into PROJ-02, TASK-05 deferred, +4 SRCH, +11 WRIT, +3 RTOOL, +13 DOC, +1 DOC-14, +7 DESC)
 - Mapped to phases: 71
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-29*
-*Last updated: 2026-04-01 added DESC-01..06 for Phase 36.3, DOC-14 for Phase 37*
+*Last updated: 2026-04-01 added DESC-01..07 for Phase 36.3, DOC-14 for Phase 37*

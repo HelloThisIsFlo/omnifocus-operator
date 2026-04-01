@@ -78,7 +78,7 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 - ✓ Flat Frequency model (6 types) with type-optional edits and educational validation errors — v1.2.3
 - ✓ Output schema regression guards: jsonschema validates all 6 tools' serialized output against MCP outputSchema — v1.2.3
 - ✓ Anchor date warnings: proactive guidance when basedOn references an unset date — v1.2.3
-- ✓ Description centralization: all ~60 agent-visible Field(description=) strings and class docstrings centralized in agent_messages/descriptions.py with enforcement tests — v1.3 (Phase 36.3)
+- ✓ Description centralization: all ~60 agent-visible Field(description=) strings, class docstrings, and 6 MCP tool descriptions centralized in agent_messages/descriptions.py with enforcement tests — v1.3 (Phase 36.3)
 
 ### Active
 

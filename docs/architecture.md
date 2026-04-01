@@ -431,7 +431,7 @@ Design principles:
 
 ### Agent-facing messages
 
-All agent-facing text — warnings and errors — is centralized in `agent_messages/` with AST-based test enforcement preventing inline regressions. Agents learn from every response, so message quality is a first-class concern.
+All agent-facing text — warnings, errors, and descriptions — is centralized in `agent_messages/` with AST-based test enforcement preventing inline regressions. Agents learn from every response, so message quality is a first-class concern.
 
 - Write results include optional `warnings` array for no-ops and edge cases
 - Errors (ValueError) use the same centralized constant + `.format()` pattern as warnings

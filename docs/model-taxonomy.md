@@ -174,6 +174,8 @@ All agent-facing description text lives in `agent_messages/descriptions.py` — 
 
 The `__doc__ = CONSTANT` pattern is a convention signal: it tells you "this docstring is agent-facing and will appear in the MCP tool schema." Regular inline docstrings mean "developer docs only."
 
+**When adding a new tool to `server.py`**: pass `@mcp.tool(description=CONSTANT)` where the constant is defined in `descriptions.py`. Do not use inline docstrings on tool functions — the enforcement test will reject them.
+
 **When adding a new model to `models/` or `contracts/`**: check if it will appear in an MCP tool's input or output schema. If yes, define its docstring and field descriptions as constants in `descriptions.py` and use the `__doc__ = CONSTANT` / `Field(description=CONSTANT)` patterns. An enforcement test scans these directories and will fail if inline descriptions are found on agent-facing classes.
 
 **What's agent-facing?** Models referenced as field types in tool schemas get `$defs` entries — those are agent-visible. Base classes in an inheritance chain (e.g., `OmniFocusEntity`, `ActionableEntity`) do NOT get `$defs` entries; Pydantic flattens their fields into the leaf class.
