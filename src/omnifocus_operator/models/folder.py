@@ -6,15 +6,13 @@ Folder has 2 own fields + inherited from OmniFocusEntity.
 
 from __future__ import annotations
 
+from omnifocus_operator.agent_messages.descriptions import FOLDER_DOC
 from omnifocus_operator.models.common import OmniFocusEntity
 from omnifocus_operator.models.enums import FolderAvailability
 
 
 class Folder(OmniFocusEntity):
-    """A single OmniFocus folder with all fields.
-
-    Inherits id, name, url, added, modified from OmniFocusEntity.
-    """
+    __doc__ = FOLDER_DOC
 
     availability: FolderAvailability  # Folder availability (available/dropped)
     parent: str | None = None

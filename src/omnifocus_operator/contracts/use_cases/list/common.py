@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
+from omnifocus_operator.agent_messages.descriptions import LIST_RESULT_DOC
 from omnifocus_operator.models.base import OmniFocusBaseModel
 
 
 class ListResult[T](OmniFocusBaseModel):
-    """Agent-facing result container for all list operations.
-
-    Uniform shape for all 5 list tools. Non-paginated: total=len(items), has_more=False.
-    Includes optional warnings for agent guidance (e.g. name resolution ambiguity).
-    """
+    __doc__ = LIST_RESULT_DOC
 
     items: list[T]
     total: int

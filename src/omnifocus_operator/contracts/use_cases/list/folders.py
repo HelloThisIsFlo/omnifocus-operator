@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from pydantic import Field
 
+from omnifocus_operator.agent_messages.descriptions import LIST_FOLDERS_QUERY_DOC
 from omnifocus_operator.contracts.base import QueryModel
 from omnifocus_operator.models.enums import FolderAvailability
 
 
 class ListFoldersQuery(QueryModel):
-    """Agent-facing: validated filter for folder listing. No pagination."""
+    __doc__ = LIST_FOLDERS_QUERY_DOC
 
     availability: list[FolderAvailability] = Field(
         default_factory=lambda: [FolderAvailability.AVAILABLE]

@@ -4,6 +4,13 @@ from __future__ import annotations
 
 from pydantic import Field, model_validator
 
+from omnifocus_operator.agent_messages.descriptions import (
+    MOVE_ACTION_DOC,
+    TAG_ACTION_ADD,
+    TAG_ACTION_DOC,
+    TAG_ACTION_REMOVE,
+    TAG_ACTION_REPLACE,
+)
 from omnifocus_operator.agent_messages.errors import (
     MOVE_EXACTLY_ONE_KEY,
     TAG_NO_OPERATION,
@@ -19,27 +26,19 @@ from omnifocus_operator.contracts.base import (
 
 
 class TagAction(CommandModel):
-    """Tag operations for task editing.
-
-    Either ``replace`` (standalone) or ``add``/``remove`` (combinable).
-    Incompatible modes are rejected.
-    """
+    __doc__ = TAG_ACTION_DOC
 
     add: Patch[list[str]] = Field(
         default=UNSET,
-        description="Tag names (case-insensitive) or IDs to add; you can mix both. "
-        "Non-existent names are rejected. Ambiguous names return an error.",
+        description=TAG_ACTION_ADD,
     )
     remove: Patch[list[str]] = Field(
         default=UNSET,
-        description="Tag names (case-insensitive) or IDs to remove; you can mix both. "
-        "Non-existent names are rejected. Ambiguous names return an error.",
+        description=TAG_ACTION_REMOVE,
     )
     replace: PatchOrNone[list[str]] = Field(
         default=UNSET,
-        description="Replace all tags with this list. Tag names (case-insensitive) or IDs; "
-        "you can mix both. Non-existent names are rejected. Ambiguous names return an error. "
-        "Pass null or [] to clear all tags.",
+        description=TAG_ACTION_REPLACE,
     )
 
     @model_validator(mode="after")
@@ -57,15 +56,7 @@ class TagAction(CommandModel):
 
 
 class MoveAction(CommandModel):
-    """Specifies where to move a task.
-
-    Exactly one key must be set. The key doubles as both the position
-    and the reference point:
-
-    - ``beginning``/``ending``: ID of the container (project or task),
-      or ``null`` for inbox.
-    - ``before``/``after``: ID of a sibling task (parent is inferred).
-    """
+    __doc__ = MOVE_ACTION_DOC
 
     beginning: PatchOrNone[str] = UNSET
     ending: PatchOrNone[str] = UNSET

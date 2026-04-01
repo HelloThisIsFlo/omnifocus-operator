@@ -27,6 +27,16 @@ if TYPE_CHECKING:
 
 from pydantic import ConfigDict, Field, field_serializer, field_validator, model_validator
 
+from omnifocus_operator.agent_messages.descriptions import (
+    END_BY_DATE_DATE,
+    END_BY_DATE_DOC,
+    END_BY_OCCURRENCES_DOC,
+    FREQUENCY_DOC,
+    ON_DATE,
+    ON_DAYS,
+    ORDINAL_WEEKDAY_DOC,
+    REPETITION_RULE_DOC,
+)
 from omnifocus_operator.agent_messages.errors import (
     REPETITION_AT_MOST_ONE_ORDINAL,
     REPETITION_INVALID_DAY_CODE,
@@ -42,7 +52,7 @@ from omnifocus_operator.models.enums import BasedOn, Schedule
 
 FrequencyType = Literal["minutely", "hourly", "daily", "weekly", "monthly", "yearly"]
 DayCode = Literal["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
-OnDate = Annotated[int, Field(ge=-1, le=31, description="Days of the month. Use -1 for last day.")]
+OnDate = Annotated[int, Field(ge=-1, le=31, description=ON_DATE)]
 
 DayName = Literal[
     "monday",
@@ -106,11 +116,7 @@ def check_at_most_one_ordinal(model: Any) -> Any:
 
 
 class OrdinalWeekday(OmniFocusBaseModel):
-    """Typed ordinal-weekday model for monthly day-of-week patterns.
-
-    Exactly one of the 6 ordinal fields should be set (at-most-one validator).
-    Each field holds a DayName or None.
-    """
+    __doc__ = ORDINAL_WEEKDAY_DOC
 
     model_config = ConfigDict(extra="forbid")
 
@@ -176,12 +182,12 @@ def check_frequency_cross_type_fields(
 
 
 class Frequency(OmniFocusBaseModel):
-    """How often the task repeats: type + interval, with optional day/date refinements."""
+    __doc__ = FREQUENCY_DOC
 
     type: FrequencyType  # required, NO default -- survives exclude_defaults
     interval: int = Field(default=1)
     on_days: list[str] | None = Field(
-        default=None, description="Days of the week for weekly recurrence."
+        default=None, description=ON_DAYS
     )
     on: OrdinalWeekday | None = None
     on_dates: list[int] | None = None
@@ -211,13 +217,13 @@ class Frequency(OmniFocusBaseModel):
 
 
 class EndByDate(OmniFocusBaseModel):
-    """End condition: repeat until a specific date."""
+    __doc__ = END_BY_DATE_DOC
 
-    date: date_type = Field(description="Repeat until this date.")
+    date: date_type = Field(description=END_BY_DATE_DATE)
 
 
 class EndByOccurrences(OmniFocusBaseModel):
-    """End condition: repeat a fixed number of times."""
+    __doc__ = END_BY_OCCURRENCES_DOC
 
     occurrences: int
 
@@ -236,7 +242,7 @@ EndCondition = EndByDate | EndByOccurrences
 
 
 class RepetitionRule(OmniFocusBaseModel):
-    """Structured repetition rule for recurring tasks and projects."""
+    __doc__ = REPETITION_RULE_DOC
 
     frequency: Frequency
     schedule: Schedule

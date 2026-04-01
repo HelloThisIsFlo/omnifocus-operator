@@ -6,6 +6,13 @@ from typing import Literal
 
 from pydantic import AwareDatetime, Field, field_validator
 
+from omnifocus_operator.agent_messages.descriptions import (
+    DEFER_DATE_WRITE,
+    DUE_DATE_WRITE,
+    EDIT_TASK_ACTIONS_DOC,
+    EDIT_TASK_RESULT_DOC,
+    PLANNED_DATE_WRITE,
+)
 from omnifocus_operator.agent_messages.errors import LIFECYCLE_INVALID_VALUE
 from omnifocus_operator.contracts.base import (
     UNSET,
@@ -22,7 +29,7 @@ from omnifocus_operator.models.base import OmniFocusBaseModel
 
 
 class EditTaskActions(CommandModel):
-    """Stateful operations grouped under the actions block."""
+    __doc__ = EDIT_TASK_ACTIONS_DOC
 
     tags: Patch[TagAction] = UNSET
     move: Patch[MoveAction] = UNSET
@@ -58,22 +65,15 @@ class EditTaskCommand(CommandModel):
     note: PatchOrClear[str] = UNSET
     due_date: PatchOrClear[AwareDatetime] = Field(
         default=UNSET,
-        description="Deadline with real consequences if missed. "
-        "Not for intentions -- use plannedDate instead. "
-        "Requires timezone (ISO 8601 with offset or Z); naive datetimes are rejected.",
+        description=DUE_DATE_WRITE,
     )
     defer_date: PatchOrClear[AwareDatetime] = Field(
         default=UNSET,
-        description="Task cannot be acted on until this date. "
-        "Hidden from most views until then. "
-        "Not for 'I don't want to work on it yet' -- use plannedDate for that. "
-        "Requires timezone (ISO 8601 with offset or Z); naive datetimes are rejected.",
+        description=DEFER_DATE_WRITE,
     )
     planned_date: PatchOrClear[AwareDatetime] = Field(
         default=UNSET,
-        description="When you intend to work on this task. "
-        "No urgency signal, no visibility change, no penalty for missing it. "
-        "Requires timezone (ISO 8601 with offset or Z); naive datetimes are rejected.",
+        description=PLANNED_DATE_WRITE,
     )
     estimated_minutes: PatchOrClear[float] = UNSET
 
@@ -85,7 +85,7 @@ class EditTaskCommand(CommandModel):
 
 
 class EditTaskResult(OmniFocusBaseModel):
-    """Agent-facing outcome of task editing."""
+    __doc__ = EDIT_TASK_RESULT_DOC
 
     success: bool
     id: str

@@ -4,6 +4,14 @@ from __future__ import annotations
 
 from pydantic import AwareDatetime, Field, field_validator
 
+from omnifocus_operator.agent_messages.descriptions import (
+    ADD_TASK_RESULT_DOC,
+    DEFER_DATE_WRITE,
+    DUE_DATE_WRITE,
+    PARENT,
+    PLANNED_DATE_WRITE,
+    TAGS_ADD_COMMAND,
+)
 from omnifocus_operator.contracts.base import CommandModel
 from omnifocus_operator.contracts.shared.repetition_rule import (
     RepetitionRuleAddSpec,
@@ -23,32 +31,23 @@ class AddTaskCommand(CommandModel):
 
     parent: str | None = Field(
         default=None,
-        description="Project or task ID to place this task under. Omit for inbox.",
+        description=PARENT,
     )
     tags: list[str] | None = Field(
         default=None,
-        description="Tag names (case-insensitive) or IDs; you can mix both in one list. "
-        "Non-existent names are rejected. "
-        "Ambiguous names (case-insensitive collision) return an error.",
+        description=TAGS_ADD_COMMAND,
     )
     due_date: AwareDatetime | None = Field(
         default=None,
-        description="Deadline with real consequences if missed. "
-        "Not for intentions -- use plannedDate instead. "
-        "Requires timezone (ISO 8601 with offset or Z); naive datetimes are rejected.",
+        description=DUE_DATE_WRITE,
     )
     defer_date: AwareDatetime | None = Field(
         default=None,
-        description="Task cannot be acted on until this date. "
-        "Hidden from most views until then. "
-        "Not for 'I don't want to work on it yet' -- use plannedDate for that. "
-        "Requires timezone (ISO 8601 with offset or Z); naive datetimes are rejected.",
+        description=DEFER_DATE_WRITE,
     )
     planned_date: AwareDatetime | None = Field(
         default=None,
-        description="When you intend to work on this task. "
-        "No urgency signal, no visibility change, no penalty for missing it. "
-        "Requires timezone (ISO 8601 with offset or Z); naive datetimes are rejected.",
+        description=PLANNED_DATE_WRITE,
     )
     flagged: bool = False
     estimated_minutes: float | None = None
@@ -57,7 +56,7 @@ class AddTaskCommand(CommandModel):
 
 
 class AddTaskResult(OmniFocusBaseModel):
-    """Agent-facing outcome of task creation."""
+    __doc__ = ADD_TASK_RESULT_DOC
 
     success: bool
     id: str

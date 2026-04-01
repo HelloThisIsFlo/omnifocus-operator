@@ -6,6 +6,14 @@ from typing import Any, get_args
 
 from pydantic import Field, field_validator, model_validator
 
+from omnifocus_operator.agent_messages.descriptions import (
+    FREQUENCY_ADD_SPEC_DOC,
+    FREQUENCY_EDIT_SPEC_DOC,
+    ON_DAYS,
+    ORDINAL_WEEKDAY_SPEC_DOC,
+    REPETITION_RULE_ADD_SPEC_DOC,
+    REPETITION_RULE_EDIT_SPEC_DOC,
+)
 from omnifocus_operator.agent_messages.errors import (
     REPETITION_INVALID_END_EMPTY,
     REPETITION_INVALID_END_OCCURRENCES,
@@ -55,7 +63,7 @@ def _validate_end_condition(v: Any) -> Any:
 
 
 class OrdinalWeekdaySpec(CommandModel):
-    """Write-side ordinal-weekday model for monthly day-of-week patterns."""
+    __doc__ = ORDINAL_WEEKDAY_SPEC_DOC
 
     first: DayName | None = None
     second: DayName | None = None
@@ -78,12 +86,12 @@ class OrdinalWeekdaySpec(CommandModel):
 
 
 class FrequencyAddSpec(CommandModel):
-    """Frequency specification for creating a repetition rule."""
+    __doc__ = FREQUENCY_ADD_SPEC_DOC
 
     type: FrequencyType
     interval: int = Field(default=1)
     on_days: list[DayCode] | None = Field(
-        default=None, description="Days of the week for weekly recurrence."
+        default=None, description=ON_DAYS
     )
     on: OrdinalWeekdaySpec | None = None
     on_dates: list[OnDate] | None = None
@@ -115,12 +123,12 @@ class FrequencyAddSpec(CommandModel):
 
 
 class FrequencyEditSpec(CommandModel):
-    """Patch individual frequency sub-fields; omit fields to leave unchanged."""
+    __doc__ = FREQUENCY_EDIT_SPEC_DOC
 
     type: Patch[FrequencyType] = UNSET
     interval: Patch[int] = UNSET
     on_days: PatchOrClear[list[DayCode]] = Field(
-        default=UNSET, description="Days of the week for weekly recurrence."
+        default=UNSET, description=ON_DAYS
     )
     on: PatchOrClear[OrdinalWeekdaySpec] = UNSET
     on_dates: PatchOrClear[list[OnDate]] = UNSET
@@ -147,7 +155,7 @@ class FrequencyEditSpec(CommandModel):
 
 
 class RepetitionRuleAddSpec(CommandModel):
-    """All-required spec for creating a repetition rule on a new task."""
+    __doc__ = REPETITION_RULE_ADD_SPEC_DOC
 
     frequency: FrequencyAddSpec
     schedule: Schedule
@@ -161,7 +169,7 @@ class RepetitionRuleAddSpec(CommandModel):
 
 
 class RepetitionRuleEditSpec(CommandModel):
-    """Patch repetition rule fields; omit fields to leave unchanged, set to null to clear."""
+    __doc__ = REPETITION_RULE_EDIT_SPEC_DOC
 
     frequency: Patch[FrequencyEditSpec] = UNSET
     schedule: Patch[Schedule] = UNSET

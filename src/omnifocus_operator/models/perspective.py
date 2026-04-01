@@ -11,15 +11,12 @@ from __future__ import annotations
 
 from pydantic import computed_field
 
+from omnifocus_operator.agent_messages.descriptions import PERSPECTIVE_DOC
 from omnifocus_operator.models.base import OmniFocusBaseModel
 
 
 class Perspective(OmniFocusBaseModel):
-    """A single OmniFocus perspective.
-
-    Uses OmniFocusBaseModel (not OmniFocusEntity) because builtin
-    perspectives have null id values and lack lifecycle fields.
-    """
+    __doc__ = PERSPECTIVE_DOC
 
     id: str | None
     name: str

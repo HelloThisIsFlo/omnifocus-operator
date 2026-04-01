@@ -4,24 +4,34 @@ from __future__ import annotations
 
 from pydantic import AwareDatetime, Field
 
+from omnifocus_operator.agent_messages.descriptions import (
+    DEFER_DATE,
+    DUE_DATE,
+    EFFECTIVE_DEFER_DATE,
+    EFFECTIVE_DROP_DATE,
+    EFFECTIVE_DUE_DATE,
+    EFFECTIVE_FLAGGED,
+    EFFECTIVE_PLANNED_DATE,
+    PARENT_REF_DOC,
+    PLANNED_DATE,
+    REVIEW_INTERVAL_DOC,
+    TAG_REF_DOC,
+    TAGS_OUTPUT,
+)
 from omnifocus_operator.models.base import OmniFocusBaseModel
 from omnifocus_operator.models.enums import Availability, Urgency
 from omnifocus_operator.models.repetition_rule import RepetitionRule
 
 
 class TagRef(OmniFocusBaseModel):
-    """Reference to a tag with both id and name for ergonomics."""
+    __doc__ = TAG_REF_DOC
 
     id: str
     name: str
 
 
 class ParentRef(OmniFocusBaseModel):
-    """Reference to a parent entity (project or task) with type, id, and name.
-
-    type is "project" for tasks directly in a project, "task" for subtasks.
-    Inbox tasks have no ParentRef (represented as None at the Task level).
-    """
+    __doc__ = PARENT_REF_DOC
 
     type: str
     id: str
@@ -29,10 +39,7 @@ class ParentRef(OmniFocusBaseModel):
 
 
 class ReviewInterval(OmniFocusBaseModel):
-    """Review interval for project review scheduling.
-
-    Serializes to: {"steps": N, "unit": "..."}
-    """
+    __doc__ = REVIEW_INTERVAL_DOC
 
     steps: int
     unit: str
@@ -61,41 +68,40 @@ class ActionableEntity(OmniFocusEntity):
     # Flags
     flagged: bool
     effective_flagged: bool = Field(
-        description="Inherited from parent project if not set directly on this task.",
+        description=EFFECTIVE_FLAGGED,
     )
 
     # Dates (all optional, timezone-aware)
     due_date: AwareDatetime | None = Field(
         default=None,
-        description="Deadline with real consequences if missed.",
+        description=DUE_DATE,
     )
     defer_date: AwareDatetime | None = Field(
         default=None,
-        description="Task cannot be acted on until this date; hidden from most views until then.",
+        description=DEFER_DATE,
     )
     planned_date: AwareDatetime | None = Field(
         default=None,
-        description="When the user intends to work on this. "
-        "No urgency signal, no penalty for missing it.",
+        description=PLANNED_DATE,
     )
     completion_date: AwareDatetime | None = None
     drop_date: AwareDatetime | None = None
     effective_due_date: AwareDatetime | None = Field(
         default=None,
-        description="Inherited from parent project or task if not set directly on this entity.",
+        description=EFFECTIVE_DUE_DATE,
     )
     effective_defer_date: AwareDatetime | None = Field(
         default=None,
-        description="Inherited from parent project or task if not set directly on this entity.",
+        description=EFFECTIVE_DEFER_DATE,
     )
     effective_planned_date: AwareDatetime | None = Field(
         default=None,
-        description="Inherited from parent project or task if not set directly on this entity.",
+        description=EFFECTIVE_PLANNED_DATE,
     )
     # effective_completion_date is only present on Task, not Project
     effective_drop_date: AwareDatetime | None = Field(
         default=None,
-        description="Inherited from parent project or task if not set directly on this entity.",
+        description=EFFECTIVE_DROP_DATE,
     )
 
     # Metadata
@@ -105,6 +111,6 @@ class ActionableEntity(OmniFocusEntity):
     # Relationships
     tags: list[TagRef] = Field(
         default_factory=list,
-        description="Tags applied to this entity, each with id and name.",
+        description=TAGS_OUTPUT,
     )
     repetition_rule: RepetitionRule | None = None

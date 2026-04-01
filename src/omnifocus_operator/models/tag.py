@@ -4,16 +4,19 @@ from __future__ import annotations
 
 from pydantic import Field
 
+from omnifocus_operator.agent_messages.descriptions import (
+    CHILDREN_ARE_MUTUALLY_EXCLUSIVE,
+    TAG_DOC,
+)
 from omnifocus_operator.models.common import OmniFocusEntity
 from omnifocus_operator.models.enums import TagAvailability
 
 
 class Tag(OmniFocusEntity):
-    """A single OmniFocus tag with all fields."""
+    __doc__ = TAG_DOC
 
     availability: TagAvailability  # Tag availability (available/blocked/dropped)
     children_are_mutually_exclusive: bool = Field(
-        description="When true, child tags behave like radio buttons "
-        "-- assigning one removes siblings.",
+        description=CHILDREN_ARE_MUTUALLY_EXCLUSIVE,
     )
     parent: str | None = None

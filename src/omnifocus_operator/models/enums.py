@@ -11,9 +11,18 @@ Values use snake_case strings matching the new two-axis model:
 
 from enum import StrEnum
 
+from omnifocus_operator.agent_messages.descriptions import (
+    AVAILABILITY_DOC,
+    BASED_ON_DOC,
+    FOLDER_AVAILABILITY_DOC,
+    SCHEDULE_DOC,
+    TAG_AVAILABILITY_DOC,
+    URGENCY_DOC,
+)
+
 
 class Urgency(StrEnum):
-    """Time pressure axis -- is this task/project pressing?"""
+    __doc__ = URGENCY_DOC
 
     OVERDUE = "overdue"
     DUE_SOON = "due_soon"
@@ -21,7 +30,7 @@ class Urgency(StrEnum):
 
 
 class Availability(StrEnum):
-    """Work readiness axis -- can this be worked on?"""
+    __doc__ = AVAILABILITY_DOC
 
     AVAILABLE = "available"
     BLOCKED = "blocked"
@@ -30,7 +39,7 @@ class Availability(StrEnum):
 
 
 class TagAvailability(StrEnum):
-    """Availability status for tags."""
+    __doc__ = TAG_AVAILABILITY_DOC
 
     AVAILABLE = "available"
     BLOCKED = "blocked"
@@ -38,14 +47,14 @@ class TagAvailability(StrEnum):
 
 
 class FolderAvailability(StrEnum):
-    """Availability status for folders."""
+    __doc__ = FOLDER_AVAILABILITY_DOC
 
     AVAILABLE = "available"
     DROPPED = "dropped"
 
 
 class Schedule(StrEnum):
-    """Repetition schedule type."""
+    __doc__ = SCHEDULE_DOC
 
     REGULARLY = "regularly"
     REGULARLY_WITH_CATCH_UP = "regularly_with_catch_up"
@@ -53,7 +62,7 @@ class Schedule(StrEnum):
 
 
 class BasedOn(StrEnum):
-    """Anchor date for repetition rules."""
+    __doc__ = BASED_ON_DOC
 
     DUE_DATE = "due_date"
     DEFER_DATE = "defer_date"

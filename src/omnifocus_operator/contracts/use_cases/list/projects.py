@@ -9,6 +9,11 @@ from enum import StrEnum
 from pydantic import Field, field_validator, model_validator
 
 from omnifocus_operator.agent_messages import errors as err
+from omnifocus_operator.agent_messages.descriptions import (
+    DURATION_UNIT_DOC,
+    LIST_PROJECTS_QUERY_DOC,
+    REVIEW_DUE_FILTER_DOC,
+)
 from omnifocus_operator.contracts.base import QueryModel
 from omnifocus_operator.contracts.use_cases.list._validators import validate_offset_requires_limit
 from omnifocus_operator.models.enums import Availability
@@ -17,7 +22,7 @@ _DURATION_PATTERN = re.compile(r"^(\d+)([dwmy])$")
 
 
 class DurationUnit(StrEnum):
-    """Unit for duration-based filters."""
+    __doc__ = DURATION_UNIT_DOC
 
     DAYS = "d"
     WEEKS = "w"
@@ -26,7 +31,7 @@ class DurationUnit(StrEnum):
 
 
 class ReviewDueFilter(QueryModel):
-    """Value object: parsed duration for review_due_within filter."""
+    __doc__ = REVIEW_DUE_FILTER_DOC
 
     amount: int | None = None  # None for "now"
     unit: DurationUnit | None = None  # None for "now"
@@ -57,7 +62,7 @@ def parse_review_due_within(value: str) -> ReviewDueFilter:
 
 
 class ListProjectsQuery(QueryModel):
-    """Agent-facing: validated filter + pagination for project listing."""
+    __doc__ = LIST_PROJECTS_QUERY_DOC
 
     availability: list[Availability] = Field(
         default_factory=lambda: [Availability.AVAILABLE, Availability.BLOCKED]

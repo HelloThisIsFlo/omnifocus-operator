@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from pydantic import AwareDatetime, Field
 
+from omnifocus_operator.agent_messages.descriptions import NEXT_TASK, PROJECT_DOC
 from omnifocus_operator.models.common import ActionableEntity, ReviewInterval
 
 
 class Project(ActionableEntity):
-    """A single OmniFocus project with all fields."""
+    __doc__ = PROJECT_DOC
 
     # Review (all required per BRIDGE-SPEC)
     last_review_date: AwareDatetime
@@ -18,6 +19,6 @@ class Project(ActionableEntity):
     # Relationships
     next_task: str | None = Field(
         default=None,
-        description="ID of the first available task in this project, if any.",
+        description=NEXT_TASK,
     )
     folder: str | None = None
