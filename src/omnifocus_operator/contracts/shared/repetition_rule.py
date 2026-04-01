@@ -19,8 +19,10 @@ from omnifocus_operator.contracts.base import (
 )
 from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
+    DayCode,
     EndCondition,
     FrequencyType,
+    OnDate,
     check_frequency_cross_type_fields,
     normalize_day_codes,
     normalize_on,
@@ -55,9 +57,18 @@ class FrequencyAddSpec(CommandModel):
 
     type: FrequencyType
     interval: int = Field(default=1)
-    on_days: list[str] | None = None
-    on: dict[str, str] | None = None
-    on_dates: list[int] | None = None
+    on_days: list[DayCode] | None = Field(
+        default=None, description="Days of the week for weekly recurrence."
+    )
+    on: dict[str, str] | None = Field(
+        default=None,
+        description=(
+            "Ordinal weekday as {ordinal: day}. "
+            "Ordinal: first, second, third, fourth, fifth, last. "
+            "Day: monday-sunday, weekday, weekend_day."
+        ),
+    )
+    on_dates: list[OnDate] | None = None
 
     @field_validator("type", mode="before")
     @classmethod
@@ -95,9 +106,18 @@ class FrequencyEditSpec(CommandModel):
 
     type: Patch[FrequencyType] = UNSET
     interval: Patch[int] = UNSET
-    on_days: PatchOrClear[list[str]] = UNSET
-    on: PatchOrClear[dict[str, str]] = UNSET
-    on_dates: PatchOrClear[list[int]] = UNSET
+    on_days: PatchOrClear[list[DayCode]] = Field(
+        default=UNSET, description="Days of the week for weekly recurrence."
+    )
+    on: PatchOrClear[dict[str, str]] = Field(
+        default=UNSET,
+        description=(
+            "Ordinal weekday as {ordinal: day}. "
+            "Ordinal: first, second, third, fourth, fifth, last. "
+            "Day: monday-sunday, weekday, weekend_day."
+        ),
+    )
+    on_dates: PatchOrClear[list[OnDate]] = UNSET
 
     @field_validator("type", mode="before")
     @classmethod
@@ -108,6 +128,21 @@ class FrequencyEditSpec(CommandModel):
     @classmethod
     def _validate_interval(cls, v: int) -> int:
         return validate_interval(v)
+
+    @field_validator("on_days", mode="before")
+    @classmethod
+    def _normalize_day_codes(cls, value: list[str] | None) -> list[str] | None:
+        return normalize_day_codes(value)
+
+    @field_validator("on", mode="before")
+    @classmethod
+    def _normalize_on(cls, value: dict[str, str] | None) -> dict[str, str] | None:
+        return normalize_on(value)
+
+    @field_validator("on_dates", mode="before")
+    @classmethod
+    def _validate_on_dates(cls, value: list[int] | None) -> list[int] | None:
+        return validate_on_dates(value)
 
 
 class RepetitionRuleAddSpec(CommandModel):

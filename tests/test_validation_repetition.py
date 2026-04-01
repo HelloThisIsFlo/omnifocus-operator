@@ -296,6 +296,70 @@ class TestFrequencyEditSpecInterval:
         assert spec.interval is UNSET
 
 
+class TestFrequencyEditSpecDayCodes:
+    """Tests for on_days normalization on FrequencyEditSpec."""
+
+    def test_normalizes_case(self) -> None:
+        spec = FrequencyEditSpec(on_days=["mo", "fr"])
+        assert spec.on_days == ["MO", "FR"]
+
+    def test_rejects_invalid_code(self) -> None:
+        with pytest.raises(ValueError, match="Invalid day code"):
+            FrequencyEditSpec(on_days=["XX"])
+
+    def test_unset_default(self) -> None:
+        spec = FrequencyEditSpec()
+        assert spec.on_days is UNSET
+
+    def test_clear_passes(self) -> None:
+        spec = FrequencyEditSpec(on_days=None)
+        assert spec.on_days is None
+
+
+class TestFrequencyEditSpecOn:
+    """Tests for on normalization on FrequencyEditSpec."""
+
+    def test_normalizes_case(self) -> None:
+        spec = FrequencyEditSpec(on={"FIRST": "MONDAY"})
+        assert spec.on == {"first": "monday"}
+
+    def test_rejects_invalid_ordinal(self) -> None:
+        with pytest.raises(ValueError, match="Invalid ordinal"):
+            FrequencyEditSpec(on={"seventh": "monday"})
+
+    def test_rejects_invalid_day_name(self) -> None:
+        with pytest.raises(ValueError, match="Invalid day name"):
+            FrequencyEditSpec(on={"first": "notaday"})
+
+    def test_clear_passes(self) -> None:
+        spec = FrequencyEditSpec(on=None)
+        assert spec.on is None
+
+
+class TestFrequencyEditSpecOnDates:
+    """Tests for on_dates validation on FrequencyEditSpec."""
+
+    def test_valid_range(self) -> None:
+        spec = FrequencyEditSpec(on_dates=[1, 15, 31])
+        assert spec.on_dates == [1, 15, 31]
+
+    def test_minus_one_allowed(self) -> None:
+        spec = FrequencyEditSpec(on_dates=[-1, 15])
+        assert spec.on_dates == [-1, 15]
+
+    def test_zero_rejected(self) -> None:
+        with pytest.raises(ValueError, match="Invalid date value"):
+            FrequencyEditSpec(on_dates=[0])
+
+    def test_out_of_range_rejected(self) -> None:
+        with pytest.raises(ValueError, match="Invalid date value"):
+            FrequencyEditSpec(on_dates=[32])
+
+    def test_clear_passes(self) -> None:
+        spec = FrequencyEditSpec(on_dates=None)
+        assert spec.on_dates is None
+
+
 class TestRepetitionRuleEditSpecEnd:
     """Tests for end validator on RepetitionRuleEditSpec."""
 

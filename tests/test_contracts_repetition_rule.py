@@ -151,7 +151,7 @@ class TestFrequencyAddSpecValidation:
 
 
 class TestFrequencyEditSpec:
-    """FrequencyEditSpec is a pure patch container with no validators."""
+    """FrequencyEditSpec is a patch container with per-field normalization validators."""
 
     def test_all_unset_is_valid(self) -> None:
         spec = FrequencyEditSpec()

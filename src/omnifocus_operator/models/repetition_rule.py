@@ -19,7 +19,7 @@ Enums:
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import Field, field_serializer, field_validator, model_validator
 
@@ -37,6 +37,8 @@ from omnifocus_operator.models.enums import BasedOn, Schedule
 # -- Frequency Type -----------------------------------------------------------
 
 FrequencyType = Literal["minutely", "hourly", "daily", "weekly", "monthly", "yearly"]
+DayCode = Literal["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
+OnDate = Annotated[int, Field(ge=-1, le=31, description="Days of the month. Use -1 for last day.")]
 
 _VALID_DAY_CODES = {"MO", "TU", "WE", "TH", "FR", "SA", "SU"}
 _VALID_ORDINALS = {"first", "second", "third", "fourth", "fifth", "last"}
@@ -104,7 +106,7 @@ def validate_on_dates(value: list[int] | None) -> list[int] | None:
 
 def check_frequency_cross_type_fields(
     type_: str,
-    on_days: list[str] | None,
+    on_days: list[DayCode] | None,
     on: dict[str, str] | None,
     on_dates: list[int] | None,
 ) -> None:
@@ -130,20 +132,27 @@ def check_frequency_cross_type_fields(
 
 
 # -- Frequency Model ---------------------------------------------------------
+# Cross-type rules: on_days only with weekly, on/on_dates only with monthly.
+# on and on_dates are mutually exclusive. Enforced by check_frequency_cross_type_fields().
 
 
 class Frequency(OmniFocusBaseModel):
-    """Flat frequency model with 6 types and optional specialization fields.
-
-    Cross-type validation: on_days only with weekly, on/on_dates only with monthly.
-    on and on_dates are mutually exclusive.
-    """
+    """How often the task repeats: type + interval, with optional day/date refinements."""
 
     type: FrequencyType  # required, NO default -- survives exclude_defaults
     interval: int = Field(default=1)
-    on_days: list[str] | None = None
-    on: dict[str, str] | None = None
-    on_dates: list[int] | None = None
+    on_days: list[DayCode] | None = Field(
+        default=None, description="Days of the week for weekly recurrence."
+    )
+    on: dict[str, str] | None = Field(
+        default=None,
+        description=(
+            "Ordinal weekday as {ordinal: day}. "
+            "Ordinal: first, second, third, fourth, fifth, last. "
+            "Day: monday-sunday, weekday, weekend_day."
+        ),
+    )
+    on_dates: list[OnDate] | None = None
 
     @model_validator(mode="after")
     def _check_cross_type_fields(self) -> Frequency:
@@ -177,7 +186,7 @@ class Frequency(OmniFocusBaseModel):
 class EndByDate(OmniFocusBaseModel):
     """End condition: repeat until a specific date."""
 
-    date: str  # ISO-8601
+    date: str = Field(description="Repeat until this date. ISO 8601 with timezone (offset or Z).")
 
 
 class EndByOccurrences(OmniFocusBaseModel):
@@ -213,11 +222,13 @@ class RepetitionRule(OmniFocusBaseModel):
 
 
 __all__ = [
+    "DayCode",
     "EndByDate",
     "EndByOccurrences",
     "EndCondition",
     "Frequency",
     "FrequencyType",
+    "OnDate",
     "RepetitionRule",
     "check_frequency_cross_type_fields",
     "normalize_day_codes",
