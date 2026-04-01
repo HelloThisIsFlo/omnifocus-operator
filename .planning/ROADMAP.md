@@ -166,6 +166,16 @@ Plans:
 - [x] 36-01-PLAN.md — Validation, ReviewDueFilter, educational errors, pipeline + repo updates
 - [x] 36-02-PLAN.md — Cross-path equivalence tests for all 5 entity types
 
+### Phase 36.3: Centralize field descriptions into constants like warnings and errors (INSERTED)
+
+**Goal:** Extract all agent-visible Field(description=...) strings and class docstrings into centralized `agent_messages/descriptions.py`, following errors.py/warnings.py pattern. Enforcement tests ensure no inline descriptions sneak back in.
+**Requirements**: DESC-01, DESC-02, DESC-03, DESC-04, DESC-05, DESC-06
+**Depends on:** Phase 36.2
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 36.3 to break down)
+
 ### Phase 36.2: Sweep agent-facing schema descriptions and tool documentation (INSERTED)
 
 **Goal:** Agent-facing descriptions (tool docstrings, model docstrings, Field annotations) contain only behavioral guidance — no implementation leakage, no redundancy with inputSchema, no gaps in tag resolution / timezone / partial repetitionRule behavior
@@ -199,7 +209,7 @@ Plans:
 ### Phase 37: Server Registration and Integration (was Phase 38)
 **Goal**: Agents can call 5 new MCP tools that return filtered, paginated entity lists with total counts, and search across all entity types
 **Depends on**: Phase 36
-**Requirements**: INFRA-05, SRCH-01, SRCH-02, SRCH-03, SRCH-04, RTOOL-01, RTOOL-02, RTOOL-03, DOC-10, DOC-11, DOC-12, DOC-13
+**Requirements**: INFRA-05, SRCH-01, SRCH-02, SRCH-03, SRCH-04, RTOOL-01, RTOOL-02, RTOOL-03, DOC-10, DOC-11, DOC-12, DOC-13, DOC-14
 **Success Criteria** (what must be TRUE):
   1. list_tasks, list_projects, list_tags, list_folders, list_perspectives are registered as MCP tools and callable via Client
   2. Tool descriptions enumerate all valid filter values and include enough context for an LLM to call correctly without external docs

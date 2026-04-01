@@ -162,6 +162,22 @@ The core model serves directly as read output by default. When the output bounda
 - **Read suffix only when needed**: Use the core model directly for read output (the common case). Only introduce `<noun>Read` when the output boundary requires a different shape. A `<noun>Read` is a separate class (not a subclass of the core model), inherits `OmniFocusBaseModel`, lives in `models/`, and must be derivable from the core model.
 - **Shared generics for result containers**: `ListResult[T]` (agent-facing, includes warnings) and `ListRepoResult[T]` (repo-facing, no warnings) — not per-entity concrete types
 
+## Agent-facing descriptions
+
+Pydantic uses class docstrings and `Field(description=...)` as the `description` field in JSON Schema. When these models are nested inside MCP tool schemas, **every docstring and field description becomes agent-visible documentation**.
+
+All agent-facing description text lives in `agent_messages/descriptions.py` — centralized alongside `errors.py` and `warnings.py`. This means:
+
+- **Class docstrings** on agent-facing models use `__doc__ = CONSTANT` (not inline triple-quoted strings)
+- **Field descriptions** use `Field(description=CONSTANT)` (not inline string literals)
+- **Internal-only models** (base classes, RepoPayload/RepoResult/RepoQuery, sentinels) keep normal inline docstrings — they don't appear in JSON Schema
+
+The `__doc__ = CONSTANT` pattern is a convention signal: it tells you "this docstring is agent-facing and will appear in the MCP tool schema." Regular inline docstrings mean "developer docs only."
+
+**When adding a new model to `models/` or `contracts/`**: check if it will appear in an MCP tool's input or output schema. If yes, define its docstring and field descriptions as constants in `descriptions.py` and use the `__doc__ = CONSTANT` / `Field(description=CONSTANT)` patterns. An enforcement test scans these directories and will fail if inline descriptions are found on agent-facing classes.
+
+**What's agent-facing?** Models referenced as field types in tool schemas get `$defs` entries — those are agent-visible. Base classes in an inheritance chain (e.g., `OmniFocusEntity`, `ActionableEntity`) do NOT get `$defs` entries; Pydantic flattens their fields into the leaf class.
+
 ## Decision tree for naming a new model
 
 ### Read-side

@@ -68,12 +68,22 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 - [x] **DOC-08**: `Field(description=...)` added to read-side model fields that fail the fluency test — at minimum: `effective_due_date`, `effective_defer_date`, `effective_planned_date`, `effective_flagged`, `children_are_mutually_exclusive`, `next_task`
 - [x] **DOC-09**: No Python conventions leak into JSON-facing schema descriptions — `None` → `null`, no UNSET references, no validator/model-internal language
 
+### Description Centralization
+
+- [ ] **DESC-01**: `agent_messages/descriptions.py` exists with domain-organized constants following the errors.py/warnings.py pattern (comment headers, UPPER_SNAKE_CASE, module docstring)
+- [ ] **DESC-02**: All agent-visible `Field(description=...)` on models/ and contracts/ use constants imported from `descriptions.py` — no inline string literals in `Field(description=)` calls on agent-facing models
+- [ ] **DESC-03**: All agent-visible class docstrings use `__doc__ = CONSTANT` pattern with constants from `descriptions.py` — no inline docstrings on agent-facing classes
+- [ ] **DESC-04**: Every constant in `descriptions.py` is a non-empty string and is referenced in at least one consumer module (no dead constants)
+- [ ] **DESC-05**: JSON Schema output is identical before and after centralization — no functional regression (both inputSchema from tool registration and model_json_schema() on output models)
+- [ ] **DESC-06**: Enforcement test scans all classes in `models/` and `contracts/` with an exception list for known internal classes — new classes default to "must use centralized descriptions" unless explicitly excepted
+
 ### List Tool Documentation
 
 - [ ] **DOC-10**: List tool docstrings contain behavioral guidance only — filter interaction rules (AND logic, defaults, mutual exclusivity), response shape, pagination behavior — no field-by-field listings redundant with inputSchema
 - [ ] **DOC-11**: List tool query model fields have `Field(description=...)` where the fluency test fails — field name + type leave ambiguity about behavior or valid values (same filter as DOC-03/DOC-08)
 - [ ] **DOC-12**: All list tool descriptions include camelCase response field names note and hint at response structure (consistent with DOC-07 on read tools)
 - [ ] **DOC-13**: No implementation details leak into list tool query model docstrings or field descriptions — no references to RepoQuery, pipelines, resolution cascades, or SQL internals
+- [ ] **DOC-14**: List tool query model field descriptions and class docstrings use constants from `descriptions.py` — extends DESC-02/DESC-03 to new models added in Phase 37
 
 ### Read Tool Registration
 
@@ -204,16 +214,23 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DOC-07 | Phase 36.2 | Complete |
 | DOC-08 | Phase 36.2 | Complete |
 | DOC-09 | Phase 36.2 | Complete |
+| DESC-01 | Phase 36.3 | Pending |
+| DESC-02 | Phase 36.3 | Pending |
+| DESC-03 | Phase 36.3 | Pending |
+| DESC-04 | Phase 36.3 | Pending |
+| DESC-05 | Phase 36.3 | Pending |
+| DESC-06 | Phase 36.3 | Pending |
 | DOC-10 | Phase 37 | Pending |
 | DOC-11 | Phase 37 | Pending |
 | DOC-12 | Phase 37 | Pending |
 | DOC-13 | Phase 37 | Pending |
+| DOC-14 | Phase 37 | Pending |
 
 **Coverage:**
-- v1.3 requirements: 64 total (PROJ-03 merged into PROJ-02, TASK-05 deferred, +4 SRCH, +11 WRIT, +3 RTOOL, +13 DOC)
-- Mapped to phases: 64
+- v1.3 requirements: 71 total (PROJ-03 merged into PROJ-02, TASK-05 deferred, +4 SRCH, +11 WRIT, +3 RTOOL, +13 DOC, +1 DOC-14, +6 DESC)
+- Mapped to phases: 71
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-29*
-*Last updated: 2026-04-01 added DOC-01..09 for Phase 36.2, DOC-10..13 for Phase 37*
+*Last updated: 2026-04-01 added DESC-01..06 for Phase 36.3, DOC-14 for Phase 37*
