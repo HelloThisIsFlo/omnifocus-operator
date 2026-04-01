@@ -6,7 +6,7 @@ assembled from command data and domain results. No repos, no stubs, no async.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from omnifocus_operator.contracts.shared.repetition_rule import (
     FrequencyAddSpec,
@@ -331,7 +331,7 @@ class TestBuildAddRepetitionRule:
             frequency=FrequencyAddSpec(type="daily"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
-            end=EndByDate(date="2026-12-31T00:00:00Z"),
+            end=EndByDate(date=date(2026, 12, 31)),
         )
         command = AddTaskCommand(name="Dated end", repetition_rule=spec)
         payload = builder.build_add(command, resolved_tag_ids=None)

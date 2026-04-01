@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -231,9 +232,9 @@ class TestWeeklySplit:
 
 class TestEndConditionModels:
     def test_end_by_date_serializes(self):
-        e = EndByDate(date="2026-12-31T00:00:00Z")
+        e = EndByDate(date=date(2026, 12, 31))
         d = e.model_dump(by_alias=True)
-        assert d == {"date": "2026-12-31T00:00:00Z"}
+        assert d == {"date": date(2026, 12, 31)}
 
     def test_end_by_occurrences_serializes(self):
         e = EndByOccurrences(occurrences=10)
@@ -384,7 +385,7 @@ class TestParseRruleEndConditions:
 
     def test_until(self):
         result = parse_end_condition("FREQ=MONTHLY;UNTIL=20261231T000000Z")
-        assert result == EndByDate(date="2026-12-31T00:00:00Z")
+        assert result == EndByDate(date=date(2026, 12, 31))
 
     def test_no_end_condition(self):
         result = parse_end_condition("FREQ=DAILY")
@@ -540,7 +541,7 @@ class TestBuildRrule:
         assert result == "FREQ=WEEKLY;COUNT=10"
 
     def test_with_end_until(self):
-        result = build_rrule(Frequency(type="monthly"), end=EndByDate(date="2026-12-31T00:00:00Z"))
+        result = build_rrule(Frequency(type="monthly"), end=EndByDate(date=date(2026, 12, 31)))
         assert result == "FREQ=MONTHLY;UNTIL=20261231T000000Z"
 
 

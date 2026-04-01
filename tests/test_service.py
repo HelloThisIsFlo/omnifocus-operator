@@ -8,7 +8,7 @@ factory function (creates the appropriate bridge implementation).
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock
 
@@ -450,7 +450,7 @@ class TestAddTaskRepetitionRule:
             frequency=FrequencyAddSpec(type="daily"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
-            end=EndByDate(date="2026-12-31T00:00:00Z"),
+            end=EndByDate(date=date(2026, 12, 31)),
         )
         result = await service.add_task(AddTaskCommand(name="Until date", repetition_rule=spec))
         task = await repo.get_task(result.id)

@@ -6,6 +6,8 @@ independent of repository implementation.
 
 from __future__ import annotations
 
+from datetime import date
+
 import pytest
 
 from omnifocus_operator.agent_messages.warnings import (
@@ -510,7 +512,7 @@ class TestRepetitionWarnings:
         """End date before now -> REPETITION_END_DATE_PAST warning."""
         domain = _domain()
         task = _make_task()
-        end = EndByDate(date="2020-01-01T00:00:00Z")
+        end = EndByDate(date=date(2020, 1, 1))
         warnings = domain.check_repetition_warnings(end=end, task=task)
         assert len(warnings) == 1
         assert "2020-01-01" in warnings[0]
@@ -519,7 +521,7 @@ class TestRepetitionWarnings:
         """End date in future -> no warning."""
         domain = _domain()
         task = _make_task()
-        end = EndByDate(date="2099-12-31T00:00:00Z")
+        end = EndByDate(date=date(2099, 12, 31))
         warnings = domain.check_repetition_warnings(end=end, task=task)
         assert warnings == []
 

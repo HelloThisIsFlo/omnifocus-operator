@@ -19,6 +19,7 @@ Enums:
 
 from __future__ import annotations
 
+from datetime import date as date_type
 from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 if TYPE_CHECKING:
@@ -189,7 +190,7 @@ class Frequency(OmniFocusBaseModel):
 class EndByDate(OmniFocusBaseModel):
     """End condition: repeat until a specific date."""
 
-    date: str = Field(description="Repeat until this date. ISO 8601 with timezone (offset or Z).")
+    date: date_type = Field(description="Repeat until this date.")
 
 
 class EndByOccurrences(OmniFocusBaseModel):
