@@ -171,11 +171,11 @@ Plans:
 **Goal:** Move Literal/Annotated type aliases from models/ to contracts/, update core model fields to plain types, add Annotated constraints to contract fields missing schema richness, document and enforce the convention
 **Requirements**: TYPE-01, TYPE-02, TYPE-03, TYPE-04, TYPE-05, TYPE-06, TYPE-07
 **Depends on:** Phase 36
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 36.4-01-PLAN.md — Move type aliases, update core model fields, add Annotated constraints
-- [ ] 36.4-02-PLAN.md — Document convention in model-taxonomy.md, AST enforcement test
+- [x] 36.4-02-PLAN.md — Document convention in model-taxonomy.md, AST enforcement test
 
 ### Phase 36.3: Centralize field descriptions into constants like warnings and errors (INSERTED)
 
@@ -253,5 +253,5 @@ Phases execute in numeric order: 34 → 35 → 35.1 → 35.2 → 36 → 37
 | 36.1 Write Tool Schema Migration | v1.3 | 2/2 | Complete | 2026-03-31 |
 | 36.2 Agent-Facing Documentation Sweep | v1.3 | 3/3 | Complete    | 2026-03-31 |
 | 36.3 Description Centralization | v1.3 | 2/2 | Complete    | 2026-04-01 |
-| 36.4 Type Constraint Boundary | v1.3 | 1/2 | In Progress|  |
+| 36.4 Type Constraint Boundary | v1.3 | 2/2 | Complete   | 2026-04-01 |
 | 37. Server Registration and Integration | v1.3 | 0/0 | Not started | - |
