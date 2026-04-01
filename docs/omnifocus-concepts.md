@@ -51,3 +51,71 @@ Fills the gap between due (too urgent — implies negative consequences) and def
 | Planned date | Want to work on it then | None | Visible, no urgency |
 
 **The rule:** Due dates are for deadlines. Defer dates are for constraints. Planned dates are for intentions. If you're unsure which to use, it's probably a planned date.
+
+## Repetition Rules
+
+OmniFocus tasks and projects can repeat. A repetition rule has three components: **frequency** (how often), **schedule** (what triggers the next occurrence), and **basedOn** (which date field anchors the schedule).
+
+### Based On (Anchor Date)
+
+The anchor date determines which date field the repetition schedule attaches to. When the next occurrence is generated, the anchor date moves to the scheduled date. **All other date fields shift relatively, preserving their current offset from the anchor.**
+
+**Example:** A task repeats on the 15th of every month. The anchor is `planned_date`. Currently:
+- Planned date: March 15
+- Due date: March 18 (+3 days from anchor)
+- Defer date: March 10 (−5 days from anchor)
+
+When the next occurrence is generated:
+- Planned date → April 15 (the scheduled date)
+- Due date → April 18 (anchor + 3 days, offset preserved)
+- Defer date → April 10 (anchor − 5 days, offset preserved)
+
+| Value | Meaning |
+|-------|---------|
+| `due_date` | Schedule anchored to the due date |
+| `defer_date` | Schedule anchored to the defer date |
+| `planned_date` | Schedule anchored to the planned date |
+
+**The rule:** Choose the date that the recurrence is "about." If a task is due every Friday, anchor on `due_date`. If it becomes available every Monday, anchor on `defer_date`. If you just want to plan it for the same day each week, anchor on `planned_date`.
+
+> **⚠️ WIP — What happens when the anchor date field is not set on the task?** Likely falls back to the task's creation date, but this needs verification.
+
+### Schedule (Recurrence Mode)
+
+> **⚠️ WIP — Edge cases under review.** The descriptions below are accurate for simple intervals (e.g., "every 3 days"). The behavior when combined with specific day-of-week patterns (e.g., "every Wednesday and Friday") is not fully documented — in particular, how `from_completion` differs from `regularly_with_catch_up` in that scenario is unclear.
+
+The schedule controls what happens when a task is completed — specifically, how the next occurrence's date is calculated.
+
+#### `regularly`
+
+Fixed calendar schedule. The next occurrence lands on the next scheduled date regardless of when you complete the current one.
+
+**Key behavior:** If you fall behind, every missed occurrence stays and must be individually resolved. Nothing is skipped.
+
+**Example:** Rent is due on the 1st of every month. You forget March and April. Both missed occurrences remain — you owe two months of rent, and OmniFocus reflects that.
+
+**When to use:** When every occurrence matters and skipping one would be a real problem.
+
+#### `regularly_with_catch_up`
+
+Fixed calendar schedule, but OmniFocus **catches up for you** — if you complete a task late, it skips past any overdue occurrences and jumps to the next future date.
+
+**Example:** A weekly review repeats every Monday. You complete it 3 weeks late. Instead of creating 3 overdue occurrences, OmniFocus skips ahead to next Monday.
+
+**When to use:** The most common mode for recurring tasks. Use when the rhythm matters but individual missed occurrences don't need to be tracked.
+
+#### `from_completion`
+
+The next occurrence is calculated from **when you actually complete** the current one, not from the original scheduled date.
+
+**Example:** "Water the plants every 5 days." You complete it 2 days late. The next occurrence isn't in 3 days (to stay on the original 5-day grid) — it's in 5 days from now, because the interval restarts from the completion moment.
+
+**When to use:** When the interval between occurrences is what matters, not hitting specific calendar dates. Common for habits, maintenance tasks, and anything where "every N days" means "N days after you last did it."
+
+### Summary
+
+| Schedule | Next date based on | Missed occurrences |
+|----------|-------------------|-------------------|
+| `regularly` | Fixed calendar | Stay — must be individually resolved |
+| `regularly_with_catch_up` | Fixed calendar | Skipped — jumps to next future date |
+| `from_completion` | Completion moment | N/A — no concept of "missed" |
