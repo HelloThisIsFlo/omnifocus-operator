@@ -200,15 +200,7 @@ EndCondition = EndByDate | EndByOccurrences
 
 
 class RepetitionRule(OmniFocusBaseModel):
-    """Structured repetition rule for recurring tasks and projects.
-
-    Replaces the old 4-field model (ruleString, scheduleType,
-    anchorDateKey, catchUpAutomatically) with parsed, structured data.
-
-    The @field_serializer on frequency calls model_dump(exclude_defaults=True)
-    to suppress interval=1 in serialized output (type has no default, so it
-    always appears).
-    """
+    """Structured repetition rule for recurring tasks and projects."""
 
     frequency: Frequency
     schedule: Schedule
