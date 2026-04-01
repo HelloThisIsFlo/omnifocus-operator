@@ -18,6 +18,7 @@ Both `docs/omnifocus-concepts.md` and the agent-facing descriptions in `descript
 
 ## Solution
 
+0. BEFORE ANYTHING: Read the deep research: `.research/deep-dives/repetition-modes/deep-research.md`
 1. Test the edge cases directly in OmniFocus (manual experimentation)
 2. Update `docs/omnifocus-concepts.md` — remove WIP flags and add clarified behavior
 3. Update `SCHEDULE_DOC` in `descriptions.py` — remove WIP tag and finalize per-value descriptions
