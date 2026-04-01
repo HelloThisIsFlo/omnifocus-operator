@@ -77,9 +77,8 @@ REPETITION_INVALID_DAY_CODE = (
     "Invalid day code '{code}' in onDays. Valid codes: MO, TU, WE, TH, FR, SA, SU"
 )
 
-REPETITION_INVALID_ORDINAL = (
-    "Invalid ordinal '{ordinal}' in on field. "
-    "Valid ordinals: first, second, third, fourth, fifth, last"
+REPETITION_AT_MOST_ONE_ORDINAL = (
+    'on must specify exactly one ordinal (e.g. {{"last": "friday"}}), got {count} keys'
 )
 
 REPETITION_INVALID_DAY_NAME = (

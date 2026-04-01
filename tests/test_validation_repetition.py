@@ -31,6 +31,7 @@ from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
     EndByOccurrences,
     Frequency,
+    OrdinalWeekday,
 )
 
 
@@ -103,14 +104,19 @@ class TestValidateOnDays:
 
 
 class TestValidateMonthlyDayOfWeek:
-    """Tests for on dict ordinal/day validation via model field validators."""
+    """Tests for on OrdinalWeekday validation via model field validators."""
 
     def test_valid_on(self) -> None:
         freq = Frequency(type="monthly", on={"second": "tuesday"})
-        assert freq.on == {"second": "tuesday"}
+        assert freq.on == OrdinalWeekday(second="tuesday")
+
+    def test_valid_on_model_dump(self) -> None:
+        freq = Frequency(type="monthly", on={"second": "tuesday"})
+        assert freq.on is not None
+        assert freq.on.model_dump(exclude_defaults=True) == {"second": "tuesday"}
 
     def test_invalid_ordinal_rejected(self) -> None:
-        with pytest.raises(ValueError, match="ordinal"):
+        with pytest.raises(ValueError):
             Frequency(type="monthly", on={"invalid": "tuesday"})
 
     def test_invalid_day_name_rejected(self) -> None:
@@ -119,12 +125,34 @@ class TestValidateMonthlyDayOfWeek:
 
     def test_last_weekday_valid(self) -> None:
         freq = Frequency(type="monthly", on={"last": "weekday"})
-        assert freq.on == {"last": "weekday"}
+        assert freq.on == OrdinalWeekday(last="weekday")
 
     def test_none_on_valid(self) -> None:
         """Monthly with on=None is valid (bare monthly pattern)."""
         freq = Frequency(type="monthly", on=None)
         assert freq.on is None
+
+    def test_case_normalization(self) -> None:
+        """'Friday' -> 'friday' via field_validator."""
+        freq = Frequency(type="monthly", on={"first": "MONDAY"})
+        assert freq.on is not None
+        assert freq.on.first == "monday"
+
+    def test_at_most_one_rejects_multiple(self) -> None:
+        """Two fields set -> ValueError."""
+        with pytest.raises(ValueError, match="on must specify exactly one ordinal"):
+            OrdinalWeekday(first="monday", last="friday")
+
+    def test_at_most_one_allows_zero(self) -> None:
+        """All None -> valid (empty OrdinalWeekday)."""
+        ow = OrdinalWeekday()
+        assert ow.first is None
+        assert ow.last is None
+
+    def test_at_most_one_allows_one(self) -> None:
+        """Single field set -> valid."""
+        ow = OrdinalWeekday(last="friday")
+        assert ow.last == "friday"
 
 
 class TestValidateMonthlyDayInMonth:

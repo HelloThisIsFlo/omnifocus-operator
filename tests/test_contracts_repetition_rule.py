@@ -14,6 +14,7 @@ from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.shared.repetition_rule import (
     FrequencyAddSpec,
     FrequencyEditSpec,
+    OrdinalWeekdaySpec,
     RepetitionRuleAddSpec,
     RepetitionRuleEditSpec,
     RepetitionRuleRepoPayload,
@@ -150,6 +151,38 @@ class TestFrequencyAddSpecValidation:
             FrequencyAddSpec(type="daily", bogus="x")
 
 
+class TestOrdinalWeekdaySpec:
+    """Tests for OrdinalWeekdaySpec (write-side CommandModel)."""
+
+    def test_valid_single_field(self) -> None:
+        spec = OrdinalWeekdaySpec(last="friday")
+        assert spec.last == "friday"
+
+    def test_extra_field_rejected(self) -> None:
+        """CommandModel base rejects unknown fields."""
+        with pytest.raises(ValidationError, match="extra"):
+            OrdinalWeekdaySpec(unknown_field="x")
+
+    def test_case_normalization(self) -> None:
+        spec = OrdinalWeekdaySpec(first="MONDAY")
+        assert spec.first == "monday"
+
+    def test_at_most_one_rejects_multiple(self) -> None:
+        with pytest.raises(ValidationError, match="on must specify exactly one ordinal"):
+            OrdinalWeekdaySpec(first="monday", last="friday")
+
+    def test_coercion_from_dict(self) -> None:
+        """FrequencyAddSpec coerces dict to OrdinalWeekdaySpec."""
+        spec = FrequencyAddSpec(type="monthly", on={"second": "tuesday"})
+        assert isinstance(spec.on, OrdinalWeekdaySpec)
+        assert spec.on.second == "tuesday"
+
+    def test_edit_spec_coercion_from_dict(self) -> None:
+        """FrequencyEditSpec coerces dict to OrdinalWeekdaySpec."""
+        spec = FrequencyEditSpec(on={"second": "tuesday"})
+        assert isinstance(spec.on, OrdinalWeekdaySpec)
+
+
 class TestFrequencyEditSpec:
     """FrequencyEditSpec is a pure patch container with no validators."""
 
@@ -183,7 +216,8 @@ class TestFrequencyEditSpec:
 
     def test_on_set(self) -> None:
         spec = FrequencyEditSpec(on={"first": "monday"})
-        assert spec.on == {"first": "monday"}
+        assert isinstance(spec.on, OrdinalWeekdaySpec)
+        assert spec.on.first == "monday"
 
     def test_on_clear(self) -> None:
         spec = FrequencyEditSpec(on=None)
@@ -208,7 +242,8 @@ class TestFrequencyEditSpec:
     def test_no_mutual_exclusion_validation(self) -> None:
         """FrequencyEditSpec allows both on and on_dates (service layer validates after merge)."""
         spec = FrequencyEditSpec(on={"first": "monday"}, on_dates=[1])
-        assert spec.on == {"first": "monday"}
+        assert isinstance(spec.on, OrdinalWeekdaySpec)
+        assert spec.on.first == "monday"
         assert spec.on_dates == [1]
 
 

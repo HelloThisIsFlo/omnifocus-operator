@@ -15,6 +15,7 @@ from omnifocus_operator.models.repetition_rule import (
     EndByDate,
     EndByOccurrences,
     Frequency,
+    OrdinalWeekday,
 )
 from omnifocus_operator.rrule.parser import parse_rrule
 
@@ -93,7 +94,7 @@ def build_rrule(
     if frequency.type == "weekly" and frequency.on_days:
         parts.append(f"BYDAY={','.join(frequency.on_days)}")
     elif frequency.type == "monthly" and frequency.on:
-        parts.append(_build_byday_positional(frequency.on))
+        parts.append(_build_byday_positional(frequency.on))  # type: ignore[arg-type]
     elif frequency.type == "monthly" and frequency.on_dates:
         parts.append(f"BYMONTHDAY={','.join(str(d) for d in frequency.on_dates)}")
 
@@ -114,15 +115,24 @@ def build_rrule(
 # ── Internal Helpers ─────────────────────────────────────────────────────
 
 
-def _build_byday_positional(on: dict[str, str]) -> str:
-    """Build BYDAY from {ordinal: day_name} dict.
+def _build_byday_positional(on: OrdinalWeekday) -> str:
+    """Build BYDAY from OrdinalWeekday model.
 
     For day group values (weekday, weekend_day), emits BYDAY=...;BYSETPOS=N.
     For single-day values (monday, tuesday, etc.), emits BYDAY=NXX prefix form.
     """
-    if len(on) != 1:
-        raise ValueError(f"'on' dict must have exactly one key, got {len(on)}")
-    ordinal, day_name = next(iter(on.items()))
+    ordinal, day_name = next(
+        (name, val)
+        for name, val in [
+            ("first", on.first),
+            ("second", on.second),
+            ("third", on.third),
+            ("fourth", on.fourth),
+            ("fifth", on.fifth),
+            ("last", on.last),
+        ]
+        if val is not None
+    )
     pos = _ORDINAL_TO_POS.get(ordinal)
     if pos is None:
         raise ValueError(f"Unknown ordinal: {ordinal!r}. Valid: {sorted(_ORDINAL_TO_POS.keys())}")

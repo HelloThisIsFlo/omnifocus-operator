@@ -19,11 +19,13 @@ from omnifocus_operator.contracts.base import (
 )
 from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
+    DayName,
     EndCondition,
     FrequencyType,
+    check_at_most_one_ordinal,
     check_frequency_cross_type_fields,
     normalize_day_codes,
-    normalize_on,
+    normalize_day_name,
     validate_interval,
     validate_on_dates,
 )
@@ -50,13 +52,40 @@ def _validate_end_condition(v: Any) -> Any:
     raise ValueError(REPETITION_INVALID_END_EMPTY)
 
 
+class OrdinalWeekdaySpec(CommandModel):
+    """Write-side ordinal-weekday model for monthly day-of-week patterns.
+
+    Same field structure as OrdinalWeekday (core model) but inherits
+    CommandModel (extra="forbid") for agent input validation.
+    """
+
+    first: DayName | None = None
+    second: DayName | None = None
+    third: DayName | None = None
+    fourth: DayName | None = None
+    fifth: DayName | None = None
+    last: DayName | None = None
+
+    @field_validator("first", "second", "third", "fourth", "fifth", "last", mode="before")
+    @classmethod
+    def _normalize_day_name(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        return normalize_day_name(v)
+
+    @model_validator(mode="after")
+    def _check_at_most_one(self) -> OrdinalWeekdaySpec:
+        check_at_most_one_ordinal(self)
+        return self
+
+
 class FrequencyAddSpec(CommandModel):
     """Frequency specification for creating a repetition rule."""
 
     type: FrequencyType
     interval: int = Field(default=1)
     on_days: list[str] | None = None
-    on: dict[str, str] | None = None
+    on: OrdinalWeekdaySpec | None = None
     on_dates: list[int] | None = None
 
     @field_validator("type", mode="before")
@@ -71,18 +100,13 @@ class FrequencyAddSpec(CommandModel):
 
     @model_validator(mode="after")
     def _check_cross_type_fields(self) -> FrequencyAddSpec:
-        check_frequency_cross_type_fields(self.type, self.on_days, self.on, self.on_dates)
+        check_frequency_cross_type_fields(self.type, self.on_days, self.on, self.on_dates)  # type: ignore[arg-type]
         return self
 
     @field_validator("on_days", mode="before")
     @classmethod
     def _normalize_day_codes(cls, value: list[str] | None) -> list[str] | None:
         return normalize_day_codes(value)
-
-    @field_validator("on", mode="before")
-    @classmethod
-    def _normalize_on(cls, value: dict[str, str] | None) -> dict[str, str] | None:
-        return normalize_on(value)
 
     @field_validator("on_dates", mode="before")
     @classmethod
@@ -96,7 +120,7 @@ class FrequencyEditSpec(CommandModel):
     type: Patch[FrequencyType] = UNSET
     interval: Patch[int] = UNSET
     on_days: PatchOrClear[list[str]] = UNSET
-    on: PatchOrClear[dict[str, str]] = UNSET
+    on: PatchOrClear[OrdinalWeekdaySpec] = UNSET
     on_dates: PatchOrClear[list[int]] = UNSET
 
     @field_validator("type", mode="before")
@@ -155,6 +179,7 @@ class RepetitionRuleRepoPayload(CommandModel):
 __all__ = [
     "FrequencyAddSpec",
     "FrequencyEditSpec",
+    "OrdinalWeekdaySpec",
     "RepetitionRuleAddSpec",
     "RepetitionRuleEditSpec",
     "RepetitionRuleRepoPayload",
