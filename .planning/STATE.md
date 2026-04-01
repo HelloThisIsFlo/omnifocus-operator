@@ -99,6 +99,7 @@ Carried forward:
 9. Sweep agent-facing schema descriptions and tool documentation
 10. ~~Tighten schema field constraints: flagged default and name min_length~~ (DONE: quick-260331-v9q)
 11. Reserve Literal and Annotated types for contract models only
+12. Centralize field descriptions into constants like warnings and errors
 
 ### Quick Tasks Completed
 
