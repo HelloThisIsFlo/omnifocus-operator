@@ -14,6 +14,7 @@ from omnifocus_operator.models.repetition_rule import (
     EndByDate,
     EndByOccurrences,
     Frequency,
+    OrdinalWeekday,
     RepetitionRule,
     Schedule,
 )
@@ -38,7 +39,7 @@ class TestFrequencyFlatModel:
     def test_monthly_with_on_validates(self):
         result = Frequency(type="monthly", on={"second": "tuesday"})
         assert result.type == "monthly"
-        assert result.on == {"second": "tuesday"}
+        assert result.on == OrdinalWeekday(second="tuesday")
 
     def test_monthly_with_on_dates_validates(self):
         result = Frequency(type="monthly", on_dates=[15, -1])
@@ -70,7 +71,9 @@ class TestFrequencySerialization:
 
     def test_monthly_with_on_type_stays_snake_case(self):
         """Type value is a Literal, NOT camelCased."""
-        d = Frequency(type="monthly", on={"second": "tuesday"}).model_dump(by_alias=True)
+        d = Frequency(type="monthly", on={"second": "tuesday"}).model_dump(
+            by_alias=True, exclude_defaults=True
+        )
         assert d["type"] == "monthly"
         assert d["on"] == {"second": "tuesday"}
 
@@ -125,7 +128,7 @@ class TestFrequencyCrossTypeValidation:
 
     def test_on_with_monthly_succeeds(self):
         f = Frequency(type="monthly", on={"first": "monday"})
-        assert f.on == {"first": "monday"}
+        assert f.on == OrdinalWeekday(first="monday")
 
     def test_on_dates_with_monthly_succeeds(self):
         f = Frequency(type="monthly", on_dates=[1])

@@ -398,12 +398,6 @@ class TestUnionRegressionGuard:
         """Frequency schema must be a flat object with type enum."""
         schema = TypeAdapter(Frequency).json_schema(mode="serialization")
 
-        # Flat model: no $defs branches (no discriminated union)
-        assert "$defs" not in schema or len(schema.get("$defs", {})) == 0, (
-            "Frequency should be a flat model without $defs branches. "
-            f"Got $defs: {list(schema.get('$defs', {}).keys())}"
-        )
-
         # Must be an object type with properties
         assert schema.get("type") == "object", (
             f"Frequency schema should be object type. Got: {schema}"
@@ -432,6 +426,60 @@ class TestUnionRegressionGuard:
         assert interval_prop.get("default") == 1, (
             f"Frequency.interval should have default=1. Got: {interval_prop}"
         )
+
+    def test_on_field_has_ordinal_weekday_schema(self) -> None:
+        """Frequency.on exposes OrdinalWeekday with 6 named fields."""
+        schema = TypeAdapter(Frequency).json_schema(mode="serialization")
+        defs = schema.get("$defs", {})
+
+        # OrdinalWeekday should exist in $defs
+        assert "OrdinalWeekday" in defs, (
+            f"OrdinalWeekday not found in Frequency $defs. Got: {list(defs.keys())}"
+        )
+
+        ow_schema = defs["OrdinalWeekday"]
+        assert "properties" in ow_schema, (
+            f"OrdinalWeekday schema missing properties. Got: {ow_schema}"
+        )
+
+        # Must have exactly 6 ordinal fields
+        expected_ordinals = {"first", "second", "third", "fourth", "fifth", "last"}
+        ow_props = ow_schema["properties"]
+        assert set(ow_props.keys()) == expected_ordinals, (
+            f"Expected 6 ordinal fields {expected_ordinals}, got: {set(ow_props.keys())}"
+        )
+
+        # Each field must have DayName enum values
+        expected_days = [
+            "friday",
+            "monday",
+            "saturday",
+            "sunday",
+            "thursday",
+            "tuesday",
+            "wednesday",
+            "weekday",
+            "weekend_day",
+        ]
+        for ordinal_name, prop in ow_props.items():
+            # Field is DayName | None, so look for anyOf with enum
+            any_of = prop.get("anyOf", [])
+            enums_found = [branch.get("enum", []) for branch in any_of if "enum" in branch]
+            assert len(enums_found) > 0, (
+                f"OrdinalWeekday.{ordinal_name} missing DayName enum. Got: {prop}"
+            )
+            assert sorted(enums_found[0]) == expected_days, (
+                f"OrdinalWeekday.{ordinal_name} enum mismatch. "
+                f"Expected {expected_days}, got: {sorted(enums_found[0])}"
+            )
+
+        # additionalProperties: false is correct (extra="forbid" rejects unknown ordinals).
+        # The old opaque dict had additionalProperties: {type: string} (allowing arbitrary keys).
+        if "additionalProperties" in ow_schema:
+            assert ow_schema["additionalProperties"] is False, (
+                "OrdinalWeekday additionalProperties should be false (rejecting unknown ordinals), "
+                f"not a permissive schema. Got: {ow_schema['additionalProperties']}"
+            )
 
     def test_end_condition_branches_have_properties(self) -> None:
         """EndCondition union branches must have properties, not just {type: object}."""

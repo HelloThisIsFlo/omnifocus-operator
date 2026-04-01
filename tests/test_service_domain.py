@@ -35,6 +35,7 @@ from omnifocus_operator.models.common import TagRef
 from omnifocus_operator.models.repetition_rule import (
     EndByDate,
     Frequency,
+    OrdinalWeekday,
 )
 from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.models.task import Task
@@ -622,7 +623,7 @@ class TestMergeFrequency:
         existing = Frequency(type="monthly", on_dates=[1, 15])
         edit_spec = FrequencyEditSpec(on={"last": "friday"})
         result, warnings = domain.merge_frequency(edit_spec, existing)
-        assert result.on == {"last": "friday"}
+        assert result.on == OrdinalWeekday(last="friday")
         assert result.on_dates is None
         assert len(warnings) == 1
         assert REPETITION_AUTO_CLEAR_ON_DATES in warnings[0]
@@ -644,7 +645,7 @@ class TestMergeFrequency:
         existing = Frequency(type="monthly")
         edit_spec = FrequencyEditSpec(on={"first": "monday"}, on_dates=[1])
         result, warnings = domain.merge_frequency(edit_spec, existing)
-        assert result.on == {"first": "monday"}
+        assert result.on == OrdinalWeekday(first="monday")
         assert result.on_dates is None
         assert len(warnings) == 1
         assert REPETITION_AUTO_CLEAR_ON_DATES in warnings[0]
@@ -655,7 +656,7 @@ class TestMergeFrequency:
         existing = Frequency(type="monthly")
         edit_spec = FrequencyEditSpec(on={"first": "monday"})
         result, warnings = domain.merge_frequency(edit_spec, existing)
-        assert result.on == {"first": "monday"}
+        assert result.on == OrdinalWeekday(first="monday")
         assert result.on_dates is None
         assert warnings == []
 

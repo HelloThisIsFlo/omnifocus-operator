@@ -33,6 +33,7 @@ from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
     EndByDate,
     EndByOccurrences,
+    OrdinalWeekday,
 )
 from omnifocus_operator.service import ErrorOperatorService, OperatorService
 from omnifocus_operator.service.domain import DomainLogic
@@ -1974,7 +1975,7 @@ class TestEditTaskRepetitionRule:
         assert task.repetition_rule is not None
         assert task.repetition_rule.frequency.type == "monthly"
         # Agent sent on -> on_dates should be auto-cleared
-        assert task.repetition_rule.frequency.on == {"last": "friday"}
+        assert task.repetition_rule.frequency.on == OrdinalWeekday(last="friday")
         assert task.repetition_rule.frequency.on_dates is None
         # Should have auto-clear warning
         assert result.warnings is not None

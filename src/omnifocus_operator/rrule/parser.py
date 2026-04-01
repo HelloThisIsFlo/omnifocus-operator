@@ -18,6 +18,7 @@ from omnifocus_operator.models.repetition_rule import (
     EndByDate,
     EndByOccurrences,
     Frequency,
+    OrdinalWeekday,
 )
 
 # ── Mapping Tables ───────────────────────────────────────────────────────
@@ -208,7 +209,7 @@ def _parse_monthly_byday(
     return Frequency(
         type="monthly",
         interval=interval,
-        on={ordinal: day_name},
+        on=OrdinalWeekday(**{ordinal: day_name}),  # type: ignore[arg-type]
     )
 
 
@@ -242,7 +243,7 @@ def _parse_monthly_bysetpos(
     return Frequency(
         type="monthly",
         interval=interval,
-        on={ordinal: day_group_name},
+        on=OrdinalWeekday(**{ordinal: day_group_name}),  # type: ignore[arg-type]
     )
 
 

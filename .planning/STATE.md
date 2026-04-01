@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Read Tools
 status: executing
-stopped_at: "Completed quick task 260401-i0f: Date type normalization"
-last_updated: "2026-04-01T12:34:33.638Z"
+stopped_at: "Completed quick task 260401-hz9: Replace opaque on: dict with OrdinalWeekday"
+last_updated: "2026-04-01T12:51:19.095Z"
 last_activity: 2026-04-01
 progress:
   total_phases: 8
@@ -76,6 +76,7 @@ Recent decisions affecting current work:
 - [Phase 36.2]: Date field descriptions faithful to docs/omnifocus-concepts.md: due=deadline, defer=blocked, planned=intention
 - [Phase 36.2]: Used double-dash consistently in tool docstrings matching approved text convention
 - [Phase quick-260401-i0f]: date_type alias (from datetime import date as date_type) to avoid field name shadowing in EndByDate
+- [Phase quick-260401-hz9]: OrdinalWeekday core model uses extra='forbid' -- value objects where field names define valid vocabulary
 
 ### Roadmap Evolution
 
@@ -104,13 +105,14 @@ Carried forward:
 
 ### Quick Tasks Completed
 
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 260331-v9q | Tighten schema field constraints: flagged default and name min_length | 2026-03-31 | b064078 | [260331-v9q-tighten-schema-field-constraints-flagged](./quick/260331-v9q-tighten-schema-field-constraints-flagged/) |
-| 260401-i0f | Date type normalization: EndByDate.date str -> datetime.date | 2026-04-01 | 6964d28 | [260401-i0f-date-type-normalization-str-to-datetime-](./quick/260401-i0f-date-type-normalization-str-to-datetime-/) |
-| Phase 36.2 P01 | 3min | 2 tasks | 5 files |
-| Phase 36.2 P02 | 3min | 2 tasks | 4 files |
-| Phase 36.2 P03 | 3min | 2 tasks | 1 files |
+| # | Description | Date | Commit | Status | Directory |
+|---|-------------|------|--------|--------|-----------|
+| 260331-v9q | Tighten schema field constraints: flagged default and name min_length | 2026-03-31 | b064078 | | [260331-v9q-tighten-schema-field-constraints-flagged](./quick/260331-v9q-tighten-schema-field-constraints-flagged/) |
+| 260401-i0f | Date type normalization: EndByDate.date str -> datetime.date | 2026-04-01 | 6964d28 | Verified | [260401-i0f-date-type-normalization-str-to-datetime-](./quick/260401-i0f-date-type-normalization-str-to-datetime-/) |
+| Phase 36.2 P01 | 3min | 2 tasks | 5 files | | |
+| Phase 36.2 P02 | 3min | 2 tasks | 4 files | | |
+| Phase 36.2 P03 | 3min | 2 tasks | 1 files | | |
+| 260401-hz9 | Replace opaque on: dict with typed OrdinalWeekday | 2026-04-01 | cf0d426 | Verified | [260401-hz9-replace-opaque-on-dict-with-ordinalweekd](./quick/260401-hz9-replace-opaque-on-dict-with-ordinalweekd/) |
 
 ### Blockers/Concerns
 
@@ -118,6 +120,6 @@ None yet.
 
 ## Session Continuity
 
-Last activity: 2026-03-31 - Completed quick task 260331-v9q: Tighten schema field constraints
-Stopped at: Completed quick task 260401-i0f: Date type normalization
+Last activity: 2026-04-01 - Completed quick task 260401-hz9: Replace opaque on: dict with OrdinalWeekday model
+Stopped at: Completed quick task 260401-hz9: Replace opaque on: dict with OrdinalWeekday
 Resume file: None

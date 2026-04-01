@@ -25,15 +25,15 @@ from typing import TYPE_CHECKING, Annotated, Any, Literal
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-from pydantic import Field, field_serializer, field_validator, model_validator
+from pydantic import ConfigDict, Field, field_serializer, field_validator, model_validator
 
 from omnifocus_operator.agent_messages.errors import (
+    REPETITION_AT_MOST_ONE_ORDINAL,
     REPETITION_INVALID_DAY_CODE,
     REPETITION_INVALID_DAY_NAME,
     REPETITION_INVALID_END_OCCURRENCES,
     REPETITION_INVALID_INTERVAL,
     REPETITION_INVALID_ON_DATE,
-    REPETITION_INVALID_ORDINAL,
 )
 from omnifocus_operator.models.base import OmniFocusBaseModel
 from omnifocus_operator.models.enums import BasedOn, Schedule
@@ -44,9 +44,7 @@ FrequencyType = Literal["minutely", "hourly", "daily", "weekly", "monthly", "yea
 DayCode = Literal["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
 OnDate = Annotated[int, Field(ge=-1, le=31, description="Days of the month. Use -1 for last day.")]
 
-_VALID_DAY_CODES = {"MO", "TU", "WE", "TH", "FR", "SA", "SU"}
-_VALID_ORDINALS = {"first", "second", "third", "fourth", "fifth", "last"}
-_VALID_DAY_NAMES = {
+DayName = Literal[
     "monday",
     "tuesday",
     "wednesday",
@@ -56,7 +54,11 @@ _VALID_DAY_NAMES = {
     "sunday",
     "weekday",
     "weekend_day",
-}
+]
+
+_VALID_DAY_CODES = {"MO", "TU", "WE", "TH", "FR", "SA", "SU"}
+_VALID_DAY_NAMES = set(DayName.__args__)  # type: ignore[attr-defined]
+_ORDINAL_FIELDS = ("first", "second", "third", "fourth", "fifth", "last")
 
 
 # -- Shared validation functions ----------------------------------------------
@@ -84,19 +86,54 @@ def normalize_day_codes(value: list[str] | None) -> list[str] | None:
     return normalized
 
 
-def normalize_on(value: dict[str, str] | None) -> dict[str, str] | None:
-    if value is None:
-        return None
-    normalized = {}
-    for ordinal, day_name in value.items():
-        lower_ordinal = ordinal.lower()
-        lower_day = day_name.lower()
-        if lower_ordinal not in _VALID_ORDINALS:
-            raise ValueError(REPETITION_INVALID_ORDINAL.format(ordinal=ordinal))
-        if lower_day not in _VALID_DAY_NAMES:
-            raise ValueError(REPETITION_INVALID_DAY_NAME.format(day=day_name))
-        normalized[lower_ordinal] = lower_day
-    return normalized
+def normalize_day_name(value: str) -> str:
+    """Lowercase and validate a day name against the DayName literal values."""
+    lower = value.lower()
+    if lower not in _VALID_DAY_NAMES:
+        raise ValueError(REPETITION_INVALID_DAY_NAME.format(day=value))
+    return lower
+
+
+def check_at_most_one_ordinal(model: Any) -> Any:
+    """Reject ordinal weekday model with more than one ordinal field set.
+
+    Works with both OrdinalWeekday (core) and OrdinalWeekdaySpec (contract).
+    """
+    count = sum(1 for f in _ORDINAL_FIELDS if getattr(model, f) is not None)
+    if count > 1:
+        raise ValueError(REPETITION_AT_MOST_ONE_ORDINAL.format(count=count))
+    return model
+
+
+class OrdinalWeekday(OmniFocusBaseModel):
+    """Typed ordinal-weekday model for monthly day-of-week patterns.
+
+    Exactly one of the 6 ordinal fields should be set (at-most-one validator).
+    Each field holds a DayName or None.
+
+    Example: ``OrdinalWeekday(last="friday")`` for "last Friday of the month".
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    first: DayName | None = None
+    second: DayName | None = None
+    third: DayName | None = None
+    fourth: DayName | None = None
+    fifth: DayName | None = None
+    last: DayName | None = None
+
+    @field_validator("first", "second", "third", "fourth", "fifth", "last", mode="before")
+    @classmethod
+    def _normalize_day_name(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        return normalize_day_name(v)
+
+    @model_validator(mode="after")
+    def _check_at_most_one(self) -> OrdinalWeekday:
+        check_at_most_one_ordinal(self)
+        return self
 
 
 def validate_on_dates(value: list[int] | None) -> list[int] | None:
@@ -111,7 +148,7 @@ def validate_on_dates(value: list[int] | None) -> list[int] | None:
 def check_frequency_cross_type_fields(
     type_: str,
     on_days: Sequence[str] | None,
-    on: dict[str, str] | None,
+    on: OrdinalWeekday | None,
     on_dates: list[int] | None,
 ) -> None:
     if on_days is not None and type_ != "weekly":
@@ -148,14 +185,7 @@ class Frequency(OmniFocusBaseModel):
     on_days: list[str] | None = Field(
         default=None, description="Days of the week for weekly recurrence."
     )
-    on: dict[str, str] | None = Field(
-        default=None,
-        description=(
-            "Ordinal weekday as {ordinal: day}. "
-            "Ordinal: first, second, third, fourth, fifth, last. "
-            "Day: monday-sunday, weekday, weekend_day."
-        ),
-    )
+    on: OrdinalWeekday | None = None
     on_dates: list[int] | None = None
 
     @model_validator(mode="after")
@@ -172,11 +202,6 @@ class Frequency(OmniFocusBaseModel):
     @classmethod
     def _normalize_day_codes(cls, value: list[str] | None) -> list[str] | None:
         return normalize_day_codes(value)
-
-    @field_validator("on", mode="before")
-    @classmethod
-    def _normalize_on(cls, value: dict[str, str] | None) -> dict[str, str] | None:
-        return normalize_on(value)
 
     @field_validator("on_dates", mode="before")
     @classmethod
@@ -227,16 +252,19 @@ class RepetitionRule(OmniFocusBaseModel):
 
 __all__ = [
     "DayCode",
+    "DayName",
     "EndByDate",
     "EndByOccurrences",
     "EndCondition",
     "Frequency",
     "FrequencyType",
     "OnDate",
+    "OrdinalWeekday",
     "RepetitionRule",
+    "check_at_most_one_ordinal",
     "check_frequency_cross_type_fields",
     "normalize_day_codes",
-    "normalize_on",
+    "normalize_day_name",
     "validate_interval",
     "validate_on_dates",
 ]

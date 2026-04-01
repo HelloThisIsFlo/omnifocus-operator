@@ -258,7 +258,12 @@ class DomainLogic:
             updates["on_days"] = None
             warnings.append(REPETITION_EMPTY_ON_DAYS)
 
-        if frequency.type == "monthly" and frequency.on is not None and len(frequency.on) == 0:
+        _ordinal_fields = ("first", "second", "third", "fourth", "fifth", "last")
+        if (
+            frequency.type == "monthly"
+            and frequency.on is not None
+            and all(getattr(frequency.on, f) is None for f in _ordinal_fields)
+        ):
             updates["on"] = None
             warnings.append(REPETITION_EMPTY_ON)
 
@@ -301,7 +306,11 @@ class DomainLogic:
         for field_name in ("on_days", "on", "on_dates"):
             edit_val = getattr(edit_spec, field_name)
             if is_set(edit_val):
-                merged[field_name] = edit_val
+                # Spec->Core boundary: model_dump() for nested models
+                if hasattr(edit_val, "model_dump"):
+                    merged[field_name] = edit_val.model_dump(exclude_defaults=True)
+                else:
+                    merged[field_name] = edit_val
             else:
                 merged[field_name] = getattr(existing, field_name)
 
