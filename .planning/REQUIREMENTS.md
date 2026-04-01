@@ -70,11 +70,11 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 
 ### Description Centralization
 
-- [ ] **DESC-01**: `agent_messages/descriptions.py` exists with domain-organized constants following the errors.py/warnings.py pattern (comment headers, UPPER_SNAKE_CASE, module docstring)
-- [ ] **DESC-02**: All agent-visible `Field(description=...)` on models/ and contracts/ use constants imported from `descriptions.py` — no inline string literals in `Field(description=)` calls on agent-facing models
-- [ ] **DESC-03**: All agent-visible class docstrings use `__doc__ = CONSTANT` pattern with constants from `descriptions.py` — no inline docstrings on agent-facing classes
-- [ ] **DESC-04**: Every constant in `descriptions.py` is a non-empty string and is referenced in at least one consumer module (no dead constants)
-- [ ] **DESC-05**: JSON Schema output is identical before and after centralization — no functional regression (both inputSchema from tool registration and model_json_schema() on output models)
+- [x] **DESC-01**: `agent_messages/descriptions.py` exists with domain-organized constants following the errors.py/warnings.py pattern (comment headers, UPPER_SNAKE_CASE, module docstring)
+- [x] **DESC-02**: All agent-visible `Field(description=...)` on models/ and contracts/ use constants imported from `descriptions.py` — no inline string literals in `Field(description=)` calls on agent-facing models
+- [x] **DESC-03**: All agent-visible class docstrings use `__doc__ = CONSTANT` pattern with constants from `descriptions.py` — no inline docstrings on agent-facing classes
+- [x] **DESC-04**: Every constant in `descriptions.py` is a non-empty string and is referenced in at least one consumer module (no dead constants)
+- [x] **DESC-05**: JSON Schema output is identical before and after centralization — no functional regression (both inputSchema from tool registration and model_json_schema() on output models)
 - [ ] **DESC-06**: Enforcement test scans all classes in `models/` and `contracts/` with an exception list for known internal classes — new classes default to "must use centralized descriptions" unless explicitly excepted
 
 ### List Tool Documentation
@@ -214,11 +214,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DOC-07 | Phase 36.2 | Complete |
 | DOC-08 | Phase 36.2 | Complete |
 | DOC-09 | Phase 36.2 | Complete |
-| DESC-01 | Phase 36.3 | Pending |
-| DESC-02 | Phase 36.3 | Pending |
-| DESC-03 | Phase 36.3 | Pending |
-| DESC-04 | Phase 36.3 | Pending |
-| DESC-05 | Phase 36.3 | Pending |
+| DESC-01 | Phase 36.3 | Complete |
+| DESC-02 | Phase 36.3 | Complete |
+| DESC-03 | Phase 36.3 | Complete |
+| DESC-04 | Phase 36.3 | Complete |
+| DESC-05 | Phase 36.3 | Complete |
 | DESC-06 | Phase 36.3 | Pending |
 | DOC-10 | Phase 37 | Pending |
 | DOC-11 | Phase 37 | Pending |
