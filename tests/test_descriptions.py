@@ -212,6 +212,10 @@ _SKIP_FILES = {"__init__.py", "base.py", "_validators.py"}
 
 _SERVER_PATH = _SRC_ROOT / "server.py"
 
+# Claude Code truncates MCP tool descriptions at this byte limit.
+# https://code.claude.com/docs/en/mcp
+_TOOL_DESCRIPTION_BYTE_LIMIT = 2048
+
 
 class TestToolDescriptionEnforcement:
     """Ensure MCP tool functions use centralized description constants (DESC-07)."""
@@ -287,6 +291,45 @@ class TestToolDescriptionEnforcement:
         assert violations == [], (
             "Tool functions with inline docstrings (should use description= kwarg):\n"
             + "\n".join(f"  - {v}" for v in violations)
+        )
+
+    def test_tool_descriptions_within_client_byte_limit(self) -> None:
+        """Every @mcp.tool() description must fit within Claude Code's 2048-byte limit (DESC-08).
+
+        Claude Code truncates MCP tool descriptions at 2048 bytes. Descriptions
+        exceeding this limit are silently clipped, causing the agent to lose
+        critical information (return format, constraints, examples).
+        """
+        tools = self._get_tool_decorated_functions()
+        violations: list[str] = []
+
+        for func, decorator in tools:
+            # Find description= kwarg that is a constant reference (ast.Name)
+            for kw in decorator.keywords:
+                if kw.arg == "description" and isinstance(kw.value, ast.Name):
+                    constant_name = kw.value.id
+                    value = getattr(desc_mod, constant_name)
+                    byte_len = len(value.encode("utf-8"))
+
+                    if byte_len > _TOOL_DESCRIPTION_BYTE_LIMIT:
+                        over = byte_len - _TOOL_DESCRIPTION_BYTE_LIMIT
+                        encoded = value.encode("utf-8")
+                        last_visible = encoded[:_TOOL_DESCRIPTION_BYTE_LIMIT][-40:].decode(
+                            "utf-8", errors="replace"
+                        )
+                        first_lost = encoded[_TOOL_DESCRIPTION_BYTE_LIMIT:][:60].decode(
+                            "utf-8", errors="replace"
+                        )
+                        violations.append(
+                            f"  - {func.name} ({constant_name}): "
+                            f"{byte_len} bytes ({over} over)\n"
+                            f'    Last visible: "...{last_visible}"\n'
+                            f'    First lost:   "{first_lost}"'
+                        )
+
+        assert violations == [], (
+            f"Tool descriptions exceed Claude Code's {_TOOL_DESCRIPTION_BYTE_LIMIT}-byte limit:\n"
+            + "\n".join(violations)
         )
 
 

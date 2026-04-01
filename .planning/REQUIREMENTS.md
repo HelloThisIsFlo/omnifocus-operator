@@ -77,6 +77,7 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 - [x] **DESC-05**: JSON Schema output is identical before and after centralization — no functional regression (both inputSchema from tool registration and model_json_schema() on output models)
 - [x] **DESC-06**: Enforcement test scans all classes in `models/` and `contracts/` with an exception list for known internal classes — new classes default to "must use centralized descriptions" unless explicitly excepted
 - [ ] **DESC-07**: All `@mcp.tool()` function docstrings in `server.py` use constants from `descriptions.py` — no inline tool description strings. Enforcement test catches new tools with inline docstrings.
+- [ ] **DESC-08**: All tool descriptions are at most 2048 bytes — Claude Code truncates at 2KB. Enforcement test checks each tool description constant's UTF-8 byte length and fails with the exact byte count if exceeded.
 
 ### List Tool Documentation
 
@@ -222,6 +223,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DESC-05 | Phase 36.3 | Complete |
 | DESC-06 | Phase 36.3 | Complete |
 | DESC-07 | Phase 36.3 | Pending |
+| DESC-08 | Phase 36.3 | Pending |
 | DOC-10 | Phase 37 | Pending |
 | DOC-11 | Phase 37 | Pending |
 | DOC-12 | Phase 37 | Pending |
@@ -229,7 +231,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DOC-14 | Phase 37 | Pending |
 
 **Coverage:**
-- v1.3 requirements: 72 total (PROJ-03 merged into PROJ-02, TASK-05 deferred, +4 SRCH, +11 WRIT, +3 RTOOL, +13 DOC, +1 DOC-14, +7 DESC)
+- v1.3 requirements: 73 total (PROJ-03 merged into PROJ-02, TASK-05 deferred, +4 SRCH, +11 WRIT, +3 RTOOL, +13 DOC, +1 DOC-14, +8 DESC)
 - Mapped to phases: 71
 - Unmapped: 0
 
