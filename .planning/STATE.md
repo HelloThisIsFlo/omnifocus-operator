@@ -5,7 +5,7 @@ milestone_name: Read Tools
 status: executing
 stopped_at: "Completed quick task 260401-hz9: Replace opaque on: dict with OrdinalWeekday"
 last_updated: "2026-04-01T12:51:19.095Z"
-last_activity: 2026-03-31
+last_activity: 2026-04-01
 progress:
   total_phases: 8
   completed_phases: 7
@@ -102,13 +102,13 @@ Carried forward:
 
 ### Quick Tasks Completed
 
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 260331-v9q | Tighten schema field constraints: flagged default and name min_length | 2026-03-31 | b064078 | [260331-v9q-tighten-schema-field-constraints-flagged](./quick/260331-v9q-tighten-schema-field-constraints-flagged/) |
-| Phase 36.2 P01 | 3min | 2 tasks | 5 files |
-| Phase 36.2 P02 | 3min | 2 tasks | 4 files |
-| Phase 36.2 P03 | 3min | 2 tasks | 1 files |
-| 260401-hz9 | Replace opaque on: dict with typed OrdinalWeekday | 2026-04-01 | 94abe6b | [260401-hz9-replace-opaque-on-dict-with-ordinalweekd](./quick/260401-hz9-replace-opaque-on-dict-with-ordinalweekd/) |
+| # | Description | Date | Commit | Status | Directory |
+|---|-------------|------|--------|--------|-----------|
+| 260331-v9q | Tighten schema field constraints: flagged default and name min_length | 2026-03-31 | b064078 | | [260331-v9q-tighten-schema-field-constraints-flagged](./quick/260331-v9q-tighten-schema-field-constraints-flagged/) |
+| Phase 36.2 P01 | 3min | 2 tasks | 5 files | | |
+| Phase 36.2 P02 | 3min | 2 tasks | 4 files | | |
+| Phase 36.2 P03 | 3min | 2 tasks | 1 files | | |
+| 260401-hz9 | Replace opaque on: dict with typed OrdinalWeekday | 2026-04-01 | cf0d426 | Verified | [260401-hz9-replace-opaque-on-dict-with-ordinalweekd](./quick/260401-hz9-replace-opaque-on-dict-with-ordinalweekd/) |
 
 ### Blockers/Concerns
 
@@ -116,6 +116,6 @@ None yet.
 
 ## Session Continuity
 
-Last activity: 2026-03-31 - Completed quick task 260331-v9q: Tighten schema field constraints
+Last activity: 2026-04-01 - Completed quick task 260401-hz9: Replace opaque on: dict with OrdinalWeekday model
 Stopped at: Completed quick task 260401-hz9: Replace opaque on: dict with OrdinalWeekday
 Resume file: None
