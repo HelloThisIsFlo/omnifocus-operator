@@ -19,6 +19,8 @@ from omnifocus_operator.models.repetition_rule import (
 from omnifocus_operator.rrule.parser import parse_rrule
 
 if TYPE_CHECKING:
+    from datetime import date as date_type
+
     from omnifocus_operator.contracts.shared.repetition_rule import FrequencyAddSpec
 
 # ── Reverse Mapping Tables ───────────────────────────────────────────────
@@ -101,7 +103,7 @@ def build_rrule(
     if isinstance(end, EndByOccurrences):
         parts.append(f"COUNT={end.occurrences}")
     elif isinstance(end, EndByDate):
-        parts.append(f"UNTIL={_convert_iso_to_until(end.date)}")
+        parts.append(f"UNTIL={_convert_date_to_until(end.date)}")
 
     result = ";".join(parts)
 
@@ -141,11 +143,10 @@ def _build_byday_positional(on: dict[str, str]) -> str:
     return f"BYDAY={pos}{day_code}"
 
 
-def _convert_iso_to_until(iso_date: str) -> str:
-    """Convert ISO-8601 date to RRULE compact UNTIL format.
+def _convert_date_to_until(d: date_type) -> str:
+    """Convert a date object to RRULE compact UNTIL format.
 
-    Input:  YYYY-MM-DDTHH:MM:SSZ (e.g., 2026-12-31T00:00:00Z)
-    Output: YYYYMMDDTHHMMSSZ (e.g., 20261231T000000Z)
+    Input:  date(2026, 12, 31)
+    Output: 20261231T000000Z
     """
-    # Strip dashes, colons; keep T and Z
-    return iso_date.replace("-", "").replace(":", "")
+    return d.strftime("%Y%m%dT000000Z")

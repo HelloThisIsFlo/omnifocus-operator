@@ -12,6 +12,7 @@ Public functions:
 from __future__ import annotations
 
 import re
+from datetime import date as date_type
 
 from omnifocus_operator.models.repetition_rule import (
     EndByDate,
@@ -122,7 +123,7 @@ def parse_end_condition(rule_string: str) -> EndByDate | EndByOccurrences | None
     if "COUNT" in parts:
         return EndByOccurrences(occurrences=int(parts["COUNT"]))
     if "UNTIL" in parts:
-        return EndByDate(date=_convert_until_to_iso(parts["UNTIL"]))
+        return EndByDate(date=_convert_until_to_date(parts["UNTIL"]))
     return None
 
 
@@ -262,13 +263,13 @@ def _parse_monthly_bymonthday(
     return Frequency(type="monthly", interval=interval, on_dates=days)
 
 
-def _convert_until_to_iso(raw: str) -> str:
-    """Convert RRULE compact UNTIL format to ISO-8601.
+def _convert_until_to_date(raw: str) -> date_type:
+    """Convert RRULE compact UNTIL format to a date object.
 
     Input:  YYYYMMDDTHHMMSSZ (e.g., 20261231T000000Z)
-    Output: YYYY-MM-DDTHH:MM:SSZ (e.g., 2026-12-31T00:00:00Z)
+    Output: date(2026, 12, 31)
     """
     m = _UNTIL_PATTERN.match(raw)
     if not m:
         raise ValueError(f"UNTIL must match YYYYMMDDTHHMMSSZ format, got {raw!r}")
-    return f"{m.group(1)}-{m.group(2)}-{m.group(3)}T{m.group(4)}:{m.group(5)}:{m.group(6)}Z"
+    return date_type(int(m.group(1)), int(m.group(2)), int(m.group(3)))

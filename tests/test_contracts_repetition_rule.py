@@ -7,6 +7,8 @@ AddTaskCommand/EditTaskCommand and repo payload models.
 
 from __future__ import annotations
 
+from datetime import date
+
 import pytest
 from pydantic import ValidationError
 
@@ -73,10 +75,10 @@ class TestRepetitionRuleAddSpec:
             frequency=FrequencyAddSpec(type="daily"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
-            end=EndByDate(date="2026-12-31T00:00:00Z"),
+            end=EndByDate(date=date(2026, 12, 31)),
         )
         assert isinstance(spec.end, EndByDate)
-        assert spec.end.date == "2026-12-31T00:00:00Z"
+        assert spec.end.date == date(2026, 12, 31)
 
     def test_end_none_is_valid(self) -> None:
         spec = RepetitionRuleAddSpec(

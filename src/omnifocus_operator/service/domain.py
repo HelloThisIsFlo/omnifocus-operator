@@ -10,6 +10,7 @@ from __future__ import annotations
 import difflib
 import logging
 from datetime import UTC, datetime
+from datetime import date as date_type
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -203,10 +204,8 @@ class DomainLogic:
         warnings: list[str] = []
 
         # End date in past
-        if isinstance(end, EndByDate):
-            end_dt = datetime.fromisoformat(end.date.replace("Z", "+00:00"))
-            if end_dt < datetime.now(UTC):
-                warnings.append(REPETITION_END_DATE_PAST.format(date=end.date))
+        if isinstance(end, EndByDate) and end.date < date_type.today():
+            warnings.append(REPETITION_END_DATE_PAST.format(date=end.date))
 
         return warnings
 

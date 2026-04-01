@@ -19,6 +19,7 @@ Enums:
 
 from __future__ import annotations
 
+from datetime import date as date_type
 from typing import Any, Literal
 
 from pydantic import Field, field_serializer, field_validator, model_validator
@@ -177,7 +178,7 @@ class Frequency(OmniFocusBaseModel):
 class EndByDate(OmniFocusBaseModel):
     """End condition: repeat until a specific date."""
 
-    date: str  # ISO-8601
+    date: date_type
 
 
 class EndByOccurrences(OmniFocusBaseModel):
