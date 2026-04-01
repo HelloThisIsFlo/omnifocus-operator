@@ -293,10 +293,9 @@ ADD_TASKS_TOOL_DOC = (
 )
 
 EDIT_TASKS_TOOL_DOC = (
-    "Edit existing tasks in OmniFocus using patch semantics. Limited to 1 item per call.\n"
+    "Edit existing tasks in OmniFocus using patch semantics. Max 1 item per call.\n"
     "\n"
-    "Patch contract: omit a field to leave it unchanged, set to null to\n"
-    "clear it, set to a value to update.\n"
+    "Patch: omit = no change, null = clear, value = update.\n"
     "\n"
     "Tags (in all tag fields) accept names (case-insensitive) or IDs;\n"
     "you can mix both. Non-existent names are rejected. Ambiguous names\n"
