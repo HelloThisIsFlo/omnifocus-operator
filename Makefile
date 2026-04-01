@@ -1,4 +1,6 @@
-.PHONY: test test-python test-js lint typecheck
+.PHONY: check-all test test-python test-js lint typecheck
+
+check-all: test lint typecheck
 
 test: test-python test-js
 	@echo "All tests passed."
