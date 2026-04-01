@@ -90,9 +90,7 @@ class FrequencyAddSpec(CommandModel):
 
     type: FrequencyType
     interval: int = Field(default=1)
-    on_days: list[DayCode] | None = Field(
-        default=None, description=ON_DAYS
-    )
+    on_days: list[DayCode] | None = Field(default=None, description=ON_DAYS)
     on: OrdinalWeekdaySpec | None = None
     on_dates: list[OnDate] | None = None
 
@@ -127,9 +125,7 @@ class FrequencyEditSpec(CommandModel):
 
     type: Patch[FrequencyType] = UNSET
     interval: Patch[int] = UNSET
-    on_days: PatchOrClear[list[DayCode]] = Field(
-        default=UNSET, description=ON_DAYS
-    )
+    on_days: PatchOrClear[list[DayCode]] = Field(default=UNSET, description=ON_DAYS)
     on: PatchOrClear[OrdinalWeekdaySpec] = UNSET
     on_dates: PatchOrClear[list[OnDate]] = UNSET
 

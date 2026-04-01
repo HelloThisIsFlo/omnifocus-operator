@@ -186,9 +186,7 @@ class Frequency(OmniFocusBaseModel):
 
     type: FrequencyType  # required, NO default -- survives exclude_defaults
     interval: int = Field(default=1)
-    on_days: list[str] | None = Field(
-        default=None, description=ON_DAYS
-    )
+    on_days: list[str] | None = Field(default=None, description=ON_DAYS)
     on: OrdinalWeekday | None = None
     on_dates: list[int] | None = None
 
