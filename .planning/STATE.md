@@ -129,6 +129,6 @@ None yet.
 
 ## Session Continuity
 
-Last activity: 2026-04-01 - Completed quick task 260401-hz9: Replace opaque on: dict with OrdinalWeekday model
+Last activity: 2026-04-02 - Completed quick task 260401-twg: Improve MCP tool schema descriptions and field documentation
 Stopped at: Completed 36.3-02-PLAN.md
 Resume file: None
