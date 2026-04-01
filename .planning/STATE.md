@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Read Tools
 status: executing
-stopped_at: Completed 36.2-03-PLAN.md
-last_updated: "2026-03-31T23:50:04.316Z"
-last_activity: 2026-03-31
+stopped_at: "Completed quick task 260401-i0f: Date type normalization"
+last_updated: "2026-04-01T12:34:33.638Z"
+last_activity: 2026-04-01
 progress:
   total_phases: 8
   completed_phases: 7
@@ -75,6 +75,7 @@ Recent decisions affecting current work:
 - [Phase 36.1]: Snake_case schema check uses property key extraction, not substring matching -- basedOn enum values legitimately contain due_date
 - [Phase 36.2]: Date field descriptions faithful to docs/omnifocus-concepts.md: due=deadline, defer=blocked, planned=intention
 - [Phase 36.2]: Used double-dash consistently in tool docstrings matching approved text convention
+- [Phase quick-260401-i0f]: date_type alias (from datetime import date as date_type) to avoid field name shadowing in EndByDate
 
 ### Roadmap Evolution
 
@@ -104,6 +105,7 @@ Carried forward:
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260331-v9q | Tighten schema field constraints: flagged default and name min_length | 2026-03-31 | b064078 | [260331-v9q-tighten-schema-field-constraints-flagged](./quick/260331-v9q-tighten-schema-field-constraints-flagged/) |
+| 260401-i0f | Date type normalization: EndByDate.date str -> datetime.date | 2026-04-01 | 6964d28 | [260401-i0f-date-type-normalization-str-to-datetime-](./quick/260401-i0f-date-type-normalization-str-to-datetime-/) |
 | Phase 36.2 P01 | 3min | 2 tasks | 5 files |
 | Phase 36.2 P02 | 3min | 2 tasks | 4 files |
 | Phase 36.2 P03 | 3min | 2 tasks | 1 files |
@@ -115,5 +117,5 @@ None yet.
 ## Session Continuity
 
 Last activity: 2026-03-31 - Completed quick task 260331-v9q: Tighten schema field constraints
-Stopped at: Completed 36.2-03-PLAN.md
+Stopped at: Completed quick task 260401-i0f: Date type normalization
 Resume file: None
