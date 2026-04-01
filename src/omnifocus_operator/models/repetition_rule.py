@@ -1,7 +1,6 @@
 """Structured repetition rule models for OmniFocus tasks and projects.
 
 Flat model:
-    FrequencyType   -- Literal type alias for 6 frequency types
     Frequency       -- flat model with type + optional specialization fields
                        @model_validator for cross-type checks
                        @field_validator for day code / ordinal / on_dates normalization
@@ -15,12 +14,17 @@ Flat model:
 Enums:
     Schedule -- from enums.py (regularly, regularly_with_catch_up, from_completion)
     BasedOn  -- from enums.py (due_date, defer_date, planned_date)
+
+Type aliases (FrequencyType, DayCode, OnDate, DayName) live in
+contracts/shared/repetition_rule.py -- they carry Literal/Annotated
+constraints that belong on the agent-facing contract boundary, not on
+core models.
 """
 
 from __future__ import annotations
 
 from datetime import date as date_type
-from typing import TYPE_CHECKING, Annotated, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -32,7 +36,6 @@ from omnifocus_operator.agent_messages.descriptions import (
     END_BY_DATE_DOC,
     END_BY_OCCURRENCES_DOC,
     FREQUENCY_DOC,
-    ON_DATE,
     ON_DAYS,
     ORDINAL_WEEKDAY_DOC,
     REPETITION_RULE_DOC,
@@ -48,13 +51,22 @@ from omnifocus_operator.agent_messages.errors import (
 from omnifocus_operator.models.base import OmniFocusBaseModel
 from omnifocus_operator.models.enums import BasedOn, Schedule
 
-# -- Frequency Type -----------------------------------------------------------
+# -- Internal type aliases (private, NOT exported) ----------------------------
+# Agent-facing read models need Literal constraints for JSON Schema richness.
+# The canonical named aliases (FrequencyType, DayCode, OnDate, DayName) live in
+# contracts/shared/repetition_rule.py. These private aliases keep models/ schema-
+# correct without creating a reverse dependency.
 
-FrequencyType = Literal["minutely", "hourly", "daily", "weekly", "monthly", "yearly"]
-DayCode = Literal["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
-OnDate = Annotated[int, Field(ge=-1, le=31, description=ON_DATE)]
+_FrequencyType = Literal["minutely", "hourly", "daily", "weekly", "monthly", "yearly"]
+_DayName = Literal[
+    "monday", "tuesday", "wednesday", "thursday", "friday",
+    "saturday", "sunday", "weekday", "weekend_day",
+]
 
-DayName = Literal[
+# -- Validation sets -----------------------------------------------------------
+
+_VALID_DAY_CODES = {"MO", "TU", "WE", "TH", "FR", "SA", "SU"}
+_VALID_DAY_NAMES = {
     "monday",
     "tuesday",
     "wednesday",
@@ -64,10 +76,7 @@ DayName = Literal[
     "sunday",
     "weekday",
     "weekend_day",
-]
-
-_VALID_DAY_CODES = {"MO", "TU", "WE", "TH", "FR", "SA", "SU"}
-_VALID_DAY_NAMES = set(DayName.__args__)  # type: ignore[attr-defined]
+}
 _ORDINAL_FIELDS = ("first", "second", "third", "fourth", "fifth", "last")
 
 
@@ -120,12 +129,12 @@ class OrdinalWeekday(OmniFocusBaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    first: DayName | None = None
-    second: DayName | None = None
-    third: DayName | None = None
-    fourth: DayName | None = None
-    fifth: DayName | None = None
-    last: DayName | None = None
+    first: _DayName | None = None
+    second: _DayName | None = None
+    third: _DayName | None = None
+    fourth: _DayName | None = None
+    fifth: _DayName | None = None
+    last: _DayName | None = None
 
     @field_validator("first", "second", "third", "fourth", "fifth", "last", mode="before")
     @classmethod
@@ -184,7 +193,7 @@ def check_frequency_cross_type_fields(
 class Frequency(OmniFocusBaseModel):
     __doc__ = FREQUENCY_DOC
 
-    type: FrequencyType  # required, NO default -- survives exclude_defaults
+    type: _FrequencyType  # required, NO default -- survives exclude_defaults
     interval: int = Field(default=1)
     on_days: list[str] | None = Field(default=None, description=ON_DAYS)
     on: OrdinalWeekday | None = None
@@ -253,14 +262,10 @@ class RepetitionRule(OmniFocusBaseModel):
 
 
 __all__ = [
-    "DayCode",
-    "DayName",
     "EndByDate",
     "EndByOccurrences",
     "EndCondition",
     "Frequency",
-    "FrequencyType",
-    "OnDate",
     "OrdinalWeekday",
     "RepetitionRule",
     "check_at_most_one_ordinal",

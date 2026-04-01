@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Any, get_args
+from typing import Annotated, Any, Literal, get_args
 
 from pydantic import Field, field_validator, model_validator
 
 from omnifocus_operator.agent_messages.descriptions import (
     FREQUENCY_ADD_SPEC_DOC,
     FREQUENCY_EDIT_SPEC_DOC,
+    ON_DATE,
     ON_DAYS,
     ORDINAL_WEEKDAY_SPEC_DOC,
     REPETITION_RULE_ADD_SPEC_DOC,
@@ -27,11 +28,7 @@ from omnifocus_operator.contracts.base import (
 )
 from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
-    DayCode,
-    DayName,
     EndCondition,
-    FrequencyType,
-    OnDate,
     check_at_most_one_ordinal,
     check_frequency_cross_type_fields,
     normalize_day_codes,
@@ -39,6 +36,25 @@ from omnifocus_operator.models.repetition_rule import (
     validate_interval,
     validate_on_dates,
 )
+
+# -- Type aliases for agent-facing contracts ----------------------------------
+# These carry Literal/Annotated constraints that enrich JSON Schema for agents.
+# Core models in models/ use plain types (str, int) instead.
+
+FrequencyType = Literal["minutely", "hourly", "daily", "weekly", "monthly", "yearly"]
+DayCode = Literal["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
+OnDate = Annotated[int, Field(ge=-1, le=31, description=ON_DATE)]
+DayName = Literal[
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+    "weekday",
+    "weekend_day",
+]
 
 
 def _validate_frequency_type(v: object) -> object:
