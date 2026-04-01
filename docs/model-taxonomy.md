@@ -180,6 +180,27 @@ The `__doc__ = CONSTANT` pattern is a convention signal: it tells you "this docs
 
 **What's agent-facing?** Models referenced as field types in tool schemas get `$defs` entries — those are agent-visible. Base classes in an inheritance chain (e.g., `OmniFocusEntity`, `ActionableEntity`) do NOT get `$defs` entries; Pydantic flattens their fields into the leaf class.
 
+## Type constraint boundary
+
+`Literal` and `Annotated` constraint types live on **contract model fields** (`contracts/`), not on core model fields (`models/`). Core models use plain Python types (`str`, `int`, `list[str]`) with runtime validators enforcing correctness.
+
+**Why:** Contract models face agents — their JSON Schema must be self-documenting. `Literal` emits `enum` in the schema, `Annotated[int, Field(ge=1)]` emits `minimum: 1`. Core models are also used internally by parsers and builders that construct instances from dynamic data (e.g., `str.split(",")` returns `list[str]`, not `list[Literal["MO", ...]]`). Putting constraint types on core models forces `cast()` or `type: ignore` at every internal construction site.
+
+**Convention:**
+
+| Layer | Field type | Schema effect | Validation |
+|-------|-----------|---------------|------------|
+| `contracts/` | `Literal["a", "b"]` | `enum: ["a", "b"]` | Type system + runtime |
+| `contracts/` | `Annotated[int, Field(ge=1)]` | `minimum: 1` | Type system + runtime |
+| `models/` | `str` | `type: string` | Runtime validator only |
+| `models/` | `int` | `type: integer` | Runtime validator only |
+
+**Type alias definitions** (e.g., `FrequencyType`, `DayCode`, `DayName`, `OnDate`) live in `contracts/` where they're consumed. Core models import shared validation functions, not type aliases.
+
+**Exception:** Core models that are directly agent-facing (appear in JSON Schema `$defs` via `EndCondition` union on contract fields) may use `Annotated` constraints when the schema benefit is clear and no internal construction site is affected. These cases are tracked in the enforcement test's exception list.
+
+An AST enforcement test scans `models/` for `Literal` and `Annotated` field annotations and fails if any are found outside the exception list.
+
 ## Decision tree for naming a new model
 
 ### Read-side
