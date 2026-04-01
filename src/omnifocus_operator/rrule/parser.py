@@ -12,10 +12,8 @@ Public functions:
 from __future__ import annotations
 
 import re
-from typing import cast
 
 from omnifocus_operator.models.repetition_rule import (
-    DayCode,
     EndByDate,
     EndByOccurrences,
     Frequency,
@@ -98,7 +96,7 @@ def parse_rrule(rule_string: str) -> Frequency:
         return Frequency(type="daily", interval=interval)
     elif freq == "WEEKLY":
         if "BYDAY" in parts:
-            on_days = cast("list[DayCode]", parts["BYDAY"].split(","))
+            on_days = parts["BYDAY"].split(",")
             return Frequency(type="weekly", interval=interval, on_days=on_days)
         return Frequency(type="weekly", interval=interval)
     elif freq == "MONTHLY":

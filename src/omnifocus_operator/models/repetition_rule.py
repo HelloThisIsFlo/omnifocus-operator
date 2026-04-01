@@ -19,7 +19,10 @@ Enums:
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 from pydantic import Field, field_serializer, field_validator, model_validator
 
@@ -106,7 +109,7 @@ def validate_on_dates(value: list[int] | None) -> list[int] | None:
 
 def check_frequency_cross_type_fields(
     type_: str,
-    on_days: list[DayCode] | None,
+    on_days: Sequence[str] | None,
     on: dict[str, str] | None,
     on_dates: list[int] | None,
 ) -> None:
@@ -141,7 +144,7 @@ class Frequency(OmniFocusBaseModel):
 
     type: FrequencyType  # required, NO default -- survives exclude_defaults
     interval: int = Field(default=1)
-    on_days: list[DayCode] | None = Field(
+    on_days: list[str] | None = Field(
         default=None, description="Days of the week for weekly recurrence."
     )
     on: dict[str, str] | None = Field(
@@ -152,7 +155,7 @@ class Frequency(OmniFocusBaseModel):
             "Day: monday-sunday, weekday, weekend_day."
         ),
     )
-    on_dates: list[OnDate] | None = None
+    on_dates: list[int] | None = None
 
     @model_validator(mode="after")
     def _check_cross_type_fields(self) -> Frequency:
