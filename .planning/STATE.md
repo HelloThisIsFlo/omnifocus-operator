@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Read Tools
 status: executing
-stopped_at: Completed 36.3-02-PLAN.md
-last_updated: "2026-04-01T17:56:19.696Z"
+stopped_at: Phase 36.4 context gathered
+last_updated: "2026-04-01T22:31:08.272Z"
 last_activity: 2026-04-01
 progress:
-  total_phases: 9
+  total_phases: 10
   completed_phases: 8
   total_plans: 17
   completed_plans: 17
@@ -128,5 +128,5 @@ None yet.
 ## Session Continuity
 
 Last activity: 2026-04-01 - Completed quick task 260401-hz9: Replace opaque on: dict with OrdinalWeekday model
-Stopped at: Completed 36.3-02-PLAN.md
-Resume file: None
+Stopped at: Phase 36.4 context gathered
+Resume file: .planning/phases/36.4-reserve-literal-and-annotated-types-for-contract-models-only/36.4-CONTEXT.md
