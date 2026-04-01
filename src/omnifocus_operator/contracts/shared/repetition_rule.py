@@ -55,11 +55,7 @@ def _validate_end_condition(v: Any) -> Any:
 
 
 class OrdinalWeekdaySpec(CommandModel):
-    """Write-side ordinal-weekday model for monthly day-of-week patterns.
-
-    Same field structure as OrdinalWeekday (core model) but inherits
-    CommandModel (extra="forbid") for agent input validation.
-    """
+    """Write-side ordinal-weekday model for monthly day-of-week patterns."""
 
     first: DayName | None = None
     second: DayName | None = None

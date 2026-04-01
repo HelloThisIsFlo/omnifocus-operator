@@ -110,8 +110,6 @@ class OrdinalWeekday(OmniFocusBaseModel):
 
     Exactly one of the 6 ordinal fields should be set (at-most-one validator).
     Each field holds a DayName or None.
-
-    Example: ``OrdinalWeekday(last="friday")`` for "last Friday of the month".
     """
 
     model_config = ConfigDict(extra="forbid")
