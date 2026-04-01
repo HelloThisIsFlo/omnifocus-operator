@@ -166,6 +166,16 @@ Plans:
 - [x] 36-01-PLAN.md — Validation, ReviewDueFilter, educational errors, pipeline + repo updates
 - [x] 36-02-PLAN.md — Cross-path equivalence tests for all 5 entity types
 
+### Phase 36.4: Reserve Literal and Annotated types for contract models only (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 36
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 36.4 to break down)
+
 ### Phase 36.3: Centralize field descriptions into constants like warnings and errors (INSERTED)
 
 **Goal:** Extract all agent-visible Field(description=...) strings and class docstrings into centralized `agent_messages/descriptions.py`, following errors.py/warnings.py pattern. Enforcement tests ensure no inline descriptions sneak back in.
