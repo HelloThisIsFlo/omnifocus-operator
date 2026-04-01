@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Read Tools
 status: executing
-stopped_at: Phase 36.4 context gathered
-last_updated: "2026-04-01T22:31:08.272Z"
+stopped_at: Completed 36.4-01-PLAN.md
+last_updated: "2026-04-01T22:52:10.210Z"
 last_activity: 2026-04-01
 progress:
   total_phases: 10
   completed_phases: 8
-  total_plans: 17
-  completed_plans: 17
+  total_plans: 19
+  completed_plans: 18
   percent: 20
 ---
 
@@ -79,6 +79,9 @@ Recent decisions affecting current work:
 - [Phase quick-260401-hz9]: OrdinalWeekday core model uses extra='forbid' -- value objects where field names define valid vocabulary
 - [Phase 36.3]: D-05 docstring cleanup applied during centralization: 7 class docstrings trimmed of implementation details
 - [Phase 36.3]: 21 internal classes in exception list covering base classes, protocols, repo-boundary models, and sentinels
+- [Phase 36.4]: Private _FrequencyType/_DayName aliases in models/ for output schema correctness -- read models are agent-facing
+- [Phase 36.4]: EndByOccurrences.occurrences gets Annotated[int, Field(ge=1)] despite models/ location -- it IS agent-facing
+- [Phase 36.4]: Patch[Annotated[int, Field(ge=1)]] propagates minimum: 1 through Pydantic -- no outer Annotated wrapper needed
 
 ### Roadmap Evolution
 
@@ -120,6 +123,7 @@ Carried forward:
 | 260401-hz9 | Replace opaque on: dict with typed OrdinalWeekday | 2026-04-01 | cf0d426 | Verified | [260401-hz9-replace-opaque-on-dict-with-ordinalweekd](./quick/260401-hz9-replace-opaque-on-dict-with-ordinalweekd/) |
 | Phase 36.3 P01 | 8min | 2 tasks | 20 files |
 | Phase 36.3 P02 | 3min | 1 tasks | 1 files |
+| Phase 36.4 P01 | 5min | 2 tasks | 2 files |
 
 ### Blockers/Concerns
 
@@ -128,5 +132,5 @@ None yet.
 ## Session Continuity
 
 Last activity: 2026-04-01 - Completed quick task 260401-hz9: Replace opaque on: dict with OrdinalWeekday model
-Stopped at: Phase 36.4 context gathered
-Resume file: .planning/phases/36.4-reserve-literal-and-annotated-types-for-contract-models-only/36.4-CONTEXT.md
+Stopped at: Completed 36.4-01-PLAN.md
+Resume file: None

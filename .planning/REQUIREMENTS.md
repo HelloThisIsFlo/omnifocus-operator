@@ -81,11 +81,11 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 
 ### Type Constraint Boundary
 
-- [ ] **TYPE-01**: `FrequencyType`, `DayCode`, `OnDate`, `DayName` type aliases defined in `contracts/shared/repetition_rule.py`, not in `models/repetition_rule.py`
-- [ ] **TYPE-02**: Core model `Frequency.type` uses plain `str`, not `FrequencyType` Literal
-- [ ] **TYPE-03**: Core model `OrdinalWeekday` fields (`first` through `last`) use `str | None`, not `DayName | None`
-- [ ] **TYPE-04**: `_VALID_DAY_NAMES` in `models/repetition_rule.py` is a plain set literal, not derived from `DayName.__args__`
-- [ ] **TYPE-05**: Contract fields `FrequencyAddSpec.interval` and `EndByOccurrences.occurrences` advertise `minimum: 1` in JSON Schema via `Annotated[int, Field(ge=1)]`
+- [x] **TYPE-01**: `FrequencyType`, `DayCode`, `OnDate`, `DayName` type aliases defined in `contracts/shared/repetition_rule.py`, not in `models/repetition_rule.py`
+- [x] **TYPE-02**: Core model `Frequency.type` uses plain `str`, not `FrequencyType` Literal
+- [x] **TYPE-03**: Core model `OrdinalWeekday` fields (`first` through `last`) use `str | None`, not `DayName | None`
+- [x] **TYPE-04**: `_VALID_DAY_NAMES` in `models/repetition_rule.py` is a plain set literal, not derived from `DayName.__args__`
+- [x] **TYPE-05**: Contract fields `FrequencyAddSpec.interval` and `EndByOccurrences.occurrences` advertise `minimum: 1` in JSON Schema via `Annotated[int, Field(ge=1)]`
 - [ ] **TYPE-06**: `docs/model-taxonomy.md` documents the Literal/Annotated convention: constraint types on contract models, plain types on core models
 - [ ] **TYPE-07**: AST enforcement test scans `models/` for `Literal` and `Annotated` field annotations in class bodies and fails if found (with exception list for known acceptable cases)
 
@@ -234,11 +234,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DESC-06 | Phase 36.3 | Complete |
 | DESC-07 | Phase 36.3 | Pending |
 | DESC-08 | Phase 36.3 | Pending |
-| TYPE-01 | Phase 36.4 | Pending |
-| TYPE-02 | Phase 36.4 | Pending |
-| TYPE-03 | Phase 36.4 | Pending |
-| TYPE-04 | Phase 36.4 | Pending |
-| TYPE-05 | Phase 36.4 | Pending |
+| TYPE-01 | Phase 36.4 | Complete |
+| TYPE-02 | Phase 36.4 | Complete |
+| TYPE-03 | Phase 36.4 | Complete |
+| TYPE-04 | Phase 36.4 | Complete |
+| TYPE-05 | Phase 36.4 | Complete |
 | TYPE-06 | Phase 36.4 | Pending |
 | TYPE-07 | Phase 36.4 | Pending |
 | DOC-10 | Phase 37 | Pending |
