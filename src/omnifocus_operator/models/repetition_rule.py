@@ -24,7 +24,7 @@ core models.
 from __future__ import annotations
 
 from datetime import date as date_type
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -232,7 +232,7 @@ class EndByDate(OmniFocusBaseModel):
 class EndByOccurrences(OmniFocusBaseModel):
     __doc__ = END_BY_OCCURRENCES_DOC
 
-    occurrences: int
+    occurrences: Annotated[int, Field(ge=1)]
 
     @field_validator("occurrences", mode="before")
     @classmethod
