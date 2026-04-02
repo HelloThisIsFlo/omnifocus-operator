@@ -245,18 +245,53 @@ class TestFrequencyEditSpec:
         assert is_set(spec.on_dates)
         assert spec.on_dates is None
 
-    def test_no_cross_type_validation(self) -> None:
-        """FrequencyEditSpec is a patch container -- can set on_days without type."""
+    def test_cross_type_skipped_when_type_unset(self) -> None:
+        """When type is UNSET, cross-type validation is skipped -- service validates after merge."""
         spec = FrequencyEditSpec(on_days=["MO"])
         assert spec.on_days == ["MO"]
         assert not is_set(spec.type)
 
-    def test_no_mutual_exclusion_validation(self) -> None:
-        """FrequencyEditSpec allows both on and on_dates (service layer validates after merge)."""
+    def test_mutual_exclusion_skipped_when_type_unset(self) -> None:
+        """When type is UNSET, on + on_dates both allowed -- service layer validates after merge."""
         spec = FrequencyEditSpec(on={"first": "monday"}, on_dates=[1])
         assert isinstance(spec.on, OrdinalWeekdaySpec)
         assert spec.on.first == "monday"
         assert spec.on_dates == [1]
+
+    # -- Cross-type rejection tests (type IS set) --
+
+    def test_cross_type_on_days_with_daily_raises(self) -> None:
+        with pytest.raises(ValidationError, match="on_days is not valid"):
+            FrequencyEditSpec(type="daily", on_days=["MO"])
+
+    def test_cross_type_on_with_weekly_raises(self) -> None:
+        with pytest.raises(ValidationError, match="on is not valid"):
+            FrequencyEditSpec(type="weekly", on={"first": "monday"})
+
+    def test_cross_type_on_dates_with_daily_raises(self) -> None:
+        with pytest.raises(ValidationError, match="on_dates is not valid"):
+            FrequencyEditSpec(type="daily", on_dates=[1])
+
+    def test_mutual_exclusion_when_type_set_raises(self) -> None:
+        with pytest.raises(ValidationError, match="mutually exclusive"):
+            FrequencyEditSpec(type="monthly", on={"first": "monday"}, on_dates=[1])
+
+    # -- Compatible combos (type IS set, fields match) --
+
+    def test_compatible_type_and_on_days(self) -> None:
+        spec = FrequencyEditSpec(type="weekly", on_days=["MO"])
+        assert spec.type == "weekly"
+        assert spec.on_days == ["MO"]
+
+    def test_compatible_type_and_on(self) -> None:
+        spec = FrequencyEditSpec(type="monthly", on={"first": "monday"})
+        assert spec.type == "monthly"
+        assert isinstance(spec.on, OrdinalWeekdaySpec)
+
+    def test_compatible_type_and_on_dates(self) -> None:
+        spec = FrequencyEditSpec(type="monthly", on_dates=[1, 15])
+        assert spec.type == "monthly"
+        assert spec.on_dates == [1, 15]
 
 
 class TestRepetitionRuleEditSpec:

@@ -595,7 +595,7 @@ class _EditTaskPipeline(_Pipeline):
         # End: None = clear end, UNSET = preserve, value = set/change
         end: EndCondition | None
         if is_set(spec.end):
-            end = spec.end  # EDIT-06/07/08: explicit set or clear (None)
+            end = spec.end  # type: ignore[assignment]  # EDIT-06/07/08: explicit set or clear (None)
         elif existing is not None:
             end = existing.end  # preserve existing
         else:
