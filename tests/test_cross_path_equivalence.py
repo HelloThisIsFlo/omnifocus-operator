@@ -1,5 +1,6 @@
-"""Cross-path equivalence tests -- BridgeRepository and HybridRepository produce identical results.
+"""Cross-path equivalence tests.
 
+BridgeOnlyRepository and HybridRepository produce identical results.
 Parametrized fixture creates both repo types from the same neutral test data.
 Seed adapters translate neutral dicts to bridge format (camelCase, ISO dates)
 and SQLite format (CF epoch floats, int booleans, join tables).
@@ -24,7 +25,7 @@ from omnifocus_operator.models.enums import (
     FolderAvailability,
     TagAvailability,
 )
-from omnifocus_operator.repository.bridge_only import BridgeRepository
+from omnifocus_operator.repository.bridge_only import BridgeOnlyRepository
 from omnifocus_operator.repository.hybrid import HybridRepository
 from tests.conftest import (
     make_folder_dict,
@@ -243,8 +244,8 @@ def _dt_to_iso(dt: datetime) -> str:
     return dt.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
 
-async def seed_bridge_repo(data: dict[str, Any]) -> BridgeRepository:
-    """Translate neutral data to bridge format and return a seeded BridgeRepository."""
+async def seed_bridge_repo(data: dict[str, Any]) -> BridgeOnlyRepository:
+    """Translate neutral data to bridge format and return a seeded BridgeOnlyRepository."""
     # Build tag lookup for inline tag refs on tasks
     tag_lookup = {t["id"]: t["name"] for t in data["tags"]}
 
@@ -328,7 +329,7 @@ async def seed_bridge_repo(data: dict[str, Any]) -> BridgeRepository:
     )
 
     bridge = InMemoryBridge(data=snapshot)
-    return BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
+    return BridgeOnlyRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
 
 
 # ---------------------------------------------------------------------------
@@ -603,7 +604,7 @@ def assert_equivalent(result_a: ListRepoResult, result_b: ListRepoResult) -> Non
 
 @pytest.fixture(params=["bridge", "sqlite"])
 async def cross_repo(request: pytest.FixtureRequest, tmp_path: Path) -> Repository:
-    """Return a seeded repository -- BridgeRepository or HybridRepository."""
+    """Return a seeded repository -- BridgeOnlyRepository or HybridRepository."""
     data = _build_neutral_test_data()
     if request.param == "bridge":
         return await seed_bridge_repo(data)

@@ -9,7 +9,7 @@ import pytest
 from fastmcp import Client
 
 import omnifocus_operator.bridge as bridge_pkg
-from omnifocus_operator.repository import BridgeRepository
+from omnifocus_operator.repository import BridgeOnlyRepository
 from omnifocus_operator.server import create_server
 from tests.doubles import ConstantMtimeSource, InMemoryBridge, SimulatorBridge
 
@@ -99,12 +99,12 @@ class TestPackageExport:
 
 
 class TestLifespan:
-    """app_lifespan wiring with monkeypatched BridgeRepository + InMemoryBridge."""
+    """app_lifespan wiring with monkeypatched BridgeOnlyRepository + InMemoryBridge."""
 
     @staticmethod
     def _make_repo() -> Any:
-        """Create a BridgeRepository with empty InMemoryBridge."""
-        return BridgeRepository(
+        """Create a BridgeOnlyRepository with empty InMemoryBridge."""
+        return BridgeOnlyRepository(
             bridge=InMemoryBridge(
                 data={"tasks": [], "projects": [], "tags": [], "folders": [], "perspectives": []}
             ),

@@ -10,9 +10,6 @@ import logging
 from typing import TYPE_CHECKING
 
 from omnifocus_operator.contracts.base import is_set
-from omnifocus_operator.contracts.shared.repetition_rule import (
-    RepetitionRuleRepoPayload,
-)
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskRepoPayload
 from omnifocus_operator.contracts.use_cases.edit.tasks import (
     EditTaskRepoPayload,
@@ -20,6 +17,9 @@ from omnifocus_operator.contracts.use_cases.edit.tasks import (
 )
 
 if TYPE_CHECKING:
+    from omnifocus_operator.contracts.shared.repetition_rule import (
+        RepetitionRuleRepoPayload,
+    )
     from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskCommand
     from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskCommand
 

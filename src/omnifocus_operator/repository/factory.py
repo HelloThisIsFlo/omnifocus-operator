@@ -105,13 +105,13 @@ def _create_hybrid_repository() -> Repository:
 
 
 def _create_bridge_repository() -> Repository:  # pragma: no cover
-    """Create a BridgeRepository with FileMtimeSource.
+    """Create a BridgeOnlyRepository with FileMtimeSource.
 
     SAFE-01: real bridge path, tested via UAT only.
     """
     from omnifocus_operator.bridge.mtime import FileMtimeSource, MtimeSource
     from omnifocus_operator.bridge.real import DEFAULT_OFOCUS_PATH
-    from omnifocus_operator.repository.bridge_only import BridgeRepository
+    from omnifocus_operator.repository.bridge_only import BridgeOnlyRepository
 
     bridge = _create_real_bridge()
 
@@ -132,4 +132,4 @@ def _create_bridge_repository() -> Repository:  # pragma: no cover
         "Set OPERATOR_REPOSITORY=hybrid for full functionality."
     )
 
-    return BridgeRepository(bridge=bridge, mtime_source=mtime_source)
+    return BridgeOnlyRepository(bridge=bridge, mtime_source=mtime_source)

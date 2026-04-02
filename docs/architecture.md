@@ -8,9 +8,8 @@ graph TB
     Server["server.py<br/>MCP Tool Handlers"]
     Service["service.py<br/>Validation · Resolution · Delegation"]
     Repo["Repository Protocol"]
-    Hybrid["HybridRepository<br/>SQLite reads + Bridge writes"]
-    BridgeRepo["BridgeRepository<br/>Bridge for reads + writes"]
-    InMem["InMemoryRepository<br/>Testing"]
+    HybridRepo["HybridRepository<br/>SQLite reads + Bridge writes"]
+    BridgeOnlyRepo["BridgeOnlyRepository<br/>Bridge for reads + writes"]
     SQLite["SQLite Cache<br/>~46ms reads"]
     Bridge["Bridge<br/>OmniJS IPC"]
     OF["OmniFocus"]
@@ -18,12 +17,11 @@ graph TB
     Agent -->|JSON| Server
     Server -->|"Command / Result"| Service
     Service -->|"RepoPayload / RepoResult"| Repo
-    Repo --- Hybrid
-    Repo --- BridgeRepo
-    Repo --- InMem
-    Hybrid -->|reads| SQLite
-    Hybrid -->|writes| Bridge
-    BridgeRepo --> Bridge
+    Repo --- HybridRepo
+    Repo --- BridgeOnlyRepo
+    HybridRepo -->|reads| SQLite
+    HybridRepo -->|writes| Bridge
+    BridgeOnlyRepo --> Bridge
     Bridge -->|File IPC| OF
     SQLite -.->|"OmniFocus writes → WAL updates"| OF
 ```
@@ -35,13 +33,25 @@ omnifocus_operator/
     contracts/       -- Typed boundaries: protocols, commands, payloads, results
         protocols.py     -- Service, Repository, Bridge — all boundaries in one file
         base.py          -- CommandModel, UNSET sentinel
-        common.py        -- Shared value objects (TagAction, MoveAction)
-        use_cases/       -- One module per operation
-            create_task.py   -- AddTaskCommand, AddTaskRepoPayload, AddTaskRepoResult, AddTaskResult
-            edit_task.py     -- EditTaskCommand, EditTaskActions, EditTaskRepoPayload, EditTaskRepoResult, EditTaskResult
+        shared/          -- Shared value objects across use cases
+            actions.py       -- TagAction, MoveAction
+            repetition_rule.py -- RepetitionRuleRepoPayload, frequency/end specs
+        use_cases/       -- One sub-package per operation
+            add/tasks.py     -- AddTaskCommand, AddTaskRepoPayload, AddTaskRepoResult, AddTaskResult
+            edit/tasks.py    -- EditTaskCommand, EditTaskRepoPayload, EditTaskRepoResult, EditTaskResult
+            list/            -- ListTasksQuery, ListProjectsQuery, repo queries, ListRepoResult
     models/          -- Read-side domain models (entities, enums, value objects)
-    bridge/          -- OmniFocus communication (IPC, in-memory, simulator)
+    bridge/          -- OmniFocus communication (IPC, mtime, errors)
     repository/      -- Data access implementations + factory
+        bridge_only/         -- Fallback: bridge for reads + writes
+            bridge_only.py       -- BridgeOnlyRepository
+            adapter.py           -- Raw bridge → model shape adapter
+        hybrid/              -- Production: SQLite reads + bridge writes
+            hybrid.py            -- HybridRepository
+            query_builder.py     -- SQL query construction
+        rrule/               -- RRULE serialization/parsing
+        bridge_write_mixin.py -- Shared bridge write logic
+        factory.py           -- create_repository() — selects implementation
     simulator/       -- Mock OmniFocus simulator for IPC testing
     server.py        -- FastMCP tool registration + wiring
     service/         -- Validation, resolution, domain logic, delegation
@@ -82,7 +92,7 @@ graph LR
 - `service.py` → `contracts/` (protocols + commands + payloads + results)
 - `server.py` → `contracts/` + concrete implementations (wiring only)
 - `repository/` → `contracts/` (protocols + repo payloads + repo results) + `bridge/` (for writes)
-- `repository/in_memory.py` → `contracts/` + `models/` only (zero bridge dependency)
+- Tests use `InMemoryBridge` + `BridgeOnlyRepository` — no separate in-memory repository needed
 - `models/` → nothing (leaf package, no outward dependencies except Pydantic)
 
 ## Protocols
@@ -105,7 +115,7 @@ class Service(Protocol):
 
 ### Repository protocol (service ↔ repository)
 
-Three implementations: HybridRepository (production), BridgeRepository (fallback), InMemoryRepository (tests).
+Two implementations: HybridRepository (production), BridgeOnlyRepository (fallback). Tests use BridgeOnlyRepository + InMemoryBridge.
 
 ```python
 class Repository(Protocol):
@@ -156,7 +166,7 @@ sequenceDiagram
 - **Repository** is a pure pass-through: `model_dump()` → `send_command()` → wrap result
 - **Bridge** is a dumb relay: receives pre-validated dicts, executes, returns minimal confirmation
 - Parent resolution: try `get_project` first, then `get_task` — **project takes precedence** (intentional, deterministic)
-- HybridRepository marks stale after write; BridgeRepository clears cache
+- HybridRepository marks stale after write; BridgeOnlyRepository clears cache
 
 ### Method Object Pattern (complex pipelines)
 
@@ -212,7 +222,7 @@ sequenceDiagram
         R->>SQLite: SQL query (~46ms full snapshot)
         SQLite-->>R: rows
         Note over R: map rows → domain entities
-    else BridgeRepository (fallback)
+    else BridgeOnlyRepository (fallback)
         R->>B: send_command("get_all")
         B->>OF: File IPC
         OF-->>B: JSON dump
@@ -231,10 +241,10 @@ sequenceDiagram
   - WAL-based freshness detection: 50ms poll, 2s timeout after writes
   - No caching layer on top — 46ms is fast enough
   - Marks stale after writes; next read waits for fresh WAL mtime
-- **BridgeRepository** (fallback via `OPERATOR_REPOSITORY=bridge`): OmniJS bridge dump
+- **BridgeOnlyRepository** (fallback via `OPERATOR_REPOSITORY=bridge`): OmniJS bridge dump
   - mtime-based cache invalidation; checks file mtime before each read, serves cached snapshot if unchanged
   - Concurrent reads coalesce into a single bridge dump
-- **InMemoryRepository** (tests): no caching (returns constructor snapshot as-is)
+- **Tests**: BridgeOnlyRepository + InMemoryBridge (no separate in-memory repository)
 
 ## Naming Conventions
 

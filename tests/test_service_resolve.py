@@ -1,7 +1,7 @@
 """Unit tests for Resolver and validate_task_name / validate_task_name_if_set.
 
 Tests the resolve module independently of OperatorService. Resolver tests use
-BridgeRepository + InMemoryBridge (per D-11), validation tests are pure.
+BridgeOnlyRepository + InMemoryBridge (per D-11), validation tests are pure.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ import pytest
 from omnifocus_operator.contracts.base import UNSET
 from omnifocus_operator.models.project import Project
 from omnifocus_operator.models.tag import Tag
-from omnifocus_operator.repository import BridgeRepository
+from omnifocus_operator.repository import BridgeOnlyRepository
 from omnifocus_operator.service.resolve import Resolver
 from omnifocus_operator.service.validate import validate_task_name, validate_task_name_if_set
 from tests.doubles import ConstantMtimeSource, InMemoryBridge
@@ -56,14 +56,14 @@ def bridge() -> InMemoryBridge:
 
 
 @pytest.fixture
-def repo(bridge: InMemoryBridge) -> BridgeRepository:
+def repo(bridge: InMemoryBridge) -> BridgeOnlyRepository:
     """Repository wired to test bridge with constant mtime (per D-11, D-13)."""
-    return BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
+    return BridgeOnlyRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
 
 
 @pytest.fixture
-def resolver(repo: BridgeRepository) -> Resolver:
-    """Resolver with BridgeRepository + InMemoryBridge containing known test data."""
+def resolver(repo: BridgeOnlyRepository) -> Resolver:
+    """Resolver with BridgeOnlyRepository + InMemoryBridge containing known test data."""
     return Resolver(repo)
 
 
@@ -120,7 +120,7 @@ class TestValidateTaskNameIfSet:
 
 
 class TestResolver:
-    """Resolver resolves parent IDs and tag names against BridgeRepository + InMemoryBridge."""
+    """Resolver resolves parent IDs and tag names against BridgeOnlyRepository + InMemoryBridge."""
 
     # -- Parent resolution -------------------------------------------------
 
@@ -210,7 +210,7 @@ class TestResolver:
                 ],
             )
         )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
+        repo = BridgeOnlyRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         ambiguous_resolver = Resolver(repo)
 
         with pytest.raises(ValueError, match="Ambiguous tag") as exc_info:

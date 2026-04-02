@@ -6,7 +6,7 @@ assembled from command data and domain results. No repos, no stubs, no async.
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 
 from omnifocus_operator.contracts.shared.repetition_rule import (
     RepetitionRuleRepoPayload,

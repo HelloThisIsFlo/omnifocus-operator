@@ -21,7 +21,6 @@ from omnifocus_operator.models.repetition_rule import (
 from omnifocus_operator.repository.bridge_write_mixin import BridgeWriteMixin
 from omnifocus_operator.repository.rrule.serialize import serialize_repetition_rule
 
-
 # ---------------------------------------------------------------------------
 # serialize_repetition_rule
 # ---------------------------------------------------------------------------

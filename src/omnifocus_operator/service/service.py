@@ -26,6 +26,7 @@ from omnifocus_operator.agent_messages.warnings import (
 )
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.protocols import Service
+from omnifocus_operator.contracts.shared.repetition_rule import RepetitionRuleRepoPayload
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskResult
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
 from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult, ListResult
@@ -47,7 +48,6 @@ from omnifocus_operator.models.repetition_rule import Frequency
 from omnifocus_operator.service.convert import end_condition_from_spec, frequency_from_spec
 from omnifocus_operator.service.domain import DomainLogic
 from omnifocus_operator.service.payload import PayloadBuilder
-from omnifocus_operator.contracts.shared.repetition_rule import RepetitionRuleRepoPayload
 from omnifocus_operator.service.resolve import Resolver
 from omnifocus_operator.service.validate import (
     validate_task_name,
@@ -85,7 +85,7 @@ class OperatorService(Service):  # explicitly implements Service protocol
     Parameters
     ----------
     repository:
-        Any ``Repository`` implementation (e.g. ``BridgeRepository``,
+        Any ``Repository`` implementation (e.g. ``BridgeOnlyRepository``,
         ``HybridRepository``) that provides ``get_all()``.
     """
 

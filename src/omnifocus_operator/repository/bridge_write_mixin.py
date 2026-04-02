@@ -1,7 +1,7 @@
 """BridgeWriteMixin -- shared bridge-sending logic for write operations.
 
 Centralizes the model_dump(by_alias=True, exclude_unset=True) + send_command
-pattern used by both BridgeRepository and HybridRepository.
+pattern used by both BridgeOnlyRepository and HybridRepository.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 
 class BridgeWriteMixin:
-    """Shared bridge-sending logic for BridgeRepository and HybridRepository.
+    """Shared bridge-sending logic for BridgeOnlyRepository and HybridRepository.
 
     Expects the concrete class to have a ``_bridge: Bridge`` attribute.
     """
@@ -40,7 +40,11 @@ class BridgeWriteMixin:
         them to the flat bridge format the OmniJS bridge expects.
         """
         raw = payload.model_dump(by_alias=True, exclude_unset=True)
-        rep_key = "repetitionRule"
-        if rep_key in raw and raw[rep_key] is not None:
-            raw[rep_key] = serialize_repetition_rule(getattr(payload, "repetition_rule"))
+
+        if (
+            "repetitionRule" in raw
+            and raw["repetitionRule"] is not None
+            and hasattr(payload, "repetition_rule")
+        ):
+            raw["repetitionRule"] = serialize_repetition_rule(payload.repetition_rule)
         return raw

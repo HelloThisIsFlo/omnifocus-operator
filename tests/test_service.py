@@ -42,7 +42,7 @@ from tests.doubles import ConstantMtimeSource
 from .conftest import make_project_dict, make_tag_dict, make_task_dict
 
 if TYPE_CHECKING:
-    from omnifocus_operator.repository import BridgeRepository
+    from omnifocus_operator.repository import BridgeOnlyRepository
 
 # ---------------------------------------------------------------------------
 # OperatorService
@@ -65,7 +65,7 @@ class TestOperatorService:
         """Service returns a complete snapshot from the repository."""
         result = await service.get_all_data()
 
-        # BridgeRepository deserializes fresh each call; verify structural equality
+        # BridgeOnlyRepository deserializes fresh each call; verify structural equality
         assert len(result.tasks) == 1
         assert result.tasks[0].id == "task-001"
         assert len(result.projects) == 1
@@ -217,7 +217,7 @@ class TestAddTask:
         mock_repo.add_task.assert_not_called()
 
     async def test_create_hierarchy_in_inbox(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """Parent task in inbox, then child under that parent (UAT #5)."""
         # Create parent in inbox (no parent field)
@@ -268,7 +268,7 @@ class TestAddTask:
         assert result.name == name
 
     async def test_fractional_estimated_minutes(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """Fractional estimatedMinutes preserved through round-trip (UAT #19)."""
         result = await service.add_task(
@@ -295,7 +295,7 @@ class TestAddTask:
 class TestAddTaskRepetitionRule:
     """Service.add_task with repetition rule configurations."""
 
-    async def test_daily_basic(self, service: OperatorService, repo: BridgeRepository) -> None:
+    async def test_daily_basic(self, service: OperatorService, repo: BridgeOnlyRepository) -> None:
         """ADD-01: Daily frequency with all root fields -> success."""
         spec = RepetitionRuleAddSpec(
             frequency=FrequencyAddSpec(type="daily"),
@@ -335,7 +335,7 @@ class TestAddTaskRepetitionRule:
             )
             assert result.success is True, f"Failed for type {freq.type}"
 
-    async def test_interval(self, service: OperatorService, repo: BridgeRepository) -> None:
+    async def test_interval(self, service: OperatorService, repo: BridgeOnlyRepository) -> None:
         """ADD-03: Custom interval preserved."""
         spec = RepetitionRuleAddSpec(
             frequency=FrequencyAddSpec(type="daily", interval=3),
@@ -349,7 +349,7 @@ class TestAddTaskRepetitionRule:
         assert task.repetition_rule.frequency.interval == 3
 
     async def test_weekly_on_days_normalize(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """ADD-04: on_days normalized to uppercase."""
         spec = RepetitionRuleAddSpec(
@@ -396,7 +396,7 @@ class TestAddTaskRepetitionRule:
         assert result.success is True
 
     async def test_empty_on_dates_normalizes_to_monthly(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """ADD-08: Empty onDates -> normalized to monthly, warning included."""
         spec = RepetitionRuleAddSpec(
@@ -416,7 +416,7 @@ class TestAddTaskRepetitionRule:
         assert task.repetition_rule.frequency.type == "monthly"
 
     async def test_from_completion_schedule(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """ADD-09: from_completion schedule produces correct bridge payload."""
         spec = RepetitionRuleAddSpec(
@@ -431,7 +431,7 @@ class TestAddTaskRepetitionRule:
         assert task.repetition_rule.schedule == Schedule.FROM_COMPLETION
 
     async def test_defer_date_based_on(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """ADD-10: based_on=defer_date -> anchorDateKey=DeferDate."""
         spec = RepetitionRuleAddSpec(
@@ -445,7 +445,7 @@ class TestAddTaskRepetitionRule:
         assert task.repetition_rule is not None
         assert task.repetition_rule.based_on == BasedOn.DEFER_DATE
 
-    async def test_end_by_date(self, service: OperatorService, repo: BridgeRepository) -> None:
+    async def test_end_by_date(self, service: OperatorService, repo: BridgeOnlyRepository) -> None:
         """ADD-11: EndByDate -> ruleString contains UNTIL."""
         spec = RepetitionRuleAddSpec(
             frequency=FrequencyAddSpec(type="daily"),
@@ -460,7 +460,7 @@ class TestAddTaskRepetitionRule:
         assert task.repetition_rule.end is not None
 
     async def test_end_by_occurrences(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """ADD-12: EndByOccurrences -> ruleString contains COUNT."""
         spec = RepetitionRuleAddSpec(
@@ -485,7 +485,9 @@ class TestAddTaskRepetitionRule:
         result = await service.add_task(AddTaskCommand(name="Forever", repetition_rule=spec))
         assert result.success is True
 
-    async def test_default_interval(self, service: OperatorService, repo: BridgeRepository) -> None:
+    async def test_default_interval(
+        self, service: OperatorService, repo: BridgeOnlyRepository
+    ) -> None:
         """ADD-14: Omitted interval defaults to 1."""
         spec = RepetitionRuleAddSpec(
             frequency=FrequencyAddSpec(type="daily"),  # interval defaults to 1
@@ -513,7 +515,9 @@ class TestEditTask:
     """Service.edit_task validates inputs and delegates to repository."""
 
     @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Old Name", flagged=True)])
-    async def test_patch_name_only(self, service: OperatorService, repo: BridgeRepository) -> None:
+    async def test_patch_name_only(
+        self, service: OperatorService, repo: BridgeOnlyRepository
+    ) -> None:
         """Editing only name leaves other fields unchanged (EDIT-01)."""
 
         result = await service.edit_task(EditTaskCommand(id="task-001", name="New Name"))
@@ -526,7 +530,9 @@ class TestEditTask:
         assert task.flagged is True  # unchanged
 
     @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
-    async def test_patch_note_only(self, service: OperatorService, repo: BridgeRepository) -> None:
+    async def test_patch_note_only(
+        self, service: OperatorService, repo: BridgeOnlyRepository
+    ) -> None:
         """Editing only note leaves other fields unchanged."""
 
         result = await service.edit_task(EditTaskCommand(id="task-001", note="New note"))
@@ -537,7 +543,7 @@ class TestEditTask:
 
     @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task", flagged=False)])
     async def test_patch_flagged_only(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """Editing only flagged leaves other fields unchanged."""
 
@@ -550,7 +556,9 @@ class TestEditTask:
     @pytest.mark.snapshot(
         tasks=[make_task_dict(id="task-001", name="Task", dueDate="2026-04-01T10:00:00+00:00")]
     )
-    async def test_clear_due_date(self, service: OperatorService, repo: BridgeRepository) -> None:
+    async def test_clear_due_date(
+        self, service: OperatorService, repo: BridgeOnlyRepository
+    ) -> None:
         """Setting due_date=None clears it (EDIT-01)."""
 
         result = await service.edit_task(EditTaskCommand(id="task-001", due_date=None))
@@ -570,7 +578,7 @@ class TestEditTask:
 
     @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
     async def test_set_estimated_minutes(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """Setting estimated_minutes updates it (EDIT-02)."""
 
@@ -584,7 +592,7 @@ class TestEditTask:
         tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-old", "name": "Old"}])],
         tags=[make_tag_dict(id="tag-new", name="NewTag")],
     )
-    async def test_tag_replace(self, service: OperatorService, repo: BridgeRepository) -> None:
+    async def test_tag_replace(self, service: OperatorService, repo: BridgeOnlyRepository) -> None:
         """actions.tags.replace=["tag1"] replaces all tags (EDIT-03)."""
 
         result = await service.edit_task(
@@ -606,7 +614,7 @@ class TestEditTask:
             make_tag_dict(id="tag-b", name="B"),
         ],
     )
-    async def test_tag_add(self, service: OperatorService, repo: BridgeRepository) -> None:
+    async def test_tag_add(self, service: OperatorService, repo: BridgeOnlyRepository) -> None:
         """actions.tags.add=["tag2"] adds without removing (EDIT-04)."""
 
         result = await service.edit_task(
@@ -636,7 +644,7 @@ class TestEditTask:
             make_tag_dict(id="tag-b", name="B"),
         ],
     )
-    async def test_tag_remove(self, service: OperatorService, repo: BridgeRepository) -> None:
+    async def test_tag_remove(self, service: OperatorService, repo: BridgeOnlyRepository) -> None:
         """actions.tags.remove=["tag1"] removes specific tag (EDIT-05)."""
 
         result = await service.edit_task(
@@ -683,7 +691,7 @@ class TestEditTask:
         ],
     )
     async def test_add_and_remove_tags_together(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """actions.tags with add + remove together is allowed (EDIT-06)."""
 
@@ -703,7 +711,7 @@ class TestEditTask:
         tasks=[make_task_dict(id="task-001", name="Task", inInbox=True)],
     )
     async def test_move_to_project_ending(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """Move task to project via ending (EDIT-07)."""
 
@@ -732,7 +740,7 @@ class TestEditTask:
         ],
     )
     async def test_move_to_task_beginning(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """Move task under another task via beginning (EDIT-07)."""
 
@@ -760,7 +768,9 @@ class TestEditTask:
             )
         ],
     )
-    async def test_move_to_inbox(self, service: OperatorService, repo: BridgeRepository) -> None:
+    async def test_move_to_inbox(
+        self, service: OperatorService, repo: BridgeOnlyRepository
+    ) -> None:
         """Move task to inbox via ending=null (EDIT-08)."""
 
         result = await service.edit_task(
@@ -839,7 +849,7 @@ class TestEditTask:
 
     @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task", note="Some note")])
     async def test_note_null_clears_note(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """note=None maps to empty string (null-means-clear)."""
 
@@ -854,7 +864,7 @@ class TestEditTask:
         tags=[make_tag_dict(id="tag-a", name="A")],
     )
     async def test_tags_null_clears_all_tags(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """actions.tags.replace=None clears all tags (null-means-clear)."""
 
@@ -919,7 +929,7 @@ class TestEditTask:
         tags=[make_tag_dict(id="tag-a", name="A")],
     )
     async def test_warning_addtags_duplicate(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """Adding a tag already on the task produces a warning."""
 
@@ -1040,7 +1050,7 @@ class TestEditTask:
 
     @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
     async def test_set_estimate_and_flag_together(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """Edit task with both estimated_minutes and flagged (UAT #3)."""
 
@@ -1055,7 +1065,7 @@ class TestEditTask:
 
     @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
     async def test_set_defer_and_planned_dates(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """Edit task setting defer_date and planned_date (UAT #4)."""
 
@@ -1075,7 +1085,9 @@ class TestEditTask:
         assert task.planned_date.isoformat() == "2026-03-12T09:00:00+00:00"
 
     @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Old")])
-    async def test_multi_field_edit(self, service: OperatorService, repo: BridgeRepository) -> None:
+    async def test_multi_field_edit(
+        self, service: OperatorService, repo: BridgeOnlyRepository
+    ) -> None:
         """Edit task changing name, note, flagged, and estimated_minutes (UAT #5)."""
 
         result = await service.edit_task(
@@ -1096,7 +1108,7 @@ class TestEditTask:
         assert task.estimated_minutes == 60.0
 
     @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task", flagged=True)])
-    async def test_unflag(self, service: OperatorService, repo: BridgeRepository) -> None:
+    async def test_unflag(self, service: OperatorService, repo: BridgeOnlyRepository) -> None:
         """Start with flagged=True, edit to flagged=False (UAT #6)."""
 
         result = await service.edit_task(EditTaskCommand(id="task-001", flagged=False))
@@ -1107,7 +1119,7 @@ class TestEditTask:
 
     @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task", note="Some note")])
     async def test_clear_note_with_empty_string(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """Edit task with note='' clears note (UAT #9)."""
 
@@ -1119,7 +1131,7 @@ class TestEditTask:
 
     @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task", estimatedMinutes=30.0)])
     async def test_clear_estimated_minutes(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """Set estimated_minutes=None clears the estimate (UAT #10)."""
 
@@ -1141,7 +1153,7 @@ class TestEditTask:
         ]
     )
     async def test_patch_preserves_untouched_fields(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """Editing only name preserves note, flagged, estimatedMinutes (UAT #11)."""
 
@@ -1216,7 +1228,7 @@ class TestEditTask:
         tasks=[make_task_dict(id="task-001", name="Old Name", inInbox=True)],
     )
     async def test_move_and_edit_combined(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """Edit task with both move and field changes (UAT #39)."""
 
@@ -1438,7 +1450,7 @@ class TestEditTask:
 
     @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task", flagged=False)])
     async def test_lifecycle_with_field_edits(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """lifecycle + field edits in same call: both applied."""
 
@@ -1588,7 +1600,7 @@ class TestEditTask:
         tags=[make_tag_dict(id="tag-a", name="A")],
     )
     async def test_tag_replace_noop_same_tags(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """Replace with same tags produces warning, no bridge tag keys."""
 
@@ -1688,7 +1700,7 @@ class TestEditTaskRepetitionRule:
 
     @pytest.mark.snapshot(tasks=[make_task_dict(id="t1", name="Plain")])
     async def test_set_rule_on_non_repeating_task(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """EDIT-01: Set full rule on non-repeating task."""
         spec = RepetitionRuleEditSpec(
@@ -1709,7 +1721,7 @@ class TestEditTaskRepetitionRule:
     @pytest.mark.snapshot(
         tasks=[make_task_dict(id="t1", name="Repeating", repetitionRule=_DAILY_RULE)]
     )
-    async def test_clear_rule(self, service: OperatorService, repo: BridgeRepository) -> None:
+    async def test_clear_rule(self, service: OperatorService, repo: BridgeOnlyRepository) -> None:
         """EDIT-02: repetition_rule=None -> clears rule."""
         result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=None))
         assert result.success is True
@@ -1721,7 +1733,9 @@ class TestEditTaskRepetitionRule:
     @pytest.mark.snapshot(
         tasks=[make_task_dict(id="t1", name="Repeating", repetitionRule=_DAILY_RULE)]
     )
-    async def test_unset_no_change(self, service: OperatorService, repo: BridgeRepository) -> None:
+    async def test_unset_no_change(
+        self, service: OperatorService, repo: BridgeOnlyRepository
+    ) -> None:
         """EDIT-03: repetition_rule=UNSET (omitted) -> no change."""
         result = await service.edit_task(EditTaskCommand(id="t1", name="Renamed"))
         assert result.success is True
@@ -1735,7 +1749,7 @@ class TestEditTaskRepetitionRule:
         tasks=[make_task_dict(id="t1", name="Repeating", repetitionRule=_DAILY_RULE)]
     )
     async def test_schedule_only_change(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """EDIT-04: Only schedule set -> preserves frequency/basedOn/end."""
         spec = RepetitionRuleEditSpec(schedule=Schedule.FROM_COMPLETION)
@@ -1753,7 +1767,7 @@ class TestEditTaskRepetitionRule:
         tasks=[make_task_dict(id="t1", name="Repeating", repetitionRule=_DAILY_RULE)]
     )
     async def test_based_on_only_change(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """EDIT-05: Only based_on set -> preserves frequency/schedule/end."""
         spec = RepetitionRuleEditSpec(based_on=BasedOn.DEFER_DATE)
@@ -1770,7 +1784,7 @@ class TestEditTaskRepetitionRule:
         tasks=[make_task_dict(id="t1", name="Repeating", repetitionRule=_DAILY_RULE)]
     )
     async def test_add_end_condition(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """EDIT-06: Only end set -> adds end condition."""
         spec = RepetitionRuleEditSpec(end=EndByOccurrencesSpec(occurrences=10))
@@ -1797,7 +1811,7 @@ class TestEditTaskRepetitionRule:
         ]
     )
     async def test_clear_end_condition(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """EDIT-07: end=None -> removes end condition."""
         spec = RepetitionRuleEditSpec(end=None)
@@ -1824,7 +1838,7 @@ class TestEditTaskRepetitionRule:
         ]
     )
     async def test_change_end_date_to_occurrences(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """EDIT-08: End changed from date to occurrences."""
         spec = RepetitionRuleEditSpec(end=EndByOccurrencesSpec(occurrences=20))
@@ -1840,7 +1854,7 @@ class TestEditTaskRepetitionRule:
         tasks=[make_task_dict(id="t1", name="Repeating", repetitionRule=_DAILY_RULE)]
     )
     async def test_same_type_change_interval(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """EDIT-09/10: Same type, change interval -> merges."""
         spec = RepetitionRuleEditSpec(frequency=FrequencyEditSpec(interval=5))
@@ -1863,7 +1877,7 @@ class TestEditTaskRepetitionRule:
         ]
     )
     async def test_same_type_change_on_days(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """EDIT-11: Same type, change on_days -> interval preserved."""
         spec = RepetitionRuleEditSpec(frequency=FrequencyEditSpec(on_days=["TU", "TH"]))
@@ -1893,7 +1907,7 @@ class TestEditTaskRepetitionRule:
         ]
     )
     async def test_same_type_change_monthly_on(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """EDIT-12: Same monthly_day_of_week type, change on -> interval preserved."""
         spec = RepetitionRuleEditSpec(frequency=FrequencyEditSpec(on={"last": "friday"}))
@@ -1920,7 +1934,7 @@ class TestEditTaskRepetitionRule:
         ]
     )
     async def test_auto_clear_on_when_on_dates_set(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """D-08: Send onDates on monthly task with existing on -> auto-clears on.
 
@@ -1958,7 +1972,7 @@ class TestEditTaskRepetitionRule:
         ]
     )
     async def test_auto_clear_on_dates_when_on_set(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """D-08: Send on on monthly task with existing onDates -> auto-clears onDates.
 
@@ -1985,7 +1999,7 @@ class TestEditTaskRepetitionRule:
         tasks=[make_task_dict(id="t1", name="Repeating", repetitionRule=_DAILY_RULE)]
     )
     async def test_type_change_full_replacement(
-        self, service: OperatorService, repo: BridgeRepository
+        self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
         """EDIT-13: Different type with full frequency -> replaces entirely."""
         spec = RepetitionRuleEditSpec(

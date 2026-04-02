@@ -376,12 +376,12 @@ def repo(bridge: Any) -> Any:
     """Repository wired to test bridge with constant mtime.
 
     Note: Parameter and return types are ``Any`` to avoid circular imports
-    with ``tests.doubles``.  Actual types: ``InMemoryBridge`` -> ``BridgeRepository``.
+    with ``tests.doubles``.  Actual types: ``InMemoryBridge`` -> ``BridgeOnlyRepository``.
     """
-    from omnifocus_operator.repository import BridgeRepository  # noqa: PLC0415
+    from omnifocus_operator.repository import BridgeOnlyRepository  # noqa: PLC0415
     from tests.doubles import ConstantMtimeSource  # noqa: PLC0415 — circular import guard
 
-    return BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
+    return BridgeOnlyRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
 
 
 @pytest.fixture

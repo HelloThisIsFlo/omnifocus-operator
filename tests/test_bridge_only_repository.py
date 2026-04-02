@@ -1,4 +1,4 @@
-"""Tests for BridgeRepository with MtimeSource.
+"""Tests for BridgeOnlyRepository with MtimeSource.
 
 Covers SNAP-01 through SNAP-06 plus error propagation,
 concurrency edge cases, and FileMtimeSource integration.
@@ -18,7 +18,7 @@ from omnifocus_operator.bridge.errors import BridgeError
 from omnifocus_operator.bridge.mtime import FileMtimeSource
 from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsRepoQuery
 from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
-from omnifocus_operator.repository import BridgeRepository, Repository
+from omnifocus_operator.repository import BridgeOnlyRepository, Repository
 from tests.doubles import InMemoryBridge
 
 from .conftest import make_project_dict, make_snapshot_dict, make_task_dict
@@ -75,9 +75,9 @@ def mtime() -> FakeMtimeSource:
 
 
 @pytest.fixture
-def repo(bridge: InMemoryBridge, mtime: FakeMtimeSource) -> BridgeRepository:
+def repo(bridge: InMemoryBridge, mtime: FakeMtimeSource) -> BridgeOnlyRepository:
     """Repository wired to test bridge and fake mtime source."""
-    return BridgeRepository(bridge=bridge, mtime_source=mtime)
+    return BridgeOnlyRepository(bridge=bridge, mtime_source=mtime)
 
 
 # ---------------------------------------------------------------------------
@@ -89,7 +89,7 @@ class TestSNAP01FirstCall:
     """First get_all() call triggers bridge dump."""
 
     async def test_first_call_returns_snapshot(
-        self, repo: BridgeRepository, bridge: InMemoryBridge
+        self, repo: BridgeOnlyRepository, bridge: InMemoryBridge
     ) -> None:
         snapshot = await repo.get_all()
 
@@ -101,14 +101,14 @@ class TestSNAP01FirstCall:
         assert len(snapshot.perspectives) == 1
 
     async def test_first_call_invokes_bridge(
-        self, repo: BridgeRepository, bridge: InMemoryBridge
+        self, repo: BridgeOnlyRepository, bridge: InMemoryBridge
     ) -> None:
         await repo.get_all()
 
         assert bridge.call_count == 1
 
     async def test_first_call_uses_get_all_operation(
-        self, repo: BridgeRepository, bridge: InMemoryBridge
+        self, repo: BridgeOnlyRepository, bridge: InMemoryBridge
     ) -> None:
         await repo.get_all()
 
@@ -124,14 +124,14 @@ class TestSNAP02CachedReturn:
     """Subsequent calls with same mtime return cached snapshot."""
 
     async def test_second_call_no_bridge_invocation(
-        self, repo: BridgeRepository, bridge: InMemoryBridge
+        self, repo: BridgeOnlyRepository, bridge: InMemoryBridge
     ) -> None:
         await repo.get_all()
         await repo.get_all()
 
         assert bridge.call_count == 1
 
-    async def test_second_call_returns_data(self, repo: BridgeRepository) -> None:
+    async def test_second_call_returns_data(self, repo: BridgeOnlyRepository) -> None:
         await repo.get_all()
         second = await repo.get_all()
 
@@ -146,7 +146,7 @@ class TestSNAP02CachedReturn:
 class TestSNAP03ObjectIdentity:
     """Cached snapshot is the same object (identity via `is`)."""
 
-    async def test_same_object_returned(self, repo: BridgeRepository) -> None:
+    async def test_same_object_returned(self, repo: BridgeOnlyRepository) -> None:
         first = await repo.get_all()
         second = await repo.get_all()
 
@@ -163,7 +163,7 @@ class TestSNAP04MtimeRefresh:
 
     async def test_mtime_change_triggers_new_dump(
         self,
-        repo: BridgeRepository,
+        repo: BridgeOnlyRepository,
         bridge: InMemoryBridge,
         mtime: FakeMtimeSource,
     ) -> None:
@@ -177,7 +177,7 @@ class TestSNAP04MtimeRefresh:
 
     async def test_mtime_change_returns_new_snapshot(
         self,
-        repo: BridgeRepository,
+        repo: BridgeOnlyRepository,
         mtime: FakeMtimeSource,
     ) -> None:
         first = await repo.get_all()
@@ -197,7 +197,7 @@ class TestSNAP05Concurrency:
     """10 concurrent reads trigger only 1 bridge dump."""
 
     async def test_concurrent_reads_single_dump(
-        self, repo: BridgeRepository, bridge: InMemoryBridge
+        self, repo: BridgeOnlyRepository, bridge: InMemoryBridge
     ) -> None:
         results = await asyncio.gather(*[repo.get_all() for _ in range(10)])
 
@@ -217,7 +217,7 @@ class TestErrorPropagation:
     async def test_bridge_error_propagates(self, mtime: FakeMtimeSource) -> None:
         bridge = InMemoryBridge()
         bridge.set_error(BridgeError("snapshot", "connection lost"))
-        repo = BridgeRepository(bridge=bridge, mtime_source=mtime)
+        repo = BridgeOnlyRepository(bridge=bridge, mtime_source=mtime)
 
         with pytest.raises(BridgeError, match="connection lost"):
             await repo.get_all()
@@ -225,7 +225,7 @@ class TestErrorPropagation:
     async def test_validation_error_propagates(self, mtime: FakeMtimeSource) -> None:
         """Invalid data causes Pydantic ValidationError to propagate."""
         bridge = InMemoryBridge(data={"tasks": "not-a-list"})
-        repo = BridgeRepository(bridge=bridge, mtime_source=mtime)
+        repo = BridgeOnlyRepository(bridge=bridge, mtime_source=mtime)
 
         with pytest.raises(ValidationError):
             await repo.get_all()
@@ -235,7 +235,7 @@ class TestErrorPropagation:
         bridge = InMemoryBridge(data=make_snapshot_dict())
         error = OSError("filesystem unavailable")
         mtime = FailingMtimeSource(error)
-        repo = BridgeRepository(bridge=bridge, mtime_source=mtime)
+        repo = BridgeOnlyRepository(bridge=bridge, mtime_source=mtime)
 
         with pytest.raises(OSError, match="filesystem unavailable"):
             await repo.get_all()
@@ -244,7 +244,7 @@ class TestErrorPropagation:
         """After failed first load, cache stays None; next call retries."""
         bridge = InMemoryBridge()
         bridge.set_error(BridgeError("snapshot", "temporary failure"))
-        repo = BridgeRepository(bridge=bridge, mtime_source=mtime)
+        repo = BridgeOnlyRepository(bridge=bridge, mtime_source=mtime)
 
         with pytest.raises(BridgeError):
             await repo.get_all()
@@ -267,7 +267,7 @@ class TestErrorPropagation:
     ) -> None:
         """After failed refresh, old cached snapshot is preserved."""
         bridge = InMemoryBridge(data=snapshot_data)
-        repo = BridgeRepository(bridge=bridge, mtime_source=mtime)
+        repo = BridgeOnlyRepository(bridge=bridge, mtime_source=mtime)
 
         # First call succeeds
         first = await repo.get_all()
@@ -291,7 +291,7 @@ class TestErrorPropagation:
         """After first get_all() fails, next call retries successfully."""
         bridge = InMemoryBridge()
         bridge.set_error(BridgeError("snapshot", "startup failure"))
-        repo = BridgeRepository(bridge=bridge, mtime_source=mtime)
+        repo = BridgeOnlyRepository(bridge=bridge, mtime_source=mtime)
 
         with pytest.raises(BridgeError):
             await repo.get_all()
@@ -317,7 +317,7 @@ class TestConcurrencyEdgeCases:
     """Additional concurrency scenarios."""
 
     async def test_concurrent_reads_warm_cache(
-        self, repo: BridgeRepository, bridge: InMemoryBridge
+        self, repo: BridgeOnlyRepository, bridge: InMemoryBridge
     ) -> None:
         """Concurrent reads on warm cache are fast and don't re-dump."""
         await repo.get_all()  # warm up
@@ -363,17 +363,17 @@ class TestFileMtimeSource:
 
 
 # ---------------------------------------------------------------------------
-# BridgeRepository protocol conformance
+# BridgeOnlyRepository protocol conformance
 # ---------------------------------------------------------------------------
 
 
-class TestBridgeRepositoryProtocol:
-    """BridgeRepository satisfies the Repository protocol."""
+class TestBridgeOnlyRepositoryProtocol:
+    """BridgeOnlyRepository satisfies the Repository protocol."""
 
     async def test_bridge_repository_satisfies_protocol(self) -> None:
         bridge = InMemoryBridge(data=make_snapshot_dict())
         mtime = FakeMtimeSource(mtime_ns=1)
-        repo = BridgeRepository(bridge=bridge, mtime_source=mtime)
+        repo = BridgeOnlyRepository(bridge=bridge, mtime_source=mtime)
 
         assert isinstance(repo, Repository)
 
@@ -387,7 +387,7 @@ class TestDeterministicOrdering:
     """Pagination returns items sorted by ID for deterministic page boundaries."""
 
     @pytest.fixture
-    def unordered_task_repo(self) -> BridgeRepository:
+    def unordered_task_repo(self) -> BridgeOnlyRepository:
         """Repo with tasks inserted in non-alphabetical ID order."""
         data = make_snapshot_dict(
             tasks=[
@@ -399,13 +399,13 @@ class TestDeterministicOrdering:
             ],
             projects=[],
         )
-        return BridgeRepository(
+        return BridgeOnlyRepository(
             bridge=InMemoryBridge(data=data),
             mtime_source=FakeMtimeSource(mtime_ns=1),
         )
 
     @pytest.fixture
-    def unordered_project_repo(self) -> BridgeRepository:
+    def unordered_project_repo(self) -> BridgeOnlyRepository:
         """Repo with projects inserted in non-alphabetical ID order."""
         data = make_snapshot_dict(
             tasks=[],
@@ -417,13 +417,13 @@ class TestDeterministicOrdering:
                 make_project_dict(id="proj-gamma", name="Gamma"),
             ],
         )
-        return BridgeRepository(
+        return BridgeOnlyRepository(
             bridge=InMemoryBridge(data=data),
             mtime_source=FakeMtimeSource(mtime_ns=1),
         )
 
     async def test_list_tasks_paginated_sorted_by_id(
-        self, unordered_task_repo: BridgeRepository
+        self, unordered_task_repo: BridgeOnlyRepository
     ) -> None:
         """Tasks are sorted by ID so offset/limit produces deterministic pages."""
         page1 = await unordered_task_repo.list_tasks(ListTasksRepoQuery(limit=3))
@@ -438,7 +438,7 @@ class TestDeterministicOrdering:
         assert page2.has_more is False
 
     async def test_list_projects_paginated_sorted_by_id(
-        self, unordered_project_repo: BridgeRepository
+        self, unordered_project_repo: BridgeOnlyRepository
     ) -> None:
         """Projects are sorted by ID so offset/limit produces deterministic pages."""
         page1 = await unordered_project_repo.list_projects(ListProjectsRepoQuery(limit=3))
@@ -453,7 +453,7 @@ class TestDeterministicOrdering:
         assert page2.has_more is False
 
     async def test_list_tasks_consecutive_pages_no_overlap(
-        self, unordered_task_repo: BridgeRepository
+        self, unordered_task_repo: BridgeOnlyRepository
     ) -> None:
         """Consecutive pages cover all items exactly once with no overlap."""
         all_ids: list[str] = []

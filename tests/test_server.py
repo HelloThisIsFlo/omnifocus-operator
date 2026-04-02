@@ -16,7 +16,7 @@ import pytest
 from fastmcp import Client
 from fastmcp.exceptions import ToolError
 
-from omnifocus_operator.repository import BridgeRepository
+from omnifocus_operator.repository import BridgeOnlyRepository
 from omnifocus_operator.server import _register_tools, create_server
 from omnifocus_operator.service import OperatorService
 from tests.conftest import make_tag_dict, make_task_dict
@@ -78,7 +78,7 @@ class TestARCH01ThreeLayerArchitecture:
     ) -> None:
         monkeypatch.setattr(
             "omnifocus_operator.repository.create_repository",
-            lambda *a, **kw: BridgeRepository(
+            lambda *a, **kw: BridgeOnlyRepository(
                 bridge=InMemoryBridge(
                     data={
                         "tasks": [],
@@ -115,7 +115,7 @@ class TestARCH02RepositoryInjection:
     ) -> None:
         monkeypatch.setattr(
             "omnifocus_operator.repository.create_repository",
-            lambda *a, **kw: BridgeRepository(
+            lambda *a, **kw: BridgeOnlyRepository(
                 bridge=InMemoryBridge(
                     data={
                         "tasks": [],
@@ -167,7 +167,7 @@ class TestTOOL01ListAllStructuredOutput:
     ) -> None:
         monkeypatch.setattr(
             "omnifocus_operator.repository.create_repository",
-            lambda *a, **kw: BridgeRepository(
+            lambda *a, **kw: BridgeOnlyRepository(
                 bridge=InMemoryBridge(
                     data={
                         "tasks": [],
@@ -218,7 +218,7 @@ class TestTOOL01ListAllStructuredOutput:
                 "perspectives": [],
             }
         )
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
+        repo = BridgeOnlyRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         service = OperatorService(repository=repo)
 
         # Build a server with a patched lifespan that injects our custom service
@@ -252,7 +252,7 @@ class TestTOOL02Annotations:
         tmp_path: Any,
     ) -> None:
         bridge = SimulatorBridge(ipc_dir=tmp_path)
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
+        repo = BridgeOnlyRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         monkeypatch.setattr(
             "omnifocus_operator.repository.create_repository",
             lambda *_a, **_kw: repo,
@@ -272,7 +272,7 @@ class TestTOOL02Annotations:
         tmp_path: Any,
     ) -> None:
         bridge = SimulatorBridge(ipc_dir=tmp_path)
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
+        repo = BridgeOnlyRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         monkeypatch.setattr(
             "omnifocus_operator.repository.create_repository",
             lambda *_a, **_kw: repo,
@@ -301,7 +301,7 @@ class TestTOOL03OutputSchema:
         tmp_path: Any,
     ) -> None:
         bridge = SimulatorBridge(ipc_dir=tmp_path)
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
+        repo = BridgeOnlyRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         monkeypatch.setattr(
             "omnifocus_operator.repository.create_repository",
             lambda *_a, **_kw: repo,
@@ -320,7 +320,7 @@ class TestTOOL03OutputSchema:
         tmp_path: Any,
     ) -> None:
         bridge = SimulatorBridge(ipc_dir=tmp_path)
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
+        repo = BridgeOnlyRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         monkeypatch.setattr(
             "omnifocus_operator.repository.create_repository",
             lambda *_a, **_kw: repo,
@@ -394,7 +394,7 @@ class TestIPC06OrphanSweepWiring:
     ) -> None:
         """IPC sweep runs regardless of OPERATOR_REPOSITORY setting."""
         bridge = SimulatorBridge(ipc_dir=tmp_path)
-        repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
+        repo = BridgeOnlyRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         monkeypatch.setattr(
             "omnifocus_operator.repository.create_repository",
             lambda *_a, **_kw: repo,

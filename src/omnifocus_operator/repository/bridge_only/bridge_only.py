@@ -1,4 +1,4 @@
-"""BridgeRepository -- caching repository that loads data via the bridge.
+"""BridgeOnlyRepository -- caching repository that loads data via the bridge.
 
 Combines the ``Bridge`` protocol, ``MtimeSource`` for cache invalidation, and
 the ``adapt_snapshot`` adapter into a single caching layer.
@@ -16,12 +16,12 @@ import asyncio
 import logging
 from typing import TYPE_CHECKING, Any
 
-from omnifocus_operator.repository.bridge_only.adapter import adapt_snapshot
 from omnifocus_operator.contracts.protocols import Repository
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskRepoResult
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskRepoResult
 from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult
 from omnifocus_operator.models.snapshot import AllEntities
+from omnifocus_operator.repository.bridge_only.adapter import adapt_snapshot
 from omnifocus_operator.repository.bridge_write_mixin import BridgeWriteMixin
 
 logger = logging.getLogger(__name__)
@@ -41,10 +41,10 @@ if TYPE_CHECKING:
     from omnifocus_operator.models.tag import Tag
     from omnifocus_operator.models.task import Task
 
-__all__ = ["BridgeRepository"]
+__all__ = ["BridgeOnlyRepository"]
 
 
-class BridgeRepository(BridgeWriteMixin, Repository):
+class BridgeOnlyRepository(BridgeWriteMixin, Repository):
     """Caching repository that loads data from the bridge.
 
     Parameters
@@ -84,11 +84,13 @@ class BridgeRepository(BridgeWriteMixin, Repository):
             current_mtime = await self._mtime_source.get_mtime_ns()
 
             if self._cached is None or current_mtime != self._last_mtime_ns:
-                logger.debug("BridgeRepository.get_all: cache miss/stale, refreshing via bridge")
+                logger.debug(
+                    "BridgeOnlyRepository.get_all: cache miss/stale, refreshing via bridge"
+                )
                 self._cached = await self._refresh(current_mtime)
             else:
                 logger.debug(
-                    "BridgeRepository.get_all: cache hit, tasks=%d, projects=%d, tags=%d",
+                    "BridgeOnlyRepository.get_all: cache hit, tasks=%d, projects=%d, tags=%d",
                     len(self._cached.tasks),
                     len(self._cached.projects),
                     len(self._cached.tags),
@@ -116,19 +118,19 @@ class BridgeRepository(BridgeWriteMixin, Repository):
 
         Serializes the typed payload to a camelCase dict and sends via bridge.
         """
-        logger.debug("BridgeRepository.add_task: sending to bridge")
+        logger.debug("BridgeOnlyRepository.add_task: sending to bridge")
         result = await self._send_to_bridge("add_task", payload)
         self._cached = None  # Visible cache invalidation
-        logger.debug("BridgeRepository.add_task: cache invalidated, id=%s", result["id"])
+        logger.debug("BridgeOnlyRepository.add_task: cache invalidated, id=%s", result["id"])
 
         return AddTaskRepoResult(id=result["id"], name=result["name"])
 
     async def edit_task(self, payload: EditTaskRepoPayload) -> EditTaskRepoResult:
         """Edit a task via bridge and invalidate cache."""
-        logger.debug("BridgeRepository.edit_task: sending to bridge")
+        logger.debug("BridgeOnlyRepository.edit_task: sending to bridge")
         result = await self._send_to_bridge("edit_task", payload)
         self._cached = None  # Visible cache invalidation
-        logger.debug("BridgeRepository.edit_task: cache invalidated, id=%s", result.get("id"))
+        logger.debug("BridgeOnlyRepository.edit_task: cache invalidated, id=%s", result.get("id"))
         return EditTaskRepoResult(id=result["id"], name=result["name"])
 
     async def list_tasks(self, query: ListTasksRepoQuery) -> ListRepoResult[Task]:
@@ -240,14 +242,14 @@ class BridgeRepository(BridgeWriteMixin, Repository):
         On success, updates ``_cached`` and ``_last_mtime_ns``.
         On failure, cache is **not** modified (preserves old or None).
         """
-        logger.debug("BridgeRepository._refresh: fetching full snapshot via bridge")
+        logger.debug("BridgeOnlyRepository._refresh: fetching full snapshot via bridge")
         raw: dict[str, Any] = await self._bridge.send_command("get_all")
         # Transform bridge-format -> new model shape (no-op if already new shape)
         adapt_snapshot(raw)
         result = AllEntities.model_validate(raw)
         self._last_mtime_ns = current_mtime
         logger.debug(
-            "BridgeRepository._refresh: tasks=%d, projects=%d, tags=%d",
+            "BridgeOnlyRepository._refresh: tasks=%d, projects=%d, tags=%d",
             len(result.tasks),
             len(result.projects),
             len(result.tags),

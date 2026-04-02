@@ -32,6 +32,7 @@ from omnifocus_operator.contracts.use_cases.edit.tasks import (
     EditTaskRepoPayload,
 )
 from omnifocus_operator.models.enums import BasedOn, Schedule
+from omnifocus_operator.models.repetition_rule import EndByOccurrences, Frequency
 
 
 class TestRepetitionRuleAddSpec:
@@ -333,8 +334,6 @@ class TestRepetitionRuleRepoPayload:
     """Tests for RepetitionRuleRepoPayload (structured core-type fields)."""
 
     def test_all_fields(self) -> None:
-        from omnifocus_operator.models.repetition_rule import EndByOccurrences, Frequency
-
         payload = RepetitionRuleRepoPayload(
             frequency=Frequency(type="daily", interval=3),
             schedule=Schedule.REGULARLY,
@@ -349,8 +348,6 @@ class TestRepetitionRuleRepoPayload:
         assert payload.end.occurrences == 5  # type: ignore[union-attr]
 
     def test_end_defaults_to_none(self) -> None:
-        from omnifocus_operator.models.repetition_rule import Frequency
-
         payload = RepetitionRuleRepoPayload(
             frequency=Frequency(type="daily"),
             schedule=Schedule.FROM_COMPLETION,
@@ -402,8 +399,6 @@ class TestRepoPayloadIntegration:
     """Tests for repetition rule fields on AddTaskRepoPayload/EditTaskRepoPayload."""
 
     def _make_repo_payload(self) -> RepetitionRuleRepoPayload:
-        from omnifocus_operator.models.repetition_rule import Frequency
-
         return RepetitionRuleRepoPayload(
             frequency=Frequency(type="daily"),
             schedule=Schedule.REGULARLY,

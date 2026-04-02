@@ -77,7 +77,7 @@ class InMemoryBridge(Bridge):
     - Tags/Folders: ``status`` (PascalCase string)
 
     ``get_all`` returns a deep copy of internal state directly -- no conversion.
-    ``BridgeRepository.adapt_snapshot()`` converts raw → model format downstream.
+    ``BridgeOnlyRepository.adapt_snapshot()`` converts raw → model format downstream.
 
     Supports:
     - Stateful entity storage (tasks, projects, tags, folders, perspectives)

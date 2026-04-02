@@ -18,7 +18,7 @@ import pytest
 from fastmcp import Client
 
 from omnifocus_operator.bridge.errors import BridgeProtocolError, BridgeTimeoutError
-from omnifocus_operator.repository.bridge_only import BridgeRepository
+from omnifocus_operator.repository.bridge_only import BridgeOnlyRepository
 from omnifocus_operator.server import create_server
 from omnifocus_operator.simulator.data import SIMULATOR_SNAPSHOT
 from tests.doubles import ConstantMtimeSource, SimulatorBridge
@@ -301,7 +301,7 @@ class TestMcpIntegration:
             # Build a repository with SimulatorBridge directly.
             # NEVER bypass PYTEST_CURRENT_TEST or use the real Bridge in tests (SAFE-01).
             bridge = SimulatorBridge(ipc_dir=tmp_path)
-            repo = BridgeRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
+            repo = BridgeOnlyRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
 
             monkeypatch.setattr(
                 "omnifocus_operator.repository.create_repository",

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from omnifocus_operator.repository import BridgeRepository, HybridRepository
+from omnifocus_operator.repository import BridgeOnlyRepository, HybridRepository
 from omnifocus_operator.repository.factory import create_repository
 from tests.doubles import SimulatorBridge
 
@@ -57,7 +57,7 @@ class TestCreateRepositoryHybridMode:
         _stub_real_bridge(monkeypatch, tmp_path)
 
         repo = create_repository()
-        assert isinstance(repo, BridgeRepository)
+        assert isinstance(repo, BridgeOnlyRepository)
 
     def test_omnifocus_sqlite_path_overrides_default(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
@@ -83,7 +83,7 @@ class TestCreateRepositoryBridgeMode:
         _stub_real_bridge(monkeypatch, tmp_path)
 
         repo = create_repository("bridge-only")
-        assert isinstance(repo, BridgeRepository)
+        assert isinstance(repo, BridgeOnlyRepository)
 
     def test_bridge_only_logs_degraded_warning(
         self,
