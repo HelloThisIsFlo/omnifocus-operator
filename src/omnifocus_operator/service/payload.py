@@ -43,8 +43,14 @@ class PayloadBuilder:
         self,
         command: AddTaskCommand,
         resolved_tag_ids: list[str] | None,
+        repetition_rule_payload: RepetitionRuleRepoPayload | None = None,
     ) -> AddTaskRepoPayload:
-        """Build add-task payload. Only includes populated fields."""
+        """Build add-task payload. Only includes populated fields.
+
+        When ``repetition_rule_payload`` is provided (pre-built from core
+        models by the pipeline), it is used directly. Otherwise falls back
+        to building from the command's spec fields.
+        """
         kwargs: dict[str, object] = {"name": command.name}
         if command.parent is not None:
             kwargs["parent"] = command.parent
@@ -61,7 +67,9 @@ class PayloadBuilder:
             kwargs["estimated_minutes"] = command.estimated_minutes
         if command.note is not None:
             kwargs["note"] = command.note
-        if command.repetition_rule is not None:
+        if repetition_rule_payload is not None:
+            kwargs["repetition_rule"] = repetition_rule_payload
+        elif command.repetition_rule is not None:
             kwargs["repetition_rule"] = self._build_repetition_rule_payload(
                 command.repetition_rule.frequency,
                 command.repetition_rule.schedule,
