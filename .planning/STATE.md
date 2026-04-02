@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Read Tools
 status: executing
-stopped_at: Completed 36.4-03-PLAN.md
-last_updated: "2026-04-02T14:57:37.889Z"
+stopped_at: Completed 260402-pj2 (convert specs to core models at service boundary)
+last_updated: "2026-04-02T17:56:57.372Z"
 last_activity: 2026-04-02
 progress:
   total_phases: 10
@@ -85,6 +85,9 @@ Recent decisions affecting current work:
 - [Phase 36.4]: EndByOccurrences.occurrences sole exception in type boundary enforcement -- agent-facing via EndCondition union
 - [Phase 36.4]: Private Literal aliases removed from models/ -- plain str with runtime validators replaces schema-level constraints
 - [Phase 36.4]: AST enforcement extended to detect module-level Literal/Annotated aliases used on class fields
+- [Phase 260402-pj2]: build_add gets optional repetition_rule_payload param for pre-converted payloads
+- [Phase 260402-pj2]: payload.py fallback path also uses convert functions for direct callers
+- [Phase 260402-pj2]: EndByDate/EndByOccurrences moved to runtime imports in builder.py for isinstance dispatch
 
 ### Roadmap Evolution
 
@@ -140,5 +143,5 @@ None yet.
 ## Session Continuity
 
 Last activity: 2026-04-02 - Clarified repetition schedule modes in concepts doc + descriptions.py (eec6241)
-Stopped at: Completed 36.3-02-PLAN.md
+Stopped at: Completed 260402-pj2 (convert specs to core models at service boundary)
 Resume file: None
