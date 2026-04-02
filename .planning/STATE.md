@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Read Tools
 status: executing
-stopped_at: Completed 36.4-02-PLAN.md
-last_updated: "2026-04-01T22:57:18.515Z"
+stopped_at: Completed 36.4-03-PLAN.md
+last_updated: "2026-04-02T00:15:03.586Z"
 last_activity: 2026-04-01
 progress:
   total_phases: 10
   completed_phases: 9
-  total_plans: 19
-  completed_plans: 19
+  total_plans: 20
+  completed_plans: 20
   percent: 20
 ---
 
@@ -83,6 +83,8 @@ Recent decisions affecting current work:
 - [Phase 36.4]: EndByOccurrences.occurrences gets Annotated[int, Field(ge=1)] despite models/ location -- it IS agent-facing
 - [Phase 36.4]: Patch[Annotated[int, Field(ge=1)]] propagates minimum: 1 through Pydantic -- no outer Annotated wrapper needed
 - [Phase 36.4]: EndByOccurrences.occurrences sole exception in type boundary enforcement -- agent-facing via EndCondition union
+- [Phase 36.4]: Private Literal aliases removed from models/ -- plain str with runtime validators replaces schema-level constraints
+- [Phase 36.4]: AST enforcement extended to detect module-level Literal/Annotated aliases used on class fields
 
 ### Roadmap Evolution
 
@@ -126,6 +128,7 @@ Carried forward:
 | Phase 36.3 P02 | 3min | 1 tasks | 1 files |
 | Phase 36.4 P01 | 5min | 2 tasks | 2 files |
 | Phase 36.4 P02 | 2min | 2 tasks | 2 files |
+| Phase 36.4 P03 | 2min | 2 tasks | 3 files |
 
 ### Blockers/Concerns
 
@@ -134,5 +137,5 @@ None yet.
 ## Session Continuity
 
 Last activity: 2026-04-01 - Completed quick task 260401-hz9: Replace opaque on: dict with OrdinalWeekday model
-Stopped at: Completed 36.4-02-PLAN.md
+Stopped at: Completed 36.4-03-PLAN.md
 Resume file: None
