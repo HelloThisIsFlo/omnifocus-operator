@@ -45,6 +45,7 @@ from omnifocus_operator.agent_messages.errors import (
     REPETITION_INVALID_DAY_CODE,
     REPETITION_INVALID_DAY_NAME,
     REPETITION_INVALID_END_OCCURRENCES,
+    REPETITION_INVALID_FREQUENCY_TYPE,
     REPETITION_INVALID_INTERVAL,
     REPETITION_INVALID_ON_DATE,
 )
@@ -65,6 +66,7 @@ _VALID_DAY_NAMES = {
     "weekday",
     "weekend_day",
 }
+_VALID_FREQUENCY_TYPES = {"minutely", "hourly", "daily", "weekly", "monthly", "yearly"}
 _ORDINAL_FIELDS = ("first", "second", "third", "fourth", "fifth", "last")
 
 
@@ -99,6 +101,13 @@ def normalize_day_name(value: str) -> str:
     if lower not in _VALID_DAY_NAMES:
         raise ValueError(REPETITION_INVALID_DAY_NAME.format(day=value))
     return lower
+
+
+def validate_frequency_type(v: str) -> str:
+    """Validate a frequency type string against the known set."""
+    if v not in _VALID_FREQUENCY_TYPES:
+        raise ValueError(REPETITION_INVALID_FREQUENCY_TYPE.format(freq_type=v))
+    return v
 
 
 def check_at_most_one_ordinal(model: Any) -> Any:
@@ -187,6 +196,11 @@ class Frequency(OmniFocusBaseModel):
     on: OrdinalWeekday | None = None
     on_dates: list[int] | None = None
 
+    @field_validator("type", mode="before")
+    @classmethod
+    def _validate_frequency_type(cls, v: str) -> str:
+        return validate_frequency_type(v)
+
     @model_validator(mode="after")
     def _check_cross_type_fields(self) -> Frequency:
         check_frequency_cross_type_fields(self.type, self.on_days, self.on, self.on_dates)
@@ -260,6 +274,7 @@ __all__ = [
     "check_frequency_cross_type_fields",
     "normalize_day_codes",
     "normalize_day_name",
+    "validate_frequency_type",
     "validate_interval",
     "validate_on_dates",
 ]
