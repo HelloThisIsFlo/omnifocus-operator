@@ -394,8 +394,8 @@ class TestSchemaValidation:
 class TestUnionRegressionGuard:
     """Union types must not degrade to {"type":"object","additionalProperties":true}."""
 
-    def test_frequency_is_flat_model_with_type_enum(self) -> None:
-        """Frequency schema must be a flat object with type enum."""
+    def test_frequency_is_flat_model_with_type_field(self) -> None:
+        """Frequency schema must be a flat object with type as plain string."""
         schema = TypeAdapter(Frequency).json_schema(mode="serialization")
 
         # Must be an object type with properties
@@ -404,14 +404,11 @@ class TestUnionRegressionGuard:
         )
         assert "properties" in schema, f"Frequency schema missing properties. Got: {schema}"
 
-        # type field must have enum constraint with exactly 6 values
+        # Frequency.type is plain str on core models -- no enum constraint.
+        # Enum validation happens at runtime via validators on contract models.
         type_prop = schema["properties"].get("type", {})
-        assert "enum" in type_prop, (
-            f"Frequency.type should have enum constraint (from Literal). Got: {type_prop}"
-        )
-        expected_types = ["minutely", "hourly", "daily", "weekly", "monthly", "yearly"]
-        assert sorted(type_prop["enum"]) == sorted(expected_types), (
-            f"Expected 6 frequency types {expected_types}, got: {type_prop['enum']}"
+        assert type_prop.get("type") == "string", (
+            f"Frequency.type should be string type. Got: {type_prop}"
         )
 
         # Optional specialization fields must be present
@@ -449,28 +446,15 @@ class TestUnionRegressionGuard:
             f"Expected 6 ordinal fields {expected_ordinals}, got: {set(ow_props.keys())}"
         )
 
-        # Each field must have DayName enum values
-        expected_days = [
-            "friday",
-            "monday",
-            "saturday",
-            "sunday",
-            "thursday",
-            "tuesday",
-            "wednesday",
-            "weekday",
-            "weekend_day",
-        ]
+        # Each field is str | None -- Pydantic emits anyOf with string and null branches
         for ordinal_name, prop in ow_props.items():
-            # Field is DayName | None, so look for anyOf with enum
             any_of = prop.get("anyOf", [])
-            enums_found = [branch.get("enum", []) for branch in any_of if "enum" in branch]
-            assert len(enums_found) > 0, (
-                f"OrdinalWeekday.{ordinal_name} missing DayName enum. Got: {prop}"
+            type_branches = [branch.get("type") for branch in any_of if "type" in branch]
+            assert "string" in type_branches, (
+                f"OrdinalWeekday.{ordinal_name} should have string type branch. Got: {prop}"
             )
-            assert sorted(enums_found[0]) == expected_days, (
-                f"OrdinalWeekday.{ordinal_name} enum mismatch. "
-                f"Expected {expected_days}, got: {sorted(enums_found[0])}"
+            assert "null" in type_branches, (
+                f"OrdinalWeekday.{ordinal_name} should have null type branch. Got: {prop}"
             )
 
         # additionalProperties: false is correct (extra="forbid" rejects unknown ordinals).

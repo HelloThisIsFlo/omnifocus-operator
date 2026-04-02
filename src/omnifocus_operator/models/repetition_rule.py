@@ -18,13 +18,13 @@ Enums:
 Type aliases (FrequencyType, DayCode, OnDate, DayName) live in
 contracts/shared/repetition_rule.py -- they carry Literal/Annotated
 constraints that belong on the agent-facing contract boundary, not on
-core models.
+core models. Core models use plain types with runtime validators.
 """
 
 from __future__ import annotations
 
 from datetime import date as date_type
-from typing import TYPE_CHECKING, Annotated, Any, Literal
+from typing import TYPE_CHECKING, Annotated, Any
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -50,18 +50,6 @@ from omnifocus_operator.agent_messages.errors import (
 )
 from omnifocus_operator.models.base import OmniFocusBaseModel
 from omnifocus_operator.models.enums import BasedOn, Schedule
-
-# -- Internal type aliases (private, NOT exported) ----------------------------
-# Agent-facing read models need Literal constraints for JSON Schema richness.
-# The canonical named aliases (FrequencyType, DayCode, OnDate, DayName) live in
-# contracts/shared/repetition_rule.py. These private aliases keep models/ schema-
-# correct without creating a reverse dependency.
-
-_FrequencyType = Literal["minutely", "hourly", "daily", "weekly", "monthly", "yearly"]
-_DayName = Literal[
-    "monday", "tuesday", "wednesday", "thursday", "friday",
-    "saturday", "sunday", "weekday", "weekend_day",
-]
 
 # -- Validation sets -----------------------------------------------------------
 
@@ -129,12 +117,12 @@ class OrdinalWeekday(OmniFocusBaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    first: _DayName | None = None
-    second: _DayName | None = None
-    third: _DayName | None = None
-    fourth: _DayName | None = None
-    fifth: _DayName | None = None
-    last: _DayName | None = None
+    first: str | None = None
+    second: str | None = None
+    third: str | None = None
+    fourth: str | None = None
+    fifth: str | None = None
+    last: str | None = None
 
     @field_validator("first", "second", "third", "fourth", "fifth", "last", mode="before")
     @classmethod
@@ -193,7 +181,7 @@ def check_frequency_cross_type_fields(
 class Frequency(OmniFocusBaseModel):
     __doc__ = FREQUENCY_DOC
 
-    type: _FrequencyType  # required, NO default -- survives exclude_defaults
+    type: str  # required, NO default -- survives exclude_defaults
     interval: int = Field(default=1)
     on_days: list[str] | None = Field(default=None, description=ON_DAYS)
     on: OrdinalWeekday | None = None
