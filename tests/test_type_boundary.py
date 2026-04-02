@@ -10,6 +10,21 @@ See docs/model-taxonomy.md "Type constraint boundary" for the convention.
 
 import ast
 import pathlib
+from typing import get_args
+
+import pytest
+
+from omnifocus_operator.contracts.shared.repetition_rule import (
+    DayCode,
+    DayName,
+    FrequencyType,
+)
+from omnifocus_operator.models.repetition_rule import (
+    _VALID_DAY_CODES,
+    _VALID_DAY_NAMES,
+    _VALID_FREQUENCY_TYPES,
+    Frequency,
+)
 
 _SRC_ROOT = pathlib.Path(__file__).resolve().parent.parent / "src" / "omnifocus_operator"
 _MODELS_DIR = _SRC_ROOT / "models"
@@ -148,3 +163,24 @@ class TestTypeBoundaryEnforcement:
             "See docs/model-taxonomy.md 'Type constraint boundary'.\n\n"
             "Violations:\n" + "\n".join(f"  - {v}" for v in violations)
         )
+
+
+class TestValidationSetSync:
+    """Verify Literal type aliases in contracts/ stay in sync with validation sets in models/.
+
+    If someone adds a value to a Literal alias without updating the corresponding
+    validation set (or vice versa), these tests fail.
+    """
+
+    def test_day_codes_in_sync(self) -> None:
+        assert set(get_args(DayCode)) == _VALID_DAY_CODES
+
+    def test_day_names_in_sync(self) -> None:
+        assert set(get_args(DayName)) == _VALID_DAY_NAMES
+
+    def test_frequency_types_in_sync(self) -> None:
+        assert set(get_args(FrequencyType)) == _VALID_FREQUENCY_TYPES
+
+    def test_frequency_rejects_invalid_type(self) -> None:
+        with pytest.raises(ValueError, match="Invalid frequency type"):
+            Frequency(type="bogus", interval=1)
