@@ -150,15 +150,19 @@ TAG_AVAILABILITY_DOC = "Availability status for tags."
 
 FOLDER_AVAILABILITY_DOC = "Availability status for folders."
 
+# Edge cases (INTERVAL≥2, early completion, time anchoring) differ between modes.
+# See docs/omnifocus-concepts.md "Schedule (Recurrence Mode)" for full details.
 SCHEDULE_DOC = (
-    "Repetition schedule type. "
-    "[WIP: day-of-week edge cases under review]\n\n"
-    "- regularly: fixed calendar dates; every missed "
-    "occurrence must be individually resolved\n"
+    "Repetition schedule type.\n\n"
+    "- regularly: fixed calendar dates; if late, "
+    "past occurrences must be completed one by one\n"
     "- regularly_with_catch_up: fixed calendar dates, "
-    "but skips overdue to next future date\n"
+    "but skips overdue to next future date "
+    "(recommended for most recurring tasks)\n"
     "- from_completion: next date calculated from when "
-    "you complete this occurrence"
+    "you complete this occurrence; use when the gap "
+    "between occurrences matters more than hitting "
+    "specific calendar days"
 )
 
 BASED_ON_DOC = (

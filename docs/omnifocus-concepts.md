@@ -82,40 +82,39 @@ When the next occurrence is generated:
 
 ### Schedule (Recurrence Mode)
 
-> **⚠️ WIP — Edge cases under review.** The descriptions below are accurate for simple intervals (e.g., "every 3 days"). The behavior when combined with specific day-of-week patterns (e.g., "every Wednesday and Friday") is not fully documented — in particular, how `from_completion` differs from `regularly_with_catch_up` in that scenario is unclear.
-
 The schedule controls what happens when a task is completed — specifically, how the next occurrence's date is calculated.
 
-#### `regularly`
+#### The mental model
 
-Fixed calendar schedule. The next occurrence lands on the next scheduled date regardless of when you complete the current one.
+Internally, OmniFocus has one core operation: **given a date, find the next occurrence after that date.** The three schedule modes differ only in which date they feed into this operation:
 
-**Key behavior:** If you fall behind, every missed occurrence stays and must be individually resolved. Nothing is skipped.
+| Mode | How the next date is calculated |
+|------|--------------------------------|
+| `regularly` | Next on the schedule after the assigned date — can land in the past |
+| `regularly_with_catch_up` | Next on the schedule that's still in the future |
+| `from_completion` | Next occurrence counting forward from when you complete |
 
-**Example:** Rent is due on the 1st of every month. You forget March and April. Both missed occurrences remain — you owe two months of rent, and OmniFocus reflects that.
+> **When completed on time**, all three modes produce the same result. The differences only matter when you're late (or early).
 
-**When to use:** When every occurrence matters and skipping one would be a real problem.
+#### How the modes converge and diverge
 
-#### `regularly_with_catch_up`
+The diagram below walks through three scenarios, each adding one variable. It shows when the modes produce different dates, when they converge, and what pulls them apart again.
 
-Fixed calendar schedule, but OmniFocus **catches up for you** — if you complete a task late, it skips past any overdue occurrences and jumps to the next future date.
+![When BYDAY makes modes converge — and the subtle ways they still differ](../.research/deep-dives/repetition-modes/repeat-modes.png)
 
-**Example:** A weekly review repeats every Monday. You complete it 3 weeks late. Instead of creating 3 overdue occurrences, OmniFocus skips ahead to next Monday.
+**The two ways `catch_up` and `from_completion` differ:**
 
-**When to use:** The most common mode for recurring tasks. Use when the rhythm matters but individual missed occurrences don't need to be tracked.
+| | Difference | Effect |
+|---|-----------|--------|
+| 1 | **Time anchoring** | `catch_up` keeps original time; `from_completion` shifts to completion time |
+| 2 | **Week grid** (`INTERVAL ≥ 2`) | `catch_up` preserves the grid; `from_completion` resets it |
 
-#### `from_completion`
+For simple weekly patterns (`INTERVAL=1`), the time difference is usually the only practical divergence. For longer intervals, the grid reset dominates.
 
-The next occurrence is calculated from **when you actually complete** the current one, not from the original scheduled date.
+> For the full details — RRULE internals, the two-step algorithm for BYDAY + from_completion, time rounding — see `.research/deep-dives/repetition-modes/deep-research.md`.
 
-**Example:** "Water the plants every 5 days." You complete it 2 days late. The next occurrence isn't in 3 days (to stay on the original 5-day grid) — it's in 5 days from now, because the interval restarts from the completion moment.
+#### Choosing a mode
 
-**When to use:** When the interval between occurrences is what matters, not hitting specific calendar dates. Common for habits, maintenance tasks, and anything where "every N days" means "N days after you last did it."
-
-### Summary
-
-| Schedule | Next date based on | Missed occurrences |
-|----------|-------------------|-------------------|
-| `regularly` | Fixed calendar | Stay — must be individually resolved |
-| `regularly_with_catch_up` | Fixed calendar | Skipped — jumps to next future date |
-| `from_completion` | Completion moment | N/A — no concept of "missed" |
+- Task must happen on **specific calendar days** regardless of completion history → **`regularly_with_catch_up`** (or `regularly` if every missed occurrence must be tracked)
+- The **minimum gap** between occurrences matters more than landing on a fixed day → **`from_completion`**
+- When unsure → **`regularly_with_catch_up`** is the safe default
