@@ -16,9 +16,9 @@ from omnifocus_operator.contracts.shared.repetition_rule import (
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskCommand
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskCommand
 from omnifocus_operator.models.enums import BasedOn, Schedule
-from omnifocus_operator.models.repetition_rule import (
-    EndByDate,
-    EndByOccurrences,
+from omnifocus_operator.contracts.shared.repetition_rule import (
+    EndByDateSpec,
+    EndByOccurrencesSpec,
 )
 from omnifocus_operator.service.payload import PayloadBuilder
 
@@ -316,7 +316,7 @@ class TestBuildAddRepetitionRule:
             frequency=FrequencyAddSpec(type="daily"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
-            end=EndByOccurrences(occurrences=10),
+            end=EndByOccurrencesSpec(occurrences=10),
         )
         command = AddTaskCommand(name="Counted", repetition_rule=spec)
         payload = builder.build_add(command, resolved_tag_ids=None)
@@ -331,7 +331,7 @@ class TestBuildAddRepetitionRule:
             frequency=FrequencyAddSpec(type="daily"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
-            end=EndByDate(date=date(2026, 12, 31)),
+            end=EndByDateSpec(date=date(2026, 12, 31)),
         )
         command = AddTaskCommand(name="Dated end", repetition_rule=spec)
         payload = builder.build_add(command, resolved_tag_ids=None)

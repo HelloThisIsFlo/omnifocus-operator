@@ -19,6 +19,7 @@ import pytest
 from pydantic import BaseModel, TypeAdapter
 
 from omnifocus_operator.contracts.shared.repetition_rule import (
+    EndByOccurrencesSpec,
     FrequencyAddSpec,
     FrequencyEditSpec,
 )
@@ -625,11 +626,11 @@ class TestContractSchemaConstraints:
             f"interval cannot be zero or negative. Got: {interval_prop}"
         )
 
-    def test_end_by_occurrences_occurrences_advertises_minimum_1(self) -> None:
-        """EndByOccurrences.occurrences must have minimum: 1 in JSON Schema."""
-        schema = EndByOccurrences.model_json_schema()
+    def test_end_by_occurrences_spec_advertises_minimum_1(self) -> None:
+        """EndByOccurrencesSpec.occurrences must have minimum: 1 in JSON Schema."""
+        schema = EndByOccurrencesSpec.model_json_schema()
         occurrences_prop = schema.get("properties", {}).get("occurrences", {})
         assert occurrences_prop.get("minimum") == 1, (
-            f"EndByOccurrences.occurrences must advertise minimum: 1 so agents know "
+            f"EndByOccurrencesSpec.occurrences must advertise minimum: 1 so agents know "
             f"a repetition cannot end after zero occurrences. Got: {occurrences_prop}"
         )

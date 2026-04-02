@@ -22,7 +22,10 @@ from omnifocus_operator.rrule.parser import parse_rrule
 if TYPE_CHECKING:
     from datetime import date as date_type
 
-    from omnifocus_operator.contracts.shared.repetition_rule import FrequencyAddSpec
+    from omnifocus_operator.contracts.shared.repetition_rule import (
+        EndConditionSpec,
+        FrequencyAddSpec,
+    )
 
 # ── Reverse Mapping Tables ───────────────────────────────────────────────
 
@@ -65,7 +68,7 @@ _TYPE_TO_FREQ: dict[str, str] = {
 
 def build_rrule(
     frequency: Frequency | FrequencyAddSpec,
-    end: EndByDate | EndByOccurrences | None = None,
+    end: EndByDate | EndByOccurrences | EndConditionSpec | None = None,
 ) -> str:
     """Build an RRULE string from a flat Frequency model and optional end condition.
 
@@ -100,10 +103,10 @@ def build_rrule(
     elif frequency.type == "monthly" and frequency.on_dates:
         parts.append(f"BYMONTHDAY={','.join(str(d) for d in frequency.on_dates)}")
 
-    # End condition
-    if isinstance(end, EndByOccurrences):
+    # End condition -- duck-typed to accept both core models and contract specs
+    if end is not None and hasattr(end, "occurrences"):
         parts.append(f"COUNT={end.occurrences}")
-    elif isinstance(end, EndByDate):
+    elif end is not None and hasattr(end, "date"):
         parts.append(f"UNTIL={_convert_date_to_until(end.date)}")
 
     result = ";".join(parts)

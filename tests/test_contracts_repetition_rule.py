@@ -30,9 +30,9 @@ from omnifocus_operator.contracts.use_cases.edit.tasks import (
     EditTaskRepoPayload,
 )
 from omnifocus_operator.models.enums import BasedOn, Schedule
-from omnifocus_operator.models.repetition_rule import (
-    EndByDate,
-    EndByOccurrences,
+from omnifocus_operator.contracts.shared.repetition_rule import (
+    EndByDateSpec,
+    EndByOccurrencesSpec,
 )
 
 
@@ -76,9 +76,9 @@ class TestRepetitionRuleAddSpec:
             frequency=FrequencyAddSpec(type="daily"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
-            end=EndByDate(date=date(2026, 12, 31)),
+            end=EndByDateSpec(date=date(2026, 12, 31)),
         )
-        assert isinstance(spec.end, EndByDate)
+        assert isinstance(spec.end, EndByDateSpec)
         assert spec.end.date == date(2026, 12, 31)
 
     def test_end_none_is_valid(self) -> None:
@@ -279,8 +279,8 @@ class TestRepetitionRuleEditSpec:
         assert spec.end is None
 
     def test_end_set(self) -> None:
-        spec = RepetitionRuleEditSpec(end=EndByOccurrences(occurrences=10))
-        assert isinstance(spec.end, EndByOccurrences)
+        spec = RepetitionRuleEditSpec(end=EndByOccurrencesSpec(occurrences=10))
+        assert isinstance(spec.end, EndByOccurrencesSpec)
         assert spec.end.occurrences == 10
 
 

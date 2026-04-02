@@ -22,7 +22,10 @@ from omnifocus_operator.rrule.builder import build_rrule
 from omnifocus_operator.rrule.schedule import based_on_to_bridge, schedule_to_bridge
 
 if TYPE_CHECKING:
-    from omnifocus_operator.contracts.shared.repetition_rule import FrequencyAddSpec
+    from omnifocus_operator.contracts.shared.repetition_rule import (
+        EndConditionSpec,
+        FrequencyAddSpec,
+    )
     from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskCommand
     from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskCommand
     from omnifocus_operator.models.enums import BasedOn, Schedule
@@ -117,7 +120,7 @@ class PayloadBuilder:
         frequency: Frequency | FrequencyAddSpec,
         schedule: Schedule,
         based_on: BasedOn,
-        end: EndCondition | None,
+        end: EndCondition | EndConditionSpec | None,
     ) -> RepetitionRuleRepoPayload:
         """Convert structured repetition rule fields to bridge-ready payload."""
         rule_string = build_rrule(frequency, end)

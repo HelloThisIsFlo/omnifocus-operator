@@ -17,12 +17,8 @@ _SKIP_FILES = {"__init__.py", "base.py", "_validators.py"}
 
 # Known exceptions: agent-facing core models where Annotated provides schema
 # benefit and no internal construction site is affected.
-_EXCEPTIONS: set[tuple[str, str]] = {
-    # (class_name, field_name) -- add entries here with a comment explaining why
-    # EndByOccurrences is agent-facing via EndCondition union on contract fields.
-    # Annotated[int, Field(ge=1)] emits minimum: 1 in schema -- valuable for agents.
-    ("EndByOccurrences", "occurrences"),
-}
+_EXCEPTIONS: set[tuple[str, str]] = set()
+# (class_name, field_name) -- add entries here with a comment explaining why.
 
 
 def _resolve_module_literal_aliases(tree: ast.Module) -> set[str]:
