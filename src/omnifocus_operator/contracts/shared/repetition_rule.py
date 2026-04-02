@@ -30,6 +30,7 @@ from omnifocus_operator.contracts.base import (
     CommandModel,
     Patch,
     PatchOrClear,
+    is_set,
 )
 from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
@@ -191,6 +192,18 @@ class FrequencyEditSpec(CommandModel):
     @classmethod
     def _validate_on_dates(cls, value: list[int] | None) -> list[int] | None:
         return validate_on_dates(value)
+
+    @model_validator(mode="after")
+    def _check_cross_type_fields(self) -> FrequencyEditSpec:
+        if not is_set(self.type):
+            return self
+        check_frequency_cross_type_fields(
+            self.type,
+            self.on_days if is_set(self.on_days) else None,
+            self.on if is_set(self.on) else None,  # type: ignore[arg-type]
+            self.on_dates if is_set(self.on_dates) else None,
+        )
+        return self
 
 
 class RepetitionRuleAddSpec(CommandModel):
