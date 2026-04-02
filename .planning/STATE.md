@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Read Tools
 status: executing
-stopped_at: Completed 36.4-04-PLAN.md
-last_updated: "2026-04-02T13:06:58.697Z"
+stopped_at: Completed 36.4-03-PLAN.md
+last_updated: "2026-04-02T13:12:31.023Z"
 last_activity: 2026-04-02
 progress:
   total_phases: 10
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-29)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 36.2 — sweep-agent-facing-schema-descriptions-and-tool-documentation
+**Current focus:** Phase 36.4 — reserve-literal-and-annotated-types-for-contract-models-only
 
 ## Current Position
 
 Phase: 37
 Plan: Not started
-Status: Ready to execute
+Status: Executing Phase 36.4
 Last activity: 2026-04-02
 
 Progress: [██░░░░░░░░] 20%
@@ -85,7 +85,6 @@ Recent decisions affecting current work:
 - [Phase 36.4]: EndByOccurrences.occurrences sole exception in type boundary enforcement -- agent-facing via EndCondition union
 - [Phase 36.4]: Private Literal aliases removed from models/ -- plain str with runtime validators replaces schema-level constraints
 - [Phase 36.4]: AST enforcement extended to detect module-level Literal/Annotated aliases used on class fields
-- [Phase 36.4]: Duck-typed end condition dispatch in build_rrule (hasattr instead of isinstance) to accept both core and spec models
 
 ### Roadmap Evolution
 
@@ -130,7 +129,6 @@ Carried forward:
 | Phase 36.4 P01 | 5min | 2 tasks | 2 files |
 | Phase 36.4 P02 | 2min | 2 tasks | 2 files |
 | Phase 36.4 P03 | 2min | 2 tasks | 3 files |
-| Phase 36.4 P04 | 7min | 2 tasks | 11 files |
 
 ### Blockers/Concerns
 
@@ -139,5 +137,5 @@ None yet.
 ## Session Continuity
 
 Last activity: 2026-04-01 - Completed quick task 260401-hz9: Replace opaque on: dict with OrdinalWeekday model
-Stopped at: Completed 36.4-04-PLAN.md
+Stopped at: Completed 36.4-03-PLAN.md
 Resume file: None
