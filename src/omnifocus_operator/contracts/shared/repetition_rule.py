@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Any, get_args
+from datetime import date as date_type
+from typing import Annotated, Any, Literal, get_args
 
 from pydantic import Field, field_validator, model_validator
 
 from omnifocus_operator.agent_messages.descriptions import (
+    END_BY_DATE_DATE,
+    END_BY_DATE_DOC,
+    END_BY_OCCURRENCES_DOC,
     FREQUENCY_ADD_SPEC_DOC,
     FREQUENCY_EDIT_SPEC_DOC,
     ON_DATE,
@@ -29,11 +33,6 @@ from omnifocus_operator.contracts.base import (
 )
 from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
-    DayCode,
-    DayName,
-    EndCondition,
-    FrequencyType,
-    OnDate,
     check_at_most_one_ordinal,
     check_frequency_cross_type_fields,
     normalize_day_codes,
@@ -41,6 +40,48 @@ from omnifocus_operator.models.repetition_rule import (
     validate_interval,
     validate_on_dates,
 )
+
+# -- Type aliases for agent-facing contracts ----------------------------------
+# These carry Literal/Annotated constraints that enrich JSON Schema for agents.
+# Core models in models/ use plain types (str, int) instead.
+
+FrequencyType = Literal["minutely", "hourly", "daily", "weekly", "monthly", "yearly"]
+DayCode = Literal["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
+OnDate = Annotated[int, Field(ge=-1, le=31, description=ON_DATE)]
+DayName = Literal[
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+    "weekday",
+    "weekend_day",
+]
+
+
+# -- End Condition Spec Models (contract-side) --------------------------------
+
+
+class EndByDateSpec(CommandModel):
+    __doc__ = END_BY_DATE_DOC
+    date: date_type = Field(description=END_BY_DATE_DATE)
+
+
+class EndByOccurrencesSpec(CommandModel):
+    __doc__ = END_BY_OCCURRENCES_DOC
+    occurrences: Annotated[int, Field(ge=1)]
+
+    @field_validator("occurrences", mode="before")
+    @classmethod
+    def _validate_occurrences(cls, v: int) -> int:
+        if isinstance(v, int) and v < 1:
+            raise ValueError(REPETITION_INVALID_END_OCCURRENCES.format(value=v))
+        return v
+
+
+EndConditionSpec = EndByDateSpec | EndByOccurrencesSpec
 
 
 def _validate_frequency_type(v: object) -> object:
@@ -91,7 +132,7 @@ class FrequencyAddSpec(CommandModel):
     __doc__ = FREQUENCY_ADD_SPEC_DOC
 
     type: FrequencyType
-    interval: int = Field(default=1)
+    interval: Annotated[int, Field(ge=1, default=1)]
     on_days: list[DayCode] | None = Field(default=None, description=ON_DAYS)
     on: OrdinalWeekdaySpec | None = Field(default=None, description=ON_WEEKDAY_PATTERN)
     on_dates: list[OnDate] | None = Field(default=None, description=ON_DATE)
@@ -126,7 +167,7 @@ class FrequencyEditSpec(CommandModel):
     __doc__ = FREQUENCY_EDIT_SPEC_DOC
 
     type: Patch[FrequencyType] = UNSET
-    interval: Patch[int] = UNSET
+    interval: Patch[Annotated[int, Field(ge=1)]] = UNSET
     on_days: PatchOrClear[list[DayCode]] = Field(default=UNSET, description=ON_DAYS)
     on: PatchOrClear[OrdinalWeekdaySpec] = Field(default=UNSET, description=ON_WEEKDAY_PATTERN)
     on_dates: PatchOrClear[list[OnDate]] = Field(default=UNSET, description=ON_DATE)
@@ -158,7 +199,7 @@ class RepetitionRuleAddSpec(CommandModel):
     frequency: FrequencyAddSpec
     schedule: Schedule
     based_on: BasedOn
-    end: EndCondition | None = None
+    end: EndConditionSpec | None = None
 
     @field_validator("end", mode="before")
     @classmethod
@@ -172,7 +213,7 @@ class RepetitionRuleEditSpec(CommandModel):
     frequency: Patch[FrequencyEditSpec] = UNSET
     schedule: Patch[Schedule] = UNSET
     based_on: Patch[BasedOn] = UNSET
-    end: PatchOrClear[EndCondition] = UNSET
+    end: PatchOrClear[EndConditionSpec] = UNSET
 
     @field_validator("end", mode="before")
     @classmethod
@@ -195,6 +236,9 @@ class RepetitionRuleRepoPayload(CommandModel):
 
 
 __all__ = [
+    "EndByDateSpec",
+    "EndByOccurrencesSpec",
+    "EndConditionSpec",
     "FrequencyAddSpec",
     "FrequencyEditSpec",
     "OrdinalWeekdaySpec",

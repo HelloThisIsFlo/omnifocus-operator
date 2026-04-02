@@ -22,7 +22,7 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 ## Current State
 
 **Shipped:** v1.2.3 (2026-03-29) — Repetition Rule Write Support
-**Next:** v1.3 Read Tools — Phase 36.1 complete (write tools migrated to typed params with validation middleware)
+**Next:** v1.3 Read Tools — Phase 36.4 complete (Literal/Annotated types reserved for contract models, EndConditionSpec created, zero enforcement exceptions)
 
 ## Requirements
 
@@ -198,4 +198,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-01 after Phase 36.3 complete — Field descriptions centralized into constants with enforcement tests*
+*Last updated: 2026-04-02 after Phase 36.4 complete — EndConditionSpec gap closure done, zero enforcement exceptions, 1425 tests passing*

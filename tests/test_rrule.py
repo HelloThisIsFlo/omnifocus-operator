@@ -173,7 +173,7 @@ class TestRepetitionRuleFieldSerializer:
 
 
 class TestEndByOccurrencesValidation:
-    """Field(ge=1) on EndByOccurrences.occurrences."""
+    """Runtime validator on EndByOccurrences.occurrences rejects values < 1."""
 
     def test_zero_raises(self):
         with pytest.raises(ValidationError, match="End occurrences must be >= 1"):

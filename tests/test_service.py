@@ -30,9 +30,11 @@ from omnifocus_operator.contracts.use_cases.edit.tasks import (
     EditTaskCommand,
 )
 from omnifocus_operator.models.enums import BasedOn, Schedule
+from omnifocus_operator.contracts.shared.repetition_rule import (
+    EndByDateSpec,
+    EndByOccurrencesSpec,
+)
 from omnifocus_operator.models.repetition_rule import (
-    EndByDate,
-    EndByOccurrences,
     OrdinalWeekday,
 )
 from omnifocus_operator.service import ErrorOperatorService, OperatorService
@@ -451,7 +453,7 @@ class TestAddTaskRepetitionRule:
             frequency=FrequencyAddSpec(type="daily"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
-            end=EndByDate(date=date(2026, 12, 31)),
+            end=EndByDateSpec(date=date(2026, 12, 31)),
         )
         result = await service.add_task(AddTaskCommand(name="Until date", repetition_rule=spec))
         task = await repo.get_task(result.id)
@@ -467,7 +469,7 @@ class TestAddTaskRepetitionRule:
             frequency=FrequencyAddSpec(type="daily"),
             schedule=Schedule.REGULARLY,
             based_on=BasedOn.DUE_DATE,
-            end=EndByOccurrences(occurrences=10),
+            end=EndByOccurrencesSpec(occurrences=10),
         )
         result = await service.add_task(AddTaskCommand(name="10 times", repetition_rule=spec))
         task = await repo.get_task(result.id)
@@ -1773,7 +1775,7 @@ class TestEditTaskRepetitionRule:
         self, service: OperatorService, repo: BridgeRepository
     ) -> None:
         """EDIT-06: Only end set -> adds end condition."""
-        spec = RepetitionRuleEditSpec(end=EndByOccurrences(occurrences=10))
+        spec = RepetitionRuleEditSpec(end=EndByOccurrencesSpec(occurrences=10))
         result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
         assert result.success is True
 
@@ -1827,7 +1829,7 @@ class TestEditTaskRepetitionRule:
         self, service: OperatorService, repo: BridgeRepository
     ) -> None:
         """EDIT-08: End changed from date to occurrences."""
-        spec = RepetitionRuleEditSpec(end=EndByOccurrences(occurrences=20))
+        spec = RepetitionRuleEditSpec(end=EndByOccurrencesSpec(occurrences=20))
         result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
         assert result.success is True
 

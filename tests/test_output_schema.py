@@ -18,11 +18,17 @@ import pydantic_core
 import pytest
 from pydantic import BaseModel, TypeAdapter
 
+from omnifocus_operator.contracts.shared.repetition_rule import (
+    EndByOccurrencesSpec,
+    FrequencyAddSpec,
+    FrequencyEditSpec,
+)
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskResult
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
 from omnifocus_operator.models import AllEntities, Project, Tag, Task
 from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
+    EndByOccurrences,
     EndCondition,
     Frequency,
     RepetitionRule,
@@ -394,8 +400,8 @@ class TestSchemaValidation:
 class TestUnionRegressionGuard:
     """Union types must not degrade to {"type":"object","additionalProperties":true}."""
 
-    def test_frequency_is_flat_model_with_type_enum(self) -> None:
-        """Frequency schema must be a flat object with type enum."""
+    def test_frequency_is_flat_model_with_type_field(self) -> None:
+        """Frequency schema must be a flat object with type as plain string."""
         schema = TypeAdapter(Frequency).json_schema(mode="serialization")
 
         # Must be an object type with properties
@@ -404,14 +410,11 @@ class TestUnionRegressionGuard:
         )
         assert "properties" in schema, f"Frequency schema missing properties. Got: {schema}"
 
-        # type field must have enum constraint with exactly 6 values
+        # Frequency.type is plain str on core models -- no enum constraint.
+        # Enum validation happens at runtime via validators on contract models.
         type_prop = schema["properties"].get("type", {})
-        assert "enum" in type_prop, (
-            f"Frequency.type should have enum constraint (from Literal). Got: {type_prop}"
-        )
-        expected_types = ["minutely", "hourly", "daily", "weekly", "monthly", "yearly"]
-        assert sorted(type_prop["enum"]) == sorted(expected_types), (
-            f"Expected 6 frequency types {expected_types}, got: {type_prop['enum']}"
+        assert type_prop.get("type") == "string", (
+            f"Frequency.type should be string type. Got: {type_prop}"
         )
 
         # Optional specialization fields must be present
@@ -449,28 +452,15 @@ class TestUnionRegressionGuard:
             f"Expected 6 ordinal fields {expected_ordinals}, got: {set(ow_props.keys())}"
         )
 
-        # Each field must have DayName enum values
-        expected_days = [
-            "friday",
-            "monday",
-            "saturday",
-            "sunday",
-            "thursday",
-            "tuesday",
-            "wednesday",
-            "weekday",
-            "weekend_day",
-        ]
+        # Each field is str | None -- Pydantic emits anyOf with string and null branches
         for ordinal_name, prop in ow_props.items():
-            # Field is DayName | None, so look for anyOf with enum
             any_of = prop.get("anyOf", [])
-            enums_found = [branch.get("enum", []) for branch in any_of if "enum" in branch]
-            assert len(enums_found) > 0, (
-                f"OrdinalWeekday.{ordinal_name} missing DayName enum. Got: {prop}"
+            type_branches = [branch.get("type") for branch in any_of if "type" in branch]
+            assert "string" in type_branches, (
+                f"OrdinalWeekday.{ordinal_name} should have string type branch. Got: {prop}"
             )
-            assert sorted(enums_found[0]) == expected_days, (
-                f"OrdinalWeekday.{ordinal_name} enum mismatch. "
-                f"Expected {expected_days}, got: {sorted(enums_found[0])}"
+            assert "null" in type_branches, (
+                f"OrdinalWeekday.{ordinal_name} should have null type branch. Got: {prop}"
             )
 
         # additionalProperties: false is correct (extra="forbid" rejects unknown ordinals).
@@ -603,4 +593,44 @@ class TestNamingConvention:
             f"contracts/ classes missing recognized suffix "
             f"(see docs/model-taxonomy.md). "
             f"Expected one of: {CONTRACT_SUFFIXES}. Violations: {violations}"
+        )
+
+
+class TestContractSchemaConstraints:
+    """Contract model fields must advertise minimum/maximum constraints in JSON Schema.
+
+    Annotated[int, Field(ge=1)] emits minimum: 1 in JSON Schema, giving agents
+    schema-level guidance without relying on runtime validators alone. These tests
+    guard against regressions where the Annotated wrapper is removed.
+    """
+
+    def test_frequency_add_spec_interval_advertises_minimum_1(self) -> None:
+        """FrequencyAddSpec.interval must have minimum: 1 in JSON Schema."""
+        schema = FrequencyAddSpec.model_json_schema()
+        interval_prop = schema.get("properties", {}).get("interval", {})
+        assert interval_prop.get("minimum") == 1, (
+            f"FrequencyAddSpec.interval must advertise minimum: 1 so agents know "
+            f"interval cannot be zero or negative. Got: {interval_prop}"
+        )
+
+    def test_frequency_edit_spec_interval_advertises_minimum_1(self) -> None:
+        """FrequencyEditSpec.interval must have minimum: 1 in JSON Schema.
+
+        The field type is Patch[Annotated[int, Field(ge=1)]], and Pydantic must
+        propagate the ge=1 constraint into the serialized schema.
+        """
+        schema = FrequencyEditSpec.model_json_schema()
+        interval_prop = schema.get("properties", {}).get("interval", {})
+        assert interval_prop.get("minimum") == 1, (
+            f"FrequencyEditSpec.interval must advertise minimum: 1 so agents know "
+            f"interval cannot be zero or negative. Got: {interval_prop}"
+        )
+
+    def test_end_by_occurrences_spec_advertises_minimum_1(self) -> None:
+        """EndByOccurrencesSpec.occurrences must have minimum: 1 in JSON Schema."""
+        schema = EndByOccurrencesSpec.model_json_schema()
+        occurrences_prop = schema.get("properties", {}).get("occurrences", {})
+        assert occurrences_prop.get("minimum") == 1, (
+            f"EndByOccurrencesSpec.occurrences must advertise minimum: 1 so agents know "
+            f"a repetition cannot end after zero occurrences. Got: {occurrences_prop}"
         )

@@ -4,7 +4,10 @@ CQRS/DDD-inspired naming taxonomy for all Pydantic models in OmniFocus Operator.
 
 ## Foundational split
 
-`models/` = what OmniFocus IS (domain entities, `OmniFocusBaseModel`). `contracts/` = what you can DO (operations, boundaries, `CommandModel` with `extra="forbid"`). Never embed a `models/` class directly in a `contracts/` command — the base class difference (`extra="forbid"`) means write-side models always need their own class, even with identical fields.
+> [!important] Foundational split
+> - **`models/`** = what OmniFocus **IS** (domain entities, `OmniFocusBaseModel`)
+> - **`contracts/`** = what you can **DO** (operations, boundaries, `CommandModel` with `extra="forbid"`)
+> - **Never** embed a `models/` class directly in a `contracts/` command — the base class difference (`extra="forbid"`) means write-side models always need their own class, even with identical fields
 
 ## Base class hierarchy
 
@@ -89,7 +92,8 @@ All write-side models live in `contracts/`. Inbound models (commands, payloads, 
 | `<noun>Action` | Stateful mutation in the actions block | Nested operation that mutates relative to current state | `TagAction`, `MoveAction` |
 | `<noun>Spec` | Write-side value object (desired state) | Nested setter with different shape from its read counterpart | `RepetitionRuleAddSpec`, `RepetitionRuleEditSpec` |
 
-A nested write input always needs its own `<noun>Spec` — even when its fields are identical to the core model. `CommandModel` enforces `extra="forbid"` at every nesting level; embedding a core model (`OmniFocusBaseModel`) in a command would leave a gap where unknown fields are silently accepted on the nested object.
+> [!important] Why nested specs can't reuse core models
+> A nested write input always needs its own `<noun>Spec` — even when its fields are identical to the core model. `CommandModel` enforces `extra="forbid"` at every nesting level; embedding a core model (`OmniFocusBaseModel`) in a command would leave a gap where unknown fields are silently accepted on the nested object.
 
 Value objects are agent-boundary concepts. A `<noun>Spec` travels on the `Command`, not on the `RepoPayload` — the pipeline resolves the Spec into the core model (or flat fields) before the repo boundary. Similarly, a `<noun>Filter` travels on the `Query`, not on the `RepoQuery`. Nested value objects never need their own repo-boundary models.
 
@@ -146,7 +150,8 @@ The core model serves directly as read output by default. When the output bounda
 | Core model (no suffix) | Default read output — used when shape matches | `Task`, `Project`, `Tag` |
 | `<noun>Read` | Output-boundary variant, derivable from core | `FrequencyRead` (hypothetical — not yet needed) |
 
-**Why "suppressed defaults" can't stay on the core model:** FastMCP serializes tool output via `pydantic_core.to_jsonable_python`, which has no `exclude_defaults` parameter. You don't control the serialization call. A `@field_serializer` on the parent can work as a workaround (see `RepetitionRule.frequency`), but when the concept is used in multiple places or the suppression is intrinsic to the read representation, a `<noun>Read` with the behavior built in is the principled path.
+> [!note] Why "suppressed defaults" can't stay on the core model
+> FastMCP serializes tool output via `pydantic_core.to_jsonable_python`, which has no `exclude_defaults` parameter. You don't control the serialization call. A `@field_serializer` on the parent can work as a workaround (see `RepetitionRule.frequency`), but when the concept is used in multiple places or the suppression is intrinsic to the read representation, a `<noun>Read` with the behavior built in is the principled path.
 
 ## Naming rules
 
@@ -179,6 +184,33 @@ The `__doc__ = CONSTANT` pattern is a convention signal: it tells you "this docs
 **When adding a new model to `models/` or `contracts/`**: check if it will appear in an MCP tool's input or output schema. If yes, define its docstring and field descriptions as constants in `descriptions.py` and use the `__doc__ = CONSTANT` / `Field(description=CONSTANT)` patterns. An enforcement test scans these directories and will fail if inline descriptions are found on agent-facing classes.
 
 **What's agent-facing?** Models referenced as field types in tool schemas get `$defs` entries — those are agent-visible. Base classes in an inheritance chain (e.g., `OmniFocusEntity`, `ActionableEntity`) do NOT get `$defs` entries; Pydantic flattens their fields into the leaf class.
+
+## Type constraint boundary
+
+`Literal` and `Annotated` constraint types live on **contract model fields** (`contracts/`), not on core model fields (`models/`). Core models use plain Python types (`str`, `int`, `list[str]`) with runtime validators enforcing correctness.
+
+**Why:**
+- **Contract models** define the agent's input schema, where self-documenting constraints (`enum`, `minimum`) guide agents toward valid input.
+- **Core models** are used internally by parsers and builders that construct instances from dynamic data — `str.split(",")` returns `list[str]`, not `list[Literal["MO", ...]]`. Putting constraint types on these fields forces `cast()` or `type: ignore` at every construction site.
+
+**Convention:**
+
+| Layer | Field type | Schema effect | Validation |
+|-------|-----------|---------------|------------|
+| `contracts/` | `Literal["a", "b"]` | `enum: ["a", "b"]` | Type system + runtime |
+| `contracts/` | `Annotated[int, Field(ge=1)]` | `minimum: 1` | Type system + runtime |
+| `models/` | `str` | `type: string` | Runtime validator only |
+| `models/` | `int` | `type: integer` | Runtime validator only |
+
+**Type alias definitions** (e.g., `FrequencyType`, `DayCode`, `DayName`, `OnDate`) live in `contracts/` where they're consumed. Core models import shared validation functions, not type aliases.
+
+> [!note] What about output schema?
+> - _**Yes**_, Core models _**do**_ appear in agent output (unless a dedicated `Read` model exists), so their fields _**do**_ land in `outputSchema`.
+> - _**However**_, current MCP clients (Claude Code, Claude Desktop) don't expose output schema to agents
+> - _**Therefore**_, maintaining constraint annotations on core models for output schema documentation isn't worth the type-system complexity.
+
+
+An AST enforcement test scans `models/` for `Literal` and `Annotated` field annotations and fails on any violation.
 
 ## Decision tree for naming a new model
 

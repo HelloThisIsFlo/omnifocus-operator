@@ -79,6 +79,16 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 - [ ] **DESC-07**: All `@mcp.tool()` function docstrings in `server.py` use constants from `descriptions.py` — no inline tool description strings. Enforcement test catches new tools with inline docstrings.
 - [ ] **DESC-08**: All tool descriptions are at most 2048 bytes — Claude Code truncates at 2KB. Enforcement test checks each tool description constant's UTF-8 byte length and fails with the exact byte count if exceeded.
 
+### Type Constraint Boundary
+
+- [x] **TYPE-01**: `FrequencyType`, `DayCode`, `OnDate`, `DayName` type aliases defined in `contracts/shared/repetition_rule.py`, not in `models/repetition_rule.py`
+- [x] **TYPE-02**: Core model `Frequency.type` uses plain `str`, not `FrequencyType` Literal
+- [x] **TYPE-03**: Core model `OrdinalWeekday` fields (`first` through `last`) use `str | None`, not `DayName | None`
+- [x] **TYPE-04**: `_VALID_DAY_NAMES` in `models/repetition_rule.py` is a plain set literal, not derived from `DayName.__args__`
+- [x] **TYPE-05**: Contract fields `FrequencyAddSpec.interval` and `EndByOccurrences.occurrences` advertise `minimum: 1` in JSON Schema via `Annotated[int, Field(ge=1)]`
+- [x] **TYPE-06**: `docs/model-taxonomy.md` documents the Literal/Annotated convention: constraint types on contract models, plain types on core models
+- [x] **TYPE-07**: AST enforcement test scans `models/` for `Literal` and `Annotated` field annotations in class bodies and fails if found (with exception list for known acceptable cases)
+
 ### List Tool Documentation
 
 - [ ] **DOC-10**: List tool docstrings contain behavioral guidance only — filter interaction rules (AND logic, defaults, mutual exclusivity), response shape, pagination behavior — no field-by-field listings redundant with inputSchema
@@ -224,6 +234,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DESC-06 | Phase 36.3 | Complete |
 | DESC-07 | Phase 36.3 | Pending |
 | DESC-08 | Phase 36.3 | Pending |
+| TYPE-01 | Phase 36.4 | Complete |
+| TYPE-02 | Phase 36.4 | Complete |
+| TYPE-03 | Phase 36.4 | Complete |
+| TYPE-04 | Phase 36.4 | Complete |
+| TYPE-05 | Phase 36.4 | Complete |
+| TYPE-06 | Phase 36.4 | Complete |
+| TYPE-07 | Phase 36.4 | Complete |
 | DOC-10 | Phase 37 | Pending |
 | DOC-11 | Phase 37 | Pending |
 | DOC-12 | Phase 37 | Pending |
@@ -231,10 +248,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DOC-14 | Phase 37 | Pending |
 
 **Coverage:**
-- v1.3 requirements: 73 total (PROJ-03 merged into PROJ-02, TASK-05 deferred, +4 SRCH, +11 WRIT, +3 RTOOL, +13 DOC, +1 DOC-14, +8 DESC)
-- Mapped to phases: 71
+- v1.3 requirements: 80 total (PROJ-03 merged into PROJ-02, TASK-05 deferred, +4 SRCH, +11 WRIT, +3 RTOOL, +13 DOC, +1 DOC-14, +8 DESC, +7 TYPE)
+- Mapped to phases: 78
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-29*
-*Last updated: 2026-04-01 added DESC-01..07 for Phase 36.3, DOC-14 for Phase 37*
+*Last updated: 2026-04-01 added TYPE-01..07 for Phase 36.4*

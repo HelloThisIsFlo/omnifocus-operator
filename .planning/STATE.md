@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Read Tools
 status: executing
-stopped_at: Completed 36.3-02-PLAN.md
-last_updated: "2026-04-01T17:56:19.696Z"
-last_activity: 2026-04-01
+stopped_at: Completed 36.4-03-PLAN.md
+last_updated: "2026-04-02T14:57:37.889Z"
+last_activity: 2026-04-02
 progress:
-  total_phases: 9
-  completed_phases: 8
-  total_plans: 17
-  completed_plans: 17
+  total_phases: 10
+  completed_phases: 9
+  total_plans: 21
+  completed_plans: 21
   percent: 20
 ---
 
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-03-29)
 
 Phase: 37
 Plan: Not started
-Status: Ready to execute
-Last activity: 2026-04-01
+Status: Executing Phase 36.4
+Last activity: 2026-04-02
 
 Progress: [██░░░░░░░░] 20%
 
@@ -79,6 +79,12 @@ Recent decisions affecting current work:
 - [Phase quick-260401-hz9]: OrdinalWeekday core model uses extra='forbid' -- value objects where field names define valid vocabulary
 - [Phase 36.3]: D-05 docstring cleanup applied during centralization: 7 class docstrings trimmed of implementation details
 - [Phase 36.3]: 21 internal classes in exception list covering base classes, protocols, repo-boundary models, and sentinels
+- [Phase 36.4]: Private _FrequencyType/_DayName aliases in models/ for output schema correctness -- read models are agent-facing
+- [Phase 36.4]: EndByOccurrences.occurrences gets Annotated[int, Field(ge=1)] despite models/ location -- it IS agent-facing
+- [Phase 36.4]: Patch[Annotated[int, Field(ge=1)]] propagates minimum: 1 through Pydantic -- no outer Annotated wrapper needed
+- [Phase 36.4]: EndByOccurrences.occurrences sole exception in type boundary enforcement -- agent-facing via EndCondition union
+- [Phase 36.4]: Private Literal aliases removed from models/ -- plain str with runtime validators replaces schema-level constraints
+- [Phase 36.4]: AST enforcement extended to detect module-level Literal/Annotated aliases used on class fields
 
 ### Roadmap Evolution
 
@@ -108,6 +114,7 @@ Carried forward:
 12. Centralize field descriptions into constants like warnings and errors
 13. ~~Improve MCP tool schema descriptions and field documentation~~ (DONE: quick-260401-twg)
 14. ~~Clarify repetition schedule and repeat mode edge cases~~ (HALF DONE: schedule modes clarified in eec6241; basedOn unset anchor still open)
+15. Convert specs to core models at service boundary (post-merge follow-up to #11)
 
 ### Quick Tasks Completed
 
@@ -121,6 +128,9 @@ Carried forward:
 | 260401-hz9 | Replace opaque on: dict with typed OrdinalWeekday | 2026-04-01 | cf0d426 | Verified | [260401-hz9-replace-opaque-on-dict-with-ordinalweekd](./quick/260401-hz9-replace-opaque-on-dict-with-ordinalweekd/) |
 | Phase 36.3 P01 | 8min | 2 tasks | 20 files |
 | Phase 36.3 P02 | 3min | 1 tasks | 1 files |
+| Phase 36.4 P01 | 5min | 2 tasks | 2 files |
+| Phase 36.4 P02 | 2min | 2 tasks | 2 files |
+| Phase 36.4 P03 | 2min | 2 tasks | 3 files |
 | 260401-twg | Improve MCP tool schema descriptions and field documentation | 2026-04-01 | b63e981, 7885e5d | | [260401-twg-improve-mcp-tool-schema-descriptions-and](./quick/260401-twg-improve-mcp-tool-schema-descriptions-and/) |
 
 ### Blockers/Concerns
