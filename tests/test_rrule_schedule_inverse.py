@@ -7,7 +7,7 @@ including round-trip consistency with the forward derive_schedule.
 from __future__ import annotations
 
 from omnifocus_operator.models.enums import BasedOn, Schedule
-from omnifocus_operator.rrule.schedule import (
+from omnifocus_operator.repository.rrule.schedule import (
     based_on_to_bridge,
     derive_schedule,
     schedule_to_bridge,

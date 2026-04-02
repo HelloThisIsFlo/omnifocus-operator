@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from omnifocus_operator.rrule import derive_schedule, parse_end_condition, parse_rrule
+from omnifocus_operator.repository.rrule import derive_schedule, parse_end_condition, parse_rrule
 
 # ---------------------------------------------------------------------------
 # Mapping tables: old bridge string -> new model value(s)

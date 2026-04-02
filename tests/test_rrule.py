@@ -18,7 +18,7 @@ from omnifocus_operator.models.repetition_rule import (
     RepetitionRule,
     Schedule,
 )
-from omnifocus_operator.rrule import build_rrule, derive_schedule, parse_end_condition, parse_rrule
+from omnifocus_operator.repository.rrule import build_rrule, derive_schedule, parse_end_condition, parse_rrule
 
 # ── Frequency Flat Model ─────────────────────────────────────────────────
 

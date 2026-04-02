@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from omnifocus_operator.bridge.adapter import adapt_snapshot
+from omnifocus_operator.repository.adapter import adapt_snapshot
 from omnifocus_operator.models.repetition_rule import (
     EndByOccurrences,
     Frequency,

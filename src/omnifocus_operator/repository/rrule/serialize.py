@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from omnifocus_operator.rrule.builder import build_rrule
-from omnifocus_operator.rrule.schedule import based_on_to_bridge, schedule_to_bridge
+from omnifocus_operator.repository.rrule.builder import build_rrule
+from omnifocus_operator.repository.rrule.schedule import based_on_to_bridge, schedule_to_bridge
 
 if TYPE_CHECKING:
     from omnifocus_operator.contracts.shared.repetition_rule import (

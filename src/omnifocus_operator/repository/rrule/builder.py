@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from omnifocus_operator.models.repetition_rule import EndByDate, EndByOccurrences
-from omnifocus_operator.rrule.parser import parse_rrule
+from omnifocus_operator.repository.rrule.parser import parse_rrule
 
 if TYPE_CHECKING:
     from datetime import date as date_type

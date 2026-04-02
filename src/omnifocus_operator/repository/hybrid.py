@@ -32,7 +32,7 @@ from omnifocus_operator.repository.query_builder import (
     build_list_projects_sql,
     build_list_tasks_sql,
 )
-from omnifocus_operator.rrule import derive_schedule, parse_end_condition, parse_rrule
+from omnifocus_operator.repository.rrule import derive_schedule, parse_end_condition, parse_rrule
 
 if TYPE_CHECKING:
     from pathlib import Path

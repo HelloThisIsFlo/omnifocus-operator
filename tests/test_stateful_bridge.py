@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from omnifocus_operator.bridge import BridgeError
-from omnifocus_operator.bridge.adapter import adapt_snapshot
+from omnifocus_operator.repository.adapter import adapt_snapshot
 from omnifocus_operator.models.snapshot import AllEntities
 from tests.conftest import make_snapshot_dict, make_task_dict
 from tests.doubles import BridgeCall, InMemoryBridge

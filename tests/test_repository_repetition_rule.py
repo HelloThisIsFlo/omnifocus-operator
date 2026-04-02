@@ -19,7 +19,7 @@ from omnifocus_operator.models.repetition_rule import (
     Frequency,
 )
 from omnifocus_operator.repository.bridge_write_mixin import BridgeWriteMixin
-from omnifocus_operator.repository.repetition_rule import serialize_repetition_rule
+from omnifocus_operator.repository.rrule.serialize import serialize_repetition_rule
 
 
 # ---------------------------------------------------------------------------

@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 
 from omnifocus_operator.models.repetition_rule import EndByDate
-from omnifocus_operator.rrule.parser import parse_end_condition
+from omnifocus_operator.repository.rrule.parser import parse_end_condition
 
 
 class TestEndByDateTypeNormalization:

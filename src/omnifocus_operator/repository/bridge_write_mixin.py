@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from omnifocus_operator.repository.repetition_rule import serialize_repetition_rule
+from omnifocus_operator.repository.rrule.serialize import serialize_repetition_rule
 
 if TYPE_CHECKING:
     from omnifocus_operator.contracts.protocols import Bridge
