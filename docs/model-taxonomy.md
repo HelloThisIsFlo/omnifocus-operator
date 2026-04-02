@@ -205,7 +205,7 @@ The `__doc__ = CONSTANT` pattern is a convention signal: it tells you "this docs
 **Type alias definitions** (e.g., `FrequencyType`, `DayCode`, `DayName`, `OnDate`) live in `contracts/` where they're consumed. Core models import shared validation functions, not type aliases.
 
 > [!note] What about output schema?
-> - _**Yes**_, Core models _**do**_ appear in agent output (unless a dedicated `Read` model exists), so their _**do**_ fields land in `outputSchema`.
+> - _**Yes**_, Core models _**do**_ appear in agent output (unless a dedicated `Read` model exists), so their fields _**do**_ land in `outputSchema`.
 > - _**However**_, current MCP clients (Claude Code, Claude Desktop) don't expose output schema to agents
 > - _**Therefore**_, maintaining constraint annotations on core models for output schema documentation isn't worth the type-system complexity.
 

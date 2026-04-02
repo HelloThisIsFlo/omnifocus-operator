@@ -153,6 +153,18 @@ class TestFrequencyAddSpecValidation:
             FrequencyAddSpec(type="daily", bogus="x")
 
 
+class TestEndConditionSpec:
+    """EndConditionSpec models inherit CommandModel (extra='forbid')."""
+
+    def test_end_by_date_spec_rejects_extra_fields(self) -> None:
+        with pytest.raises(ValidationError, match="extra"):
+            EndByDateSpec(date=date(2026, 12, 31), bogus=123)
+
+    def test_end_by_occurrences_spec_rejects_extra_fields(self) -> None:
+        with pytest.raises(ValidationError, match="extra"):
+            EndByOccurrencesSpec(occurrences=10, bogus=123)
+
+
 class TestOrdinalWeekdaySpec:
     """Tests for OrdinalWeekdaySpec (write-side CommandModel)."""
 
