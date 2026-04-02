@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Read Tools
 status: executing
-stopped_at: Completed quick-260402-pic
-last_updated: "2026-04-02T17:43:20.483Z"
+stopped_at: Completed 260402-pj2 (convert specs to core models at service boundary)
+last_updated: "2026-04-02T17:56:57.372Z"
 last_activity: 2026-04-02
 progress:
   total_phases: 10
@@ -86,6 +86,9 @@ Recent decisions affecting current work:
 - [Phase 36.4]: Private Literal aliases removed from models/ -- plain str with runtime validators replaces schema-level constraints
 - [Phase 36.4]: AST enforcement extended to detect module-level Literal/Annotated aliases used on class fields
 - [Phase quick-260402-pic]: is_set() guard on type field -- skip all cross-type checks when type is UNSET, deferring to service layer after merge
+- [Phase 260402-pj2]: build_add gets optional repetition_rule_payload param for pre-converted payloads
+- [Phase 260402-pj2]: payload.py fallback path also uses convert functions for direct callers
+- [Phase 260402-pj2]: EndByDate/EndByOccurrences moved to runtime imports in builder.py for isinstance dispatch
 
 ### Roadmap Evolution
 
@@ -135,6 +138,7 @@ Carried forward:
 | 260401-twg | Improve MCP tool schema descriptions and field documentation | 2026-04-01 | b63e981, 7885e5d | | [260401-twg-improve-mcp-tool-schema-descriptions-and](./quick/260401-twg-improve-mcp-tool-schema-descriptions-and/) |
 | 260402-phi | Add validation set sync tests between models and contracts | 2026-04-02 | 8f0f89b | | [260402-phi-add-validation-set-sync-tests-between-mo](./quick/260402-phi-add-validation-set-sync-tests-between-mo/) |
 | 260402-pic | Add cross-type model_validator to FrequencyEditSpec | 2026-04-02 | 9c92c8e, b82a0c2 | | [260402-pic-add-cross-type-model-validator-to-freque](./quick/260402-pic-add-cross-type-model-validator-to-freque/) |
+| 260402-pj2 | Convert specs to core models at service boundary | 2026-04-02 | 2633181 | Verified | [260402-pj2-convert-specs-to-core-models-at-service-](./quick/260402-pj2-convert-specs-to-core-models-at-service-/) |
 
 ### Blockers/Concerns
 
@@ -142,6 +146,6 @@ None yet.
 
 ## Session Continuity
 
-Last activity: 2026-04-02 - Completed quick task 260402-pic: Add cross-type model_validator to FrequencyEditSpec
-Stopped at: Completed quick-260402-pic
+Last activity: 2026-04-02 - Completed quick task 260402-pj2: Convert specs to core models at service boundary
+Stopped at: Completed 260402-pj2 (convert specs to core models at service boundary)
 Resume file: None

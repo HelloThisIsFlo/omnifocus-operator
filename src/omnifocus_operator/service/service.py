@@ -26,7 +26,6 @@ from omnifocus_operator.agent_messages.warnings import (
 )
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.protocols import Service
-from omnifocus_operator.contracts.shared.repetition_rule import FrequencyAddSpec
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskResult
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
 from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult, ListResult
@@ -45,6 +44,7 @@ from omnifocus_operator.contracts.use_cases.list.tasks import (
     ListTasksRepoQuery,
 )
 from omnifocus_operator.models.repetition_rule import Frequency
+from omnifocus_operator.service.convert import end_condition_from_spec, frequency_from_spec
 from omnifocus_operator.service.domain import DomainLogic
 from omnifocus_operator.service.payload import PayloadBuilder
 from omnifocus_operator.service.resolve import Resolver
@@ -446,30 +446,28 @@ class _AddTaskPipeline(_Pipeline):
         )
 
     def _process_repetition_rule(self) -> None:
-        """Normalize repetition rule if present.
+        """Normalize repetition rule and convert specs to core models.
 
-        FrequencyAddSpec has model validators that already validated
-        the spec on construction. We only need to normalize empty
-        specialization fields here.
+        Converts FrequencyAddSpec -> Frequency and EndConditionSpec ->
+        EndCondition at the service boundary. Stores core types on self
+        for downstream use (no round-trip back to specs).
         """
+        self._frequency: Frequency | None = None
+        self._end_condition: EndCondition | None = None
+
         if self._command.repetition_rule is None:
             return
 
         spec = self._command.repetition_rule
 
-        # Convert FrequencyAddSpec to Frequency for normalization
-        freq = Frequency.model_validate(spec.frequency.model_dump())
+        # Convert specs to core models at the service boundary
+        freq = frequency_from_spec(spec.frequency)
+        self._end_condition = end_condition_from_spec(spec.end)
 
         # Normalize empty specialization fields (D-17)
         normalized_freq, spec_warns = self._domain.normalize_empty_specialization_fields(freq)
         self._repetition_warnings.extend(spec_warns)
-        if normalized_freq is not freq:
-            # Rebuild the spec with normalized frequency
-            new_freq_spec = FrequencyAddSpec.model_validate(normalized_freq.model_dump())
-            spec = spec.model_copy(update={"frequency": new_freq_spec})
-
-        # Update the command with the normalized spec
-        self._command = self._command.model_copy(update={"repetition_rule": spec})
+        self._frequency = normalized_freq
 
         # Check anchor date warning (VALID-05)
         effective_dates = {
@@ -482,7 +480,15 @@ class _AddTaskPipeline(_Pipeline):
         )
 
     def _build_payload(self) -> None:
-        self._repo_payload = self._payload.build_add(self._command, self._resolved_tag_ids)
+        repetition_payload = None
+        if self._frequency is not None and self._command.repetition_rule is not None:
+            spec = self._command.repetition_rule
+            repetition_payload = self._payload._build_repetition_rule_payload(
+                self._frequency, spec.schedule, spec.based_on, self._end_condition
+            )
+        self._repo_payload = self._payload.build_add(
+            self._command, self._resolved_tag_ids, repetition_rule_payload=repetition_payload
+        )
 
     async def _delegate(self) -> AddTaskResult:
         logger.debug("OperatorService.add_task: delegating to repository")
@@ -595,7 +601,7 @@ class _EditTaskPipeline(_Pipeline):
         # End: None = clear end, UNSET = preserve, value = set/change
         end: EndCondition | None
         if is_set(spec.end):
-            end = spec.end  # type: ignore[assignment]  # EDIT-06/07/08: explicit set or clear (None)
+            end = end_condition_from_spec(spec.end)  # EDIT-06/07/08: convert spec to core
         elif existing is not None:
             end = existing.end  # preserve existing
         else:

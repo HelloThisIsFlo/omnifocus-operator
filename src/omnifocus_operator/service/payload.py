@@ -20,12 +20,9 @@ from omnifocus_operator.contracts.use_cases.edit.tasks import (
 )
 from omnifocus_operator.rrule.builder import build_rrule
 from omnifocus_operator.rrule.schedule import based_on_to_bridge, schedule_to_bridge
+from omnifocus_operator.service.convert import end_condition_from_spec, frequency_from_spec
 
 if TYPE_CHECKING:
-    from omnifocus_operator.contracts.shared.repetition_rule import (
-        EndConditionSpec,
-        FrequencyAddSpec,
-    )
     from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskCommand
     from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskCommand
     from omnifocus_operator.models.enums import BasedOn, Schedule
@@ -43,8 +40,14 @@ class PayloadBuilder:
         self,
         command: AddTaskCommand,
         resolved_tag_ids: list[str] | None,
+        repetition_rule_payload: RepetitionRuleRepoPayload | None = None,
     ) -> AddTaskRepoPayload:
-        """Build add-task payload. Only includes populated fields."""
+        """Build add-task payload. Only includes populated fields.
+
+        When ``repetition_rule_payload`` is provided (pre-built from core
+        models by the pipeline), it is used directly. Otherwise falls back
+        to building from the command's spec fields.
+        """
         kwargs: dict[str, object] = {"name": command.name}
         if command.parent is not None:
             kwargs["parent"] = command.parent
@@ -61,12 +64,14 @@ class PayloadBuilder:
             kwargs["estimated_minutes"] = command.estimated_minutes
         if command.note is not None:
             kwargs["note"] = command.note
-        if command.repetition_rule is not None:
+        if repetition_rule_payload is not None:
+            kwargs["repetition_rule"] = repetition_rule_payload
+        elif command.repetition_rule is not None:
             kwargs["repetition_rule"] = self._build_repetition_rule_payload(
-                command.repetition_rule.frequency,
+                frequency_from_spec(command.repetition_rule.frequency),
                 command.repetition_rule.schedule,
                 command.repetition_rule.based_on,
-                command.repetition_rule.end,
+                end_condition_from_spec(command.repetition_rule.end),
             )
         return AddTaskRepoPayload.model_validate(kwargs)
 
@@ -117,10 +122,10 @@ class PayloadBuilder:
 
     def _build_repetition_rule_payload(
         self,
-        frequency: Frequency | FrequencyAddSpec,
+        frequency: Frequency,
         schedule: Schedule,
         based_on: BasedOn,
-        end: EndCondition | EndConditionSpec | None,
+        end: EndCondition | None,
     ) -> RepetitionRuleRepoPayload:
         """Convert structured repetition rule fields to bridge-ready payload."""
         rule_string = build_rrule(frequency, end)

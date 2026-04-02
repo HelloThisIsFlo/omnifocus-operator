@@ -46,6 +46,7 @@ omnifocus_operator/
     server.py        -- FastMCP tool registration + wiring
     service/         -- Validation, resolution, domain logic, delegation
         service.py       -- Thin orchestrator (OperatorService)
+        convert.py       -- Spec-to-core model conversion at service boundary
         resolve.py       -- Entity resolution (parent, tags, task)
         validate.py      -- Pure input validation
         domain.py        -- Business rules (lifecycle, tags, cycle, no-op, move)
