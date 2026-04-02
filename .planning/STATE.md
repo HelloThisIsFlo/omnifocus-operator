@@ -135,6 +135,7 @@ Carried forward:
 | Phase 36.4 P02 | 2min | 2 tasks | 2 files |
 | Phase 36.4 P03 | 2min | 2 tasks | 3 files |
 | 260401-twg | Improve MCP tool schema descriptions and field documentation | 2026-04-01 | b63e981, 7885e5d | | [260401-twg-improve-mcp-tool-schema-descriptions-and](./quick/260401-twg-improve-mcp-tool-schema-descriptions-and/) |
+| 260402-pj2 | Convert specs to core models at service boundary | 2026-04-02 | 2633181 | Verified | [260402-pj2-convert-specs-to-core-models-at-service-](./quick/260402-pj2-convert-specs-to-core-models-at-service-/) |
 
 ### Blockers/Concerns
 
@@ -142,6 +143,6 @@ None yet.
 
 ## Session Continuity
 
-Last activity: 2026-04-02 - Clarified repetition schedule modes in concepts doc + descriptions.py (eec6241)
+Last activity: 2026-04-02 - Completed quick task 260402-pj2: Convert specs to core models at service boundary
 Stopped at: Completed 260402-pj2 (convert specs to core models at service boundary)
 Resume file: None
