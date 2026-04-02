@@ -141,6 +141,6 @@ None yet.
 
 ## Session Continuity
 
-Last activity: 2026-04-02 - Clarified repetition schedule modes in concepts doc + descriptions.py (eec6241)
+Last activity: 2026-04-02 - Completed quick task 260402-pic: Add cross-type model_validator to FrequencyEditSpec
 Stopped at: Completed quick-260402-pic
 Resume file: None
