@@ -13,6 +13,8 @@ files:
 
 Contract spec types leak past the service boundary into lower layers (builder, payload). This forces union signatures (`Frequency | FrequencyAddSpec`, `EndCondition | EndConditionSpec`) and in the case of `EndConditionSpec`, caused `isinstance` dispatch to be replaced with `hasattr` duck-typing in `builder.py`.
 
+The service layer should work with core models internally. Specs are the agent's language; core models are the system's language. The conversion should happen early — once you're past the command boundary, everything is core models.
+
 **Pre-existing (on main):**
 - `builder.py:70` — `frequency: Frequency | FrequencyAddSpec`
 - `payload.py:120` — `frequency: Frequency | FrequencyAddSpec`
@@ -24,15 +26,12 @@ Contract spec types leak past the service boundary into lower layers (builder, p
 
 Note: `FrequencyEditSpec` in `domain.py:merge_frequency()` is different — it carries UNSET/None/value semantics needed for the merge. The output is already a `Frequency`. This is fine as-is.
 
-## Solution
+## Solution (proposal)
 
-In `_build_repetition_rule_payload` (payload.py), convert specs to core models before calling `build_rrule`:
-- `FrequencyAddSpec → Frequency` via `Frequency.model_validate(spec.model_dump())`
-- `EndConditionSpec → EndCondition` (e.g., `EndByDate(date=spec.end.date)`)
+Convert specs to core models in the payload builder before passing to lower layers. The service already does a similar round-trip for frequency normalization (service.py:461) — extend that pattern to the payload boundary.
 
-Then:
-- `build_rrule` signature returns to `frequency: Frequency, end: EndByDate | EndByOccurrences | None`
-- `isinstance` dispatch restored in builder.py
-- Payload signatures lose the union types
+This should also restore `isinstance` dispatch in builder.py and remove the union signatures.
 
-The service layer already does this round-trip for frequency normalization (service.py:461) — just extend the pattern to the payload boundary and stop converting back to specs.
+## Convention update
+
+Document this as a convention — the service layer operates on core models, not specs. Candidate locations: `docs/architecture.md` (service layer section), `docs/model-taxonomy.md` (type constraint boundary section), or `CLAUDE.md` (service layer convention). Decide during implementation which is the right home.
