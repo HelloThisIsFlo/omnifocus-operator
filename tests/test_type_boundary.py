@@ -25,12 +25,45 @@ _EXCEPTIONS: set[tuple[str, str]] = {
 }
 
 
-def _find_constraint_types(node: ast.expr) -> list[str]:
+def _resolve_module_literal_aliases(tree: ast.Module) -> set[str]:
+    """Find module-level names that are assigned a Literal[...] or Annotated[...] expression.
+
+    Returns a set of variable names (e.g., {"_FrequencyType", "_DayName"}) that
+    are aliases for Literal or Annotated types. These must not appear on class
+    field annotations in models/.
+    """
+    aliases: set[str] = set()
+    for node in tree.body:
+        if not isinstance(node, (ast.Assign, ast.AnnAssign)):
+            continue
+        # Get the value expression
+        value = node.value
+        if value is None:
+            continue
+        # Check if value is Subscript with Literal or Annotated
+        if isinstance(value, ast.Subscript) and isinstance(value.value, ast.Name):
+            if value.value.id in {"Literal", "Annotated"}:
+                # Get the target name(s)
+                if isinstance(node, ast.AnnAssign) and hasattr(node.target, "id"):
+                    aliases.add(node.target.id)
+                elif isinstance(node, ast.Assign):
+                    for target in node.targets:
+                        if isinstance(target, ast.Name):
+                            aliases.add(target.id)
+    return aliases
+
+
+def _find_constraint_types(
+    node: ast.expr,
+    module_aliases: set[str] | frozenset[str] = frozenset(),
+) -> list[str]:
     """Recursively search an annotation AST node for Literal and Annotated references.
 
     Returns a list of found type names (e.g., ["Literal"], ["Annotated"], or both).
+    Also detects module-level aliases that resolve to Literal/Annotated.
     Handles:
     - ast.Name(id="Literal") / ast.Name(id="Annotated")
+    - ast.Name(id=alias) where alias is in module_aliases
     - ast.Subscript(value=ast.Name(id="Literal")) (e.g., Literal["a", "b"])
     - ast.Subscript(value=ast.Name(id="Annotated")) (e.g., Annotated[int, ...])
     - Nested in ast.BinOp (union X | Y)
@@ -41,19 +74,21 @@ def _find_constraint_types(node: ast.expr) -> list[str]:
 
     if isinstance(node, ast.Name) and node.id in _CONSTRAINT_NAMES:
         found.append(node.id)
+    elif isinstance(node, ast.Name) and node.id in module_aliases:
+        found.append(f"alias:{node.id}")
     elif isinstance(node, ast.Subscript):
         # Check the subscript value (e.g., Literal in Literal["a"])
-        found.extend(_find_constraint_types(node.value))
+        found.extend(_find_constraint_types(node.value, module_aliases))
         # Check inside the slice (e.g., list[Literal[...]])
-        found.extend(_find_constraint_types(node.slice))
+        found.extend(_find_constraint_types(node.slice, module_aliases))
     elif isinstance(node, ast.BinOp):
         # Union: X | Y
-        found.extend(_find_constraint_types(node.left))
-        found.extend(_find_constraint_types(node.right))
+        found.extend(_find_constraint_types(node.left, module_aliases))
+        found.extend(_find_constraint_types(node.right, module_aliases))
     elif isinstance(node, ast.Tuple):
         # Tuple inside subscript slice (e.g., Annotated[int, Field(ge=1)])
         for elt in node.elts:
-            found.extend(_find_constraint_types(elt))
+            found.extend(_find_constraint_types(elt, module_aliases))
     elif isinstance(node, ast.Attribute) and node.attr in _CONSTRAINT_NAMES:
         # typing.Literal or typing.Annotated
         found.append(node.attr)
@@ -80,6 +115,9 @@ class TestTypeBoundaryEnforcement:
             tree = ast.parse(source)
             rel_path = py_file.relative_to(_SRC_ROOT)
 
+            # Build set of module-level aliases that resolve to Literal/Annotated
+            aliases = _resolve_module_literal_aliases(tree)
+
             for node in ast.walk(tree):
                 if not isinstance(node, ast.ClassDef):
                     continue
@@ -94,7 +132,9 @@ class TestTypeBoundaryEnforcement:
                     if (node.name, field_name) in _EXCEPTIONS:
                         continue
 
-                    constraint_types = _find_constraint_types(stmt.annotation)
+                    constraint_types = _find_constraint_types(
+                        stmt.annotation, module_aliases=aliases
+                    )
                     if constraint_types:
                         types_str = ", ".join(sorted(set(constraint_types)))
                         violations.append(
@@ -103,7 +143,8 @@ class TestTypeBoundaryEnforcement:
                         )
 
         assert violations == [], (
-            "Literal/Annotated found on core model field annotations in models/.\n"
+            "Literal/Annotated (or aliases thereof) found on core model field "
+            "annotations in models/.\n"
             "These constraint types belong on contract models in contracts/.\n"
             "See docs/model-taxonomy.md 'Type constraint boundary'.\n\n"
             "Violations:\n" + "\n".join(f"  - {v}" for v in violations)
