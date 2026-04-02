@@ -1,7 +1,7 @@
 """RRULE builder for OmniFocus repetition rules.
 
 Inverse of the parser: takes a flat Frequency model instance and produces
-an RRULE string. Uses type string checks (not isinstance) for dispatch.
+an RRULE string.
 
 Public function:
     build_rrule(frequency, end=None) -> str
@@ -11,18 +11,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from omnifocus_operator.models.repetition_rule import EndByDate, EndByOccurrences
 from omnifocus_operator.rrule.parser import parse_rrule
 
 if TYPE_CHECKING:
     from datetime import date as date_type
 
-    from omnifocus_operator.contracts.shared.repetition_rule import (
-        EndConditionSpec,
-        FrequencyAddSpec,
-    )
     from omnifocus_operator.models.repetition_rule import (
-        EndByDate,
-        EndByOccurrences,
+        EndCondition,
         Frequency,
         OrdinalWeekday,
     )
@@ -67,8 +63,8 @@ _TYPE_TO_FREQ: dict[str, str] = {
 
 
 def build_rrule(
-    frequency: Frequency | FrequencyAddSpec,
-    end: EndByDate | EndByOccurrences | EndConditionSpec | None = None,
+    frequency: Frequency,
+    end: EndCondition | None = None,
 ) -> str:
     """Build an RRULE string from a flat Frequency model and optional end condition.
 
@@ -76,7 +72,7 @@ def build_rrule(
 
     Args:
         frequency: Flat Frequency model instance (one of 6 types)
-        end: Optional EndByDate or EndByOccurrences model
+        end: Optional EndCondition (EndByDate or EndByOccurrences)
 
     Returns:
         RRULE string (e.g., "FREQ=DAILY;INTERVAL=3")
@@ -99,14 +95,14 @@ def build_rrule(
     if frequency.type == "weekly" and frequency.on_days:
         parts.append(f"BYDAY={','.join(frequency.on_days)}")
     elif frequency.type == "monthly" and frequency.on:
-        parts.append(_build_byday_positional(frequency.on))  # type: ignore[arg-type]
+        parts.append(_build_byday_positional(frequency.on))
     elif frequency.type == "monthly" and frequency.on_dates:
         parts.append(f"BYMONTHDAY={','.join(str(d) for d in frequency.on_dates)}")
 
-    # End condition -- duck-typed to accept both core models and contract specs
-    if end is not None and hasattr(end, "occurrences"):
+    # End condition
+    if isinstance(end, EndByOccurrences):
         parts.append(f"COUNT={end.occurrences}")
-    elif end is not None and hasattr(end, "date"):
+    elif isinstance(end, EndByDate):
         parts.append(f"UNTIL={_convert_date_to_until(end.date)}")
 
     result = ";".join(parts)
