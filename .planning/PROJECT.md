@@ -198,4 +198,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-01 after Phase 36.3 complete — Field descriptions centralized into constants with enforcement tests*
+*Last updated: 2026-04-02 after Phase 36.4 complete — Literal/Annotated types reserved for contract models only, AST enforcement strengthened*
