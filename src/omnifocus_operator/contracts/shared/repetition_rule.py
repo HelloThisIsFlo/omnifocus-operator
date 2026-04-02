@@ -34,6 +34,8 @@ from omnifocus_operator.contracts.base import (
 )
 from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
+    EndCondition,
+    Frequency,
     check_at_most_one_ordinal,
     check_frequency_cross_type_fields,
     normalize_day_codes,
@@ -235,17 +237,16 @@ class RepetitionRuleEditSpec(CommandModel):
 
 
 class RepetitionRuleRepoPayload(CommandModel):
-    """Bridge-ready repetition rule -- fully resolved, no Patch/UNSET.
+    """Structured repetition rule for the repository boundary.
 
-    Contains the 4 fields the OmniJS bridge needs to construct a
-    Task.RepetitionRule: ruleString, scheduleType, anchorDateKey,
-    catchUpAutomatically.
+    Carries core domain types. The repository layer serializes these
+    to bridge format before sending to the bridge.
     """
 
-    rule_string: str
-    schedule_type: str
-    anchor_date_key: str
-    catch_up_automatically: bool
+    frequency: Frequency
+    schedule: Schedule
+    based_on: BasedOn
+    end: EndCondition | None = None
 
 
 __all__ = [

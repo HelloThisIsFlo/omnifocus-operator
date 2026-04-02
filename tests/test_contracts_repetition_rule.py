@@ -330,32 +330,33 @@ class TestRepetitionRuleEditSpec:
 
 
 class TestRepetitionRuleRepoPayload:
-    """Tests for RepetitionRuleRepoPayload (bridge-ready fields)."""
+    """Tests for RepetitionRuleRepoPayload (structured core-type fields)."""
 
     def test_all_fields(self) -> None:
-        payload = RepetitionRuleRepoPayload(
-            rule_string="FREQ=DAILY;INTERVAL=3",
-            schedule_type="Regularly",
-            anchor_date_key="DueDate",
-            catch_up_automatically=False,
-        )
-        assert payload.rule_string == "FREQ=DAILY;INTERVAL=3"
-        assert payload.schedule_type == "Regularly"
-        assert payload.anchor_date_key == "DueDate"
-        assert payload.catch_up_automatically is False
+        from omnifocus_operator.models.repetition_rule import EndByOccurrences, Frequency
 
-    def test_camel_case_aliases(self) -> None:
         payload = RepetitionRuleRepoPayload(
-            rule_string="FREQ=DAILY",
-            schedule_type="Regularly",
-            anchor_date_key="DueDate",
-            catch_up_automatically=True,
+            frequency=Frequency(type="daily", interval=3),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+            end=EndByOccurrences(occurrences=5),
         )
-        dumped = payload.model_dump(by_alias=True)
-        assert "ruleString" in dumped
-        assert "scheduleType" in dumped
-        assert "anchorDateKey" in dumped
-        assert "catchUpAutomatically" in dumped
+        assert payload.frequency.type == "daily"
+        assert payload.frequency.interval == 3
+        assert payload.schedule == Schedule.REGULARLY
+        assert payload.based_on == BasedOn.DUE_DATE
+        assert payload.end is not None
+        assert payload.end.occurrences == 5  # type: ignore[union-attr]
+
+    def test_end_defaults_to_none(self) -> None:
+        from omnifocus_operator.models.repetition_rule import Frequency
+
+        payload = RepetitionRuleRepoPayload(
+            frequency=Frequency(type="daily"),
+            schedule=Schedule.FROM_COMPLETION,
+            based_on=BasedOn.DEFER_DATE,
+        )
+        assert payload.end is None
 
 
 class TestCommandIntegration:
@@ -400,27 +401,26 @@ class TestCommandIntegration:
 class TestRepoPayloadIntegration:
     """Tests for repetition rule fields on AddTaskRepoPayload/EditTaskRepoPayload."""
 
+    def _make_repo_payload(self) -> RepetitionRuleRepoPayload:
+        from omnifocus_operator.models.repetition_rule import Frequency
+
+        return RepetitionRuleRepoPayload(
+            frequency=Frequency(type="daily"),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+        )
+
     def test_add_repo_payload_with_repetition_rule(self) -> None:
         payload = AddTaskRepoPayload(
             name="test",
-            repetition_rule=RepetitionRuleRepoPayload(
-                rule_string="FREQ=DAILY",
-                schedule_type="Regularly",
-                anchor_date_key="DueDate",
-                catch_up_automatically=False,
-            ),
+            repetition_rule=self._make_repo_payload(),
         )
         assert payload.repetition_rule is not None
 
     def test_edit_repo_payload_with_repetition_rule(self) -> None:
         payload = EditTaskRepoPayload(
             id="x",
-            repetition_rule=RepetitionRuleRepoPayload(
-                rule_string="FREQ=DAILY",
-                schedule_type="Regularly",
-                anchor_date_key="DueDate",
-                catch_up_automatically=False,
-            ),
+            repetition_rule=self._make_repo_payload(),
         )
         assert payload.repetition_rule is not None
 
@@ -431,16 +431,11 @@ class TestRepoPayloadIntegration:
     def test_edit_repo_payload_dump_with_repetition_rule(self) -> None:
         payload = EditTaskRepoPayload(
             id="x",
-            repetition_rule=RepetitionRuleRepoPayload(
-                rule_string="FREQ=DAILY",
-                schedule_type="Regularly",
-                anchor_date_key="DueDate",
-                catch_up_automatically=False,
-            ),
+            repetition_rule=self._make_repo_payload(),
         )
         dumped = payload.model_dump(by_alias=True, exclude_unset=True)
         assert "repetitionRule" in dumped
-        assert dumped["repetitionRule"]["ruleString"] == "FREQ=DAILY"
+        assert dumped["repetitionRule"]["frequency"]["type"] == "daily"
 
     def test_edit_repo_payload_dump_without_repetition_rule(self) -> None:
         payload = EditTaskRepoPayload(id="x")

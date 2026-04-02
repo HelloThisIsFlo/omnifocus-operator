@@ -47,6 +47,7 @@ from omnifocus_operator.models.repetition_rule import Frequency
 from omnifocus_operator.service.convert import end_condition_from_spec, frequency_from_spec
 from omnifocus_operator.service.domain import DomainLogic
 from omnifocus_operator.service.payload import PayloadBuilder
+from omnifocus_operator.contracts.shared.repetition_rule import RepetitionRuleRepoPayload
 from omnifocus_operator.service.resolve import Resolver
 from omnifocus_operator.service.validate import (
     validate_task_name,
@@ -56,7 +57,6 @@ from omnifocus_operator.service.validate import (
 if TYPE_CHECKING:
     from omnifocus_operator.contracts.shared.repetition_rule import (
         FrequencyEditSpec,
-        RepetitionRuleRepoPayload,
     )
     from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskCommand
     from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskCommand
@@ -483,8 +483,11 @@ class _AddTaskPipeline(_Pipeline):
         repetition_payload = None
         if self._frequency is not None and self._command.repetition_rule is not None:
             spec = self._command.repetition_rule
-            repetition_payload = self._payload._build_repetition_rule_payload(
-                self._frequency, spec.schedule, spec.based_on, self._end_condition
+            repetition_payload = RepetitionRuleRepoPayload(
+                frequency=self._frequency,
+                schedule=spec.schedule,
+                based_on=spec.based_on,
+                end=self._end_condition,
             )
         self._repo_payload = self._payload.build_add(
             self._command, self._resolved_tag_ids, repetition_rule_payload=repetition_payload
@@ -664,8 +667,11 @@ class _EditTaskPipeline(_Pipeline):
         )
 
         # Build the repo payload
-        self._repetition_rule_payload = self._payload._build_repetition_rule_payload(
-            frequency, schedule, based_on, end
+        self._repetition_rule_payload = RepetitionRuleRepoPayload(
+            frequency=frequency,
+            schedule=schedule,
+            based_on=based_on,
+            end=end,
         )
 
         if (

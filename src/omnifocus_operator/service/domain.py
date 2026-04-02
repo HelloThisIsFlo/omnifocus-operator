@@ -51,8 +51,6 @@ from omnifocus_operator.models.repetition_rule import (
     Frequency,
     RepetitionRule,
 )
-from omnifocus_operator.rrule.builder import build_rrule
-from omnifocus_operator.rrule.schedule import based_on_to_bridge, schedule_to_bridge
 
 if TYPE_CHECKING:
     from omnifocus_operator.contracts.protocols import Repository
@@ -672,21 +670,10 @@ class DomainLogic:
         payload: RepetitionRuleRepoPayload,
         existing: RepetitionRule,
     ) -> bool:
-        """Check if a repo payload is equivalent to an existing rule.
-
-        Converts the existing RepetitionRule to bridge format and compares
-        all four fields. Returns False if the existing rule can't be converted
-        (e.g. unsupported frequency) — treat as changed to be safe.
-        """
-        try:
-            existing_rule_string = build_rrule(existing.frequency, existing.end)
-            existing_schedule_type, existing_catch_up = schedule_to_bridge(existing.schedule)
-            existing_anchor = based_on_to_bridge(existing.based_on)
-        except (ValueError, KeyError):
-            return False
+        """Check if a repo payload is equivalent to an existing rule."""
         return (
-            payload.rule_string == existing_rule_string
-            and payload.schedule_type == existing_schedule_type
-            and payload.anchor_date_key == existing_anchor
-            and payload.catch_up_automatically == existing_catch_up
+            payload.frequency == existing.frequency
+            and payload.schedule == existing.schedule
+            and payload.based_on == existing.based_on
+            and payload.end == existing.end
         )

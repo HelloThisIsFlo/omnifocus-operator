@@ -32,6 +32,7 @@ from omnifocus_operator.contracts.use_cases.edit.tasks import (
     EditTaskRepoPayload,
 )
 from omnifocus_operator.models.common import TagRef
+from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
     EndByDate,
     Frequency,
@@ -704,10 +705,9 @@ class TestRepetitionRuleNoOp:
             {
                 "id": "task-001",
                 "repetition_rule": RepetitionRuleRepoPayload(
-                    rule_string="FREQ=DAILY",
-                    schedule_type="Regularly",
-                    anchor_date_key="DueDate",
-                    catch_up_automatically=False,
+                    frequency=Frequency(type="daily"),
+                    schedule=Schedule.REGULARLY,
+                    based_on=BasedOn.DUE_DATE,
                 ),
             }
         )
@@ -727,10 +727,9 @@ class TestRepetitionRuleNoOp:
             {
                 "id": "task-001",
                 "repetition_rule": RepetitionRuleRepoPayload(
-                    rule_string="FREQ=DAILY;INTERVAL=3",
-                    schedule_type="Regularly",
-                    anchor_date_key="DueDate",
-                    catch_up_automatically=False,
+                    frequency=Frequency(type="daily", interval=3),
+                    schedule=Schedule.REGULARLY,
+                    based_on=BasedOn.DUE_DATE,
                 ),
             }
         )
