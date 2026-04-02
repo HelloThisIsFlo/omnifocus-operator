@@ -15,6 +15,7 @@ from omnifocus_operator.agent_messages.descriptions import (
     FREQUENCY_EDIT_SPEC_DOC,
     ON_DATE,
     ON_DAYS,
+    ON_WEEKDAY_PATTERN,
     ORDINAL_WEEKDAY_SPEC_DOC,
     REPETITION_RULE_ADD_SPEC_DOC,
     REPETITION_RULE_EDIT_SPEC_DOC,
@@ -133,8 +134,8 @@ class FrequencyAddSpec(CommandModel):
     type: FrequencyType
     interval: Annotated[int, Field(ge=1, default=1)]
     on_days: list[DayCode] | None = Field(default=None, description=ON_DAYS)
-    on: OrdinalWeekdaySpec | None = None
-    on_dates: list[OnDate] | None = None
+    on: OrdinalWeekdaySpec | None = Field(default=None, description=ON_WEEKDAY_PATTERN)
+    on_dates: list[OnDate] | None = Field(default=None, description=ON_DATE)
 
     @field_validator("type", mode="before")
     @classmethod
@@ -168,8 +169,8 @@ class FrequencyEditSpec(CommandModel):
     type: Patch[FrequencyType] = UNSET
     interval: Patch[Annotated[int, Field(ge=1)]] = UNSET
     on_days: PatchOrClear[list[DayCode]] = Field(default=UNSET, description=ON_DAYS)
-    on: PatchOrClear[OrdinalWeekdaySpec] = UNSET
-    on_dates: PatchOrClear[list[OnDate]] = UNSET
+    on: PatchOrClear[OrdinalWeekdaySpec] = Field(default=UNSET, description=ON_WEEKDAY_PATTERN)
+    on_dates: PatchOrClear[list[OnDate]] = Field(default=UNSET, description=ON_DATE)
 
     @field_validator("type", mode="before")
     @classmethod

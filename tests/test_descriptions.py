@@ -196,6 +196,52 @@ class TestDescriptionConsolidation:
             + "\n".join(f"  - {v}" for v in violations)
         )
 
+    def test_no_inline_examples_in_agent_models(self) -> None:
+        """No inline literals in Field(examples=...) calls.
+
+        Each element in examples=[...] must be a constant reference (ast.Name),
+        not an inline value (ast.Constant). This enforces centralization of
+        example values in descriptions.py.
+        """
+        violations: list[str] = []
+
+        for mod in _CONSUMER_MODULES:
+            source = inspect.getsource(mod)
+            tree = ast.parse(source)
+
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call):
+                    continue
+                # Match Field(...) calls
+                if not (
+                    isinstance(node.func, ast.Name) and node.func.attr == "Field"
+                    if isinstance(node.func, ast.Attribute)
+                    else isinstance(node.func, ast.Name) and node.func.id == "Field"
+                ):
+                    continue
+
+                for kw in node.keywords:
+                    if kw.arg != "examples":
+                        continue
+                    if not isinstance(kw.value, ast.List):
+                        violations.append(
+                            f"{mod.__name__} line {kw.value.lineno}: "
+                            f"examples= must be a list literal"
+                        )
+                        continue
+                    for elt in kw.value.elts:
+                        if isinstance(elt, ast.Constant):
+                            violations.append(
+                                f"{mod.__name__} line {elt.lineno}: "
+                                f"inline value {elt.value!r} in Field(examples=...); "
+                                f"use a constant from descriptions.py"
+                            )
+
+        assert violations == [], (
+            "Inline example values found in agent-facing models:\n"
+            + "\n".join(f"  - {v}" for v in violations)
+        )
+
 
 # ---------------------------------------------------------------------------
 # Description enforcement tests (DESC-06)

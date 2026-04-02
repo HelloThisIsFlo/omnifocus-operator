@@ -51,3 +51,70 @@ Fills the gap between due (too urgent — implies negative consequences) and def
 | Planned date | Want to work on it then | None | Visible, no urgency |
 
 **The rule:** Due dates are for deadlines. Defer dates are for constraints. Planned dates are for intentions. If you're unsure which to use, it's probably a planned date.
+
+## Repetition Rules
+
+OmniFocus tasks and projects can repeat. A repetition rule has three components: **frequency** (how often), **schedule** (what triggers the next occurrence), and **basedOn** (which date field anchors the schedule).
+
+### Based On (Anchor Date)
+
+The anchor date determines which date field the repetition schedule attaches to. When the next occurrence is generated, the anchor date moves to the scheduled date. **All other date fields shift relatively, preserving their current offset from the anchor.**
+
+**Example:** A task repeats on the 15th of every month. The anchor is `planned_date`. Currently:
+- Planned date: March 15
+- Due date: March 18 (+3 days from anchor)
+- Defer date: March 10 (−5 days from anchor)
+
+When the next occurrence is generated:
+- Planned date → April 15 (the scheduled date)
+- Due date → April 18 (anchor + 3 days, offset preserved)
+- Defer date → April 10 (anchor − 5 days, offset preserved)
+
+| Value | Meaning |
+|-------|---------|
+| `due_date` | Schedule anchored to the due date |
+| `defer_date` | Schedule anchored to the defer date |
+| `planned_date` | Schedule anchored to the planned date |
+
+**The rule:** Choose the date that the recurrence is "about." If a task is due every Friday, anchor on `due_date`. If it becomes available every Monday, anchor on `defer_date`. If you just want to plan it for the same day each week, anchor on `planned_date`.
+
+> **⚠️ WIP — What happens when the anchor date field is not set on the task?** Likely falls back to the task's creation date, but this needs verification.
+
+### Schedule (Recurrence Mode)
+
+The schedule controls what happens when a task is completed — specifically, how the next occurrence's date is calculated.
+
+#### The mental model
+
+Internally, OmniFocus has one core operation: **given a date, find the next occurrence after that date.** The three schedule modes differ only in which date they feed into this operation:
+
+| Mode | How the next date is calculated |
+|------|--------------------------------|
+| `regularly` | Next on the schedule after the assigned date — can land in the past |
+| `regularly_with_catch_up` | Next on the schedule that's still in the future |
+| `from_completion` | Next occurrence counting forward from when you complete |
+
+> **When completed on time**, all three modes produce the same result. The differences only matter when you're late (or early).
+
+#### How the modes converge and diverge
+
+The diagram below walks through three scenarios, each adding one variable. It shows when the modes produce different dates, when they converge, and what pulls them apart again.
+
+![When BYDAY makes modes converge — and the subtle ways they still differ](../.research/deep-dives/repetition-modes/repeat-modes.png)
+
+**The two ways `catch_up` and `from_completion` differ:**
+
+| | Difference | Effect |
+|---|-----------|--------|
+| 1 | **Time anchoring** | `catch_up` keeps original time; `from_completion` shifts to completion time |
+| 2 | **Week grid** (`INTERVAL ≥ 2`) | `catch_up` preserves the grid; `from_completion` resets it |
+
+For simple weekly patterns (`INTERVAL=1`), the time difference is usually the only practical divergence. For longer intervals, the grid reset dominates.
+
+> For the full details — RRULE internals, the two-step algorithm for BYDAY + from_completion, time rounding — see `.research/deep-dives/repetition-modes/deep-research.md`.
+
+#### Choosing a mode
+
+- Task must happen on **specific calendar days** regardless of completion history → **`regularly_with_catch_up`** (or `regularly` if every missed occurrence must be tracked)
+- The **minimum gap** between occurrences matters more than landing on a fixed day → **`from_completion`**
+- When unsure → **`regularly_with_catch_up`** is the safe default

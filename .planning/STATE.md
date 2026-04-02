@@ -112,8 +112,8 @@ Carried forward:
 10. ~~Tighten schema field constraints: flagged default and name min_length~~ (DONE: quick-260331-v9q)
 11. Reserve Literal and Annotated types for contract models only
 12. Centralize field descriptions into constants like warnings and errors
-13. Improve MCP tool schema descriptions and field documentation
-14. Add validation set sync tests between models and contracts (post-merge follow-up to #11)
+13. ~~Improve MCP tool schema descriptions and field documentation~~ (DONE: quick-260401-twg)
+14. ~~Clarify repetition schedule and repeat mode edge cases~~ (HALF DONE: schedule modes clarified in eec6241; basedOn unset anchor still open)
 15. Convert specs to core models at service boundary (post-merge follow-up to #11)
 
 ### Quick Tasks Completed
@@ -131,6 +131,7 @@ Carried forward:
 | Phase 36.4 P01 | 5min | 2 tasks | 2 files |
 | Phase 36.4 P02 | 2min | 2 tasks | 2 files |
 | Phase 36.4 P03 | 2min | 2 tasks | 3 files |
+| 260401-twg | Improve MCP tool schema descriptions and field documentation | 2026-04-01 | b63e981, 7885e5d | | [260401-twg-improve-mcp-tool-schema-descriptions-and](./quick/260401-twg-improve-mcp-tool-schema-descriptions-and/) |
 
 ### Blockers/Concerns
 
@@ -138,6 +139,6 @@ None yet.
 
 ## Session Continuity
 
-Last activity: 2026-04-01 - Completed quick task 260401-hz9: Replace opaque on: dict with OrdinalWeekday model
-Stopped at: Completed 36.4-03-PLAN.md
+Last activity: 2026-04-02 - Clarified repetition schedule modes in concepts doc + descriptions.py (eec6241)
+Stopped at: Completed 36.3-02-PLAN.md
 Resume file: None

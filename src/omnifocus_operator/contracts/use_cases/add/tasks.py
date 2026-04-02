@@ -6,8 +6,13 @@ from pydantic import AwareDatetime, Field, field_validator
 
 from omnifocus_operator.agent_messages.descriptions import (
     ADD_TASK_RESULT_DOC,
+    DATE_EXAMPLE,
     DEFER_DATE_WRITE,
     DUE_DATE_WRITE,
+    ESTIMATED_MINUTES,
+    FLAGGED,
+    NAME_ADD_COMMAND,
+    NOTE_ADD_COMMAND,
     PARENT,
     PLANNED_DATE_WRITE,
     TAGS_ADD_COMMAND,
@@ -21,7 +26,7 @@ from omnifocus_operator.models.base import OmniFocusBaseModel
 
 
 class AddTaskCommand(CommandModel):
-    name: str = Field(min_length=1)
+    name: str = Field(min_length=1, description=NAME_ADD_COMMAND)
 
     @field_validator("name", mode="before")
     @classmethod
@@ -40,18 +45,21 @@ class AddTaskCommand(CommandModel):
     due_date: AwareDatetime | None = Field(
         default=None,
         description=DUE_DATE_WRITE,
+        examples=[DATE_EXAMPLE],
     )
     defer_date: AwareDatetime | None = Field(
         default=None,
         description=DEFER_DATE_WRITE,
+        examples=[DATE_EXAMPLE],
     )
     planned_date: AwareDatetime | None = Field(
         default=None,
         description=PLANNED_DATE_WRITE,
+        examples=[DATE_EXAMPLE],
     )
-    flagged: bool = False
-    estimated_minutes: float | None = None
-    note: str | None = None
+    flagged: bool = Field(default=False, description=FLAGGED)
+    estimated_minutes: float | None = Field(default=None, description=ESTIMATED_MINUTES)
+    note: str | None = Field(default=None, description=NOTE_ADD_COMMAND)
     repetition_rule: RepetitionRuleAddSpec | None = None
 
 
