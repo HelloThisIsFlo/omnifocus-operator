@@ -14,6 +14,8 @@ from pydantic import ValidationError
 
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.shared.repetition_rule import (
+    EndByDateSpec,
+    EndByOccurrencesSpec,
     FrequencyAddSpec,
     FrequencyEditSpec,
     OrdinalWeekdaySpec,
@@ -30,10 +32,6 @@ from omnifocus_operator.contracts.use_cases.edit.tasks import (
     EditTaskRepoPayload,
 )
 from omnifocus_operator.models.enums import BasedOn, Schedule
-from omnifocus_operator.contracts.shared.repetition_rule import (
-    EndByDateSpec,
-    EndByOccurrencesSpec,
-)
 
 
 class TestRepetitionRuleAddSpec:

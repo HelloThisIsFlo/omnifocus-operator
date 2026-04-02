@@ -28,7 +28,6 @@ from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
 from omnifocus_operator.models import AllEntities, Project, Tag, Task
 from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
-    EndByOccurrences,
     EndCondition,
     Frequency,
     RepetitionRule,

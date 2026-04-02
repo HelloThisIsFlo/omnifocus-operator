@@ -9,6 +9,8 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 
 from omnifocus_operator.contracts.shared.repetition_rule import (
+    EndByDateSpec,
+    EndByOccurrencesSpec,
     FrequencyAddSpec,
     RepetitionRuleAddSpec,
     RepetitionRuleRepoPayload,
@@ -16,10 +18,6 @@ from omnifocus_operator.contracts.shared.repetition_rule import (
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskCommand
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskCommand
 from omnifocus_operator.models.enums import BasedOn, Schedule
-from omnifocus_operator.contracts.shared.repetition_rule import (
-    EndByDateSpec,
-    EndByOccurrencesSpec,
-)
 from omnifocus_operator.service.payload import PayloadBuilder
 
 # ---------------------------------------------------------------------------

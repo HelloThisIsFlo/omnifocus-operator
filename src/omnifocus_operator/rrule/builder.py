@@ -11,12 +11,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from omnifocus_operator.models.repetition_rule import (
-    EndByDate,
-    EndByOccurrences,
-    Frequency,
-    OrdinalWeekday,
-)
 from omnifocus_operator.rrule.parser import parse_rrule
 
 if TYPE_CHECKING:
@@ -25,6 +19,12 @@ if TYPE_CHECKING:
     from omnifocus_operator.contracts.shared.repetition_rule import (
         EndConditionSpec,
         FrequencyAddSpec,
+    )
+    from omnifocus_operator.models.repetition_rule import (
+        EndByDate,
+        EndByOccurrences,
+        Frequency,
+        OrdinalWeekday,
     )
 
 # ── Reverse Mapping Tables ───────────────────────────────────────────────

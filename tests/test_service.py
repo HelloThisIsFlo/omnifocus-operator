@@ -19,6 +19,8 @@ from omnifocus_operator.bridge import BridgeError
 from omnifocus_operator.bridge.mtime import MtimeSource
 from omnifocus_operator.contracts.shared.actions import MoveAction, TagAction
 from omnifocus_operator.contracts.shared.repetition_rule import (
+    EndByDateSpec,
+    EndByOccurrencesSpec,
     FrequencyAddSpec,
     FrequencyEditSpec,
     RepetitionRuleAddSpec,
@@ -30,10 +32,6 @@ from omnifocus_operator.contracts.use_cases.edit.tasks import (
     EditTaskCommand,
 )
 from omnifocus_operator.models.enums import BasedOn, Schedule
-from omnifocus_operator.contracts.shared.repetition_rule import (
-    EndByDateSpec,
-    EndByOccurrencesSpec,
-)
 from omnifocus_operator.models.repetition_rule import (
     OrdinalWeekday,
 )
