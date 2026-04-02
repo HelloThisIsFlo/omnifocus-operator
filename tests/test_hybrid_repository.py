@@ -31,7 +31,7 @@ from omnifocus_operator.contracts.use_cases.list.tags import ListTagsRepoQuery
 from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
 from omnifocus_operator.models.enums import Availability, FolderAvailability, TagAvailability
 from omnifocus_operator.models.snapshot import AllEntities
-from omnifocus_operator.repository.hybrid import _FRESHNESS_TIMEOUT, HybridRepository
+from omnifocus_operator.repository.hybrid.hybrid import _FRESHNESS_TIMEOUT, HybridRepository
 from tests.doubles import InMemoryBridge, StubBridge
 
 # Core Foundation epoch: Jan 1, 2001 00:00:00 UTC
@@ -457,7 +457,7 @@ class TestTaskTimestamps:
         """dateDue/dateToStart as local-time ISO strings parse correctly."""
         # Use UTC timezone so local time == UTC for predictable assertions
         with patch(
-            "omnifocus_operator.repository.hybrid._LOCAL_TZ",
+            "omnifocus_operator.repository.hybrid.hybrid._LOCAL_TZ",
             ZoneInfo("UTC"),
         ):
             result = await hybrid_repo.get_all()
@@ -1057,7 +1057,7 @@ class TestFreshness:
 
         task = asyncio.create_task(modify_wal())
         with patch(
-            "omnifocus_operator.repository.hybrid.asyncio.sleep", side_effect=tracking_sleep
+            "omnifocus_operator.repository.hybrid.hybrid.asyncio.sleep", side_effect=tracking_sleep
         ):
             await repo.edit_task(EditTaskRepoPayload(id="task-001", name="Edited"))
         await task
@@ -1079,7 +1079,7 @@ class TestFreshness:
             await original_sleep(duration)
 
         with patch(
-            "omnifocus_operator.repository.hybrid.asyncio.sleep", side_effect=tracking_sleep
+            "omnifocus_operator.repository.hybrid.hybrid.asyncio.sleep", side_effect=tracking_sleep
         ):
             await hybrid_repo.get_all()
             await hybrid_repo.get_task("task-001")
@@ -1140,7 +1140,7 @@ class TestFreshness:
             await original_sleep(duration)
 
         with patch(
-            "omnifocus_operator.repository.hybrid.asyncio.sleep", side_effect=tracking_sleep
+            "omnifocus_operator.repository.hybrid.hybrid.asyncio.sleep", side_effect=tracking_sleep
         ):
             await getattr(repo, method)(arg)
 
@@ -1538,7 +1538,7 @@ class TestLocalDatetimeParsing:
         """dateDue as local-time ISO string in winter converts to UTC correctly."""
         # London winter: UTC+0, so local 10:00 = UTC 10:00
         with patch(
-            "omnifocus_operator.repository.hybrid._LOCAL_TZ",
+            "omnifocus_operator.repository.hybrid.hybrid._LOCAL_TZ",
             ZoneInfo("Europe/London"),
         ):
             result = await hybrid_repo.get_all()
@@ -1565,7 +1565,7 @@ class TestLocalDatetimeParsing:
         """dateDue as local-time ISO string in summer (BST) converts to UTC correctly."""
         # London summer (BST): UTC+1, so local 10:00 = UTC 09:00
         with patch(
-            "omnifocus_operator.repository.hybrid._LOCAL_TZ",
+            "omnifocus_operator.repository.hybrid.hybrid._LOCAL_TZ",
             ZoneInfo("Europe/London"),
         ):
             result = await hybrid_repo.get_all()
@@ -1587,7 +1587,7 @@ class TestLocalDatetimeParsing:
     async def test_defer_date_local_time(self, hybrid_repo: HybridRepository) -> None:
         """dateToStart stored as local-time ISO text converts to UTC correctly."""
         with patch(
-            "omnifocus_operator.repository.hybrid._LOCAL_TZ",
+            "omnifocus_operator.repository.hybrid.hybrid._LOCAL_TZ",
             ZoneInfo("Europe/London"),
         ):
             result = await hybrid_repo.get_all()
@@ -1609,7 +1609,7 @@ class TestLocalDatetimeParsing:
     async def test_planned_date_local_time(self, hybrid_repo: HybridRepository) -> None:
         """datePlanned stored as local-time ISO text converts to UTC correctly."""
         with patch(
-            "omnifocus_operator.repository.hybrid._LOCAL_TZ",
+            "omnifocus_operator.repository.hybrid.hybrid._LOCAL_TZ",
             ZoneInfo("Europe/London"),
         ):
             result = await hybrid_repo.get_all()

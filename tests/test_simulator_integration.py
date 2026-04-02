@@ -18,7 +18,7 @@ import pytest
 from fastmcp import Client
 
 from omnifocus_operator.bridge.errors import BridgeProtocolError, BridgeTimeoutError
-from omnifocus_operator.repository.bridge import BridgeRepository
+from omnifocus_operator.repository.bridge_only import BridgeRepository
 from omnifocus_operator.server import create_server
 from omnifocus_operator.simulator.data import SIMULATOR_SNAPSHOT
 from tests.doubles import ConstantMtimeSource, SimulatorBridge

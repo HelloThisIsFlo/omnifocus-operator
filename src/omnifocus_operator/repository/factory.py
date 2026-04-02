@@ -111,7 +111,7 @@ def _create_bridge_repository() -> Repository:  # pragma: no cover
     """
     from omnifocus_operator.bridge.mtime import FileMtimeSource, MtimeSource
     from omnifocus_operator.bridge.real import DEFAULT_OFOCUS_PATH
-    from omnifocus_operator.repository.bridge import BridgeRepository
+    from omnifocus_operator.repository.bridge_only import BridgeRepository
 
     bridge = _create_real_bridge()
 

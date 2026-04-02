@@ -28,7 +28,7 @@ from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskRepoResult
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskRepoResult
 from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult
 from omnifocus_operator.repository.bridge_write_mixin import BridgeWriteMixin
-from omnifocus_operator.repository.query_builder import (
+from omnifocus_operator.repository.hybrid.query_builder import (
     build_list_projects_sql,
     build_list_tasks_sql,
 )

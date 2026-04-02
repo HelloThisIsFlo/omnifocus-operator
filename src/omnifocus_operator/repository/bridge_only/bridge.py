@@ -16,7 +16,7 @@ import asyncio
 import logging
 from typing import TYPE_CHECKING, Any
 
-from omnifocus_operator.repository.adapter import adapt_snapshot
+from omnifocus_operator.repository.bridge_only.adapter import adapt_snapshot
 from omnifocus_operator.contracts.protocols import Repository
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskRepoResult
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskRepoResult

@@ -8,7 +8,7 @@ MtimeSource classes live in ``omnifocus_operator.bridge.mtime``.
 """
 
 from omnifocus_operator.contracts.protocols import Repository
-from omnifocus_operator.repository.bridge import BridgeRepository
+from omnifocus_operator.repository.bridge_only import BridgeRepository
 from omnifocus_operator.repository.factory import create_repository
 from omnifocus_operator.repository.hybrid import HybridRepository
 

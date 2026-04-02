@@ -24,7 +24,7 @@ from omnifocus_operator.models.enums import (
     FolderAvailability,
     TagAvailability,
 )
-from omnifocus_operator.repository.bridge import BridgeRepository
+from omnifocus_operator.repository.bridge_only import BridgeRepository
 from omnifocus_operator.repository.hybrid import HybridRepository
 from tests.conftest import (
     make_folder_dict,

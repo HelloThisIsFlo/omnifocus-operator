@@ -20,7 +20,7 @@ import asyncio
 import sys
 from typing import Any
 
-from omnifocus_operator.repository.adapter import adapt_snapshot
+from omnifocus_operator.repository.bridge_only.adapter import adapt_snapshot
 from omnifocus_operator.bridge.real import DEFAULT_IPC_DIR, RealBridge
 from omnifocus_operator.models import AllEntities
 

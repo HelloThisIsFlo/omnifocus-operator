@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsRepoQuery
 from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
 from omnifocus_operator.models.enums import Availability
-from omnifocus_operator.repository.query_builder import (
+from omnifocus_operator.repository.hybrid.query_builder import (
     SqlQuery,
     build_list_projects_sql,
     build_list_tasks_sql,
