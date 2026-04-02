@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+from datetime import date as date_type
 from typing import Annotated, Any, Literal, get_args
 
 from pydantic import Field, field_validator, model_validator
 
 from omnifocus_operator.agent_messages.descriptions import (
+    END_BY_DATE_DATE,
+    END_BY_DATE_DOC,
+    END_BY_OCCURRENCES_DOC,
     FREQUENCY_ADD_SPEC_DOC,
     FREQUENCY_EDIT_SPEC_DOC,
     ON_DATE,
@@ -28,7 +32,6 @@ from omnifocus_operator.contracts.base import (
 )
 from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
-    EndCondition,
     check_at_most_one_ordinal,
     check_frequency_cross_type_fields,
     normalize_day_codes,
@@ -55,6 +58,29 @@ DayName = Literal[
     "weekday",
     "weekend_day",
 ]
+
+
+# -- End Condition Spec Models (contract-side) --------------------------------
+
+
+class EndByDateSpec(CommandModel):
+    __doc__ = END_BY_DATE_DOC
+    date: date_type = Field(description=END_BY_DATE_DATE)
+
+
+class EndByOccurrencesSpec(CommandModel):
+    __doc__ = END_BY_OCCURRENCES_DOC
+    occurrences: Annotated[int, Field(ge=1)]
+
+    @field_validator("occurrences", mode="before")
+    @classmethod
+    def _validate_occurrences(cls, v: int) -> int:
+        if isinstance(v, int) and v < 1:
+            raise ValueError(REPETITION_INVALID_END_OCCURRENCES.format(value=v))
+        return v
+
+
+EndConditionSpec = EndByDateSpec | EndByOccurrencesSpec
 
 
 def _validate_frequency_type(v: object) -> object:
@@ -172,7 +198,7 @@ class RepetitionRuleAddSpec(CommandModel):
     frequency: FrequencyAddSpec
     schedule: Schedule
     based_on: BasedOn
-    end: EndCondition | None = None
+    end: EndConditionSpec | None = None
 
     @field_validator("end", mode="before")
     @classmethod
@@ -186,7 +212,7 @@ class RepetitionRuleEditSpec(CommandModel):
     frequency: Patch[FrequencyEditSpec] = UNSET
     schedule: Patch[Schedule] = UNSET
     based_on: Patch[BasedOn] = UNSET
-    end: PatchOrClear[EndCondition] = UNSET
+    end: PatchOrClear[EndConditionSpec] = UNSET
 
     @field_validator("end", mode="before")
     @classmethod
@@ -209,6 +235,9 @@ class RepetitionRuleRepoPayload(CommandModel):
 
 
 __all__ = [
+    "EndByDateSpec",
+    "EndByOccurrencesSpec",
+    "EndConditionSpec",
     "FrequencyAddSpec",
     "FrequencyEditSpec",
     "OrdinalWeekdaySpec",

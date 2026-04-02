@@ -20,6 +20,9 @@ from omnifocus_operator.contracts.base import (
 from omnifocus_operator.contracts.protocols import Bridge, Repository, Service
 from omnifocus_operator.contracts.shared.actions import MoveAction, TagAction
 from omnifocus_operator.contracts.shared.repetition_rule import (
+    EndByDateSpec,
+    EndByOccurrencesSpec,
+    EndConditionSpec,
     RepetitionRuleAddSpec,
     RepetitionRuleEditSpec,
     RepetitionRuleRepoPayload,
@@ -74,6 +77,9 @@ _ns: dict[str, type | object] = {
     "EditTaskRepoPayload": EditTaskRepoPayload,
     "MoveToRepoPayload": MoveToRepoPayload,
     "EditTaskRepoResult": EditTaskRepoResult,
+    "EndByDateSpec": EndByDateSpec,
+    "EndByOccurrencesSpec": EndByOccurrencesSpec,
+    "EndConditionSpec": EndConditionSpec,
     "RepetitionRuleAddSpec": RepetitionRuleAddSpec,
     "RepetitionRuleEditSpec": RepetitionRuleEditSpec,
     "RepetitionRuleRepoPayload": RepetitionRuleRepoPayload,
@@ -119,6 +125,8 @@ AddTaskRepoPayload.model_rebuild(_types_namespace=_ns)
 AddTaskRepoResult.model_rebuild(_types_namespace=_ns)
 
 # Repetition rule spec models
+EndByDateSpec.model_rebuild(_types_namespace=_ns)
+EndByOccurrencesSpec.model_rebuild(_types_namespace=_ns)
 RepetitionRuleAddSpec.model_rebuild(_types_namespace=_ns)
 RepetitionRuleEditSpec.model_rebuild(_types_namespace=_ns)
 RepetitionRuleRepoPayload.model_rebuild(_types_namespace=_ns)

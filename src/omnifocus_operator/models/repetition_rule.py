@@ -24,7 +24,7 @@ core models. Core models use plain types with runtime validators.
 from __future__ import annotations
 
 from datetime import date as date_type
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -220,7 +220,7 @@ class EndByDate(OmniFocusBaseModel):
 class EndByOccurrences(OmniFocusBaseModel):
     __doc__ = END_BY_OCCURRENCES_DOC
 
-    occurrences: Annotated[int, Field(ge=1)]
+    occurrences: int
 
     @field_validator("occurrences", mode="before")
     @classmethod
