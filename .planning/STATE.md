@@ -21,7 +21,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-29)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 36.2 — sweep-agent-facing-schema-descriptions-and-tool-documentation
+**Current focus:** Phase 36.4 — reserve-literal-and-annotated-types-for-contract-models-only
 
 ## Current Position
 
@@ -107,7 +107,7 @@ Carried forward:
 11. Reserve Literal and Annotated types for contract models only
 12. Centralize field descriptions into constants like warnings and errors
 13. ~~Improve MCP tool schema descriptions and field documentation~~ (DONE: quick-260401-twg)
-14. Clarify repetition schedule and repeat mode edge cases
+14. ~~Clarify repetition schedule and repeat mode edge cases~~ (HALF DONE: schedule modes clarified in eec6241; basedOn unset anchor still open)
 
 ### Quick Tasks Completed
 
@@ -129,6 +129,6 @@ None yet.
 
 ## Session Continuity
 
-Last activity: 2026-04-02 - Completed quick task 260401-twg: Improve MCP tool schema descriptions and field documentation
+Last activity: 2026-04-02 - Clarified repetition schedule modes in concepts doc + descriptions.py (eec6241)
 Stopped at: Completed 36.3-02-PLAN.md
 Resume file: None

@@ -19,6 +19,10 @@ Both `docs/omnifocus-concepts.md` and the agent-facing descriptions in `descript
 ## Solution
 
 0. BEFORE ANYTHING: Read the deep research: `.research/deep-dives/repetition-modes/deep-research.md`
-1. Test the edge cases directly in OmniFocus (manual experimentation)
-2. Update `docs/omnifocus-concepts.md` — remove WIP flags and add clarified behavior
-3. Update `SCHEDULE_DOC` in `descriptions.py` — remove WIP tag and finalize per-value descriptions
+1. ~~Test the edge cases directly in OmniFocus (manual experimentation)~~
+2. ~~Update `docs/omnifocus-concepts.md` — remove WIP flags and add clarified behavior~~
+3. ~~Update `SCHEDULE_DOC` in `descriptions.py` — remove WIP tag and finalize per-value descriptions~~
+
+Items 1-3 done (eec6241): schedule section rewritten with progressive scenarios + Excalidraw diagram, SCHEDULE_DOC tightened. Schedule WIP flag removed.
+
+**Still open:** What happens when the `basedOn` anchor date field is not set on the task? WIP flag remains in `docs/omnifocus-concepts.md`.
