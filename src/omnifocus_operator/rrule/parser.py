@@ -209,7 +209,7 @@ def _parse_monthly_byday(
     return Frequency(
         type="monthly",
         interval=interval,
-        on=OrdinalWeekday(**{ordinal: day_name}),  # type: ignore[arg-type]
+        on=OrdinalWeekday(**{ordinal: day_name}),
     )
 
 
@@ -243,7 +243,7 @@ def _parse_monthly_bysetpos(
     return Frequency(
         type="monthly",
         interval=interval,
-        on=OrdinalWeekday(**{ordinal: day_group_name}),  # type: ignore[arg-type]
+        on=OrdinalWeekday(**{ordinal: day_group_name}),
     )
 
 

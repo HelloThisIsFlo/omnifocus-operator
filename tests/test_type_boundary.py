@@ -41,15 +41,18 @@ def _resolve_module_literal_aliases(tree: ast.Module) -> set[str]:
         if value is None:
             continue
         # Check if value is Subscript with Literal or Annotated
-        if isinstance(value, ast.Subscript) and isinstance(value.value, ast.Name):
-            if value.value.id in {"Literal", "Annotated"}:
-                # Get the target name(s)
-                if isinstance(node, ast.AnnAssign) and hasattr(node.target, "id"):
-                    aliases.add(node.target.id)
-                elif isinstance(node, ast.Assign):
-                    for target in node.targets:
-                        if isinstance(target, ast.Name):
-                            aliases.add(target.id)
+        if (
+            isinstance(value, ast.Subscript)
+            and isinstance(value.value, ast.Name)
+            and value.value.id in {"Literal", "Annotated"}
+        ):
+            # Get the target name(s)
+            if isinstance(node, ast.AnnAssign) and hasattr(node.target, "id"):
+                aliases.add(node.target.id)
+            elif isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        aliases.add(target.id)
     return aliases
 
 
@@ -70,9 +73,9 @@ def _find_constraint_types(
     - Nested in ast.Subscript (e.g., list[Literal[...]])
     """
     found: list[str] = []
-    _CONSTRAINT_NAMES = {"Literal", "Annotated"}
+    constraint_names = {"Literal", "Annotated"}
 
-    if isinstance(node, ast.Name) and node.id in _CONSTRAINT_NAMES:
+    if isinstance(node, ast.Name) and node.id in constraint_names:
         found.append(node.id)
     elif isinstance(node, ast.Name) and node.id in module_aliases:
         found.append(f"alias:{node.id}")
@@ -89,7 +92,7 @@ def _find_constraint_types(
         # Tuple inside subscript slice (e.g., Annotated[int, Field(ge=1)])
         for elt in node.elts:
             found.extend(_find_constraint_types(elt, module_aliases))
-    elif isinstance(node, ast.Attribute) and node.attr in _CONSTRAINT_NAMES:
+    elif isinstance(node, ast.Attribute) and node.attr in constraint_names:
         # typing.Literal or typing.Annotated
         found.append(node.attr)
 

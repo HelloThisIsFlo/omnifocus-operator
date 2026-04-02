@@ -18,11 +18,16 @@ import pydantic_core
 import pytest
 from pydantic import BaseModel, TypeAdapter
 
+from omnifocus_operator.contracts.shared.repetition_rule import (
+    FrequencyAddSpec,
+    FrequencyEditSpec,
+)
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskResult
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
 from omnifocus_operator.models import AllEntities, Project, Tag, Task
 from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
+    EndByOccurrences,
     EndCondition,
     Frequency,
     RepetitionRule,
@@ -587,4 +592,44 @@ class TestNamingConvention:
             f"contracts/ classes missing recognized suffix "
             f"(see docs/model-taxonomy.md). "
             f"Expected one of: {CONTRACT_SUFFIXES}. Violations: {violations}"
+        )
+
+
+class TestContractSchemaConstraints:
+    """Contract model fields must advertise minimum/maximum constraints in JSON Schema.
+
+    Annotated[int, Field(ge=1)] emits minimum: 1 in JSON Schema, giving agents
+    schema-level guidance without relying on runtime validators alone. These tests
+    guard against regressions where the Annotated wrapper is removed.
+    """
+
+    def test_frequency_add_spec_interval_advertises_minimum_1(self) -> None:
+        """FrequencyAddSpec.interval must have minimum: 1 in JSON Schema."""
+        schema = FrequencyAddSpec.model_json_schema()
+        interval_prop = schema.get("properties", {}).get("interval", {})
+        assert interval_prop.get("minimum") == 1, (
+            f"FrequencyAddSpec.interval must advertise minimum: 1 so agents know "
+            f"interval cannot be zero or negative. Got: {interval_prop}"
+        )
+
+    def test_frequency_edit_spec_interval_advertises_minimum_1(self) -> None:
+        """FrequencyEditSpec.interval must have minimum: 1 in JSON Schema.
+
+        The field type is Patch[Annotated[int, Field(ge=1)]], and Pydantic must
+        propagate the ge=1 constraint into the serialized schema.
+        """
+        schema = FrequencyEditSpec.model_json_schema()
+        interval_prop = schema.get("properties", {}).get("interval", {})
+        assert interval_prop.get("minimum") == 1, (
+            f"FrequencyEditSpec.interval must advertise minimum: 1 so agents know "
+            f"interval cannot be zero or negative. Got: {interval_prop}"
+        )
+
+    def test_end_by_occurrences_occurrences_advertises_minimum_1(self) -> None:
+        """EndByOccurrences.occurrences must have minimum: 1 in JSON Schema."""
+        schema = EndByOccurrences.model_json_schema()
+        occurrences_prop = schema.get("properties", {}).get("occurrences", {})
+        assert occurrences_prop.get("minimum") == 1, (
+            f"EndByOccurrences.occurrences must advertise minimum: 1 so agents know "
+            f"a repetition cannot end after zero occurrences. Got: {occurrences_prop}"
         )
