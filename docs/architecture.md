@@ -307,7 +307,7 @@ These are concrete examples of why logic stays out of the bridge:
 | Cycle detection (moves) | Service | Parent chain walk on cached snapshot — instant |
 | No-op detection + warnings | Service | Field comparison before bridge delegation |
 | Null-means-clear mapping | Service | Business logic, not transport |
-| RRULE string generation | Service | Structured fields → RRULE string (see [RRULE Utility Layer](#rrule-utility-layer)) |
+| RRULE string generation | Repository | Repository owns RRULE both directions (see [RRULE Utility Layer](#rrule-utility-layer)) |
 | Lifecycle (complete/drop) | Service + Bridge | Service validates state, bridge executes `markComplete()`/`drop()` |
 | Validation (structural) | Contract models | Pydantic validators on specs — value ranges, enum membership, field constraints |
 | Validation (semantic) | Service | State checks, no-op detection, cross-entity resolution |
@@ -597,45 +597,23 @@ No existing rule + partial update → error: "Task has no repetition rule. Provi
 
 ### RRULE Utility Layer
 
-Standalone functions bridge the structured API and the internal RRULE format:
-
-```mermaid
-flowchart LR
-    subgraph Agent-Facing
-        SF[Structured Fields]
-    end
-
-    subgraph Internal
-        BUILD["build_rrule()"]
-        PARSE["parse_rrule()"]
-        RRULE[RRULE String]
-    end
-
-    subgraph OmniFocus
-        BRIDGE[bridge.js]
-        SQLITE[(SQLite cache)]
-    end
-
-    SF -- "writes" --> BUILD -- "writes" --> RRULE -- "writes" --> BRIDGE
-    SQLITE -- "reads" --> PARSE -- "reads" --> SF
-    BRIDGE -- "reads" --> PARSE
-```
+The `repository/rrule/` package owns RRULE translation in both directions. Service works exclusively with core types (`Frequency`, `Schedule`, `BasedOn`, `EndCondition`) — it never sees RRULE strings.
 
 #### Write Path
 
-- `build_rrule(Frequency) → str` — structured model to RRULE string
-- Service layer calls `build_rrule()` then sends the RRULE string + metadata to bridge.js
-- Bridge stays dumb — receives `(ruleString, scheduleType, anchorDateKey, catchUp)`, creates `new Task.RepetitionRule()`
+- Service builds a `RepetitionRuleRepoPayload` (all core types) and hands it to the repository
+- `bridge_write_mixin._dump_payload()` intercepts and delegates to `rrule/serialize.py`
+- `serialize.py` calls `builder.py` (Frequency → RRULE string) and `schedule.py` (Schedule/BasedOn → bridge enums)
+- Bridge receives flat `{ruleString, scheduleType, anchorDateKey, catchUpAutomatically}`
 
 #### Read Path
 
-- `parse_rrule(str) → Frequency` — RRULE string to structured model
-- Both read paths (SQLite and bridge adapter) call `parse_rrule()` — single parsing implementation, two call sites
-- All parsing in Python, not bridge — see [Dumb Bridge, Smart Python](#dumb-bridge-smart-python)
+- Both read implementations (`hybrid.py`, `adapter.py`) normalize raw fields via mapping tables, then call shared `rrule/` functions
+- `parser.py`: `parse_rrule()` → `Frequency`, `parse_end_condition()` → `EndCondition | None`
+- `schedule.py`: `derive_schedule()` → `Schedule`, anchorDateKey → `BasedOn`
+- Assembled into `RepetitionRule` (core model) — service receives clean types
 
-#### Common
-
-- Both functions accept/return Pydantic models, not dicts
+> **Detailed flow diagrams** — write (add/edit) and read pipelines with full data flow: [docs/repetition-rule-flow.md](repetition-rule-flow.md)
 
 ### Validation Layers
 

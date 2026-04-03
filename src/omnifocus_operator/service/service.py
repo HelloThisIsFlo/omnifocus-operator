@@ -57,6 +57,7 @@ from omnifocus_operator.service.validate import (
 if TYPE_CHECKING:
     from omnifocus_operator.contracts.shared.repetition_rule import (
         FrequencyEditSpec,
+        RepetitionRuleEditSpec,
     )
     from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskCommand
     from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskCommand
@@ -68,7 +69,7 @@ if TYPE_CHECKING:
     from omnifocus_operator.models.folder import Folder
     from omnifocus_operator.models.perspective import Perspective
     from omnifocus_operator.models.project import Project
-    from omnifocus_operator.models.repetition_rule import EndCondition
+    from omnifocus_operator.models.repetition_rule import EndCondition, RepetitionRule
     from omnifocus_operator.models.snapshot import AllEntities
     from omnifocus_operator.models.tag import Tag
     from omnifocus_operator.models.task import Task
@@ -569,12 +570,12 @@ class _EditTaskPipeline(_Pipeline):
         )
 
     def _apply_repetition_rule(self) -> None:
-        """Merge, validate, and prepare repetition rule for the edit payload.
+        """Resolve, normalize, and prepare repetition rule for the edit payload.
 
-        Handles: UNSET (no change), None (clear), full set, partial update,
-        same-type merge, type change, and no-existing-rule validation.
-
-        Uses is_set() on FrequencyEditSpec fields for merge (D-11).
+        Three-phase structure mirroring _process_repetition_rule in Add:
+        1. Resolve — each field to a core type (from spec, existing, or merge)
+        2. Normalize + warn — domain normalization and validation warnings
+        3. Assemble — build RepetitionRuleRepoPayload and detect no-op
         """
         self._repetition_rule_payload: RepetitionRuleRepoPayload | None = None
         self._repetition_rule_clear: bool = False
@@ -593,7 +594,19 @@ class _EditTaskPipeline(_Pipeline):
 
         existing = self._task.repetition_rule
 
-        # Resolve root fields, falling back to existing
+        self._resolve_repetition_fields(spec, existing)
+        self._normalize_and_warn_repetition()
+        self._assemble_repetition_payload(existing)
+
+    # -- Repetition rule sub-steps ------------------------------------------
+
+    def _resolve_repetition_fields(
+        self,
+        spec: RepetitionRuleEditSpec,
+        existing: RepetitionRule | None,
+    ) -> None:
+        """Resolve each repetition field to a core type from spec or existing."""
+        # Resolve with locals (may be None before validation)
         schedule: Schedule | None = (
             spec.schedule if is_set(spec.schedule) else (existing.schedule if existing else None)
         )
@@ -601,53 +614,68 @@ class _EditTaskPipeline(_Pipeline):
             spec.based_on if is_set(spec.based_on) else (existing.based_on if existing else None)
         )
 
-        # End: None = clear end, UNSET = preserve, value = set/change
+        # End condition: set → convert, existing → preserve, neither → None
         end: EndCondition | None
         if is_set(spec.end):
-            end = end_condition_from_spec(spec.end)  # EDIT-06/07/08: convert spec to core
+            end = end_condition_from_spec(spec.end)
         elif existing is not None:
-            end = existing.end  # preserve existing
+            end = existing.end
         else:
             end = None
 
-        # Handle frequency
-        frequency: Frequency | None = None
-        if is_set(spec.frequency):
-            edit_spec: FrequencyEditSpec = spec.frequency
+        # Frequency: merge, type-change, fresh build, or keep existing
+        frequency: Frequency | None = self._resolve_frequency(spec.frequency, existing)
 
-            if existing is not None:
-                # Determine type: use edit_spec.type if is_set(), else existing
-                if is_set(edit_spec.type):
-                    effective_type = edit_spec.type
-                else:
-                    effective_type = existing.frequency.type
-
-                if is_set(edit_spec.type) and edit_spec.type != existing.frequency.type:
-                    # Type change (D-09): full replacement with defaults
-                    frequency = self._build_frequency_from_edit_spec(edit_spec, effective_type)
-                else:
-                    # Same type (explicit or inferred) -> merge (EDIT-09)
-                    frequency = self._merge_frequency(edit_spec, existing.frequency)
-            else:
-                # No existing rule (EDIT-15)
-                if not is_set(edit_spec.type):
-                    raise ValueError(REPETITION_NO_EXISTING_RULE)
-                frequency = self._build_frequency_from_edit_spec(edit_spec, edit_spec.type)
-        else:
-            # Frequency UNSET -> use existing
-            frequency = existing.frequency if existing else None
-
-        # EDIT-15: Can't partially update without an existing rule
+        # EDIT-15: All fields must be resolved — validation narrows types
         if frequency is None or schedule is None or based_on is None:
             raise ValueError(REPETITION_NO_EXISTING_RULE)
 
+        # Store validated (non-None) types for downstream methods
+        self._rr_frequency: Frequency = frequency
+        self._rr_schedule: Schedule = schedule
+        self._rr_based_on: BasedOn = based_on
+        self._rr_end: EndCondition | None = end
+
+    def _resolve_frequency(
+        self,
+        freq_spec: FrequencyEditSpec | object,
+        existing: RepetitionRule | None,
+    ) -> Frequency | None:
+        """Resolve frequency from edit spec, existing rule, or both.
+
+        Handles same-type merge (EDIT-09), type change (D-09),
+        fresh build (EDIT-15), and UNSET (keep existing).
+        """
+        if not is_set(freq_spec):
+            return existing.frequency if existing else None
+
+        edit_spec: FrequencyEditSpec = freq_spec  # type: ignore[assignment]
+
+        if existing is not None:
+            effective_type = edit_spec.type if is_set(edit_spec.type) else existing.frequency.type
+
+            if is_set(edit_spec.type) and edit_spec.type != existing.frequency.type:
+                # Type change (D-09): full replacement with defaults
+                return self._build_frequency_from_edit_spec(edit_spec, effective_type)
+            # Same type (explicit or inferred) -> merge (EDIT-09)
+            return self._merge_frequency(edit_spec, existing.frequency)
+
+        # No existing rule (EDIT-15)
+        if not is_set(edit_spec.type):
+            raise ValueError(REPETITION_NO_EXISTING_RULE)
+        return self._build_frequency_from_edit_spec(edit_spec, edit_spec.type)
+
+    def _normalize_and_warn_repetition(self) -> None:
+        """Normalize frequency and collect all repetition warnings."""
         # Normalize empty specialization fields (D-17)
-        frequency, spec_warns = self._domain.normalize_empty_specialization_fields(frequency)
+        self._rr_frequency, spec_warns = self._domain.normalize_empty_specialization_fields(
+            self._rr_frequency
+        )
         self._repetition_warns.extend(spec_warns)
 
         # Check warnings (end date in past, completed/dropped task)
         self._repetition_warns.extend(
-            self._domain.check_repetition_warnings(end=end, task=self._task)
+            self._domain.check_repetition_warnings(end=self._rr_end, task=self._task)
         )
 
         # Check anchor date warning (VALID-05)
@@ -663,23 +691,20 @@ class _EditTaskPipeline(_Pipeline):
             else self._task.planned_date,
         }
         self._repetition_warns.extend(
-            self._domain.check_anchor_date_warning(based_on, effective_dates)
+            self._domain.check_anchor_date_warning(self._rr_based_on, effective_dates)
         )
 
-        # Build the repo payload
+    def _assemble_repetition_payload(self, existing: RepetitionRule | None) -> None:
+        """Build RepetitionRuleRepoPayload and detect no-op edits."""
         self._repetition_rule_payload = RepetitionRuleRepoPayload(
-            frequency=frequency,
-            schedule=schedule,
-            based_on=based_on,
-            end=end,
+            frequency=self._rr_frequency,
+            schedule=self._rr_schedule,
+            based_on=self._rr_based_on,
+            end=self._rr_end,
         )
 
-        if (
-            existing is not None
-            and self._repetition_rule_payload is not None
-            and self._domain.repetition_payload_matches_existing(
-                self._repetition_rule_payload, existing
-            )
+        if existing is not None and self._domain.repetition_payload_matches_existing(
+            self._repetition_rule_payload, existing
         ):
             self._repetition_warns.append(REPETITION_NO_OP)
             self._repetition_rule_payload = None
