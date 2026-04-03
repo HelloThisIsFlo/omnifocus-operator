@@ -19,7 +19,13 @@ from fastmcp.exceptions import ToolError
 from omnifocus_operator.repository import BridgeOnlyRepository
 from omnifocus_operator.server import _register_tools, create_server
 from omnifocus_operator.service import OperatorService
-from tests.conftest import make_tag_dict, make_task_dict
+from tests.conftest import (
+    make_folder_dict,
+    make_perspective_dict,
+    make_project_dict,
+    make_tag_dict,
+    make_task_dict,
+)
 from tests.doubles import ConstantMtimeSource, InMemoryBridge, SimulatorBridge
 
 if TYPE_CHECKING:
@@ -1640,3 +1646,197 @@ class TestCanaryMiddleware:
         assert "ValidationError" not in error_msg, (
             f"Raw Pydantic 'ValidationError' leaked through middleware: {error_msg}"
         )
+
+
+# ---------------------------------------------------------------------------
+# LIST: list_tasks, list_projects, list_tags, list_folders, list_perspectives
+# ---------------------------------------------------------------------------
+
+_LIST_SEED_DATA: dict[str, Any] = {
+    "tasks": [
+        make_task_dict(id="t-flagged", name="Flagged Task", flagged=True),
+        make_task_dict(id="t-normal", name="Normal Task", flagged=False),
+    ],
+    "projects": [
+        make_project_dict(id="proj-alpha", name="Alpha Project"),
+        make_project_dict(id="proj-beta", name="Beta Project"),
+    ],
+    "tags": [
+        make_tag_dict(id="tag-active", name="Active Tag", status="Active"),
+        make_tag_dict(id="tag-hold", name="Hold Tag", status="OnHold"),
+    ],
+    "folders": [
+        make_folder_dict(id="fold-1", name="Work Folder"),
+    ],
+    "perspectives": [
+        make_perspective_dict(id="persp-inbox", name="Inbox"),
+        make_perspective_dict(id="persp-forecast", name="Forecast"),
+    ],
+}
+
+
+@pytest.mark.snapshot(**_LIST_SEED_DATA)
+class TestListTasks:
+    """Integration tests for the list_tasks MCP tool."""
+
+    async def test_list_tasks_returns_structured_content(self, client: Any) -> None:
+        result = await client.call_tool("list_tasks", {"query": {}})
+        assert result.structured_content is not None
+        sc = result.structured_content
+        assert "items" in sc
+        assert "total" in sc
+        assert "hasMore" in sc
+        assert isinstance(sc["items"], list)
+
+    async def test_list_tasks_golden_path_flagged_filter(self, client: Any) -> None:
+        result = await client.call_tool("list_tasks", {"query": {"flagged": True}})
+        sc = result.structured_content
+        assert sc is not None
+        items = sc["items"]
+        assert len(items) >= 1
+        assert all(item["flagged"] is True for item in items)
+
+    async def test_list_tasks_has_read_only_annotation(self, client: Any) -> None:
+        tools = await client.list_tools()
+        tool = next(t for t in tools if t.name == "list_tasks")
+        assert tool.annotations is not None
+        assert tool.annotations.readOnlyHint is True
+        assert tool.annotations.idempotentHint is True
+
+    async def test_list_tasks_response_uses_camelcase(self, client: Any) -> None:
+        result = await client.call_tool("list_tasks", {"query": {}})
+        sc = result.structured_content
+        assert sc is not None
+        items = sc["items"]
+        assert len(items) >= 1
+        task = items[0]
+        # camelCase keys expected
+        assert "inInbox" in task or "dueDate" in task or "hasChildren" in task
+        # snake_case keys must NOT be present
+        assert "in_inbox" not in task
+        assert "due_date" not in task
+        assert "has_children" not in task
+
+    async def test_list_tasks_invalid_availability_returns_tool_error(self, client: Any) -> None:
+        with pytest.raises(ToolError):
+            await client.call_tool(
+                "list_tasks", {"query": {"availability": ["invalid_value"]}}
+            )
+
+
+@pytest.mark.snapshot(**_LIST_SEED_DATA)
+class TestListProjects:
+    """Integration tests for the list_projects MCP tool."""
+
+    async def test_list_projects_returns_structured_content(self, client: Any) -> None:
+        result = await client.call_tool("list_projects", {"query": {}})
+        sc = result.structured_content
+        assert sc is not None
+        assert "items" in sc
+        assert "total" in sc
+        assert "hasMore" in sc
+
+    async def test_list_projects_golden_path_search(self, client: Any) -> None:
+        result = await client.call_tool(
+            "list_projects", {"query": {"search": "Alpha"}}
+        )
+        sc = result.structured_content
+        assert sc is not None
+        items = sc["items"]
+        assert len(items) >= 1
+        assert any("Alpha" in item["name"] for item in items)
+
+    async def test_list_projects_has_read_only_annotation(self, client: Any) -> None:
+        tools = await client.list_tools()
+        tool = next(t for t in tools if t.name == "list_projects")
+        assert tool.annotations is not None
+        assert tool.annotations.readOnlyHint is True
+        assert tool.annotations.idempotentHint is True
+
+
+@pytest.mark.snapshot(**_LIST_SEED_DATA)
+class TestListTags:
+    """Integration tests for the list_tags MCP tool."""
+
+    async def test_list_tags_returns_structured_content(self, client: Any) -> None:
+        result = await client.call_tool("list_tags", {"query": {}})
+        sc = result.structured_content
+        assert sc is not None
+        assert "items" in sc
+        assert "total" in sc
+        assert "hasMore" in sc
+
+    async def test_list_tags_golden_path_search(self, client: Any) -> None:
+        result = await client.call_tool("list_tags", {"query": {"search": "Active"}})
+        sc = result.structured_content
+        assert sc is not None
+        items = sc["items"]
+        assert len(items) >= 1
+        assert any("Active" in item["name"] for item in items)
+
+    async def test_list_tags_has_read_only_annotation(self, client: Any) -> None:
+        tools = await client.list_tools()
+        tool = next(t for t in tools if t.name == "list_tags")
+        assert tool.annotations is not None
+        assert tool.annotations.readOnlyHint is True
+        assert tool.annotations.idempotentHint is True
+
+
+@pytest.mark.snapshot(**_LIST_SEED_DATA)
+class TestListFolders:
+    """Integration tests for the list_folders MCP tool."""
+
+    async def test_list_folders_returns_structured_content(self, client: Any) -> None:
+        result = await client.call_tool("list_folders", {"query": {}})
+        sc = result.structured_content
+        assert sc is not None
+        assert "items" in sc
+        assert "total" in sc
+        assert "hasMore" in sc
+
+    async def test_list_folders_golden_path_search(self, client: Any) -> None:
+        result = await client.call_tool(
+            "list_folders", {"query": {"search": "Work"}}
+        )
+        sc = result.structured_content
+        assert sc is not None
+        items = sc["items"]
+        assert len(items) >= 1
+        assert any("Work" in item["name"] for item in items)
+
+    async def test_list_folders_has_read_only_annotation(self, client: Any) -> None:
+        tools = await client.list_tools()
+        tool = next(t for t in tools if t.name == "list_folders")
+        assert tool.annotations is not None
+        assert tool.annotations.readOnlyHint is True
+        assert tool.annotations.idempotentHint is True
+
+
+@pytest.mark.snapshot(**_LIST_SEED_DATA)
+class TestListPerspectives:
+    """Integration tests for the list_perspectives MCP tool."""
+
+    async def test_list_perspectives_returns_structured_content(self, client: Any) -> None:
+        result = await client.call_tool("list_perspectives", {"query": {}})
+        sc = result.structured_content
+        assert sc is not None
+        assert "items" in sc
+        assert "total" in sc
+        assert "hasMore" in sc
+
+    async def test_list_perspectives_golden_path_search(self, client: Any) -> None:
+        result = await client.call_tool(
+            "list_perspectives", {"query": {"search": "Forecast"}}
+        )
+        sc = result.structured_content
+        assert sc is not None
+        items = sc["items"]
+        assert len(items) >= 1
+        assert any("Forecast" in item["name"] for item in items)
+
+    async def test_list_perspectives_has_read_only_annotation(self, client: Any) -> None:
+        tools = await client.list_tools()
+        tool = next(t for t in tools if t.name == "list_perspectives")
+        assert tool.annotations is not None
+        assert tool.annotations.readOnlyHint is True
+        assert tool.annotations.idempotentHint is True

@@ -294,7 +294,7 @@ class TestToolDescriptionEnforcement:
     def test_tool_functions_use_centralized_descriptions(self) -> None:
         """Every @mcp.tool() must pass description=<Name> (constant ref, not string literal)."""
         tools = self._get_tool_decorated_functions()
-        assert len(tools) >= 6, f"Expected at least 6 tools, found {len(tools)}"
+        assert len(tools) >= 11, f"Expected at least 11 tools, found {len(tools)}"
 
         violations: list[str] = []
         for func, decorator in tools:

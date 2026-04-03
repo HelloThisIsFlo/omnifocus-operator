@@ -25,7 +25,8 @@ from omnifocus_operator.contracts.shared.repetition_rule import (
 )
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskResult
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
-from omnifocus_operator.models import AllEntities, Project, Tag, Task
+from omnifocus_operator.contracts.use_cases.list.common import ListResult
+from omnifocus_operator.models import AllEntities, Folder, Perspective, Project, Tag, Task
 from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
     EndCondition,
@@ -34,6 +35,7 @@ from omnifocus_operator.models.repetition_rule import (
 )
 from omnifocus_operator.server import create_server
 from tests.conftest import (
+    make_model_folder_dict,
     make_model_project_dict,
     make_model_snapshot_dict,
     make_model_tag_dict,
@@ -241,6 +243,15 @@ _SNAPSHOT = AllEntities.model_validate(
 _ADD_TASK_RESULT = AddTaskResult(success=True, id="new-task-001", name="Created Task")
 _EDIT_TASK_RESULT = EditTaskResult(success=True, id="task-001", name="Edited Task", warnings=[])
 
+# List tool result fixtures
+_FOLDER = Folder.model_validate(make_model_folder_dict())
+_PERSPECTIVE = Perspective.model_validate(make_perspective_dict())
+_LIST_TASKS_RESULT = ListResult[Task](items=[_TASK_PLAIN], total=1, has_more=False)
+_LIST_PROJECTS_RESULT = ListResult[Project](items=[_PROJECT], total=1, has_more=False)
+_LIST_TAGS_RESULT = ListResult[Tag](items=[_TAG], total=1, has_more=False)
+_LIST_FOLDERS_RESULT = ListResult[Folder](items=[_FOLDER], total=1, has_more=False)
+_LIST_PERSPECTIVES_RESULT = ListResult[Perspective](items=[_PERSPECTIVE], total=1, has_more=False)
+
 # Map tool names to their fixture instances
 _TOOL_FIXTURES: dict[str, Any] = {
     "get_all": _SNAPSHOT,
@@ -249,6 +260,11 @@ _TOOL_FIXTURES: dict[str, Any] = {
     "get_tag": _TAG,
     "add_tasks": [_ADD_TASK_RESULT],
     "edit_tasks": [_EDIT_TASK_RESULT],
+    "list_tasks": _LIST_TASKS_RESULT,
+    "list_projects": _LIST_PROJECTS_RESULT,
+    "list_tags": _LIST_TAGS_RESULT,
+    "list_folders": _LIST_FOLDERS_RESULT,
+    "list_perspectives": _LIST_PERSPECTIVES_RESULT,
 }
 
 
@@ -585,6 +601,9 @@ class TestNamingConvention:
         violations = []
         for name, _cls in contracts:
             if name in CONTRACTS_EXEMPT:
+                continue
+            # Skip parametrized generics like ListResult[Task] -- only check base class
+            if "[" in name:
                 continue
             if not any(name.endswith(suffix) for suffix in CONTRACT_SUFFIXES):
                 violations.append(name)
