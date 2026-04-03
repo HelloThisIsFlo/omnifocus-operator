@@ -111,7 +111,7 @@ The diagram below walks through three scenarios, each adding one variable. It sh
 
 For simple weekly patterns (`INTERVAL=1`), the time difference is usually the only practical divergence. For longer intervals, the grid reset dominates.
 
-> For the full details — RRULE internals, the two-step algorithm for BYDAY + from_completion, time rounding — see `.research/deep-dives/repetition-modes/deep-research.md`.
+> For the full details — empirically verified behavior, the day-level vs time-level asymmetry, INTERVAL grid reset, and missing anchor fallback — see `.research/deep-dives/repetition-modes/omnifocus-repetition-behavior.md`.
 
 #### Choosing a mode
 
