@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Read Tools
 status: executing
-stopped_at: Phase 37 context gathered
-last_updated: "2026-04-03T13:31:08.177Z"
+stopped_at: Completed 37-01-PLAN.md
+last_updated: "2026-04-03T13:56:40.893Z"
 last_activity: 2026-04-02
 progress:
   total_phases: 10
   completed_phases: 9
-  total_plans: 21
-  completed_plans: 21
+  total_plans: 23
+  completed_plans: 22
   percent: 20
 ---
 
@@ -89,6 +89,8 @@ Recent decisions affecting current work:
 - [Phase 260402-pj2]: build_add gets optional repetition_rule_payload param for pre-converted payloads
 - [Phase 260402-pj2]: payload.py fallback path also uses convert functions for direct callers
 - [Phase 260402-pj2]: EndByDate/EndByOccurrences moved to runtime imports in builder.py for isinstance dispatch
+- [Phase 37]: Project search SQL uses t.name/t.plainTextNote (projects share Task table)
+- [Phase 37]: Perspectives search is name-only (no notes field); non-ASCII test uses ASCII 'Buro'
 
 ### Roadmap Evolution
 
@@ -139,6 +141,7 @@ Carried forward:
 | 260402-phi | Add validation set sync tests between models and contracts | 2026-04-02 | 8f0f89b | | [260402-phi-add-validation-set-sync-tests-between-mo](./quick/260402-phi-add-validation-set-sync-tests-between-mo/) |
 | 260402-pic | Add cross-type model_validator to FrequencyEditSpec | 2026-04-02 | 9c92c8e, b82a0c2 | | [260402-pic-add-cross-type-model-validator-to-freque](./quick/260402-pic-add-cross-type-model-validator-to-freque/) |
 | 260402-pj2 | Convert specs to core models at service boundary | 2026-04-02 | 2633181 | Verified | [260402-pj2-convert-specs-to-core-models-at-service-](./quick/260402-pj2-convert-specs-to-core-models-at-service-/) |
+| Phase 37 P01 | 9min | 2 tasks | 16 files |
 
 ### Blockers/Concerns
 
@@ -147,5 +150,5 @@ None yet.
 ## Session Continuity
 
 Last activity: 2026-04-02 - Completed quick task 260402-pj2: Convert specs to core models at service boundary
-Stopped at: Phase 37 context gathered
-Resume file: .planning/phases/37-server-registration-and-integration-was-phase-38/37-CONTEXT.md
+Stopped at: Completed 37-01-PLAN.md
+Resume file: None

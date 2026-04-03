@@ -37,10 +37,10 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 
 ### Entity Search
 
-- [ ] **SRCH-01**: Agent can search projects by case-insensitive substring in name and notes — same implementation as TASK-08
-- [ ] **SRCH-02**: Agent can search tags by case-insensitive substring in name — same implementation as TASK-08 (name only, tags have no notes)
-- [ ] **SRCH-03**: Agent can search folders by case-insensitive substring in name — same implementation as TASK-08 (name only, folders have no notes)
-- [ ] **SRCH-04**: Agent can search perspectives by case-insensitive substring in name — same implementation as TASK-08 (name only). Requires introducing `ListPerspectivesQuery` / `ListPerspectivesRepoQuery`.
+- [x] **SRCH-01**: Agent can search projects by case-insensitive substring in name and notes — same implementation as TASK-08
+- [x] **SRCH-02**: Agent can search tags by case-insensitive substring in name — same implementation as TASK-08 (name only, tags have no notes)
+- [x] **SRCH-03**: Agent can search folders by case-insensitive substring in name — same implementation as TASK-08 (name only, folders have no notes)
+- [x] **SRCH-04**: Agent can search perspectives by case-insensitive substring in name — same implementation as TASK-08 (name only). Requires introducing `ListPerspectivesQuery` / `ListPerspectivesRepoQuery`.
 
 ### Write Tool Schema & Validation
 
@@ -188,10 +188,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-03 | Phase 36 (merged) | Complete |
 | INFRA-04 | Phase 34 | Complete |
 | INFRA-05 | Phase 37 (was 38) | Pending |
-| SRCH-01 | Phase 37 | Pending |
-| SRCH-02 | Phase 37 | Pending |
-| SRCH-03 | Phase 37 | Pending |
-| SRCH-04 | Phase 37 | Pending |
+| SRCH-01 | Phase 37 | Complete |
+| SRCH-02 | Phase 37 | Complete |
+| SRCH-03 | Phase 37 | Complete |
+| SRCH-04 | Phase 37 | Complete |
 | INFRA-06 | Phase 36 (merged) | Complete |
 | INFRA-07 | Phase 35.2 | Complete |
 | INFRA-08 | Phase 35.1 | Complete |
