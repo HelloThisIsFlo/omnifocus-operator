@@ -16,6 +16,8 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+from pydantic import BaseModel
+
 from omnifocus_operator.agent_messages.errors import (
     ANCHOR_TASK_NOT_FOUND,
     CIRCULAR_REFERENCE,
@@ -305,7 +307,7 @@ class DomainLogic:
             edit_val = getattr(edit_spec, field_name)
             if is_set(edit_val):
                 # Spec->Core boundary: model_dump() for nested models
-                if hasattr(edit_val, "model_dump"):
+                if isinstance(edit_val, BaseModel):
                     merged[field_name] = edit_val.model_dump(exclude_defaults=True)
                 else:
                     merged[field_name] = edit_val
