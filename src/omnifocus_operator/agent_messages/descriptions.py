@@ -242,9 +242,17 @@ LIST_TAGS_QUERY_DOC = "Filter tags."
 
 LIST_FOLDERS_QUERY_DOC = "Filter folders."
 
+LIST_PERSPECTIVES_QUERY_DOC = "Filter perspectives."
+
 DURATION_UNIT_DOC = "Unit for duration-based filters."
 
 REVIEW_DUE_FILTER_DOC = "Duration threshold for the review_due_within filter."
+
+# --- Field Descriptions: Query Models ---
+
+SEARCH_FIELD_NAME_NOTES = "Case-insensitive substring match on name and notes."
+
+SEARCH_FIELD_NAME_ONLY = "Case-insensitive substring match on name."
 
 # --- Tool Descriptions ---
 

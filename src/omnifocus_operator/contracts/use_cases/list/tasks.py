@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from pydantic import Field, model_validator
 
-from omnifocus_operator.agent_messages.descriptions import LIST_TASKS_QUERY_DOC
+from omnifocus_operator.agent_messages.descriptions import (
+    LIST_TASKS_QUERY_DOC,
+    SEARCH_FIELD_NAME_NOTES,
+)
 from omnifocus_operator.contracts.base import QueryModel
 from omnifocus_operator.contracts.use_cases.list._validators import validate_offset_requires_limit
 from omnifocus_operator.models.enums import Availability
@@ -21,7 +24,7 @@ class ListTasksQuery(QueryModel):
     availability: list[Availability] = Field(
         default_factory=lambda: [Availability.AVAILABLE, Availability.BLOCKED]
     )
-    search: str | None = None  # case-insensitive substring in name+notes
+    search: str | None = Field(default=None, description=SEARCH_FIELD_NAME_NOTES)
     limit: int | None = None
     offset: int | None = None
 

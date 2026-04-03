@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from omnifocus_operator.agent_messages.descriptions import LIST_FOLDERS_QUERY_DOC
+from omnifocus_operator.agent_messages.descriptions import (
+    LIST_FOLDERS_QUERY_DOC,
+    SEARCH_FIELD_NAME_ONLY,
+)
 from omnifocus_operator.contracts.base import QueryModel
 from omnifocus_operator.models.enums import FolderAvailability
 
@@ -15,6 +18,7 @@ class ListFoldersQuery(QueryModel):
     availability: list[FolderAvailability] = Field(
         default_factory=lambda: [FolderAvailability.AVAILABLE]
     )
+    search: str | None = Field(default=None, description=SEARCH_FIELD_NAME_ONLY)
 
 
 class ListFoldersRepoQuery(QueryModel):
@@ -23,3 +27,4 @@ class ListFoldersRepoQuery(QueryModel):
     availability: list[FolderAvailability] = Field(
         default_factory=lambda: [FolderAvailability.AVAILABLE]
     )
+    search: str | None = None

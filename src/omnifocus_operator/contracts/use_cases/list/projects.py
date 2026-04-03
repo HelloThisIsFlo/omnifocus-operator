@@ -13,6 +13,7 @@ from omnifocus_operator.agent_messages.descriptions import (
     DURATION_UNIT_DOC,
     LIST_PROJECTS_QUERY_DOC,
     REVIEW_DUE_FILTER_DOC,
+    SEARCH_FIELD_NAME_NOTES,
 )
 from omnifocus_operator.contracts.base import QueryModel
 from omnifocus_operator.contracts.use_cases.list._validators import validate_offset_requires_limit
@@ -70,6 +71,7 @@ class ListProjectsQuery(QueryModel):
     folder: str | None = None  # case-insensitive partial match on folder name
     review_due_within: ReviewDueFilter | None = None
     flagged: bool | None = None
+    search: str | None = Field(default=None, description=SEARCH_FIELD_NAME_NOTES)
     limit: int | None = None
     offset: int | None = None
 
@@ -97,5 +99,6 @@ class ListProjectsRepoQuery(QueryModel):
     folder_ids: list[str] | None = None
     review_due_before: datetime | None = None
     flagged: bool | None = None
+    search: str | None = None
     limit: int | None = None
     offset: int | None = None

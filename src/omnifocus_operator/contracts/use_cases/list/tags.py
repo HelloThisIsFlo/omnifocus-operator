@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from omnifocus_operator.agent_messages.descriptions import LIST_TAGS_QUERY_DOC
+from omnifocus_operator.agent_messages.descriptions import (
+    LIST_TAGS_QUERY_DOC,
+    SEARCH_FIELD_NAME_ONLY,
+)
 from omnifocus_operator.contracts.base import QueryModel
 from omnifocus_operator.models.enums import TagAvailability
 
@@ -15,6 +18,7 @@ class ListTagsQuery(QueryModel):
     availability: list[TagAvailability] = Field(
         default_factory=lambda: [TagAvailability.AVAILABLE, TagAvailability.BLOCKED]
     )
+    search: str | None = Field(default=None, description=SEARCH_FIELD_NAME_ONLY)
 
 
 class ListTagsRepoQuery(QueryModel):
@@ -23,3 +27,4 @@ class ListTagsRepoQuery(QueryModel):
     availability: list[TagAvailability] = Field(
         default_factory=lambda: [TagAvailability.AVAILABLE, TagAvailability.BLOCKED]
     )
+    search: str | None = None
