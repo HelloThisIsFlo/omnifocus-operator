@@ -94,7 +94,7 @@
 - [x] **Phase 34: Contracts and Query Foundation** — Typed query models, ListResult container, query builder, protocol extensions (completed 2026-03-29)
 - [x] **Phase 35: SQL Repository** — HybridRepository list methods with filtered SQL queries for all 5 entity types (completed 2026-03-30)
 - [x] **Phase 36: Service Orchestration + Cross-Path Equivalence** — Validation, defaults, duration parsing, cross-path equivalence tests (merges old Phases 36+37) (completed 2026-03-31)
-- [ ] **Phase 37: Server Registration and Integration** — 5 new MCP tools wired end-to-end
+- [x] **Phase 37: Server Registration and Integration** — 5 new MCP tools wired end-to-end (completed 2026-04-03)
 
 ## Phase Details
 
@@ -232,10 +232,10 @@ Plans:
   5. list_projects supports `search` filter — case-insensitive substring on name + notes (same implementation as list_tasks)
   6. list_tags, list_folders, list_perspectives support `search` filter — case-insensitive substring on name (same implementation as list_tasks, name only)
   7. list_perspectives has `ListPerspectivesQuery` / `ListPerspectivesRepoQuery` query models following the model taxonomy
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [x] 37-01-PLAN.md — Search expansion: query models, protocols, service/repo wiring, cross-path tests
-- [ ] 37-02-PLAN.md — Server registration: 5 list tools, description constants, integration tests
+- [x] 37-02-PLAN.md — Server registration: 5 list tools, description constants, integration tests
 
 ## Progress
 
@@ -259,4 +259,4 @@ Phases execute in numeric order: 34 → 35 → 35.1 → 35.2 → 36 → 37
 | 36.2 Agent-Facing Documentation Sweep | v1.3 | 3/3 | Complete    | 2026-03-31 |
 | 36.3 Description Centralization | v1.3 | 2/2 | Complete    | 2026-04-01 |
 | 36.4 Type Constraint Boundary | v1.3 | 4/4 | Complete    | 2026-04-02 |
-| 37. Server Registration and Integration | v1.3 | 1/2 | In Progress|  |
+| 37. Server Registration and Integration | v1.3 | 2/2 | Complete   | 2026-04-03 |

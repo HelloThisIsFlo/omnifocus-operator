@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Read Tools
 status: executing
-stopped_at: Completed 37-01-PLAN.md
-last_updated: "2026-04-03T13:56:40.893Z"
+stopped_at: Completed 37-02-PLAN.md
+last_updated: "2026-04-03T14:06:42.998Z"
 last_activity: 2026-04-02
 progress:
   total_phases: 10
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 23
-  completed_plans: 22
+  completed_plans: 23
   percent: 20
 ---
 
@@ -91,6 +91,7 @@ Recent decisions affecting current work:
 - [Phase 260402-pj2]: EndByDate/EndByOccurrences moved to runtime imports in builder.py for isinstance dispatch
 - [Phase 37]: Project search SQL uses t.name/t.plainTextNote (projects share Task table)
 - [Phase 37]: Perspectives search is name-only (no notes field); non-ASCII test uses ASCII 'Buro'
+- [Phase 37]: List tools take query param (not individual params) -- FastMCP introspects QueryModel for inputSchema
 
 ### Roadmap Evolution
 
@@ -142,6 +143,7 @@ Carried forward:
 | 260402-pic | Add cross-type model_validator to FrequencyEditSpec | 2026-04-02 | 9c92c8e, b82a0c2 | | [260402-pic-add-cross-type-model-validator-to-freque](./quick/260402-pic-add-cross-type-model-validator-to-freque/) |
 | 260402-pj2 | Convert specs to core models at service boundary | 2026-04-02 | 2633181 | Verified | [260402-pj2-convert-specs-to-core-models-at-service-](./quick/260402-pj2-convert-specs-to-core-models-at-service-/) |
 | Phase 37 P01 | 9min | 2 tasks | 16 files |
+| Phase 37 P02 | 7min | 2 tasks | 5 files |
 
 ### Blockers/Concerns
 
@@ -150,5 +152,5 @@ None yet.
 ## Session Continuity
 
 Last activity: 2026-04-02 - Completed quick task 260402-pj2: Convert specs to core models at service boundary
-Stopped at: Completed 37-01-PLAN.md
+Stopped at: Completed 37-02-PLAN.md
 Resume file: None
