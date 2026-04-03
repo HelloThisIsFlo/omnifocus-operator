@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersQuery
+from omnifocus_operator.contracts.use_cases.list.perspectives import ListPerspectivesQuery
 from omnifocus_operator.contracts.use_cases.list.projects import (
     DurationUnit,
     ListProjectsQuery,
@@ -249,7 +250,7 @@ class TestListPassThroughs:
     )
     async def test_list_perspectives(self, service: OperatorService) -> None:
         """list_perspectives returns perspectives from repository."""
-        result = await service.list_perspectives()
+        result = await service.list_perspectives(ListPerspectivesQuery())
         assert len(result.items) == 2
         persp_names = {p.name for p in result.items}
         assert "Inbox" in persp_names
@@ -280,7 +281,7 @@ class TestNoNotImplementedError:
         assert result is not None
 
     async def test_list_perspectives_callable(self, service: OperatorService) -> None:
-        result = await service.list_perspectives()
+        result = await service.list_perspectives(ListPerspectivesQuery())
         assert result is not None
 
 

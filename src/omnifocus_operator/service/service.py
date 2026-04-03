@@ -33,6 +33,9 @@ from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult, L
 from omnifocus_operator.contracts.use_cases.list.folders import (
     ListFoldersRepoQuery,
 )
+from omnifocus_operator.contracts.use_cases.list.perspectives import (
+    ListPerspectivesRepoQuery,
+)
 from omnifocus_operator.contracts.use_cases.list.projects import (
     DurationUnit,
     ListProjectsRepoQuery,
@@ -62,6 +65,7 @@ if TYPE_CHECKING:
     from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskCommand
     from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskCommand
     from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersQuery
+    from omnifocus_operator.contracts.use_cases.list.perspectives import ListPerspectivesQuery
     from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsQuery
     from omnifocus_operator.contracts.use_cases.list.tags import ListTagsQuery
     from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksQuery
@@ -181,7 +185,7 @@ class OperatorService(Service):  # explicitly implements Service protocol
 
     async def list_tags(self, query: ListTagsQuery) -> ListResult[Tag]:
         """List tags -- inline pass-through (no entity-reference filters)."""
-        repo_query = ListTagsRepoQuery(availability=query.availability)
+        repo_query = ListTagsRepoQuery(availability=query.availability, search=query.search)
         repo_result = await self._repository.list_tags(repo_query)
         return ListResult(
             items=repo_result.items, total=repo_result.total, has_more=repo_result.has_more
@@ -189,15 +193,16 @@ class OperatorService(Service):  # explicitly implements Service protocol
 
     async def list_folders(self, query: ListFoldersQuery) -> ListResult[Folder]:
         """List folders -- inline pass-through (no entity-reference filters)."""
-        repo_query = ListFoldersRepoQuery(availability=query.availability)
+        repo_query = ListFoldersRepoQuery(availability=query.availability, search=query.search)
         repo_result = await self._repository.list_folders(repo_query)
         return ListResult(
             items=repo_result.items, total=repo_result.total, has_more=repo_result.has_more
         )
 
-    async def list_perspectives(self) -> ListResult[Perspective]:
-        """List perspectives -- inline pass-through (no filters)."""
-        repo_result = await self._repository.list_perspectives()
+    async def list_perspectives(self, query: ListPerspectivesQuery) -> ListResult[Perspective]:
+        """List perspectives -- inline pass-through (search only)."""
+        repo_query = ListPerspectivesRepoQuery(search=query.search)
+        repo_result = await self._repository.list_perspectives(repo_query)
         return ListResult(
             items=repo_result.items, total=repo_result.total, has_more=repo_result.has_more
         )
@@ -370,6 +375,7 @@ class _ListProjectsPipeline(_ReadPipeline):
             folder_ids=self._folder_ids,
             review_due_before=review_due_before,
             flagged=self._query.flagged,
+            search=self._query.search,
             limit=self._query.limit,
             offset=self._query.offset,
         )

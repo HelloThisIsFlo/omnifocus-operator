@@ -17,6 +17,7 @@ from omnifocus_operator.contracts.use_cases.add import tasks as contracts_add_ta
 from omnifocus_operator.contracts.use_cases.edit import tasks as contracts_edit_tasks
 from omnifocus_operator.contracts.use_cases.list import common as contracts_list_common
 from omnifocus_operator.contracts.use_cases.list import folders as contracts_list_folders
+from omnifocus_operator.contracts.use_cases.list import perspectives as contracts_list_perspectives
 from omnifocus_operator.contracts.use_cases.list import projects as contracts_list_projects
 from omnifocus_operator.contracts.use_cases.list import tags as contracts_list_tags
 from omnifocus_operator.contracts.use_cases.list import tasks as contracts_list_tasks
@@ -49,6 +50,7 @@ _CONSUMER_MODULES = [
     contracts_list_projects,
     contracts_list_tags,
     contracts_list_folders,
+    contracts_list_perspectives,
     server_mod,
 ]
 
@@ -89,6 +91,7 @@ _INTERNAL_CLASSES = {
     "ListProjectsRepoQuery",
     "ListTagsRepoQuery",
     "ListFoldersRepoQuery",
+    "ListPerspectivesRepoQuery",
     # Internal sentinel
     "_Unset",
 }
