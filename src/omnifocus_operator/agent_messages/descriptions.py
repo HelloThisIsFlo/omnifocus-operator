@@ -341,6 +341,59 @@ ADD_TASKS_TOOL_DOC = (
     "Returns: [{success, id, name, warnings?}]"
 )
 
+LIST_TASKS_TOOL_DOC = (
+    "List and filter tasks. All filters combine with AND logic.\n"
+    "\n"
+    "Defaults: availability includes available and blocked tasks.\n"
+    "Pagination: offset requires limit. Response shape:\n"
+    "{items: [...], total: N, hasMore: bool, warnings?: [...]}\n"
+    "\n"
+    "search matches case-insensitive substring in name and notes.\n"
+    "The response uses camelCase field names."
+)
+
+LIST_PROJECTS_TOOL_DOC = (
+    "List and filter projects. All filters combine with AND logic.\n"
+    "\n"
+    "Defaults: availability includes available and blocked projects.\n"
+    "reviewDueWithin accepts duration strings: \"now\", \"1w\", \"2m\", \"1y\".\n"
+    "Pagination: offset requires limit. Response shape:\n"
+    "{items: [...], total: N, hasMore: bool, warnings?: [...]}\n"
+    "\n"
+    "search matches case-insensitive substring in name and notes.\n"
+    "The response uses camelCase field names."
+)
+
+LIST_TAGS_TOOL_DOC = (
+    "List and filter tags.\n"
+    "\n"
+    "Defaults: availability includes available, blocked, and on_hold tags.\n"
+    "search matches case-insensitive substring in name only.\n"
+    "No pagination (no limit/offset). Response shape:\n"
+    "{items: [...], total: N, hasMore: bool}\n"
+    "\n"
+    "The response uses camelCase field names."
+)
+
+LIST_FOLDERS_TOOL_DOC = (
+    "List and filter folders.\n"
+    "\n"
+    "Defaults: availability includes available folders only.\n"
+    "search matches case-insensitive substring in name only.\n"
+    "Response shape: {items: [...], total: N, hasMore: bool}\n"
+    "\n"
+    "The response uses camelCase field names."
+)
+
+LIST_PERSPECTIVES_TOOL_DOC = (
+    "List all perspectives (built-in and custom).\n"
+    "\n"
+    "search matches case-insensitive substring in name only.\n"
+    "Response shape: {items: [...], total: N, hasMore: bool}\n"
+    "\n"
+    "The response uses camelCase field names."
+)
+
 EDIT_TASKS_TOOL_DOC = (
     "Edit existing tasks in OmniFocus using patch semantics. Max 1 item per call.\n"
     "\n"
