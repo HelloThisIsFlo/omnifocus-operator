@@ -1,9 +1,9 @@
 ---
 phase: 37
 slug: server-registration-and-integration-was-phase-38
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-04-03
 ---
 
@@ -38,10 +38,10 @@ created: 2026-04-03
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 37-01-01 | 01 | 1 | SRCH-01, SRCH-02, SRCH-03, SRCH-04 | unit | `uv run pytest tests/ -x -q -k "search"` | ❌ W0 | ⬜ pending |
-| 37-01-02 | 01 | 1 | RTOOL-01, RTOOL-02, RTOOL-03 | unit | `uv run pytest tests/ -x -q -k "list_perspectives"` | ❌ W0 | ⬜ pending |
-| 37-02-01 | 02 | 2 | INFRA-05 | integration | `uv run pytest tests/ -x -q -k "list_tasks or list_projects"` | ❌ W0 | ⬜ pending |
-| 37-02-02 | 02 | 2 | DOC-10, DOC-11, DOC-12, DOC-13, DOC-14 | unit | `uv run pytest tests/ -x -q -k "tool_description or schema"` | ✅ | ⬜ pending |
+| 37-01-01 | 01 | 1 | SRCH-01, SRCH-02, SRCH-03, SRCH-04 | unit | `uv run pytest tests/test_cross_path_equivalence.py -x -q -k "search"` | ✅ | ✅ green |
+| 37-01-02 | 01 | 1 | RTOOL-01, RTOOL-02, RTOOL-03 | unit | `uv run pytest tests/test_cross_path_equivalence.py -x -q -k "perspectives"` | ✅ | ✅ green |
+| 37-02-01 | 02 | 2 | INFRA-05 | integration | `uv run pytest tests/test_server.py -x -q -k "list_"` | ✅ | ✅ green |
+| 37-02-02 | 02 | 2 | DOC-10, DOC-11, DOC-12, DOC-13, DOC-14 | unit | `uv run pytest tests/test_descriptions.py -x -q` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -65,11 +65,21 @@ created: 2026-04-03
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** ✅ compliant
+
+## Validation Audit 2026-04-03
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+All 4 task-requirement mappings have automated test coverage. 1479 tests passing, 98% coverage. No auditor agent needed.
