@@ -84,6 +84,8 @@ select = ["E", "F", "I", "N", "UP", "B", "SIM", "TCH", "RUF", "PLC0415"]
 # Intentional late imports: the import IS the test (verifying importability / broken paths)
 "tests/test_smoke.py" = ["PLC0415"]
 "tests/test_bridge.py" = ["PLC0415"]
+# Agent-facing descriptions are schema text — line length shouldn't constrain them
+"src/omnifocus_operator/agent_messages/*" = ["E501"]
 
 [tool.ruff.lint.flake8-type-checking]
 # Pydantic evaluates type annotations at runtime for validation/serialization.
@@ -100,3 +102,4 @@ runtime-evaluated-base-classes = [
 
 [tool.ruff.format]
 quote-style = "double"
+exclude = ["src/omnifocus_operator/agent_messages/*"]

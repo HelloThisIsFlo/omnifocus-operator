@@ -117,7 +117,7 @@ ESTIMATED_MINUTES_EDIT = "Time estimate in minutes. Set to null to clear."
 
 # --- Class Docstrings: Entities ---
 
-TAG_REF_DOC = "Reference to a tag with both id and name for ergonomics."
+TAG_REF_DOC = "Reference to a tag with both id and name."
 
 PARENT_REF_DOC = (
     "Reference to a parent entity (project or task) with type, id, and name.\n"
@@ -126,7 +126,7 @@ PARENT_REF_DOC = (
     "Inbox tasks have no ParentRef (represented as None at the Task level)."
 )
 
-REVIEW_INTERVAL_DOC = "Review interval for project review scheduling."
+REVIEW_INTERVAL_DOC = "How often OmniFocus prompts the user to review this project."
 
 TASK_DOC = "A single OmniFocus task with all fields."
 
@@ -176,7 +176,7 @@ BASED_ON_DOC = (
 
 # --- Class Docstrings: Repetition ---
 
-ORDINAL_WEEKDAY_DOC = "Typed ordinal-weekday model for monthly day-of-week patterns."
+ORDINAL_WEEKDAY_DOC = "Ordinal weekday pattern for monthly day-of-week patterns."
 
 FREQUENCY_DOC = "How often the task repeats: type + interval, with optional day/date refinements."
 
@@ -206,7 +206,7 @@ MOVE_ACTION_DOC = (
     "- ``before``/``after``: ID of a sibling task (parent is inferred)."
 )
 
-EDIT_TASK_ACTIONS_DOC = "Stateful operations grouped under the actions block."
+EDIT_TASK_ACTIONS_DOC = "Lifecycle changes (complete/drop), tag edits, and task movement."
 
 # --- Class Docstrings: Repetition Specs ---
 
@@ -220,31 +220,31 @@ REPETITION_RULE_EDIT_SPEC_DOC = (
     "Patch repetition rule fields; omit fields to leave unchanged, set to null to clear."
 )
 
-ORDINAL_WEEKDAY_SPEC_DOC = "Write-side ordinal-weekday model for monthly day-of-week patterns."
+ORDINAL_WEEKDAY_SPEC_DOC = "Ordinal weekday pattern for monthly day-of-week patterns (e.g. first monday, last friday)."
 
 # --- Class Docstrings: Results and Queries ---
 
-ADD_TASK_RESULT_DOC = "Agent-facing outcome of task creation."
+ADD_TASK_RESULT_DOC = "Outcome of task creation."
 
-EDIT_TASK_RESULT_DOC = "Agent-facing outcome of task editing."
+EDIT_TASK_RESULT_DOC = "Outcome of task editing."
 
 LIST_RESULT_DOC = (
-    "Agent-facing result container for all list operations.\n"
+    "Result container for list operations.\n"
     "\n"
-    "Includes optional warnings for agent guidance (e.g. name resolution ambiguity)."
+    "Includes optional warnings (e.g. name resolution ambiguity)."
 )
 
-LIST_TASKS_QUERY_DOC = "Agent-facing: validated filter + pagination for task listing."
+LIST_TASKS_QUERY_DOC = "Filter and paginate tasks."
 
-LIST_PROJECTS_QUERY_DOC = "Agent-facing: validated filter + pagination for project listing."
+LIST_PROJECTS_QUERY_DOC = "Filter and paginate projects."
 
-LIST_TAGS_QUERY_DOC = "Agent-facing: validated filter for tag listing. No pagination."
+LIST_TAGS_QUERY_DOC = "Filter tags."
 
-LIST_FOLDERS_QUERY_DOC = "Agent-facing: validated filter for folder listing. No pagination."
+LIST_FOLDERS_QUERY_DOC = "Filter folders."
 
 DURATION_UNIT_DOC = "Unit for duration-based filters."
 
-REVIEW_DUE_FILTER_DOC = "Parsed duration for review_due_within filter."
+REVIEW_DUE_FILTER_DOC = "Duration threshold for the review_due_within filter."
 
 # --- Tool Descriptions ---
 
