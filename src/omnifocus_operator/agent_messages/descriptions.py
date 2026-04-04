@@ -212,7 +212,7 @@ MOVE_ACTION_DOC = (
     "- ``before``/``after``: ID of a sibling task (parent is inferred)."
 )
 
-EDIT_TASK_ACTIONS_DOC = "Lifecycle changes (complete/drop), tag edits, and task movement."
+EDIT_TASK_ACTIONS_DOC = "Lifecycle changes (complete/drop), tag edits, and task movement. All three can be combined freely in one call."
 
 # --- Class Docstrings: Repetition Specs ---
 
@@ -472,7 +472,7 @@ EDIT_TASKS_TOOL_DOC = (
     "    null\n"
     "\n"
     "actions.move: exactly one key must be set. ending/beginning with\n"
-    "null moves to inbox.\n"
+    "null clears the project (moves task to inbox).\n"
     "\n"
     "actions.lifecycle:\n"
     '  - "complete": marks the task as complete.\n'
