@@ -201,7 +201,7 @@ class TestResolver:
             await resolver.resolve_tags(["Nonexistent"])
 
     async def test_resolve_tags_ambiguous(self, resolver: Resolver) -> None:
-        """Two tags with same name raises ValueError listing both IDs."""
+        """Two tags with same name raises ValueError listing both IDs and resolution guidance."""
         bridge = InMemoryBridge(
             data=make_snapshot_dict(
                 tags=[
@@ -217,6 +217,19 @@ class TestResolver:
             await ambiguous_resolver.resolve_tags(["Duplicate"])
         assert "tag-a" in str(exc_info.value)
         assert "tag-b" in str(exc_info.value)
+        assert "specify by ID" in str(exc_info.value)
+
+    async def test_match_by_name_generic_entity_type(self, resolver: Resolver) -> None:
+        """_match_by_name with entity_type='project' produces entity-specific error."""
+        entities = [
+            Project.model_validate(make_model_project_dict(id="p1", name="Dup")),
+            Project.model_validate(make_model_project_dict(id="p2", name="Dup")),
+        ]
+        with pytest.raises(ValueError, match="Ambiguous project") as exc_info:
+            resolver._match_by_name("Dup", entities, "project")
+        assert "p1" in str(exc_info.value)
+        assert "p2" in str(exc_info.value)
+        assert "specify by ID" in str(exc_info.value)
 
     async def test_resolve_tags_multiple(self, resolver: Resolver) -> None:
         """Multiple tag names resolve in order."""

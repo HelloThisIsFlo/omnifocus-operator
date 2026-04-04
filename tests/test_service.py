@@ -169,12 +169,13 @@ class TestAddTask:
         tags=[make_tag_dict(id="tag-a", name="Work"), make_tag_dict(id="tag-b", name="Work")]
     )
     async def test_tag_ambiguous(self, service: OperatorService) -> None:
-        """Multiple tags with same name raises ValueError with IDs listed."""
+        """Multiple tags with same name raises ValueError with IDs and resolution guidance."""
         with pytest.raises(ValueError, match="Ambiguous tag") as exc_info:
             await service.add_task(AddTaskCommand(name="Task", tags=["Work"]))
-        # Error should include both IDs
+        # Error should include both IDs and resolution guidance
         assert "tag-a" in str(exc_info.value)
         assert "tag-b" in str(exc_info.value)
+        assert "specify by ID" in str(exc_info.value)
 
     @pytest.mark.snapshot(tags=[make_tag_dict(id="tag-work", name="Work")])
     async def test_all_fields(self, service: OperatorService) -> None:
