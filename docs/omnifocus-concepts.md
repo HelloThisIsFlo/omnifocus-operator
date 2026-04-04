@@ -50,7 +50,12 @@ Fills the gap between due (too urgent — implies negative consequences) and def
 | Defer date   | Cannot act until then   | N/A (impossible before)   | Hidden from most views   |
 | Planned date | Want to work on it then | None                      | Visible, no urgency      |
 
-**The rule:** Due dates are for deadlines. Defer dates are for constraints. Planned dates are for intentions. If you're unsure which to use, it's probably a planned date.
+> [!important] The rule
+>
+> - **Due dates** → deadlines
+> - **Defer dates** → constraints
+> - **Planned dates** → intentions
+> - Unsure which to use? It's probably a planned date.
 
 ## Repetition Rules
 
@@ -78,16 +83,30 @@ When the next occurrence is generated:
 | `defer_date`   | Schedule anchored to the defer date   |
 | `planned_date` | Schedule anchored to the planned date |
 
-**The rule:** Choose the date that the recurrence is "about." If a task is due every Friday, anchor on `due_date`. If it becomes available every Monday, anchor on `defer_date`. If you just want to plan it for the same day each week, anchor on `planned_date`.
+> [!important] The rule
+> Choose the date that the recurrence is "about":
+>
+> - Due every Friday → anchor on `due_date`
+> - Becomes available every Monday → anchor on `defer_date`
+> - Plan it for the same day each week → anchor on `planned_date`
 
-> **What happens when the anchor date field is not set on the task?** OmniFocus creates the missing anchor date from scratch on the next occurrence: it takes the **completion date** and applies the user's **default time** for that date type (configured in OmniFocus Settings → Dates & Times). This produces a valid but potentially surprising schedule — set the anchor date explicitly for predictable behavior. See [omnifocus-repetition-behavior.md](../.research/deep-dives/repetition-modes/omnifocus-repetition-behavior.md), Part 7 for the full empirical verification.
+> [!warning] What happens when the anchor date field is not set?
+>
+> OmniFocus creates the missing anchor date from scratch on the next occurrence
+>
+> - Uses the **completion date** (not the creation date) for the date portion
+> - Uses the user's **default time** for that date type (OmniFocus Settings → Dates & Times) for the time portion
+>
+> Valid but potentially surprising => **Set the anchor date explicitly for predictable behavior**
+>
+> _See [omnifocus-repetition-behavior.md](../.research/deep-dives/repetition-modes/omnifocus-repetition-behavior.md), Part 7 for the full empirical verification_
 
 ### Schedule (Recurrence Mode)
 
 The schedule controls what happens when a task is completed — specifically, how the next occurrence's date is calculated.
 
-| Mode                      | How the next date is calculated                                     |
-| ------------------------- | ------------------------------------------------------------------- |
+| Mode                         | How the next date is calculated                                     |
+| ---------------------------- | ------------------------------------------------------------------- |
 | 🔄 `regularly`               | Next on the schedule after the assigned date — can land in the past |
 | ✅ `regularly_with_catch_up` | Next on the schedule that's still in the future                     |
 | ⚠️ `from_completion`         | Next occurrence counting forward from when you complete             |
@@ -110,4 +129,14 @@ When `from_completion` is combined with day-of-week patterns (e.g. "every WE + F
 - 🤯 **Grid reset** (`INTERVAL ≥ 2`) — `catch_up` preserves the original biweekly/monthly grid; `from_completion` resets the grid from the completion date. Can create a **14+ day gap**.
 - 😤 **Early completion dismissal** — completing a task early with `from_completion` can land right back on the original due date, as if the early effort didn't count.
 
-See [BYDAY Edge Cases](byday-edge-cases.md) for the full breakdown with diagrams. For the raw empirical data, see [omnifocus-repetition-behavior.md](../.research/deep-dives/repetition-modes/omnifocus-repetition-behavior.md).
+> [!tip] Check out the BYDAY deep dive
+>
+> The [BYDAY Edge Cases](byday-edge-cases.md) guide walks through each scenario with:
+>
+> - Diagrams
+> - Concrete examples
+> - A mode selection cheatsheet
+
+---
+
+_For raw empirical data and experiment methodology, see [omnifocus-repetition-behavior.md](../.research/deep-dives/repetition-modes/omnifocus-repetition-behavior.md)._

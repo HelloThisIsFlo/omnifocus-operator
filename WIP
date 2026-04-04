@@ -5,5 +5,5 @@ some claims from the original deep research report.
 
 - [x] Replace deep research report with empirical reference, update pointers
 - [x] Update Excalidraw diagram (repeat-modes.excalidraw / repeat-modes.png)
-- [ ] Update docs/omnifocus-concepts.md (convergence table, WIP flags, schedule section)
+- [x] Update docs/omnifocus-concepts.md (convergence table, WIP flags, schedule section)
 - [ ] Update warnings, messages, and descriptions (warnings.py, descriptions.py)
