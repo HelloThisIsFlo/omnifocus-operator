@@ -557,6 +557,28 @@ class TestTaskStatus:
         result = await hybrid_repo.get_all()
         assert result.tasks[0].availability == "available"
 
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tasks=[_minimal_task({"effectiveDateCompleted": _NOW_CF})]
+    )
+    async def test_task_availability_completed_by_effective(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """Task with effectiveDateCompleted (no own dateCompleted) maps to completed."""
+        result = await hybrid_repo.get_all()
+        assert result.tasks[0].availability == "completed"
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tasks=[_minimal_task({"effectiveDateHidden": _NOW_CF})]
+    )
+    async def test_task_availability_dropped_by_effective(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """Task with effectiveDateHidden (no own dateHidden) maps to dropped."""
+        result = await hybrid_repo.get_all()
+        assert result.tasks[0].availability == "dropped"
+
 
 class TestTaskTags:
     @pytest.mark.asyncio
@@ -777,6 +799,28 @@ class TestProjectFields:
     async def test_project_availability_available(self, hybrid_repo: HybridRepository) -> None:
         result = await hybrid_repo.get_all()
         assert result.projects[0].availability == "available"
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        projects=[_minimal_project({"effectiveDateCompleted": _NOW_CF})]
+    )
+    async def test_project_availability_completed_by_effective(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """Project with effectiveDateCompleted (no own dateCompleted) maps to completed."""
+        result = await hybrid_repo.get_all()
+        assert result.projects[0].availability == "completed"
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        projects=[_minimal_project({"effectiveDateHidden": _NOW_CF})]
+    )
+    async def test_project_availability_dropped_by_effective(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """Project with effectiveDateHidden (no own dateHidden) maps to dropped."""
+        result = await hybrid_repo.get_all()
+        assert result.projects[0].availability == "dropped"
 
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(
@@ -1790,6 +1834,24 @@ class TestListTasks:
         assert result.total == 2
         ids = {t.id for t in result.items}
         assert ids == {"t-avail", "t-blocked"}
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task({"persistentIdentifier": "t-active"}),
+            _minimal_task(
+                {"persistentIdentifier": "t-ghost", "effectiveDateCompleted": _NOW_CF}
+            ),
+        ],
+    )
+    async def test_list_tasks_default_excludes_ghost_completed(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """Ghost task (effectiveDateCompleted only, no dateCompleted) excluded from default."""
+        result = await hybrid_repo.list_tasks(ListTasksRepoQuery())
+        ids = {t.id for t in result.items}
+        assert "t-active" in ids
+        assert "t-ghost" not in ids
 
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(
