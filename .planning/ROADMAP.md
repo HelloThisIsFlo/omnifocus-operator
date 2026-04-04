@@ -261,3 +261,13 @@ Phases execute in numeric order: 34 → 35 → 35.1 → 35.2 → 36 → 37
 | 36.3 Description Centralization | v1.3 | 2/2 | Complete    | 2026-04-01 |
 | 36.4 Type Constraint Boundary | v1.3 | 4/4 | Complete    | 2026-04-02 |
 | 37. Server Registration and Integration | v1.3 | 3/3 | Complete    | 2026-04-04 |
+
+### Phase 37.1: Fix effectiveCompletionDate availability ghost tasks (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 37
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 37.1 to break down)
