@@ -170,6 +170,24 @@ All fields that accept entity references (`parent` on add_tasks, `beginning`/`en
 
 **Interaction with `$` prefix:** Name resolution is never attempted on `$`-prefixed strings. This is the guarantee that makes `$inbox` collision-proof — the `$` check happens at step 1, before name resolution at step 3.
 
+### Better Error for `before`/`after` with Container Targets
+
+`before` and `after` move actions only accept sibling **task IDs** — they position a task relative to another task within the same container. `beginning` and `ending` accept **container IDs** (projects, task groups, `$inbox`).
+
+Currently, if an agent passes a project ID or `$inbox` to `before`/`after`, the error is generic: `"Anchor task not found: {id}"`. Technically correct (a project isn't a task), but unhelpful — the agent doesn't learn *why* it failed or what to do instead. It might retry with different IDs rather than switching to `beginning`/`ending`.
+
+**The change:** In `_process_anchor_move()` (`service/domain.py`), after the task lookup fails, probe whether the ID is a known container (project/task group via the resolver) or `$inbox`. If it is, return a targeted error:
+
+> `"'before' expects a sibling task, not a container. Use 'beginning' or 'ending' to move into {id}."`
+
+If it's neither a task nor a container, fall through to the existing `"Anchor task not found"` message.
+
+**Implementation notes:**
+- `resolve_container()` raises on failure, so the probe needs try/except (or a non-throwing variant) to avoid masking the original error.
+- `$inbox` should be checked explicitly via `$` prefix check, since it may not yet be resolvable through `resolve_container()` depending on implementation order.
+- Zero cost to happy path — the container probe only fires on the error path.
+- ~5 lines in `_process_anchor_move()`, plus an error message constant in `agent_messages/errors.py`. No contract changes.
+
 ### Project Tool Behavior
 
 **`get_project("$inbox")` — descriptive error:**
@@ -228,6 +246,7 @@ Real projects that happen to match are still returned normally — only the inbo
 - `edit_tasks` with `ending: null` returns an error (not a warning, not accepted).
 - `edit_tasks` with `beginning: null` returns an error.
 - `before` and `after` on `MoveAction` do not accept `$inbox` (they take sibling task IDs).
+- `before` or `after` with a project ID or `$inbox` returns a targeted error mentioning `beginning`/`ending` as the correct alternative (not a generic "not found").
 
 ### Filters
 
