@@ -69,37 +69,6 @@ blocked: 0
 
 ## Gaps
 
-- truth: "list_perspectives returns both built-in and custom perspectives"
-  status: failed
-  reason: "User reported: Only custom perspectives showing, built-in perspectives missing"
-  severity: major
-  test: 10
-  root_cause: "SQLite Perspective table only contains custom perspectives. Built-in perspectives (Inbox, Projects, Tags, Forecast, Flagged, Review) are application-level constructs only exposed via OmniJS Perspective.all. Hybrid repo reads exclusively from SQLite, so built-in perspectives are never returned."
-  artifacts:
-    - path: "src/omnifocus_operator/repository/hybrid/hybrid.py"
-      issue: "_PERSPECTIVES_SQL reads from SQLite which lacks built-in perspectives; _map_perspective_row cannot produce null ids"
-    - path: "src/omnifocus_operator/bridge/bridge.js"
-      issue: "Perspective.all returns both built-in and custom -- this is the only source for built-ins"
-  missing:
-    - "Supplement SQLite perspectives with built-in perspectives from bridge, or fall back to bridge for perspectives entirely"
-  debug_session: ".planning/debug/perspectives-missing-builtin.md"
-
-- truth: "project: null combined with search should return matching tasks (null ignored)"
-  status: inconclusive
-  reason: "User reported: list_tasks({project: null, search: 'GM-'}) returns 0 tasks, but {search: 'GM-'} alone returns results. Null silently breaks the search filter."
-  severity: major
-  test: post-UAT-feedback
-  root_cause: "Investigation inconclusive. All code paths (service, query builder, hybrid repo, bridge-only repo, full MCP protocol) tested correctly in automated tests. project=None is correctly treated as 'no filter' at every layer. Most likely cause: LLM sent different arguments than expected during live UAT (e.g., string 'null', extra constraining filter, or availability interaction with real data)."
-  artifacts:
-    - path: "src/omnifocus_operator/service/service.py"
-      issue: "No bug found -- _resolve_project correctly skips when project is None"
-    - path: "src/omnifocus_operator/repository/hybrid/query_builder.py"
-      issue: "No bug found -- SQL correctly omits project filter when project_ids is None"
-  missing:
-    - "Reproduce manually with server logs showing exact tool arguments received (ToolLoggingMiddleware logs at INFO level)"
-    - "If confirmed, add cross-path equivalence test combining project_ids=None with search"
-  debug_session: ".planning/debug/project-null-search-interaction.md"
-
 - truth: "list tools should have a sensible default pagination limit"
   status: failed
   reason: "User reported: list_tasks({}) returned 1.8M characters (2,174 tasks), exceeding token limit. No default limit on any list tool."
@@ -145,11 +114,12 @@ blocked: 0
 
 ## Deferred Gaps (not phase 37 — discovered during UAT)
 
+- built-in perspectives missing: SQLite Perspective table only has custom perspectives; built-in ones (Inbox, Projects, Tags, Forecast, Flagged, Review) only available via OmniJS bridge. Needs separate phase — interface change, requires discussion. Debug session: .planning/debug/perspectives-missing-builtin.md
 - inbox hierarchy: inInbox: true only returns root tasks, not children. Consistency gap with project queries which return full hierarchy. Pre-existing repo/service behavior.
 - effectiveCompletionDate/availability: tasks with effectiveCompletionDate still report availability: "available". Pre-existing data layer bug causing ghost tasks in default queries.
 - path field: add hierarchical path string for folders/projects/tasks. Feature request.
 - disambiguation warnings: warn when entity names are ambiguous. Feature request.
 - ambiguous tag error message: append resolution guidance to error. Enhancement to write operations.
-- inbox as first-class value: replace null-as-inbox overloading with explicit inbox value across move, project filter, inInbox. Design effort.
+- inbox as first-class value: replace null-as-inbox overloading with explicit inbox value across move, project filter, inInbox. Design effort. (project:null + search confirmed not a bug — user confusion from search behavior.)
 - edit_tasks doc: document that lifecycle/move/tags actions are combinable. Not phase 37.
 - edit_tasks doc: clarify null=inbox in move semantics. Not phase 37.
