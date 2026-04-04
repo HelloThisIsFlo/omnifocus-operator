@@ -4,8 +4,8 @@ milestone: v1.3
 milestone_name: Read Tools
 status: executing
 stopped_at: Completed 37-03-PLAN.md
-last_updated: "2026-04-04T22:46:12.075Z"
-last_activity: 2026-04-04 -- Phase 37.1 planning complete
+last_updated: "2026-04-04T23:14:31.564Z"
+last_activity: 2026-04-04
 progress:
   total_phases: 11
   completed_phases: 10
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-29)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 37 — server-registration-and-integration-was-phase-38
+**Current focus:** Phase 37.1 — Fix effectiveCompletionDate availability ghost tasks
 
 ## Current Position
 
-Phase: 37
+Phase: 37.1
 Plan: Not started
-Status: Ready to execute
-Last activity: 2026-04-04 -- Phase 37.1 planning complete
+Status: Executing Phase 37.1
+Last activity: 2026-04-04
 
 Progress: [██░░░░░░░░] 20%
 
