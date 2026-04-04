@@ -148,6 +148,76 @@ class TestListTasksResolution:
         assert any("Did you mean" in w for w in result.warnings)
         assert any("Personal" in w for w in result.warnings)
 
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t1", name="Task in Work", project="proj-work"),
+            make_task_dict(id="t2", name="Task in Homework", project="proj-homework"),
+            make_task_dict(id="t3", name="Inbox task"),
+        ],
+        projects=[
+            make_project_dict(id="proj-work", name="Work Projects"),
+            make_project_dict(id="proj-homework", name="Homework"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_project_multi_match_warns(self, service: OperatorService) -> None:
+        """Project filter matching 2 projects emits multi-match warning with names and IDs."""
+        result = await service.list_tasks(ListTasksQuery(project="Work"))
+        # Both projects match "Work" as substring
+        task_ids = {t.id for t in result.items}
+        assert "t1" in task_ids
+        assert "t2" in task_ids
+        # Warning should include both project names and IDs
+        assert result.warnings is not None
+        assert any("proj-work" in w and "proj-homework" in w for w in result.warnings)
+        assert any("filter by ID" in w.lower() for w in result.warnings)
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t1", name="Work task", tags=[{"id": "tag-work", "name": "Work"}]),
+            make_task_dict(
+                id="t2", name="Homework task", tags=[{"id": "tag-homework", "name": "Homework"}]
+            ),
+        ],
+        projects=[],
+        tags=[
+            make_tag_dict(id="tag-work", name="Work"),
+            make_tag_dict(id="tag-homework", name="Homework"),
+        ],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_tag_multi_match_warns(self, service: OperatorService) -> None:
+        """Tag filter value matching 2 tags emits per-value multi-match warning."""
+        result = await service.list_tasks(ListTasksQuery(tags=["Work"]))
+        # "Work" is substring of both "Work" and "Homework"
+        task_ids = {t.id for t in result.items}
+        assert "t1" in task_ids
+        assert "t2" in task_ids
+        # Warning for the "Work" value matching multiple tags
+        assert result.warnings is not None
+        assert any("tag-work" in w and "tag-homework" in w for w in result.warnings)
+        assert any("filter by ID" in w.lower() for w in result.warnings)
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t1", name="Task in Work", project="proj-work"),
+        ],
+        projects=[
+            make_project_dict(id="proj-work", name="Work Projects"),
+            make_project_dict(id="proj-home", name="Home"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_single_match_no_multi_match_warning(self, service: OperatorService) -> None:
+        """Single match produces no multi-match warning (no regression)."""
+        result = await service.list_tasks(ListTasksQuery(project="Home"))
+        assert result.warnings is None
+
 
 # ---------------------------------------------------------------------------
 # list_projects: name resolution
@@ -193,6 +263,31 @@ class TestListProjectsResolution:
         assert result.warnings is not None
         assert len(result.warnings) == 1
         assert "Nonexistent" in result.warnings[0]
+
+    @pytest.mark.snapshot(
+        tasks=[],
+        projects=[
+            make_project_dict(id="proj-1", name="Work Project", folder="folder-home"),
+            make_project_dict(id="proj-2", name="Other Project", folder="folder-homework"),
+        ],
+        tags=[],
+        folders=[
+            make_folder_dict(id="folder-home", name="Home"),
+            make_folder_dict(id="folder-homework", name="Homework"),
+        ],
+        perspectives=[],
+    )
+    async def test_folder_multi_match_warns(self, service: OperatorService) -> None:
+        """Folder filter matching 2 folders emits multi-match warning."""
+        result = await service.list_projects(ListProjectsQuery(folder="Home"))
+        # "Home" matches both "Home" and "Homework"
+        proj_ids = {p.id for p in result.items}
+        assert "proj-1" in proj_ids
+        assert "proj-2" in proj_ids
+        # Warning should include both folder names and IDs
+        assert result.warnings is not None
+        assert any("folder-home" in w and "folder-homework" in w for w in result.warnings)
+        assert any("filter by ID" in w.lower() for w in result.warnings)
 
 
 # ---------------------------------------------------------------------------
