@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Read Tools
 status: executing
-stopped_at: Completed 37-02-PLAN.md
-last_updated: "2026-04-03T14:06:42.998Z"
-last_activity: 2026-04-03
+stopped_at: Completed 37-03-PLAN.md
+last_updated: "2026-04-04T15:09:19.445Z"
+last_activity: 2026-04-04
 progress:
   total_phases: 10
   completed_phases: 10
-  total_plans: 23
-  completed_plans: 23
+  total_plans: 24
+  completed_plans: 24
   percent: 20
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-03-29)
 ## Current Position
 
 Phase: 37 (server-registration-and-integration-was-phase-38) — EXECUTING
-Plan: 1 of 2
-Status: Executing Phase 37
-Last activity: 2026-04-03 -- Phase 37 execution started
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-04-04
 
 Progress: [██░░░░░░░░] 20%
 
@@ -92,6 +92,8 @@ Recent decisions affecting current work:
 - [Phase 37]: Project search SQL uses t.name/t.plainTextNote (projects share Task table)
 - [Phase 37]: Perspectives search is name-only (no notes field); non-ASCII test uses ASCII 'Buro'
 - [Phase 37]: List tools take query param (not individual params) -- FastMCP introspects QueryModel for inputSchema
+- [Phase 37]: _paginate helper duplicated in hybrid and bridge_only repos -- keeps repos self-contained
+- [Phase 37]: Default list limit is 50, agent can override with limit=None to get all results
 
 ### Roadmap Evolution
 
@@ -152,6 +154,7 @@ Carried forward:
 | 260402-pj2 | Convert specs to core models at service boundary | 2026-04-02 | 2633181 | Verified | [260402-pj2-convert-specs-to-core-models-at-service-](./quick/260402-pj2-convert-specs-to-core-models-at-service-/) |
 | Phase 37 P01 | 9min | 2 tasks | 16 files |
 | Phase 37 P02 | 7min | 2 tasks | 5 files |
+| Phase 37 P03 | 10min | 2 tasks | 13 files |
 
 ### Blockers/Concerns
 
@@ -160,5 +163,5 @@ None yet.
 ## Session Continuity
 
 Last activity: 2026-04-02 - Completed quick task 260402-pj2: Convert specs to core models at service boundary
-Stopped at: Completed 37-02-PLAN.md
+Stopped at: Completed 37-03-PLAN.md
 Resume file: None
