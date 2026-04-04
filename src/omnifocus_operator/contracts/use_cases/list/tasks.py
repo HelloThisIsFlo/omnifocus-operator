@@ -6,7 +6,9 @@ from pydantic import Field, model_validator
 
 from omnifocus_operator.agent_messages.descriptions import (
     LIST_TASKS_QUERY_DOC,
+    PROJECT_FILTER_DESC,
     SEARCH_FIELD_NAME_NOTES,
+    TAGS_FILTER_DESC,
 )
 from omnifocus_operator.config import DEFAULT_LIST_LIMIT
 from omnifocus_operator.contracts.base import QueryModel
@@ -19,8 +21,8 @@ class ListTasksQuery(QueryModel):
 
     in_inbox: bool | None = None
     flagged: bool | None = None
-    project: str | None = None  # case-insensitive partial match on project name
-    tags: list[str] | None = None  # tag names (OR logic), service resolves to IDs
+    project: str | None = Field(default=None, description=PROJECT_FILTER_DESC)
+    tags: list[str] | None = Field(default=None, description=TAGS_FILTER_DESC)
     estimated_minutes_max: int | None = None
     availability: list[Availability] = Field(
         default_factory=lambda: [Availability.AVAILABLE, Availability.BLOCKED]

@@ -238,11 +238,11 @@ LIST_TASKS_QUERY_DOC = "Filter and paginate tasks."
 
 LIST_PROJECTS_QUERY_DOC = "Filter and paginate projects."
 
-LIST_TAGS_QUERY_DOC = "Filter tags."
+LIST_TAGS_QUERY_DOC = "Filter and paginate tags."
 
-LIST_FOLDERS_QUERY_DOC = "Filter folders."
+LIST_FOLDERS_QUERY_DOC = "Filter and paginate folders."
 
-LIST_PERSPECTIVES_QUERY_DOC = "Filter perspectives."
+LIST_PERSPECTIVES_QUERY_DOC = "Filter and paginate perspectives."
 
 DURATION_UNIT_DOC = "Unit for duration-based filters."
 
@@ -253,6 +253,22 @@ REVIEW_DUE_FILTER_DOC = "Duration threshold for the review_due_within filter."
 SEARCH_FIELD_NAME_NOTES = "Case-insensitive substring match on name and notes."
 
 SEARCH_FIELD_NAME_ONLY = "Case-insensitive substring match on name."
+
+# --- Field Descriptions: Entity-Reference Filters ---
+
+PROJECT_FILTER_DESC = (
+    "Project ID or name. Names use case-insensitive substring matching -- "
+    "if multiple projects match, tasks from all are included."
+)
+
+TAGS_FILTER_DESC = (
+    "Tag names or IDs (OR logic). Names use case-insensitive substring matching."
+)
+
+FOLDER_FILTER_DESC = (
+    "Folder ID or name. Names use case-insensitive substring matching -- "
+    "if multiple folders match, projects from all are included."
+)
 
 # --- Tool Descriptions ---
 
@@ -345,8 +361,13 @@ LIST_TASKS_TOOL_DOC = (
     "List and filter tasks. All filters combine with AND logic.\n"
     "\n"
     "Defaults: availability includes available and blocked tasks.\n"
-    "Pagination: offset requires limit. Response shape:\n"
+    "Pagination: default limit is 50. Pass limit=null to return all.\n"
+    "offset requires limit. Response shape:\n"
     "{items: [...], total: N, hasMore: bool, warnings?: [...]}\n"
+    "\n"
+    "project and tags accept an ID or name. Names use case-insensitive\n"
+    "substring matching; multiple matches return all. Unrecognized names\n"
+    "are skipped with a warning.\n"
     "\n"
     "search matches case-insensitive substring in name and notes.\n"
     "The response uses camelCase field names."
@@ -357,8 +378,13 @@ LIST_PROJECTS_TOOL_DOC = (
     "\n"
     "Defaults: availability includes available and blocked projects.\n"
     "reviewDueWithin accepts duration strings: \"now\", \"1w\", \"2m\", \"1y\".\n"
-    "Pagination: offset requires limit. Response shape:\n"
+    "Pagination: default limit is 50. Pass limit=null to return all.\n"
+    "offset requires limit. Response shape:\n"
     "{items: [...], total: N, hasMore: bool, warnings?: [...]}\n"
+    "\n"
+    "folder accepts an ID or name. Names use case-insensitive substring\n"
+    "matching; multiple matches return all. Unrecognized names are skipped\n"
+    "with a warning.\n"
     "\n"
     "search matches case-insensitive substring in name and notes.\n"
     "The response uses camelCase field names."
@@ -367,11 +393,12 @@ LIST_PROJECTS_TOOL_DOC = (
 LIST_TAGS_TOOL_DOC = (
     "List and filter tags.\n"
     "\n"
-    "Defaults: availability includes available, blocked, and on_hold tags.\n"
-    "search matches case-insensitive substring in name only.\n"
-    "No pagination (no limit/offset). Response shape:\n"
+    "Defaults: availability includes available and blocked tags.\n"
+    "Pagination: default limit is 50. Pass limit=null to return all.\n"
+    "offset requires limit. Response shape:\n"
     "{items: [...], total: N, hasMore: bool}\n"
     "\n"
+    "search matches case-insensitive substring in name only.\n"
     "The response uses camelCase field names."
 )
 
@@ -379,18 +406,22 @@ LIST_FOLDERS_TOOL_DOC = (
     "List and filter folders.\n"
     "\n"
     "Defaults: availability includes available folders only.\n"
-    "search matches case-insensitive substring in name only.\n"
-    "Response shape: {items: [...], total: N, hasMore: bool}\n"
+    "Pagination: default limit is 50. Pass limit=null to return all.\n"
+    "offset requires limit. Response shape:\n"
+    "{items: [...], total: N, hasMore: bool}\n"
     "\n"
+    "search matches case-insensitive substring in name only.\n"
     "The response uses camelCase field names."
 )
 
 LIST_PERSPECTIVES_TOOL_DOC = (
     "List all perspectives (built-in and custom).\n"
     "\n"
-    "search matches case-insensitive substring in name only.\n"
-    "Response shape: {items: [...], total: N, hasMore: bool}\n"
+    "Pagination: default limit is 50. Pass limit=null to return all.\n"
+    "offset requires limit. Response shape:\n"
+    "{items: [...], total: N, hasMore: bool}\n"
     "\n"
+    "search matches case-insensitive substring in name only.\n"
     "The response uses camelCase field names."
 )
 
