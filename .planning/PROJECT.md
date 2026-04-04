@@ -22,7 +22,7 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 ## Current State
 
 **Shipped:** v1.2.3 (2026-03-29) — Repetition Rule Write Support
-**Next:** v1.3 Read Tools — Phase 37 complete with gap closure (5 list tools registered, default pagination limit=50, search across all entities, 1507 tests, all phases done)
+**Next:** v1.3 Read Tools — Phase 37.1 complete: fixed effectiveCompletionDate ghost tasks (availability mappers and SQL clauses use effective dates, 1528 tests)
 
 ## Requirements
 
