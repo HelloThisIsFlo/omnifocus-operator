@@ -21,7 +21,10 @@ ANCHOR_TASK_NOT_FOUND = "Anchor task not found: {id}"
 
 # --- Lookup: Ambiguous ---
 
-AMBIGUOUS_TAG = "Ambiguous tag '{name}': multiple matches ({ids})"
+AMBIGUOUS_ENTITY = (
+    "Ambiguous {entity_type} '{name}': multiple matches ({ids}). "
+    "For ambiguous {entity_type}s, specify by ID instead of name."
+)
 
 # --- Batch Limit ---
 

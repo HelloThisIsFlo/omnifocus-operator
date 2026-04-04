@@ -6,7 +6,7 @@ import logging
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from omnifocus_operator.agent_messages.errors import (
-    AMBIGUOUS_TAG,
+    AMBIGUOUS_ENTITY,
     PARENT_NOT_FOUND,
     PROJECT_NOT_FOUND,
     TAG_NOT_FOUND,
@@ -20,6 +20,9 @@ if TYPE_CHECKING:
     from omnifocus_operator.models.project import Project
     from omnifocus_operator.models.tag import Tag
     from omnifocus_operator.models.task import Task
+
+from omnifocus_operator.contracts.use_cases.list.tags import ListTagsRepoQuery
+from omnifocus_operator.models.enums import TagAvailability
 
 
 @runtime_checkable
@@ -100,25 +103,28 @@ class Resolver:
             len(tag_names),
             tag_names,
         )
-        all_data = await self._repo.get_all()
+        tags_result = await self._repo.list_tags(
+            ListTagsRepoQuery(availability=list(TagAvailability), limit=None)
+        )
+        all_tags = tags_result.items
         resolved: list[str] = []
         for name in tag_names:
-            tag_id = self._match_tag(name, all_data.tags)
+            tag_id = self._match_by_name(name, all_tags, "tag")
             resolved.append(tag_id)
         return resolved
 
-    def _match_tag(self, name: str, tags: list[Tag]) -> str:
-        """Find a single tag by name (case-insensitive) or ID."""
-        matches = [t for t in tags if t.name.lower() == name.lower()]
+    def _match_by_name(self, name: str, entities: Sequence[_HasIdAndName], entity_type: str) -> str:
+        """Find a single entity by name (case-insensitive) or ID."""
+        matches = [e for e in entities if e.name.lower() == name.lower()]
         if len(matches) == 1:
             return matches[0].id
         if len(matches) > 1:
             ids = ", ".join(m.id for m in matches)
-            msg = AMBIGUOUS_TAG.format(name=name, ids=ids)
+            msg = AMBIGUOUS_ENTITY.format(entity_type=entity_type, name=name, ids=ids)
             raise ValueError(msg)
         # No name match -- try as ID fallback
-        logger.debug("Resolver.resolve_tags: '%s' no name match, trying as ID", name)
-        id_match = next((t for t in tags if t.id == name), None)
+        logger.debug("Resolver._match_by_name: '%s' no name match, trying as ID", name)
+        id_match = next((e for e in entities if e.id == name), None)
         if id_match is not None:
             return id_match.id
         msg = TAG_NOT_FOUND.format(name=name)
