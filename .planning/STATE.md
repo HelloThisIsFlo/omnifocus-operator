@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Read Tools
 status: executing
-stopped_at: Completed 260402-pj2 (convert specs to core models at service boundary)
-last_updated: "2026-04-02T17:56:57.372Z"
-last_activity: 2026-04-02
+stopped_at: Completed 37-03-PLAN.md
+last_updated: "2026-04-04T15:14:55.695Z"
+last_activity: 2026-04-04
 progress:
   total_phases: 10
-  completed_phases: 9
-  total_plans: 21
-  completed_plans: 21
+  completed_phases: 10
+  total_plans: 24
+  completed_plans: 24
   percent: 20
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-29)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 36.4 — reserve-literal-and-annotated-types-for-contract-models-only
+**Current focus:** Phase 37 — server-registration-and-integration-was-phase-38
 
 ## Current Position
 
 Phase: 37
 Plan: Not started
-Status: Executing Phase 36.4
-Last activity: 2026-04-02
+Status: Ready to execute
+Last activity: 2026-04-04
 
 Progress: [██░░░░░░░░] 20%
 
@@ -89,6 +89,11 @@ Recent decisions affecting current work:
 - [Phase 260402-pj2]: build_add gets optional repetition_rule_payload param for pre-converted payloads
 - [Phase 260402-pj2]: payload.py fallback path also uses convert functions for direct callers
 - [Phase 260402-pj2]: EndByDate/EndByOccurrences moved to runtime imports in builder.py for isinstance dispatch
+- [Phase 37]: Project search SQL uses t.name/t.plainTextNote (projects share Task table)
+- [Phase 37]: Perspectives search is name-only (no notes field); non-ASCII test uses ASCII 'Buro'
+- [Phase 37]: List tools take query param (not individual params) -- FastMCP introspects QueryModel for inputSchema
+- [Phase 37]: _paginate helper duplicated in hybrid and bridge_only repos -- keeps repos self-contained
+- [Phase 37]: Default list limit is 50, agent can override with limit=None to get all results
 
 ### Roadmap Evolution
 
@@ -119,6 +124,14 @@ Carried forward:
 13. ~~Improve MCP tool schema descriptions and field documentation~~ (DONE: quick-260401-twg)
 14. ~~Clarify repetition schedule and repeat mode edge cases~~ (DONE: empirical verification, BYDAY edge cases guide, runtime warning, anchor date behavior documented)
 15. Convert specs to core models at service boundary (post-merge follow-up to #11)
+16. Fix effectiveCompletionDate availability ghost tasks (repository)
+17. Add built-in perspectives to list_perspectives (repository — needs design discussion)
+18. Return full inbox hierarchy from inInbox query (repository)
+19. Add path field for hierarchical entities (models)
+20. Add disambiguation warnings for ambiguous entity names (server)
+21. Improve ambiguous tag error message with resolution guidance (service)
+22. Make inbox a first-class value instead of null overloading (design effort)
+23. Document edit_tasks action combinability and null-inbox semantics (docs)
 
 ### Quick Tasks Completed
 
@@ -139,6 +152,9 @@ Carried forward:
 | 260402-phi | Add validation set sync tests between models and contracts | 2026-04-02 | 8f0f89b | | [260402-phi-add-validation-set-sync-tests-between-mo](./quick/260402-phi-add-validation-set-sync-tests-between-mo/) |
 | 260402-pic | Add cross-type model_validator to FrequencyEditSpec | 2026-04-02 | 9c92c8e, b82a0c2 | | [260402-pic-add-cross-type-model-validator-to-freque](./quick/260402-pic-add-cross-type-model-validator-to-freque/) |
 | 260402-pj2 | Convert specs to core models at service boundary | 2026-04-02 | 2633181 | Verified | [260402-pj2-convert-specs-to-core-models-at-service-](./quick/260402-pj2-convert-specs-to-core-models-at-service-/) |
+| Phase 37 P01 | 9min | 2 tasks | 16 files |
+| Phase 37 P02 | 7min | 2 tasks | 5 files |
+| Phase 37 P03 | 10min | 2 tasks | 13 files |
 
 ### Blockers/Concerns
 
@@ -147,5 +163,5 @@ None yet.
 ## Session Continuity
 
 Last activity: 2026-04-02 - Completed quick task 260402-pj2: Convert specs to core models at service boundary
-Stopped at: Completed 260402-pj2 (convert specs to core models at service boundary)
+Stopped at: Completed 37-03-PLAN.md
 Resume file: None

@@ -11,9 +11,12 @@ from pydantic import Field, field_validator, model_validator
 from omnifocus_operator.agent_messages import errors as err
 from omnifocus_operator.agent_messages.descriptions import (
     DURATION_UNIT_DOC,
+    FOLDER_FILTER_DESC,
     LIST_PROJECTS_QUERY_DOC,
     REVIEW_DUE_FILTER_DOC,
+    SEARCH_FIELD_NAME_NOTES,
 )
+from omnifocus_operator.config import DEFAULT_LIST_LIMIT
 from omnifocus_operator.contracts.base import QueryModel
 from omnifocus_operator.contracts.use_cases.list._validators import validate_offset_requires_limit
 from omnifocus_operator.models.enums import Availability
@@ -67,10 +70,11 @@ class ListProjectsQuery(QueryModel):
     availability: list[Availability] = Field(
         default_factory=lambda: [Availability.AVAILABLE, Availability.BLOCKED]
     )
-    folder: str | None = None  # case-insensitive partial match on folder name
+    folder: str | None = Field(default=None, description=FOLDER_FILTER_DESC)
     review_due_within: ReviewDueFilter | None = None
     flagged: bool | None = None
-    limit: int | None = None
+    search: str | None = Field(default=None, description=SEARCH_FIELD_NAME_NOTES)
+    limit: int | None = DEFAULT_LIST_LIMIT
     offset: int | None = None
 
     @field_validator("review_due_within", mode="before")
@@ -97,5 +101,6 @@ class ListProjectsRepoQuery(QueryModel):
     folder_ids: list[str] | None = None
     review_due_before: datetime | None = None
     flagged: bool | None = None
-    limit: int | None = None
+    search: str | None = None
+    limit: int | None = DEFAULT_LIST_LIMIT
     offset: int | None = None

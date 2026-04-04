@@ -1,41 +1,34 @@
-"""Tag list contracts: agent-facing query and repo-facing query."""
+"""Perspective list contracts: agent-facing query and repo-facing query."""
 
 from __future__ import annotations
 
 from pydantic import Field, model_validator
 
 from omnifocus_operator.agent_messages.descriptions import (
-    LIST_TAGS_QUERY_DOC,
+    LIST_PERSPECTIVES_QUERY_DOC,
     SEARCH_FIELD_NAME_ONLY,
 )
 from omnifocus_operator.config import DEFAULT_LIST_LIMIT
 from omnifocus_operator.contracts.base import QueryModel
 from omnifocus_operator.contracts.use_cases.list._validators import validate_offset_requires_limit
-from omnifocus_operator.models.enums import TagAvailability
 
 
-class ListTagsQuery(QueryModel):
-    __doc__ = LIST_TAGS_QUERY_DOC
+class ListPerspectivesQuery(QueryModel):
+    __doc__ = LIST_PERSPECTIVES_QUERY_DOC
 
-    availability: list[TagAvailability] = Field(
-        default_factory=lambda: [TagAvailability.AVAILABLE, TagAvailability.BLOCKED]
-    )
     search: str | None = Field(default=None, description=SEARCH_FIELD_NAME_ONLY)
     limit: int | None = DEFAULT_LIST_LIMIT
     offset: int | None = None
 
     @model_validator(mode="after")
-    def _check_offset_requires_limit(self) -> ListTagsQuery:
+    def _check_offset_requires_limit(self) -> ListPerspectivesQuery:
         validate_offset_requires_limit(self.limit, self.offset)
         return self
 
 
-class ListTagsRepoQuery(QueryModel):
+class ListPerspectivesRepoQuery(QueryModel):
     """Repo-facing query -- identical fields today."""
 
-    availability: list[TagAvailability] = Field(
-        default_factory=lambda: [TagAvailability.AVAILABLE, TagAvailability.BLOCKED]
-    )
     search: str | None = None
     limit: int | None = DEFAULT_LIST_LIMIT
     offset: int | None = None

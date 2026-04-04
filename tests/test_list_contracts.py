@@ -138,7 +138,7 @@ class TestQueryModelDefaults:
         assert query.tags is None
         assert query.estimated_minutes_max is None
         assert query.search is None
-        assert query.limit is None
+        assert query.limit == 50  # DEFAULT_LIST_LIMIT
         assert query.offset is None
 
     def test_list_projects_query_default_availability(self) -> None:
@@ -150,7 +150,7 @@ class TestQueryModelDefaults:
         assert query.folder is None
         assert query.review_due_within is None
         assert query.flagged is None
-        assert query.limit is None
+        assert query.limit == 50  # DEFAULT_LIST_LIMIT
         assert query.offset is None
 
     def test_list_tags_query_default_availability(self) -> None:
@@ -261,9 +261,16 @@ class TestQueryModelAcceptance:
 class TestOffsetRequiresLimit:
     """Verify offset-without-limit raises educational ValueError."""
 
-    def test_tasks_offset_without_limit_raises(self) -> None:
+    def test_tasks_offset_without_explicit_limit_uses_default(self) -> None:
+        """offset=5 is valid because limit defaults to 50."""
+        query = ListTasksQuery(offset=5)
+        assert query.offset == 5
+        assert query.limit == 50
+
+    def test_tasks_offset_with_limit_none_raises(self) -> None:
+        """Explicit limit=None + offset still raises."""
         with pytest.raises(ValidationError, match=re.escape(OFFSET_REQUIRES_LIMIT)):
-            ListTasksQuery(offset=5)
+            ListTasksQuery(offset=5, limit=None)
 
     def test_tasks_offset_with_limit_succeeds(self) -> None:
         query = ListTasksQuery(offset=5, limit=10)
@@ -275,9 +282,16 @@ class TestOffsetRequiresLimit:
         assert query.limit == 10
         assert query.offset is None
 
-    def test_projects_offset_without_limit_raises(self) -> None:
+    def test_projects_offset_without_explicit_limit_uses_default(self) -> None:
+        """offset=5 is valid because limit defaults to 50."""
+        query = ListProjectsQuery(offset=5)
+        assert query.offset == 5
+        assert query.limit == 50
+
+    def test_projects_offset_with_limit_none_raises(self) -> None:
+        """Explicit limit=None + offset still raises."""
         with pytest.raises(ValidationError, match=re.escape(OFFSET_REQUIRES_LIMIT)):
-            ListProjectsQuery(offset=5)
+            ListProjectsQuery(offset=5, limit=None)
 
     def test_projects_offset_with_limit_succeeds(self) -> None:
         query = ListProjectsQuery(offset=5, limit=10)
@@ -399,7 +413,7 @@ class TestRepoQueryDefaults:
         assert query.tag_ids is None
         assert query.estimated_minutes_max is None
         assert query.search is None
-        assert query.limit is None
+        assert query.limit == 50  # DEFAULT_LIST_LIMIT
         assert query.offset is None
 
     def test_list_projects_repo_query_default_availability(self) -> None:
@@ -411,7 +425,7 @@ class TestRepoQueryDefaults:
         assert query.folder_ids is None
         assert query.review_due_before is None
         assert query.flagged is None
-        assert query.limit is None
+        assert query.limit == 50  # DEFAULT_LIST_LIMIT
         assert query.offset is None
 
     def test_list_tags_repo_query_default_availability(self) -> None:

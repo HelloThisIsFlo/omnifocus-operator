@@ -26,6 +26,7 @@ from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskRepoPayload,
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskRepoPayload
 from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult
 from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersRepoQuery
+from omnifocus_operator.contracts.use_cases.list.perspectives import ListPerspectivesRepoQuery
 from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsRepoQuery
 from omnifocus_operator.contracts.use_cases.list.tags import ListTagsRepoQuery
 from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
@@ -2667,7 +2668,7 @@ class TestListPerspectives:
     )
     async def test_list_perspectives_returns_all(self, hybrid_repo: HybridRepository) -> None:
         """list_perspectives returns all perspectives."""
-        result = await hybrid_repo.list_perspectives()
+        result = await hybrid_repo.list_perspectives(ListPerspectivesRepoQuery())
         assert len(result.items) == 2
         names = {p.name for p in result.items}
         assert names == {"Custom View", "Inbox"}
@@ -2687,7 +2688,7 @@ class TestListPerspectives:
     )
     async def test_list_perspectives_builtin_flag(self, hybrid_repo: HybridRepository) -> None:
         """Custom perspectives have builtin=False, built-in have builtin=True."""
-        result = await hybrid_repo.list_perspectives()
+        result = await hybrid_repo.list_perspectives(ListPerspectivesRepoQuery())
         by_name = {p.name: p for p in result.items}
         assert by_name["My Custom"].builtin is False
         assert by_name["My Custom"].id == "persp-custom"
@@ -2713,7 +2714,7 @@ class TestListPerspectives:
     )
     async def test_list_perspectives_result_shape(self, hybrid_repo: HybridRepository) -> None:
         """ListRepoResult has has_more=False and total matches item count."""
-        result = await hybrid_repo.list_perspectives()
+        result = await hybrid_repo.list_perspectives(ListPerspectivesRepoQuery())
         assert result.has_more is False
         assert result.total == len(result.items)
         assert result.total == 3

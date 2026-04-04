@@ -28,6 +28,10 @@ if TYPE_CHECKING:
         ListFoldersQuery,
         ListFoldersRepoQuery,
     )
+    from omnifocus_operator.contracts.use_cases.list.perspectives import (
+        ListPerspectivesQuery,
+        ListPerspectivesRepoQuery,
+    )
     from omnifocus_operator.contracts.use_cases.list.projects import (
         ListProjectsQuery,
         ListProjectsRepoQuery,
@@ -67,7 +71,7 @@ class Service(Protocol):
 
     async def list_folders(self, query: ListFoldersQuery) -> ListResult[Folder]: ...
 
-    async def list_perspectives(self) -> ListResult[Perspective]: ...
+    async def list_perspectives(self, query: ListPerspectivesQuery) -> ListResult[Perspective]: ...
 
 
 @runtime_checkable
@@ -94,7 +98,9 @@ class Repository(Protocol):
 
     async def list_folders(self, query: ListFoldersRepoQuery) -> ListRepoResult[Folder]: ...
 
-    async def list_perspectives(self) -> ListRepoResult[Perspective]: ...
+    async def list_perspectives(
+        self, query: ListPerspectivesRepoQuery
+    ) -> ListRepoResult[Perspective]: ...
 
 
 @runtime_checkable

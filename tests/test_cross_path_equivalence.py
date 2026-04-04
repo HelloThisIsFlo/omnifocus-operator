@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersRepoQuery
+from omnifocus_operator.contracts.use_cases.list.perspectives import ListPerspectivesRepoQuery
 from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsRepoQuery
 from omnifocus_operator.contracts.use_cases.list.tags import ListTagsRepoQuery
 from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
@@ -96,6 +97,13 @@ def _build_neutral_test_data() -> dict[str, Any]:
                 "added": _ADDED,
                 "modified": _MODIFIED,
             },
+            {
+                "id": "tag-4",
+                "name": "Buro",
+                "availability": "available",
+                "added": _ADDED,
+                "modified": _MODIFIED,
+            },
         ],
         "folders": [
             {
@@ -117,6 +125,7 @@ def _build_neutral_test_data() -> dict[str, Any]:
             {
                 "id": "proj-1",
                 "name": "Build App",
+                "note": "Mobile app for tracking expenses",
                 "availability": "available",
                 "flagged": True,
                 "folder_id": "folder-1",
@@ -128,6 +137,7 @@ def _build_neutral_test_data() -> dict[str, Any]:
             {
                 "id": "proj-2",
                 "name": "Plan Vacation",
+                "note": "",
                 "availability": "available",
                 "flagged": False,
                 "folder_id": None,
@@ -139,6 +149,7 @@ def _build_neutral_test_data() -> dict[str, Any]:
             {
                 "id": "proj-3",
                 "name": "Old Project",
+                "note": "Contains archived deliverables",
                 "availability": "blocked",
                 "flagged": False,
                 "folder_id": "folder-1",
@@ -205,6 +216,7 @@ def _build_neutral_test_data() -> dict[str, Any]:
         "perspectives": [
             {"id": None, "name": "Inbox"},
             {"id": "persp-1", "name": "Forecast"},
+            {"id": "persp-2", "name": "Review"},
         ],
         # Explicit task-tag assignments for SQLite join table
         "task_tag_assignments": [
@@ -277,6 +289,7 @@ async def seed_bridge_repo(data: dict[str, Any]) -> BridgeOnlyRepository:
             make_project_dict(
                 id=p["id"],
                 name=p["name"],
+                note=p.get("note", ""),
                 flagged=p["flagged"],
                 effectiveFlagged=p["flagged"],
                 folder=p["folder_id"],
@@ -483,13 +496,14 @@ async def seed_sqlite_repo(data: dict[str, Any], tmp_path: Path) -> HybridReposi
             task_id = p["id"]
             conn.execute(
                 """INSERT INTO Task (
-                    persistentIdentifier, name, dateAdded, dateModified,
+                    persistentIdentifier, name, plainTextNote, dateAdded, dateModified,
                     flagged, effectiveFlagged, childrenCount, inInbox,
                     overdue, dueSoon, blocked, dateCompleted, dateHidden
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 [
                     task_id,
                     p["name"],
+                    p.get("note", "") or None,
                     _to_cf_epoch(p["added"]),
                     _to_cf_epoch(p["modified"]),
                     int(p["flagged"]),
@@ -742,10 +756,10 @@ class TestListTagsCrossPath:
         """Default query returns available + blocked tags."""
         result = await cross_repo.list_tags(ListTagsRepoQuery())
         items = sorted(result.items, key=lambda x: x.id)
-        # Default = [available, blocked] -> tag-1, tag-2, tag-3
-        assert len(items) == 3
-        assert [t.id for t in items] == ["tag-1", "tag-2", "tag-3"]
-        assert result.total == 3
+        # Default = [available, blocked] -> tag-1, tag-2, tag-3, tag-4
+        assert len(items) == 4
+        assert [t.id for t in items] == ["tag-1", "tag-2", "tag-3", "tag-4"]
+        assert result.total == 4
 
     @pytest.mark.asyncio
     async def test_list_tags_active_only(self, cross_repo: Repository) -> None:
@@ -754,8 +768,8 @@ class TestListTagsCrossPath:
             ListTagsRepoQuery(availability=[TagAvailability.AVAILABLE])
         )
         items = sorted(result.items, key=lambda x: x.id)
-        assert len(items) == 2
-        assert [t.id for t in items] == ["tag-1", "tag-2"]
+        assert len(items) == 3
+        assert [t.id for t in items] == ["tag-1", "tag-2", "tag-4"]
 
 
 # ===========================================================================
@@ -797,10 +811,10 @@ class TestListPerspectivesCrossPath:
     @pytest.mark.asyncio
     async def test_list_perspectives(self, cross_repo: Repository) -> None:
         """All perspectives returned with correct fields."""
-        result = await cross_repo.list_perspectives()
+        result = await cross_repo.list_perspectives(ListPerspectivesRepoQuery())
         items = sorted(result.items, key=lambda x: x.name)
-        assert len(items) == 2
-        assert result.total == 2
+        assert len(items) == 3
+        assert result.total == 3
 
         # Builtin perspective (id=None)
         forecast = next(p for p in items if p.name == "Forecast")
@@ -810,3 +824,76 @@ class TestListPerspectivesCrossPath:
         inbox = next(p for p in items if p.name == "Inbox")
         assert inbox.id is None
         assert inbox.builtin is True
+
+    @pytest.mark.asyncio
+    async def test_list_perspectives_search(self, cross_repo: Repository) -> None:
+        """Search filter matches on perspective name substring."""
+        result = await cross_repo.list_perspectives(ListPerspectivesRepoQuery(search="fore"))
+        items = sorted(result.items, key=lambda x: x.name)
+        assert len(items) == 1
+        assert items[0].name == "Forecast"
+
+
+# ===========================================================================
+# Search cross-path equivalence tests (additional)
+# ===========================================================================
+
+
+class TestSearchCrossPath:
+    """Cross-path search tests for projects, tags, folders -- grouped for clarity."""
+
+    @pytest.mark.asyncio
+    async def test_list_projects_search_name(self, cross_repo: Repository) -> None:
+        """Search on project name returns matching projects."""
+        result = await cross_repo.list_projects(ListProjectsRepoQuery(search="build"))
+        items = sorted(result.items, key=lambda x: x.id)
+        assert len(items) == 1
+        assert items[0].id == "proj-1"
+        assert "build" in items[0].name.lower()
+
+    @pytest.mark.asyncio
+    async def test_list_projects_search_notes(self, cross_repo: Repository) -> None:
+        """Search matches in project notes field."""
+        result = await cross_repo.list_projects(ListProjectsRepoQuery(search="expenses"))
+        items = sorted(result.items, key=lambda x: x.id)
+        assert len(items) == 1
+        assert items[0].id == "proj-1"
+
+    @pytest.mark.asyncio
+    async def test_list_tags_search(self, cross_repo: Repository) -> None:
+        """Search on tag name returns matching tags."""
+        result = await cross_repo.list_tags(ListTagsRepoQuery(search="work"))
+        items = sorted(result.items, key=lambda x: x.id)
+        assert len(items) == 1
+        assert items[0].id == "tag-1"
+        assert items[0].name == "Work"
+
+    @pytest.mark.asyncio
+    async def test_list_tags_search_no_match(self, cross_repo: Repository) -> None:
+        """Search with no matches returns empty result."""
+        result = await cross_repo.list_tags(ListTagsRepoQuery(search="nonexistent"))
+        assert len(result.items) == 0
+        assert result.total == 0
+
+    @pytest.mark.asyncio
+    async def test_list_tags_search_non_ascii(self, cross_repo: Repository) -> None:
+        """Search with ASCII term matches ASCII tag name across both paths."""
+        result = await cross_repo.list_tags(ListTagsRepoQuery(search="buro"))
+        items = sorted(result.items, key=lambda x: x.id)
+        assert len(items) == 1
+        assert items[0].id == "tag-4"
+        assert items[0].name == "Buro"
+
+    @pytest.mark.asyncio
+    async def test_list_folders_search(self, cross_repo: Repository) -> None:
+        """Search on folder name returns matching folders."""
+        result = await cross_repo.list_folders(
+            ListFoldersRepoQuery(
+                availability=[FolderAvailability.AVAILABLE, FolderAvailability.DROPPED],
+                search="archive",
+            )
+        )
+        items = sorted(result.items, key=lambda x: x.id)
+        assert len(items) == 1
+        assert items[0].id == "folder-2"
+        assert items[0].name == "Archive"

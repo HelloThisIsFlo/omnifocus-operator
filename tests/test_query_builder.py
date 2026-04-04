@@ -192,12 +192,14 @@ class TestTasksAvailabilityFilter:
         assert data_q.sql.count(" OR ") >= 3
 
     def test_no_user_params_in_availability(self):
-        """Availability clauses use column comparisons, no user-provided params."""
+        """Availability clauses use column comparisons, no user-provided params.
+
+        Only the default LIMIT param (50) should be present -- no availability params.
+        """
         query = ListTasksRepoQuery(availability=[Availability.AVAILABLE])
         data_q, _ = build_list_tasks_sql(query)
-        # No params should be added for availability itself
-        # (only default availability clause, no other filters)
-        assert len(data_q.params) == 0
+        # Only the default LIMIT param (50) -- no availability params
+        assert data_q.params == (50,)
 
 
 class TestTasksLimitOffset:
@@ -236,7 +238,7 @@ class TestTasksLimitOffset:
 
     def test_offset_without_limit_ignored(self):
         """offset without limit should not produce OFFSET clause."""
-        query = ListTasksRepoQuery(offset=5)
+        query = ListTasksRepoQuery(offset=5, limit=None)
         data_q, _ = build_list_tasks_sql(query)
         assert "OFFSET" not in data_q.sql
 

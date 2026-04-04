@@ -37,10 +37,10 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 
 ### Entity Search
 
-- [ ] **SRCH-01**: Agent can search projects by case-insensitive substring in name and notes — same implementation as TASK-08
-- [ ] **SRCH-02**: Agent can search tags by case-insensitive substring in name — same implementation as TASK-08 (name only, tags have no notes)
-- [ ] **SRCH-03**: Agent can search folders by case-insensitive substring in name — same implementation as TASK-08 (name only, folders have no notes)
-- [ ] **SRCH-04**: Agent can search perspectives by case-insensitive substring in name — same implementation as TASK-08 (name only). Requires introducing `ListPerspectivesQuery` / `ListPerspectivesRepoQuery`.
+- [x] **SRCH-01**: Agent can search projects by case-insensitive substring in name and notes — same implementation as TASK-08
+- [x] **SRCH-02**: Agent can search tags by case-insensitive substring in name — same implementation as TASK-08 (name only, tags have no notes)
+- [x] **SRCH-03**: Agent can search folders by case-insensitive substring in name — same implementation as TASK-08 (name only, folders have no notes)
+- [x] **SRCH-04**: Agent can search perspectives by case-insensitive substring in name — same implementation as TASK-08 (name only). Requires introducing `ListPerspectivesQuery` / `ListPerspectivesRepoQuery`.
 
 ### Write Tool Schema & Validation
 
@@ -91,17 +91,17 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 
 ### List Tool Documentation
 
-- [ ] **DOC-10**: List tool docstrings contain behavioral guidance only — filter interaction rules (AND logic, defaults, mutual exclusivity), response shape, pagination behavior — no field-by-field listings redundant with inputSchema
-- [ ] **DOC-11**: List tool query model fields have `Field(description=...)` where the fluency test fails — field name + type leave ambiguity about behavior or valid values (same filter as DOC-03/DOC-08)
-- [ ] **DOC-12**: All list tool descriptions include camelCase response field names note and hint at response structure (consistent with DOC-07 on read tools)
-- [ ] **DOC-13**: No implementation details leak into list tool query model docstrings or field descriptions — no references to RepoQuery, pipelines, resolution cascades, or SQL internals
-- [ ] **DOC-14**: List tool query model field descriptions and class docstrings use constants from `descriptions.py` — extends DESC-02/DESC-03 to new models added in Phase 37
+- [x] **DOC-10**: List tool docstrings contain behavioral guidance only — filter interaction rules (AND logic, defaults, mutual exclusivity), response shape, pagination behavior — no field-by-field listings redundant with inputSchema
+- [x] **DOC-11**: List tool query model fields have `Field(description=...)` where the fluency test fails — field name + type leave ambiguity about behavior or valid values (same filter as DOC-03/DOC-08)
+- [x] **DOC-12**: All list tool descriptions include camelCase response field names note and hint at response structure (consistent with DOC-07 on read tools)
+- [x] **DOC-13**: No implementation details leak into list tool query model docstrings or field descriptions — no references to RepoQuery, pipelines, resolution cascades, or SQL internals
+- [x] **DOC-14**: List tool query model field descriptions and class docstrings use constants from `descriptions.py` — extends DESC-02/DESC-03 to new models added in Phase 37
 
 ### Read Tool Registration
 
-- [ ] **RTOOL-01**: `list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives` use typed query model parameters -- rich inputSchema auto-generated from query models (not `dict[str, Any]`)
-- [ ] **RTOOL-02**: Schema field names use camelCase aliases matching the API contract across all read tools
-- [ ] **RTOOL-03**: Validation errors on read tools are agent-friendly via `ValidationReformatterMiddleware` -- consistent error surface across read and write tools
+- [x] **RTOOL-01**: `list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives` use typed query model parameters -- rich inputSchema auto-generated from query models (not `dict[str, Any]`)
+- [x] **RTOOL-02**: Schema field names use camelCase aliases matching the API contract across all read tools
+- [x] **RTOOL-03**: Validation errors on read tools are agent-friendly via `ValidationReformatterMiddleware` -- consistent error surface across read and write tools
 
 ### Query Infrastructure
 
@@ -109,7 +109,7 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 - [x] **INFRA-02**: Filtered SQL queries measurably faster than full snapshot (<6ms vs ~46ms)
 - [x] **INFRA-03**: Bridge fallback produces identical results to SQL path for same filters
 - [x] **INFRA-04**: list_tasks and list_projects responses include total_count reflecting total matches ignoring limit/offset
-- [ ] **INFRA-05**: Tool descriptions detailed enough for an LLM to call correctly
+- [x] **INFRA-05**: Tool descriptions detailed enough for an LLM to call correctly
 - [x] **INFRA-06**: Educational error messages for invalid filter values
 - [x] **INFRA-07**: When a name-based filter (project, folder, tags) returns zero results, emit a "did you mean?" warning with close matches from the full entity list — see [design todo](../todos/pending/2026-03-30-add-did-you-mean-suggestions-for-zero-result-name-filters.md)
 - [x] **INFRA-08**: Read-side contracts split at the service boundary — agent-facing query models (`List<Noun>Query`) and repo-facing query models (`List<Noun>RepoQuery`) are separate types for tasks, projects, tags, and folders
@@ -187,11 +187,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-02 | Phase 35 | Complete |
 | INFRA-03 | Phase 36 (merged) | Complete |
 | INFRA-04 | Phase 34 | Complete |
-| INFRA-05 | Phase 37 (was 38) | Pending |
-| SRCH-01 | Phase 37 | Pending |
-| SRCH-02 | Phase 37 | Pending |
-| SRCH-03 | Phase 37 | Pending |
-| SRCH-04 | Phase 37 | Pending |
+| INFRA-05 | Phase 37 (was 38) | Complete |
+| SRCH-01 | Phase 37 | Complete |
+| SRCH-02 | Phase 37 | Complete |
+| SRCH-03 | Phase 37 | Complete |
+| SRCH-04 | Phase 37 | Complete |
 | INFRA-06 | Phase 36 (merged) | Complete |
 | INFRA-07 | Phase 35.2 | Complete |
 | INFRA-08 | Phase 35.1 | Complete |
@@ -214,9 +214,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | WRIT-09 | Phase 36.1 | Complete |
 | WRIT-10 | Phase 36.1 | Complete |
 | WRIT-11 | Phase 36.1 | Complete |
-| RTOOL-01 | Phase 37 | Pending |
-| RTOOL-02 | Phase 37 | Pending |
-| RTOOL-03 | Phase 37 | Pending |
+| RTOOL-01 | Phase 37 | Complete |
+| RTOOL-02 | Phase 37 | Complete |
+| RTOOL-03 | Phase 37 | Complete |
 | DOC-01 | Phase 36.2 | Complete |
 | DOC-02 | Phase 36.2 | Complete |
 | DOC-03 | Phase 36.2 | Complete |
@@ -241,11 +241,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TYPE-05 | Phase 36.4 | Complete |
 | TYPE-06 | Phase 36.4 | Complete |
 | TYPE-07 | Phase 36.4 | Complete |
-| DOC-10 | Phase 37 | Pending |
-| DOC-11 | Phase 37 | Pending |
-| DOC-12 | Phase 37 | Pending |
-| DOC-13 | Phase 37 | Pending |
-| DOC-14 | Phase 37 | Pending |
+| DOC-10 | Phase 37 | Complete |
+| DOC-11 | Phase 37 | Complete |
+| DOC-12 | Phase 37 | Complete |
+| DOC-13 | Phase 37 | Complete |
+| DOC-14 | Phase 37 | Complete |
 
 **Coverage:**
 - v1.3 requirements: 80 total (PROJ-03 merged into PROJ-02, TASK-05 deferred, +4 SRCH, +11 WRIT, +3 RTOOL, +13 DOC, +1 DOC-14, +8 DESC, +7 TYPE)
