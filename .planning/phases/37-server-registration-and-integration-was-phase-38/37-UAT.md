@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: complete
 phase: 37-server-registration-and-integration-was-phase-38
 source: [37-01-SUMMARY.md, 37-02-SUMMARY.md]
 started: 2026-04-03T14:30:00Z
-updated: 2026-04-03T15:15:00Z
+updated: 2026-04-04T00:00:00Z
 ---
 
 ## Current Test
@@ -70,47 +70,20 @@ blocked: 0
 ## Gaps
 
 - truth: "list tools should have a sensible default pagination limit"
-  status: failed
+  status: resolved
   reason: "User reported: list_tasks({}) returned 1.8M characters (2,174 tasks), exceeding token limit. No default limit on any list tool."
   severity: major
   test: post-UAT-feedback
-  root_cause: "Two-part problem: (1) Tasks/Projects query models have limit: int | None = None with no default -- service passes None through, query builder skips LIMIT clause, unbounded SQL returns all rows. (2) Tags/Folders/Perspectives query models have NO limit/offset fields at all -- repos fetch all rows into Python lists and hardcode has_more=False. Pagination is structurally impossible for these 3 entity types."
-  artifacts:
-    - path: "src/omnifocus_operator/contracts/use_cases/list/tasks.py"
-      issue: "limit defaults to None, no cap"
-    - path: "src/omnifocus_operator/contracts/use_cases/list/projects.py"
-      issue: "limit defaults to None, no cap"
-    - path: "src/omnifocus_operator/contracts/use_cases/list/tags.py"
-      issue: "No limit/offset fields at all"
-    - path: "src/omnifocus_operator/contracts/use_cases/list/folders.py"
-      issue: "No limit/offset fields at all"
-    - path: "src/omnifocus_operator/contracts/use_cases/list/perspectives.py"
-      issue: "No limit/offset fields at all"
-    - path: "src/omnifocus_operator/repository/hybrid/hybrid.py"
-      issue: "Tags/folders/perspectives hardcode has_more=False"
-  missing:
-    - "Add default limit (e.g., 50) to all 5 query models"
-    - "Add limit/offset fields to tags, folders, perspectives query models"
-    - "Implement Python-side pagination slicing for tags/folders/perspectives in hybrid repo"
-  debug_session: ".planning/debug/no-default-pagination-limit.md"
+  resolution: "Fixed in phase 37-03. DEFAULT_LIST_LIMIT=50 applied to all 5 list tools. limit/offset added to tags, folders, perspectives query models. Tool descriptions derive limit from constant."
+  fixed_by: [aad3688, 2281b23, 5139263]
 
 - truth: "LIST_TASKS_TOOL_DOC documents that project filter uses substring matching"
-  status: failed
-  reason: "User reported: project filter uses substring matching (e.g. filtering by 'TestProject' also matches 'TestProject2') but tool description doesn't mention this."
+  status: resolved
+  reason: "User reported: project filter uses substring matching but tool description doesn't mention this."
   severity: minor
   test: post-UAT-feedback
-  root_cause: "Entity-reference filters (project, tags, folder) use a 3-step resolution cascade in Resolver.resolve_filter() -- (1) exact ID match, (2) case-insensitive substring match on name, (3) no match with did-you-mean warning -- but this is not documented. LIST_TASKS_TOOL_DOC only documents search as substring. Query model fields have code comments but no Field(description=...), so invisible in MCP schemas."
-  artifacts:
-    - path: "src/omnifocus_operator/agent_messages/descriptions.py"
-      issue: "LIST_TASKS_TOOL_DOC and LIST_PROJECTS_TOOL_DOC missing entity-reference filter semantics"
-    - path: "src/omnifocus_operator/contracts/use_cases/list/tasks.py"
-      issue: "project and tags fields lack Field(description=...) documenting resolution behavior"
-    - path: "src/omnifocus_operator/contracts/use_cases/list/projects.py"
-      issue: "folder field lacks Field(description=...) documenting resolution behavior"
-  missing:
-    - "Add Field(description=...) to project, tags, folder fields explaining 'accepts ID or name; names use case-insensitive substring matching'"
-    - "Add resolution cascade summary to LIST_TASKS_TOOL_DOC and LIST_PROJECTS_TOOL_DOC"
-  debug_session: ".planning/debug/project-substring-undocumented.md"
+  resolution: "Fixed in phase 37-03. Entity-reference resolution cascade documented in tool descriptions and Field(description=...) on query model fields."
+  fixed_by: [aad3688]
 
 ## Deferred Gaps (not phase 37 — discovered during UAT)
 
