@@ -4,6 +4,6 @@ Updating all repetition-related docs and code after empirical testing disproved
 some claims from the original deep research report.
 
 - [x] Replace deep research report with empirical reference, update pointers
-- [ ] Update Excalidraw diagram (repeat-modes.excalidraw / repeat-modes.png)
+- [x] Update Excalidraw diagram (repeat-modes.excalidraw / repeat-modes.png)
 - [ ] Update docs/omnifocus-concepts.md (convergence table, WIP flags, schedule section)
 - [ ] Update warnings, messages, and descriptions (warnings.py, descriptions.py)
