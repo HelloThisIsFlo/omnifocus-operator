@@ -12,3 +12,7 @@ files: []
 ## Solution
 
 Design effort: introduce an explicit inbox value (e.g. string `"inbox"` or sentinel) to replace null-as-inbox across the API surface — move destination, project field, query filters. This is a breaking change that needs careful design discussion. The current behavior is defensible but confusing.
+
+## Resolution
+
+Covered by **Milestone v1.3.1 — Inbox as First-Class Value**. See `.research/updated-spec/MILESTONE-v1.3.1.md`.

@@ -21,3 +21,7 @@ Extend the write-side name-based resolution to all referenced entity types:
 Reuse the generic `_match_by_name` method being built in quick task 260404-rxq. Each resolver method fetches only its own entity type (e.g., `list_projects(limit=None)`) rather than `get_all()`.
 
 On ambiguity, raise the generic `AMBIGUOUS_ENTITY` error with "specify by ID instead of name" guidance (also being introduced in 260404-rxq).
+
+## Resolution
+
+Covered by **Milestone v1.3.1 — Inbox as First-Class Value**, section "Name-Based Resolution for Entity References". Bundled per decision DL-13. See `.research/updated-spec/MILESTONE-v1.3.1.md`.

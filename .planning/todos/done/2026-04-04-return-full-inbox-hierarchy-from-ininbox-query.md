@@ -18,3 +18,7 @@ Especially important for parallel/autodone action groups where the parent is jus
 ## Solution
 
 When returning inbox tasks, include the full hierarchy (parent + children) — same behavior as project queries. Pre-existing repo/service behavior, not introduced by phase 37.
+
+## Resolution
+
+Covered by **Milestone v1.3.1 — Inbox as First-Class Value**, acceptance criteria: "`list_tasks(inInbox=true)` returns inbox tasks (including full hierarchy — subtasks of inbox tasks)." See `.research/updated-spec/MILESTONE-v1.3.1.md`.
