@@ -39,6 +39,7 @@ from omnifocus_operator.agent_messages.warnings import (
     REPETITION_EMPTY_ON_DATES,
     REPETITION_EMPTY_ON_DAYS,
     REPETITION_END_DATE_PAST,
+    REPETITION_FROM_COMPLETION_BYDAY,
     REPETITION_NO_OP,
     TAG_ALREADY_ON_TASK,
     TAG_NOT_ON_TASK,
@@ -47,7 +48,7 @@ from omnifocus_operator.agent_messages.warnings import (
 from omnifocus_operator.config import FUZZY_MATCH_CUTOFF, FUZZY_MATCH_MAX_SUGGESTIONS
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
-from omnifocus_operator.models.enums import Availability
+from omnifocus_operator.models.enums import Availability, Schedule
 from omnifocus_operator.models.repetition_rule import (
     EndByDate,
     Frequency,
@@ -233,6 +234,21 @@ class DomainLogic:
                     date_field=camel_display,
                 )
             ]
+        return []
+
+    def check_from_completion_byday_warning(
+        self,
+        schedule: Schedule,
+        frequency: Frequency,
+    ) -> list[str]:
+        """Warn when from_completion is combined with day-of-week patterns.
+
+        This combination produces counterintuitive results: same-day skipping,
+        grid resets on INTERVAL>=2, and early-completion dismissal.
+        See docs/byday-edge-cases.md for details.
+        """
+        if schedule == Schedule.FROM_COMPLETION and frequency.on_days is not None:
+            return [REPETITION_FROM_COMPLETION_BYDAY]
         return []
 
     def normalize_empty_specialization_fields(

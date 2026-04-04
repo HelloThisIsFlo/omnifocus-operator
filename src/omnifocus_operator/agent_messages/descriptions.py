@@ -162,16 +162,22 @@ SCHEDULE_DOC = (
     "- from_completion: next date calculated from when "
     "you complete this occurrence; use when the gap "
     "between occurrences matters more than hitting "
-    "specific calendar days"
+    "specific calendar days. "
+    "Caution with day-of-week patterns (onDays): "
+    "from_completion skips same-day matches, resets "
+    "biweekly/monthly grids from the completion date, "
+    "and can dismiss early completions -- prefer "
+    "regularly_with_catch_up for day-of-week schedules"
 )
 
 BASED_ON_DOC = (
     "Which date field anchors the repetition schedule. "
     "Other date fields shift relatively, preserving their "
     "current offset from the anchor.\n\n"
-    "- due_date: schedule based on due date\n"
-    "- defer_date: schedule based on defer date\n"
-    "- planned_date: schedule based on planned date"
+    "Choose the date field the recurrence is 'about':\n"
+    "- due_date: deadline recurs (e.g. due every Friday)\n"
+    "- defer_date: availability recurs (e.g. becomes available every Monday)\n"
+    "- planned_date: intention recurs (e.g. plan for the same day each week)"
 )
 
 # --- Class Docstrings: Repetition ---
@@ -314,7 +320,7 @@ ADD_TASKS_TOOL_DOC = (
     "        interval: 2,\n"
     '        onDays: ["MO", "FR"]\n'
     "      },\n"
-    '      schedule: "regularly",\n'
+    '      schedule: "regularly_with_catch_up",\n'
     '      basedOn: "due_date",\n'
     "      end: {occurrences: 10}\n"
     "    }\n"

@@ -480,6 +480,11 @@ class _AddTaskPipeline(_Pipeline):
             self._domain.check_anchor_date_warning(spec.based_on, effective_dates)
         )
 
+        # Warn about from_completion + BYDAY edge cases
+        self._repetition_warnings.extend(
+            self._domain.check_from_completion_byday_warning(spec.schedule, self._frequency)
+        )
+
     def _build_payload(self) -> None:
         repetition_payload = None
         if self._frequency is not None and self._command.repetition_rule is not None:
@@ -692,6 +697,11 @@ class _EditTaskPipeline(_Pipeline):
         }
         self._repetition_warns.extend(
             self._domain.check_anchor_date_warning(self._rr_based_on, effective_dates)
+        )
+
+        # Warn about from_completion + BYDAY edge cases
+        self._repetition_warns.extend(
+            self._domain.check_from_completion_byday_warning(self._rr_schedule, self._rr_frequency)
         )
 
     def _assemble_repetition_payload(self, existing: RepetitionRule | None) -> None:

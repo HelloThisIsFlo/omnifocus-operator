@@ -105,6 +105,15 @@ REPETITION_NO_OP = (
     "Omit repetitionRule from the request if you don't want to change it."
 )
 
+REPETITION_FROM_COMPLETION_BYDAY = (
+    "from_completion with day-of-week patterns (onDays) can produce "
+    "counterintuitive results: same-day completions are skipped (never "
+    "lands on today), biweekly/monthly grids reset from the completion "
+    "date, and early completions can land back on the original due date. "
+    "Consider regularly_with_catch_up for day-of-week schedules unless "
+    "the minimum gap between occurrences is what matters."
+)
+
 REPETITION_ANCHOR_DATE_MISSING = (
     "basedOn is '{based_on}' but no {date_field} is set on this task -- "
     "OmniFocus will create the missing {date_field} on the next occurrence "

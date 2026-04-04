@@ -19,6 +19,7 @@ from omnifocus_operator.agent_messages.warnings import (
     REPETITION_EMPTY_ON,
     REPETITION_EMPTY_ON_DATES,
     REPETITION_EMPTY_ON_DAYS,
+    REPETITION_FROM_COMPLETION_BYDAY,
 )
 from omnifocus_operator.contracts.base import _Unset
 from omnifocus_operator.contracts.shared.actions import MoveAction, TagAction
@@ -539,6 +540,46 @@ class TestRepetitionWarnings:
         domain = _domain()
         task = _make_task(availability="available")
         warnings = domain.check_repetition_warnings(end=None, task=task)
+        assert warnings == []
+
+
+# ---------------------------------------------------------------------------
+# check_from_completion_byday_warning
+# ---------------------------------------------------------------------------
+
+
+class TestFromCompletionBydayWarning:
+    """Warn when from_completion is combined with day-of-week patterns."""
+
+    def test_from_completion_with_on_days_warns(self) -> None:
+        """from_completion + onDays -> warning about BYDAY edge cases."""
+        domain = _domain()
+        freq = Frequency(type="weekly", on_days=["MO", "FR"])
+        warnings = domain.check_from_completion_byday_warning(Schedule.FROM_COMPLETION, freq)
+        assert len(warnings) == 1
+        assert warnings[0] == REPETITION_FROM_COMPLETION_BYDAY
+
+    def test_from_completion_without_on_days_no_warn(self) -> None:
+        """from_completion + daily (no onDays) -> no warning."""
+        domain = _domain()
+        freq = Frequency(type="daily")
+        warnings = domain.check_from_completion_byday_warning(Schedule.FROM_COMPLETION, freq)
+        assert warnings == []
+
+    def test_catch_up_with_on_days_no_warn(self) -> None:
+        """regularly_with_catch_up + onDays -> no warning (BYDAY is fine here)."""
+        domain = _domain()
+        freq = Frequency(type="weekly", on_days=["MO", "FR"])
+        warnings = domain.check_from_completion_byday_warning(
+            Schedule.REGULARLY_WITH_CATCH_UP, freq
+        )
+        assert warnings == []
+
+    def test_regularly_with_on_days_no_warn(self) -> None:
+        """regularly + onDays -> no warning."""
+        domain = _domain()
+        freq = Frequency(type="weekly", on_days=["WE"])
+        warnings = domain.check_from_completion_byday_warning(Schedule.REGULARLY, freq)
         assert warnings == []
 
 

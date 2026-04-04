@@ -505,6 +505,33 @@ class TestAddTaskRepetitionRule:
         with pytest.raises(ValueError, match=r"(?i)interval|greater than or equal"):
             FrequencyAddSpec(type="daily", interval=0)
 
+    async def test_from_completion_with_on_days_warns(self, service: OperatorService) -> None:
+        """from_completion + onDays -> BYDAY edge case warning in result."""
+        spec = RepetitionRuleAddSpec(
+            frequency=FrequencyAddSpec(type="weekly", on_days=["MO", "FR"]),
+            schedule=Schedule.FROM_COMPLETION,
+            based_on=BasedOn.DUE_DATE,
+        )
+        result = await service.add_task(AddTaskCommand(name="FC+BYDAY", repetition_rule=spec))
+        assert result.success is True
+        assert result.warnings is not None
+        assert any("from_completion" in w and "onDays" in w for w in result.warnings)
+
+    async def test_from_completion_without_on_days_no_byday_warn(
+        self, service: OperatorService
+    ) -> None:
+        """from_completion + daily (no onDays) -> no BYDAY warning."""
+        spec = RepetitionRuleAddSpec(
+            frequency=FrequencyAddSpec(type="daily", interval=3),
+            schedule=Schedule.FROM_COMPLETION,
+            based_on=BasedOn.DEFER_DATE,
+        )
+        result = await service.add_task(AddTaskCommand(name="FC daily", repetition_rule=spec))
+        assert result.success is True
+        # May have other warnings (e.g. anchor date), but not the BYDAY one
+        if result.warnings:
+            assert not any("from_completion" in w and "onDays" in w for w in result.warnings)
+
 
 # ---------------------------------------------------------------------------
 # OperatorService.edit_task
@@ -2099,6 +2126,19 @@ class TestEditTaskRepetitionRule:
         assert result.success is True
         assert result.warnings is not None
         assert any("dropped" in w for w in result.warnings)
+
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="t1", name="Plain")])
+    async def test_from_completion_with_on_days_warns(self, service: OperatorService) -> None:
+        """from_completion + onDays on edit -> BYDAY edge case warning."""
+        spec = RepetitionRuleEditSpec(
+            frequency=FrequencyEditSpec(type="weekly", on_days=["WE", "FR"]),
+            schedule=Schedule.FROM_COMPLETION,
+            based_on=BasedOn.DUE_DATE,
+        )
+        result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
+        assert result.success is True
+        assert result.warnings is not None
+        assert any("from_completion" in w and "onDays" in w for w in result.warnings)
 
 
 # ---------------------------------------------------------------------------
