@@ -107,9 +107,11 @@ REPETITION_NO_OP = (
 
 REPETITION_ANCHOR_DATE_MISSING = (
     "basedOn is '{based_on}' but no {date_field} is set on this task -- "
-    "OmniFocus will fall back to the task's creation date as the anchor. "
-    "Set a {date_field} for predictable repetition scheduling, or confirm "
-    "with the user that creation-date anchoring is intended."
+    "OmniFocus will create the missing {date_field} on the next occurrence "
+    "using the completion date and the user's default time for that date type "
+    "(configured in Settings > Dates & Times). This produces a valid but "
+    "potentially surprising schedule. Set the {date_field} explicitly for "
+    "predictable repetition behavior."
 )
 
 # --- Filter Resolution ---

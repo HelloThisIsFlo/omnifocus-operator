@@ -216,8 +216,9 @@ class DomainLogic:
     ) -> list[str]:
         """Warn if basedOn references an anchor date that isn't set on the task.
 
-        OmniFocus falls back to the task's creation date when the anchor date
-        is missing -- this is rarely the user's intent.
+        OmniFocus creates the missing anchor date from scratch using the
+        completion date and the user's default time settings -- this is
+        rarely the user's intent.
         """
         _anchor_map: dict[str, tuple[str, str]] = {
             "due_date": ("due_date", "dueDate"),

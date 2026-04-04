@@ -2233,9 +2233,9 @@ class TestAnchorDateWarning:
         )
         assert warnings == []
 
-    def test_warning_mentions_creation_date_fallback(self, domain: DomainLogic) -> None:
+    def test_warning_mentions_completion_date_fallback(self, domain: DomainLogic) -> None:
         warnings = domain.check_anchor_date_warning(
             based_on=BasedOn.DUE_DATE,
             effective_dates={"due_date": None, "defer_date": None, "planned_date": None},
         )
-        assert "creation date" in warnings[0]
+        assert "completion date" in warnings[0]
