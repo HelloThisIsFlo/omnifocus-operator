@@ -232,10 +232,11 @@ Plans:
   5. list_projects supports `search` filter — case-insensitive substring on name + notes (same implementation as list_tasks)
   6. list_tags, list_folders, list_perspectives support `search` filter — case-insensitive substring on name (same implementation as list_tasks, name only)
   7. list_perspectives has `ListPerspectivesQuery` / `ListPerspectivesRepoQuery` query models following the model taxonomy
-**Plans:** 2/2 plans complete
+**Plans:** 3 plans (2 complete + 1 gap closure)
 Plans:
 - [x] 37-01-PLAN.md — Search expansion: query models, protocols, service/repo wiring, cross-path tests
 - [x] 37-02-PLAN.md — Server registration: 5 list tools, description constants, integration tests
+- [ ] 37-03-PLAN.md — Gap closure: default pagination limit + entity-reference filter docs
 
 ## Progress
 
