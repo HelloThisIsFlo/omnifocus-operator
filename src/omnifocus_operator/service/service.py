@@ -20,9 +20,6 @@ from omnifocus_operator.agent_messages.errors import (
     REPETITION_NO_EXISTING_RULE,
 )
 from omnifocus_operator.agent_messages.warnings import (
-    FILTER_DID_YOU_MEAN,
-    FILTER_MULTI_MATCH,
-    FILTER_NO_MATCH,
     REPETITION_NO_OP,
 )
 from omnifocus_operator.contracts.base import is_set
@@ -260,17 +257,6 @@ class _ReadPipeline:
         self._repository = repository
         self._warnings: list[str] = []
 
-    def _build_warning(self, entity_type: str, value: str, entity_names: list[str]) -> str:
-        """Build a did-you-mean or no-match warning for a failed resolution."""
-        suggestions = self._domain.suggest_close_matches(value, entity_names)
-        if suggestions:
-            return FILTER_DID_YOU_MEAN.format(
-                entity_type=entity_type,
-                value=value,
-                suggestions=", ".join(suggestions),
-            )
-        return FILTER_NO_MATCH.format(entity_type=entity_type, value=value)
-
     def _result_from_repo[T](self, repo_result: ListRepoResult[T]) -> ListResult[T]:
         """Convert ListRepoResult to ListResult with accumulated warnings."""
         return ListResult(
@@ -312,35 +298,18 @@ class _ListTasksPipeline(_ReadPipeline):
         resolved = self._resolver.resolve_filter(self._query.project, self._projects)
         if resolved:
             self._project_ids = resolved
-            if len(resolved) > 1:
-                name_map = {p.id: p.name for p in self._projects}
-                match_details = ", ".join(f"{eid} ({name_map.get(eid, '?')})" for eid in resolved)
-                self._warnings.append(
-                    FILTER_MULTI_MATCH.format(
-                        value=self._query.project,
-                        count=len(resolved),
-                        entity_type="project",
-                        matches=match_details,
-                    )
-                )
-        else:
-            # No match -- skip filter, warn
-            self._warnings.append(
-                self._build_warning(
-                    "project",
-                    self._query.project,
-                    [p.name for p in self._projects],
-                )
+        self._warnings.extend(
+            self._domain.check_filter_resolution(
+                self._query.project, resolved, self._projects, "project"
             )
+        )
 
     def _resolve_tags(self) -> None:
         self._tag_ids: list[str] | None = None
         if self._query.tags is None:
             return
-        name_map = {t.id: t.name for t in self._tags}
         all_resolved: list[str] = []
         seen: set[str] = set()
-        unresolved: list[str] = []
         for value in self._query.tags:
             resolved = self._resolver.resolve_filter(value, self._tags)
             if resolved:
@@ -348,30 +317,11 @@ class _ListTasksPipeline(_ReadPipeline):
                     if eid not in seen:
                         seen.add(eid)
                         all_resolved.append(eid)
-                if len(resolved) > 1:
-                    match_details = ", ".join(
-                        f"{eid} ({name_map.get(eid, '?')})" for eid in resolved
-                    )
-                    self._warnings.append(
-                        FILTER_MULTI_MATCH.format(
-                            value=value,
-                            count=len(resolved),
-                            entity_type="tag",
-                            matches=match_details,
-                        )
-                    )
-            else:
-                unresolved.append(value)
+            self._warnings.extend(
+                self._domain.check_filter_resolution(value, resolved, self._tags, "tag")
+            )
         if all_resolved:
             self._tag_ids = all_resolved
-        for value in unresolved:
-            self._warnings.append(
-                self._build_warning(
-                    "tag",
-                    value,
-                    [t.name for t in self._tags],
-                )
-            )
 
     def _build_repo_query(self) -> None:
         self._repo_query = ListTasksRepoQuery(
@@ -417,26 +367,11 @@ class _ListProjectsPipeline(_ReadPipeline):
         resolved = self._resolver.resolve_filter(self._query.folder, self._folders)
         if resolved:
             self._folder_ids = resolved
-            if len(resolved) > 1:
-                name_map = {f.id: f.name for f in self._folders}
-                match_details = ", ".join(f"{eid} ({name_map.get(eid, '?')})" for eid in resolved)
-                self._warnings.append(
-                    FILTER_MULTI_MATCH.format(
-                        value=self._query.folder,
-                        count=len(resolved),
-                        entity_type="folder",
-                        matches=match_details,
-                    )
-                )
-        else:
-            # No match -- skip filter, warn
-            self._warnings.append(
-                self._build_warning(
-                    "folder",
-                    self._query.folder,
-                    [f.name for f in self._folders],
-                )
+        self._warnings.extend(
+            self._domain.check_filter_resolution(
+                self._query.folder, resolved, self._folders, "folder"
             )
+        )
 
     def _build_repo_query(self) -> None:
         review_due_before: datetime | None = None

@@ -6,6 +6,7 @@ independent of repository implementation.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date
 
 import pytest
@@ -870,3 +871,51 @@ class TestInMemoryBridgeRepetitionRule:
         data = await bridge.send_command("get_all")
         task = next(t for t in data["tasks"] if t["id"] == "t1")
         assert task["repetitionRule"] == rule
+
+
+# ---------------------------------------------------------------------------
+# check_filter_resolution
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class _StubEntity:
+    """Minimal entity with id and name for filter resolution tests."""
+
+    id: str
+    name: str
+
+
+class TestCheckFilterResolution:
+    """Warning generation for filter resolution outcomes."""
+
+    def test_single_match_no_warning(self) -> None:
+        """Single match -> no warning."""
+        entities = [_StubEntity("p1", "Work"), _StubEntity("p2", "Home")]
+        warnings = _domain().check_filter_resolution("Work", ["p1"], entities, "project")
+        assert warnings == []
+
+    def test_multi_match_warning(self) -> None:
+        """Multiple matches -> FILTER_MULTI_MATCH with IDs and names."""
+        entities = [_StubEntity("p1", "Work A"), _StubEntity("p2", "Work B")]
+        warnings = _domain().check_filter_resolution("Work", ["p1", "p2"], entities, "project")
+        assert len(warnings) == 1
+        assert "p1 (Work A)" in warnings[0]
+        assert "p2 (Work B)" in warnings[0]
+        assert "matched 2 projects" in warnings[0]
+
+    def test_no_match_with_suggestion(self) -> None:
+        """No match with a close name -> FILTER_DID_YOU_MEAN."""
+        entities = [_StubEntity("p1", "Personal"), _StubEntity("p2", "Work")]
+        warnings = _domain().check_filter_resolution("Personl", [], entities, "project")
+        assert len(warnings) == 1
+        assert "Did you mean" in warnings[0]
+        assert "Personal" in warnings[0]
+
+    def test_no_match_no_suggestion(self) -> None:
+        """No match, no close names -> FILTER_NO_MATCH."""
+        entities = [_StubEntity("p1", "Work"), _StubEntity("p2", "Home")]
+        warnings = _domain().check_filter_resolution("zzzzz", [], entities, "project")
+        assert len(warnings) == 1
+        assert "No project found" in warnings[0]
+        assert "skipped" in warnings[0].lower()

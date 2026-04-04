@@ -14,7 +14,9 @@ from datetime import date as date_type
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Mapping, Sequence
+
+from typing import Protocol
 
 from pydantic import BaseModel
 
@@ -27,6 +29,9 @@ from omnifocus_operator.agent_messages.warnings import (
     EDIT_COMPLETED_TASK,
     EDIT_NO_CHANGES_DETECTED,
     EDIT_NO_CHANGES_SPECIFIED,
+    FILTER_DID_YOU_MEAN,
+    FILTER_MULTI_MATCH,
+    FILTER_NO_MATCH,
     LIFECYCLE_ALREADY_IN_STATE,
     LIFECYCLE_CROSS_STATE,
     LIFECYCLE_REPEATING_COMPLETE,
@@ -81,6 +86,16 @@ __all__ = ["DomainLogic"]
 # ---------------------------------------------------------------------------
 
 
+class _HasIdAndName(Protocol):
+    """Duck-typed protocol for entities with .id and .name attributes."""
+
+    @property
+    def id(self) -> str: ...
+
+    @property
+    def name(self) -> str: ...
+
+
 def _to_utc_ts(val: object) -> object:
     """Normalize a date value to UTC timestamp for comparison, or return as-is."""
     if val is None:
@@ -115,6 +130,46 @@ class DomainLogic:
     ) -> list[str]:
         """Return close name matches for a failed resolution."""
         return difflib.get_close_matches(value, entity_names, n=n, cutoff=cutoff)
+
+    def check_filter_resolution(
+        self,
+        value: str,
+        resolved_ids: list[str],
+        entities: Sequence[_HasIdAndName],
+        entity_type: str,
+    ) -> list[str]:
+        """Generate warnings for filter resolution outcomes.
+
+        Returns 0 or 1 warnings:
+        - Multiple matches → FILTER_MULTI_MATCH with IDs and names
+        - No match with close names → FILTER_DID_YOU_MEAN
+        - No match, no suggestions → FILTER_NO_MATCH
+        - Single match → no warning
+        """
+        if len(resolved_ids) > 1:
+            name_map = {e.id: e.name for e in entities}
+            match_details = ", ".join(f"{eid} ({name_map.get(eid, '?')})" for eid in resolved_ids)
+            return [
+                FILTER_MULTI_MATCH.format(
+                    value=value,
+                    count=len(resolved_ids),
+                    entity_type=entity_type,
+                    matches=match_details,
+                )
+            ]
+        if len(resolved_ids) == 0:
+            entity_names = [e.name for e in entities]
+            suggestions = self.suggest_close_matches(value, entity_names)
+            if suggestions:
+                return [
+                    FILTER_DID_YOU_MEAN.format(
+                        entity_type=entity_type,
+                        value=value,
+                        suggestions=", ".join(suggestions),
+                    )
+                ]
+            return [FILTER_NO_MATCH.format(entity_type=entity_type, value=value)]
+        return []
 
     # -- Clear-intent normalization ----------------------------------------
 
