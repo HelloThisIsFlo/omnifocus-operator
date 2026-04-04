@@ -122,6 +122,14 @@ Carried forward:
 13. ~~Improve MCP tool schema descriptions and field documentation~~ (DONE: quick-260401-twg)
 14. ~~Clarify repetition schedule and repeat mode edge cases~~ (HALF DONE: schedule modes clarified in eec6241; basedOn unset anchor still open)
 15. Convert specs to core models at service boundary (post-merge follow-up to #11)
+16. Fix effectiveCompletionDate availability ghost tasks (repository)
+17. Add built-in perspectives to list_perspectives (repository — needs design discussion)
+18. Return full inbox hierarchy from inInbox query (repository)
+19. Add path field for hierarchical entities (models)
+20. Add disambiguation warnings for ambiguous entity names (server)
+21. Improve ambiguous tag error message with resolution guidance (service)
+22. Make inbox a first-class value instead of null overloading (design effort)
+23. Document edit_tasks action combinability and null-inbox semantics (docs)
 
 ### Quick Tasks Completed
 
