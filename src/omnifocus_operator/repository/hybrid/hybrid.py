@@ -354,8 +354,8 @@ def _map_task_row(
         ),
         "availability": _map_task_availability(
             blocked=row["blocked"] or 0,
-            date_completed=row["dateCompleted"],
-            date_hidden=row["dateHidden"],
+            date_completed=row["effectiveDateCompleted"],
+            date_hidden=row["effectiveDateHidden"],
         ),
         "tags": tag_lookup.get(task_id, []),
         "repetition_rule": _build_repetition_rule(row),
@@ -394,8 +394,8 @@ def _map_project_row(
         ),
         "availability": _map_project_availability(
             effective_status=row["effectiveStatus"],
-            date_completed=row["dateCompleted"],
-            date_hidden=row["dateHidden"],
+            date_completed=row["effectiveDateCompleted"],
+            date_hidden=row["effectiveDateHidden"],
         ),
         "tags": tag_lookup.get(task_id, []),
         "repetition_rule": _build_repetition_rule(row),
