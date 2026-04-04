@@ -24,6 +24,8 @@ The `$` character is reserved as a prefix for system locations. Strings starting
 
 This precedence order means `$inbox` never collides with name resolution, regardless of what projects exist in the user's OmniFocus database.
 
+**Implementation note:** The prefix (`$`), inbox ID (`$inbox`), and inbox display name (`Inbox`) should be defined as constants in `config.py` (alongside existing config like `DEFAULT_LIST_LIMIT`). All code references these constants — no magic strings scattered across layers. The prefix constant enables `value.startswith(SYSTEM_LOCATION_PREFIX)` checks.
+
 **Collision policy:** The `$` prefix is reserved. A project or task whose name literally starts with `$` (e.g., a project named `$inbox` or `$budget`) can only be referenced by its OmniFocus ID. This is an intentional trade-off: the edge case is extremely niche (who names a project `$inbox` when OmniFocus already has an Inbox?), and the escape hatch (use the ID) always works.
 
 ### New Model Types: `ProjectRef` and `TaskRef`
