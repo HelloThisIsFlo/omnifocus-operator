@@ -63,8 +63,8 @@ class TestTasksDefaultQuery:
         query = ListTasksRepoQuery()
         data_q, _ = build_list_tasks_sql(query)
         # Should contain availability-related conditions
-        assert "blocked" in data_q.sql.lower() or "dateCompleted" in data_q.sql
-        assert "dateHidden" in data_q.sql
+        assert "blocked" in data_q.sql.lower() or "effectiveDateCompleted" in data_q.sql
+        assert "effectiveDateHidden" in data_q.sql
 
 
 class TestTasksInInboxFilter:
@@ -154,8 +154,8 @@ class TestTasksAvailabilityFilter:
         data_q, _ = build_list_tasks_sql(query)
         # available: not blocked, not completed, not dropped
         assert "t.blocked = 0" in data_q.sql or "t.blocked" in data_q.sql
-        assert "t.dateCompleted IS NULL" in data_q.sql
-        assert "t.dateHidden IS NULL" in data_q.sql
+        assert "t.effectiveDateCompleted IS NULL" in data_q.sql
+        assert "t.effectiveDateHidden IS NULL" in data_q.sql
 
     def test_blocked_only(self):
         query = ListTasksRepoQuery(availability=[Availability.BLOCKED])
@@ -165,12 +165,12 @@ class TestTasksAvailabilityFilter:
     def test_completed_only(self):
         query = ListTasksRepoQuery(availability=[Availability.COMPLETED])
         data_q, _ = build_list_tasks_sql(query)
-        assert "t.dateCompleted IS NOT NULL" in data_q.sql
+        assert "t.effectiveDateCompleted IS NOT NULL" in data_q.sql
 
     def test_dropped_only(self):
         query = ListTasksRepoQuery(availability=[Availability.DROPPED])
         data_q, _ = build_list_tasks_sql(query)
-        assert "t.dateHidden IS NOT NULL" in data_q.sql
+        assert "t.effectiveDateHidden IS NOT NULL" in data_q.sql
 
     def test_available_and_blocked(self):
         """Default combo should produce OR of two conditions."""
@@ -348,8 +348,8 @@ class TestProjectsAvailabilityFilter:
         query = ListProjectsRepoQuery(availability=[Availability.AVAILABLE])
         data_q, _ = build_list_projects_sql(query)
         assert "pi.effectiveStatus" in data_q.sql
-        assert "t.dateCompleted IS NULL" in data_q.sql
-        assert "t.dateHidden IS NULL" in data_q.sql
+        assert "t.effectiveDateCompleted IS NULL" in data_q.sql
+        assert "t.effectiveDateHidden IS NULL" in data_q.sql
 
     def test_blocked_only(self):
         """Blocked projects have effectiveStatus = 'inactive'."""
@@ -360,12 +360,12 @@ class TestProjectsAvailabilityFilter:
     def test_completed_only(self):
         query = ListProjectsRepoQuery(availability=[Availability.COMPLETED])
         data_q, _ = build_list_projects_sql(query)
-        assert "t.dateCompleted IS NOT NULL" in data_q.sql
+        assert "t.effectiveDateCompleted IS NOT NULL" in data_q.sql
 
     def test_dropped_only(self):
         query = ListProjectsRepoQuery(availability=[Availability.DROPPED])
         data_q, _ = build_list_projects_sql(query)
-        assert "t.dateHidden IS NOT NULL" in data_q.sql or "dropped" in data_q.sql
+        assert "t.effectiveDateHidden IS NOT NULL" in data_q.sql or "dropped" in data_q.sql
 
     def test_available_and_blocked_produces_or(self):
         query = ListProjectsRepoQuery(availability=[Availability.AVAILABLE, Availability.BLOCKED])

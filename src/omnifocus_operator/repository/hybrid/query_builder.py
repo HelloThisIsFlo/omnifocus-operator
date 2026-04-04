@@ -64,25 +64,29 @@ _PROJECTS_COUNT_BASE = (
 
 _TASK_AVAILABILITY_CLAUSES: dict[Availability, str] = {
     Availability.AVAILABLE: (
-        "(t.blocked = 0 AND t.dateCompleted IS NULL AND t.dateHidden IS NULL)"
+        "(t.blocked = 0 AND t.effectiveDateCompleted IS NULL AND t.effectiveDateHidden IS NULL)"
     ),
-    Availability.BLOCKED: ("(t.blocked != 0 AND t.dateCompleted IS NULL AND t.dateHidden IS NULL)"),
-    Availability.COMPLETED: ("(t.dateCompleted IS NOT NULL AND t.dateHidden IS NULL)"),
-    Availability.DROPPED: "(t.dateHidden IS NOT NULL)",
+    Availability.BLOCKED: (
+        "(t.blocked != 0 AND t.effectiveDateCompleted IS NULL AND t.effectiveDateHidden IS NULL)"
+    ),
+    Availability.COMPLETED: ("(t.effectiveDateCompleted IS NOT NULL AND t.effectiveDateHidden IS NULL)"),
+    Availability.DROPPED: "(t.effectiveDateHidden IS NOT NULL)",
 }
 
 _PROJECT_AVAILABILITY_CLAUSES: dict[Availability, str] = {
     Availability.AVAILABLE: (
         "(pi.effectiveStatus NOT IN ('dropped','inactive')"
-        " AND t.dateCompleted IS NULL AND t.dateHidden IS NULL)"
+        " AND t.effectiveDateCompleted IS NULL AND t.effectiveDateHidden IS NULL)"
     ),
     Availability.BLOCKED: (
-        "(pi.effectiveStatus = 'inactive' AND t.dateCompleted IS NULL AND t.dateHidden IS NULL)"
+        "(pi.effectiveStatus = 'inactive'"
+        " AND t.effectiveDateCompleted IS NULL AND t.effectiveDateHidden IS NULL)"
     ),
     Availability.COMPLETED: (
-        "(t.dateCompleted IS NOT NULL AND t.dateHidden IS NULL AND pi.effectiveStatus != 'dropped')"
+        "(t.effectiveDateCompleted IS NOT NULL AND t.effectiveDateHidden IS NULL"
+        " AND pi.effectiveStatus != 'dropped')"
     ),
-    Availability.DROPPED: ("(t.dateHidden IS NOT NULL OR pi.effectiveStatus = 'dropped')"),
+    Availability.DROPPED: ("(t.effectiveDateHidden IS NOT NULL OR pi.effectiveStatus = 'dropped')"),
 }
 
 
