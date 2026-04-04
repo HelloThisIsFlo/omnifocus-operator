@@ -98,7 +98,9 @@ class Repository(Protocol):
 
     async def list_folders(self, query: ListFoldersRepoQuery) -> ListRepoResult[Folder]: ...
 
-    async def list_perspectives(self, query: ListPerspectivesRepoQuery) -> ListRepoResult[Perspective]: ...
+    async def list_perspectives(
+        self, query: ListPerspectivesRepoQuery
+    ) -> ListRepoResult[Perspective]: ...
 
 
 @runtime_checkable

@@ -3,9 +3,9 @@
 Every Field(description=...) string and agent-visible class docstring is defined here.
 This makes it easy to review, audit, and maintain all agent-facing schema text
 in one place.
-
-Field descriptions are static text -- no parameterized strings needed.
 """
+
+from omnifocus_operator.config import DEFAULT_LIST_LIMIT as _DEFAULT_LIST_LIMIT
 
 # --- Dates: Read-Side ---
 
@@ -361,7 +361,7 @@ LIST_TASKS_TOOL_DOC = (
     "List and filter tasks. All filters combine with AND logic.\n"
     "\n"
     "Defaults: availability includes available and blocked tasks.\n"
-    "Pagination: default limit is 50. Pass limit=null to return all.\n"
+    f"Pagination: default limit is {_DEFAULT_LIST_LIMIT}. Pass limit=null to return all.\n"
     "offset requires limit. Response shape:\n"
     "{items: [...], total: N, hasMore: bool, warnings?: [...]}\n"
     "\n"
@@ -378,7 +378,7 @@ LIST_PROJECTS_TOOL_DOC = (
     "\n"
     "Defaults: availability includes available and blocked projects.\n"
     "reviewDueWithin accepts duration strings: \"now\", \"1w\", \"2m\", \"1y\".\n"
-    "Pagination: default limit is 50. Pass limit=null to return all.\n"
+    f"Pagination: default limit is {_DEFAULT_LIST_LIMIT}. Pass limit=null to return all.\n"
     "offset requires limit. Response shape:\n"
     "{items: [...], total: N, hasMore: bool, warnings?: [...]}\n"
     "\n"
@@ -394,7 +394,7 @@ LIST_TAGS_TOOL_DOC = (
     "List and filter tags.\n"
     "\n"
     "Defaults: availability includes available and blocked tags.\n"
-    "Pagination: default limit is 50. Pass limit=null to return all.\n"
+    f"Pagination: default limit is {_DEFAULT_LIST_LIMIT}. Pass limit=null to return all.\n"
     "offset requires limit. Response shape:\n"
     "{items: [...], total: N, hasMore: bool}\n"
     "\n"
@@ -406,7 +406,7 @@ LIST_FOLDERS_TOOL_DOC = (
     "List and filter folders.\n"
     "\n"
     "Defaults: availability includes available folders only.\n"
-    "Pagination: default limit is 50. Pass limit=null to return all.\n"
+    f"Pagination: default limit is {_DEFAULT_LIST_LIMIT}. Pass limit=null to return all.\n"
     "offset requires limit. Response shape:\n"
     "{items: [...], total: N, hasMore: bool}\n"
     "\n"
@@ -417,7 +417,7 @@ LIST_FOLDERS_TOOL_DOC = (
 LIST_PERSPECTIVES_TOOL_DOC = (
     "List all perspectives (built-in and custom).\n"
     "\n"
-    "Pagination: default limit is 50. Pass limit=null to return all.\n"
+    f"Pagination: default limit is {_DEFAULT_LIST_LIMIT}. Pass limit=null to return all.\n"
     "offset requires limit. Response shape:\n"
     "{items: [...], total: N, hasMore: bool}\n"
     "\n"

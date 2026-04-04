@@ -218,8 +218,7 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
             items = [
                 p
                 for p in items
-                if lower_search in p.name.lower()
-                or (p.note and lower_search in p.note.lower())
+                if lower_search in p.name.lower() or (p.note and lower_search in p.note.lower())
             ]
 
         total = len(items)
@@ -259,7 +258,9 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
             items = [f for f in items if lower_search in f.name.lower()]
         return _paginate(items, query.limit, query.offset)
 
-    async def list_perspectives(self, query: ListPerspectivesRepoQuery) -> ListRepoResult[Perspective]:
+    async def list_perspectives(
+        self, query: ListPerspectivesRepoQuery
+    ) -> ListRepoResult[Perspective]:
         """Fetch-all + Python filter for perspectives."""
         all_entities = await self.get_all()
         items = list(all_entities.perspectives)

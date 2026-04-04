@@ -35,7 +35,6 @@ from omnifocus_operator.contracts.use_cases.list.tasks import (
     ListTasksRepoQuery,
 )
 
-
 # ---------------------------------------------------------------------------
 # DEFAULT_LIST_LIMIT constant
 # ---------------------------------------------------------------------------

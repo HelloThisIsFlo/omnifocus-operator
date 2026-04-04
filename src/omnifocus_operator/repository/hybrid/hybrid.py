@@ -869,7 +869,9 @@ class HybridRepository(BridgeWriteMixin, Repository):
         """Return folders filtered by availability from the SQLite cache."""
         return await asyncio.to_thread(self._list_folders_sync, query)
 
-    def _list_perspectives_sync(self, query: ListPerspectivesRepoQuery) -> ListRepoResult[Perspective]:
+    def _list_perspectives_sync(
+        self, query: ListPerspectivesRepoQuery
+    ) -> ListRepoResult[Perspective]:
         """Synchronous perspective listing: fetch all, filter by search in Python."""
         conn = sqlite3.connect(f"file:{self._db_path}?mode=ro", uri=True)
         conn.row_factory = sqlite3.Row
@@ -883,6 +885,8 @@ class HybridRepository(BridgeWriteMixin, Repository):
         finally:
             conn.close()
 
-    async def list_perspectives(self, query: ListPerspectivesRepoQuery) -> ListRepoResult[Perspective]:
+    async def list_perspectives(
+        self, query: ListPerspectivesRepoQuery
+    ) -> ListRepoResult[Perspective]:
         """Return perspectives from the SQLite cache, optionally filtered by search."""
         return await asyncio.to_thread(self._list_perspectives_sync, query)
