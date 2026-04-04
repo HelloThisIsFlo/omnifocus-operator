@@ -155,6 +155,7 @@ Carried forward:
 | Phase 37 P01 | 9min | 2 tasks | 16 files |
 | Phase 37 P02 | 7min | 2 tasks | 5 files |
 | Phase 37 P03 | 10min | 2 tasks | 13 files |
+| 260404-rzf | Document edit_tasks action combinability and null-inbox semantics | 2026-04-04 | d3e4f2a | | [260404-rzf-document-edit-tasks-action-combinability](./quick/260404-rzf-document-edit-tasks-action-combinability/) |
 
 ### Blockers/Concerns
 
@@ -162,6 +163,6 @@ None yet.
 
 ## Session Continuity
 
-Last activity: 2026-04-02 - Completed quick task 260402-pj2: Convert specs to core models at service boundary
+Last activity: 2026-04-04 - Completed quick task 260404-rzf: Document edit_tasks action combinability and null-inbox semantics
 Stopped at: Completed 37-03-PLAN.md
 Resume file: None
