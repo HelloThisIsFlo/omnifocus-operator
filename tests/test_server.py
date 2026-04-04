@@ -1719,9 +1719,7 @@ class TestListTasks:
 
     async def test_list_tasks_invalid_availability_returns_tool_error(self, client: Any) -> None:
         with pytest.raises(ToolError):
-            await client.call_tool(
-                "list_tasks", {"query": {"availability": ["invalid_value"]}}
-            )
+            await client.call_tool("list_tasks", {"query": {"availability": ["invalid_value"]}})
 
 
 @pytest.mark.snapshot(**_LIST_SEED_DATA)
@@ -1737,9 +1735,7 @@ class TestListProjects:
         assert "hasMore" in sc
 
     async def test_list_projects_golden_path_search(self, client: Any) -> None:
-        result = await client.call_tool(
-            "list_projects", {"query": {"search": "Alpha"}}
-        )
+        result = await client.call_tool("list_projects", {"query": {"search": "Alpha"}})
         sc = result.structured_content
         assert sc is not None
         items = sc["items"]
@@ -1795,9 +1791,7 @@ class TestListFolders:
         assert "hasMore" in sc
 
     async def test_list_folders_golden_path_search(self, client: Any) -> None:
-        result = await client.call_tool(
-            "list_folders", {"query": {"search": "Work"}}
-        )
+        result = await client.call_tool("list_folders", {"query": {"search": "Work"}})
         sc = result.structured_content
         assert sc is not None
         items = sc["items"]
@@ -1825,9 +1819,7 @@ class TestListPerspectives:
         assert "hasMore" in sc
 
     async def test_list_perspectives_golden_path_search(self, client: Any) -> None:
-        result = await client.call_tool(
-            "list_perspectives", {"query": {"search": "Forecast"}}
-        )
+        result = await client.call_tool("list_perspectives", {"query": {"search": "Forecast"}})
         sc = result.structured_content
         assert sc is not None
         items = sc["items"]

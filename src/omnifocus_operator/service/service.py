@@ -186,8 +186,10 @@ class OperatorService(Service):  # explicitly implements Service protocol
     async def list_tags(self, query: ListTagsQuery) -> ListResult[Tag]:
         """List tags -- inline pass-through (no entity-reference filters)."""
         repo_query = ListTagsRepoQuery(
-            availability=query.availability, search=query.search,
-            limit=query.limit, offset=query.offset,
+            availability=query.availability,
+            search=query.search,
+            limit=query.limit,
+            offset=query.offset,
         )
         repo_result = await self._repository.list_tags(repo_query)
         return ListResult(
@@ -197,8 +199,10 @@ class OperatorService(Service):  # explicitly implements Service protocol
     async def list_folders(self, query: ListFoldersQuery) -> ListResult[Folder]:
         """List folders -- inline pass-through (no entity-reference filters)."""
         repo_query = ListFoldersRepoQuery(
-            availability=query.availability, search=query.search,
-            limit=query.limit, offset=query.offset,
+            availability=query.availability,
+            search=query.search,
+            limit=query.limit,
+            offset=query.offset,
         )
         repo_result = await self._repository.list_folders(repo_query)
         return ListResult(
@@ -208,7 +212,9 @@ class OperatorService(Service):  # explicitly implements Service protocol
     async def list_perspectives(self, query: ListPerspectivesQuery) -> ListResult[Perspective]:
         """List perspectives -- inline pass-through (search only)."""
         repo_query = ListPerspectivesRepoQuery(
-            search=query.search, limit=query.limit, offset=query.offset,
+            search=query.search,
+            limit=query.limit,
+            offset=query.offset,
         )
         repo_result = await self._repository.list_perspectives(repo_query)
         return ListResult(

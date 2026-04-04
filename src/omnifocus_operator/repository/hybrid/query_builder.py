@@ -212,9 +212,7 @@ def build_list_projects_sql(
         params.append(1 if query.flagged else 0)
 
     if query.search is not None:
-        conditions.append(
-            "(t.name LIKE ? COLLATE NOCASE OR t.plainTextNote LIKE ? COLLATE NOCASE)"
-        )
+        conditions.append("(t.name LIKE ? COLLATE NOCASE OR t.plainTextNote LIKE ? COLLATE NOCASE)")
         params.append(f"%{query.search}%")
         params.append(f"%{query.search}%")
 
