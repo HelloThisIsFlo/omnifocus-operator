@@ -16,16 +16,35 @@ The agent can see what the user sees in OmniFocus, switch perspectives, and navi
 
 When computing availability/urgency for perspective tasks, the service layer uses the snapshot for cross-entity lookups (parent tasks, sequential siblings, project metadata). The perspective provides the task list; the snapshot provides the context.
 
-### Architecture: UI Operations Bypass the Repository
+### Architecture: BridgePerspectiveMixin + UI Operations
 
-This milestone introduces a second data path:
-- **Data operations** (existing): MCP -> Service -> Repository -> Bridge/SQLite
-- **UI operations** (new): MCP -> Service -> Bridge (no snapshot involvement)
+This milestone introduces perspective operations that need the bridge. These split into two categories:
 
-UI operations don't affect the snapshot and aren't cached.
+#### Data operations — `BridgePerspectiveMixin` on the repository
+
+A mixin on the hybrid repository that handles bridge-backed perspective data access:
+
+- **`list_perspectives`** — merges bridge-sourced built-in perspectives (Inbox, Projects, Tags, Forecast, Flagged, Review) with SQLite custom perspectives. Resolves the known gap where only custom perspectives were returned. `get_all` also uses this to include built-ins in the full dump.
+- **`get_perspective_content`** (name TBD) — reads the current perspective view via the bridge and returns entity IDs. The service layer then queries the repo with those IDs for enrichment through the normal pipeline. This ensures perspective tasks get the same Task model shape, availability/urgency computation, and filter support as regular queries — consistency by construction.
+
+The mixin keeps all perspective bridge logic cohesive in the repository layer. The hybrid repo already has bridge access via its existing write mixin.
+
+#### UI operations — service layer (not yet designed)
+
+Pure UI operations that don't involve data enrichment:
+
+- **`show_perspective`** / **`switch_to_perspective`** — switches the active perspective in OmniFocus
+- **`get_current_perspective`** — returns the active perspective name
+
+These bypass the repository. The service layer needs bridge access for these — the exact mechanism is **undecided**. Options discussed: a separate narrow protocol (preferred direction — clarity of intent over permissions), direct bridge access, or something else. To be designed when this milestone is planned.
+
+#### Open design questions
+
+- **Mixin vs service boundary for perspective content reads**: the mixin reads from the bridge (like a UI op) but feeds into the repo query pipeline (like a data op). The mixin owns "ask bridge → return IDs" but the exact contract is not yet designed.
+- **Mixin sharing across repo implementations**: the bridge-only repo already gets built-ins for free via `Perspective.all`. Whether both repos share the mixin or only hybrid uses it is undecided.
 
 **Bridge script changes:**
-- **`read_view`** -- reads `document.windows[0].content.rootNode.children`, traverses content tree to extract Task objects. Returns tasks in the same format as the dump. Projects in the view are silently skipped.
+- **`read_view`** -- reads `document.windows[0].content.rootNode.children`, traverses content tree to extract task/entity references. Returns IDs (or objects — TBD) in a format the mixin can consume.
 - **`set_perspective`** -- looks up perspective by name across `Perspective.all`, sets it on `document.windows[0]`. Returns success or error.
 - **`get_perspective`** -- returns `document.windows[0].perspective.name`.
 

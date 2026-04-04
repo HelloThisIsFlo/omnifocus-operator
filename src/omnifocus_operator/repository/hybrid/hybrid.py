@@ -872,7 +872,14 @@ class HybridRepository(BridgeWriteMixin, Repository):
     def _list_perspectives_sync(
         self, query: ListPerspectivesRepoQuery
     ) -> ListRepoResult[Perspective]:
-        """Synchronous perspective listing: fetch all, filter by search in Python."""
+        """Synchronous perspective listing: fetch all, filter by search in Python.
+
+        Known gap: only returns custom perspectives. Built-in perspectives
+        (Inbox, Projects, Tags, Forecast, Flagged, Review) live in the OmniJS
+        runtime, not the SQLite cache. This will be resolved in v1.5 via a
+        BridgePerspectiveMixin that merges bridge-sourced built-ins with
+        SQLite custom perspectives.
+        """
         conn = sqlite3.connect(f"file:{self._db_path}?mode=ro", uri=True)
         conn.row_factory = sqlite3.Row
         try:
