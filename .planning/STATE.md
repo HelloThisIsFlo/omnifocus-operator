@@ -117,7 +117,7 @@ Carried forward:
 11. Reserve Literal and Annotated types for contract models only
 12. Centralize field descriptions into constants like warnings and errors
 13. ~~Improve MCP tool schema descriptions and field documentation~~ (DONE: quick-260401-twg)
-14. ~~Clarify repetition schedule and repeat mode edge cases~~ (HALF DONE: schedule modes clarified in eec6241; basedOn unset anchor still open)
+14. ~~Clarify repetition schedule and repeat mode edge cases~~ (DONE: empirical verification, BYDAY edge cases guide, runtime warning, anchor date behavior documented)
 15. Convert specs to core models at service boundary (post-merge follow-up to #11)
 
 ### Quick Tasks Completed
