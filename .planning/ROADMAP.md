@@ -238,6 +238,22 @@ Plans:
 - [x] 37-02-PLAN.md — Server registration: 5 list tools, description constants, integration tests
 - [x] 37-03-PLAN.md — Gap closure: default pagination limit + entity-reference filter docs
 
+### Phase 37.1: Fix effectiveCompletionDate availability ghost tasks (INSERTED)
+
+**Goal:** Fix tasks with effectiveDateCompleted/effectiveDateHidden set (inherited from completed/dropped parent) but no own dateCompleted/dateHidden from appearing as available -- use effective columns in both Python mappers and SQL filter clauses
+**Requirements**: D-01, D-02, D-03, D-04, D-05, D-06
+**Depends on:** Phase 37
+**Success Criteria** (what must be TRUE):
+  1. Tasks with effectiveDateCompleted but no dateCompleted map to availability "completed" (not "available")
+  2. Tasks with effectiveDateHidden but no dateHidden map to availability "dropped" (not "available")
+  3. Same fix applied symmetrically to projects
+  4. SQL availability clauses use effective columns, excluding ghost tasks from default queries
+  5. Full test suite passes with no regressions
+**Plans:** 1 plan
+
+Plans:
+- [ ] 37.1-01-PLAN.md — Fix Python mappers and SQL clauses to use effective date columns
+
 ## Progress
 
 **Execution Order:**
@@ -261,13 +277,4 @@ Phases execute in numeric order: 34 → 35 → 35.1 → 35.2 → 36 → 37
 | 36.3 Description Centralization | v1.3 | 2/2 | Complete    | 2026-04-01 |
 | 36.4 Type Constraint Boundary | v1.3 | 4/4 | Complete    | 2026-04-02 |
 | 37. Server Registration and Integration | v1.3 | 3/3 | Complete    | 2026-04-04 |
-
-### Phase 37.1: Fix effectiveCompletionDate availability ghost tasks (INSERTED)
-
-**Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
-**Depends on:** Phase 37
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 37.1 to break down)
+| 37.1 Fix effectiveCompletionDate ghost tasks | v1.3 | 0/1 | Planned    | |
