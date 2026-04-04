@@ -45,6 +45,20 @@ if TYPE_CHECKING:
 __all__ = ["BridgeOnlyRepository"]
 
 
+def _paginate[T](items: list[T], limit: int | None, offset: int | None) -> ListRepoResult[T]:
+    """Apply offset/limit slicing and compute total/has_more for Python-filtered lists."""
+    total = len(items)
+    start = offset or 0
+    if start:
+        items = items[start:]
+    if limit is not None:
+        has_more = len(items) > limit
+        items = items[:limit]
+    else:
+        has_more = False
+    return ListRepoResult(items=items, total=total, has_more=has_more)
+
+
 class BridgeOnlyRepository(BridgeWriteMixin, Repository):
     """Caching repository that loads data from the bridge.
 
@@ -231,7 +245,7 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
         if query.search is not None:
             lower_search = query.search.lower()
             items = [t for t in items if lower_search in t.name.lower()]
-        return ListRepoResult(items=items, total=len(items), has_more=False)
+        return _paginate(items, query.limit, query.offset)
 
     async def list_folders(self, query: ListFoldersRepoQuery) -> ListRepoResult[Folder]:
         """Fetch-all + Python filter for folders."""
@@ -243,7 +257,7 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
         if query.search is not None:
             lower_search = query.search.lower()
             items = [f for f in items if lower_search in f.name.lower()]
-        return ListRepoResult(items=items, total=len(items), has_more=False)
+        return _paginate(items, query.limit, query.offset)
 
     async def list_perspectives(self, query: ListPerspectivesRepoQuery) -> ListRepoResult[Perspective]:
         """Fetch-all + Python filter for perspectives."""
@@ -252,7 +266,7 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
         if query.search is not None:
             lower_search = query.search.lower()
             items = [p for p in items if lower_search in p.name.lower()]
-        return ListRepoResult(items=items, total=len(items), has_more=False)
+        return _paginate(items, query.limit, query.offset)
 
     async def _refresh(self, current_mtime: int) -> AllEntities:
         """Fetch fresh data from the bridge and update cache state.

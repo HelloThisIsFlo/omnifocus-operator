@@ -15,6 +15,7 @@ from omnifocus_operator.agent_messages.descriptions import (
     REVIEW_DUE_FILTER_DOC,
     SEARCH_FIELD_NAME_NOTES,
 )
+from omnifocus_operator.config import DEFAULT_LIST_LIMIT
 from omnifocus_operator.contracts.base import QueryModel
 from omnifocus_operator.contracts.use_cases.list._validators import validate_offset_requires_limit
 from omnifocus_operator.models.enums import Availability
@@ -72,7 +73,7 @@ class ListProjectsQuery(QueryModel):
     review_due_within: ReviewDueFilter | None = None
     flagged: bool | None = None
     search: str | None = Field(default=None, description=SEARCH_FIELD_NAME_NOTES)
-    limit: int | None = None
+    limit: int | None = DEFAULT_LIST_LIMIT
     offset: int | None = None
 
     @field_validator("review_due_within", mode="before")
@@ -100,5 +101,5 @@ class ListProjectsRepoQuery(QueryModel):
     review_due_before: datetime | None = None
     flagged: bool | None = None
     search: str | None = None
-    limit: int | None = None
+    limit: int | None = DEFAULT_LIST_LIMIT
     offset: int | None = None

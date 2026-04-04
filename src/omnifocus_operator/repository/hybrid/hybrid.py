@@ -59,6 +59,21 @@ logger = logging.getLogger(__name__)
 
 __all__ = ["HybridRepository"]
 
+
+def _paginate[T](items: list[T], limit: int | None, offset: int | None) -> ListRepoResult[T]:
+    """Apply offset/limit slicing and compute total/has_more for Python-filtered lists."""
+    total = len(items)
+    start = offset or 0
+    if start:
+        items = items[start:]
+    if limit is not None:
+        has_more = len(items) > limit
+        items = items[:limit]
+    else:
+        has_more = False
+    return ListRepoResult(items=items, total=total, has_more=has_more)
+
+
 # Core Foundation epoch: Jan 1, 2001 00:00:00 UTC
 _CF_EPOCH = datetime(2001, 1, 1, tzinfo=UTC)
 
@@ -826,7 +841,7 @@ class HybridRepository(BridgeWriteMixin, Repository):
             if query.search is not None:
                 lower_search = query.search.lower()
                 filtered = [t for t in filtered if lower_search in t.name.lower()]
-            return ListRepoResult(items=filtered, total=len(filtered), has_more=False)
+            return _paginate(filtered, query.limit, query.offset)
         finally:
             conn.close()
 
@@ -846,7 +861,7 @@ class HybridRepository(BridgeWriteMixin, Repository):
             if query.search is not None:
                 lower_search = query.search.lower()
                 filtered = [f for f in filtered if lower_search in f.name.lower()]
-            return ListRepoResult(items=filtered, total=len(filtered), has_more=False)
+            return _paginate(filtered, query.limit, query.offset)
         finally:
             conn.close()
 
@@ -864,7 +879,7 @@ class HybridRepository(BridgeWriteMixin, Repository):
             if query.search is not None:
                 lower_search = query.search.lower()
                 perspectives = [p for p in perspectives if lower_search in p.name.lower()]
-            return ListRepoResult(items=perspectives, total=len(perspectives), has_more=False)
+            return _paginate(perspectives, query.limit, query.offset)
         finally:
             conn.close()
 
