@@ -188,7 +188,7 @@ These are complementary: the architecture is excellent *because* the conductor k
 - **Product landing page** — live at `hellothisisflo.github.io/omnifocus-operator`. Well-designed, current for v1.2. Sells the *product*.
 - **README** — condensed marketing copy. Quick start, features, roadmap.
 - **Architecture docs** — `docs/architecture.md` with Mermaid diagrams. Technical reference.
-- **SEED-006** — planned marketing refresh after v1.3.1 (update features, benchmarks, comparison tables).
+- **SEED-006** — planned marketing refresh after v1.3.2 (update features, benchmarks, comparison tables).
 
 ### The Gap
 The existing assets sell the **product**. Nothing currently sells the **engineer**. The portfolio milestone fills this gap:

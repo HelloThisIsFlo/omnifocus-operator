@@ -126,7 +126,7 @@ Requirements for the Read Tools milestone. Each maps to roadmap phases.
 
 Deferred to future milestones. Tracked but not in current roadmap.
 
-### Date Filtering (v1.3.1)
+### Date Filtering (v1.3.2)
 
 - **DATE-01**: Agent can filter tasks by due date range
 - **DATE-02**: Agent can filter tasks by defer date range
@@ -156,7 +156,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | Nested/hierarchical responses | Spec says flat with ID references |
 | ORDER BY configuration | Hardcode deterministic order; not in spec |
 | Fuzzy search | Different algorithm from LIKE; deferred to v1.4.1 |
-| Date-based filtering | Deferred to v1.3.1; WHERE clause infrastructure built now |
+| Date-based filtering | Deferred to v1.3.2; WHERE clause infrastructure built now |
 
 ## Traceability
 

@@ -171,7 +171,7 @@ In OmniFocus, when you set a due date on a project, child tasks inherit that as 
 
 The in-memory bridge was returning `null` for `effectiveDueDate` on child tasks. It had no ancestor-chain walk. It simply didn't implement inheritance.
 
-**The concrete production impact:** The v1.3.1 spec explicitly plans date filtering using `effectiveDueDate` (inherited values), not `due_date` (direct-only). The spec estimates that "filtering on `due_date` alone misses ~45% of overdue tasks" (a design rationale figure, not empirically measured).
+**The concrete production impact:** The v1.3.2 spec explicitly plans date filtering using `effectiveDueDate` (inherited values), not `due_date` (direct-only). The spec estimates that "filtering on `due_date` alone misses ~45% of overdue tasks" (a design rationale figure, not empirically measured).
 
 Here's the scenario that would have produced wrong production code without the Golden Master:
 

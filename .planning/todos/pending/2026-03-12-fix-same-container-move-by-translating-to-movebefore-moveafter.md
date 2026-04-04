@@ -11,7 +11,7 @@ files:
 
 - **Current state (v1.2):** Update the existing same-container move warning (service.py:339-343) to be explicit about the limitation and workaround. Exact phrasing: "Task is already a child of this parent. Due to an OmniFocus API limitation, 'beginning' and 'ending' moves have no effect when the task is already in the target container. To reorder within the same parent, use 'before' or 'after' with a sibling task ID. This will be fixed in a future release."
 - **v1.3 (filtering milestone):** Implement the query infrastructure needed to look up children of a container (filtering, list operations). This provides the ability to cheaply query "first/last child of container X."
-- **After filtering ships:** Add a phase in v1.3.1 to implement the service-layer translation described below. The fix depends on being able to query a container's children in order — which the filtering milestone delivers naturally.
+- **After filtering ships:** Add a phase in v1.3.2 to implement the service-layer translation described below. The fix depends on being able to query a container's children in order — which the filtering milestone delivers naturally.
 - **Sequencing rationale:** Implementing the fix now would require either pulling the entire database (get_all) just to find one child ID, or building ad-hoc query infrastructure that gets redone properly in v1.3. Neither is worth it. The warning buys time, and the fix lands when the infrastructure supports it.
 
 ## Problem

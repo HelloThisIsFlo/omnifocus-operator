@@ -611,7 +611,7 @@ This raised a concern: if the test double was built on unverified assumptions ab
 
 That concern motivated the golden master approach (detailed in Section 4): capture real OmniFocus behavior, replay it against the in-memory bridge, fix any divergence. The golden master immediately validated the concern — the in-memory bridge had no ancestor-chain walk for effective field inheritance. In OmniFocus, setting a due date on a project causes child tasks to inherit that deadline as their `effectiveDueDate`. The test double returned `null`. It simply didn't implement inheritance.
 
-**The production risk:** The v1.3.1 spec plans date filtering on `effectiveDueDate` (inherited values). Without the golden master fix, date filters would silently miss tasks with inherited deadlines — tests green, product broken.
+**The production risk:** The v1.3.2 spec plans date filtering on `effectiveDueDate` (inherited values). Without the golden master fix, date filters would silently miss tasks with inherited deadlines — tests green, product broken.
 
 The golden master wasn't a testing innovation pursued for its own sake. It was built because agents had made assumptions that turned out to hide behavioral gaps — and the only way to know how many gaps was to verify against reality.
 

@@ -52,10 +52,10 @@
 | Option | Description | Selected |
 |--------|-------------|----------|
 | Inline in hybrid.py | Strict YAGNI, extract later | |
-| Standalone repository/query_builder.py | Pure functions, v1.3.1 extends without touching hybrid.py | ✓ |
+| Standalone repository/query_builder.py | Pure functions, v1.3.2 extends without touching hybrid.py | ✓ |
 
 **User's choice:** Standalone module.
-**Notes:** v1.3.1 is the next planned milestone with a written spec naming this module.
+**Notes:** v1.3.2 is the next planned milestone with a written spec naming this module.
 
 ---
 

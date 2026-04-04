@@ -43,7 +43,7 @@ No new dependencies. The existing stack (Python 3.12+, FastMCP, Pydantic v2, std
 - Status shorthand expansion ("remaining", "available", "all") — resolved in service layer before either repository
 - Educational error messages on validation failure — extend existing write-tool pattern
 
-**Defer (v1.3.1+):**
+**Defer (v1.3.2+):**
 - Date-based filtering (due, defer, planned, completed dates) — WHERE clause infrastructure is built in v1.3, filter logic deferred
 - Fuzzy search — different algorithm from LIKE, deferred to v1.4.1
 - Field selection / projection — deferred to v1.4
@@ -127,7 +127,7 @@ Phases that benefit from careful implementation review (not research, but verifi
 | Area | Confidence | Notes |
 |------|------------|-------|
 | Stack | HIGH | No new deps; all patterns established in v1.1/v1.2; direct extension of existing code |
-| Features | HIGH | Spec is detailed with explicit acceptance criteria; deferral decisions are explicit (v1.3.1) |
+| Features | HIGH | Spec is detailed with explicit acceptance criteria; deferral decisions are explicit (v1.3.2) |
 | Architecture | HIGH | Existing codebase thoroughly analyzed; new components are direct extensions of established conventions |
 | Pitfalls | HIGH | SQL/NULL/LIKE semantics well-documented; cross-path drift is clearly identified with concrete prevention strategies |
 
@@ -139,13 +139,13 @@ Phases that benefit from careful implementation review (not research, but verifi
 - **`review_due_within` CF epoch:** Verify `nextReviewDate` is the correct column name in `ProjectInfo` and confirm it stores a CF epoch float before building the date comparison.
 - **Tag case sensitivity contract:** The spec doesn't explicitly define whether tag name matching in the `tags` filter is case-sensitive. Decide before Phase 2: exact match (case-sensitive) is the safer default; document it in the tool description.
 - **`ListResult[T]` FastMCP serialization:** Verify FastMCP correctly serializes a Pydantic generic model to JSON Schema in the outputSchema. Run `test_output_schema.py` after introducing `ListResult` — per project conventions, this test catches serializer issues.
-- **Date filter model design:** `ListTasksQuery` should include nullable date filter fields from the start (per the v1.3.1 spec) even if v1.3 doesn't implement them — avoids a breaking contract change in the next milestone.
+- **Date filter model design:** `ListTasksQuery` should include nullable date filter fields from the start (per the v1.3.2 spec) even if v1.3 doesn't implement them — avoids a breaking contract change in the next milestone.
 
 ## Sources
 
 ### Primary (HIGH confidence)
 - `.research/updated-spec/MILESTONE-v1.3.md` — feature requirements, acceptance criteria, filter definitions
-- `.research/updated-spec/MILESTONE-v1.3.1.md` — date filter deferral decisions
+- `.research/updated-spec/MILESTONE-v1.3.2.md` — date filter deferral decisions
 - `docs/architecture.md` — three-layer architecture, Method Object pattern, model taxonomy
 - `.research/deep-dives/direct-database-access/RESULTS.md` — SQLite schema, CF epoch constants, existing query patterns
 - `repository/hybrid.py`, `repository/bridge.py`, `service/service.py` — established patterns to extend

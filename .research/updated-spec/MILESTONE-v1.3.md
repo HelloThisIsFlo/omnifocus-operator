@@ -2,7 +2,7 @@
 
 ## Goal
 
-The agent can query tasks with filters, browse the full organizational structure (projects, tags, folders, perspectives), and get quick counts. After this milestone, the agent can ask "show me flagged inbox tasks", "which projects are due for review?", or "how many tasks are in this project?" -- and get fast, precise answers via SQL queries. Date-based filtering (due, defer, completed, etc.) is deferred to v1.3.1.
+The agent can query tasks with filters, browse the full organizational structure (projects, tags, folders, perspectives), and get quick counts. After this milestone, the agent can ask "show me flagged inbox tasks", "which projects are due for review?", or "how many tasks are in this project?" -- and get fast, precise answers via SQL queries. Date-based filtering (due, defer, completed, etc.) is deferred to v1.3.2.
 
 This combines the original Milestone 2 (Filtering & Search) and Milestone 3 (Entity Browsing). The two-axis status model (the hardest part of M2) was already shipped in v1.1, making the combined scope achievable.
 
@@ -27,7 +27,7 @@ One new MCP tool with optional filter parameters. Primary path uses SQL WHERE cl
 | `limit` | int | Maximum number of results to return (default: no limit) |
 | `offset` | int | Skip this many results before returning (default: 0). Requires `limit`. |
 
-**Note:** Date-based filtering (due, defer, completed, dropped, added, modified, planned) is deferred to v1.3.1. This milestone builds the query infrastructure that v1.3.1 extends.
+**Note:** Date-based filtering (due, defer, completed, dropped, added, modified, planned) is deferred to v1.3.2. This milestone builds the query infrastructure that v1.3.2 extends.
 
 - Substring search only -- no fuzzy matching. Fuzzy deferred to v1.4.1.
 
@@ -82,7 +82,7 @@ All hierarchy is flat with ID references (parent_id, folder_id, project_id). No 
 
 - Status values are already translated to snake_case from v1.1.
 - Project `type` is a derived enum: `sequential`, `parallel`, or `single_action`.
-- `availability` supports `available` and `blocked`. Completed/dropped task visibility will be handled by date filters in v1.3.1.
+- `availability` supports `available` and `blocked`. Completed/dropped task visibility will be handled by date filters in v1.3.2.
 - Counts reuse the same filtering logic as list tools. One code path prevents count/list divergence.
 - SQL-level filtering is the primary path. In-memory filtering exists only for bridge fallback.
 - No fuzzy search. Substring matching via SQL LIKE is sufficient for now. Fuzzy deferred to v1.4.1.

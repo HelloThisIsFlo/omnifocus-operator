@@ -167,7 +167,7 @@ Mistakes that cause result divergence between read paths, data loss via silent o
 - **Use the availability column, not date columns, for default exclusion.** The `_map_task_availability` function derives availability from `dateCompleted` and `dateHidden`. In SQL, replicate this: tasks where `dateHidden IS NOT NULL` are dropped, `dateCompleted IS NOT NULL` are completed. Filter as: `WHERE t.dateHidden IS NULL AND t.dateCompleted IS NULL AND NOT t.blocked` would be wrong (that's `available` only, not "not completed/dropped").
 - **Correct default exclusion in SQL:** `WHERE t.dateHidden IS NULL AND t.dateCompleted IS NULL`. This excludes completed and dropped while keeping both available and blocked tasks.
 - **In-memory:** `task.availability not in ("completed", "dropped")`. These must be semantically identical.
-- **The v1.3.1 date filters will override this.** Using `completed: "any"` or `completed: {last: "1w"}` must disable the default exclusion for completed tasks. Design the exclusion as an addable/removable clause from the start.
+- **The v1.3.2 date filters will override this.** Using `completed: "any"` or `completed: {last: "1w"}` must disable the default exclusion for completed tasks. Design the exclusion as an addable/removable clause from the start.
 
 **Detection:** Seed data must include completed and dropped tasks. Verify they're excluded by default. Verify `availability: "blocked"` still returns blocked-but-not-completed tasks.
 
@@ -194,7 +194,7 @@ Mistakes that cause result divergence between read paths, data loss via silent o
 - **Show the type explicitly.** `status: list of strings. Values: "active", "on_hold", "done", "dropped". Shorthands: "remaining" (= active + on_hold, default), "available" (= active only), "all" (= no filter).`
 - **Include one example per non-obvious filter** in the description. LLMs are few-shot learners -- a single example in the tool description dramatically reduces calling errors.
 - **Validate with Pydantic at entry.** Fail fast with educational messages: "Got 'Available', did you mean 'available'? Valid values are: ..."
-- **Test tool descriptions with multiple LLM models.** The v1.3.1 spec mentions testing with Sonnet and Opus. Do this for v1.3 too -- have each model call every filter combination and verify they construct valid calls from the description alone.
+- **Test tool descriptions with multiple LLM models.** The v1.3.2 spec mentions testing with Sonnet and Opus. Do this for v1.3 too -- have each model call every filter combination and verify they construct valid calls from the description alone.
 
 **Detection:** UAT: have an LLM read only the tool description and generate 10 example calls. Check if they're all valid.
 
@@ -267,7 +267,7 @@ Mistakes that cause result divergence between read paths, data loss via silent o
 | Default exclusion | Pitfall 10 (completed/dropped) | Use date columns for exclusion, design as removable clause |
 | Tool descriptions | Pitfall 12 (LLM calling errors) | Spell out all values, include examples, test with LLMs |
 | review_due_within | Pitfall 7 (date arithmetic, timestamp format) | CF epoch comparison, NULL handling, document naive months |
-| Date filters (v1.3.1) | Pitfall 4 (NULL dates), 7 (arithmetic) | Explicit NULL exclusion, shared resolution |
+| Date filters (v1.3.2) | Pitfall 4 (NULL dates), 7 (arithmetic) | Explicit NULL exclusion, shared resolution |
 
 ## Architectural Recommendation: Filter Resolution Pipeline
 

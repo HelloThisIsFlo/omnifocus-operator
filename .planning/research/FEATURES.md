@@ -42,7 +42,7 @@ Features to explicitly NOT build in v1.3.
 
 | Anti-Feature | Why Avoid | What to Do Instead |
 |--------------|-----------|-------------------|
-| Date-based filtering (due, defer, etc.) | Deferred to v1.3.1 -- complex period resolution semantics | Build WHERE clause infrastructure now; v1.3.1 extends it |
+| Date-based filtering (due, defer, etc.) | Deferred to v1.3.2 -- complex period resolution semantics | Build WHERE clause infrastructure now; v1.3.2 extends it |
 | Fuzzy search | Deferred to v1.4.1 -- different algorithm (not LIKE) | Substring LIKE is sufficient |
 | Full-text search (FTS5) | Requires writable DB, overkill at scale | LIKE with ESCAPE |
 | Custom indexes | Read-only DB, premature optimization | Full scan <5ms at current scale |
@@ -75,7 +75,7 @@ Tag name resolution (existing Resolver.resolve_tags)
 
 CF epoch conversion (existing _CF_EPOCH, _parse_timestamp)
   -> review_due_within resolution
-  -> (v1.3.1: all date filters)
+  -> (v1.3.2: all date filters)
 ```
 
 ## MVP Build Order
@@ -89,7 +89,7 @@ CF epoch conversion (existing _CF_EPOCH, _parse_timestamp)
 8. **Service pipelines + server registration** -- wire everything up
 9. **Cross-path equivalence tests** -- spec requirement
 
-Defer entirely to v1.3.1: All date filtering (due, defer, planned, completed, dropped, added, modified).
+Defer entirely to v1.3.2: All date filtering (due, defer, planned, completed, dropped, added, modified).
 
 Note: No standalone count tools. `list_tasks`/`list_projects` return `ListResult` with `total_count` — agents get counts via `list_tasks(flagged: true, limit: 1)` and read `total_count`.
 Note: `list_tags` and `list_folders` status filter accepts a list with OR logic (e.g., `["active", "on_hold"]`), defaulting to remaining. Uses `ListTagsQuery`/`ListFoldersQuery` models.
@@ -97,5 +97,5 @@ Note: `list_tags` and `list_folders` status filter accepts a list with OR logic 
 ## Sources
 
 - Milestone spec: `.research/updated-spec/MILESTONE-v1.3.md`
-- Date filter spec: `.research/updated-spec/MILESTONE-v1.3.1.md`
+- Date filter spec: `.research/updated-spec/MILESTONE-v1.3.2.md`
 - Existing architecture: `docs/architecture.md`

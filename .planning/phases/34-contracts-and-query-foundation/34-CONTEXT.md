@@ -78,7 +78,7 @@ Two distinct concerns, two distinct locations:
 ### Query Builder (D-05)
 
 - **D-05a:** Standalone `repository/query_builder.py` with pure functions producing parameterized SQL
-- **D-05b:** v1.3.1 date filter predicates will slot directly into this module without touching hybrid.py
+- **D-05b:** v1.3.2 date filter predicates will slot directly into this module without touching hybrid.py
 - **D-05c:** Return type is Claude's discretion (implementation detail — only consumed by HybridRepository)
 
 ### Query Field Naming (D-06)

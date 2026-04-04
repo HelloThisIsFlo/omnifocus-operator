@@ -46,7 +46,7 @@ Raw `rank` values (e.g. -1,069,498,304) are not human-friendly. The 0-based ordi
 
 ## Sequencing
 
-- Target: v1.3.2 (ordering milestone). The query infrastructure built for filtering naturally supports exposing child ordering.
+- Target: v1.3.3 (ordering milestone). The query infrastructure built for filtering naturally supports exposing child ordering.
 - Implementing this before or alongside the same-container move fix is ideal — both need the ability to query children in order.
 
 ## Related

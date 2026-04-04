@@ -142,7 +142,7 @@ Key SQL column mappings for Task filters:
 | `estimated_minutes_max` | `t.estimatedMinutes` | `<= ?` |
 | `availability` | `t.blocked`, `t.dateCompleted`, `t.dateHidden` | Computed from columns, same logic as `_map_task_availability` |
 | `search` | `t.name`, `t.plainTextNote` | `LIKE %?%` (case-insensitive by SQLite default) |
-| Default exclusion | `t.dateCompleted IS NULL AND t.dateHidden IS NULL` | Always applied unless overridden by date filters (v1.3.1) |
+| Default exclusion | `t.dateCompleted IS NULL AND t.dateHidden IS NULL` | Always applied unless overridden by date filters (v1.3.2) |
 
 Key SQL column mappings for Project filters:
 
