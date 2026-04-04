@@ -21,6 +21,7 @@ from omnifocus_operator.agent_messages.errors import (
 )
 from omnifocus_operator.agent_messages.warnings import (
     FILTER_DID_YOU_MEAN,
+    FILTER_MULTI_MATCH,
     FILTER_NO_MATCH,
     REPETITION_NO_OP,
 )
@@ -47,6 +48,7 @@ from omnifocus_operator.contracts.use_cases.list.tags import (
 from omnifocus_operator.contracts.use_cases.list.tasks import (
     ListTasksRepoQuery,
 )
+from omnifocus_operator.models.enums import Availability, FolderAvailability, TagAvailability
 from omnifocus_operator.models.repetition_rule import Frequency
 from omnifocus_operator.service.convert import end_condition_from_spec, frequency_from_spec
 from omnifocus_operator.service.domain import DomainLogic
@@ -288,7 +290,15 @@ class _ListTasksPipeline(_ReadPipeline):
     async def execute(self, query: ListTasksQuery) -> ListResult[Task]:
         """Run the full list-tasks pipeline."""
         self._query = query
-        self._all_data = await self._repository.get_all()
+
+        tags_result = await self._repository.list_tags(
+            ListTagsRepoQuery(availability=list(TagAvailability), limit=None)
+        )
+        self._tags = tags_result.items
+        projects_result = await self._repository.list_projects(
+            ListProjectsRepoQuery(availability=list(Availability), limit=None)
+        )
+        self._projects = projects_result.items
 
         self._resolve_project()
         self._resolve_tags()
@@ -299,16 +309,27 @@ class _ListTasksPipeline(_ReadPipeline):
         self._project_ids: list[str] | None = None
         if self._query.project is None:
             return
-        resolved = self._resolver.resolve_filter(self._query.project, self._all_data.projects)
+        resolved = self._resolver.resolve_filter(self._query.project, self._projects)
         if resolved:
             self._project_ids = resolved
+            if len(resolved) > 1:
+                name_map = {p.id: p.name for p in self._projects}
+                match_details = ", ".join(f"{eid} ({name_map.get(eid, '?')})" for eid in resolved)
+                self._warnings.append(
+                    FILTER_MULTI_MATCH.format(
+                        value=self._query.project,
+                        count=len(resolved),
+                        entity_type="project",
+                        matches=match_details,
+                    )
+                )
         else:
             # No match -- skip filter, warn
             self._warnings.append(
                 self._build_warning(
                     "project",
                     self._query.project,
-                    [p.name for p in self._all_data.projects],
+                    [p.name for p in self._projects],
                 )
             )
 
@@ -316,16 +337,39 @@ class _ListTasksPipeline(_ReadPipeline):
         self._tag_ids: list[str] | None = None
         if self._query.tags is None:
             return
-        resolved = self._resolver.resolve_filter_list(self._query.tags, self._all_data.tags)
-        unresolved = self._resolver.find_unresolved(self._query.tags, self._all_data.tags)
-        if resolved:
-            self._tag_ids = resolved
+        name_map = {t.id: t.name for t in self._tags}
+        all_resolved: list[str] = []
+        seen: set[str] = set()
+        unresolved: list[str] = []
+        for value in self._query.tags:
+            resolved = self._resolver.resolve_filter(value, self._tags)
+            if resolved:
+                for eid in resolved:
+                    if eid not in seen:
+                        seen.add(eid)
+                        all_resolved.append(eid)
+                if len(resolved) > 1:
+                    match_details = ", ".join(
+                        f"{eid} ({name_map.get(eid, '?')})" for eid in resolved
+                    )
+                    self._warnings.append(
+                        FILTER_MULTI_MATCH.format(
+                            value=value,
+                            count=len(resolved),
+                            entity_type="tag",
+                            matches=match_details,
+                        )
+                    )
+            else:
+                unresolved.append(value)
+        if all_resolved:
+            self._tag_ids = all_resolved
         for value in unresolved:
             self._warnings.append(
                 self._build_warning(
                     "tag",
                     value,
-                    [t.name for t in self._all_data.tags],
+                    [t.name for t in self._tags],
                 )
             )
 
@@ -356,7 +400,11 @@ class _ListProjectsPipeline(_ReadPipeline):
     async def execute(self, query: ListProjectsQuery) -> ListResult[Project]:
         """Run the full list-projects pipeline."""
         self._query = query
-        self._all_data = await self._repository.get_all()
+
+        folders_result = await self._repository.list_folders(
+            ListFoldersRepoQuery(availability=list(FolderAvailability), limit=None)
+        )
+        self._folders = folders_result.items
 
         self._resolve_folder()
         self._build_repo_query()
@@ -366,16 +414,27 @@ class _ListProjectsPipeline(_ReadPipeline):
         self._folder_ids: list[str] | None = None
         if self._query.folder is None:
             return
-        resolved = self._resolver.resolve_filter(self._query.folder, self._all_data.folders)
+        resolved = self._resolver.resolve_filter(self._query.folder, self._folders)
         if resolved:
             self._folder_ids = resolved
+            if len(resolved) > 1:
+                name_map = {f.id: f.name for f in self._folders}
+                match_details = ", ".join(f"{eid} ({name_map.get(eid, '?')})" for eid in resolved)
+                self._warnings.append(
+                    FILTER_MULTI_MATCH.format(
+                        value=self._query.folder,
+                        count=len(resolved),
+                        entity_type="folder",
+                        matches=match_details,
+                    )
+                )
         else:
             # No match -- skip filter, warn
             self._warnings.append(
                 self._build_warning(
                     "folder",
                     self._query.folder,
-                    [f.name for f in self._all_data.folders],
+                    [f.name for f in self._folders],
                 )
             )
 

@@ -125,6 +125,11 @@ REPETITION_ANCHOR_DATE_MISSING = (
 
 # --- Filter Resolution ---
 
+FILTER_MULTI_MATCH = (
+    "Filter '{value}' matched {count} {entity_type}s: {matches}. "
+    "For exact results, filter by ID."
+)
+
 FILTER_NO_MATCH = "No {entity_type} found matching '{value}'. This filter was skipped."
 
 FILTER_DID_YOU_MEAN = (

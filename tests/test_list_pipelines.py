@@ -172,7 +172,7 @@ class TestListTasksResolution:
         # Warning should include both project names and IDs
         assert result.warnings is not None
         assert any("proj-work" in w and "proj-homework" in w for w in result.warnings)
-        assert any("filter by ID" in w.lower() for w in result.warnings)
+        assert any("filter by ID" in w for w in result.warnings)
 
     @pytest.mark.snapshot(
         tasks=[
@@ -199,7 +199,7 @@ class TestListTasksResolution:
         # Warning for the "Work" value matching multiple tags
         assert result.warnings is not None
         assert any("tag-work" in w and "tag-homework" in w for w in result.warnings)
-        assert any("filter by ID" in w.lower() for w in result.warnings)
+        assert any("filter by ID" in w for w in result.warnings)
 
     @pytest.mark.snapshot(
         tasks=[
@@ -287,7 +287,7 @@ class TestListProjectsResolution:
         # Warning should include both folder names and IDs
         assert result.warnings is not None
         assert any("folder-home" in w and "folder-homework" in w for w in result.warnings)
-        assert any("filter by ID" in w.lower() for w in result.warnings)
+        assert any("filter by ID" in w for w in result.warnings)
 
 
 # ---------------------------------------------------------------------------
