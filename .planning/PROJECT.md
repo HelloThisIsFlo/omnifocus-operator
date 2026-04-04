@@ -22,7 +22,7 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 ## Current State
 
 **Shipped:** v1.2.3 (2026-03-29) — Repetition Rule Write Support
-**Next:** v1.3 Read Tools — Phase 37 complete (5 list tools registered, search across all entities, 1479 tests, all phases done)
+**Next:** v1.3 Read Tools — Phase 37 complete with gap closure (5 list tools registered, default pagination limit=50, search across all entities, 1507 tests, all phases done)
 
 ## Requirements
 
@@ -118,7 +118,7 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 Shipped v1.2.3 with ~6,601 LOC Python (src/), ~215k LOC JS (bridge + deps), ~28k TS (tests).
 Tech stack: Python 3.12, uv, Pydantic v2, FastMCP v3 (`fastmcp>=3.1.1`), OmniJS bridge, SQLite3 (stdlib).
-1,479 pytest tests, 26 Vitest tests, UAT passed on all phases.
+1,507 pytest tests, 26 Vitest tests, UAT passed on all phases.
 Real OmniFocus database: ~2,400 tasks, ~363 projects, ~64 tags, ~79 folders.
 Read path: SQLite (default, ~46ms). Write path: OmniJS bridge with write-through guarantee.
 11 MCP tools: get_all, get_task, get_project, get_tag, add_tasks, edit_tasks, list_tasks, list_projects, list_tags, list_folders, list_perspectives.
@@ -198,4 +198,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-03 after Phase 37 complete — 5 list MCP tools, search across all entities, 1479 tests passing, v1.3 milestone all phases done*
+*Last updated: 2026-04-04 after Phase 37 gap closure — default pagination limit=50, entity-reference filter docs, 1507 tests passing, v1.3 milestone all phases done*
