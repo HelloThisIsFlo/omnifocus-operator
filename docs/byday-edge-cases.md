@@ -2,15 +2,15 @@
 
 When a repeating task uses BYDAY patterns (e.g. weekly on WE+FR), the three OmniFocus schedule types — Regularly, Regularly with Catch Up, and From Completion — usually produce similar results. But there are three edge cases where From Completion behaves counterintuitively. 🫠
 
-All findings were empirically verified on OmniFocus 4.7+ in April 2026. For the full research reference, see `omnifocus-repetition-behavior.md`.
+All findings were empirically verified on OmniFocus 4.7+ in April 2026. For the full empirical reference with raw experiment results, see [omnifocus-repetition-behavior.md](../.research/deep-dives/repetition-modes/omnifocus-repetition-behavior.md).
 
-![](repeat-modes.png)
+![](images/repeat-modes.png)
 
 ---
 
 ## Scenario 1: Same-Day Eligibility
 
-![](repeat-modes-s1.png)
+![](images/repeat-modes-s1.png)
 
 ### Setup
 
@@ -39,7 +39,7 @@ All findings were empirically verified on OmniFocus 4.7+ in April 2026. For the 
 
 ## Scenario 2: Grid Reset (INTERVAL=2)
 
-![](repeat-modes-s2.png)
+![](images/repeat-modes-s2.png)
 
 ### Setup
 
@@ -72,7 +72,7 @@ All findings were empirically verified on OmniFocus 4.7+ in April 2026. For the 
 
 ## Scenario 3: Early Completion Dismissal
 
-![](repeat-modes-s3.png)
+![](images/repeat-modes-s3.png)
 
 ### Setup
 

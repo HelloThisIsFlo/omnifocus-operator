@@ -26,7 +26,7 @@ The task is **impossible to act on** until this date. Not "I don't want to work 
 
 **Behavior:** Deferred tasks disappear from most OmniFocus views until the defer date arrives. This is by design — if you can't act on it, you shouldn't see it. When the date arrives, the task reappears and becomes available.
 
-**Not a defer date:** "I don't feel like working on this until next week." If you *could* work on it now but choose not to, that's not a deferral — you'd be hiding a task you might actually want to see. Use planned date instead.
+**Not a defer date:** "I don't feel like working on this until next week." If you _could_ work on it now but choose not to, that's not a deferral — you'd be hiding a task you might actually want to see. Use planned date instead.
 
 ### Planned Date
 
@@ -44,11 +44,11 @@ Fills the gap between due (too urgent — implies negative consequences) and def
 
 ### Summary
 
-| Field | Meaning | Consequence of missing | Visibility before date |
-|-------|---------|----------------------|----------------------|
-| Due date | Must happen by then | Real negative consequence | Visible, urgency signals |
-| Defer date | Cannot act until then | N/A (impossible before) | Hidden from most views |
-| Planned date | Want to work on it then | None | Visible, no urgency |
+| Field        | Meaning                 | Consequence of missing    | Visibility before date   |
+| ------------ | ----------------------- | ------------------------- | ------------------------ |
+| Due date     | Must happen by then     | Real negative consequence | Visible, urgency signals |
+| Defer date   | Cannot act until then   | N/A (impossible before)   | Hidden from most views   |
+| Planned date | Want to work on it then | None                      | Visible, no urgency      |
 
 **The rule:** Due dates are for deadlines. Defer dates are for constraints. Planned dates are for intentions. If you're unsure which to use, it's probably a planned date.
 
@@ -61,60 +61,53 @@ OmniFocus tasks and projects can repeat. A repetition rule has three components:
 The anchor date determines which date field the repetition schedule attaches to. When the next occurrence is generated, the anchor date moves to the scheduled date. **All other date fields shift relatively, preserving their current offset from the anchor.**
 
 **Example:** A task repeats on the 15th of every month. The anchor is `planned_date`. Currently:
+
 - Planned date: March 15
 - Due date: March 18 (+3 days from anchor)
 - Defer date: March 10 (−5 days from anchor)
 
 When the next occurrence is generated:
+
 - Planned date → April 15 (the scheduled date)
 - Due date → April 18 (anchor + 3 days, offset preserved)
 - Defer date → April 10 (anchor − 5 days, offset preserved)
 
-| Value | Meaning |
-|-------|---------|
-| `due_date` | Schedule anchored to the due date |
-| `defer_date` | Schedule anchored to the defer date |
+| Value          | Meaning                               |
+| -------------- | ------------------------------------- |
+| `due_date`     | Schedule anchored to the due date     |
+| `defer_date`   | Schedule anchored to the defer date   |
 | `planned_date` | Schedule anchored to the planned date |
 
 **The rule:** Choose the date that the recurrence is "about." If a task is due every Friday, anchor on `due_date`. If it becomes available every Monday, anchor on `defer_date`. If you just want to plan it for the same day each week, anchor on `planned_date`.
 
-> **⚠️ WIP — What happens when the anchor date field is not set on the task?** Likely falls back to the task's creation date, but this needs verification.
+> **What happens when the anchor date field is not set on the task?** OmniFocus creates the missing anchor date from scratch on the next occurrence: it takes the **completion date** and applies the user's **default time** for that date type (configured in OmniFocus Settings → Dates & Times). This produces a valid but potentially surprising schedule — set the anchor date explicitly for predictable behavior. See [omnifocus-repetition-behavior.md](../.research/deep-dives/repetition-modes/omnifocus-repetition-behavior.md), Part 7 for the full empirical verification.
 
 ### Schedule (Recurrence Mode)
 
 The schedule controls what happens when a task is completed — specifically, how the next occurrence's date is calculated.
 
-#### The mental model
-
-Internally, OmniFocus has one core operation: **given a date, find the next occurrence after that date.** The three schedule modes differ only in which date they feed into this operation:
-
-| Mode | How the next date is calculated |
-|------|--------------------------------|
-| `regularly` | Next on the schedule after the assigned date — can land in the past |
-| `regularly_with_catch_up` | Next on the schedule that's still in the future |
-| `from_completion` | Next occurrence counting forward from when you complete |
+| Mode                      | How the next date is calculated                                     |
+| ------------------------- | ------------------------------------------------------------------- |
+| 🔄 `regularly`               | Next on the schedule after the assigned date — can land in the past |
+| ✅ `regularly_with_catch_up` | Next on the schedule that's still in the future                     |
+| ⚠️ `from_completion`         | Next occurrence counting forward from when you complete             |
 
 > **When completed on time**, all three modes produce the same result. The differences only matter when you're late (or early).
 
-#### How the modes converge and diverge
-
-The diagram below walks through three scenarios, each adding one variable. It shows when the modes produce different dates, when they converge, and what pulls them apart again.
-
-![When BYDAY makes modes converge — and the subtle ways they still differ](../.research/deep-dives/repetition-modes/repeat-modes.png)
-
-**The two ways `catch_up` and `from_completion` differ:**
-
-| | Difference | Effect |
-|---|-----------|--------|
-| 1 | **Time anchoring** | `catch_up` keeps original time; `from_completion` shifts to completion time |
-| 2 | **Week grid** (`INTERVAL ≥ 2`) | `catch_up` preserves the grid; `from_completion` resets it |
-
-For simple weekly patterns (`INTERVAL=1`), the time difference is usually the only practical divergence. For longer intervals, the grid reset dominates.
-
-> For the full details — empirically verified behavior, the day-level vs time-level asymmetry, INTERVAL grid reset, and missing anchor fallback — see `.research/deep-dives/repetition-modes/omnifocus-repetition-behavior.md`.
-
 #### Choosing a mode
 
-- Task must happen on **specific calendar days** regardless of completion history → **`regularly_with_catch_up`** (or `regularly` if every missed occurrence must be tracked)
-- The **minimum gap** between occurrences matters more than landing on a fixed day → **`from_completion`**
-- When unsure → **`regularly_with_catch_up`** is the safe default
+- ✅ Task must happen on **specific calendar days** regardless of completion history → **`regularly_with_catch_up`** (recommended default)
+- 🔄 Must process **every missed occurrence** individually → **`regularly`**
+- ⚠️ The **minimum gap** between occurrences matters more than the specific day → **`from_completion`**
+
+#### BYDAY edge cases
+
+![](images/repeat-modes-end.png)
+
+When `from_completion` is combined with day-of-week patterns (e.g. "every WE + FR"), it produces counterintuitive results in three scenarios:
+
+- ⚡ **Same-day eligibility** — `catch_up` can land on today if the due time is still in the future; `from_completion` skips today entirely, no matter how many hours remain. Can create a **5-day gap**.
+- 🤯 **Grid reset** (`INTERVAL ≥ 2`) — `catch_up` preserves the original biweekly/monthly grid; `from_completion` resets the grid from the completion date. Can create a **14+ day gap**.
+- 😤 **Early completion dismissal** — completing a task early with `from_completion` can land right back on the original due date, as if the early effort didn't count.
+
+See [BYDAY Edge Cases](byday-edge-cases.md) for the full breakdown with diagrams. For the raw empirical data, see [omnifocus-repetition-behavior.md](../.research/deep-dives/repetition-modes/omnifocus-repetition-behavior.md).
