@@ -23,6 +23,10 @@ Deep dive completed: `.research/deep-dives/direct-database-access-ordering/RESUL
 - Alternatively, compute full ordinal via `ROW_NUMBER() OVER (PARTITION BY parent ORDER BY rank)` and check if 0 (first) or max (last)
 - Low priority — the warning is transparent about the limitation
 
+## Target Milestone
+
+v1.3.3 — Ordering & Reordering. See `.research/updated-spec/MILESTONE-v1.3.3.md`, section "Improve Move No-Op Warning Accuracy".
+
 ## Related
 
 - **[Fix same-container move by translating to moveBefore/moveAfter](2026-03-12-fix-same-container-move-by-translating-to-movebefore-moveafter.md)** — fixes the move itself. This todo is about the warning accuracy; that one is about the operation actually working. Both need ordering data.

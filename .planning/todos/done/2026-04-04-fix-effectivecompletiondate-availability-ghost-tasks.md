@@ -15,3 +15,7 @@ Example: task `a5Wy7iqIVxX` ("Trash Bag") has `effectiveCompletionDate: "2026-03
 ## Solution
 
 If `effectiveCompletionDate` is set, `availability` should be `"completed"` and the task should not appear in default (available + blocked) queries. Needs investigation into whether this is a SQLite mapping issue or a bridge data issue.
+
+## Resolution
+
+Fixed by phase 37.1.
