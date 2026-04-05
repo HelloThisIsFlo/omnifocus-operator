@@ -7,7 +7,6 @@ merge into the final response.
 
 from __future__ import annotations
 
-import difflib
 import logging
 from datetime import UTC, datetime
 from datetime import date as date_type
@@ -51,6 +50,7 @@ from omnifocus_operator.agent_messages.warnings import (
     TAGS_ALREADY_MATCH,
 )
 from omnifocus_operator.config import FUZZY_MATCH_CUTOFF, FUZZY_MATCH_MAX_SUGGESTIONS
+from omnifocus_operator.service.fuzzy import suggest_close_matches as _suggest_close_matches
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
 from omnifocus_operator.models.enums import Availability, Schedule
@@ -129,7 +129,7 @@ class DomainLogic:
         cutoff: float = FUZZY_MATCH_CUTOFF,
     ) -> list[str]:
         """Return close name matches for a failed resolution."""
-        return difflib.get_close_matches(value, entity_names, n=n, cutoff=cutoff)
+        return _suggest_close_matches(value, entity_names, n=n, cutoff=cutoff)
 
     def check_filter_resolution(
         self,
