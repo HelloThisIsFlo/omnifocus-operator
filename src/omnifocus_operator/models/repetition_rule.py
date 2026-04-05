@@ -42,12 +42,15 @@ from omnifocus_operator.agent_messages.descriptions import (
 )
 from omnifocus_operator.agent_messages.errors import (
     REPETITION_AT_MOST_ONE_ORDINAL,
+    REPETITION_FIELD_WRONG_TYPE_MONTHLY,
+    REPETITION_FIELD_WRONG_TYPE_WEEKLY,
     REPETITION_INVALID_DAY_CODE,
     REPETITION_INVALID_DAY_NAME,
     REPETITION_INVALID_END_OCCURRENCES,
     REPETITION_INVALID_FREQUENCY_TYPE,
     REPETITION_INVALID_INTERVAL,
     REPETITION_INVALID_ON_DATE,
+    REPETITION_ON_AND_ON_DATES_EXCLUSIVE,
 )
 from omnifocus_operator.models.base import OmniFocusBaseModel
 from omnifocus_operator.models.enums import BasedOn, Schedule
@@ -162,24 +165,13 @@ def check_frequency_cross_type_fields(
     on_dates: list[int] | None,
 ) -> None:
     if on_days is not None and type_ != "weekly":
-        raise ValueError(
-            f"on_days is not valid for type '{type_}'. on_days can only be used with type 'weekly'."
-        )
+        raise ValueError(REPETITION_FIELD_WRONG_TYPE_WEEKLY.format(field="on_days", type=type_))
     if on is not None and type_ != "monthly":
-        raise ValueError(
-            f"on is not valid for type '{type_}'. on can only be used with type 'monthly'."
-        )
+        raise ValueError(REPETITION_FIELD_WRONG_TYPE_MONTHLY.format(field="on", type=type_))
     if on_dates is not None and type_ != "monthly":
-        raise ValueError(
-            f"on_dates is not valid for type '{type_}'. "
-            "on_dates can only be used with type 'monthly'."
-        )
+        raise ValueError(REPETITION_FIELD_WRONG_TYPE_MONTHLY.format(field="on_dates", type=type_))
     if on is not None and on_dates is not None:
-        raise ValueError(
-            "on and on_dates are mutually exclusive on monthly frequency. "
-            "Use on for day-of-week patterns (e.g., {'second': 'tuesday'}) "
-            "or onDates for specific dates (e.g., [1, 15])."
-        )
+        raise ValueError(REPETITION_ON_AND_ON_DATES_EXCLUSIVE)
 
 
 # -- Frequency Model ---------------------------------------------------------

@@ -19,7 +19,7 @@ from omnifocus_operator.agent_messages.descriptions import (
     NOTE_EDIT_COMMAND,
     PLANNED_DATE_WRITE,
 )
-from omnifocus_operator.agent_messages.errors import LIFECYCLE_INVALID_VALUE
+from omnifocus_operator.agent_messages.errors import LIFECYCLE_INVALID_VALUE, TASK_NAME_EMPTY
 from omnifocus_operator.contracts.base import (
     UNSET,
     CommandModel,
@@ -64,7 +64,7 @@ class EditTaskCommand(CommandModel):
         if isinstance(v, str):
             v = v.strip()
             if not v:
-                raise ValueError("Task name cannot be empty")
+                raise ValueError(TASK_NAME_EMPTY)
         return v
 
     # Clearable fields (None = clear the value)

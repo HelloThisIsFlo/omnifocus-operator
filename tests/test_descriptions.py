@@ -30,6 +30,7 @@ from omnifocus_operator.models import repetition_rule as models_repetition_rule
 from omnifocus_operator.models import snapshot as models_snapshot
 from omnifocus_operator.models import tag as models_tag
 from omnifocus_operator.models import task as models_task
+from tests.agent_messages_helpers import get_consumer_sources, get_upper_snake_constants
 
 _CONSUMER_MODULES = [
     models_common,
@@ -53,16 +54,6 @@ _CONSUMER_MODULES = [
     contracts_list_perspectives,
     server_mod,
 ]
-
-
-def _get_upper_snake_constants(module: object) -> set[str]:
-    """Return all UPPER_SNAKE_CASE names exported from a module."""
-    return {name for name in dir(module) if name.isupper() and not name.startswith("_")}
-
-
-def _get_consumer_sources() -> str:
-    """Return combined source of all consumer modules."""
-    return "\n".join(inspect.getsource(m) for m in _CONSUMER_MODULES)
 
 
 # --- Known internal classes (not agent-facing, exempt from centralization) ---
@@ -107,7 +98,7 @@ class TestDescriptionConsolidation:
 
     def test_all_description_constants_are_strings(self) -> None:
         """Every UPPER_SNAKE_CASE constant in descriptions.py is a non-empty string."""
-        constants = _get_upper_snake_constants(desc_mod)
+        constants = get_upper_snake_constants(desc_mod)
         assert len(constants) > 0, "No constants found in descriptions module"
         for name in constants:
             value = getattr(desc_mod, name)
@@ -116,8 +107,8 @@ class TestDescriptionConsolidation:
 
     def test_all_description_constants_referenced_in_consumers(self) -> None:
         """Every constant in descriptions.py must appear in at least one consumer (DESC-04)."""
-        source = _get_consumer_sources()
-        constants = _get_upper_snake_constants(desc_mod)
+        source = get_consumer_sources(_CONSUMER_MODULES)
+        constants = get_upper_snake_constants(desc_mod)
         unreferenced = {c for c in constants if c not in source}
         assert unreferenced == set(), (
             f"Description constants not referenced in consumer modules: {unreferenced}"

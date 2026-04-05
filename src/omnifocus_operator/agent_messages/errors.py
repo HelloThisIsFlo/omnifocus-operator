@@ -88,6 +88,20 @@ REPETITION_INVALID_FREQUENCY_TYPE = (
     "valid types: minutely, hourly, daily, weekly, monthly, yearly"
 )
 
+REPETITION_FIELD_WRONG_TYPE_WEEKLY = (
+    "{field} is not valid for type '{type}'. {field} can only be used with type 'weekly'."
+)
+
+REPETITION_FIELD_WRONG_TYPE_MONTHLY = (
+    "{field} is not valid for type '{type}'. {field} can only be used with type 'monthly'."
+)
+
+REPETITION_ON_AND_ON_DATES_EXCLUSIVE = (
+    "on and on_dates are mutually exclusive on monthly frequency. "
+    "Use on for day-of-week patterns (e.g., {{'second': 'tuesday'}}) "
+    "or onDates for specific dates (e.g., [1, 15])."
+)
+
 REPETITION_INVALID_INTERVAL = "Interval must be >= 1 (got {value})"
 
 REPETITION_INVALID_END_OCCURRENCES = "End occurrences must be >= 1 (got {value})"
