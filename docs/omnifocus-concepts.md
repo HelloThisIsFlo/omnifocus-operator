@@ -91,6 +91,28 @@ OmniFocus tags have a **status** field (Active, On Hold, Dropped). The omnifocus
 
 OmniFocus tasks and projects can repeat. A repetition rule has three components: **frequency** (how often), **schedule** (what triggers the next occurrence), and **basedOn** (which date field anchors the schedule).
 
+### Frequency
+
+Frequency = **type** + **interval** + optional refinements. The `interval` defaults to 1 and multiplies the base type (e.g. `weekly` + `interval=2` = biweekly).
+
+| Type | Meaning | Refinement options |
+| ---- | ------- | ------------------ |
+| `minutely` | Every N minutes | — |
+| `hourly` | Every N hours | — |
+| `daily` | Every N days | — |
+| `weekly` | Every N weeks | `on_days` — specific weekdays, e.g. `["MO", "WE", "FR"]` |
+| `monthly` | Every N months | `on_dates` OR `on` (mutually exclusive, see below) |
+| `yearly` | Every N years | — |
+
+**Monthly refinements** (pick one or neither):
+
+- `on_dates` — specific calendar dates, e.g. `[1, 15]` for 1st and 15th. Use `-1` for last day of month
+- `on` — ordinal weekday pattern via `OrdinalWeekday`. Set exactly one position (`first`..`fifth`, `last`) to a day name:
+  - Single days: `monday`..`sunday`
+  - Day groups: `weekday` (Mon–Fri), `weekend_day` (Sat–Sun)
+  - **Example:** `{"second": "tuesday"}` = second Tuesday of each month
+  - **Example:** `{"last": "weekday"}` = last weekday of each month
+
 ### Based On (Anchor Date)
 
 The anchor date determines which date field the repetition schedule attaches to. When the next occurrence is generated, the anchor date moves to the scheduled date. **All other date fields shift relatively, preserving their current offset from the anchor.**
