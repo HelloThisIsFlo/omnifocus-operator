@@ -72,11 +72,7 @@ Verify via `get_task`:
 
 ### Manual Actions
 
-If no ambiguous project or tag substrings were found in Step 1:
-
-> "Tests 3a and 3e need project/tag names that match multiple entities. None were found in your database — those tests will be SKIPPED. You can create duplicates manually if you'd like to test multi-match. Let me know when ready."
-
-Otherwise, confirm setup is complete and: "Running all tests now. I'll report results when done."
+If no ambiguous project or tag substrings were found in Step 1, tell the user what's needed for tests 3a and 3e (project/tag names that match multiple entities) and ask them to create duplicates. Wait for confirmation before proceeding.
 
 ## Tests
 
@@ -151,7 +147,6 @@ Otherwise, confirm setup is complete and: "Running all tests now. I'll report re
 #### Test 3a: Project multi-match
 1. `list_tasks` with `project: "<ambig-proj>", search: "LT-"`
 2. PASS if: warning mentions "matched" with candidate project names and IDs, and suggests filtering by ID; filter IS applied to ALL matched projects (results include tasks from every matching project, but NOT tasks from unmatched projects or inbox)
-3. SKIP if: no ambiguous project substring found in setup
 
 #### Test 3b: Project no-match — did you mean?
 1. `list_tasks` with `project: "<misspelling-of-proj-a>"` (e.g., swap/add a letter)
@@ -168,7 +163,6 @@ Otherwise, confirm setup is complete and: "Running all tests now. I'll report re
 #### Test 3e: Tag multi-match
 1. `list_tasks` with `tags: ["<ambig-tag>"], search: "LT-"`
 2. PASS if: warning mentions multiple tags matching with candidate IDs; filter IS applied to ALL matched tags (tasks with any of the matched tags are included)
-3. SKIP if: no ambiguous tag substring found in setup
 
 ### 4. Pagination
 
@@ -222,8 +216,8 @@ Run INDIVIDUALLY (will error):
 2. PASS if: `items` is empty array; `total: 0`; `hasMore: false`
 
 #### Test 6b: No filters at all
-1. `list_tasks` with no parameters
-2. PASS if: returns items (non-empty); `total` > 0; only available+blocked tasks (default availability applied)
+1. `list_tasks` with `limit: 2`
+2. PASS if: returns 2 items; `total` > 0; only available+blocked tasks (default availability applied)
 
 #### Test 6c: estimatedMinutesMax excludes no-estimate tasks
 1. `list_tasks` with `estimatedMinutesMax: 999, search: "LT-"`
@@ -256,11 +250,11 @@ Run INDIVIDUALLY (will error):
 | 2c | Availability: +DROPPED | Dropped tasks appear when explicitly included | |
 | 2d | Availability: all four | All availability states; everything returned | |
 | 2e | Availability: AVAILABLE only | Blocked/deferred task excluded when only AVAILABLE requested | |
-| 3a | Resolution: project multi-match | Ambiguous project → warning with candidates, filter applied to all matches | SKIP? |
+| 3a | Resolution: project multi-match | Ambiguous project → warning with candidates, filter applied to all matches | |
 | 3b | Resolution: project did-you-mean | Misspelled project → "Did you mean?" with suggestions | |
 | 3c | Resolution: project no match | Random project name → no-match warning, no suggestions | |
 | 3d | Resolution: tag no-match | Random tag name → no-match warning, filter skipped | |
-| 3e | Resolution: tag multi-match | Ambiguous tag → warning with candidates, filter applied to all matches | SKIP? |
+| 3e | Resolution: tag multi-match | Ambiguous tag → warning with candidates, filter applied to all matches | |
 | 4a | Pagination: default limit | No limit → all test tasks returned, total accurate | |
 | 4b | Pagination: custom limit | limit: 2 → exactly 2 items, hasMore: true | |
 | 4c | Pagination: offset | limit: 2, offset: 2 → second page, different items | |
