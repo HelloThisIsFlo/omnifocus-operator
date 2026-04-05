@@ -69,7 +69,9 @@ _TASK_AVAILABILITY_CLAUSES: dict[Availability, str] = {
     Availability.BLOCKED: (
         "(t.blocked != 0 AND t.effectiveDateCompleted IS NULL AND t.effectiveDateHidden IS NULL)"
     ),
-    Availability.COMPLETED: ("(t.effectiveDateCompleted IS NOT NULL AND t.effectiveDateHidden IS NULL)"),
+    Availability.COMPLETED: (
+        "(t.effectiveDateCompleted IS NOT NULL AND t.effectiveDateHidden IS NULL)"
+    ),
     Availability.DROPPED: "(t.effectiveDateHidden IS NOT NULL)",
 }
 
