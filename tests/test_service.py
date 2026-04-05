@@ -2280,3 +2280,141 @@ class TestAnchorDateWarning:
             effective_dates={"due_date": None, "defer_date": None, "planned_date": None},
         )
         assert "completion date" in warnings[0]
+
+
+# ---------------------------------------------------------------------------
+# Name Resolution Integration Tests (Phase 40, Plan 02)
+# ---------------------------------------------------------------------------
+
+
+class TestNameResolutionIntegration:
+    """Integration tests proving name resolution works end-to-end through
+    add_task and edit_task pipelines -- not just at the Resolver unit level.
+
+    These tests pass entity names (not IDs) through the full pipeline and
+    verify the resolved IDs are used correctly.
+    """
+
+    # -- add_task: parent by name --
+
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Inbox Task")],
+        projects=[make_project_dict(id="proj-1", name="Project One")],
+    )
+    async def test_add_task_parent_by_name(self, service: OperatorService) -> None:
+        """add_task with parent='Project One' resolves to proj-1 (NRES-01)."""
+        result = await service.add_task(AddTaskCommand(name="New Task", parent="Project One"))
+        assert result.success is True
+
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Inbox Task")],
+        projects=[make_project_dict(id="proj-1", name="Project One")],
+    )
+    async def test_add_task_parent_by_name_substring(self, service: OperatorService) -> None:
+        """add_task with parent='Proj' substring-matches 'Project One' (NRES-01)."""
+        result = await service.add_task(AddTaskCommand(name="New Task", parent="Proj"))
+        assert result.success is True
+
+    async def test_add_task_parent_system_location(self, service: OperatorService) -> None:
+        """add_task with parent='$inbox' resolves to inbox (NRES-01)."""
+        result = await service.add_task(AddTaskCommand(name="Inbox Task", parent="$inbox"))
+        assert result.success is True
+
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Inbox Task")],
+        projects=[make_project_dict(id="proj-1", name="Project One")],
+    )
+    async def test_add_task_parent_name_not_found(self, service: OperatorService) -> None:
+        """add_task with parent='Nonexistent' raises ValueError with suggestions (NRES-01)."""
+        with pytest.raises(ValueError, match="No project found matching 'Nonexistent'"):
+            await service.add_task(AddTaskCommand(name="Task", parent="Nonexistent"))
+
+    # -- edit_task: moveTo ending/beginning by name --
+
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Task To Move")],
+        projects=[make_project_dict(id="proj-1", name="Project One")],
+    )
+    async def test_edit_task_move_ending_by_name(self, service: OperatorService) -> None:
+        """edit_task with moveTo ending='Project One' resolves to proj-1 (NRES-02)."""
+        result = await service.edit_task(
+            EditTaskCommand(
+                id="task-001",
+                actions=EditTaskActions(move=MoveAction(ending="Project One")),
+            )
+        )
+        assert result.success is True
+
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Task To Move")],
+        projects=[make_project_dict(id="proj-1", name="Project One")],
+    )
+    async def test_edit_task_move_beginning_by_name(self, service: OperatorService) -> None:
+        """edit_task with moveTo beginning='Project One' resolves to proj-1 (NRES-02)."""
+        result = await service.edit_task(
+            EditTaskCommand(
+                id="task-001",
+                actions=EditTaskActions(move=MoveAction(beginning="Project One")),
+            )
+        )
+        assert result.success is True
+
+    # -- edit_task: moveTo before/after by name --
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="task-001", name="Task To Move"),
+            make_task_dict(id="task-alpha", name="Alpha"),
+        ],
+    )
+    async def test_edit_task_move_before_by_name(self, service: OperatorService) -> None:
+        """edit_task with moveTo before='Alpha' resolves to task-alpha (NRES-03)."""
+        result = await service.edit_task(
+            EditTaskCommand(
+                id="task-001",
+                actions=EditTaskActions(move=MoveAction(before="Alpha")),
+            )
+        )
+        assert result.success is True
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="task-001", name="Task To Move"),
+            make_task_dict(id="task-alpha", name="Alpha"),
+        ],
+    )
+    async def test_edit_task_move_after_by_name(self, service: OperatorService) -> None:
+        """edit_task with moveTo after='Alpha' resolves to task-alpha (NRES-03)."""
+        result = await service.edit_task(
+            EditTaskCommand(
+                id="task-001",
+                actions=EditTaskActions(move=MoveAction(after="Alpha")),
+            )
+        )
+        assert result.success is True
+
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Task To Move")],
+    )
+    async def test_edit_task_move_anchor_not_found(self, service: OperatorService) -> None:
+        """edit_task with moveTo before='Nonexistent' raises ValueError (NRES-03)."""
+        with pytest.raises(ValueError, match="Anchor task not found"):
+            await service.edit_task(
+                EditTaskCommand(
+                    id="task-001",
+                    actions=EditTaskActions(move=MoveAction(before="Nonexistent")),
+                )
+            )
+
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Task To Move")],
+    )
+    async def test_edit_task_move_ending_system_location(self, service: OperatorService) -> None:
+        """edit_task with moveTo ending='$inbox' resolves without error (NRES-02)."""
+        result = await service.edit_task(
+            EditTaskCommand(
+                id="task-001",
+                actions=EditTaskActions(move=MoveAction(ending="$inbox")),
+            )
+        )
+        assert result.success is True

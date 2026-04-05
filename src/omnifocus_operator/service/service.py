@@ -22,6 +22,7 @@ from omnifocus_operator.agent_messages.errors import (
 from omnifocus_operator.agent_messages.warnings import (
     REPETITION_NO_OP,
 )
+from omnifocus_operator.config import SYSTEM_LOCATION_INBOX
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.protocols import Service
 from omnifocus_operator.contracts.shared.repetition_rule import RepetitionRuleRepoPayload
@@ -445,9 +446,12 @@ class _AddTaskPipeline(_Pipeline):
         validate_task_name(self._command.name)
 
     async def _resolve_parent(self) -> None:
+        self._resolved_parent: str | None = None
         if self._command.parent is None:
             return
-        await self._resolver.resolve_container(self._command.parent)
+        resolved = await self._resolver.resolve_container(self._command.parent)
+        # $inbox resolves to None (inbox = no parent)
+        self._resolved_parent = None if resolved == SYSTEM_LOCATION_INBOX else resolved
 
     async def _resolve_tags(self) -> None:
         self._resolved_tag_ids: list[str] | None = None
@@ -509,8 +513,15 @@ class _AddTaskPipeline(_Pipeline):
                 based_on=spec.based_on,
                 end=self._end_condition,
             )
+        # Use resolved parent ID (from name resolution) instead of raw command parent
+        if self._resolved_parent is not None:
+            command_with_resolved = self._command.model_copy(
+                update={"parent": self._resolved_parent}
+            )
+        else:
+            command_with_resolved = self._command
         self._repo_payload = self._payload.build_add(
-            self._command, self._resolved_tag_ids, repetition_rule_payload=repetition_payload
+            command_with_resolved, self._resolved_tag_ids, repetition_rule_payload=repetition_payload
         )
 
     async def _delegate(self) -> AddTaskResult:

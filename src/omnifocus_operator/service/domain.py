@@ -49,7 +49,11 @@ from omnifocus_operator.agent_messages.warnings import (
     TAG_NOT_ON_TASK,
     TAGS_ALREADY_MATCH,
 )
-from omnifocus_operator.config import FUZZY_MATCH_CUTOFF, FUZZY_MATCH_MAX_SUGGESTIONS
+from omnifocus_operator.config import (
+    FUZZY_MATCH_CUTOFF,
+    FUZZY_MATCH_MAX_SUGGESTIONS,
+    SYSTEM_LOCATION_INBOX,
+)
 from omnifocus_operator.service.fuzzy import suggest_close_matches as _suggest_close_matches
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
@@ -589,15 +593,19 @@ class DomainLogic:
         if container_id is None:
             return {"position": position, "container_id": None}
 
-        # Verify container exists (project or task)
-        await self._resolver.resolve_container(container_id)
+        # Resolve container name/ID to canonical ID
+        resolved_id = await self._resolver.resolve_container(container_id)
+
+        # $inbox resolves to None (inbox has no container ID)
+        if resolved_id == SYSTEM_LOCATION_INBOX:
+            return {"position": position, "container_id": None}
 
         # If container is a task, check for circular reference
-        container_task = await self._repo.get_task(container_id)
+        container_task = await self._repo.get_task(resolved_id)
         if container_task is not None:
-            await self.check_cycle(task_id, container_id)
+            await self.check_cycle(task_id, resolved_id)
 
-        return {"position": position, "container_id": container_id}
+        return {"position": position, "container_id": resolved_id}
 
     async def _process_anchor_move(
         self,
@@ -606,11 +614,11 @@ class DomainLogic:
     ) -> dict[str, object]:
         """Move before/after a sibling task."""
         try:
-            await self._resolver.lookup_task(anchor_id)
+            resolved_id = await self._resolver.resolve_anchor(anchor_id)
         except ValueError:
             msg = ANCHOR_TASK_NOT_FOUND.format(id=anchor_id)
             raise ValueError(msg) from None
-        return {"position": position, "anchor_id": anchor_id}
+        return {"position": position, "anchor_id": resolved_id}
 
     # -- No-op detection ---------------------------------------------------
 
