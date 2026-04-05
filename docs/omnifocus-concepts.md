@@ -57,45 +57,48 @@ Fills the gap between due (too urgent — implies negative consequences) and def
 > - **Planned dates** → intentions
 > - Unsure which to use? It's probably a planned date.
 
-## Tag Status and Its Effect on Task Availability
+## Tag Status and Task Availability
 
-OmniFocus tags have a **status** field (Active, On Hold, Dropped). The omnifocus-operator remaps these to an **availability** enum (`available`, `blocked`, `dropped`) for consistency with how other entity types expose their state.
+OmniFocus tags have a **status** field (Active, On Hold, Dropped). The omnifocus-operator remaps these to an **availability** enum (`available`, `blocked`, `dropped`) for consistency with other entity types.
 
 ### Tag Statuses
 
-Tags have three possible statuses, set via the inspector:
+Tags have three statuses, set via the inspector:
 
-- **Active** (default): The tag is in normal use. It appears in the tag sidebar and does not affect the availability of tasks it's assigned to.
+| OmniFocus status | Operator `availability` | In sidebar? | Effect on tasks                                  |
+| ---------------- | ----------------------- | ----------- | ------------------------------------------------ |
+| ✅ Active        | `available`             | Yes         | None — tag is in normal use                      |
+| 🔒 On Hold      | `blocked`               | Yes         | **Hard block** — task blocked regardless of other tags |
+| 👻 Dropped      | `dropped`               | No          | **Soft block** — task blocked only if ALL its tags are Dropped |
 
-- **On Hold**: The tag is temporarily paused. It still appears in the tag sidebar. Any task that has an On Hold tag becomes **blocked**, even if the task also has other Active tags. This is the stronger mechanism — it's a hard block. Common use cases: "Waiting on someone else", location-based tags for places you can't currently access (e.g. "Office" during remote work), or any context that's temporarily not actionable.
+- ✅ **Active** (default) — no effect on task availability
+- 🔒 **On Hold** — hard block. One On Hold tag makes the task blocked, even if it also has Active tags
+  - Common use cases: "Waiting on someone", location tags for inaccessible places (e.g. "Office" during remote work), any temporarily non-actionable context
+- 👻 **Dropped** — soft block. The tag disappears from the sidebar but stays on its tasks
+  - Task blocked only if it has tags and **all** of them are Dropped
+  - If the task has at least one Active or On Hold tag alongside, the Dropped tag alone doesn't cause blocking
+  - (If one of those other tags is On Hold, the task is still blocked — but that's the On Hold tag, not the Dropped one)
 
-- **Dropped**: The tag is retired. It disappears from the tag sidebar/hierarchy but is NOT deleted — it remains on any tasks that had it. A dropped tag does NOT block tasks the same way On Hold does. The rule is: a task that has tags and **all** of them are Dropped becomes blocked. But if the task has at least one Active (or On Hold) tag alongside the Dropped one, the Dropped tag alone does not cause blocking. (Note: if one of those other tags is On Hold, the task will still be blocked — but that's because of the On Hold tag, not the Dropped one.)
+> [!important] The asymmetry
+>
+> - 🔒 **On Hold** = hard block — one On Hold tag overrides everything
+> - 👻 **Dropped** = soft block — only blocks when it's the task's sole tag status
+> - Dropping a tag ≠ deleting it — the tag stays on historical tasks, it just hides from the sidebar
 
-### Summary
+### Operator Mapping
 
-| Tag Status | Visible in sidebar? | Effect on tasks                                                 |
-| ---------- | -------------------- | --------------------------------------------------------------- |
-| Active     | Yes                  | No effect on availability                                       |
-| On Hold    | Yes                  | Task becomes blocked, regardless of other tags                  |
-| Dropped    | No                   | Task becomes blocked ONLY if all of the task's tags are Dropped |
+`list_tags` exposes an `availability` filter with default `["available", "blocked"]` — matching OmniFocus's sidebar behavior (Active + On Hold visible, Dropped hidden).
 
-### Mapping to the Operator's Availability Filter
-
-In the omnifocus-operator, `list_tags` exposes an `availability` enum with values: `available`, `blocked`, `dropped`.
-
-The mapping from OmniFocus tag status to operator availability:
-
-- Active tag → availability: `available`
-- On Hold tag → availability: `blocked`
-- Dropped tag → availability: `dropped`
-
-Default filter is `["available", "blocked"]`, which returns Active and On Hold tags but excludes Dropped tags (matching OmniFocus's default sidebar behavior).
+> [!warning] Dropped behavior is counterintuitive
+>
+> - You'd expect "Dropped = ignored" — but it's the opposite. A Dropped tag **actively blocks** the task when no other tag status remains
+> - Think of it as: the task has no actionable context left, so OmniFocus treats it as blocked
 
 ### Edge Cases
 
-- A task that is blocked (due to On Hold tag) AND due soon/overdue may change its text formatting in OmniFocus (from grey to normal), but this is a display inconsistency — the task is still considered blocked and won't appear in Available-filtered views.
-- The Forecast perspective does not have an Available/Remaining filter and will show all items with a due date regardless of tag-based availability.
-- Dropping a tag is a way to retire it without deleting it (preserving it on historical tasks). It's not the same as dropping a task.
+- 🤔 **Display inconsistency** — a blocked task (On Hold tag) that is due soon/overdue may switch from grey to normal text in OmniFocus, but it's still blocked and won't appear in Available-filtered views
+- 📅 **Forecast ignores availability** — the Forecast perspective has no Available/Remaining filter; all items with a due date appear regardless of tag status
+- 👻 **Dropping ≠ dropping** — dropping a tag retires it without deleting (preserved on historical tasks); not the same as dropping a task
 
 ## Repetition Rules
 
