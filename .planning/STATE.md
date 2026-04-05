@@ -1,9 +1,9 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.3.1
-milestone_name: Inbox as First-Class Value
+milestone_name: First-Class References
 status: defining_requirements
-stopped_at: Milestone v1.3.1 started, defining requirements
+stopped_at: Milestone v1.3.1 First-Class References started, defining requirements
 last_updated: "2026-04-05T15:00:00.000Z"
 last_activity: 2026-04-05
 progress:
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-05)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** v1.3.1 Inbox as First-Class Value
+**Current focus:** v1.3.1 First-Class References
 
 ## Current Position
 
 Phase: Not started (defining requirements)
 Plan: —
 Status: Defining requirements
-Last activity: 2026-04-05 — Milestone v1.3.1 started
+Last activity: 2026-04-05 — Milestone v1.3.1 First-Class References started
 
 ## Performance Metrics
 
@@ -64,6 +64,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-04-05 - Milestone v1.3.1 started
+Last activity: 2026-04-05 - Milestone v1.3.1 First-Class References started
 Stopped at: Defining requirements
 Resume file: None

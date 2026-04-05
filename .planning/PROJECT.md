@@ -8,7 +8,7 @@ A Python MCP server that exposes OmniFocus (macOS task manager) as structured ta
 
 Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
 
-## Current Milestone: v1.3.1 Inbox as First-Class Value
+## Current Milestone: v1.3.1 First-Class References
 
 **Goal:** Eliminate null overloading for inbox across the entire API surface — `$inbox` becomes the single, explicit representation everywhere.
 
