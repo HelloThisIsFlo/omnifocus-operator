@@ -57,9 +57,61 @@ Fills the gap between due (too urgent — implies negative consequences) and def
 > - **Planned dates** → intentions
 > - Unsure which to use? It's probably a planned date.
 
+## Tag Status and Task Availability
+
+OmniFocus tags have a **status** field (Active, On Hold, Dropped). The omnifocus-operator remaps these to an **availability** enum (`available`, `blocked`, `dropped`) for consistency with other entity types. Default `list_tags` filter is `["available", "blocked"]` — matching OmniFocus's sidebar behavior.
+
+| OmniFocus status | → Operator | In sidebar? | Effect on tasks                                                |
+| ---------------- | ---------- | ----------- | -------------------------------------------------------------- |
+| ✅ Active        | `available` | Yes        | None — tag is in normal use                                    |
+| 🔒 On Hold      | `blocked`   | Yes        | **Hard block** — task blocked regardless of other tags         |
+| 👻 Dropped      | `dropped`   | No         | **Soft block** — task blocked only if ALL its tags are Dropped |
+
+**Use cases:**
+
+- 🔒 **On Hold** — "Waiting on someone", location tags for inaccessible places (e.g. "Office" during remote work), any temporarily non-actionable context
+- 👻 **Dropped** — retiring a tag without deleting it. Hides from the sidebar but stays on historical tasks
+  - If the task has at least one Active or On Hold tag alongside, the Dropped tag alone doesn't cause blocking
+
+> [!warning] Dropped behavior is counterintuitive
+>
+> - You'd expect "Dropped = ignored" — but a Dropped tag **actively blocks** the task when no other tag status remains
+> - Mental model: the task has no actionable context left => OmniFocus treats it as blocked
+
+> [!note] Tags are manually associated
+>
+> - Tags must be explicitly assigned to a task — tag status rules only affect tasks that carry that tag
+
+---
+
+- 🤔 **Display inconsistency** — a blocked task (On Hold tag) that is due soon/overdue may switch from grey to normal text in OmniFocus, but it's still blocked and won't appear in Available-filtered views
+- 📅 **Forecast ignores availability** — no Available/Remaining filter; all items with a due date appear regardless of tag status
+
 ## Repetition Rules
 
 OmniFocus tasks and projects can repeat. A repetition rule has three components: **frequency** (how often), **schedule** (what triggers the next occurrence), and **basedOn** (which date field anchors the schedule).
+
+### Frequency
+
+Frequency = **type** + **interval** + optional refinements. The `interval` defaults to 1 and multiplies the base type (e.g. `weekly` + `interval=2` = biweekly).
+
+| Type | Meaning | Refinement options |
+| ---- | ------- | ------------------ |
+| `minutely` | Every N minutes | — |
+| `hourly` | Every N hours | — |
+| `daily` | Every N days | — |
+| `weekly` | Every N weeks | `on_days` — specific weekdays, e.g. `["MO", "WE", "FR"]` |
+| `monthly` | Every N months | `on_dates` OR `on` (mutually exclusive, see below) |
+| `yearly` | Every N years | — |
+
+**Monthly refinements** (pick one or neither):
+
+- `on_dates` — specific calendar dates, e.g. `[1, 15]` for 1st and 15th. Use `-1` for last day of month
+- `on` — ordinal weekday pattern via `OrdinalWeekday`. Set exactly one position (`first`..`fifth`, `last`) to a day name:
+  - Single days: `monday`..`sunday`
+  - Day groups: `weekday` (Mon–Fri), `weekend_day` (Sat–Sun)
+  - **Example:** `{"second": "tuesday"}` = second Tuesday of each month
+  - **Example:** `{"last": "weekday"}` = last weekday of each month
 
 ### Based On (Anchor Date)
 
@@ -97,13 +149,19 @@ When the next occurrence is generated:
 > - Uses the **completion date** (not the creation date) for the date portion
 > - Uses the user's **default time** for that date type (OmniFocus Settings → Dates & Times) for the time portion
 >
-> Valid but potentially surprising => **Set the anchor date explicitly for predictable behavior**
+> **Example:** task repeats weekly, anchored to `planned_date`, but no planned date is set:
+>
+> - You create the task on Wednesday
+> - You complete it on Friday
+> - You'd expect the next `planned_date` to be Wednesday — but it's Friday (the completion date)
+>
+> => **Set the anchor date explicitly for predictable behavior**
 >
 > _See [omnifocus-repetition-behavior.md](../.research/deep-dives/repetition-modes/omnifocus-repetition-behavior.md), Part 7 for the full empirical verification_
 
 ### Schedule (Recurrence Mode)
 
-The schedule controls what happens when a task is completed — specifically, how the next occurrence's date is calculated.
+The schedule controls what happens when a task is completed — specifically, how OmniFocus calculates the next occurrence's date.
 
 | Mode                         | How the next date is calculated                                     |
 | ---------------------------- | ------------------------------------------------------------------- |
