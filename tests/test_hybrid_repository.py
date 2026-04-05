@@ -534,17 +534,31 @@ class TestTaskStatus:
         assert result.tasks[0].urgency == "overdue"
 
     @pytest.mark.asyncio
-    @pytest.mark.hybrid_db(tasks=[_minimal_task({
-        "dateHidden": _NOW_CF, "effectiveDateHidden": _NOW_CF,
-    })])
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task(
+                {
+                    "dateHidden": _NOW_CF,
+                    "effectiveDateHidden": _NOW_CF,
+                }
+            )
+        ]
+    )
     async def test_task_availability_dropped(self, hybrid_repo: HybridRepository) -> None:
         result = await hybrid_repo.get_all()
         assert result.tasks[0].availability == "dropped"
 
     @pytest.mark.asyncio
-    @pytest.mark.hybrid_db(tasks=[_minimal_task({
-        "dateCompleted": _NOW_CF, "effectiveDateCompleted": _NOW_CF,
-    })])
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task(
+                {
+                    "dateCompleted": _NOW_CF,
+                    "effectiveDateCompleted": _NOW_CF,
+                }
+            )
+        ]
+    )
     async def test_task_availability_completed(self, hybrid_repo: HybridRepository) -> None:
         result = await hybrid_repo.get_all()
         assert result.tasks[0].availability == "completed"
@@ -562,9 +576,7 @@ class TestTaskStatus:
         assert result.tasks[0].availability == "available"
 
     @pytest.mark.asyncio
-    @pytest.mark.hybrid_db(
-        tasks=[_minimal_task({"effectiveDateCompleted": _NOW_CF})]
-    )
+    @pytest.mark.hybrid_db(tasks=[_minimal_task({"effectiveDateCompleted": _NOW_CF})])
     async def test_task_availability_completed_by_effective(
         self, hybrid_repo: HybridRepository
     ) -> None:
@@ -573,9 +585,7 @@ class TestTaskStatus:
         assert result.tasks[0].availability == "completed"
 
     @pytest.mark.asyncio
-    @pytest.mark.hybrid_db(
-        tasks=[_minimal_task({"effectiveDateHidden": _NOW_CF})]
-    )
+    @pytest.mark.hybrid_db(tasks=[_minimal_task({"effectiveDateHidden": _NOW_CF})])
     async def test_task_availability_dropped_by_effective(
         self, hybrid_repo: HybridRepository
     ) -> None:
@@ -771,9 +781,16 @@ class TestProjectFields:
         assert result.projects[0].availability == "dropped"
 
     @pytest.mark.asyncio
-    @pytest.mark.hybrid_db(projects=[_minimal_project({
-        "dateHidden": _NOW_CF, "effectiveDateHidden": _NOW_CF,
-    })])
+    @pytest.mark.hybrid_db(
+        projects=[
+            _minimal_project(
+                {
+                    "dateHidden": _NOW_CF,
+                    "effectiveDateHidden": _NOW_CF,
+                }
+            )
+        ]
+    )
     async def test_project_availability_dropped_by_date_hidden(
         self, hybrid_repo: HybridRepository
     ) -> None:
@@ -781,9 +798,16 @@ class TestProjectFields:
         assert result.projects[0].availability == "dropped"
 
     @pytest.mark.asyncio
-    @pytest.mark.hybrid_db(projects=[_minimal_project({
-        "dateCompleted": _NOW_CF, "effectiveDateCompleted": _NOW_CF,
-    })])
+    @pytest.mark.hybrid_db(
+        projects=[
+            _minimal_project(
+                {
+                    "dateCompleted": _NOW_CF,
+                    "effectiveDateCompleted": _NOW_CF,
+                }
+            )
+        ]
+    )
     async def test_project_availability_completed(self, hybrid_repo: HybridRepository) -> None:
         result = await hybrid_repo.get_all()
         assert result.projects[0].availability == "completed"
@@ -809,9 +833,7 @@ class TestProjectFields:
         assert result.projects[0].availability == "available"
 
     @pytest.mark.asyncio
-    @pytest.mark.hybrid_db(
-        projects=[_minimal_project({"effectiveDateCompleted": _NOW_CF})]
-    )
+    @pytest.mark.hybrid_db(projects=[_minimal_project({"effectiveDateCompleted": _NOW_CF})])
     async def test_project_availability_completed_by_effective(
         self, hybrid_repo: HybridRepository
     ) -> None:
@@ -820,9 +842,7 @@ class TestProjectFields:
         assert result.projects[0].availability == "completed"
 
     @pytest.mark.asyncio
-    @pytest.mark.hybrid_db(
-        projects=[_minimal_project({"effectiveDateHidden": _NOW_CF})]
-    )
+    @pytest.mark.hybrid_db(projects=[_minimal_project({"effectiveDateHidden": _NOW_CF})])
     async def test_project_availability_dropped_by_effective(
         self, hybrid_repo: HybridRepository
     ) -> None:
@@ -1735,11 +1755,13 @@ class TestListTasksBasic:
         tasks=[
             _minimal_task({"persistentIdentifier": "t-avail", "blocked": 0}),
             _minimal_task({"persistentIdentifier": "t-blocked", "blocked": 1}),
-            _minimal_task({
-                "persistentIdentifier": "t-completed",
-                "dateCompleted": _NOW_CF,
-                "effectiveDateCompleted": _NOW_CF,
-            }),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t-completed",
+                    "dateCompleted": _NOW_CF,
+                    "effectiveDateCompleted": _NOW_CF,
+                }
+            ),
         ],
     )
     async def test_list_tasks_default_excludes_completed(
@@ -1834,16 +1856,20 @@ class TestListTasks:
         tasks=[
             _minimal_task({"persistentIdentifier": "t-avail", "blocked": 0}),
             _minimal_task({"persistentIdentifier": "t-blocked", "blocked": 1}),
-            _minimal_task({
-                "persistentIdentifier": "t-completed",
-                "dateCompleted": _NOW_CF,
-                "effectiveDateCompleted": _NOW_CF,
-            }),
-            _minimal_task({
-                "persistentIdentifier": "t-dropped",
-                "dateHidden": _NOW_CF,
-                "effectiveDateHidden": _NOW_CF,
-            }),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t-completed",
+                    "dateCompleted": _NOW_CF,
+                    "effectiveDateCompleted": _NOW_CF,
+                }
+            ),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t-dropped",
+                    "dateHidden": _NOW_CF,
+                    "effectiveDateHidden": _NOW_CF,
+                }
+            ),
         ],
     )
     async def test_list_tasks_default_excludes_completed_dropped(
@@ -1859,9 +1885,7 @@ class TestListTasks:
     @pytest.mark.hybrid_db(
         tasks=[
             _minimal_task({"persistentIdentifier": "t-active"}),
-            _minimal_task(
-                {"persistentIdentifier": "t-ghost", "effectiveDateCompleted": _NOW_CF}
-            ),
+            _minimal_task({"persistentIdentifier": "t-ghost", "effectiveDateCompleted": _NOW_CF}),
         ],
     )
     async def test_list_tasks_default_excludes_ghost_completed(
@@ -2060,11 +2084,13 @@ class TestListTasks:
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(
         tasks=[
-            _minimal_task({
-                "persistentIdentifier": "t-done",
-                "dateCompleted": _NOW_CF,
-                "effectiveDateCompleted": _NOW_CF,
-            }),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t-done",
+                    "dateCompleted": _NOW_CF,
+                    "effectiveDateCompleted": _NOW_CF,
+                }
+            ),
             _minimal_task({"persistentIdentifier": "t-avail"}),
         ],
     )
