@@ -133,6 +133,7 @@ Carried forward:
 21. Improve ambiguous tag error message with resolution guidance (service)
 22. Make inbox a first-class value instead of null overloading (design effort)
 23. Document edit_tasks action combinability and null-inbox semantics (docs)
+24. Improve list tool parameter documentation (api — from external review)
 
 ### Quick Tasks Completed
 
