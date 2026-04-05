@@ -12,11 +12,14 @@ from omnifocus_operator.agent_messages.descriptions import (
     EFFECTIVE_DUE_DATE,
     EFFECTIVE_FLAGGED,
     EFFECTIVE_PLANNED_DATE,
+    FOLDER_REF_DOC,
     PARENT_REF_DOC,
     PLANNED_DATE,
+    PROJECT_REF_DOC,
     REVIEW_INTERVAL_DOC,
     TAG_REF_DOC,
     TAGS_OUTPUT,
+    TASK_REF_DOC,
 )
 from omnifocus_operator.models.base import OmniFocusBaseModel
 from omnifocus_operator.models.enums import Availability, Urgency
@@ -25,6 +28,27 @@ from omnifocus_operator.models.repetition_rule import RepetitionRule
 
 class TagRef(OmniFocusBaseModel):
     __doc__ = TAG_REF_DOC
+
+    id: str
+    name: str
+
+
+class ProjectRef(OmniFocusBaseModel):
+    __doc__ = PROJECT_REF_DOC
+
+    id: str
+    name: str
+
+
+class TaskRef(OmniFocusBaseModel):
+    __doc__ = TASK_REF_DOC
+
+    id: str
+    name: str
+
+
+class FolderRef(OmniFocusBaseModel):
+    __doc__ = FOLDER_REF_DOC
 
     id: str
     name: str

@@ -9,10 +9,13 @@ from pydantic import AwareDatetime
 from omnifocus_operator.models.base import OmniFocusBaseModel
 from omnifocus_operator.models.common import (
     ActionableEntity,
+    FolderRef,
     OmniFocusEntity,
     ParentRef,
+    ProjectRef,
     ReviewInterval,
     TagRef,
+    TaskRef,
 )
 from omnifocus_operator.models.enums import (
     Availability,
@@ -38,10 +41,13 @@ from omnifocus_operator.models.task import Task
 # Order matters: base classes first, then subclasses, then aggregators.
 _ns: dict[str, type] = {
     "AwareDatetime": AwareDatetime,
+    "FolderRef": FolderRef,
     "ParentRef": ParentRef,
+    "ProjectRef": ProjectRef,
     "RepetitionRule": RepetitionRule,
     "ReviewInterval": ReviewInterval,
     "TagRef": TagRef,
+    "TaskRef": TaskRef,
     "Urgency": Urgency,
     "Availability": Availability,
     "TagAvailability": TagAvailability,
@@ -70,11 +76,13 @@ __all__ = [
     "BasedOn",
     "Folder",
     "FolderAvailability",
+    "FolderRef",
     "OmniFocusBaseModel",
     "OmniFocusEntity",
     "ParentRef",
     "Perspective",
     "Project",
+    "ProjectRef",
     "RepetitionRule",
     "ReviewInterval",
     "Schedule",
@@ -82,5 +90,6 @@ __all__ = [
     "TagAvailability",
     "TagRef",
     "Task",
+    "TaskRef",
     "Urgency",
 ]
