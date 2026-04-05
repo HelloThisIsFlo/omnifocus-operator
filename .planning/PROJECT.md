@@ -2,27 +2,16 @@
 
 ## What This Is
 
-A Python MCP server that exposes OmniFocus (macOS task manager) as structured task infrastructure for AI agents. Reads via SQLite cache (~46ms), writes via OmniJS bridge. Six MCP tools: `get_all`, `get_task`, `get_project`, `get_tag`, `add_tasks`, `edit_tasks`. Agent-first design with educational warnings, patch semantics, and structured actions for tags/movement/lifecycle.
+A Python MCP server that exposes OmniFocus (macOS task manager) as structured task infrastructure for AI agents. Reads via SQLite cache (~46ms), writes via OmniJS bridge. Eleven MCP tools: `get_all`, `get_task`, `get_project`, `get_tag`, `add_tasks`, `edit_tasks`, `list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives`. Agent-first design with educational warnings, typed query models, patch semantics, and structured actions for tags/movement/lifecycle.
 
 ## Core Value
 
 Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
 
-## Current Milestone: v1.3 Read Tools
-
-**Goal:** Give agents the ability to query, filter, browse, and count OmniFocus entities — tasks, projects, tags, folders, and perspectives.
-
-**Target features:**
-- `list_tasks(...)` with SQL filters (inbox, flagged, project, tags, has_children, estimated_minutes_max, availability, search, limit/offset)
-- `list_projects(...)` with filters (status shorthands, folder, review_due_within, flagged, limit/offset)
-- `list_tags(status?)` / `list_folders(status?)` — status-filtered entity lists
-- `list_perspectives()` — all perspectives (built-in + custom)
-- `count_tasks(...)` / `count_projects(...)` — same filters as list, returns integer
-
 ## Current State
 
-**Shipped:** v1.2.3 (2026-03-29) — Repetition Rule Write Support
-**Next:** v1.3 Read Tools — Phase 37.1 complete: fixed effectiveCompletionDate ghost tasks (availability mappers and SQL clauses use effective dates, 1528 tests)
+**Shipped:** v1.3 (2026-04-05) — Read Tools
+**Next:** Planning next milestone (v1.4 or v1.3.x)
 
 ## Requirements
 
@@ -79,15 +68,20 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 - ✓ Output schema regression guards: jsonschema validates all 6 tools' serialized output against MCP outputSchema — v1.2.3
 - ✓ Anchor date warnings: proactive guidance when basedOn references an unset date — v1.2.3
 - ✓ Description centralization: all ~60 agent-visible Field(description=) strings, class docstrings, and 6 MCP tool descriptions centralized in agent_messages/descriptions.py with enforcement tests — v1.3 (Phase 36.3)
+- ✓ SQL filtering for tasks (10 filters) and projects (6 filters) with parameterized query builder — v1.3
+- ✓ List tags, folders with status filter; list perspectives (built-in + custom) — v1.3
+- ✓ Substring search across all 5 entity types — v1.3
+- ✓ 5 list MCP tools with typed query models and rich inputSchema — v1.3
+- ✓ Name-to-ID resolution cascade at service boundary with "did you mean?" warnings — v1.3
+- ✓ Write tool schema migration: ValidationReformatterMiddleware, 52+ schema entries per tool — v1.3
+- ✓ Read-side contract boundary split (RepoQuery/RepoResult) with per-use-case package structure — v1.3
+- ✓ Cross-path equivalence: 32 parametrized tests proving SQL and bridge paths identical — v1.3
+- ✓ Type constraint boundary: Literal/Annotated reserved for contracts, plain types on core models, AST enforcement — v1.3
+- ✓ Fixed effectiveCompletionDate ghost tasks in availability mappers and SQL clauses — v1.3
 
 ### Active
 
-- [x] SQL filtering for tasks with 10 filter parameters (v1.3) — Validated in Phase 35: SQL Repository
-- [x] SQL filtering for projects with 6 filter parameters (v1.3) — Validated in Phase 35: SQL Repository
-- [x] List tags, folders with status filter (v1.3) — Validated in Phase 35: SQL Repository
-- [x] List perspectives (v1.3) — Validated in Phase 35: SQL Repository
-- [ ] Count tasks/projects reusing list filter logic (v1.3)
-- [x] Substring search on task name and notes (v1.3) — Validated in Phase 37: Server Registration and Integration
+- [ ] Count tasks/projects reusing list filter logic (v1.3.x or later — total_count in ListResult may suffice)
 - [ ] Field selection, task deletion, notes append (v1.4)
 - [ ] Fuzzy search (v1.4.1)
 - [ ] TaskPaper output format (v1.4.2)
@@ -116,16 +110,18 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 ## Context
 
-Shipped v1.2.3 with ~6,601 LOC Python (src/), ~215k LOC JS (bridge + deps), ~28k TS (tests).
+Shipped v1.3 with ~9,021 LOC Python (src/), ~215k LOC JS (bridge + deps), ~28k TS (tests).
 Tech stack: Python 3.12, uv, Pydantic v2, FastMCP v3 (`fastmcp>=3.1.1`), OmniJS bridge, SQLite3 (stdlib).
-1,507 pytest tests, 26 Vitest tests, UAT passed on all phases.
+1,528 pytest tests, 26 Vitest tests, UAT passed on all phases.
 Real OmniFocus database: ~2,400 tasks, ~363 projects, ~64 tags, ~79 folders.
-Read path: SQLite (default, ~46ms). Write path: OmniJS bridge with write-through guarantee.
+Read path: SQLite (default, ~46ms for full snapshot, <6ms for filtered queries). Write path: OmniJS bridge with write-through guarantee.
 11 MCP tools: get_all, get_task, get_project, get_tag, add_tasks, edit_tasks, list_tasks, list_projects, list_tags, list_folders, list_perspectives.
-Architecture: service/ package (Resolver, DomainLogic, PayloadBuilder, orchestrator), contracts/ package (Command, RepoPayload, Result models), tests/doubles/ (InMemoryBridge, StubBridge, SimulatorBridge).
+Architecture: service/ package (Resolver, DomainLogic, PayloadBuilder, orchestrator + read pipelines), contracts/ package (per-use-case packages: list/, add/, edit/), tests/doubles/ (InMemoryBridge, StubBridge, SimulatorBridge).
+Query infrastructure: typed query models → service resolution cascade → parameterized SQL builder → repository → ListResult[T] with total_count and warnings.
+Agent-facing docs: all descriptions centralized in agent_messages/descriptions.py with AST enforcement tests.
 RRULE: rrule/ module (parse_rrule, build_rrule) shared by both read paths, flat Frequency model with 6 types, FrequencyAddSpec/FrequencyEditSpec command models.
 Golden master: 43 scenarios in 7 categories, contract tests verify InMemoryBridge matches RealBridge.
-Logging: ToolLoggingMiddleware for automatic tool call logging, dual-handler (stderr + rotating file) under `omnifocus_operator.*` namespace.
+Logging: ToolLoggingMiddleware + ValidationReformatterMiddleware for automatic tool call logging and error formatting, dual-handler (stderr + rotating file) under `omnifocus_operator.*` namespace.
 
 ## Constraints
 
@@ -178,6 +174,14 @@ Logging: ToolLoggingMiddleware for automatic tool call logging, dual-handler (st
 | @field_validator over Field(ge=1) for interval/occurrences | Custom validators produce clean educational errors; Field constraints generate opaque Pydantic messages | ✓ Good — v1.2.3, agent-facing error quality |
 | FrequencyEditSpec as pure patch container | No validators on edit spec — validation fires on Frequency construction from merged result. Keeps edit path flexible | ✓ Good — v1.2.3, clean separation of patch vs validation |
 | Output schema regression via jsonschema | Test serialized output with same JSON Schema validator MCP clients use, not Pydantic. Catches @model_serializer schema erasure | ✓ Good — v1.2.3, caught real regression during development |
+| Parameterized SQL builder as pure functions | Query builder returns `SqlQuery(sql, params)` NamedTuple — no string interpolation, testable without database | ✓ Good — v1.3, zero injection surface, easy to unit test |
+| Fetch-all + Python filter for small collections | Tags/folders/perspectives use full fetch + Python filtering instead of SQL — collections are small, code is simpler | ✓ Good — v1.3, avoids over-engineering |
+| Name-to-ID resolution at service boundary | Service resolves all entity names to IDs before repository. RepoQuery is IDs-only. Prevents SQL/in-memory drift | ✓ Good — v1.3, clean boundary, single resolution point |
+| ValidationReformatterMiddleware for error formatting | Middleware catches Pydantic ValidationError and reformats to agent-friendly ToolError before logging middleware sees it | ✓ Good — v1.3, clean error surface across all tools |
+| Description centralization in agent_messages/ | All agent-visible Field(description=) and class docstrings use constants from descriptions.py with AST enforcement | ✓ Good — v1.3, single source of truth, prevents drift |
+| Literal/Annotated reserved for contract models | Core models use plain types; schema-level constraints only on contract boundary. AST enforcement test prevents regression | ✓ Good — v1.3, clean taxonomy boundary |
+| DEFAULT_LIST_LIMIT=50 on all list tools | Prevents unbounded responses (1.8M chars for full DB). Agent can override with limit=None | ✓ Good — v1.3, protects agent context windows |
+| Cross-path equivalence as hard requirement | 32 parametrized tests prove SQL and bridge paths return identical results. Mandatory for any new filter | ✓ Good — v1.3, catches drift automatically |
 
 ---
 ## Evolution
@@ -198,4 +202,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-04 after Phase 37 gap closure — default pagination limit=50, entity-reference filter docs, 1507 tests passing, v1.3 milestone all phases done*
+*Last updated: 2026-04-05 after v1.3 milestone — 11 MCP tools, 1528 tests, 9021 LOC Python*

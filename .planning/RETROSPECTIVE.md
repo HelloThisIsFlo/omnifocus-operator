@@ -284,6 +284,56 @@
 
 ---
 
+## Milestone: v1.3 -- Read Tools
+
+**Shipped:** 2026-04-05
+**Phases:** 12 | **Plans:** 26 executed
+
+### What Was Built
+- Parameterized SQL filtering engine for tasks (10 filters) and projects (6 filters)
+- 5 new MCP list tools with typed query models, rich inputSchema, and DEFAULT_LIST_LIMIT=50
+- Name-to-ID resolution cascade at service boundary with fuzzy "did you mean?" warnings
+- Write tool schema migration via ValidationReformatterMiddleware
+- Description centralization — 60 constants in descriptions.py with AST enforcement
+- Cross-path equivalence tests (32 parametrized) proving SQL ≡ bridge
+- Type constraint boundary (Literal/Annotated reserved for contracts) with AST enforcement
+- Fixed effectiveCompletionDate ghost tasks in availability mappers and SQL clauses
+
+### What Worked
+- Decimal phase insertion continued to prove its value — 7 insertions (35.1, 35.2, 36.1-36.4, 37.1) handled urgent discoveries cleanly
+- Cross-path equivalence as a hard requirement caught real SQL/bridge divergence during development — worth the test investment
+- Description centralization (Phase 36.3) with AST enforcement prevents a whole category of documentation drift
+- Quick tasks handled 8 fixes without disrupting the main roadmap — maintained milestone momentum
+- Phase 38 as collaborative session (no formal pipeline) was efficient for phrasing/documentation work
+
+### What Was Inefficient
+- 7 decimal phases out of 12 total — over half the phases were insertions, suggesting the original 4-phase roadmap was too coarse-grained for a milestone this scope
+- DESC-07/DESC-08 checkboxes not updated despite passing enforcement tests — manual traceability tables drift from automated enforcement
+- Phase 38 had no PLAN/VERIFICATION artifacts — while efficient, it created audit gaps (Nyquist non-compliant)
+- Some VALIDATION.md files marked non-compliant despite phases being complete — Nyquist gap-filling happened retroactively rather than inline
+
+### Patterns Established
+- `_ReadPipeline` as separate base from `_Pipeline` for read-side Method Objects
+- Per-use-case package structure: `contracts/use_cases/{verb}/` with `__init__.py` re-exports
+- Resolution cascade pattern: ID match → substring → fuzzy "did you mean?" — reusable for any entity reference
+- `SqlQuery` NamedTuple as standard return type for parameterized SQL
+- QueryModel base (distinct from CommandModel) for read-side contracts
+- `ReviewDueFilter` as first `<noun>Filter` value object pattern
+
+### Key Lessons
+1. **Original phase scoping was too optimistic** — "4 phases for read tools" became 12 phases with 7 insertions. The architectural cleanup work (contract splits, description centralization, type boundaries) was as large as the feature itself
+2. **Automated enforcement > manual checklists** — AST enforcement tests for descriptions and type boundaries are self-maintaining; traceability table checkboxes drift
+3. **Cross-path equivalence is non-negotiable** — caught real divergence between SQL and bridge paths that would have been invisible to unit tests
+4. **Collaborative sessions work for documentation** — Phase 38 was efficient because the "code" was English prose; formal pipelines add overhead without value for phrasing work
+5. **Name resolution is a cross-cutting concern** — building it once at the service boundary (Phase 35.2) meant all 5 list tools got it for free
+
+### Cost Observations
+- Model mix: ~60% opus (research, planning, complex phases), ~40% sonnet (execution, validation)
+- Sessions: ~12-15 across 7 days
+- Notable: Quick tasks (8 total) were ~30% of the work by count but kept the main pipeline unblocked
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -296,6 +346,7 @@
 | v1.2.1 | 11 | 27 | First refactoring milestone -- dependency-ordered phases, golden master contract testing |
 | v1.2.2 | 3 | 6 | First migration milestone -- spike-first approach, phase consolidation from research |
 | v1.2.3 | 4 | 15 | First domain-feature milestone -- research spike → read model → write model → refactor arc |
+| v1.3 | 12 | 26 | Largest feature milestone -- 7 decimal insertions, cross-path equivalence as hard requirement |
 
 ### Cumulative Quality
 
@@ -307,11 +358,12 @@
 | v1.2.1 | 723 (697 pytest + 26 vitest) | ~94% | 1 (stale Phase 27 VERIFICATION.md) |
 | v1.2.2 | 734 (708 pytest + 26 vitest) | ~98% | 1 (ToolAnnotations mcp.types residual) |
 | v1.2.3 | 1,139 (1,113 pytest + 26 vitest) | ~94% | 6 (all cosmetic/documentation) |
+| v1.3 | 1,554 (1,528 pytest + 26 vitest) | ~94% | 4 (Nyquist gaps on 4 phases, all process artifacts) |
 
 ### Top Lessons (Verified Across Milestones)
 
 1. Research-first approach prevents rework (verified in v1.0, v1.1, v1.2 -- LIFE-03 was the exception that proves the rule)
-2. Fine-grained plans (~4 min avg) keep momentum and reduce context-switching cost (consistent across all 4 milestones)
+2. Fine-grained plans (~4 min avg) keep momentum and reduce context-switching cost (consistent across all milestones)
 3. Incremental migration beats big-bang (verified in v1.1 Phase 10, v1.2 Phase 16.1 actions refactor, v1.2.1 dependency ordering)
 4. Gap closure plans catch integration issues early when forced by validation (verified in v1.1, v1.2, v1.2.1 Phases 22/26/27)
 5. Move complexity to Python, keep bridge dumb (established v1.2 -- diff-based tags proved the pattern)
@@ -320,3 +372,5 @@
 8. Spike experiments eliminate unknowns before planning (established v1.2.2 -- 8 experiments compressed 6 phases to 3)
 9. Output schema testing catches bugs Pydantic alone misses (established v1.2.3 -- jsonschema-vs-data caught @model_serializer schema erasure)
 10. Discriminated unions are poor write models; flat models enable partial updates (established v1.2.3 -- Phase 33.1 refactor was cheaper than workarounds)
+11. Automated enforcement > manual checklists for documentation (established v1.3 -- AST tests self-maintain, traceability checkboxes drift)
+12. Cross-path equivalence as hard requirement catches real divergence (established v1.3 -- 32 parametrized tests, mandatory for new filters)

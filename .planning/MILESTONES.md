@@ -1,5 +1,29 @@
 # Milestones
 
+## v1.3 Read Tools (Shipped: 2026-04-05)
+
+**Phases:** 12 (34-38 including 7 decimal insertions) | **Plans:** 26 executed
+**Requirements:** 80/80 satisfied
+**Tests:** 1,528 pytest at milestone completion (up from 1,113)
+**Timeline:** 7 days (2026-03-29 → 2026-04-05) | ~70 commits
+**LOC:** ~9,021 Python (src/)
+**Git range:** Phase 34 → Phase 38
+
+**Key accomplishments:**
+
+1. Parameterized SQL filtering engine — query builder for tasks (10 filters) and projects (6 filters) with compound availability clauses, tag IN expansion, and LIKE search via `?` placeholders
+2. 5 new MCP list tools (`list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives`) with typed query models, rich inputSchema, and DEFAULT_LIST_LIMIT=50
+3. Name-to-ID resolution cascade at service boundary — agents pass names or IDs, service resolves uniformly with fuzzy "did you mean?" warnings on zero-match
+4. Write tool schema migration — ValidationReformatterMiddleware producing clean agent-facing `ToolError` with "Task N:" prefix, 52+ schema entries per tool
+5. Description centralization — 60 agent-visible constants in `descriptions.py` with 5 AST-based enforcement tests preventing regression
+6. Cross-path equivalence — 32 parametrized tests proving BridgeRepository and HybridRepository return identical results across all 5 entity types
+7. Type constraint boundary — Literal/Annotated types reserved for contract models, plain types on core models, with AST enforcement
+8. Fixed effectiveCompletionDate ghost tasks — availability mappers and SQL clauses use effective date columns
+
+**Delivered:** Complete read+filter+search MCP interface for OmniFocus entities — agents can list, filter, search, and paginate tasks, projects, tags, folders, and perspectives with typed query models, educational error messages, and agent-friendly documentation.
+
+---
+
 ## v1.2.3 Repetition Rule Write Support (Shipped: 2026-03-29)
 
 **Phases completed:** 4 phases, 15 plans, 30 tasks
