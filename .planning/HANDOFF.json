@@ -1,0 +1,33 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-04-05T11:04:15.616Z",
+  "phase": "38",
+  "phase_name": "improve-list-tool-parameter-documentation",
+  "phase_dir": ".planning/phases/38-improve-list-tool-parameter-documentation",
+  "plan": null,
+  "task": null,
+  "total_tasks": null,
+  "status": "paused",
+  "completed_tasks": [
+    {"id": 1, "name": "Add Field(description=...) to 12 bare parameters", "status": "done", "commit": "48a676e"},
+    {"id": 2, "name": "Rework 5 list tool descriptions (output-focused)", "status": "done", "commit": "48a676e"},
+    {"id": 3, "name": "Update 3 availability enum docstrings", "status": "done", "commit": "48a676e"},
+    {"id": 4, "name": "Add folder hierarchy note + perspectives built-in caveat", "status": "done", "commit": "48a676e"}
+  ],
+  "remaining_tasks": [
+    {"id": 5, "name": "Task hierarchy mention in list_tasks description", "status": "not_started"},
+    {"id": 6, "name": "v1.3.1 forward-compatibility review", "status": "not_started"},
+    {"id": 7, "name": "Run test suite verification", "status": "not_started"},
+    {"id": 8, "name": "Move todo to done", "status": "not_started"}
+  ],
+  "blockers": [],
+  "human_actions_pending": [],
+  "decisions": [
+    {"decision": "Field-level descriptions for boolean tristates", "rationale": "Only 2 booleans, each has own semantics", "phase": "38"},
+    {"decision": "Tool descriptions focus on output fields", "rationale": "outputSchema not visible to agents", "phase": "38"},
+    {"decision": "No GSD pipeline for this phase", "rationale": "Pure string work, discussion is the value", "phase": "38"}
+  ],
+  "uncommitted_files": [],
+  "next_action": "Discuss task hierarchy in list_tasks tool description, run output schema tests",
+  "context_notes": "Collaborative phrasing session spanning 2 days. All 4 original todo items addressed. User wants to iterate further on task hierarchy and v1.3.1 considerations."
+}
