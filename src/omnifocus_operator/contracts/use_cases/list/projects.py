@@ -11,9 +11,13 @@ from pydantic import Field, field_validator, model_validator
 from omnifocus_operator.agent_messages import errors as err
 from omnifocus_operator.agent_messages.descriptions import (
     DURATION_UNIT_DOC,
+    FLAGGED_FILTER_DESC,
     FOLDER_FILTER_DESC,
+    LIMIT_DESC,
     LIST_PROJECTS_QUERY_DOC,
+    OFFSET_DESC,
     REVIEW_DUE_FILTER_DOC,
+    REVIEW_DUE_WITHIN_DESC,
     SEARCH_FIELD_NAME_NOTES,
 )
 from omnifocus_operator.config import DEFAULT_LIST_LIMIT
@@ -67,15 +71,15 @@ def parse_review_due_within(value: str) -> ReviewDueFilter:
 class ListProjectsQuery(QueryModel):
     __doc__ = LIST_PROJECTS_QUERY_DOC
 
-    availability: list[Availability] = Field(
-        default=[Availability.AVAILABLE, Availability.BLOCKED]
-    )
+    availability: list[Availability] = Field(default=[Availability.AVAILABLE, Availability.BLOCKED])
     folder: str | None = Field(default=None, description=FOLDER_FILTER_DESC)
-    review_due_within: ReviewDueFilter | None = None
-    flagged: bool | None = None
+    review_due_within: ReviewDueFilter | None = Field(
+        default=None, description=REVIEW_DUE_WITHIN_DESC
+    )
+    flagged: bool | None = Field(default=None, description=FLAGGED_FILTER_DESC)
     search: str | None = Field(default=None, description=SEARCH_FIELD_NAME_NOTES)
-    limit: int | None = DEFAULT_LIST_LIMIT
-    offset: int | None = None
+    limit: int | None = Field(default=DEFAULT_LIST_LIMIT, description=LIMIT_DESC)
+    offset: int | None = Field(default=None, description=OFFSET_DESC)
 
     @field_validator("review_due_within", mode="before")
     @classmethod
@@ -95,9 +99,7 @@ class ListProjectsQuery(QueryModel):
 class ListProjectsRepoQuery(QueryModel):
     """Repo-facing query -- IDs only, service resolves names before passing."""
 
-    availability: list[Availability] = Field(
-        default=[Availability.AVAILABLE, Availability.BLOCKED]
-    )
+    availability: list[Availability] = Field(default=[Availability.AVAILABLE, Availability.BLOCKED])
     folder_ids: list[str] | None = None
     review_due_before: datetime | None = None
     flagged: bool | None = None

@@ -5,7 +5,6 @@ This makes it easy to review, audit, and maintain all agent-facing schema text
 in one place.
 """
 
-from omnifocus_operator.config import DEFAULT_LIST_LIMIT as _DEFAULT_LIST_LIMIT
 
 # --- Dates: Read-Side ---
 
@@ -95,6 +94,8 @@ PARENT = "Project or task ID to place this task under. Omit for inbox."
 
 NEXT_TASK = "ID of the first available task in this project, if any."
 
+FOLDER_PARENT_DESC = "Parent folder ID, or null for top-level folders."
+
 # --- Fields: Previously Bare ---
 
 ESTIMATED_MINUTES = "Time estimate in minutes."
@@ -144,11 +145,15 @@ ALL_ENTITIES_DOC = "All OmniFocus entities from a repository."
 
 URGENCY_DOC = "Time pressure axis -- is this task/project pressing?"
 
-AVAILABILITY_DOC = "Work readiness axis -- can this be worked on?"
+AVAILABILITY_DOC = "Can this be worked on?"
 
-TAG_AVAILABILITY_DOC = "Availability status for tags."
+TAG_AVAILABILITY_DOC = (
+    "Is this tag active? "
+    "blocked = on hold, always blocks tagged tasks. "
+    "dropped = hidden from hierarchy, blocks tasks only if their sole tag."
+)
 
-FOLDER_AVAILABILITY_DOC = "Availability status for folders."
+FOLDER_AVAILABILITY_DOC = "Is this folder active?"
 
 # Edge cases (INTERVAL≥2, early completion, same-day eligibility) differ between modes.
 # See docs/byday-edge-cases.md for the full breakdown.
@@ -260,6 +265,29 @@ SEARCH_FIELD_NAME_NOTES = "Case-insensitive substring match on name and notes."
 
 SEARCH_FIELD_NAME_ONLY = "Case-insensitive substring match on name."
 
+# --- Field Descriptions: List Tool Filters ---
+
+FLAGGED_FILTER_DESC = "true = flagged only, false = unflagged only, null/omit = skip filter."
+
+IN_INBOX_FILTER_DESC = (
+    "true = Inbox tasks only (not assigned to a project), "
+    "false = non-Inbox only, null/omit = skip filter."
+)
+
+ESTIMATED_MINUTES_MAX_DESC = (
+    "Include tasks with estimate \u2264 this value (minutes). "
+    "Tasks with no estimate are excluded."
+)
+
+LIMIT_DESC = "Max items to return. Pass null to return all."
+
+OFFSET_DESC = "Skip this many items. Requires limit to be set."
+
+REVIEW_DUE_WITHIN_DESC = (
+    'Review due within this window. '
+    '"now" or "N<unit>" (unit: d/w/m/y). Examples: "1w", "2m".'
+)
+
 # --- Field Descriptions: Entity-Reference Filters ---
 
 PROJECT_FILTER_DESC = (
@@ -274,6 +302,14 @@ TAGS_FILTER_DESC = (
 FOLDER_FILTER_DESC = (
     "Folder ID or name. Names use case-insensitive substring matching -- "
     "if multiple folders match, projects from all are included."
+)
+
+# --- Perspectives: Temporary Notes ---
+
+# TODO(v1.5): Remove when built-in perspectives are supported
+PERSPECTIVES_BUILTIN_NOTE = (
+    "Currently returns custom perspectives only; "
+    "built-in perspectives are not yet available."
 )
 
 # --- Tool Descriptions ---
@@ -366,68 +402,58 @@ ADD_TASKS_TOOL_DOC = (
 LIST_TASKS_TOOL_DOC = (
     "List and filter tasks. All filters combine with AND logic.\n"
     "\n"
-    "Defaults: availability includes available and blocked tasks.\n"
-    f"Pagination: default limit is {_DEFAULT_LIST_LIMIT}. Pass limit=null to return all.\n"
-    "offset requires limit. Response shape:\n"
-    "{items: [...], total: N, hasMore: bool, warnings?: [...]}\n"
+    "Response: {items, total, hasMore, warnings?}\n"
     "\n"
-    "project and tags accept an ID or name. Names use case-insensitive\n"
-    "substring matching; multiple matches return all. Unrecognized names\n"
-    "are skipped with a warning.\n"
-    "\n"
-    "search matches case-insensitive substring in name and notes.\n"
+    "Key fields per task:\n"
+    "  urgency, availability, flagged, effectiveFlagged (inherited),\n"
+    "  dueDate, deferDate, plannedDate, effectiveDueDate, effectiveDeferDate,\n"
+    "  estimatedMinutes, tags [{id, name}], parent ({type, id, name} or null\n"
+    "  for inbox), inInbox, hasChildren, repetitionRule, completionDate.\n"
     "The response uses camelCase field names."
 )
 
 LIST_PROJECTS_TOOL_DOC = (
     "List and filter projects. All filters combine with AND logic.\n"
     "\n"
-    "Defaults: availability includes available and blocked projects.\n"
-    "reviewDueWithin accepts duration strings: \"now\", \"1w\", \"2m\", \"1y\".\n"
-    f"Pagination: default limit is {_DEFAULT_LIST_LIMIT}. Pass limit=null to return all.\n"
-    "offset requires limit. Response shape:\n"
-    "{items: [...], total: N, hasMore: bool, warnings?: [...]}\n"
+    "Response: {items, total, hasMore, warnings?}\n"
     "\n"
-    "folder accepts an ID or name. Names use case-insensitive substring\n"
-    "matching; multiple matches return all. Unrecognized names are skipped\n"
-    "with a warning.\n"
-    "\n"
-    "search matches case-insensitive substring in name and notes.\n"
+    "Key fields per project:\n"
+    "  urgency, availability, flagged, effectiveFlagged, dueDate, deferDate,\n"
+    "  plannedDate, effectiveDueDate, tags [{id, name}], folder (name or null),\n"
+    "  nextTask (ID of first available task), reviewInterval, nextReviewDate,\n"
+    "  hasChildren, repetitionRule, completionDate.\n"
     "The response uses camelCase field names."
 )
 
 LIST_TAGS_TOOL_DOC = (
     "List and filter tags.\n"
     "\n"
-    "Defaults: availability includes available and blocked tags.\n"
-    f"Pagination: default limit is {_DEFAULT_LIST_LIMIT}. Pass limit=null to return all.\n"
-    "offset requires limit. Response shape:\n"
-    "{items: [...], total: N, hasMore: bool}\n"
+    "Response: {items, total, hasMore}\n"
     "\n"
-    "search matches case-insensitive substring in name only.\n"
+    "Key fields per tag:\n"
+    "  availability, childrenAreMutuallyExclusive (when true, child tags\n"
+    "  behave like radio buttons), parent (parent tag name or null).\n"
     "The response uses camelCase field names."
 )
 
 LIST_FOLDERS_TOOL_DOC = (
     "List and filter folders.\n"
     "\n"
-    "Defaults: availability includes available folders only.\n"
-    f"Pagination: default limit is {_DEFAULT_LIST_LIMIT}. Pass limit=null to return all.\n"
-    "offset requires limit. Response shape:\n"
-    "{items: [...], total: N, hasMore: bool}\n"
+    "Returns a flat list. Each folder includes a parent field (folder ID\n"
+    "or null for top-level) that can be used to reconstruct hierarchy.\n"
     "\n"
-    "search matches case-insensitive substring in name only.\n"
+    "Response: {items, total, hasMore}\n"
+    "\n"
+    "Key fields per folder: availability, parent.\n"
     "The response uses camelCase field names."
 )
 
 LIST_PERSPECTIVES_TOOL_DOC = (
-    "List all perspectives (built-in and custom).\n"
+    f"List perspectives. {PERSPECTIVES_BUILTIN_NOTE}\n"
     "\n"
-    f"Pagination: default limit is {_DEFAULT_LIST_LIMIT}. Pass limit=null to return all.\n"
-    "offset requires limit. Response shape:\n"
-    "{items: [...], total: N, hasMore: bool}\n"
+    "Response: {items, total, hasMore}\n"
     "\n"
-    "search matches case-insensitive substring in name only.\n"
+    "Key fields per perspective: id, name.\n"
     "The response uses camelCase field names."
 )
 

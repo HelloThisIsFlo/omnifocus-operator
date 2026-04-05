@@ -5,7 +5,9 @@ from __future__ import annotations
 from pydantic import Field, model_validator
 
 from omnifocus_operator.agent_messages.descriptions import (
+    LIMIT_DESC,
     LIST_FOLDERS_QUERY_DOC,
+    OFFSET_DESC,
     SEARCH_FIELD_NAME_ONLY,
 )
 from omnifocus_operator.config import DEFAULT_LIST_LIMIT
@@ -17,12 +19,10 @@ from omnifocus_operator.models.enums import FolderAvailability
 class ListFoldersQuery(QueryModel):
     __doc__ = LIST_FOLDERS_QUERY_DOC
 
-    availability: list[FolderAvailability] = Field(
-        default=[FolderAvailability.AVAILABLE]
-    )
+    availability: list[FolderAvailability] = Field(default=[FolderAvailability.AVAILABLE])
     search: str | None = Field(default=None, description=SEARCH_FIELD_NAME_ONLY)
-    limit: int | None = DEFAULT_LIST_LIMIT
-    offset: int | None = None
+    limit: int | None = Field(default=DEFAULT_LIST_LIMIT, description=LIMIT_DESC)
+    offset: int | None = Field(default=None, description=OFFSET_DESC)
 
     @model_validator(mode="after")
     def _check_offset_requires_limit(self) -> ListFoldersQuery:
@@ -33,9 +33,7 @@ class ListFoldersQuery(QueryModel):
 class ListFoldersRepoQuery(QueryModel):
     """Repo-facing query -- identical fields today."""
 
-    availability: list[FolderAvailability] = Field(
-        default=[FolderAvailability.AVAILABLE]
-    )
+    availability: list[FolderAvailability] = Field(default=[FolderAvailability.AVAILABLE])
     search: str | None = None
     limit: int | None = DEFAULT_LIST_LIMIT
     offset: int | None = None
