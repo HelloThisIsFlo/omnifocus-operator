@@ -289,12 +289,12 @@ Phases execute in numeric order: 34 → 35 → 35.1 → 35.2 → 36 → 37
 Plans:
 - [x] TBD (run /gsd-plan-phase 37.1 to break down) (completed 2026-04-04)
 
-### Phase 38: Improve list tool parameter documentation
+### Phase 38: Improve list tool parameter documentation (COMPLETE — no formal pipeline)
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Add Field(description=...) to bare parameters, rework tool descriptions, fix documentation gaps
+**Requirements**: Documentation quality (from external review)
 **Depends on:** Phase 37
-**Plans:** 0 plans
+**Note:** Completed as collaborative phrasing session — no PLAN/VERIFICATION artifacts. See 38-SUMMARY.md.
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 38 to break down)
+- [x] Direct editing (no formal plan — discussion was the process) (completed 2026-04-05)
