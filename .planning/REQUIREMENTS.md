@@ -1,0 +1,163 @@
+# Requirements: OmniFocus Operator v1.3.1
+
+**Defined:** 2026-04-05
+**Core Value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
+
+## v1.3.1 Requirements
+
+Requirements for v1.3.1 First-Class References. Each maps to roadmap phases.
+
+### System Locations
+
+- [ ] **SLOC-01**: `$` prefix constant and `$inbox` system location ID defined in config
+- [ ] **SLOC-02**: Resolver detects `$`-prefixed strings and routes to system location lookup before ID/name resolution
+- [ ] **SLOC-03**: Unrecognized system location (e.g., `$trash`) returns error listing valid system locations
+
+### Models & Type System
+
+- [ ] **MODL-01**: `ProjectRef(id, name)` model exists as standalone type
+- [ ] **MODL-02**: `TaskRef(id, name)` model exists as standalone type
+- [ ] **MODL-03**: `FolderRef(id, name)` model exists as standalone type
+- [ ] **MODL-04**: Task `parent` uses tagged object discriminator (`{"project": {...}}` or `{"task": {...}}`)
+- [ ] **MODL-05**: Task `parent` is never null — inbox represented as `ProjectRef(id="$inbox", name="Inbox")`
+- [ ] **MODL-06**: Task has `project` field (`ProjectRef`) — containing project at any nesting depth, never null
+- [ ] **MODL-07**: `inInbox` removed from Task output (not in JSON, not in schema)
+- [ ] **MODL-08**: `ParentRef` model removed (replaced by `ProjectRef | TaskRef`)
+- [ ] **MODL-09**: `PatchOrNone` type alias eliminated from `contracts/base.py`
+- [ ] **MODL-10**: `MoveAction.beginning`/`ending` use `Patch[str]` (not `PatchOrNone[str]`)
+
+### Write Pipeline
+
+- [ ] **WRIT-01**: `add_tasks` with `parent: "$inbox"` creates task in inbox
+- [ ] **WRIT-02**: `add_tasks` with `parent` omitted creates task in inbox
+- [ ] **WRIT-03**: `add_tasks` with `parent: null` creates task in inbox + warning
+- [ ] **WRIT-04**: `edit_tasks` with `ending: "$inbox"` moves task to inbox
+- [ ] **WRIT-05**: `edit_tasks` with `beginning: "$inbox"` moves task to inbox (beginning)
+- [ ] **WRIT-06**: `edit_tasks` with `ending: null` returns error
+- [ ] **WRIT-07**: `edit_tasks` with `beginning: null` returns error
+- [ ] **WRIT-08**: `before`/`after` with container ID or `$inbox` returns targeted error suggesting `beginning`/`ending`
+
+### Read Pipeline
+
+- [ ] **READ-01**: Task `project` field present with `{id, name}` at any nesting depth
+- [ ] **READ-02**: Inbox tasks at any depth have `project: {id: "$inbox", name: "Inbox"}`
+- [ ] **READ-03**: `Project.folder` returns `FolderRef {id, name}` (not bare ID)
+- [ ] **READ-04**: `Project.next_task` returns `TaskRef {id, name}` (not bare ID)
+- [ ] **READ-05**: `Tag.parent` returns `TagRef {id, name}` (not bare ID)
+- [ ] **READ-06**: `Folder.parent` returns `FolderRef {id, name}` (not bare ID)
+- [ ] **READ-07**: Enriched references work across `get_*`, `list_*`, and `get_all`
+
+### Filters
+
+- [ ] **FILT-01**: `list_tasks(project="$inbox")` returns same results as `inInbox: true`
+- [ ] **FILT-02**: `list_tasks(project="inbox")` does NOT match system inbox — only name substring
+- [ ] **FILT-03**: `project: "$inbox"` + `inInbox: false` → error (contradictory)
+- [ ] **FILT-04**: `project: "$inbox"` + `inInbox: true` → accepted silently (redundant)
+- [ ] **FILT-05**: `inInbox: true` + real project filter → warning about empty intersection
+
+### Name Resolution
+
+- [ ] **NRES-01**: `add_tasks` `parent` accepts project/task names (case-insensitive substring)
+- [ ] **NRES-02**: `edit_tasks` `beginning`/`ending` accept container names
+- [ ] **NRES-03**: `edit_tasks` `before`/`after` accept task names
+- [ ] **NRES-04**: Multiple name matches → error listing all matches with IDs
+- [ ] **NRES-05**: Zero name matches → helpful error
+- [ ] **NRES-06**: `$`-prefixed strings never enter name resolution
+- [ ] **NRES-07**: List filter fields accept entity names (extends v1.3 pattern)
+
+### Project Tools
+
+- [ ] **PROJ-01**: `get_project("$inbox")` returns descriptive error
+- [ ] **PROJ-02**: `list_projects` never includes inbox
+- [ ] **PROJ-03**: `list_projects` name filter matching "Inbox" → warning about system inbox
+
+### Tool Descriptions
+
+- [ ] **DESC-01**: `list_tasks` description explains task hierarchy (`parent` vs `project`)
+- [ ] **DESC-02**: All descriptions use `{id, name}` format for enriched reference fields
+- [ ] **DESC-03**: Descriptions document `$inbox` usage in relevant fields
+- [ ] **DESC-04**: `get_project` description mentions `$inbox` error behavior
+
+## Future Requirements
+
+Deferred to later milestones. Tracked but not in current roadmap.
+
+### Additional System Locations
+
+- **SLOC-F01**: Additional system locations beyond `$inbox` (e.g., `$forecast`, `$flagged`)
+
+### Advanced Resolution
+
+- **NRES-F01**: Fuzzy matching with "did you mean?" suggestions on close-but-no-match
+- **NRES-F02**: Resolution caching for repeated lookups within a single request
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Virtual inbox project (`get_project("$inbox")` returning fabricated data) | Inbox lacks required Project fields (review dates, interval, urgency). Fabricating values is dishonest and misleads agents |
+| Deprecation warnings for `ending: null` | Pre-release API — no existing consumers to break. Hard error is cleaner |
+| Silent acceptance of `parent: null` (no warning) | Warning educates toward explicit `$inbox` syntax |
+| `$` prefix in display names (`name: "$inbox"`) | `$` is an API convention for IDs; names are human-readable display labels |
+| Filter negation syntax (`project: "NOT $inbox"`) | `inInbox: false` serves this purpose; new syntax adds complexity for no gain |
+
+## Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| SLOC-01 | — | Pending |
+| SLOC-02 | — | Pending |
+| SLOC-03 | — | Pending |
+| MODL-01 | — | Pending |
+| MODL-02 | — | Pending |
+| MODL-03 | — | Pending |
+| MODL-04 | — | Pending |
+| MODL-05 | — | Pending |
+| MODL-06 | — | Pending |
+| MODL-07 | — | Pending |
+| MODL-08 | — | Pending |
+| MODL-09 | — | Pending |
+| MODL-10 | — | Pending |
+| WRIT-01 | — | Pending |
+| WRIT-02 | — | Pending |
+| WRIT-03 | — | Pending |
+| WRIT-04 | — | Pending |
+| WRIT-05 | — | Pending |
+| WRIT-06 | — | Pending |
+| WRIT-07 | — | Pending |
+| WRIT-08 | — | Pending |
+| READ-01 | — | Pending |
+| READ-02 | — | Pending |
+| READ-03 | — | Pending |
+| READ-04 | — | Pending |
+| READ-05 | — | Pending |
+| READ-06 | — | Pending |
+| READ-07 | — | Pending |
+| FILT-01 | — | Pending |
+| FILT-02 | — | Pending |
+| FILT-03 | — | Pending |
+| FILT-04 | — | Pending |
+| FILT-05 | — | Pending |
+| NRES-01 | — | Pending |
+| NRES-02 | — | Pending |
+| NRES-03 | — | Pending |
+| NRES-04 | — | Pending |
+| NRES-05 | — | Pending |
+| NRES-06 | — | Pending |
+| NRES-07 | — | Pending |
+| PROJ-01 | — | Pending |
+| PROJ-02 | — | Pending |
+| PROJ-03 | — | Pending |
+| DESC-01 | — | Pending |
+| DESC-02 | — | Pending |
+| DESC-03 | — | Pending |
+| DESC-04 | — | Pending |
+
+**Coverage:**
+- v1.3.1 requirements: 38 total
+- Mapped to phases: 0
+- Unmapped: 38 ⚠️
+
+---
+*Requirements defined: 2026-04-05*
+*Last updated: 2026-04-05 after initial definition*
