@@ -59,6 +59,7 @@ Carried forward from v1.3:
 7. Add built-in perspectives to list_perspectives (repository — needs design discussion)
 8. Return full inbox hierarchy from inInbox query (repository)
 9. Add path field for hierarchical entities (models)
+10. Fix OrdinalWeekdaySpec → OrdinalWeekday cross-layer coercion in edit pipeline (service)
 
 ### Blockers/Concerns
 
