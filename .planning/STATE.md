@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.3.1
 milestone_name: First-Class References
-status: defining_requirements
-stopped_at: Milestone v1.3.1 First-Class References started, defining requirements
-last_updated: "2026-04-05T15:00:00.000Z"
+status: ready_to_plan
+stopped_at: Roadmap created with 7 phases (39-45), ready to plan Phase 39
+last_updated: "2026-04-05T16:00:00.000Z"
 last_activity: 2026-04-05
 progress:
-  total_phases: 0
+  total_phases: 7
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,14 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-05)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** v1.3.1 First-Class References
+**Current focus:** Phase 39 -- Foundation: Constants & Reference Models
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 39 (1 of 7) — Foundation: Constants & Reference Models
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-05 — Milestone v1.3.1 First-Class References started
+Status: Ready to plan
+Last activity: 2026-04-05 — Roadmap created for v1.3.1 (7 phases, 47 requirements)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -60,10 +62,11 @@ Carried forward from v1.3:
 
 ### Blockers/Concerns
 
-None.
+- Golden master re-capture required after Phase 42 (mapper rewrites). Human-only per GOLD-01.
+- `TagAction.replace` type needs audit before `PatchOrNone` deletion in Phase 41.
 
 ## Session Continuity
 
-Last activity: 2026-04-05 - Milestone v1.3.1 First-Class References started
-Stopped at: Defining requirements
+Last activity: 2026-04-05 - Roadmap created for v1.3.1
+Stopped at: Roadmap complete, ready to plan Phase 39
 Resume file: None

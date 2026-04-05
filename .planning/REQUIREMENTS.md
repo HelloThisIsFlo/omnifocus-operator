@@ -105,59 +105,59 @@ Deferred to later milestones. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SLOC-01 | — | Pending |
-| SLOC-02 | — | Pending |
-| SLOC-03 | — | Pending |
-| MODL-01 | — | Pending |
-| MODL-02 | — | Pending |
-| MODL-03 | — | Pending |
-| MODL-04 | — | Pending |
-| MODL-05 | — | Pending |
-| MODL-06 | — | Pending |
-| MODL-07 | — | Pending |
-| MODL-08 | — | Pending |
-| MODL-09 | — | Pending |
-| MODL-10 | — | Pending |
-| WRIT-01 | — | Pending |
-| WRIT-02 | — | Pending |
-| WRIT-03 | — | Pending |
-| WRIT-04 | — | Pending |
-| WRIT-05 | — | Pending |
-| WRIT-06 | — | Pending |
-| WRIT-07 | — | Pending |
-| WRIT-08 | — | Pending |
-| READ-01 | — | Pending |
-| READ-02 | — | Pending |
-| READ-03 | — | Pending |
-| READ-04 | — | Pending |
-| READ-05 | — | Pending |
-| READ-06 | — | Pending |
-| READ-07 | — | Pending |
-| FILT-01 | — | Pending |
-| FILT-02 | — | Pending |
-| FILT-03 | — | Pending |
-| FILT-04 | — | Pending |
-| FILT-05 | — | Pending |
-| NRES-01 | — | Pending |
-| NRES-02 | — | Pending |
-| NRES-03 | — | Pending |
-| NRES-04 | — | Pending |
-| NRES-05 | — | Pending |
-| NRES-06 | — | Pending |
-| NRES-07 | — | Pending |
-| PROJ-01 | — | Pending |
-| PROJ-02 | — | Pending |
-| PROJ-03 | — | Pending |
-| DESC-01 | — | Pending |
-| DESC-02 | — | Pending |
-| DESC-03 | — | Pending |
-| DESC-04 | — | Pending |
+| SLOC-01 | Phase 39 | Pending |
+| SLOC-02 | Phase 40 | Pending |
+| SLOC-03 | Phase 40 | Pending |
+| MODL-01 | Phase 39 | Pending |
+| MODL-02 | Phase 39 | Pending |
+| MODL-03 | Phase 39 | Pending |
+| MODL-04 | Phase 42 | Pending |
+| MODL-05 | Phase 42 | Pending |
+| MODL-06 | Phase 42 | Pending |
+| MODL-07 | Phase 42 | Pending |
+| MODL-08 | Phase 42 | Pending |
+| MODL-09 | Phase 41 | Pending |
+| MODL-10 | Phase 41 | Pending |
+| WRIT-01 | Phase 41 | Pending |
+| WRIT-02 | Phase 41 | Pending |
+| WRIT-03 | Phase 41 | Pending |
+| WRIT-04 | Phase 41 | Pending |
+| WRIT-05 | Phase 41 | Pending |
+| WRIT-06 | Phase 41 | Pending |
+| WRIT-07 | Phase 41 | Pending |
+| WRIT-08 | Phase 41 | Pending |
+| READ-01 | Phase 42 | Pending |
+| READ-02 | Phase 42 | Pending |
+| READ-03 | Phase 43 | Pending |
+| READ-04 | Phase 43 | Pending |
+| READ-05 | Phase 43 | Pending |
+| READ-06 | Phase 43 | Pending |
+| READ-07 | Phase 43 | Pending |
+| FILT-01 | Phase 44 | Pending |
+| FILT-02 | Phase 44 | Pending |
+| FILT-03 | Phase 44 | Pending |
+| FILT-04 | Phase 44 | Pending |
+| FILT-05 | Phase 44 | Pending |
+| NRES-01 | Phase 40 | Pending |
+| NRES-02 | Phase 40 | Pending |
+| NRES-03 | Phase 40 | Pending |
+| NRES-04 | Phase 40 | Pending |
+| NRES-05 | Phase 40 | Pending |
+| NRES-06 | Phase 40 | Pending |
+| NRES-07 | Phase 44 | Pending |
+| PROJ-01 | Phase 44 | Pending |
+| PROJ-02 | Phase 44 | Pending |
+| PROJ-03 | Phase 44 | Pending |
+| DESC-01 | Phase 45 | Pending |
+| DESC-02 | Phase 45 | Pending |
+| DESC-03 | Phase 45 | Pending |
+| DESC-04 | Phase 45 | Pending |
 
 **Coverage:**
-- v1.3.1 requirements: 38 total
-- Mapped to phases: 0
-- Unmapped: 38 ⚠️
+- v1.3.1 requirements: 47 total
+- Mapped to phases: 47
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-05*
-*Last updated: 2026-04-05 after initial definition*
+*Last updated: 2026-04-05 after roadmap creation*
