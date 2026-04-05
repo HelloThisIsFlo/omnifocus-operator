@@ -184,9 +184,9 @@ class TestResolveCascade:
     """The three-step cascade: $-prefix -> substring match -> ID fallback."""
 
     async def test_system_location_inbox(self, resolver: Resolver) -> None:
-        """$inbox returns the inbox ID without any repo call."""
+        """$inbox returns None (inbox = no parent) without any repo call."""
         result = await resolver.resolve_container("$inbox")
-        assert result == "$inbox"
+        assert result is None
 
     async def test_system_location_unknown(self, resolver: Resolver) -> None:
         """$trash raises with valid system locations listed."""
@@ -240,7 +240,7 @@ class TestResolveContainer:
 
     async def test_resolve_container_inbox(self, resolver: Resolver) -> None:
         result = await resolver.resolve_container("$inbox")
-        assert result == "$inbox"
+        assert result is None
 
     async def test_resolve_container_by_name(self, resolver: Resolver) -> None:
         result = await resolver.resolve_container("Project One")

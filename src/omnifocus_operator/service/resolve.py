@@ -171,9 +171,13 @@ class Resolver:
 
     # -- Public: write-side resolution -----------------------------------------
 
-    async def resolve_container(self, value: str) -> str:
-        """Resolve a container reference (project or task) by name, ID, or $-location."""
-        return await self._resolve(value, accept=[_EntityType.PROJECT, _EntityType.TASK])
+    async def resolve_container(self, value: str) -> str | None:
+        """Resolve a container reference (project or task) by name, ID, or $-location.
+
+        Returns None for $inbox (inbox = no parent in bridge payload).
+        """
+        result = await self._resolve(value, accept=[_EntityType.PROJECT, _EntityType.TASK])
+        return None if result == SYSTEM_LOCATION_INBOX else result
 
     async def resolve_anchor(self, value: str) -> str:
         """Resolve an anchor reference (task only) by name or ID."""
@@ -194,8 +198,7 @@ class Resolver:
         )
         all_tags = tags_result.items
         return [
-            await self._resolve(n, accept=[_EntityType.TAG], entities=all_tags)
-            for n in tag_names
+            await self._resolve(n, accept=[_EntityType.TAG], entities=all_tags) for n in tag_names
         ]
 
     # -- Public: lookup methods (return full entities) -------------------------

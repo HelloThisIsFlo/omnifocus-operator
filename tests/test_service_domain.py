@@ -67,7 +67,7 @@ class StubResolver:
     async def resolve_tags(self, names: list[str]) -> list[str]:
         return [self._tag_map[n] for n in names]
 
-    async def resolve_container(self, pid: str) -> str:
+    async def resolve_container(self, pid: str) -> str | None:
         return pid  # always succeeds
 
     async def resolve_anchor(self, anchor_id: str) -> str:

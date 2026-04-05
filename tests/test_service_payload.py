@@ -57,7 +57,9 @@ class TestBuildAdd:
             estimated_minutes=45.0,
             note="Some note",
         )
-        payload = builder.build_add(command, resolved_tag_ids=["tag-work"])
+        payload = builder.build_add(
+            command, resolved_tag_ids=["tag-work"], resolved_parent="proj-1"
+        )
 
         assert payload.name == "Full task"
         assert payload.parent == "proj-1"

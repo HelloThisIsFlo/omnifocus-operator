@@ -35,12 +35,13 @@ class PayloadBuilder:
         self,
         command: AddTaskCommand,
         resolved_tag_ids: list[str] | None,
+        resolved_parent: str | None = None,
         repetition_rule_payload: RepetitionRuleRepoPayload | None = None,
     ) -> AddTaskRepoPayload:
         """Build add-task payload. Only includes populated fields."""
         kwargs: dict[str, object] = {"name": command.name}
-        if command.parent is not None:
-            kwargs["parent"] = command.parent
+        if resolved_parent is not None:
+            kwargs["parent"] = resolved_parent
         if resolved_tag_ids is not None:
             kwargs["tag_ids"] = resolved_tag_ids
         if command.due_date is not None:

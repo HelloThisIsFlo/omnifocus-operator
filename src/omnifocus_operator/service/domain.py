@@ -52,9 +52,7 @@ from omnifocus_operator.agent_messages.warnings import (
 from omnifocus_operator.config import (
     FUZZY_MATCH_CUTOFF,
     FUZZY_MATCH_MAX_SUGGESTIONS,
-    SYSTEM_LOCATION_INBOX,
 )
-from omnifocus_operator.service.fuzzy import suggest_close_matches as _suggest_close_matches
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
 from omnifocus_operator.models.enums import Availability, Schedule
@@ -63,6 +61,7 @@ from omnifocus_operator.models.repetition_rule import (
     Frequency,
     RepetitionRule,
 )
+from omnifocus_operator.service.fuzzy import suggest_close_matches as _suggest_close_matches
 
 if TYPE_CHECKING:
     from omnifocus_operator.contracts.protocols import Repository
@@ -593,11 +592,9 @@ class DomainLogic:
         if container_id is None:
             return {"position": position, "container_id": None}
 
-        # Resolve container name/ID to canonical ID
+        # Resolve container name/ID to canonical ID ($inbox -> None)
         resolved_id = await self._resolver.resolve_container(container_id)
-
-        # $inbox resolves to None (inbox has no container ID)
-        if resolved_id == SYSTEM_LOCATION_INBOX:
+        if resolved_id is None:
             return {"position": position, "container_id": None}
 
         # If container is a task, check for circular reference
