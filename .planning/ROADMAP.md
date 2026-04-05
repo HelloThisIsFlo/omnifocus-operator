@@ -136,7 +136,7 @@ Plans:
 ### Phase 40: Resolver -- System Location Detection & Name Resolution
 **Goal**: Agents can pass entity names or `$`-prefixed system locations to any write field, with clear error messages for ambiguous or invalid inputs
 **Depends on**: Phase 39
-**Requirements**: SLOC-02, SLOC-03, NRES-01, NRES-02, NRES-03, NRES-04, NRES-05, NRES-06
+**Requirements**: SLOC-02, SLOC-03, NRES-01, NRES-02, NRES-03, NRES-04, NRES-05, NRES-06, NRES-08
 **Success Criteria** (what must be TRUE):
   1. `$inbox` in any write field resolves without hitting name/ID lookup
   2. `$trash` or other unrecognized `$`-prefixed strings return an error listing valid system locations

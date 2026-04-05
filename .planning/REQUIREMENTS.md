@@ -64,6 +64,7 @@ Requirements for v1.3.1 First-Class References. Each maps to roadmap phases.
 - [ ] **NRES-05**: Zero name matches → helpful error
 - [ ] **NRES-06**: `$`-prefixed strings never enter name resolution
 - [ ] **NRES-07**: List filter fields accept entity names (extends v1.3 pattern)
+- [ ] **NRES-08**: Tag name resolution uses case-insensitive substring matching (unified with other write fields)
 
 ### Project Tools
 
@@ -145,6 +146,7 @@ Deferred to later milestones. Tracked but not in current roadmap.
 | NRES-05 | Phase 40 | Pending |
 | NRES-06 | Phase 40 | Pending |
 | NRES-07 | Phase 44 | Pending |
+| NRES-08 | Phase 40 | Pending |
 | PROJ-01 | Phase 44 | Pending |
 | PROJ-02 | Phase 44 | Pending |
 | PROJ-03 | Phase 44 | Pending |
@@ -154,10 +156,10 @@ Deferred to later milestones. Tracked but not in current roadmap.
 | DESC-04 | Phase 45 | Pending |
 
 **Coverage:**
-- v1.3.1 requirements: 47 total
-- Mapped to phases: 47
+- v1.3.1 requirements: 48 total
+- Mapped to phases: 48
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-05*
-*Last updated: 2026-04-05 after roadmap creation*
+*Last updated: 2026-04-05 after Phase 40 context discussion (NRES-08 added)*
