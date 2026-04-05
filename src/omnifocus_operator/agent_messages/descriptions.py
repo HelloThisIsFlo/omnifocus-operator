@@ -342,7 +342,7 @@ GET_PROJECT_TOOL_DOC = (
     "Key fields: urgency, availability, dueDate, deferDate, plannedDate,\n"
     "effectiveDueDate (inherited from parent), flagged, effectiveFlagged,\n"
     "tags (array of {id, name}), nextTask (ID of first available task),\n"
-    "folder (name or null), reviewInterval, nextReviewDate.\n"
+    "folder (folder ID or null), reviewInterval, nextReviewDate.\n"
     "The response uses camelCase field names."
 )
 
@@ -350,7 +350,7 @@ GET_TAG_TOOL_DOC = (
     "Look up a single tag by its ID.\n"
     "\n"
     "Key fields: availability, childrenAreMutuallyExclusive (child tags\n"
-    "behave like radio buttons when true), parent (parent tag name or null).\n"
+    "behave like radio buttons when true), parent (parent tag ID or null).\n"
     "The response uses camelCase field names."
 )
 
@@ -402,13 +402,18 @@ ADD_TASKS_TOOL_DOC = (
 LIST_TASKS_TOOL_DOC = (
     "List and filter tasks. All filters combine with AND logic.\n"
     "\n"
+    "Returns a flat list. Each task includes a parent field ({type, id, name}\n"
+    "or null for inbox) that can be used to reconstruct hierarchy. Tasks can\n"
+    "be nested under projects or other tasks.\n"
+    "\n"
     "Response: {items, total, hasMore, warnings?}\n"
     "\n"
     "Key fields per task:\n"
     "  urgency, availability, flagged, effectiveFlagged (inherited),\n"
     "  dueDate, deferDate, plannedDate, effectiveDueDate, effectiveDeferDate,\n"
     "  estimatedMinutes, tags [{id, name}], parent ({type, id, name} or null\n"
-    "  for inbox), inInbox, hasChildren, repetitionRule, completionDate.\n"
+    "  for inbox), inInbox, hasChildren,\n"
+    "  repetitionRule, completionDate.\n"
     "The response uses camelCase field names."
 )
 
@@ -419,7 +424,7 @@ LIST_PROJECTS_TOOL_DOC = (
     "\n"
     "Key fields per project:\n"
     "  urgency, availability, flagged, effectiveFlagged, dueDate, deferDate,\n"
-    "  plannedDate, effectiveDueDate, tags [{id, name}], folder (name or null),\n"
+    "  plannedDate, effectiveDueDate, tags [{id, name}], folder (folder ID or null),\n"
     "  nextTask (ID of first available task), reviewInterval, nextReviewDate,\n"
     "  hasChildren, repetitionRule, completionDate.\n"
     "The response uses camelCase field names."
@@ -435,7 +440,7 @@ LIST_TAGS_TOOL_DOC = (
     "\n"
     "Key fields per tag:\n"
     "  availability, childrenAreMutuallyExclusive (when true, child tags\n"
-    "  behave like radio buttons), parent.\n"
+    "  behave like radio buttons), parent (parent tag ID or null).\n"
     "The response uses camelCase field names."
 )
 
@@ -447,7 +452,7 @@ LIST_FOLDERS_TOOL_DOC = (
     "\n"
     "Response: {items, total, hasMore}\n"
     "\n"
-    "Key fields per folder: availability, parent.\n"
+    "Key fields per folder: availability, parent (folder ID or null).\n"
     "The response uses camelCase field names."
 )
 
