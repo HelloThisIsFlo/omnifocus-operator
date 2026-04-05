@@ -1,116 +1,90 @@
 # Domain Pitfalls
 
-**Domain:** SQL filtering, pagination, entity listing, and count tools on an MCP server with dual read paths (SQLite + in-memory fallback)
-**Researched:** 2026-03-29
-**System context:** OmniFocus Operator v1.3 milestone
+**Domain:** System location namespace, tagged union discriminators, name-based resolution, rich references, and breaking model changes on an existing Pydantic v2 MCP server
+**Researched:** 2026-04-05
+**System context:** OmniFocus Operator v1.3.1 milestone
 
 ## Critical Pitfalls
 
-Mistakes that cause result divergence between read paths, data loss via silent omission, or incorrect agent behavior.
+Mistakes that cause rewrites, data corruption, or cascading test failures.
 
 ---
 
-### Pitfall 1: SQL/In-Memory Result Divergence from Separate Filter Implementations
+### Pitfall 1: Tagged Object Parent Wrapper Serialization With `exclude_defaults`
 
-**What goes wrong:** SQL WHERE clauses and Python in-memory filtering silently produce different results for the same filter parameters. The contract "bridge fallback produces identical results to SQL path" is violated without any error.
+**What goes wrong:** The tagged object pattern for `parent` (`{"project": {...}}` or `{"task": {...}}`) requires a wrapper model with two optional fields (project and task), where exactly one is set. If the wrapper uses `default=None` for both fields and any serialization path uses `exclude_defaults=True`, the populated field survives but there are subtle interactions:
+- A parent-level `exclude_defaults` could strip the wrapper itself if it equals some default
+- `@field_serializer` or `@model_serializer` on the wrapper could erase the JSON Schema structure (known prior issue, caught by `test_output_schema.py`)
 
-**Why it happens:** Two independent implementations of the same filter logic. Every filter is written twice -- once in SQL, once in Python. Subtle semantic differences accumulate: LIKE vs `in` operator, NULL handling, type coercion, collation, boundary conditions.
+**Why it happens:** The project already hit this with `Literal` discriminators on the Frequency model (line 193 of `repetition_rule.py`: `type: str  # required, NO default -- survives exclude_defaults`). The tagged object pattern avoids the `Literal` default problem but the wrapper model itself needs careful defaults.
 
-**Consequences:** Agent gets different task counts depending on which read path is active. Tests pass against InMemoryBridge, but real SQLite path returns different data. Bugs are invisible until someone compares outputs side-by-side.
+**Consequences:** Parent field silently disappears from serialized output, or JSON Schema doesn't reflect the union correctly. Output schema tests may pass (schema is valid) while runtime serialization is wrong.
 
 **Prevention:**
-- **Single filter specification, two backends.** Define each filter as a declarative spec (e.g., `FilterSpec(field="name", op="contains", value="...")`) that both SQL builder and Python filter interpret. Don't write SQL strings in one place and Python `if` chains in another.
-- **Property-based cross-path tests.** For every filter combination, assert `sql_result == in_memory_result` using the same seed data. The golden master pattern already exists (43 scenarios) -- extend it to cover filtered queries.
-- **Shared filter resolution.** Filter parameter parsing (e.g., status shorthands, `review_due_within` duration parsing) MUST happen in the service layer before reaching either repository. Repositories receive resolved, unambiguous filter values.
+- `parent` field on `Task` must NOT have a default. Typed as the wrapper, never optional, never defaulted. The spec says "never null, never absent" -- enforce in the type system.
+- Do NOT use `exclude_defaults=True` on the `Task.model_dump()` path. The existing codebase doesn't (it uses `exclude_unset` on write payloads, `exclude_defaults` only on the Frequency `@field_serializer`). Keep it that way.
+- Do NOT add `@model_serializer` to the wrapper -- project has a known rule: contracts are pure data, no transformation logic.
+- Add a dedicated serialization test: serialize a Task with a project parent and a task parent, assert the JSON includes `{"project": {...}}` / `{"task": {...}}` structure.
 
-**Detection:** Add a CI test that runs every filter against both paths with a known dataset and diffs results. Any difference is a test failure.
+**Detection:** Output schema regression test (`test_output_schema.py`) catches schema-level issues. Add content-level serialization assertions specifically for the parent wrapper.
 
 ---
 
-### Pitfall 2: Pagination Without Deterministic ORDER BY
+### Pitfall 2: `model_rebuild()` Namespace Missing New Types
 
-**What goes wrong:** `LIMIT 5 OFFSET 5` returns overlapping or missing rows across pages. Agent paginating through results sees duplicate tasks or silently skips tasks.
+**What goes wrong:** `models/__init__.py` has an explicit `_ns` dict and `model_rebuild()` calls for forward reference resolution. When adding `ProjectRef`, `TaskRef`, `FolderRef`, and the parent wrapper model, forgetting to add them to `_ns` causes `PydanticUndefinedAnnotation` -- but only when the model is used for schema generation or validation, not at import time.
 
-**Why it happens:** SQL does not guarantee row order without `ORDER BY`. The existing `_TASKS_SQL` query has no ORDER BY clause. SQLite's internal storage order can change between reads (especially with WAL mode). The same query with `LIMIT 10 OFFSET 0` and `LIMIT 10 OFFSET 10` may return overlapping rows because the engine picks a different execution plan.
+**Why it happens:** The namespace dict is manually maintained (15 entries currently). No automated check ensures all model types are present.
 
-**Consequences:** Agent paging through "all flagged tasks" misses some, sees others twice. `count_tasks()` says 47, but iterating with `limit=10` only yields 43 unique tasks. Agent makes decisions on incomplete data.
+**Consequences:** Runtime crash on first tool call that touches the affected model. Tests constructing models directly (bypassing `__init__`) pass fine; integration tests fail.
 
 **Prevention:**
-- **Always ORDER BY a unique column.** Add `ORDER BY t.persistentIdentifier` (or another unique, stable column) to every filtered query. This is cheap (indexed primary key) and guarantees deterministic pagination.
-- **Apply the same sort to in-memory filtering.** Python fallback must `sorted(results, key=lambda t: t.id)` before applying offset/limit slicing.
-- **Test pagination determinism.** Assert that `list_tasks(limit=5, offset=0)` + `list_tasks(limit=5, offset=5)` produces the same set as `list_tasks(limit=10)`.
+- Add new types to `_ns` in the same commit that defines them.
+- Add `model_rebuild()` calls for any new models with forward references.
+- Remove `ParentRef` from `_ns`, `model_rebuild()`, and `__all__` when deleting it -- leftover references cause `ImportError`.
+- Smoke check: `uv run python -c "from omnifocus_operator.models import Task; print(Task.model_json_schema())"` after model changes.
 
-**Detection:** Pagination integration test that verifies no overlap and no gaps when iterating through the full result set.
+**Detection:** `test_output_schema.py` exercises full schema generation for all tools.
 
 ---
 
-### Pitfall 3: LIKE Case Sensitivity for Non-ASCII Characters
+### Pitfall 3: Breaking Change Ordering -- Removing `inInbox` Before Adding `project`
 
-**What goes wrong:** `search` filter using SQL `LIKE` is case-insensitive for ASCII (`a` matches `A`) but case-sensitive for Unicode (`e` does NOT match `E` with accent). A user searching "resume" won't find a task named "Resume" (fine), but searching for accented characters like "cafe" won't find "Cafe" with accented e.
+**What goes wrong:** If `inInbox` is removed from the Task model before the `project` field is added and populated, there's a window where inbox status is undetectable in task output. Cross-path equivalence tests fail because the bridge path still emits `inInbox` but the model can't accept it.
 
-**Why it happens:** SQLite's built-in LIKE operator only does ASCII case folding. The `PRAGMA case_sensitive_like` is deprecated. COLLATE NOCASE doesn't affect LIKE behavior. Full Unicode case folding requires the ICU extension or a custom collation.
+**Why it happens:** Natural refactoring instinct: "remove the old thing, then add the new thing." But the old thing is load-bearing until the new thing replaces it.
 
-**Consequences:** For this system, the practical impact is moderate -- OmniFocus task names are overwhelmingly ASCII. But the `search` filter documentation must not promise "case-insensitive" without the ASCII caveat.
+**Consequences:** Broken intermediate state. Tests between phases are red. An agent reading task output has no way to determine if a task is in the inbox.
 
 **Prevention:**
-- **Document the limitation explicitly.** Tool description says "case-insensitive ASCII substring match" not just "case-insensitive."
-- **Use `LOWER()` for both sides** as a pragmatic middle ground: `WHERE LOWER(name) LIKE LOWER(?)`. This handles ASCII correctly and is explicit about what's happening. Still won't handle full Unicode, but matches the Python `str.lower()` behavior, preventing SQL/in-memory divergence.
-- **In-memory path must use the same semantics.** Python `str.lower()` also doesn't do full Unicode case folding (though it's better than SQLite's). Use `casefold()` on neither or both paths -- consistency matters more than completeness.
-- **Punt full Unicode search to v1.4.1 fuzzy search.** Don't solve Unicode case folding now; it's a future milestone's problem.
+- Add `project` field FIRST (alongside `inInbox`), verify it works, THEN remove `inInbox`.
+- Or do both in a single atomic change: add `project`, remove `inInbox`, update all mappers and tests simultaneously.
+- Never ship a state where inbox status is unrepresented.
 
-**Detection:** Test with mixed-case ASCII task names and verify both paths return the same results.
+**Detection:** Cross-path equivalence tests fail if bridge path emits `inInbox` but model lacks it.
 
 ---
 
-### Pitfall 4: NULL Handling Asymmetry Between SQL and Python Filters
+### Pitfall 4: Test Helper Cascade -- `make_model_task_dict` Hardcodes 26 Fields
 
-**What goes wrong:** SQL `WHERE estimated_minutes <= 30` silently excludes rows where `estimated_minutes IS NULL`. Python `task.estimated_minutes <= 30` raises `TypeError` (comparing `None <= 30`) or returns `False` depending on implementation.
+**What goes wrong:** `make_model_task_dict()` in `tests/conftest.py` hardcodes `"inInbox": True` and `"parent": None`. After model changes:
+- `inInbox` key must be removed
+- `parent` must change from `None` to the tagged object format
+- A new `project` key must be added
 
-**Why it happens:** SQL's three-valued logic: `NULL <= 30` evaluates to NULL (falsy), so the row is excluded. Python's None comparison raises TypeError in strict mode. If guarded with `if task.field is not None and task.field <= 30`, the semantics match SQL. But if someone writes `task.field <= 30` and catches the TypeError, they might return True or False inconsistently.
+Every test using this factory without overriding these fields gets invalid data.
 
-**Consequences:** Filter results diverge. Worse: the divergence is data-dependent. If all test data has estimated_minutes populated, the bug is invisible. First user with NULL estimated_minutes gets different results from SQL vs in-memory.
+**Why it happens:** The factory centralizes defaults (good for consistency), but model changes have blast radius proportional to test suite size (1,528 tests).
 
-**Prevention:**
-- **Explicit NULL exclusion in both paths.** SQL: `WHERE estimated_minutes IS NOT NULL AND estimated_minutes <= ?`. Python: `if task.estimated_minutes is not None and task.estimated_minutes <= max_val`. Make the NULL check explicit rather than relying on SQL's implicit behavior.
-- **Test with NULL values in seed data.** Every filterable field that can be NULL must have at least one NULL value in test fixtures. This is non-negotiable.
-- **Document NULL semantics per filter.** The spec says "tasks with no value for a date field are excluded from that filter" -- extend this principle to all nullable fields (estimated_minutes, note content, etc.).
-
-**Detection:** Test fixture with a task where every optional field is NULL. Verify every filter that touches optional fields handles it correctly on both paths.
-
----
-
-### Pitfall 5: Count/List Result Divergence
-
-**What goes wrong:** `count_tasks(flagged=True)` returns 12, but `len(list_tasks(flagged=True))` returns 10. Agent calculates "2 pages of 5" but only gets 10 tasks total.
-
-**Why it happens:** Count and list use separate code paths. Count uses `SELECT COUNT(*)`, list uses `SELECT *`. If the WHERE clauses drift (e.g., count forgets to exclude completed tasks, or list adds an extra join that filters differently), results diverge.
-
-**Consequences:** Agent's pagination math is wrong. "Page 3 of 5" might be empty. Agent reports incorrect totals to the user.
+**Consequences:** Mass test failures. The fix is mechanical but easy to get wrong -- the default parent/project values must be internally consistent (inbox task defaults need both `parent` and `project` pointing to `$inbox`).
 
 **Prevention:**
-- **The spec already calls this out:** "Implemented as `len(filtered_results)` or `SELECT COUNT(*)` -- one code path to prevent count/list divergence." Follow this literally.
-- **Concrete implementation:** Have `count_tasks()` call `list_tasks()` and return `len(result)`. Or: have both call a shared `_build_query()` that returns the WHERE clause + params, and count wraps it in `SELECT COUNT(*) FROM (...)`.
-- **The spec also says count ignores limit/offset.** This is correct -- count returns total matching, not total in current page. But implement it by sharing the filter-building logic, not by duplicating it minus the LIMIT clause.
-- **Cross-assert in tests.** Every test that calls `count_*` should also call `list_*` with the same filters and assert equality. Make this a test helper, not a per-test burden.
+- Update `make_model_task_dict()` atomically with the model change. Default inbox task: `"parent": {"project": {"id": "$inbox", "name": "Inbox"}}`, `"project": {"id": "$inbox", "name": "Inbox"}`, no `inInbox` key.
+- Grep for `"inInbox"` across ALL test files -- tests constructing task dicts directly (not via factory) need updating.
+- Grep for `"parent": None` in tests -- all need the new format.
+- Update `make_model_project_dict`, `make_model_tag_dict`, `make_model_folder_dict` for rich reference changes simultaneously.
 
-**Detection:** Parametrized test: for N filter combinations, assert `count_tasks(**filters) == len(list_tasks(**filters))`.
-
----
-
-### Pitfall 6: Status Shorthand Expansion Inconsistency
-
-**What goes wrong:** `list_projects(status=["remaining"])` returns different results on SQL vs in-memory because "remaining" is expanded to `["active", "on_hold"]` in one path but not the other. Or "available" shorthand maps to `active` in one path but `available` in another.
-
-**Why it happens:** The spec defines shorthands: `remaining` = active + on_hold, `available` = active only, `all` = no filter. These must be expanded before reaching the repository. If expansion happens inside the SQL builder, the in-memory path doesn't get it. If expansion happens differently in each path, results diverge.
-
-**Consequences:** "Show me remaining projects" returns 47 on SQL, 52 on in-memory. The 5 extra are on_hold projects included in one path but not the other.
-
-**Prevention:**
-- **Expand shorthands in the service layer, before the repository.** Repository receives only concrete status values: `["active", "on_hold"]`, never `"remaining"`. Both paths see the same resolved values.
-- **Validate shorthand values at the service layer.** Unknown values get educational errors before reaching repository.
-- **Map to the correct axis.** Project "status" in the spec maps to the `availability` field on the model. `active` = `available`, `on_hold` = `blocked`, `done` = `completed`, `dropped` = `dropped`. The SQL must filter on the correct column (`effectiveStatus` from ProjectInfo for SQL, `availability` field for in-memory). This mapping must be consistent.
-
-**Detection:** Test each shorthand individually and verify expansion produces the same concrete values. Test that SQL and in-memory paths receive identical resolved filter values.
+**Detection:** `uv run pytest` surfaces all failures immediately. No silent breakage -- this is loud and obvious.
 
 ---
 
@@ -118,85 +92,96 @@ Mistakes that cause result divergence between read paths, data loss via silent o
 
 ---
 
-### Pitfall 7: `review_due_within` Date Arithmetic Edge Cases
+### Pitfall 5: `$inbox` Leaking Through to Bridge Payloads
 
-**What goes wrong:** `review_due_within: "1m"` means "projects where nextReviewDate <= now + 1 month." But "1 month" is defined as ~30 days (naive). A project with nextReviewDate 31 days from now is excluded, even though a human would say "it's due within a month."
+**What goes wrong:** `$inbox` is a service-layer concept. The OmniJS bridge has no concept of system locations -- it expects tasks with no parent to land in the inbox. If `$inbox` leaks into the bridge payload (e.g., `parent: "$inbox"` in the write command), the bridge tries to find a project with ID `$inbox` and fails.
+
+**Why it happens:** The service layer should translate `$inbox` to "no parent" before building the bridge payload. If the resolution path misses a code path (add_tasks vs edit_tasks vs move actions), `$inbox` reaches the bridge.
+
+**Consequences:** Bridge error: "Project not found: $inbox." Task creation/edit fails.
 
 **Prevention:**
-- **The spec already decided naive arithmetic** (30d/month, 365d/year). Document this in the tool description: "Month = ~30 days, year = ~365 days."
-- **The real risk is the timestamp format.** `nextReviewDate` in SQLite is stored as Core Foundation epoch float (seconds since 2001-01-01). The service must convert `now + duration` to the same format for comparison. If the SQL compares an ISO string to a CF epoch float, every row fails the comparison silently.
-- **NULL nextReviewDate.** Projects with no review schedule have NULL nextReviewDate. These must be excluded (the spec says "projects with no review schedule are excluded"). SQL handles this naturally (`NULL <= x` is falsy), but the in-memory path needs an explicit `if project.next_review_date is not None` guard.
-- **`review_due_within: "now"` means overdue for review** -- `nextReviewDate <= now`. Test with a project whose review is overdue and one that's upcoming.
-
-**Detection:** Test with CF epoch timestamps, not ISO strings. Test with projects that have no review schedule (NULL nextReviewDate).
+- PayloadBuilder must translate `$inbox` to `None`/omitted in the RepoPayload before repository.
+- Test: `add_tasks` with `parent: "$inbox"` produces a bridge payload with no parent field.
+- Test: `edit_tasks` with `ending: "$inbox"` produces correct inbox-targeting move command.
+- Defense in depth: assert in bridge write mixin that no payload value starts with `$`.
 
 ---
 
-### Pitfall 8: Tag Filter OR Logic vs AND Logic for Other Filters
+### Pitfall 6: `PatchOrNone` Removal Leaves Dangling Imports
 
-**What goes wrong:** `tags: ["Work", "Urgent"]` should return tasks with Work OR Urgent (any of the specified tags). But if combined with `flagged: true`, the overall combination is AND: `(tag IN ("Work", "Urgent")) AND flagged`. Implementing this incorrectly as all-AND or all-OR silently changes result sets.
+**What goes wrong:** `PatchOrNone` is used in `MoveAction` (lines 61-62 of `actions.py`). After changing `beginning`/`ending` to `Patch[str]`, the import becomes unused. If `PatchOrNone` is removed from `contracts/base.py` but some other file still imports it, that file breaks.
 
 **Prevention:**
-- **Be explicit about the algebra.** The spec says: "Filters combine with AND logic" and "tags: list (OR) -- tasks with at least one of the specified tags." This means tags are OR within the tag list, but AND with every other filter.
-- **SQL implementation:** Join to TaskToTag, filter `WHERE tag IN (?, ?)`, but this creates duplicate rows if a task has multiple matching tags. Must use `SELECT DISTINCT` or `EXISTS (SELECT 1 FROM TaskToTag WHERE ...)` subquery.
-- **In-memory equivalent:** `any(tag.name in filter_tags for tag in task.tags)` -- straightforward, but must match SQL behavior exactly including case sensitivity of tag matching.
-- **Case sensitivity of tag names.** The spec says "case-insensitive partial match on project name" for the project filter, but doesn't explicitly state case sensitivity for tags. Tags in OmniFocus are case-sensitive (you can have "work" and "Work" as separate tags). The filter should match by tag name exactly (case-sensitive), or document otherwise.
+- Grep for `PatchOrNone` across the entire codebase before removing.
+- Remove the import from `actions.py` in the same change that changes the field types.
+- Remove from `contracts/base.py.__all__` in the same change.
 
-**Detection:** Test with a task that has both "Work" and "Urgent" tags -- verify it appears once (not twice from the JOIN). Test with a task that has only "Work" -- verify it still appears.
+**Detection:** `uv run ruff check` and `uv run mypy` catch unused imports and missing symbols.
 
 ---
 
-### Pitfall 9: `project` Filter Requires a JOIN That Doesn't Exist Yet
+### Pitfall 7: Rich References Break Golden Master Contract Tests
 
-**What goes wrong:** `list_tasks(project="Renovations")` needs to match tasks by their containing project's name at any nesting depth (not just direct children). The current `_TASKS_SQL` query doesn't join to project names. The task row has `containingProjectInfo` (a ProjectInfo FK) but not the project name directly.
+**What goes wrong:** Golden master fixtures contain captured RealBridge output with bare ID strings for `Project.folder`, `Project.next_task`, `Tag.parent`, `Folder.parent`. After changing these to `{id, name}` objects, the golden master validation fails because fixtures have the old format.
+
+**Why it happens:** Golden master tests compare InMemoryBridge output against captured snapshots. Old snapshots with `"folder": "aBcDeFg"` won't validate against the new `FolderRef` type.
+
+**Consequences:** All golden master tests fail (43 scenarios across 7 categories).
 
 **Prevention:**
-- **The SQL query needs a LEFT JOIN to ProjectInfo and then to Task** (since projects are stored as Task rows with a ProjectInfo entry). Something like: `LEFT JOIN ProjectInfo pi2 ON t.containingProjectInfo = pi2.pk LEFT JOIN Task pt ON pi2.task = pt.persistentIdentifier WHERE pt.name LIKE ?`.
-- **For in-memory:** The Task model doesn't currently have a `project_name` field. The spec notes "project_name as a derived field on Task (resolved from snapshot/join)." This needs to be either: (a) added as a field populated during snapshot loading, or (b) resolved at filter time by looking up the parent chain.
-- **Inbox tasks have no project.** `containingProjectInfo IS NULL` for inbox tasks. A `project` filter with an INNER JOIN would exclude all inbox tasks. Must use LEFT JOIN and handle NULL.
-
-**Detection:** Test filtering by project name on inbox tasks (should not match). Test partial match ("Renov" matches "Renovations"). Test case insensitivity. Test deeply nested tasks (task inside action group inside project must still match).
+- Per GOLD-01: any phase modifying bridge operations must re-capture the golden master. Plan UAT re-capture as part of this milestone.
+- Update `InMemoryBridge` to produce enriched references.
+- Update bridge adapter (`adapter.py`) in the bridge-only path to emit `{id, name}` dicts instead of bare strings.
+- Golden master re-capture is human-only (project feedback). Plan the UAT step explicitly in the phase.
 
 ---
 
-### Pitfall 10: `completed`/`dropped` Default Exclusion Interacts with Other Filters
+### Pitfall 8: `before`/`after` Name Resolution Resolves to Wrong Entity Type
 
-**What goes wrong:** `list_tasks(flagged=True)` excludes completed/dropped tasks by default. But the SQL query must explicitly add `WHERE dateCompleted IS NULL AND dateHidden IS NULL` (or equivalent availability filter). If the default exclusion is implemented via `availability NOT IN ('completed', 'dropped')`, it works. But if it's implemented by checking date columns, it must match the availability derivation logic exactly.
+**What goes wrong:** `before` and `after` accept sibling **task** IDs only. If name resolution is added to these fields without scoping, `before: "Work"` where "Work" is a project name resolves to a project ID. The bridge then tries to position a task before a project -- nonsensical.
 
 **Prevention:**
-- **Use the availability column, not date columns, for default exclusion.** The `_map_task_availability` function derives availability from `dateCompleted` and `dateHidden`. In SQL, replicate this: tasks where `dateHidden IS NOT NULL` are dropped, `dateCompleted IS NOT NULL` are completed. Filter as: `WHERE t.dateHidden IS NULL AND t.dateCompleted IS NULL AND NOT t.blocked` would be wrong (that's `available` only, not "not completed/dropped").
-- **Correct default exclusion in SQL:** `WHERE t.dateHidden IS NULL AND t.dateCompleted IS NULL`. This excludes completed and dropped while keeping both available and blocked tasks.
-- **In-memory:** `task.availability not in ("completed", "dropped")`. These must be semantically identical.
-- **The v1.3.2 date filters will override this.** Using `completed: "any"` or `completed: {last: "1w"}` must disable the default exclusion for completed tasks. Design the exclusion as an addable/removable clause from the start.
-
-**Detection:** Seed data must include completed and dropped tasks. Verify they're excluded by default. Verify `availability: "blocked"` still returns blocked-but-not-completed tasks.
+- Name resolution for `before`/`after` must search tasks only, not projects.
+- Name resolution for `beginning`/`ending` must search containers (projects + task groups + `$inbox`).
+- Separate resolver methods: `resolve_sibling_task(name)` vs `resolve_container(name)`.
+- The improved error message ("before expects a sibling task, not a container") should fire AFTER name resolution, so if a name resolves to a project, the error is immediate and targeted.
 
 ---
 
-### Pitfall 11: `offset` Without `limit` Is Silently Meaningless
+### Pitfall 9: `list_tasks` Project Filter + `$inbox` -- Two SQL Code Paths
 
-**What goes wrong:** Agent calls `list_tasks(offset=10)` without `limit`. SQL `OFFSET` without `LIMIT` is implementation-defined (SQLite ignores it). The agent thinks they're skipping 10 tasks, but gets all tasks.
+**What goes wrong:** The `project` filter currently resolves names to project IDs and passes to the SQL query builder. Adding `$inbox` support means a branch: `$inbox` -> use `inInbox = 1` SQL condition, real project -> use `containingProjectInfo = ?`. If branching happens in the query builder instead of the service, it violates "IDs-only at repo boundary."
 
 **Prevention:**
-- **The spec already requires `limit` when `offset` is used.** Validate at the service layer: if offset > 0 and limit is None, return an educational error.
-- **Don't just silently ignore offset.** The error message should say: "offset requires limit. Use limit to set page size, then offset to skip pages."
-
-**Detection:** Test that `offset` without `limit` raises a validation error, not silent behavior.
+- Handle `$inbox` in the service layer's filter resolution. When `project: "$inbox"` is detected, set `in_inbox: True` on the RepoQuery and clear the project filter. Don't pass `$inbox` as a project ID to the repo.
+- Contradictory filter detection (`project: "$inbox"` + `inInbox: false`) belongs in service layer, before repo query construction.
+- Cross-path equivalence tests must cover `project: "$inbox"`.
 
 ---
 
-### Pitfall 12: Tool Description Quality for LLMs -- Enum Values and Filter Syntax
+### Pitfall 10: Contradictory Filter Detection Scope Creep
 
-**What goes wrong:** LLM calls `list_tasks(availability="Available")` (PascalCase from training data) instead of `availability="available"` (snake_case). Or calls `list_projects(status="active")` when the parameter expects a list, not a string. Or uses `status="remaining"` which is a shorthand, not a concrete value.
+**What goes wrong:** The spec defines one explicit contradiction (`project: "$inbox"` + `inInbox: false`) and one empty-set warning (`inInbox: true` + `project: "Work"`). But there are more potential contradictions: `availability: "completed"` with default exclusion active, or `project: "X"` + `inInbox: true` (which the spec addresses). If contradictory filter detection is implemented ad-hoc per combination, it becomes a maintenance burden.
 
 **Prevention:**
-- **List all valid values in the tool description.** Not "see enum" -- literally spell them out: `availability: "available" or "blocked"`.
-- **Show the type explicitly.** `status: list of strings. Values: "active", "on_hold", "done", "dropped". Shorthands: "remaining" (= active + on_hold, default), "available" (= active only), "all" (= no filter).`
-- **Include one example per non-obvious filter** in the description. LLMs are few-shot learners -- a single example in the tool description dramatically reduces calling errors.
-- **Validate with Pydantic at entry.** Fail fast with educational messages: "Got 'Available', did you mean 'available'? Valid values are: ..."
-- **Test tool descriptions with multiple LLM models.** The v1.3.2 spec mentions testing with Sonnet and Opus. Do this for v1.3 too -- have each model call every filter combination and verify they construct valid calls from the description alone.
+- Implement the exact contradictions listed in the spec. Don't try to build a general-purpose contradiction engine.
+- The `inInbox: true` + `project: "Work"` case returns results + warning (empty set), not an error. This is explicitly specified.
+- `project: "$inbox"` + `inInbox: false` returns an error. This is explicitly specified.
+- Don't add unspecified contradictions. If something feels contradictory but isn't in the spec, leave it as valid (AND composition with potentially empty results).
 
-**Detection:** UAT: have an LLM read only the tool description and generate 10 example calls. Check if they're all valid.
+---
+
+### Pitfall 11: Resolver Precedence -- Double Resolution of Already-Resolved IDs
+
+**What goes wrong:** If name resolution is called on a value that was already resolved to an ID in a previous step, and that ID doesn't substring-match any entity name, the resolution fails with "no matches found" instead of treating it as a valid ID.
+
+**Why it happens:** The three-step precedence handles this correctly IF step 2 (exact ID match) runs before step 3 (name match). But if a code path calls a resolver method that only does name matching (skipping the ID check), a valid ID fails.
+
+**Prevention:**
+- Every resolver entry point must implement the full three-step cascade: `$` prefix -> ID match -> name match.
+- Never call a name-only resolver on user input. Always go through the full cascade.
+- The existing `resolve_filter()` (line 135 of resolve.py) already does ID-then-name. New write-side resolution must follow the same pattern.
 
 ---
 
@@ -204,52 +189,48 @@ Mistakes that cause result divergence between read paths, data loss via silent o
 
 ---
 
-### Pitfall 13: SQL LIKE Escaping for `%` and `_` in Search Terms
+### Pitfall 12: JSON Schema for Tagged Object Union -- Overly Permissive
 
-**What goes wrong:** User searches for a task containing literal "50%" or "file_name". SQL LIKE interprets `%` as wildcard and `_` as single-character wildcard. `WHERE name LIKE '%50%%'` matches "50 things" not just "50%".
+**What goes wrong:** The tagged object wrapper (two optional fields, exactly one set) generates a JSON Schema where both fields are optional. Pydantic won't auto-generate `oneOf` or `minProperties: 1`. The schema allows `{}` (no fields set) and `{"project": {...}, "task": {...}}` (both set), even though the validator rejects these at runtime.
 
 **Prevention:**
-- **Escape LIKE wildcards in user input.** Before building the LIKE pattern, escape `%` to `\%` and `_` to `\_`, then set `ESCAPE '\'` in the SQL.
-- **In-memory path uses `in` operator** (`search_term in task.name`), which doesn't have this problem. If SQL escapes but Python doesn't, they'll agree on most inputs but diverge on inputs containing `%` or `_`.
-
-**Detection:** Test with a task named "50% complete" and search for "50%".
+- Accept Pydantic's generated schema. The `@model_validator` enforces "exactly one" at runtime.
+- Don't try to customize JSON Schema generation with schema overrides -- adds complexity for minimal benefit.
+- Verify output schema test still validates serialized output against the generated schema.
+- If agents construct invalid payloads (both fields or neither), the error message from the validator is the mitigation.
 
 ---
 
-### Pitfall 14: `estimated_minutes_max` Boundary -- Inclusive or Exclusive?
+### Pitfall 13: `list_projects` Inbox Warning -- Substring Match Logic Duplication
 
-**What goes wrong:** `estimated_minutes_max: 30` -- does this include a 30-minute task? SQL `<=` includes it, `<` excludes it. If SQL uses `<=` but Python uses `<` (or vice versa), results diverge for tasks at exactly the boundary.
+**What goes wrong:** The spec says: if a name filter on `list_projects` would have matched "Inbox", emit a warning. This requires the same case-insensitive substring logic the resolver uses, applied against the constant "Inbox".
 
 **Prevention:**
-- **The spec says "Tasks with estimated duration <= this value."** Use `<=` in both paths. Document as inclusive.
-- **Type consideration:** `estimated_minutes` is `float | None` in the model. SQL comparison with float works. Python comparison works. Just be consistent.
-
-**Detection:** Test with a task at exactly the boundary value.
+- Use the same substring matching helper the resolver uses. Don't rewrite the logic.
+- The warning is only for `list_projects` with a name filter. No warning for other tools.
+- The constant "Inbox" should come from `config.py` (alongside `$inbox` and `$` prefix).
 
 ---
 
-### Pitfall 15: `has_children` Filter on Stale Data
+### Pitfall 14: `ParentRef` Removal From Re-exports and Forward References
 
-**What goes wrong:** `has_children` in SQLite is derived from `childrenCount > 0`. In the in-memory bridge, it's computed from the snapshot. If a task just had its children moved elsewhere (via `edit_tasks` with `moveTo`), the SQLite cache might reflect the new state but the in-memory snapshot might not (or vice versa, depending on cache freshness).
+**What goes wrong:** `ParentRef` is exported from `models/__init__.py`, `models/common.py`, `__all__`, `_ns` namespace dict, and `model_rebuild()`. Removing it requires updating all sites. Leftover references cause `ImportError` at import time.
 
 **Prevention:**
-- **This is a read-after-write consistency issue**, not a filter logic issue. The existing `_ensures_write_through` decorator handles this for HybridRepository. For BridgeRepository, cache invalidation on writes already exists.
-- **In tests, verify that after a move operation, the has_children value updates.** This is more of a v1.2 concern, but filters surface it more visibly.
-
-**Detection:** Integration test: create parent with children, move children away, verify `has_children: false` in subsequent list query.
+- Grep for `ParentRef` across entire codebase (src + tests + conftest).
+- Remove from `_ns`, `model_rebuild()`, `__all__`, and all import statements atomically.
+- The bridge adapter (`adapter.py`) has `_adapt_parent_ref()` function that builds `ParentRef` dicts -- this must be updated to build the new tagged object format.
 
 ---
 
-### Pitfall 16: `inbox` Filter and the `inInbox` Column
+### Pitfall 15: `get_project("$inbox")` Error vs Resolution
 
-**What goes wrong:** A task that was just added (still in processing) might not have `inInbox` set correctly in SQLite. Or the SQLite `inInbox` column semantics might differ from the bridge's `inInbox` field.
+**What goes wrong:** If the resolver's `resolve_project()` method gains `$` prefix handling that returns a special inbox result, `get_project("$inbox")` might succeed with fabricated data instead of returning the specified error.
 
 **Prevention:**
-- **Verify `inInbox` column behavior.** In SQLite, `inInbox` is a boolean column on the Task table. The existing `_map_task_row` already reads it: `"in_inbox": bool(row["inInbox"])`. The filter just adds `WHERE t.inInbox = 1` (or `= 0`).
-- **In-memory:** `task.in_inbox == filter_value`. Straightforward.
-- **Edge case:** Tasks in the inbox have no project assignment. `inbox: true` and `project: "something"` should return empty results (AND logic). This is a natural consequence but worth a test.
-
-**Detection:** Test that `inbox: true, project: "X"` returns empty. Test that `inbox: false` excludes inbox tasks.
+- The `$inbox` check in `get_project` should happen BEFORE the resolver is called. It's a tool-level guard, not a resolver concern.
+- The error message is specified: "Inbox is a system location, not a project. Use `list_tasks` with `project: '$inbox'` or `inInbox: true`."
+- The resolver's system location handling returns an ID, not a full entity. `get_project` needs the entity. So the guard is naturally at a different level.
 
 ---
 
@@ -257,37 +238,21 @@ Mistakes that cause result divergence between read paths, data loss via silent o
 
 | Phase Topic | Likely Pitfall | Mitigation |
 |-------------|---------------|------------|
-| SQL WHERE clause builder | Pitfall 1 (divergence), 4 (NULL) | Declarative filter specs, shared resolution in service layer |
-| Pagination | Pitfall 2 (ORDER BY), 11 (offset validation) | Deterministic sort on ID, service-layer validation |
-| Substring search | Pitfall 3 (LIKE case), 13 (LIKE escaping) | `LOWER()` on both sides, escape wildcards |
-| Status shorthands | Pitfall 6 (expansion inconsistency) | Expand in service layer before repository |
-| Count tools | Pitfall 5 (count/list divergence) | Share filter-building code, cross-assert in tests |
-| Tag filter | Pitfall 8 (OR vs AND, duplicates) | EXISTS subquery or DISTINCT, explicit algebra |
-| Project name filter | Pitfall 9 (missing JOIN) | LEFT JOIN through ProjectInfo to Task name |
-| Default exclusion | Pitfall 10 (completed/dropped) | Use date columns for exclusion, design as removable clause |
-| Tool descriptions | Pitfall 12 (LLM calling errors) | Spell out all values, include examples, test with LLMs |
-| review_due_within | Pitfall 7 (date arithmetic, timestamp format) | CF epoch comparison, NULL handling, document naive months |
-| Date filters (v1.3.2) | Pitfall 4 (NULL dates), 7 (arithmetic) | Explicit NULL exclusion, shared resolution |
+| Model changes (ProjectRef, TaskRef, FolderRef, parent wrapper) | P2 (model_rebuild namespace), P4 (test helper cascade), P14 (ParentRef removal) | Update `__init__.py` namespace, `make_model_task_dict`, and all import sites atomically |
+| `$inbox` system location | P5 (bridge leakage), P9 (two SQL code paths) | Service layer translates `$inbox` before repo boundary; cross-path tests cover `$inbox` filter |
+| Parent field tagged object | P1 (serialization with exclude_defaults), P12 (JSON Schema permissiveness) | No defaults on parent field; dedicated serialization test; accept Pydantic's permissive schema |
+| Name resolution on writes | P8 (wrong entity type for before/after), P11 (double resolution) | Separate resolver methods per entity type; full three-step cascade on every entry point |
+| Breaking changes (inInbox removal, PatchOrNone elimination) | P3 (ordering), P6 (dangling imports) | Add-before-remove ordering; grep for removed symbols before deleting |
+| Rich references on output models | P7 (golden master breakage) | Plan UAT re-capture; update InMemoryBridge and bridge adapter simultaneously |
+| Output schema regression | P1 (parent wrapper), P4 (test helpers) | Run `test_output_schema.py` after every model change; update test factories first |
+| Filter changes (`project: "$inbox"`) | P9 (two code paths), P10 (contradictory filter scope) | Handle `$inbox` in service layer; implement only specified contradictions |
+| `get_project("$inbox")` | P15 (error vs resolution) | Tool-level guard before resolver; error message from spec |
 
-## Architectural Recommendation: Filter Resolution Pipeline
-
-The single most impactful prevention strategy across all critical pitfalls is a **shared filter resolution pipeline** in the service layer:
-
-```
-Agent input  -->  Service: parse + validate + expand shorthands + resolve dates
-             -->  Repository receives: concrete, unambiguous filter values
-             -->  SQL builder OR Python filter applies identical resolved filters
-```
-
-This eliminates pitfalls 1, 4, 5, 6, 7, and 10 at the architectural level. The repository never interprets shorthands, never expands durations, never decides NULL semantics. All that complexity lives in one place, tested once.
+---
 
 ## Sources
 
-- [SQLite NULL handling documentation](https://sqlite.org/nulls.html)
-- [SQLite LIKE case sensitivity and expression docs](https://www.sqlite.org/lang_expr.html)
-- [5 ways to implement case-insensitive search in SQLite](https://shallowdepth.online/posts/2022/01/5-ways-to-implement-case-insensitive-search-in-sqlite-with-full-unicode-support/)
-- [Non-deterministic pagination without ORDER BY](https://use-the-index-luke.com/sql/partial-results/fetch-next-page)
-- [Deterministic sort order required for pagination](https://blog.kalvad.com/sql-paging-requires-a-deterministic-sort-order-a-classic-example-of-s-e-p-somebody-elses-problem/)
-- [MCP Tools specification](https://modelcontextprotocol.io/specification/2025-06-18/server/tools)
-- [How LLMs choose MCP tools](https://gyliu513.medium.com/how-llm-choose-the-right-mcp-tools-9f88dbcf11a2)
-- [LLM tool calling with MCP best practices](https://towardsdatascience.com/tools-for-your-llm-a-deep-dive-into-mcp/)
+- Codebase: `models/__init__.py` (model_rebuild pattern, 15-entry namespace dict), `contracts/base.py` (PatchOrNone definition), `models/repetition_rule.py` L193 (exclude_defaults lesson), `repository/hybrid/hybrid.py` (_build_parent_ref implementation), `tests/conftest.py` (make_model_task_dict with 26 hardcoded fields), `contracts/shared/actions.py` (MoveAction using PatchOrNone), `service/resolve.py` (existing resolver cascade)
+- Milestone spec: `.research/updated-spec/MILESTONE-v1.3.1.md` (DL-12 tagged object rationale, DL-2 $ prefix rationale, all acceptance criteria)
+- Project constraints: GOLD-01 (golden master re-capture), SAFE-01/02 (no automated RealBridge), project feedback (contracts are pure data, golden master human-only)
+- Pydantic v2 behavior: `exclude_defaults=True` strips fields with default values (HIGH confidence -- verified in codebase via Frequency.type comment on L193)

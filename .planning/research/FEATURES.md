@@ -1,101 +1,124 @@
 # Feature Landscape
 
-**Domain:** SQL-filtered list/count tools for MCP server
-**Researched:** 2026-03-29
+**Domain:** MCP server API contract evolution -- system location namespace, name-based entity resolution, rich references
+**Researched:** 2026-04-05
 
 ## Table Stakes
 
-Features the v1.3 spec requires. Missing = milestone incomplete.
+Features agents expect from a well-designed MCP tool API. Missing = agents make more errors, need more round-trips, or hit confusing edge cases.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| `list_tasks` with 10 filters | Core deliverable -- agents need filtered reads | Med | Dynamic WHERE builder, tag subquery, LIKE search |
-| `list_projects` with 6 filters | Project browsing beyond `get_all` | Med | Status shorthands, folder name resolution, review_due_within |
-| `list_tags(status?)` | Tag discovery for agents | Low | Simple WHERE on dateHidden/allowsNextAction |
-| `list_folders(status?)` | Folder structure browsing | Low | Simple WHERE on dateHidden |
-| `list_perspectives()` | Perspective discovery | Low | No filters, plist parsing already exists |
-| `total_count` in ListResult | Quick counts without separate tools | Low | Embedded in list response, agents read total_count |
-| AND combination of filters | All filters compose with AND | Med | Builder pattern handles naturally |
-| Completed/dropped excluded by default | Standard OmniFocus UX | Low | Default WHERE clauses |
-| Parameterized queries | No SQL injection | Low | `?` placeholders throughout |
-| Bridge fallback parity | BridgeRepository must match SQL results | Med | In-memory filtering on AllEntities snapshot |
-| LIMIT/OFFSET pagination | Spec requirement on list_tasks/list_projects | Low | SQL LIMIT/OFFSET, Python slice for bridge |
-| Substring search (name + notes) | Case-insensitive search via LIKE | Low | `%term%` on name and plainTextNote |
-| `total_count` reflects total matches ignoring limit/offset | Response shape guarantee | Low | Single query, single code path |
-| Tool descriptions for LLM discoverability | Spec AC: agent can call tools correctly | Med | Detailed descriptions per spec |
+| Rich `{id, name}` references in output | Anthropic's own tool design guide says agents "grapple with natural language names significantly more successfully than cryptic identifiers." Bare IDs force a second lookup to correlate. | Med | All name data already available in SQLite joins. Work is in mappers, not queries. |
+| Explicit inbox representation (`$inbox`) | Null overloading is the #1 source of agent confusion in the current API. `null` means 3 things depending on context -- agents can't distinguish them in raw JSON. | Med | Core design decision already validated in spec. Constants in `config.py`. |
+| Name-based resolution for write fields | Tags already resolve by name (v1.2), list filters resolve by name (v1.3). Write fields (`parent`, `moveTo`) accepting only IDs is an inconsistency. Agents naturally write names. | Med | Resolver infrastructure exists. Extension to new fields is bounded. |
+| Non-null `parent` field | Every task has a parent (project, task, or inbox). Null parent forces agents to check `inInbox` separately. With `$inbox` as a value, null is eliminated. | Low | Simplifies agent-side logic. One fewer null check. |
+| `project` field on Task (containing project) | Without this, subtasks of inbox tasks show `parent: TaskRef` with no inbox signal. Agent must walk the parent chain to discover containment. | Med | SQLite `containingProjectInfo` column already exists. No new queries. |
+| Educational error messages | When agents misuse `before`/`after` with container IDs, or try `get_project("$inbox")`, errors should teach the correct approach. | Low | ~5 lines per error path. Already the project's pattern. |
+| Contradictory filter detection | `project: "$inbox"` + `inInbox: false` is logically contradictory. Silent empty results waste agent round-trips. | Low | Simple check at filter resolution time. |
 
 ## Differentiators
 
-Features that make the implementation stand out beyond minimum requirements.
+Features that go beyond what most MCP servers do. Not expected, but valued -- they reduce agent errors and round-trips.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| <6ms filtered queries | 7x faster than 46ms full snapshot | Low | Natural consequence of filtered SQL with fewer rows to map |
-| Educational error messages | Agent learns from validation failures | Low | Extend existing pattern (write tools already do this) |
-| Status shorthand expansion | `remaining`, `available`, `all` for projects | Low | Python-side expansion before SQL generation |
-| `review_due_within` duration parsing | Natural language format (`now`, `1w`, `2m`) | Med | Python-side resolution to CF epoch float for SQL comparison |
-| ListResult with total_count | Agents get pagination info without separate call | Low | `{items: [...], totalCount: N}` enables page computation |
+| Three-step resolver precedence (`$` -> ID -> name) | Single, unified resolution model across all entity reference fields. Agents learn one pattern, it works everywhere. Most APIs have inconsistent resolution per endpoint. | Med | The `$` prefix short-circuit is the key innovation -- makes system locations collision-proof against name resolution. |
+| Tagged object discriminator for `parent` | `{"project": {...}}` vs `{"task": {...}}` -- the key IS the type. Avoids `exclude_defaults` stripping `Literal` discriminator fields (a known Pydantic v2 gotcha). Already proven by `MoveAction`. | Med | Cleaner than `type` field approaches. Serialization-safe. |
+| Warning on `parent: null` in add_tasks | Intuitive compatibility: null means "no parent" which naturally means inbox. Warning educates toward `$inbox` without blocking. Most APIs would silently accept or hard error. | Low | One warning message constant + check in pipeline. |
+| `$inbox` in `project` filter | Consistency: `$inbox` works in writes, reads, and now filters. Agent that thinks "inbox is a container" naturally reaches for `project: "$inbox"`. | Low | Resolver already handles `$` prefix; just needs to work in filter context. |
+| Inbox warning on `list_projects` search | When a name filter would have matched "Inbox", warn that inbox is a system location with guidance to use `list_tasks`. Prevents agents from searching for a project that doesn't exist. | Low | Substring check against "Inbox" constant, warning if hit. |
+| Write vocabulary = read vocabulary symmetry | If the agent writes `folder: "Work"`, output returns `folder: {id: "...", name: "Work"}`. Agent can confirm its own write without a second lookup. Most APIs have asymmetric read/write shapes. | Med | The principle is the differentiator; the implementation is just enriching mappers. |
+| `PatchOrNone` elimination | Removing a type concept from the vocabulary. Fewer concepts = simpler mental model for contributors and agents. `$inbox` replaces null-as-inbox, so `PatchOrNone` has no uses left. | Low | Type alias removal + field type changes on `MoveAction`. |
 
 ## Anti-Features
 
-Features to explicitly NOT build in v1.3.
+Features to explicitly NOT build. These were considered and rejected for specific reasons.
 
 | Anti-Feature | Why Avoid | What to Do Instead |
 |--------------|-----------|-------------------|
-| Date-based filtering (due, defer, etc.) | Deferred to v1.3.2 -- complex period resolution semantics | Build WHERE clause infrastructure now; v1.3.2 extends it |
-| Fuzzy search | Deferred to v1.4.1 -- different algorithm (not LIKE) | Substring LIKE is sufficient |
-| Full-text search (FTS5) | Requires writable DB, overkill at scale | LIKE with ESCAPE |
-| Custom indexes | Read-only DB, premature optimization | Full scan <5ms at current scale |
-| Nested/hierarchical responses | Spec says flat with ID references | Flat lists with parent IDs |
-| ORDER BY configuration | Not in spec | Hardcode ORDER BY t.rank |
-| Field selection/projection | Deferred to v1.4 | Return full entity models |
+| Virtual inbox project in `get_project` / `list_projects` | `Project` model has required fields (review dates, review interval, urgency, availability) meaningless for inbox. Fabricating values creates dishonest data agents might try to edit. | Error with guidance: "Use `list_tasks` with `project: '$inbox'` or `inInbox: true`." |
+| Deprecation warnings for `ending: null` | No consumers exist yet (pre-release). Deprecation is for production APIs with existing users. Now is the time for clean breaks. | Hard error. Educate toward `$inbox`. |
+| `$` prefix on display name (`name: "$inbox"`) | The `$` is a system reference prefix for IDs, not a display label. OmniFocus calls it "Inbox", not "$inbox". Same pattern as every other entity: ID for API calls, name for display. | `name: "Inbox"` (human-readable). |
+| Negation in project filter (`project: "NOT $inbox"`) | Adds query language complexity. The `inInbox: false` boolean already handles negation cleanly. No need for two ways to express the same thing. | Keep `inInbox: false` as the negation mechanism. |
+| Fuzzy/Levenshtein matching for name resolution | Over-engineering at this stage. Case-insensitive substring match (already proven in v1.3 filters) is sufficient. Fuzzy matching is planned for v1.4.1 as a separate feature. | Case-insensitive substring match. Error with suggestions on zero matches. |
+| `$trash`, `$archive`, or other system locations now | Only `$inbox` has a concrete use case. Pre-building the namespace for hypothetical locations adds complexity without value. The `$` prefix design supports extension later. | Define `$inbox` only. Unrecognized `$`-prefixed strings get a helpful error listing valid system locations. |
+| Silent acceptance of `parent: null` on add_tasks | Agents won't learn about `$inbox` if null works silently. The warning is the teaching mechanism. | Accept with warning suggesting `$inbox` or field omission. |
 
 ## Feature Dependencies
 
 ```
-Query models (ListTasksQuery, ListProjectsQuery)
-  -> query_builder.py (SQL generation)
-  -> filter.py (in-memory filtering)
+$inbox constant in config.py
+  -> Resolver $-prefix short-circuit (step 1 of three-step precedence)
+  -> $inbox in add_tasks parent field
+  -> $inbox in edit_tasks moveTo fields
+  -> $inbox in list_tasks project filter
+  -> Contradictory filter detection ($inbox + inInbox: false)
+  -> get_project("$inbox") error
+  -> list_projects inbox warning
 
-query_builder.py
-  -> HybridRepository.list_tasks
-  -> HybridRepository.list_projects
+ProjectRef / TaskRef models
+  -> Tagged object parent field on Task
+  -> project field on Task (uses ProjectRef)
+  -> ParentRef removal
 
-filter.py
-  -> BridgeRepository.list_tasks
-  -> BridgeRepository.list_projects
+FolderRef model
+  -> Rich Project.folder output
+  -> Rich Folder.parent output
 
-Repository protocol extensions
-  -> Service layer (orchestration + resolution)
-  -> Server layer (tool registration)
+Name-based resolution for write fields
+  -> Depends on: existing Resolver._match_by_name (v1.2 tags)
+  -> Depends on: existing Resolver.resolve_filter (v1.3 list filters)
+  -> Extends to: parent on add_tasks, beginning/ending/before/after on edit_tasks
 
-Tag name resolution (existing Resolver.resolve_tags)
-  -> _ListTasksPipeline
-  -> service layer
-
-CF epoch conversion (existing _CF_EPOCH, _parse_timestamp)
-  -> review_due_within resolution
-  -> (v1.3.2: all date filters)
+PatchOrNone elimination
+  -> Depends on: $inbox in moveTo (replaces null-as-inbox)
+  -> MoveAction fields become Patch[str]
 ```
 
-## MVP Build Order
+## MVP Recommendation
 
-1. **Query models + ListResult** -- typed contracts everything depends on
-2. **Query builder** -- pure functions, testable without database
-3. **list_tasks (HybridRepository)** -- scalar filters first (inbox, flagged, has_children, availability, estimated_minutes_max), then tag subquery and search
-4. **list_tasks (BridgeRepository)** -- in-memory fallback, equivalence tested
-5. **list_projects for both repos** -- same pattern, adds status shorthands and review_due_within
-6. **list_tags / list_folders / list_perspectives** -- simplest tools, query models with status list (OR logic)
-8. **Service pipelines + server registration** -- wire everything up
-9. **Cross-path equivalence tests** -- spec requirement
+All features in this milestone are tightly coupled -- they form a single coherent contract change. However, if phasing is needed:
 
-Defer entirely to v1.3.2: All date filtering (due, defer, planned, completed, dropped, added, modified).
+**Phase 1 (foundation):**
+1. `$inbox` constant + resolver `$`-prefix handling
+2. `ProjectRef`, `TaskRef`, `FolderRef` model types
+3. Task output changes: `project` field, tagged `parent`, `inInbox` removal
 
-Note: No standalone count tools. `list_tasks`/`list_projects` return `ListResult` with `total_count` — agents get counts via `list_tasks(flagged: true, limit: 1)` and read `total_count`.
-Note: `list_tags` and `list_folders` status filter accepts a list with OR logic (e.g., `["active", "on_hold"]`), defaulting to remaining. Uses `ListTagsQuery`/`ListFoldersQuery` models.
+**Phase 2 (writes):**
+4. `$inbox` in add_tasks and edit_tasks
+5. `PatchOrNone` elimination (MoveAction field type changes)
+6. Better `before`/`after` error messages
+
+**Phase 3 (filters + references):**
+7. `$inbox` in list_tasks project filter + contradictory filter detection
+8. Name-based resolution for write fields
+9. Rich `{id, name}` references on Project, Tag, Folder output
+
+**Defer:** Nothing. All features are table stakes for this milestone's goal of eliminating null overloading and making the API vocabulary consistent.
+
+## Key Observations from Research
+
+**Anthropic's own tool design guidance (source: anthropic.com/engineering/writing-tools-for-agents):**
+- Agents handle natural language names far better than cryptic identifiers
+- Return fields that directly inform downstream agent actions
+- Tool docs should read like contracts: purpose, examples, unambiguous types
+- This directly validates the `{id, name}` rich reference pattern and name-based resolution
+
+**Sentinel value design (source: abseil.io/tips/171):**
+- General software engineering advice discourages sentinel values *within a type's valid domain*
+- The `$` prefix approach avoids this pitfall: `$inbox` is syntactically disjoint from valid OmniFocus IDs and entity names
+- The prefix creates a reserved namespace, not a magic value pretending to be a regular string
+
+**GitHub's GraphQL API pattern:**
+- Uses global node IDs for machine references, name-based queries as alternative entry points
+- Validates the dual-access pattern: IDs for precision, names for convenience
+- OmniFocus Operator's three-step resolver is a superset of this pattern
 
 ## Sources
 
-- Milestone spec: `.research/updated-spec/MILESTONE-v1.3.md`
-- Date filter spec: `.research/updated-spec/MILESTONE-v1.3.2.md`
-- Existing architecture: `docs/architecture.md`
+- [Anthropic: Writing Tools for Agents](https://www.anthropic.com/engineering/writing-tools-for-agents) -- directly validates rich references and name-based input
+- [Abseil Tip #171: Avoid Sentinel Values](https://abseil.io/tips/171) -- context for why `$` prefix is better than in-band sentinels
+- [GitHub GraphQL: Using Global Node IDs](https://docs.github.com/en/graphql/guides/using-global-node-ids) -- dual ID/name access pattern precedent
+- [Tool Calling Optimization](https://www.statsig.com/perspectives/tool-calling-optimization) -- agent tool design patterns
+- Milestone spec: `.research/updated-spec/MILESTONE-v1.3.1.md`

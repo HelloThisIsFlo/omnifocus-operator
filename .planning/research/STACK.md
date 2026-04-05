@@ -1,91 +1,149 @@
 # Technology Stack
 
-**Project:** v1.3 Read Tools
-**Researched:** 2026-03-29
+**Project:** v1.3.1 First-Class References
+**Researched:** 2026-04-05
 
-## Recommended Stack
+## Verdict: No New Dependencies
 
-No new dependencies. Everything needed is already in the codebase or stdlib.
+Everything v1.3.1 needs is already in the stack. Pydantic v2.12.5 (current) supports every pattern required. No new libraries, no version bumps, no new dev dependencies.
 
-### Core (unchanged)
+## Existing Stack (unchanged)
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| Python | 3.12+ | Runtime | Existing constraint |
-| FastMCP | >=3.1.1 | MCP server framework | Existing -- tool registration, serialization |
-| Pydantic | v2 | Model validation, serialization | Existing -- query models, result models |
-| sqlite3 | stdlib | SQL queries | Existing -- HybridRepository read path |
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| Python | 3.12+ | Runtime |
+| fastmcp | >=3.1.1 | MCP server framework (pulls in pydantic) |
+| Pydantic | 2.12.5 (transitive) | Model validation, serialization, JSON Schema |
+| sqlite3 | stdlib | Read path (~46ms) |
 
-### New Internal Modules (no deps)
+## Pydantic Patterns for v1.3.1 Features
 
-| Module | Purpose | Why New |
-|--------|---------|---------|
-| `repository/query_builder.py` | SQL string + params generation from query models | Pure functions, testable without database |
-| `repository/filter.py` | In-memory filter predicates for BridgeRepository | Bridge fallback path needs Python filtering on snapshot |
-| `contracts/use_cases/list_tasks.py` | ListTasksQuery model | Typed filter contract for task listing |
-| `contracts/use_cases/list_projects.py` | ListProjectsQuery model | Typed filter contract for project listing |
-| `contracts/use_cases/list_common.py` | ListResult generic container | Shared by list/count, both entity types |
+### Tagged Object Discriminator for `parent` field
 
-## Key Technical Decisions
+**Pattern:** Wrapper model with optional fields + `@model_validator`, NOT `Discriminator`/`Tag` or `Literal` discriminator.
 
-### Dynamic WHERE Clause Builder (not ORM)
+**Why this pattern:**
+- `Literal` discriminator fields get stripped by `exclude_defaults=True` -- this has burned the project before (DL-12 in spec)
+- `Discriminator(callable)` + `Tag` is the Pydantic v2 "modern" approach but produces opaque JSON Schema (`anyOf` with `tag` metadata) that MCP clients may not interpret correctly
+- The wrapper model pattern is already proven in the codebase: `MoveAction` uses the same "exactly one key" validation
 
-Accumulate `(sql_fragment, params_list)` tuples, join with AND. Pure functions: query model in, `(sql_string, params_tuple)` out.
+**Implementation:**
 
-- Parameterized queries only (`?` placeholders) -- no SQL injection
-- Composes with existing `_TASKS_SQL` and `_PROJECTS_SQL` base queries
-- Fixed filter surface (10 task, 6 project) -- no need for class-based builder abstraction
+```python
+class TaggedParent(OmniFocusBaseModel):
+    project: ProjectRef | None = None
+    task: TaskRef | None = None
 
-### Tag Filter: Subquery, Not JOIN
-
-```sql
-t.persistentIdentifier IN (SELECT task FROM TaskToTag WHERE tag IN (?,?))
+    @model_validator(mode="after")
+    def _exactly_one_key(self) -> TaggedParent:
+        keys_set = sum(1 for v in (self.project, self.task) if v is not None)
+        if keys_set != 1:
+            raise ValueError("Exactly one of 'project' or 'task' must be set")
+        return self
 ```
 
-JOIN on TaskToTag creates duplicate rows when a task has multiple matching tags. Subquery returns each task once.
+**Verified behaviors (Pydantic 2.12.5):**
+- `exclude_defaults=True` correctly drops the `None` field, keeping only the set key -- **tested locally**
+- `by_alias=True` does NOT rename `project`/`task` (single-word keys, `to_camel` is identity) -- **tested locally**
+- JSON Schema shows both fields as optional with `$ref` to their respective models -- clean, interpretable by MCP clients
+- `OmniFocusBaseModel` alias config (`alias_generator=to_camel, validate_by_name=True`) works without issues -- **tested locally**
+- Construction: `TaggedParent(project=ProjectRef(id="pXyz", name="Work"))` -- natural
+- Validation from dict: `TaggedParent.model_validate({"project": {"id": "pXyz", "name": "Work"}})` -- works
 
-### Substring Search: LIKE with ESCAPE
+**Confidence:** HIGH -- tested against installed Pydantic 2.12.5
 
-```sql
-(t.name LIKE ? ESCAPE '\' OR t.plainTextNote LIKE ? ESCAPE '\')
+### Reference Models (`ProjectRef`, `TaskRef`, `FolderRef`)
+
+**Pattern:** Same as existing `TagRef(id, name)` -- minimal `OmniFocusBaseModel` subclass.
+
+```python
+class ProjectRef(OmniFocusBaseModel):
+    id: str
+    name: str
+
+class TaskRef(OmniFocusBaseModel):
+    id: str
+    name: str
+
+class FolderRef(OmniFocusBaseModel):
+    id: str
+    name: str
 ```
 
-SQLite's default `LIKE` is case-insensitive for ASCII. Sufficient for task names/notes at current scale. No FTS5 needed (requires writable DB).
+**Why not a generic `EntityRef`:** Each ref type is semantically distinct. Type checkers catch misuse (`Project.folder` can't accidentally receive a `TaskRef`). The cost is 3 lines per class -- negligible.
 
-### Review Duration: Python Resolution to CF Epoch Float
+**Where they live:** `models/common.py` alongside existing `TagRef` and `ParentRef` (which gets removed).
 
-`nextReviewDate` stored as CF epoch float (seconds since 2001-01-01). Resolve `"1w"`, `"2m"` etc. to Python datetime, convert to CF epoch, compare via parameterized `<= ?`. Reuses existing `_CF_EPOCH` constant.
+### `PatchOrNone` Elimination
 
-### Pagination: LIMIT/OFFSET (not keyset)
+**Current state:** `PatchOrNone` in `contracts/base.py` is `Union[T, None, _Unset]` -- semantically identical to `PatchOrClear` but with a docstring saying "None carries domain meaning."
 
-Dataset is ~2,400 tasks. OFFSET penalty is negligible. MCP tools are stateless -- cursor pagination implies session state. LIMIT/OFFSET is the spec contract.
+**After v1.3.1:**
+- `MoveAction.beginning` / `MoveAction.ending`: change from `PatchOrNone[str]` to `Patch[str]` (no more null-as-inbox)
+- `TagAction.replace`: stays `PatchOrNone[list[str]]` -- null means "clear all tags", which is domain meaning not inbox
+- Wait -- re-checking... `replace: null` means "clear all tags" which is `PatchOrClear` semantics. After v1.3.1, `PatchOrNone` should be removable if `TagAction.replace` is retyped to `PatchOrClear`.
 
-### Connection Semantics: Fresh Read-Only Per Call
+**Action:** Remove `PatchOrNone` from `contracts/base.py` and `contracts/__init__.py`. Retype `MoveAction.beginning`/`ending` to `Patch[str]`. Audit `TagAction.replace` -- if "null = clear all" then `PatchOrClear` is the correct alias.
 
-Same pattern as existing `_read_task`, `_read_project`, `_read_tag`. No pooling needed -- SQLite file open is ~0.1ms. WAL mode handles concurrent reads.
+### System Location Constants in `config.py`
 
-## Alternatives Considered
+**Current `config.py`** has `DEFAULT_LIST_LIMIT` and fuzzy match params. Add:
 
-| Category | Recommended | Alternative | Why Not |
-|----------|-------------|-------------|---------|
-| SQL builder | Hand-built parameterized queries | SQLAlchemy Core | Zero new deps constraint. Fixed query surface doesn't benefit from ORM |
-| Async SQLite | asyncio.to_thread(sync) | aiosqlite | Adds a dep. to_thread is the established pattern |
-| In-memory filter | Custom predicate functions | pandas / polars | Overkill for <3K objects. List comprehensions are clearer |
-| Full-text search | LIKE with ESCAPE | FTS5 virtual tables | Requires writable DB. Overkill for substring match |
-| Pagination | LIMIT/OFFSET | Keyset/cursor | Stateless protocol, tiny dataset, added complexity |
-| Count | len() after filtering | SQL COUNT(*) | len() is simpler with one code path. COUNT(*) is future optimization if needed |
-
-## Installation
-
-No changes to `pyproject.toml`.
-
-```bash
-uv sync  # existing deps are sufficient
+```python
+SYSTEM_LOCATION_PREFIX: str = "$"
+INBOX_ID: str = "$inbox"
+INBOX_DISPLAY_NAME: str = "Inbox"
 ```
+
+**Why constants, not enum:** These are configuration values referenced across layers (resolver, service, mappers). An enum adds ceremony for three strings. Constants are greppable, importable, and match the existing `config.py` style.
+
+### Resolver Precedence Extension
+
+**Current resolver** has two patterns:
+1. `resolve_filter()` -- ID match then substring match (for list filters)
+2. `resolve_parent()` / `resolve_task()` etc. -- ID-only lookup
+
+**v1.3.1 adds step 0:** `$`-prefix check before any resolution. Implementation is a simple `if value.startswith(SYSTEM_LOCATION_PREFIX):` guard at the top of resolution methods.
+
+**No new abstractions needed.** The three-step precedence ($-prefix -> ID match -> name substring) is a sequential check, not a strategy pattern or chain-of-responsibility. It fits in the existing `Resolver` class methods.
+
+**Name resolution for writes** extends the existing `_match_by_name()` pattern (already used for tags) to projects, folders, and tasks. The method signature already supports any entity type via the `_HasIdAndName` protocol.
+
+## What NOT to Add
+
+| Temptation | Why Not |
+|------------|---------|
+| `typing.Discriminator` + `Tag` | Produces JSON Schema with `tag` metadata that MCP clients may not parse. Wrapper model is simpler and proven. |
+| Generic `EntityRef[T]` base class | Three concrete classes are clearer than generic + type parameter. 9 lines total. |
+| New dependency for name matching | `difflib.SequenceMatcher` (stdlib) already powers fuzzy matching in `config.py` constants. |
+| Pydantic version pin | `fastmcp>=3.1.1` manages pydantic transitively. Pinning creates maintenance burden. |
+| Abstract resolver strategy | Three-step precedence is a simple if-elif, not a pluggable strategy. |
+| `$inbox` as an enum member | It's a string constant. Enum membership adds ceremony (`.value` access) for no type safety gain -- the field is `str`. |
+
+## Integration Notes
+
+### Output Schema Tests
+
+After changing `parent` from `ParentRef` to `TaggedParent`, and enriching reference fields to `{id, name}`:
+- `tests/test_output_schema.py` will need updated expected schemas
+- The `jsonschema` validation tests catch structural drift automatically
+- Run `uv run pytest tests/test_output_schema.py -x -q` after any model change (per CLAUDE.md convention)
+
+### Golden Master Impact
+
+- `parent` field shape changes in output -- golden master normalization may need updating
+- `inInbox` removal from output -- golden master expectations must drop this field
+- Rich references (`Project.folder`, etc.) -- golden master captures will show new `{id, name}` shape
+
+### Cross-Path Equivalence
+
+- 32 existing parametrized tests compare SQL and bridge paths
+- Both paths must produce identical `TaggedParent` and `ProjectRef` shapes
+- Row mappers in both `sqlite_repo.py` and bridge path need parallel updates
 
 ## Sources
 
-- Project constraint: `fastmcp>=3.1.1` only runtime dependency (PROJECT.md)
-- SQLite via stdlib: established in v1.1 (`.research/deep-dives/direct-database-access/RESULTS.md`)
-- Python sqlite3 docs: parameterized queries, Row factory -- HIGH confidence
-- SQLite LIKE behavior: case-insensitive for ASCII by default -- HIGH confidence
+- Pydantic v2 Unions docs: https://docs.pydantic.dev/latest/concepts/unions/
+- Pydantic key-based discriminated union discussion: https://github.com/pydantic/pydantic/discussions/4180
+- Local testing against Pydantic 2.12.5 (installed via `fastmcp>=3.1.1`)
+- Existing codebase patterns: `MoveAction` exactly-one-key validation, `TagRef` reference model, `_match_by_name()` resolver
