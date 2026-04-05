@@ -131,7 +131,7 @@ After the UAT code block, output this visual separator (NOT inside any code bloc
 ⠀
   ▲ UAT REPORT (above) — copy-paste to share with reviewer
 ⠀
-  ▼ USER REPORT (below) — warnings inventory + improvement notes
+  ▼ USER REPORT (below) — warnings & errors inventory + improvement notes
 ⠀
 ═══════════════════════════════════════════════════════════════
 ═══════════════════════════════════════════════════════════════
@@ -154,6 +154,15 @@ The "Agent Interpretation" column is key: read the warning with shoshin (beginne
 | Warning Text | Triggered By | Looks Correct? | Agent Interpretation | Notes |
 |---|---|---|---|---|
 
+### Errors Observed
+
+Every distinct error encountered during this test suite. Always populated — even when all errors look correct.
+
+Same "Agent Interpretation" lens as warnings: read the error with shoshin. Would an agent understand what went wrong and how to fix its input? Does the error leak internals (pydantic types, _Unset, snake_case field names)? If the error is confusing or misleading, that's a finding.
+
+| Error Text | Triggered By | Looks Correct? | Agent Interpretation | Notes |
+|---|---|---|---|---|
+
 ### Tool / Server Improvements
 - (Bugs, error message quality, API design, missing validations)
 
@@ -164,6 +173,6 @@ The "Agent Interpretation" column is key: read the warning with shoshin (beginne
 - (UX patterns, anything else noteworthy)
 ```
 
-The **Warnings Observed** section is always populated (it's an inventory, not just problems). The other subsections only include actually-observed items — if a section is empty, omit it.
+The **Warnings Observed** and **Errors Observed** sections are always populated (they're inventories, not just problems). The other subsections only include actually-observed items — if a section is empty, omit it.
 
-**IMPORTANT:** Do NOT repeat bugs already captured in the Failures section. The subsections below Warnings Observed are for observations beyond what the test suite covers — wording improvements, UX polish, missing coverage, architectural suggestions.
+**IMPORTANT:** Do NOT repeat bugs already captured in the Failures section. The subsections below the inventories are for observations beyond what the test suite covers — wording improvements, UX polish, missing coverage, architectural suggestions.
