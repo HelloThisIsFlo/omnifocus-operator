@@ -33,4 +33,8 @@ Frequency.model_validate({"type": "monthly", "interval": 2, "on": OrdinalWeekday
 
 ## Solution
 
-TBD — the conversion needs to happen at the boundary where contract spec objects are fed into core model construction. Multiple approaches possible (`.model_dump()`, explicit conversion, shared base). Leave approach choice to implementer.
+Two parts:
+
+1. **Fix the bug** — TBD approach. The conversion needs to happen at the boundary where contract spec objects are fed into core model construction. Multiple approaches possible (`.model_dump()`, explicit conversion, shared base). Leave approach choice to implementer.
+
+2. **Understand the test gap** — This regression shipped with 1549 passing tests and 98% coverage. Before fixing, investigate why no existing test caught the `OrdinalWeekdaySpec` → `OrdinalWeekday` coercion failure. Are the `on` field paths in the edit pipeline untested end-to-end? Are tests constructing core models directly (bypassing the contract layer)? The test gap matters as much as the fix — if this slipped through, similar cross-layer type mismatches could be hiding elsewhere.
