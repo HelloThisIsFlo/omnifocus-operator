@@ -52,6 +52,7 @@ from omnifocus_operator.agent_messages.warnings import (
 from omnifocus_operator.config import (
     FUZZY_MATCH_CUTOFF,
     FUZZY_MATCH_MAX_SUGGESTIONS,
+    SYSTEM_LOCATION_PREFIX,
 )
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
@@ -613,6 +614,8 @@ class DomainLogic:
         try:
             resolved_id = await self._resolver.resolve_anchor(anchor_id)
         except ValueError:
+            if anchor_id.startswith(SYSTEM_LOCATION_PREFIX):
+                raise
             msg = ANCHOR_TASK_NOT_FOUND.format(id=anchor_id)
             raise ValueError(msg) from None
         return {"position": position, "anchor_id": resolved_id}
