@@ -15,17 +15,6 @@ PROJECT_NOT_FOUND = "Project not found: {id}"
 
 TAG_NOT_FOUND = "Tag not found: {name}"
 
-PARENT_NOT_FOUND = "Parent not found: {id}"
-
-ANCHOR_TASK_NOT_FOUND = "Anchor task not found: {id}"
-
-# --- Lookup: Ambiguous ---
-
-AMBIGUOUS_ENTITY = (
-    "Ambiguous {entity_type} '{name}': multiple matches ({ids}). "
-    "For ambiguous {entity_type}s, specify by ID instead of name."
-)
-
 # --- Batch Limit ---
 
 ADD_TASKS_BATCH_LIMIT = "add_tasks currently accepts exactly 1 item, got {count}"
@@ -114,4 +103,33 @@ OFFSET_REQUIRES_LIMIT = "offset requires limit -- set limit when using offset"
 REVIEW_DUE_WITHIN_INVALID = (
     "Invalid review_due_within '{value}' -- "
     "valid formats: 'now', or a number followed by d/w/m/y (e.g. '1w', '2m', '30d')"
+)
+
+# --- Name Resolution ---
+
+AMBIGUOUS_NAME_MATCH = (
+    "Ambiguous {entity_type} '{name}': multiple matches: {matches}. "
+    "Use the ID to specify which one."
+)
+
+NAME_NOT_FOUND = "No {entity_type} found matching '{name}'.{suggestions}"
+
+INVALID_SYSTEM_LOCATION = (
+    "Unknown system location '{value}'. Valid system locations: {valid_locations}."
+)
+
+RESERVED_PREFIX = (
+    "'{value}' starts with '{prefix}' which is reserved for system locations. "
+    "Valid system locations: {valid_locations}. "
+    "If your entity name starts with '{prefix}', refer to it by ID instead."
+)
+
+ENTITY_TYPE_MISMATCH = (
+    "'{value}' resolved to {resolved_type}, but only {accepted} is accepted here"
+)
+
+ENTITY_TYPE_MISMATCH_ANCHOR = (
+    "'{value}' is a {resolved_type}. "
+    "Anchor positions (before/after) require a task reference. "
+    "To move into {value}, use 'ending' or 'beginning' instead."
 )

@@ -109,17 +109,17 @@ class OperatorService(Service):  # explicitly implements Service protocol
     async def get_task(self, task_id: str) -> Task:
         """Return a single task by ID. Raises ValueError if not found."""
         logger.debug("OperatorService.get_task: id=%s", task_id)
-        return await self._resolver.resolve_task(task_id)
+        return await self._resolver.lookup_task(task_id)
 
     async def get_project(self, project_id: str) -> Project:
         """Return a single project by ID. Raises ValueError if not found."""
         logger.debug("OperatorService.get_project: id=%s", project_id)
-        return await self._resolver.resolve_project(project_id)
+        return await self._resolver.lookup_project(project_id)
 
     async def get_tag(self, tag_id: str) -> Tag:
         """Return a single tag by ID. Raises ValueError if not found."""
         logger.debug("OperatorService.get_tag: id=%s", tag_id)
-        return await self._resolver.resolve_tag(tag_id)
+        return await self._resolver.lookup_tag(tag_id)
 
     # -- add_task: delegates to _AddTaskPipeline (Method Object) --------
 
@@ -445,9 +445,10 @@ class _AddTaskPipeline(_Pipeline):
         validate_task_name(self._command.name)
 
     async def _resolve_parent(self) -> None:
+        self._resolved_parent: str | None = None
         if self._command.parent is None:
             return
-        await self._resolver.resolve_parent(self._command.parent)
+        self._resolved_parent = await self._resolver.resolve_container(self._command.parent)
 
     async def _resolve_tags(self) -> None:
         self._resolved_tag_ids: list[str] | None = None
@@ -510,7 +511,10 @@ class _AddTaskPipeline(_Pipeline):
                 end=self._end_condition,
             )
         self._repo_payload = self._payload.build_add(
-            self._command, self._resolved_tag_ids, repetition_rule_payload=repetition_payload
+            self._command,
+            self._resolved_tag_ids,
+            resolved_parent=self._resolved_parent,
+            repetition_rule_payload=repetition_payload,
         )
 
     async def _delegate(self) -> AddTaskResult:
@@ -548,7 +552,7 @@ class _EditTaskPipeline(_Pipeline):
 
     async def _verify_task_exists(self) -> None:
         logger.debug("OperatorService.edit_task: id=%s, fetching current state", self._command.id)
-        self._task = await self._resolver.resolve_task(self._command.id)
+        self._task = await self._resolver.lookup_task(self._command.id)
         logger.debug(
             "OperatorService.edit_task: task found, name=%s, current_tags=%d",
             self._task.name,

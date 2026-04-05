@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3.1
 milestone_name: First-Class References
 status: executing
-stopped_at: Phase 39 context gathered
-last_updated: "2026-04-05T16:13:35.945Z"
+stopped_at: Completed 40-03-PLAN.md
+last_updated: "2026-04-05T20:39:57.061Z"
 last_activity: 2026-04-05
 progress:
   total_phases: 7
-  completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
+  completed_phases: 2
+  total_plans: 4
+  completed_plans: 4
   percent: 100
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-05)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 39 — Foundation -- Constants & Reference Models
+**Current focus:** Phase 40 — Resolver -- System Location Detection & Name Resolution
 
 ## Current Position
 
-Phase: 40
+Phase: 41
 Plan: Not started
-Status: Executing Phase 39
+Status: Executing Phase 40
 Last activity: 2026-04-05
 
 Progress: [░░░░░░░░░░] 0%
@@ -46,6 +46,8 @@ Progress: [░░░░░░░░░░] 0%
 
 Cleared at milestone boundary. See PROJECT.md Key Decisions for full history.
 
+- [Phase 40]: Used anchor_id.startswith($) guard in except block for RESERVED_PREFIX propagation
+
 ### Pending Todos
 
 Carried forward from v1.3:
@@ -61,6 +63,7 @@ Carried forward from v1.3:
 9. Add path field for hierarchical entities (models)
 10. Field selection with curated defaults for read tools (v1.4)
 11. Null-stripping for read tool responses (v1.4)
+12. Fix OrdinalWeekdaySpec → OrdinalWeekday cross-layer coercion in edit pipeline (service)
 
 ### Blockers/Concerns
 
@@ -70,5 +73,5 @@ Carried forward from v1.3:
 ## Session Continuity
 
 Last activity: 2026-04-05 - Roadmap created for v1.3.1
-Stopped at: Phase 39 context gathered
-Resume file: .planning/phases/39-foundation-constants-reference-models/39-CONTEXT.md
+Stopped at: Completed 40-03-PLAN.md
+Resume file: None

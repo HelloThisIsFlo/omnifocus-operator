@@ -34,7 +34,7 @@ from omnifocus_operator.contracts.use_cases.edit.tasks import (
     EditTaskRepoPayload,
 )
 from omnifocus_operator.models.common import TagRef
-from omnifocus_operator.models.enums import BasedOn, Schedule
+from omnifocus_operator.models.enums import BasedOn, EntityType, Schedule
 from omnifocus_operator.models.repetition_rule import (
     EndByDate,
     Frequency,
@@ -43,6 +43,7 @@ from omnifocus_operator.models.repetition_rule import (
 from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.models.task import Task
 from omnifocus_operator.service.domain import DomainLogic
+from omnifocus_operator.service.errors import EntityTypeMismatchError
 from tests.conftest import make_snapshot_dict
 from tests.doubles import InMemoryBridge
 
@@ -60,17 +61,27 @@ class StubResolver:
         self,
         tag_map: dict[str, str] | None = None,
         tasks: list[Task] | None = None,
+        anchor_errors: dict[str, str | Exception] | None = None,
     ) -> None:
         self._tag_map = tag_map or {}
         self._tasks = {t.id: t for t in (tasks or [])}
+        self._anchor_errors: dict[str, str | Exception] = anchor_errors or {}
 
     async def resolve_tags(self, names: list[str]) -> list[str]:
         return [self._tag_map[n] for n in names]
 
-    async def resolve_parent(self, pid: str) -> str:
+    async def resolve_container(self, pid: str) -> str | None:
         return pid  # always succeeds
 
-    async def resolve_task(self, task_id: str) -> Task:
+    async def resolve_anchor(self, anchor_id: str) -> str:
+        if anchor_id in self._anchor_errors:
+            err = self._anchor_errors[anchor_id]
+            if isinstance(err, Exception):
+                raise err
+            raise ValueError(err)
+        return anchor_id  # always succeeds
+
+    async def lookup_task(self, task_id: str) -> Task:
         task = self._tasks.get(task_id)
         if task is None:
             msg = f"Task not found: {task_id}"
@@ -129,9 +140,10 @@ def _domain(
     tasks: list[Task] | None = None,
     tags: list[object] | None = None,
     snapshot: AllEntities | None = None,
+    anchor_errors: dict[str, str] | None = None,
 ) -> DomainLogic:
     """Build a DomainLogic with stub dependencies."""
-    resolver = StubResolver(tag_map, tasks=tasks)
+    resolver = StubResolver(tag_map, tasks=tasks, anchor_errors=anchor_errors)
     repo = StubRepo(tasks=tasks, tags=tags, snapshot=snapshot)
     return DomainLogic(repo, resolver)  # type: ignore[arg-type]
 
@@ -414,7 +426,7 @@ class TestProcessMove:
         assert result == {"position": "ending", "container_id": None}
 
     async def test_move_to_project(self) -> None:
-        # StubResolver.resolve_parent always succeeds; StubRepo.get_task returns None
+        # StubResolver.resolve_container always succeeds; StubRepo.get_task returns None
         # for the container (it's a project, not a task), so no cycle check
         domain = _domain()
         result = await domain.process_move(MoveAction(ending="proj-1"), "task-1")
@@ -425,6 +437,30 @@ class TestProcessMove:
         domain = _domain(tasks=[task])
         result = await domain.process_move(MoveAction(before="task-anchor"), "task-1")
         assert result == {"position": "before", "anchor_id": "task-anchor"}
+
+    async def test_entity_type_mismatch_enriched_with_anchor_context(self) -> None:
+        """EntityTypeMismatchError from resolver is caught and enriched with anchor guidance."""
+        domain = _domain(
+            anchor_errors={
+                "$inbox": EntityTypeMismatchError(
+                    "$inbox",
+                    resolved_type=EntityType.PROJECT,
+                    accepted_types=[EntityType.TASK],
+                )
+            }
+        )
+        with pytest.raises(ValueError, match="is a project") as exc_info:
+            await domain.process_move(MoveAction(before="$inbox"), "task-1")
+        error_msg = str(exc_info.value)
+        assert "task reference" in error_msg
+        assert "ending" in error_msg
+        assert "beginning" in error_msg
+
+    async def test_other_resolver_errors_propagate_through_anchor_move(self) -> None:
+        """Non-EntityTypeMismatch errors propagate directly — no wrapping."""
+        domain = _domain(anchor_errors={"bad-ref": "No task found"})
+        with pytest.raises(ValueError, match="No task found"):
+            await domain.process_move(MoveAction(before="bad-ref"), "task-1")
 
 
 # ---------------------------------------------------------------------------

@@ -18,6 +18,7 @@ from omnifocus_operator.contracts.use_cases.list import _validators as contracts
 from omnifocus_operator.contracts.use_cases.list import projects as contracts_list_projects
 from omnifocus_operator.models import repetition_rule as models_repetition_rule
 from omnifocus_operator.service import domain as service_domain
+from omnifocus_operator.service import errors as service_errors
 from omnifocus_operator.service import resolve
 from omnifocus_operator.service import service as service_orchestrator
 from omnifocus_operator.service import validate as service_validate
@@ -103,6 +104,7 @@ _ERROR_CONSUMERS = [
     server,
     resolve,
     service_domain,
+    service_errors,
     service_orchestrator,
     service_validate,
     contracts_common,

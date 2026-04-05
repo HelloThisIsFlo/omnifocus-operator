@@ -1,6 +1,7 @@
-"""Status and repetition enumerations for OmniFocus entities.
+"""Status, repetition, and entity-type enumerations for OmniFocus entities.
 
 Values use snake_case strings matching the new two-axis model:
+- EntityType: top-level entity kind (project, task, tag)
 - Urgency: time pressure axis (overdue, due_soon, none)
 - Availability: work readiness axis (available, blocked, completed, dropped)
 - TagAvailability: tag availability (available, blocked, dropped)
@@ -19,6 +20,12 @@ from omnifocus_operator.agent_messages.descriptions import (
     TAG_AVAILABILITY_DOC,
     URGENCY_DOC,
 )
+
+
+class EntityType(StrEnum):
+    PROJECT = "project"
+    TASK = "task"
+    TAG = "tag"
 
 
 class Urgency(StrEnum):
