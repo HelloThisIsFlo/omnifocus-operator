@@ -275,7 +275,7 @@ IN_INBOX_FILTER_DESC = (
 )
 
 ESTIMATED_MINUTES_MAX_DESC = (
-    "Include tasks with estimate \u2264 this value (minutes). "
+    "Include tasks with estimate <= this value (minutes). "
     "Tasks with no estimate are excluded."
 )
 
@@ -428,11 +428,14 @@ LIST_PROJECTS_TOOL_DOC = (
 LIST_TAGS_TOOL_DOC = (
     "List and filter tags.\n"
     "\n"
+    "Returns a flat list. Each tag includes a parent field (parent tag ID\n"
+    "or null for top-level) that can be used to reconstruct hierarchy.\n"
+    "\n"
     "Response: {items, total, hasMore}\n"
     "\n"
     "Key fields per tag:\n"
     "  availability, childrenAreMutuallyExclusive (when true, child tags\n"
-    "  behave like radio buttons), parent (parent tag name or null).\n"
+    "  behave like radio buttons), parent.\n"
     "The response uses camelCase field names."
 )
 

@@ -272,6 +272,12 @@ Real projects that happen to match are still returned normally — only the inbo
 - `ProjectRef` and `TaskRef` models exist as standalone types (like `TagRef`).
 - `ParentRef` model is removed (replaced by `ProjectRef | TaskRef` union).
 
+### Tool Descriptions
+
+- `list_tasks` tool description must be updated to explain the task hierarchy — same shape as the `list_folders` description which explains "flat list with parent field for hierarchy reconstruction."
+- The `list_tasks` version explains two fields instead of one: `parent` (direct structural parent — project or parent task) vs `project` (containing project at any nesting depth, or `$inbox`). The description should help agents make sense of both and when they diverge (subtasks).
+- Reminder: update `LIST_TASKS_TOOL_DOC` in `agent_messages/descriptions.py` during implementation.
+
 ### Resolver
 
 - Any string starting with `$` is treated as a system location, not a name or ID.
