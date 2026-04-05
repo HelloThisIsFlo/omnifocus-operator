@@ -1,6 +1,6 @@
 ---
 name: uat-regression
-description: Run UAT regression tests for OmniFocus Operator MCP tools against the live OmniFocus database. Choose from test suites covering edit operations, tag operations, move operations, lifecycle, inheritance, repetition rules, and more. Trigger when the user says "run UAT", "UAT regression", "regression test", "test edits", "test tags", "test tag operations", "test moves", "test movement", "test lifecycle", "test complete/drop", "test reads", "test filters", "test add_tasks", "run edit tests", "test inheritance", "test effective fields", "effective field inheritance", "test repetition", "test repetition rules", "test repeating tasks", "test rrule", or wants to verify tool behavior after code changes. This skill requires the omnifocus-operator MCP server to be running.
+description: Run UAT regression tests for OmniFocus Operator MCP tools against the live OmniFocus database. Choose from test suites covering edit operations, tag operations, move operations, lifecycle, inheritance, repetition rules, list/filter tools, validation/error formatting, and more. Trigger when the user says "run UAT", "UAT regression", "regression test", "test edits", "test tags", "test tag operations", "test moves", "test movement", "test lifecycle", "test complete/drop", "test reads", "test filters", "test add_tasks", "run edit tests", "test inheritance", "test effective fields", "effective field inheritance", "test repetition", "test repetition rules", "test repeating tasks", "test rrule", "test list tasks", "test list_tasks", "test filtering", "test search", "test pagination", "test resolution", "test availability", "test list projects", "test list_projects", "test folders", "test folder filter", "test review due", "test review_due_within", "test list tags", "test list_tags", "test list folders", "test list_folders", "test list perspectives", "test list_perspectives", "test perspectives", "test simple list", "test validation", "test errors", "test error formatting", "test validation errors", "test middleware", "test clean errors", "v1.3 regression", "test v1.3", "test list tools", or wants to verify tool behavior after code changes. This skill requires the omnifocus-operator MCP server to be running.
 ---
 
 # UAT Regression
@@ -23,6 +23,11 @@ Run UAT regression tests for OmniFocus Operator MCP tools against live OmniFocus
 | Lifecycle | `tests/lifecycle.md` | 12 | Complete, drop, cross-state, repeating tasks, validation |
 | Inheritance | `tests/inheritance.md` | 8 | Effective field inheritance — dueDate, deferDate, plannedDate, flagged from projects through task chains |
 | Repetition Rules | `tests/repetition-rules.md` | 40 | Creation, read model, set/clear/partial update/type change, no-ops, status warnings, lifecycle, normalization, validation errors, combos, regression guards |
+| List Tasks | `tests/list-tasks.md` | 35 | list_tasks — project/tag/inbox/flagged/availability/estimate/search filters, name resolution warnings, pagination, AND-logic combos, edge cases |
+| List Projects | `tests/list-projects.md` | 25 | list_projects — folder filter, review_due_within duration, flagged, availability, search, folder resolution warnings, pagination, combos |
+| Simple List Tools | `tests/simple-list-tools.md` | 18 | list_tags, list_folders, list_perspectives — availability defaults (tags vs folders), search, pagination, parent hierarchy, builtin flag, cross-tool consistency, camelCase |
+| Validation & Errors | `tests/validation-errors.md` | 17 | Cross-tool error formatting — unknown fields, invalid types, batch limits, middleware reformatting, no pydantic internals, camelCase in errors, _Unset filtering |
+| **v1.3 Combined** *(composite)* | `tests/v1.3-combined.md` | 95 | **Full milestone regression** — list tasks, list projects, simple list tools, validation & error formatting |
 
 ## Flow
 
@@ -127,7 +132,7 @@ After the UAT code block, output this visual separator (NOT inside any code bloc
 ⠀
   ▲ UAT REPORT (above) — copy-paste to share with reviewer
 ⠀
-  ▼ USER REPORT (below) — warnings inventory + improvement notes
+  ▼ USER REPORT (below) — warnings & errors inventory + improvement notes
 ⠀
 ═══════════════════════════════════════════════════════════════
 ═══════════════════════════════════════════════════════════════
@@ -150,6 +155,15 @@ The "Agent Interpretation" column is key: read the warning with shoshin (beginne
 | Warning Text | Triggered By | Looks Correct? | Agent Interpretation | Notes |
 |---|---|---|---|---|
 
+### Errors Observed
+
+Every distinct error encountered during this test suite. Always populated — even when all errors look correct.
+
+Same "Agent Interpretation" lens as warnings: read the error with shoshin. Would an agent understand what went wrong and how to fix its input? Does the error leak internals (pydantic types, _Unset, snake_case field names)? If the error is confusing or misleading, that's a finding.
+
+| Error Text | Triggered By | Looks Correct? | Agent Interpretation | Notes |
+|---|---|---|---|---|
+
 ### Tool / Server Improvements
 - (Bugs, error message quality, API design, missing validations)
 
@@ -160,6 +174,6 @@ The "Agent Interpretation" column is key: read the warning with shoshin (beginne
 - (UX patterns, anything else noteworthy)
 ```
 
-The **Warnings Observed** section is always populated (it's an inventory, not just problems). The other subsections only include actually-observed items — if a section is empty, omit it.
+The **Warnings Observed** and **Errors Observed** sections are always populated (they're inventories, not just problems). The other subsections only include actually-observed items — if a section is empty, omit it.
 
-**IMPORTANT:** Do NOT repeat bugs already captured in the Failures section. The subsections below Warnings Observed are for observations beyond what the test suite covers — wording improvements, UX polish, missing coverage, architectural suggestions.
+**IMPORTANT:** Do NOT repeat bugs already captured in the Failures section. The subsections below the inventories are for observations beyond what the test suite covers — wording improvements, UX polish, missing coverage, architectural suggestions.

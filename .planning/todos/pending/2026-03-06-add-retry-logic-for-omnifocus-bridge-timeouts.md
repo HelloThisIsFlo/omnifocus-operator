@@ -17,3 +17,7 @@ Currently there is no retry — a single timeout = immediate failure. This is a 
 ## Solution
 
 Consider adding a configurable retry (e.g., 1 automatic retry on timeout before giving up). Keep it simple — this is a "nice to have" improvement, not urgent. May never be needed if the root cause turns out to be App Nap (see related investigation todo).
+
+## Target Milestone
+
+v1.6 Production Hardening. See `.research/updated-spec/MILESTONE-v1.6.md`, section "Retry Logic for Bridge Timeouts".

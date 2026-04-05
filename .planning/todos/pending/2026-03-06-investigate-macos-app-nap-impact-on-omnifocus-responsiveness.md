@@ -24,3 +24,7 @@ Investigation steps:
 4. If confirmed, add a lightweight wake command in `_trigger_omnifocus()` as preflight
 
 May conclude this is not worth fixing. The goal is to confirm or rule out the behavior.
+
+## Target Milestone
+
+v1.6 Production Hardening. See `.research/updated-spec/MILESTONE-v1.6.md`, section "App Nap Investigation".
