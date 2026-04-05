@@ -18,7 +18,7 @@ class ListTagsQuery(QueryModel):
     __doc__ = LIST_TAGS_QUERY_DOC
 
     availability: list[TagAvailability] = Field(
-        default_factory=lambda: [TagAvailability.AVAILABLE, TagAvailability.BLOCKED]
+        default=[TagAvailability.AVAILABLE, TagAvailability.BLOCKED]
     )
     search: str | None = Field(default=None, description=SEARCH_FIELD_NAME_ONLY)
     limit: int | None = DEFAULT_LIST_LIMIT
@@ -34,7 +34,7 @@ class ListTagsRepoQuery(QueryModel):
     """Repo-facing query -- identical fields today."""
 
     availability: list[TagAvailability] = Field(
-        default_factory=lambda: [TagAvailability.AVAILABLE, TagAvailability.BLOCKED]
+        default=[TagAvailability.AVAILABLE, TagAvailability.BLOCKED]
     )
     search: str | None = None
     limit: int | None = DEFAULT_LIST_LIMIT

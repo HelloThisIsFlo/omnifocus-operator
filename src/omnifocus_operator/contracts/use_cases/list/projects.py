@@ -68,7 +68,7 @@ class ListProjectsQuery(QueryModel):
     __doc__ = LIST_PROJECTS_QUERY_DOC
 
     availability: list[Availability] = Field(
-        default_factory=lambda: [Availability.AVAILABLE, Availability.BLOCKED]
+        default=[Availability.AVAILABLE, Availability.BLOCKED]
     )
     folder: str | None = Field(default=None, description=FOLDER_FILTER_DESC)
     review_due_within: ReviewDueFilter | None = None
@@ -96,7 +96,7 @@ class ListProjectsRepoQuery(QueryModel):
     """Repo-facing query -- IDs only, service resolves names before passing."""
 
     availability: list[Availability] = Field(
-        default_factory=lambda: [Availability.AVAILABLE, Availability.BLOCKED]
+        default=[Availability.AVAILABLE, Availability.BLOCKED]
     )
     folder_ids: list[str] | None = None
     review_due_before: datetime | None = None

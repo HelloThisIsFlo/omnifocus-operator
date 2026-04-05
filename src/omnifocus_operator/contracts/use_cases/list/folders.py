@@ -18,7 +18,7 @@ class ListFoldersQuery(QueryModel):
     __doc__ = LIST_FOLDERS_QUERY_DOC
 
     availability: list[FolderAvailability] = Field(
-        default_factory=lambda: [FolderAvailability.AVAILABLE]
+        default=[FolderAvailability.AVAILABLE]
     )
     search: str | None = Field(default=None, description=SEARCH_FIELD_NAME_ONLY)
     limit: int | None = DEFAULT_LIST_LIMIT
@@ -34,7 +34,7 @@ class ListFoldersRepoQuery(QueryModel):
     """Repo-facing query -- identical fields today."""
 
     availability: list[FolderAvailability] = Field(
-        default_factory=lambda: [FolderAvailability.AVAILABLE]
+        default=[FolderAvailability.AVAILABLE]
     )
     search: str | None = None
     limit: int | None = DEFAULT_LIST_LIMIT

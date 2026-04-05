@@ -25,7 +25,7 @@ class ListTasksQuery(QueryModel):
     tags: list[str] | None = Field(default=None, description=TAGS_FILTER_DESC)
     estimated_minutes_max: int | None = None
     availability: list[Availability] = Field(
-        default_factory=lambda: [Availability.AVAILABLE, Availability.BLOCKED]
+        default=[Availability.AVAILABLE, Availability.BLOCKED]
     )
     search: str | None = Field(default=None, description=SEARCH_FIELD_NAME_NOTES)
     limit: int | None = DEFAULT_LIST_LIMIT
@@ -46,7 +46,7 @@ class ListTasksRepoQuery(QueryModel):
     tag_ids: list[str] | None = None
     estimated_minutes_max: int | None = None
     availability: list[Availability] = Field(
-        default_factory=lambda: [Availability.AVAILABLE, Availability.BLOCKED]
+        default=[Availability.AVAILABLE, Availability.BLOCKED]
     )
     search: str | None = None
     limit: int | None = DEFAULT_LIST_LIMIT
