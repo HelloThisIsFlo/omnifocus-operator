@@ -143,10 +143,11 @@ Plans:
   3. Write fields (`parent`, `beginning`, `ending`, `before`, `after`) accept entity names with case-insensitive substring matching
   4. Multiple name matches produce an error listing all candidates with their IDs
   5. Zero name matches produce a helpful error message
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 40-01: TBD
+- [ ] 40-01-PLAN.md — Resolution cascade, fuzzy extraction, error templates, method renames, unit tests
+- [ ] 40-02-PLAN.md — Wire resolver into all write-field call sites, integration tests
 
 ### Phase 41: Write Pipeline -- $inbox in Add/Edit
 **Goal**: Agents can explicitly target inbox in all write operations using `$inbox`, with clear errors for invalid null usage
@@ -238,7 +239,7 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44 → 45
 | 32-33.1 | v1.2.3 | 15/15 | Complete | 2026-03-29 |
 | 34-38 | v1.3 | 26/26 | Complete | 2026-04-05 |
 | 39. Foundation | v1.3.1 | 1/1 | Complete    | 2026-04-05 |
-| 40. Resolver | v1.3.1 | 0/TBD | Not started | - |
+| 40. Resolver | v1.3.1 | 0/2 | Not started | - |
 | 41. Write Pipeline | v1.3.1 | 0/TBD | Not started | - |
 | 42. Task Output | v1.3.1 | 0/TBD | Not started | - |
 | 43. Rich References | v1.3.1 | 0/TBD | Not started | - |
