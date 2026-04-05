@@ -31,6 +31,7 @@ See @README.md for project overview.
 
 - **Philosophy**: UAT answers "can I work with this codebase?" — not just "does it work." This means contract consistency, naming clarity, and architectural coherence are all in scope. Specifically:
   - **Design discussions are first-class UAT outcomes.** When the developer spots an inconsistency (e.g., some filters use names, others use IDs), that's not a tangent — it's the point. Go deep: pros/cons, where it lives architecturally, whether to fix now or capture for later.
+  - **Proactively surface decisions.** Don't wait for the developer to ask "why did you do it this way?" — present each design choice with the alternatives considered. If every UAT step is mechanical ("does it import?", "does it serialize?"), the UAT is wrong. Every phase involves decisions — those decisions are what UAT validates.
   - **UAT surfaces downstream decisions.** A contract inconsistency in the repo layer affects every layer above it. Catching it during repo UAT prevents locking in the wrong contract for service/server phases. Actively look for decisions that affect downstream phases.
   - **Every design discussion ends with a concrete outcome**: a todo, a new requirement, a fix now, or a deliberate "this is fine" with reasoning. Never just "noted" and move on.
   - **Don't rush past concerns.** If the developer wants to discuss, that's the most valuable part. Don't log-and-move-on. Don't defer to "future phases" when the developer says it's relevant now.
@@ -38,10 +39,13 @@ See @README.md for project overview.
   - Every step must include exact file path and line range — the developer jumps straight to the code, no searching.
   - Adaptive granularity — split or merge steps based on scope. Small change = fewer steps. Large change = one step per semantic block.
   - **New conventions** get their own step — one per new pattern introduced (base classes, protocols, extracted helpers), with a concrete example.
-- **Refactoring phases**: UAT should focus on **developer experience**, not "does it still work" (tests cover that). The overarching question: "does this make sense to the person who'll maintain it?" Rooms to cover:
-  - **Directory structure & public API** — show the final layout. If small, one step. If large, split per module with exports/signatures at each boundary.
-  - **Semantic code walkthrough** — walk through refactored code by semantic block. Point the developer to the code and ask them to explain what it does. If their understanding is correct, pass. If not, the code isn't clear enough — that's a fail. Tests comprehensibility, not just correctness.
-  - **Naming audit** — for renamed things, show old → new grouped by domain.
+- **Structural phases** (refactoring, new foundations, infrastructure — anything without user-facing behavior changes): UAT focuses on **developer experience and design decisions**, not "does it still work" (tests cover that). The overarching question: "does this make sense to the person who'll maintain it?"
+  - **Mechanical checks** (imports, values, serialization, test suite) run automatically. Report results in one line; don't present as interactive steps.
+  - Rooms to cover, as applicable:
+    - **Design decisions** — naming conventions, placement, patterns chosen, trade-offs vs alternatives. Present each for review. These are the core UAT steps.
+    - **Directory structure & public API** — show the final layout. If small, one step. If large, split per module with exports/signatures at each boundary.
+    - **Semantic code walkthrough** — walk through code by semantic block. Point the developer to the code and ask them to explain what it does. If their understanding is correct, pass. If not, the code isn't clear enough — that's a fail.
+    - **Naming audit** — for renamed things, show old → new grouped by domain.
 - **Feature phases**: UAT has two parts, in order:
   1. **Test walkthrough** — Walk the developer through the tests room by room before running anything. Split by semantic domain, not by test class — e.g., for a filtering feature, separate steps for status/availability filters, join-based filters (tags, projects), date filters, simple filters, and pagination. The question is "do these tests exercise real scenarios, and do you see any gaps?"
   2. **Run the suite** — Only after the walkthrough. Now `pytest` is meaningful because the developer has seen what's actually being verified.
