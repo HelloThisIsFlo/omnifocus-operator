@@ -57,6 +57,46 @@ Fills the gap between due (too urgent — implies negative consequences) and def
 > - **Planned dates** → intentions
 > - Unsure which to use? It's probably a planned date.
 
+## Tag Status and Its Effect on Task Availability
+
+OmniFocus tags have a **status** field (Active, On Hold, Dropped). The omnifocus-operator remaps these to an **availability** enum (`available`, `blocked`, `dropped`) for consistency with how other entity types expose their state.
+
+### Tag Statuses
+
+Tags have three possible statuses, set via the inspector:
+
+- **Active** (default): The tag is in normal use. It appears in the tag sidebar and does not affect the availability of tasks it's assigned to.
+
+- **On Hold**: The tag is temporarily paused. It still appears in the tag sidebar. Any task that has an On Hold tag becomes **blocked**, even if the task also has other Active tags. This is the stronger mechanism — it's a hard block. Common use cases: "Waiting on someone else", location-based tags for places you can't currently access (e.g. "Office" during remote work), or any context that's temporarily not actionable.
+
+- **Dropped**: The tag is retired. It disappears from the tag sidebar/hierarchy but is NOT deleted — it remains on any tasks that had it. A dropped tag does NOT block tasks the same way On Hold does. The rule is: a task that has tags and **all** of them are Dropped becomes blocked. But if the task has at least one Active (or On Hold) tag alongside the Dropped one, the Dropped tag alone does not cause blocking. (Note: if one of those other tags is On Hold, the task will still be blocked — but that's because of the On Hold tag, not the Dropped one.)
+
+### Summary
+
+| Tag Status | Visible in sidebar? | Effect on tasks                                                 |
+| ---------- | -------------------- | --------------------------------------------------------------- |
+| Active     | Yes                  | No effect on availability                                       |
+| On Hold    | Yes                  | Task becomes blocked, regardless of other tags                  |
+| Dropped    | No                   | Task becomes blocked ONLY if all of the task's tags are Dropped |
+
+### Mapping to the Operator's Availability Filter
+
+In the omnifocus-operator, `list_tags` exposes an `availability` enum with values: `available`, `blocked`, `dropped`.
+
+The mapping from OmniFocus tag status to operator availability:
+
+- Active tag → availability: `available`
+- On Hold tag → availability: `blocked`
+- Dropped tag → availability: `dropped`
+
+Default filter is `["available", "blocked"]`, which returns Active and On Hold tags but excludes Dropped tags (matching OmniFocus's default sidebar behavior).
+
+### Edge Cases
+
+- A task that is blocked (due to On Hold tag) AND due soon/overdue may change its text formatting in OmniFocus (from grey to normal), but this is a display inconsistency — the task is still considered blocked and won't appear in Available-filtered views.
+- The Forecast perspective does not have an Available/Remaining filter and will show all items with a due date regardless of tag-based availability.
+- Dropping a tag is a way to retire it without deleting it (preserving it on historical tasks). It's not the same as dropping a task.
+
 ## Repetition Rules
 
 OmniFocus tasks and projects can repeat. A repetition rule has three components: **frequency** (how often), **schedule** (what triggers the next occurrence), and **basedOn** (which date field anchors the schedule).
