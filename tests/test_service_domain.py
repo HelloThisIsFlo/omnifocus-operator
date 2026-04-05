@@ -70,6 +70,9 @@ class StubResolver:
     async def resolve_container(self, pid: str) -> str:
         return pid  # always succeeds
 
+    async def resolve_anchor(self, anchor_id: str) -> str:
+        return anchor_id  # always succeeds
+
     async def lookup_task(self, task_id: str) -> Task:
         task = self._tasks.get(task_id)
         if task is None:
