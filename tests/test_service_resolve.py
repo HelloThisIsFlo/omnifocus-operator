@@ -260,8 +260,11 @@ class TestResolveAnchor:
 
     async def test_resolve_anchor_inbox_rejected(self, resolver: Resolver) -> None:
         """$inbox is not a task -- raises reserved prefix error for task-only context."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="reserved for system locations") as exc_info:
             await resolver.resolve_anchor("$inbox")
+        error_msg = str(exc_info.value)
+        assert "$inbox" in error_msg
+        assert "refer to it by ID instead" in error_msg
 
 
 # ---------------------------------------------------------------------------

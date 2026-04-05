@@ -1244,7 +1244,7 @@ class TestEditTask:
     async def test_moveto_anchor_not_found(self, service: OperatorService) -> None:
         """MoveAction with nonexistent anchor raises ValueError (UAT #46)."""
 
-        with pytest.raises(ValueError, match="Anchor task not found"):
+        with pytest.raises(ValueError, match="No task found matching"):
             await service.edit_task(
                 EditTaskCommand(
                     id="task-001",
@@ -2398,7 +2398,7 @@ class TestNameResolutionIntegration:
     )
     async def test_edit_task_move_anchor_not_found(self, service: OperatorService) -> None:
         """edit_task with moveTo before='Nonexistent' raises ValueError (NRES-03)."""
-        with pytest.raises(ValueError, match="Anchor task not found"):
+        with pytest.raises(ValueError, match="No task found matching"):
             await service.edit_task(
                 EditTaskCommand(
                     id="task-001",

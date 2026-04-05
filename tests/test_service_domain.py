@@ -434,21 +434,14 @@ class TestProcessMove:
         result = await domain.process_move(MoveAction(before="task-anchor"), "task-1")
         assert result == {"position": "before", "anchor_id": "task-anchor"}
 
-    async def test_reserved_prefix_error_propagates_through_anchor_move(self) -> None:
-        """$-prefix resolver error must NOT be swallowed by _process_anchor_move."""
-        reserved_msg = (
-            "'$inbox' starts with '$' which is reserved for system locations. "
-            "Valid system locations: $inbox. "
-            "If your entity name starts with '$', refer to it by ID instead."
-        )
-        domain = _domain(anchor_errors={"$inbox": reserved_msg})
+    async def test_resolver_errors_propagate_through_anchor_move(self) -> None:
+        """Resolver errors propagate directly — no wrapping or swallowing."""
+        domain = _domain(anchor_errors={"$inbox": "reserved for system locations"})
         with pytest.raises(ValueError, match="reserved for system locations"):
             await domain.process_move(MoveAction(before="$inbox"), "task-1")
 
-    async def test_generic_anchor_error_wraps_with_anchor_not_found(self) -> None:
-        """Non-$-prefix resolution failures still produce ANCHOR_TASK_NOT_FOUND."""
         domain = _domain(anchor_errors={"bad-ref": "No task found"})
-        with pytest.raises(ValueError, match="Anchor task not found"):
+        with pytest.raises(ValueError, match="No task found"):
             await domain.process_move(MoveAction(before="bad-ref"), "task-1")
 
 

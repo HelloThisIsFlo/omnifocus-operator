@@ -15,8 +15,6 @@ PROJECT_NOT_FOUND = "Project not found: {id}"
 
 TAG_NOT_FOUND = "Tag not found: {name}"
 
-ANCHOR_TASK_NOT_FOUND = "Anchor task not found: {id}"
-
 # --- Batch Limit ---
 
 ADD_TASKS_BATCH_LIMIT = "add_tasks currently accepts exactly 1 item, got {count}"

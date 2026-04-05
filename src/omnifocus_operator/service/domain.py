@@ -20,7 +20,6 @@ from typing import Protocol
 from pydantic import BaseModel
 
 from omnifocus_operator.agent_messages.errors import (
-    ANCHOR_TASK_NOT_FOUND,
     CIRCULAR_REFERENCE,
     NO_POSITION_KEY,
 )
@@ -52,7 +51,6 @@ from omnifocus_operator.agent_messages.warnings import (
 from omnifocus_operator.config import (
     FUZZY_MATCH_CUTOFF,
     FUZZY_MATCH_MAX_SUGGESTIONS,
-    SYSTEM_LOCATION_PREFIX,
 )
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
@@ -611,13 +609,7 @@ class DomainLogic:
         anchor_id: str,
     ) -> dict[str, object]:
         """Move before/after a sibling task."""
-        try:
-            resolved_id = await self._resolver.resolve_anchor(anchor_id)
-        except ValueError:
-            if anchor_id.startswith(SYSTEM_LOCATION_PREFIX):
-                raise
-            msg = ANCHOR_TASK_NOT_FOUND.format(id=anchor_id)
-            raise ValueError(msg) from None
+        resolved_id = await self._resolver.resolve_anchor(anchor_id)
         return {"position": position, "anchor_id": resolved_id}
 
     # -- No-op detection ---------------------------------------------------
