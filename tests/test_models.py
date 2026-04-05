@@ -22,11 +22,13 @@ from omnifocus_operator.models import (
     BasedOn,
     Folder,
     FolderAvailability,
+    FolderRef,
     OmniFocusBaseModel,
     OmniFocusEntity,
     ParentRef,
     Perspective,
     Project,
+    ProjectRef,
     RepetitionRule,
     ReviewInterval,
     Schedule,
@@ -34,6 +36,7 @@ from omnifocus_operator.models import (
     TagAvailability,
     TagRef,
     Task,
+    TaskRef,
     Urgency,
 )
 
@@ -218,6 +221,47 @@ class TestParentRef:
         assert ref.type == "task"
         assert ref.id == "task-parent-001"
         assert ref.name == "Parent Task"
+
+
+class TestProjectRef:
+    """ProjectRef model with id and name for project references."""
+
+    def test_project_ref_round_trip(self) -> None:
+        data = {"id": "proj-001", "name": "My Project"}
+        ref = ProjectRef.model_validate(data)
+        assert ref.id == "proj-001"
+        assert ref.name == "My Project"
+        dumped = ref.model_dump(by_alias=True)
+        assert dumped == {"id": "proj-001", "name": "My Project"}
+
+    def test_project_ref_inbox(self) -> None:
+        ref = ProjectRef(id="$inbox", name="Inbox")
+        assert ref.id == "$inbox"
+        assert ref.name == "Inbox"
+
+
+class TestTaskRef:
+    """TaskRef model with id and name for task references."""
+
+    def test_task_ref_round_trip(self) -> None:
+        data = {"id": "task-001", "name": "My Task"}
+        ref = TaskRef.model_validate(data)
+        assert ref.id == "task-001"
+        assert ref.name == "My Task"
+        dumped = ref.model_dump(by_alias=True)
+        assert dumped == {"id": "task-001", "name": "My Task"}
+
+
+class TestFolderRef:
+    """FolderRef model with id and name for folder references."""
+
+    def test_folder_ref_round_trip(self) -> None:
+        data = {"id": "folder-001", "name": "My Folder"}
+        ref = FolderRef.model_validate(data)
+        assert ref.id == "folder-001"
+        assert ref.name == "My Folder"
+        dumped = ref.model_dump(by_alias=True)
+        assert dumped == {"id": "folder-001", "name": "My Folder"}
 
 
 class TestRepetitionRule:
