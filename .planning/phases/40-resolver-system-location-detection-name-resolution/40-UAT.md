@@ -3,7 +3,7 @@ status: complete
 phase: 40-resolver-system-location-detection-name-resolution
 source: [40-01-SUMMARY.md, 40-02-SUMMARY.md]
 started: 2026-04-05T20:00:00Z
-updated: 2026-04-05T20:30:00Z
+updated: 2026-04-05T22:15:00Z
 ---
 
 ## Current Test
@@ -45,28 +45,18 @@ expected: Using edit_tasks with `moveTo.before` or `moveTo.after` set to a task 
 result: pass
 
 ### 9. $inbox rejected in anchor (before/after) context
-expected: Using edit_tasks with `moveTo.before` set to `$inbox`, the operation should fail with an error indicating that system locations ($-prefix) are not valid for anchor positioning.
-result: issue
-reported: "Error message says 'Anchor task not found: $inbox' which is technically correct but misleading. Should clearly explain that $-prefixed system locations aren't valid in before/after context."
-severity: minor
+expected: Using edit_tasks with `moveTo.before` set to `$inbox`, the operation should fail with an error explaining that $inbox is a project and anchor positions require a task reference, with guidance to use ending/beginning instead.
+result: pass
 
 ## Summary
 
 total: 9
-passed: 8
-issues: 1
+passed: 9
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
 
 ## Gaps
 
-- truth: "Error clearly explains that system locations ($-prefix) are not valid for anchor (before/after) positioning"
-  status: failed
-  reason: "User reported: Error message says 'Anchor task not found: $inbox' which is technically correct but misleading. Should clearly explain that $-prefixed system locations aren't valid in before/after context."
-  severity: minor
-  test: 9
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+[none]
