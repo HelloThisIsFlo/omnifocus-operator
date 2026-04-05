@@ -307,7 +307,7 @@ FOLDER_FILTER_DESC = (
 # --- Perspectives: Temporary Notes ---
 
 # TODO(v1.5): Remove when built-in perspectives are supported
-PERSPECTIVES_BUILTIN_NOTE = (
+_PERSPECTIVES_BUILTIN_NOTE = (
     "Currently returns custom perspectives only; "
     "built-in perspectives are not yet available."
 )
@@ -457,7 +457,7 @@ LIST_FOLDERS_TOOL_DOC = (
 )
 
 LIST_PERSPECTIVES_TOOL_DOC = (
-    f"List perspectives. {PERSPECTIVES_BUILTIN_NOTE}\n"
+    f"List perspectives. {_PERSPECTIVES_BUILTIN_NOTE}\n"
     "\n"
     "Response: {items, total, hasMore}\n"
     "\n"
