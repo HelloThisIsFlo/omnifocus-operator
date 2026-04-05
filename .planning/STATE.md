@@ -1,10 +1,10 @@
 ---
 gsd_state_version: 1.0
-milestone: null
-milestone_name: null
-status: between_milestones
-stopped_at: v1.3 shipped, planning next milestone
-last_updated: "2026-04-05T14:00:00.000Z"
+milestone: v1.3.1
+milestone_name: Inbox as First-Class Value
+status: defining_requirements
+stopped_at: Milestone v1.3.1 started, defining requirements
+last_updated: "2026-04-05T15:00:00.000Z"
 last_activity: 2026-04-05
 progress:
   total_phases: 0
@@ -21,16 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-05)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Planning next milestone
+**Current focus:** v1.3.1 Inbox as First-Class Value
 
 ## Current Position
 
-Phase: None (between milestones)
-Plan: N/A
-Status: v1.3 shipped, awaiting next milestone
-Last activity: 2026-04-05
-
-Progress: N/A
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-05 — Milestone v1.3.1 started
 
 ## Performance Metrics
 
@@ -59,7 +57,6 @@ Carried forward from v1.3:
 7. Add built-in perspectives to list_perspectives (repository — needs design discussion)
 8. Return full inbox hierarchy from inInbox query (repository)
 9. Add path field for hierarchical entities (models)
-10. Make inbox a first-class value instead of null overloading (design effort)
 
 ### Blockers/Concerns
 
@@ -67,6 +64,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-04-05 - v1.3 milestone completed
-Stopped at: Between milestones — run /gsd-new-milestone to start next
+Last activity: 2026-04-05 - Milestone v1.3.1 started
+Stopped at: Defining requirements
 Resume file: None

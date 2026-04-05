@@ -8,10 +8,19 @@ A Python MCP server that exposes OmniFocus (macOS task manager) as structured ta
 
 Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
 
-## Current State
+## Current Milestone: v1.3.1 Inbox as First-Class Value
 
-**Shipped:** v1.3 (2026-04-05) — Read Tools
-**Next:** Planning next milestone (v1.4 or v1.3.x)
+**Goal:** Eliminate null overloading for inbox across the entire API surface — `$inbox` becomes the single, explicit representation everywhere.
+
+**Target features:**
+- System location namespace (`$` prefix, `$inbox`, three-step resolver precedence)
+- New reference models (`ProjectRef`, `TaskRef`, `FolderRef`) replacing `ParentRef`
+- Task output: new `project` field, tagged object `parent`, `inInbox` removed from output
+- Write changes: `$inbox` in add_tasks/edit_tasks, `PatchOrNone` elimination
+- Filter changes: `project: "$inbox"` accepted in list_tasks, contradictory filter detection
+- Rich `{id, name}` references on all output models
+- Name-based resolution for all entity reference fields
+- Better errors for `before`/`after` with container targets
 
 ## Requirements
 
@@ -202,4 +211,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-05 after v1.3 milestone — 11 MCP tools, 1528 tests, 9021 LOC Python*
+*Last updated: 2026-04-05 after v1.3.1 milestone started*
