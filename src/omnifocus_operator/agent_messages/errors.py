@@ -15,16 +15,7 @@ PROJECT_NOT_FOUND = "Project not found: {id}"
 
 TAG_NOT_FOUND = "Tag not found: {name}"
 
-PARENT_NOT_FOUND = "Parent not found: {id}"
-
 ANCHOR_TASK_NOT_FOUND = "Anchor task not found: {id}"
-
-# --- Lookup: Ambiguous ---
-
-AMBIGUOUS_ENTITY = (
-    "Ambiguous {entity_type} '{name}': multiple matches ({ids}). "
-    "For ambiguous {entity_type}s, specify by ID instead of name."
-)
 
 # --- Batch Limit ---
 

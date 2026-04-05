@@ -67,10 +67,10 @@ class StubResolver:
     async def resolve_tags(self, names: list[str]) -> list[str]:
         return [self._tag_map[n] for n in names]
 
-    async def resolve_parent(self, pid: str) -> str:
+    async def resolve_container(self, pid: str) -> str:
         return pid  # always succeeds
 
-    async def resolve_task(self, task_id: str) -> Task:
+    async def lookup_task(self, task_id: str) -> Task:
         task = self._tasks.get(task_id)
         if task is None:
             msg = f"Task not found: {task_id}"
@@ -414,7 +414,7 @@ class TestProcessMove:
         assert result == {"position": "ending", "container_id": None}
 
     async def test_move_to_project(self) -> None:
-        # StubResolver.resolve_parent always succeeds; StubRepo.get_task returns None
+        # StubResolver.resolve_container always succeeds; StubRepo.get_task returns None
         # for the container (it's a project, not a task), so no cycle check
         domain = _domain()
         result = await domain.process_move(MoveAction(ending="proj-1"), "task-1")

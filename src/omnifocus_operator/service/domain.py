@@ -590,7 +590,7 @@ class DomainLogic:
             return {"position": position, "container_id": None}
 
         # Verify container exists (project or task)
-        await self._resolver.resolve_parent(container_id)
+        await self._resolver.resolve_container(container_id)
 
         # If container is a task, check for circular reference
         container_task = await self._repo.get_task(container_id)
@@ -606,7 +606,7 @@ class DomainLogic:
     ) -> dict[str, object]:
         """Move before/after a sibling task."""
         try:
-            await self._resolver.resolve_task(anchor_id)
+            await self._resolver.lookup_task(anchor_id)
         except ValueError:
             msg = ANCHOR_TASK_NOT_FOUND.format(id=anchor_id)
             raise ValueError(msg) from None

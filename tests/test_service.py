@@ -143,7 +143,7 @@ class TestAddTask:
 
     async def test_parent_not_found(self, service: OperatorService) -> None:
         """Non-existent parent raises ValueError."""
-        with pytest.raises(ValueError, match="Parent not found: nonexistent-id"):
+        with pytest.raises(ValueError, match="No project found matching 'nonexistent-id'"):
             await service.add_task(AddTaskCommand(name="Task", parent="nonexistent-id"))
 
     @pytest.mark.snapshot(tags=[make_tag_dict(id="tag-work", name="Work")])
@@ -162,7 +162,7 @@ class TestAddTask:
 
     async def test_tag_not_found(self, service: OperatorService) -> None:
         """Non-existent tag raises ValueError."""
-        with pytest.raises(ValueError, match="Tag not found"):
+        with pytest.raises(ValueError, match="No tag found matching 'nonexistent'"):
             await service.add_task(AddTaskCommand(name="Task", tags=["nonexistent"]))
 
     @pytest.mark.snapshot(
@@ -175,7 +175,7 @@ class TestAddTask:
         # Error should include both IDs and resolution guidance
         assert "tag-a" in str(exc_info.value)
         assert "tag-b" in str(exc_info.value)
-        assert "specify by ID" in str(exc_info.value)
+        assert "Use the ID" in str(exc_info.value)
 
     @pytest.mark.snapshot(tags=[make_tag_dict(id="tag-work", name="Work")])
     async def test_all_fields(self, service: OperatorService) -> None:
@@ -212,7 +212,7 @@ class TestAddTask:
         mock_repo.get_task.return_value = None
         service = OperatorService(repository=mock_repo)
 
-        with pytest.raises(ValueError, match="Parent not found"):
+        with pytest.raises(ValueError, match="No project found matching"):
             await service.add_task(AddTaskCommand(name="Task", parent="bad-id"))
 
         mock_repo.add_task.assert_not_called()
