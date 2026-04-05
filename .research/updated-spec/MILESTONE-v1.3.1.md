@@ -206,6 +206,33 @@ Inbox does not appear in `list_projects` results. Same reasoning: inbox can't co
 
 Real projects that happen to match are still returned normally — only the inbox match triggers the warning.
 
+### Rich References on All Output Models
+
+With v1.3.1 introducing name-based resolution on the write side (agents can write `folder: "Work"` instead of `folder: "iLSVwYRA9aZ"`), output models should match: every entity reference in read output should return `{id, name}`, not a bare ID string. This eliminates the round-trip problem where an agent writes using a name but reads back a bare ID it can't correlate without a second lookup.
+
+**New model type: `FolderRef`**
+
+```python
+class FolderRef(OmniFocusBaseModel):
+    id: str
+    name: str
+```
+
+Follows the existing `TagRef(id, name)` pattern. Used for `Project.folder` and `Folder.parent`.
+
+**Changed fields:**
+
+| Entity | Field | Before | After |
+|--------|-------|--------|-------|
+| Project | `folder` | `str \| None` | `FolderRef \| None` |
+| Project | `next_task` | `str \| None` | `TaskRef \| None` |
+| Tag | `parent` | `str \| None` | `TagRef \| None` |
+| Folder | `parent` | `str \| None` | `FolderRef \| None` |
+
+**Data availability:** All names are already accessible during the read path — the SQLite queries either already JOIN the relevant tables or the data is fetched in the same transaction (tag names via `_build_tag_name_lookup`, folder names from `Folder` table, task names from `Task` table). No new queries needed, just richer mapping in the row mappers.
+
+**Design principle:** Write vocabulary matches read vocabulary. If the API teaches agents to think in names, output should speak the same language.
+
 ---
 
 ## Key Design Decisions
@@ -265,6 +292,17 @@ Real projects that happen to match are still returned normally — only the inbo
 - `list_projects` results never include an inbox entry.
 - `list_projects` with a name filter that would have substring-matched "Inbox" includes a warning about the system inbox.
 
+### Rich Output References
+
+- `Project.folder` returns `{id, name}` (FolderRef), not a bare ID string.
+- `Project.next_task` returns `{id, name}` (TaskRef), not a bare ID string.
+- `Tag.parent` returns `{id, name}` (TagRef), not a bare ID string.
+- `Folder.parent` returns `{id, name}` (FolderRef), not a bare ID string.
+- All four fields remain nullable (null when no parent/folder/next_task).
+- `FolderRef` model exists as a standalone type (like `TagRef`).
+- `get_project`, `list_projects`, `get_tag`, `list_tags`, `list_folders` all return the enriched references.
+- `get_all` returns the enriched references (same models used everywhere).
+
 ### Type System
 
 - `PatchOrNone` type alias is removed from `contracts/base.py`.
@@ -276,7 +314,9 @@ Real projects that happen to match are still returned normally — only the inbo
 
 - `list_tasks` tool description must be updated to explain the task hierarchy — same shape as the `list_folders` description which explains "flat list with parent field for hierarchy reconstruction."
 - The `list_tasks` version explains two fields instead of one: `parent` (direct structural parent — project or parent task) vs `project` (containing project at any nesting depth, or `$inbox`). The description should help agents make sense of both and when they diverge (subtasks).
-- Reminder: update `LIST_TASKS_TOOL_DOC` in `agent_messages/descriptions.py` during implementation.
+- All tool descriptions must use `{id, name}` format for enriched reference fields: `folder {id, name}`, `parent {id, name}`, `nextTask {id, name}`, `project {id, name}`. Same pattern already used for `tags [{id, name}]`.
+- Do not add "or null" to reference field descriptions — nullability is already communicated by the JSON Schema. Note: `Task.parent` is never null after this milestone (inbox = `$inbox`).
+- Reminder: update `LIST_TASKS_TOOL_DOC`, `LIST_PROJECTS_TOOL_DOC`, `LIST_TAGS_TOOL_DOC`, `LIST_FOLDERS_TOOL_DOC`, `GET_TASK_TOOL_DOC`, `GET_PROJECT_TOOL_DOC`, `GET_TAG_TOOL_DOC` in `agent_messages/descriptions.py` during implementation.
 
 ### Resolver
 
@@ -428,6 +468,18 @@ The `$` prefix creates a syntactically disjoint namespace. The resolver checks f
 **The alternative** was to implement name resolution as its own milestone or as an urgent phase in the current milestone (v1.3, which is about to finish and was never designed for this).
 
 **What decided it:** The resolver is designed as a unit — the three-step precedence (`$` prefix → ID → name) is the core of this milestone's design. Building only step 1 without 2 and 3 creates a partial resolver that gets reworked later. Testing `$inbox` alongside name resolution validates the collision-proof design. And the scope increase is bounded: tags already resolve by name (v1.2), `project` filter already does substring matching (v1.3). The new work is mainly `parent` on add_tasks and `moveTo` on edit_tasks.
+
+### DL-14: Rich `{id, name}` references on all output models, not just Task
+
+**Decision:** Upgrade all bare-ID reference fields to `{id, name}` objects: `Project.folder` → `FolderRef`, `Project.next_task` → `TaskRef`, `Tag.parent` → `TagRef`, `Folder.parent` → `FolderRef`.
+
+**The initial state:** Only Task had rich references (`ParentRef` with `{type, id, name}`, `TagRef` with `{id, name}`). Project, Tag, and Folder returned bare ID strings for their parent/folder/next_task fields. This was a historical artifact — Task was built first (v1.0) with more complex parent semantics, and simpler entities never caught up.
+
+**What decided it:** This milestone introduces name-based resolution on writes — agents can now write `folder: "Work"` or `parent: "My Tag"`. Serving bare IDs in read output creates a vocabulary mismatch: the agent writes in names but reads in IDs. It can't even confirm its own write without a second lookup. Symmetry between write vocabulary and read vocabulary is a usability principle worth enforcing.
+
+**Why now, not later:** The milestone already introduces `ProjectRef`, `TaskRef`, and changes every output model mapper for the Task changes. The incremental cost of enriching the remaining mappers is small — they already have access to the name data in the same SQLite transaction. Deferring would mean a second round of model changes and mapper rewrites later.
+
+**`FolderRef` is the only new type.** `TagRef` and `TaskRef` already exist. `FolderRef` follows the exact same `(id, name)` pattern.
 
 ---
 
