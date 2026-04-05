@@ -119,22 +119,22 @@ Carried forward:
 6. Migrate write tools to typed params with validation middleware (Approach 1 from fastmcp-middleware-validation research)
 7. Reorganize test suite into unit/integration/golden-master folders
 8. Add search tool for projects symmetric with task search (v1.3+)
-9. Sweep agent-facing schema descriptions and tool documentation
+9. ~~Sweep agent-facing schema descriptions and tool documentation~~ (DONE: Phase 36.2)
 10. ~~Tighten schema field constraints: flagged default and name min_length~~ (DONE: quick-260331-v9q)
-11. Reserve Literal and Annotated types for contract models only
-12. Centralize field descriptions into constants like warnings and errors
+11. ~~Reserve Literal and Annotated types for contract models only~~ (DONE: Phase 36.4)
+12. ~~Centralize field descriptions into constants like warnings and errors~~ (DONE: Phase 36.3)
 13. ~~Improve MCP tool schema descriptions and field documentation~~ (DONE: quick-260401-twg)
 14. ~~Clarify repetition schedule and repeat mode edge cases~~ (DONE: empirical verification, BYDAY edge cases guide, runtime warning, anchor date behavior documented)
-15. Convert specs to core models at service boundary (post-merge follow-up to #11)
-16. Fix effectiveCompletionDate availability ghost tasks (repository)
+15. ~~Convert specs to core models at service boundary~~ (DONE: quick-260402-pj2)
+16. ~~Fix effectiveCompletionDate availability ghost tasks~~ (DONE: Phase 37.1)
 17. Add built-in perspectives to list_perspectives (repository — needs design discussion)
 18. Return full inbox hierarchy from inInbox query (repository)
 19. Add path field for hierarchical entities (models)
-20. Add disambiguation warnings for ambiguous entity names (server)
-21. Improve ambiguous tag error message with resolution guidance (service)
+20. ~~Add disambiguation warnings for ambiguous entity names~~ (DONE: quick-260404-rxq)
+21. ~~Improve ambiguous tag error message with resolution guidance~~ (DONE: quick-260404-rxq)
 22. Make inbox a first-class value instead of null overloading (design effort)
-23. Document edit_tasks action combinability and null-inbox semantics (docs)
-24. Improve list tool parameter documentation (api — from external review)
+23. ~~Document edit_tasks action combinability and null-inbox semantics~~ (DONE: quick-260404-rzf)
+24. ~~Improve list tool parameter documentation~~ (DONE: Phase 38)
 
 ### Quick Tasks Completed
 
