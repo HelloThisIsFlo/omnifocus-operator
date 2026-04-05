@@ -78,9 +78,13 @@ OmniFocus tags have a **status** field (Active, On Hold, Dropped). The omnifocus
 > - You'd expect "Dropped = ignored" — but a Dropped tag **actively blocks** the task when no other tag status remains
 > - Mental model: the task has no actionable context left => OmniFocus treats it as blocked
 
+> [!note] Tags are manually associated
+>
+> - Tags must be explicitly assigned to a task — tag status rules only affect tasks that carry that tag
+
 ---
 
-- 🤔 **Display inconsistency** — a blocked task (On Hold tag) that is due soon/overdue may switch from grey to normal text in OmniFocus — still blocked, won't appear in Available-filtered views
+- 🤔 **Display inconsistency** — a blocked task (On Hold tag) that is due soon/overdue may switch from grey to normal text in OmniFocus, but it's still blocked and won't appear in Available-filtered views
 - 📅 **Forecast ignores availability** — no Available/Remaining filter; all items with a due date appear regardless of tag status
 
 ## Repetition Rules
@@ -123,13 +127,19 @@ When the next occurrence is generated:
 > - Uses the **completion date** (not the creation date) for the date portion
 > - Uses the user's **default time** for that date type (OmniFocus Settings → Dates & Times) for the time portion
 >
-> Valid but potentially surprising => **Set the anchor date explicitly for predictable behavior**
+> **Example:** task repeats weekly, anchored to `planned_date`, but no planned date is set:
+>
+> - You create the task on Wednesday
+> - You complete it on Friday
+> - You'd expect the next `planned_date` to be Wednesday — but it's Friday (the completion date)
+>
+> => **Set the anchor date explicitly for predictable behavior**
 >
 > _See [omnifocus-repetition-behavior.md](../.research/deep-dives/repetition-modes/omnifocus-repetition-behavior.md), Part 7 for the full empirical verification_
 
 ### Schedule (Recurrence Mode)
 
-The schedule controls what happens when a task is completed — specifically, how the next occurrence's date is calculated.
+The schedule controls what happens when a task is completed — specifically, how OmniFocus calculates the next occurrence's date.
 
 | Mode                         | How the next date is calculated                                     |
 | ---------------------------- | ------------------------------------------------------------------- |
