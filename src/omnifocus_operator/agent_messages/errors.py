@@ -115,3 +115,22 @@ REVIEW_DUE_WITHIN_INVALID = (
     "Invalid review_due_within '{value}' -- "
     "valid formats: 'now', or a number followed by d/w/m/y (e.g. '1w', '2m', '30d')"
 )
+
+# --- Name Resolution ---
+
+AMBIGUOUS_NAME_MATCH = (
+    "Ambiguous {entity_type} '{name}': multiple matches: {matches}. "
+    "Use the ID to specify which one."
+)
+
+NAME_NOT_FOUND = "No {entity_type} found matching '{name}'.{suggestions}"
+
+INVALID_SYSTEM_LOCATION = (
+    "Unknown system location '{value}'. Valid system locations: {valid_locations}."
+)
+
+RESERVED_PREFIX = (
+    "'{value}' starts with '{prefix}' which is reserved for system locations. "
+    "Valid system locations: {valid_locations}. "
+    "If your entity name starts with '{prefix}', refer to it by ID instead."
+)
