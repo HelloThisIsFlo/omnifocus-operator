@@ -288,3 +288,13 @@ Phases execute in numeric order: 34 → 35 → 35.1 → 35.2 → 36 → 37
 
 Plans:
 - [x] TBD (run /gsd-plan-phase 37.1 to break down) (completed 2026-04-04)
+
+### Phase 38: Improve list tool parameter documentation
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 37
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 38 to break down)

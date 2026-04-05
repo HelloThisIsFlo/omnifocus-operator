@@ -105,6 +105,7 @@ Recent decisions affecting current work:
 - Phase 36.3 inserted after Phase 36: Centralize field descriptions into constants like warnings and errors (URGENT)
 - Phase 36.4 inserted after Phase 36: Reserve Literal and Annotated types for contract models only (URGENT)
 - Phase 37.1 inserted after Phase 37: Fix effectiveCompletionDate availability ghost tasks (URGENT)
+- Phase 38 added: Improve list tool parameter documentation
 
 ### Pending Todos
 
