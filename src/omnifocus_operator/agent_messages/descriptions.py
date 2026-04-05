@@ -120,6 +120,12 @@ ESTIMATED_MINUTES_EDIT = "Time estimate in minutes. Set to null to clear."
 
 TAG_REF_DOC = "Reference to a tag with both id and name."
 
+PROJECT_REF_DOC = 'Reference to a project with id and name. The system inbox uses id="$inbox", name="Inbox".'
+
+TASK_REF_DOC = "Reference to a task with id and name."
+
+FOLDER_REF_DOC = "Reference to a folder with id and name."
+
 PARENT_REF_DOC = (
     "Reference to a parent entity (project or task) with type, id, and name.\n"
     "\n"
