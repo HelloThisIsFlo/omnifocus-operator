@@ -128,10 +128,10 @@
   1. `$inbox` system location constant is importable from config and used by all code that references inbox
   2. `ProjectRef(id, name)`, `TaskRef(id, name)`, `FolderRef(id, name)` models exist and follow the established `TagRef` pattern
   3. All new models produce correct JSON Schema (validated by output schema tests)
-**Plans**: TBD
+**Plans:** 1 plan
 
 Plans:
-- [ ] 39-01: TBD
+- [ ] 39-01-PLAN.md — System location constants and reference models (ProjectRef, TaskRef, FolderRef)
 
 ### Phase 40: Resolver -- System Location Detection & Name Resolution
 **Goal**: Agents can pass entity names or `$`-prefixed system locations to any write field, with clear error messages for ambiguous or invalid inputs
@@ -237,7 +237,7 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44 → 45
 | 29-31 | v1.2.2 | 6/6 | Complete | 2026-03-26 |
 | 32-33.1 | v1.2.3 | 15/15 | Complete | 2026-03-29 |
 | 34-38 | v1.3 | 26/26 | Complete | 2026-04-05 |
-| 39. Foundation | v1.3.1 | 0/TBD | Not started | - |
+| 39. Foundation | v1.3.1 | 0/1 | Not started | - |
 | 40. Resolver | v1.3.1 | 0/TBD | Not started | - |
 | 41. Write Pipeline | v1.3.1 | 0/TBD | Not started | - |
 | 42. Task Output | v1.3.1 | 0/TBD | Not started | - |
