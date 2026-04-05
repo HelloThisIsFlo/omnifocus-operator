@@ -1,14 +1,14 @@
-# Milestone v1.4 -- Field Selection, Task Deletion & Notes Append
+# Milestone v1.4 -- Field Selection, Null-Stripping, Task Deletion & Notes Append
 
 ## Goal
 
-Agents get control over what data they receive and gain two new write capabilities. Field selection reduces token usage by projecting only needed fields. Task deletion adds permanent removal. Notes append enables incremental note updates without read-modify-write cycles. No new data paths — all within existing architecture.
+Agents get control over what data they receive and gain two new write capabilities. Field selection and null-stripping reduce token usage — projection limits *which* fields appear, null-stripping limits *which values* appear. Task deletion adds permanent removal. Notes append enables incremental note updates without read-modify-write cycles. No new data paths — all within existing architecture.
 
 ## What to Build
 
 ### Field Selection
 
-Optional `fields` parameter (list of field name strings) on all `list_*` and `get_*` tools. When provided, only those fields plus `id` (always included) are returned.
+`fields` parameter on all `list_*` and `get_*` tools. Controls which fields appear in the response.
 
 **Rules:**
 - `id` is always included, even if not listed
@@ -17,7 +17,25 @@ Optional `fields` parameter (list of field name strings) on all `list_*` and `ge
 - `availability` and `urgency` are independent top-level fields
 - Nested objects (`review_interval`, `repetition_rule`) are atomic -- no sub-field selection
 - Projection happens post-filter, pre-serialization. Filters run against full objects.
-- Omitting `fields` returns everything (backward compatible)
+- Omitting `fields` returns a **curated default set** of the most commonly used fields — not everything. This keeps responses compact by default.
+- The tool description lists all available fields so agents can opt in to more when needed.
+
+**Open questions:**
+- What is the curated default field set? (per entity type — tasks, projects, tags)
+- Should `fields` accept the string `"all"` (or `["*"]`) as an escape hatch to return everything? If so, which syntax?
+- Should `fields` accept either a list of strings or a single string value (for the `"all"` case)?
+
+### Null-Stripping
+
+Null fields are omitted from responses by default. This is orthogonal to field selection and compounds with it — field selection controls *which* fields, null-stripping controls *which values*.
+
+A typical task has ~8-10 null fields (`dueDate`, `deferDate`, `completionDate`, `dropDate`, `estimatedMinutes`, `repetitionRule`, etc.) that carry no information. Stripping them reduces response size significantly across bulk reads.
+
+**Open questions:**
+- Parameter name? (`exclude_null`, `strip_null`, `omit_null`?)
+- Default `true` (nulls omitted unless explicitly requested) — or always on with no toggle?
+- Should this also strip empty lists (`tags: []`) and/or false-y defaults (`flagged: false`)? Or strictly just `null`?
+- Interaction with field selection: if an agent explicitly requests a field via `fields` and it's null, should it still be omitted? (Likely yes — the agent asked for the field "if it has a value", not "always include it".)
 
 ### Task Deletion (Deferred from v1.2)
 
@@ -51,12 +69,13 @@ This is the second field graduation after tags (v1.2), following the same patter
 
 - Field projection works on all `list_*` and `get_*` tools
 - `id` always included in projected output
+- Omitting `fields` returns curated default set, not everything
 - Projection doesn't affect filtering
+- Null fields omitted from responses by default
 - Task deletion is permanent and removes children
 - Notes append adds text with newline separator to existing note
 - Notes append on empty note sets the note (no leading newline)
 - Validation error when both top-level `note` and `actions.note` are provided
-- All existing tools work unchanged (backward compatible)
 
 ## Tools After This Milestone
 

@@ -1,6 +1,6 @@
 ---
 created: 2026-03-08T11:51:37.290Z
-title: Consider returning full task object in edit_tasks response and stripping nulls
+title: Consider returning full task object in edit_tasks response
 area: service
 priority: low
 files:
@@ -15,12 +15,10 @@ Currently `edit_tasks` returns a minimal response (`success`, `id`, `name`, `war
 ## Solution
 
 - Return the full task object in the `edit_tasks` response, matching what `get_task` returns (common REST pattern — GitHub, Stripe, Notion all return full resource on PATCH)
-- Consider stripping null fields from the edit response to reduce token count:
-  - A typical task has ~8-10 null fields that carry no information
-  - Omitting nulls could cut response size by ~40%
-  - Current: ~42 tokens → Full with nulls: ~180 tokens → Full without nulls: ~110 tokens
-- For `get_task`, keep all fields (including nulls) since the caller explicitly wants the full picture
-- Null-stripping is most valuable on `edit_tasks` where the caller just wants confirmation + updated state
+
+## Note on null-stripping
+
+Null-stripping was originally considered here as a response-size optimization for edit responses specifically. This is now a first-class feature in **Milestone v1.4** (field selection + null-stripping across all tools), so no need to handle it in isolation for edit responses.
 
 ## Decision: Intentionally Unmapped
 
