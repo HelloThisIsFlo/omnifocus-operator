@@ -1,10 +1,11 @@
 ---
 phase: 34
 slug: contracts-and-query-foundation
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-29
+validated: 2026-04-05
 ---
 
 # Phase 34 — Validation Strategy
@@ -38,8 +39,8 @@ created: 2026-03-29
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| TBD | 01 | 1 | INFRA-01 | unit | `uv run pytest tests/test_query_builder.py -x -q --no-cov` | No -- Wave 0 | ⬜ pending |
-| TBD | 01 | 1 | INFRA-04 | unit | `uv run pytest tests/test_list_contracts.py -x -q --no-cov` | No -- Wave 0 | ⬜ pending |
+| T01-T03 | 01 | 1 | INFRA-04 | unit | `uv run pytest tests/test_list_contracts.py -x -q --no-cov` | Yes (29 tests) | ✅ green |
+| T01-T03 | 02 | 2 | INFRA-01 | unit | `uv run pytest tests/test_query_builder.py -x -q --no-cov` | Yes (47 tests) | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -47,8 +48,8 @@ created: 2026-03-29
 
 ## Wave 0 Requirements
 
-- [ ] `tests/test_list_contracts.py` — query model validation, ListResult serialization, defaults, unknown field rejection
-- [ ] `tests/test_query_builder.py` — parameterized SQL generation, availability clauses, limit/offset, count-only
+- [x] `tests/test_list_contracts.py` — query model validation, ListResult serialization, defaults, unknown field rejection (29 tests)
+- [x] `tests/test_query_builder.py` — parameterized SQL generation, availability clauses, limit/offset, count-only (47 tests)
 
 *Existing test infrastructure covers regression: `tests/test_contracts_type_aliases.py`, `tests/test_output_schema.py`*
 
@@ -62,11 +63,21 @@ created: 2026-03-29
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s (0.25s actual)
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** ✅ validated 2026-04-05
+
+## Validation Audit 2026-04-05
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+Full suite: 1528 passed (17.45s). Phase test subset: 121 passed (0.25s).
