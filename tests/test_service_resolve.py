@@ -9,9 +9,11 @@ from __future__ import annotations
 import pytest
 
 from omnifocus_operator.contracts.base import UNSET
+from omnifocus_operator.models.enums import EntityType
 from omnifocus_operator.models.project import Project
 from omnifocus_operator.models.tag import Tag
 from omnifocus_operator.repository import BridgeOnlyRepository
+from omnifocus_operator.service.errors import EntityTypeMismatchError
 from omnifocus_operator.service.fuzzy import suggest_close_matches
 from omnifocus_operator.service.resolve import Resolver
 from omnifocus_operator.service.validate import validate_task_name, validate_task_name_if_set
@@ -258,13 +260,21 @@ class TestResolveAnchor:
         result = await resolver.resolve_anchor("Alpha")
         assert result == "task-1"
 
-    async def test_resolve_anchor_inbox_rejected(self, resolver: Resolver) -> None:
-        """$inbox is not a task -- raises reserved prefix error for task-only context."""
-        with pytest.raises(ValueError, match="reserved for system locations") as exc_info:
+    async def test_resolve_anchor_inbox_raises_entity_type_mismatch(
+        self, resolver: Resolver
+    ) -> None:
+        """$inbox in task-only context raises EntityTypeMismatchError with structured data."""
+        with pytest.raises(EntityTypeMismatchError) as exc_info:
             await resolver.resolve_anchor("$inbox")
-        error_msg = str(exc_info.value)
-        assert "$inbox" in error_msg
-        assert "refer to it by ID instead" in error_msg
+        assert exc_info.value.value == "$inbox"
+        assert exc_info.value.resolved_type == EntityType.PROJECT
+        assert exc_info.value.accepted_types == [EntityType.TASK]
+
+    async def test_resolve_anchor_unknown_dollar_prefix(self, resolver: Resolver) -> None:
+        """Unknown $-prefixed value raises plain ValueError, not EntityTypeMismatchError."""
+        with pytest.raises(ValueError, match="reserved for system locations") as exc_info:
+            await resolver.resolve_anchor("$foobar")
+        assert not isinstance(exc_info.value, EntityTypeMismatchError)
 
 
 # ---------------------------------------------------------------------------

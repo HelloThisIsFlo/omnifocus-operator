@@ -21,6 +21,7 @@ from pydantic import BaseModel
 
 from omnifocus_operator.agent_messages.errors import (
     CIRCULAR_REFERENCE,
+    ENTITY_TYPE_MISMATCH_ANCHOR,
     NO_POSITION_KEY,
 )
 from omnifocus_operator.agent_messages.warnings import (
@@ -60,6 +61,7 @@ from omnifocus_operator.models.repetition_rule import (
     Frequency,
     RepetitionRule,
 )
+from omnifocus_operator.service.errors import EntityTypeMismatchError
 from omnifocus_operator.service.fuzzy import suggest_close_matches as _suggest_close_matches
 
 if TYPE_CHECKING:
@@ -609,7 +611,13 @@ class DomainLogic:
         anchor_id: str,
     ) -> dict[str, object]:
         """Move before/after a sibling task."""
-        resolved_id = await self._resolver.resolve_anchor(anchor_id)
+        try:
+            resolved_id = await self._resolver.resolve_anchor(anchor_id)
+        except EntityTypeMismatchError as exc:
+            msg = ENTITY_TYPE_MISMATCH_ANCHOR.format(
+                value=exc.value, resolved_type=exc.resolved_type.value
+            )
+            raise ValueError(msg) from exc
         return {"position": position, "anchor_id": resolved_id}
 
     # -- No-op detection ---------------------------------------------------

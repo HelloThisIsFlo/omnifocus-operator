@@ -123,3 +123,13 @@ RESERVED_PREFIX = (
     "Valid system locations: {valid_locations}. "
     "If your entity name starts with '{prefix}', refer to it by ID instead."
 )
+
+ENTITY_TYPE_MISMATCH = (
+    "'{value}' resolved to {resolved_type}, but only {accepted} is accepted here"
+)
+
+ENTITY_TYPE_MISMATCH_ANCHOR = (
+    "'{value}' is a {resolved_type}. "
+    "Anchor positions (before/after) require a task reference. "
+    "To move into {value}, use 'ending' or 'beginning' instead."
+)

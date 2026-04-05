@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import enum
 import logging
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
@@ -16,6 +15,8 @@ from omnifocus_operator.agent_messages.errors import (
     TASK_NOT_FOUND,
 )
 from omnifocus_operator.config import SYSTEM_LOCATION_INBOX, SYSTEM_LOCATION_PREFIX
+from omnifocus_operator.models.enums import EntityType, TagAvailability
+from omnifocus_operator.service.errors import EntityTypeMismatchError
 from omnifocus_operator.service.fuzzy import format_suggestions, suggest_close_matches
 
 if TYPE_CHECKING:
@@ -27,7 +28,6 @@ if TYPE_CHECKING:
     from omnifocus_operator.models.task import Task
 
 from omnifocus_operator.contracts.use_cases.list.tags import ListTagsRepoQuery
-from omnifocus_operator.models.enums import TagAvailability
 
 
 @runtime_checkable
@@ -39,12 +39,6 @@ class _HasIdAndName(Protocol):
 
     @property
     def name(self) -> str: ...
-
-
-class _EntityType(enum.Enum):
-    PROJECT = "project"
-    TASK = "task"
-    TAG = "tag"
 
 
 logger = logging.getLogger(__name__)
@@ -79,16 +73,16 @@ class Resolver:
 
     # -- Private: entity fetching ----------------------------------------------
 
-    async def _fetch_entities(self, accept: list[_EntityType]) -> list[_HasIdAndName]:
+    async def _fetch_entities(self, accept: list[EntityType]) -> list[_HasIdAndName]:
         """Fetch entities from the repository based on accepted types."""
         entities: list[_HasIdAndName] = []
-        if _EntityType.PROJECT in accept or _EntityType.TASK in accept:
+        if EntityType.PROJECT in accept or EntityType.TASK in accept:
             all_data = await self._repo.get_all()
-            if _EntityType.PROJECT in accept:
+            if EntityType.PROJECT in accept:
                 entities.extend(all_data.projects)
-            if _EntityType.TASK in accept:
+            if EntityType.TASK in accept:
                 entities.extend(all_data.tasks)
-        if _EntityType.TAG in accept:
+        if EntityType.TAG in accept:
             tags_result = await self._repo.list_tags(
                 ListTagsRepoQuery(availability=list(TagAvailability), limit=None)
             )
@@ -101,7 +95,7 @@ class Resolver:
         self,
         value: str,
         *,
-        accept: list[_EntityType],
+        accept: list[EntityType],
         entities: Sequence[_HasIdAndName] | None = None,
     ) -> str:
         """Three-step resolution cascade: $-prefix -> substring match -> ID fallback.
@@ -118,9 +112,18 @@ class Resolver:
         # Step 1: $-prefix detection
         if value.startswith(SYSTEM_LOCATION_PREFIX):
             # System locations only valid in container context (PROJECT in accept)
-            if _EntityType.PROJECT in accept:
+            if EntityType.PROJECT in accept:
                 return self._resolve_system_location(value)
-            # For TAG or TASK-only contexts, $-prefix is reserved
+
+            # Known system location in wrong context → typed exception
+            if value in _SYSTEM_LOCATIONS:
+                raise EntityTypeMismatchError(
+                    value,
+                    resolved_type=EntityType.PROJECT,
+                    accepted_types=list(accept),
+                )
+
+            # Unknown $-prefix → reserved prefix error
             valid = ", ".join(_SYSTEM_LOCATIONS.keys())
             msg = RESERVED_PREFIX.format(
                 value=value,
@@ -176,12 +179,12 @@ class Resolver:
 
         Returns None for $inbox (inbox = no parent in bridge payload).
         """
-        result = await self._resolve(value, accept=[_EntityType.PROJECT, _EntityType.TASK])
+        result = await self._resolve(value, accept=[EntityType.PROJECT, EntityType.TASK])
         return None if result == SYSTEM_LOCATION_INBOX else result
 
     async def resolve_anchor(self, value: str) -> str:
         """Resolve an anchor reference (task only) by name or ID."""
-        return await self._resolve(value, accept=[_EntityType.TASK])
+        return await self._resolve(value, accept=[EntityType.TASK])
 
     async def resolve_tags(self, tag_names: list[str]) -> list[str]:
         """Resolve tag names to IDs using substring matching.
@@ -198,7 +201,7 @@ class Resolver:
         )
         all_tags = tags_result.items
         return [
-            await self._resolve(n, accept=[_EntityType.TAG], entities=all_tags) for n in tag_names
+            await self._resolve(n, accept=[EntityType.TAG], entities=all_tags) for n in tag_names
         ]
 
     # -- Public: lookup methods (return full entities) -------------------------
