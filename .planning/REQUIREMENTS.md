@@ -11,7 +11,7 @@ Requirements for v1.3.1 First-Class References. Each maps to roadmap phases.
 
 - [ ] **SLOC-01**: `$` prefix constant and `$inbox` system location ID defined in config
 - [ ] **SLOC-02**: Resolver detects `$`-prefixed strings and routes to system location lookup before ID/name resolution
-- [ ] **SLOC-03**: Unrecognized system location (e.g., `$trash`) returns error listing valid system locations
+- [x] **SLOC-03**: Unrecognized system location (e.g., `$trash`) returns error listing valid system locations
 
 ### Models & Type System
 
@@ -108,7 +108,7 @@ Deferred to later milestones. Tracked but not in current roadmap.
 |-------------|-------|--------|
 | SLOC-01 | Phase 39 | Pending |
 | SLOC-02 | Phase 40 | Pending |
-| SLOC-03 | Phase 40 | Pending |
+| SLOC-03 | Phase 40 | Complete |
 | MODL-01 | Phase 39 | Pending |
 | MODL-02 | Phase 39 | Pending |
 | MODL-03 | Phase 39 | Pending |

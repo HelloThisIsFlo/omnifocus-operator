@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3.1
 milestone_name: First-Class References
 status: executing
-stopped_at: Phase 40 context gathered
-last_updated: "2026-04-05T19:15:58.198Z"
+stopped_at: Completed 40-03-PLAN.md
+last_updated: "2026-04-05T20:39:57.061Z"
 last_activity: 2026-04-05
 progress:
   total_phases: 7
   completed_phases: 2
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 4
+  completed_plans: 4
   percent: 100
 ---
 
@@ -46,6 +46,8 @@ Progress: [░░░░░░░░░░] 0%
 
 Cleared at milestone boundary. See PROJECT.md Key Decisions for full history.
 
+- [Phase 40]: Used anchor_id.startswith($) guard in except block for RESERVED_PREFIX propagation
+
 ### Pending Todos
 
 Carried forward from v1.3:
@@ -69,5 +71,5 @@ Carried forward from v1.3:
 ## Session Continuity
 
 Last activity: 2026-04-05 - Roadmap created for v1.3.1
-Stopped at: Phase 40 context gathered
-Resume file: .planning/phases/40-resolver-system-location-detection-name-resolution/40-CONTEXT.md
+Stopped at: Completed 40-03-PLAN.md
+Resume file: None
