@@ -151,36 +151,6 @@ def _domain(
 
 
 # ---------------------------------------------------------------------------
-# suggest_close_matches
-# ---------------------------------------------------------------------------
-
-
-class TestSuggestCloseMatches:
-    """Fuzzy matching for did-you-mean suggestions."""
-
-    def test_close_match_found(self) -> None:
-        """'Personl' against ['Personal', 'Work', 'Errands'] -> ['Personal']."""
-        result = _domain().suggest_close_matches("Personl", ["Personal", "Work", "Errands"])
-        assert result == ["Personal"]
-
-    def test_close_match_wrk(self) -> None:
-        """'Wrk' against ['Personal', 'Work', 'Errands'] -> ['Work']."""
-        result = _domain().suggest_close_matches("Wrk", ["Personal", "Work", "Errands"])
-        assert result == ["Work"]
-
-    def test_no_close_match(self) -> None:
-        """'zzzzz' against ['Personal', 'Work', 'Errands'] -> []."""
-        result = _domain().suggest_close_matches("zzzzz", ["Personal", "Work", "Errands"])
-        assert result == []
-
-    def test_returns_up_to_3(self) -> None:
-        """Returns up to 3 matches by default."""
-        names = ["Aaa", "Aab", "Aac", "Aad", "Zzz"]
-        result = _domain().suggest_close_matches("Aaa", names)
-        assert len(result) <= 3
-
-
-# ---------------------------------------------------------------------------
 # process_lifecycle
 # ---------------------------------------------------------------------------
 

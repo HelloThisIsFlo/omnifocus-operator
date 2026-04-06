@@ -15,8 +15,6 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
-from typing import Protocol
-
 from pydantic import BaseModel
 
 from omnifocus_operator.agent_messages.errors import (
@@ -49,10 +47,6 @@ from omnifocus_operator.agent_messages.warnings import (
     TAG_NOT_ON_TASK,
     TAGS_ALREADY_MATCH,
 )
-from omnifocus_operator.config import (
-    FUZZY_MATCH_CUTOFF,
-    FUZZY_MATCH_MAX_SUGGESTIONS,
-)
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
 from omnifocus_operator.models.enums import Availability, Schedule
@@ -62,7 +56,9 @@ from omnifocus_operator.models.repetition_rule import (
     RepetitionRule,
 )
 from omnifocus_operator.service.errors import EntityTypeMismatchError
-from omnifocus_operator.service.fuzzy import suggest_close_matches as _suggest_close_matches
+from omnifocus_operator.service.fuzzy import (
+    suggest_close_matches as _suggest_close_matches,
+)
 
 if TYPE_CHECKING:
     from omnifocus_operator.contracts.protocols import Repository
@@ -78,7 +74,7 @@ if TYPE_CHECKING:
     from omnifocus_operator.models.common import TagRef
     from omnifocus_operator.models.enums import BasedOn
     from omnifocus_operator.models.task import Task
-    from omnifocus_operator.service.resolve import Resolver
+    from omnifocus_operator.service.resolve import Resolver, _HasIdAndName
 
 logger = logging.getLogger(__name__)
 
@@ -88,16 +84,6 @@ __all__ = ["DomainLogic"]
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-class _HasIdAndName(Protocol):
-    """Duck-typed protocol for entities with .id and .name attributes."""
-
-    @property
-    def id(self) -> str: ...
-
-    @property
-    def name(self) -> str: ...
 
 
 def _to_utc_ts(val: object) -> object:
@@ -122,18 +108,6 @@ class DomainLogic:
     def __init__(self, repo: Repository, resolver: Resolver) -> None:
         self._repo = repo
         self._resolver = resolver
-
-    # -- Read-side: fuzzy suggestions ----------------------------------------
-
-    def suggest_close_matches(
-        self,
-        value: str,
-        entity_names: list[str],
-        n: int = FUZZY_MATCH_MAX_SUGGESTIONS,
-        cutoff: float = FUZZY_MATCH_CUTOFF,
-    ) -> list[str]:
-        """Return close name matches for a failed resolution."""
-        return _suggest_close_matches(value, entity_names, n=n, cutoff=cutoff)
 
     def check_filter_resolution(
         self,
@@ -163,7 +137,7 @@ class DomainLogic:
             ]
         if len(resolved_ids) == 0:
             entity_names = [e.name for e in entities]
-            suggestions = self.suggest_close_matches(value, entity_names)
+            suggestions = _suggest_close_matches(value, entity_names)
             if suggestions:
                 return [
                     FILTER_DID_YOU_MEAN.format(
@@ -469,13 +443,7 @@ class DomainLogic:
         """Add tags. Returns (final_set, warnings)."""
         assert isinstance(tag_actions.add, list)
         add_resolved = await self._resolver.resolve_tags(tag_actions.add) if tag_actions.add else []
-
-        warns: list[str] = []
-        for i, _tag_name in enumerate(tag_actions.add):
-            if i < len(add_resolved) and add_resolved[i] in current_ids:
-                display = tag_names.get(add_resolved[i], _tag_name)
-                warns.append(TAG_ALREADY_ON_TASK.format(display=display, tag_id=add_resolved[i]))
-
+        warns = self._warn_already_on(tag_actions.add, add_resolved, current_ids, tag_names)
         return current_ids | set(add_resolved), warns
 
     async def _apply_remove(
@@ -489,13 +457,7 @@ class DomainLogic:
         remove_resolved = (
             await self._resolver.resolve_tags(tag_actions.remove) if tag_actions.remove else []
         )
-
-        warns: list[str] = []
-        for i, _tag_name in enumerate(tag_actions.remove):
-            if i < len(remove_resolved) and remove_resolved[i] not in current_ids:
-                display = tag_names.get(remove_resolved[i], _tag_name)
-                warns.append(TAG_NOT_ON_TASK.format(display=display, tag_id=remove_resolved[i]))
-
+        warns = self._warn_not_on(tag_actions.remove, remove_resolved, current_ids, tag_names)
         return current_ids - set(remove_resolved), warns
 
     async def _apply_add_remove(
@@ -511,18 +473,40 @@ class DomainLogic:
         remove_resolved = (
             await self._resolver.resolve_tags(tag_actions.remove) if tag_actions.remove else []
         )
-
-        warns: list[str] = []
-        for i, _tag_name in enumerate(tag_actions.add):
-            if i < len(add_resolved) and add_resolved[i] in current_ids:
-                display = tag_names.get(add_resolved[i], _tag_name)
-                warns.append(TAG_ALREADY_ON_TASK.format(display=display, tag_id=add_resolved[i]))
-        for i, _tag_name in enumerate(tag_actions.remove):
-            if i < len(remove_resolved) and remove_resolved[i] not in current_ids:
-                display = tag_names.get(remove_resolved[i], _tag_name)
-                warns.append(TAG_NOT_ON_TASK.format(display=display, tag_id=remove_resolved[i]))
-
+        warns = self._warn_already_on(
+            tag_actions.add, add_resolved, current_ids, tag_names
+        ) + self._warn_not_on(tag_actions.remove, remove_resolved, current_ids, tag_names)
         return (current_ids | set(add_resolved)) - set(remove_resolved), warns
+
+    @staticmethod
+    def _warn_already_on(
+        input_names: list[str],
+        resolved_ids: list[str],
+        current_ids: set[str],
+        tag_names: dict[str, str],
+    ) -> list[str]:
+        """Warn for each resolved tag that is already on the task."""
+        warns: list[str] = []
+        for i, name in enumerate(input_names):
+            if i < len(resolved_ids) and resolved_ids[i] in current_ids:
+                display = tag_names.get(resolved_ids[i], name)
+                warns.append(TAG_ALREADY_ON_TASK.format(display=display, tag_id=resolved_ids[i]))
+        return warns
+
+    @staticmethod
+    def _warn_not_on(
+        input_names: list[str],
+        resolved_ids: list[str],
+        current_ids: set[str],
+        tag_names: dict[str, str],
+    ) -> list[str]:
+        """Warn for each resolved tag that is not currently on the task."""
+        warns: list[str] = []
+        for i, name in enumerate(input_names):
+            if i < len(resolved_ids) and resolved_ids[i] not in current_ids:
+                display = tag_names.get(resolved_ids[i], name)
+                warns.append(TAG_NOT_ON_TASK.format(display=display, tag_id=resolved_ids[i]))
+        return warns
 
     async def _build_tag_name_map(self) -> dict[str, str]:
         """Build tag ID -> name map for warning display names."""

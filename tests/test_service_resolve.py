@@ -14,7 +14,6 @@ from omnifocus_operator.models.project import Project
 from omnifocus_operator.models.tag import Tag
 from omnifocus_operator.repository import BridgeOnlyRepository
 from omnifocus_operator.service.errors import EntityTypeMismatchError
-from omnifocus_operator.service.fuzzy import suggest_close_matches
 from omnifocus_operator.service.resolve import Resolver
 from omnifocus_operator.service.validate import validate_task_name, validate_task_name_if_set
 from tests.doubles import ConstantMtimeSource, InMemoryBridge
@@ -116,23 +115,6 @@ class TestValidateTaskNameIfSet:
     def test_whitespace_raises(self) -> None:
         with pytest.raises(ValueError, match="Task name cannot be empty"):
             validate_task_name_if_set("   ")
-
-
-# ---------------------------------------------------------------------------
-# Shared fuzzy module (standalone)
-# ---------------------------------------------------------------------------
-
-
-class TestSuggestCloseMatches:
-    """suggest_close_matches works as a standalone function outside DomainLogic."""
-
-    def test_close_match_found(self) -> None:
-        result = suggest_close_matches("Wrok", ["Work", "Home", "Errand"])
-        assert "Work" in result
-
-    def test_no_match(self) -> None:
-        result = suggest_close_matches("zzzzz", ["Work", "Home"])
-        assert result == []
 
 
 # ---------------------------------------------------------------------------

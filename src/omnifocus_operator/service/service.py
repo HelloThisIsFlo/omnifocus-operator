@@ -11,6 +11,7 @@ delegate to repository. All heavy lifting lives in the extracted modules:
 
 from __future__ import annotations
 
+import asyncio
 import calendar
 import logging
 from datetime import UTC, datetime, timedelta
@@ -277,13 +278,15 @@ class _ListTasksPipeline(_ReadPipeline):
         """Run the full list-tasks pipeline."""
         self._query = query
 
-        tags_result = await self._repository.list_tags(
-            ListTagsRepoQuery(availability=list(TagAvailability), limit=None)
+        tags_result, projects_result = await asyncio.gather(
+            self._repository.list_tags(
+                ListTagsRepoQuery(availability=list(TagAvailability), limit=None)
+            ),
+            self._repository.list_projects(
+                ListProjectsRepoQuery(availability=list(Availability), limit=None)
+            ),
         )
         self._tags = tags_result.items
-        projects_result = await self._repository.list_projects(
-            ListProjectsRepoQuery(availability=list(Availability), limit=None)
-        )
         self._projects = projects_result.items
 
         self._resolve_project()
