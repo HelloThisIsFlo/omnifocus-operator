@@ -113,7 +113,7 @@
 - [x] **Phase 39: Foundation -- Constants & Reference Models** - System location constants and new typed reference models (completed 2026-04-05)
 - [x] **Phase 40: Resolver -- System Location Detection & Name Resolution** - $-prefix routing, write-side name resolution for all entity fields (completed 2026-04-05)
 - [x] **Phase 41: Write Pipeline -- $inbox in Add/Edit** - $inbox write support, PatchOrNone elimination, container error handling (completed 2026-04-06)
-- [ ] **Phase 42: Read Output Restructure** - Tagged parent discriminator, project field, inInbox removal, ParentRef removal, rich {id, name} references on all entities, output descriptions
+- [x] **Phase 42: Read Output Restructure** - Tagged parent discriminator, project field, inInbox removal, ParentRef removal, rich {id, name} references on all entities, output descriptions (completed 2026-04-06)
 - [ ] **Phase 43: Filters & Project Tools** - $inbox in list_tasks filters, contradictory filter detection, project tool guardrails, $inbox-related descriptions
 
 ## Phase Details
@@ -184,9 +184,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 42-01-PLAN.md — Models, descriptions, and __init__ wiring
-- [ ] 42-02-PLAN.md — Hybrid repository mapper enrichment
-- [ ] 42-03-PLAN.md — Bridge adapter, bridge_only filters, and test updates
+- [x] 42-01-PLAN.md — Models, descriptions, and __init__ wiring
+- [x] 42-02-PLAN.md — Hybrid repository mapper enrichment
+- [x] 42-03-PLAN.md — Bridge adapter, bridge_only filters, and test updates
 
 ### Phase 43: Filters & Project Tools
 **Goal**: Agents can filter tasks by `$inbox` as a project, with contradictory filter detection, correct project tool behavior, and complete tool documentation for $inbox usage.
@@ -223,5 +223,5 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43
 | 39. Foundation | v1.3.1 | 1/1 | Complete    | 2026-04-05 |
 | 40. Resolver | v1.3.1 | 3/3 | Complete   | 2026-04-05 |
 | 41. Write Pipeline | v1.3.1 | 2/2 | Complete    | 2026-04-06 |
-| 42. Read Output | v1.3.1 | 0/3 | Not started | - |
+| 42. Read Output | v1.3.1 | 3/3 | Complete    | 2026-04-06 |
 | 43. Filters & Projects | v1.3.1 | 0/TBD | Not started | - |
