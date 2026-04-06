@@ -212,6 +212,13 @@ The `__doc__ = CONSTANT` pattern is a convention signal: it tells you "this docs
 
 An AST enforcement test scans `models/` for `Literal` and `Annotated` field annotations and fails on any violation.
 
+> [!note] Some MCP clients shadow custom validators with schema-level errors
+> Some MCP clients (e.g., Claude Desktop co-work mode) pre-validate tool input against the JSON Schema **before** sending it to the server. When this happens, `field_validator` error messages never reach the agent — the client rejects the value first with a generic schema error (e.g., "Expected string, received null"). Both Claude Desktop (regular) and Claude Code CLI pass input directly to the server, where Pydantic validators fire and custom error messages are shown.
+>
+> Co-work's schema pre-validation is also **depth-limited** — it catches constraint violations on shallow fields (e.g., top-level `enum`, direct `$ref` hops) but may miss the same constraints on deeply nested fields (e.g., `repetitionRule.frequency.type`). So the same `enum` validator might be shadowed at one nesting level but reachable at another.
+>
+> During UAT, if a custom error message doesn't appear, try the same call via Claude Desktop or Claude Code — the validator likely works, it's just co-work intercepting first. Custom validators are kept as they work on most clients and protect programmatic callers.
+
 ## Decision tree for naming a new model
 
 ### Read-side
