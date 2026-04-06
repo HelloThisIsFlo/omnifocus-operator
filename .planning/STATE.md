@@ -7,7 +7,7 @@ stopped_at: Phase 41 context gathered (discuss mode)
 last_updated: "2026-04-06T13:39:37.287Z"
 last_activity: 2026-04-06
 progress:
-  total_phases: 7
+  total_phases: 5
   completed_phases: 3
   total_plans: 6
   completed_plans: 6
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-05)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 41 — write-pipeline-inbox-in-add-edit
+**Current focus:** Phase 42 — read-output-restructure
 
 ## Current Position
 
 Phase: 42
 Plan: Not started
-Status: Executing Phase 41
+Status: Not started
 Last activity: 2026-04-06
 
 Progress: [░░░░░░░░░░] 0%
@@ -68,7 +68,6 @@ Carried forward from v1.3:
 ### Blockers/Concerns
 
 - Golden master re-capture required after Phase 42 (mapper rewrites). Human-only per GOLD-01.
-- `TagAction.replace` type needs audit before `PatchOrNone` deletion in Phase 41.
 
 ## Session Continuity
 

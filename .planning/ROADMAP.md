@@ -9,7 +9,7 @@
 - ✅ **v1.2.2 FastMCP v3 Migration** — Phases 29-31 (shipped 2026-03-26)
 - ✅ **v1.2.3 Repetition Rule Write Support** — Phases 32-33.1 (shipped 2026-03-29)
 - ✅ **v1.3 Read Tools** — Phases 34-38 (shipped 2026-04-05)
-- 🚧 **v1.3.1 First-Class References** — Phases 39-45 (in progress)
+- 🚧 **v1.3.1 First-Class References** — Phases 39-43 (in progress)
 
 ## Phases
 
@@ -113,10 +113,8 @@
 - [x] **Phase 39: Foundation -- Constants & Reference Models** - System location constants and new typed reference models (completed 2026-04-05)
 - [x] **Phase 40: Resolver -- System Location Detection & Name Resolution** - $-prefix routing, write-side name resolution for all entity fields (completed 2026-04-05)
 - [x] **Phase 41: Write Pipeline -- $inbox in Add/Edit** - $inbox write support, PatchOrNone elimination, container error handling (completed 2026-04-06)
-- [ ] **Phase 42: Task Output -- Parent Restructure & Project Field** - Tagged parent discriminator, project field, inInbox removal, ParentRef removal
-- [ ] **Phase 43: Rich References -- {id, name} on All Entities** - Enriched references for folder, tag, task refs across all read tools
-- [ ] **Phase 44: Filters & Project Tools -- $inbox Filtering** - $inbox in list_tasks filters, contradictory filter detection, project tool guardrails
-- [ ] **Phase 45: Descriptions -- Tool Documentation Updates** - All tool descriptions updated for new field shapes and $inbox usage
+- [ ] **Phase 42: Read Output Restructure** - Tagged parent discriminator, project field, inInbox removal, ParentRef removal, rich {id, name} references on all entities, output descriptions
+- [ ] **Phase 43: Filters & Project Tools** - $inbox in list_tasks filters, contradictory filter detection, project tool guardrails, $inbox-related descriptions
 
 ## Phase Details
 
@@ -166,69 +164,49 @@ Plans:
 - [x] 41-01-PLAN.md — PatchOrNone elimination, MoveAction null-rejection validators, error templates, per-field descriptions
 - [x] 41-02-PLAN.md — AddTaskCommand.parent Patch[str] conversion, pipeline wiring, $inbox integration tests, REQUIREMENTS.md update
 
-### Phase 42: Task Output -- Parent Restructure & Project Field
-**Goal**: Task output uses tagged parent discriminator (never null) and includes a project field, making inbox status and containment unambiguous
+### Phase 42: Read Output Restructure
+**Goal**: Task output uses tagged parent discriminator (never null), includes project field, and all entity cross-references use rich {id, name} objects. Descriptions updated for all changed output fields.
 **Depends on**: Phase 39
-**Requirements**: MODL-04, MODL-05, MODL-06, MODL-07, MODL-08, READ-01, READ-02
+**Requirements**: MODL-04, MODL-05, MODL-06, MODL-07, MODL-08, READ-01, READ-02, READ-03, READ-04, READ-05, READ-06, READ-07, DESC-01, DESC-02
 **Success Criteria** (what must be TRUE):
   1. Task `parent` is a tagged object (`{"project": {id, name}}` or `{"task": {id, name}}`) -- never null
   2. Inbox tasks have `parent: {"project": {id: "$inbox", name: "Inbox"}}`
-  3. Task has a `project` field with `{id, name}` of the containing project at any nesting depth -- never null, `$inbox` for inbox tasks
+  3. Task has a `project` field with `{id, name}` of containing project at any depth -- never null, `$inbox` for inbox tasks
   4. `inInbox` field is absent from Task JSON output and schema
   5. `ParentRef` model is removed from the codebase
+  6. `Project.folder` returns `FolderRef {id, name}` instead of bare folder ID
+  7. `Project.next_task` returns `TaskRef {id, name}` instead of bare task ID
+  8. `Tag.parent` returns `TagRef {id, name}` instead of bare tag ID
+  9. `Folder.parent` returns `FolderRef {id, name}` instead of bare folder ID
+  10. Enriched references are consistent across `get_*`, `list_*`, and `get_all` tools
+  11. `list_tasks` description explains `parent` (immediate container) vs `project` (containing project at any depth)
+  12. All descriptions use `{id, name}` format for enriched reference fields
 **Plans**: TBD
 
 Plans:
 - [ ] 42-01: TBD
 
-### Phase 43: Rich References -- {id, name} on All Entities
-**Goal**: All entity cross-references in read output use rich `{id, name}` objects instead of bare ID strings
-**Depends on**: Phase 42
-**Requirements**: READ-03, READ-04, READ-05, READ-06, READ-07
+### Phase 43: Filters & Project Tools
+**Goal**: Agents can filter tasks by `$inbox` as a project, with contradictory filter detection, correct project tool behavior, and complete tool documentation for $inbox usage.
+**Depends on**: Phase 40, Phase 42
+**Requirements**: FILT-01, FILT-02, FILT-03, FILT-04, FILT-05, PROJ-01, PROJ-02, PROJ-03, NRES-07, DESC-03, DESC-04
 **Success Criteria** (what must be TRUE):
-  1. `Project.folder` returns `FolderRef {id, name}` instead of bare folder ID
-  2. `Project.next_task` returns `TaskRef {id, name}` instead of bare task ID
-  3. `Tag.parent` returns `TagRef {id, name}` instead of bare tag ID
-  4. `Folder.parent` returns `FolderRef {id, name}` instead of bare folder ID
-  5. Enriched references are consistent across `get_*`, `list_*`, and `get_all` tools
+  1. `list_tasks(project="$inbox")` returns same tasks as `inInbox: true`
+  2. `list_tasks(project="inbox")` matches only projects whose name contains "inbox" -- does NOT match system inbox
+  3. Contradictory filters (`project: "$inbox"` + `inInbox: false`) return an error; redundant (`+ inInbox: true`) accepted silently
+  4. `get_project("$inbox")` returns a descriptive error explaining inbox is not a real project
+  5. `list_projects` never includes inbox; name filter matching "Inbox" triggers warning about system inbox
+  6. Descriptions document `$inbox` usage in every relevant field
+  7. `get_project` description mentions that `$inbox` returns an error
 **Plans**: TBD
 
 Plans:
 - [ ] 43-01: TBD
 
-### Phase 44: Filters & Project Tools -- $inbox Filtering
-**Goal**: Agents can filter tasks by `$inbox` as a project, with contradictory filter detection and correct project tool behavior
-**Depends on**: Phase 40, Phase 42
-**Requirements**: FILT-01, FILT-02, FILT-03, FILT-04, FILT-05, PROJ-01, PROJ-02, PROJ-03, NRES-07
-**Success Criteria** (what must be TRUE):
-  1. `list_tasks(project="$inbox")` returns the same tasks as `inInbox: true`
-  2. `list_tasks(project="inbox")` matches only projects whose name contains "inbox" -- does NOT match system inbox
-  3. Contradictory filters (`project: "$inbox"` + `inInbox: false`) return an error; redundant combination (`+ inInbox: true`) is silently accepted
-  4. `get_project("$inbox")` returns a descriptive error explaining inbox is not a real project
-  5. `list_projects` never includes inbox; name filter matching "Inbox" triggers a warning about the system inbox
-**Plans**: TBD
-
-Plans:
-- [ ] 44-01: TBD
-
-### Phase 45: Descriptions -- Tool Documentation Updates
-**Goal**: All agent-visible tool descriptions accurately reflect the final field shapes, `$inbox` usage, and enriched reference format
-**Depends on**: Phase 41, Phase 42, Phase 43, Phase 44
-**Requirements**: DESC-01, DESC-02, DESC-03, DESC-04
-**Success Criteria** (what must be TRUE):
-  1. `list_tasks` description explains `parent` (immediate container) vs `project` (containing project at any depth) for subtask hierarchy
-  2. All field descriptions reference `{id, name}` format for enriched reference fields
-  3. Descriptions document `$inbox` usage in every relevant field
-  4. `get_project` description mentions that `$inbox` returns an error
-**Plans**: TBD
-
-Plans:
-- [ ] 45-01: TBD
-
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44 → 45
+Phases execute in numeric order: 39 → 40 → 41 → 42 → 43
 (Phase 42 depends on 39 only, not 40/41 — but sequential ordering enables round-trip testing)
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -243,7 +221,5 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44 → 45
 | 39. Foundation | v1.3.1 | 1/1 | Complete    | 2026-04-05 |
 | 40. Resolver | v1.3.1 | 3/3 | Complete   | 2026-04-05 |
 | 41. Write Pipeline | v1.3.1 | 2/2 | Complete    | 2026-04-06 |
-| 42. Task Output | v1.3.1 | 0/TBD | Not started | - |
-| 43. Rich References | v1.3.1 | 0/TBD | Not started | - |
-| 44. Filters & Projects | v1.3.1 | 0/TBD | Not started | - |
-| 45. Descriptions | v1.3.1 | 0/TBD | Not started | - |
+| 42. Read Output | v1.3.1 | 0/TBD | Not started | - |
+| 43. Filters & Projects | v1.3.1 | 0/TBD | Not started | - |
