@@ -212,15 +212,26 @@ TAG_ACTION_DOC = (
     "Incompatible modes are rejected."
 )
 
-MOVE_ACTION_DOC = (
-    "Specifies where to move a task.\n"
-    "\n"
-    "Exactly one key must be set. The key doubles as both the position\n"
-    "and the reference point:\n"
-    "\n"
-    "- ``beginning``/``ending``: ID of the container (project or task),\n"
-    "  or ``null`` for inbox.\n"
-    "- ``before``/``after``: ID of a sibling task (parent is inferred)."
+MOVE_ACTION_DOC = "Specify where to move a task. Exactly one key must be set."
+
+MOVE_BEGINNING = (
+    "Container to move into (project name/ID, task name/ID, or '$inbox'). "
+    "Task is placed at the beginning of the container."
+)
+
+MOVE_ENDING = (
+    "Container to move into (project name/ID, task name/ID, or '$inbox'). "
+    "Task is placed at the end of the container."
+)
+
+MOVE_BEFORE = (
+    "Sibling task to position relative to (task name/ID). "
+    "Parent container is inferred."
+)
+
+MOVE_AFTER = (
+    "Sibling task to position relative to (task name/ID). "
+    "Parent container is inferred."
 )
 
 EDIT_TASK_ACTIONS_DOC = "Lifecycle changes (complete/drop), tag edits, and task movement. All three can be combined freely in one call."
@@ -511,8 +522,8 @@ EDIT_TASKS_TOOL_DOC = (
     "  Clear:\n"
     "    null\n"
     "\n"
-    "actions.move: exactly one key must be set. ending/beginning with\n"
-    "null clears the project (moves task to inbox).\n"
+    "actions.move: exactly one key must be set. Use ending/beginning with\n"
+    "'$inbox' to move to inbox, or a project/task name or ID.\n"
     "\n"
     "actions.lifecycle:\n"
     '  - "complete": marks the task as complete.\n'

@@ -57,6 +57,23 @@ TAG_NO_OPERATION = "tags must specify at least one of: add, remove, replace"
 
 MOVE_EXACTLY_ONE_KEY = "moveTo must have exactly one key (beginning, ending, before, or after)"
 
+MOVE_NULL_CONTAINER = (
+    "{field} cannot be null. To move a task to the inbox, use '$inbox'. "
+    "To move into a project or task, provide its name or ID."
+)
+
+MOVE_NULL_ANCHOR = (
+    "{field} cannot be null. before/after positions require a task reference "
+    "(name or ID). To move into a container, use 'beginning' or 'ending' instead."
+)
+
+# --- Validation: AddTaskCommand ---
+
+ADD_PARENT_NULL = (
+    "parent cannot be null. Omit the field to create a task in the inbox, "
+    "or provide a project/task name or ID."
+)
+
 # --- Repetition Rule ---
 
 REPETITION_NO_EXISTING_RULE = (
