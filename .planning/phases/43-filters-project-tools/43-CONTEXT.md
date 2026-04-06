@@ -20,20 +20,95 @@ Agents can filter tasks by `$inbox` as a project, with contradictory filter dete
 - **D-04:** `_ListTasksPipeline` calls `resolve_inbox` BEFORE `_resolve_project`. Uses returned values for `in_inbox` and the project to resolve. Pipeline never touches `$` prefix logic directly
 - **D-05:** Repo layer (`ListTasksRepoQuery`) never sees `$inbox` as a string. Normalization happens entirely at the service layer
 
+**Locked implementation** -- executor MUST follow this shape:
+
+```python
+# In Resolver (service/resolve.py)
+
+def resolve_inbox(
+    self, in_inbox: bool | None, project: str | None
+) -> tuple[bool | None, str | None]:
+    """Resolve inbox filter state from in_inbox and project filter params.
+
+    Returns (effective_in_inbox, remaining_project_to_resolve).
+    If project is "$inbox", it is consumed: returns (True, None).
+    Unknown $-prefix raises. Contradictory combos raise.
+    """
+    if project is not None and project.startswith(SYSTEM_LOCATION_PREFIX):
+        self._resolve_system_location(project, [EntityType.PROJECT])
+        # Scenario 3: $inbox + inInbox=false → contradictory
+        if in_inbox is False:
+            raise ValueError(CONTRADICTORY_INBOX_FALSE)
+        # Scenarios 6 & 7: $inbox consumed → in_inbox=True
+        return (True, None)
+
+    # Scenario 5: inInbox=true + real project → contradictory
+    if in_inbox is True and project is not None:
+        raise ValueError(CONTRADICTORY_INBOX_PROJECT)
+
+    # Scenarios 1, 2, 4: pass through unchanged
+    return (in_inbox, project)
+```
+
+```python
+# In _ListTasksPipeline (service/service.py)
+# Called in execute() BEFORE _resolve_project():
+
+self._in_inbox, self._project_to_resolve = self._resolver.resolve_inbox(
+    self._query.in_inbox, self._query.project
+)
+
+# _resolve_project() uses self._project_to_resolve instead of self._query.project
+# _build_repo_query() uses self._in_inbox instead of self._query.in_inbox
+```
+
 ### Contradictory Filter Detection -- All Errors, Not Warnings
-- **D-06:** Scenario 3 (`project: "$inbox"` + `inInbox: false`) -- **error** in `resolve_inbox`. Message: educational, explains the contradiction
+- **D-06:** Scenario 3 (`project: "$inbox"` + `inInbox: false`) -- **error** in `resolve_inbox`. See locked implementation above
 - **D-07:** Scenario 5 (`inInbox: true` + any real project filter) -- **error** in `resolve_inbox`. Symmetric with scenario 3. Rule: inbox filter and project filter are mutually exclusive
 - **D-08:** Scenario 6 (`project: "$inbox"` + `inInbox: true`) -- silently accepted, returns `(True, None)`. Redundant but not harmful
 - **D-09:** FILT-05 changed from spec's "warning" to "error". Rationale: symmetry with FILT-03, simpler implementation (everything in `resolve_inbox`), agent-first (clear error > empty result + warning)
 - **D-10:** Error messages use educational pattern with templates in `agent_messages/errors.py`. Tests must verify error messages reference the proper system location name (anti-regression)
+
+**Locked error message templates** -- add to `agent_messages/errors.py`:
+
+```python
+CONTRADICTORY_INBOX_FALSE = (
+    "Contradictory filters: project '$inbox' selects inbox tasks, "
+    "but inInbox: false excludes them. Use one or the other."
+)
+CONTRADICTORY_INBOX_PROJECT = (
+    "Contradictory filters: inInbox: true selects tasks with no project. "
+    "Combining with a project filter always yields nothing. Use one or the other."
+)
+```
 
 ### FILT-02: Name Matching Without $
 - **D-11:** `project: "inbox"` (no `$` prefix) flows through normal `resolve_filter` -- substring matches project names only. System inbox is never matched. No special handling needed -- this is the existing behavior
 
 ### get_project("$inbox") Guard (PROJ-01)
 - **D-12:** Guard in `lookup_project` on the Resolver. Checks `$` prefix before repo call
-- **D-13:** Error message: educational + redirect. States `$inbox` is a system location, not a project. Redirects to `list_tasks` with `project: '$inbox'` or `inInbox: true`
+- **D-13:** Error message: educational + redirect
 - **D-14:** Error template in `agent_messages/errors.py`, consistent with other dead-end error patterns
+
+**Locked implementation:**
+
+```python
+# In Resolver.lookup_project (service/resolve.py)
+
+async def lookup_project(self, project_id: str) -> Project:
+    if project_id.startswith(SYSTEM_LOCATION_PREFIX):
+        raise ValueError(GET_PROJECT_INBOX_ERROR)
+    # ... existing repo lookup
+```
+
+**Locked error message template:**
+
+```python
+GET_PROJECT_INBOX_ERROR = (
+    "$inbox is a system location, not a project. "
+    "Use list_tasks with inInbox: true to query inbox tasks."
+)
+```
 
 ### list_projects Inbox Exclusion (PROJ-02)
 - **D-15:** No code needed. Inbox is virtual -- not in SQLite, not in bridge dump. Can never appear in `list_projects` results
@@ -42,8 +117,16 @@ Agents can filter tasks by `$inbox` as a project, with contradictory filter dete
 - **D-16:** Warning (not error) when `search` field substring-matches `SYSTEM_LOCATIONS["inbox"].name` (case-insensitive)
 - **D-17:** Trigger is `search` field only, not `folder` filter. `search` is the free-text name/notes search; `folder` filters by containing folder (irrelevant to inbox)
 - **D-18:** Uses same substring logic as `resolve_filter` for consistency: `search.lower() in SYSTEM_LOCATIONS["inbox"].name.lower()`
-- **D-19:** Warning message: educational redirect. "The system Inbox is not a project and won't appear in results. To query inbox tasks, use list_tasks with inInbox: true."
-- **D-20:** Lives in `_ListProjectsPipeline`, appended to response warnings after results are built. Real results still returned normally
+- **D-19:** Lives in `_ListProjectsPipeline`, appended to response warnings after results are built. Real results still returned normally
+
+**Locked warning message template:**
+
+```python
+LIST_PROJECTS_INBOX_WARNING = (
+    "The system Inbox is not a project and won't appear in results. "
+    "To query inbox tasks, use list_tasks with inInbox: true."
+)
+```
 
 ### Description Updates (DESC-03, DESC-04)
 - **D-21:** Filter field descriptions (`PROJECT_FILTER_DESC`, `IN_INBOX_FILTER_DESC`) do NOT mention `$inbox`. Intentional: `$inbox` in project filter is intuitive compatibility (agents discover it from output), not the canonical path. `inInbox` is the documented way to filter by inbox
@@ -54,9 +137,8 @@ Agents can filter tasks by `$inbox` as a project, with contradictory filter dete
 - **D-24:** List filter fields already accept entity names via `resolve_filter` (built in v1.3). No Phase 43 work needed. Mark as inherited/done
 
 ### Claude's Discretion
-- Exact error message wording for CONTRADICTORY_INBOX_FALSE and CONTRADICTORY_INBOX_PROJECT templates (must be educational, must reference system location name)
-- Whether `resolve_inbox` validation of unknown `$`-prefix calls `_resolve_system_location` directly or duplicates the check (prefer delegation)
 - Placement of the `list_projects` search warning check within `_ListProjectsPipeline` (after results, before return)
+- Internal naming of pipeline fields (`self._in_inbox`, `self._project_to_resolve`, etc.) -- follow existing pipeline conventions
 
 </decisions>
 
