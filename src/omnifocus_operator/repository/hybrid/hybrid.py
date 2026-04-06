@@ -639,6 +639,7 @@ class HybridRepository(BridgeWriteMixin, Repository):
             task_tag_map = _build_task_tag_map(conn, tag_name_lookup)
             project_info_lookup = _build_project_info_lookup(conn)
             task_name_lookup = _build_task_name_lookup(conn)
+            folder_name_lookup = _build_folder_name_lookup(conn)
 
             # 2. Read all entity types
             tasks = [
@@ -646,12 +647,15 @@ class HybridRepository(BridgeWriteMixin, Repository):
                 for row in conn.execute(_TASKS_SQL).fetchall()
             ]
             projects = [
-                _map_project_row(row, task_tag_map)
+                _map_project_row(row, task_tag_map, folder_name_lookup, task_name_lookup)
                 for row in conn.execute(_PROJECTS_SQL).fetchall()
             ]
             tag_rows = conn.execute(_TAGS_SQL).fetchall()
-            tags = [_map_tag_row(row) for row in tag_rows]
-            folders = [_map_folder_row(row) for row in conn.execute(_FOLDERS_SQL).fetchall()]
+            tags = [_map_tag_row(row, tag_name_lookup) for row in tag_rows]
+            folders = [
+                _map_folder_row(row, folder_name_lookup)
+                for row in conn.execute(_FOLDERS_SQL).fetchall()
+            ]
             perspectives = [
                 _map_perspective_row(row) for row in conn.execute(_PERSPECTIVES_SQL).fetchall()
             ]
@@ -749,7 +753,27 @@ class HybridRepository(BridgeWriteMixin, Repository):
             ]
             task_tag_map: dict[str, list[dict[str, str]]] = {project_id: tag_list}
 
-            return _map_project_row(row, task_tag_map)
+            # Build folder name lookup (targeted: just this project's folder)
+            folder_name_lookup: dict[str, str] = {}
+            folder_id = row["folder"]
+            if folder_id is not None:
+                folder_row = conn.execute(
+                    "SELECT name FROM Folder WHERE persistentIdentifier = ?", (folder_id,)
+                ).fetchone()
+                if folder_row is not None:
+                    folder_name_lookup[folder_id] = folder_row["name"]
+
+            # Build task name lookup (targeted: just this project's next_task)
+            task_name_lookup: dict[str, str] = {}
+            next_task_id = row["nextTask"]
+            if next_task_id is not None:
+                nt_row = conn.execute(
+                    "SELECT name FROM Task WHERE persistentIdentifier = ?", (next_task_id,)
+                ).fetchone()
+                if nt_row is not None:
+                    task_name_lookup[next_task_id] = nt_row["name"]
+
+            return _map_project_row(row, task_tag_map, folder_name_lookup, task_name_lookup)
         finally:
             conn.close()
 
@@ -764,7 +788,18 @@ class HybridRepository(BridgeWriteMixin, Repository):
             ).fetchone()
             if row is None:
                 return None
-            return _map_tag_row(row)
+
+            # Build targeted tag name lookup for parent resolution
+            tag_name_lookup: dict[str, str] = {}
+            parent_id = row["parent"]
+            if parent_id is not None:
+                parent_row = conn.execute(
+                    "SELECT name FROM Context WHERE persistentIdentifier = ?", (parent_id,)
+                ).fetchone()
+                if parent_row is not None:
+                    tag_name_lookup[parent_id] = parent_row["name"]
+
+            return _map_tag_row(row, tag_name_lookup)
         finally:
             conn.close()
 
@@ -834,9 +869,11 @@ class HybridRepository(BridgeWriteMixin, Repository):
         conn = sqlite3.connect(f"file:{self._db_path}?mode=ro", uri=True)
         conn.row_factory = sqlite3.Row
         try:
-            # Build lookups (projects use _map_project_row with 2 params: row, tag_lookup)
+            # Build lookups
             tag_name_lookup = _build_tag_name_lookup(conn)
             task_tag_map = _build_task_tag_map(conn, tag_name_lookup)
+            folder_name_lookup = _build_folder_name_lookup(conn)
+            task_name_lookup = _build_task_name_lookup(conn)
 
             # Build parameterized SQL
             data_q, count_q = build_list_projects_sql(query)
@@ -847,7 +884,10 @@ class HybridRepository(BridgeWriteMixin, Repository):
 
             # Map rows to Project models
             projects = [
-                Project.model_validate(_map_project_row(row, task_tag_map)) for row in data_rows
+                Project.model_validate(
+                    _map_project_row(row, task_tag_map, folder_name_lookup, task_name_lookup)
+                )
+                for row in data_rows
             ]
 
             total = count_row[0] if count_row else 0
@@ -869,8 +909,9 @@ class HybridRepository(BridgeWriteMixin, Repository):
         conn = sqlite3.connect(f"file:{self._db_path}?mode=ro", uri=True)
         conn.row_factory = sqlite3.Row
         try:
+            tag_name_lookup = _build_tag_name_lookup(conn)
             rows = conn.execute(_TAGS_SQL).fetchall()
-            all_tags = [Tag.model_validate(_map_tag_row(row)) for row in rows]
+            all_tags = [Tag.model_validate(_map_tag_row(row, tag_name_lookup)) for row in rows]
             avail_set = set(query.availability)
             filtered = [t for t in all_tags if t.availability in avail_set]
             if query.search is not None:
@@ -889,8 +930,11 @@ class HybridRepository(BridgeWriteMixin, Repository):
         conn = sqlite3.connect(f"file:{self._db_path}?mode=ro", uri=True)
         conn.row_factory = sqlite3.Row
         try:
+            folder_name_lookup = _build_folder_name_lookup(conn)
             rows = conn.execute(_FOLDERS_SQL).fetchall()
-            all_folders = [Folder.model_validate(_map_folder_row(row)) for row in rows]
+            all_folders = [
+                Folder.model_validate(_map_folder_row(row, folder_name_lookup)) for row in rows
+            ]
             avail_set = set(query.availability)
             filtered = [f for f in all_folders if f.availability in avail_set]
             if query.search is not None:
