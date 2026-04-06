@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
-from pydantic import Field, model_validator
+from typing import Any
+
+from pydantic import Field, field_validator, model_validator
 
 from omnifocus_operator.agent_messages.descriptions import (
     MOVE_ACTION_DOC,
+    MOVE_AFTER,
+    MOVE_BEFORE,
+    MOVE_BEGINNING,
+    MOVE_ENDING,
     TAG_ACTION_ADD,
     TAG_ACTION_DOC,
     TAG_ACTION_REMOVE,
@@ -13,6 +19,8 @@ from omnifocus_operator.agent_messages.descriptions import (
 )
 from omnifocus_operator.agent_messages.errors import (
     MOVE_EXACTLY_ONE_KEY,
+    MOVE_NULL_ANCHOR,
+    MOVE_NULL_CONTAINER,
     TAG_NO_OPERATION,
     TAG_REPLACE_WITH_ADD_REMOVE,
 )
@@ -20,7 +28,7 @@ from omnifocus_operator.contracts.base import (
     UNSET,
     CommandModel,
     Patch,
-    PatchOrNone,
+    PatchOrClear,
     is_set,
 )
 
@@ -36,7 +44,7 @@ class TagAction(CommandModel):
         default=UNSET,
         description=TAG_ACTION_REMOVE,
     )
-    replace: PatchOrNone[list[str]] = Field(
+    replace: PatchOrClear[list[str]] = Field(
         default=UNSET,
         description=TAG_ACTION_REPLACE,
     )
@@ -58,10 +66,26 @@ class TagAction(CommandModel):
 class MoveAction(CommandModel):
     __doc__ = MOVE_ACTION_DOC
 
-    beginning: PatchOrNone[str] = UNSET
-    ending: PatchOrNone[str] = UNSET
-    before: Patch[str] = UNSET
-    after: Patch[str] = UNSET
+    beginning: Patch[str] = Field(default=UNSET, description=MOVE_BEGINNING)
+    ending: Patch[str] = Field(default=UNSET, description=MOVE_ENDING)
+    before: Patch[str] = Field(default=UNSET, description=MOVE_BEFORE)
+    after: Patch[str] = Field(default=UNSET, description=MOVE_AFTER)
+
+    @field_validator("beginning", "ending", mode="before")
+    @classmethod
+    def _reject_null_container(cls, v: object, info: Any) -> object:
+        if v is None:
+            msg = MOVE_NULL_CONTAINER.format(field=info.field_name)
+            raise ValueError(msg)
+        return v
+
+    @field_validator("before", "after", mode="before")
+    @classmethod
+    def _reject_null_anchor(cls, v: object, info: Any) -> object:
+        if v is None:
+            msg = MOVE_NULL_ANCHOR.format(field=info.field_name)
+            raise ValueError(msg)
+        return v
 
     @model_validator(mode="after")
     def _exactly_one_key(self) -> MoveAction:

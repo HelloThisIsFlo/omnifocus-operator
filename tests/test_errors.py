@@ -12,6 +12,7 @@ from omnifocus_operator import middleware, server
 from omnifocus_operator.agent_messages import errors as err_mod
 from omnifocus_operator.contracts.shared import actions as contracts_common
 from omnifocus_operator.contracts.shared import repetition_rule as contracts_repetition_rule
+from omnifocus_operator.contracts.use_cases.add import tasks as contracts_add_task
 from omnifocus_operator.contracts.use_cases.edit import tasks as contracts_edit_task
 from omnifocus_operator.contracts.use_cases.list import _validators as contracts_list_validators
 from omnifocus_operator.contracts.use_cases.list import projects as contracts_list_projects
@@ -32,6 +33,7 @@ _ERROR_CONSUMERS = [
     service_orchestrator,
     service_validate,
     contracts_common,
+    contracts_add_task,
     contracts_edit_task,
     contracts_repetition_rule,
     contracts_list_validators,

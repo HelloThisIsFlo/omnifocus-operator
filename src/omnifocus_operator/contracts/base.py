@@ -64,11 +64,6 @@ Patch = Union[T, _Unset]  # noqa: UP007
 PatchOrClear = Union[T, None, _Unset]  # noqa: UP007
 """Field can be set, cleared (None), or omitted (UNSET). None means 'clear the value'."""
 
-PatchOrNone = Union[T, None, _Unset]  # noqa: UP007
-"""Field can be set, set to None, or omitted (UNSET). None carries domain meaning, not 'clear'.
-Same union as PatchOrClear -- the distinct name signals that None is a meaningful value
-(e.g., MoveAction.ending = None means 'inbox'), not a clear instruction."""
-
 
 def is_set[T](value: T | _Unset) -> TypeGuard[T]:
     """True if value was explicitly provided (not UNSET)."""
@@ -100,7 +95,6 @@ __all__ = [
     "CommandModel",
     "Patch",
     "PatchOrClear",
-    "PatchOrNone",
     "QueryModel",
     "StrictModel",
     "_Unset",

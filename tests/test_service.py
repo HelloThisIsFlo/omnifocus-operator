@@ -799,12 +799,12 @@ class TestEditTask:
     async def test_move_to_inbox(
         self, service: OperatorService, repo: BridgeOnlyRepository
     ) -> None:
-        """Move task to inbox via ending=null (EDIT-08)."""
+        """Move task to inbox via ending=$inbox (EDIT-08)."""
 
         result = await service.edit_task(
             EditTaskCommand(
                 id="task-001",
-                actions=EditTaskActions(move=MoveAction(ending=None)),
+                actions=EditTaskActions(move=MoveAction(ending="$inbox")),
             )
         )
         assert result.success is True

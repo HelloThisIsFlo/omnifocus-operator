@@ -1,4 +1,4 @@
-"""Tests for Patch[T] / PatchOrClear[T] / PatchOrNone[T] type aliases and changed_fields().
+"""Tests for Patch[T] / PatchOrClear[T] type aliases and changed_fields().
 
 Schema identity tests prove that migrating from raw unions to type aliases
 produces byte-for-byte identical JSON schema output. changed_fields() tests
@@ -64,7 +64,7 @@ class TestSchemaIdentical:
 
 
 class TestNoAliasLeakage:
-    """Alias names (Patch_*, PatchOrClear_*, PatchOrNone_*) must not appear in $defs."""
+    """Alias names (Patch_*, PatchOrClear_*) must not appear in $defs."""
 
     @pytest.mark.parametrize(
         "model",
@@ -77,7 +77,6 @@ class TestNoAliasLeakage:
         name = model.__name__
         assert "Patch_" not in schema_str, f"Alias 'Patch_' leaked into {name} schema"
         assert "PatchOrClear_" not in schema_str, f"Alias 'PatchOrClear_' leaked into {name} schema"
-        assert "PatchOrNone_" not in schema_str, f"Alias 'PatchOrNone_' leaked into {name} schema"
 
 
 # --- changed_fields() tests ---
@@ -98,10 +97,10 @@ class TestChangedFields:
         action = TagAction(add=["urgent"])
         assert action.changed_fields() == {"add": ["urgent"]}
 
-    def test_move_action_ending_none_is_inbox(self) -> None:
-        """None = inbox is a real value, must appear in changed_fields."""
-        action = MoveAction(ending=None)
-        assert action.changed_fields() == {"ending": None}
+    def test_move_action_ending_string_in_changed_fields(self) -> None:
+        """String value must appear in changed_fields."""
+        action = MoveAction(ending="$inbox")
+        assert action.changed_fields() == {"ending": "$inbox"}
 
     def test_edit_task_actions_lifecycle(self) -> None:
         actions = EditTaskActions(lifecycle="complete")

@@ -71,6 +71,8 @@ class StubResolver:
         return [self._tag_map[n] for n in names]
 
     async def resolve_container(self, pid: str) -> str | None:
+        if pid == "$inbox":
+            return None
         return pid  # always succeeds
 
     async def resolve_anchor(self, anchor_id: str) -> str:
@@ -422,7 +424,7 @@ class TestProcessMove:
 
     async def test_move_to_inbox(self) -> None:
         domain = _domain()
-        result = await domain.process_move(MoveAction(ending=None), "task-1")
+        result = await domain.process_move(MoveAction(ending="$inbox"), "task-1")
         assert result == {"position": "ending", "container_id": None}
 
     async def test_move_to_project(self) -> None:

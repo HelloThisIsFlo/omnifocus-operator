@@ -17,6 +17,9 @@ from omnifocus_operator.agent_messages.descriptions import (
     PLANNED_DATE_WRITE,
     TAGS_ADD_COMMAND,
 )
+from omnifocus_operator.agent_messages.errors import (
+    ADD_PARENT_NULL,  # noqa: F401  -- wired in Phase 41 Plan 02
+)
 from omnifocus_operator.contracts.base import CommandModel
 from omnifocus_operator.contracts.shared.repetition_rule import (
     RepetitionRuleAddSpec,

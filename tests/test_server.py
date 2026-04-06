@@ -862,7 +862,7 @@ class TestEditTasks:
         # Move to inbox
         edit_result = await client.call_tool(
             "edit_tasks",
-            {"items": [{"id": task_id, "actions": {"move": {"ending": None}}}]},
+            {"items": [{"id": task_id, "actions": {"move": {"ending": "$inbox"}}}]},
         )
         assert edit_result.structured_content["result"][0]["success"] is True  # type: ignore[index]
 
