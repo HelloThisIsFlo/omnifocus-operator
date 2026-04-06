@@ -2042,6 +2042,26 @@ class TestEditTaskRepetitionRule:
         assert task.repetition_rule.frequency.type == "weekly"
         assert task.repetition_rule.frequency.on_days == ["MO", "WE", "FR"]
 
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="t1", name="Repeating", repetitionRule=_WEEKLY_ON_DAYS_RULE)]
+    )
+    async def test_type_change_with_ordinal_weekday(
+        self, service: OperatorService, repo: BridgeOnlyRepository
+    ) -> None:
+        """EDIT-13 variant: Type change weekly->monthly with on (ordinal weekday)."""
+        spec = RepetitionRuleEditSpec(
+            frequency=FrequencyEditSpec(type="monthly", on={"last": "friday"})
+        )
+        result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
+        assert result.success is True
+
+        task = await repo.get_task("t1")
+        assert task is not None
+        assert task.repetition_rule is not None
+        assert task.repetition_rule.frequency.type == "monthly"
+        assert task.repetition_rule.frequency.on == OrdinalWeekday(last="friday")
+        assert task.repetition_rule.frequency.on_days is None
+
     @pytest.mark.snapshot(tasks=[make_task_dict(id="t1", name="Plain")])
     async def test_partial_update_no_existing_rule_error(self, service: OperatorService) -> None:
         """EDIT-15: Partial update on task with no existing rule -> ValueError."""
