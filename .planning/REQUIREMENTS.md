@@ -30,7 +30,7 @@ Requirements for v1.3.1 First-Class References. Each maps to roadmap phases.
 
 - [ ] **WRIT-01**: `add_tasks` with `parent: "$inbox"` creates task in inbox
 - [ ] **WRIT-02**: `add_tasks` with `parent` omitted creates task in inbox
-- [ ] **WRIT-03**: `add_tasks` with `parent: null` creates task in inbox + warning
+- [ ] **WRIT-03**: ~~`add_tasks` with `parent: null` creates task in inbox + warning~~ → `add_tasks` with `parent: null` returns error (null not accepted; omit field for inbox or use `$inbox`)
 - [ ] **WRIT-04**: `edit_tasks` with `ending: "$inbox"` moves task to inbox
 - [ ] **WRIT-05**: `edit_tasks` with `beginning: "$inbox"` moves task to inbox (beginning)
 - [ ] **WRIT-06**: `edit_tasks` with `ending: null` returns error
