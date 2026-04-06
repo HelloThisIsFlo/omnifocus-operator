@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 42-read-output-restructure
 source: [42-01-SUMMARY.md, 42-02-SUMMARY.md, 42-03-SUMMARY.md]
 started: 2026-04-06T20:00:00Z
@@ -60,13 +60,29 @@ blocked: 0
   reason: "User reported: (1) Both branches serialized with null for unset branch. (2) Top-level task in a project has parent type wrong — project misclassified as task in parent ref: {project: null, task: {id: projectId, name: projectName}}"
   severity: major
   test: 1
-  artifacts: []
-  missing: []
+  root_cause: "(1a) ParentRef model in models/common.py:59-72 lacks field_serializer or model_config to exclude_none — Pydantic serializes both branches by default. (1b) Parent type misclassification in _build_parent_and_project (hybrid.py:288-325) and/or _adapt_parent_ref (adapter.py:148-193) — logic error assigns project to task branch for root tasks in projects. Inbox path works correctly, bug is project-specific."
+  artifacts:
+    - path: "src/omnifocus_operator/models/common.py"
+      issue: "ParentRef missing exclude_none serialization config (lines 59-72)"
+    - path: "src/omnifocus_operator/repository/hybrid/hybrid.py"
+      issue: "_build_parent_and_project parent type detection (lines 288-325)"
+    - path: "src/omnifocus_operator/repository/bridge_only/adapter.py"
+      issue: "_adapt_parent_ref parent type detection (lines 148-193)"
+  missing:
+    - "Add field_serializer or model_config with exclude_none to ParentRef"
+    - "Fix parent type classification for root tasks in projects (both code paths)"
 
 - truth: "nextTask should be null when a project has no child tasks"
   status: failed
   reason: "User reported: nextTask self-references the project when it has no children (e.g. project gux8zqHgGas returns nextTask with the project's own ID/name). Should be null. Works correctly when real children exist. Likely cause: OmniFocus stores the project's own ID as next_task internally (projects share the task table), mapper should detect this and return null."
   severity: major
   test: 4
-  artifacts: []
-  missing: []
+  root_cause: "OmniFocus stores the project's own persistentIdentifier in the nextTask field when the project has no children (projects and tasks share the same table). Both code paths check nextTask is not None but don't check nextTask != project_id. Hybrid path: _map_project_row (hybrid.py:419-423) has task_id at line 384 but doesn't compare. Bridge path: _enrich_project (adapter.py:299-307) doesn't have access to project ID for comparison."
+  artifacts:
+    - path: "src/omnifocus_operator/repository/hybrid/hybrid.py"
+      issue: "_map_project_row nextTask mapping (lines 419-423) — missing self-reference check against task_id (line 384)"
+    - path: "src/omnifocus_operator/repository/bridge_only/adapter.py"
+      issue: "_enrich_project nextTask mapping (lines 299-307) — missing self-reference check"
+  missing:
+    - "Hybrid: add row['nextTask'] != task_id guard in _map_project_row"
+    - "Bridge: pass project ID to _enrich_project and add self-reference guard"
