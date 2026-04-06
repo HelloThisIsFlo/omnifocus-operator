@@ -160,10 +160,11 @@ Plans:
   3. `ending: null` and `beginning: null` return errors (not silently accepted)
   4. `before`/`after` with a container ID or `$inbox` returns a targeted error suggesting `beginning`/`ending` instead
   5. `PatchOrNone` type alias is deleted; `MoveAction.beginning`/`ending` use `Patch[str]`
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 41-01: TBD
+- [ ] 41-01-PLAN.md — PatchOrNone elimination, MoveAction null-rejection validators, error templates, per-field descriptions
+- [ ] 41-02-PLAN.md — AddTaskCommand.parent Patch[str] conversion, pipeline wiring, $inbox integration tests, REQUIREMENTS.md update
 
 ### Phase 42: Task Output -- Parent Restructure & Project Field
 **Goal**: Task output uses tagged parent discriminator (never null) and includes a project field, making inbox status and containment unambiguous
@@ -241,7 +242,7 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44 → 45
 | 34-38 | v1.3 | 26/26 | Complete | 2026-04-05 |
 | 39. Foundation | v1.3.1 | 1/1 | Complete    | 2026-04-05 |
 | 40. Resolver | v1.3.1 | 3/3 | Complete   | 2026-04-05 |
-| 41. Write Pipeline | v1.3.1 | 0/TBD | Not started | - |
+| 41. Write Pipeline | v1.3.1 | 0/2 | Not started | - |
 | 42. Task Output | v1.3.1 | 0/TBD | Not started | - |
 | 43. Rich References | v1.3.1 | 0/TBD | Not started | - |
 | 44. Filters & Projects | v1.3.1 | 0/TBD | Not started | - |
