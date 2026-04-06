@@ -800,6 +800,32 @@ class TestProjectFields:
         projects=[
             _minimal_project(
                 {
+                    "persistentIdentifier": "proj-self",
+                    "name": "Empty Project",
+                    "childrenCount": 0,
+                    "project_info": {
+                        "pk": "pi-proj-self",
+                        "task": "proj-self",
+                        "nextTask": "proj-self",
+                        "effectiveStatus": "active",
+                    },
+                }
+            )
+        ],
+    )
+    async def test_project_next_task_self_reference_is_none(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """Project where nextTask == own ID (self-reference) returns next_task=None."""
+        result = await hybrid_repo.get_all()
+        proj = result.projects[0]
+        assert proj.next_task is None, "Self-referencing nextTask should be filtered to None"
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        projects=[
+            _minimal_project(
+                {
                     "project_info": {"effectiveStatus": "dropped"},
                 }
             )

@@ -624,6 +624,35 @@ class TestAdapterIdempotency:
 
 
 # ---------------------------------------------------------------------------
+# Project enrichment -- nextTask self-reference
+# ---------------------------------------------------------------------------
+
+
+class TestEnrichProjectNextTask:
+    """_enrich_project filters out nextTask self-references."""
+
+    def test_enrich_project_next_task_self_reference(self) -> None:
+        """Project where nextTask == own ID gets nextTask=None after enrichment."""
+        proj = _old_project(id="proj-1", nextTask="proj-1")
+        task = _old_task(id="task-other", name="Other Task")
+        snapshot = {"tasks": [task], "projects": [proj], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        adapted_proj = snapshot["projects"][0]
+        # nextTask should be nullified, not enriched to {id, name}
+        assert adapted_proj["nextTask"] is None
+
+    def test_enrich_project_next_task_different_id(self) -> None:
+        """Project where nextTask != own ID keeps the enriched {id, name} ref."""
+        proj = _old_project(id="proj-1", nextTask="task-abc")
+        task = _old_task(id="task-abc", name="First Task")
+        snapshot = {"tasks": [task], "projects": [proj], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        adapted_proj = snapshot["projects"][0]
+        next_task = adapted_proj.get("nextTask") or adapted_proj.get("next_task")
+        assert next_task == {"id": "task-abc", "name": "First Task"}
+
+
+# ---------------------------------------------------------------------------
 # Full snapshot
 # ---------------------------------------------------------------------------
 
