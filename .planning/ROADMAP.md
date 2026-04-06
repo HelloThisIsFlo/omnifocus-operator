@@ -155,7 +155,7 @@ Plans:
 **Depends on**: Phase 40
 **Requirements**: WRIT-01, WRIT-02, WRIT-03, WRIT-04, WRIT-05, WRIT-06, WRIT-07, WRIT-08, MODL-09, MODL-10
 **Success Criteria** (what must be TRUE):
-  1. `add_tasks` with `parent: "$inbox"` creates task in inbox; omitted parent defaults to inbox; `parent: null` creates in inbox with educational warning
+  1. `add_tasks` with `parent: "$inbox"` creates task in inbox; omitted parent defaults to inbox; `parent: null` returns error (null not accepted)
   2. `edit_tasks` with `ending: "$inbox"` or `beginning: "$inbox"` moves task to inbox
   3. `ending: null` and `beginning: null` return errors (not silently accepted)
   4. `before`/`after` with a container ID or `$inbox` returns a targeted error suggesting `beginning`/`ending` instead
