@@ -109,6 +109,10 @@ class Resolver:
         entities:
             Pre-fetched entities to search. If None, fetches from repository.
         """
+        assert accept, "accept must not be empty, please provide at least one entity type"
+
+        entity_type_label = "/".join(t.value for t in accept)
+
         # Step 1: $-prefix detection
         if value.startswith(SYSTEM_LOCATION_PREFIX):
             # System locations only valid in container context (PROJECT in accept)
@@ -143,7 +147,7 @@ class Resolver:
             return matches[0].id
         if len(matches) > 1:
             match_pairs = ", ".join(f"{m.id} ({m.name})" for m in matches)
-            entity_type = accept[0].value if accept else "entity"
+            entity_type = entity_type_label
             msg = AMBIGUOUS_NAME_MATCH.format(
                 entity_type=entity_type,
                 name=value,
@@ -159,7 +163,7 @@ class Resolver:
         # Step 5: No match -- fuzzy suggestions
         entity_names = [e.name for e in entities]
         suggestions = suggest_close_matches(value, entity_names)
-        entity_type = accept[0].value if accept else "entity"
+        entity_type = entity_type_label
         if suggestions:
             formatted = format_suggestions(suggestions, entities)
             suffix = f" Did you mean: {formatted}?"

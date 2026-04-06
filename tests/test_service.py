@@ -143,7 +143,7 @@ class TestAddTask:
 
     async def test_parent_not_found(self, service: OperatorService) -> None:
         """Non-existent parent raises ValueError."""
-        with pytest.raises(ValueError, match="No project found matching 'nonexistent-id'"):
+        with pytest.raises(ValueError, match="No project/task found matching 'nonexistent-id'"):
             await service.add_task(AddTaskCommand(name="Task", parent="nonexistent-id"))
 
     @pytest.mark.snapshot(tags=[make_tag_dict(id="tag-work", name="Work")])
@@ -212,7 +212,7 @@ class TestAddTask:
         mock_repo.get_task.return_value = None
         service = OperatorService(repository=mock_repo)
 
-        with pytest.raises(ValueError, match="No project found matching"):
+        with pytest.raises(ValueError, match="No project/task found matching"):
             await service.add_task(AddTaskCommand(name="Task", parent="bad-id"))
 
         mock_repo.add_task.assert_not_called()
@@ -2326,7 +2326,7 @@ class TestNameResolutionIntegration:
     )
     async def test_add_task_parent_name_not_found(self, service: OperatorService) -> None:
         """add_task with parent='Nonexistent' raises ValueError with suggestions (NRES-01)."""
-        with pytest.raises(ValueError, match="No project found matching 'Nonexistent'"):
+        with pytest.raises(ValueError, match="No project/task found matching 'Nonexistent'"):
             await service.add_task(AddTaskCommand(name="Task", parent="Nonexistent"))
 
     # -- edit_task: moveTo ending/beginning by name --

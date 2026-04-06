@@ -187,7 +187,7 @@ class TestResolveAcceptParameter:
 
     async def test_empty_accept_raises(self, resolver: Resolver) -> None:
         """Calling _resolve with an empty accept list is a programming error."""
-        with pytest.raises(ValueError, match="accept"):
+        with pytest.raises(AssertionError):
             await resolver._resolve("anything", accept=[])
 
     async def test_not_found_error_joins_accepted_types(self, resolver: Resolver) -> None:
