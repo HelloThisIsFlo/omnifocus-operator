@@ -92,6 +92,10 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 - ✓ PatchOrNone eliminated; MoveAction fields use `Patch[str]` with null-rejection validators and per-field descriptions — v1.3.1 (Phase 41)
 - ✓ `AddTaskCommand.parent` converted to `Patch[str]` with UNSET (inbox) and null-rejection validator — v1.3.1 (Phase 41)
 - ✓ `$inbox` supported in add_tasks (parent) and edit_tasks (moveTo beginning/ending) — v1.3.1 (Phase 41)
+- ✓ Tagged parent discriminator (`{project: {id,name}}` / `{task: {id,name}}`), never null — v1.3.1 (Phase 42)
+- ✓ Task.project field with containing project at any depth, `$inbox` for inbox tasks — v1.3.1 (Phase 42)
+- ✓ All cross-entity refs enriched to `{id, name}` objects (Project.folder, Project.next_task, Tag.parent, Folder.parent) — v1.3.1 (Phase 42)
+- ✓ inInbox field removed from Task output; ParentRef model replaced with tagged wrapper — v1.3.1 (Phase 42)
 
 ### Active
 
@@ -216,4 +220,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-06 after Phase 41 (Write Pipeline — Inbox in Add/Edit) complete*
+*Last updated: 2026-04-06 after Phase 42 (Read Output Restructure) complete*
