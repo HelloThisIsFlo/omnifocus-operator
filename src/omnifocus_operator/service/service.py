@@ -16,8 +16,6 @@ import logging
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any, NoReturn
 
-from pydantic import BaseModel
-
 from omnifocus_operator.agent_messages.errors import (
     REPETITION_NO_EXISTING_RULE,
 )
@@ -759,21 +757,16 @@ class _EditTaskPipeline(_Pipeline):
         Full replacement with defaults: UNSET fields get defaults (like creation),
         not preserved from existing.
         """
+        # Dump spec to dict — converts nested models (e.g. OrdinalWeekdaySpec)
+        # to plain dicts and strips UNSET fields in one shot.
+        spec_dict = edit_spec.model_dump(exclude_defaults=True)
+
         merged: dict[str, Any] = {"type": freq_type}
+        merged["interval"] = spec_dict.get("interval", 1)
 
-        # Interval: use if set, else default to 1
-        merged["interval"] = edit_spec.interval if is_set(edit_spec.interval) else 1
-
-        # Specialization fields: use if set (and not None), else default to None
         for field_name in ("on_days", "on", "on_dates"):
-            edit_val = getattr(edit_spec, field_name)
-            if is_set(edit_val):
-                # Spec->Core boundary: model_dump() for nested models
-                if isinstance(edit_val, BaseModel):
-                    merged[field_name] = edit_val.model_dump(exclude_defaults=True)
-                else:
-                    merged[field_name] = edit_val
-            # else: defaults to None (not included in dict -> Frequency default)
+            if field_name in spec_dict:
+                merged[field_name] = spec_dict[field_name]
 
         # Construct Frequency -> @model_validator fires (catches cross-type
         # violations and mutual exclusion — no auto-clear here since all
