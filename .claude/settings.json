@@ -1,16 +1,5 @@
 {
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/hooks/auto-format-python.sh",
-            "statusMessage": "Auto-formatting Python..."
-          }
-        ]
-      }
-    ]
+  "env": {
+    "CLAUDE_HOOK_AUTOFORMAT_PYTHON": "1"
   }
 }
