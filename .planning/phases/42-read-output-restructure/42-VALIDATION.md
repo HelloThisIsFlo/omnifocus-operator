@@ -58,9 +58,9 @@ created: 2026-04-06
 
 ## Manual-Only Verifications
 
-| Behavior | Requirement | Why Manual | Test Instructions |
-|----------|-------------|------------|-------------------|
-| Golden master snapshots match new output shape | READ-01 thru READ-07 | Golden master re-capture is human-only per GOLD-01 | Run `just gm-capture` after all model changes land |
+*All phase behaviors have automated verification.*
+
+*Note: Golden master re-capture was evaluated but unnecessary — golden masters capture raw bridge output, which phase 42 did not change. Confirmed 2026-04-06.*
 
 ---
 
