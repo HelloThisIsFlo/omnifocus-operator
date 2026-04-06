@@ -125,8 +125,8 @@ Agents can explicitly target inbox in all write operations using `$inbox`, with 
 ## Specific Ideas
 
 - Field description for `AddTaskCommand.parent` stays as-is: don't advertise `$inbox` — agents that see it in responses can use it, but omitting parent is the idiomatic path to inbox
-- Error messages should be educational and suggest the correct action (same agent-first philosophy as all existing errors)
 - `PatchOrNone` deletion is a clean removal — only two consumers, both migrating to existing type aliases
+- **All error templates and field descriptions in D-14, D-15, D-16a, D-20, D-21 are verbatim** — executor must use exact wording, not paraphrase
 
 </specifics>
 
