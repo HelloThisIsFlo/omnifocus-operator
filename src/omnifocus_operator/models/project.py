@@ -4,8 +4,17 @@ from __future__ import annotations
 
 from pydantic import AwareDatetime, Field
 
-from omnifocus_operator.agent_messages.descriptions import NEXT_TASK, PROJECT_DOC
-from omnifocus_operator.models.common import ActionableEntity, ReviewInterval
+from omnifocus_operator.agent_messages.descriptions import (
+    NEXT_TASK,
+    PROJECT_DOC,
+    PROJECT_FOLDER_DESC,
+)
+from omnifocus_operator.models.common import (
+    ActionableEntity,
+    FolderRef,
+    ReviewInterval,
+    TaskRef,
+)
 
 
 class Project(ActionableEntity):
@@ -17,8 +26,8 @@ class Project(ActionableEntity):
     review_interval: ReviewInterval
 
     # Relationships
-    next_task: str | None = Field(
+    next_task: TaskRef | None = Field(
         default=None,
         description=NEXT_TASK,
     )
-    folder: str | None = None
+    folder: FolderRef | None = Field(default=None, description=PROJECT_FOLDER_DESC)

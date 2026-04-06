@@ -7,15 +7,13 @@ from pydantic import AwareDatetime, Field
 from omnifocus_operator.agent_messages.descriptions import (
     EFFECTIVE_COMPLETION_DATE,
     TASK_DOC,
+    TASK_PROJECT_DESC,
 )
-from omnifocus_operator.models.common import ActionableEntity, ParentRef
+from omnifocus_operator.models.common import ActionableEntity, ParentRef, ProjectRef
 
 
 class Task(ActionableEntity):
     __doc__ = TASK_DOC
-
-    # Inbox
-    in_inbox: bool
 
     # Dates (task-only -- always null on projects)
     effective_completion_date: AwareDatetime | None = Field(
@@ -23,5 +21,8 @@ class Task(ActionableEntity):
         description=EFFECTIVE_COMPLETION_DATE,
     )
 
-    # Parent reference (None = inbox task)
-    parent: ParentRef | None = None
+    # Parent reference (tagged wrapper: project or task)
+    parent: ParentRef
+
+    # Containing project (at any nesting depth, or $inbox)
+    project: ProjectRef = Field(description=TASK_PROJECT_DESC)

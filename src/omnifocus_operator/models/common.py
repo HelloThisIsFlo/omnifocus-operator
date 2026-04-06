@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import AwareDatetime, Field
+from pydantic import AwareDatetime, Field, model_validator
 
 from omnifocus_operator.agent_messages.descriptions import (
     DEFER_DATE,
@@ -14,6 +14,8 @@ from omnifocus_operator.agent_messages.descriptions import (
     EFFECTIVE_PLANNED_DATE,
     FOLDER_REF_DOC,
     PARENT_REF_DOC,
+    PARENT_REF_PROJECT_FIELD,
+    PARENT_REF_TASK_FIELD,
     PLANNED_DATE,
     PROJECT_REF_DOC,
     REVIEW_INTERVAL_DOC,
@@ -57,9 +59,17 @@ class FolderRef(OmniFocusBaseModel):
 class ParentRef(OmniFocusBaseModel):
     __doc__ = PARENT_REF_DOC
 
-    type: str
-    id: str
-    name: str
+    project: ProjectRef | None = Field(default=None, description=PARENT_REF_PROJECT_FIELD)
+    task: TaskRef | None = Field(default=None, description=PARENT_REF_TASK_FIELD)
+
+    @model_validator(mode="after")
+    def _exactly_one_key(self) -> ParentRef:
+        has_project = self.project is not None
+        has_task = self.task is not None
+        if has_project == has_task:
+            msg = "Exactly one of 'project' or 'task' must be set."
+            raise ValueError(msg)
+        return self
 
 
 class ReviewInterval(OmniFocusBaseModel):

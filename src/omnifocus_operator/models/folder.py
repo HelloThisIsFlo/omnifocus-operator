@@ -9,7 +9,7 @@ from __future__ import annotations
 from pydantic import Field
 
 from omnifocus_operator.agent_messages.descriptions import FOLDER_DOC, FOLDER_PARENT_DESC
-from omnifocus_operator.models.common import OmniFocusEntity
+from omnifocus_operator.models.common import FolderRef, OmniFocusEntity
 from omnifocus_operator.models.enums import FolderAvailability
 
 
@@ -17,4 +17,4 @@ class Folder(OmniFocusEntity):
     __doc__ = FOLDER_DOC
 
     availability: FolderAvailability  # Folder availability (available/dropped)
-    parent: str | None = Field(default=None, description=FOLDER_PARENT_DESC)
+    parent: FolderRef | None = Field(default=None, description=FOLDER_PARENT_DESC)
