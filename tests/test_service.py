@@ -753,12 +753,11 @@ class TestEditTask:
         task = await repo.get_task("task-001")
         assert task is not None
         assert task.parent is not None
-        # OmniFocus sets both parent (root task) and project to the same ID
-        # for top-level tasks in a project. The adapter's _adapt_parent_ref
-        # sees parent is not None and produces type="task".
-        # Golden master scenario_16 confirms this is real OmniFocus behavior.
-        assert task.parent.task is not None
-        assert task.parent.task.id == "proj-001"
+        # OmniFocus sets both parent and project to the same ID for root tasks
+        # in a project. The adapter now detects parent == project_id and
+        # correctly classifies as project parent (not task parent).
+        assert task.parent.project is not None
+        assert task.parent.project.id == "proj-001"
         assert task.project.id == "proj-001"
 
     @pytest.mark.snapshot(

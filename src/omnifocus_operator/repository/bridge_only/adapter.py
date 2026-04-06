@@ -299,10 +299,17 @@ def _enrich_project(
     if isinstance(folder_val, str):
         raw["folder"] = {"id": folder_val, "name": folder_names.get(folder_val, "")}
 
+    project_id = raw.get("id", "")
     next_task_val = raw.get("nextTask")
     if next_task_val is None:
         next_task_val = raw.get("next_task")
-    if isinstance(next_task_val, str):
+    if isinstance(next_task_val, str) and next_task_val == project_id:
+        # Self-reference: project has no real next task
+        if "nextTask" in raw:
+            raw["nextTask"] = None
+        else:
+            raw["next_task"] = None
+    elif isinstance(next_task_val, str):
         ref = {"id": next_task_val, "name": task_names.get(next_task_val, "")}
         if "nextTask" in raw:
             raw["nextTask"] = ref

@@ -425,7 +425,7 @@ def _map_project_row(
         "review_interval": _parse_review_interval(row["reviewRepetitionString"]),
         "next_task": (
             {"id": row["nextTask"], "name": task_name_lookup.get(row["nextTask"], "")}
-            if row["nextTask"] is not None
+            if row["nextTask"] is not None and row["nextTask"] != task_id
             else None
         ),
         "folder": (
