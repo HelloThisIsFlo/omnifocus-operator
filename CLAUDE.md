@@ -52,6 +52,8 @@ See @README.md for project overview.
 
   End-to-end behavior testing (does the MCP tool work from the agent's perspective?) applies when the feature is wired all the way through. For repository-only or service-only phases, the test walkthrough IS the UAT.
 
+- **Client-side schema validation quirk**: Claude Desktop co-work mode pre-validates tool input against the JSON Schema before sending it to the server. Custom `field_validator` error messages may not appear — the client shows a generic schema error instead. This pre-validation is also depth-limited: shallow fields get caught, deeply nested fields may slip through. Both Claude Desktop (regular) and Claude Code CLI pass input directly to the server, so custom messages always show there. If the developer reports a missing custom error message during UAT, suggest testing via Claude Desktop or Claude Code. See `docs/model-taxonomy.md` for details.
+
 ## Model Conventions
 
 - **Before creating any new Pydantic model**: Read `docs/model-taxonomy.md`. Models in `models/` use no suffix (core) or `Read` suffix (output-boundary variant). Models in `contracts/` must use a write-side suffix (`Command`, `Result`, `RepoPayload`, `RepoResult`, `Action`, `Spec`).
