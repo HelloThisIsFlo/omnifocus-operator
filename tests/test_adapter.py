@@ -395,7 +395,7 @@ class TestAdaptTaskParentRef:
         assert raw["project"] == {"id": "proj-001", "name": ""}
 
     def test_parent_task_takes_precedence_over_project(self) -> None:
-        """When both parent and project are set, parent is task, project is the containing project."""
+        """When both parent and project are set, parent is task, project is containing project."""
         raw = _old_task(project="proj-001", parent="parent-task")
         snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
         adapt_snapshot(snapshot)

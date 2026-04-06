@@ -225,19 +225,15 @@ class TestParentRef:
         assert ref.project is None
 
     def test_parent_ref_rejects_both(self) -> None:
-        import pytest as _pytest
-
         data = {
             "project": {"id": "p", "name": "P"},
             "task": {"id": "t", "name": "T"},
         }
-        with _pytest.raises(ValueError, match="Exactly one"):
+        with pytest.raises(ValueError, match="Exactly one"):
             ParentRef.model_validate(data)
 
     def test_parent_ref_rejects_neither(self) -> None:
-        import pytest as _pytest
-
-        with _pytest.raises(ValueError, match="Exactly one"):
+        with pytest.raises(ValueError, match="Exactly one"):
             ParentRef.model_validate({})
 
 
@@ -552,7 +548,7 @@ class TestTaskModel:
         assert task.tags[0].id == "t1"
         assert task.tags[1].name == "morning"
 
-        # Verify total field count (26: was 26 with in_inbox, now 26 with parent+project replacing in_inbox)
+        # Verify total field count (26: parent+project replaced in_inbox)
         assert len(Task.model_fields) == 26
 
         # Serialize back to camelCase and verify round-trip
