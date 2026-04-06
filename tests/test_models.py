@@ -213,7 +213,7 @@ class TestParentRef:
         assert ref.project.id == "proj-001"
         assert ref.project.name == "My Project"
         assert ref.task is None
-        dumped = ref.model_dump(by_alias=True)
+        dumped = ref.model_dump(exclude_none=True, by_alias=True)
         # Only the set branch should appear — no "task": null key
         assert dumped == {"project": {"id": "proj-001", "name": "My Project"}}
 
@@ -224,7 +224,7 @@ class TestParentRef:
         assert ref.task.id == "task-parent-001"
         assert ref.task.name == "Parent Task"
         assert ref.project is None
-        dumped = ref.model_dump(by_alias=True)
+        dumped = ref.model_dump(exclude_none=True, by_alias=True)
         # Only the set branch should appear — no "project": null key
         assert dumped == {"task": {"id": "task-parent-001", "name": "Parent Task"}}
 

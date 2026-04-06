@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from pydantic import AwareDatetime, Field
+from typing import Any
+
+from pydantic import AwareDatetime, Field, field_serializer
 
 from omnifocus_operator.agent_messages.descriptions import (
     EFFECTIVE_COMPLETION_DATE,
@@ -26,3 +28,7 @@ class Task(ActionableEntity):
 
     # Containing project (at any nesting depth, or $inbox)
     project: ProjectRef = Field(description=TASK_PROJECT_DESC)
+
+    @field_serializer("parent")
+    def _serialize_parent(self, parent: ParentRef, _info: Any) -> dict[str, Any]:
+        return parent.model_dump(exclude_none=True, by_alias=True)
