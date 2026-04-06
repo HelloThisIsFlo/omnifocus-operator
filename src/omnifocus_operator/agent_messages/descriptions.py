@@ -92,9 +92,19 @@ END_BY_DATE_DATE = "Repeat until this date."
 
 PARENT = "Project or task ID to place this task under. Omit for inbox."
 
-NEXT_TASK = "ID of the first available task in this project, if any."
+NEXT_TASK = "First available (unblocked) task in this project."
 
-FOLDER_PARENT_DESC = "Parent folder ID, or null for top-level folders."
+FOLDER_PARENT_DESC = "Parent folder in the folder hierarchy."
+
+PROJECT_FOLDER_DESC = "Folder containing this project."
+
+TAG_PARENT_DESC = "Parent tag in the tag hierarchy."
+
+TASK_PROJECT_DESC = "Project for this task, even for subtasks."
+
+PARENT_REF_PROJECT_FIELD = "Parent project."
+
+PARENT_REF_TASK_FIELD = "Parent task, when this is a subtask."
 
 # --- Fields: Previously Bare ---
 
@@ -120,18 +130,15 @@ ESTIMATED_MINUTES_EDIT = "Time estimate in minutes. Set to null to clear."
 
 TAG_REF_DOC = "Reference to a tag with both id and name."
 
-PROJECT_REF_DOC = 'Reference to a project with id and name. The system inbox uses id="$inbox", name="Inbox".'
+PROJECT_REF_DOC = (
+    'Reference to a project with id and name. The system inbox uses id="$inbox", name="Inbox".'
+)
 
 TASK_REF_DOC = "Reference to a task with id and name."
 
 FOLDER_REF_DOC = "Reference to a folder with id and name."
 
-PARENT_REF_DOC = (
-    "Reference to a parent entity (project or task) with type, id, and name.\n"
-    "\n"
-    'type is "project" for tasks directly in a project, "task" for subtasks.\n'
-    "Inbox tasks have no ParentRef (represented as None at the Task level)."
-)
+PARENT_REF_DOC = "Direct parent of this task. Exactly one key present: 'project' or 'task'."
 
 REVIEW_INTERVAL_DOC = "How often OmniFocus prompts the user to review this project."
 
@@ -224,15 +231,9 @@ MOVE_ENDING = (
     "Task is placed at the end of the container."
 )
 
-MOVE_BEFORE = (
-    "Sibling task to position relative to (task name/ID). "
-    "Parent container is inferred."
-)
+MOVE_BEFORE = "Sibling task to position relative to (task name/ID). Parent container is inferred."
 
-MOVE_AFTER = (
-    "Sibling task to position relative to (task name/ID). "
-    "Parent container is inferred."
-)
+MOVE_AFTER = "Sibling task to position relative to (task name/ID). Parent container is inferred."
 
 EDIT_TASK_ACTIONS_DOC = "Lifecycle changes (complete/drop), tag edits, and task movement. All three can be combined freely in one call."
 
@@ -248,7 +249,9 @@ REPETITION_RULE_EDIT_SPEC_DOC = (
     "Patch repetition rule fields; omit fields to leave unchanged, set to null to clear."
 )
 
-ORDINAL_WEEKDAY_SPEC_DOC = "Ordinal weekday pattern for monthly day-of-week patterns (e.g. first monday, last friday)."
+ORDINAL_WEEKDAY_SPEC_DOC = (
+    "Ordinal weekday pattern for monthly day-of-week patterns (e.g. first monday, last friday)."
+)
 
 # --- Class Docstrings: Results and Queries ---
 
@@ -292,8 +295,7 @@ IN_INBOX_FILTER_DESC = (
 )
 
 ESTIMATED_MINUTES_MAX_DESC = (
-    "Include tasks with estimate <= this value (minutes). "
-    "Tasks with no estimate are excluded."
+    "Include tasks with estimate <= this value (minutes). Tasks with no estimate are excluded."
 )
 
 LIMIT_DESC = "Max items to return. Pass null to return all."
@@ -301,8 +303,7 @@ LIMIT_DESC = "Max items to return. Pass null to return all."
 OFFSET_DESC = "Skip this many items. Requires limit to be set."
 
 REVIEW_DUE_WITHIN_DESC = (
-    'Review due within this window. '
-    '"now" or "N<unit>" (unit: d/w/m/y). Examples: "1w", "2m".'
+    'Review due within this window. "now" or "N<unit>" (unit: d/w/m/y). Examples: "1w", "2m".'
 )
 
 # --- Field Descriptions: Entity-Reference Filters ---
@@ -312,9 +313,7 @@ PROJECT_FILTER_DESC = (
     "if multiple projects match, tasks from all are included."
 )
 
-TAGS_FILTER_DESC = (
-    "Tag names or IDs (OR logic). Names use case-insensitive substring matching."
-)
+TAGS_FILTER_DESC = "Tag names or IDs (OR logic). Names use case-insensitive substring matching."
 
 FOLDER_FILTER_DESC = (
     "Folder ID or name. Names use case-insensitive substring matching -- "
@@ -325,8 +324,7 @@ FOLDER_FILTER_DESC = (
 
 # TODO(v1.5): Remove when built-in perspectives are supported
 _PERSPECTIVES_BUILTIN_NOTE = (
-    "Currently returns custom perspectives only; "
-    "built-in perspectives are not yet available."
+    "Currently returns custom perspectives only; built-in perspectives are not yet available."
 )
 
 # --- Tool Descriptions ---
@@ -346,29 +344,34 @@ GET_ALL_TOOL_DOC = (
 GET_TASK_TOOL_DOC = (
     "Look up a single task by its ID.\n"
     "\n"
-    "Key fields: urgency, availability, dueDate, deferDate, plannedDate,\n"
-    "effectiveDueDate (inherited from parent), flagged, effectiveFlagged,\n"
-    "tags (array of {id, name}), parent ({type, id, name} or null for inbox),\n"
-    "repetitionRule, inInbox.\n"
-    "The response uses camelCase field names."
+    "Fields: urgency, availability, dueDate, deferDate, plannedDate, "
+    "effectiveDueDate, flagged, effectiveFlagged, "
+    "tags [{id, name}], parent (project {id, name} or task {id, name}), "
+    "project {id, name}, repetitionRule.\n"
+    "\n"
+    "parent: direct container — a project or parent task.\n"
+    "project: containing project at any nesting depth, or $inbox.\n"
+    "effective*: inherited from the parent hierarchy when not set directly."
 )
 
 GET_PROJECT_TOOL_DOC = (
     "Look up a single project by its ID.\n"
     "\n"
-    "Key fields: urgency, availability, dueDate, deferDate, plannedDate,\n"
-    "effectiveDueDate (inherited from parent), flagged, effectiveFlagged,\n"
-    "tags (array of {id, name}), nextTask (ID of first available task),\n"
-    "folder (folder ID or null), reviewInterval, nextReviewDate.\n"
-    "The response uses camelCase field names."
+    "Fields: urgency, availability, dueDate, deferDate, plannedDate, "
+    "effectiveDueDate, flagged, effectiveFlagged, "
+    "tags [{id, name}], nextTask {id, name}, folder {id, name}, "
+    "reviewInterval, nextReviewDate.\n"
+    "\n"
+    "nextTask: first available (unblocked) task — useful for identifying what to work on next.\n"
+    "effective*: inherited from the parent hierarchy when not set directly."
 )
 
 GET_TAG_TOOL_DOC = (
     "Look up a single tag by its ID.\n"
     "\n"
-    "Key fields: availability, childrenAreMutuallyExclusive (child tags\n"
-    "behave like radio buttons when true), parent (parent tag ID or null).\n"
-    "The response uses camelCase field names."
+    "Fields: availability, childrenAreMutuallyExclusive, parent {id, name}.\n"
+    "\n"
+    "childrenAreMutuallyExclusive: when true, child tags behave like radio buttons."
 )
 
 ADD_TASKS_TOOL_DOC = (
@@ -419,19 +422,22 @@ ADD_TASKS_TOOL_DOC = (
 LIST_TASKS_TOOL_DOC = (
     "List and filter tasks. All filters combine with AND logic.\n"
     "\n"
-    "Returns a flat list. Each task includes a parent field ({type, id, name}\n"
-    "or null for inbox) that can be used to reconstruct hierarchy. Tasks can\n"
-    "be nested under projects or other tasks.\n"
+    "Returns a flat list. Reconstruct hierarchy using parent (direct container) "
+    "or project (containing project at any depth). "
+    "For root tasks both point to the same project; for subtasks they diverge. "
+    'Inbox tasks use project id="$inbox".\n'
     "\n"
     "Response: {items, total, hasMore, warnings?}\n"
     "\n"
-    "Key fields per task:\n"
-    "  urgency, availability, flagged, effectiveFlagged (inherited),\n"
-    "  dueDate, deferDate, plannedDate, effectiveDueDate, effectiveDeferDate,\n"
-    "  estimatedMinutes, tags [{id, name}], parent ({type, id, name} or null\n"
-    "  for inbox), inInbox, hasChildren,\n"
-    "  repetitionRule, completionDate.\n"
-    "The response uses camelCase field names."
+    "Fields per task: urgency, availability, flagged, effectiveFlagged, "
+    "dueDate, deferDate, plannedDate, effectiveDueDate, effectiveDeferDate, "
+    "estimatedMinutes, tags [{id, name}], "
+    "parent (project {id, name} or task {id, name}), "
+    "project {id, name}, hasChildren, repetitionRule, completionDate.\n"
+    "\n"
+    "parent: direct container — a project or parent task.\n"
+    "project: containing project at any nesting depth, or $inbox.\n"
+    "effective*: inherited from the parent hierarchy when not set directly."
 )
 
 LIST_PROJECTS_TOOL_DOC = (
@@ -439,38 +445,37 @@ LIST_PROJECTS_TOOL_DOC = (
     "\n"
     "Response: {items, total, hasMore, warnings?}\n"
     "\n"
-    "Key fields per project:\n"
-    "  urgency, availability, flagged, effectiveFlagged, dueDate, deferDate,\n"
-    "  plannedDate, effectiveDueDate, tags [{id, name}], folder (folder ID or null),\n"
-    "  nextTask (ID of first available task), reviewInterval, nextReviewDate,\n"
-    "  hasChildren, repetitionRule, completionDate.\n"
-    "The response uses camelCase field names."
+    "Fields per project: urgency, availability, flagged, effectiveFlagged, "
+    "dueDate, deferDate, plannedDate, effectiveDueDate, "
+    "tags [{id, name}], folder {id, name}, nextTask {id, name}, "
+    "reviewInterval, nextReviewDate, hasChildren, repetitionRule, completionDate.\n"
+    "\n"
+    "nextTask: first available (unblocked) task — useful for identifying what to work on next.\n"
+    "effective*: inherited from the parent hierarchy when not set directly."
 )
 
 LIST_TAGS_TOOL_DOC = (
     "List and filter tags.\n"
     "\n"
-    "Returns a flat list. Each tag includes a parent field (parent tag ID\n"
-    "or null for top-level) that can be used to reconstruct hierarchy.\n"
+    "Returns a flat list. Each tag includes a parent field {id, name} "
+    "that can be used to reconstruct hierarchy.\n"
     "\n"
     "Response: {items, total, hasMore}\n"
     "\n"
-    "Key fields per tag:\n"
-    "  availability, childrenAreMutuallyExclusive (when true, child tags\n"
-    "  behave like radio buttons), parent (parent tag ID or null).\n"
-    "The response uses camelCase field names."
+    "Fields per tag: availability, childrenAreMutuallyExclusive, parent {id, name}.\n"
+    "\n"
+    "childrenAreMutuallyExclusive: when true, child tags behave like radio buttons."
 )
 
 LIST_FOLDERS_TOOL_DOC = (
     "List and filter folders.\n"
     "\n"
-    "Returns a flat list. Each folder includes a parent field (folder ID\n"
-    "or null for top-level) that can be used to reconstruct hierarchy.\n"
+    "Returns a flat list. Each folder includes a parent field {id, name} "
+    "that can be used to reconstruct hierarchy.\n"
     "\n"
     "Response: {items, total, hasMore}\n"
     "\n"
-    "Key fields per folder: availability, parent (folder ID or null).\n"
-    "The response uses camelCase field names."
+    "Fields per folder: availability, parent {id, name}."
 )
 
 LIST_PERSPECTIVES_TOOL_DOC = (
