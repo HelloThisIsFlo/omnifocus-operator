@@ -214,6 +214,44 @@ class TestResolveAcceptParameter:
             )
 
 
+class TestResolveEntityTypeMismatch:
+    """When a name exists but as a different entity type, raise EntityTypeMismatchError."""
+
+    async def test_project_name_rejected_when_only_tasks_accepted(self, resolver: Resolver) -> None:
+        """'Project One' exists as a project but only tasks are accepted."""
+        with pytest.raises(
+            EntityTypeMismatchError,
+            match="'Project One' resolved to project, but only task is accepted here",
+        ):
+            await resolver._resolve("Project One", accept=[EntityType.TASK])
+
+    async def test_task_name_rejected_when_only_tags_accepted(self, resolver: Resolver) -> None:
+        """'Alpha' exists as a task but only tags are accepted."""
+        with pytest.raises(
+            EntityTypeMismatchError,
+            match="'Alpha' resolved to task, but only tag is accepted here",
+        ):
+            await resolver._resolve("Alpha", accept=[EntityType.TAG])
+
+    async def test_tag_name_rejected_when_only_tasks_accepted(self, resolver: Resolver) -> None:
+        """'Work' exists as a tag but only tasks are accepted."""
+        with pytest.raises(
+            EntityTypeMismatchError,
+            match="'Work' resolved to tag, but only task is accepted here",
+        ):
+            await resolver._resolve("Work", accept=[EntityType.TASK])
+
+    async def test_tag_name_rejected_when_projects_and_tasks_accepted(
+        self, resolver: Resolver
+    ) -> None:
+        """'Work' exists as a tag but only projects and tasks are accepted."""
+        with pytest.raises(
+            EntityTypeMismatchError,
+            match="'Work' resolved to tag, but only project/task is accepted here",
+        ):
+            await resolver._resolve("Work", accept=[EntityType.PROJECT, EntityType.TASK])
+
+
 class TestResolveCascade:
     """The three-step cascade: $-prefix -> substring match -> ID fallback."""
 
