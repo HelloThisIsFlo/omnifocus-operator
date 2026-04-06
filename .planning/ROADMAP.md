@@ -187,7 +187,7 @@ Plans:
 - [x] 42-01-PLAN.md — Models, descriptions, and __init__ wiring
 - [x] 42-02-PLAN.md — Hybrid repository mapper enrichment
 - [x] 42-03-PLAN.md — Bridge adapter, bridge_only filters, and test updates
-- [ ] 42-04-PLAN.md — Gap closure: ParentRef serialization + nextTask self-reference
+- [x] 42-04-PLAN.md — Gap closure: ParentRef serialization + nextTask self-reference
 
 ### Phase 43: Filters & Project Tools
 **Goal**: Agents can filter tasks by `$inbox` as a project, with contradictory filter detection, correct project tool behavior, and complete tool documentation for $inbox usage.
@@ -224,5 +224,5 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43
 | 39. Foundation | v1.3.1 | 1/1 | Complete    | 2026-04-05 |
 | 40. Resolver | v1.3.1 | 3/3 | Complete   | 2026-04-05 |
 | 41. Write Pipeline | v1.3.1 | 2/2 | Complete    | 2026-04-06 |
-| 42. Read Output | v1.3.1 | 3/4 | Gap closure    | 2026-04-06 |
+| 42. Read Output | v1.3.1 | 4/4 | Complete    | 2026-04-06 |
 | 43. Filters & Projects | v1.3.1 | 0/TBD | Not started | - |
