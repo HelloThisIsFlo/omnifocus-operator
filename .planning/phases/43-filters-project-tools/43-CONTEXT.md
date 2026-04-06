@@ -124,8 +124,9 @@ GET_PROJECT_INBOX_ERROR = (
 
 ```python
 LIST_PROJECTS_INBOX_WARNING = (
-    "The system Inbox is not a project and won't appear in results. "
-    "To query inbox tasks, use list_tasks with inInbox: true."
+    "The inbox appears as a project on tasks but is not a real OmniFocus project "
+    "and won't appear in results. "
+    "To query inbox tasks, use list_tasks with 'inInbox=true'."
 )
 ```
 

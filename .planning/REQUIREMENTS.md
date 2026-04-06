@@ -121,7 +121,7 @@ Deferred to later milestones. Tracked but not in current roadmap.
 | MODL-10 | Phase 41 | Pending |
 | WRIT-01 | Phase 41 | Pending |
 | WRIT-02 | Phase 41 | Pending |
-| WRIT-03 | Phase 41 | Pending |
+| WRIT-03 | Phase 41 | Done (revised: null → error) |
 | WRIT-04 | Phase 41 | Pending |
 | WRIT-05 | Phase 41 | Pending |
 | WRIT-06 | Phase 41 | Pending |
