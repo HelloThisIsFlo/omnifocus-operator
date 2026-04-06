@@ -436,7 +436,7 @@ class TestTaskBasicFields:
         assert task.note == "Remember oat milk"
         assert task.flagged is True
         assert task.effective_flagged is True
-        assert task.in_inbox is True
+        assert task.project.id == "$inbox"
         assert task.has_children is True
         assert task.added is not None
         assert task.modified is not None
@@ -672,11 +672,13 @@ class TestTaskNotes:
 class TestTaskRelationships:
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(tasks=[_minimal_task()])
-    async def test_inbox_task_parent_null(self, hybrid_repo: HybridRepository) -> None:
-        """Task with no project and no parent has parent=None."""
+    async def test_inbox_task_parent_inbox(self, hybrid_repo: HybridRepository) -> None:
+        """Task with no project and no parent gets $inbox refs."""
         result = await hybrid_repo.get_all()
         task = result.tasks[0]
-        assert task.parent is None
+        assert task.parent.project is not None
+        assert task.parent.project.id == "$inbox"
+        assert task.project.id == "$inbox"
 
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(
@@ -694,9 +696,10 @@ class TestTaskRelationships:
         result = await hybrid_repo.get_all()
         task = result.tasks[0]
         assert task.parent is not None
-        assert task.parent.type == "project"
-        assert task.parent.id == "proj-001"
-        assert task.parent.name == "Test Project"
+        assert task.parent.project is not None
+        assert task.parent.project.id == "proj-001"
+        assert task.parent.project.name == "Test Project"
+        assert task.project.id == "proj-001"
 
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(
@@ -724,9 +727,10 @@ class TestTaskRelationships:
         result = await hybrid_repo.get_all()
         subtask = next(t for t in result.tasks if t.id == "subtask-001")
         assert subtask.parent is not None
-        assert subtask.parent.type == "task"
-        assert subtask.parent.id == "parent-task-001"
-        assert subtask.parent.name == "Parent Task"
+        assert subtask.parent.task is not None
+        assert subtask.parent.task.id == "parent-task-001"
+        assert subtask.parent.task.name == "Parent Task"
+        assert subtask.project.id == "proj-001"
 
 
 class TestProjectFields:
@@ -761,8 +765,10 @@ class TestProjectFields:
         assert proj.next_review_date is not None
         assert proj.review_interval.steps == 1
         assert proj.review_interval.unit == "weeks"
-        assert proj.next_task == "next-t1"
-        assert proj.folder == "folder-001"
+        assert proj.next_task is not None
+        assert proj.next_task.id == "next-t1"
+        assert proj.folder is not None
+        assert proj.folder.id == "folder-001"
 
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(
@@ -902,7 +908,8 @@ class TestTagFields:
         assert tag.name == "Errands"
         assert tag.url == "omnifocus:///tag/tag-xyz"
         assert tag.children_are_mutually_exclusive is True
-        assert tag.parent == "tag-parent"
+        assert tag.parent is not None
+        assert tag.parent.id == "tag-parent"
         assert tag.added is not None
         assert tag.modified is not None
 
@@ -944,7 +951,8 @@ class TestFolderFields:
         assert folder.id == "fold-1"
         assert folder.name == "Work"
         assert folder.url == "omnifocus:///folder/fold-1"
-        assert folder.parent == "fold-parent"
+        assert folder.parent is not None
+        assert folder.parent.id == "fold-parent"
         assert folder.added is not None
         assert folder.modified is not None
 
@@ -1383,9 +1391,10 @@ class TestGetTask:
 
         assert task is not None
         assert task.parent is not None
-        assert task.parent.type == "project"
-        assert task.parent.id == "proj-001"
-        assert task.parent.name == "Test Project"
+        assert task.parent.project is not None
+        assert task.parent.project.id == "proj-001"
+        assert task.parent.project.name == "Test Project"
+        assert task.project.id == "proj-001"
 
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(
@@ -1414,20 +1423,23 @@ class TestGetTask:
 
         assert task is not None
         assert task.parent is not None
-        assert task.parent.type == "task"
-        assert task.parent.id == "parent-task-1"
-        assert task.parent.name == "Parent Task"
+        assert task.parent.task is not None
+        assert task.parent.task.id == "parent-task-1"
+        assert task.parent.task.name == "Parent Task"
+        assert task.project.id == "proj-001"
 
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(
         tasks=[_minimal_task({"persistentIdentifier": "inbox-task", "inInbox": 1})],
     )
-    async def test_inbox_task_parent_none(self, hybrid_repo: HybridRepository) -> None:
-        """Inbox task (no project, no parent) has parent=None."""
+    async def test_inbox_task_parent_inbox(self, hybrid_repo: HybridRepository) -> None:
+        """Inbox task (no project, no parent) gets $inbox refs."""
         task = await hybrid_repo.get_task("inbox-task")
 
         assert task is not None
-        assert task.parent is None
+        assert task.parent.project is not None
+        assert task.parent.project.id == "$inbox"
+        assert task.project.id == "$inbox"
 
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(
@@ -1495,8 +1507,10 @@ class TestGetProject:
         assert proj.url == "omnifocus:///project/proj-xyz"
         assert proj.review_interval.steps == 2
         assert proj.review_interval.unit == "weeks"
-        assert proj.next_task == "next-1"
-        assert proj.folder == "fold-1"
+        assert proj.next_task is not None
+        assert proj.next_task.id == "next-1"
+        assert proj.folder is not None
+        assert proj.folder.id == "fold-1"
 
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(projects=[_minimal_project()])
@@ -1529,7 +1543,8 @@ class TestGetTag:
         assert tag.name == "Errands"
         assert tag.url == "omnifocus:///tag/tag-xyz"
         assert tag.children_are_mutually_exclusive is True
-        assert tag.parent == "tag-parent"
+        assert tag.parent is not None
+        assert tag.parent.id == "tag-parent"
         assert tag.added is not None
         assert tag.modified is not None
 
@@ -1936,7 +1951,7 @@ class TestListTasks:
         result = await hybrid_repo.list_tasks(ListTasksRepoQuery(in_inbox=True))
         assert result.total == 1
         assert result.items[0].id == "t-inbox"
-        assert result.items[0].in_inbox is True
+        assert result.items[0].project.id == "$inbox"
 
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(

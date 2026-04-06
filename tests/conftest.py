@@ -190,8 +190,10 @@ def make_snapshot_dict(**overrides: Any) -> dict[str, Any]:
 def make_model_task_dict(**overrides: Any) -> dict[str, Any]:
     """Factory for model-format task dict (camelCase keys).
 
-    Returns a complete task dict with all 26 model fields.
-    Uses unified parent field: None (inbox) or {type, id, name} (ParentRef).
+    Returns a complete task dict with all model fields.
+    Uses tagged parent field: {"project": {id, name}} or {"task": {id, name}}.
+    Includes required project field: {id, name} (containing project at any depth).
+    Default is an inbox task (parent and project both point to $inbox).
     """
     defaults: dict[str, Any] = {
         # Identity (3)
@@ -222,10 +224,10 @@ def make_model_task_dict(**overrides: Any) -> dict[str, Any]:
         # Metadata (2)
         "estimatedMinutes": None,
         "hasChildren": False,
-        # Relationships (3)
-        "inInbox": True,
+        # Relationships
         "repetitionRule": None,
-        "parent": None,
+        "parent": {"project": {"id": "$inbox", "name": "Inbox"}},
+        "project": {"id": "$inbox", "name": "Inbox"},
         # Tags -- list of TagRef objects {id, name}
         "tags": [],
     }

@@ -659,8 +659,7 @@ class TestListTasksCrossPath:
         assert len(items) == 2
         assert [t.id for t in items] == ["task-2", "task-4"]
         for t in items:
-            assert t.parent is not None
-            assert t.parent.id == "proj-1"
+            assert t.project.id == "proj-1"
 
     @pytest.mark.asyncio
     async def test_list_tasks_by_tags(self, cross_repo: Repository) -> None:
@@ -677,7 +676,7 @@ class TestListTasksCrossPath:
         items = sorted(result.items, key=lambda x: x.id)
         assert len(items) == 1
         assert items[0].id == "task-1"
-        assert items[0].in_inbox is True
+        assert items[0].project.id == "$inbox"
 
     @pytest.mark.asyncio
     async def test_list_tasks_search(self, cross_repo: Repository) -> None:
@@ -721,7 +720,8 @@ class TestListProjectsCrossPath:
         assert len(items) == 2
         assert [p.id for p in items] == ["proj-1", "proj-3"]
         for p in items:
-            assert p.folder == "folder-1"
+            assert p.folder is not None
+            assert p.folder.id == "folder-1"
 
     @pytest.mark.asyncio
     async def test_list_projects_flagged(self, cross_repo: Repository) -> None:

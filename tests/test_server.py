@@ -212,7 +212,8 @@ class TestTOOL01ListAllStructuredOutput:
             "flagged": False,
             "effective_flagged": True,
             "has_children": False,
-            "in_inbox": False,
+            "parent": {"project": {"id": "proj-1", "name": "My Project"}},
+            "project": {"id": "proj-1", "name": "My Project"},
             "due_date": "2026-06-01T12:00:00+00:00",
         }
         bridge = InMemoryBridge(
@@ -842,11 +843,15 @@ class TestEditTasks:
         )
         assert edit_result.structured_content["result"][0]["success"] is True  # type: ignore[index]
 
-        # Verify parent changed
+        # Verify parent changed (tagged ParentRef: {"task": {id, name}} when parent is project ID
+        # because InMemoryBridge sets both parent and project to the same project ID)
         get_result = await client.call_tool("get_task", {"id": task_id})
         parent = get_result.structured_content["parent"]  # type: ignore[index]
         assert parent is not None
-        assert parent["id"] == "proj-001"
+        # Parent is tagged -- either task or project key
+        parent_ref = parent.get("task") or parent.get("project")
+        assert parent_ref is not None
+        assert parent_ref["id"] == "proj-001"
 
     # -- Move to inbox --
 
@@ -866,9 +871,11 @@ class TestEditTasks:
         )
         assert edit_result.structured_content["result"][0]["success"] is True  # type: ignore[index]
 
-        # Verify parent is null (inbox)
+        # Verify parent points to $inbox
         get_result = await client.call_tool("get_task", {"id": task_id})
-        assert get_result.structured_content["parent"] is None  # type: ignore[index]
+        parent = get_result.structured_content["parent"]  # type: ignore[index]
+        assert parent is not None
+        assert parent["project"]["id"] == "$inbox"
 
     # -- Task not found --
 
@@ -1711,9 +1718,8 @@ class TestListTasks:
         assert len(items) >= 1
         task = items[0]
         # camelCase keys expected
-        assert "inInbox" in task or "dueDate" in task or "hasChildren" in task
+        assert "dueDate" in task or "hasChildren" in task or "parent" in task
         # snake_case keys must NOT be present
-        assert "in_inbox" not in task
         assert "due_date" not in task
         assert "has_children" not in task
 

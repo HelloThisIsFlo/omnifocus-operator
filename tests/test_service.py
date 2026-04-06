@@ -757,9 +757,9 @@ class TestEditTask:
         # for top-level tasks in a project. The adapter's _adapt_parent_ref
         # sees parent is not None and produces type="task".
         # Golden master scenario_16 confirms this is real OmniFocus behavior.
-        assert task.parent.type == "task"
-        assert task.parent.id == "proj-001"
-        assert task.in_inbox is False
+        assert task.parent.task is not None
+        assert task.parent.task.id == "proj-001"
+        assert task.project.id == "proj-001"
 
     @pytest.mark.snapshot(
         tasks=[
@@ -782,8 +782,8 @@ class TestEditTask:
         task = await repo.get_task("task-001")
         assert task is not None
         assert task.parent is not None
-        assert task.parent.type == "task"
-        assert task.parent.id == "task-parent"
+        assert task.parent.task is not None
+        assert task.parent.task.id == "task-parent"
 
     @pytest.mark.snapshot(
         tasks=[
@@ -810,8 +810,9 @@ class TestEditTask:
         assert result.success is True
         task = await repo.get_task("task-001")
         assert task is not None
-        assert task.parent is None
-        assert task.in_inbox is True
+        assert task.parent.project is not None
+        assert task.parent.project.id == "$inbox"
+        assert task.project.id == "$inbox"
 
     @pytest.mark.snapshot(
         tasks=[
@@ -1272,7 +1273,10 @@ class TestEditTask:
         assert task is not None
         assert task.name == "Renamed"
         assert task.parent is not None
-        assert task.parent.id == "proj-001"
+        # InMemoryBridge sets both parent and project to proj-001
+        parent_ref = task.parent.task or task.parent.project
+        assert parent_ref is not None
+        assert parent_ref.id == "proj-001"
 
     @pytest.mark.snapshot(
         tasks=[
@@ -2456,8 +2460,9 @@ class TestAddTaskInboxPipeline:
         assert result.success is True
         task = await repo.get_task(result.id)
         assert task is not None
-        assert task.parent is None
-        assert task.in_inbox is True
+        assert task.parent.project is not None
+        assert task.parent.project.id == "$inbox"
+        assert task.project.id == "$inbox"
 
     async def test_parent_inbox_creates_inbox_task(
         self, service: OperatorService, repo: BridgeOnlyRepository
@@ -2467,8 +2472,9 @@ class TestAddTaskInboxPipeline:
         assert result.success is True
         task = await repo.get_task(result.id)
         assert task is not None
-        assert task.parent is None
-        assert task.in_inbox is True
+        assert task.parent.project is not None
+        assert task.parent.project.id == "$inbox"
+        assert task.project.id == "$inbox"
 
     async def test_parent_project_resolves(
         self, service: OperatorService, repo: BridgeOnlyRepository
@@ -2478,7 +2484,7 @@ class TestAddTaskInboxPipeline:
         assert result.success is True
         task = await repo.get_task(result.id)
         assert task is not None
-        assert task.in_inbox is False
+        assert task.project.id != "$inbox"
 
 
 class TestEditTaskInboxPipeline:
@@ -2508,8 +2514,9 @@ class TestEditTaskInboxPipeline:
         assert result.success is True
         task = await repo.get_task("task-001")
         assert task is not None
-        assert task.parent is None
-        assert task.in_inbox is True
+        assert task.parent.project is not None
+        assert task.parent.project.id == "$inbox"
+        assert task.project.id == "$inbox"
 
     @pytest.mark.snapshot(
         tasks=[
@@ -2535,8 +2542,9 @@ class TestEditTaskInboxPipeline:
         assert result.success is True
         task = await repo.get_task("task-001")
         assert task is not None
-        assert task.parent is None
-        assert task.in_inbox is True
+        assert task.parent.project is not None
+        assert task.parent.project.id == "$inbox"
+        assert task.project.id == "$inbox"
 
     @pytest.mark.snapshot(
         tasks=[

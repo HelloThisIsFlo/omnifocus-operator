@@ -368,38 +368,48 @@ class TestAdaptFolder:
 
 
 class TestAdaptTaskParentRef:
-    """Adapter transforms bridge project/parent strings into ParentRef dict."""
+    """Adapter transforms bridge project/parent strings into tagged ParentRef + ProjectRef."""
 
-    def test_inbox_task_parent_null(self) -> None:
-        """Task with no project and no parent has parent=None."""
+    def test_inbox_task_gets_inbox_refs(self) -> None:
+        """Task with no project and no parent gets $inbox parent and project."""
         raw = _old_task(project=None, parent=None)
         snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
         adapt_snapshot(snapshot)
-        assert raw["parent"] is None
+        assert raw["parent"] == {"project": {"id": "$inbox", "name": "Inbox"}}
+        assert raw["project"] == {"id": "$inbox", "name": "Inbox"}
 
     def test_task_in_project(self) -> None:
-        """Task with project ID gets parent={type:'project', id, name}."""
+        """Task with project ID gets parent={"project": {id, name}} and project={id, name}."""
         raw = _old_task(project="proj-001", parent=None)
         snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
         adapt_snapshot(snapshot)
-        assert raw["parent"] == {"type": "project", "id": "proj-001", "name": ""}
-        assert "project" not in raw
+        assert raw["parent"] == {"project": {"id": "proj-001", "name": ""}}
+        assert raw["project"] == {"id": "proj-001", "name": ""}
 
     def test_subtask_with_parent_task(self) -> None:
-        """Task with parent task ID gets parent={type:'task', id, name}."""
+        """Task with parent task ID gets parent={"task": {id, name}} and project={id, name}."""
         raw = _old_task(project="proj-001", parent="task-parent-001")
         snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
         adapt_snapshot(snapshot)
-        assert raw["parent"] == {"type": "task", "id": "task-parent-001", "name": ""}
-        assert "project" not in raw
+        assert raw["parent"] == {"task": {"id": "task-parent-001", "name": ""}}
+        assert raw["project"] == {"id": "proj-001", "name": ""}
 
     def test_parent_task_takes_precedence_over_project(self) -> None:
-        """When both parent and project are set, parent task wins."""
+        """When both parent and project are set, parent is task, project is the containing project."""
         raw = _old_task(project="proj-001", parent="parent-task")
         snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
         adapt_snapshot(snapshot)
-        assert raw["parent"]["type"] == "task"
-        assert raw["parent"]["id"] == "parent-task"
+        assert "task" in raw["parent"]
+        assert raw["parent"]["task"]["id"] == "parent-task"
+        assert raw["project"]["id"] == "proj-001"
+
+    def test_subtask_without_project_gets_inbox_project(self) -> None:
+        """Subtask with parent task but no project gets $inbox as project."""
+        raw = _old_task(project=None, parent="parent-task")
+        snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        assert raw["parent"] == {"task": {"id": "parent-task", "name": ""}}
+        assert raw["project"] == {"id": "$inbox", "name": "Inbox"}
 
 
 # ---------------------------------------------------------------------------

@@ -532,11 +532,11 @@ class DomainLogic:
                 msg = CIRCULAR_REFERENCE
                 raise ValueError(msg)
             t = task_map.get(current)
-            if t is None or t.parent is None:
+            if t is None:
                 break
-            if t.parent.type != "task":
+            if t.parent.task is None:
                 break
-            current = t.parent.id
+            current = t.parent.task.id
 
     # -- Move processing ---------------------------------------------------
 
@@ -702,7 +702,13 @@ class DomainLogic:
             position = payload.move_to.position
             if position in ("beginning", "ending"):
                 container_id = payload.move_to.container_id
-                current_parent_id = task.parent.id if task.parent else None
+                # Extract direct parent ID from tagged ParentRef
+                if task.parent.task is not None:
+                    current_parent_id = task.parent.task.id
+                elif task.parent.project is not None:
+                    current_parent_id = task.parent.project.id
+                else:
+                    current_parent_id = None
                 if container_id != current_parent_id:
                     return False
                 # Same container -- no-op, but warn

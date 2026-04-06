@@ -204,23 +204,41 @@ class TestTagRef:
 
 
 class TestParentRef:
-    """ParentRef model with type, id, and name."""
+    """ParentRef tagged wrapper with exactly one of project or task."""
 
-    def test_parent_ref_round_trip(self) -> None:
-        data = {"type": "project", "id": "proj-001", "name": "My Project"}
+    def test_parent_ref_project_round_trip(self) -> None:
+        data = {"project": {"id": "proj-001", "name": "My Project"}}
         ref = ParentRef.model_validate(data)
-        assert ref.type == "project"
-        assert ref.id == "proj-001"
-        assert ref.name == "My Project"
+        assert ref.project is not None
+        assert ref.project.id == "proj-001"
+        assert ref.project.name == "My Project"
+        assert ref.task is None
         dumped = ref.model_dump(by_alias=True)
-        assert dumped == {"type": "project", "id": "proj-001", "name": "My Project"}
+        assert dumped == {"project": {"id": "proj-001", "name": "My Project"}, "task": None}
 
     def test_parent_ref_task_type(self) -> None:
-        data = {"type": "task", "id": "task-parent-001", "name": "Parent Task"}
+        data = {"task": {"id": "task-parent-001", "name": "Parent Task"}}
         ref = ParentRef.model_validate(data)
-        assert ref.type == "task"
-        assert ref.id == "task-parent-001"
-        assert ref.name == "Parent Task"
+        assert ref.task is not None
+        assert ref.task.id == "task-parent-001"
+        assert ref.task.name == "Parent Task"
+        assert ref.project is None
+
+    def test_parent_ref_rejects_both(self) -> None:
+        import pytest as _pytest
+
+        data = {
+            "project": {"id": "p", "name": "P"},
+            "task": {"id": "t", "name": "T"},
+        }
+        with _pytest.raises(ValueError, match="Exactly one"):
+            ParentRef.model_validate(data)
+
+    def test_parent_ref_rejects_neither(self) -> None:
+        import pytest as _pytest
+
+        with _pytest.raises(ValueError, match="Exactly one"):
+            ParentRef.model_validate({})
 
 
 class TestProjectRef:
@@ -521,9 +539,11 @@ class TestTaskModel:
         assert task.has_children is False
 
         # Relationships
-        assert task.in_inbox is True
         assert task.repetition_rule is None
-        assert task.parent is None
+        assert task.parent is not None
+        assert task.parent.project is not None
+        assert task.parent.project.id == "$inbox"
+        assert task.project.id == "$inbox"
 
         # Tags are TagRef objects
         assert len(task.tags) == 2
@@ -532,14 +552,15 @@ class TestTaskModel:
         assert task.tags[0].id == "t1"
         assert task.tags[1].name == "morning"
 
-        # Verify total field count (26 after merging project+parent into single parent)
+        # Verify total field count (26: was 26 with in_inbox, now 26 with parent+project replacing in_inbox)
         assert len(Task.model_fields) == 26
 
         # Serialize back to camelCase and verify round-trip
         dumped = task.model_dump(mode="json", by_alias=True)
         assert "dueDate" in dumped
         assert "effectiveFlagged" in dumped
-        assert "inInbox" in dumped
+        assert "parent" in dumped
+        assert "project" in dumped
         assert "url" in dumped
         assert "urgency" in dumped
         assert "availability" in dumped
@@ -576,34 +597,38 @@ class TestTaskModel:
         assert task.tags[0].name == "errands"
         assert task.tags[0].id == "t1"
 
-    def test_task_parent_none_for_inbox(self) -> None:
-        """Inbox task has parent=None."""
+    def test_task_inbox_has_inbox_parent(self) -> None:
+        """Inbox task has parent pointing to $inbox."""
         data = make_model_task_dict()
         task = Task.model_validate(data)
-        assert task.parent is None
+        assert task.parent.project is not None
+        assert task.parent.project.id == "$inbox"
+        assert task.project.id == "$inbox"
 
     def test_task_parent_ref_project(self) -> None:
-        """Task in project has parent as ParentRef with type='project'."""
+        """Task in project has parent as ParentRef with project key."""
         data = make_model_task_dict(
-            parent={"type": "project", "id": "proj-001", "name": "My Project"}
+            parent={"project": {"id": "proj-001", "name": "My Project"}},
+            project={"id": "proj-001", "name": "My Project"},
         )
         task = Task.model_validate(data)
         assert task.parent is not None
         assert isinstance(task.parent, ParentRef)
-        assert task.parent.type == "project"
-        assert task.parent.id == "proj-001"
-        assert task.parent.name == "My Project"
+        assert task.parent.project is not None
+        assert task.parent.project.id == "proj-001"
+        assert task.parent.project.name == "My Project"
 
     def test_task_parent_ref_task(self) -> None:
-        """Subtask has parent as ParentRef with type='task'."""
+        """Subtask has parent as ParentRef with task key."""
         data = make_model_task_dict(
-            parent={"type": "task", "id": "task-parent", "name": "Parent Task"}
+            parent={"task": {"id": "task-parent", "name": "Parent Task"}},
+            project={"id": "proj-001", "name": "Some Project"},
         )
         task = Task.model_validate(data)
         assert task.parent is not None
         assert isinstance(task.parent, ParentRef)
-        assert task.parent.type == "task"
-        assert task.parent.id == "task-parent"
+        assert task.parent.task is not None
+        assert task.parent.task.id == "task-parent"
 
 
 # ---------------------------------------------------------------------------
@@ -854,7 +879,8 @@ class TestAllEntities:
                     availability="available",
                     dueDate="2024-06-15T09:00:00.000Z",
                     tags=[{"id": "tref1", "name": "errands"}],
-                    parent={"type": "project", "id": "proj-001", "name": "Project A"},
+                    parent={"project": {"id": "proj-001", "name": "Project A"}},
+                    project={"id": "proj-001", "name": "Project A"},
                 ),
                 make_model_task_dict(
                     id="t3",
@@ -870,7 +896,7 @@ class TestAllEntities:
                     name="Project B",
                     urgency="none",
                     availability="dropped",
-                    folder="folder-001",
+                    folder={"id": "folder-001", "name": "Work"},
                 ),
             ],
             "tags": [
@@ -902,8 +928,8 @@ class TestAllEntities:
         assert len(snapshot2.tasks[1].tags) == 1
         assert snapshot2.tasks[1].tags[0].name == "errands"
         assert snapshot2.tasks[1].parent is not None
-        assert snapshot2.tasks[1].parent.type == "project"
-        assert snapshot2.tasks[1].parent.id == "proj-001"
+        assert snapshot2.tasks[1].parent.project is not None
+        assert snapshot2.tasks[1].parent.project.id == "proj-001"
         assert snapshot2.projects[1].availability == Availability.DROPPED
         assert snapshot2.perspectives[1].id is None
         assert snapshot2.perspectives[1].builtin is True

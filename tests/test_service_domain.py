@@ -448,7 +448,8 @@ class TestCheckCycle:
         child = _make_task(
             id="t-child",
             name="Child",
-            parent={"type": "task", "id": "t-parent", "name": "Parent"},
+            parent={"task": {"id": "t-parent", "name": "Parent"}},
+            project={"id": "proj-1", "name": "Proj"},
         )
         domain = _domain(tasks=[parent, child])
         # Moving t-parent under t-child would be a cycle, but moving
@@ -460,7 +461,8 @@ class TestCheckCycle:
         child = _make_task(
             id="t-child",
             name="Child",
-            parent={"type": "task", "id": "t-parent", "name": "Parent"},
+            parent={"task": {"id": "t-parent", "name": "Parent"}},
+            project={"id": "proj-1", "name": "Proj"},
         )
         domain = _domain(tasks=[parent, child])
         with pytest.raises(ValueError, match="circular reference"):
