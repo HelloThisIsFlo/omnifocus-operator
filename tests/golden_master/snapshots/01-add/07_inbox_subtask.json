@@ -1,13 +1,13 @@
 {
-  "scenario": "02-edit/01_rename",
-  "description": "Rename a task",
-  "operation": "edit_task",
+  "scenario": "01-add/07_inbox_subtask",
+  "description": "Create a subtask under an inbox task (no project)",
+  "operation": "add_task",
   "params": {
-    "id": "$task:rename_target",
-    "name": "GM-RenameTarget-Renamed"
+    "name": "GM-InboxSubtask",
+    "parent": "$task:inbox_parent"
   },
   "response": {
-    "name": "GM-RenameTarget-Renamed"
+    "name": "GM-InboxSubtask"
   },
   "state_after": {
     "tasks": [
@@ -187,29 +187,6 @@
         "tags": []
       },
       {
-        "name": "GM-RenameTarget-Renamed",
-        "note": "",
-        "flagged": false,
-        "effectiveFlagged": false,
-        "dueDate": null,
-        "deferDate": null,
-        "effectiveDueDate": null,
-        "effectiveDeferDate": null,
-        "completionDate": null,
-        "effectiveCompletionDate": null,
-        "plannedDate": null,
-        "effectivePlannedDate": null,
-        "dropDate": null,
-        "effectiveDropDate": null,
-        "estimatedMinutes": null,
-        "hasChildren": false,
-        "inInbox": true,
-        "repetitionRule": null,
-        "project": null,
-        "parent": null,
-        "tags": []
-      },
-      {
         "name": "GM-TaggedTask",
         "note": "",
         "flagged": false,
@@ -335,10 +312,11 @@
     ]
   },
   "created_ids": [
-    "$task:rename_target"
+    "$task:inbox_parent",
+    "$task:inbox_subtask"
   ],
   "setup_operation": "add_task",
   "setup_params": {
-    "name": "GM-RenameTarget"
+    "name": "GM-InboxParent"
   }
 }
