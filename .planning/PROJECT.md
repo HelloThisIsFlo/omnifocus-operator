@@ -87,6 +87,11 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 - ✓ Cross-path equivalence: 32 parametrized tests proving SQL and bridge paths identical — v1.3
 - ✓ Type constraint boundary: Literal/Annotated reserved for contracts, plain types on core models, AST enforcement — v1.3
 - ✓ Fixed effectiveCompletionDate ghost tasks in availability mappers and SQL clauses — v1.3
+- ✓ System location namespace (`$` prefix) with reserved-prefix constants and three-step resolver — v1.3.1 (Phase 39-40)
+- ✓ `resolve_container` handles `$inbox` → None, unknown `$` names → error, names → fuzzy match — v1.3.1 (Phase 40)
+- ✓ PatchOrNone eliminated; MoveAction fields use `Patch[str]` with null-rejection validators and per-field descriptions — v1.3.1 (Phase 41)
+- ✓ `AddTaskCommand.parent` converted to `Patch[str]` with UNSET (inbox) and null-rejection validator — v1.3.1 (Phase 41)
+- ✓ `$inbox` supported in add_tasks (parent) and edit_tasks (moveTo beginning/ending) — v1.3.1 (Phase 41)
 
 ### Active
 
@@ -211,4 +216,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-05 after Phase 40 (Resolver -- System Location Detection & Name Resolution) complete*
+*Last updated: 2026-04-06 after Phase 41 (Write Pipeline — Inbox in Add/Edit) complete*
