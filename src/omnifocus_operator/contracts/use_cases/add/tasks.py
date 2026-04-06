@@ -17,10 +17,8 @@ from omnifocus_operator.agent_messages.descriptions import (
     PLANNED_DATE_WRITE,
     TAGS_ADD_COMMAND,
 )
-from omnifocus_operator.agent_messages.errors import (
-    ADD_PARENT_NULL,  # noqa: F401  -- wired in Phase 41 Plan 02
-)
-from omnifocus_operator.contracts.base import CommandModel
+from omnifocus_operator.agent_messages.errors import ADD_PARENT_NULL
+from omnifocus_operator.contracts.base import UNSET, CommandModel, Patch
 from omnifocus_operator.contracts.shared.repetition_rule import (
     RepetitionRuleAddSpec,
     RepetitionRuleRepoPayload,
@@ -37,10 +35,18 @@ class AddTaskCommand(CommandModel):
         """Strip whitespace before min_length check."""
         return v.strip() if isinstance(v, str) else v
 
-    parent: str | None = Field(
-        default=None,
+    parent: Patch[str] = Field(
+        default=UNSET,
         description=PARENT,
     )
+
+    @field_validator("parent", mode="before")
+    @classmethod
+    def _reject_null_parent(cls, v: object) -> object:
+        if v is None:
+            msg = ADD_PARENT_NULL
+            raise ValueError(msg)
+        return v
     tags: list[str] | None = Field(
         default=None,
         description=TAGS_ADD_COMMAND,

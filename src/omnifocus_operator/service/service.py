@@ -439,14 +439,14 @@ class _AddTaskPipeline(_Pipeline):
         logger.debug(
             "OperatorService.add_task: name=%s, parent=%s, tags=%s",
             self._command.name,
-            self._command.parent,
+            self._command.parent if is_set(self._command.parent) else "UNSET",
             self._command.tags,
         )
         validate_task_name(self._command.name)
 
     async def _resolve_parent(self) -> None:
         self._resolved_parent: str | None = None
-        if self._command.parent is None:
+        if not is_set(self._command.parent):
             return
         self._resolved_parent = await self._resolver.resolve_container(self._command.parent)
 

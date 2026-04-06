@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import AwareDatetime, ValidationError
 
-from omnifocus_operator.contracts.base import _Unset
+from omnifocus_operator.contracts.base import _Unset, is_set
 from omnifocus_operator.contracts.shared.actions import MoveAction, TagAction
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskCommand, AddTaskResult
 from omnifocus_operator.contracts.use_cases.edit.tasks import (
@@ -926,7 +926,7 @@ class TestAddTaskModels:
         """AddTaskCommand with only name (required) creates valid instance."""
         command = AddTaskCommand(name="Buy groceries")
         assert command.name == "Buy groceries"
-        assert command.parent is None
+        assert not is_set(command.parent)
         assert command.tags is None
         assert command.due_date is None
         assert command.defer_date is None
