@@ -18,6 +18,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from omnifocus_operator.bridge.real import DEFAULT_IPC_DIR, RealBridge
 from tests.golden_master.normalize import (
     UNCOMPUTED_PROJECT_FIELDS,
@@ -63,7 +65,7 @@ def _build_scenarios() -> list[dict[str, Any]]:
     """Build ~52 scenario definitions across 7 categories using captured IDs."""
     return [
         # =================================================================
-        # 01-add/ (6 scenarios)
+        # 01-add/ (7 scenarios)
         # =================================================================
         {
             "folder": "01-add",
@@ -144,6 +146,23 @@ def _build_scenarios() -> list[dict[str, Any]]:
                 "note": "Max payload test",
             },
             "capture_id_as": "max_payload_task",
+        },
+        {
+            "folder": "01-add",
+            "file": "07_inbox_subtask",
+            "scenario": "01-add/07_inbox_subtask",
+            "description": "Create a subtask under an inbox task (no project)",
+            "operation": "add_task",
+            "params": {"name": "GM-InboxParent"},
+            "capture_id_as": "inbox_parent",
+            "followup": {
+                "operation": "add_task",
+                "params_fn": lambda: {
+                    "name": "GM-InboxSubtask",
+                    "parent": TASK_IDS["inbox_parent"],
+                },
+                "capture_id_as": "inbox_subtask",
+            },
         },
         # =================================================================
         # 02-edit/ (10 scenarios)
