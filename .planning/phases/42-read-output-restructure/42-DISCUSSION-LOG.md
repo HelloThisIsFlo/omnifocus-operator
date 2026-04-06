@@ -114,4 +114,25 @@ User flagged important distinction: bridge `inInbox` only marks root inbox tasks
 
 ## Deferred Ideas
 
-- Field-level descriptions (D-19) — placeholder in CONTEXT.md, to be finalized in follow-up discussion before planning
+- *(D-19 placeholder resolved — see update session below)*
+
+---
+
+## Update Session: Field-Level Descriptions (2026-04-06)
+
+Finalized D-19 placeholder into D-19 through D-26. All fields changing from scalar (ID string) to rich `{id, name}` reference objects.
+
+| Constant | New Description | Notes |
+|----------|----------------|-------|
+| NEXT_TASK | "First available (unblocked) task in this project." | Drops "ID of", drops "if any" (nullability from schema) |
+| FOLDER_PARENT_DESC | "Parent folder in the folder hierarchy." | Drops "ID", drops "or null" |
+| PROJECT_FOLDER_DESC (new) | "Folder containing this project." | Previously bare field |
+| TAG_PARENT_DESC (new) | "Parent tag in the tag hierarchy." | Previously bare field |
+| TASK_PROJECT_DESC (new) | "Project for this task, even for subtasks." | New field. User refined from "The task's project" to noun-phrase form for consistency |
+| PARENT_REF_DOC | "Direct parent of this task. Exactly one key present: 'project' or 'task'." | Dropped {id, name} detail (visible from schema) and $inbox mention (self-documenting in data) |
+| PARENT_REF_PROJECT_FIELD (new) | "Parent project." | $inbox dropped — self-explanatory when agents see the data |
+| PARENT_REF_TASK_FIELD (new) | "Parent task, when this is a subtask." | — |
+
+**Key user decisions:**
+- No $inbox mentions in output-side descriptions — only relevant on filter descriptions (Phase 43)
+- All descriptions verbatim — executor must use exact wording

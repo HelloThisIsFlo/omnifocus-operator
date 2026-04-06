@@ -172,8 +172,15 @@ LIST_FOLDERS_TOOL_DOC = (
 )
 ```
 
-### Field-Level Descriptions
-- **D-19:** PLACEHOLDER — field-level description constants (`NEXT_TASK`, `FOLDER_PARENT_DESC`, new `TASK_PROJECT_DESC`, updated `PARENT_REF_DOC` inner field descriptions) to be finalized in a follow-up discussion before planning. Must follow "no 'or null'" rule from milestone spec.
+### Field-Level Descriptions (follows "no 'or null'" rule — nullability from JSON Schema)
+- **D-19:** `NEXT_TASK` → `"First available (unblocked) task in this project."`
+- **D-20:** `FOLDER_PARENT_DESC` → `"Parent folder in the folder hierarchy."`
+- **D-21:** `PROJECT_FOLDER_DESC` (new) → `"Folder containing this project."`
+- **D-22:** `TAG_PARENT_DESC` (new) → `"Parent tag in the tag hierarchy."`
+- **D-23:** `TASK_PROJECT_DESC` (new) → `"Project for this task, even for subtasks."`
+- **D-24:** `PARENT_REF_DOC` (class docstring) → `"Direct parent of this task. Exactly one key present: 'project' or 'task'."`
+- **D-25:** `PARENT_REF_PROJECT_FIELD` (new, inner field) → `"Parent project."`
+- **D-26:** `PARENT_REF_TASK_FIELD` (new, inner field) → `"Parent task, when this is a subtask."`
 
 ### Claude's Discretion
 - Mapper helper split (D-16)
@@ -262,7 +269,7 @@ LIST_FOLDERS_TOOL_DOC = (
 ## Specific Ideas
 
 - All 7 tool description constants are verbatim in D-18 section — executor MUST use exact wording
-- Field-level descriptions are a placeholder (D-19) — will be finalized before planning
+- Field-level descriptions (D-19 through D-26) are verbatim — executor MUST use exact wording
 - `SYSTEM_LOCATIONS["inbox"].id` and `.name` for all inbox references — never hardcode `"$inbox"` or `"Inbox"`
 - Golden master re-capture required after this phase (mapper rewrites). Human-only per GOLD-01. Already noted in STATE.md
 
@@ -271,7 +278,6 @@ LIST_FOLDERS_TOOL_DOC = (
 <deferred>
 ## Deferred Ideas
 
-- Field-level descriptions (D-19) — follow-up discussion needed before planning
 - `in_inbox` SQL filter alignment with `project.id == "$inbox"` — Phase 43 scope (FILT-01)
 - Additional system locations (`$forecast`, `$flagged`) — SLOC-F01, future milestone
 
