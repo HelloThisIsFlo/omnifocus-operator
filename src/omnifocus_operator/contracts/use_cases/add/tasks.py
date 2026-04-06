@@ -47,6 +47,7 @@ class AddTaskCommand(CommandModel):
             msg = ADD_PARENT_NULL
             raise ValueError(msg)
         return v
+
     tags: list[str] | None = Field(
         default=None,
         description=TAGS_ADD_COMMAND,
