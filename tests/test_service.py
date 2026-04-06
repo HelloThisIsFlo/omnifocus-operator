@@ -2418,3 +2418,118 @@ class TestNameResolutionIntegration:
             )
         )
         assert result.success is True
+
+
+# ---------------------------------------------------------------------------
+# $inbox Pipeline Integration (WRIT-01 through WRIT-05, WRIT-08)
+# ---------------------------------------------------------------------------
+
+
+class TestAddTaskInboxPipeline:
+    """add_task pipeline correctly handles UNSET parent (inbox) vs $inbox vs string."""
+
+    async def test_parent_omitted_creates_inbox_task(
+        self, service: OperatorService, repo: BridgeOnlyRepository
+    ) -> None:
+        """Parent UNSET (omitted) -> task created in inbox (WRIT-02)."""
+        result = await service.add_task(AddTaskCommand(name="Inbox via omit"))
+        assert result.success is True
+        task = await repo.get_task(result.id)
+        assert task is not None
+        assert task.parent is None
+        assert task.in_inbox is True
+
+    async def test_parent_inbox_creates_inbox_task(
+        self, service: OperatorService, repo: BridgeOnlyRepository
+    ) -> None:
+        """Parent '$inbox' -> resolve_container returns None -> inbox (WRIT-01)."""
+        result = await service.add_task(AddTaskCommand(name="Inbox via $inbox", parent="$inbox"))
+        assert result.success is True
+        task = await repo.get_task(result.id)
+        assert task is not None
+        assert task.parent is None
+        assert task.in_inbox is True
+
+    async def test_parent_project_resolves(
+        self, service: OperatorService, repo: BridgeOnlyRepository
+    ) -> None:
+        """Parent set to project ID -> resolves to that project."""
+        result = await service.add_task(AddTaskCommand(name="Under project", parent="proj-001"))
+        assert result.success is True
+        task = await repo.get_task(result.id)
+        assert task is not None
+        assert task.in_inbox is False
+
+
+class TestEditTaskInboxPipeline:
+    """edit_tasks pipeline handles $inbox for beginning/ending (WRIT-04, WRIT-05)."""
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="task-001",
+                name="Task In Project",
+                parent="proj-001",
+                project="proj-001",
+                inInbox=False,
+            )
+        ],
+    )
+    async def test_ending_inbox_moves_to_inbox(
+        self, service: OperatorService, repo: BridgeOnlyRepository
+    ) -> None:
+        """ending='$inbox' moves task to inbox (WRIT-04)."""
+        result = await service.edit_task(
+            EditTaskCommand(
+                id="task-001",
+                actions=EditTaskActions(move=MoveAction(ending="$inbox")),
+            )
+        )
+        assert result.success is True
+        task = await repo.get_task("task-001")
+        assert task is not None
+        assert task.parent is None
+        assert task.in_inbox is True
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="task-001",
+                name="Task In Project",
+                parent="proj-001",
+                project="proj-001",
+                inInbox=False,
+            )
+        ],
+    )
+    async def test_beginning_inbox_moves_to_inbox(
+        self, service: OperatorService, repo: BridgeOnlyRepository
+    ) -> None:
+        """beginning='$inbox' moves task to inbox (WRIT-05)."""
+        result = await service.edit_task(
+            EditTaskCommand(
+                id="task-001",
+                actions=EditTaskActions(move=MoveAction(beginning="$inbox")),
+            )
+        )
+        assert result.success is True
+        task = await repo.get_task("task-001")
+        assert task is not None
+        assert task.parent is None
+        assert task.in_inbox is True
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="task-001", name="Task To Move"),
+        ],
+        projects=[make_project_dict(id="proj-1", name="My Project")],
+    )
+    async def test_before_inbox_rejected(self, service: OperatorService) -> None:
+        """before='$inbox' -> cross-type error (WRIT-08). $inbox resolves as project, not task."""
+        with pytest.raises(ValueError, match="is a project"):
+            await service.edit_task(
+                EditTaskCommand(
+                    id="task-001",
+                    actions=EditTaskActions(move=MoveAction(before="$inbox")),
+                )
+            )

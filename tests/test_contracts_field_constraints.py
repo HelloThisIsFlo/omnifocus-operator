@@ -12,6 +12,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
+from omnifocus_operator.contracts.base import UNSET
 from omnifocus_operator.contracts.shared.actions import MoveAction, TagAction
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskCommand
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskCommand
@@ -110,6 +111,31 @@ class TestMoveActionNullRejection:
     def test_ending_string_accepted(self) -> None:
         action = MoveAction(ending="someProject")
         assert action.ending == "someProject"
+
+
+class TestAddTaskCommandParentNullRejection:
+    """AddTaskCommand.parent uses Patch[str] with null rejection."""
+
+    def test_parent_null_rejected(self) -> None:
+        """AddTaskCommand(name='test', parent=None) raises ValidationError."""
+        with pytest.raises(ValidationError) as exc_info:
+            AddTaskCommand(name="test", parent=None)
+        assert "parent cannot be null" in str(exc_info.value)
+
+    def test_parent_omitted_is_unset(self) -> None:
+        """AddTaskCommand(name='test') succeeds — parent is UNSET."""
+        cmd = AddTaskCommand(name="test")
+        assert cmd.parent is UNSET
+
+    def test_parent_inbox_accepted(self) -> None:
+        """AddTaskCommand(name='test', parent='$inbox') succeeds."""
+        cmd = AddTaskCommand(name="test", parent="$inbox")
+        assert cmd.parent == "$inbox"
+
+    def test_parent_string_accepted(self) -> None:
+        """AddTaskCommand(name='test', parent='someProject') succeeds."""
+        cmd = AddTaskCommand(name="test", parent="someProject")
+        assert cmd.parent == "someProject"
 
 
 class TestTagActionReplaceStillAcceptsNone:
