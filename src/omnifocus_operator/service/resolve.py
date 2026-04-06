@@ -6,7 +6,6 @@ import logging
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from omnifocus_operator.agent_messages.errors import (
-    AMBIGUOUS_NAME_MATCH,
     INVALID_SYSTEM_LOCATION,
     NAME_NOT_FOUND,
     PROJECT_NOT_FOUND,
@@ -16,7 +15,7 @@ from omnifocus_operator.agent_messages.errors import (
 )
 from omnifocus_operator.config import SYSTEM_LOCATION_INBOX, SYSTEM_LOCATION_PREFIX
 from omnifocus_operator.models.enums import EntityType, TagAvailability
-from omnifocus_operator.service.errors import EntityTypeMismatchError
+from omnifocus_operator.service.errors import AmbiguousNameError, EntityTypeMismatchError
 from omnifocus_operator.service.fuzzy import format_suggestions, suggest_close_matches
 
 if TYPE_CHECKING:
@@ -146,14 +145,11 @@ class Resolver:
         if len(matches) == 1:
             return matches[0].id
         if len(matches) > 1:
-            match_pairs = ", ".join(f"{m.id} ({m.name})" for m in matches)
-            entity_type = entity_type_label
-            msg = AMBIGUOUS_NAME_MATCH.format(
-                entity_type=entity_type,
-                name=value,
-                matches=match_pairs,
+            raise AmbiguousNameError(
+                value,
+                accepted_types=list(accept),
+                matches=[(m.id, m.name) for m in matches],
             )
-            raise ValueError(msg)
 
         # Step 4: ID fallback
         id_match = next((e for e in entities if e.id == value), None)
