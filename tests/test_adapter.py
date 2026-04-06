@@ -381,34 +381,46 @@ class TestAdaptTaskParentRef:
     def test_task_in_project(self) -> None:
         """Task with project ID gets parent={"project": {id, name}} and project={id, name}."""
         raw = _old_task(project="proj-001", parent=None)
-        snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
+        proj = _old_project(id="proj-001", name="My Project")
+        snapshot = {"tasks": [raw], "projects": [proj], "tags": [], "folders": []}
         adapt_snapshot(snapshot)
-        assert raw["parent"] == {"project": {"id": "proj-001", "name": ""}}
-        assert raw["project"] == {"id": "proj-001", "name": ""}
+        assert raw["parent"] == {"project": {"id": "proj-001", "name": "My Project"}}
+        assert raw["project"] == {"id": "proj-001", "name": "My Project"}
 
     def test_subtask_with_parent_task(self) -> None:
         """Task with parent task ID gets parent={"task": {id, name}} and project={id, name}."""
+        parent_task = _old_task(
+            id="task-parent-001", name="Parent Task", project="proj-001", parent=None
+        )
         raw = _old_task(project="proj-001", parent="task-parent-001")
-        snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
+        proj = _old_project(id="proj-001", name="My Project")
+        snapshot = {"tasks": [parent_task, raw], "projects": [proj], "tags": [], "folders": []}
         adapt_snapshot(snapshot)
-        assert raw["parent"] == {"task": {"id": "task-parent-001", "name": ""}}
-        assert raw["project"] == {"id": "proj-001", "name": ""}
+        assert raw["parent"] == {"task": {"id": "task-parent-001", "name": "Parent Task"}}
+        assert raw["project"] == {"id": "proj-001", "name": "My Project"}
 
     def test_parent_task_takes_precedence_over_project(self) -> None:
         """When both parent and project are set, parent is task, project is containing project."""
+        parent_task = _old_task(
+            id="parent-task", name="Parent Task", project="proj-001", parent=None
+        )
         raw = _old_task(project="proj-001", parent="parent-task")
-        snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
+        proj = _old_project(id="proj-001", name="My Project")
+        snapshot = {"tasks": [parent_task, raw], "projects": [proj], "tags": [], "folders": []}
         adapt_snapshot(snapshot)
         assert "task" in raw["parent"]
         assert raw["parent"]["task"]["id"] == "parent-task"
+        assert raw["parent"]["task"]["name"] == "Parent Task"
         assert raw["project"]["id"] == "proj-001"
+        assert raw["project"]["name"] == "My Project"
 
     def test_subtask_without_project_gets_inbox_project(self) -> None:
         """Subtask with parent task but no project gets $inbox as project."""
+        parent_task = _old_task(id="parent-task", name="Parent Task", project=None, parent=None)
         raw = _old_task(project=None, parent="parent-task")
-        snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
+        snapshot = {"tasks": [parent_task, raw], "projects": [], "tags": [], "folders": []}
         adapt_snapshot(snapshot)
-        assert raw["parent"] == {"task": {"id": "parent-task", "name": ""}}
+        assert raw["parent"] == {"task": {"id": "parent-task", "name": "Parent Task"}}
         assert raw["project"] == {"id": "$inbox", "name": "Inbox"}
 
     def test_root_task_parent_equals_project_id(self) -> None:

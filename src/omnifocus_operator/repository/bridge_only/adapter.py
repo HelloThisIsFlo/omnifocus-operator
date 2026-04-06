@@ -291,6 +291,31 @@ def _adapt_folder(raw: dict[str, Any]) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _enrich_task(
+    raw: dict[str, Any], task_names: dict[str, str], project_names: dict[str, str]
+) -> None:
+    """Enrich task parent and project refs with names from cross-entity lookups.
+
+    After _adapt_parent_ref, parent/project are structured dicts with possibly
+    empty names (bridge doesn't send parentName/projectName). This fills them
+    in from the snapshot-wide name lookups.
+    """
+    if not isinstance(raw, dict):
+        return
+    parent = raw.get("parent")
+    if isinstance(parent, dict):
+        task_branch = parent.get("task")
+        if isinstance(task_branch, dict) and not task_branch.get("name"):
+            task_branch["name"] = task_names.get(task_branch.get("id", ""), "")
+        proj_branch = parent.get("project")
+        if isinstance(proj_branch, dict) and not proj_branch.get("name"):
+            proj_branch["name"] = project_names.get(proj_branch.get("id", ""), "")
+
+    project = raw.get("project")
+    if isinstance(project, dict) and not project.get("name"):
+        project["name"] = project_names.get(project.get("id", ""), "")
+
+
 def _enrich_project(
     raw: dict[str, Any], folder_names: dict[str, str], task_names: dict[str, str]
 ) -> None:
@@ -344,6 +369,9 @@ def adapt_snapshot(raw: dict[str, Any]) -> dict[str, Any]:
     folder_names: dict[str, str] = {f["id"]: f["name"] for f in raw.get("folders", []) if "id" in f}
     tag_names: dict[str, str] = {t["id"]: t["name"] for t in raw.get("tags", []) if "id" in t}
     task_names: dict[str, str] = {t["id"]: t["name"] for t in raw.get("tasks", []) if "id" in t}
+    project_names: dict[str, str] = {
+        p["id"]: p["name"] for p in raw.get("projects", []) if "id" in p
+    }
 
     # Per-entity adaptation (status mapping, dead field removal, parent ref)
     for task in raw.get("tasks", []):
@@ -356,6 +384,8 @@ def adapt_snapshot(raw: dict[str, Any]) -> dict[str, Any]:
         _adapt_folder(folder)
 
     # Cross-entity enrichment: convert bare IDs to {id, name} refs
+    for task in raw.get("tasks", []):
+        _enrich_task(task, task_names, project_names)
     for project in raw.get("projects", []):
         _enrich_project(project, folder_names, task_names)
     for tag in raw.get("tags", []):
