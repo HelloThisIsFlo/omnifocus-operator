@@ -53,7 +53,7 @@ Requirements for v1.3.1 First-Class References. Each maps to roadmap phases.
 - [ ] **FILT-02**: `list_tasks(project="inbox")` does NOT match system inbox — only name substring
 - [ ] **FILT-03**: `project: "$inbox"` + `inInbox: false` → error (contradictory)
 - [ ] **FILT-04**: `project: "$inbox"` + `inInbox: true` → accepted silently (redundant)
-- [ ] **FILT-05**: `inInbox: true` + real project filter → warning about empty intersection
+- [ ] **FILT-05**: ~~`inInbox: true` + real project filter → warning about empty intersection~~ → `inInbox: true` + real project filter → error (contradictory, symmetric with FILT-03)
 
 ### Name Resolution
 
@@ -63,7 +63,7 @@ Requirements for v1.3.1 First-Class References. Each maps to roadmap phases.
 - [ ] **NRES-04**: Multiple name matches → error listing all matches with IDs
 - [ ] **NRES-05**: Zero name matches → helpful error
 - [ ] **NRES-06**: `$`-prefixed strings never enter name resolution
-- [ ] **NRES-07**: List filter fields accept entity names (extends v1.3 pattern)
+- [x] **NRES-07**: List filter fields accept entity names (extends v1.3 pattern) — already satisfied by v1.3 `resolve_filter`
 - [ ] **NRES-08**: Tag name resolution uses case-insensitive substring matching (unified with other write fields)
 
 ### Project Tools
@@ -145,7 +145,7 @@ Deferred to later milestones. Tracked but not in current roadmap.
 | NRES-04 | Phase 40 | Pending |
 | NRES-05 | Phase 40 | Pending |
 | NRES-06 | Phase 40 | Pending |
-| NRES-07 | Phase 43 | Pending |
+| NRES-07 | v1.3 | Done (inherited) |
 | NRES-08 | Phase 40 | Pending |
 | PROJ-01 | Phase 43 | Pending |
 | PROJ-02 | Phase 43 | Pending |

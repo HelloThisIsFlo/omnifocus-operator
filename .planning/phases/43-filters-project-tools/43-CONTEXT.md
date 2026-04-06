@@ -73,12 +73,12 @@ self._in_inbox, self._project_to_resolve = self._resolver.resolve_inbox(
 
 ```python
 CONTRADICTORY_INBOX_FALSE = (
-    "Contradictory filters: project '$inbox' selects inbox tasks, "
-    "but inInbox: false excludes them. Use one or the other."
+    "Contradictory filters: 'project=\"$inbox\"' selects inbox tasks, "
+    "but 'inInbox=false' excludes them. Use one or the other."
 )
 CONTRADICTORY_INBOX_PROJECT = (
-    "Contradictory filters: inInbox: true selects tasks with no project. "
-    "Combining with a project filter always yields nothing. Use one or the other."
+    "Contradictory filters: 'inInbox=true' selects tasks with no project. "
+    "Combining with a 'project' filter always yields nothing. Use one or the other."
 )
 ```
 
@@ -105,8 +105,9 @@ async def lookup_project(self, project_id: str) -> Project:
 
 ```python
 GET_PROJECT_INBOX_ERROR = (
-    "$inbox is a system location, not a project. "
-    "Use list_tasks with inInbox: true to query inbox tasks."
+    "The inbox appears as a project on tasks but is not a real OmniFocus project "
+    "— it has no review schedule, status, or other project properties. "
+    "To query inbox tasks, use list_tasks with 'inInbox=true'."
 )
 ```
 
