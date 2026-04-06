@@ -128,10 +128,6 @@ AMBIGUOUS_NAME_MATCH = (
 
 NAME_NOT_FOUND = "No {entity_type} found matching '{name}'.{suggestions}"
 
-INVALID_SYSTEM_LOCATION = (
-    "Unknown system location '{value}'. Valid system locations: {valid_locations}."
-)
-
 RESERVED_PREFIX = (
     "'{value}' starts with '{prefix}' which is reserved for system locations. "
     "Valid system locations: {valid_locations}. "

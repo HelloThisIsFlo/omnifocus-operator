@@ -6,14 +6,13 @@ import logging
 from typing import TYPE_CHECKING, Never, Protocol, runtime_checkable
 
 from omnifocus_operator.agent_messages.errors import (
-    INVALID_SYSTEM_LOCATION,
     NAME_NOT_FOUND,
     PROJECT_NOT_FOUND,
     RESERVED_PREFIX,
     TAG_NOT_FOUND,
     TASK_NOT_FOUND,
 )
-from omnifocus_operator.config import SYSTEM_LOCATION_INBOX, SYSTEM_LOCATION_PREFIX
+from omnifocus_operator.config import SYSTEM_LOCATION_PREFIX, SYSTEM_LOCATIONS
 from omnifocus_operator.models.enums import EntityType, TagAvailability
 from omnifocus_operator.service.errors import AmbiguousNameError, EntityTypeMismatchError
 from omnifocus_operator.service.fuzzy import format_suggestions, suggest_close_matches
@@ -44,31 +43,12 @@ logger = logging.getLogger(__name__)
 
 __all__ = ["Resolver"]
 
-# -- System location routing ---------------------------------------------------
-
-_SYSTEM_LOCATIONS: dict[str, str] = {
-    SYSTEM_LOCATION_INBOX: SYSTEM_LOCATION_INBOX,  # "$inbox" -> "$inbox"
-}
-
 
 class Resolver:
     """Resolves user-facing identifiers against the repository."""
 
     def __init__(self, repo: Repository) -> None:
         self._repo = repo
-
-    # -- Private: system location resolution -----------------------------------
-
-    def _resolve_system_location(self, value: str) -> str:
-        """Resolve a $-prefixed value to a system location ID.
-
-        Raises ValueError if the system location is not recognized.
-        """
-        if value in _SYSTEM_LOCATIONS:
-            return _SYSTEM_LOCATIONS[value]
-        valid = ", ".join(_SYSTEM_LOCATIONS.keys())
-        msg = INVALID_SYSTEM_LOCATION.format(value=value, valid_locations=valid)
-        raise ValueError(msg)
 
     # -- Private: entity fetching ----------------------------------------------
 
@@ -91,7 +71,7 @@ class Resolver:
         assert accept, "accept must not be empty, please provide at least one entity type"
 
         if value.startswith(SYSTEM_LOCATION_PREFIX):
-            return self._resolve_system_location_or_raise(value, accept)
+            return self._resolve_system_location(value, accept)
 
         by_type = await self._fetch_all_by_type()
 
@@ -127,27 +107,33 @@ class Resolver:
         accepted_entities = [e for t in accept for e in by_type.get(t, [])]
         self._raise_not_found(value, accepted_entities, accept)
 
-    # -- Private: error helpers ------------------------------------------------
+    # -- Private: system location resolution -----------------------------------
 
-    def _resolve_system_location_or_raise(self, value: str, accept: list[EntityType]) -> str:
-        """Resolve a $-prefixed value, or raise the appropriate error."""
-        if EntityType.PROJECT in accept:
-            return self._resolve_system_location(value)
+    @staticmethod
+    def _resolve_system_location(value: str, accept: list[EntityType]) -> str:
+        """Resolve a $-prefixed value to a system location ID.
 
-        if value in _SYSTEM_LOCATIONS:
-            raise EntityTypeMismatchError(
-                value,
-                resolved_type=EntityType.PROJECT,
-                accepted_types=list(accept),
+        Raises ValueError for unknown locations, EntityTypeMismatchError
+        if the location exists but its type is not in accept.
+        """
+        location = next((loc for loc in SYSTEM_LOCATIONS.values() if loc.id == value), None)
+        if location is None:
+            valid = ", ".join(loc.id for loc in SYSTEM_LOCATIONS.values())
+            msg = RESERVED_PREFIX.format(
+                value=value,
+                prefix=SYSTEM_LOCATION_PREFIX,
+                valid_locations=valid,
             )
-
-        valid = ", ".join(_SYSTEM_LOCATIONS.keys())
-        msg = RESERVED_PREFIX.format(
-            value=value,
-            prefix=SYSTEM_LOCATION_PREFIX,
-            valid_locations=valid,
+            raise ValueError(msg)
+        if location.type in accept:
+            return location.id
+        raise EntityTypeMismatchError(
+            value,
+            resolved_type=location.type,
+            accepted_types=list(accept),
         )
-        raise ValueError(msg)
+
+    # -- Private: error helpers ------------------------------------------------
 
     @staticmethod
     def _raise_not_found(
@@ -177,7 +163,7 @@ class Resolver:
         Returns None for $inbox (inbox = no parent in bridge payload).
         """
         result = await self._resolve(value, accept=[EntityType.PROJECT, EntityType.TASK])
-        return None if result == SYSTEM_LOCATION_INBOX else result
+        return None if result == SYSTEM_LOCATIONS["inbox"].id else result
 
     async def resolve_anchor(self, value: str) -> str:
         """Resolve an anchor reference (task only) by name or ID."""

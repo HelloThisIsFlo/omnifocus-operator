@@ -262,7 +262,7 @@ class TestResolveCascade:
 
     async def test_system_location_unknown(self, resolver: Resolver) -> None:
         """$trash raises with valid system locations listed."""
-        with pytest.raises(ValueError, match="Unknown system location") as exc_info:
+        with pytest.raises(ValueError, match="reserved for system locations") as exc_info:
             await resolver.resolve_container("$trash")
         assert "$inbox" in str(exc_info.value)
 
