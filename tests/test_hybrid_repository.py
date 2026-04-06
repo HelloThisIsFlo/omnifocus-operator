@@ -732,6 +732,31 @@ class TestTaskRelationships:
         assert subtask.parent.task.name == "Parent Task"
         assert subtask.project.id == "proj-001"
 
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task(
+                {
+                    "persistentIdentifier": "root-task-001",
+                    "name": "Root Task",
+                    "parent": "proj-001",
+                    "containingProjectInfo": "pi-proj-001",
+                }
+            ),
+        ],
+        projects=[_minimal_project()],
+    )
+    async def test_root_task_parent_is_project_not_task(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """Root task whose parent == project's task_id gets parent={project:...}, not {task:...}."""
+        result = await hybrid_repo.get_all()
+        task = result.tasks[0]
+        assert task.parent.project is not None, "Root task parent should be project, not task"
+        assert task.parent.project.id == "proj-001"
+        assert task.parent.project.name == "Test Project"
+        assert task.parent.task is None
+
 
 class TestProjectFields:
     @pytest.mark.asyncio

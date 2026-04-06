@@ -411,6 +411,14 @@ class TestAdaptTaskParentRef:
         assert raw["parent"] == {"task": {"id": "parent-task", "name": ""}}
         assert raw["project"] == {"id": "$inbox", "name": "Inbox"}
 
+    def test_root_task_parent_equals_project_id(self) -> None:
+        """Root task where parent == project ID gets parent={project:...}, not {task:...}."""
+        raw = _old_task(project="proj-001", parent="proj-001", projectName="My Project")
+        snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        assert raw["parent"] == {"project": {"id": "proj-001", "name": "My Project"}}
+        assert raw["project"] == {"id": "proj-001", "name": "My Project"}
+
 
 # ---------------------------------------------------------------------------
 # Repetition rule enum mapping

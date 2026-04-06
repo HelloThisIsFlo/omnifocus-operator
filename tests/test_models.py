@@ -214,7 +214,19 @@ class TestParentRef:
         assert ref.project.name == "My Project"
         assert ref.task is None
         dumped = ref.model_dump(by_alias=True)
-        assert dumped == {"project": {"id": "proj-001", "name": "My Project"}, "task": None}
+        # Only the set branch should appear — no "task": null key
+        assert dumped == {"project": {"id": "proj-001", "name": "My Project"}}
+
+    def test_parent_ref_task_round_trip(self) -> None:
+        data = {"task": {"id": "task-parent-001", "name": "Parent Task"}}
+        ref = ParentRef.model_validate(data)
+        assert ref.task is not None
+        assert ref.task.id == "task-parent-001"
+        assert ref.task.name == "Parent Task"
+        assert ref.project is None
+        dumped = ref.model_dump(by_alias=True)
+        # Only the set branch should appear — no "project": null key
+        assert dumped == {"task": {"id": "task-parent-001", "name": "Parent Task"}}
 
     def test_parent_ref_task_type(self) -> None:
         data = {"task": {"id": "task-parent-001", "name": "Parent Task"}}
