@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Never, Protocol, runtime_checkable
 
 from omnifocus_operator.agent_messages.errors import (
     INVALID_SYSTEM_LOCATION,
@@ -72,76 +72,31 @@ class Resolver:
 
     # -- Private: entity fetching ----------------------------------------------
 
-    async def _fetch_entities(self, accept: list[EntityType]) -> list[_HasIdAndName]:
-        """Fetch entities from the repository based on accepted types."""
-        entities: list[_HasIdAndName] = []
-        if EntityType.PROJECT in accept or EntityType.TASK in accept:
-            all_data = await self._repo.get_all()
-            if EntityType.PROJECT in accept:
-                entities.extend(all_data.projects)
-            if EntityType.TASK in accept:
-                entities.extend(all_data.tasks)
-        if EntityType.TAG in accept:
-            tags_result = await self._repo.list_tags(
-                ListTagsRepoQuery(availability=list(TagAvailability), limit=None)
-            )
-            entities.extend(tags_result.items)
-        return entities
+    async def _fetch_all_by_type(self) -> dict[EntityType, list[_HasIdAndName]]:
+        """Fetch all entity types from the repository, grouped by type."""
+        by_type: dict[EntityType, list[_HasIdAndName]] = {}
+        all_data = await self._repo.get_all()
+        by_type[EntityType.PROJECT] = list(all_data.projects)
+        by_type[EntityType.TASK] = list(all_data.tasks)
+        tags_result = await self._repo.list_tags(
+            ListTagsRepoQuery(availability=list(TagAvailability), limit=None)
+        )
+        by_type[EntityType.TAG] = list(tags_result.items)
+        return by_type
 
     # -- Private: resolution cascade -------------------------------------------
 
-    async def _resolve(
-        self,
-        value: str,
-        *,
-        accept: list[EntityType],
-        entities: Sequence[_HasIdAndName] | None = None,
-    ) -> str:
-        """Three-step resolution cascade: $-prefix -> substring match -> ID fallback.
-
-        Parameters
-        ----------
-        value:
-            The user-provided string to resolve (name, ID, or $-location).
-        accept:
-            Which entity types to search among.
-        entities:
-            Pre-fetched entities to search. If None, fetches from repository.
-        """
+    async def _resolve(self, value: str, *, accept: list[EntityType]) -> str:
+        """Resolution cascade: $-prefix → name match → ID fallback → mismatch → not found."""
         assert accept, "accept must not be empty, please provide at least one entity type"
 
-        entity_type_label = "/".join(t.value for t in accept)
-
-        # Step 1: $-prefix detection
         if value.startswith(SYSTEM_LOCATION_PREFIX):
-            # System locations only valid in container context (PROJECT in accept)
-            if EntityType.PROJECT in accept:
-                return self._resolve_system_location(value)
+            return self._resolve_system_location_or_raise(value, accept)
 
-            # Known system location in wrong context → typed exception
-            if value in _SYSTEM_LOCATIONS:
-                raise EntityTypeMismatchError(
-                    value,
-                    resolved_type=EntityType.PROJECT,
-                    accepted_types=list(accept),
-                )
+        by_type = await self._fetch_all_by_type()
 
-            # Unknown $-prefix → reserved prefix error
-            valid = ", ".join(_SYSTEM_LOCATIONS.keys())
-            msg = RESERVED_PREFIX.format(
-                value=value,
-                prefix=SYSTEM_LOCATION_PREFIX,
-                valid_locations=valid,
-            )
-            raise ValueError(msg)
-
-        # Step 2: Fetch entities if not provided
-        if entities is None:
-            entities = await self._fetch_entities(accept)
-
-        # Step 3: Substring match (case-insensitive)
-        lower = value.lower()
-        matches = [e for e in entities if lower in e.name.lower()]
+        # Substring match across all accepted types
+        matches = [e for t in accept for e in by_type.get(t, []) if value.lower() in e.name.lower()]
         if len(matches) == 1:
             return matches[0].id
         if len(matches) > 1:
@@ -151,15 +106,57 @@ class Resolver:
                 matches=[(m.id, m.name) for m in matches],
             )
 
-        # Step 4: ID fallback
-        id_match = next((e for e in entities if e.id == value), None)
-        if id_match is not None:
-            return id_match.id
+        # ID fallback in accepted types
+        for entity_type in accept:
+            if any(e.id == value for e in by_type.get(entity_type, [])):
+                return value
 
-        # Step 5: No match -- fuzzy suggestions
-        entity_names = [e.name for e in entities]
-        suggestions = suggest_close_matches(value, entity_names)
-        entity_type = entity_type_label
+        # Cross-type mismatch detection
+        for entity_type in EntityType:
+            if entity_type in accept:
+                continue
+            others = by_type.get(entity_type, [])
+            if any(value.lower() in e.name.lower() or e.id == value for e in others):
+                raise EntityTypeMismatchError(
+                    value,
+                    resolved_type=entity_type,
+                    accepted_types=list(accept),
+                )
+
+        # Not found — fuzzy suggestions from accepted types only
+        accepted_entities = [e for t in accept for e in by_type.get(t, [])]
+        self._raise_not_found(value, accepted_entities, accept)
+
+    # -- Private: error helpers ------------------------------------------------
+
+    def _resolve_system_location_or_raise(self, value: str, accept: list[EntityType]) -> str:
+        """Resolve a $-prefixed value, or raise the appropriate error."""
+        if EntityType.PROJECT in accept:
+            return self._resolve_system_location(value)
+
+        if value in _SYSTEM_LOCATIONS:
+            raise EntityTypeMismatchError(
+                value,
+                resolved_type=EntityType.PROJECT,
+                accepted_types=list(accept),
+            )
+
+        valid = ", ".join(_SYSTEM_LOCATIONS.keys())
+        msg = RESERVED_PREFIX.format(
+            value=value,
+            prefix=SYSTEM_LOCATION_PREFIX,
+            valid_locations=valid,
+        )
+        raise ValueError(msg)
+
+    @staticmethod
+    def _raise_not_found(
+        value: str,
+        entities: Sequence[_HasIdAndName],
+        accept: list[EntityType],
+    ) -> Never:
+        entity_type = "/".join(t.value for t in accept)
+        suggestions = suggest_close_matches(value, [e.name for e in entities])
         if suggestions:
             formatted = format_suggestions(suggestions, entities)
             suffix = f" Did you mean: {formatted}?"
@@ -187,22 +184,13 @@ class Resolver:
         return await self._resolve(value, accept=[EntityType.TASK])
 
     async def resolve_tags(self, tag_names: list[str]) -> list[str]:
-        """Resolve tag names to IDs using substring matching.
-
-        Pre-fetches the tag list once and reuses for all resolutions.
-        """
+        """Resolve tag names to IDs using substring matching."""
         logger.debug(
             "Resolver.resolve_tags: resolving %d tags: %s",
             len(tag_names),
             tag_names,
         )
-        tags_result = await self._repo.list_tags(
-            ListTagsRepoQuery(availability=list(TagAvailability), limit=None)
-        )
-        all_tags = tags_result.items
-        return [
-            await self._resolve(n, accept=[EntityType.TAG], entities=all_tags) for n in tag_names
-        ]
+        return [await self._resolve(n, accept=[EntityType.TAG]) for n in tag_names]
 
     # -- Public: lookup methods (return full entities) -------------------------
 
