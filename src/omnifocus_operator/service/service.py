@@ -16,6 +16,8 @@ import logging
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any, NoReturn
 
+from pydantic import BaseModel
+
 from omnifocus_operator.agent_messages.errors import (
     REPETITION_NO_EXISTING_RULE,
 )
@@ -766,7 +768,11 @@ class _EditTaskPipeline(_Pipeline):
         for field_name in ("on_days", "on", "on_dates"):
             edit_val = getattr(edit_spec, field_name)
             if is_set(edit_val):
-                merged[field_name] = edit_val
+                # Spec->Core boundary: model_dump() for nested models
+                if isinstance(edit_val, BaseModel):
+                    merged[field_name] = edit_val.model_dump(exclude_defaults=True)
+                else:
+                    merged[field_name] = edit_val
             # else: defaults to None (not included in dict -> Frequency default)
 
         # Construct Frequency -> @model_validator fires (catches cross-type
