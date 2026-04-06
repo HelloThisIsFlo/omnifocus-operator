@@ -296,6 +296,25 @@ class TestResolveCascade:
         result = await resolver.resolve_anchor("task-1")
         assert result == "task-1"
 
+    async def test_id_takes_priority_over_substring(self) -> None:
+        """When a value is a valid ID AND a substring of another entity's name,
+        ID should win — IDs are unambiguous by definition."""
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                tasks=[
+                    make_task_dict(id="alpha", name="Some Task"),
+                    make_task_dict(id="task-2", name="Task alpha review"),
+                ],
+            )
+        )
+        repo = BridgeOnlyRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
+        resolver = Resolver(repo)
+
+        # "alpha" is task-2's ID AND a substring of "Task alpha review"
+        # The resolver should return "alpha" (the ID), not match by name
+        result = await resolver.resolve_anchor("alpha")
+        assert result == "alpha"
+
     async def test_no_match_no_suggestions(self, resolver: Resolver) -> None:
         """Completely unrelated string raises with no suggestions."""
         with pytest.raises(ValueError, match="No task found matching 'zzzzz'"):

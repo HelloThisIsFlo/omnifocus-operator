@@ -67,7 +67,7 @@ class Resolver:
     # -- Private: resolution cascade -------------------------------------------
 
     async def _resolve(self, value: str, *, accept: list[EntityType]) -> str:
-        """Resolution cascade: $-prefix → name match → ID fallback → mismatch → not found."""
+        """Resolution cascade: $-prefix → ID match → name match → mismatch → not found."""
         assert accept, "accept must not be empty, please provide at least one entity type"
 
         if value.startswith(SYSTEM_LOCATION_PREFIX):
@@ -75,7 +75,12 @@ class Resolver:
 
         by_type = await self._fetch_all_by_type()
 
-        # Substring match across all accepted types
+        # Exact ID match in accepted types (IDs are unambiguous — always wins)
+        for entity_type in accept:
+            if any(e.id == value for e in by_type.get(entity_type, [])):
+                return value
+
+        # Substring name match across all accepted types
         matches = [e for t in accept for e in by_type.get(t, []) if value.lower() in e.name.lower()]
         if len(matches) == 1:
             return matches[0].id
@@ -85,11 +90,6 @@ class Resolver:
                 accepted_types=list(accept),
                 matches=[(m.id, m.name) for m in matches],
             )
-
-        # ID fallback in accepted types
-        for entity_type in accept:
-            if any(e.id == value for e in by_type.get(entity_type, [])):
-                return value
 
         # Cross-type mismatch detection
         for entity_type in EntityType:
