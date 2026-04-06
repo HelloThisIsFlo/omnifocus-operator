@@ -284,34 +284,44 @@ def _parse_review_interval(raw: str | None) -> dict[str, Any]:
 # -- Parent reference --
 
 
-def _build_parent_ref(
+def _build_parent_and_project(
     row: sqlite3.Row,
     project_info_lookup: dict[str, dict[str, str]],
     task_name_lookup: dict[str, str],
-) -> dict[str, str] | None:
-    """Build a ParentRef dict from SQLite row data.
+) -> tuple[dict[str, Any], dict[str, str]]:
+    """Build tagged ParentRef dict and ProjectRef dict from SQLite row data.
 
-    Priority: parent task > containing project > None (inbox).
+    Returns (parent_dict, project_dict). Neither is ever None.
+    Inbox tasks get parent={"project": {"id": "$inbox", "name": "Inbox"}}
+    and project={"id": "$inbox", "name": "Inbox"}.
     """
+    inbox_ref = {"id": SYSTEM_LOCATIONS["inbox"].id, "name": SYSTEM_LOCATIONS["inbox"].name}
+
     parent_task_id = row["parent"]
+    containing_pi = row["containingProjectInfo"]
+
+    # Resolve project (containing project at any depth)
+    if containing_pi is not None:
+        info = project_info_lookup.get(containing_pi)
+        project_ref = {"id": info["id"], "name": info["name"]} if info else inbox_ref
+    else:
+        project_ref = inbox_ref
+
+    # Resolve parent (immediate container)
     if parent_task_id is not None:
-        return {
-            "type": "task",
-            "id": parent_task_id,
-            "name": task_name_lookup.get(parent_task_id, ""),
+        parent_ref = {
+            "task": {"id": parent_task_id, "name": task_name_lookup.get(parent_task_id, "")}
         }
-
-    containing_project_pk = row["containingProjectInfo"]
-    if containing_project_pk is not None:
-        info = project_info_lookup.get(containing_project_pk)
+    elif containing_pi is not None:
+        info = project_info_lookup.get(containing_pi)
         if info is not None:
-            return {
-                "type": "project",
-                "id": info["id"],
-                "name": info["name"],
-            }
+            parent_ref = {"project": {"id": info["id"], "name": info["name"]}}
+        else:
+            parent_ref = {"project": inbox_ref}
+    else:
+        parent_ref = {"project": inbox_ref}
 
-    return None
+    return parent_ref, project_ref
 
 
 # -- Row mapping --
@@ -325,6 +335,7 @@ def _map_task_row(
 ) -> dict[str, Any]:
     """Map a Task SQLite row to a dict matching the Task Pydantic model."""
     task_id = row["persistentIdentifier"]
+    parent_ref, project_ref = _build_parent_and_project(row, project_info_lookup, task_name_lookup)
     return {
         "id": task_id,
         "name": row["name"],
@@ -346,8 +357,8 @@ def _map_task_row(
         "effective_planned_date": _parse_timestamp(row["effectiveDatePlanned"]),
         "estimated_minutes": row["estimatedMinutes"],
         "has_children": (row["childrenCount"] or 0) > 0,
-        "in_inbox": bool(row["inInbox"]),
-        "parent": _build_parent_ref(row, project_info_lookup, task_name_lookup),
+        "parent": parent_ref,
+        "project": project_ref,
         "urgency": _map_urgency(
             overdue=row["overdue"] or 0,
             due_soon=row["dueSoon"] or 0,
@@ -365,6 +376,8 @@ def _map_task_row(
 def _map_project_row(
     row: sqlite3.Row,
     tag_lookup: dict[str, list[dict[str, str]]],
+    folder_name_lookup: dict[str, str],
+    task_name_lookup: dict[str, str],
 ) -> dict[str, Any]:
     """Map a Task+ProjectInfo joined row to a Project Pydantic model dict."""
     task_id = row["persistentIdentifier"]
@@ -402,12 +415,20 @@ def _map_project_row(
         "last_review_date": _parse_timestamp(row["lastReviewDate"]),
         "next_review_date": _parse_timestamp(row["nextReviewDate"]),
         "review_interval": _parse_review_interval(row["reviewRepetitionString"]),
-        "next_task": row["nextTask"],
-        "folder": row["folder"],
+        "next_task": (
+            {"id": row["nextTask"], "name": task_name_lookup.get(row["nextTask"], "")}
+            if row["nextTask"] is not None
+            else None
+        ),
+        "folder": (
+            {"id": row["folder"], "name": folder_name_lookup.get(row["folder"], "")}
+            if row["folder"] is not None
+            else None
+        ),
     }
 
 
-def _map_tag_row(row: sqlite3.Row) -> dict[str, Any]:
+def _map_tag_row(row: sqlite3.Row, tag_name_lookup: dict[str, str]) -> dict[str, Any]:
     """Map a Context SQLite row to a Tag Pydantic model dict."""
     tag_id = row["persistentIdentifier"]
     return {
@@ -421,11 +442,15 @@ def _map_tag_row(row: sqlite3.Row) -> dict[str, Any]:
             date_hidden=row["dateHidden"],
         ),
         "children_are_mutually_exclusive": bool(row["childrenAreMutuallyExclusive"]),
-        "parent": row["parent"],
+        "parent": (
+            {"id": row["parent"], "name": tag_name_lookup.get(row["parent"], "")}
+            if row["parent"] is not None
+            else None
+        ),
     }
 
 
-def _map_folder_row(row: sqlite3.Row) -> dict[str, Any]:
+def _map_folder_row(row: sqlite3.Row, folder_name_lookup: dict[str, str]) -> dict[str, Any]:
     """Map a Folder SQLite row to a Folder Pydantic model dict."""
     folder_id = row["persistentIdentifier"]
     return {
@@ -437,7 +462,11 @@ def _map_folder_row(row: sqlite3.Row) -> dict[str, Any]:
         "availability": _map_folder_availability(
             date_hidden=row["dateHidden"],
         ),
-        "parent": row["parent"],
+        "parent": (
+            {"id": row["parent"], "name": folder_name_lookup.get(row["parent"], "")}
+            if row["parent"] is not None
+            else None
+        ),
     }
 
 
@@ -494,6 +523,12 @@ def _build_task_name_lookup(conn: sqlite3.Connection) -> dict[str, str]:
     """Execute SELECT persistentIdentifier, name FROM Task, return {task_id: name}."""
     rows = conn.execute("SELECT persistentIdentifier, name FROM Task").fetchall()
     return {r["persistentIdentifier"]: r["name"] for r in rows}
+
+
+def _build_folder_name_lookup(conn: sqlite3.Connection) -> dict[str, str]:
+    """Execute _FOLDERS_SQL and return {folder_id: folder_name}."""
+    rows = conn.execute(_FOLDERS_SQL).fetchall()
+    return {row["persistentIdentifier"]: row["name"] for row in rows}
 
 
 # -- Repository --
