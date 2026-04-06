@@ -154,12 +154,16 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
         items = list(all_entities.tasks)
 
         if query.in_inbox is not None:
-            items = [t for t in items if t.in_inbox == query.in_inbox]
+            inbox_id = SYSTEM_LOCATIONS["inbox"].id
+            if query.in_inbox:
+                items = [t for t in items if t.project.id == inbox_id]
+            else:
+                items = [t for t in items if t.project.id != inbox_id]
         if query.flagged is not None:
             items = [t for t in items if t.flagged == query.flagged]
         if query.project_ids is not None:
             pid_set = set(query.project_ids)
-            items = [t for t in items if t.parent is not None and t.parent.id in pid_set]
+            items = [t for t in items if t.project.id in pid_set]
         if query.tag_ids is not None:
             tid_set = set(query.tag_ids)
             items = [t for t in items if any(tag.id in tid_set for tag in t.tags)]
@@ -204,7 +208,7 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
             items = [p for p in items if p.availability in avail_set]
         if query.folder_ids is not None:
             fid_set = set(query.folder_ids)
-            items = [p for p in items if p.folder is not None and p.folder in fid_set]
+            items = [p for p in items if p.folder is not None and p.folder.id in fid_set]
         if query.flagged is not None:
             items = [p for p in items if p.flagged == query.flagged]
         if query.review_due_before is not None:

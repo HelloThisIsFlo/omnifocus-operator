@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from omnifocus_operator.config import SYSTEM_LOCATIONS
 from omnifocus_operator.repository.rrule import derive_schedule, parse_end_condition, parse_rrule
 
 # ---------------------------------------------------------------------------
@@ -145,34 +146,49 @@ def _adapt_repetition_rule(raw: dict[str, Any]) -> None:
 
 
 def _adapt_parent_ref(raw: dict[str, Any]) -> None:
-    """Transform bridge project/parent string fields into unified ParentRef dict.
+    """Transform bridge project/parent fields into tagged ParentRef + ProjectRef.
 
-    Priority: parent task > containing project > None (inbox).
-    Bridge sends project as project ID and parent as parent task ID (strings).
-    Name fields (projectName, parentName) are used if present, else empty string.
+    Bridge sends: project (project ID), parent (parent task ID),
+    projectName, parentName as convenience fields.
+    Output: parent = tagged dict ({"project": {id,name}} or {"task": {id,name}}),
+            project = {id, name} (containing project at any depth).
     """
     parent_task_id = raw.get("parent")
     project_id = raw.get("project")
+    inbox_ref = {
+        "id": SYSTEM_LOCATIONS["inbox"].id,
+        "name": SYSTEM_LOCATIONS["inbox"].name,
+    }
 
     if parent_task_id is not None:
+        # Subtask: parent is a task, project is the containing project
         raw["parent"] = {
-            "type": "task",
-            "id": parent_task_id,
-            "name": raw.get("parentName", ""),
+            "task": {
+                "id": parent_task_id,
+                "name": raw.get("parentName", ""),
+            }
         }
-        raw.pop("project", None)
+        if project_id is not None:
+            raw["project"] = {
+                "id": project_id,
+                "name": raw.get("projectName", ""),
+            }
+        else:
+            raw["project"] = inbox_ref
     elif project_id is not None:
-        raw["parent"] = {
-            "type": "project",
+        # Root task in a project: parent and project point to same project
+        proj_ref = {
             "id": project_id,
             "name": raw.get("projectName", ""),
         }
-        raw.pop("project", None)
+        raw["parent"] = {"project": proj_ref}
+        raw["project"] = proj_ref
     else:
-        raw["parent"] = None
-        raw.pop("project", None)
+        # Inbox task: parent and project both point to $inbox
+        raw["parent"] = {"project": inbox_ref}
+        raw["project"] = inbox_ref
 
-    # Clean up convenience name fields if present
+    # Clean up convenience fields
     raw.pop("parentName", None)
     raw.pop("projectName", None)
 
@@ -272,6 +288,39 @@ def _adapt_folder(raw: dict[str, Any]) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _enrich_project(
+    raw: dict[str, Any], folder_names: dict[str, str], task_names: dict[str, str]
+) -> None:
+    """Enrich project folder and nextTask from bare IDs to {id, name}."""
+    folder_val = raw.get("folder")
+    if isinstance(folder_val, str):
+        raw["folder"] = {"id": folder_val, "name": folder_names.get(folder_val, "")}
+
+    next_task_val = raw.get("nextTask")
+    if next_task_val is None:
+        next_task_val = raw.get("next_task")
+    if isinstance(next_task_val, str):
+        ref = {"id": next_task_val, "name": task_names.get(next_task_val, "")}
+        if "nextTask" in raw:
+            raw["nextTask"] = ref
+        else:
+            raw["next_task"] = ref
+
+
+def _enrich_tag(raw: dict[str, Any], tag_names: dict[str, str]) -> None:
+    """Enrich tag parent from bare ID to {id, name}."""
+    parent_val = raw.get("parent")
+    if isinstance(parent_val, str):
+        raw["parent"] = {"id": parent_val, "name": tag_names.get(parent_val, "")}
+
+
+def _enrich_folder(raw: dict[str, Any], folder_names: dict[str, str]) -> None:
+    """Enrich folder parent from bare ID to {id, name}."""
+    parent_val = raw.get("parent")
+    if isinstance(parent_val, str):
+        raw["parent"] = {"id": parent_val, "name": folder_names.get(parent_val, "")}
+
+
 def adapt_snapshot(raw: dict[str, Any]) -> dict[str, Any]:
     """Transform a bridge-format snapshot dict to new model shape.
 
@@ -281,6 +330,12 @@ def adapt_snapshot(raw: dict[str, Any]) -> dict[str, Any]:
     Safe to call on already-adapted data (no-op for entities that are
     already in new-shape format).
     """
+    # Build cross-entity name lookups for enrichment
+    folder_names: dict[str, str] = {f["id"]: f["name"] for f in raw.get("folders", []) if "id" in f}
+    tag_names: dict[str, str] = {t["id"]: t["name"] for t in raw.get("tags", []) if "id" in t}
+    task_names: dict[str, str] = {t["id"]: t["name"] for t in raw.get("tasks", []) if "id" in t}
+
+    # Per-entity adaptation (status mapping, dead field removal, parent ref)
     for task in raw.get("tasks", []):
         _adapt_task(task)
     for project in raw.get("projects", []):
@@ -289,4 +344,13 @@ def adapt_snapshot(raw: dict[str, Any]) -> dict[str, Any]:
         _adapt_tag(tag)
     for folder in raw.get("folders", []):
         _adapt_folder(folder)
+
+    # Cross-entity enrichment: convert bare IDs to {id, name} refs
+    for project in raw.get("projects", []):
+        _enrich_project(project, folder_names, task_names)
+    for tag in raw.get("tags", []):
+        _enrich_tag(tag, tag_names)
+    for folder in raw.get("folders", []):
+        _enrich_folder(folder, folder_names)
+
     return raw
