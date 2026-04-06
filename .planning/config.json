@@ -9,10 +9,11 @@
     "verifier": true,
     "auto_advance": false,
     "nyquist_validation": true,
-    "ui_phase": true,
-    "ui_safety_gate": true,
+    "ui_phase": false,
+    "ui_safety_gate": false,
     "research_before_questions": true,
     "skip_discuss": false,
+    "use_worktrees": true,
     "_auto_chain_active": false
   },
   "git": {
@@ -21,5 +22,5 @@
   "hooks": {
     "context_warnings": true
   },
-  "granularity": "fine"
+  "granularity": "coarse"
 }
