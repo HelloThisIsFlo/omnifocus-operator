@@ -182,6 +182,38 @@ class TestResolverLookup:
 # ---------------------------------------------------------------------------
 
 
+class TestResolveAcceptParameter:
+    """The accept parameter must be non-empty and reflected in error messages."""
+
+    async def test_empty_accept_raises(self, resolver: Resolver) -> None:
+        """Calling _resolve with an empty accept list is a programming error."""
+        with pytest.raises(ValueError, match="accept"):
+            await resolver._resolve("anything", accept=[])
+
+    async def test_not_found_error_joins_accepted_types(self, resolver: Resolver) -> None:
+        """When no match is found, the error message should join all accepted
+        types with '/' — e.g. 'No project/task found matching ...'."""
+        with pytest.raises(ValueError, match="No project/task found matching 'zzzzz_no_match'"):
+            await resolver._resolve("zzzzz_no_match", accept=[EntityType.PROJECT, EntityType.TASK])
+
+    async def test_ambiguous_error_joins_accepted_types(self) -> None:
+        """When multiple matches are found, the error message should join all
+        accepted types with '/' — e.g. 'Ambiguous project/task ...'."""
+        bridge = InMemoryBridge(
+            data=make_snapshot_dict(
+                projects=[make_project_dict(id="p-1", name="Review Q3")],
+                tasks=[make_task_dict(id="t-1", name="Review Q3 notes")],
+            )
+        )
+        repo = BridgeOnlyRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
+        ambiguous_resolver = Resolver(repo)
+
+        with pytest.raises(ValueError, match="Ambiguous project/task 'Review Q3'"):
+            await ambiguous_resolver._resolve(
+                "Review Q3", accept=[EntityType.PROJECT, EntityType.TASK]
+            )
+
+
 class TestResolveCascade:
     """The three-step cascade: $-prefix -> substring match -> ID fallback."""
 
