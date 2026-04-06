@@ -308,8 +308,15 @@ def _build_parent_and_project(
     else:
         project_ref = inbox_ref
 
+    # Detect root task in project: parent points to the project's own task row
+    is_root_in_project = False
+    if parent_task_id is not None and containing_pi is not None:
+        info = project_info_lookup.get(containing_pi)
+        if info is not None and info["id"] == parent_task_id:
+            is_root_in_project = True
+
     # Resolve parent (immediate container)
-    if parent_task_id is not None:
+    if parent_task_id is not None and not is_root_in_project:
         parent_ref = {
             "task": {"id": parent_task_id, "name": task_name_lookup.get(parent_task_id, "")}
         }

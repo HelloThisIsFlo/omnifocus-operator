@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import AwareDatetime, Field, model_validator
 
 from omnifocus_operator.agent_messages.descriptions import (
@@ -70,6 +72,11 @@ class ParentRef(OmniFocusBaseModel):
             msg = "Exactly one of 'project' or 'task' must be set."
             raise ValueError(msg)
         return self
+
+    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
+        """Serialize with exclude_none so only the set branch appears in output."""
+        kwargs.setdefault("exclude_none", True)
+        return super().model_dump(**kwargs)
 
 
 class ReviewInterval(OmniFocusBaseModel):

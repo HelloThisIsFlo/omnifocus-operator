@@ -160,7 +160,10 @@ def _adapt_parent_ref(raw: dict[str, Any]) -> None:
         "name": SYSTEM_LOCATIONS["inbox"].name,
     }
 
-    if parent_task_id is not None:
+    # Detect root task in project: parent points to the project itself
+    is_root_in_project = parent_task_id is not None and parent_task_id == project_id
+
+    if parent_task_id is not None and not is_root_in_project:
         # Subtask: parent is a task, project is the containing project
         raw["parent"] = {
             "task": {
