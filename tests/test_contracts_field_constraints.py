@@ -3,6 +3,8 @@
 Verifies that AddTaskCommand and EditTaskCommand enforce:
 - Non-empty name (min_length=1, whitespace-only rejected)
 - AddTaskCommand.flagged defaults to False (not None)
+- MoveAction null rejection for all four fields
+- TagAction.replace still accepts None (PatchOrClear)
 """
 
 from __future__ import annotations
@@ -10,6 +12,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
+from omnifocus_operator.contracts.shared.actions import MoveAction, TagAction
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskCommand
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskCommand
 
@@ -75,3 +78,47 @@ class TestFlaggedDefault:
         """None is not a valid value for flagged (it's bool, not Optional[bool])."""
         with pytest.raises(ValidationError):
             AddTaskCommand(name="Valid", flagged=None)
+
+
+class TestMoveActionNullRejection:
+    """MoveAction rejects null for all four fields with educational errors."""
+
+    def test_beginning_null_rejected(self) -> None:
+        with pytest.raises(ValidationError) as exc_info:
+            MoveAction(beginning=None)
+        assert "beginning cannot be null" in str(exc_info.value)
+
+    def test_ending_null_rejected(self) -> None:
+        with pytest.raises(ValidationError) as exc_info:
+            MoveAction(ending=None)
+        assert "ending cannot be null" in str(exc_info.value)
+
+    def test_before_null_rejected(self) -> None:
+        with pytest.raises(ValidationError) as exc_info:
+            MoveAction(before=None)
+        assert "before cannot be null" in str(exc_info.value)
+
+    def test_after_null_rejected(self) -> None:
+        with pytest.raises(ValidationError) as exc_info:
+            MoveAction(after=None)
+        assert "after cannot be null" in str(exc_info.value)
+
+    def test_beginning_string_accepted(self) -> None:
+        action = MoveAction(beginning="$inbox")
+        assert action.beginning == "$inbox"
+
+    def test_ending_string_accepted(self) -> None:
+        action = MoveAction(ending="someProject")
+        assert action.ending == "someProject"
+
+
+class TestTagActionReplaceStillAcceptsNone:
+    """TagAction.replace uses PatchOrClear -- None means 'clear all tags'."""
+
+    def test_replace_none_accepted(self) -> None:
+        action = TagAction(replace=None)
+        assert action.replace is None
+
+    def test_replace_empty_list_accepted(self) -> None:
+        action = TagAction(replace=[])
+        assert action.replace == []
