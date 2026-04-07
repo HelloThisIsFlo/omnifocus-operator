@@ -12,8 +12,12 @@ setup:
 
 # ─── Testing ──────────────────────────────────────────────────────────────────
 
+# Run tests by keyword (just test-kw add_task or edit): no coverage, no quotes needed
+test-kw *expr:
+    uv run pytest --no-cov -x -k "{{ expr }}"
+
 # Run all tests (Python + JS)
-test: test-python test-js
+test-all: test-python test-js
     @echo "All tests passed."
 
 # Run Python tests (extra args forwarded: just test-python -k "foo" -v)
@@ -23,6 +27,10 @@ test-python *args='tests/ -x':
 # Run JS bridge tests
 test-js:
     cd bridge && npm test
+
+# Run a single test file without coverage
+test-one *args:
+    uv run pytest --no-cov {{ args }}
 
 # Run only golden master contract tests
 test-gm:
@@ -50,7 +58,7 @@ typecheck:
     uv run mypy src/
 
 # Run full quality suite: test + lint + typecheck
-check-all: test lint typecheck
+check-all: test-all lint typecheck
 
 # ─── Running ─────────────────────────────────────────────────────────────────
 
