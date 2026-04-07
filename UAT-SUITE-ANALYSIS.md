@@ -19,7 +19,7 @@ This file is the output of a research session that analyzed what v1.3.1 changed 
 
 - [x] Chunk 1 — Write-side suites ($inbox + response shape)
 - [x] Chunk 2 — list-tasks.md
-- [ ] Chunk 3 — list-projects.md + simple-list-tools.md
+- [x] Chunk 3 — list-projects.md + simple-list-tools.md
 - [ ] Chunk 4 — validation-errors.md
 - [ ] Chunk 5 — Composite manifests + SKILL.md + cleanup
 - [ ] **Delete this file** (all chunks done, everything merged)
