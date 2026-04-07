@@ -3,6 +3,7 @@
 .claude/keybindings.json
 .claude/projects/
 CLAUDE.local.md
+.mcp.json
 
 # Python
 __pycache__/
