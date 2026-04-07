@@ -357,12 +357,16 @@ GET_TASK_TOOL_DOC = (
 GET_PROJECT_TOOL_DOC = (
     "Look up a single project by its ID.\n"
     "\n"
+    "$inbox is not a real project and cannot be looked up here \u2014 "
+    "it has no review schedule, status, or other project properties. "
+    "To query inbox tasks, use list_tasks with inInbox=true.\n"
+    "\n"
     "Fields: urgency, availability, dueDate, deferDate, plannedDate, "
     "effectiveDueDate, flagged, effectiveFlagged, "
     "tags [{id, name}], nextTask {id, name}, folder {id, name}, "
     "reviewInterval, nextReviewDate.\n"
     "\n"
-    "nextTask: first available (unblocked) task — useful for identifying what to work on next.\n"
+    "nextTask: first available (unblocked) task \u2014 useful for identifying what to work on next.\n"
     "effective*: inherited from the parent hierarchy when not set directly."
 )
 
