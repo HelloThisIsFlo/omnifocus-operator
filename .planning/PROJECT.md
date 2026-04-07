@@ -105,7 +105,7 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 ### Active
 
-- [ ] Date filtering on list_tasks and count_tasks — 7 date fields with shorthand, absolute, and string shortcuts (v1.3.2)
+- [~] Date filtering on list_tasks and count_tasks — 7 date fields with shorthand, absolute, and string shortcuts (v1.3.2) — Phase 45 complete: DateFilter model, StrEnum shortcuts, query extensions, pure resolver
 - [ ] Due-soon threshold configuration (v1.3.2)
 - [ ] Existing filter changes: urgency removed, completed boolean → date filter, availability trimmed (v1.3.2)
 - [ ] Field selection, task deletion, notes append (v1.4)
@@ -235,4 +235,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-07 after v1.3.2 milestone start*
+*Last updated: 2026-04-07 after Phase 45 (date-models-resolution) complete*
