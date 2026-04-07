@@ -133,7 +133,7 @@ FILTER_NULL = "'{field}' cannot be null. To skip this filter, simply omit the fi
 
 TAGS_EMPTY = "'{field}' cannot be empty. To ignore this filter, simply omit the field."
 
-AVAILABILITY_EMPTY = "'{field}' cannot be empty -- include at least one status value, or use [\"all\"] for all statuses."
+AVAILABILITY_EMPTY = "'{field}' cannot be empty -- include at least one status value, or use [\"ALL\"] for all statuses."
 
 # --- Validation: List Query ---
 
