@@ -488,10 +488,11 @@ class _ListProjectsPipeline(_ReadPipeline):
             month = (month - 1) % 12 + 1
             day = min(now.day, calendar.monthrange(year, month)[1])
             return now.replace(year=year, month=month, day=day)
-        # unit == DurationUnit.YEARS
-        year = now.year + amount
-        day = min(now.day, calendar.monthrange(year, now.month)[1])
-        return now.replace(year=year, day=day)
+        if unit == DurationUnit.YEARS:
+            year = now.year + amount
+            day = min(now.day, calendar.monthrange(year, now.month)[1])
+            return now.replace(year=year, day=day)
+        raise AssertionError  # unreachable: all DurationUnit members handled above
 
     async def _delegate(self) -> ListResult[Project]:
         repo_result = await self._repository.list_projects(self._repo_query)

@@ -81,4 +81,4 @@ class ListTasksRepoQuery(QueryModel):
     availability: list[Availability] = Field(default=[Availability.AVAILABLE, Availability.BLOCKED])
     search: str | None = None
     limit: int | None = DEFAULT_LIST_LIMIT
-    offset: int | None = None
+    offset: int = 0

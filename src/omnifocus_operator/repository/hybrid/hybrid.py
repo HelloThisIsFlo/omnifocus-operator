@@ -61,10 +61,10 @@ logger = logging.getLogger(__name__)
 __all__ = ["HybridRepository"]
 
 
-def _paginate[T](items: list[T], limit: int | None, offset: int | None) -> ListRepoResult[T]:
+def _paginate[T](items: list[T], limit: int | None, offset: int) -> ListRepoResult[T]:
     """Apply offset/limit slicing and compute total/has_more for Python-filtered lists."""
     total = len(items)
-    start = offset or 0
+    start = offset
     if start:
         items = items[start:]
     if limit is not None:

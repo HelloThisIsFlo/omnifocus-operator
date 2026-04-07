@@ -142,7 +142,7 @@ class TestQueryModelDefaults:
 
     def test_list_tasks_query_default_availability(self) -> None:
         query = ListTasksQuery()
-        assert query.availability == [Availability.AVAILABLE, Availability.BLOCKED]
+        assert query.availability == [AvailabilityFilter.AVAILABLE, AvailabilityFilter.BLOCKED]
 
     def test_list_tasks_query_filter_fields_default_unset(self) -> None:
         query = ListTasksQuery()
@@ -434,7 +434,7 @@ class TestRepoQueryDefaults:
         assert query.estimated_minutes_max is None
         assert query.search is None
         assert query.limit == 50  # DEFAULT_LIST_LIMIT
-        assert query.offset is None
+        assert query.offset == 0
 
     def test_list_projects_repo_query_default_availability(self) -> None:
         query = ListProjectsRepoQuery()
@@ -446,7 +446,7 @@ class TestRepoQueryDefaults:
         assert query.review_due_before is None
         assert query.flagged is None
         assert query.limit == 50  # DEFAULT_LIST_LIMIT
-        assert query.offset is None
+        assert query.offset == 0
 
     def test_list_tags_repo_query_default_availability(self) -> None:
         query = ListTagsRepoQuery()

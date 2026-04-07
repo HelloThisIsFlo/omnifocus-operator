@@ -46,10 +46,10 @@ if TYPE_CHECKING:
 __all__ = ["BridgeOnlyRepository"]
 
 
-def _paginate[T](items: list[T], limit: int | None, offset: int | None) -> ListRepoResult[T]:
+def _paginate[T](items: list[T], limit: int | None, offset: int) -> ListRepoResult[T]:
     """Apply offset/limit slicing and compute total/has_more for Python-filtered lists."""
     total = len(items)
-    start = offset or 0
+    start = offset
     if start:
         items = items[start:]
     if limit is not None:
@@ -191,7 +191,7 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
         # Deterministic ordering for pagination
         items.sort(key=lambda t: t.id)
 
-        offset = query.offset or 0
+        offset = query.offset
         if offset:
             items = items[offset:]
         if query.limit is not None:
@@ -231,7 +231,7 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
         # Deterministic ordering for pagination
         items.sort(key=lambda p: p.id)
 
-        offset = query.offset or 0
+        offset = query.offset
         if offset:
             items = items[offset:]
         if query.limit is not None:

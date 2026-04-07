@@ -61,4 +61,4 @@ class ListFoldersRepoQuery(QueryModel):
     availability: list[FolderAvailability] = Field(default=[FolderAvailability.AVAILABLE])
     search: str | None = None
     limit: int | None = DEFAULT_LIST_LIMIT
-    offset: int | None = None
+    offset: int = 0

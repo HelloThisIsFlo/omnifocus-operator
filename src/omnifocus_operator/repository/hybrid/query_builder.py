@@ -182,7 +182,7 @@ def build_list_tasks_sql(query: ListTasksRepoQuery) -> tuple[SqlQuery, SqlQuery]
     if query.limit is not None:
         data_sql += " LIMIT ?"
         data_params.append(query.limit)
-        if query.offset is not None:
+        if query.offset > 0:
             data_sql += " OFFSET ?"
             data_params.append(query.offset)
 
@@ -244,7 +244,7 @@ def build_list_projects_sql(
     if query.limit is not None:
         data_sql += " LIMIT ?"
         data_params.append(query.limit)
-        if query.offset is not None:
+        if query.offset > 0:
             data_sql += " OFFSET ?"
             data_params.append(query.offset)
 

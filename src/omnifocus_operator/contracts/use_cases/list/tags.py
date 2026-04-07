@@ -63,4 +63,4 @@ class ListTagsRepoQuery(QueryModel):
     )
     search: str | None = None
     limit: int | None = DEFAULT_LIST_LIMIT
-    offset: int | None = None
+    offset: int = 0
