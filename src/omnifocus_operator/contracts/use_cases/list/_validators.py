@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from omnifocus_operator.agent_messages import errors as err
 
 
@@ -20,7 +22,7 @@ def reject_null_filters(data: dict[str, object], field_names: list[str]) -> None
             raise ValueError(err.FILTER_NULL.format(field=camel))
 
 
-def validate_non_empty_list(value: list[object], field_name: str) -> None:
+def validate_non_empty_list(value: Sequence[object], field_name: str) -> None:
     """Raise ValueError if list is empty."""
     if len(value) == 0:
         alias = _to_camel(field_name)

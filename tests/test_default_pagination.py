@@ -146,9 +146,9 @@ class TestTagsFoldersPerspectivesLimitOffset:
         with pytest.raises(ValidationError, match=re.escape(OFFSET_REQUIRES_LIMIT)):
             ListTagsQuery(offset=5, limit=None)
 
-    def test_tags_default_offset_is_none(self) -> None:
+    def test_tags_default_offset_is_zero(self) -> None:
         query = ListTagsQuery()
-        assert query.offset is None
+        assert query.offset == 0
 
     def test_folders_accepts_limit_and_offset(self) -> None:
         query = ListFoldersQuery(limit=10, offset=5)

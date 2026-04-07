@@ -13,8 +13,10 @@ import pytest
 from pydantic import ValidationError
 
 from omnifocus_operator.agent_messages.errors import (
+    FILTER_NULL,
     OFFSET_REQUIRES_LIMIT,
     REVIEW_DUE_WITHIN_INVALID,
+    TAGS_EMPTY,
 )
 from omnifocus_operator.contracts import (
     CommandModel,
@@ -26,8 +28,10 @@ from omnifocus_operator.contracts import (
     QueryModel,
     StrictModel,
 )
+from omnifocus_operator.contracts.base import UNSET
 from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult
 from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersRepoQuery
+from omnifocus_operator.contracts.use_cases.list.perspectives import ListPerspectivesQuery
 from omnifocus_operator.contracts.use_cases.list.projects import (
     DurationUnit,
     ListProjectsRepoQuery,
@@ -130,28 +134,28 @@ class TestQueryModelDefaults:
         query = ListTasksQuery()
         assert query.availability == [Availability.AVAILABLE, Availability.BLOCKED]
 
-    def test_list_tasks_query_other_fields_default_none(self) -> None:
+    def test_list_tasks_query_filter_fields_default_unset(self) -> None:
         query = ListTasksQuery()
-        assert query.in_inbox is None
-        assert query.flagged is None
-        assert query.project is None
-        assert query.tags is None
-        assert query.estimated_minutes_max is None
-        assert query.search is None
+        assert query.in_inbox is UNSET
+        assert query.flagged is UNSET
+        assert query.project is UNSET
+        assert query.tags is UNSET
+        assert query.estimated_minutes_max is UNSET
+        assert query.search is UNSET
         assert query.limit == 50  # DEFAULT_LIST_LIMIT
-        assert query.offset is None
+        assert query.offset == 0
 
     def test_list_projects_query_default_availability(self) -> None:
         query = ListProjectsQuery()
         assert query.availability == [Availability.AVAILABLE, Availability.BLOCKED]
 
-    def test_list_projects_query_other_fields_default_none(self) -> None:
+    def test_list_projects_query_filter_fields_default_unset(self) -> None:
         query = ListProjectsQuery()
-        assert query.folder is None
-        assert query.review_due_within is None
-        assert query.flagged is None
+        assert query.folder is UNSET
+        assert query.review_due_within is UNSET
+        assert query.flagged is UNSET
         assert query.limit == 50  # DEFAULT_LIST_LIMIT
-        assert query.offset is None
+        assert query.offset == 0
 
     def test_list_tags_query_default_availability(self) -> None:
         query = ListTagsQuery()
@@ -277,10 +281,16 @@ class TestOffsetRequiresLimit:
         assert query.offset == 5
         assert query.limit == 10
 
-    def test_tasks_limit_without_offset_succeeds(self) -> None:
+    def test_tasks_limit_without_offset_uses_default_zero(self) -> None:
         query = ListTasksQuery(limit=10)
         assert query.limit == 10
-        assert query.offset is None
+        assert query.offset == 0
+
+    def test_tasks_offset_zero_with_limit_none_succeeds(self) -> None:
+        """offset=0 is the default, no error even with limit=None."""
+        query = ListTasksQuery(offset=0, limit=None)
+        assert query.offset == 0
+        assert query.limit is None
 
     def test_projects_offset_without_explicit_limit_uses_default(self) -> None:
         """offset=5 is valid because limit defaults to 50."""
@@ -557,7 +567,7 @@ class TestUnsetToNone:
     """Verify unset_to_none() converts UNSET to None and passes through values."""
 
     def test_unset_returns_none(self) -> None:
-        from omnifocus_operator.contracts.base import UNSET, unset_to_none
+        from omnifocus_operator.contracts.base import unset_to_none
 
         assert unset_to_none(UNSET) is None
 
@@ -586,7 +596,6 @@ class TestRejectNullFilters:
     """Verify reject_null_filters() catches null values on Patch filter fields."""
 
     def test_null_field_raises_with_filter_null_message(self) -> None:
-        from omnifocus_operator.agent_messages.errors import FILTER_NULL
         from omnifocus_operator.contracts.use_cases.list._validators import (
             reject_null_filters,
         )
@@ -612,7 +621,6 @@ class TestRejectNullFilters:
 
     def test_camel_case_null_raises(self) -> None:
         """reject_null_filters checks both snake_case and camelCase aliases."""
-        from omnifocus_operator.agent_messages.errors import FILTER_NULL
         from omnifocus_operator.contracts.use_cases.list._validators import (
             reject_null_filters,
         )
@@ -632,7 +640,6 @@ class TestValidateNonEmptyList:
     """Verify validate_non_empty_list() rejects empty lists."""
 
     def test_empty_list_raises_with_tags_empty_message(self) -> None:
-        from omnifocus_operator.agent_messages.errors import TAGS_EMPTY
         from omnifocus_operator.contracts.use_cases.list._validators import (
             validate_non_empty_list,
         )
@@ -647,3 +654,98 @@ class TestValidateNonEmptyList:
 
         # Should not raise
         validate_non_empty_list(["x"], "tags")
+
+
+# ---------------------------------------------------------------------------
+# Null rejection on query models (Patch fields)
+# ---------------------------------------------------------------------------
+
+
+class TestNullRejection:
+    """Verify null on any Patch filter field raises with FILTER_NULL message."""
+
+    # --- ListTasksQuery ---
+
+    def test_tasks_in_inbox_null_raises(self) -> None:
+        with pytest.raises(ValidationError, match=re.escape(FILTER_NULL.format(field="inInbox"))):
+            ListTasksQuery(inInbox=None)
+
+    def test_tasks_flagged_null_raises(self) -> None:
+        with pytest.raises(ValidationError, match=re.escape(FILTER_NULL.format(field="flagged"))):
+            ListTasksQuery(flagged=None)
+
+    def test_tasks_project_null_raises(self) -> None:
+        with pytest.raises(ValidationError, match=re.escape(FILTER_NULL.format(field="project"))):
+            ListTasksQuery(project=None)
+
+    def test_tasks_tags_null_raises(self) -> None:
+        with pytest.raises(ValidationError, match=re.escape(FILTER_NULL.format(field="tags"))):
+            ListTasksQuery(tags=None)
+
+    def test_tasks_estimated_minutes_max_null_raises(self) -> None:
+        with pytest.raises(
+            ValidationError,
+            match=re.escape(FILTER_NULL.format(field="estimatedMinutesMax")),
+        ):
+            ListTasksQuery(estimatedMinutesMax=None)
+
+    def test_tasks_search_null_raises(self) -> None:
+        with pytest.raises(ValidationError, match=re.escape(FILTER_NULL.format(field="search"))):
+            ListTasksQuery(search=None)
+
+    def test_tasks_snake_case_null_also_rejected(self) -> None:
+        """Snake_case keys are also checked by reject_null_filters."""
+        with pytest.raises(ValidationError, match=re.escape(FILTER_NULL.format(field="inInbox"))):
+            ListTasksQuery(in_inbox=None)
+
+    # --- ListProjectsQuery ---
+
+    def test_projects_folder_null_raises(self) -> None:
+        with pytest.raises(ValidationError, match=re.escape(FILTER_NULL.format(field="folder"))):
+            ListProjectsQuery(folder=None)
+
+    def test_projects_review_due_within_null_raises(self) -> None:
+        with pytest.raises(
+            ValidationError,
+            match=re.escape(FILTER_NULL.format(field="reviewDueWithin")),
+        ):
+            ListProjectsQuery(reviewDueWithin=None)
+
+    def test_projects_flagged_null_raises(self) -> None:
+        with pytest.raises(ValidationError, match=re.escape(FILTER_NULL.format(field="flagged"))):
+            ListProjectsQuery(flagged=None)
+
+    def test_projects_search_null_raises(self) -> None:
+        with pytest.raises(ValidationError, match=re.escape(FILTER_NULL.format(field="search"))):
+            ListProjectsQuery(search=None)
+
+    # --- ListTagsQuery ---
+
+    def test_tags_search_null_raises(self) -> None:
+        with pytest.raises(ValidationError, match=re.escape(FILTER_NULL.format(field="search"))):
+            ListTagsQuery(search=None)
+
+    # --- ListFoldersQuery ---
+
+    def test_folders_search_null_raises(self) -> None:
+        with pytest.raises(ValidationError, match=re.escape(FILTER_NULL.format(field="search"))):
+            ListFoldersQuery(search=None)
+
+    # --- ListPerspectivesQuery ---
+
+    def test_perspectives_search_null_raises(self) -> None:
+        with pytest.raises(ValidationError, match=re.escape(FILTER_NULL.format(field="search"))):
+            ListPerspectivesQuery(search=None)
+
+
+# ---------------------------------------------------------------------------
+# Empty list rejection on query models
+# ---------------------------------------------------------------------------
+
+
+class TestEmptyListRejection:
+    """Verify empty tags list raises with TAGS_EMPTY message."""
+
+    def test_tasks_empty_tags_raises(self) -> None:
+        with pytest.raises(ValidationError, match=re.escape(TAGS_EMPTY.format(field="tags"))):
+            ListTasksQuery(tags=[])

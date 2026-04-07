@@ -25,7 +25,7 @@ from omnifocus_operator.agent_messages.warnings import (
     LIST_TASKS_INBOX_PROJECT_WARNING,
     REPETITION_NO_OP,
 )
-from omnifocus_operator.contracts.base import is_set
+from omnifocus_operator.contracts.base import is_set, unset_to_none
 from omnifocus_operator.contracts.protocols import Service
 from omnifocus_operator.contracts.shared.repetition_rule import RepetitionRuleRepoPayload
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskResult
@@ -196,7 +196,7 @@ class OperatorService(Service):  # explicitly implements Service protocol
         """List tags -- inline pass-through (no entity-reference filters)."""
         repo_query = ListTagsRepoQuery(
             availability=query.availability,
-            search=query.search,
+            search=unset_to_none(query.search),
             limit=query.limit,
             offset=query.offset,
         )
@@ -209,7 +209,7 @@ class OperatorService(Service):  # explicitly implements Service protocol
         """List folders -- inline pass-through (no entity-reference filters)."""
         repo_query = ListFoldersRepoQuery(
             availability=query.availability,
-            search=query.search,
+            search=unset_to_none(query.search),
             limit=query.limit,
             offset=query.offset,
         )
@@ -221,7 +221,7 @@ class OperatorService(Service):  # explicitly implements Service protocol
     async def list_perspectives(self, query: ListPerspectivesQuery) -> ListResult[Perspective]:
         """List perspectives -- inline pass-through (search only)."""
         repo_query = ListPerspectivesRepoQuery(
-            search=query.search,
+            search=unset_to_none(query.search),
             limit=query.limit,
             offset=query.offset,
         )
@@ -299,7 +299,7 @@ class _ListTasksPipeline(_ReadPipeline):
         self._projects = projects_result.items
 
         self._in_inbox, self._project_to_resolve = self._resolver.resolve_inbox(
-            self._query.in_inbox, self._query.project
+            unset_to_none(self._query.in_inbox), unset_to_none(self._query.project)
         )
 
         self._check_inbox_project_warning()
@@ -330,7 +330,7 @@ class _ListTasksPipeline(_ReadPipeline):
 
     def _resolve_tags(self) -> None:
         self._tag_ids: list[str] | None = None
-        if self._query.tags is None:
+        if not is_set(self._query.tags):
             return
         all_resolved: list[str] = []
         seen: set[str] = set()
@@ -350,12 +350,12 @@ class _ListTasksPipeline(_ReadPipeline):
     def _build_repo_query(self) -> None:
         self._repo_query = ListTasksRepoQuery(
             in_inbox=self._in_inbox,
-            flagged=self._query.flagged,
+            flagged=unset_to_none(self._query.flagged),
             project_ids=self._project_ids,
             tag_ids=self._tag_ids,
-            estimated_minutes_max=self._query.estimated_minutes_max,
+            estimated_minutes_max=unset_to_none(self._query.estimated_minutes_max),
             availability=self._query.availability,
-            search=self._query.search,
+            search=unset_to_none(self._query.search),
             limit=self._query.limit,
             offset=self._query.offset,
         )
@@ -387,12 +387,13 @@ class _ListProjectsPipeline(_ReadPipeline):
 
     def _check_inbox_search_warning(self) -> None:
         """Warn if search term matches system inbox name (per D-16 to D-19)."""
-        if matches_inbox_name(self._query.search):
+        search = unset_to_none(self._query.search)
+        if matches_inbox_name(search):
             self._warnings.append(LIST_PROJECTS_INBOX_WARNING)
 
     def _resolve_folder(self) -> None:
         self._folder_ids: list[str] | None = None
-        if self._query.folder is None:
+        if not is_set(self._query.folder):
             return
         resolved = self._resolver.resolve_filter(self._query.folder, self._folders)
         if resolved:
@@ -405,15 +406,16 @@ class _ListProjectsPipeline(_ReadPipeline):
 
     def _build_repo_query(self) -> None:
         review_due_before: datetime | None = None
-        if self._query.review_due_within is not None:
-            review_due_before = self._expand_review_due(self._query.review_due_within)
+        review_due_within = unset_to_none(self._query.review_due_within)
+        if review_due_within is not None:
+            review_due_before = self._expand_review_due(review_due_within)
 
         self._repo_query = ListProjectsRepoQuery(
             availability=self._query.availability,
             folder_ids=self._folder_ids,
             review_due_before=review_due_before,
-            flagged=self._query.flagged,
-            search=self._query.search,
+            flagged=unset_to_none(self._query.flagged),
+            search=unset_to_none(self._query.search),
             limit=self._query.limit,
             offset=self._query.offset,
         )

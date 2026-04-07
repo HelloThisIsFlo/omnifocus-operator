@@ -11,18 +11,30 @@ from omnifocus_operator.agent_messages.descriptions import (
     SEARCH_FIELD_NAME_ONLY,
 )
 from omnifocus_operator.config import DEFAULT_LIST_LIMIT
-from omnifocus_operator.contracts.base import QueryModel
-from omnifocus_operator.contracts.use_cases.list._validators import validate_offset_requires_limit
+from omnifocus_operator.contracts.base import UNSET, Patch, QueryModel
+from omnifocus_operator.contracts.use_cases.list._validators import (
+    reject_null_filters,
+    validate_offset_requires_limit,
+)
 from omnifocus_operator.models.enums import FolderAvailability
+
+_PATCH_FIELDS = ["search"]
 
 
 class ListFoldersQuery(QueryModel):
     __doc__ = LIST_FOLDERS_QUERY_DOC
 
     availability: list[FolderAvailability] = Field(default=[FolderAvailability.AVAILABLE])
-    search: str | None = Field(default=None, description=SEARCH_FIELD_NAME_ONLY)
+    search: Patch[str] = Field(default=UNSET, description=SEARCH_FIELD_NAME_ONLY)
     limit: int | None = Field(default=DEFAULT_LIST_LIMIT, description=LIMIT_DESC)
-    offset: int | None = Field(default=None, description=OFFSET_DESC)
+    offset: int = Field(default=0, description=OFFSET_DESC)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _reject_nulls(cls, data: dict[str, object]) -> dict[str, object]:
+        if isinstance(data, dict):
+            reject_null_filters(data, _PATCH_FIELDS)
+        return data
 
     @model_validator(mode="after")
     def _check_offset_requires_limit(self) -> ListFoldersQuery:

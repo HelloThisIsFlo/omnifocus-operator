@@ -131,10 +131,6 @@ REPETITION_INVALID_END_EMPTY = (
 
 FILTER_NULL = "'{field}' cannot be null. To skip this filter, simply omit the field."
 
-AVAILABILITY_EMPTY = (
-    "'{field}' cannot be empty. Use 'all' to include every status, or omit for the default filter."
-)
-
 TAGS_EMPTY = "'{field}' cannot be empty. To ignore this filter, simply omit the field."
 
 # --- Validation: List Query ---

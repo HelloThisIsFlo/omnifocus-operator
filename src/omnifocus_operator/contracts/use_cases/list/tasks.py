@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from omnifocus_operator.agent_messages.descriptions import (
     ESTIMATED_MINUTES_MAX_DESC,
@@ -16,23 +16,42 @@ from omnifocus_operator.agent_messages.descriptions import (
     TAGS_FILTER_DESC,
 )
 from omnifocus_operator.config import DEFAULT_LIST_LIMIT
-from omnifocus_operator.contracts.base import QueryModel
-from omnifocus_operator.contracts.use_cases.list._validators import validate_offset_requires_limit
+from omnifocus_operator.contracts.base import UNSET, Patch, QueryModel
+from omnifocus_operator.contracts.use_cases.list._validators import (
+    reject_null_filters,
+    validate_non_empty_list,
+    validate_offset_requires_limit,
+)
 from omnifocus_operator.models.enums import Availability
+
+_PATCH_FIELDS = ["in_inbox", "flagged", "project", "tags", "estimated_minutes_max", "search"]
 
 
 class ListTasksQuery(QueryModel):
     __doc__ = LIST_TASKS_QUERY_DOC
 
-    in_inbox: bool | None = Field(default=None, description=IN_INBOX_FILTER_DESC)
-    flagged: bool | None = Field(default=None, description=FLAGGED_FILTER_DESC)
-    project: str | None = Field(default=None, description=PROJECT_FILTER_DESC)
-    tags: list[str] | None = Field(default=None, description=TAGS_FILTER_DESC)
-    estimated_minutes_max: int | None = Field(default=None, description=ESTIMATED_MINUTES_MAX_DESC)
+    in_inbox: Patch[bool] = Field(default=UNSET, description=IN_INBOX_FILTER_DESC)
+    flagged: Patch[bool] = Field(default=UNSET, description=FLAGGED_FILTER_DESC)
+    project: Patch[str] = Field(default=UNSET, description=PROJECT_FILTER_DESC)
+    tags: Patch[list[str]] = Field(default=UNSET, description=TAGS_FILTER_DESC)
+    estimated_minutes_max: Patch[int] = Field(default=UNSET, description=ESTIMATED_MINUTES_MAX_DESC)
     availability: list[Availability] = Field(default=[Availability.AVAILABLE, Availability.BLOCKED])
-    search: str | None = Field(default=None, description=SEARCH_FIELD_NAME_NOTES)
+    search: Patch[str] = Field(default=UNSET, description=SEARCH_FIELD_NAME_NOTES)
     limit: int | None = Field(default=DEFAULT_LIST_LIMIT, description=LIMIT_DESC)
-    offset: int | None = Field(default=None, description=OFFSET_DESC)
+    offset: int = Field(default=0, description=OFFSET_DESC)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _reject_nulls(cls, data: dict[str, object]) -> dict[str, object]:
+        if isinstance(data, dict):
+            reject_null_filters(data, _PATCH_FIELDS)
+        return data
+
+    @field_validator("tags", mode="after")
+    @classmethod
+    def _reject_empty_tags(cls, v: list[str]) -> list[str]:
+        validate_non_empty_list(v, "tags")
+        return v
 
     @model_validator(mode="after")
     def _check_offset_requires_limit(self) -> ListTasksQuery:

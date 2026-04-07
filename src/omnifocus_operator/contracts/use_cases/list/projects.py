@@ -21,11 +21,16 @@ from omnifocus_operator.agent_messages.descriptions import (
     SEARCH_FIELD_NAME_NOTES,
 )
 from omnifocus_operator.config import DEFAULT_LIST_LIMIT
-from omnifocus_operator.contracts.base import QueryModel
-from omnifocus_operator.contracts.use_cases.list._validators import validate_offset_requires_limit
+from omnifocus_operator.contracts.base import UNSET, Patch, QueryModel, _Unset
+from omnifocus_operator.contracts.use_cases.list._validators import (
+    reject_null_filters,
+    validate_offset_requires_limit,
+)
 from omnifocus_operator.models.enums import Availability
 
 _DURATION_PATTERN = re.compile(r"^(\d+)([dwmy])$")
+
+_PATCH_FIELDS = ["folder", "review_due_within", "flagged", "search"]
 
 
 class DurationUnit(StrEnum):
@@ -72,23 +77,30 @@ class ListProjectsQuery(QueryModel):
     __doc__ = LIST_PROJECTS_QUERY_DOC
 
     availability: list[Availability] = Field(default=[Availability.AVAILABLE, Availability.BLOCKED])
-    folder: str | None = Field(default=None, description=FOLDER_FILTER_DESC)
-    review_due_within: ReviewDueFilter | None = Field(
-        default=None, description=REVIEW_DUE_WITHIN_DESC
+    folder: Patch[str] = Field(default=UNSET, description=FOLDER_FILTER_DESC)
+    review_due_within: Patch[ReviewDueFilter] = Field(
+        default=UNSET, description=REVIEW_DUE_WITHIN_DESC
     )
-    flagged: bool | None = Field(default=None, description=FLAGGED_FILTER_DESC)
-    search: str | None = Field(default=None, description=SEARCH_FIELD_NAME_NOTES)
+    flagged: Patch[bool] = Field(default=UNSET, description=FLAGGED_FILTER_DESC)
+    search: Patch[str] = Field(default=UNSET, description=SEARCH_FIELD_NAME_NOTES)
     limit: int | None = Field(default=DEFAULT_LIST_LIMIT, description=LIMIT_DESC)
-    offset: int | None = Field(default=None, description=OFFSET_DESC)
+    offset: int = Field(default=0, description=OFFSET_DESC)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _reject_nulls(cls, data: dict[str, object]) -> dict[str, object]:
+        if isinstance(data, dict):
+            reject_null_filters(data, _PATCH_FIELDS)
+        return data
 
     @field_validator("review_due_within", mode="before")
     @classmethod
     def _parse_review_due_within(cls, v: object) -> object:
-        if v is None or isinstance(v, ReviewDueFilter):
+        if isinstance(v, (ReviewDueFilter, _Unset)):
             return v
         if isinstance(v, str):
             return parse_review_due_within(v)
-        return v
+        raise ValueError(err.REVIEW_DUE_WITHIN_INVALID.format(value=v))
 
     @model_validator(mode="after")
     def _check_offset_requires_limit(self) -> ListProjectsQuery:
