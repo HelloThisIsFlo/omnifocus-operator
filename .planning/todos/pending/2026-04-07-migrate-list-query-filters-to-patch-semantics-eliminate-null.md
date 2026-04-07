@@ -2,6 +2,7 @@
 created: "2026-04-07T00:16:53.000Z"
 title: Migrate list query filters to Patch semantics — eliminate null from agent-facing schemas
 area: contracts
+target: Phase 43.1 (immediately after Phase 43: Filters & Project Tools)
 files:
   - src/omnifocus_operator/contracts/use_cases/list/tasks.py
   - src/omnifocus_operator/contracts/use_cases/list/projects.py
