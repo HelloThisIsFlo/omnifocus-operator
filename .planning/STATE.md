@@ -65,6 +65,10 @@ Carried forward from v1.3:
 11. Null-stripping for read tool responses (v1.4)
 12. Fix OrdinalWeekdaySpec → OrdinalWeekday cross-layer coercion in edit pipeline (service)
 
+### Roadmap Evolution
+
+- Phase 44 added: Migrate list query filters to Patch semantics — eliminate null from agent-facing schemas
+
 ### Blockers/Concerns
 
 - Golden master re-capture required after Phase 42 (mapper rewrites). Human-only per GOLD-01.

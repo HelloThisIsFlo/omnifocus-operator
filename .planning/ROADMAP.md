@@ -228,3 +228,13 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43
 | 41. Write Pipeline | v1.3.1 | 2/2 | Complete    | 2026-04-06 |
 | 42. Read Output | v1.3.1 | 4/4 | Complete    | 2026-04-06 |
 | 43. Filters & Projects | v1.3.1 | 3/3 | Complete    | 2026-04-07 |
+
+### Phase 44: Migrate list query filters to Patch semantics — eliminate null from agent-facing schemas
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 43
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 44 to break down)
