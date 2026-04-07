@@ -96,6 +96,10 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 - ✓ Task.project field with containing project at any depth, `$inbox` for inbox tasks — v1.3.1 (Phase 42)
 - ✓ All cross-entity refs enriched to `{id, name}` objects (Project.folder, Project.next_task, Tag.parent, Folder.parent) — v1.3.1 (Phase 42)
 - ✓ inInbox field removed from Task output; ParentRef model replaced with tagged wrapper — v1.3.1 (Phase 42)
+- ✓ `list_tasks(project="$inbox")` normalizes to `in_inbox=True` via `resolve_inbox` before pipeline resolution — v1.3.1 (Phase 43)
+- ✓ Contradictory filter detection for all inbox/project combinations with locked error strings — v1.3.1 (Phase 43)
+- ✓ `get_project("$inbox")` guard, `list_projects` search warning for inbox-related terms — v1.3.1 (Phase 43)
+- ✓ Bridge-only `adapt_snapshot` filters project root tasks (parity with SQL `LEFT JOIN ProjectInfo`) — v1.3.1 (Phase 43)
 
 ### Active
 
@@ -128,9 +132,9 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 ## Context
 
-Shipped v1.3 with ~9,021 LOC Python (src/), ~215k LOC JS (bridge + deps), ~28k TS (tests).
+Shipped v1.3.1 with ~9,021 LOC Python (src/), ~215k LOC JS (bridge + deps), ~28k TS (tests).
 Tech stack: Python 3.12, uv, Pydantic v2, FastMCP v3 (`fastmcp>=3.1.1`), OmniJS bridge, SQLite3 (stdlib).
-1,528 pytest tests, 26 Vitest tests, UAT passed on all phases.
+1,638 pytest tests, 26 Vitest tests, UAT passed on all phases.
 Real OmniFocus database: ~2,400 tasks, ~363 projects, ~64 tags, ~79 folders.
 Read path: SQLite (default, ~46ms for full snapshot, <6ms for filtered queries). Write path: OmniJS bridge with write-through guarantee.
 11 MCP tools: get_all, get_task, get_project, get_tag, add_tasks, edit_tasks, list_tasks, list_projects, list_tags, list_folders, list_perspectives.
