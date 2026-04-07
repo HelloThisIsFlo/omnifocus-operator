@@ -22,7 +22,7 @@ class AvailabilityFilter(StrEnum):
     BLOCKED = "blocked"
     COMPLETED = "completed"
     DROPPED = "dropped"
-    ALL = "all"
+    ALL = "ALL"
 
 
 class TagAvailabilityFilter(StrEnum):
@@ -31,7 +31,7 @@ class TagAvailabilityFilter(StrEnum):
     AVAILABLE = "available"
     BLOCKED = "blocked"
     DROPPED = "dropped"
-    ALL = "all"
+    ALL = "ALL"
 
 
 class FolderAvailabilityFilter(StrEnum):
@@ -39,4 +39,4 @@ class FolderAvailabilityFilter(StrEnum):
 
     AVAILABLE = "available"
     DROPPED = "dropped"
-    ALL = "all"
+    ALL = "ALL"

@@ -793,7 +793,7 @@ class TestAvailabilityExpansion:
         perspectives=[],
     )
     async def test_tasks_all_returns_all_statuses(self, service: OperatorService) -> None:
-        """availability=['all'] expands to all core Availability values."""
+        """availability=['ALL'] expands to all core Availability values."""
 
         result = await service.list_tasks(ListTasksQuery(availability=[AvailabilityFilter.ALL]))
         # Should return all tasks regardless of status
@@ -810,7 +810,7 @@ class TestAvailabilityExpansion:
         perspectives=[],
     )
     async def test_tasks_mixed_all_warns(self, service: OperatorService) -> None:
-        """availability=['all', 'available'] expands and adds warning."""
+        """availability=['ALL', 'available'] expands and adds warning."""
 
         result = await service.list_tasks(
             ListTasksQuery(availability=[AvailabilityFilter.ALL, AvailabilityFilter.AVAILABLE])
@@ -828,7 +828,7 @@ class TestAvailabilityExpansion:
         perspectives=[],
     )
     async def test_projects_all_returns_all_statuses(self, service: OperatorService) -> None:
-        """list_projects with availability=['all'] expands correctly."""
+        """list_projects with availability=['ALL'] expands correctly."""
 
         result = await service.list_projects(
             ListProjectsQuery(availability=[AvailabilityFilter.ALL])
@@ -846,7 +846,7 @@ class TestAvailabilityExpansion:
         perspectives=[],
     )
     async def test_tags_all_returns_all_statuses(self, service: OperatorService) -> None:
-        """list_tags with availability=['all'] expands correctly."""
+        """list_tags with availability=['ALL'] expands correctly."""
 
         result = await service.list_tags(ListTagsQuery(availability=[TagAvailabilityFilter.ALL]))
         assert len(result.items) >= 1
@@ -862,7 +862,7 @@ class TestAvailabilityExpansion:
         perspectives=[],
     )
     async def test_folders_all_returns_all_statuses(self, service: OperatorService) -> None:
-        """list_folders with availability=['all'] expands correctly."""
+        """list_folders with availability=['ALL'] expands correctly."""
 
         result = await service.list_folders(
             ListFoldersQuery(availability=[FolderAvailabilityFilter.ALL])

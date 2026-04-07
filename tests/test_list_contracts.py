@@ -749,7 +749,7 @@ class TestAvailabilityFilterEnums:
 
     def test_availability_filter_has_all(self) -> None:
 
-        assert AvailabilityFilter.ALL == "all"
+        assert AvailabilityFilter.ALL == "ALL"
         assert AvailabilityFilter.AVAILABLE == "available"
         assert AvailabilityFilter.BLOCKED == "blocked"
         assert AvailabilityFilter.COMPLETED == "completed"
@@ -757,14 +757,14 @@ class TestAvailabilityFilterEnums:
 
     def test_tag_availability_filter_has_all(self) -> None:
 
-        assert TagAvailabilityFilter.ALL == "all"
+        assert TagAvailabilityFilter.ALL == "ALL"
         assert TagAvailabilityFilter.AVAILABLE == "available"
         assert TagAvailabilityFilter.BLOCKED == "blocked"
         assert TagAvailabilityFilter.DROPPED == "dropped"
 
     def test_folder_availability_filter_has_all(self) -> None:
 
-        assert FolderAvailabilityFilter.ALL == "all"
+        assert FolderAvailabilityFilter.ALL == "ALL"
         assert FolderAvailabilityFilter.AVAILABLE == "available"
         assert FolderAvailabilityFilter.DROPPED == "dropped"
 
@@ -775,9 +775,9 @@ class TestAvailabilityFilterEnums:
             TagAvailabilityFilter,
         )
 
-        assert AvailabilityFilter.ALL == "all"
-        assert TagAvailabilityFilter.ALL == "all"
-        assert FolderAvailabilityFilter.ALL == "all"
+        assert AvailabilityFilter.ALL == "ALL"
+        assert TagAvailabilityFilter.ALL == "ALL"
+        assert FolderAvailabilityFilter.ALL == "ALL"
 
 
 # ---------------------------------------------------------------------------
