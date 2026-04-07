@@ -2,9 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.3.1
 milestone_name: First-Class References
-status: executing
-stopped_at: Phase 44 context gathered
-last_updated: "2026-04-07T15:03:56.272Z"
+status: completed
+last_updated: "2026-04-07"
 last_activity: 2026-04-07
 progress:
   total_phases: 6
@@ -18,25 +17,22 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-05)
+See: .planning/PROJECT.md (updated 2026-04-07)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 42 — Read Output Restructure
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 44
-Plan: Not started
-Status: Executing Phase 42
+Milestone: v1.3.1 shipped
+Status: Between milestones
 Last activity: 2026-04-07
-
-Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Cumulative: 128 plans across v1.0-v1.3
+- Cumulative: 143 plans across v1.0-v1.3.1
 
 *Updated after each plan completion*
 
@@ -46,11 +42,9 @@ Progress: [░░░░░░░░░░] 0%
 
 Cleared at milestone boundary. See PROJECT.md Key Decisions for full history.
 
-- [Phase 40]: Used anchor_id.startswith($) guard in except block for RESERVED_PREFIX propagation
-
 ### Pending Todos
 
-Carried forward from v1.3:
+Carried forward from v1.3.1:
 
 1. Add retry logic for OmniFocus bridge timeouts (v1.6)
 2. Investigate macOS App Nap impact on OmniFocus responsiveness (v1.6)
@@ -64,17 +58,16 @@ Carried forward from v1.3:
 10. Field selection with curated defaults for read tools (v1.4)
 11. Null-stripping for read tool responses (v1.4)
 12. Fix OrdinalWeekdaySpec → OrdinalWeekday cross-layer coercion in edit pipeline (service)
+13. Golden master re-capture required after Phase 42 mapper rewrites (human-only per GOLD-01)
 
 ### Roadmap Evolution
 
-- Phase 44 added: Migrate list query filters to Patch semantics — eliminate null from agent-facing schemas
+(None — milestone boundary)
 
 ### Blockers/Concerns
 
-- Golden master re-capture required after Phase 42 (mapper rewrites). Human-only per GOLD-01.
+(None)
 
 ## Session Continuity
 
-Last activity: 2026-04-05 - Roadmap created for v1.3.1
-Stopped at: Phase 44 context gathered
-Resume file: .planning/phases/44-migrate-list-query-filters-to-patch-semantics-eliminate-null/44-CONTEXT.md
+Last activity: 2026-04-07 - v1.3.1 milestone completed

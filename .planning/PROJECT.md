@@ -8,19 +8,13 @@ A Python MCP server that exposes OmniFocus (macOS task manager) as structured ta
 
 Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
 
-## Current Milestone: v1.3.1 First-Class References
+## Current State
 
-**Goal:** Eliminate null overloading for inbox across the entire API surface — `$inbox` becomes the single, explicit representation everywhere.
+**Shipped:** v1.3.1 First-Class References (2026-04-07)
 
-**Target features:**
-- System location namespace (`$` prefix, `$inbox`, three-step resolver precedence)
-- New reference models (`ProjectRef`, `TaskRef`, `FolderRef`) replacing `ParentRef`
-- Task output: new `project` field, tagged object `parent`, `inInbox` removed from output
-- Write changes: `$inbox` in add_tasks/edit_tasks, `PatchOrNone` elimination
-- Filter changes: `project: "$inbox"` accepted in list_tasks, contradictory filter detection
-- Rich `{id, name}` references on all output models
-- Name-based resolution for all entity reference fields
-- Better errors for `before`/`after` with container targets
+11 MCP tools: `get_all`, `get_task`, `get_project`, `get_tag`, `add_tasks`, `edit_tasks`, `list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives`.
+
+**Next milestone:** Not yet planned — run `/gsd-new-milestone` to start.
 
 ## Requirements
 
@@ -100,6 +94,8 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 - ✓ Contradictory filter detection for all inbox/project combinations with locked error strings — v1.3.1 (Phase 43)
 - ✓ `get_project("$inbox")` guard, `list_projects` search warning for inbox-related terms — v1.3.1 (Phase 43)
 - ✓ Bridge-only `adapt_snapshot` filters project root tasks (parity with SQL `LEFT JOIN ProjectInfo`) — v1.3.1 (Phase 43)
+- ✓ List query filter fields migrated to `Patch[T]` — null eliminated from agent-facing schemas, UNSET→None at repo boundary — v1.3.1 (Phase 44)
+- ✓ `AvailabilityFilter` enums with `ALL` shorthand, empty-list rejection, mixed `["all", "available"]` warning — v1.3.1 (Phase 44)
 
 ### Active
 
@@ -132,9 +128,9 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 ## Context
 
-Shipped v1.3.1 with ~9,021 LOC Python (src/), ~215k LOC JS (bridge + deps), ~28k TS (tests).
+Shipped v1.3.1 with ~9,947 LOC Python (src/), ~215k LOC JS (bridge + deps), ~28k TS (tests).
 Tech stack: Python 3.12, uv, Pydantic v2, FastMCP v3 (`fastmcp>=3.1.1`), OmniJS bridge, SQLite3 (stdlib).
-1,638 pytest tests, 26 Vitest tests, UAT passed on all phases.
+1,693 pytest tests, 26 Vitest tests, UAT passed on all phases.
 Real OmniFocus database: ~2,400 tasks, ~363 projects, ~64 tags, ~79 folders.
 Read path: SQLite (default, ~46ms for full snapshot, <6ms for filtered queries). Write path: OmniJS bridge with write-through guarantee.
 11 MCP tools: get_all, get_task, get_project, get_tag, add_tasks, edit_tasks, list_tasks, list_projects, list_tags, list_folders, list_perspectives.
@@ -144,6 +140,8 @@ Agent-facing docs: all descriptions centralized in agent_messages/descriptions.p
 RRULE: rrule/ module (parse_rrule, build_rrule) shared by both read paths, flat Frequency model with 6 types, FrequencyAddSpec/FrequencyEditSpec command models.
 Golden master: 43 scenarios in 7 categories, contract tests verify InMemoryBridge matches RealBridge.
 Logging: ToolLoggingMiddleware + ValidationReformatterMiddleware for automatic tool call logging and error formatting, dual-handler (stderr + rotating file) under `omnifocus_operator.*` namespace.
+System locations: `$inbox` system location with `$` prefix namespace, three-step resolver cascade (system location → ID → name). All output refs enriched to `{id, name}` objects.
+Patch semantics: all write fields and list query filters use `Patch[T]` — null eliminated from agent-facing schemas everywhere.
 
 ## Constraints
 
@@ -204,6 +202,11 @@ Logging: ToolLoggingMiddleware + ValidationReformatterMiddleware for automatic t
 | Literal/Annotated reserved for contract models | Core models use plain types; schema-level constraints only on contract boundary. AST enforcement test prevents regression | ✓ Good — v1.3, clean taxonomy boundary |
 | DEFAULT_LIST_LIMIT=50 on all list tools | Prevents unbounded responses (1.8M chars for full DB). Agent can override with limit=None | ✓ Good — v1.3, protects agent context windows |
 | Cross-path equivalence as hard requirement | 32 parametrized tests prove SQL and bridge paths return identical results. Mandatory for any new filter | ✓ Good — v1.3, catches drift automatically |
+| `$` prefix namespace for system locations | `$inbox` is an ID-level convention, not a display name. Three-step resolver: system location → ID → name. Extensible to future system locations | ✓ Good — v1.3.1, clean separation of API convention from display |
+| Tagged parent discriminator over nullable union | `{"project": {id,name}}` / `{"task": {id,name}}` instead of `{type, id} | null`. Inbox = `{project: {id: "$inbox", name: "Inbox"}}`. Never null | ✓ Good — v1.3.1, self-describing, no null ambiguity |
+| Rich `{id, name}` refs on all cross-entity fields | Every foreign reference is an object, not a bare ID. Agents never need a second lookup to know what a reference points to | ✓ Good — v1.3.1, eliminates entire class of follow-up calls |
+| Null elimination from agent-facing schemas | All write fields and list query filters use `Patch[T]` with UNSET default. Null rejected with educational error. Service translates UNSET→None at repo boundary | ✓ Good — v1.3.1, clean three-way semantics everywhere |
+| AvailabilityFilter enums with ALL shorthand | `["all"]` expands to full `list(Availability)` at service layer. Mixed `["all", "available"]` accepted with warning | ✓ Good — v1.3.1, ergonomic for agents |
 
 ---
 ## Evolution
@@ -224,4 +227,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-07 after Phase 44 (Migrate list query filters to Patch semantics) complete*
+*Last updated: 2026-04-07 after v1.3.1 milestone*

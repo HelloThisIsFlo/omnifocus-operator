@@ -1,5 +1,27 @@
 # Milestones
 
+## v1.3.1 First-Class References (Shipped: 2026-04-07)
+
+**Phases:** 6 (39-44) | **Plans:** 15 executed
+**Requirements:** 61/61 satisfied
+**Tests:** 1,693 pytest at milestone completion (up from 1,528)
+**Timeline:** 3 days (2026-04-05 → 2026-04-07) | 204 commits
+**LOC:** ~9,947 Python (src/)
+**Git range:** v1.3..v1.3.1
+
+**Key accomplishments:**
+
+1. System location namespace (`$` prefix) with `$inbox` constant, three-step resolver cascade, and reserved-prefix error handling for unknown `$`-prefixed strings
+2. Name-based resolution for all write fields — case-insensitive substring matching with fuzzy "did you mean?" for projects, tasks, tags, and containers
+3. `$inbox` write support in add_tasks/edit_tasks, PatchOrNone elimination, null-rejection validators on all MoveAction fields
+4. Tagged parent discriminator (`{project: {id,name}}` / `{task: {id,name}}`), Task.project field, and rich `{id, name}` references on all cross-entity output fields
+5. `$inbox` filter integration — `list_tasks(project="$inbox")`, contradictory filter detection, `get_project("$inbox")` guard
+6. Patch query filter migration — null eliminated from all agent-facing list query schemas, AvailabilityFilter enums with `ALL` shorthand
+
+**Delivered:** Explicit inbox representation (`$inbox`) across the entire API surface — reads, writes, and filters. Rich `{id, name}` references on all cross-entity output fields. Name-based resolution for all write fields. Null eliminated from agent-facing schemas.
+
+---
+
 ## v1.3 Read Tools (Shipped: 2026-04-05)
 
 **Phases:** 12 (34-38 including 7 decimal insertions) | **Plans:** 26 executed

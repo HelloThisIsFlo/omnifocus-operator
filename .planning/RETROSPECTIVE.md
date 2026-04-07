@@ -334,6 +334,55 @@
 
 ---
 
+## Milestone: v1.3.1 -- First-Class References
+
+**Shipped:** 2026-04-07
+**Phases:** 6 | **Plans:** 15 executed
+
+### What Was Built
+- System location namespace (`$` prefix) with `$inbox` constant and three-step resolver cascade
+- Name-based resolution for all write fields — case-insensitive substring matching with fuzzy errors
+- `$inbox` write support in add_tasks/edit_tasks, PatchOrNone elimination, null-rejection validators
+- Tagged parent discriminator (`{project: {id,name}}` / `{task: {id,name}}`), Task.project field, rich `{id, name}` refs on all entities
+- `$inbox` filter integration with contradictory filter detection, project tool guardrails
+- Patch query filter migration — null eliminated from all agent-facing list query schemas, AvailabilityFilter enums
+
+### What Worked
+- Clean milestone scoping — 5 original phases (39-43) covered the core feature, with only 1 insertion (Phase 44) for a discovered consistency improvement
+- Phase dependency ordering (39 → 40 → 41 + 42 → 43 → 44) was well-designed — each phase built on verified foundations, zero rework
+- The `$inbox` design decision (API convention in IDs, not display names) was validated across reads, writes, and filters — no awkward edge cases emerged
+- Phase 42 (read output restructure) was the hardest phase (4 plans, mapper rewrites across SQL + bridge) but went smoothly because both paths already had cross-path equivalence tests
+- Milestone audit passed 61/61 requirements with zero code gaps — only documentation-level findings (unchecked checkboxes, stale constant names in docs)
+- 3-day execution for 6 phases — tightest timeline yet for a feature milestone
+
+### What Was Inefficient
+- REQUIREMENTS.md checkboxes: 46/48 still unchecked despite all being code-verified — manual checkboxes consistently drift from implementation
+- 28 requirements missing from SUMMARY.md frontmatter `requirements_completed` — the SUMMARY auto-extraction for MILESTONES.md produced noisy results that needed full manual rewrite
+- Phase 44 was added late (after Phase 43 UAT) — Patch query migration was discovered during testing rather than during requirements. Could have been anticipated from the v1.3.1 "eliminate null" goal
+- Golden master re-capture needed after Phase 42 mapper rewrites but not yet done — blocked on human-only GOLD-01 rule
+
+### Patterns Established
+- `$` prefix namespace for system locations — extensible to future `$forecast`, `$flagged` etc.
+- Tagged wrapper pattern for parent discriminator — same validator shape as MoveAction exactly-one
+- `resolve_inbox` as synchronous pre-resolution step before pipeline resolution cascade
+- `reject_null_filters` shared helper for model_validator(mode="before") null rejection
+- `AvailabilityFilter` enum pattern with `ALL` shorthand and `_expand_availability` at service layer
+- `unset_to_none()` utility for Patch/UNSET→None translation at repo boundary
+
+### Key Lessons
+1. **"Eliminate null" is a bigger scope than it looks** — null appeared in write fields, read output, filter schemas, and availability lists. Each surface needed its own elimination strategy (UNSET sentinel, tagged discriminator, AvailabilityFilter enum)
+2. **Cross-path equivalence tests pay compound dividends** — Phase 42's mapper rewrites touched every SQL and bridge mapper function; existing cross-path tests caught 3 regressions during development
+3. **Requirement checkbox drift is systemic** — every milestone has the same finding. Automated enforcement (like AST tests for descriptions) works; manual checkboxes don't. Consider dropping checkboxes entirely
+4. **SUMMARY frontmatter quality matters at milestone completion** — noisy auto-extraction forced manual rewrite of MILESTONES.md. Investing in clean `one_liner` fields during execution saves time at archival
+5. **Late-discovered requirements are fine when scoped** — Phase 44 was a clean single-concern addition that completed the "null elimination" theme. The audit confirmed it fit the milestone goal
+
+### Cost Observations
+- Model mix: ~60% opus (research, planning, complex phases), ~40% sonnet (execution, validation)
+- Sessions: ~6-8 across 3 days
+- Notable: 204 commits in 3 days, 15 plans at ~4 min average. Tightest feature milestone yet — clean scope + strong research from v1.3 read tools
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -347,6 +396,7 @@
 | v1.2.2 | 3 | 6 | First migration milestone -- spike-first approach, phase consolidation from research |
 | v1.2.3 | 4 | 15 | First domain-feature milestone -- research spike → read model → write model → refactor arc |
 | v1.3 | 12 | 26 | Largest feature milestone -- 7 decimal insertions, cross-path equivalence as hard requirement |
+| v1.3.1 | 6 | 15 | Cleanest feature milestone -- 1 insertion, 3-day execution, null elimination across all surfaces |
 
 ### Cumulative Quality
 
@@ -359,6 +409,7 @@
 | v1.2.2 | 734 (708 pytest + 26 vitest) | ~98% | 1 (ToolAnnotations mcp.types residual) |
 | v1.2.3 | 1,139 (1,113 pytest + 26 vitest) | ~94% | 6 (all cosmetic/documentation) |
 | v1.3 | 1,554 (1,528 pytest + 26 vitest) | ~94% | 4 (Nyquist gaps on 4 phases, all process artifacts) |
+| v1.3.1 | 1,719 (1,693 pytest + 26 vitest) | ~98% | 2 (golden master re-capture, SUMMARY frontmatter gaps) |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -374,3 +425,5 @@
 10. Discriminated unions are poor write models; flat models enable partial updates (established v1.2.3 -- Phase 33.1 refactor was cheaper than workarounds)
 11. Automated enforcement > manual checklists for documentation (established v1.3 -- AST tests self-maintain, traceability checkboxes drift)
 12. Cross-path equivalence as hard requirement catches real divergence (established v1.3 -- 32 parametrized tests, mandatory for new filters)
+13. Cross-path equivalence tests pay compound dividends during rewrites (verified v1.3.1 -- Phase 42 mapper rewrites caught 3 regressions)
+14. Manual requirement checkboxes drift systemically; automated enforcement works (verified across all milestones -- consider dropping checkboxes)
