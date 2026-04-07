@@ -70,6 +70,13 @@ def is_set[T](value: T | _Unset) -> TypeGuard[T]:
     return not isinstance(value, _Unset)
 
 
+def unset_to_none[T](value: T | _Unset) -> T | None:
+    """Convert UNSET to None for service/repo boundary translation."""
+    if isinstance(value, _Unset):
+        return None
+    return value
+
+
 class StrictModel(OmniFocusBaseModel):
     """Base for all agent-facing contract models. Rejects unknown fields."""
 
@@ -99,4 +106,5 @@ __all__ = [
     "StrictModel",
     "_Unset",
     "is_set",
+    "unset_to_none",
 ]

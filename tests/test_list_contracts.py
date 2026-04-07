@@ -546,3 +546,104 @@ class TestListRepoResult:
 
     def test_inherits_omnifocus_base_model(self) -> None:
         assert issubclass(ListRepoResult, OmniFocusBaseModel)
+
+
+# ---------------------------------------------------------------------------
+# unset_to_none utility
+# ---------------------------------------------------------------------------
+
+
+class TestUnsetToNone:
+    """Verify unset_to_none() converts UNSET to None and passes through values."""
+
+    def test_unset_returns_none(self) -> None:
+        from omnifocus_operator.contracts.base import UNSET, unset_to_none
+
+        assert unset_to_none(UNSET) is None
+
+    def test_string_passes_through(self) -> None:
+        from omnifocus_operator.contracts.base import unset_to_none
+
+        assert unset_to_none("hello") == "hello"
+
+    def test_none_passes_through(self) -> None:
+        from omnifocus_operator.contracts.base import unset_to_none
+
+        assert unset_to_none(None) is None
+
+    def test_int_passes_through(self) -> None:
+        from omnifocus_operator.contracts.base import unset_to_none
+
+        assert unset_to_none(42) == 42
+
+
+# ---------------------------------------------------------------------------
+# reject_null_filters validator
+# ---------------------------------------------------------------------------
+
+
+class TestRejectNullFilters:
+    """Verify reject_null_filters() catches null values on Patch filter fields."""
+
+    def test_null_field_raises_with_filter_null_message(self) -> None:
+        from omnifocus_operator.agent_messages.errors import FILTER_NULL
+        from omnifocus_operator.contracts.use_cases.list._validators import (
+            reject_null_filters,
+        )
+
+        with pytest.raises(ValueError, match=re.escape(FILTER_NULL.format(field="search"))):
+            reject_null_filters({"search": None, "flagged": True}, ["search", "flagged"])
+
+    def test_valid_values_pass(self) -> None:
+        from omnifocus_operator.contracts.use_cases.list._validators import (
+            reject_null_filters,
+        )
+
+        # Should not raise
+        reject_null_filters({"search": "test", "flagged": True}, ["search", "flagged"])
+
+    def test_missing_key_is_fine(self) -> None:
+        from omnifocus_operator.contracts.use_cases.list._validators import (
+            reject_null_filters,
+        )
+
+        # Missing keys = omitted = UNSET = fine
+        reject_null_filters({"flagged": True}, ["search", "flagged"])
+
+    def test_camel_case_null_raises(self) -> None:
+        """reject_null_filters checks both snake_case and camelCase aliases."""
+        from omnifocus_operator.agent_messages.errors import FILTER_NULL
+        from omnifocus_operator.contracts.use_cases.list._validators import (
+            reject_null_filters,
+        )
+
+        with pytest.raises(
+            ValueError, match=re.escape(FILTER_NULL.format(field="estimatedMinutesMax"))
+        ):
+            reject_null_filters({"estimatedMinutesMax": None}, ["estimated_minutes_max"])
+
+
+# ---------------------------------------------------------------------------
+# validate_non_empty_list validator
+# ---------------------------------------------------------------------------
+
+
+class TestValidateNonEmptyList:
+    """Verify validate_non_empty_list() rejects empty lists."""
+
+    def test_empty_list_raises_with_tags_empty_message(self) -> None:
+        from omnifocus_operator.agent_messages.errors import TAGS_EMPTY
+        from omnifocus_operator.contracts.use_cases.list._validators import (
+            validate_non_empty_list,
+        )
+
+        with pytest.raises(ValueError, match=re.escape(TAGS_EMPTY.format(field="tags"))):
+            validate_non_empty_list([], "tags")
+
+    def test_non_empty_list_passes(self) -> None:
+        from omnifocus_operator.contracts.use_cases.list._validators import (
+            validate_non_empty_list,
+        )
+
+        # Should not raise
+        validate_non_empty_list(["x"], "tags")

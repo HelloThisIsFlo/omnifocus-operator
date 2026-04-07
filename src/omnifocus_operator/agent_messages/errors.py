@@ -127,6 +127,16 @@ REPETITION_INVALID_END_EMPTY = (
     "end requires either 'date' (ISO-8601 string) or 'occurrences' (integer >= 1)"
 )
 
+# --- Validation: List Filters ---
+
+FILTER_NULL = "'{field}' cannot be null. To skip this filter, simply omit the field."
+
+AVAILABILITY_EMPTY = (
+    "'{field}' cannot be empty. Use 'all' to include every status, or omit for the default filter."
+)
+
+TAGS_EMPTY = "'{field}' cannot be empty. To ignore this filter, simply omit the field."
+
 # --- Validation: List Query ---
 
 OFFSET_REQUIRES_LIMIT = "offset requires limit -- set limit when using offset"
