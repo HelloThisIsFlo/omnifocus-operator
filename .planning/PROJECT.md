@@ -224,4 +224,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-07 after Phase 43 (Filters & Project Tools) complete*
+*Last updated: 2026-04-07 after Phase 44 (Migrate list query filters to Patch semantics) complete*
