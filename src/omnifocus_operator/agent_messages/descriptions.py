@@ -287,11 +287,11 @@ SEARCH_FIELD_NAME_ONLY = "Case-insensitive substring match on name."
 
 # --- Field Descriptions: List Tool Filters ---
 
-FLAGGED_FILTER_DESC = "true = flagged only, false = unflagged only, null/omit = skip filter."
+FLAGGED_FILTER_DESC = "true = flagged only, false = unflagged only, omit = skip filter."
 
 IN_INBOX_FILTER_DESC = (
     "true = Inbox tasks only (not assigned to a project), "
-    "false = non-Inbox only, null/omit = skip filter."
+    "false = non-Inbox only, omit = skip filter."
 )
 
 ESTIMATED_MINUTES_MAX_DESC = (
