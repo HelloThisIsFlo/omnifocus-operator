@@ -8,13 +8,19 @@ A Python MCP server that exposes OmniFocus (macOS task manager) as structured ta
 
 Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
 
-## Current State
+## Current Milestone: v1.3.2 Date Filtering
 
-**Shipped:** v1.3.1 First-Class References (2026-04-07)
+**Goal:** Agents can filter tasks by any date dimension — due, defer, planned, completion, drop, creation, and modification dates — using shorthand periods, absolute bounds, or semantic shortcuts.
 
-11 MCP tools: `get_all`, `get_task`, `get_project`, `get_tag`, `add_tasks`, `edit_tasks`, `list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives`.
-
-**Next milestone:** Not yet planned — run `/gsd-new-milestone` to start.
+**Target features:**
+- 7 date filter fields on `list_tasks` and `count_tasks`: due, defer, planned, completed, dropped, added, modified
+- String shortcuts: `"today"`, `"overdue"`, `"soon"`, `"any"`, `"none"` (field-specific)
+- Object form — shorthand: `{this: "w"}` (calendar-aligned), `{last: "3d"}` (rolling past), `{next: "1m"}` (rolling future)
+- Object form — absolute: `{before: "...", after: "..."}` (both inclusive)
+- Due-soon threshold configuration (TBD: env var vs server config flag vs MCP resource)
+- Changes to existing filters: `urgency` removed, `completed` boolean → date filter, `availability` trimmed
+- Educational warnings for defer vs availability confusion
+- Bridge fallback with identical date filter semantics
 
 ## Requirements
 
@@ -99,7 +105,9 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 ### Active
 
-- [ ] Count tasks/projects reusing list filter logic (v1.3.x or later — total_count in ListResult may suffice)
+- [ ] Date filtering on list_tasks and count_tasks — 7 date fields with shorthand, absolute, and string shortcuts (v1.3.2)
+- [ ] Due-soon threshold configuration (v1.3.2)
+- [ ] Existing filter changes: urgency removed, completed boolean → date filter, availability trimmed (v1.3.2)
 - [ ] Field selection, task deletion, notes append (v1.4)
 - [ ] Fuzzy search (v1.4.1)
 - [ ] TaskPaper output format (v1.4.2)
@@ -227,4 +235,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-07 after v1.3.1 milestone*
+*Last updated: 2026-04-07 after v1.3.2 milestone start*
