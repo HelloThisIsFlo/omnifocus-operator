@@ -1,12 +1,17 @@
-"""Tests for DateFilter contract model and date shortcut StrEnums."""
+"""Tests for DateFilter contract model, date shortcut StrEnums, and query date fields."""
+
+from datetime import datetime
 
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
+from omnifocus_operator.config import get_week_start
 from omnifocus_operator.contracts.use_cases.list import (
     DateFilter,
     DueDateShortcut,
     LifecycleDateShortcut,
+    ListTasksQuery,
+    ListTasksRepoQuery,
 )
 
 # ---------------------------------------------------------------------------
@@ -251,3 +256,162 @@ class TestUnionDiscrimination:
         probe = _Probe(completed={"last": "3d"})
         assert isinstance(probe.completed, DateFilter)
         assert probe.completed.last == "3d"
+
+
+# ---------------------------------------------------------------------------
+# ListTasksQuery: Date filter fields (Plan 02)
+# ---------------------------------------------------------------------------
+
+
+class TestListTasksQueryDateFields:
+    """Verify ListTasksQuery accepts date filter fields with correct union types."""
+
+    def test_due_overdue_shortcut(self) -> None:
+        q = ListTasksQuery(due="overdue")
+        assert isinstance(q.due, DueDateShortcut)
+        assert q.due == DueDateShortcut.OVERDUE
+
+    def test_due_soon_shortcut(self) -> None:
+        q = ListTasksQuery(due="soon")
+        assert isinstance(q.due, DueDateShortcut)
+        assert q.due == DueDateShortcut.SOON
+
+    def test_due_today_shortcut(self) -> None:
+        q = ListTasksQuery(due="today")
+        assert isinstance(q.due, DueDateShortcut)
+        assert q.due == DueDateShortcut.TODAY
+
+    def test_due_date_filter_object(self) -> None:
+        q = ListTasksQuery(due={"this": "w"})
+        assert isinstance(q.due, DateFilter)
+        assert q.due.this == "w"
+
+    def test_completed_any_shortcut(self) -> None:
+        q = ListTasksQuery(completed="any")
+        assert isinstance(q.completed, LifecycleDateShortcut)
+        assert q.completed == LifecycleDateShortcut.ANY
+
+    def test_defer_today_literal(self) -> None:
+        q = ListTasksQuery(defer="today")
+        assert q.defer == "today"
+
+    def test_planned_today_literal(self) -> None:
+        q = ListTasksQuery(planned="today")
+        assert q.planned == "today"
+
+    def test_added_today_literal(self) -> None:
+        q = ListTasksQuery(added="today")
+        assert q.added == "today"
+
+    def test_modified_today_literal(self) -> None:
+        q = ListTasksQuery(modified="today")
+        assert q.modified == "today"
+
+    def test_dropped_any_shortcut(self) -> None:
+        q = ListTasksQuery(dropped="any")
+        assert isinstance(q.dropped, LifecycleDateShortcut)
+        assert q.dropped == LifecycleDateShortcut.ANY
+
+
+class TestListTasksQueryDateFieldRejection:
+    """Verify invalid shortcuts are rejected on the correct fields."""
+
+    def test_due_any_rejected(self) -> None:
+        """'any' is not valid for due -- only for lifecycle fields."""
+        with pytest.raises(ValidationError):
+            ListTasksQuery(due="any")
+
+    def test_defer_overdue_rejected(self) -> None:
+        """'overdue' is not valid for defer -- only for due."""
+        with pytest.raises(ValidationError):
+            ListTasksQuery(defer="overdue")
+
+    def test_due_null_rejected(self) -> None:
+        """Null rejection covers date fields."""
+        with pytest.raises(ValidationError):
+            ListTasksQuery(due=None)
+
+    def test_defer_null_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            ListTasksQuery(defer=None)
+
+    def test_completed_null_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            ListTasksQuery(completed=None)
+
+    def test_dropped_null_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            ListTasksQuery(dropped=None)
+
+    def test_planned_null_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            ListTasksQuery(planned=None)
+
+    def test_added_null_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            ListTasksQuery(added=None)
+
+    def test_modified_null_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            ListTasksQuery(modified=None)
+
+
+# ---------------------------------------------------------------------------
+# ListTasksRepoQuery: Resolved datetime fields (Plan 02)
+# ---------------------------------------------------------------------------
+
+
+class TestListTasksRepoQueryDatetimeFields:
+    """Verify ListTasksRepoQuery has 14 _after/_before datetime fields."""
+
+    _DATE_FIELD_PAIRS = [
+        ("due_after", "due_before"),
+        ("defer_after", "defer_before"),
+        ("planned_after", "planned_before"),
+        ("completed_after", "completed_before"),
+        ("dropped_after", "dropped_before"),
+        ("added_after", "added_before"),
+        ("modified_after", "modified_before"),
+    ]
+
+    def test_all_14_fields_exist_and_default_none(self) -> None:
+        q = ListTasksRepoQuery()
+        for after_field, before_field in self._DATE_FIELD_PAIRS:
+            assert getattr(q, after_field) is None, f"{after_field} should default to None"
+            assert getattr(q, before_field) is None, f"{before_field} should default to None"
+
+    def test_datetime_values_accepted(self) -> None:
+        dt = datetime(2026, 4, 7, 12, 0, 0)
+        q = ListTasksRepoQuery(due_after=dt, due_before=dt)
+        assert q.due_after == dt
+        assert q.due_before == dt
+
+
+# ---------------------------------------------------------------------------
+# OPERATOR_WEEK_START config (Plan 02)
+# ---------------------------------------------------------------------------
+
+
+class TestGetWeekStart:
+    """Verify get_week_start() reads OPERATOR_WEEK_START env var."""
+
+    def test_default_is_monday(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("OPERATOR_WEEK_START", raising=False)
+        assert get_week_start() == 0
+
+    def test_sunday_returns_6(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("OPERATOR_WEEK_START", "sunday")
+        assert get_week_start() == 6
+
+    def test_monday_returns_0(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("OPERATOR_WEEK_START", "monday")
+        assert get_week_start() == 0
+
+    def test_case_insensitive(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("OPERATOR_WEEK_START", "SUNDAY")
+        assert get_week_start() == 6
+
+    def test_invalid_value_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("OPERATOR_WEEK_START", "wednesday")
+        with pytest.raises(ValueError, match="Invalid OPERATOR_WEEK_START"):
+            get_week_start()
