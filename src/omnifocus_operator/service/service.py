@@ -21,8 +21,10 @@ from omnifocus_operator.agent_messages.errors import (
     REPETITION_NO_EXISTING_RULE,
 )
 from omnifocus_operator.agent_messages.warnings import (
+    LIST_PROJECTS_INBOX_WARNING,
     REPETITION_NO_OP,
 )
+from omnifocus_operator.config import SYSTEM_LOCATIONS
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.protocols import Service
 from omnifocus_operator.contracts.shared.repetition_rule import RepetitionRuleRepoPayload
@@ -364,8 +366,17 @@ class _ListProjectsPipeline(_ReadPipeline):
         self._folders = folders_result.items
 
         self._resolve_folder()
+        self._check_inbox_search_warning()
         self._build_repo_query()
         return await self._delegate()
+
+    def _check_inbox_search_warning(self) -> None:
+        """Warn if search term matches system inbox name (per D-16 to D-19)."""
+        if (
+            self._query.search is not None
+            and self._query.search.lower() in SYSTEM_LOCATIONS["inbox"].name.lower()
+        ):
+            self._warnings.append(LIST_PROJECTS_INBOX_WARNING)
 
     def _resolve_folder(self) -> None:
         self._folder_ids: list[str] | None = None

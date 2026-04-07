@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Never, Protocol, runtime_checkable
 from omnifocus_operator.agent_messages.errors import (
     CONTRADICTORY_INBOX_FALSE,
     CONTRADICTORY_INBOX_PROJECT,
+    GET_PROJECT_INBOX_ERROR,
     NAME_NOT_FOUND,
     PROJECT_NOT_FOUND,
     RESERVED_PREFIX,
@@ -193,6 +194,8 @@ class Resolver:
 
     async def lookup_project(self, project_id: str) -> Project:
         """Verify project exists. Returns the Project. Raises ValueError if not found."""
+        if project_id.startswith(SYSTEM_LOCATION_PREFIX):
+            raise ValueError(GET_PROJECT_INBOX_ERROR)
         logger.debug("Resolver.lookup_project: id=%s", project_id)
         project = await self._repo.get_project(project_id)
         if project is None:
