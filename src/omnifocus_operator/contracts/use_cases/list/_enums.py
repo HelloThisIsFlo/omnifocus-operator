@@ -8,9 +8,15 @@ and maps back to core enums for repo queries.
 
 from enum import StrEnum
 
+from omnifocus_operator.agent_messages.descriptions import (
+    AVAILABILITY_DOC,
+    FOLDER_AVAILABILITY_DOC,
+    TAG_AVAILABILITY_DOC,
+)
+
 
 class AvailabilityFilter(StrEnum):
-    """Task/project availability filter values."""
+    __doc__ = AVAILABILITY_DOC
 
     AVAILABLE = "available"
     BLOCKED = "blocked"
@@ -20,7 +26,7 @@ class AvailabilityFilter(StrEnum):
 
 
 class TagAvailabilityFilter(StrEnum):
-    """Tag availability filter values."""
+    __doc__ = TAG_AVAILABILITY_DOC
 
     AVAILABLE = "available"
     BLOCKED = "blocked"
@@ -29,7 +35,7 @@ class TagAvailabilityFilter(StrEnum):
 
 
 class FolderAvailabilityFilter(StrEnum):
-    """Folder availability filter values."""
+    __doc__ = FOLDER_AVAILABILITY_DOC
 
     AVAILABLE = "available"
     DROPPED = "dropped"

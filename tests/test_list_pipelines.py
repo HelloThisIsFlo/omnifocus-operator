@@ -17,6 +17,12 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from omnifocus_operator.contracts.base import UNSET
+from omnifocus_operator.contracts.use_cases.list._enums import (
+    AvailabilityFilter,
+    FolderAvailabilityFilter,
+    TagAvailabilityFilter,
+)
 from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersQuery
 from omnifocus_operator.contracts.use_cases.list.perspectives import ListPerspectivesQuery
 from omnifocus_operator.contracts.use_cases.list.projects import (
@@ -26,7 +32,7 @@ from omnifocus_operator.contracts.use_cases.list.projects import (
 )
 from omnifocus_operator.contracts.use_cases.list.tags import ListTagsQuery
 from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksQuery
-from omnifocus_operator.service.service import _ListProjectsPipeline
+from omnifocus_operator.service.service import _ListProjectsPipeline, matches_inbox_name
 
 from .conftest import (
     make_folder_dict,
@@ -749,28 +755,21 @@ class TestMatchesInboxName:
     """matches_inbox_name handles UNSET, None, and str correctly."""
 
     def test_unset_returns_false(self) -> None:
-        from omnifocus_operator.contracts.base import UNSET
-        from omnifocus_operator.service.service import matches_inbox_name
-
         assert matches_inbox_name(UNSET) is False
 
     def test_none_returns_false(self) -> None:
-        from omnifocus_operator.service.service import matches_inbox_name
 
         assert matches_inbox_name(None) is False
 
     def test_inbox_string_returns_true(self) -> None:
-        from omnifocus_operator.service.service import matches_inbox_name
 
         assert matches_inbox_name("inbox") is True
 
     def test_work_string_returns_false(self) -> None:
-        from omnifocus_operator.service.service import matches_inbox_name
 
         assert matches_inbox_name("work") is False
 
     def test_int_returns_false(self) -> None:
-        from omnifocus_operator.service.service import matches_inbox_name
 
         assert matches_inbox_name(42) is False
 
@@ -795,7 +794,6 @@ class TestAvailabilityExpansion:
     )
     async def test_tasks_all_returns_all_statuses(self, service: OperatorService) -> None:
         """availability=['all'] expands to all core Availability values."""
-        from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
 
         result = await service.list_tasks(ListTasksQuery(availability=[AvailabilityFilter.ALL]))
         # Should return all tasks regardless of status
@@ -813,7 +811,6 @@ class TestAvailabilityExpansion:
     )
     async def test_tasks_mixed_all_warns(self, service: OperatorService) -> None:
         """availability=['all', 'available'] expands and adds warning."""
-        from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
 
         result = await service.list_tasks(
             ListTasksQuery(availability=[AvailabilityFilter.ALL, AvailabilityFilter.AVAILABLE])
@@ -832,7 +829,6 @@ class TestAvailabilityExpansion:
     )
     async def test_projects_all_returns_all_statuses(self, service: OperatorService) -> None:
         """list_projects with availability=['all'] expands correctly."""
-        from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
 
         result = await service.list_projects(
             ListProjectsQuery(availability=[AvailabilityFilter.ALL])
@@ -851,7 +847,6 @@ class TestAvailabilityExpansion:
     )
     async def test_tags_all_returns_all_statuses(self, service: OperatorService) -> None:
         """list_tags with availability=['all'] expands correctly."""
-        from omnifocus_operator.contracts.use_cases.list._enums import TagAvailabilityFilter
 
         result = await service.list_tags(ListTagsQuery(availability=[TagAvailabilityFilter.ALL]))
         assert len(result.items) >= 1
@@ -868,7 +863,6 @@ class TestAvailabilityExpansion:
     )
     async def test_folders_all_returns_all_statuses(self, service: OperatorService) -> None:
         """list_folders with availability=['all'] expands correctly."""
-        from omnifocus_operator.contracts.use_cases.list._enums import FolderAvailabilityFilter
 
         result = await service.list_folders(
             ListFoldersQuery(availability=[FolderAvailabilityFilter.ALL])
@@ -887,7 +881,6 @@ class TestAvailabilityExpansion:
     )
     async def test_tags_mixed_all_warns(self, service: OperatorService) -> None:
         """list_tags with mixed ALL adds warning."""
-        from omnifocus_operator.contracts.use_cases.list._enums import TagAvailabilityFilter
 
         result = await service.list_tags(
             ListTagsQuery(availability=[TagAvailabilityFilter.ALL, TagAvailabilityFilter.AVAILABLE])
@@ -906,7 +899,6 @@ class TestAvailabilityExpansion:
     )
     async def test_folders_mixed_all_warns(self, service: OperatorService) -> None:
         """list_folders with mixed ALL adds warning."""
-        from omnifocus_operator.contracts.use_cases.list._enums import FolderAvailabilityFilter
 
         result = await service.list_folders(
             ListFoldersQuery(

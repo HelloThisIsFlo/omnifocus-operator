@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from omnifocus_operator.agent_messages import errors as err
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 def reject_null_filters(data: dict[str, object], field_names: list[str]) -> None:

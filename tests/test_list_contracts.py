@@ -13,6 +13,7 @@ import pytest
 from pydantic import ValidationError
 
 from omnifocus_operator.agent_messages.errors import (
+    AVAILABILITY_EMPTY,
     FILTER_NULL,
     OFFSET_REQUIRES_LIMIT,
     REVIEW_DUE_WITHIN_INVALID,
@@ -28,7 +29,16 @@ from omnifocus_operator.contracts import (
     QueryModel,
     StrictModel,
 )
-from omnifocus_operator.contracts.base import UNSET
+from omnifocus_operator.contracts.base import UNSET, unset_to_none
+from omnifocus_operator.contracts.use_cases.list._enums import (
+    AvailabilityFilter,
+    FolderAvailabilityFilter,
+    TagAvailabilityFilter,
+)
+from omnifocus_operator.contracts.use_cases.list._validators import (
+    reject_null_filters,
+    validate_non_empty_list,
+)
 from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult
 from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersRepoQuery
 from omnifocus_operator.contracts.use_cases.list.perspectives import ListPerspectivesQuery
@@ -567,22 +577,18 @@ class TestUnsetToNone:
     """Verify unset_to_none() converts UNSET to None and passes through values."""
 
     def test_unset_returns_none(self) -> None:
-        from omnifocus_operator.contracts.base import unset_to_none
 
         assert unset_to_none(UNSET) is None
 
     def test_string_passes_through(self) -> None:
-        from omnifocus_operator.contracts.base import unset_to_none
 
         assert unset_to_none("hello") == "hello"
 
     def test_none_passes_through(self) -> None:
-        from omnifocus_operator.contracts.base import unset_to_none
 
         assert unset_to_none(None) is None
 
     def test_int_passes_through(self) -> None:
-        from omnifocus_operator.contracts.base import unset_to_none
 
         assert unset_to_none(42) == 42
 
@@ -596,34 +602,22 @@ class TestRejectNullFilters:
     """Verify reject_null_filters() catches null values on Patch filter fields."""
 
     def test_null_field_raises_with_filter_null_message(self) -> None:
-        from omnifocus_operator.contracts.use_cases.list._validators import (
-            reject_null_filters,
-        )
 
         with pytest.raises(ValueError, match=re.escape(FILTER_NULL.format(field="search"))):
             reject_null_filters({"search": None, "flagged": True}, ["search", "flagged"])
 
     def test_valid_values_pass(self) -> None:
-        from omnifocus_operator.contracts.use_cases.list._validators import (
-            reject_null_filters,
-        )
 
         # Should not raise
         reject_null_filters({"search": "test", "flagged": True}, ["search", "flagged"])
 
     def test_missing_key_is_fine(self) -> None:
-        from omnifocus_operator.contracts.use_cases.list._validators import (
-            reject_null_filters,
-        )
 
         # Missing keys = omitted = UNSET = fine
         reject_null_filters({"flagged": True}, ["search", "flagged"])
 
     def test_camel_case_null_raises(self) -> None:
         """reject_null_filters checks both snake_case and camelCase aliases."""
-        from omnifocus_operator.contracts.use_cases.list._validators import (
-            reject_null_filters,
-        )
 
         with pytest.raises(
             ValueError, match=re.escape(FILTER_NULL.format(field="estimatedMinutesMax"))
@@ -640,17 +634,11 @@ class TestValidateNonEmptyList:
     """Verify validate_non_empty_list() rejects empty lists."""
 
     def test_empty_list_raises_with_tags_empty_message(self) -> None:
-        from omnifocus_operator.contracts.use_cases.list._validators import (
-            validate_non_empty_list,
-        )
 
         with pytest.raises(ValueError, match=re.escape(TAGS_EMPTY.format(field="tags"))):
             validate_non_empty_list([], "tags")
 
     def test_non_empty_list_passes(self) -> None:
-        from omnifocus_operator.contracts.use_cases.list._validators import (
-            validate_non_empty_list,
-        )
 
         # Should not raise
         validate_non_empty_list(["x"], "tags")
@@ -760,7 +748,6 @@ class TestAvailabilityFilterEnums:
     """Verify AvailabilityFilter enums have correct members including ALL."""
 
     def test_availability_filter_has_all(self) -> None:
-        from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
 
         assert AvailabilityFilter.ALL == "all"
         assert AvailabilityFilter.AVAILABLE == "available"
@@ -769,7 +756,6 @@ class TestAvailabilityFilterEnums:
         assert AvailabilityFilter.DROPPED == "dropped"
 
     def test_tag_availability_filter_has_all(self) -> None:
-        from omnifocus_operator.contracts.use_cases.list._enums import TagAvailabilityFilter
 
         assert TagAvailabilityFilter.ALL == "all"
         assert TagAvailabilityFilter.AVAILABLE == "available"
@@ -777,14 +763,13 @@ class TestAvailabilityFilterEnums:
         assert TagAvailabilityFilter.DROPPED == "dropped"
 
     def test_folder_availability_filter_has_all(self) -> None:
-        from omnifocus_operator.contracts.use_cases.list._enums import FolderAvailabilityFilter
 
         assert FolderAvailabilityFilter.ALL == "all"
         assert FolderAvailabilityFilter.AVAILABLE == "available"
         assert FolderAvailabilityFilter.DROPPED == "dropped"
 
     def test_enums_re_exported_from_package(self) -> None:
-        from omnifocus_operator.contracts.use_cases.list import (
+        from omnifocus_operator.contracts.use_cases.list import (  # noqa: PLC0415
             AvailabilityFilter,
             FolderAvailabilityFilter,
             TagAvailabilityFilter,
@@ -804,31 +789,26 @@ class TestAvailabilityFilterOnQueryModels:
     """Verify query models accept AvailabilityFilter values including ALL."""
 
     def test_tasks_accepts_all(self) -> None:
-        from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
 
         query = ListTasksQuery(availability=[AvailabilityFilter.ALL])
         assert query.availability == [AvailabilityFilter.ALL]
 
     def test_tasks_accepts_mixed_all(self) -> None:
-        from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
 
         query = ListTasksQuery(availability=[AvailabilityFilter.AVAILABLE, AvailabilityFilter.ALL])
         assert len(query.availability) == 2
 
     def test_projects_accepts_all(self) -> None:
-        from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
 
         query = ListProjectsQuery(availability=[AvailabilityFilter.ALL])
         assert query.availability == [AvailabilityFilter.ALL]
 
     def test_tags_accepts_all(self) -> None:
-        from omnifocus_operator.contracts.use_cases.list._enums import TagAvailabilityFilter
 
         query = ListTagsQuery(availability=[TagAvailabilityFilter.ALL])
         assert query.availability == [TagAvailabilityFilter.ALL]
 
     def test_folders_accepts_all(self) -> None:
-        from omnifocus_operator.contracts.use_cases.list._enums import FolderAvailabilityFilter
 
         query = ListFoldersQuery(availability=[FolderAvailabilityFilter.ALL])
         assert query.availability == [FolderAvailabilityFilter.ALL]
@@ -843,7 +823,6 @@ class TestEmptyAvailabilityRejection:
     """Verify empty availability list raises with AVAILABILITY_EMPTY message."""
 
     def test_tasks_empty_availability_raises(self) -> None:
-        from omnifocus_operator.agent_messages.errors import AVAILABILITY_EMPTY
 
         with pytest.raises(
             ValidationError, match=re.escape(AVAILABILITY_EMPTY.format(field="availability"))
@@ -851,7 +830,6 @@ class TestEmptyAvailabilityRejection:
             ListTasksQuery(availability=[])
 
     def test_projects_empty_availability_raises(self) -> None:
-        from omnifocus_operator.agent_messages.errors import AVAILABILITY_EMPTY
 
         with pytest.raises(
             ValidationError, match=re.escape(AVAILABILITY_EMPTY.format(field="availability"))
@@ -859,7 +837,6 @@ class TestEmptyAvailabilityRejection:
             ListProjectsQuery(availability=[])
 
     def test_tags_empty_availability_raises(self) -> None:
-        from omnifocus_operator.agent_messages.errors import AVAILABILITY_EMPTY
 
         with pytest.raises(
             ValidationError, match=re.escape(AVAILABILITY_EMPTY.format(field="availability"))
@@ -867,7 +844,6 @@ class TestEmptyAvailabilityRejection:
             ListTagsQuery(availability=[])
 
     def test_folders_empty_availability_raises(self) -> None:
-        from omnifocus_operator.agent_messages.errors import AVAILABILITY_EMPTY
 
         with pytest.raises(
             ValidationError, match=re.escape(AVAILABILITY_EMPTY.format(field="availability"))

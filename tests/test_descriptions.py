@@ -15,6 +15,9 @@ from omnifocus_operator.contracts.shared import actions as contracts_actions
 from omnifocus_operator.contracts.shared import repetition_rule as contracts_repetition_rule
 from omnifocus_operator.contracts.use_cases.add import tasks as contracts_add_tasks
 from omnifocus_operator.contracts.use_cases.edit import tasks as contracts_edit_tasks
+from omnifocus_operator.contracts.use_cases.list import (
+    _enums as contracts_list_enums,
+)
 from omnifocus_operator.contracts.use_cases.list import common as contracts_list_common
 from omnifocus_operator.contracts.use_cases.list import folders as contracts_list_folders
 from omnifocus_operator.contracts.use_cases.list import perspectives as contracts_list_perspectives
@@ -46,6 +49,7 @@ _CONSUMER_MODULES = [
     contracts_repetition_rule,
     contracts_add_tasks,
     contracts_edit_tasks,
+    contracts_list_enums,
     contracts_list_common,
     contracts_list_tasks,
     contracts_list_projects,
@@ -85,10 +89,6 @@ _INTERNAL_CLASSES = {
     "ListPerspectivesRepoQuery",
     # Internal sentinel
     "_Unset",
-    # Filter-side availability enums -- internal, service expands to core enums
-    "AvailabilityFilter",
-    "TagAvailabilityFilter",
-    "FolderAvailabilityFilter",
 }
 
 
