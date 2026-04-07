@@ -289,6 +289,10 @@ class _ListTasksPipeline(_ReadPipeline):
         self._tags = tags_result.items
         self._projects = projects_result.items
 
+        self._in_inbox, self._project_to_resolve = self._resolver.resolve_inbox(
+            self._query.in_inbox, self._query.project
+        )
+
         self._resolve_project()
         self._resolve_tags()
         self._build_repo_query()
@@ -296,14 +300,14 @@ class _ListTasksPipeline(_ReadPipeline):
 
     def _resolve_project(self) -> None:
         self._project_ids: list[str] | None = None
-        if self._query.project is None:
+        if self._project_to_resolve is None:
             return
-        resolved = self._resolver.resolve_filter(self._query.project, self._projects)
+        resolved = self._resolver.resolve_filter(self._project_to_resolve, self._projects)
         if resolved:
             self._project_ids = resolved
         self._warnings.extend(
             self._domain.check_filter_resolution(
-                self._query.project, resolved, self._projects, "project"
+                self._project_to_resolve, resolved, self._projects, "project"
             )
         )
 
@@ -328,7 +332,7 @@ class _ListTasksPipeline(_ReadPipeline):
 
     def _build_repo_query(self) -> None:
         self._repo_query = ListTasksRepoQuery(
-            in_inbox=self._query.in_inbox,
+            in_inbox=self._in_inbox,
             flagged=self._query.flagged,
             project_ids=self._project_ids,
             tag_ids=self._tag_ids,
