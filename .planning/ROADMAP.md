@@ -212,11 +212,11 @@ Plans:
 **Goal**: All agent-facing list query filter fields use Patch[T] = UNSET (null rejected), with AvailabilityFilter enums providing ALL shorthand, and service pipelines correctly translating at the UNSET/None boundary.
 **Requirements**: PATCH-01, PATCH-02, PATCH-03, PATCH-04, PATCH-05, PATCH-06, PATCH-07, PATCH-08, PATCH-09, PATCH-10, PATCH-11, PATCH-12, PATCH-13
 **Depends on:** Phase 43
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 44-01-PLAN.md — Contract infrastructure, query model Patch migration, null/empty rejection validators
-- [ ] 44-02-PLAN.md — AvailabilityFilter enums, service layer UNSET->None translation, availability expansion
+- [x] 44-01-PLAN.md — Contract infrastructure, query model Patch migration, null/empty rejection validators
+- [x] 44-02-PLAN.md — AvailabilityFilter enums, service layer UNSET->None translation, availability expansion
 
 ## Progress
 
@@ -238,4 +238,4 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43
 | 41. Write Pipeline | v1.3.1 | 2/2 | Complete    | 2026-04-06 |
 | 42. Read Output | v1.3.1 | 4/4 | Complete    | 2026-04-06 |
 | 43. Filters & Projects | v1.3.1 | 3/3 | Complete    | 2026-04-07 |
-| 44. Patch Query Filters | v1.3.1 | 0/2 | Planned    | |
+| 44. Patch Query Filters | v1.3.1 | 2/2 | Complete    | 2026-04-07 |
