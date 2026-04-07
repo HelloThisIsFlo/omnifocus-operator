@@ -121,8 +121,15 @@ def build_list_tasks_sql(query: ListTasksRepoQuery) -> tuple[SqlQuery, SqlQuery]
     # -- Filters --
 
     if query.in_inbox is not None:
-        conditions.append("t.inInbox = ?")
-        params.append(1 if query.in_inbox else 0)
+        # OmniFocus only sets inInbox=1 for root-level inbox items; subtasks of
+        # inbox action groups have inInbox=0 despite belonging to the inbox.
+        # Inbox membership is reliably identified by containingProjectInfo being
+        # NULL (no project association), which matches how _build_parent_and_project
+        # already determines inbox status for the model.
+        if query.in_inbox:
+            conditions.append("t.containingProjectInfo IS NULL")
+        else:
+            conditions.append("t.containingProjectInfo IS NOT NULL")
 
     if query.flagged is not None:
         conditions.append("t.flagged = ?")

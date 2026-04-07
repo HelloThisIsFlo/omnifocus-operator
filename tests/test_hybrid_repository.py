@@ -1994,7 +1994,21 @@ class TestListTasks:
     @pytest.mark.hybrid_db(
         tasks=[
             _minimal_task({"persistentIdentifier": "t-inbox", "inInbox": 1}),
-            _minimal_task({"persistentIdentifier": "t-noninbox", "inInbox": 0}),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t-noninbox",
+                    "inInbox": 0,
+                    "containingProjectInfo": "pi-proj-001",
+                }
+            ),
+        ],
+        projects=[
+            _minimal_project(
+                {
+                    "persistentIdentifier": "proj-001",
+                    "name": "Some Project",
+                }
+            ),
         ],
     )
     async def test_list_tasks_in_inbox(self, hybrid_repo: HybridRepository) -> None:
@@ -2003,6 +2017,104 @@ class TestListTasks:
         assert result.total == 1
         assert result.items[0].id == "t-inbox"
         assert result.items[0].project.id == "$inbox"
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tasks=[
+            # Root inbox task (inInbox=1, no containingProjectInfo)
+            _minimal_task({"persistentIdentifier": "t-inbox-root", "inInbox": 1}),
+            # Inbox action group parent (inInbox=1, no containingProjectInfo)
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t-inbox-parent",
+                    "inInbox": 1,
+                    "childrenCount": 1,
+                    "name": "Inbox Action Group",
+                }
+            ),
+            # Inbox subtask: OmniFocus sets inInbox=0 but containingProjectInfo
+            # is NULL because it belongs to the inbox, not a project.
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t-inbox-subtask",
+                    "inInbox": 0,
+                    "parent": "t-inbox-parent",
+                    "name": "Inbox Subtask",
+                }
+            ),
+            # Non-inbox task (in a project)
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t-in-proj",
+                    "inInbox": 0,
+                    "containingProjectInfo": "pi-proj-001",
+                }
+            ),
+        ],
+        projects=[
+            _minimal_project(
+                {
+                    "persistentIdentifier": "proj-001",
+                    "name": "Some Project",
+                }
+            ),
+        ],
+    )
+    async def test_list_tasks_in_inbox_includes_subtasks(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """TASK-01b: in_inbox=True returns inbox subtasks, not just root items."""
+        result = await hybrid_repo.list_tasks(ListTasksRepoQuery(in_inbox=True))
+        returned_ids = {t.id for t in result.items}
+        # All three inbox tasks should be returned
+        assert "t-inbox-root" in returned_ids
+        assert "t-inbox-parent" in returned_ids
+        assert "t-inbox-subtask" in returned_ids
+        # The project task should NOT be returned
+        assert "t-in-proj" not in returned_ids
+        assert result.total == 3
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tasks=[
+            # Inbox subtask (inInbox=0, no containingProjectInfo)
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t-inbox-subtask",
+                    "inInbox": 0,
+                    "parent": "t-inbox-parent",
+                    "name": "Inbox Subtask",
+                }
+            ),
+            # Non-inbox task (in a project)
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t-in-proj",
+                    "inInbox": 0,
+                    "containingProjectInfo": "pi-proj-001",
+                }
+            ),
+        ],
+        projects=[
+            _minimal_project(
+                {
+                    "persistentIdentifier": "proj-001",
+                    "name": "Some Project",
+                }
+            ),
+        ],
+    )
+    async def test_list_tasks_in_inbox_false_excludes_inbox_subtasks(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """TASK-01c: in_inbox=False must NOT include inbox subtasks."""
+        result = await hybrid_repo.list_tasks(ListTasksRepoQuery(in_inbox=False))
+        returned_ids = {t.id for t in result.items}
+        # Only the project task should be returned
+        assert "t-in-proj" in returned_ids
+        # Inbox subtask should NOT appear in non-inbox results
+        assert "t-inbox-subtask" not in returned_ids
+        assert result.total == 1
 
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(
@@ -2236,6 +2348,7 @@ class TestListTasks:
                     "persistentIdentifier": "t-flag-only",
                     "flagged": 1,
                     "inInbox": 0,
+                    "containingProjectInfo": "pi-proj-001",
                 }
             ),
             _minimal_task(
@@ -2243,6 +2356,14 @@ class TestListTasks:
                     "persistentIdentifier": "t-inbox-only",
                     "flagged": 0,
                     "inInbox": 1,
+                }
+            ),
+        ],
+        projects=[
+            _minimal_project(
+                {
+                    "persistentIdentifier": "proj-001",
+                    "name": "Some Project",
                 }
             ),
         ],
