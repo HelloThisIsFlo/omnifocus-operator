@@ -51,6 +51,25 @@ All date filter input forms can be validated and resolved to absolute DateRange 
 - **D-15:** RESOLVE-11 and RESOLVE-12 must be rewritten — replace "pre-computed column" approach with timestamp resolution using Settings table values. Add DueSoonGranularity awareness.
 - **D-16:** DATE-06, DATE-07, DATE-08, EXEC-08 must be updated to remove all "none" references.
 
+### "today" Shortcut
+- **D-17:** `"today"` is syntactic sugar for `{this: "d"}` — resolves to calendar-aligned current day boundaries (midnight to midnight). Available on all 7 date fields per RESOLVE-01.
+
+### Resolver Design
+- **D-18:** The resolver is a pure function. Signature concept:
+  ```python
+  def resolve_date_filter(
+      value: StrEnum | DateFilter,
+      field_name: str,
+      now: datetime,
+      *,
+      week_start: str = "monday",
+      due_soon_interval: int | None = None,      # from Settings table or env var
+      due_soon_granularity: int | None = None,    # 0=rolling, 1=calendar-aligned
+  ) -> tuple[datetime | None, datetime | None]:
+      """Returns (after_bound, before_bound). Raises ValueError for invalid input."""
+  ```
+  The caller (Phase 46 pipeline) is responsible for obtaining `due_soon_interval`/`due_soon_granularity` from the Settings table or env var. The resolver never reads config or database.
+
 ### Claude's Discretion
 - Exact StrEnum class names and grouping (how many enum types, shared vs per-field)
 - Whether DurationUnit from `contracts/use_cases/list/projects.py` is reused or a new one created for date filters
@@ -119,6 +138,85 @@ All date filter input forms can be validated and resolved to absolute DateRange 
 - Frequency model precedent: flat model survived the tagged-union alternative because `interval=1` default caused `exclude_defaults` issues. DateFilter has no such issue (no non-None defaults), but the flat pattern is confirmed as codebase convention.
 - Show-More principle applies to boundary cases (e.g., `{last: "3d"}` = 3 full past days + partial today). Already captured in milestone spec.
 - Field-specific Literal types produce clean JSON Schema — agents see exactly which shortcuts are valid per field, no need to read error messages to learn restrictions.
+
+### Model Sketches
+
+**DateFilter** (agent-facing, `contracts/use_cases/list/`):
+```python
+class DateFilter(QueryModel):
+    """Shorthand period or absolute date bounds."""
+    this: str | None = None      # unit: "d", "w", "m", "y"
+    last: str | None = None      # duration: "3d", "w", "2m" (count defaults to 1)
+    next: str | None = None      # duration: "3d", "w", "1m"
+    before: str | None = None    # ISO datetime, date-only, or "now"
+    after: str | None = None     # ISO datetime, date-only, or "now"
+
+    # model_validator enforces:
+    # 1. Shorthand group (this/last/next) mutually exclusive with absolute group (before/after)
+    # 2. Exactly one shorthand key if shorthand group used
+    # 3. At least one absolute key if absolute group used
+    # 4. after < before when both specified (RESOLVE-10: both inclusive)
+```
+
+**ListTasksQuery additions** (7 new fields):
+```python
+class ListTasksQuery(QueryModel):
+    # ... existing fields (in_inbox, flagged, project, tags, etc.) ...
+
+    due: Patch[DueDateShortcut | DateFilter] = UNSET           # overdue, soon, today
+    defer: Patch[Literal["today"] | DateFilter] = UNSET        # today only
+    planned: Patch[Literal["today"] | DateFilter] = UNSET      # today only
+    completed: Patch[LifecycleDateShortcut | DateFilter] = UNSET  # any, today
+    dropped: Patch[LifecycleDateShortcut | DateFilter] = UNSET    # any, today
+    added: Patch[Literal["today"] | DateFilter] = UNSET        # today only
+    modified: Patch[Literal["today"] | DateFilter] = UNSET     # today only
+```
+Pydantic v2 Union behavior: string input → matches StrEnum/Literal, dict input → matches DateFilter. No discriminator needed.
+
+**ListTasksRepoQuery additions** (14 new fields):
+```python
+class ListTasksRepoQuery(QueryModel):
+    # ... existing fields (in_inbox, flagged, project_ids, etc.) ...
+
+    due_after: datetime | None = None
+    due_before: datetime | None = None
+    defer_after: datetime | None = None
+    defer_before: datetime | None = None
+    planned_after: datetime | None = None
+    planned_before: datetime | None = None
+    completed_after: datetime | None = None
+    completed_before: datetime | None = None
+    dropped_after: datetime | None = None
+    dropped_before: datetime | None = None
+    added_after: datetime | None = None
+    added_before: datetime | None = None
+    modified_after: datetime | None = None
+    modified_before: datetime | None = None
+```
+All `None` = no filter on that dimension. Service pipeline sets these from resolved DateFilter values.
+
+### Resolution Examples
+
+How each input transforms through the pipeline (assume now = 2026-04-07 14:00, Monday, week_start=monday):
+
+| Agent sends | Query field value | Resolver produces | RepoQuery fields |
+|---|---|---|---|
+| `due: "overdue"` | `DueDateShortcut.OVERDUE` | `(None, now)` | `due_before=2026-04-07T14:00` |
+| `due: "soon"` (granularity=1, interval=172800) | `DueDateShortcut.SOON` | `(None, midnight_today + 2d)` | `due_before=2026-04-09T00:00` |
+| `due: "soon"` (granularity=0, interval=86400) | `DueDateShortcut.SOON` | `(None, now + 24h)` | `due_before=2026-04-08T14:00` |
+| `due: "today"` | `DueDateShortcut.TODAY` | `(today_00:00, tomorrow_00:00)` | `due_after=2026-04-07T00:00, due_before=2026-04-08T00:00` |
+| `due: {this: "w"}` | `DateFilter(this="w")` | `(monday_00:00, next_monday_00:00)` | `due_after=2026-04-07T00:00, due_before=2026-04-14T00:00` |
+| `due: {last: "3d"}` | `DateFilter(last="3d")` | `(3d_ago_midnight, now)` | `due_after=2026-04-04T00:00, due_before=2026-04-07T14:00` |
+| `due: {next: "2w"}` | `DateFilter(next="2w")` | `(now, 15d_from_now_midnight)` | `due_after=2026-04-07T14:00, due_before=2026-04-22T00:00` |
+| `due: {after: "2026-04-01", before: "2026-04-14"}` | `DateFilter(after=..., before=...)` | `(apr1_00:00, apr15_00:00)` | `due_after=2026-04-01T00:00, due_before=2026-04-15T00:00` |
+| `completed: "any"` | `LifecycleDateShortcut.ANY` | N/A — not a date filter | availability list += COMPLETED (no date fields set) |
+| `completed: {last: "1w"}` | `DateFilter(last="1w")` | `(7d_ago_midnight, now)` | `completed_after=2026-03-31T00:00, completed_before=2026-04-07T14:00` + availability list += COMPLETED |
+| _(field omitted)_ | `UNSET` | skip | no fields set for this dimension |
+
+Key points from this table:
+- `"any"` is NOT a date filter — it's an availability expansion. Pipeline adds the lifecycle state to the `availability` list on the RepoQuery. Same mechanism as the current `availability: ["completed"]` filter.
+- `completed: {last: "1w"}` does BOTH: sets date bounds AND adds COMPLETED to availability. The agent gets completed tasks within the date range.
+- `before` with date-only is end-of-day inclusive: `before: "2026-04-14"` → `due_before=2026-04-15T00:00` (per RESOLVE-08/10).
 
 </specifics>
 
