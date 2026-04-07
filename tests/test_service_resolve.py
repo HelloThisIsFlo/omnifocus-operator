@@ -535,3 +535,62 @@ class TestFindUnresolved:
         ]
         result = resolver.find_unresolved(["Work"], entities)
         assert result == []
+
+
+# ---------------------------------------------------------------------------
+# Resolver -- resolve_inbox (inbox filter normalization)
+# ---------------------------------------------------------------------------
+
+
+class TestResolveInbox:
+    """resolve_inbox normalizes $inbox in project filter to in_inbox=True."""
+
+    def test_no_filters_pass_through(self, resolver: Resolver) -> None:
+        """No filters at all: both None, pass through unchanged."""
+        result = resolver.resolve_inbox(None, None)
+        assert result == (None, None)
+
+    def test_real_project_pass_through(self, resolver: Resolver) -> None:
+        """Real project name, no inbox filter: pass through unchanged."""
+        result = resolver.resolve_inbox(None, "Work")
+        assert result == (None, "Work")
+
+    def test_in_inbox_true_only(self, resolver: Resolver) -> None:
+        """inInbox=true, no project: pass through unchanged."""
+        result = resolver.resolve_inbox(True, None)
+        assert result == (True, None)
+
+    def test_in_inbox_false_only(self, resolver: Resolver) -> None:
+        """inInbox=false, no project: pass through unchanged."""
+        result = resolver.resolve_inbox(False, None)
+        assert result == (False, None)
+
+    def test_dollar_inbox_consumed(self, resolver: Resolver) -> None:
+        """$inbox as project is consumed: returns (True, None)."""
+        result = resolver.resolve_inbox(None, "$inbox")
+        assert result == (True, None)
+
+    def test_dollar_inbox_with_in_inbox_true_redundant(self, resolver: Resolver) -> None:
+        """$inbox + inInbox=true is redundant but accepted silently (D-08/FILT-04)."""
+        result = resolver.resolve_inbox(True, "$inbox")
+        assert result == (True, None)
+
+    def test_dollar_inbox_with_in_inbox_false_contradictory(self, resolver: Resolver) -> None:
+        """$inbox + inInbox=false is contradictory (D-06/FILT-03)."""
+        with pytest.raises(ValueError, match="Contradictory filters.*project.*\\$inbox"):
+            resolver.resolve_inbox(False, "$inbox")
+
+    def test_in_inbox_true_with_real_project_contradictory(self, resolver: Resolver) -> None:
+        """inInbox=true + real project name is contradictory (D-07/FILT-05)."""
+        with pytest.raises(ValueError, match="Contradictory filters.*inInbox=true"):
+            resolver.resolve_inbox(True, "Work")
+
+    def test_in_inbox_true_with_project_id_contradictory(self, resolver: Resolver) -> None:
+        """inInbox=true + project ID-like value is still contradictory."""
+        with pytest.raises(ValueError, match="Contradictory filters.*inInbox=true"):
+            resolver.resolve_inbox(True, "proj-1")
+
+    def test_dollar_trash_unknown_system_location(self, resolver: Resolver) -> None:
+        """$trash delegates to _resolve_system_location which raises for unknown locations."""
+        with pytest.raises(ValueError, match="reserved for system locations"):
+            resolver.resolve_inbox(None, "$trash")
