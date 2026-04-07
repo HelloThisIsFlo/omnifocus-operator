@@ -151,8 +151,7 @@ LIST_TASKS_INBOX_PROJECT_WARNING = (
 # --- Availability Filter ---
 
 AVAILABILITY_MIXED_ALL = (
-    "When using 'ALL', no other values are needed -- 'ALL' already includes every status. "
-    'Just send ["ALL"] by itself next time.'
+    "'ALL' already includes every status -- no need to combine it with other values."
 )
 
 FILTER_DID_YOU_MEAN = (

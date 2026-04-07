@@ -816,7 +816,7 @@ class TestAvailabilityExpansion:
             ListTasksQuery(availability=[AvailabilityFilter.ALL, AvailabilityFilter.AVAILABLE])
         )
         assert result.warnings is not None
-        assert any("no other values are needed" in w for w in result.warnings)
+        assert any("already includes every status" in w for w in result.warnings)
 
     @pytest.mark.snapshot(
         tasks=[],
@@ -886,7 +886,7 @@ class TestAvailabilityExpansion:
             ListTagsQuery(availability=[TagAvailabilityFilter.ALL, TagAvailabilityFilter.AVAILABLE])
         )
         assert result.warnings is not None
-        assert any("no other values are needed" in w for w in result.warnings)
+        assert any("already includes every status" in w for w in result.warnings)
 
     @pytest.mark.snapshot(
         tasks=[],
@@ -906,4 +906,4 @@ class TestAvailabilityExpansion:
             )
         )
         assert result.warnings is not None
-        assert any("no other values are needed" in w for w in result.warnings)
+        assert any("already includes every status" in w for w in result.warnings)
