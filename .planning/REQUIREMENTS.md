@@ -51,7 +51,7 @@ Requirements for date filtering milestone. Each maps to roadmap phases.
 ### Breaking Changes & Agent Guidance
 
 - [ ] **BREAK-01**: `urgency` filter parameter removed — educational error if agent uses it
-- [ ] **BREAK-02**: `completed` boolean filter replaced by `completed` date filter — educational error for boolean input
+- [ ] **BREAK-02**: `completed` field rejects boolean input — educational error guiding to string/object date filter form
 - [ ] **BREAK-03**: `COMPLETED` and `DROPPED` removed from `AvailabilityFilter` enum — lifecycle state expressed exclusively via date filters
 - [ ] **BREAK-04**: `defer: {after: "now"}` returns guidance hint suggesting `availability: "blocked"`
 - [ ] **BREAK-05**: `defer: {before: "now"}` returns guidance hint suggesting `availability: "available"`
@@ -86,13 +86,52 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (populated by roadmapper) | | |
+| DATE-01 | Phase 45 | Pending |
+| DATE-02 | Phase 45 | Pending |
+| DATE-03 | Phase 45 | Pending |
+| DATE-04 | Phase 45 | Pending |
+| DATE-05 | Phase 45 | Pending |
+| DATE-06 | Phase 45 | Pending |
+| DATE-07 | Phase 45 | Pending |
+| DATE-08 | Phase 45 | Pending |
+| DATE-09 | Phase 45 | Pending |
+| RESOLVE-01 | Phase 45 | Pending |
+| RESOLVE-02 | Phase 45 | Pending |
+| RESOLVE-03 | Phase 45 | Pending |
+| RESOLVE-04 | Phase 45 | Pending |
+| RESOLVE-05 | Phase 45 | Pending |
+| RESOLVE-06 | Phase 45 | Pending |
+| RESOLVE-07 | Phase 45 | Pending |
+| RESOLVE-08 | Phase 45 | Pending |
+| RESOLVE-09 | Phase 45 | Pending |
+| RESOLVE-10 | Phase 45 | Pending |
+| RESOLVE-11 | Phase 46 | Pending |
+| RESOLVE-12 | Phase 46 | Pending |
+| EXEC-01 | Phase 46 | Pending |
+| EXEC-02 | Phase 46 | Pending |
+| EXEC-03 | Phase 46 | Pending |
+| EXEC-04 | Phase 46 | Pending |
+| EXEC-05 | Phase 46 | Pending |
+| EXEC-06 | Phase 46 | Pending |
+| EXEC-07 | Phase 46 | Pending |
+| EXEC-08 | Phase 46 | Pending |
+| EXEC-09 | Phase 46 | Pending |
+| EXEC-10 | Phase 47 | Pending |
+| EXEC-11 | Phase 47 | Pending |
+| BREAK-01 | Phase 47 | Pending |
+| BREAK-02 | Phase 47 | Pending |
+| BREAK-03 | Phase 47 | Pending |
+| BREAK-04 | Phase 47 | Pending |
+| BREAK-05 | Phase 47 | Pending |
+| BREAK-06 | Phase 47 | Pending |
+| BREAK-07 | Phase 47 | Pending |
+| BREAK-08 | Phase 47 | Pending |
 
 **Coverage:**
 - v1.3.2 requirements: 40 total
-- Mapped to phases: 0
-- Unmapped: 40 ⚠️
+- Mapped to phases: 40
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-07*
-*Last updated: 2026-04-07 after initial definition*
+*Last updated: 2026-04-07 after roadmap creation*

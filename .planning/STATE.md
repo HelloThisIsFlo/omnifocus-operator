@@ -6,7 +6,7 @@ status: active
 last_updated: "2026-04-07"
 last_activity: 2026-04-07
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-07)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Milestone v1.3.2 Date Filtering
+**Current focus:** Phase 45 — Date Models & Resolution
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 45 (1 of 3) — Date Models & Resolution
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-07 — Milestone v1.3.2 started
+Status: Ready to plan
+Last activity: 2026-04-07 — Roadmap created for v1.3.2
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -42,6 +44,12 @@ Last activity: 2026-04-07 — Milestone v1.3.2 started
 ### Decisions
 
 Cleared at milestone boundary. See PROJECT.md Key Decisions for full history.
+
+Key design decisions for v1.3.2:
+- `"overdue"` and `"soon"` use OmniFocus pre-computed columns — no threshold config needed
+- `COMPLETED`/`DROPPED` removed from AvailabilityFilter; `ALL` removed with educational error
+- DateRange is internal resolved type, not agent-facing contract
+- `count_tasks` out of scope for this milestone
 
 ### Pending Todos
 
@@ -61,14 +69,10 @@ Carried forward from v1.3.1:
 12. Fix OrdinalWeekdaySpec → OrdinalWeekday cross-layer coercion in edit pipeline (service)
 13. Golden master re-capture required after Phase 42 mapper rewrites (human-only per GOLD-01)
 
-### Roadmap Evolution
-
-(None — milestone boundary)
-
 ### Blockers/Concerns
 
 (None)
 
 ## Session Continuity
 
-Last activity: 2026-04-07 - Milestone v1.3.2 started
+Last activity: 2026-04-07 - Roadmap created for v1.3.2
