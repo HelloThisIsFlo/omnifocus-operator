@@ -151,9 +151,18 @@ RESERVED_PREFIX = (
     "If your entity name starts with '{prefix}', refer to it by ID instead."
 )
 
-ENTITY_TYPE_MISMATCH = (
-    "'{value}' resolved to {resolved_type}, but only {accepted} is accepted here"
+# --- Filter: Contradictory Inbox ---
+
+CONTRADICTORY_INBOX_FALSE = (
+    "Contradictory filters: 'project=\"$inbox\"' selects inbox tasks, "
+    "but 'inInbox=false' excludes them. Use one or the other."
 )
+CONTRADICTORY_INBOX_PROJECT = (
+    "Contradictory filters: 'inInbox=true' selects tasks with no project. "
+    "Combining with a 'project' filter always yields nothing. Use one or the other."
+)
+
+ENTITY_TYPE_MISMATCH = "'{value}' resolved to {resolved_type}, but only {accepted} is accepted here"
 
 ENTITY_TYPE_MISMATCH_ANCHOR = (
     "'{value}' is a {resolved_type}. "

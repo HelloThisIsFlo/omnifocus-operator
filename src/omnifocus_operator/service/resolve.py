@@ -6,6 +6,8 @@ import logging
 from typing import TYPE_CHECKING, Never, Protocol, runtime_checkable
 
 from omnifocus_operator.agent_messages.errors import (
+    CONTRADICTORY_INBOX_FALSE,
+    CONTRADICTORY_INBOX_PROJECT,
     NAME_NOT_FOUND,
     PROJECT_NOT_FOUND,
     RESERVED_PREFIX,
@@ -206,6 +208,32 @@ class Resolver:
             msg = TAG_NOT_FOUND.format(name=tag_id)
             raise ValueError(msg)
         return tag
+
+    # -- Read-side resolution (inbox normalization) ----------------------------
+
+    def resolve_inbox(
+        self, in_inbox: bool | None, project: str | None
+    ) -> tuple[bool | None, str | None]:
+        """Resolve inbox filter state from in_inbox and project filter params.
+
+        Returns (effective_in_inbox, remaining_project_to_resolve).
+        If project is "$inbox", it is consumed: returns (True, None).
+        Unknown $-prefix raises. Contradictory combos raise.
+        """
+        if project is not None and project.startswith(SYSTEM_LOCATION_PREFIX):
+            self._resolve_system_location(project, [EntityType.PROJECT])
+            # $inbox + inInbox=false -> contradictory
+            if in_inbox is False:
+                raise ValueError(CONTRADICTORY_INBOX_FALSE)
+            # $inbox consumed -> in_inbox=True
+            return (True, None)
+
+        # inInbox=true + real project -> contradictory
+        if in_inbox is True and project is not None:
+            raise ValueError(CONTRADICTORY_INBOX_PROJECT)
+
+        # Pass through unchanged
+        return (in_inbox, project)
 
     # -- Read-side resolution (filter cascade) --------------------------------
 
