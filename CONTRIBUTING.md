@@ -3,17 +3,15 @@
 ## Setup
 
 ```bash
-uv sync --dev
-pre-commit install
+just setup
 ```
 
 ## CI Checks
 
-These run on every push to `main` and on PRs:
+Run `just --list` for all available recipes. Key ones:
 
-- `uv run ruff check` — lint
-- `uv run ruff format --check` — formatting
-- `uv run mypy src/` — type checking
-- `uv run pytest --cov-fail-under=80` — tests with 80% coverage threshold
+- `just check-all` — full suite (test + lint + typecheck)
+- `just ci` — replicate CI pipeline locally
+- `just fix` — auto-fix lint and formatting
 
 Pre-commit hooks run lint, format, and type checks locally before each commit.
