@@ -96,3 +96,16 @@
 
 - "none" shortcut (IS NULL filtering) — future milestone
 - pydantic-settings consolidation of env vars — future improvement
+
+## Requirements Updates Applied
+
+The following changes were applied to `.planning/REQUIREMENTS.md` based on decisions above:
+
+- **DATE-06**: Revised — removed `"none"` reference (D-13)
+- **DATE-07**: ~~Struck through~~ — scoped out (D-13)
+- **DATE-08**: ~~Struck through~~ — scoped out (D-13)
+- **RESOLVE-11**: ~~Struck through~~ → revised to timestamp comparison (D-04)
+- **RESOLVE-12**: ~~Struck through~~ → revised with two-mode threshold + Settings table (D-04/D-06)
+- **EXEC-08**: ~~Struck through~~ — scoped out (D-13)
+- **Out of Scope** table: added `"none"` IS NULL filtering, updated due-soon threshold entry
+- **Coverage**: 40 total → 37 active (3 scoped out), 3 revised
