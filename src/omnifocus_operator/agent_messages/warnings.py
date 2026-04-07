@@ -145,7 +145,7 @@ LIST_TASKS_INBOX_PROJECT_WARNING = (
     "The 'project=\"{value}\"' filter also matches the OmniFocus Inbox by name, "
     "but the Inbox is a virtual location, not a named project. "
     "Inbox tasks are not included in these results. "
-    "Use project='$inbox' or 'inInbox=true' to query them."
+    "Use 'inInbox=true' to query them."
 )
 
 # --- Availability Filter ---
