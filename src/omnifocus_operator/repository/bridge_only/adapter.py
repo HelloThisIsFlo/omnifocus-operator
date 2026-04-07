@@ -373,6 +373,13 @@ def adapt_snapshot(raw: dict[str, Any]) -> dict[str, Any]:
         p["id"]: p["name"] for p in raw.get("projects", []) if "id" in p
     }
 
+    # Exclude project root tasks (every project has an underlying Task object
+    # that should not appear in task results -- mirrors SQL LEFT JOIN ProjectInfo
+    # WHERE pi.task IS NULL in the hybrid path).
+    project_id_set = set(project_names)
+    if project_id_set:
+        raw["tasks"] = [t for t in raw.get("tasks", []) if t.get("id") not in project_id_set]
+
     # Per-entity adaptation (status mapping, dead field removal, parent ref)
     for task in raw.get("tasks", []):
         _adapt_task(task)
