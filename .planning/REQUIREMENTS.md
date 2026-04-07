@@ -79,6 +79,22 @@ Requirements for v1.3.1 First-Class References. Each maps to roadmap phases.
 - [ ] **DESC-03**: Descriptions document `$inbox` usage in relevant fields
 - [ ] **DESC-04**: `get_project` description mentions `$inbox` error behavior
 
+### Patch Query Migration
+
+- [ ] **PATCH-01**: Filter fields where null and omit were redundant (both meant "no filter") migrate to `Patch[T] = UNSET` — null removed from agent-facing schema. Excludes `offset` (int), `limit` (null has distinct meaning), and `availability` (list with real defaults).
+- [ ] **PATCH-02**: Agent sending null for any Patch-migrated filter field gets clear error saying to omit the field
+- [ ] **PATCH-03**: Agent omitting Patch-migrated filter fields gets UNSET default — no filter applied, behaviorally identical to previous null
+- [ ] **PATCH-04**: `offset` defaults to `0` (int) — always set, never null, never UNSET
+- [ ] **PATCH-05**: `limit: int | None` unchanged — null = "no limit" remains a distinct valid input
+- [ ] **PATCH-06**: Empty tags list rejected with educational error
+- [ ] **PATCH-07**: Valid filter values produce identical results to pre-migration behavior (no regression)
+- [ ] **PATCH-08**: `review_due_within` validator handles UNSET correctly — no null passthrough branch
+- [ ] **PATCH-09**: Repo-level queries (`ListTasksRepoQuery` etc.) completely untouched — internal boundary preserved
+- [ ] **PATCH-10**: `AvailabilityFilter` enums with `ALL = "all"` value exist for all availability-bearing query models
+- [ ] **PATCH-11**: Empty availability list rejected with educational error
+- [ ] **PATCH-12**: Mixed `["all", "available"]` accepted with warning suggesting just `["all"]`
+- [ ] **PATCH-13**: Service pipelines translate Patch/UNSET to None at repo boundary; direct field accesses (e.g., `matches_inbox_name`) handle UNSET safely
+
 ## Future Requirements
 
 Deferred to later milestones. Tracked but not in current roadmap.
@@ -154,12 +170,25 @@ Deferred to later milestones. Tracked but not in current roadmap.
 | DESC-02 | Phase 42 | Pending |
 | DESC-03 | Phase 43 | Pending |
 | DESC-04 | Phase 43 | Pending |
+| PATCH-01 | Phase 44 | Pending |
+| PATCH-02 | Phase 44 | Pending |
+| PATCH-03 | Phase 44 | Pending |
+| PATCH-04 | Phase 44 | Pending |
+| PATCH-05 | Phase 44 | Pending |
+| PATCH-06 | Phase 44 | Pending |
+| PATCH-07 | Phase 44 | Pending |
+| PATCH-08 | Phase 44 | Pending |
+| PATCH-09 | Phase 44 | Pending |
+| PATCH-10 | Phase 44 | Pending |
+| PATCH-11 | Phase 44 | Pending |
+| PATCH-12 | Phase 44 | Pending |
+| PATCH-13 | Phase 44 | Pending |
 
 **Coverage:**
-- v1.3.1 requirements: 48 total
-- Mapped to phases: 48
+- v1.3.1 requirements: 61 total
+- Mapped to phases: 61
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-05*
-*Last updated: 2026-04-05 after Phase 40 context discussion (NRES-08 added)*
+*Last updated: 2026-04-07 — backfilled PATCH-01 through PATCH-13 for Phase 44*
