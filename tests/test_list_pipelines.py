@@ -397,6 +397,88 @@ class TestListProjectsResolution:
 
 
 # ---------------------------------------------------------------------------
+# list_projects: inbox search warning
+# ---------------------------------------------------------------------------
+
+
+class TestListProjectsInboxWarning:
+    """list_projects warns when search term matches system inbox name."""
+
+    @pytest.mark.snapshot(
+        tasks=[],
+        projects=[
+            make_project_dict(id="proj-1", name="Work Project"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_search_inbox_warns(self, service: OperatorService) -> None:
+        """search='Inbox' triggers inbox warning."""
+        result = await service.list_projects(ListProjectsQuery(search="Inbox"))
+        assert result.warnings is not None
+        assert any("not a real OmniFocus project" in w for w in result.warnings)
+
+    @pytest.mark.snapshot(
+        tasks=[],
+        projects=[
+            make_project_dict(id="proj-1", name="Work Project"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_search_inbox_case_insensitive(self, service: OperatorService) -> None:
+        """search='inbox' (lowercase) also triggers warning."""
+        result = await service.list_projects(ListProjectsQuery(search="inbox"))
+        assert result.warnings is not None
+        assert any("not a real OmniFocus project" in w for w in result.warnings)
+
+    @pytest.mark.snapshot(
+        tasks=[],
+        projects=[
+            make_project_dict(id="proj-1", name="Work Project"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_search_work_no_warning(self, service: OperatorService) -> None:
+        """search='Work' does NOT trigger inbox warning."""
+        result = await service.list_projects(ListProjectsQuery(search="Work"))
+        assert result.warnings is None
+
+    @pytest.mark.snapshot(
+        tasks=[],
+        projects=[
+            make_project_dict(id="proj-1", name="Work Project"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_search_none_no_warning(self, service: OperatorService) -> None:
+        """search=None does NOT trigger inbox warning."""
+        result = await service.list_projects(ListProjectsQuery())
+        assert result.warnings is None
+
+    @pytest.mark.snapshot(
+        tasks=[],
+        projects=[
+            make_project_dict(id="proj-1", name="Work Project"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_search_in_substring_warns(self, service: OperatorService) -> None:
+        """search='in' is substring of 'Inbox', triggers warning."""
+        result = await service.list_projects(ListProjectsQuery(search="in"))
+        assert result.warnings is not None
+        assert any("not a real OmniFocus project" in w for w in result.warnings)
+
+
+# ---------------------------------------------------------------------------
 # Pass-throughs: tags, folders, perspectives
 # ---------------------------------------------------------------------------
 

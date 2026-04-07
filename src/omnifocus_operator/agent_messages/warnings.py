@@ -126,11 +126,18 @@ REPETITION_ANCHOR_DATE_MISSING = (
 # --- Filter Resolution ---
 
 FILTER_MULTI_MATCH = (
-    "Filter '{value}' matched {count} {entity_type}s: {matches}. "
-    "For exact results, filter by ID."
+    "Filter '{value}' matched {count} {entity_type}s: {matches}. For exact results, filter by ID."
 )
 
 FILTER_NO_MATCH = "No {entity_type} found matching '{value}'. This filter was skipped."
+
+# --- Project Tool: Inbox Search ---
+
+LIST_PROJECTS_INBOX_WARNING = (
+    "The inbox appears as a project on tasks but is not a real OmniFocus project "
+    "and won't appear in results. "
+    "To query inbox tasks, use list_tasks with 'inInbox=true'."
+)
 
 FILTER_DID_YOU_MEAN = (
     "No {entity_type} found matching '{value}'. "

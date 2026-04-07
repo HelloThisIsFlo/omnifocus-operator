@@ -162,6 +162,14 @@ CONTRADICTORY_INBOX_PROJECT = (
     "Combining with a 'project' filter always yields nothing. Use one or the other."
 )
 
+# --- Project Tool: Inbox Guard ---
+
+GET_PROJECT_INBOX_ERROR = (
+    "The inbox appears as a project on tasks but is not a real OmniFocus project "
+    "\u2014 it has no review schedule, status, or other project properties. "
+    "To query inbox tasks, use list_tasks with 'inInbox=true'."
+)
+
 ENTITY_TYPE_MISMATCH = "'{value}' resolved to {resolved_type}, but only {accepted} is accepted here"
 
 ENTITY_TYPE_MISMATCH_ANCHOR = (

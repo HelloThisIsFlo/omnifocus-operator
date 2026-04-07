@@ -542,6 +542,36 @@ class TestFindUnresolved:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Resolver -- lookup_project $-prefix guard
+# ---------------------------------------------------------------------------
+
+
+class TestLookupProjectInboxGuard:
+    """lookup_project rejects $-prefixed IDs with educational error."""
+
+    async def test_dollar_inbox_raises(self, resolver: Resolver) -> None:
+        """get_project('$inbox') raises ValueError with educational message."""
+        with pytest.raises(ValueError, match="not a real OmniFocus project"):
+            await resolver.lookup_project("$inbox")
+
+    async def test_dollar_trash_raises(self, resolver: Resolver) -> None:
+        """Any $-prefixed value triggers the guard, not just $inbox."""
+        with pytest.raises(ValueError, match="not a real OmniFocus project"):
+            await resolver.lookup_project("$trash")
+
+    async def test_normal_project_still_works(self, resolver: Resolver) -> None:
+        """Regular project IDs are not affected by the guard."""
+        project = await resolver.lookup_project("proj-1")
+        assert project.id == "proj-1"
+        assert project.name == "Project One"
+
+
+# ---------------------------------------------------------------------------
+# Resolver -- resolve_inbox (inbox filter normalization)
+# ---------------------------------------------------------------------------
+
+
 class TestResolveInbox:
     """resolve_inbox normalizes $inbox in project filter to in_inbox=True."""
 
