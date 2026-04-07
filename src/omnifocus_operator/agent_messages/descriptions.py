@@ -126,6 +126,56 @@ FLAGGED_EDIT_COMMAND = "Mark task for priority attention. Surfaces in Flagged pe
 
 ESTIMATED_MINUTES_EDIT = "Time estimate in minutes. Set to null to clear."
 
+# --- Date Filter Models ---
+
+DATE_FILTER_DOC = (
+    "Date range filter. Use a shorthand period (this/last/next with a duration like '3d', 'w', '2m') "
+    "or absolute bounds (before/after with ISO dates or 'now'). "
+    "Cannot mix shorthand and absolute in the same filter."
+)
+
+DUE_DATE_SHORTCUT_DOC = "Shortcut for filtering by due date: overdue, soon, or today."
+
+LIFECYCLE_DATE_SHORTCUT_DOC = (
+    "Shortcut for filtering by lifecycle date: any (all in that state) or today."
+)
+
+DUE_FILTER_DESC = (
+    'Filter by due date. String shortcut ("overdue", "soon", "today") '
+    "or DateFilter object. 'overdue' = due before now. "
+    "'soon' = due within your OmniFocus due-soon threshold."
+)
+
+COMPLETED_FILTER_DESC = (
+    'Filter by completion date. "any" includes all completed tasks regardless of date. '
+    '"today" filters to completed today. Or use a DateFilter object for a custom range.'
+)
+
+DROPPED_FILTER_DESC = (
+    'Filter by drop date. "any" includes all dropped tasks regardless of date. '
+    '"today" filters to dropped today. Or use a DateFilter object for a custom range.'
+)
+
+DEFER_FILTER_DESC = (
+    'Filter by defer date. "today" matches tasks deferred to today. '
+    "Or use a DateFilter object for a custom range."
+)
+
+PLANNED_FILTER_DESC = (
+    'Filter by planned date. "today" matches tasks planned for today. '
+    "Or use a DateFilter object for a custom range."
+)
+
+ADDED_FILTER_DESC = (
+    'Filter by date added. "today" matches tasks added today. '
+    "Or use a DateFilter object for a custom range."
+)
+
+MODIFIED_FILTER_DESC = (
+    'Filter by date modified. "today" matches tasks modified today. '
+    "Or use a DateFilter object for a custom range."
+)
+
 # --- Class Docstrings: Entities ---
 
 TAG_REF_DOC = "Reference to a tag with both id and name."

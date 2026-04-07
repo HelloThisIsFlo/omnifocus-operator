@@ -127,6 +127,43 @@ REPETITION_INVALID_END_EMPTY = (
     "end requires either 'date' (ISO-8601 string) or 'occurrences' (integer >= 1)"
 )
 
+# --- Validation: Date Filters ---
+
+DATE_FILTER_MIXED_GROUPS = (
+    "Cannot mix shorthand (this/last/next) with absolute (before/after) in the same date filter. "
+    'Use either a shorthand period like {{"last": "3d"}} or absolute bounds like '
+    '{{"after": "2026-04-01", "before": "2026-04-14"}}.'
+)
+
+DATE_FILTER_MULTIPLE_SHORTHAND = (
+    "Only one shorthand key allowed per date filter -- use exactly one of: this, last, next."
+)
+
+DATE_FILTER_EMPTY = (
+    "Date filter must specify at least one key. "
+    "Use a shorthand period (this/last/next) or absolute bounds (before/after)."
+)
+
+DATE_FILTER_INVALID_DURATION = (
+    "Invalid duration '{value}' -- use a number followed by d/w/m/y (e.g. '3d', '2w', 'm'). "
+    "Count defaults to 1 when omitted, so 'w' means '1w'."
+)
+
+DATE_FILTER_ZERO_NEGATIVE = (
+    "Duration count must be positive (got '{value}'). "
+    "Use a positive number followed by d/w/m/y (e.g. '1d', '2w')."
+)
+
+DATE_FILTER_REVERSED_BOUNDS = (
+    "Invalid date range: 'after' ({after}) is later than 'before' ({before}). "
+    'Swap the values, or use a shorthand like {{"this": "d"}} for a single day.'
+)
+
+DATE_FILTER_INVALID_ABSOLUTE = (
+    "Invalid date value '{value}' -- use ISO 8601 format (e.g. '2026-04-01', "
+    "'2026-04-01T14:00:00'), or 'now' for the current time."
+)
+
 # --- Validation: List Filters ---
 
 FILTER_NULL = "'{field}' cannot be null. To skip this filter, simply omit the field."
