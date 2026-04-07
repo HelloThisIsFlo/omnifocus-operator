@@ -783,3 +783,53 @@ class TestFall02BridgeAvailabilityLimitation:
             assert task["urgency"] in self.ALLOWED_TASK_URGENCY
         for project in snapshot["projects"]:
             assert project["availability"] in self.ALLOWED_PROJECT_AVAILABILITY
+
+
+# ---------------------------------------------------------------------------
+# Project root task filtering
+# ---------------------------------------------------------------------------
+
+
+class TestProjectRootTaskFiltering:
+    """adapt_snapshot excludes project root tasks from the tasks list.
+
+    In OmniFocus, every project has an underlying Task object. The SQL path
+    excludes these via LEFT JOIN ProjectInfo WHERE pi.task IS NULL. The
+    bridge-only path must filter them out in adapt_snapshot.
+    """
+
+    def test_project_root_task_excluded(self) -> None:
+        """Task whose ID matches a project ID is removed from the tasks list."""
+        proj = _old_project(id="proj1", name="My Project")
+        root_task = _old_task(id="proj1", name="My Project", project="proj1", parent="proj1")
+        snapshot = {"tasks": [root_task], "projects": [proj], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        task_ids = [t["id"] for t in snapshot["tasks"]]
+        assert "proj1" not in task_ids
+
+    def test_normal_tasks_preserved_when_project_root_excluded(self) -> None:
+        """Normal tasks survive when a project root task is filtered out."""
+        proj = _old_project(id="proj1", name="My Project")
+        root_task = _old_task(id="proj1", name="My Project", project="proj1", parent="proj1")
+        normal_task1 = _old_task(id="task1", name="Task 1", project="proj1", parent="proj1")
+        normal_task2 = _old_task(id="task2", name="Task 2", project="proj1", parent="proj1")
+        snapshot = {
+            "tasks": [root_task, normal_task1, normal_task2],
+            "projects": [proj],
+            "tags": [],
+            "folders": [],
+        }
+        adapt_snapshot(snapshot)
+        task_ids = [t["id"] for t in snapshot["tasks"]]
+        assert "proj1" not in task_ids
+        assert "task1" in task_ids
+        assert "task2" in task_ids
+
+    def test_no_projects_no_filtering(self) -> None:
+        """When there are no projects, all tasks are preserved (no crash)."""
+        task1 = _old_task(id="task1", name="Task 1")
+        task2 = _old_task(id="task2", name="Task 2")
+        snapshot = {"tasks": [task1, task2], "projects": [], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        task_ids = [t["id"] for t in snapshot["tasks"]]
+        assert task_ids == ["task1", "task2"]
