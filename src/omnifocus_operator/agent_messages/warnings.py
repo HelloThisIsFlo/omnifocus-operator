@@ -148,6 +148,13 @@ LIST_TASKS_INBOX_PROJECT_WARNING = (
     "Use project='$inbox' or 'inInbox=true' to query them."
 )
 
+# --- Availability Filter ---
+
+AVAILABILITY_MIXED_ALL = (
+    "When using 'all', no other values are needed -- 'all' already includes every status. "
+    'Just send ["all"] by itself next time.'
+)
+
 FILTER_DID_YOU_MEAN = (
     "No {entity_type} found matching '{value}'. "
     "Did you mean: {suggestions}? "

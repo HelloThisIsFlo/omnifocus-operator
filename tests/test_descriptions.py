@@ -85,6 +85,10 @@ _INTERNAL_CLASSES = {
     "ListPerspectivesRepoQuery",
     # Internal sentinel
     "_Unset",
+    # Filter-side availability enums -- internal, service expands to core enums
+    "AvailabilityFilter",
+    "TagAvailabilityFilter",
+    "FolderAvailabilityFilter",
 }
 
 

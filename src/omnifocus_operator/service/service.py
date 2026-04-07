@@ -21,6 +21,7 @@ from omnifocus_operator.agent_messages.errors import (
     REPETITION_NO_EXISTING_RULE,
 )
 from omnifocus_operator.agent_messages.warnings import (
+    AVAILABILITY_MIXED_ALL,
     LIST_PROJECTS_INBOX_WARNING,
     LIST_TASKS_INBOX_PROJECT_WARNING,
     REPETITION_NO_OP,
@@ -30,6 +31,11 @@ from omnifocus_operator.contracts.protocols import Service
 from omnifocus_operator.contracts.shared.repetition_rule import RepetitionRuleRepoPayload
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskResult
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
+from omnifocus_operator.contracts.use_cases.list._enums import (
+    AvailabilityFilter,
+    FolderAvailabilityFilter,
+    TagAvailabilityFilter,
+)
 from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult, ListResult
 from omnifocus_operator.contracts.use_cases.list.folders import (
     ListFoldersRepoQuery,
@@ -86,11 +92,47 @@ __all__ = ["ErrorOperatorService", "OperatorService"]
 logger = logging.getLogger(__name__)
 
 
-def matches_inbox_name(value: str | None) -> bool:
+def matches_inbox_name(value: object) -> bool:
     """Check if a value is a case-insensitive substring of the inbox name."""
-    if value is None:
+    if not isinstance(value, str):
         return False
     return value.lower() in "Inbox".lower()
+
+
+def _expand_availability(
+    filters: list[AvailabilityFilter], warnings: list[str]
+) -> list[Availability]:
+    """Expand AvailabilityFilter values to core Availability for repo query."""
+    has_all = AvailabilityFilter.ALL in filters
+    if has_all:
+        if len(filters) > 1:
+            warnings.append(AVAILABILITY_MIXED_ALL)
+        return list(Availability)
+    return [Availability(f.value) for f in filters]
+
+
+def _expand_tag_availability(
+    filters: list[TagAvailabilityFilter], warnings: list[str]
+) -> list[TagAvailability]:
+    """Expand TagAvailabilityFilter values to core TagAvailability for repo query."""
+    has_all = TagAvailabilityFilter.ALL in filters
+    if has_all:
+        if len(filters) > 1:
+            warnings.append(AVAILABILITY_MIXED_ALL)
+        return list(TagAvailability)
+    return [TagAvailability(f.value) for f in filters]
+
+
+def _expand_folder_availability(
+    filters: list[FolderAvailabilityFilter], warnings: list[str]
+) -> list[FolderAvailability]:
+    """Expand FolderAvailabilityFilter values to core FolderAvailability for repo query."""
+    has_all = FolderAvailabilityFilter.ALL in filters
+    if has_all:
+        if len(filters) > 1:
+            warnings.append(AVAILABILITY_MIXED_ALL)
+        return list(FolderAvailability)
+    return [FolderAvailability(f.value) for f in filters]
 
 
 class OperatorService(Service):  # explicitly implements Service protocol
@@ -194,28 +236,36 @@ class OperatorService(Service):  # explicitly implements Service protocol
 
     async def list_tags(self, query: ListTagsQuery) -> ListResult[Tag]:
         """List tags -- inline pass-through (no entity-reference filters)."""
+        warnings: list[str] = []
         repo_query = ListTagsRepoQuery(
-            availability=query.availability,
+            availability=_expand_tag_availability(query.availability, warnings),
             search=unset_to_none(query.search),
             limit=query.limit,
             offset=query.offset,
         )
         repo_result = await self._repository.list_tags(repo_query)
         return ListResult(
-            items=repo_result.items, total=repo_result.total, has_more=repo_result.has_more
+            items=repo_result.items,
+            total=repo_result.total,
+            has_more=repo_result.has_more,
+            warnings=warnings or None,
         )
 
     async def list_folders(self, query: ListFoldersQuery) -> ListResult[Folder]:
         """List folders -- inline pass-through (no entity-reference filters)."""
+        warnings: list[str] = []
         repo_query = ListFoldersRepoQuery(
-            availability=query.availability,
+            availability=_expand_folder_availability(query.availability, warnings),
             search=unset_to_none(query.search),
             limit=query.limit,
             offset=query.offset,
         )
         repo_result = await self._repository.list_folders(repo_query)
         return ListResult(
-            items=repo_result.items, total=repo_result.total, has_more=repo_result.has_more
+            items=repo_result.items,
+            total=repo_result.total,
+            has_more=repo_result.has_more,
+            warnings=warnings or None,
         )
 
     async def list_perspectives(self, query: ListPerspectivesQuery) -> ListResult[Perspective]:
@@ -354,7 +404,7 @@ class _ListTasksPipeline(_ReadPipeline):
             project_ids=self._project_ids,
             tag_ids=self._tag_ids,
             estimated_minutes_max=unset_to_none(self._query.estimated_minutes_max),
-            availability=self._query.availability,
+            availability=_expand_availability(self._query.availability, self._warnings),
             search=unset_to_none(self._query.search),
             limit=self._query.limit,
             offset=self._query.offset,
@@ -387,8 +437,7 @@ class _ListProjectsPipeline(_ReadPipeline):
 
     def _check_inbox_search_warning(self) -> None:
         """Warn if search term matches system inbox name (per D-16 to D-19)."""
-        search = unset_to_none(self._query.search)
-        if matches_inbox_name(search):
+        if matches_inbox_name(self._query.search):
             self._warnings.append(LIST_PROJECTS_INBOX_WARNING)
 
     def _resolve_folder(self) -> None:
@@ -411,7 +460,7 @@ class _ListProjectsPipeline(_ReadPipeline):
             review_due_before = self._expand_review_due(review_due_within)
 
         self._repo_query = ListProjectsRepoQuery(
-            availability=self._query.availability,
+            availability=_expand_availability(self._query.availability, self._warnings),
             folder_ids=self._folder_ids,
             review_due_before=review_due_before,
             flagged=unset_to_none(self._query.flagged),

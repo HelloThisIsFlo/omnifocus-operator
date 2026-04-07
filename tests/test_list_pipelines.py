@@ -738,3 +738,180 @@ class TestReviewDueFilterExpansion:
         """No review_due_within -> no filtering by review date."""
         result = await service.list_projects(ListProjectsQuery())
         assert len(result.items) == 1
+
+
+# ---------------------------------------------------------------------------
+# matches_inbox_name: UNSET handling
+# ---------------------------------------------------------------------------
+
+
+class TestMatchesInboxName:
+    """matches_inbox_name handles UNSET, None, and str correctly."""
+
+    def test_unset_returns_false(self) -> None:
+        from omnifocus_operator.contracts.base import UNSET
+        from omnifocus_operator.service.service import matches_inbox_name
+
+        assert matches_inbox_name(UNSET) is False
+
+    def test_none_returns_false(self) -> None:
+        from omnifocus_operator.service.service import matches_inbox_name
+
+        assert matches_inbox_name(None) is False
+
+    def test_inbox_string_returns_true(self) -> None:
+        from omnifocus_operator.service.service import matches_inbox_name
+
+        assert matches_inbox_name("inbox") is True
+
+    def test_work_string_returns_false(self) -> None:
+        from omnifocus_operator.service.service import matches_inbox_name
+
+        assert matches_inbox_name("work") is False
+
+    def test_int_returns_false(self) -> None:
+        from omnifocus_operator.service.service import matches_inbox_name
+
+        assert matches_inbox_name(42) is False
+
+
+# ---------------------------------------------------------------------------
+# Availability expansion: ALL -> full core enum list
+# ---------------------------------------------------------------------------
+
+
+class TestAvailabilityExpansion:
+    """Pipeline expands AvailabilityFilter.ALL to all core Availability values."""
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t-avail", name="Available task"),
+            make_task_dict(id="t-dropped", name="Dropped task"),
+        ],
+        projects=[],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_tasks_all_returns_all_statuses(self, service: OperatorService) -> None:
+        """availability=['all'] expands to all core Availability values."""
+        from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
+
+        result = await service.list_tasks(ListTasksQuery(availability=[AvailabilityFilter.ALL]))
+        # Should return all tasks regardless of status
+        assert len(result.items) >= 1
+        assert result.warnings is None  # No mixed-ALL warning
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t1", name="Task"),
+        ],
+        projects=[],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_tasks_mixed_all_warns(self, service: OperatorService) -> None:
+        """availability=['all', 'available'] expands and adds warning."""
+        from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
+
+        result = await service.list_tasks(
+            ListTasksQuery(availability=[AvailabilityFilter.ALL, AvailabilityFilter.AVAILABLE])
+        )
+        assert result.warnings is not None
+        assert any("no other values are needed" in w for w in result.warnings)
+
+    @pytest.mark.snapshot(
+        tasks=[],
+        projects=[
+            make_project_dict(id="proj-1", name="Project"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_projects_all_returns_all_statuses(self, service: OperatorService) -> None:
+        """list_projects with availability=['all'] expands correctly."""
+        from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
+
+        result = await service.list_projects(
+            ListProjectsQuery(availability=[AvailabilityFilter.ALL])
+        )
+        assert len(result.items) >= 1
+        assert result.warnings is None
+
+    @pytest.mark.snapshot(
+        tasks=[],
+        projects=[],
+        tags=[
+            make_tag_dict(id="tag-1", name="Tag"),
+        ],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_tags_all_returns_all_statuses(self, service: OperatorService) -> None:
+        """list_tags with availability=['all'] expands correctly."""
+        from omnifocus_operator.contracts.use_cases.list._enums import TagAvailabilityFilter
+
+        result = await service.list_tags(ListTagsQuery(availability=[TagAvailabilityFilter.ALL]))
+        assert len(result.items) >= 1
+        assert result.warnings is None
+
+    @pytest.mark.snapshot(
+        tasks=[],
+        projects=[],
+        tags=[],
+        folders=[
+            make_folder_dict(id="f1", name="Folder"),
+        ],
+        perspectives=[],
+    )
+    async def test_folders_all_returns_all_statuses(self, service: OperatorService) -> None:
+        """list_folders with availability=['all'] expands correctly."""
+        from omnifocus_operator.contracts.use_cases.list._enums import FolderAvailabilityFilter
+
+        result = await service.list_folders(
+            ListFoldersQuery(availability=[FolderAvailabilityFilter.ALL])
+        )
+        assert len(result.items) >= 1
+        assert result.warnings is None
+
+    @pytest.mark.snapshot(
+        tasks=[],
+        projects=[],
+        tags=[
+            make_tag_dict(id="tag-1", name="Tag"),
+        ],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_tags_mixed_all_warns(self, service: OperatorService) -> None:
+        """list_tags with mixed ALL adds warning."""
+        from omnifocus_operator.contracts.use_cases.list._enums import TagAvailabilityFilter
+
+        result = await service.list_tags(
+            ListTagsQuery(availability=[TagAvailabilityFilter.ALL, TagAvailabilityFilter.AVAILABLE])
+        )
+        assert result.warnings is not None
+        assert any("no other values are needed" in w for w in result.warnings)
+
+    @pytest.mark.snapshot(
+        tasks=[],
+        projects=[],
+        tags=[],
+        folders=[
+            make_folder_dict(id="f1", name="Folder"),
+        ],
+        perspectives=[],
+    )
+    async def test_folders_mixed_all_warns(self, service: OperatorService) -> None:
+        """list_folders with mixed ALL adds warning."""
+        from omnifocus_operator.contracts.use_cases.list._enums import FolderAvailabilityFilter
+
+        result = await service.list_folders(
+            ListFoldersQuery(
+                availability=[FolderAvailabilityFilter.ALL, FolderAvailabilityFilter.AVAILABLE]
+            )
+        )
+        assert result.warnings is not None
+        assert any("no other values are needed" in w for w in result.warnings)
