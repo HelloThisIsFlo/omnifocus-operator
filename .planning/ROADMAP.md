@@ -114,7 +114,7 @@
 - [x] **Phase 40: Resolver -- System Location Detection & Name Resolution** - $-prefix routing, write-side name resolution for all entity fields (completed 2026-04-05)
 - [x] **Phase 41: Write Pipeline -- $inbox in Add/Edit** - $inbox write support, PatchOrNone elimination, container error handling (completed 2026-04-06)
 - [x] **Phase 42: Read Output Restructure** - Tagged parent discriminator, project field, inInbox removal, ParentRef removal, rich {id, name} references on all entities, output descriptions (completed 2026-04-06)
-- [ ] **Phase 43: Filters & Project Tools** - $inbox in list_tasks filters, contradictory filter detection, project tool guardrails, $inbox-related descriptions
+- [x] **Phase 43: Filters & Project Tools** - $inbox in list_tasks filters, contradictory filter detection, project tool guardrails, $inbox-related descriptions (completed 2026-04-07)
 
 ## Phase Details
 
@@ -201,11 +201,11 @@ Plans:
   5. `list_projects` never includes inbox; name filter matching "Inbox" triggers warning about system inbox
   6. Descriptions document `$inbox` usage in every relevant field
   7. `get_project` description mentions that `$inbox` returns an error
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 43-01-PLAN.md — resolve_inbox method, pipeline integration, contradictory filter detection (FILT-01 through FILT-05)
-- [ ] 43-02-PLAN.md — get_project guard, list_projects search warning, description updates (PROJ-01, PROJ-03, DESC-04, NRES-07)
+- [x] 43-01-PLAN.md — resolve_inbox method, pipeline integration, contradictory filter detection (FILT-01 through FILT-05)
+- [x] 43-02-PLAN.md — get_project guard, list_projects search warning, description updates (PROJ-01, PROJ-03, DESC-04, NRES-07)
 
 ## Progress
 
@@ -226,4 +226,4 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43
 | 40. Resolver | v1.3.1 | 3/3 | Complete   | 2026-04-05 |
 | 41. Write Pipeline | v1.3.1 | 2/2 | Complete    | 2026-04-06 |
 | 42. Read Output | v1.3.1 | 4/4 | Complete    | 2026-04-06 |
-| 43. Filters & Projects | v1.3.1 | 0/2 | Not started | - |
+| 43. Filters & Projects | v1.3.1 | 2/2 | Complete    | 2026-04-07 |
