@@ -14,6 +14,9 @@ from omnifocus_operator.contracts.shared import actions as contracts_common
 from omnifocus_operator.contracts.shared import repetition_rule as contracts_repetition_rule
 from omnifocus_operator.contracts.use_cases.add import tasks as contracts_add_task
 from omnifocus_operator.contracts.use_cases.edit import tasks as contracts_edit_task
+from omnifocus_operator.contracts.use_cases.list import (
+    _date_filter as contracts_list_date_filter,
+)
 from omnifocus_operator.contracts.use_cases.list import _validators as contracts_list_validators
 from omnifocus_operator.contracts.use_cases.list import projects as contracts_list_projects
 from omnifocus_operator.models import repetition_rule as models_repetition_rule
@@ -36,6 +39,7 @@ _ERROR_CONSUMERS = [
     contracts_add_task,
     contracts_edit_task,
     contracts_repetition_rule,
+    contracts_list_date_filter,
     contracts_list_validators,
     contracts_list_projects,
     models_repetition_rule,

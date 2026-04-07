@@ -10,7 +10,9 @@ from enum import StrEnum
 
 from omnifocus_operator.agent_messages.descriptions import (
     AVAILABILITY_DOC,
+    DUE_DATE_SHORTCUT_DOC,
     FOLDER_AVAILABILITY_DOC,
+    LIFECYCLE_DATE_SHORTCUT_DOC,
     TAG_AVAILABILITY_DOC,
 )
 
@@ -40,3 +42,18 @@ class FolderAvailabilityFilter(StrEnum):
     AVAILABLE = "available"
     DROPPED = "dropped"
     ALL = "ALL"
+
+
+class DueDateShortcut(StrEnum):
+    __doc__ = DUE_DATE_SHORTCUT_DOC
+
+    OVERDUE = "overdue"
+    SOON = "soon"
+    TODAY = "today"
+
+
+class LifecycleDateShortcut(StrEnum):
+    __doc__ = LIFECYCLE_DATE_SHORTCUT_DOC
+
+    ANY = "any"
+    TODAY = "today"

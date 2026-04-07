@@ -16,6 +16,9 @@ from omnifocus_operator.contracts.shared import repetition_rule as contracts_rep
 from omnifocus_operator.contracts.use_cases.add import tasks as contracts_add_tasks
 from omnifocus_operator.contracts.use_cases.edit import tasks as contracts_edit_tasks
 from omnifocus_operator.contracts.use_cases.list import (
+    _date_filter as contracts_list_date_filter,
+)
+from omnifocus_operator.contracts.use_cases.list import (
     _enums as contracts_list_enums,
 )
 from omnifocus_operator.contracts.use_cases.list import common as contracts_list_common
@@ -49,6 +52,7 @@ _CONSUMER_MODULES = [
     contracts_repetition_rule,
     contracts_add_tasks,
     contracts_edit_tasks,
+    contracts_list_date_filter,
     contracts_list_enums,
     contracts_list_common,
     contracts_list_tasks,
@@ -113,7 +117,18 @@ class TestDescriptionConsolidation:
         """Every constant in descriptions.py must appear in at least one consumer (DESC-04)."""
         source = get_consumer_sources(_CONSUMER_MODULES)
         constants = get_upper_snake_constants(desc_mod)
-        unreferenced = {c for c in constants if c not in source}
+        # Constants pre-defined for Plan 45-02 (date filter fields on ListTasksQuery).
+        # Remove this exemption once the fields are wired.
+        _PENDING_CONSUMER_CONSTANTS = {
+            "DUE_FILTER_DESC",
+            "COMPLETED_FILTER_DESC",
+            "DROPPED_FILTER_DESC",
+            "DEFER_FILTER_DESC",
+            "PLANNED_FILTER_DESC",
+            "ADDED_FILTER_DESC",
+            "MODIFIED_FILTER_DESC",
+        }
+        unreferenced = {c for c in constants if c not in source} - _PENDING_CONSUMER_CONSTANTS
         assert unreferenced == set(), (
             f"Description constants not referenced in consumer modules: {unreferenced}"
         )
