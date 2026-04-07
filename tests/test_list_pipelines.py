@@ -330,6 +330,95 @@ class TestListTasksInboxFilter:
         assert result.warnings is None
 
 
+class TestListTasksInboxProjectWarning:
+    """list_tasks warns when project filter matches the inbox name."""
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t-proj", name="Project task", project="proj-inbox"),
+        ],
+        projects=[
+            make_project_dict(id="proj-inbox", name="My Inbox Tasks"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_project_inbox_warns(self, service: OperatorService) -> None:
+        """project='inbox' triggers inbox project warning."""
+        result = await service.list_tasks(ListTasksQuery(project="inbox"))
+        assert result.warnings is not None
+        assert any("Inbox is a virtual location" in w for w in result.warnings)
+        assert any('project="inbox"' in w for w in result.warnings)
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t-proj", name="Project task", project="proj-inbox"),
+        ],
+        projects=[
+            make_project_dict(id="proj-inbox", name="My Inbox Tasks"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_project_inbox_case_insensitive(self, service: OperatorService) -> None:
+        """project='INBOX' (uppercase) also triggers warning."""
+        result = await service.list_tasks(ListTasksQuery(project="INBOX"))
+        assert result.warnings is not None
+        assert any("Inbox is a virtual location" in w for w in result.warnings)
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t-proj", name="Project task", project="proj-inbox"),
+        ],
+        projects=[
+            make_project_dict(id="proj-inbox", name="My Inbox Tasks"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_project_inb_substring_warns(self, service: OperatorService) -> None:
+        """project='inb' (substring of Inbox) triggers warning."""
+        result = await service.list_tasks(ListTasksQuery(project="inb"))
+        assert result.warnings is not None
+        assert any("Inbox is a virtual location" in w for w in result.warnings)
+        assert any('project="inb"' in w for w in result.warnings)
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t-proj", name="Project task", project="proj-work"),
+        ],
+        projects=[
+            make_project_dict(id="proj-work", name="Work Projects"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_project_work_no_warning(self, service: OperatorService) -> None:
+        """project='Work' does NOT trigger inbox warning."""
+        result = await service.list_tasks(ListTasksQuery(project="Work"))
+        inbox_warnings = [w for w in (result.warnings or []) if "Inbox is a virtual location" in w]
+        assert inbox_warnings == []
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t-inbox", name="Inbox task"),
+        ],
+        projects=[],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_dollar_inbox_no_inbox_project_warning(self, service: OperatorService) -> None:
+        """project='$inbox' does NOT trigger the inbox project warning (already consumed)."""
+        result = await service.list_tasks(ListTasksQuery(project="$inbox"))
+        inbox_warnings = [w for w in (result.warnings or []) if "Inbox is a virtual location" in w]
+        assert inbox_warnings == []
+
+
 class TestListProjectsResolution:
     """Pipeline resolves folder names to IDs before repo call."""
 
