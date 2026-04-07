@@ -468,3 +468,70 @@ class TestDeterministicOrdering:
         assert all_ids == sorted(all_ids)
         assert len(all_ids) == 5
         assert len(set(all_ids)) == 5  # no duplicates
+
+
+# ---------------------------------------------------------------------------
+# Project root task filtering (bridge-only pipeline end-to-end)
+# ---------------------------------------------------------------------------
+
+
+class TestProjectRootTaskExclusion:
+    """Bridge-only list_tasks excludes project root tasks end-to-end.
+
+    In OmniFocus every project has an underlying Task object with the same ID.
+    The SQL path filters these via LEFT JOIN ProjectInfo. The bridge-only path
+    filters them in adapt_snapshot. This test validates the fix flows through
+    the full pipeline: get_all -> adapt_snapshot -> list_tasks.
+    """
+
+    async def test_list_tasks_excludes_project_root_tasks(self) -> None:
+        """list_tasks never returns a task whose ID matches a project ID."""
+        data = make_snapshot_dict(
+            tasks=[
+                # Project root task (same ID as the project)
+                make_task_dict(
+                    id="proj-001", name="Project Root", project="proj-001", parent="proj-001"
+                ),
+                # Normal tasks
+                make_task_dict(id="task-a", name="Task A", project="proj-001", parent="proj-001"),
+                make_task_dict(id="task-b", name="Task B", project="proj-001", parent="proj-001"),
+            ],
+            projects=[
+                make_project_dict(id="proj-001", name="My Project"),
+            ],
+        )
+        repo = BridgeOnlyRepository(
+            bridge=InMemoryBridge(data=data),
+            mtime_source=FakeMtimeSource(mtime_ns=1),
+        )
+
+        result = await repo.list_tasks(ListTasksRepoQuery())
+        returned_ids = [t.id for t in result.items]
+
+        assert "proj-001" not in returned_ids, "Project root task should be excluded"
+        assert "task-a" in returned_ids
+        assert "task-b" in returned_ids
+
+    async def test_get_all_excludes_project_root_tasks(self) -> None:
+        """get_all snapshot tasks list also excludes project root tasks."""
+        data = make_snapshot_dict(
+            tasks=[
+                make_task_dict(
+                    id="proj-001", name="Project Root", project="proj-001", parent="proj-001"
+                ),
+                make_task_dict(id="task-x", name="Real Task"),
+            ],
+            projects=[
+                make_project_dict(id="proj-001", name="My Project"),
+            ],
+        )
+        repo = BridgeOnlyRepository(
+            bridge=InMemoryBridge(data=data),
+            mtime_source=FakeMtimeSource(mtime_ns=1),
+        )
+
+        snapshot = await repo.get_all()
+        task_ids = [t.id for t in snapshot.tasks]
+
+        assert "proj-001" not in task_ids
+        assert "task-x" in task_ids
