@@ -224,6 +224,112 @@ class TestListTasksResolution:
 # ---------------------------------------------------------------------------
 
 
+class TestListTasksInboxFilter:
+    """Pipeline handles $inbox in project filter and contradictory inbox combinations."""
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t-inbox-1", name="Inbox task A"),
+            make_task_dict(id="t-inbox-2", name="Inbox task B"),
+            make_task_dict(id="t-proj", name="Project task", project="proj-work"),
+        ],
+        projects=[
+            make_project_dict(id="proj-work", name="Work Projects"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_dollar_inbox_returns_inbox_tasks(self, service: OperatorService) -> None:
+        """project='$inbox' returns the same tasks as inInbox=true (FILT-01)."""
+        result_dollar = await service.list_tasks(ListTasksQuery(project="$inbox"))
+        result_flag = await service.list_tasks(ListTasksQuery(in_inbox=True))
+        assert {t.id for t in result_dollar.items} == {t.id for t in result_flag.items}
+        assert {t.id for t in result_dollar.items} == {"t-inbox-1", "t-inbox-2"}
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t-inbox", name="Inbox task"),
+            make_task_dict(id="t-proj", name="Project task", project="proj-inbox"),
+        ],
+        projects=[
+            make_project_dict(id="proj-inbox", name="My Inbox Tasks"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_bare_inbox_matches_project_name_not_system(
+        self, service: OperatorService
+    ) -> None:
+        """project='inbox' (no $) matches real projects named 'inbox', NOT system inbox (FILT-02)."""
+        result = await service.list_tasks(ListTasksQuery(project="inbox"))
+        task_ids = {t.id for t in result.items}
+        # Should match "My Inbox Tasks" project (substring)
+        assert "t-proj" in task_ids
+        # Should NOT include inbox tasks (those have no project)
+        assert "t-inbox" not in task_ids
+
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="t1", name="Task")],
+        projects=[],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_dollar_inbox_with_in_inbox_false_raises(self, service: OperatorService) -> None:
+        """project='$inbox' + inInbox=false raises ValueError (FILT-03)."""
+        with pytest.raises(ValueError, match="Contradictory"):
+            await service.list_tasks(ListTasksQuery(project="$inbox", in_inbox=False))
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t-inbox", name="Inbox task"),
+            make_task_dict(id="t-proj", name="Project task", project="proj-1"),
+        ],
+        projects=[
+            make_project_dict(id="proj-1", name="Work"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_dollar_inbox_with_in_inbox_true_redundant(
+        self, service: OperatorService
+    ) -> None:
+        """project='$inbox' + inInbox=true returns inbox tasks (redundant accepted, FILT-04)."""
+        result = await service.list_tasks(ListTasksQuery(project="$inbox", in_inbox=True))
+        task_ids = {t.id for t in result.items}
+        assert "t-inbox" in task_ids
+        assert "t-proj" not in task_ids
+
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="t1", name="Task")],
+        projects=[make_project_dict(id="proj-1", name="Work")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_in_inbox_true_with_project_raises(self, service: OperatorService) -> None:
+        """inInbox=true + project='Work' raises ValueError (FILT-05)."""
+        with pytest.raises(ValueError, match="Contradictory"):
+            await service.list_tasks(ListTasksQuery(in_inbox=True, project="Work"))
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t-inbox", name="Inbox task"),
+        ],
+        projects=[],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_dollar_inbox_no_unresolved_warning(self, service: OperatorService) -> None:
+        """project='$inbox' does not trigger 'filter not resolved' warnings."""
+        result = await service.list_tasks(ListTasksQuery(project="$inbox"))
+        assert result.warnings is None
+
+
 class TestListProjectsResolution:
     """Pipeline resolves folder names to IDs before repo call."""
 
