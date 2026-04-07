@@ -45,12 +45,12 @@ Wait for confirmation before proceeding. Then tell them: "Running all tests now.
 #### Test 1a: Create basic inbox task
 1. `add_tasks` with `name: "T1a-InboxTask"` (no parent)
 2. `get_task` on the returned ID
-3. PASS if: task exists, `inInbox: true` or parent is null
+3. PASS if: task exists, `project: {"id": "$inbox", "name": "Inbox"}`
 
 #### Test 1b: Create task with parent
 1. `add_tasks` with `name: "T1b-ChildTask", parent: "<UAT-TaskCreation-id>"`
 2. `get_task` on the returned ID
-3. PASS if: parent type is "task" and parent id matches UAT-TaskCreation
+3. PASS if: `parent` is `{"task": {"id": "<UAT-id>", "name": "UAT-TaskCreation"}}`, `project` is `{"id": "$inbox", "name": "Inbox"}`
 
 #### Test 1c: Create task with all fields
 1. `add_tasks` with:
@@ -70,7 +70,7 @@ Wait for confirmation before proceeding. Then tell them: "Running all tests now.
 
 #### Test 2: Result contains expected fields
 1. `add_tasks` with `name: "T2-ResultShape"`
-2. PASS if: result contains `success: true`, `id` (non-empty string), `name: "T2-ResultShape"`
+2. PASS if: result contains `success: true`, `id` (non-empty string), `name: "T2-ResultShape"`, enriched `parent` (tagged wrapper with `project` or `task` key), enriched `project` (`{id, name}` reference)
 
 ### 3. Tag Resolution
 
@@ -124,14 +124,31 @@ Run each INDIVIDUALLY (they will error):
 1. `add_tasks` with 2 items: `[{name: "T5f-A"}, {name: "T5f-B"}]`
 2. PASS if: error about 1-item limit
 
+### 6. $inbox & System Locations
+
+#### Test 6a: parent: "$inbox" creates in inbox
+1. `add_tasks` with `name: "T6a-InboxExplicit", parent: "$inbox"`
+2. `get_task` on returned ID
+3. PASS if: task exists, `project: {"id": "$inbox", "name": "Inbox"}` — same behavior as omitting parent
+
+#### Test 6b: parent: null — error
+Run INDIVIDUALLY (will error):
+1. `add_tasks` with `name: "T6b-NullParent", parent: null`
+2. PASS if: error contains "parent cannot be null"
+
+#### Test 6c: parent: "$trash" — reserved prefix error
+Run INDIVIDUALLY (will error):
+1. `add_tasks` with `name: "T6c-BadSystem", parent: "$trash"`
+2. PASS if: error contains "'$trash' starts with '$' which is reserved for system locations" and mentions "$inbox" as valid
+
 ## Report Table Rows
 
 | # | Test | Description | Result |
 |---|------|-------------|--------|
-| 1a | Create: basic inbox | Task created in inbox with name only | |
-| 1b | Create: with parent | Task created under a parent task | |
+| 1a | Create: basic inbox | Task created in inbox; project is `{id: "$inbox", name: "Inbox"}` | |
+| 1b | Create: with parent | Task created under parent; `parent` is tagged wrapper, `project` is enriched ref | |
 | 1c | Create: all fields | All fields set; verified via get_task | |
-| 2 | Create: result shape | Result has success, id, name | |
+| 2 | Create: result shape | Result has success, id, name, enriched parent (tagged wrapper), enriched project | |
 | 3a | Create: tag by name | Case-insensitive tag resolution | |
 | 3b | Create: tag by ID | Tag resolved by ID fallback | |
 | 3c | Create: multiple tags | Two tags in one create call | |
@@ -142,3 +159,6 @@ Run each INDIVIDUALLY (they will error):
 | 5d | Error: bad parent | Nonexistent parent returns "not found" | |
 | 5e | Error: bad tag | Nonexistent tag returns "not found" | |
 | 5f | Error: batch limit | 2-item array returns 1-item limit error | |
+| 6a | $inbox parent | `parent: "$inbox"` creates task in inbox, same as omitting parent | |
+| 6b | Error: null parent | `parent: null` returns educational error about inbox syntax | |
+| 6c | Error: system location | `parent: "$trash"` returns reserved prefix error listing valid locations | |
