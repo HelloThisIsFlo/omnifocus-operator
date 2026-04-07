@@ -22,9 +22,10 @@ from omnifocus_operator.agent_messages.errors import (
 )
 from omnifocus_operator.agent_messages.warnings import (
     LIST_PROJECTS_INBOX_WARNING,
+    LIST_TASKS_INBOX_PROJECT_WARNING,
     REPETITION_NO_OP,
 )
-from omnifocus_operator.config import SYSTEM_LOCATIONS
+from omnifocus_operator.config import matches_inbox_name
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.protocols import Service
 from omnifocus_operator.contracts.shared.repetition_rule import RepetitionRuleRepoPayload
@@ -295,10 +296,18 @@ class _ListTasksPipeline(_ReadPipeline):
             self._query.in_inbox, self._query.project
         )
 
+        self._check_inbox_project_warning()
         self._resolve_project()
         self._resolve_tags()
         self._build_repo_query()
         return await self._delegate()
+
+    def _check_inbox_project_warning(self) -> None:
+        """Warn if project filter matches the inbox name (but $inbox was already consumed)."""
+        if self._project_to_resolve is not None and matches_inbox_name(self._project_to_resolve):
+            self._warnings.append(
+                LIST_TASKS_INBOX_PROJECT_WARNING.format(value=self._project_to_resolve)
+            )
 
     def _resolve_project(self) -> None:
         self._project_ids: list[str] | None = None
@@ -372,10 +381,7 @@ class _ListProjectsPipeline(_ReadPipeline):
 
     def _check_inbox_search_warning(self) -> None:
         """Warn if search term matches system inbox name (per D-16 to D-19)."""
-        if (
-            self._query.search is not None
-            and self._query.search.lower() in SYSTEM_LOCATIONS["inbox"].name.lower()
-        ):
+        if self._query.search is not None and matches_inbox_name(self._query.search):
             self._warnings.append(LIST_PROJECTS_INBOX_WARNING)
 
     def _resolve_folder(self) -> None:

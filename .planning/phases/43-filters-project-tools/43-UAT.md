@@ -34,11 +34,21 @@ notes: Minor tweak applied during UAT — changed "The inbox" to "The '$inbox'" 
 
 total: 4
 passed: 4
-issues: 0
+issues: 1
 pending: 0
 skipped: 0
 blocked: 0
 
 ## Gaps
 
-[none yet]
+- truth: "Bridge-only mode should not return projects as task entries in list_tasks results"
+  status: failed
+  reason: "In bridge-only mode, list_tasks returns projects as task entries with self-referencing parents (parent.project.id === task.id). Affects any project-scoped query. Does not occur in hybrid mode. Pre-existing bug, not a phase 43 regression."
+  severity: major
+  test: bridge-only extended testing (Tests 6B, 12B)
+  root_cause: "OmniJS bridge does not filter out project entities from task query results"
+  artifacts:
+    - path: "src/omnifocus_operator/repository/bridge_only/"
+      issue: "Bridge task query returns projects as tasks"
+  missing:
+    - "Filter out entities where the task ID matches a project ID, or where parent.project.id === task.id"

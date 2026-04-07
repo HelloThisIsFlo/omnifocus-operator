@@ -31,3 +31,8 @@ SYSTEM_LOCATION_PREFIX: str = "$"
 SYSTEM_LOCATIONS: dict[str, SystemLocation] = {
     "inbox": SystemLocation(id="$inbox", name="Inbox", type=EntityType.PROJECT),
 }
+
+
+def matches_inbox_name(value: str) -> bool:
+    """Check if a value is a case-insensitive substring of the inbox name."""
+    return value.lower() in SYSTEM_LOCATIONS["inbox"].name.lower()

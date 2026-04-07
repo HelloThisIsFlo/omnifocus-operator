@@ -139,6 +139,15 @@ LIST_PROJECTS_INBOX_WARNING = (
     "To query inbox tasks, use list_tasks with 'inInbox=true'."
 )
 
+# --- Task Tool: Inbox Project Filter ---
+
+LIST_TASKS_INBOX_PROJECT_WARNING = (
+    "The 'project=\"{value}\"' filter also matches the OmniFocus Inbox by name, "
+    "but the Inbox is a virtual location, not a named project. "
+    "Inbox tasks are not included in these results. "
+    "Use project='$inbox' or 'inInbox=true' to query them."
+)
+
 FILTER_DID_YOU_MEAN = (
     "No {entity_type} found matching '{value}'. "
     "Did you mean: {suggestions}? "
