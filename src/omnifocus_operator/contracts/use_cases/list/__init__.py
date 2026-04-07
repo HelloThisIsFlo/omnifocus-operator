@@ -3,6 +3,11 @@
 Re-exports all public names from submodules for convenient imports.
 """
 
+from omnifocus_operator.contracts.use_cases.list._enums import (
+    AvailabilityFilter,
+    FolderAvailabilityFilter,
+    TagAvailabilityFilter,
+)
 from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult, ListResult
 from omnifocus_operator.contracts.use_cases.list.folders import (
     ListFoldersQuery,
@@ -28,7 +33,9 @@ from omnifocus_operator.contracts.use_cases.list.tasks import (
 )
 
 __all__ = [
+    "AvailabilityFilter",
     "DurationUnit",
+    "FolderAvailabilityFilter",
     "ListFoldersQuery",
     "ListFoldersRepoQuery",
     "ListPerspectivesQuery",
@@ -42,4 +49,5 @@ __all__ = [
     "ListTasksQuery",
     "ListTasksRepoQuery",
     "ReviewDueFilter",
+    "TagAvailabilityFilter",
 ]

@@ -22,6 +22,7 @@ from omnifocus_operator.agent_messages.descriptions import (
 )
 from omnifocus_operator.config import DEFAULT_LIST_LIMIT
 from omnifocus_operator.contracts.base import UNSET, Patch, QueryModel, _Unset
+from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
 from omnifocus_operator.contracts.use_cases.list._validators import (
     reject_null_filters,
     validate_offset_requires_limit,
@@ -76,7 +77,9 @@ def parse_review_due_within(value: str) -> ReviewDueFilter:
 class ListProjectsQuery(QueryModel):
     __doc__ = LIST_PROJECTS_QUERY_DOC
 
-    availability: list[Availability] = Field(default=[Availability.AVAILABLE, Availability.BLOCKED])
+    availability: list[AvailabilityFilter] = Field(
+        default=[AvailabilityFilter.AVAILABLE, AvailabilityFilter.BLOCKED]
+    )
     folder: Patch[str] = Field(default=UNSET, description=FOLDER_FILTER_DESC)
     review_due_within: Patch[ReviewDueFilter] = Field(
         default=UNSET, description=REVIEW_DUE_WITHIN_DESC
@@ -101,6 +104,13 @@ class ListProjectsQuery(QueryModel):
         if isinstance(v, str):
             return parse_review_due_within(v)
         raise ValueError(err.REVIEW_DUE_WITHIN_INVALID.format(value=v))
+
+    @field_validator("availability")
+    @classmethod
+    def _reject_empty_availability(cls, v: list[AvailabilityFilter]) -> list[AvailabilityFilter]:
+        if len(v) == 0:
+            raise ValueError(err.AVAILABILITY_EMPTY.format(field="availability"))
+        return v
 
     @model_validator(mode="after")
     def _check_offset_requires_limit(self) -> ListProjectsQuery:

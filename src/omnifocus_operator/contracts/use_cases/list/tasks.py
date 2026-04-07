@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pydantic import Field, field_validator, model_validator
 
+from omnifocus_operator.agent_messages import errors as err
 from omnifocus_operator.agent_messages.descriptions import (
     ESTIMATED_MINUTES_MAX_DESC,
     FLAGGED_FILTER_DESC,
@@ -17,6 +18,7 @@ from omnifocus_operator.agent_messages.descriptions import (
 )
 from omnifocus_operator.config import DEFAULT_LIST_LIMIT
 from omnifocus_operator.contracts.base import UNSET, Patch, QueryModel
+from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
 from omnifocus_operator.contracts.use_cases.list._validators import (
     reject_null_filters,
     validate_non_empty_list,
@@ -35,7 +37,9 @@ class ListTasksQuery(QueryModel):
     project: Patch[str] = Field(default=UNSET, description=PROJECT_FILTER_DESC)
     tags: Patch[list[str]] = Field(default=UNSET, description=TAGS_FILTER_DESC)
     estimated_minutes_max: Patch[int] = Field(default=UNSET, description=ESTIMATED_MINUTES_MAX_DESC)
-    availability: list[Availability] = Field(default=[Availability.AVAILABLE, Availability.BLOCKED])
+    availability: list[AvailabilityFilter] = Field(
+        default=[AvailabilityFilter.AVAILABLE, AvailabilityFilter.BLOCKED]
+    )
     search: Patch[str] = Field(default=UNSET, description=SEARCH_FIELD_NAME_NOTES)
     limit: int | None = Field(default=DEFAULT_LIST_LIMIT, description=LIMIT_DESC)
     offset: int = Field(default=0, description=OFFSET_DESC)
@@ -51,6 +55,13 @@ class ListTasksQuery(QueryModel):
     @classmethod
     def _reject_empty_tags(cls, v: list[str]) -> list[str]:
         validate_non_empty_list(v, "tags")
+        return v
+
+    @field_validator("availability")
+    @classmethod
+    def _reject_empty_availability(cls, v: list[AvailabilityFilter]) -> list[AvailabilityFilter]:
+        if len(v) == 0:
+            raise ValueError(err.AVAILABILITY_EMPTY.format(field="availability"))
         return v
 
     @model_validator(mode="after")

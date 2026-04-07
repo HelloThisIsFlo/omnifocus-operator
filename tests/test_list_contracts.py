@@ -749,3 +749,127 @@ class TestEmptyListRejection:
     def test_tasks_empty_tags_raises(self) -> None:
         with pytest.raises(ValidationError, match=re.escape(TAGS_EMPTY.format(field="tags"))):
             ListTasksQuery(tags=[])
+
+
+# ---------------------------------------------------------------------------
+# AvailabilityFilter enums
+# ---------------------------------------------------------------------------
+
+
+class TestAvailabilityFilterEnums:
+    """Verify AvailabilityFilter enums have correct members including ALL."""
+
+    def test_availability_filter_has_all(self) -> None:
+        from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
+
+        assert AvailabilityFilter.ALL == "all"
+        assert AvailabilityFilter.AVAILABLE == "available"
+        assert AvailabilityFilter.BLOCKED == "blocked"
+        assert AvailabilityFilter.COMPLETED == "completed"
+        assert AvailabilityFilter.DROPPED == "dropped"
+
+    def test_tag_availability_filter_has_all(self) -> None:
+        from omnifocus_operator.contracts.use_cases.list._enums import TagAvailabilityFilter
+
+        assert TagAvailabilityFilter.ALL == "all"
+        assert TagAvailabilityFilter.AVAILABLE == "available"
+        assert TagAvailabilityFilter.BLOCKED == "blocked"
+        assert TagAvailabilityFilter.DROPPED == "dropped"
+
+    def test_folder_availability_filter_has_all(self) -> None:
+        from omnifocus_operator.contracts.use_cases.list._enums import FolderAvailabilityFilter
+
+        assert FolderAvailabilityFilter.ALL == "all"
+        assert FolderAvailabilityFilter.AVAILABLE == "available"
+        assert FolderAvailabilityFilter.DROPPED == "dropped"
+
+    def test_enums_re_exported_from_package(self) -> None:
+        from omnifocus_operator.contracts.use_cases.list import (
+            AvailabilityFilter,
+            FolderAvailabilityFilter,
+            TagAvailabilityFilter,
+        )
+
+        assert AvailabilityFilter.ALL == "all"
+        assert TagAvailabilityFilter.ALL == "all"
+        assert FolderAvailabilityFilter.ALL == "all"
+
+
+# ---------------------------------------------------------------------------
+# Availability field uses AvailabilityFilter enums
+# ---------------------------------------------------------------------------
+
+
+class TestAvailabilityFilterOnQueryModels:
+    """Verify query models accept AvailabilityFilter values including ALL."""
+
+    def test_tasks_accepts_all(self) -> None:
+        from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
+
+        query = ListTasksQuery(availability=[AvailabilityFilter.ALL])
+        assert query.availability == [AvailabilityFilter.ALL]
+
+    def test_tasks_accepts_mixed_all(self) -> None:
+        from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
+
+        query = ListTasksQuery(availability=[AvailabilityFilter.AVAILABLE, AvailabilityFilter.ALL])
+        assert len(query.availability) == 2
+
+    def test_projects_accepts_all(self) -> None:
+        from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
+
+        query = ListProjectsQuery(availability=[AvailabilityFilter.ALL])
+        assert query.availability == [AvailabilityFilter.ALL]
+
+    def test_tags_accepts_all(self) -> None:
+        from omnifocus_operator.contracts.use_cases.list._enums import TagAvailabilityFilter
+
+        query = ListTagsQuery(availability=[TagAvailabilityFilter.ALL])
+        assert query.availability == [TagAvailabilityFilter.ALL]
+
+    def test_folders_accepts_all(self) -> None:
+        from omnifocus_operator.contracts.use_cases.list._enums import FolderAvailabilityFilter
+
+        query = ListFoldersQuery(availability=[FolderAvailabilityFilter.ALL])
+        assert query.availability == [FolderAvailabilityFilter.ALL]
+
+
+# ---------------------------------------------------------------------------
+# Empty availability rejection
+# ---------------------------------------------------------------------------
+
+
+class TestEmptyAvailabilityRejection:
+    """Verify empty availability list raises with AVAILABILITY_EMPTY message."""
+
+    def test_tasks_empty_availability_raises(self) -> None:
+        from omnifocus_operator.agent_messages.errors import AVAILABILITY_EMPTY
+
+        with pytest.raises(
+            ValidationError, match=re.escape(AVAILABILITY_EMPTY.format(field="availability"))
+        ):
+            ListTasksQuery(availability=[])
+
+    def test_projects_empty_availability_raises(self) -> None:
+        from omnifocus_operator.agent_messages.errors import AVAILABILITY_EMPTY
+
+        with pytest.raises(
+            ValidationError, match=re.escape(AVAILABILITY_EMPTY.format(field="availability"))
+        ):
+            ListProjectsQuery(availability=[])
+
+    def test_tags_empty_availability_raises(self) -> None:
+        from omnifocus_operator.agent_messages.errors import AVAILABILITY_EMPTY
+
+        with pytest.raises(
+            ValidationError, match=re.escape(AVAILABILITY_EMPTY.format(field="availability"))
+        ):
+            ListTagsQuery(availability=[])
+
+    def test_folders_empty_availability_raises(self) -> None:
+        from omnifocus_operator.agent_messages.errors import AVAILABILITY_EMPTY
+
+        with pytest.raises(
+            ValidationError, match=re.escape(AVAILABILITY_EMPTY.format(field="availability"))
+        ):
+            ListFoldersQuery(availability=[])
