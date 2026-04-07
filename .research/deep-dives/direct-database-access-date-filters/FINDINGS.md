@@ -14,17 +14,17 @@
 - 570 matches, 0 mismatches across all 4 mismatch categories
 - **Verdict:** Can use either form. v1.3.2 uses `effectiveDateDue < now_cf` for `"overdue"` shortcut -- validated.
 
-### dueSoon (script 2)
+### dueSoon (script 2, updated by spike 6)
 
 - `dueSoon` does **NOT** include overdue tasks (0 overlap: `dueSoon=1 AND overdue=1 = 0`)
-- Threshold bracketed at 4.4h -- 14.9h (gap in task distribution, not actual threshold edges)
-- Settings table reveals: `DueSoonInterval = 86400` (24h), `DueSoonGranularity = 1`, `DefaultDueTime = 19:00:00`
-- Likely interaction: OmniFocus computes dueSoon against DefaultDueTime boundaries, not a simple `now + 24h`
+- Settings table: `DueSoonInterval` (seconds) + `DueSoonGranularity` (0=rolling, 1=calendar-aligned)
+- **Spike 6 resolved:** Two distinct modes. "24 hours" uses rolling (`now + interval`). All other options ("today", "2-5 days", "1 week") use calendar-aligned (`midnight_today + interval`). See `6-due-soon-spike/FINDINGS.md` for full mapping and proof.
 
 **v1.3.2 impact:**
 - **NEVER use the `dueSoon` column.** OmniFocus's dueSoon excludes overdue; our `"soon"` shortcut must include overdue per spec (`due < now + threshold`).
-- Configured threshold (default 24h) is computed server-side from `effectiveDateDue < now_cf + threshold_seconds` -- independent of OmniFocus's flag logic.
-- `DueSoonInterval` from Settings table can seed the default configuration value (86400 = 24h).
+- Resolver must read **both** `DueSoonInterval` and `DueSoonGranularity` from Settings table.
+- When `DueSoonGranularity=0`: threshold = `now_cf + DueSoonInterval` (rolling).
+- When `DueSoonGranularity=1`: threshold = `start_of_today_cf + DueSoonInterval` (calendar-aligned to midnight).
 
 ### blockedByFutureStartDate (script 2)
 
@@ -215,11 +215,13 @@
 
 **Action:** Add explicit implementation note: "Never use the `dueSoon` column. OmniFocus's dueSoon excludes overdue; our `"soon"` includes overdue per spec."
 
-### NOTE: dueSoon threshold measurement inconclusive
+### ~~NOTE: dueSoon threshold measurement inconclusive~~ RESOLVED by spike 6
 
 **Challenge:** Threshold bracketed at 4.4h-14.9h despite DueSoonInterval=86400 (24h). Measurement reflects task distribution gaps, not actual threshold edges.
 
-**Response:** Irrelevant to implementation. v1.3.2 computes its own threshold (`now + configured_value`), never reads OmniFocus's dueSoon flag. The DueSoonInterval setting is useful only as a default configuration seed.
+**Response (original):** Irrelevant to implementation.
+
+**Resolution (spike 6):** The 4.4h-14.9h bracket was misleading — it was measured with `DueSoonGranularity=1` (calendar-aligned to midnight), not a rolling window. The threshold was actually "before midnight tonight," which at the time of measurement was 4.4h-14.9h away. With `DueSoonGranularity=0` (rolling), the threshold is exactly `now + DueSoonInterval`. See `6-due-soon-spike/FINDINGS.md`.
 
 ### NOTE: Integer vs real effective dates
 
@@ -247,8 +249,8 @@
 |----------|--------|----------|
 | Use effective dates for all filtering | **CONFIRMED** | 55.4% of overdue tasks have inherited-only dates |
 | `effectiveDateDue < now_cf` for `"overdue"` | **CONFIRMED** | Perfect equivalence with overdue flag (570/570) |
-| Compute `"soon"` as `effectiveDateDue < now + threshold` | **CONFIRMED** | Cannot use dueSoon column (excludes overdue) |
-| Default due-soon threshold = 24h | **CONFIRMED** | DueSoonInterval=86400 in Settings table |
+| Compute `"soon"` as `effectiveDateDue < now + threshold` | **REVISED** | Correct for granularity=0 only. Granularity=1 uses `midnight + interval`. See spike 6. |
+| Read user's due-soon threshold from Settings | **CONFIRMED** | Requires both `DueSoonInterval` + `DueSoonGranularity`. Spike 6 mapped all 7 UI options. |
 | All 7 filter columns are numeric CF timestamps | **CONFIRMED** | integer or real, all CF epoch, all comparable with `< ?` |
 | `dateAdded`/`dateModified` never null | **CONFIRMED** | 0 nulls across 3,277 tasks |
 | Null dates excluded from filter results | **CONFIRMED** | SQL-natural: `NULL < X` = false |
