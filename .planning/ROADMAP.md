@@ -123,7 +123,7 @@
 
 **Milestone Goal:** Agents can filter tasks by any date dimension — due, defer, planned, completed, dropped, added, modified — using string shortcuts, shorthand periods, or absolute bounds.
 
-- [ ] **Phase 45: Date Models & Resolution** - Contract types (DateFilter, DateShorthand, DateAbsolute, DateRange), pure date resolver, config, agent messages
+- [ ] **Phase 45: Date Models & Resolution** (3 plans) - DateFilter model, StrEnum shortcuts, query extensions, pure date resolver, config, agent messages
 - [ ] **Phase 46: Pipeline & Query Paths** - Service pipeline integration, SQL date predicates, bridge in-memory filtering
 - [ ] **Phase 47: Cross-Path Equivalence & Breaking Changes** - Equivalence tests with inherited dates, urgency removal, completed boolean migration, availability trimming
 
@@ -132,23 +132,27 @@
 ### Phase 45: Date Models & Resolution
 **Goal**: All date filter input forms can be validated and resolved to absolute DateRange timestamps
 **Depends on**: Phase 44
-**Requirements**: DATE-01, DATE-02, DATE-03, DATE-04, DATE-05, DATE-06, DATE-07, DATE-08, DATE-09, RESOLVE-01, RESOLVE-02, RESOLVE-03, RESOLVE-04, RESOLVE-05, RESOLVE-06, RESOLVE-07, RESOLVE-08, RESOLVE-09, RESOLVE-10
+**Requirements**: DATE-01, DATE-02, DATE-03, DATE-04, DATE-05, DATE-06, DATE-09, RESOLVE-01, RESOLVE-02, RESOLVE-03, RESOLVE-04, RESOLVE-05, RESOLVE-06, RESOLVE-07, RESOLVE-08, RESOLVE-09, RESOLVE-10
 **Success Criteria** (what must be TRUE):
   1. Agent can submit any valid date filter form (string shortcut, shorthand object, absolute object) on any of 7 fields and get clean validation — invalid forms return educational errors
   2. `resolve_date_filter()` converts every input form to an absolute DateRange with correct boundaries — calendar-aligned for `this`, day-snapped for `last`/`next`, inclusive for absolute
-  3. Field-specific shortcut restrictions enforced — `"overdue"` and `"soon"` only on `due`, `"any"` only on `completed`/`dropped`, `"none"` rejected on always-set fields with educational errors
+  3. Field-specific shortcut restrictions enforced — `"overdue"` and `"soon"` only on `due`, `"any"` only on `completed`/`dropped`
   4. `"now"` accepted in absolute forms, week start configurable via `OPERATOR_WEEK_START` env var, month/year use naive 30d/365d approximation
-**Plans**: TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 45-01-PLAN.md — DateFilter contract + StrEnums + agent messages
+- [ ] 45-02-PLAN.md — ListTasksQuery/RepoQuery extensions + OPERATOR_WEEK_START config
+- [ ] 45-03-PLAN.md — Pure resolve_date_filter() function (TDD)
 
 ### Phase 46: Pipeline & Query Paths
 **Goal**: Agents can filter tasks by date in `list_tasks` with correct results on both SQL and bridge paths
 **Depends on**: Phase 45
-**Requirements**: RESOLVE-11, RESOLVE-12, EXEC-01, EXEC-02, EXEC-03, EXEC-04, EXEC-05, EXEC-06, EXEC-07, EXEC-08, EXEC-09
+**Requirements**: RESOLVE-11, RESOLVE-12, EXEC-01, EXEC-02, EXEC-03, EXEC-04, EXEC-05, EXEC-06, EXEC-07, EXEC-09
 **Success Criteria** (what must be TRUE):
   1. Agent can pass date filters on `list_tasks` and receive correctly filtered results — SQL path uses effective CF epoch columns, bridge path uses in-memory comparison with shared resolution logic
   2. Using `completed` or `dropped` date filter automatically includes those lifecycle states in results without the agent setting availability
   3. `due: "overdue"` and `due: "soon"` use OmniFocus pre-computed columns (SQL) / urgency enum (bridge) — matching OmniFocus UI behavior
-  4. `"none"` returns tasks with NULL for that date field; `"any"` on completed/dropped includes all tasks in that state; date filters combine with AND with each other and existing base filters
+  4. `"any"` on completed/dropped includes all tasks in that state; date filters combine with AND with each other and existing base filters
 **Plans**: TBD
 
 ### Phase 47: Cross-Path Equivalence & Breaking Changes
@@ -175,6 +179,6 @@
 | 32-33.1 | v1.2.3 | 15/15 | Complete | 2026-03-29 |
 | 34-38 | v1.3 | 26/26 | Complete | 2026-04-05 |
 | 39-44 | v1.3.1 | 15/15 | Complete | 2026-04-07 |
-| 45. Date Models & Resolution | v1.3.2 | 0/? | Not started | - |
+| 45. Date Models & Resolution | v1.3.2 | 0/3 | Planned | - |
 | 46. Pipeline & Query Paths | v1.3.2 | 0/? | Not started | - |
 | 47. Cross-Path Equivalence & Breaking Changes | v1.3.2 | 0/? | Not started | - |
