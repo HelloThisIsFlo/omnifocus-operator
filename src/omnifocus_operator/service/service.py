@@ -25,7 +25,6 @@ from omnifocus_operator.agent_messages.warnings import (
     LIST_TASKS_INBOX_PROJECT_WARNING,
     REPETITION_NO_OP,
 )
-from omnifocus_operator.config import matches_inbox_name
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.protocols import Service
 from omnifocus_operator.contracts.shared.repetition_rule import RepetitionRuleRepoPayload
@@ -85,6 +84,13 @@ if TYPE_CHECKING:
 __all__ = ["ErrorOperatorService", "OperatorService"]
 
 logger = logging.getLogger(__name__)
+
+
+def matches_inbox_name(value: str | None) -> bool:
+    """Check if a value is a case-insensitive substring of the inbox name."""
+    if value is None:
+        return False
+    return value.lower() in "Inbox".lower()
 
 
 class OperatorService(Service):  # explicitly implements Service protocol
@@ -304,7 +310,7 @@ class _ListTasksPipeline(_ReadPipeline):
 
     def _check_inbox_project_warning(self) -> None:
         """Warn if project filter matches the inbox name (but $inbox was already consumed)."""
-        if self._project_to_resolve is not None and matches_inbox_name(self._project_to_resolve):
+        if matches_inbox_name(self._project_to_resolve):
             self._warnings.append(
                 LIST_TASKS_INBOX_PROJECT_WARNING.format(value=self._project_to_resolve)
             )
@@ -381,7 +387,7 @@ class _ListProjectsPipeline(_ReadPipeline):
 
     def _check_inbox_search_warning(self) -> None:
         """Warn if search term matches system inbox name (per D-16 to D-19)."""
-        if self._query.search is not None and matches_inbox_name(self._query.search):
+        if matches_inbox_name(self._query.search):
             self._warnings.append(LIST_PROJECTS_INBOX_WARNING)
 
     def _resolve_folder(self) -> None:
