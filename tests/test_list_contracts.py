@@ -488,9 +488,16 @@ class TestRepoQueryFieldParity:
         """Non-filter fields (pagination, availability, etc.) must match."""
         query_fields = set(ListTasksQuery.model_fields.keys())
         repo_fields = set(ListTasksRepoQuery.model_fields.keys())
-        # Fields that diverged: Query has project/tags, RepoQuery has project_ids/tag_ids
-        query_only = {"project", "tags"}
-        repo_only = {"project_ids", "tag_ids"}
+        # Fields that diverged:
+        # - Query has project/tags, RepoQuery has project_ids/tag_ids
+        # - Query has 7 date fields (due, defer, planned, completed, dropped, added, modified)
+        #   RepoQuery has 14 resolved _after/_before datetime fields
+        _date_fields = {"due", "defer", "planned", "completed", "dropped", "added", "modified"}
+        _date_repo_fields = {
+            f"{name}_{bound}" for name in _date_fields for bound in ("after", "before")
+        }
+        query_only = {"project", "tags"} | _date_fields
+        repo_only = {"project_ids", "tag_ids"} | _date_repo_fields
         assert query_fields - query_only == repo_fields - repo_only
 
     def test_tasks_repo_query_has_id_fields(self) -> None:

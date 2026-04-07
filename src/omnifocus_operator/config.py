@@ -31,3 +31,19 @@ SYSTEM_LOCATION_PREFIX: str = "$"
 SYSTEM_LOCATIONS: dict[str, SystemLocation] = {
     "inbox": SystemLocation(id="$inbox", name="Inbox", type=EntityType.PROJECT),
 }
+
+# -- Week start configuration ------------------------------------------------
+# Affects {this: "w"} calendar alignment in date filters.
+# Valid values: "monday", "sunday". Read from OPERATOR_WEEK_START env var.
+
+WEEK_START_MAP: dict[str, int] = {"monday": 0, "sunday": 6}  # Python weekday() values
+
+
+def get_week_start() -> int:
+    """Return Python weekday int for configured week start. Default Monday."""
+    import os
+
+    raw = os.environ.get("OPERATOR_WEEK_START", "monday").lower()
+    if raw not in WEEK_START_MAP:
+        raise ValueError(f"Invalid OPERATOR_WEEK_START '{raw}' -- use 'monday' or 'sunday'")
+    return WEEK_START_MAP[raw]
