@@ -36,6 +36,10 @@ test-one *args:
 test-gm:
     uv run pytest tests/test_bridge_contract.py -x -v
 
+# Rerun only previously failed tests
+test-failed:
+    uv run pytest --no-cov --lf -x
+
 # Run tests with HTML coverage report
 test-cov:
     uv run pytest tests/ --cov-report=term-missing --cov-report=html
@@ -118,6 +122,13 @@ doc-regression-scenarios:
 # Open MCP Inspector connected to the operator
 inspect:
     npx @modelcontextprotocol/inspector uv run omnifocus-operator
+
+# ─── Housekeeping ────────────────────────────────────────────────────────────
+
+# Remove caches and build artifacts
+clean:
+    rm -rf .mypy_cache .pytest_cache .ruff_cache htmlcov .coverage
+    find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
 # ─── CI ──────────────────────────────────────────────────────────────────────
 
