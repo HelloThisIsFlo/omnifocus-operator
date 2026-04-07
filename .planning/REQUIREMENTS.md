@@ -14,9 +14,9 @@ Requirements for date filtering milestone. Each maps to roadmap phases.
 - [ ] **DATE-03**: Absolute object form accepts one or both of `before`/`after` with ISO8601 datetime, date-only, or `"now"`
 - [ ] **DATE-04**: Shorthand and absolute groups mutually exclusive per field — mixing returns educational error
 - [ ] **DATE-05**: Zero or negative count in shorthand returns educational error with guidance
-- [ ] **DATE-06**: Field-specific shortcuts validated — `"overdue"`/`"soon"` only on `due`, `"any"` only on `completed`/`dropped`, `"none"` only on `due`/`defer`/`planned`
-- [ ] **DATE-07**: `"none"` on `added`/`modified` returns educational error (always have values)
-- [ ] **DATE-08**: `"none"` on `completed`/`dropped` returns educational error with guidance about default exclusion behavior
+- [ ] **DATE-06**: Field-specific shortcuts validated — `"overdue"`/`"soon"` only on `due`, `"any"` only on `completed`/`dropped` ~~, `"none"` only on `due`/`defer`/`planned`~~ (`"none"` scoped out per 45-CONTEXT D-13)
+- ~~[ ] **DATE-07**: `"none"` on `added`/`modified` returns educational error (always have values)~~ (scoped out per 45-CONTEXT D-13)
+- ~~[ ] **DATE-08**: `"none"` on `completed`/`dropped` returns educational error with guidance about default exclusion behavior~~ (scoped out per 45-CONTEXT D-13)
 - [ ] **DATE-09**: When both `before` and `after` specified, `after` must be earlier than `before` — equal date-only values match a single day, reversed values return educational error
 
 ### Date Resolution
@@ -31,8 +31,10 @@ Requirements for date filtering milestone. Each maps to roadmap phases.
 - [ ] **RESOLVE-08**: Absolute `before` with date-only resolves to start of next day internally (end-of-day inclusive)
 - [ ] **RESOLVE-09**: Absolute `after` with date-only resolves to start of that day (start-of-day inclusive)
 - [ ] **RESOLVE-10**: Both `before` and `after` inclusive — `{after: "2026-04-01", before: "2026-04-14"}` includes April 14
-- [ ] **RESOLVE-11**: `"overdue"` uses OmniFocus pre-computed `overdue` column (SQL) / urgency enum (bridge) — matches OmniFocus UI
-- [ ] **RESOLVE-12**: `"soon"` uses OmniFocus pre-computed `dueSoon` OR `overdue` columns — includes overdue, matches OmniFocus UI
+- ~~[ ] **RESOLVE-11**: `"overdue"` uses OmniFocus pre-computed `overdue` column (SQL) / urgency enum (bridge) — matches OmniFocus UI~~ (superseded per 45-CONTEXT D-04)
+- [ ] **RESOLVE-11** (revised): `"overdue"` resolves to timestamp comparison `effectiveDateDue < now` — both SQL and bridge paths use identical timestamp logic
+- ~~[ ] **RESOLVE-12**: `"soon"` uses OmniFocus pre-computed `dueSoon` OR `overdue` columns — includes overdue, matches OmniFocus UI~~ (superseded per 45-CONTEXT D-04/D-06)
+- [ ] **RESOLVE-12** (revised): `"soon"` resolves to timestamp comparison using `DueSoonInterval` + `DueSoonGranularity` from OmniFocus Settings table — two modes: rolling (`now + interval`) and calendar-aligned (`midnight_today + interval`). Fallback to `OPERATOR_DUE_SOON_THRESHOLD` env var in bridge-only mode. Fail fast if neither available.
 
 ### Query Execution
 
@@ -43,7 +45,7 @@ Requirements for date filtering milestone. Each maps to roadmap phases.
 - [ ] **EXEC-05**: `completed: "any"` includes all completed tasks regardless of completion date
 - [ ] **EXEC-06**: `dropped: "any"` includes all dropped tasks regardless of drop date
 - [ ] **EXEC-07**: Tasks with no value for a filtered date field are excluded (NULL dates don't match)
-- [ ] **EXEC-08**: `due: "none"` / `defer: "none"` / `planned: "none"` returns tasks with IS NULL for that field
+- ~~[ ] **EXEC-08**: `due: "none"` / `defer: "none"` / `planned: "none"` returns tasks with IS NULL for that field~~ (scoped out per 45-CONTEXT D-13)
 - [ ] **EXEC-09**: Date filters combine with AND with each other and with existing v1.3 base filters
 - [ ] **EXEC-10**: Cross-path equivalence tests prove SQL and bridge paths identical for date filters
 - [ ] **EXEC-11**: Cross-path test data includes tasks with inherited effective dates (direct NULL, effective non-NULL) for all 5 inheritable fields
@@ -75,7 +77,8 @@ Requirements for date filtering milestone. Each maps to roadmap phases.
 | Feature | Reason |
 |---------|--------|
 | `count_tasks` date filters | Removed from v1.3.2 scope — future milestone |
-| Due-soon threshold configuration | Using OmniFocus pre-computed columns — matches UI exactly, zero config needed |
+| ~~Due-soon threshold configuration~~ | ~~Using OmniFocus pre-computed columns — matches UI exactly, zero config needed~~ Reinstated: reads `DueSoonInterval` + `DueSoonGranularity` from Settings table (45-CONTEXT D-06/D-07) |
+| `"none"` IS NULL filtering | Scoped out of v1.3.2 — niche use case, can be added later if requested (45-CONTEXT D-13) |
 | Calendar-aware month/year arithmetic | Explicitly deferred — naive 30d/365d approximation sufficient |
 | Timezone handling | Naive local time only — non-local TZ is future improvement |
 | NLP date parsing | Anti-feature — structured input only, agents pass structured objects |
@@ -91,9 +94,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DATE-03 | Phase 45 | Pending |
 | DATE-04 | Phase 45 | Pending |
 | DATE-05 | Phase 45 | Pending |
-| DATE-06 | Phase 45 | Pending |
-| DATE-07 | Phase 45 | Pending |
-| DATE-08 | Phase 45 | Pending |
+| DATE-06 | Phase 45 | Revised (removed "none") |
+| ~~DATE-07~~ | ~~Phase 45~~ | Scoped out |
+| ~~DATE-08~~ | ~~Phase 45~~ | Scoped out |
 | DATE-09 | Phase 45 | Pending |
 | RESOLVE-01 | Phase 45 | Pending |
 | RESOLVE-02 | Phase 45 | Pending |
@@ -105,8 +108,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RESOLVE-08 | Phase 45 | Pending |
 | RESOLVE-09 | Phase 45 | Pending |
 | RESOLVE-10 | Phase 45 | Pending |
-| RESOLVE-11 | Phase 46 | Pending |
-| RESOLVE-12 | Phase 46 | Pending |
+| RESOLVE-11 | Phase 46 | Revised (timestamp, not column) |
+| RESOLVE-12 | Phase 46 | Revised (two-mode threshold) |
 | EXEC-01 | Phase 46 | Pending |
 | EXEC-02 | Phase 46 | Pending |
 | EXEC-03 | Phase 46 | Pending |
@@ -114,7 +117,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EXEC-05 | Phase 46 | Pending |
 | EXEC-06 | Phase 46 | Pending |
 | EXEC-07 | Phase 46 | Pending |
-| EXEC-08 | Phase 46 | Pending |
+| ~~EXEC-08~~ | ~~Phase 46~~ | Scoped out |
 | EXEC-09 | Phase 46 | Pending |
 | EXEC-10 | Phase 47 | Pending |
 | EXEC-11 | Phase 47 | Pending |
@@ -128,10 +131,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BREAK-08 | Phase 47 | Pending |
 
 **Coverage:**
-- v1.3.2 requirements: 40 total
-- Mapped to phases: 40
+- v1.3.2 requirements: 40 total → 37 active (3 scoped out: DATE-07, DATE-08, EXEC-08)
+- Revised: 3 (DATE-06, RESOLVE-11, RESOLVE-12)
+- Mapped to phases: 37
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-07*
-*Last updated: 2026-04-07 after roadmap creation*
+*Last updated: 2026-04-07 after Phase 45 context discussion*
