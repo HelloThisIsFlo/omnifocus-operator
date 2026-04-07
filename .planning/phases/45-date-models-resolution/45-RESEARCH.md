@@ -351,22 +351,25 @@ def _resolve_this(unit: str, now: datetime, week_start: int) -> tuple[datetime, 
 | A2 | OPERATOR_WEEK_START env var uses lowercase string values "monday"/"sunday" | Code Examples | Config parsing fails or is case-sensitive |
 | A3 | `{this: "m"}` starts at day=1 of current month, `{this: "y"}` at month=1 day=1 | Code Examples | Wrong calendar alignment for month/year periods |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **DurationUnit reuse vs new enum**
    - What we know: `DurationUnit(StrEnum)` exists in projects.py with d/w/m/y values
    - What's unclear: Whether to import and reuse it for DateFilter or create a separate one
    - Recommendation: **Reuse** -- same values, same purpose, reduces duplication. Import from projects.py or extract to `_enums.py`.
+   - RESOLVED: Plans create new field-specific enums (DueDateShortcut, LifecycleDateShortcut) rather than reusing DurationUnit — these enums carry shortcut values (overdue, soon, any, today) not duration units.
 
 2. **"this" month/year end boundary with naive math**
    - What we know: RESOLVE-07 says 30d/365d naive approximation
    - What's unclear: For `{this: "m"}`, does the end = `start_of_month + 30d` or `start_of_next_calendar_month`? The former can miss days in 31-day months. The latter is calendar-aware.
    - Recommendation: `{this: "m"}` should use calendar-aware start (first of month) and calendar-aware end (first of next month). The naive 30d/365d applies to `{last: "1m"}` and `{next: "1m"}` where the anchor is "now" and the range is approximate. `{this: ...}` is "which period am I in?" which has exact calendar boundaries.
+   - RESOLVED: Plan 03 uses calendar-aware boundaries for `{this: "m"/"y"}` (first of month → first of next month, Jan 1 → Jan 1 next year). Naive 30d/365d applies only to `{last: "Nm"/"Ny"}` and `{next: "Nm"/"Ny"}`.
 
 3. **Where to put the resolver module**
    - What we know: It's a pure function with no I/O, called by the service pipeline in Phase 46
    - What's unclear: `service/resolve_dates.py` vs `contracts/use_cases/list/_resolve.py`
    - Recommendation: `service/resolve_dates.py` -- it's resolution logic (business logic), not contract validation. The service layer is where `_expand_review_due` lives too.
+   - RESOLVED: Plan 03 places resolver in `service/resolve_dates.py` — business logic, not contract validation.
 
 ## Sources
 
