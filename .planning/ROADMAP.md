@@ -201,12 +201,12 @@ Plans:
   5. `list_projects` never includes inbox; name filter matching "Inbox" triggers warning about system inbox
   6. Descriptions document `$inbox` usage in every relevant field
   7. `get_project` description mentions that `$inbox` returns an error
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 43-01-PLAN.md — resolve_inbox method, pipeline integration, contradictory filter detection (FILT-01 through FILT-05)
 - [x] 43-02-PLAN.md — get_project guard, list_projects search warning, description updates (PROJ-01, PROJ-03, DESC-04, NRES-07)
-- [ ] 43-03-PLAN.md — Gap closure: filter project root tasks from bridge-only task results
+- [x] 43-03-PLAN.md — Gap closure: filter project root tasks from bridge-only task results
 
 ## Progress
 
@@ -227,4 +227,4 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43
 | 40. Resolver | v1.3.1 | 3/3 | Complete   | 2026-04-05 |
 | 41. Write Pipeline | v1.3.1 | 2/2 | Complete    | 2026-04-06 |
 | 42. Read Output | v1.3.1 | 4/4 | Complete    | 2026-04-06 |
-| 43. Filters & Projects | v1.3.1 | 2/2 | Complete    | 2026-04-07 |
+| 43. Filters & Projects | v1.3.1 | 3/3 | Complete    | 2026-04-07 |
