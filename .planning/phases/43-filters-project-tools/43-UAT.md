@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 43-filters-project-tools
 source: 43-01-SUMMARY.md, 43-02-SUMMARY.md
 started: 2026-04-07T12:00:00Z
@@ -46,9 +46,16 @@ blocked: 0
   reason: "In bridge-only mode, list_tasks returns projects as task entries with self-referencing parents (parent.project.id === task.id). Affects any project-scoped query. Does not occur in hybrid mode. Pre-existing bug, not a phase 43 regression."
   severity: major
   test: bridge-only extended testing (Tests 6B, 12B)
-  root_cause: "OmniJS bridge does not filter out project entities from task query results"
+  root_cause: "OmniFocus flattenedTasks includes project root tasks (every project has an underlying Task object). SQLite path excludes them via LEFT JOIN ProjectInfo WHERE pi.task IS NULL. Bridge-only path has no equivalent filter."
   artifacts:
-    - path: "src/omnifocus_operator/repository/bridge_only/"
-      issue: "Bridge task query returns projects as tasks"
+    - path: "src/omnifocus_operator/repository/bridge_only/bridge_only.py"
+      lines: "152-200"
+      issue: "list_tasks missing project-root-task exclusion"
+    - path: "src/omnifocus_operator/repository/hybrid/query_builder.py"
+      lines: "34-39"
+      issue: "SQL correctly excludes project root tasks (reference)"
+    - path: "src/omnifocus_operator/repository/bridge_only/adapter.py"
+      lines: "372-374"
+      issue: "adapt_snapshot builds project_names but doesn't filter tasks"
   missing:
-    - "Filter out entities where the task ID matches a project ID, or where parent.project.id === task.id"
+    - "Filter project root tasks in adapt_snapshot: exclude tasks whose ID appears in project_names dict. Fixes list_tasks and get_all in one place."
