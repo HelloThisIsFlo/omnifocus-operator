@@ -71,14 +71,29 @@ class TestTasksInInboxFilter:
     def test_in_inbox_true(self):
         query = ListTasksRepoQuery(in_inbox=True)
         data_q, _ = build_list_tasks_sql(query)
-        assert "t.inInbox = ?" in data_q.sql
-        assert 1 in data_q.params
+        assert "t.containingProjectInfo IS NULL" in data_q.sql
 
     def test_in_inbox_false(self):
         query = ListTasksRepoQuery(in_inbox=False)
         data_q, _ = build_list_tasks_sql(query)
-        assert "t.inInbox = ?" in data_q.sql
-        assert 0 in data_q.params
+        assert "t.containingProjectInfo IS NOT NULL" in data_q.sql
+
+    def test_in_inbox_true_adds_no_bind_params(self):
+        """containingProjectInfo IS NULL needs no extra bind params beyond defaults."""
+        baseline = ListTasksRepoQuery()
+        baseline_q, _ = build_list_tasks_sql(baseline)
+        query = ListTasksRepoQuery(in_inbox=True)
+        data_q, _ = build_list_tasks_sql(query)
+        # IS NULL adds no bind params — same count as baseline
+        assert len(data_q.params) == len(baseline_q.params)
+
+    def test_in_inbox_false_adds_no_bind_params(self):
+        """containingProjectInfo IS NOT NULL needs no extra bind params beyond defaults."""
+        baseline = ListTasksRepoQuery()
+        baseline_q, _ = build_list_tasks_sql(baseline)
+        query = ListTasksRepoQuery(in_inbox=False)
+        data_q, _ = build_list_tasks_sql(query)
+        assert len(data_q.params) == len(baseline_q.params)
 
 
 class TestTasksFlaggedFilter:
@@ -254,7 +269,7 @@ class TestTasksCombinedFilters:
     def test_inbox_and_flagged(self):
         query = ListTasksRepoQuery(in_inbox=True, flagged=True)
         data_q, _ = build_list_tasks_sql(query)
-        assert "t.inInbox = ?" in data_q.sql
+        assert "t.containingProjectInfo IS NULL" in data_q.sql
         assert "t.flagged = ?" in data_q.sql
         assert 1 in data_q.params
 
