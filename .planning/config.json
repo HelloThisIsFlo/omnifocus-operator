@@ -15,13 +15,13 @@
     "research_before_questions": true,
     "skip_discuss": false,
     "use_worktrees": true,
-    "_auto_chain_active": false
+    "_auto_chain_active": true
   },
   "git": {
     "branching_strategy": "none"
   },
   "hooks": {
-    "context_warnings": true
+    "context_warnings": false
   },
   "granularity": "coarse"
 }
