@@ -1,6 +1,6 @@
 # List Projects Test Suite
 
-Tests `list_projects` tool — filtering by folder, review due date, flagged, availability, search, pagination, folder name resolution warnings, and filter combinations.
+Tests `list_projects` tool — filtering by folder, review due date, flagged, availability, search, pagination, folder name resolution warnings, filter combinations, `$inbox` guard warning, `ALL` availability shorthand, and null/empty filter rejection.
 
 ## Conventions
 
@@ -75,27 +75,37 @@ Follow the **Project Discovery** procedure (SKILL.md). If any profile is missing
 6. PASS if: `total: 0` — dropped excluded by default
 
 #### Test 2b: Include COMPLETED
-1. `list_projects` with `availability: ["AVAILABLE", "BLOCKED", "COMPLETED"], search: "<proj-completed-name-substring>", limit: 3`
+1. `list_projects` with `availability: ["available", "blocked", "completed"], search: "<proj-completed-name-substring>", limit: 3`
 2. PASS if: proj-completed appears in results
-3. `list_projects` with `availability: ["AVAILABLE", "BLOCKED", "COMPLETED"], search: "<proj-dropped-name>", limit: 0`
+3. `list_projects` with `availability: ["available", "blocked", "completed"], search: "<proj-dropped-name>", limit: 0`
 4. PASS if: `total: 0` — dropped still excluded
 
 #### Test 2c: Include DROPPED
-1. `list_projects` with `availability: ["AVAILABLE", "BLOCKED", "DROPPED"], search: "<proj-dropped-name-substring>", limit: 3`
+1. `list_projects` with `availability: ["available", "blocked", "dropped"], search: "<proj-dropped-name-substring>", limit: 3`
 2. PASS if: proj-dropped appears in results
-3. `list_projects` with `availability: ["AVAILABLE", "BLOCKED", "DROPPED"], search: "<proj-completed-name>", limit: 0`
+3. `list_projects` with `availability: ["available", "blocked", "dropped"], search: "<proj-completed-name>", limit: 0`
 4. PASS if: `total: 0` — completed still excluded
 
 #### Test 2d: All four states
-1. `list_projects` with `availability: ["AVAILABLE", "BLOCKED", "COMPLETED", "DROPPED"], search: "<proj-completed-name-substring>", limit: 3`
+1. `list_projects` with `availability: ["available", "blocked", "completed", "dropped"], search: "<proj-completed-name-substring>", limit: 3`
 2. PASS if: proj-completed appears
-3. `list_projects` with `availability: ["AVAILABLE", "BLOCKED", "COMPLETED", "DROPPED"], search: "<proj-dropped-name-substring>", limit: 3`
+3. `list_projects` with `availability: ["available", "blocked", "completed", "dropped"], search: "<proj-dropped-name-substring>", limit: 3`
 4. PASS if: proj-dropped appears
 
 #### Test 2e: AVAILABLE only
-1. `list_projects` with `availability: ["AVAILABLE"], limit: 0`
+1. `list_projects` with `availability: ["available"], limit: 0`
 2. Store `total` as **available-only-count**
 3. PASS if: available-only-count ≤ total from test 1a (fewer or equal — blocked projects excluded)
+
+#### Test 2f: ALL shorthand
+1. `list_projects` with `availability: ["ALL"], search: "<proj-completed-name-substring>", limit: 3`
+2. PASS if: proj-completed appears
+3. `list_projects` with `availability: ["ALL"], search: "<proj-dropped-name-substring>", limit: 3`
+4. PASS if: proj-dropped appears (same coverage as test 2d — ALL expands to all four states)
+
+#### Test 2g: ALL mixed with other values — warning
+1. `list_projects` with `availability: ["ALL", "dropped"], search: "<proj-a-name-substring>", limit: 3`
+2. PASS if: warning mentions "'ALL' already includes every status"; results still include proj-a (ALL is still expanded despite the redundancy)
 
 ### 3. Folder Resolution
 
@@ -176,7 +186,7 @@ Run INDIVIDUALLY (will error):
 2. PASS if: results include only projects that are in the folder AND have review due within 2 months. May be empty if no projects match both — valid PASS.
 
 #### Test 6c: Search + availability (COMPLETED)
-1. `list_projects` with `search: "<substring-of-proj-completed-name>", availability: ["COMPLETED"], limit: 3`
+1. `list_projects` with `search: "<substring-of-proj-completed-name>", availability: ["completed"], limit: 3`
 2. PASS if: proj-completed appears; active projects do NOT appear
 
 ### 7. Edge Cases
@@ -187,7 +197,29 @@ Run INDIVIDUALLY (will error):
 
 #### Test 7b: Response shape + camelCase
 1. Use the result from any previous test (e.g., test 3a)
-2. PASS if: response has top-level fields `items` (array), `total` (number), `hasMore` (boolean — not `has_more`); project objects use camelCase: `lastReviewDate`, `nextReviewDate`, `reviewInterval`, `nextTask`, `dueDate`, `deferDate`, `effectiveFlagged`, `effectiveDueDate`, `effectiveDeferDate` — no snake_case leaks
+2. PASS if: response has top-level fields `items` (array), `total` (number), `hasMore` (boolean — not `has_more`); project objects use camelCase: `lastReviewDate`, `nextReviewDate`, `reviewInterval`, `nextTask`, `dueDate`, `deferDate`, `effectiveFlagged`, `effectiveDueDate`, `effectiveDeferDate` — no snake_case leaks; `folder` is `{id, name}` or null (enriched reference, not a bare ID string); `nextTask` is `{id, name}` or null (enriched reference, not a bare ID string)
+
+### 8. $inbox Guard
+
+#### Test 8a: Search "Inbox" — virtual location warning
+1. `list_projects` with `search: "Inbox", limit: 3`
+2. PASS if: warning explains that `$inbox` appears as a project on tasks but is not a real OmniFocus project, and suggests using `list_tasks` with `inInbox=true`; results may or may not contain projects (depends on whether any project name contains "Inbox")
+
+### 9. Null/Empty Filter Rejection
+
+Run each INDIVIDUALLY (they will error):
+
+#### Test 9a: folder: null
+1. `list_projects` with `folder: null`
+2. PASS if: error says "'folder' cannot be null" and suggests omitting the field
+
+#### Test 9b: flagged: null
+1. `list_projects` with `flagged: null`
+2. PASS if: error says "'flagged' cannot be null" and suggests omitting the field
+
+#### Test 9c: availability: []
+1. `list_projects` with `availability: []`
+2. PASS if: error says "'availability' cannot be empty" and mentions using `["ALL"]` as an alternative
 
 ## Report Table Rows
 
@@ -201,6 +233,8 @@ Run INDIVIDUALLY (will error):
 | 2c | Availability: +DROPPED | Dropped projects appear when explicitly included | |
 | 2d | Availability: all four | All availability states; everything returned | |
 | 2e | Availability: AVAILABLE only | Blocked projects excluded when only AVAILABLE requested | |
+| 2f | Availability: ALL shorthand | `["ALL"]` returns all 4 states; same as 2d | |
+| 2g | Availability: ALL mixed | `["ALL", "dropped"]` → warning about redundancy; results still complete | |
 | 3a | Folder: single match | Filter by folder name; only projects in that folder returned | |
 | 3b | Folder: by ID | Filter by folder ID; same results, bypasses resolution | |
 | 3c | Folder: multi-match | Ambiguous folder → warning with candidates, filter applied to all | |
@@ -219,4 +253,8 @@ Run INDIVIDUALLY (will error):
 | 6b | Combo: folder + reviewDueWithin | Projects in folder with review due soon | |
 | 6c | Combo: search + COMPLETED | Search across completed projects only | |
 | 7a | Edge: empty result | Impossible search → items [], total 0, hasMore false | |
-| 7b | Edge: response shape + camelCase | Top-level and project fields use correct camelCase names | |
+| 7b | Edge: response shape + camelCase | Top-level and project fields use camelCase; `folder` and `nextTask` are `{id, name}` enriched refs | |
+| 8a | $inbox: search warning | `search: "Inbox"` → warning about virtual location, suggests `list_tasks` with `inInbox=true` | |
+| 9a | Null: folder | `folder: null` → cannot be null, suggests omitting | |
+| 9b | Null: flagged | `flagged: null` → cannot be null, suggests omitting | |
+| 9c | Empty: availability | `availability: []` → cannot be empty, mentions `["ALL"]` | |

@@ -127,19 +127,19 @@ If no ambiguous project or tag substrings were found in Step 1, tell the user wh
 2. PASS if: LT-Completed and LT-Dropped do NOT appear; all other LT-* tasks (including LT-Deferred) DO appear — default is AVAILABLE + BLOCKED
 
 #### Test 2b: Include COMPLETED
-1. `list_tasks` with `availability: ["AVAILABLE", "BLOCKED", "COMPLETED"], search: "LT-"`
+1. `list_tasks` with `availability: ["available", "blocked", "completed"], search: "LT-"`
 2. PASS if: LT-Completed appears; LT-Dropped does NOT
 
 #### Test 2c: Include DROPPED
-1. `list_tasks` with `availability: ["AVAILABLE", "BLOCKED", "DROPPED"], search: "LT-"`
+1. `list_tasks` with `availability: ["available", "blocked", "dropped"], search: "LT-"`
 2. PASS if: LT-Dropped appears; LT-Completed does NOT
 
 #### Test 2d: All four states
-1. `list_tasks` with `availability: ["AVAILABLE", "BLOCKED", "COMPLETED", "DROPPED"], search: "LT-"`
+1. `list_tasks` with `availability: ["available", "blocked", "completed", "dropped"], search: "LT-"`
 2. PASS if: ALL LT-* tasks appear including LT-Completed and LT-Dropped
 
 #### Test 2e: AVAILABLE only
-1. `list_tasks` with `availability: ["AVAILABLE"], search: "LT-"`
+1. `list_tasks` with `availability: ["available"], search: "LT-"`
 2. PASS if: LT-Deferred does NOT appear (it is BLOCKED/deferred); LT-Completed and LT-Dropped also absent
 
 #### Test 2f: ALL shorthand
@@ -147,7 +147,7 @@ If no ambiguous project or tag substrings were found in Step 1, tell the user wh
 2. PASS if: ALL LT-* tasks appear including LT-Completed and LT-Dropped (same result set as test 2d)
 
 #### Test 2g: ALL mixed with other values — warning
-1. `list_tasks` with `availability: ["ALL", "AVAILABLE"], search: "LT-"`
+1. `list_tasks` with `availability: ["ALL", "available"], search: "LT-"`
 2. PASS if: warning mentions "'ALL' already includes every status"; results still include all tasks (ALL is still expanded despite the redundancy)
 
 ### 3. Resolution Warnings
@@ -210,7 +210,7 @@ Run INDIVIDUALLY (will error):
 2. PASS if: only LT-ProjTask2 appears (the only task both in proj-a AND flagged)
 
 #### Test 5b: Tag + availability including COMPLETED
-1. `list_tasks` with `tags: ["<tag-a-name>"], availability: ["AVAILABLE", "BLOCKED", "COMPLETED"], search: "LT-"`
+1. `list_tasks` with `tags: ["<tag-a-name>"], availability: ["available", "blocked", "completed"], search: "LT-"`
 2. PASS if: LT-Tagged-A, LT-Tagged-AB, AND LT-Completed all appear (LT-Completed has tag-a and is now visible because COMPLETED is included in availability)
 
 #### Test 5c: Search + project
@@ -307,7 +307,7 @@ Run each INDIVIDUALLY (they will error):
 | 2d | Availability: all four | All availability states; everything returned | |
 | 2e | Availability: AVAILABLE only | Blocked/deferred task excluded when only AVAILABLE requested | |
 | 2f | Availability: ALL shorthand | `["ALL"]` returns all 4 states; same as 2d | |
-| 2g | Availability: ALL mixed | `["ALL", "AVAILABLE"]` → warning about redundancy; results still complete | |
+| 2g | Availability: ALL mixed | `["ALL", "available"]` → warning about redundancy; results still complete | |
 | 3a | Resolution: project multi-match | Ambiguous project → warning with candidates, filter applied to all matches | |
 | 3b | Resolution: project did-you-mean | Misspelled project → "Did you mean?" with suggestions | |
 | 3c | Resolution: project no match | Random project name → no-match warning, no suggestions | |
