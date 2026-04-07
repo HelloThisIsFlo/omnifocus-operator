@@ -106,7 +106,7 @@
 
 </details>
 
-### 🚧 v1.3.1 First-Class References (In Progress)
+### v1.3.1 First-Class References (In Progress)
 
 **Milestone Goal:** Eliminate null overloading for inbox across the entire API surface -- `$inbox` becomes the single, explicit representation everywhere. Rich `{id, name}` references on all output models. Name-based resolution for all write fields.
 
@@ -201,10 +201,11 @@ Plans:
   5. `list_projects` never includes inbox; name filter matching "Inbox" triggers warning about system inbox
   6. Descriptions document `$inbox` usage in every relevant field
   7. `get_project` description mentions that `$inbox` returns an error
-**Plans**: 4 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] 43-01: TBD
+- [ ] 43-01-PLAN.md — resolve_inbox method, pipeline integration, contradictory filter detection (FILT-01 through FILT-05)
+- [ ] 43-02-PLAN.md — get_project guard, list_projects search warning, description updates (PROJ-01, PROJ-03, DESC-04, NRES-07)
 
 ## Progress
 
@@ -225,4 +226,4 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43
 | 40. Resolver | v1.3.1 | 3/3 | Complete   | 2026-04-05 |
 | 41. Write Pipeline | v1.3.1 | 2/2 | Complete    | 2026-04-06 |
 | 42. Read Output | v1.3.1 | 4/4 | Complete    | 2026-04-06 |
-| 43. Filters & Projects | v1.3.1 | 0/TBD | Not started | - |
+| 43. Filters & Projects | v1.3.1 | 0/2 | Not started | - |
