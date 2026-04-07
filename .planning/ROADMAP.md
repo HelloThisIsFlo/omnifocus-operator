@@ -158,7 +158,7 @@ Plans:
   3. `ending: null` and `beginning: null` return errors (not silently accepted)
   4. `before`/`after` with a container ID or `$inbox` returns a targeted error suggesting `beginning`/`ending` instead
   5. `PatchOrNone` type alias is deleted; `MoveAction.beginning`/`ending` use `Patch[str]`
-**Plans:** 2/2 plans complete
+**Plans:** 3 plans
 
 Plans:
 - [x] 41-01-PLAN.md — PatchOrNone elimination, MoveAction null-rejection validators, error templates, per-field descriptions
@@ -201,11 +201,12 @@ Plans:
   5. `list_projects` never includes inbox; name filter matching "Inbox" triggers warning about system inbox
   6. Descriptions document `$inbox` usage in every relevant field
   7. `get_project` description mentions that `$inbox` returns an error
-**Plans:** 2/2 plans complete
+**Plans:** 3 plans
 
 Plans:
 - [x] 43-01-PLAN.md — resolve_inbox method, pipeline integration, contradictory filter detection (FILT-01 through FILT-05)
 - [x] 43-02-PLAN.md — get_project guard, list_projects search warning, description updates (PROJ-01, PROJ-03, DESC-04, NRES-07)
+- [ ] 43-03-PLAN.md — Gap closure: filter project root tasks from bridge-only task results
 
 ## Progress
 
