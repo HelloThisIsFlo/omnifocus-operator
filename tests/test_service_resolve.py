@@ -607,17 +607,17 @@ class TestResolveInbox:
 
     def test_dollar_inbox_with_in_inbox_false_contradictory(self, resolver: Resolver) -> None:
         """$inbox + inInbox=false is contradictory (D-06/FILT-03)."""
-        with pytest.raises(ValueError, match="Contradictory filters.*project.*\\$inbox"):
+        with pytest.raises(ValueError, match=r"Contradictory filters.*project.*\$inbox"):
             resolver.resolve_inbox(False, "$inbox")
 
     def test_in_inbox_true_with_real_project_contradictory(self, resolver: Resolver) -> None:
         """inInbox=true + real project name is contradictory (D-07/FILT-05)."""
-        with pytest.raises(ValueError, match="Contradictory filters.*inInbox=true"):
+        with pytest.raises(ValueError, match=r"Contradictory filters.*inInbox=true"):
             resolver.resolve_inbox(True, "Work")
 
     def test_in_inbox_true_with_project_id_contradictory(self, resolver: Resolver) -> None:
         """inInbox=true + project ID-like value is still contradictory."""
-        with pytest.raises(ValueError, match="Contradictory filters.*inInbox=true"):
+        with pytest.raises(ValueError, match=r"Contradictory filters.*inInbox=true"):
             resolver.resolve_inbox(True, "proj-1")
 
     def test_dollar_trash_unknown_system_location(self, resolver: Resolver) -> None:

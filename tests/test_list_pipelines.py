@@ -262,7 +262,7 @@ class TestListTasksInboxFilter:
     async def test_bare_inbox_matches_project_name_not_system(
         self, service: OperatorService
     ) -> None:
-        """project='inbox' (no $) matches real projects named 'inbox', NOT system inbox (FILT-02)."""
+        """project='inbox' (no $) matches real projects, NOT system inbox (FILT-02)."""
         result = await service.list_tasks(ListTasksQuery(project="inbox"))
         task_ids = {t.id for t in result.items}
         # Should match "My Inbox Tasks" project (substring)
