@@ -165,7 +165,7 @@ CONTRADICTORY_INBOX_PROJECT = (
 # --- Project Tool: Inbox Guard ---
 
 GET_PROJECT_INBOX_ERROR = (
-    "The inbox appears as a project on tasks but is not a real OmniFocus project "
+    "The '$inbox' appears as a project on tasks but is not a real OmniFocus project "
     "\u2014 it has no review schedule, status, or other project properties. "
     "To query inbox tasks, use list_tasks with 'inInbox=true'."
 )

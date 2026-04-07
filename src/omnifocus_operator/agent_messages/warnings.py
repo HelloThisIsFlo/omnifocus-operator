@@ -134,7 +134,7 @@ FILTER_NO_MATCH = "No {entity_type} found matching '{value}'. This filter was sk
 # --- Project Tool: Inbox Search ---
 
 LIST_PROJECTS_INBOX_WARNING = (
-    "The inbox appears as a project on tasks but is not a real OmniFocus project "
+    "The '$inbox' appears as a project on tasks but is not a real OmniFocus project "
     "and won't appear in results. "
     "To query inbox tasks, use list_tasks with 'inInbox=true'."
 )
