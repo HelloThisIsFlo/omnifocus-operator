@@ -8,7 +8,15 @@ default:
 setup:
     uv sync
     cd bridge && npm install
-    uv run pre-commit install
+    uv run pre-
+
+# ─── MCP Install ──────────────────────────────────────────────────────────────
+
+mcp-install:
+    uv run python setup_operator.py
+
+mcp-uninstall:
+    uv run python setup_operator.py --uninstall
 
 # ─── Testing ──────────────────────────────────────────────────────────────────
 
