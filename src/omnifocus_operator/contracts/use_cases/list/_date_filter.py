@@ -43,6 +43,8 @@ class DateFilter(QueryModel):
     def _validate_this_unit(cls, v: str | None) -> str | None:
         if v is None:
             return v
+        # 'this' accepts only a bare unit (d/w/m/y), not a count+unit.
+        # _DATE_DURATION_PATTERN is intentionally NOT used here.
         if not _THIS_UNIT_PATTERN.match(v):
             raise ValueError(err.DATE_FILTER_INVALID_DURATION.format(value=v))
         return v
@@ -100,13 +102,14 @@ class DateFilter(QueryModel):
         return self
 
 
-def _parse_to_comparable(value: str) -> datetime | date | None:
-    """Parse string to datetime or date for comparison. Returns None if unparseable."""
+def _parse_to_comparable(value: str) -> datetime | None:
+    """Parse string to datetime for comparison. Returns None if unparseable."""
     try:
         return datetime.fromisoformat(value)
     except (ValueError, TypeError):
         pass
     try:
-        return date.fromisoformat(value)
+        d = date.fromisoformat(value)
+        return datetime(d.year, d.month, d.day)  # normalize to datetime
     except (ValueError, TypeError):
         return None
