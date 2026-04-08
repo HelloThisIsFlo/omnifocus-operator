@@ -105,8 +105,8 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 ### Active
 
-- [~] Date filtering on list_tasks and count_tasks — 7 date fields with shorthand, absolute, and string shortcuts (v1.3.2) — Phase 45 complete: DateFilter model, StrEnum shortcuts, query extensions, pure resolver, DueSoonSetting enum, config consolidation
-- [ ] Due-soon threshold configuration (v1.3.2)
+- [~] Date filtering on list_tasks and count_tasks — 7 date fields with shorthand, absolute, and string shortcuts (v1.3.2) — Phase 45-46 complete: DateFilter model, StrEnum shortcuts, query extensions, pure resolver, DueSoonSetting enum, config consolidation, SQL date predicates, bridge in-memory filtering, service pipeline integration, startup-time threshold validation, ResolvedDateBounds rich return type
+- [~] Due-soon threshold configuration (v1.3.2) — Phase 46 complete: env var → DueSoonSetting enum at startup via field_validator, error-serving mode on invalid values, agent-facing warning on missing threshold
 - [ ] Existing filter changes: urgency removed, completed boolean → date filter, availability trimmed (v1.3.2)
 - [ ] Field selection, task deletion, notes append (v1.4)
 - [ ] Fuzzy search (v1.4.1)
@@ -138,7 +138,7 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 Shipped v1.3.1 with ~9,947 LOC Python (src/), ~215k LOC JS (bridge + deps), ~28k TS (tests).
 Tech stack: Python 3.12, uv, Pydantic v2, FastMCP v3 (`fastmcp>=3.1.1`), pydantic-settings, OmniJS bridge, SQLite3 (stdlib).
-1,808 pytest tests, 26 Vitest tests, UAT passed on all phases.
+1,861 pytest tests, 26 Vitest tests, UAT passed on all phases.
 Real OmniFocus database: ~2,400 tasks, ~363 projects, ~64 tags, ~79 folders.
 Read path: SQLite (default, ~46ms for full snapshot, <6ms for filtered queries). Write path: OmniJS bridge with write-through guarantee.
 11 MCP tools: get_all, get_task, get_project, get_tag, add_tasks, edit_tasks, list_tasks, list_projects, list_tags, list_folders, list_perspectives.
