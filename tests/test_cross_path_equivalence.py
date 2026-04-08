@@ -67,6 +67,13 @@ _REVIEW_PAST = datetime(2026, 1, 10, 10, 0, 0, tzinfo=UTC)
 _REVIEW_SOON = datetime(2026, 3, 20, 10, 0, 0, tzinfo=UTC)
 _REVIEW_FAR = datetime(2026, 6, 1, 10, 0, 0, tzinfo=UTC)
 
+# Date filter reference datetimes
+_DUE_DATE = datetime(2026, 3, 15, 17, 0, 0, tzinfo=UTC)
+_DEFER_DATE = datetime(2026, 2, 1, 9, 0, 0, tzinfo=UTC)
+_PLANNED_DATE = datetime(2026, 3, 10, 8, 0, 0, tzinfo=UTC)
+_COMPLETED_DATE = datetime(2026, 2, 20, 14, 0, 0, tzinfo=UTC)
+_DROPPED_DATE = datetime(2026, 2, 25, 11, 0, 0, tzinfo=UTC)
+
 
 def _build_neutral_test_data() -> dict[str, Any]:
     """Build neutral test data covering all 5 entity types.
@@ -133,6 +140,16 @@ def _build_neutral_test_data() -> dict[str, Any]:
                 "last_review_date": _REVIEW_PAST,
                 "added": _ADDED,
                 "modified": _MODIFIED,
+                "due": None,
+                "effective_due": None,
+                "defer": None,
+                "effective_defer": None,
+                "planned": None,
+                "effective_planned": None,
+                "completed": None,
+                "effective_completed": None,
+                "dropped": None,
+                "effective_dropped": None,
             },
             {
                 "id": "proj-2",
@@ -145,6 +162,16 @@ def _build_neutral_test_data() -> dict[str, Any]:
                 "last_review_date": _REVIEW_PAST,
                 "added": _ADDED,
                 "modified": _MODIFIED,
+                "due": None,
+                "effective_due": None,
+                "defer": None,
+                "effective_defer": None,
+                "planned": None,
+                "effective_planned": None,
+                "completed": None,
+                "effective_completed": None,
+                "dropped": None,
+                "effective_dropped": None,
             },
             {
                 "id": "proj-3",
@@ -157,6 +184,38 @@ def _build_neutral_test_data() -> dict[str, Any]:
                 "last_review_date": _REVIEW_PAST,
                 "added": _ADDED,
                 "modified": _MODIFIED,
+                "due": None,
+                "effective_due": None,
+                "defer": None,
+                "effective_defer": None,
+                "planned": None,
+                "effective_planned": None,
+                "completed": None,
+                "effective_completed": None,
+                "dropped": None,
+                "effective_dropped": None,
+            },
+            {
+                "id": "proj-due",
+                "name": "Project With Due Date",
+                "note": "",
+                "availability": "available",
+                "flagged": False,
+                "folder_id": "folder-1",
+                "next_review_date": _REVIEW_SOON,
+                "last_review_date": _REVIEW_PAST,
+                "added": _ADDED,
+                "modified": _MODIFIED,
+                "due": _DUE_DATE,
+                "effective_due": _DUE_DATE,
+                "defer": None,
+                "effective_defer": None,
+                "planned": None,
+                "effective_planned": None,
+                "completed": None,
+                "effective_completed": None,
+                "dropped": None,
+                "effective_dropped": None,
             },
         ],
         "tasks": [
@@ -172,6 +231,16 @@ def _build_neutral_test_data() -> dict[str, Any]:
                 "tag_ids": ["tag-1"],
                 "added": _ADDED,
                 "modified": _MODIFIED,
+                "due": _DUE_DATE,
+                "effective_due": _DUE_DATE,
+                "defer": None,
+                "effective_defer": None,
+                "planned": None,
+                "effective_planned": None,
+                "completed": None,
+                "effective_completed": None,
+                "dropped": None,
+                "effective_dropped": None,
             },
             {
                 "id": "task-2",
@@ -185,6 +254,16 @@ def _build_neutral_test_data() -> dict[str, Any]:
                 "tag_ids": ["tag-1", "tag-2"],
                 "added": _ADDED,
                 "modified": _MODIFIED,
+                "due": None,
+                "effective_due": None,
+                "defer": _DEFER_DATE,
+                "effective_defer": _DEFER_DATE,
+                "planned": _PLANNED_DATE,
+                "effective_planned": _PLANNED_DATE,
+                "completed": None,
+                "effective_completed": None,
+                "dropped": None,
+                "effective_dropped": None,
             },
             {
                 "id": "task-3",
@@ -198,6 +277,16 @@ def _build_neutral_test_data() -> dict[str, Any]:
                 "tag_ids": [],
                 "added": _ADDED,
                 "modified": _MODIFIED,
+                "due": None,
+                "effective_due": None,
+                "defer": None,
+                "effective_defer": None,
+                "planned": None,
+                "effective_planned": None,
+                "completed": None,
+                "effective_completed": None,
+                "dropped": None,
+                "effective_dropped": None,
             },
             {
                 "id": "task-4",
@@ -211,6 +300,85 @@ def _build_neutral_test_data() -> dict[str, Any]:
                 "tag_ids": ["tag-2"],
                 "added": _ADDED,
                 "modified": _MODIFIED,
+                "due": _DUE_DATE,
+                "effective_due": _DUE_DATE,
+                "defer": None,
+                "effective_defer": None,
+                "planned": None,
+                "effective_planned": None,
+                "completed": None,
+                "effective_completed": None,
+                "dropped": None,
+                "effective_dropped": None,
+            },
+            {
+                "id": "task-5",
+                "name": "Completed report",
+                "in_inbox": False,
+                "flagged": False,
+                "project_id": "proj-1",
+                "parent_id": "proj-1",
+                "availability": "completed",
+                "estimated_minutes": None,
+                "tag_ids": [],
+                "added": _ADDED,
+                "modified": _MODIFIED,
+                "due": None,
+                "effective_due": None,
+                "defer": None,
+                "effective_defer": None,
+                "planned": None,
+                "effective_planned": None,
+                "completed": _COMPLETED_DATE,
+                "effective_completed": _COMPLETED_DATE,
+                "dropped": None,
+                "effective_dropped": None,
+            },
+            {
+                "id": "task-6",
+                "name": "Dropped idea",
+                "in_inbox": False,
+                "flagged": False,
+                "project_id": "proj-2",
+                "parent_id": "proj-2",
+                "availability": "dropped",
+                "estimated_minutes": None,
+                "tag_ids": [],
+                "added": _ADDED,
+                "modified": _MODIFIED,
+                "due": None,
+                "effective_due": None,
+                "defer": None,
+                "effective_defer": None,
+                "planned": None,
+                "effective_planned": None,
+                "completed": None,
+                "effective_completed": None,
+                "dropped": _DROPPED_DATE,
+                "effective_dropped": _DROPPED_DATE,
+            },
+            {
+                "id": "task-7",
+                "name": "Inherited due task",
+                "in_inbox": False,
+                "flagged": False,
+                "project_id": "proj-due",
+                "parent_id": "proj-due",
+                "availability": "available",
+                "estimated_minutes": None,
+                "tag_ids": [],
+                "added": _ADDED,
+                "modified": _MODIFIED,
+                "due": None,
+                "effective_due": _DUE_DATE,
+                "defer": None,
+                "effective_defer": None,
+                "planned": None,
+                "effective_planned": None,
+                "completed": None,
+                "effective_completed": None,
+                "dropped": None,
+                "effective_dropped": None,
             },
         ],
         "perspectives": [
@@ -279,6 +447,24 @@ async def seed_bridge_repo(data: dict[str, Any]) -> BridgeOnlyRepository:
                 tags=tag_refs,
                 added=_dt_to_iso(t["added"]),
                 modified=_dt_to_iso(t["modified"]),
+                dueDate=_dt_to_iso(t["due"]) if t.get("due") else None,
+                effectiveDueDate=_dt_to_iso(t["effective_due"]) if t.get("effective_due") else None,
+                deferDate=_dt_to_iso(t["defer"]) if t.get("defer") else None,
+                effectiveDeferDate=_dt_to_iso(t["effective_defer"])
+                if t.get("effective_defer")
+                else None,
+                plannedDate=_dt_to_iso(t["planned"]) if t.get("planned") else None,
+                effectivePlannedDate=_dt_to_iso(t["effective_planned"])
+                if t.get("effective_planned")
+                else None,
+                completionDate=_dt_to_iso(t["completed"]) if t.get("completed") else None,
+                effectiveCompletionDate=_dt_to_iso(t["effective_completed"])
+                if t.get("effective_completed")
+                else None,
+                dropDate=_dt_to_iso(t["dropped"]) if t.get("dropped") else None,
+                effectiveDropDate=_dt_to_iso(t["effective_dropped"])
+                if t.get("effective_dropped")
+                else None,
             )
         )
 
@@ -299,6 +485,24 @@ async def seed_bridge_repo(data: dict[str, Any]) -> BridgeOnlyRepository:
                 lastReviewDate=_dt_to_iso(p["last_review_date"]),
                 added=_dt_to_iso(p["added"]),
                 modified=_dt_to_iso(p["modified"]),
+                dueDate=_dt_to_iso(p["due"]) if p.get("due") else None,
+                effectiveDueDate=_dt_to_iso(p["effective_due"]) if p.get("effective_due") else None,
+                deferDate=_dt_to_iso(p["defer"]) if p.get("defer") else None,
+                effectiveDeferDate=_dt_to_iso(p["effective_defer"])
+                if p.get("effective_defer")
+                else None,
+                plannedDate=_dt_to_iso(p["planned"]) if p.get("planned") else None,
+                effectivePlannedDate=_dt_to_iso(p["effective_planned"])
+                if p.get("effective_planned")
+                else None,
+                completionDate=_dt_to_iso(p["completed"]) if p.get("completed") else None,
+                effectiveCompletionDate=_dt_to_iso(p["effective_completed"])
+                if p.get("effective_completed")
+                else None,
+                dropDate=_dt_to_iso(p["dropped"]) if p.get("dropped") else None,
+                effectiveDropDate=_dt_to_iso(p["effective_dropped"])
+                if p.get("effective_dropped")
+                else None,
             )
         )
 
@@ -463,13 +667,53 @@ async def seed_sqlite_repo(data: dict[str, Any], tmp_path: Path) -> HybridReposi
             containing_pi = None
             if t["project_id"]:
                 containing_pi = f"pi-{t['project_id']}"
+
+            # Date columns -- override availability defaults with neutral data
+            date_completed = (
+                _to_cf_epoch(t["completed"]) if t.get("completed") else avail_cols["dateCompleted"]
+            )
+            date_hidden = (
+                _to_cf_epoch(t["dropped"]) if t.get("dropped") else avail_cols["dateHidden"]
+            )
+            effective_completed = (
+                _to_cf_epoch(t["effective_completed"])
+                if t.get("effective_completed")
+                else date_completed
+            )
+            effective_hidden = (
+                _to_cf_epoch(t["effective_dropped"]) if t.get("effective_dropped") else date_hidden
+            )
+
+            # Direct dates: due/defer/planned as naive ISO text
+            date_due = t["due"].strftime("%Y-%m-%dT%H:%M:%S.000Z") if t.get("due") else None
+            date_to_start = (
+                t["defer"].strftime("%Y-%m-%dT%H:%M:%S.000Z") if t.get("defer") else None
+            )
+            date_planned = (
+                t["planned"].strftime("%Y-%m-%dT%H:%M:%S.000Z") if t.get("planned") else None
+            )
+
+            # Effective dates: due/defer/planned as INTEGER (truncated CF epoch)
+            eff_date_due = int(_to_cf_epoch(t["effective_due"])) if t.get("effective_due") else None
+            eff_date_to_start = (
+                int(_to_cf_epoch(t["effective_defer"])) if t.get("effective_defer") else None
+            )
+            eff_date_planned = (
+                int(_to_cf_epoch(t["effective_planned"])) if t.get("effective_planned") else None
+            )
+
             conn.execute(
                 """INSERT INTO Task (
                     persistentIdentifier, name, dateAdded, dateModified,
                     flagged, effectiveFlagged, estimatedMinutes,
                     childrenCount, inInbox, containingProjectInfo, parent,
-                    overdue, dueSoon, blocked, dateCompleted, dateHidden
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    overdue, dueSoon, blocked,
+                    dateDue, dateToStart, datePlanned,
+                    effectiveDateDue, effectiveDateToStart, effectiveDatePlanned,
+                    dateCompleted, effectiveDateCompleted,
+                    dateHidden, effectiveDateHidden
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 [
                     t["id"],
                     t["name"],
@@ -485,8 +729,16 @@ async def seed_sqlite_repo(data: dict[str, Any], tmp_path: Path) -> HybridReposi
                     0,  # overdue
                     0,  # dueSoon
                     avail_cols["blocked"],
-                    avail_cols["dateCompleted"],
-                    avail_cols["dateHidden"],
+                    date_due,
+                    date_to_start,
+                    date_planned,
+                    eff_date_due,
+                    eff_date_to_start,
+                    eff_date_planned,
+                    date_completed,
+                    effective_completed,
+                    date_hidden,
+                    effective_hidden,
                 ],
             )
 
@@ -494,12 +746,52 @@ async def seed_sqlite_repo(data: dict[str, Any], tmp_path: Path) -> HybridReposi
         for p in data["projects"]:
             avail_cols = _SQLITE_TASK_AVAILABILITY[p["availability"]]
             task_id = p["id"]
+
+            # Project date columns (same pattern as tasks)
+            p_date_completed = (
+                _to_cf_epoch(p["completed"]) if p.get("completed") else avail_cols["dateCompleted"]
+            )
+            p_date_hidden = (
+                _to_cf_epoch(p["dropped"]) if p.get("dropped") else avail_cols["dateHidden"]
+            )
+            p_eff_completed = (
+                _to_cf_epoch(p["effective_completed"])
+                if p.get("effective_completed")
+                else p_date_completed
+            )
+            p_eff_hidden = (
+                _to_cf_epoch(p["effective_dropped"])
+                if p.get("effective_dropped")
+                else p_date_hidden
+            )
+            p_date_due = p["due"].strftime("%Y-%m-%dT%H:%M:%S.000Z") if p.get("due") else None
+            p_date_to_start = (
+                p["defer"].strftime("%Y-%m-%dT%H:%M:%S.000Z") if p.get("defer") else None
+            )
+            p_date_planned = (
+                p["planned"].strftime("%Y-%m-%dT%H:%M:%S.000Z") if p.get("planned") else None
+            )
+            p_eff_date_due = (
+                int(_to_cf_epoch(p["effective_due"])) if p.get("effective_due") else None
+            )
+            p_eff_date_to_start = (
+                int(_to_cf_epoch(p["effective_defer"])) if p.get("effective_defer") else None
+            )
+            p_eff_date_planned = (
+                int(_to_cf_epoch(p["effective_planned"])) if p.get("effective_planned") else None
+            )
+
             conn.execute(
                 """INSERT INTO Task (
                     persistentIdentifier, name, plainTextNote, dateAdded, dateModified,
                     flagged, effectiveFlagged, childrenCount, inInbox,
-                    overdue, dueSoon, blocked, dateCompleted, dateHidden
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    overdue, dueSoon, blocked,
+                    dateDue, dateToStart, datePlanned,
+                    effectiveDateDue, effectiveDateToStart, effectiveDatePlanned,
+                    dateCompleted, effectiveDateCompleted,
+                    dateHidden, effectiveDateHidden
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 [
                     task_id,
                     p["name"],
@@ -513,8 +805,16 @@ async def seed_sqlite_repo(data: dict[str, Any], tmp_path: Path) -> HybridReposi
                     0,  # overdue
                     0,  # dueSoon
                     avail_cols["blocked"],
-                    avail_cols["dateCompleted"],
-                    avail_cols["dateHidden"],
+                    p_date_due,
+                    p_date_to_start,
+                    p_date_planned,
+                    p_eff_date_due,
+                    p_eff_date_to_start,
+                    p_eff_date_planned,
+                    p_date_completed,
+                    p_eff_completed,
+                    p_date_hidden,
+                    p_eff_hidden,
                 ],
             )
             conn.execute(
@@ -636,10 +936,10 @@ class TestListTasksCrossPath:
         """Default query returns available + blocked tasks."""
         result = await cross_repo.list_tasks(ListTasksRepoQuery())
         items = sorted(result.items, key=lambda x: x.id)
-        # Default availability = [available, blocked] -> task-1, task-2, task-3, task-4
-        assert len(items) == 4
-        assert [t.id for t in items] == ["task-1", "task-2", "task-3", "task-4"]
-        assert result.total == 4
+        # Default availability = [available, blocked] -> task-1..4 + task-7 (available)
+        assert len(items) == 5
+        assert [t.id for t in items] == ["task-1", "task-2", "task-3", "task-4", "task-7"]
+        assert result.total == 5
 
     @pytest.mark.asyncio
     async def test_list_tasks_flagged(self, cross_repo: Repository) -> None:
@@ -692,7 +992,7 @@ class TestListTasksCrossPath:
         """Pagination returns limited items but total reflects all matches."""
         result = await cross_repo.list_tasks(ListTasksRepoQuery(limit=1))
         assert len(result.items) == 1
-        assert result.total == 4
+        assert result.total == 5
         assert result.has_more is True
 
 
@@ -707,18 +1007,18 @@ class TestListProjectsCrossPath:
         """Default query returns available + blocked projects."""
         result = await cross_repo.list_projects(ListProjectsRepoQuery())
         items = sorted(result.items, key=lambda x: x.id)
-        # available + blocked -> proj-1, proj-2, proj-3
-        assert len(items) == 3
-        assert [p.id for p in items] == ["proj-1", "proj-2", "proj-3"]
-        assert result.total == 3
+        # available + blocked -> proj-1, proj-2, proj-3, proj-due
+        assert len(items) == 4
+        assert [p.id for p in items] == ["proj-1", "proj-2", "proj-3", "proj-due"]
+        assert result.total == 4
 
     @pytest.mark.asyncio
     async def test_list_projects_by_folder(self, cross_repo: Repository) -> None:
         """Folder filter returns only projects in that folder."""
         result = await cross_repo.list_projects(ListProjectsRepoQuery(folder_ids=["folder-1"]))
         items = sorted(result.items, key=lambda x: x.id)
-        assert len(items) == 2
-        assert [p.id for p in items] == ["proj-1", "proj-3"]
+        assert len(items) == 3
+        assert [p.id for p in items] == ["proj-1", "proj-3", "proj-due"]
         for p in items:
             assert p.folder is not None
             assert p.folder.id == "folder-1"
@@ -740,9 +1040,10 @@ class TestListProjectsCrossPath:
         items = sorted(result.items, key=lambda x: x.id)
         # proj-1 has review on 2026-03-20 (before threshold)
         # proj-3 has review on 2026-01-10 (before threshold)
+        # proj-due has review on 2026-03-20 (before threshold)
         # proj-2 has review on 2026-06-01 (after threshold)
-        assert len(items) == 2
-        assert [p.id for p in items] == ["proj-1", "proj-3"]
+        assert len(items) == 3
+        assert [p.id for p in items] == ["proj-1", "proj-3", "proj-due"]
 
 
 # ===========================================================================
