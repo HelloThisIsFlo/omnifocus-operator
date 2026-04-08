@@ -1,19 +1,22 @@
 ---
 phase: 46-pipeline-query-paths
-reviewed: 2026-04-08T00:00:00Z
+reviewed: 2026-04-08T14:30:00Z
 depth: standard
-files_reviewed: 10
+files_reviewed: 13
 files_reviewed_list:
-  - src/omnifocus_operator/contracts/protocols.py
+  - src/omnifocus_operator/agent_messages/warnings.py
   - src/omnifocus_operator/config.py
-  - src/omnifocus_operator/repository/hybrid/hybrid.py
+  - src/omnifocus_operator/contracts/protocols.py
   - src/omnifocus_operator/repository/bridge_only/bridge_only.py
+  - src/omnifocus_operator/repository/hybrid/hybrid.py
   - src/omnifocus_operator/repository/hybrid/query_builder.py
-  - src/omnifocus_operator/service/service.py
   - src/omnifocus_operator/service/resolve_dates.py
+  - src/omnifocus_operator/service/service.py
   - tests/test_due_soon_setting.py
-  - tests/test_query_builder.py
   - tests/test_list_pipelines.py
+  - tests/test_query_builder.py
+  - tests/test_resolve_dates.py
+  - tests/test_warnings.py
 findings:
   critical: 0
   warning: 2
@@ -24,114 +27,93 @@ status: issues_found
 
 # Phase 46: Code Review Report
 
-**Reviewed:** 2026-04-08
+**Reviewed:** 2026-04-08T14:30:00Z
 **Depth:** standard
-**Files Reviewed:** 10
+**Files Reviewed:** 13
 **Status:** issues_found
 
 ## Summary
 
-Phase 46 introduces the pipeline query path: SQL query builder, date filter resolution, `get_due_soon_setting` on both repositories, and the `_ListTasksPipeline` / `_ListProjectsPipeline` method objects. The architecture is clean and the security posture on SQL generation is solid (all user values go through `?` placeholders, confirmed by the query builder tests). Two logic bugs worth fixing: a `has_more` miscalculation in `BridgeOnlyRepository.list_tasks`/`list_projects` and a missing column reference in `build_list_projects_sql` for the `WHERE` clause composition.
+Phase 46 introduces the pipeline query path: a parameterized SQL query builder, pure date filter resolution, `get_due_soon_setting` on both repository implementations, and the `_ListTasksPipeline` / `_ListProjectsPipeline` method objects. Security posture is strong -- all SQL user values flow through `?` placeholders (INFRA-01), confirmed by comprehensive query builder tests. The date resolver is cleanly separated as a pure function with no I/O. Test coverage is thorough across all three layers.
 
----
+Two warnings identified: an unescaped LIKE wildcard issue in the SQL query builder's search parameter, and a `matches_inbox_name` function that produces false positives for short strings. Three info-level items cover code duplication, an unused import pattern, and a minor naming concern.
 
 ## Warnings
 
-### WR-01: `has_more` is wrong after limit slicing in BridgeOnly `list_tasks` and `list_projects`
+### WR-01: LIKE wildcard characters in search input are not escaped
 
-**File:** `src/omnifocus_operator/repository/bridge_only/bridge_only.py:229-231` (same pattern at `269-271`)
+**File:** `src/omnifocus_operator/repository/hybrid/query_builder.py:203-204` (same pattern at lines 268-269)
+**Issue:** The search parameter is wrapped with `%` for LIKE matching but the user's input is not escaped for LIKE metacharacters. If a user searches for a literal `%` or `_`, these act as wildcards in SQLite LIKE. For example, searching for `"100%"` would match `"100 things"` because `%` is a wildcard. The same pattern appears in `build_list_projects_sql` at line 268.
 
-**Issue:** `total` is captured before filtering, but `has_more` is computed as `(offset + len(items)) < total` **after** `items` has already been trimmed to `[:limit]`. With `limit=5`, `offset=0`, 10 items post-filter: `offset + len(items) = 0 + 5 = 5 < 10` → `True` (accidentally correct here). But with `limit=5`, `offset=8`, 10 items post-filter: `items = items[8:]` → 2 items, then `items[:5]` → still 2 items. `has_more = (8 + 2) < 10` → `10 < 10` → `False` — correct. The formula is coincidentally correct for most inputs, but consider the case where `offset=0` and all items fit exactly in the limit: `limit=10`, 10 items, `has_more = (0 + 10) < 10` → `False`. OK. Actually the dangerous case is: `offset=0`, `limit=10`, 10 post-filter items, then another page exists — but `total` was captured before the offset/limit slicing so it is already the filtered count, not the grand total. Since `total` equals post-filter count and `offset + len(items) == total`, `has_more=False`. That is correct.
+This is not a SQL injection vulnerability (the `?` parameterization prevents that), but it is a correctness issue: the search results will be broader than expected when input contains `%` or `_`.
 
-However, when `offset=0` (falsy) and items fit exactly, there is still an edge case: if `offset` is 0 and `limit=5` and there are exactly 5 items, `has_more = (0 + 5) < 5` → `False` — correct. The only genuinely wrong scenario is an **empty** `offset` (value 0) combined with a `limit` equal to total count. That computes correctly. On re-examination, the formula is arithmetically equivalent to comparing `offset + len_after_limit_trim` against the pre-trim total. The real issue is readability and the inconsistency with `_paginate` helper (which checks `len(items) > limit` before trimming). The formula is subtly correct due to how Python slicing works, but the test suite does not exercise `offset + limit == total` boundary conditions for the bridge path, leaving this unverified.
+The bridge-only path (`bridge_only.py:197-201`) uses Python `in` for string matching, which is literal and does not have this issue -- creating a behavioral inconsistency between the two repository implementations.
 
-**Revised assessment:** This is a latent test coverage gap rather than a definite bug, but worth noting since the `_paginate` helper and the inline code use different formulas for the same invariant.
-
-**Fix:** Standardize on the `_paginate` helper already defined in the same file, or add an explicit boundary test:
+**Fix:** Escape LIKE metacharacters before wrapping with `%`:
 ```python
-# Replace the inline pagination block at lines 225-231 with:
-return _paginate(items, query.limit, query.offset)
-```
-Note that `_paginate` assumes `total` before offset/limit slicing, which matches the current capture point.
+def _escape_like(value: str) -> str:
+    """Escape LIKE wildcards for literal matching."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
----
-
-### WR-02: `build_list_projects_sql` appends WHERE with a space but tasks builder uses `" AND "` suffix — structural divergence
-
-**File:** `src/omnifocus_operator/repository/hybrid/query_builder.py:271-274`
-
-**Issue:** `build_list_tasks_sql` builds the WHERE clause by appending `" AND " + conditions` to `_TASKS_BASE` which already contains `WHERE pi.task IS NULL`. This works because tasks always have at least the base `WHERE`. `build_list_projects_sql` builds `" WHERE " + conditions` and appends to `_PROJECTS_BASE` which has **no** WHERE clause. Both paths are internally correct.
-
-However, if `conditions` is empty in `build_list_projects_sql` (no filters), `where_clause = ""` and the SQL has no WHERE at all — which is correct for "list all projects". The concern is the `_PROJECTS_COUNT_BASE` string at line 93-94:
-
-```python
-_PROJECTS_COUNT_BASE = (
-    "SELECT COUNT(*)\nFROM Task t\nJOIN ProjectInfo pi ON t.persistentIdentifier = pi.task"
-)
-```
-
-The `JOIN` here is an `INNER JOIN` (the keyword `JOIN` defaults to `INNER JOIN`), which correctly excludes tasks with no `ProjectInfo`. No bug here either — just confirming both base queries are consistent in their join type.
-
-The actual structural risk: `build_list_tasks_sql` appends conditions with `" AND "` (because the base ends with a `WHERE` predicate), while `build_list_projects_sql` builds a fresh `" WHERE " + " AND ".join(conditions)`. If a future developer adds a base predicate to `_PROJECTS_BASE` and forgets to update the condition-building logic, a syntax error (`WHERE x WHERE y`) would result. This is a maintainability concern.
-
-**Fix:** Add a comment linking the base SQL to the WHERE-building strategy in each function:
-```python
-# NOTE: _PROJECTS_BASE has no WHERE clause; this function adds the full WHERE block.
-# Contrast with build_list_tasks_sql which appends to the existing WHERE predicate.
+# In build_list_tasks_sql and build_list_projects_sql:
+if query.search is not None:
+    conditions.append(
+        "(t.name LIKE ? ESCAPE '\\' COLLATE NOCASE"
+        " OR t.plainTextNote LIKE ? ESCAPE '\\' COLLATE NOCASE)"
+    )
+    escaped = f"%{_escape_like(query.search)}%"
+    params.append(escaped)
+    params.append(escaped)
 ```
 
 ---
+
+### WR-02: `matches_inbox_name` returns True for any single character found in "inbox"
+
+**File:** `src/omnifocus_operator/service/service.py:99-103`
+**Issue:** The function checks `value.lower() in "inbox"` -- meaning value must be a **substring of** "inbox". This causes false positives: `"n"`, `"o"`, `"x"`, `"bo"`, `"ox"` all return True. Any single-character search value that appears in the word "inbox" will trigger the inbox warning. For example, `project="o"` would produce a misleading "Inbox is a virtual location" warning.
+
+The test suite intentionally tests `"inb"` returning True (line 388-393 in test_list_pipelines.py), suggesting this breadth is deliberate for prefix matching. But the current implementation also matches non-prefix substrings like `"x"` or `"box"`, which are unlikely to be inbox-related searches.
+
+**Fix:** If the intent is prefix matching, use `startswith`:
+```python
+def matches_inbox_name(value: object) -> bool:
+    """Check if a value is a case-insensitive prefix of 'Inbox'."""
+    if not isinstance(value, str):
+        return False
+    return "inbox".startswith(value.lower())
+```
+This preserves `"in"` -> True, `"inb"` -> True, `"inbox"` -> True, while fixing `"x"` -> False, `"box"` -> False.
 
 ## Info
 
-### IN-01: `_ListTasksPipeline` fetches all projects and tags even when those filters are not set
+### IN-01: `_paginate` helper duplicated across two repository modules
 
-**File:** `src/omnifocus_operator/service/service.py:340-349`
-
-**Issue:** `execute()` unconditionally issues two repo queries — `list_tags(limit=None)` and `list_projects(limit=None)` — via `asyncio.gather`, regardless of whether `query.project` or `query.tags` are set. When neither filter is used, this is wasted I/O (two full table scans on the hybrid path).
-
-Not a correctness issue; the results are used only in `_resolve_project` and `_resolve_tags`, which both short-circuit when the query field is unset. The cost is real but falls under performance (out of v1 scope). Flagged here for awareness.
-
-**Fix (when in scope):** Gate the resolution queries:
-```python
-tags_future = (
-    self._repository.list_tags(ListTagsRepoQuery(availability=list(TagAvailability), limit=None))
-    if is_set(self._query.tags) else asyncio.coroutine(lambda: SimpleNamespace(items=[]))()
-)
-```
-Or restructure to only call `list_tags`/`list_projects` when the respective filter is set.
+**File:** `src/omnifocus_operator/repository/bridge_only/bridge_only.py:64-75` and `src/omnifocus_operator/repository/hybrid/hybrid.py:78-89`
+**Issue:** Identical `_paginate` function is copy-pasted in both repository implementations. Additionally, `list_tasks` and `list_projects` in `bridge_only.py` (lines 221-232, 260-272) use an inline pagination formula `(offset + len(items)) < total` instead of calling the `_paginate` helper defined in the same file.
+**Fix:** Extract `_paginate` into a shared module (e.g., `repository/pagination.py`) and use it consistently in both `list_tasks` and `list_projects` instead of the inline formula.
 
 ---
 
-### IN-02: Deferred imports inside `_resolve_date_filters` method body
+### IN-02: `_ListTasksPipeline` fetches all projects and all tags unconditionally
 
-**File:** `src/omnifocus_operator/service/service.py:408-416`
+**File:** `src/omnifocus_operator/service/service.py:344-351`
+**Issue:** `execute()` always issues two repo queries via `asyncio.gather` -- `list_tags(limit=None)` and `list_projects(limit=None)` -- even when neither `query.project` nor `query.tags` are set. When both filters are unset, these are wasted I/O (two full table scans on the hybrid path). The results are used only in `_resolve_project` and `_resolve_tags`, which both short-circuit when the query field is unset.
 
-**Issue:** Four imports are inside a method body (`from enum import StrEnum`, `get_week_start`, `DueSoonSetting`, `resolve_date_filter`) with `noqa: PLC0415`. These will re-execute on every call to `_resolve_date_filters` (Python caches module imports so there's no runtime cost), but it's atypical and makes the dependency graph less visible.
+Not a correctness issue. Performance is out of v1 scope, flagged for awareness.
 
-**Fix:** Move to module-level imports. If the intent was to avoid circular import, add a comment explaining why. If not, elevate to the top of the file with the other imports.
-
----
-
-### IN-03: `matches_inbox_name` semantics are counter-intuitive
-
-**File:** `src/omnifocus_operator/service/service.py:95-99`
-
-**Issue:** The function is named `matches_inbox_name` but the implementation checks `value.lower() in "Inbox".lower()` — i.e., **value is a substring of "inbox"**, not that value matches or contains "inbox". This means `"in"` → `True`, `"inb"` → `True`, `"inbox"` → `True`, but `"inboxes"` → `False`. The test suite explicitly tests `"inb"` returning True (line 388-393), so this is intentional. The docstring says "case-insensitive substring of the inbox name" which is accurate — but the name `matches_inbox_name` suggests the opposite direction of containment.
-
-This is tested and intentional, but the name is misleading. Future maintainers may expect `"inboxes"` to return True.
-
-**Fix:** Rename to `is_substring_of_inbox` or update the docstring:
-```python
-def matches_inbox_name(value: object) -> bool:
-    """Return True if value is a string that appears as a substring within 'inbox'.
-
-    E.g. 'in', 'inb', 'inbox' → True. 'inboxes' → False.
-    """
-```
+**Fix:** Gate the resolution queries behind `is_set()` checks on the respective query fields.
 
 ---
 
-_Reviewed: 2026-04-08_
+### IN-03: Inline `list_tasks` / `list_projects` pagination diverges from `_paginate` helper
+
+**File:** `src/omnifocus_operator/repository/bridge_only/bridge_only.py:221-232`
+**Issue:** `list_tasks` and `list_projects` in `BridgeOnlyRepository` compute `has_more` using `(offset + len(items)) < total` after limit-slicing, while other list methods (`list_tags`, `list_folders`, `list_perspectives`) delegate to the `_paginate` helper which uses `len(items) > limit` before slicing. Both formulas produce correct results, but the inconsistency makes the codebase harder to reason about and creates risk if one formula is updated without the other.
+**Fix:** Use `_paginate` consistently, or extract the inline pagination into a clearly documented shared pattern.
+
+---
+
+_Reviewed: 2026-04-08T14:30:00Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
