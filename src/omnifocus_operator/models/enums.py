@@ -15,6 +15,7 @@ from enum import StrEnum
 from omnifocus_operator.agent_messages.descriptions import (
     AVAILABILITY_DOC,
     BASED_ON_DOC,
+    DURATION_UNIT_DOC,
     FOLDER_AVAILABILITY_DOC,
     SCHEDULE_DOC,
     TAG_AVAILABILITY_DOC,
@@ -74,3 +75,12 @@ class BasedOn(StrEnum):
     DUE_DATE = "due_date"
     DEFER_DATE = "defer_date"
     PLANNED_DATE = "planned_date"
+
+
+class DurationUnit(StrEnum):
+    __doc__ = DURATION_UNIT_DOC
+
+    DAYS = "d"
+    WEEKS = "w"
+    MONTHS = "m"
+    YEARS = "y"

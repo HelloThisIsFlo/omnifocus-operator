@@ -55,8 +55,7 @@ from omnifocus_operator.agent_messages.warnings import (
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
 from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
-from omnifocus_operator.contracts.use_cases.list.projects import DurationUnit
-from omnifocus_operator.models.enums import Availability, Schedule
+from omnifocus_operator.models.enums import Availability, DurationUnit, Schedule
 from omnifocus_operator.models.repetition_rule import (
     EndByDate,
     Frequency,

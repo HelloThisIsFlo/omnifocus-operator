@@ -4,13 +4,11 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
-from enum import StrEnum
 
 from pydantic import Field, field_validator, model_validator
 
 from omnifocus_operator.agent_messages import errors as err
 from omnifocus_operator.agent_messages.descriptions import (
-    DURATION_UNIT_DOC,
     FLAGGED_FILTER_DESC,
     FOLDER_FILTER_DESC,
     LIMIT_DESC,
@@ -27,20 +25,11 @@ from omnifocus_operator.contracts.use_cases.list._validators import (
     reject_null_filters,
     validate_offset_requires_limit,
 )
-from omnifocus_operator.models.enums import Availability
+from omnifocus_operator.models.enums import Availability, DurationUnit
 
 _DURATION_PATTERN = re.compile(r"^(\d+)([dwmy])$")
 
 _PATCH_FIELDS = ["folder", "review_due_within", "flagged", "search"]
-
-
-class DurationUnit(StrEnum):
-    __doc__ = DURATION_UNIT_DOC
-
-    DAYS = "d"
-    WEEKS = "w"
-    MONTHS = "m"
-    YEARS = "y"
 
 
 class ReviewDueFilter(QueryModel):

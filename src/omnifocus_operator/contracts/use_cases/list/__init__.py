@@ -22,7 +22,6 @@ from omnifocus_operator.contracts.use_cases.list.perspectives import (
     ListPerspectivesRepoQuery,
 )
 from omnifocus_operator.contracts.use_cases.list.projects import (
-    DurationUnit,
     ListProjectsQuery,
     ListProjectsRepoQuery,
     ReviewDueFilter,
@@ -41,7 +40,6 @@ __all__ = [
     "DateFilter",
     "DueDateShortcut",
     "DueSoonSetting",
-    "DurationUnit",
     "FolderAvailabilityFilter",
     "LifecycleDateShortcut",
     "ListFoldersQuery",

@@ -42,12 +42,15 @@ from omnifocus_operator.contracts.use_cases.list._enums import (
     DueSoonSetting,
     LifecycleDateShortcut,
 )
-from omnifocus_operator.contracts.use_cases.list.projects import (
-    DurationUnit,
-    ReviewDueFilter,
-)
+from omnifocus_operator.contracts.use_cases.list.projects import ReviewDueFilter
 from omnifocus_operator.models.common import TagRef
-from omnifocus_operator.models.enums import Availability, BasedOn, EntityType, Schedule
+from omnifocus_operator.models.enums import (
+    Availability,
+    BasedOn,
+    DurationUnit,
+    EntityType,
+    Schedule,
+)
 from omnifocus_operator.models.repetition_rule import (
     EndByDate,
     Frequency,
