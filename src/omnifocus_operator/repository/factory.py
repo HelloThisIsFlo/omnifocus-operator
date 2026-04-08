@@ -14,6 +14,8 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from omnifocus_operator.config import get_settings
+
 if TYPE_CHECKING:
     from omnifocus_operator.contracts.protocols import Bridge, Repository
 
@@ -52,7 +54,7 @@ def create_repository(repo_type: str | None = None) -> Repository:
         When hybrid mode is selected but the database file is missing.
     """
     if repo_type is None:
-        repo_type = os.environ.get("OPERATOR_REPOSITORY", "hybrid")
+        repo_type = get_settings().repository
 
     match repo_type:
         case "hybrid":
@@ -65,12 +67,12 @@ def create_repository(repo_type: str | None = None) -> Repository:
 
 
 def _create_real_bridge() -> Bridge:
-    """Create a RealBridge reading config from environment variables."""
+    """Create a RealBridge reading config from Settings."""
     from omnifocus_operator.bridge.real import DEFAULT_IPC_DIR, RealBridge
 
-    ipc_dir_str = os.environ.get("OPERATOR_IPC_DIR")
-    ipc_dir = Path(ipc_dir_str) if ipc_dir_str else DEFAULT_IPC_DIR
-    timeout = float(os.environ.get("OPERATOR_BRIDGE_TIMEOUT", "10"))
+    settings = get_settings()
+    ipc_dir = Path(settings.ipc_dir) if settings.ipc_dir else DEFAULT_IPC_DIR
+    timeout = settings.bridge_timeout
     logger.debug(
         "Creating RealBridge: timeout=%.1fs, ipc_dir=%s",
         timeout,
@@ -83,7 +85,7 @@ def _create_hybrid_repository() -> Repository:
     """Create a HybridRepository with path validation."""
     from omnifocus_operator.repository.hybrid import HybridRepository
 
-    db_path = os.environ.get("OPERATOR_SQLITE_PATH", _DEFAULT_DB_PATH)
+    db_path = get_settings().sqlite_path or _DEFAULT_DB_PATH
 
     if not os.path.exists(db_path):
         msg = (
@@ -116,7 +118,7 @@ def _create_bridge_repository() -> Repository:  # pragma: no cover
     bridge = _create_real_bridge()
 
     mtime_source: MtimeSource
-    ofocus_path = os.environ.get("OPERATOR_OFOCUS_PATH", str(DEFAULT_OFOCUS_PATH))
+    ofocus_path = get_settings().ofocus_path or str(DEFAULT_OFOCUS_PATH)
     if not os.path.exists(ofocus_path):
         logger.error(
             "OmniFocus .ofocus bundle not found at: %s — "

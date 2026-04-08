@@ -39,17 +39,14 @@ Path to the OmniFocus SQLite cache database file. Auto-detected from the default
 
 **Default:** `~/Library/Group Containers/34YW5XSRB7.com.omnigroup.OmniFocus/com.omnigroup.OmniFocus4/com.omnigroup.OmniFocusModel/OmniFocusDatabase.db`
 
-### `OPERATOR_BRIDGE`
+### `OPERATOR_WEEK_START`
 
-Which bridge implementation to use. Only relevant when `OPERATOR_REPOSITORY=bridge-only`.
+Which day starts the week for `{this: "w"}` date filter alignment.
 
 | Value | Description |
 |-------|-------------|
-| `real` | **Default.** Communicates with OmniFocus via file-based IPC and URL scheme. |
-| `inmemory` | Test double. Returns seed data from memory. |
-| `simulator` | Test double. Runs a mock OmniFocus simulator subprocess. |
-
-`inmemory` and `simulator` are for development/testing only.
+| `monday` | **Default.** ISO 8601 standard. |
+| `sunday` | US convention. |
 
 ### `OPERATOR_IPC_DIR`
 

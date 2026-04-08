@@ -595,7 +595,9 @@ class HybridRepository(BridgeWriteMixin, Repository):
         if db_path is not None:
             self._db_path = str(db_path)
         else:
-            self._db_path = os.environ.get("OPERATOR_SQLITE_PATH", _DEFAULT_DB_PATH)
+            from omnifocus_operator.config import get_settings
+
+            self._db_path = get_settings().sqlite_path or _DEFAULT_DB_PATH
         if bridge is None:
             msg = "HybridRepository requires a bridge"
             raise ValueError(msg)
