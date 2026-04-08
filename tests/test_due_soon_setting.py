@@ -130,3 +130,53 @@ class TestRepositoryProtocolIncludesGetDueSoonSetting:
         from omnifocus_operator.contracts.protocols import Repository
 
         assert hasattr(Repository, "get_due_soon_setting")
+
+
+# -- BridgeOnlyRepository tests --
+
+
+def _make_bridge_only_repo():
+    """Create a BridgeOnlyRepository with mock bridge and mtime source."""
+    from omnifocus_operator.repository.bridge_only.bridge_only import BridgeOnlyRepository
+    from tests.doubles import ConstantMtimeSource
+
+    bridge = AsyncMock()
+    return BridgeOnlyRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
+
+
+class TestBridgeOnlyGetDueSoonSetting:
+    """BridgeOnlyRepository.get_due_soon_setting() reads from OPERATOR_DUE_SOON_THRESHOLD env var."""
+
+    @pytest.mark.asyncio()
+    async def test_returns_two_days(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("OPERATOR_DUE_SOON_THRESHOLD", "TWO_DAYS")
+        repo = _make_bridge_only_repo()
+        result = await repo.get_due_soon_setting()
+        assert result is DueSoonSetting.TWO_DAYS
+
+    @pytest.mark.asyncio()
+    async def test_returns_today(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("OPERATOR_DUE_SOON_THRESHOLD", "TODAY")
+        repo = _make_bridge_only_repo()
+        result = await repo.get_due_soon_setting()
+        assert result is DueSoonSetting.TODAY
+
+    @pytest.mark.asyncio()
+    async def test_returns_none_when_not_set(self) -> None:
+        repo = _make_bridge_only_repo()
+        result = await repo.get_due_soon_setting()
+        assert result is None
+
+    @pytest.mark.asyncio()
+    async def test_raises_for_invalid_value(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("OPERATOR_DUE_SOON_THRESHOLD", "INVALID")
+        repo = _make_bridge_only_repo()
+        with pytest.raises(ValueError, match="Invalid OPERATOR_DUE_SOON_THRESHOLD"):
+            await repo.get_due_soon_setting()
+
+    @pytest.mark.asyncio()
+    async def test_case_insensitive(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("OPERATOR_DUE_SOON_THRESHOLD", "one_week")
+        repo = _make_bridge_only_repo()
+        result = await repo.get_due_soon_setting()
+        assert result is DueSoonSetting.ONE_WEEK
