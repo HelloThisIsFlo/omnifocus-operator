@@ -15,6 +15,7 @@ import asyncio
 import calendar
 import logging
 from datetime import UTC, datetime, timedelta
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any, NoReturn
 
 from omnifocus_operator.agent_messages.errors import (
@@ -26,6 +27,7 @@ from omnifocus_operator.agent_messages.warnings import (
     LIST_TASKS_INBOX_PROJECT_WARNING,
     REPETITION_NO_OP,
 )
+from omnifocus_operator.config import get_week_start
 from omnifocus_operator.contracts.base import is_set, unset_to_none
 from omnifocus_operator.contracts.protocols import Service
 from omnifocus_operator.contracts.shared.repetition_rule import RepetitionRuleRepoPayload
@@ -60,6 +62,7 @@ from omnifocus_operator.service.convert import end_condition_from_spec, frequenc
 from omnifocus_operator.service.domain import DomainLogic
 from omnifocus_operator.service.payload import PayloadBuilder
 from omnifocus_operator.service.resolve import Resolver
+from omnifocus_operator.service.resolve_dates import resolve_date_filter
 from omnifocus_operator.service.validate import (
     validate_task_name,
     validate_task_name_if_set,
@@ -72,6 +75,7 @@ if TYPE_CHECKING:
     )
     from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskCommand
     from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskCommand
+    from omnifocus_operator.contracts.use_cases.list._enums import DueSoonSetting
     from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersQuery
     from omnifocus_operator.contracts.use_cases.list.perspectives import ListPerspectivesQuery
     from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsQuery
@@ -405,15 +409,6 @@ class _ListTasksPipeline(_ReadPipeline):
         For lifecycle fields (completed/dropped), auto-includes the corresponding
         Availability value so that tasks with those statuses appear in results.
         """
-        from enum import StrEnum  # noqa: PLC0415
-
-        from omnifocus_operator.config import get_week_start  # noqa: PLC0415
-        from omnifocus_operator.contracts.use_cases.list._enums import (  # noqa: PLC0415
-            DueSoonSetting,
-        )
-        from omnifocus_operator.service.resolve_dates import (  # noqa: PLC0415
-            resolve_date_filter,
-        )
 
         self._now = datetime.now(UTC)
         self._lifecycle_availability_additions: list[Availability] = []

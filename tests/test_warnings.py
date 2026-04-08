@@ -11,6 +11,7 @@ import inspect
 from omnifocus_operator import server
 from omnifocus_operator.agent_messages import warnings as warn_mod
 from omnifocus_operator.service import domain as service_domain
+from omnifocus_operator.service import resolve_dates as service_resolve_dates
 from omnifocus_operator.service import service as service_orchestrator
 from tests.agent_messages_helpers import get_consumer_sources, get_upper_snake_constants
 
@@ -18,7 +19,7 @@ from tests.agent_messages_helpers import get_consumer_sources, get_upper_snake_c
 # Warning enforcement
 # ---------------------------------------------------------------------------
 
-_WARNING_CONSUMERS = [service_orchestrator, service_domain, server]
+_WARNING_CONSUMERS = [service_orchestrator, service_domain, service_resolve_dates, server]
 
 
 class TestWarningConsolidation:
