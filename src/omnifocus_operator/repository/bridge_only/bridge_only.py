@@ -16,10 +16,11 @@ import asyncio
 import logging
 from typing import TYPE_CHECKING, Any
 
-from omnifocus_operator.config import SYSTEM_LOCATIONS
+from omnifocus_operator.config import SYSTEM_LOCATIONS, get_settings
 from omnifocus_operator.contracts.protocols import Repository
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskRepoResult
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskRepoResult
+from omnifocus_operator.contracts.use_cases.list._enums import DueSoonSetting
 from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult
 from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.repository.bridge_only.adapter import adapt_snapshot
@@ -311,9 +312,6 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
         Returns None if the env var is not set. Raises ValueError for
         invalid values with a list of valid options.
         """
-        from omnifocus_operator.config import get_settings
-        from omnifocus_operator.contracts.use_cases.list._enums import DueSoonSetting
-
         threshold_name = get_settings().due_soon_threshold
         if threshold_name is None:
             return None

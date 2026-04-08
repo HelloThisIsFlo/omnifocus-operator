@@ -446,7 +446,7 @@ class _ListTasksPipeline(_ReadPipeline):
         week_start = get_week_start()
 
         # Resolve each date field
-        date_fields: list[tuple[str, object, Availability | None]] = [
+        date_fields: list[tuple[str, Any, Availability | None]] = [
             ("due", self._query.due, None),
             ("defer", self._query.defer, None),
             ("planned", self._query.planned, None),

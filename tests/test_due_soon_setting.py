@@ -3,12 +3,19 @@
 from __future__ import annotations
 
 import sqlite3
-from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock
 
 import pytest
 
+from omnifocus_operator.contracts.protocols import Repository
 from omnifocus_operator.contracts.use_cases.list._enums import DueSoonSetting
+from omnifocus_operator.repository.bridge_only.bridge_only import BridgeOnlyRepository
+from omnifocus_operator.repository.hybrid.hybrid import HybridRepository
+from tests.doubles import ConstantMtimeSource
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # -- HybridRepository tests --
 
@@ -41,7 +48,6 @@ def _insert_settings(db_path: Path, interval: str, granularity: str) -> None:
 
 def _make_hybrid_repo(db_path: Path):
     """Create a HybridRepository pointing at a temp database."""
-    from omnifocus_operator.repository.hybrid.hybrid import HybridRepository
 
     bridge = AsyncMock()
     return HybridRepository(db_path=db_path, bridge=bridge)
@@ -127,7 +133,6 @@ class TestRepositoryProtocolIncludesGetDueSoonSetting:
     """Structural check that the Repository protocol includes get_due_soon_setting."""
 
     def test_protocol_has_method(self) -> None:
-        from omnifocus_operator.contracts.protocols import Repository
 
         assert hasattr(Repository, "get_due_soon_setting")
 
@@ -137,15 +142,14 @@ class TestRepositoryProtocolIncludesGetDueSoonSetting:
 
 def _make_bridge_only_repo():
     """Create a BridgeOnlyRepository with mock bridge and mtime source."""
-    from omnifocus_operator.repository.bridge_only.bridge_only import BridgeOnlyRepository
-    from tests.doubles import ConstantMtimeSource
 
     bridge = AsyncMock()
     return BridgeOnlyRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
 
 
 class TestBridgeOnlyGetDueSoonSetting:
-    """BridgeOnlyRepository.get_due_soon_setting() reads from OPERATOR_DUE_SOON_THRESHOLD env var."""
+    """BridgeOnlyRepository.get_due_soon_setting() reads from
+    OPERATOR_DUE_SOON_THRESHOLD env var."""
 
     @pytest.mark.asyncio()
     async def test_returns_two_days(self, monkeypatch: pytest.MonkeyPatch) -> None:

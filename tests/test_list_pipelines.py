@@ -31,7 +31,7 @@ from omnifocus_operator.contracts.use_cases.list.projects import (
     ReviewDueFilter,
 )
 from omnifocus_operator.contracts.use_cases.list.tags import ListTagsQuery
-from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksQuery
+from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksQuery, ListTasksRepoQuery
 from omnifocus_operator.service.service import _ListProjectsPipeline, matches_inbox_name
 
 from .conftest import (
@@ -944,7 +944,6 @@ class TestListTasksDateFiltering:
     )
     async def test_due_before_filters_and_excludes_null(self, service: OperatorService) -> None:
         """Tasks with effectiveDueDate before the boundary are included; None excluded."""
-        from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
 
         repo = service._repository
         q = ListTasksRepoQuery(
@@ -984,7 +983,6 @@ class TestListTasksDateFiltering:
     )
     async def test_due_after_includes_and_excludes_earlier(self, service: OperatorService) -> None:
         """Tasks with effectiveDueDate >= boundary included; earlier tasks excluded."""
-        from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
 
         repo = service._repository
         q = ListTasksRepoQuery(
@@ -1024,7 +1022,6 @@ class TestListTasksDateFiltering:
     )
     async def test_completed_after_in_range_excludes_null(self, service: OperatorService) -> None:
         """Tasks with completionDate in range included; None excluded."""
-        from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
 
         repo = service._repository
         q = ListTasksRepoQuery(
@@ -1066,7 +1063,6 @@ class TestListTasksDateFiltering:
     )
     async def test_date_filters_combine_with_existing(self, service: OperatorService) -> None:
         """flagged=True + due_before -> both apply (AND composition)."""
-        from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
 
         repo = service._repository
         q = ListTasksRepoQuery(
@@ -1110,7 +1106,6 @@ class TestListTasksDateFiltering:
     )
     async def test_multiple_date_filters_and_composition(self, service: OperatorService) -> None:
         """due_before + completed_after -> intersection (AND)."""
-        from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
 
         repo = service._repository
         q = ListTasksRepoQuery(
