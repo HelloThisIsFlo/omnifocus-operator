@@ -20,7 +20,7 @@ SQL and bridge paths produce identical date filter results, availability filter 
 - **D-04:** Warnings for redundant combinations:
   - `["available", "remaining"]` -> warn: remaining already includes available
   - `["blocked", "remaining"]` -> warn: remaining already includes blocked
-  - Empty list `[]` -> reject with educational error: "Omit the filter to use the default (remaining)."
+  - Empty list `[]` -> **accepted**. Returns no active tasks. Combined with `completed: "all"`, returns only completed tasks. This is the canonical way to get lifecycle-only results.
 - **D-05:** `availability: "any"` -> Pydantic rejects (not a valid enum value). No custom interception needed — project is pre-release, no backward compatibility concern.
 
 ### Lifecycle Inclusion via Date Filters
@@ -112,6 +112,7 @@ MODIFIED_FILTER_DESC = (
 AVAILABILITY_FILTER_DESC = (
     "Which lifecycle states to include. "
     "'remaining' (default) = available + blocked. "
+    "Empty list [] = no active tasks (combine with completed/dropped filters for lifecycle-only results). "
     "Completed/dropped tasks are included via their own date filters, not here."
 )
 ```
@@ -148,7 +149,7 @@ AVAILABILITY_FILTER_DESC = (
 ### Agent Messages
 - `src/omnifocus_operator/agent_messages/descriptions.py` -- all agent-facing descriptions (update per D-17)
 - `src/omnifocus_operator/agent_messages/warnings.py` -- warning constants (add defer hints per D-13, add availability redundancy warnings per D-04)
-- `src/omnifocus_operator/agent_messages/errors.py` -- error constants (add availability empty-list error)
+- `src/omnifocus_operator/agent_messages/errors.py` -- error constants
 
 ### Cross-Path Equivalence
 - `tests/test_cross_path_equivalence.py` -- existing 23 cross-path tests, seed adapters, `cross_repo` fixture pattern
@@ -199,16 +200,15 @@ The tool-level description covers only cross-cutting concerns that can't live on
 ### "Remaining" as OmniFocus Vocabulary
 The OmniFocus UI uses "Remaining" for the filter that shows available + on-hold tasks (which maps to available + blocked in our model). Using the same term aligns with OmniFocus vocabulary.
 
-### Edge Case: "Only Completed Tasks"
-With `remaining` as default, there's no way for an agent to get ONLY completed tasks without active tasks mixed in. `completed: "all"` always includes the default remaining set. This is a minor edge case -- "show me only completed tasks" is rare, and the agent can focus on the completed items in the result. Not blocking, but worth noting for future consideration.
+### "Only Completed Tasks" — Solved
+`availability: [], completed: "all"` returns only completed tasks. Empty availability = no active tasks; completed filter adds lifecycle state. Clean, no special mode needed.
 
 </specifics>
 
 <deferred>
 ## Deferred Ideas
 
-- **count_tasks date filters** -- out of scope for v1.3.2. When implemented, `count_tasks(completed: "all")` will count remaining + completed, not just completed. The lifecycle expansion semantics need consideration for counting use cases.
-- **"Only completed" filter** -- no current way to exclude active tasks and show only lifecycle states. Could be addressed with a future `availability: []` or a dedicated lifecycle-only mode.
+None -- discussion stayed within phase scope.
 
 </deferred>
 
