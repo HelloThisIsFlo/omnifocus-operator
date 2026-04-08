@@ -1,6 +1,6 @@
 # List Tasks Test Suite
 
-Tests `list_tasks` tool — filtering by project, tags, inbox status, flagged, availability, estimated minutes, search, pagination, name resolution warnings, and filter combinations.
+Tests `list_tasks` tool — filtering by project, tags, inbox status, flagged, availability, estimated minutes, search, pagination, name resolution warnings, filter combinations, `$inbox` system location, `ALL` availability shorthand, and null/empty filter rejection.
 
 ## Conventions
 
@@ -98,11 +98,11 @@ If no ambiguous project or tag substrings were found in Step 1, tell the user wh
 
 #### Test 1e: inInbox: true
 1. `list_tasks` with `inInbox: true, search: "LT-"`
-2. PASS if: inbox tasks appear (LT-Inbox1, LT-Flagged, LT-Tagged-*, etc.); project tasks (LT-ProjTask1-3) do NOT appear
+2. PASS if: inbox tasks appear (LT-Inbox1, LT-Flagged, LT-Tagged-*, etc.); project tasks (LT-ProjTask1-3) do NOT appear; inbox tasks have `project: {id: "$inbox", name: "Inbox"}`
 
 #### Test 1f: inInbox: false
 1. `list_tasks` with `inInbox: false, search: "LT-"`
-2. PASS if: project tasks (LT-ProjTask1-3) appear; inbox tasks do NOT appear
+2. PASS if: project tasks (LT-ProjTask1-3) appear; inbox tasks do NOT appear; project tasks have `project.id` matching the real project (not `"$inbox"`)
 
 #### Test 1g: Flagged filter
 1. `list_tasks` with `flagged: true, search: "LT-"`
@@ -127,20 +127,28 @@ If no ambiguous project or tag substrings were found in Step 1, tell the user wh
 2. PASS if: LT-Completed and LT-Dropped do NOT appear; all other LT-* tasks (including LT-Deferred) DO appear — default is AVAILABLE + BLOCKED
 
 #### Test 2b: Include COMPLETED
-1. `list_tasks` with `availability: ["AVAILABLE", "BLOCKED", "COMPLETED"], search: "LT-"`
+1. `list_tasks` with `availability: ["available", "blocked", "completed"], search: "LT-"`
 2. PASS if: LT-Completed appears; LT-Dropped does NOT
 
 #### Test 2c: Include DROPPED
-1. `list_tasks` with `availability: ["AVAILABLE", "BLOCKED", "DROPPED"], search: "LT-"`
+1. `list_tasks` with `availability: ["available", "blocked", "dropped"], search: "LT-"`
 2. PASS if: LT-Dropped appears; LT-Completed does NOT
 
 #### Test 2d: All four states
-1. `list_tasks` with `availability: ["AVAILABLE", "BLOCKED", "COMPLETED", "DROPPED"], search: "LT-"`
+1. `list_tasks` with `availability: ["available", "blocked", "completed", "dropped"], search: "LT-"`
 2. PASS if: ALL LT-* tasks appear including LT-Completed and LT-Dropped
 
 #### Test 2e: AVAILABLE only
-1. `list_tasks` with `availability: ["AVAILABLE"], search: "LT-"`
+1. `list_tasks` with `availability: ["available"], search: "LT-"`
 2. PASS if: LT-Deferred does NOT appear (it is BLOCKED/deferred); LT-Completed and LT-Dropped also absent
+
+#### Test 2f: ALL shorthand
+1. `list_tasks` with `availability: ["ALL"], search: "LT-"`
+2. PASS if: ALL LT-* tasks appear including LT-Completed and LT-Dropped (same result set as test 2d)
+
+#### Test 2g: ALL mixed with other values — warning
+1. `list_tasks` with `availability: ["ALL", "available"], search: "LT-"`
+2. PASS if: warning mentions "'ALL' already includes every status"; results still include all tasks (ALL is still expanded despite the redundancy)
 
 ### 3. Resolution Warnings
 
@@ -163,6 +171,10 @@ If no ambiguous project or tag substrings were found in Step 1, tell the user wh
 #### Test 3e: Tag multi-match
 1. `list_tasks` with `tags: ["<ambig-tag>"], search: "LT-"`
 2. PASS if: warning mentions multiple tags matching with candidate IDs; filter IS applied to ALL matched tags (tasks with any of the matched tags are included)
+
+#### Test 3f: Project name matches "Inbox" — virtual location warning
+1. `list_tasks` with `project: "Inbox"`
+2. PASS if: warning explains that the inbox is a virtual location, not a named project, and suggests using `project: "$inbox"` or `inInbox: true` to query inbox tasks
 
 ### 4. Pagination
 
@@ -198,7 +210,7 @@ Run INDIVIDUALLY (will error):
 2. PASS if: only LT-ProjTask2 appears (the only task both in proj-a AND flagged)
 
 #### Test 5b: Tag + availability including COMPLETED
-1. `list_tasks` with `tags: ["<tag-a-name>"], availability: ["AVAILABLE", "BLOCKED", "COMPLETED"], search: "LT-"`
+1. `list_tasks` with `tags: ["<tag-a-name>"], availability: ["available", "blocked", "completed"], search: "LT-"`
 2. PASS if: LT-Tagged-A, LT-Tagged-AB, AND LT-Completed all appear (LT-Completed has tag-a and is now visible because COMPLETED is included in availability)
 
 #### Test 5c: Search + project
@@ -225,11 +237,55 @@ Run INDIVIDUALLY (will error):
 
 #### Test 6d: Response shape and camelCase
 1. Use the result from any previous test (e.g., test 4a)
-2. PASS if: response has top-level fields `items` (array), `total` (number), `hasMore` (boolean — not `has_more`); task objects use camelCase field names (`estimatedMinutes`, `inInbox`, `dueDate`, `effectiveFlagged` — no snake_case leaks)
+2. PASS if: response has top-level fields `items` (array), `total` (number), `hasMore` (boolean — not `has_more`); task objects use camelCase field names (`estimatedMinutes`, `dueDate`, `effectiveFlagged` — no snake_case leaks); `parent` is a tagged wrapper with exactly one key (`project` or `task`), each containing `{id, name}`; `project` is always present as `{id, name}` (inbox tasks show `{id: "$inbox", name: "Inbox"}`); there is NO `inInbox` field
 
 #### Test 6e: Tags partial resolution — one resolves, one doesn't
 1. `list_tasks` with `tags: ["<tag-a-name>", "xyzzy_nonexistent_99"], search: "LT-"`
 2. PASS if: warning for "xyzzy_nonexistent_99" (no tag match); BUT tag-a filter IS still applied — only tasks with tag-a appear (LT-Tagged-A, LT-Tagged-AB); tasks without tag-a (LT-Inbox1, LT-Flagged, etc.) do NOT appear
+
+### 7. $inbox System Location
+
+#### Test 7a: $inbox — filter by system location
+1. `list_tasks` with `project: "$inbox", search: "LT-"`
+2. PASS if: inbox tasks appear (LT-Inbox1, LT-Flagged, LT-Tagged-*, etc.); project tasks (LT-ProjTask1-3) do NOT appear; returned tasks have `project: {id: "$inbox", name: "Inbox"}`
+
+#### Test 7b: $inbox — equivalence with inInbox: true
+1. Compare results from test 7a with results from test 1e
+2. PASS if: same task set returned (same IDs, same count); `total` values match
+
+#### Test 7c: $inbox + inInbox: true — redundant accepted
+1. `list_tasks` with `project: "$inbox", inInbox: true, search: "LT-"`
+2. PASS if: same results as 7a; NO warning about redundancy or contradiction
+
+#### Test 7d: $inbox + inInbox: false — contradiction error
+Run INDIVIDUALLY:
+1. `list_tasks` with `project: "$inbox", inInbox: false, search: "LT-"`
+2. PASS if: error mentions "Contradictory filters" and explains that `$inbox` selects inbox tasks while `inInbox=false` excludes them
+
+#### Test 7e: inInbox: true + project — contradiction error
+Run INDIVIDUALLY:
+1. `list_tasks` with `inInbox: true, project: "<proj-a-name>", search: "LT-"`
+2. PASS if: error mentions "Contradictory filters" and explains that combining `inInbox=true` with a project filter always yields nothing
+
+### 8. Null/Empty Filter Rejection
+
+Run each INDIVIDUALLY (they will error):
+
+#### Test 8a: project: null
+1. `list_tasks` with `project: null`
+2. PASS if: error says "'project' cannot be null" and suggests omitting the field
+
+#### Test 8b: flagged: null
+1. `list_tasks` with `flagged: null`
+2. PASS if: error says "'flagged' cannot be null" and suggests omitting the field
+
+#### Test 8c: tags: []
+1. `list_tasks` with `tags: []`
+2. PASS if: error says "'tags' cannot be empty" and suggests omitting the field
+
+#### Test 8d: availability: []
+1. `list_tasks` with `availability: []`
+2. PASS if: error says "'availability' cannot be empty" and mentions using `["ALL"]` as an alternative
 
 ## Report Table Rows
 
@@ -239,8 +295,8 @@ Run INDIVIDUALLY (will error):
 | 1b | Project: by ID | Filter by project ID; same results, bypasses resolution | |
 | 1c | Tag: single tag | Filter by one tag; only tasks with that tag returned | |
 | 1d | Tag: multiple (OR) | Filter by 2 tags; tasks with ANY of those tags returned | |
-| 1e | inInbox: true | Only inbox tasks returned; project tasks excluded | |
-| 1f | inInbox: false | Only project tasks returned; inbox tasks excluded | |
+| 1e | inInbox: true | Only inbox tasks returned; project tasks excluded; inbox tasks have `project.id == "$inbox"` | |
+| 1f | inInbox: false | Only project tasks returned; inbox tasks excluded; project tasks have real `project.id` | |
 | 1g | Flagged filter | flagged: true returns only flagged tasks | |
 | 1h | estimatedMinutesMax | Ceiling filter; tasks above max excluded | |
 | 1i | Search: name match | Substring match on task name finds the task | |
@@ -250,11 +306,14 @@ Run INDIVIDUALLY (will error):
 | 2c | Availability: +DROPPED | Dropped tasks appear when explicitly included | |
 | 2d | Availability: all four | All availability states; everything returned | |
 | 2e | Availability: AVAILABLE only | Blocked/deferred task excluded when only AVAILABLE requested | |
+| 2f | Availability: ALL shorthand | `["ALL"]` returns all 4 states; same as 2d | |
+| 2g | Availability: ALL mixed | `["ALL", "available"]` → warning about redundancy; results still complete | |
 | 3a | Resolution: project multi-match | Ambiguous project → warning with candidates, filter applied to all matches | |
 | 3b | Resolution: project did-you-mean | Misspelled project → "Did you mean?" with suggestions | |
 | 3c | Resolution: project no match | Random project name → no-match warning, no suggestions | |
 | 3d | Resolution: tag no-match | Random tag name → no-match warning, filter skipped | |
 | 3e | Resolution: tag multi-match | Ambiguous tag → warning with candidates, filter applied to all matches | |
+| 3f | Resolution: inbox name warning | `project: "Inbox"` → warning about virtual location, suggests `$inbox` | |
 | 4a | Pagination: default limit | No limit → all test tasks returned, total accurate | |
 | 4b | Pagination: custom limit | limit: 2 → exactly 2 items, hasMore: true | |
 | 4c | Pagination: offset | limit: 2, offset: 2 → second page, different items | |
@@ -268,5 +327,14 @@ Run INDIVIDUALLY (will error):
 | 6a | Edge: empty result | Impossible search → items [], total 0, hasMore false | |
 | 6b | Edge: no filters | No parameters → default availability, returns tasks | |
 | 6c | Edge: estimatedMinutesMax vs no-estimate | Tasks with no estimate excluded, not treated as 0 | |
-| 6d | Edge: response shape + camelCase | Top-level and task fields use correct camelCase names | |
+| 6d | Edge: response shape + camelCase | `parent` tagged wrapper, `project` as `{id, name}`, no `inInbox` field, camelCase throughout | |
 | 6e | Edge: tags partial resolution | One tag resolves, one doesn't; resolved filter still applied | |
+| 7a | $inbox: filter | `project: "$inbox"` returns inbox tasks with `project.id == "$inbox"` | |
+| 7b | $inbox: equivalence | Same results as `inInbox: true` (test 1e) | |
+| 7c | $inbox: redundant accepted | `$inbox` + `inInbox: true` succeeds silently, no warning | |
+| 7d | $inbox: contradiction (false) | `$inbox` + `inInbox: false` → contradictory filters error | |
+| 7e | $inbox: contradiction (project) | `inInbox: true` + real project → contradictory filters error | |
+| 8a | Null: project | `project: null` → cannot be null, suggests omitting | |
+| 8b | Null: flagged | `flagged: null` → cannot be null, suggests omitting | |
+| 8c | Empty: tags | `tags: []` → cannot be empty, suggests omitting | |
+| 8d | Empty: availability | `availability: []` → cannot be empty, mentions `["ALL"]` | |

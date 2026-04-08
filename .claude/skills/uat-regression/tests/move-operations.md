@@ -6,7 +6,7 @@ Tests task movement including all 5 move modes, cross-level moves, circular refe
 
 - **Inbox only.** Never create tasks in projects. Every task goes to inbox (no `parent` for top-level, or under the test parent task).
 - **Tags by ID.** For test 1f, discover tags first via `get_all` and use IDs where the name might be ambiguous.
-- **Inbox move syntax.** To move a task to inbox, use `{"actions": {"move": {"ending": null}}}` — NOT `actions: null` (that means "no actions").
+- **Inbox move syntax.** To move a task to inbox, use `$inbox` as the container — e.g., `{"actions": {"move": {"ending": "$inbox"}}}`. Setting `ending` or `beginning` to `null` is an error (use `"$inbox"` instead).
 - **1-item limit.** `edit_tasks` currently accepts exactly 1 item per call.
 
 **Known issue — spurious "no changes" warning:** When a move action results in a no-op (e.g., same-parent move) AND no field edits are in the request, a spurious "No changes specified/detected" warning fires alongside the specific move warning. Document in the report's Observations section if encountered.
@@ -58,15 +58,15 @@ Run sequentially on T1:
 2. `actions: { move: {"before": "<T2-id>"} }` — PASS if success
 3. `actions: { move: {"beginning": "<UAT-id>"} }` — PASS if success
 4. `actions: { move: {"ending": "<UAT-id>"} }` — PASS if success
-5. `actions: { move: {"ending": null} }` — PASS if success (moves to inbox)
-6. `get_task` T1 and verify `inInbox: true`
+5. `actions: { move: {"ending": "$inbox"} }` — PASS if success (moves to inbox)
+6. `get_task` T1 and verify `project.id == "$inbox"`
 7. `actions: { move: {"beginning": "<UAT-id>"} }` — restore
-8. `get_task` T1 and verify `inInbox: false`
-9. PASS if: all move calls succeed, `inInbox` flips correctly (true after move to inbox, false after move to parent)
+8. `get_task` T1 and verify `project.id != "$inbox"` (parent is task wrapper)
+9. PASS if: all move calls succeed, `project.id` flips correctly (`"$inbox"` after move to inbox, project/task parent after move back)
 
 #### Test 1b: Move carries children
-1. `actions: { move: {"ending": null} }` on T2 (to inbox)
-2. `get_task` T2, verify `hasChildren: true` and `inInbox: true`
+1. `actions: { move: {"ending": "$inbox"} }` on T2 (to inbox)
+2. `get_task` T2, verify `hasChildren: true` and `project.id == "$inbox"`
 3. `actions: { move: {"beginning": "<UAT-id>"} }` (move back)
 4. PASS if: children preserved, `hasChildren: true` confirmed
 
@@ -170,6 +170,42 @@ Run INDIVIDUALLY (will error):
 2. PASS if: success with warning about task already being a child
 3. Note: task will NOT actually move to the ending — this is the known bug
 
+### 9. $inbox Move
+
+#### Test 9a: beginning: "$inbox"
+1. `actions: { move: {"beginning": "$inbox"} }` on T1
+2. `get_task` T1 and verify `project.id == "$inbox"`
+3. PASS if: task moved to inbox
+4. Restore: `actions: { move: {"beginning": "<UAT-id>"} }` on T1
+
+### 10. Null & $inbox Errors
+
+Run each INDIVIDUALLY (they will error):
+
+#### Test 10a: ending: null
+1. `actions: { move: {"ending": null} }` on T8
+2. PASS if: error contains "ending cannot be null" and mentions "$inbox"
+
+#### Test 10b: beginning: null
+1. `actions: { move: {"beginning": null} }` on T8
+2. PASS if: error contains "beginning cannot be null" and mentions "$inbox"
+
+#### Test 10c: before: null
+1. `actions: { move: {"before": null} }` on T8
+2. PASS if: error contains "before cannot be null" and mentions "task reference"
+
+#### Test 10d: after: null
+1. `actions: { move: {"after": null} }` on T8
+2. PASS if: error contains "after cannot be null" and mentions "task reference"
+
+#### Test 10e: before: "$inbox" — type mismatch
+1. `actions: { move: {"before": "$inbox"} }` on T8
+2. PASS if: error mentions "'$inbox' is a project" and suggests using "ending" or "beginning" instead
+
+#### Test 10f: after: "$inbox" — type mismatch
+1. `actions: { move: {"after": "$inbox"} }` on T8
+2. PASS if: error mentions "'$inbox' is a project" and suggests using "ending" or "beginning" instead
+
 ### Position Verification Trick
 
 For tests that need order verification, assign `estimatedMinutes` = 1, 2, 3... to all siblings in expected order, then ask the user to confirm the numbers read 1, 2, 3... in OmniFocus. This compensates for the lack of sibling-order info in the API response.
@@ -178,7 +214,7 @@ For tests that need order verification, assign `estimatedMinutes` = 1, 2, 3... t
 
 | # | Test | Description | Result |
 |---|------|-------------|--------|
-| 1a | Move: all 5 modes | after, before, beginning, ending, inbox — all succeed; `inInbox` flips | |
+| 1a | Move: all 5 modes | after, before, beginning, ending, $inbox — all succeed; `project.id` flips | |
 | 1b | Move: carries children | Parent move preserves children; `hasChildren: true` confirmed | |
 | 1c | Move: cross-level | Grandchild to direct child and back | |
 | 1d | Move: circular ref (3) | Parent into child, ancestor into descendant, self — all blocked | |
@@ -194,3 +230,10 @@ For tests that need order verification, assign `estimatedMinutes` = 1, 2, 3... t
 | 7 | Cross-parent move | Move task between different parent tasks | |
 | 8a | Same-parent beginning | Known bug: beginning in same parent is no-op | |
 | 8b | Same-parent ending | Known bug: ending in same parent is no-op | |
+| 9a | $inbox: beginning | `beginning: "$inbox"` moves task to inbox; `project.id == "$inbox"` | |
+| 10a | Error: ending null | `ending: null` returns error mentioning $inbox | |
+| 10b | Error: beginning null | `beginning: null` returns error mentioning $inbox | |
+| 10c | Error: before null | `before: null` returns error about task references | |
+| 10d | Error: after null | `after: null` returns error about task references | |
+| 10e | Error: before $inbox | `before: "$inbox"` returns type-mismatch suggesting beginning/ending | |
+| 10f | Error: after $inbox | `after: "$inbox"` returns type-mismatch suggesting beginning/ending | |

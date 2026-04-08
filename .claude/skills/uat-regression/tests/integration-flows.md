@@ -51,7 +51,7 @@ Tell the user: "Running all tests now. I'll report results when done."
    - `estimatedMinutes: 25`
    - `note: "integration test"`
 2. `get_task` on returned ID
-3. PASS if: all fields match — name, parent, tag-a present, dueDate set, flagged true, estimatedMinutes 25, note contains "integration test"
+3. PASS if: all fields match — name, `parent: {"task": {"id": "<UAT-id>", "name": "UAT-Integration"}}`, tag-a present, dueDate set, flagged true, estimatedMinutes 25, note contains "integration test"
 
 ### G-2: Edit fields → read-back
 1. `edit_tasks` on G1's task: `name: "G1-Edited", flagged: false, note: null`
@@ -66,12 +66,12 @@ Tell the user: "Running all tests now. I'll report results when done."
 ### G-4: Move → read-back parent
 1. `edit_tasks` on G1's task: `actions: { move: {"ending": "<UAT-Integration-Alt-id>"} }`
 2. `get_task` to verify parent changed to UAT-Integration-Alt
-3. PASS if: parent id matches UAT-Integration-Alt
+3. PASS if: `parent.task.id` matches UAT-Integration-Alt and `parent.task.name` is present
 
 ### G-5: Move back → read-back parent
 1. `edit_tasks` on G1's task: `actions: { move: {"ending": "<UAT-Integration-id>"} }`
 2. `get_task` to verify parent changed back to UAT-Integration
-3. PASS if: parent id matches UAT-Integration
+3. PASS if: `parent.task.id` matches UAT-Integration and `parent.task.name` is present
 
 ### G-6: Tags replace → read-back
 1. `edit_tasks` on G1's task: `actions: { tags: { replace: [<tag-b>, <tag-c>] } }`

@@ -1,6 +1,6 @@
 ---
 name: uat-regression
-description: Run UAT regression tests for OmniFocus Operator MCP tools against the live OmniFocus database. Choose from test suites covering edit operations, tag operations, move operations, lifecycle, inheritance, repetition rules, list/filter tools, validation/error formatting, and more. Trigger when the user says "run UAT", "UAT regression", "regression test", "test edits", "test tags", "test tag operations", "test moves", "test movement", "test lifecycle", "test complete/drop", "test reads", "test filters", "test add_tasks", "run edit tests", "test inheritance", "test effective fields", "effective field inheritance", "test repetition", "test repetition rules", "test repeating tasks", "test rrule", "test list tasks", "test list_tasks", "test filtering", "test search", "test pagination", "test resolution", "test availability", "test list projects", "test list_projects", "test folders", "test folder filter", "test review due", "test review_due_within", "test list tags", "test list_tags", "test list folders", "test list_folders", "test list perspectives", "test list_perspectives", "test perspectives", "test simple list", "test validation", "test errors", "test error formatting", "test validation errors", "test middleware", "test clean errors", "v1.3 regression", "test v1.3", "test list tools", or wants to verify tool behavior after code changes. This skill requires the omnifocus-operator MCP server to be running.
+description: Run UAT regression tests for OmniFocus Operator MCP tools against the live OmniFocus database. Choose from test suites covering edit operations, tag operations, move operations, lifecycle, inheritance, repetition rules, list/filter tools, validation/error formatting, and more. Trigger when the user says "run UAT", "UAT regression", "regression test", "test edits", "test tags", "test tag operations", "test moves", "test movement", "test lifecycle", "test complete/drop", "test reads", "test filters", "test add_tasks", "run edit tests", "test inheritance", "test effective fields", "effective field inheritance", "test repetition", "test repetition rules", "test repeating tasks", "test rrule", "test list tasks", "test list_tasks", "test filtering", "test search", "test pagination", "test resolution", "test availability", "test list projects", "test list_projects", "test folders", "test folder filter", "test review due", "test review_due_within", "test list tags", "test list_tags", "test list folders", "test list_folders", "test list perspectives", "test list_perspectives", "test perspectives", "test simple list", "test validation", "test errors", "test error formatting", "test validation errors", "test middleware", "test clean errors", "test list tools", "run writes", "run reads", "write regression", "read regression", "full regression", or wants to verify tool behavior after code changes. This skill requires the omnifocus-operator MCP server to be running.
 ---
 
 # UAT Regression
@@ -13,21 +13,21 @@ Run UAT regression tests for OmniFocus Operator MCP tools against live OmniFocus
 
 | Suite | File | Tests | Covers |
 |-------|------|------:|--------|
-| **v1.2 Combined** *(composite)* | `tests/v1.2-combined.md` | 143 | **Full milestone regression** — lookups, creation, edits, tags, moves, lifecycle, integration, inheritance, repetition rules |
-| Read Lookups | `tests/read-lookups.md` | 7 | get_task, get_project, get_tag — happy path + not-found errors |
-| Task Creation | `tests/task-creation.md` | 14 | add_tasks — inbox, parent, all fields, tag resolution, errors, batch limit |
+| **Writes Combined** *(composite)* | `tests/writes-combined.md` | 154 | **Full write-side regression** — lookups, creation, edits, tags, moves, lifecycle, integration, inheritance, repetition rules |
+| **Reads Combined** *(composite)* | `tests/reads-combined.md` | 130 | **Full read-side regression** — list tasks, list projects, simple list tools, validation & error formatting |
+| Read Lookups | `tests/read-lookups.md` | 8 | get_task, get_project, get_tag — happy path, not-found errors, $inbox guard, enriched references |
+| Task Creation | `tests/task-creation.md` | 17 | add_tasks — inbox, $inbox parent, all fields, tag resolution, null/system-location errors, batch limit, enriched response shape |
 | Integration Flows | `tests/integration-flows.md` | 8 | End-to-end write-through: create→edit→move→tags→lifecycle→get_all |
 | Edit Operations | `tests/edit-operations.md` | 23 | Field editing, patch semantics, no-ops, status warnings, errors, combos |
 | Tag Operations | `tests/tag-operations.md` | 15 | Tag add/remove/replace, ambiguity, no-ops, errors |
-| Move Operations | `tests/move-operations.md` | 16 | All 5 move modes, cross-level, circular refs, completed/dropped movement |
+| Move Operations | `tests/move-operations.md` | 23 | All 5 move modes, $inbox moves, null rejection, anchor errors, cross-level, circular refs, completed/dropped movement |
 | Lifecycle | `tests/lifecycle.md` | 12 | Complete, drop, cross-state, repeating tasks, validation |
 | Inheritance | `tests/inheritance.md` | 8 | Effective field inheritance — dueDate, deferDate, plannedDate, flagged from projects through task chains |
 | Repetition Rules | `tests/repetition-rules.md` | 40 | Creation, read model, set/clear/partial update/type change, no-ops, status warnings, lifecycle, normalization, validation errors, combos, regression guards |
-| List Tasks | `tests/list-tasks.md` | 35 | list_tasks — project/tag/inbox/flagged/availability/estimate/search filters, name resolution warnings, pagination, AND-logic combos, edge cases |
-| List Projects | `tests/list-projects.md` | 25 | list_projects — folder filter, review_due_within duration, flagged, availability, search, folder resolution warnings, pagination, combos |
-| Simple List Tools | `tests/simple-list-tools.md` | 18 | list_tags, list_folders, list_perspectives — availability defaults (tags vs folders), search, pagination, parent hierarchy, builtin flag, cross-tool consistency, camelCase |
-| Validation & Errors | `tests/validation-errors.md` | 17 | Cross-tool error formatting — unknown fields, invalid types, batch limits, middleware reformatting, no pydantic internals, camelCase in errors, _Unset filtering |
-| **v1.3 Combined** *(composite)* | `tests/v1.3-combined.md` | 95 | **Full milestone regression** — list tasks, list projects, simple list tools, validation & error formatting |
+| List Tasks | `tests/list-tasks.md` | 47 | list_tasks — project/tag/$inbox/flagged/availability/estimate/search filters, ALL shorthand, null/empty rejection, contradictions, name resolution warnings, pagination, AND-logic combos, enriched response shape |
+| List Projects | `tests/list-projects.md` | 33 | list_projects — folder filter, review_due_within duration, flagged, availability, ALL shorthand, $inbox warning, null/empty rejection, search, folder resolution warnings, pagination, combos, enriched response shape |
+| Simple List Tools | `tests/simple-list-tools.md` | 23 | list_tags, list_folders, list_perspectives — availability defaults (tags vs folders), ALL shorthand, null/empty rejection, search, pagination, parent hierarchy, builtin flag, cross-tool consistency, enriched references |
+| Validation & Errors | `tests/validation-errors.md` | 27 | Cross-tool error formatting — unknown fields, invalid types, batch limits, filter null/empty, $inbox guard, system locations, reserved prefix, middleware reformatting, no pydantic internals, camelCase in errors |
 
 ## Flow
 

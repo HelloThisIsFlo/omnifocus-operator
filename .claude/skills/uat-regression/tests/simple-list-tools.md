@@ -1,6 +1,6 @@
 # Simple List Tools Test Suite
 
-Tests `list_tags`, `list_folders`, and `list_perspectives` — three tools sharing identical architecture (fetch-all + Python filter + paginate), combined into one suite because their individual coverage would be thin and repetitive.
+Tests `list_tags`, `list_folders`, and `list_perspectives` — three tools sharing identical architecture (fetch-all + Python filter + paginate), combined into one suite. Covers availability defaults, `ALL` shorthand, enriched parent references, search, pagination, null/empty filter rejection, and cross-tool consistency.
 
 ## Conventions
 
@@ -16,8 +16,8 @@ Tests `list_tags`, `list_folders`, and `list_perspectives` — three tools shari
 Run these calls to survey the user's database:
 
 1. `list_tags` with `limit: 10` — scan available+blocked tags (default availability)
-2. `list_tags` with `availability: ["DROPPED"], limit: 5` — check for dropped tags
-3. `list_folders` with `availability: ["AVAILABLE", "DROPPED"], limit: 20` — all folders, scan for parent-child pairs and dropped folders
+2. `list_tags` with `availability: ["dropped"], limit: 5` — check for dropped tags
+3. `list_folders` with `availability: ["available", "dropped"], limit: 20` — all folders, scan for parent-child pairs and dropped folders
 4. `list_folders` with `limit: 0` — count of available-only (default)
 5. `list_perspectives` with `limit: 10` — scan custom perspectives
 
@@ -77,14 +77,14 @@ After manual actions, re-run the relevant discovery call to confirm the entity i
 2. PASS if: tag-a appears in results; unrelated tags excluded; `total` reflects only search matches
 
 #### Test 1c: Availability — include DROPPED
-1. `list_tags` with `availability: ["AVAILABLE", "BLOCKED", "DROPPED"], limit: 5, search: "<tag-dropped-name-substring>"`
+1. `list_tags` with `availability: ["available", "blocked", "dropped"], limit: 5, search: "<tag-dropped-name-substring>"`
 2. PASS if: tag-dropped appears in results (now visible because DROPPED is included)
 
 #### Test 1d: Availability — AVAILABLE only
-1. `list_tags` with `availability: ["AVAILABLE"], limit: 0`
+1. `list_tags` with `availability: ["available"], limit: 0`
 2. Store `total` as **avail-only-count**
 3. PASS if: avail-only-count ≤ **tag-default-total** (fewer or equal — blocked tags now excluded)
-4. If tag-blocked was found: `list_tags` with `availability: ["AVAILABLE"], search: "<tag-blocked-name-substring>", limit: 1`
+4. If tag-blocked was found: `list_tags` with `availability: ["available"], search: "<tag-blocked-name-substring>", limit: 1`
 5. PASS if: `total: 0` — blocked tag is excluded when only AVAILABLE requested
 
 #### Test 1e: Pagination — limit + offset
@@ -97,6 +97,10 @@ After manual actions, re-run the relevant discovery call to confirm the entity i
 1. `list_tags` with `limit: 0`
 2. PASS if: `items` is empty array; `total` equals **tag-default-total** (> 0); `hasMore: true` (correct — more items exist beyond the zero requested)
 
+#### Test 1g: ALL shorthand
+1. `list_tags` with `availability: ["ALL"], limit: 5, search: "<tag-dropped-name-substring>"`
+2. PASS if: tag-dropped appears in results (ALL expands to available + blocked + dropped — all three tag states)
+
 ### 2. list_folders
 
 #### Test 2a: No filters — AVAILABLE only default
@@ -105,9 +109,9 @@ After manual actions, re-run the relevant discovery call to confirm the entity i
 3. Compare with **folder-all-total**: PASS if **folder-avail-only-total** < **folder-all-total** (confirming the restrictive default excludes dropped folders)
 
 #### Test 2b: Include DROPPED
-1. `list_folders` with `availability: ["AVAILABLE", "DROPPED"], search: "<folder-dropped-name-substring>", limit: 5`
+1. `list_folders` with `availability: ["available", "dropped"], search: "<folder-dropped-name-substring>", limit: 5`
 2. PASS if: folder-dropped appears in results (now visible with DROPPED included)
-3. `list_folders` with `availability: ["AVAILABLE", "DROPPED"], limit: 0`
+3. `list_folders` with `availability: ["available", "dropped"], limit: 0`
 4. PASS if: `total` equals **folder-all-total**
 
 #### Test 2c: Search
@@ -116,13 +120,17 @@ After manual actions, re-run the relevant discovery call to confirm the entity i
 
 #### Test 2d: Parent hierarchy
 1. `list_folders` with `search: "<folder-nested-name-substring>", limit: 3`
-2. PASS if: folder-nested appears with `parent` field set to a non-null folder ID; that parent ID corresponds to a real folder (cross-reference with discovery data)
+2. PASS if: folder-nested appears with `parent` as `{id, name}` (enriched FolderRef, not a bare ID string); the parent ID corresponds to a real folder (cross-reference with discovery data)
 
 #### Test 2e: Pagination — limit + offset
 1. `list_folders` with `limit: 2`
 2. PASS if: exactly 2 items returned; `hasMore: true` (assuming > 2 available folders); `total` equals **folder-avail-only-total**
 3. `list_folders` with `limit: 2, offset: 2`
 4. PASS if: items differ from step 1 (second page); `total` unchanged
+
+#### Test 2f: ALL shorthand
+1. `list_folders` with `availability: ["ALL"], limit: 0`
+2. PASS if: `total` equals **folder-all-total** (ALL expands to available + dropped — the two folder states; no "blocked" state for folders)
 
 ### 3. list_perspectives
 
@@ -152,6 +160,10 @@ After manual actions, re-run the relevant discovery call to confirm the entity i
 3. Verify: list_folders default includes AVAILABLE only (folder-dropped was excluded in test 2a, and **folder-avail-only-total** < **folder-all-total**)
 4. PASS if: both defaults behave as documented — tags are more permissive (2-state default) than folders (1-state default)
 
+#### Test 4b: ALL mixed with other values — warning
+1. `list_tags` with `availability: ["ALL", "available"], limit: 5`
+2. PASS if: warning mentions "'ALL' already includes every status"; results still include tags (ALL is still expanded despite the redundancy)
+
 ### 5. Edge Cases
 
 #### Test 5a: Empty result — search no match
@@ -162,10 +174,22 @@ After manual actions, re-run the relevant discovery call to confirm the entity i
 1. Use a tag result from test 1a, a folder result from test 2a, and a perspective result from test 3a
 2. PASS if:
    - All responses have top-level fields `items` (array), `total` (number), `hasMore` (boolean — not `has_more`)
-   - Tag objects include: `id`, `name`, `availability`, `childrenAreMutuallyExclusive` (not `children_are_mutually_exclusive`), `parent`
-   - Folder objects include: `id`, `name`, `availability`, `parent`
+   - Tag objects include: `id`, `name`, `availability`, `childrenAreMutuallyExclusive` (not `children_are_mutually_exclusive`), `parent` as `{id, name}` or null (enriched TagRef, not a bare ID string)
+   - Folder objects include: `id`, `name`, `availability`, `parent` as `{id, name}` or null (enriched FolderRef, not a bare ID string)
    - Perspective objects include: `id`, `name`, `builtin`
    - No snake_case field names appear anywhere in any response
+
+### 6. Null/Empty Filter Rejection
+
+Run each INDIVIDUALLY (they will error):
+
+#### Test 6a: search: null
+1. `list_tags` with `search: null`
+2. PASS if: error says "'search' cannot be null" and suggests omitting the field
+
+#### Test 6b: availability: []
+1. `list_folders` with `availability: []`
+2. PASS if: error says "'availability' cannot be empty" and mentions using `["ALL"]` as an alternative
 
 ## Report Table Rows
 
@@ -177,15 +201,20 @@ After manual actions, re-run the relevant discovery call to confirm the entity i
 | 1d | Tags: AVAILABLE only | Blocked tags excluded when only AVAILABLE requested | |
 | 1e | Tags: pagination | limit + offset; second page has different items | |
 | 1f | Tags: limit=0 | Count-only; empty items, total > 0 | |
+| 1g | Tags: ALL shorthand | `["ALL"]` returns all 3 tag states (available + blocked + dropped) | |
 | 2a | Folders: no filters | Default returns AVAILABLE only (more restrictive than tags) | |
 | 2b | Folders: +DROPPED | Dropped folders appear when DROPPED included | |
 | 2c | Folders: search | Substring match on folder name finds the folder | |
 | 2d | Folders: parent hierarchy | Nested folder shows non-null parent ID | |
 | 2e | Folders: pagination | limit + offset; second page has different items | |
+| 2f | Folders: ALL shorthand | `["ALL"]` returns available + dropped (the two folder states) | |
 | 3a | Perspectives: no filters | Returns custom perspectives, total > 0 | |
 | 3b | Perspectives: search | Substring match on perspective name finds it | |
 | 3c | Perspectives: builtin flag | All returned perspectives have builtin: false, non-null id | |
 | 3d | Perspectives: pagination | limit + offset; different items per page | |
 | 4a | Cross-tool: availability defaults | Tags default to avail+blocked; folders default to avail only | |
+| 4b | Cross-tool: ALL mixed warning | `["ALL", "available"]` → warning about redundancy; results still complete | |
 | 5a | Edge: empty result | Impossible search → items [], total 0, hasMore false | |
-| 5b | Edge: response shape + camelCase | All three tools use camelCase fields, correct top-level shape | |
+| 5b | Edge: response shape + camelCase | All three tools use camelCase; tag/folder `parent` is enriched `{id, name}` ref | |
+| 6a | Null: search | `search: null` → cannot be null, suggests omitting | |
+| 6b | Empty: availability | `availability: []` → cannot be empty, mentions `["ALL"]` | |

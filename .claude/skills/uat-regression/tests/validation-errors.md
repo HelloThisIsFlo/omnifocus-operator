@@ -1,6 +1,6 @@
 # Validation & Error Formatting Test Suite
 
-Tests that validation errors across all tools produce clean, agent-friendly messages — no Pydantic internals, correct field casing, proper "Task N:" prefixing. Covers `add_tasks`, `edit_tasks`, and all v1.3 list tools.
+Tests that validation errors across all tools produce clean, agent-friendly messages — no Pydantic internals, correct field casing, proper "Task N:" prefixing. Covers `add_tasks`, `edit_tasks`, all v1.3 list tools, and v1.3.1 null/system-location errors.
 
 ## Conventions
 
@@ -114,6 +114,58 @@ Run each test INDIVIDUALLY (will error):
 1. `edit_tasks` with `items: [{ id: "<temp-id>", dueDate: "not-a-date", deferDate: "also-bad" }]`
 2. PASS if: error references field names in camelCase (`dueDate`, `deferDate` — NOT `due_date`, `defer_date`); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
 
+### 5. v1.3.1 Filter Null/Empty Errors
+
+Run each test INDIVIDUALLY (will error):
+
+#### Test 5a: Null filter — string field (list_tasks)
+1. `list_tasks` with `project: null`
+2. PASS if: error contains "cannot be null" and mentions omitting the field; field name appears as `project` (not snake_case); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+#### Test 5b: Null filter — cross-tool (list_projects)
+1. `list_projects` with `folder: null`
+2. PASS if: error contains "cannot be null" and mentions omitting the field; same shape as test 5a (cross-tool consistency); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+#### Test 5c: Empty tags array
+1. `list_tasks` with `tags: []`
+2. PASS if: error contains "cannot be empty" and mentions omitting the field; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+#### Test 5d: Empty availability array
+1. `list_tasks` with `availability: []`
+2. PASS if: error contains "cannot be empty" and mentions `["ALL"]` as an alternative; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+### 6. v1.3.1 Write-Side Null Errors
+
+Run each test INDIVIDUALLY (will error):
+
+#### Test 6a: Null moveTo container
+1. `edit_tasks` with `items: [{ id: "<temp-id>", moveTo: { ending: null } }]`
+2. PASS if: error contains "cannot be null" and mentions `$inbox` as the way to move to inbox; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+#### Test 6b: Null parent on add
+1. `add_tasks` with `items: [{ name: "VE-6b", parent: null }]`
+2. PASS if: error contains "cannot be null" and mentions omitting the field to create in inbox; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+### 7. v1.3.1 System Location Errors
+
+Run each test INDIVIDUALLY (will error):
+
+#### Test 7a: $inbox is not a real project
+1. `get_project` with `projectId: "$inbox"`
+2. PASS if: error explains that $inbox is not a real OmniFocus project and suggests `list_tasks` with `inInbox` instead; message is educational and actionable; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+#### Test 7b: Reserved prefix — plausible system name
+1. `add_tasks` with `items: [{ name: "VE-7b", parent: "$trash" }]`
+2. PASS if: error mentions `$` is reserved for system locations and lists valid ones (should include `$inbox`); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+#### Test 7c: Reserved prefix — arbitrary name
+1. `add_tasks` with `items: [{ name: "VE-7c", parent: "$foo" }]`
+2. PASS if: same error shape as 7b — confirms dynamic value interpolation is clean; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+#### Test 7d: Reserved prefix — read-side (list_tasks)
+1. `list_tasks` with `project: "$trash"`
+2. PASS if: error mentions `$` is reserved for system locations; same shape as 7b/7c but triggered from a list tool (cross-context consistency); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
 ## Report Table Rows
 
 | # | Test | Description | Result |
@@ -135,3 +187,13 @@ Run each test INDIVIDUALLY (will error):
 | 4a | Structural type mismatch | String instead of array → clean error | |
 | 4b | _Unset sentinel hidden | Invalid union type → no "_Unset" visible | |
 | 4c | camelCase in errors | Bad dates → field names in camelCase, not snake_case | |
+| 5a | Null filter: string field | `project: null` → clean "cannot be null" with omit guidance | |
+| 5b | Null filter: cross-tool | `folder: null` → same shape as 5a from list_projects | |
+| 5c | Empty tags array | `tags: []` → clean "cannot be empty" with omit guidance | |
+| 5d | Empty availability array | `availability: []` → clean error mentioning `["ALL"]` | |
+| 6a | Null moveTo container | `ending: null` → clean error mentioning `$inbox` | |
+| 6b | Null parent on add | `parent: null` → clean error with omit-for-inbox guidance | |
+| 7a | $inbox not a project | `get_project("$inbox")` → educational error, suggests list_tasks | |
+| 7b | Reserved prefix: $trash | `parent: "$trash"` → lists valid system locations | |
+| 7c | Reserved prefix: $foo | `parent: "$foo"` → same shape as 7b, clean interpolation | |
+| 7d | Reserved prefix: read-side | `project: "$trash"` → same error from list_tasks context | |
