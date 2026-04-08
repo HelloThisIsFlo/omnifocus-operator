@@ -130,6 +130,19 @@ DUE_SOON_THRESHOLD_NOT_DETECTED = (
     "Set OPERATOR_DUE_SOON_THRESHOLD to override."
 )
 
+# --- Defer Hints ---
+
+DEFER_AFTER_NOW_HINT = (
+    "Tip: This shows tasks with a future defer date. "
+    "For all unavailable tasks regardless of reason, use availability: 'blocked'. "
+    "Defer is one of four blocking reasons."
+)
+
+DEFER_BEFORE_NOW_HINT = (
+    "Tip: This shows tasks whose defer date has passed. "
+    "For all currently available tasks, use availability: 'available'."
+)
+
 # --- Filter Resolution ---
 
 FILTER_MULTI_MATCH = (

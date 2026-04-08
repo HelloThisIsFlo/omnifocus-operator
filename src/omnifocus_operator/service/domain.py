@@ -178,6 +178,21 @@ class DomainLogic:
             if field_name in self._LIFECYCLE_MAP:
                 lifecycle_additions.append(self._LIFECYCLE_MAP[field_name])
 
+            # Defer hint detection (D-10, D-11)
+            from omnifocus_operator.agent_messages.warnings import (
+                DEFER_AFTER_NOW_HINT,
+                DEFER_BEFORE_NOW_HINT,
+            )
+            from omnifocus_operator.contracts.use_cases.list._date_filter import (
+                DateFilter,
+            )
+
+            if field_name == "defer" and isinstance(value, DateFilter):
+                if value.after == "now":
+                    warnings.append(DEFER_AFTER_NOW_HINT)
+                if value.before == "now":
+                    warnings.append(DEFER_BEFORE_NOW_HINT)
+
             # "all" shortcut -- lifecycle expansion only, no date bounds
             if isinstance(value, StrEnum) and value.value == "all":
                 continue

@@ -54,7 +54,7 @@ def resolve_date_filter(
         ResolvedDateBounds with after/before datetimes.
 
     Raises:
-        ValueError: If "any" shortcut is passed (not a date filter).
+        ValueError: If "all" shortcut is passed (not a date filter).
         AssertionError: If "soon" is passed without ``due_soon_setting``
             (domain must handle the fallback before calling this).
     """
@@ -99,9 +99,9 @@ def _resolve_shortcut(
         )
         return ResolvedDateBounds(after=None, before=threshold)
 
-    if value == "any":
+    if value == "all":
         msg = (
-            f"'any' on field '{field_name}' is not a date filter — it expands "
+            f"'all' on field '{field_name}' is not a date filter — it expands "
             "availability. The pipeline handles this, not the date resolver."
         )
         raise ValueError(msg)

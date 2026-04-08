@@ -141,39 +141,45 @@ LIFECYCLE_DATE_SHORTCUT_DOC = (
 )
 
 DUE_FILTER_DESC = (
-    'Filter by due date. String shortcut ("overdue", "soon", "today") '
-    "or DateFilter object. 'overdue' = due before now. "
-    "'soon' = due within your OmniFocus due-soon threshold."
-)
-
-COMPLETED_FILTER_DESC = (
-    'Filter by completion date. "any" includes all completed tasks regardless of date. '
-    '"today" filters to completed today. Or use a DateFilter object for a custom range.'
-)
-
-DROPPED_FILTER_DESC = (
-    'Filter by drop date. "any" includes all dropped tasks regardless of date. '
-    '"today" filters to dropped today. Or use a DateFilter object for a custom range.'
+    "Filter by due date (effective/inherited). "
+    "Due date = deadline with real consequences if missed. "
+    "'overdue' = due before now. "
+    "'soon' = due within threshold (includes overdue). "
+    "'today' = due today. Or use DateFilter for range/shorthand."
 )
 
 DEFER_FILTER_DESC = (
-    'Filter by defer date. "today" matches tasks deferred to today. '
-    "Or use a DateFilter object for a custom range."
+    "Filter by defer date (effective/inherited). "
+    "Defer date = task hidden and unavailable until this date. "
+    "For timing questions ('what becomes available this week?'), "
+    "not availability state -- use availability: 'blocked' for all unavailable tasks. "
+    "'today' = deferred to today. Or use DateFilter for range/shorthand."
 )
 
 PLANNED_FILTER_DESC = (
-    'Filter by planned date. "today" matches tasks planned for today. '
-    "Or use a DateFilter object for a custom range."
+    "Filter by planned date (effective/inherited). "
+    "Planned date = when you intend to work on this; no urgency, no penalty for missing it. "
+    "'today' = planned for today. Or use DateFilter for range/shorthand."
+)
+
+COMPLETED_FILTER_DESC = (
+    "Inclusion filter: adds completed tasks to results "
+    "(excluded by default). 'all' = every completed task regardless of date. "
+    "'today' = completed today. Or use DateFilter for a date range."
+)
+
+DROPPED_FILTER_DESC = (
+    "Inclusion filter: adds dropped tasks to results "
+    "(excluded by default). 'all' = every dropped task regardless of date. "
+    "'today' = dropped today. Or use DateFilter for a date range."
 )
 
 ADDED_FILTER_DESC = (
-    'Filter by date added. "today" matches tasks added today. '
-    "Or use a DateFilter object for a custom range."
+    "Filter by date added. 'today' = added today. Or use DateFilter for range/shorthand."
 )
 
 MODIFIED_FILTER_DESC = (
-    'Filter by date modified. "today" matches tasks modified today. '
-    "Or use a DateFilter object for a custom range."
+    "Filter by date modified. 'today' = modified today. Or use DateFilter for range/shorthand."
 )
 
 # --- Class Docstrings: Entities ---
@@ -496,7 +502,17 @@ LIST_TASKS_TOOL_DOC = (
     "\n"
     "parent: direct container — a project or parent task.\n"
     "project: containing project at any nesting depth, or $inbox.\n"
-    "effective*: inherited from the parent hierarchy when not set directly."
+    "effective*: inherited from the parent hierarchy when not set directly.\n"
+    "\n"
+    "Filters use effective (inherited) values -- tasks inherit dates and flags\n"
+    "from parent projects/tasks. The effective* output fields show these values.\n"
+    "\n"
+    "completed/dropped filters include those lifecycle states in results\n"
+    "(excluded by default). All other filters only restrict.\n"
+    "\n"
+    "availability vs defer: 'available'/'blocked' answers 'can I act on this?'\n"
+    "(covers all four blocking reasons). defer filter answers 'what becomes\n"
+    "available when?' (timing only -- one of four blocking reasons)."
 )
 
 LIST_PROJECTS_TOOL_DOC = (
@@ -510,7 +526,10 @@ LIST_PROJECTS_TOOL_DOC = (
     "reviewInterval, nextReviewDate, hasChildren, repetitionRule, completionDate.\n"
     "\n"
     "nextTask: first available (unblocked) task — useful for identifying what to work on next.\n"
-    "effective*: inherited from the parent hierarchy when not set directly."
+    "effective*: inherited from the parent hierarchy when not set directly.\n"
+    "\n"
+    "Filters use effective (inherited) values -- projects inherit dates and flags\n"
+    "from parent folders. The effective* output fields show these values."
 )
 
 LIST_TAGS_TOOL_DOC = (
