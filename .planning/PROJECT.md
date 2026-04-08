@@ -238,4 +238,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-08 after Phase 45 gap closure (plans 04-05) complete*
+*Last updated: 2026-04-08 after Phase 46 complete — date filtering wired into list_tasks pipeline (SQL + bridge paths)*
