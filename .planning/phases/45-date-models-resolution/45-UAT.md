@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 45-date-models-resolution
 source: [45-01-SUMMARY.md, 45-02-SUMMARY.md, 45-03-SUMMARY.md]
 started: 2026-04-08T10:00:00Z
@@ -66,9 +66,16 @@ blocked: 0
   reason: "User reported: error message for this='2w' says 'use a number followed by d/w/m/y (e.g. 3d, 2w, m)' — suggests '2w' is valid (it's in the example!) but this field only accepts single unit chars (d/w/m/y). The duration validator message is reused but doesn't apply to 'this'."
   severity: major
   test: 1
-  root_cause: ""
-  artifacts: []
-  missing: []
+  root_cause: "_validate_this_unit in _date_filter.py:41-50 reuses DATE_FILTER_INVALID_DURATION error constant (errors.py:147-150) which is designed for last/next duration format. 'this' has different semantics (single unit char only) and needs its own error constant."
+  artifacts:
+    - path: "src/omnifocus_operator/contracts/use_cases/list/_date_filter.py"
+      issue: "Line 49: uses err.DATE_FILTER_INVALID_DURATION instead of a this-specific constant"
+    - path: "src/omnifocus_operator/agent_messages/errors.py"
+      issue: "Lines 147-150: DATE_FILTER_INVALID_DURATION message mentions counts and '2w' example"
+  missing:
+    - "Add DATE_FILTER_INVALID_THIS_UNIT constant in errors.py — must NOT mention counts, only bare unit chars (d/w/m/y)"
+    - "Update _validate_this_unit to use the new constant"
+    - "Update test_date_filter_contracts.py to verify correct error message"
   debug_session: ""
 
 - truth: "resolve_date_filter 'soon' shortcut uses domain-appropriate DueSoonSetting enum, not raw interval/granularity ints"
@@ -76,9 +83,21 @@ blocked: 0
   reason: "User reported: due_soon_interval and due_soon_granularity leak SQLite storage format into domain API. OmniFocus has 7 discrete settings (Today/24h/2d/3d/4d/5d/1w) — should be a DueSoonSetting enum. Mapping: Today(86400,1), 24h(86400,0), 2d(172800,1), 3d(259200,1), 4d(345600,1), 5d(432000,1), 1w(604800,1). Only 24h is rolling (granularity=0), rest are calendar-aligned."
   severity: major
   test: 7
-  root_cause: ""
-  artifacts: []
-  missing: []
+  root_cause: "resolve_date_filter (resolve_dates.py:21-28) takes raw due_soon_interval/due_soon_granularity ints because the function was designed pre-enum as a pure resolver. No DueSoonSetting enum existed — DueDateShortcut defines 'soon' as a filter value but has no config attached. The raw ints flow through to _resolve_shortcut (line 54-55), validation (line 82), and _compute_soon_threshold (lines 231-240)."
+  artifacts:
+    - path: "src/omnifocus_operator/service/resolve_dates.py"
+      issue: "Lines 21-28: signature takes due_soon_interval/due_soon_granularity as raw ints"
+    - path: "src/omnifocus_operator/service/resolve_dates.py"
+      issue: "Lines 231-240: _compute_soon_threshold uses raw interval/granularity"
+    - path: "tests/test_resolve_dates.py"
+      issue: "Lines 71-112: TestSoonShortcut passes raw ints (172800/1, 86400/0)"
+    - path: "src/omnifocus_operator/contracts/use_cases/list/_enums.py"
+      issue: "No DueSoonSetting enum exists"
+  missing:
+    - "Create DueSoonSetting enum with 7 members mapping to (interval, granularity) tuples"
+    - "Replace due_soon_interval/due_soon_granularity params with due_soon_setting: DueSoonSetting | None"
+    - "Update _compute_soon_threshold to unpack from enum"
+    - "Update all tests to use enum values instead of raw ints"
   debug_session: ""
 
 - truth: "All OPERATOR_* env vars consolidated in pydantic-settings Settings class, OPERATOR_WEEK_START documented, stale OPERATOR_BRIDGE removed from docs"
@@ -86,7 +105,24 @@ blocked: 0
   reason: "User reported: 7 OPERATOR_* env vars scattered across 5 source files using raw os.environ.get(). Should be a pydantic-settings Settings class in config.py. OPERATOR_WEEK_START is undocumented in docs/configuration.md. OPERATOR_BRIDGE entry in docs is stale — non-real bridges are test-only, the env var is no longer read in source. PYTEST_CURRENT_TEST excluded (safety guard)."
   severity: major
   test: 8
-  root_cause: ""
-  artifacts: []
-  missing: []
+  root_cause: "Historical accumulation — each milestone added env var reads where needed without a centralized config strategy. pydantic-settings is not a dependency (pyproject.toml only has fastmcp). config.py exists but only has constants and get_week_start(). Env vars read at startup in factory.py (5 vars), __main__.py (1), server.py (1 duplicate), config.py (1 lazy), hybrid.py (1 duplicate)."
+  artifacts:
+    - path: "src/omnifocus_operator/__main__.py"
+      issue: "Line 23: OPERATOR_LOG_LEVEL"
+    - path: "src/omnifocus_operator/config.py"
+      issue: "Line 46: OPERATOR_WEEK_START"
+    - path: "src/omnifocus_operator/server.py"
+      issue: "Line 103: OPERATOR_REPOSITORY (duplicate read for logging)"
+    - path: "src/omnifocus_operator/repository/factory.py"
+      issue: "Lines 55,71,73,86,119: OPERATOR_REPOSITORY, OPERATOR_IPC_DIR, OPERATOR_BRIDGE_TIMEOUT, OPERATOR_SQLITE_PATH, OPERATOR_OFOCUS_PATH"
+    - path: "src/omnifocus_operator/repository/hybrid/hybrid.py"
+      issue: "Line 598: OPERATOR_SQLITE_PATH (duplicate read)"
+    - path: "docs/configuration.md"
+      issue: "Lines 42-52: stale OPERATOR_BRIDGE entry; missing OPERATOR_WEEK_START"
+  missing:
+    - "Add pydantic-settings to pyproject.toml dependencies"
+    - "Create Settings(BaseSettings) class in config.py with all 7 OPERATOR_* fields"
+    - "Update __main__.py, factory.py, server.py, hybrid.py to consume Settings instead of os.environ.get()"
+    - "Document OPERATOR_WEEK_START in docs/configuration.md"
+    - "Remove stale OPERATOR_BRIDGE section from docs/configuration.md"
   debug_session: ""
