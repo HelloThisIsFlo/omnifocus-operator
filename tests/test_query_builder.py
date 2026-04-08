@@ -591,7 +591,11 @@ class TestDatePredicates:
         assert "OFFSET" not in count_q.sql
 
     def test_no_date_fields_no_date_predicates(self):
-        """Query with no date fields set produces no date predicates (backward compatible)."""
+        """Query with no date fields set produces no date predicates (backward compatible).
+
+        Note: availability clauses reference effectiveDateCompleted/Hidden with IS [NOT] NULL,
+        so we check specifically for the >= / < operators that date predicates use.
+        """
         query = ListTasksRepoQuery()
         data_q, _ = build_list_tasks_sql(query)
         for col in [
@@ -603,7 +607,8 @@ class TestDatePredicates:
             "dateAdded",
             "dateModified",
         ]:
-            assert col not in data_q.sql
+            assert f"t.{col} >= ?" not in data_q.sql
+            assert f"t.{col} < ?" not in data_q.sql
 
 
 class TestSqlQueryNamedTuple:

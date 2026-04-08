@@ -17,6 +17,42 @@ if TYPE_CHECKING:
     from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsRepoQuery
     from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
 
+# ---------------------------------------------------------------------------
+# Date column mapping (query field prefix -> SQLite column name)
+# ---------------------------------------------------------------------------
+
+_DATE_COLUMN_MAP: dict[str, str] = {
+    "due": "effectiveDateDue",
+    "defer": "effectiveDateToStart",
+    "planned": "effectiveDatePlanned",
+    "completed": "effectiveDateCompleted",
+    "dropped": "effectiveDateHidden",
+    "added": "dateAdded",
+    "modified": "dateModified",
+}
+
+
+def _add_date_conditions(
+    conditions: list[str],
+    params: list[Any],
+    query: ListTasksRepoQuery,
+) -> None:
+    """Append date predicates to conditions/params for each set _after/_before field.
+
+    Uses >= for _after (inclusive lower bound) and < for _before (exclusive upper bound).
+    All datetime values are converted to Core Foundation epoch seconds via _CF_EPOCH.
+    """
+    for field_name, column in _DATE_COLUMN_MAP.items():
+        after_val = getattr(query, f"{field_name}_after", None)
+        before_val = getattr(query, f"{field_name}_before", None)
+        if after_val is not None:
+            conditions.append(f"t.{column} >= ?")
+            params.append((after_val - _CF_EPOCH).total_seconds())
+        if before_val is not None:
+            conditions.append(f"t.{column} < ?")
+            params.append((before_val - _CF_EPOCH).total_seconds())
+
+
 __all__ = ["SqlQuery", "build_list_projects_sql", "build_list_tasks_sql"]
 
 
@@ -166,6 +202,9 @@ def build_list_tasks_sql(query: ListTasksRepoQuery) -> tuple[SqlQuery, SqlQuery]
         conditions.append("(t.name LIKE ? COLLATE NOCASE OR t.plainTextNote LIKE ? COLLATE NOCASE)")
         params.append(f"%{query.search}%")
         params.append(f"%{query.search}%")
+
+    # Date filters (all 7 dimensions)
+    _add_date_conditions(conditions, params, query)
 
     # -- Build WHERE clause --
     where_suffix = ""
