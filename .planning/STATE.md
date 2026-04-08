@@ -76,5 +76,5 @@ Carried forward from v1.3.1:
 
 ## Session Continuity
 
-Last activity: 2026-04-07 - Phase 45 context gathered
-Resume: .planning/phases/45-date-models-resolution/45-CONTEXT.md
+Last activity: 2026-04-08 - Phase 46 context gathered
+Resume: .planning/phases/46-pipeline-query-paths/46-CONTEXT.md
