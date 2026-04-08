@@ -7,7 +7,9 @@ from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock
 
 import pytest
+from pydantic import ValidationError
 
+from omnifocus_operator.config import Settings, get_settings
 from omnifocus_operator.contracts.protocols import Repository
 from omnifocus_operator.contracts.use_cases.list._enums import DueSoonSetting
 from omnifocus_operator.repository.bridge_only.bridge_only import BridgeOnlyRepository
@@ -149,7 +151,7 @@ def _make_bridge_only_repo():
 
 class TestBridgeOnlyGetDueSoonSetting:
     """BridgeOnlyRepository.get_due_soon_setting() reads from
-    OPERATOR_DUE_SOON_THRESHOLD env var."""
+    OPERATOR_DUE_SOON_THRESHOLD env var via Settings."""
 
     @pytest.mark.asyncio()
     async def test_returns_two_days(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -174,9 +176,8 @@ class TestBridgeOnlyGetDueSoonSetting:
     @pytest.mark.asyncio()
     async def test_raises_for_invalid_value(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("OPERATOR_DUE_SOON_THRESHOLD", "INVALID")
-        repo = _make_bridge_only_repo()
-        with pytest.raises(ValueError, match="Invalid OPERATOR_DUE_SOON_THRESHOLD"):
-            await repo.get_due_soon_setting()
+        with pytest.raises(ValidationError, match="Invalid OPERATOR_DUE_SOON_THRESHOLD"):
+            get_settings()
 
     @pytest.mark.asyncio()
     async def test_case_insensitive(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -184,3 +185,26 @@ class TestBridgeOnlyGetDueSoonSetting:
         repo = _make_bridge_only_repo()
         result = await repo.get_due_soon_setting()
         assert result is DueSoonSetting.ONE_WEEK
+
+
+# -- Settings field_validator tests --
+
+
+class TestSettingsDueSoonValidation:
+    """Direct tests for the field_validator on Settings.due_soon_threshold."""
+
+    def test_none_accepted(self) -> None:
+        settings = Settings(due_soon_threshold=None)
+        assert settings.due_soon_threshold is None
+
+    def test_valid_value_accepted(self) -> None:
+        settings = Settings(due_soon_threshold="TWO_DAYS")
+        assert settings.due_soon_threshold is DueSoonSetting.TWO_DAYS
+
+    def test_case_insensitive(self) -> None:
+        settings = Settings(due_soon_threshold="one_week")
+        assert settings.due_soon_threshold is DueSoonSetting.ONE_WEEK
+
+    def test_invalid_value_raises(self) -> None:
+        with pytest.raises(ValidationError, match="Invalid OPERATOR_DUE_SOON_THRESHOLD"):
+            Settings(due_soon_threshold="INVALID")
