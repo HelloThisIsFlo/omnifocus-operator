@@ -13,7 +13,6 @@ from types import SimpleNamespace
 import pytest
 
 from omnifocus_operator.agent_messages.warnings import (
-    AVAILABILITY_MIXED_ALL,
     EDIT_COMPLETED_TASK,
     LIFECYCLE_REPEATING_COMPLETE,
     LIFECYCLE_REPEATING_DROP,
@@ -999,10 +998,10 @@ class TestResolveDateFilters:
         assert Availability.COMPLETED in result.lifecycle_additions
         assert "completed" in result.bounds
 
-    def test_any_on_lifecycle_field(self) -> None:
-        """'completed: any' -> lifecycle addition but NO date bounds."""
+    def test_all_on_lifecycle_field(self) -> None:
+        """'completed: all' -> lifecycle addition but NO date bounds."""
         result = _domain().resolve_date_filters(
-            _date_query(completed=LifecycleDateShortcut.ANY),
+            _date_query(completed=LifecycleDateShortcut.ALL),
             _NOW,
             week_start=0,
             due_soon_setting=None,
@@ -1059,51 +1058,69 @@ class TestResolveDateFilters:
 
 
 class TestExpandTaskAvailability:
-    """DomainLogic.expand_task_availability -- expansion + lifecycle merge."""
+    """DomainLogic.expand_task_availability -- REMAINING expansion + lifecycle merge."""
 
-    def test_single_filter(self) -> None:
-        """Single filter maps to corresponding Availability."""
-        expanded, warnings = _domain().expand_task_availability([AvailabilityFilter.AVAILABLE], [])
-        assert Availability.AVAILABLE in expanded
+    def test_remaining_expands_to_available_and_blocked(self) -> None:
+        """[REMAINING] -> {AVAILABLE, BLOCKED}, no warnings."""
+        expanded, warnings = _domain().expand_task_availability([AvailabilityFilter.REMAINING], [])
+        assert set(expanded) == {Availability.AVAILABLE, Availability.BLOCKED}
         assert warnings == []
 
-    def test_all_filter_alone(self) -> None:
-        """[ALL] -> all Availability members, no warning."""
-        expanded, warnings = _domain().expand_task_availability([AvailabilityFilter.ALL], [])
-        assert set(expanded) == set(Availability)
-        assert warnings == []
-
-    def test_all_mixed_with_others(self) -> None:
-        """[ALL, AVAILABLE] -> all members + AVAILABILITY_MIXED_ALL warning."""
-        expanded, warnings = _domain().expand_task_availability(
-            [AvailabilityFilter.ALL, AvailabilityFilter.AVAILABLE], []
+    def test_available_remaining_warns_redundant(self) -> None:
+        """[AVAILABLE, REMAINING] -> {AVAILABLE, BLOCKED}, 1 warning."""
+        from omnifocus_operator.agent_messages.warnings import (  # noqa: PLC0415
+            AVAILABILITY_REMAINING_INCLUDES_AVAILABLE,
         )
-        assert set(expanded) == set(Availability)
+
+        expanded, warnings = _domain().expand_task_availability(
+            [AvailabilityFilter.AVAILABLE, AvailabilityFilter.REMAINING], []
+        )
+        assert set(expanded) == {Availability.AVAILABLE, Availability.BLOCKED}
         assert len(warnings) == 1
-        assert warnings[0] == AVAILABILITY_MIXED_ALL
+        assert warnings[0] == AVAILABILITY_REMAINING_INCLUDES_AVAILABLE
 
-    def test_empty_lifecycle_no_merge(self) -> None:
-        """Empty lifecycle_additions -> no merge effect."""
-        expanded, _warnings = _domain().expand_task_availability([AvailabilityFilter.AVAILABLE], [])
-        assert Availability.COMPLETED not in expanded
-
-    def test_lifecycle_merge_adds_values(self) -> None:
-        """Lifecycle additions merged via set-union, no duplicates."""
-        expanded, warnings = _domain().expand_task_availability(
-            [AvailabilityFilter.AVAILABLE],
-            [Availability.COMPLETED, Availability.COMPLETED],
+    def test_blocked_remaining_warns_redundant(self) -> None:
+        """[BLOCKED, REMAINING] -> {AVAILABLE, BLOCKED}, 1 warning."""
+        from omnifocus_operator.agent_messages.warnings import (  # noqa: PLC0415
+            AVAILABILITY_REMAINING_INCLUDES_BLOCKED,
         )
-        assert Availability.AVAILABLE in expanded
-        assert Availability.COMPLETED in expanded
+
+        expanded, warnings = _domain().expand_task_availability(
+            [AvailabilityFilter.BLOCKED, AvailabilityFilter.REMAINING], []
+        )
+        assert set(expanded) == {Availability.AVAILABLE, Availability.BLOCKED}
+        assert len(warnings) == 1
+        assert warnings[0] == AVAILABILITY_REMAINING_INCLUDES_BLOCKED
+
+    def test_empty_filters_expands_to_empty(self) -> None:
+        """[] -> empty set, no warnings."""
+        expanded, warnings = _domain().expand_task_availability([], [])
+        assert expanded == []
         assert warnings == []
 
-    def test_all_plus_lifecycle(self) -> None:
-        """[ALL] + lifecycle -> still all members (set union is idempotent)."""
-        expanded, _warnings = _domain().expand_task_availability(
-            [AvailabilityFilter.ALL],
-            [Availability.COMPLETED],
+    def test_single_available_no_warning(self) -> None:
+        """[AVAILABLE] -> {AVAILABLE}, no warnings."""
+        expanded, warnings = _domain().expand_task_availability([AvailabilityFilter.AVAILABLE], [])
+        assert set(expanded) == {Availability.AVAILABLE}
+        assert warnings == []
+
+    def test_empty_plus_lifecycle_completed(self) -> None:
+        """[] + lifecycle_additions=[COMPLETED] -> {COMPLETED} only."""
+        expanded, warnings = _domain().expand_task_availability([], [Availability.COMPLETED])
+        assert set(expanded) == {Availability.COMPLETED}
+        assert warnings == []
+
+    def test_remaining_plus_lifecycle_completed(self) -> None:
+        """[REMAINING] + lifecycle_additions=[COMPLETED] -> {AVAILABLE, BLOCKED, COMPLETED}."""
+        expanded, warnings = _domain().expand_task_availability(
+            [AvailabilityFilter.REMAINING], [Availability.COMPLETED]
         )
-        assert set(expanded) == set(Availability)
+        assert set(expanded) == {
+            Availability.AVAILABLE,
+            Availability.BLOCKED,
+            Availability.COMPLETED,
+        }
+        assert warnings == []
 
 
 # ---------------------------------------------------------------------------

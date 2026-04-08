@@ -13,7 +13,6 @@ import pytest
 from pydantic import ValidationError
 
 from omnifocus_operator.agent_messages.errors import (
-    AVAILABILITY_EMPTY,
     FILTER_NULL,
     OFFSET_REQUIRES_LIMIT,
     REVIEW_DUE_WITHIN_INVALID,
@@ -142,7 +141,7 @@ class TestQueryModelDefaults:
 
     def test_list_tasks_query_default_availability(self) -> None:
         query = ListTasksQuery()
-        assert query.availability == [AvailabilityFilter.AVAILABLE, AvailabilityFilter.BLOCKED]
+        assert query.availability == [AvailabilityFilter.REMAINING]
 
     def test_list_tasks_query_filter_fields_default_unset(self) -> None:
         query = ListTasksQuery()
@@ -157,7 +156,7 @@ class TestQueryModelDefaults:
 
     def test_list_projects_query_default_availability(self) -> None:
         query = ListProjectsQuery()
-        assert query.availability == [Availability.AVAILABLE, Availability.BLOCKED]
+        assert query.availability == [AvailabilityFilter.REMAINING]
 
     def test_list_projects_query_filter_fields_default_unset(self) -> None:
         query = ListProjectsQuery()
@@ -233,14 +232,14 @@ class TestQueryModelAcceptance:
 
     def test_list_projects_query_accepts_all_6_fields(self) -> None:
         query = ListProjectsQuery(
-            availability=[Availability.AVAILABLE, Availability.COMPLETED],
+            availability=[AvailabilityFilter.AVAILABLE, AvailabilityFilter.BLOCKED],
             folder="Personal",
             review_due_within="1w",
             flagged=True,
             limit=20,
             offset=0,
         )
-        assert query.availability == [Availability.AVAILABLE, Availability.COMPLETED]
+        assert query.availability == [AvailabilityFilter.AVAILABLE, AvailabilityFilter.BLOCKED]
         assert query.folder == "Personal"
         assert query.review_due_within is not None
         assert query.review_due_within.amount == 1
@@ -752,15 +751,21 @@ class TestEmptyListRejection:
 
 
 class TestAvailabilityFilterEnums:
-    """Verify AvailabilityFilter enums have correct members including ALL."""
+    """Verify AvailabilityFilter enums have correct members."""
 
-    def test_availability_filter_has_all(self) -> None:
-
-        assert AvailabilityFilter.ALL == "ALL"
+    def test_availability_filter_has_remaining(self) -> None:
         assert AvailabilityFilter.AVAILABLE == "available"
         assert AvailabilityFilter.BLOCKED == "blocked"
-        assert AvailabilityFilter.COMPLETED == "completed"
-        assert AvailabilityFilter.DROPPED == "dropped"
+        assert AvailabilityFilter.REMAINING == "remaining"
+
+    def test_availability_filter_has_exactly_3_members(self) -> None:
+        assert len(AvailabilityFilter) == 3
+
+    def test_availability_filter_no_all_completed_dropped(self) -> None:
+        member_names = {m.name for m in AvailabilityFilter}
+        assert "ALL" not in member_names
+        assert "COMPLETED" not in member_names
+        assert "DROPPED" not in member_names
 
     def test_tag_availability_filter_has_all(self) -> None:
 
@@ -782,7 +787,7 @@ class TestAvailabilityFilterEnums:
             TagAvailabilityFilter,
         )
 
-        assert AvailabilityFilter.ALL == "ALL"
+        assert AvailabilityFilter.REMAINING == "remaining"
         assert TagAvailabilityFilter.ALL == "ALL"
         assert FolderAvailabilityFilter.ALL == "ALL"
 
@@ -793,22 +798,21 @@ class TestAvailabilityFilterEnums:
 
 
 class TestAvailabilityFilterOnQueryModels:
-    """Verify query models accept AvailabilityFilter values including ALL."""
+    """Verify query models accept AvailabilityFilter values including REMAINING."""
 
-    def test_tasks_accepts_all(self) -> None:
+    def test_tasks_accepts_remaining(self) -> None:
+        query = ListTasksQuery(availability=[AvailabilityFilter.REMAINING])
+        assert query.availability == [AvailabilityFilter.REMAINING]
 
-        query = ListTasksQuery(availability=[AvailabilityFilter.ALL])
-        assert query.availability == [AvailabilityFilter.ALL]
-
-    def test_tasks_accepts_mixed_all(self) -> None:
-
-        query = ListTasksQuery(availability=[AvailabilityFilter.AVAILABLE, AvailabilityFilter.ALL])
+    def test_tasks_accepts_mixed_remaining(self) -> None:
+        query = ListTasksQuery(
+            availability=[AvailabilityFilter.AVAILABLE, AvailabilityFilter.REMAINING]
+        )
         assert len(query.availability) == 2
 
-    def test_projects_accepts_all(self) -> None:
-
-        query = ListProjectsQuery(availability=[AvailabilityFilter.ALL])
-        assert query.availability == [AvailabilityFilter.ALL]
+    def test_projects_accepts_remaining(self) -> None:
+        query = ListProjectsQuery(availability=[AvailabilityFilter.REMAINING])
+        assert query.availability == [AvailabilityFilter.REMAINING]
 
     def test_tags_accepts_all(self) -> None:
 
@@ -826,24 +830,19 @@ class TestAvailabilityFilterOnQueryModels:
 # ---------------------------------------------------------------------------
 
 
-class TestEmptyAvailabilityRejection:
-    """Verify empty availability list raises with AVAILABILITY_EMPTY message."""
+class TestEmptyAvailabilityAcceptance:
+    """Verify empty availability list [] is accepted on task and project query models."""
 
-    def test_tasks_empty_availability_raises(self) -> None:
+    def test_tasks_empty_availability_accepted(self) -> None:
+        query = ListTasksQuery(availability=[])
+        assert query.availability == []
 
-        with pytest.raises(
-            ValidationError, match=re.escape(AVAILABILITY_EMPTY.format(field="availability"))
-        ):
-            ListTasksQuery(availability=[])
-
-    def test_projects_empty_availability_raises(self) -> None:
-
-        with pytest.raises(
-            ValidationError, match=re.escape(AVAILABILITY_EMPTY.format(field="availability"))
-        ):
-            ListProjectsQuery(availability=[])
+    def test_projects_empty_availability_accepted(self) -> None:
+        query = ListProjectsQuery(availability=[])
+        assert query.availability == []
 
     def test_tags_empty_availability_raises(self) -> None:
+        from omnifocus_operator.agent_messages.errors import AVAILABILITY_EMPTY  # noqa: PLC0415
 
         with pytest.raises(
             ValidationError, match=re.escape(AVAILABILITY_EMPTY.format(field="availability"))
@@ -851,6 +850,7 @@ class TestEmptyAvailabilityRejection:
             ListTagsQuery(availability=[])
 
     def test_folders_empty_availability_raises(self) -> None:
+        from omnifocus_operator.agent_messages.errors import AVAILABILITY_EMPTY  # noqa: PLC0415
 
         with pytest.raises(
             ValidationError, match=re.escape(AVAILABILITY_EMPTY.format(field="availability"))
