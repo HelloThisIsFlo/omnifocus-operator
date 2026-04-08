@@ -100,13 +100,13 @@ class TestTasksFlaggedFilter:
     def test_flagged_true(self):
         query = ListTasksRepoQuery(flagged=True)
         data_q, _ = build_list_tasks_sql(query)
-        assert "t.flagged = ?" in data_q.sql
+        assert "t.effectiveFlagged = ?" in data_q.sql
         assert 1 in data_q.params
 
     def test_flagged_false(self):
         query = ListTasksRepoQuery(flagged=False)
         data_q, _ = build_list_tasks_sql(query)
-        assert "t.flagged = ?" in data_q.sql
+        assert "t.effectiveFlagged = ?" in data_q.sql
         assert 0 in data_q.params
 
 
@@ -270,7 +270,7 @@ class TestTasksCombinedFilters:
         query = ListTasksRepoQuery(in_inbox=True, flagged=True)
         data_q, _ = build_list_tasks_sql(query)
         assert "t.containingProjectInfo IS NULL" in data_q.sql
-        assert "t.flagged = ?" in data_q.sql
+        assert "t.effectiveFlagged = ?" in data_q.sql
         assert 1 in data_q.params
 
     def test_multiple_filters_with_limit(self):
@@ -281,7 +281,7 @@ class TestTasksCombinedFilters:
             limit=5,
         )
         data_q, count_q = build_list_tasks_sql(query)
-        assert "t.flagged = ?" in data_q.sql
+        assert "t.effectiveFlagged = ?" in data_q.sql
         assert "pi2.task IN (?)" in data_q.sql
         assert "LIKE ? COLLATE NOCASE" in data_q.sql
         assert "LIMIT ?" in data_q.sql
@@ -299,7 +299,7 @@ class TestTasksCombinedFilters:
         _data_q, count_q = build_list_tasks_sql(query)
         # Both should have the same filter params (minus limit/offset)
         # Count params should be a subset of data params
-        assert "t.flagged = ?" in count_q.sql
+        assert "t.effectiveFlagged = ?" in count_q.sql
         assert "LIKE ? COLLATE NOCASE" in count_q.sql
         # Count params = data params minus limit and offset params
         assert 1 in count_q.params  # flagged
@@ -418,13 +418,13 @@ class TestProjectsFlaggedFilter:
     def test_flagged_true(self):
         query = ListProjectsRepoQuery(flagged=True)
         data_q, _ = build_list_projects_sql(query)
-        assert "t.flagged = ?" in data_q.sql
+        assert "t.effectiveFlagged = ?" in data_q.sql
         assert 1 in data_q.params
 
     def test_flagged_false(self):
         query = ListProjectsRepoQuery(flagged=False)
         data_q, _ = build_list_projects_sql(query)
-        assert "t.flagged = ?" in data_q.sql
+        assert "t.effectiveFlagged = ?" in data_q.sql
         assert 0 in data_q.params
 
 
@@ -469,7 +469,7 @@ class TestProjectsCombinedFilters:
         )
         data_q, _ = build_list_projects_sql(query)
         assert "pi.folder IN (?)" in data_q.sql
-        assert "t.flagged = ?" in data_q.sql
+        assert "t.effectiveFlagged = ?" in data_q.sql
         assert "LIMIT ?" in data_q.sql
         assert "folder-id-1" in data_q.params
         assert 1 in data_q.params  # flagged

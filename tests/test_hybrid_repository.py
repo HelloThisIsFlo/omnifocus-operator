@@ -248,6 +248,9 @@ def _minimal_task(overrides: dict[str, Any] | None = None) -> dict[str, Any]:
         "blocked": 0,
     }
     if overrides:
+        # Auto-sync effectiveFlagged from flagged when not explicitly overridden
+        if "flagged" in overrides and "effectiveFlagged" not in overrides:
+            overrides["effectiveFlagged"] = overrides["flagged"]
         base.update(overrides)
     return base
 
@@ -302,6 +305,9 @@ def _minimal_project(overrides: dict[str, Any] | None = None) -> dict[str, Any]:
         },
     }
     if overrides:
+        # Auto-sync effectiveFlagged from flagged when not explicitly overridden
+        if "flagged" in overrides and "effectiveFlagged" not in overrides:
+            overrides["effectiveFlagged"] = overrides["flagged"]
         pi_overrides = overrides.pop("project_info", None)
         base.update(overrides)
         if pi_overrides:
