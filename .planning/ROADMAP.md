@@ -124,7 +124,7 @@
 **Milestone Goal:** Agents can filter tasks by any date dimension — due, defer, planned, completed, dropped, added, modified — using string shortcuts, shorthand periods, or absolute bounds.
 
 - [x] **Phase 45: Date Models & Resolution** (5 plans) - DateFilter model, StrEnum shortcuts, query extensions, pure date resolver, config, agent messages + UAT gap closure (completed 2026-04-07)
-- [ ] **Phase 46: Pipeline & Query Paths** (5 plans) - Service pipeline integration, SQL date predicates, bridge in-memory filtering + UAT gap closure (in progress)
+- [x] **Phase 46: Pipeline & Query Paths** (5 plans) - Service pipeline integration, SQL date predicates, bridge in-memory filtering + UAT gap closure (in progress) (completed 2026-04-08)
 - [ ] **Phase 47: Cross-Path Equivalence & Breaking Changes** - Equivalence tests with inherited dates, urgency removal, completed boolean migration, availability trimming
 
 ## Phase Details
@@ -155,13 +155,13 @@ Plans:
   2. Using `completed` or `dropped` date filter automatically includes those lifecycle states in results without the agent setting availability
   3. `due: "overdue"` and `due: "soon"` use OmniFocus pre-computed columns (SQL) / urgency enum (bridge) — matching OmniFocus UI behavior
   4. `"any"` on completed/dropped includes all tasks in that state; date filters combine with AND with each other and existing base filters
-**Plans:** 5 plans (3 complete + 2 gap closure)
+**Plans:** 5/5 plans complete
 Plans:
 - [x] 46-01-PLAN.md — Repository protocol + due-soon setting retrieval (Hybrid SQLite + BridgeOnly env var)
 - [x] 46-02-PLAN.md — SQL date predicates in query_builder + bridge in-memory date filtering
 - [x] 46-03-PLAN.md — Service pipeline _resolve_date_filters() + lifecycle auto-include + integration tests
-- [ ] 46-04-PLAN.md — Gap closure: startup validation for OPERATOR_DUE_SOON_THRESHOLD
-- [ ] 46-05-PLAN.md — Gap closure: ResolvedDateBounds rich type + due-soon fallback + inline import cleanup
+- [x] 46-04-PLAN.md — Gap closure: startup validation for OPERATOR_DUE_SOON_THRESHOLD
+- [x] 46-05-PLAN.md — Gap closure: ResolvedDateBounds rich type + due-soon fallback + inline import cleanup
 
 ### Phase 47: Cross-Path Equivalence & Breaking Changes
 **Goal**: SQL and bridge paths produce identical date filter results, and deprecated filter inputs return educational migration guidance
@@ -188,5 +188,5 @@ Plans:
 | 34-38 | v1.3 | 26/26 | Complete | 2026-04-05 |
 | 39-44 | v1.3.1 | 15/15 | Complete | 2026-04-07 |
 | 45. Date Models & Resolution | v1.3.2 | 5/5 | Complete    | 2026-04-08 |
-| 46. Pipeline & Query Paths | v1.3.2 | 3/5 | Gap closure | 2026-04-08 |
+| 46. Pipeline & Query Paths | v1.3.2 | 5/5 | Complete    | 2026-04-08 |
 | 47. Cross-Path Equivalence & Breaking Changes | v1.3.2 | 0/? | Not started | - |
