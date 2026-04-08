@@ -76,5 +76,5 @@ Carried forward from v1.3.1:
 
 ## Session Continuity
 
-Last activity: 2026-04-08 - Phase 46 context gathered
-Resume: .planning/phases/46-pipeline-query-paths/46-CONTEXT.md
+Last activity: 2026-04-08 - Phase 47 context gathered
+Resume: .planning/phases/47-cross-path-equivalence-breaking-changes/47-CONTEXT.md
