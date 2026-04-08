@@ -173,7 +173,7 @@ class TestDateFilterDuration:
 
     def test_this_only_accepts_single_unit(self) -> None:
         """'this' accepts only a bare unit char (d/w/m/y), not a count+unit."""
-        with pytest.raises(ValueError, match="Invalid duration"):
+        with pytest.raises(ValueError, match="period unit"):
             DateFilter(this="3d")
 
     def test_this_valid_units(self) -> None:

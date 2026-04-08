@@ -46,7 +46,7 @@ class DateFilter(QueryModel):
         # 'this' accepts only a bare unit (d/w/m/y), not a count+unit.
         # _DATE_DURATION_PATTERN is intentionally NOT used here.
         if not _THIS_UNIT_PATTERN.match(v):
-            raise ValueError(err.DATE_FILTER_INVALID_DURATION.format(value=v))
+            raise ValueError(err.DATE_FILTER_INVALID_THIS_UNIT.format(value=v))
         return v
 
     @field_validator("before", "after", mode="after")

@@ -149,6 +149,11 @@ DATE_FILTER_INVALID_DURATION = (
     "Count defaults to 1 when omitted, so 'w' means '1w'."
 )
 
+DATE_FILTER_INVALID_THIS_UNIT = (
+    "Invalid period unit '{value}' for 'this' -- use one of: d (day), w (week), m (month), y (year). "
+    "'this' means the current period and accepts only a single unit character."
+)
+
 DATE_FILTER_ZERO_NEGATIVE = (
     "Duration count must be positive (got '{value}'). "
     "Use a positive number followed by d/w/m/y (e.g. '1d', '2w')."
