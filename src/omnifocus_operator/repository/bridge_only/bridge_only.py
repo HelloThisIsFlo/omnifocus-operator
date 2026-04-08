@@ -45,6 +45,20 @@ if TYPE_CHECKING:
 
 __all__ = ["BridgeOnlyRepository"]
 
+# ---------------------------------------------------------------------------
+# Date field mapping (query field prefix -> Task model attribute name)
+# ---------------------------------------------------------------------------
+
+_BRIDGE_FIELD_MAP: dict[str, str] = {
+    "due": "effective_due_date",
+    "defer": "effective_defer_date",
+    "planned": "effective_planned_date",
+    "completed": "effective_completion_date",
+    "dropped": "effective_drop_date",
+    "added": "added",
+    "modified": "modified",
+}
+
 
 def _paginate[T](items: list[T], limit: int | None, offset: int) -> ListRepoResult[T]:
     """Apply offset/limit slicing and compute total/has_more for Python-filtered lists."""
@@ -185,6 +199,23 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
                 for t in items
                 if lower_search in t.name.lower() or (t.note and lower_search in t.note.lower())
             ]
+
+        # Date filters (all 7 dimensions)
+        for field_name, attr_name in _BRIDGE_FIELD_MAP.items():
+            after_val = getattr(query, f"{field_name}_after", None)
+            before_val = getattr(query, f"{field_name}_before", None)
+            if after_val is not None:
+                items = [
+                    t
+                    for t in items
+                    if getattr(t, attr_name) is not None and getattr(t, attr_name) >= after_val
+                ]
+            if before_val is not None:
+                items = [
+                    t
+                    for t in items
+                    if getattr(t, attr_name) is not None and getattr(t, attr_name) < before_val
+                ]
 
         total = len(items)
 
