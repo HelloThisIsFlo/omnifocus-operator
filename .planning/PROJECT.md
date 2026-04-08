@@ -105,7 +105,7 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 ### Active
 
-- [~] Date filtering on list_tasks and count_tasks — 7 date fields with shorthand, absolute, and string shortcuts (v1.3.2) — Phase 45 complete: DateFilter model, StrEnum shortcuts, query extensions, pure resolver
+- [~] Date filtering on list_tasks and count_tasks — 7 date fields with shorthand, absolute, and string shortcuts (v1.3.2) — Phase 45 complete: DateFilter model, StrEnum shortcuts, query extensions, pure resolver, DueSoonSetting enum, config consolidation
 - [ ] Due-soon threshold configuration (v1.3.2)
 - [ ] Existing filter changes: urgency removed, completed boolean → date filter, availability trimmed (v1.3.2)
 - [ ] Field selection, task deletion, notes append (v1.4)
@@ -137,8 +137,8 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 ## Context
 
 Shipped v1.3.1 with ~9,947 LOC Python (src/), ~215k LOC JS (bridge + deps), ~28k TS (tests).
-Tech stack: Python 3.12, uv, Pydantic v2, FastMCP v3 (`fastmcp>=3.1.1`), OmniJS bridge, SQLite3 (stdlib).
-1,693 pytest tests, 26 Vitest tests, UAT passed on all phases.
+Tech stack: Python 3.12, uv, Pydantic v2, FastMCP v3 (`fastmcp>=3.1.1`), pydantic-settings, OmniJS bridge, SQLite3 (stdlib).
+1,808 pytest tests, 26 Vitest tests, UAT passed on all phases.
 Real OmniFocus database: ~2,400 tasks, ~363 projects, ~64 tags, ~79 folders.
 Read path: SQLite (default, ~46ms for full snapshot, <6ms for filtered queries). Write path: OmniJS bridge with write-through guarantee.
 11 MCP tools: get_all, get_task, get_project, get_tag, add_tasks, edit_tasks, list_tasks, list_projects, list_tags, list_folders, list_perspectives.
@@ -215,6 +215,9 @@ Patch semantics: all write fields and list query filters use `Patch[T]` — null
 | Rich `{id, name}` refs on all cross-entity fields | Every foreign reference is an object, not a bare ID. Agents never need a second lookup to know what a reference points to | ✓ Good — v1.3.1, eliminates entire class of follow-up calls |
 | Null elimination from agent-facing schemas | All write fields and list query filters use `Patch[T]` with UNSET default. Null rejected with educational error. Service translates UNSET→None at repo boundary | ✓ Good — v1.3.1, clean three-way semantics everywhere |
 | AvailabilityFilter enums with ALL shorthand | `["all"]` expands to full `list(Availability)` at service layer. Mixed `["all", "available"]` accepted with warning | ✓ Good — v1.3.1, ergonomic for agents |
+| DateFilter contract model | Duration (`3d`), this (`w`), absolute (`before`/`after`) forms with dedicated error constants per input type | ✓ Good — v1.3.2, educational errors guide agents |
+| DueSoonSetting enum over raw SQLite ints | 7-member enum with `.days` and `.calendar_aligned` domain properties replaces leaked storage format | ✓ Good — v1.3.2, clean domain API |
+| pydantic-settings Settings class | All 7 OPERATOR_* env vars consolidated from 5 scattered files into single BaseSettings class with `get_settings()` singleton | ✓ Good — v1.3.2, single source of truth for config |
 
 ---
 ## Evolution
@@ -235,4 +238,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-07 after Phase 45 (date-models-resolution) complete*
+*Last updated: 2026-04-08 after Phase 45 gap closure (plans 04-05) complete*
