@@ -1123,3 +1123,436 @@ class TestListTasksDateFiltering:
         assert "t-match" in task_ids  # due < 4/10 AND completed >= 4/1
         assert "t-due-only" not in task_ids  # no completion date -> excluded by completed_after
         assert "t-completed-only" not in task_ids  # due >= 4/10 -> excluded by due_before
+
+
+# ---------------------------------------------------------------------------
+# list_tasks: date filter pipeline integration (service layer)
+# ---------------------------------------------------------------------------
+
+
+class TestListTasksDateFilterPipeline:
+    """Pipeline resolves date filters to datetime bounds and merges lifecycle availability.
+
+    These tests exercise the full service layer pipeline (_resolve_date_filters +
+    _build_repo_query) for date filtering, verifying end-to-end behavior through
+    the bridge path.
+    """
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t-overdue",
+                name="Overdue task",
+                effectiveDueDate="2020-01-15T10:00:00.000Z",
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-future",
+                name="Future task",
+                effectiveDueDate="2099-06-15T10:00:00.000Z",
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-no-due",
+                name="No due date",
+                project="proj-1",
+            ),
+        ],
+        projects=[make_project_dict(id="proj-1", name="Work")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_due_overdue_returns_past_due_tasks(self, service: OperatorService) -> None:
+        """due='overdue' returns only tasks whose effectiveDueDate is before now (RESOLVE-11)."""
+        result = await service.list_tasks(ListTasksQuery(due="overdue"))
+        task_ids = {t.id for t in result.items}
+        assert "t-overdue" in task_ids
+        assert "t-future" not in task_ids
+        assert "t-no-due" not in task_ids
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t-due-today",
+                name="Due today",
+                effectiveDueDate=datetime.now(UTC).strftime("%Y-%m-%dT15:00:00.000Z"),
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-due-yesterday",
+                name="Due yesterday",
+                effectiveDueDate=(datetime.now(UTC) - timedelta(days=1)).strftime(
+                    "%Y-%m-%dT10:00:00.000Z"
+                ),
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-due-tomorrow",
+                name="Due tomorrow",
+                effectiveDueDate=(datetime.now(UTC) + timedelta(days=1)).strftime(
+                    "%Y-%m-%dT10:00:00.000Z"
+                ),
+                project="proj-1",
+            ),
+        ],
+        projects=[make_project_dict(id="proj-1", name="Work")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_due_today_returns_tasks_due_today(self, service: OperatorService) -> None:
+        """due='today' returns only tasks due within today's date range."""
+        result = await service.list_tasks(ListTasksQuery(due="today"))
+        task_ids = {t.id for t in result.items}
+        assert "t-due-today" in task_ids
+        assert "t-due-yesterday" not in task_ids
+        assert "t-due-tomorrow" not in task_ids
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t-due-recent",
+                name="Due recently",
+                effectiveDueDate=(datetime.now(UTC) - timedelta(days=3)).strftime(
+                    "%Y-%m-%dT10:00:00.000Z"
+                ),
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-due-old",
+                name="Due long ago",
+                effectiveDueDate="2020-01-01T10:00:00.000Z",
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-due-future",
+                name="Due in future",
+                effectiveDueDate="2099-06-15T10:00:00.000Z",
+                project="proj-1",
+            ),
+        ],
+        projects=[make_project_dict(id="proj-1", name="Work")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_due_last_1w_returns_tasks_due_in_last_week(
+        self, service: OperatorService
+    ) -> None:
+        """due={last: '1w'} returns tasks due in the last 7 days."""
+        result = await service.list_tasks(ListTasksQuery(due={"last": "1w"}))
+        task_ids = {t.id for t in result.items}
+        assert "t-due-recent" in task_ids  # 3 days ago is within last week
+        assert "t-due-old" not in task_ids  # 2020 is way outside
+        assert "t-due-future" not in task_ids  # future is after now
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t-completed-today",
+                name="Completed today",
+                status="Completed",
+                completionDate=datetime.now(UTC).strftime("%Y-%m-%dT09:00:00.000Z"),
+                effectiveCompletionDate=datetime.now(UTC).strftime("%Y-%m-%dT09:00:00.000Z"),
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-completed-old",
+                name="Completed long ago",
+                status="Completed",
+                completionDate="2020-01-01T09:00:00.000Z",
+                effectiveCompletionDate="2020-01-01T09:00:00.000Z",
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-available",
+                name="Available task",
+                project="proj-1",
+            ),
+        ],
+        projects=[make_project_dict(id="proj-1", name="Work")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_completed_today_auto_includes_completed_availability(
+        self, service: OperatorService
+    ) -> None:
+        """completed='today' auto-includes Availability.COMPLETED (EXEC-03).
+
+        Default availability is [available, blocked] which excludes completed tasks.
+        The pipeline should auto-add 'completed' to the availability list.
+        """
+        result = await service.list_tasks(ListTasksQuery(completed="today"))
+        task_ids = {t.id for t in result.items}
+        assert "t-completed-today" in task_ids
+        assert "t-completed-old" not in task_ids  # completed outside today
+        assert "t-available" not in task_ids  # no completion date
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t-dropped-recent",
+                name="Dropped recently",
+                status="Dropped",
+                dropDate=(datetime.now(UTC) - timedelta(days=2)).strftime("%Y-%m-%dT10:00:00.000Z"),
+                effectiveDropDate=(datetime.now(UTC) - timedelta(days=2)).strftime(
+                    "%Y-%m-%dT10:00:00.000Z"
+                ),
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-dropped-old",
+                name="Dropped long ago",
+                status="Dropped",
+                dropDate="2020-01-01T10:00:00.000Z",
+                effectiveDropDate="2020-01-01T10:00:00.000Z",
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-available",
+                name="Available task",
+                project="proj-1",
+            ),
+        ],
+        projects=[make_project_dict(id="proj-1", name="Work")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_dropped_last_1w_auto_includes_dropped_availability(
+        self, service: OperatorService
+    ) -> None:
+        """dropped={last: '1w'} auto-includes Availability.DROPPED (EXEC-04)."""
+        result = await service.list_tasks(ListTasksQuery(dropped={"last": "1w"}))
+        task_ids = {t.id for t in result.items}
+        assert "t-dropped-recent" in task_ids  # dropped 2 days ago, within last week
+        assert "t-dropped-old" not in task_ids  # dropped in 2020
+        assert "t-available" not in task_ids  # not dropped
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t-completed-old",
+                name="Completed long ago",
+                status="Completed",
+                completionDate="2020-01-01T09:00:00.000Z",
+                effectiveCompletionDate="2020-01-01T09:00:00.000Z",
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-completed-recent",
+                name="Completed recently",
+                status="Completed",
+                completionDate=datetime.now(UTC).strftime("%Y-%m-%dT09:00:00.000Z"),
+                effectiveCompletionDate=datetime.now(UTC).strftime("%Y-%m-%dT09:00:00.000Z"),
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-available",
+                name="Available task",
+                project="proj-1",
+            ),
+        ],
+        projects=[make_project_dict(id="proj-1", name="Work")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_completed_any_returns_all_completed_regardless_of_date(
+        self, service: OperatorService
+    ) -> None:
+        """completed='any' adds lifecycle availability -- completed tasks appear (EXEC-05).
+
+        "any" expands availability to include 'completed' but sets no date bounds.
+        Available tasks remain visible (default availability unchanged).
+        """
+        result = await service.list_tasks(ListTasksQuery(completed="any"))
+        task_ids = {t.id for t in result.items}
+        # Both completed tasks visible regardless of completion date
+        assert "t-completed-old" in task_ids
+        assert "t-completed-recent" in task_ids
+        # Available task still visible (default availability includes 'available')
+        assert "t-available" in task_ids
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t-dropped-old",
+                name="Dropped long ago",
+                status="Dropped",
+                dropDate="2020-01-01T10:00:00.000Z",
+                effectiveDropDate="2020-01-01T10:00:00.000Z",
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-dropped-recent",
+                name="Dropped recently",
+                status="Dropped",
+                dropDate=datetime.now(UTC).strftime("%Y-%m-%dT10:00:00.000Z"),
+                effectiveDropDate=datetime.now(UTC).strftime("%Y-%m-%dT10:00:00.000Z"),
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-available",
+                name="Available task",
+                project="proj-1",
+            ),
+        ],
+        projects=[make_project_dict(id="proj-1", name="Work")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_dropped_any_returns_all_dropped_regardless_of_date(
+        self, service: OperatorService
+    ) -> None:
+        """dropped='any' adds lifecycle availability -- dropped tasks appear (EXEC-06).
+
+        "any" expands availability to include 'dropped' but sets no date bounds.
+        Available tasks remain visible (default availability unchanged).
+        """
+        result = await service.list_tasks(ListTasksQuery(dropped="any"))
+        task_ids = {t.id for t in result.items}
+        assert "t-dropped-old" in task_ids
+        assert "t-dropped-recent" in task_ids
+        # Available task still visible (default availability includes 'available')
+        assert "t-available" in task_ids
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t-completed",
+                name="Completed task",
+                status="Completed",
+                completionDate="2020-06-01T09:00:00.000Z",
+                effectiveCompletionDate="2020-06-01T09:00:00.000Z",
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-available",
+                name="Available task",
+                project="proj-1",
+            ),
+        ],
+        projects=[make_project_dict(id="proj-1", name="Work")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_completed_any_with_explicit_completed_availability_no_duplicate(
+        self, service: OperatorService
+    ) -> None:
+        """completed='any' + availability=['completed'] produces no duplicate availability."""
+        result = await service.list_tasks(
+            ListTasksQuery(
+                completed="any",
+                availability=[AvailabilityFilter.COMPLETED],
+            )
+        )
+        task_ids = {t.id for t in result.items}
+        assert "t-completed" in task_ids
+        assert "t-available" not in task_ids
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t-no-due",
+                name="No due date",
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-with-due",
+                name="Has due date",
+                effectiveDueDate="2020-06-15T10:00:00.000Z",
+                project="proj-1",
+            ),
+        ],
+        projects=[make_project_dict(id="proj-1", name="Work")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_null_effective_dates_excluded_from_date_filters(
+        self, service: OperatorService
+    ) -> None:
+        """Tasks with NULL effective dates are excluded from date filter results (EXEC-07)."""
+        result = await service.list_tasks(ListTasksQuery(due="overdue"))
+        task_ids = {t.id for t in result.items}
+        assert "t-with-due" in task_ids  # has a due date in 2020 (before now)
+        assert "t-no-due" not in task_ids  # NULL excluded
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t-flagged-overdue",
+                name="Flagged and overdue",
+                flagged=True,
+                effectiveDueDate="2020-06-15T10:00:00.000Z",
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-unflagged-overdue",
+                name="Not flagged but overdue",
+                effectiveDueDate="2020-06-15T10:00:00.000Z",
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-flagged-future",
+                name="Flagged but future",
+                flagged=True,
+                effectiveDueDate="2099-06-15T10:00:00.000Z",
+                project="proj-1",
+            ),
+        ],
+        projects=[make_project_dict(id="proj-1", name="Work")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_date_and_base_filters_compose_with_and(self, service: OperatorService) -> None:
+        """due='overdue' + flagged=True returns intersection (EXEC-09)."""
+        result = await service.list_tasks(ListTasksQuery(due="overdue", flagged=True))
+        task_ids = {t.id for t in result.items}
+        assert "t-flagged-overdue" in task_ids
+        assert "t-unflagged-overdue" not in task_ids
+        assert "t-flagged-future" not in task_ids
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t-in-range",
+                name="In range",
+                effectiveDueDate="2026-04-07T10:00:00.000Z",
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-before-range",
+                name="Before range",
+                effectiveDueDate="2026-03-01T10:00:00.000Z",
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-after-range",
+                name="After range",
+                effectiveDueDate="2026-04-20T10:00:00.000Z",
+                project="proj-1",
+            ),
+        ],
+        projects=[make_project_dict(id="proj-1", name="Work")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_due_absolute_range_returns_tasks_in_range(
+        self, service: OperatorService
+    ) -> None:
+        """due={after: '2026-04-01', before: '2026-04-14'} returns tasks in range."""
+        result = await service.list_tasks(
+            ListTasksQuery(due={"after": "2026-04-01", "before": "2026-04-14"})
+        )
+        task_ids = {t.id for t in result.items}
+        assert "t-in-range" in task_ids  # 2026-04-07 is within [04-01, 04-15)
+        assert "t-before-range" not in task_ids  # 2026-03-01 is before 04-01
+        assert "t-after-range" not in task_ids  # 2026-04-20 is after 04-15

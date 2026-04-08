@@ -200,22 +200,30 @@ def _resolve_absolute(
 
 
 def _parse_absolute_after(value: str, now: datetime) -> datetime:
-    """Parse 'after' value: date-only -> start of that day (RESOLVE-09)."""
+    """Parse 'after' value: date-only -> start of that day (RESOLVE-09).
+
+    Inherits tzinfo from ``now`` so the result is tz-aware when ``now`` is tz-aware.
+    This prevents ``TypeError: can't compare offset-naive and offset-aware datetimes``
+    when the bridge path compares resolved bounds against Task model AwareDatetime fields.
+    """
     if value == "now":
         return now
     if _is_date_only(value):
         d = date.fromisoformat(value)
-        return datetime(d.year, d.month, d.day)
+        return datetime(d.year, d.month, d.day, tzinfo=now.tzinfo)
     return datetime.fromisoformat(value)
 
 
 def _parse_absolute_before(value: str, now: datetime) -> datetime:
-    """Parse 'before' value: date-only -> start of NEXT day (RESOLVE-08)."""
+    """Parse 'before' value: date-only -> start of NEXT day (RESOLVE-08).
+
+    Inherits tzinfo from ``now`` so the result is tz-aware when ``now`` is tz-aware.
+    """
     if value == "now":
         return now
     if _is_date_only(value):
         d = date.fromisoformat(value)
-        return datetime(d.year, d.month, d.day) + timedelta(days=1)
+        return datetime(d.year, d.month, d.day, tzinfo=now.tzinfo) + timedelta(days=1)
     return datetime.fromisoformat(value)
 
 
