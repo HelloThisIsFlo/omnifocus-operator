@@ -49,6 +49,7 @@ if TYPE_CHECKING:
 
 import logging
 
+from omnifocus_operator.contracts.use_cases.list._enums import DueSoonSetting
 from omnifocus_operator.models.folder import Folder
 from omnifocus_operator.models.perspective import Perspective
 from omnifocus_operator.models.project import Project
@@ -59,6 +60,19 @@ from omnifocus_operator.models.task import Task
 logger = logging.getLogger(__name__)
 
 __all__ = ["HybridRepository"]
+
+# Map (DueSoonInterval_seconds, DueSoonGranularity) -> DueSoonSetting enum member.
+# DueSoonInterval is stored in seconds in the SQLite Setting table.
+# DueSoonGranularity: 1 = calendar-aligned (snap to midnight), 0 = rolling (from now).
+_SETTING_MAP: dict[tuple[int, int], DueSoonSetting] = {
+    (86400, 1): DueSoonSetting.TODAY,
+    (86400, 0): DueSoonSetting.TWENTY_FOUR_HOURS,
+    (172800, 1): DueSoonSetting.TWO_DAYS,
+    (259200, 1): DueSoonSetting.THREE_DAYS,
+    (345600, 1): DueSoonSetting.FOUR_DAYS,
+    (432000, 1): DueSoonSetting.FIVE_DAYS,
+    (604800, 1): DueSoonSetting.ONE_WEEK,
+}
 
 
 def _paginate[T](items: list[T], limit: int | None, offset: int) -> ListRepoResult[T]:
@@ -984,3 +998,39 @@ class HybridRepository(BridgeWriteMixin, Repository):
     ) -> ListRepoResult[Perspective]:
         """Return perspectives from the SQLite cache, optionally filtered by search."""
         return await asyncio.to_thread(self._list_perspectives_sync, query)
+
+    # -- Due-soon setting --
+
+    def _read_due_soon_setting_sync(self) -> DueSoonSetting | None:
+        """Read DueSoonInterval and DueSoonGranularity from the SQLite Setting table.
+
+        Returns the matching DueSoonSetting enum member, or None if:
+        - The Setting table is missing the required rows
+        - The interval/granularity pair doesn't match any known setting
+        """
+        conn = sqlite3.connect(f"file:{self._db_path}?mode=ro", uri=True)
+        conn.row_factory = sqlite3.Row
+        try:
+            rows = conn.execute(
+                "SELECT key, value FROM Setting "
+                "WHERE key IN ('DueSoonInterval', 'DueSoonGranularity')"
+            ).fetchall()
+            settings: dict[str, str] = {row["key"]: row["value"] for row in rows}
+
+            interval_raw = settings.get("DueSoonInterval")
+            granularity_raw = settings.get("DueSoonGranularity")
+            if interval_raw is None or granularity_raw is None:
+                return None
+
+            try:
+                key = (int(interval_raw), int(granularity_raw))
+            except (ValueError, TypeError):
+                return None
+
+            return _SETTING_MAP.get(key)
+        finally:
+            conn.close()
+
+    async def get_due_soon_setting(self) -> DueSoonSetting | None:
+        """Return the OmniFocus due-soon threshold setting, or None if unavailable."""
+        return await asyncio.to_thread(self._read_due_soon_setting_sync)

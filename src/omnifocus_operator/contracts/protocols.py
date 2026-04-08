@@ -23,6 +23,7 @@ if TYPE_CHECKING:
         EditTaskRepoResult,
         EditTaskResult,
     )
+    from omnifocus_operator.contracts.use_cases.list._enums import DueSoonSetting
     from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult, ListResult
     from omnifocus_operator.contracts.use_cases.list.folders import (
         ListFoldersQuery,
@@ -101,6 +102,8 @@ class Repository(Protocol):
     async def list_perspectives(
         self, query: ListPerspectivesRepoQuery
     ) -> ListRepoResult[Perspective]: ...
+
+    async def get_due_soon_setting(self) -> DueSoonSetting | None: ...
 
 
 @runtime_checkable
