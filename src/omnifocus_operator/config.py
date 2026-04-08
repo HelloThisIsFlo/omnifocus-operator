@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from omnifocus_operator.models.enums import EntityType
@@ -56,7 +58,28 @@ class Settings(BaseSettings):
     bridge_timeout: float = 10.0
     sqlite_path: str | None = None
     ofocus_path: str | None = None
-    due_soon_threshold: str | None = None
+    due_soon_threshold: Any = None
+
+    @field_validator("due_soon_threshold", mode="before")
+    @classmethod
+    def _validate_due_soon_threshold(cls, value: object) -> Any:
+        from omnifocus_operator.contracts.use_cases.list._enums import (  # noqa: PLC0415
+            DueSoonSetting,
+        )
+
+        if value is None:
+            return None
+        if isinstance(value, DueSoonSetting):
+            return value
+        if isinstance(value, str):
+            try:
+                return DueSoonSetting[value.upper()]
+            except KeyError:
+                valid = ", ".join(m.name for m in DueSoonSetting)
+                raise ValueError(
+                    f"Invalid OPERATOR_DUE_SOON_THRESHOLD '{value}'. Valid values: {valid}"
+                ) from None
+        raise ValueError(f"Expected string or None, got {type(value).__name__}")
 
 
 _settings: Settings | None = None
