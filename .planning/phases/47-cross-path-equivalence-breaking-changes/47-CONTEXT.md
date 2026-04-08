@@ -20,7 +20,7 @@ SQL and bridge paths produce identical date filter results, availability filter 
 - **D-04:** Warnings for redundant combinations:
   - `["available", "remaining"]` -> warn: remaining already includes available
   - `["blocked", "remaining"]` -> warn: remaining already includes blocked
-  - Empty list `[]` -> **accepted**. Returns no active tasks. Combined with `completed: "all"`, returns only completed tasks. This is the canonical way to get lifecycle-only results.
+  - Empty list `[]` -> **accepted**. Returns no remaining tasks. Combined with `completed: "all"`, returns only completed tasks; combined with `dropped: "all"`, only dropped; both together returns completed + dropped (union — a task can't be both).
 - **D-05:** `availability: "any"` -> Pydantic rejects (not a valid enum value). No custom interception needed — project is pre-release, no backward compatibility concern.
 
 ### Lifecycle Inclusion via Date Filters
@@ -66,6 +66,7 @@ SQL and bridge paths produce identical date filter results, availability filter 
 ```python
 DUE_FILTER_DESC = (
     "Filter by due date (effective/inherited). "
+    "Due date = deadline with real consequences if missed. "
     "'overdue' = due before now. "
     "'soon' = due within threshold (includes overdue). "
     "'today' = due today. Or use DateFilter for range/shorthand."
@@ -73,6 +74,7 @@ DUE_FILTER_DESC = (
 
 DEFER_FILTER_DESC = (
     "Filter by defer date (effective/inherited). "
+    "Defer date = task hidden and unavailable until this date. "
     "For timing questions ('what becomes available this week?'), "
     "not availability state -- use availability: 'blocked' for all unavailable tasks. "
     "'today' = deferred to today. Or use DateFilter for range/shorthand."
@@ -80,17 +82,18 @@ DEFER_FILTER_DESC = (
 
 PLANNED_FILTER_DESC = (
     "Filter by planned date (effective/inherited). "
+    "Planned date = when you intend to work on this; no urgency, no penalty for missing it. "
     "'today' = planned for today. Or use DateFilter for range/shorthand."
 )
 
 COMPLETED_FILTER_DESC = (
-    "Filter by completion date. Includes completed tasks in results "
+    "Inclusion filter: adds completed tasks to results "
     "(excluded by default). 'all' = every completed task regardless of date. "
     "'today' = completed today. Or use DateFilter for a date range."
 )
 
 DROPPED_FILTER_DESC = (
-    "Filter by drop date. Includes dropped tasks in results "
+    "Inclusion filter: adds dropped tasks to results "
     "(excluded by default). 'all' = every dropped task regardless of date. "
     "'today' = dropped today. Or use DateFilter for a date range."
 )
@@ -112,7 +115,7 @@ MODIFIED_FILTER_DESC = (
 AVAILABILITY_FILTER_DESC = (
     "Which lifecycle states to include. "
     "'remaining' (default) = available + blocked. "
-    "Empty list [] = no active tasks (combine with completed/dropped filters for lifecycle-only results). "
+    "Empty list [] = no remaining tasks (combine with completed/dropped filters for lifecycle-only results). "
     "Completed/dropped tasks are included via their own date filters, not here."
 )
 ```
