@@ -355,6 +355,7 @@ class _ListTasksPipeline(_ReadPipeline):
         self._check_inbox_project_warning()
         self._resolve_project()
         self._resolve_tags()
+        await self._resolve_date_filters()
         self._build_repo_query()
         return await self._delegate()
 
@@ -397,17 +398,119 @@ class _ListTasksPipeline(_ReadPipeline):
         if all_resolved:
             self._tag_ids = all_resolved
 
+    async def _resolve_date_filters(self) -> None:
+        """Resolve all 7 date filter fields to absolute datetime bounds.
+
+        Captures ``datetime.now(UTC)`` once for consistency across a single query.
+        For lifecycle fields (completed/dropped), auto-includes the corresponding
+        Availability value so that tasks with those statuses appear in results.
+        """
+        from enum import StrEnum  # noqa: PLC0415
+
+        from omnifocus_operator.config import get_week_start  # noqa: PLC0415
+        from omnifocus_operator.contracts.use_cases.list._enums import (  # noqa: PLC0415
+            DueSoonSetting,
+        )
+        from omnifocus_operator.service.resolve_dates import (  # noqa: PLC0415
+            resolve_date_filter,
+        )
+
+        self._now = datetime.now(UTC)
+        self._lifecycle_availability_additions: list[Availability] = []
+
+        # Initialize all 14 bounds to None
+        self._due_after: datetime | None = None
+        self._due_before: datetime | None = None
+        self._defer_after: datetime | None = None
+        self._defer_before: datetime | None = None
+        self._planned_after: datetime | None = None
+        self._planned_before: datetime | None = None
+        self._completed_after: datetime | None = None
+        self._completed_before: datetime | None = None
+        self._dropped_after: datetime | None = None
+        self._dropped_before: datetime | None = None
+        self._added_after: datetime | None = None
+        self._added_before: datetime | None = None
+        self._modified_after: datetime | None = None
+        self._modified_before: datetime | None = None
+
+        # Resolve due-soon setting conditionally (D-02)
+        due_soon_setting: DueSoonSetting | None = None
+        if (
+            is_set(self._query.due)
+            and isinstance(self._query.due, StrEnum)
+            and self._query.due.value == "soon"
+        ):
+            due_soon_setting = await self._repository.get_due_soon_setting()
+
+        week_start = get_week_start()
+
+        # Resolve each date field
+        date_fields: list[tuple[str, object, Availability | None]] = [
+            ("due", self._query.due, None),
+            ("defer", self._query.defer, None),
+            ("planned", self._query.planned, None),
+            ("completed", self._query.completed, Availability.COMPLETED),
+            ("dropped", self._query.dropped, Availability.DROPPED),
+            ("added", self._query.added, None),
+            ("modified", self._query.modified, None),
+        ]
+
+        for field_name, value, lifecycle_avail in date_fields:
+            if not is_set(value):
+                continue
+
+            # Handle lifecycle additions (completed/dropped)
+            if lifecycle_avail is not None:
+                self._lifecycle_availability_additions.append(lifecycle_avail)
+
+            # Handle "any" shortcut -- lifecycle expansion only, no date bounds
+            if isinstance(value, StrEnum) and value.value == "any":
+                continue
+
+            # Resolve date filter to (after, before) bounds
+            after_dt, before_dt = resolve_date_filter(
+                value,
+                field_name,
+                self._now,
+                week_start=week_start,
+                due_soon_setting=due_soon_setting,
+            )
+
+            setattr(self, f"_{field_name}_after", after_dt)
+            setattr(self, f"_{field_name}_before", before_dt)
+
     def _build_repo_query(self) -> None:
+        # Merge lifecycle additions with expanded availability (set-union, per D-08)
+        expanded = _expand_availability(self._query.availability, self._warnings)
+        if self._lifecycle_availability_additions:
+            availability_set = set(expanded) | set(self._lifecycle_availability_additions)
+            expanded = list(availability_set)
+
         self._repo_query = ListTasksRepoQuery(
             in_inbox=self._in_inbox,
             flagged=unset_to_none(self._query.flagged),
             project_ids=self._project_ids,
             tag_ids=self._tag_ids,
             estimated_minutes_max=unset_to_none(self._query.estimated_minutes_max),
-            availability=_expand_availability(self._query.availability, self._warnings),
+            availability=expanded,
             search=unset_to_none(self._query.search),
             limit=self._query.limit,
             offset=self._query.offset,
+            due_after=self._due_after,
+            due_before=self._due_before,
+            defer_after=self._defer_after,
+            defer_before=self._defer_before,
+            planned_after=self._planned_after,
+            planned_before=self._planned_before,
+            completed_after=self._completed_after,
+            completed_before=self._completed_before,
+            dropped_after=self._dropped_after,
+            dropped_before=self._dropped_before,
+            added_after=self._added_after,
+            added_before=self._added_before,
+            modified_after=self._modified_after,
+            modified_before=self._modified_before,
         )
 
     async def _delegate(self) -> ListResult[Task]:
