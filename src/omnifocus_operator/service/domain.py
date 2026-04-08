@@ -7,10 +7,13 @@ merge into the final response.
 
 from __future__ import annotations
 
+import calendar
 import logging
-from datetime import UTC, datetime
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from datetime import date as date_type
-from typing import TYPE_CHECKING, Any
+from enum import StrEnum
+from typing import TYPE_CHECKING, Any, ClassVar
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -23,6 +26,8 @@ from omnifocus_operator.agent_messages.errors import (
     NO_POSITION_KEY,
 )
 from omnifocus_operator.agent_messages.warnings import (
+    AVAILABILITY_MIXED_ALL,
+    DUE_SOON_THRESHOLD_NOT_DETECTED,
     EDIT_COMPLETED_TASK,
     EDIT_NO_CHANGES_DETECTED,
     EDIT_NO_CHANGES_SPECIFIED,
@@ -49,6 +54,7 @@ from omnifocus_operator.agent_messages.warnings import (
 )
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
+from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
 from omnifocus_operator.models.enums import Availability, Schedule
 from omnifocus_operator.models.repetition_rule import (
     EndByDate,
@@ -58,6 +64,10 @@ from omnifocus_operator.models.repetition_rule import (
 from omnifocus_operator.service.errors import EntityTypeMismatchError
 from omnifocus_operator.service.fuzzy import (
     suggest_close_matches as _suggest_close_matches,
+)
+from omnifocus_operator.service.resolve_dates import (
+    ResolvedDateBounds,
+    resolve_date_filter,
 )
 
 if TYPE_CHECKING:
@@ -71,6 +81,11 @@ if TYPE_CHECKING:
         EditTaskCommand,
         EditTaskRepoPayload,
     )
+    from omnifocus_operator.contracts.use_cases.list._enums import DueSoonSetting
+    from omnifocus_operator.contracts.use_cases.list.projects import (
+        DurationUnit,
+        ReviewDueFilter,
+    )
     from omnifocus_operator.models.common import TagRef
     from omnifocus_operator.models.enums import BasedOn
     from omnifocus_operator.models.task import Task
@@ -78,7 +93,24 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["DomainLogic"]
+__all__ = ["DomainLogic", "ResolvedDateFilters"]
+
+
+# ---------------------------------------------------------------------------
+# Data structures
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ResolvedDateFilters:
+    """Result of resolving all date filter fields to absolute bounds.
+
+    Internal dataclass -- not a boundary model (see model-taxonomy.md).
+    """
+
+    bounds: dict[str, ResolvedDateBounds]
+    lifecycle_additions: list[Availability]
+    warnings: list[str]
 
 
 # ---------------------------------------------------------------------------
@@ -108,6 +140,120 @@ class DomainLogic:
     def __init__(self, repo: Repository, resolver: Resolver) -> None:
         self._repo = repo
         self._resolver = resolver
+
+    # -- Date filter resolution ------------------------------------------------
+
+    _DATE_FIELD_NAMES = ("due", "defer", "planned", "completed", "dropped", "added", "modified")
+    _LIFECYCLE_MAP: ClassVar[dict[str, Availability]] = {
+        "completed": Availability.COMPLETED,
+        "dropped": Availability.DROPPED,
+    }
+
+    def resolve_date_filters(
+        self,
+        query: Any,
+        now: datetime,
+        week_start: int,
+        due_soon_setting: DueSoonSetting | None,
+    ) -> ResolvedDateFilters:
+        """Resolve date filter fields to absolute bounds with lifecycle mapping.
+
+        Extracts the 7 date fields from *query*, skipping any that are unset.
+        For each set field:
+        - Lifecycle fields (completed/dropped) add the corresponding Availability.
+        - "any" shortcuts expand availability only -- no date bounds.
+        - "soon" without ``due_soon_setting`` falls back to TODAY bounds + warning.
+        - Everything else delegates to ``resolve_date_filter()``.
+        """
+        bounds: dict[str, ResolvedDateBounds] = {}
+        lifecycle_additions: list[Availability] = []
+        warnings: list[str] = []
+
+        for field_name in self._DATE_FIELD_NAMES:
+            value = getattr(query, field_name)
+            if not is_set(value):
+                continue
+            # Lifecycle expansion
+            if field_name in self._LIFECYCLE_MAP:
+                lifecycle_additions.append(self._LIFECYCLE_MAP[field_name])
+
+            # "any" shortcut -- lifecycle expansion only, no date bounds
+            if isinstance(value, StrEnum) and value.value == "any":
+                continue
+
+            # "soon" without due_soon_setting -- domain owns fallback
+            if isinstance(value, StrEnum) and value.value == "soon" and due_soon_setting is None:
+                midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+                bounds[field_name] = ResolvedDateBounds(
+                    after=midnight,
+                    before=midnight + timedelta(days=1),
+                )
+                warnings.append(DUE_SOON_THRESHOLD_NOT_DETECTED)
+                continue
+
+            # Normal resolution
+            bounds[field_name] = resolve_date_filter(
+                value,
+                field_name,
+                now,
+                week_start=week_start,
+                due_soon_setting=due_soon_setting,
+            )
+
+        return ResolvedDateFilters(
+            bounds=bounds,
+            lifecycle_additions=lifecycle_additions,
+            warnings=warnings,
+        )
+
+    # -- Availability expansion ------------------------------------------------
+
+    def expand_task_availability(
+        self,
+        filters: list[AvailabilityFilter],
+        lifecycle_additions: list[Availability],
+    ) -> tuple[list[Availability], list[str]]:
+        """Expand availability filters + merge lifecycle additions.
+
+        Returns (expanded availability list, warnings).
+        """
+        warnings: list[str] = []
+        has_all = AvailabilityFilter.ALL in filters
+        if has_all:
+            if len(filters) > 1:
+                warnings.append(AVAILABILITY_MIXED_ALL)
+            result_set = set(Availability)
+        else:
+            result_set = {Availability(f.value) for f in filters}
+
+        result_set |= set(lifecycle_additions)
+        return list(result_set), warnings
+
+    # -- Review-due expansion --------------------------------------------------
+
+    def expand_review_due(self, f: ReviewDueFilter, now: datetime) -> datetime:
+        """Expand ReviewDueFilter to a concrete datetime threshold."""
+        if f.amount is None:
+            return now
+        unit: DurationUnit = f.unit  # type: ignore[assignment]
+        amount = f.amount
+        if unit.value == "d":
+            return now + timedelta(days=amount)
+        if unit.value == "w":
+            return now + timedelta(weeks=amount)
+        if unit.value == "m":
+            month = now.month + amount
+            year = now.year + (month - 1) // 12
+            month = (month - 1) % 12 + 1
+            day = min(now.day, calendar.monthrange(year, month)[1])
+            return now.replace(year=year, month=month, day=day)
+        if unit.value == "y":
+            year = now.year + amount
+            day = min(now.day, calendar.monthrange(year, now.month)[1])
+            return now.replace(year=year, day=day)
+        raise AssertionError  # unreachable: all DurationUnit members handled above
+
+    # -- Filter resolution -----------------------------------------------------
 
     def check_filter_resolution(
         self,

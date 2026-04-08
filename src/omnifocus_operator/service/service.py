@@ -12,9 +12,8 @@ delegate to repository. All heavy lifting lives in the extracted modules:
 from __future__ import annotations
 
 import asyncio
-import calendar
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, NoReturn
 
@@ -34,7 +33,6 @@ from omnifocus_operator.contracts.shared.repetition_rule import RepetitionRuleRe
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskResult
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
 from omnifocus_operator.contracts.use_cases.list._enums import (
-    AvailabilityFilter,
     FolderAvailabilityFilter,
     TagAvailabilityFilter,
 )
@@ -46,9 +44,7 @@ from omnifocus_operator.contracts.use_cases.list.perspectives import (
     ListPerspectivesRepoQuery,
 )
 from omnifocus_operator.contracts.use_cases.list.projects import (
-    DurationUnit,
     ListProjectsRepoQuery,
-    ReviewDueFilter,
 )
 from omnifocus_operator.contracts.use_cases.list.tags import (
     ListTagsRepoQuery,
@@ -62,7 +58,6 @@ from omnifocus_operator.service.convert import end_condition_from_spec, frequenc
 from omnifocus_operator.service.domain import DomainLogic
 from omnifocus_operator.service.payload import PayloadBuilder
 from omnifocus_operator.service.resolve import Resolver
-from omnifocus_operator.service.resolve_dates import resolve_date_filter
 from omnifocus_operator.service.validate import (
     validate_task_name,
     validate_task_name_if_set,
@@ -101,18 +96,6 @@ def matches_inbox_name(value: object) -> bool:
     if not isinstance(value, str):
         return False
     return value.lower() in "Inbox".lower()
-
-
-def _expand_availability(
-    filters: list[AvailabilityFilter], warnings: list[str]
-) -> list[Availability]:
-    """Expand AvailabilityFilter values to core Availability for repo query."""
-    has_all = AvailabilityFilter.ALL in filters
-    if has_all:
-        if len(filters) > 1:
-            warnings.append(AVAILABILITY_MIXED_ALL)
-        return list(Availability)
-    return [Availability(f.value) for f in filters]
 
 
 def _expand_tag_availability(
@@ -403,33 +386,10 @@ class _ListTasksPipeline(_ReadPipeline):
             self._tag_ids = all_resolved
 
     async def _resolve_date_filters(self) -> None:
-        """Resolve all 7 date filter fields to absolute datetime bounds.
-
-        Captures ``datetime.now(UTC)`` once for consistency across a single query.
-        For lifecycle fields (completed/dropped), auto-includes the corresponding
-        Availability value so that tasks with those statuses appear in results.
-        """
-
+        """Resolve all 7 date filter fields via domain delegation."""
         self._now = datetime.now(UTC)
-        self._lifecycle_availability_additions: list[Availability] = []
 
-        # Initialize all 14 bounds to None
-        self._due_after: datetime | None = None
-        self._due_before: datetime | None = None
-        self._defer_after: datetime | None = None
-        self._defer_before: datetime | None = None
-        self._planned_after: datetime | None = None
-        self._planned_before: datetime | None = None
-        self._completed_after: datetime | None = None
-        self._completed_before: datetime | None = None
-        self._dropped_after: datetime | None = None
-        self._dropped_before: datetime | None = None
-        self._added_after: datetime | None = None
-        self._added_before: datetime | None = None
-        self._modified_after: datetime | None = None
-        self._modified_before: datetime | None = None
-
-        # Resolve due-soon setting conditionally (D-02)
+        # Resolve due-soon setting conditionally (D-02) -- I/O stays in pipeline
         due_soon_setting: DueSoonSetting | None = None
         if (
             is_set(self._query.due)
@@ -440,48 +400,24 @@ class _ListTasksPipeline(_ReadPipeline):
 
         week_start = get_week_start()
 
-        # Resolve each date field
-        date_fields: list[tuple[str, Any, Availability | None]] = [
-            ("due", self._query.due, None),
-            ("defer", self._query.defer, None),
-            ("planned", self._query.planned, None),
-            ("completed", self._query.completed, Availability.COMPLETED),
-            ("dropped", self._query.dropped, Availability.DROPPED),
-            ("added", self._query.added, None),
-            ("modified", self._query.modified, None),
-        ]
-
-        for field_name, value, lifecycle_avail in date_fields:
-            if not is_set(value):
-                continue
-
-            # Handle lifecycle additions (completed/dropped)
-            if lifecycle_avail is not None:
-                self._lifecycle_availability_additions.append(lifecycle_avail)
-
-            # Handle "any" shortcut -- lifecycle expansion only, no date bounds
-            if isinstance(value, StrEnum) and value.value == "any":
-                continue
-
-            # Resolve date filter to absolute bounds
-            resolved = resolve_date_filter(
-                value,
-                field_name,
-                self._now,
-                week_start=week_start,
-                due_soon_setting=due_soon_setting,
-            )
-
-            setattr(self, f"_{field_name}_after", resolved.after)
-            setattr(self, f"_{field_name}_before", resolved.before)
-            self._warnings.extend(resolved.warnings)
+        # Delegate to domain -- field extraction + UNSET filtering handled there
+        self._date_result = self._domain.resolve_date_filters(
+            self._query, self._now, week_start, due_soon_setting
+        )
+        self._warnings.extend(self._date_result.warnings)
 
     def _build_repo_query(self) -> None:
-        # Merge lifecycle additions with expanded availability (set-union, per D-08)
-        expanded = _expand_availability(self._query.availability, self._warnings)
-        if self._lifecycle_availability_additions:
-            availability_set = set(expanded) | set(self._lifecycle_availability_additions)
-            expanded = list(availability_set)
+        # Expand availability + merge lifecycle additions via domain
+        expanded, avail_warns = self._domain.expand_task_availability(
+            self._query.availability, self._date_result.lifecycle_additions
+        )
+        self._warnings.extend(avail_warns)
+
+        # Unpack date bounds from domain result
+        date_kwargs: dict[str, datetime | None] = {}
+        for name, bounds in self._date_result.bounds.items():
+            date_kwargs[f"{name}_after"] = bounds.after
+            date_kwargs[f"{name}_before"] = bounds.before
 
         self._repo_query = ListTasksRepoQuery(
             in_inbox=self._in_inbox,
@@ -493,20 +429,7 @@ class _ListTasksPipeline(_ReadPipeline):
             search=unset_to_none(self._query.search),
             limit=self._query.limit,
             offset=self._query.offset,
-            due_after=self._due_after,
-            due_before=self._due_before,
-            defer_after=self._defer_after,
-            defer_before=self._defer_before,
-            planned_after=self._planned_after,
-            planned_before=self._planned_before,
-            completed_after=self._completed_after,
-            completed_before=self._completed_before,
-            dropped_after=self._dropped_after,
-            dropped_before=self._dropped_before,
-            added_after=self._added_after,
-            added_before=self._added_before,
-            modified_after=self._modified_after,
-            modified_before=self._modified_before,
+            **date_kwargs,
         )
 
     async def _delegate(self) -> ListResult[Task]:
@@ -556,10 +479,13 @@ class _ListProjectsPipeline(_ReadPipeline):
         review_due_before: datetime | None = None
         review_due_within = unset_to_none(self._query.review_due_within)
         if review_due_within is not None:
-            review_due_before = self._expand_review_due(review_due_within)
+            review_due_before = self._domain.expand_review_due(review_due_within, datetime.now(UTC))
+
+        expanded, avail_warns = self._domain.expand_task_availability(self._query.availability, [])
+        self._warnings.extend(avail_warns)
 
         self._repo_query = ListProjectsRepoQuery(
-            availability=_expand_availability(self._query.availability, self._warnings),
+            availability=expanded,
             folder_ids=self._folder_ids,
             review_due_before=review_due_before,
             flagged=unset_to_none(self._query.flagged),
@@ -567,31 +493,6 @@ class _ListProjectsPipeline(_ReadPipeline):
             limit=self._query.limit,
             offset=self._query.offset,
         )
-
-    @staticmethod
-    def _expand_review_due(f: ReviewDueFilter) -> datetime:
-        """Expand ReviewDueFilter to a concrete datetime threshold."""
-        now = datetime.now(UTC)
-        if f.amount is None:
-            return now
-        unit = f.unit
-        amount = f.amount
-        if unit == DurationUnit.DAYS:
-            return now + timedelta(days=amount)
-        if unit == DurationUnit.WEEKS:
-            return now + timedelta(weeks=amount)
-        if unit == DurationUnit.MONTHS:
-            # Manual calendar arithmetic (no dateutil dependency)
-            month = now.month + amount
-            year = now.year + (month - 1) // 12
-            month = (month - 1) % 12 + 1
-            day = min(now.day, calendar.monthrange(year, month)[1])
-            return now.replace(year=year, month=month, day=day)
-        if unit == DurationUnit.YEARS:
-            year = now.year + amount
-            day = min(now.day, calendar.monthrange(year, now.month)[1])
-            return now.replace(year=year, day=day)
-        raise AssertionError  # unreachable: all DurationUnit members handled above
 
     async def _delegate(self) -> ListResult[Project]:
         repo_result = await self._repository.list_projects(self._repo_query)

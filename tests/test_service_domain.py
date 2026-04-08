@@ -7,11 +7,13 @@ independent of repository implementation.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import UTC, date, datetime
+from types import SimpleNamespace
 
 import pytest
 
 from omnifocus_operator.agent_messages.warnings import (
+    AVAILABILITY_MIXED_ALL,
     EDIT_COMPLETED_TASK,
     LIFECYCLE_REPEATING_COMPLETE,
     LIFECYCLE_REPEATING_DROP,
@@ -22,7 +24,7 @@ from omnifocus_operator.agent_messages.warnings import (
     REPETITION_EMPTY_ON_DAYS,
     REPETITION_FROM_COMPLETION_BYDAY,
 )
-from omnifocus_operator.contracts.base import _Unset
+from omnifocus_operator.contracts.base import UNSET, _Unset
 from omnifocus_operator.contracts.shared.actions import MoveAction, TagAction
 from omnifocus_operator.contracts.shared.repetition_rule import (
     FrequencyEditSpec,
@@ -33,8 +35,19 @@ from omnifocus_operator.contracts.use_cases.edit.tasks import (
     EditTaskCommand,
     EditTaskRepoPayload,
 )
+from omnifocus_operator.contracts.use_cases.list._date_filter import DateFilter
+from omnifocus_operator.contracts.use_cases.list._enums import (
+    AvailabilityFilter,
+    DueDateShortcut,
+    DueSoonSetting,
+    LifecycleDateShortcut,
+)
+from omnifocus_operator.contracts.use_cases.list.projects import (
+    DurationUnit,
+    ReviewDueFilter,
+)
 from omnifocus_operator.models.common import TagRef
-from omnifocus_operator.models.enums import BasedOn, EntityType, Schedule
+from omnifocus_operator.models.enums import Availability, BasedOn, EntityType, Schedule
 from omnifocus_operator.models.repetition_rule import (
     EndByDate,
     Frequency,
@@ -929,3 +942,214 @@ class TestCheckFilterResolution:
         assert len(warnings) == 1
         assert "No project found" in warnings[0]
         assert "skipped" in warnings[0].lower()
+
+
+# ---------------------------------------------------------------------------
+# Date filter resolution (moved from pipeline)
+# ---------------------------------------------------------------------------
+
+# Fixed "now" for all date tests: Tuesday 2026-04-07 14:00:00 UTC
+_NOW = datetime(2026, 4, 7, 14, 0, 0, tzinfo=UTC)
+
+
+def _date_query(**overrides: object) -> SimpleNamespace:
+    """Build a stub query with all 7 date fields defaulting to UNSET."""
+    defaults = {
+        name: UNSET
+        for name in ("due", "defer", "planned", "completed", "dropped", "added", "modified")
+    }
+    defaults.update(overrides)
+    return SimpleNamespace(**defaults)
+
+
+class TestResolveDateFilters:
+    """DomainLogic.resolve_date_filters -- lifecycle mapping, date bounds, fallbacks."""
+
+    def test_empty_fields(self) -> None:
+        """All fields UNSET -> empty result."""
+        result = _domain().resolve_date_filters(
+            _date_query(), _NOW, week_start=0, due_soon_setting=None
+        )
+        assert result.bounds == {}
+        assert result.lifecycle_additions == []
+        assert result.warnings == []
+
+    def test_single_date_field(self) -> None:
+        """Single 'due: today' -> bounds populated."""
+        result = _domain().resolve_date_filters(
+            _date_query(due=DueDateShortcut.TODAY), _NOW, week_start=0, due_soon_setting=None
+        )
+        assert "due" in result.bounds
+        assert result.bounds["due"].after == datetime(2026, 4, 7, 0, 0, 0, tzinfo=UTC)
+        assert result.bounds["due"].before == datetime(2026, 4, 8, 0, 0, 0, tzinfo=UTC)
+        assert result.lifecycle_additions == []
+        assert result.warnings == []
+
+    def test_lifecycle_field_adds_availability(self) -> None:
+        """'completed: today' -> COMPLETED in lifecycle_additions AND date bounds."""
+        result = _domain().resolve_date_filters(
+            _date_query(completed=LifecycleDateShortcut.TODAY),
+            _NOW,
+            week_start=0,
+            due_soon_setting=None,
+        )
+        assert Availability.COMPLETED in result.lifecycle_additions
+        assert "completed" in result.bounds
+
+    def test_any_on_lifecycle_field(self) -> None:
+        """'completed: any' -> lifecycle addition but NO date bounds."""
+        result = _domain().resolve_date_filters(
+            _date_query(completed=LifecycleDateShortcut.ANY),
+            _NOW,
+            week_start=0,
+            due_soon_setting=None,
+        )
+        assert Availability.COMPLETED in result.lifecycle_additions
+        assert "completed" not in result.bounds
+
+    def test_multiple_fields(self) -> None:
+        """Multiple fields -> all resolved."""
+        result = _domain().resolve_date_filters(
+            _date_query(due=DueDateShortcut.TODAY, completed=LifecycleDateShortcut.TODAY),
+            _NOW,
+            week_start=0,
+            due_soon_setting=None,
+        )
+        assert "due" in result.bounds
+        assert "completed" in result.bounds
+        assert Availability.COMPLETED in result.lifecycle_additions
+
+    def test_soon_without_due_soon_setting(self) -> None:
+        """'soon' without due_soon_setting -> domain computes TODAY bounds + warning."""
+        result = _domain().resolve_date_filters(
+            _date_query(due=DueDateShortcut.SOON), _NOW, week_start=0, due_soon_setting=None
+        )
+        assert result.bounds["due"].after == datetime(2026, 4, 7, 0, 0, 0, tzinfo=UTC)
+        assert result.bounds["due"].before == datetime(2026, 4, 8, 0, 0, 0, tzinfo=UTC)
+        assert len(result.warnings) == 1
+        assert "Due-soon threshold was not detected" in result.warnings[0]
+
+    def test_soon_with_due_soon_setting(self) -> None:
+        """'soon' with due_soon_setting -> delegates to resolver, correct bounds."""
+        result = _domain().resolve_date_filters(
+            _date_query(due=DueDateShortcut.SOON),
+            _NOW,
+            week_start=0,
+            due_soon_setting=DueSoonSetting.TWO_DAYS,
+        )
+        assert result.bounds["due"].after is None
+        assert result.bounds["due"].before == datetime(2026, 4, 9, 0, 0, 0, tzinfo=UTC)
+        assert result.warnings == []
+
+    def test_date_filter_object(self) -> None:
+        """DateFilter object (e.g. {this: 'w'}) is resolved correctly."""
+        result = _domain().resolve_date_filters(
+            _date_query(due=DateFilter(this="d")), _NOW, week_start=0, due_soon_setting=None
+        )
+        assert result.bounds["due"].after == datetime(2026, 4, 7, 0, 0, 0, tzinfo=UTC)
+        assert result.bounds["due"].before == datetime(2026, 4, 8, 0, 0, 0, tzinfo=UTC)
+
+
+# ---------------------------------------------------------------------------
+# Availability expansion (moved from _expand_availability free function)
+# ---------------------------------------------------------------------------
+
+
+class TestExpandTaskAvailability:
+    """DomainLogic.expand_task_availability -- expansion + lifecycle merge."""
+
+    def test_single_filter(self) -> None:
+        """Single filter maps to corresponding Availability."""
+        expanded, warnings = _domain().expand_task_availability([AvailabilityFilter.AVAILABLE], [])
+        assert Availability.AVAILABLE in expanded
+        assert warnings == []
+
+    def test_all_filter_alone(self) -> None:
+        """[ALL] -> all Availability members, no warning."""
+        expanded, warnings = _domain().expand_task_availability([AvailabilityFilter.ALL], [])
+        assert set(expanded) == set(Availability)
+        assert warnings == []
+
+    def test_all_mixed_with_others(self) -> None:
+        """[ALL, AVAILABLE] -> all members + AVAILABILITY_MIXED_ALL warning."""
+        expanded, warnings = _domain().expand_task_availability(
+            [AvailabilityFilter.ALL, AvailabilityFilter.AVAILABLE], []
+        )
+        assert set(expanded) == set(Availability)
+        assert len(warnings) == 1
+        assert warnings[0] == AVAILABILITY_MIXED_ALL
+
+    def test_empty_lifecycle_no_merge(self) -> None:
+        """Empty lifecycle_additions -> no merge effect."""
+        expanded, _warnings = _domain().expand_task_availability([AvailabilityFilter.AVAILABLE], [])
+        assert Availability.COMPLETED not in expanded
+
+    def test_lifecycle_merge_adds_values(self) -> None:
+        """Lifecycle additions merged via set-union, no duplicates."""
+        expanded, warnings = _domain().expand_task_availability(
+            [AvailabilityFilter.AVAILABLE],
+            [Availability.COMPLETED, Availability.COMPLETED],
+        )
+        assert Availability.AVAILABLE in expanded
+        assert Availability.COMPLETED in expanded
+        assert warnings == []
+
+    def test_all_plus_lifecycle(self) -> None:
+        """[ALL] + lifecycle -> still all members (set union is idempotent)."""
+        expanded, _warnings = _domain().expand_task_availability(
+            [AvailabilityFilter.ALL],
+            [Availability.COMPLETED],
+        )
+        assert set(expanded) == set(Availability)
+
+
+# ---------------------------------------------------------------------------
+# Review-due expansion (moved from _ListProjectsPipeline._expand_review_due)
+# ---------------------------------------------------------------------------
+
+
+class TestExpandReviewDue:
+    """DomainLogic.expand_review_due -- deterministic with fixed now."""
+
+    def test_amount_none_returns_now(self) -> None:
+        """amount=None -> returns now exactly."""
+        f = ReviewDueFilter(amount=None, unit=None)
+        result = _domain().expand_review_due(f, _NOW)
+        assert result == _NOW
+
+    def test_days(self) -> None:
+        """1 day -> now + 1 day."""
+        f = ReviewDueFilter(amount=1, unit=DurationUnit.DAYS)
+        result = _domain().expand_review_due(f, _NOW)
+        assert result == datetime(2026, 4, 8, 14, 0, 0, tzinfo=UTC)
+
+    def test_weeks(self) -> None:
+        """1 week -> now + 7 days."""
+        f = ReviewDueFilter(amount=1, unit=DurationUnit.WEEKS)
+        result = _domain().expand_review_due(f, _NOW)
+        assert result == datetime(2026, 4, 14, 14, 0, 0, tzinfo=UTC)
+
+    def test_30_days(self) -> None:
+        """30 days -> now + 30 days."""
+        f = ReviewDueFilter(amount=30, unit=DurationUnit.DAYS)
+        result = _domain().expand_review_due(f, _NOW)
+        assert result == datetime(2026, 5, 7, 14, 0, 0, tzinfo=UTC)
+
+    def test_months(self) -> None:
+        """2 months with calendar arithmetic."""
+        f = ReviewDueFilter(amount=2, unit=DurationUnit.MONTHS)
+        result = _domain().expand_review_due(f, _NOW)
+        assert result == datetime(2026, 6, 7, 14, 0, 0, tzinfo=UTC)
+
+    def test_months_day_clamping(self) -> None:
+        """Jan 31 + 1 month -> Feb 28 (day clamped)."""
+        jan31 = datetime(2026, 1, 31, 14, 0, 0, tzinfo=UTC)
+        f = ReviewDueFilter(amount=1, unit=DurationUnit.MONTHS)
+        result = _domain().expand_review_due(f, jan31)
+        assert result == datetime(2026, 2, 28, 14, 0, 0, tzinfo=UTC)
+
+    def test_years(self) -> None:
+        """1 year -> now + 1 year."""
+        f = ReviewDueFilter(amount=1, unit=DurationUnit.YEARS)
+        result = _domain().expand_review_due(f, _NOW)
+        assert result == datetime(2027, 4, 7, 14, 0, 0, tzinfo=UTC)

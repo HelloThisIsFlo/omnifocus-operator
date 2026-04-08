@@ -94,13 +94,10 @@ class TestSoonShortcut:
         assert resolved.after is None
         assert resolved.before == datetime(2026, 4, 8, 14, 0, 0)
 
-    def test_soon_without_config_falls_back_to_today(self) -> None:
-        """'soon' without due_soon_setting defaults to TODAY bounds + warning."""
-        resolved = resolve_date_filter(DueDateShortcut.SOON, "due", NOW)
-        assert resolved.after == datetime(2026, 4, 7, 0, 0, 0)
-        assert resolved.before == datetime(2026, 4, 8, 0, 0, 0)
-        assert len(resolved.warnings) == 1
-        assert "Due-soon threshold was not detected" in resolved.warnings[0]
+    def test_soon_without_config_raises(self) -> None:
+        """'soon' without due_soon_setting asserts (domain handles fallback)."""
+        with pytest.raises(AssertionError, match="soon"):
+            resolve_date_filter(DueDateShortcut.SOON, "due", NOW)
 
     def test_soon_today_setting(self) -> None:
         """TODAY setting (calendar-aligned): midnight_today + 1 day."""
@@ -429,18 +426,15 @@ class TestPureFunctionContract:
 
 
 class TestResolvedDateBoundsReturnType:
-    """resolve_date_filter returns ResolvedDateBounds with .after, .before, .warnings."""
+    """resolve_date_filter returns ResolvedDateBounds with .after and .before."""
 
     def test_overdue_returns_resolved_date_bounds(self) -> None:
-        """Overdue returns ResolvedDateBounds with no warnings."""
         resolved = resolve_date_filter(DueDateShortcut.OVERDUE, "due", NOW)
         assert isinstance(resolved, ResolvedDateBounds)
         assert resolved.after is None
         assert resolved.before == NOW
-        assert resolved.warnings == []
 
     def test_soon_with_setting_returns_resolved_date_bounds(self) -> None:
-        """Soon with setting returns ResolvedDateBounds with no warnings."""
         resolved = resolve_date_filter(
             DueDateShortcut.SOON,
             "due",
@@ -450,12 +444,9 @@ class TestResolvedDateBoundsReturnType:
         assert isinstance(resolved, ResolvedDateBounds)
         assert resolved.after is None
         assert resolved.before == datetime(2026, 4, 9, 0, 0, 0)
-        assert resolved.warnings == []
 
     def test_date_filter_obj_returns_resolved_date_bounds(self) -> None:
-        """DateFilter object returns ResolvedDateBounds."""
         resolved = resolve_date_filter(DateFilter(this="d"), "due", NOW)
         assert isinstance(resolved, ResolvedDateBounds)
         assert resolved.after == datetime(2026, 4, 7, 0, 0, 0)
         assert resolved.before == datetime(2026, 4, 8, 0, 0, 0)
-        assert resolved.warnings == []

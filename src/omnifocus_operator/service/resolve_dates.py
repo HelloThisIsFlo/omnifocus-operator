@@ -8,7 +8,7 @@ for obtaining these from the database/environment.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from enum import StrEnum
 from typing import TYPE_CHECKING
@@ -23,13 +23,10 @@ class ResolvedDateBounds:
     """Result of resolving a date filter to absolute datetime bounds.
 
     ``after`` and ``before`` are the inclusive/exclusive bounds.
-    ``warnings`` contains any agent-facing messages generated during resolution
-    (e.g. fallback behaviour when configuration is missing).
     """
 
     after: datetime | None = None
     before: datetime | None = None
-    warnings: list[str] = field(default_factory=list)
 
 
 _DATE_DURATION_PATTERN = re.compile(r"^(\d*)([dwmy])$")
@@ -50,15 +47,16 @@ def resolve_date_filter(
         field_name: The date field being filtered (e.g. "due", "completed").
         now: Current timestamp -- caller ensures consistency across a single query.
         week_start: Python weekday value (0=Monday, 6=Sunday). Affects {this: "w"}.
-        due_soon_setting: OmniFocus due-soon threshold setting. When resolving
-            the "soon" shortcut and this is None, falls back to TODAY bounds
-            with a warning.
+        due_soon_setting: OmniFocus due-soon threshold setting. Required when
+            resolving the "soon" shortcut.
 
     Returns:
-        ResolvedDateBounds with after/before datetimes and any warnings.
+        ResolvedDateBounds with after/before datetimes.
 
     Raises:
         ValueError: If "any" shortcut is passed (not a date filter).
+        AssertionError: If "soon" is passed without ``due_soon_setting``
+            (domain must handle the fallback before calling this).
     """
     if isinstance(value, StrEnum):
         return _resolve_shortcut(
@@ -82,10 +80,6 @@ def _resolve_shortcut(
     *,
     due_soon_setting: DueSoonSetting | None,
 ) -> ResolvedDateBounds:
-    from omnifocus_operator.agent_messages.warnings import (  # noqa: PLC0415
-        DUE_SOON_THRESHOLD_NOT_DETECTED,
-    )
-
     value = shortcut.value
 
     if value == "today":
@@ -96,14 +90,10 @@ def _resolve_shortcut(
         return ResolvedDateBounds(after=None, before=now)
 
     if value == "soon":
-        if due_soon_setting is None:
-            # Fallback: use TODAY bounds (conservative, narrowest window)
-            after, before = _resolve_this("d", now, week_start=0)
-            return ResolvedDateBounds(
-                after=after,
-                before=before,
-                warnings=[DUE_SOON_THRESHOLD_NOT_DETECTED],
-            )
+        assert due_soon_setting is not None, (
+            f"'soon' on field '{field_name}' requires due_soon_setting "
+            "but received None. The domain handles this fallback."
+        )
         threshold = _compute_soon_threshold(
             now, due_soon_setting.days, due_soon_setting.calendar_aligned
         )

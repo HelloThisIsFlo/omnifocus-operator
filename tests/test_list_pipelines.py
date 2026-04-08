@@ -26,13 +26,11 @@ from omnifocus_operator.contracts.use_cases.list._enums import (
 from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersQuery
 from omnifocus_operator.contracts.use_cases.list.perspectives import ListPerspectivesQuery
 from omnifocus_operator.contracts.use_cases.list.projects import (
-    DurationUnit,
     ListProjectsQuery,
-    ReviewDueFilter,
 )
 from omnifocus_operator.contracts.use_cases.list.tags import ListTagsQuery
 from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksQuery, ListTasksRepoQuery
-from omnifocus_operator.service.service import _ListProjectsPipeline, matches_inbox_name
+from omnifocus_operator.service.service import matches_inbox_name
 
 from .conftest import (
     make_folder_dict,
@@ -669,48 +667,7 @@ class TestNoNotImplementedError:
 
 
 class TestReviewDueFilterExpansion:
-    """Verify _ListProjectsPipeline expands ReviewDueFilter to datetime."""
-
-    def test_expand_review_due_1w(self) -> None:
-        """1w -> now + 7 days."""
-
-        f = ReviewDueFilter(amount=1, unit=DurationUnit.WEEKS)
-        result = _ListProjectsPipeline._expand_review_due(f)
-        expected = datetime.now(UTC) + timedelta(weeks=1)
-        assert abs((result - expected).total_seconds()) < 2
-
-    def test_expand_review_due_now(self) -> None:
-        """'now' -> approximately current time."""
-
-        f = ReviewDueFilter(amount=None, unit=None)
-        result = _ListProjectsPipeline._expand_review_due(f)
-        now = datetime.now(UTC)
-        assert abs((result - now).total_seconds()) < 2
-
-    def test_expand_review_due_30d(self) -> None:
-        """30d -> now + 30 days."""
-
-        f = ReviewDueFilter(amount=30, unit=DurationUnit.DAYS)
-        result = _ListProjectsPipeline._expand_review_due(f)
-        expected = datetime.now(UTC) + timedelta(days=30)
-        assert abs((result - expected).total_seconds()) < 2
-
-    def test_expand_review_due_2m(self) -> None:
-        """2m -> now + 2 months (calendar arithmetic)."""
-
-        f = ReviewDueFilter(amount=2, unit=DurationUnit.MONTHS)
-        result = _ListProjectsPipeline._expand_review_due(f)
-        # Should be roughly 60 days from now
-        assert result > datetime.now(UTC) + timedelta(days=50)
-        assert result < datetime.now(UTC) + timedelta(days=70)
-
-    def test_expand_review_due_1y(self) -> None:
-        """1y -> now + 1 year."""
-
-        f = ReviewDueFilter(amount=1, unit=DurationUnit.YEARS)
-        result = _ListProjectsPipeline._expand_review_due(f)
-        assert result > datetime.now(UTC) + timedelta(days=360)
-        assert result < datetime.now(UTC) + timedelta(days=370)
+    """Verify review_due_within pipeline integration (unit tests in test_service_domain.py)."""
 
     @pytest.mark.snapshot(
         tasks=[],
