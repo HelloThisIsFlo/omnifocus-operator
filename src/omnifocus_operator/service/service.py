@@ -468,8 +468,8 @@ class _ListTasksPipeline(_ReadPipeline):
             if isinstance(value, StrEnum) and value.value == "any":
                 continue
 
-            # Resolve date filter to (after, before) bounds
-            after_dt, before_dt = resolve_date_filter(
+            # Resolve date filter to absolute bounds
+            resolved = resolve_date_filter(
                 value,
                 field_name,
                 self._now,
@@ -477,8 +477,9 @@ class _ListTasksPipeline(_ReadPipeline):
                 due_soon_setting=due_soon_setting,
             )
 
-            setattr(self, f"_{field_name}_after", after_dt)
-            setattr(self, f"_{field_name}_before", before_dt)
+            setattr(self, f"_{field_name}_after", resolved.after)
+            setattr(self, f"_{field_name}_before", resolved.before)
+            self._warnings.extend(resolved.warnings)
 
     def _build_repo_query(self) -> None:
         # Merge lifecycle additions with expanded availability (set-union, per D-08)
