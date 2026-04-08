@@ -411,11 +411,12 @@ if field_name == "defer" and isinstance(value, DateFilter):
 - A1 (ListProjectsQuery uses AvailabilityFilter): VERIFIED -- `projects.py` line 69-71 imports and uses `AvailabilityFilter` with identical default and validator
 - A2 (empty-list validator in ListProjectsQuery): VERIFIED -- `projects.py` line 97-102 has identical `_reject_empty_availability` validator that must also be removed
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should `LIST_PROJECTS_TOOL_DOC` also get the effective-date note?**
    - What we know: CONTEXT.md lists this as Claude's discretion. Projects also have effective dates.
    - Recommendation: Yes, add the same effective-date note. Factually accurate and keeps tool docs consistent.
+   - RESOLVED: Yes — implemented in Plan 47-01 Task 2 Step 4.
 
 ## Sources
 

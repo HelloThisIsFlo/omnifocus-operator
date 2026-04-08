@@ -38,12 +38,10 @@ created: 2026-04-08
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 47-01-01 | 01 | 1 | BREAK-03 | — | N/A | unit | `uv run pytest tests/contracts/ -x -q -k "availability"` | ✅ | ⬜ pending |
-| 47-01-02 | 01 | 1 | BREAK-06 | — | N/A | unit | `uv run pytest tests/contracts/ -x -q -k "lifecycle"` | ✅ | ⬜ pending |
-| 47-02-01 | 02 | 1 | BREAK-04, BREAK-05 | — | N/A | unit | `uv run pytest tests/service/ -x -q -k "defer_hint"` | ❌ W0 | ⬜ pending |
-| 47-02-02 | 02 | 1 | BREAK-03 | — | N/A | unit | `uv run pytest tests/service/ -x -q -k "remaining"` | ❌ W0 | ⬜ pending |
-| 47-03-01 | 03 | 2 | EXEC-10, EXEC-11 | — | N/A | integration | `uv run pytest tests/test_cross_path_equivalence.py -x -q` | ✅ | ⬜ pending |
-| 47-04-01 | 04 | 2 | BREAK-07 | — | N/A | unit | `uv run pytest tests/ -x -q -k "description"` | ✅ | ⬜ pending |
+| 47-01-01 | 01 | 1 | BREAK-03, BREAK-06, BREAK-08 | — | N/A | unit | `uv run pytest tests/test_service_domain.py tests/test_list_contracts.py -x -q` | ✅ | ⬜ pending |
+| 47-01-02 | 01 | 1 | BREAK-04, BREAK-05, BREAK-07 | — | N/A | unit | `uv run pytest -x -q` | ✅ | ⬜ pending |
+| 47-02-01 | 02 | 2 | EXEC-10, EXEC-11 | — | N/A | integration | `uv run pytest tests/test_cross_path_equivalence.py -x -q` | ✅ | ⬜ pending |
+| 47-02-02 | 02 | 2 | EXEC-10, EXEC-11 | — | N/A | integration | `uv run pytest tests/test_cross_path_equivalence.py -x -q` | ✅ | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
