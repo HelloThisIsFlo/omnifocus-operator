@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 46-pipeline-query-paths
 source: 46-01-SUMMARY.md, 46-02-SUMMARY.md, 46-03-SUMMARY.md
 started: 2026-04-08T13:00:00Z
@@ -68,9 +68,15 @@ blocked: 0
   reason: "User reported: Invalid env var should fail fast at startup, not at query time. Settings.due_soon_threshold is str | None — pydantic accepts any string, enum validation deferred to get_due_soon_setting() at query time. Should validate at Settings boundary so bad config triggers error-serving mode on boot."
   severity: major
   test: 3
-  root_cause: ""
-  artifacts: []
-  missing: []
+  root_cause: "Settings.due_soon_threshold is str | None — pydantic-settings accepts any string without validation. Enum conversion deferred to BridgeOnlyRepository.get_due_soon_setting() at query time. Validation should happen at Settings construction (startup) so invalid values trigger error-serving mode."
+  artifacts:
+    - path: "src/omnifocus_operator/config.py"
+      issue: "due_soon_threshold field is str | None, needs field_validator or DueSoonSetting | None type"
+    - path: "src/omnifocus_operator/repository/bridge_only/bridge_only.py"
+      issue: "get_due_soon_setting() does enum conversion that should move to Settings validation"
+  missing:
+    - "Add field_validator on Settings.due_soon_threshold that validates against DueSoonSetting member names at construction time"
+    - "Invalid value at startup should trigger error-serving mode with educational error message"
   debug_session: ""
 
 - truth: "Domain should own due-soon fallback + warning; resolver returns rich type; no inline noqa imports"
@@ -78,7 +84,14 @@ blocked: 0
   reason: "User reported: (1) When get_due_soon_setting() returns None and due='soon' is used, domain should default to TODAY and emit agent-facing warning preserving polymorphism. (2) Resolver should return ResolvedDateBounds (dates + warnings) not mutate query directly. (3) Inline # noqa imports in _resolve_date_filters should move to top-level."
   severity: major
   test: 7
-  root_cause: ""
-  artifacts: []
-  missing: []
+  root_cause: "Three issues: (1) Due-soon fallback logic lives in service layer (_resolve_date_filters) but should be domain concern — when get_due_soon_setting() returns None and due='soon', domain should default to TODAY + emit warning. (2) _resolve_date_filters mutates query fields directly instead of returning a rich type with dates + warnings. (3) Inline imports with # noqa: PLC0415 caused by from __future__ import annotations making top-level imports appear unused — should be placed in runtime imports section."
+  artifacts:
+    - path: "src/omnifocus_operator/service/service.py"
+      issue: "_resolve_date_filters owns fallback logic + uses inline noqa imports"
+    - path: "src/omnifocus_operator/service/resolve_dates.py"
+      issue: "resolve_date_filter should return rich type (ResolvedDateBounds) with dates + warnings"
+  missing:
+    - "Domain resolver returns ResolvedDateBounds (dates + warnings list) instead of bare datetime bounds"
+    - "When due_soon_setting is None and due='soon' is used, default to TODAY and add agent-facing warning: 'Due-soon threshold was not detected. Defaulting to today. Set OPERATOR_DUE_SOON_THRESHOLD to override.'"
+    - "Move inline imports to top-level runtime imports section in service.py"
   debug_session: ""
