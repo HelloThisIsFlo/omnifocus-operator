@@ -118,7 +118,8 @@ class TestDescriptionConsolidation:
         source = get_consumer_sources(_CONSUMER_MODULES)
         constants = get_upper_snake_constants(desc_mod)
         # Constants pre-defined for Plan 45-02 (date filter fields on ListTasksQuery).
-        # Remove this exemption once the fields are wired.
+        # TODO(Phase 46): Remove _PENDING_CONSUMER_CONSTANTS once date filter fields
+        # are wired into ListTasksQuery Field(description=...) calls.
         _PENDING_CONSUMER_CONSTANTS = {
             "DUE_FILTER_DESC",
             "COMPLETED_FILTER_DESC",
