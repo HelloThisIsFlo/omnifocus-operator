@@ -2,10 +2,10 @@
 
 Tests organized by input form:
 1. String shortcuts (today, overdue, soon, any)
-2. Shorthand {this: unit} — calendar-aligned periods
-3. Shorthand {last: duration} — rolling past
-4. Shorthand {next: duration} — rolling future
-5. Absolute {before/after} — explicit date bounds
+2. Shorthand {this: unit} -- calendar-aligned periods
+3. Shorthand {last: duration} -- rolling past
+4. Shorthand {next: duration} -- rolling future
+5. Absolute {before/after} -- explicit date bounds
 6. Edge cases and error paths
 """
 
@@ -18,6 +18,7 @@ import pytest
 from omnifocus_operator.contracts.use_cases.list._date_filter import DateFilter
 from omnifocus_operator.contracts.use_cases.list._enums import (
     DueDateShortcut,
+    DueSoonSetting,
     LifecycleDateShortcut,
 )
 from omnifocus_operator.service.resolve_dates import resolve_date_filter
@@ -60,7 +61,7 @@ class TestTodayShortcut:
 
 
 class TestOverdueShortcut:
-    """'overdue' resolves to (None, now) — due before current moment."""
+    """'overdue' resolves to (None, now) -- due before current moment."""
 
     def test_overdue_on_due(self) -> None:
         after, before = resolve_date_filter(DueDateShortcut.OVERDUE, "due", NOW)
@@ -69,50 +70,100 @@ class TestOverdueShortcut:
 
 
 class TestSoonShortcut:
-    """'soon' resolves using due_soon_interval + due_soon_granularity parameters."""
+    """'soon' resolves using DueSoonSetting enum."""
 
     def test_soon_calendar_aligned(self) -> None:
-        """Granularity=1 (calendar-aligned): midnight_today + interval."""
+        """TWO_DAYS (calendar-aligned): midnight_today + 2 days."""
         after, before = resolve_date_filter(
             DueDateShortcut.SOON,
             "due",
             NOW,
-            due_soon_interval=172800,  # 2 days in seconds
-            due_soon_granularity=1,
+            due_soon_setting=DueSoonSetting.TWO_DAYS,
         )
         assert after is None
         assert before == datetime(2026, 4, 9, 0, 0, 0)
 
     def test_soon_rolling(self) -> None:
-        """Granularity=0 (rolling): now + interval."""
+        """TWENTY_FOUR_HOURS (rolling): now + 1 day."""
         after, before = resolve_date_filter(
             DueDateShortcut.SOON,
             "due",
             NOW,
-            due_soon_interval=86400,  # 24 hours in seconds
-            due_soon_granularity=0,
+            due_soon_setting=DueSoonSetting.TWENTY_FOUR_HOURS,
         )
         assert after is None
         assert before == datetime(2026, 4, 8, 14, 0, 0)
 
     def test_soon_without_config_raises(self) -> None:
-        """'soon' without due_soon config raises ValueError."""
-        with pytest.raises(ValueError, match="due_soon"):
+        """'soon' without due_soon_setting raises ValueError."""
+        with pytest.raises(ValueError, match="due_soon_setting"):
             resolve_date_filter(DueDateShortcut.SOON, "due", NOW)
 
-    def test_soon_with_interval_only_raises(self) -> None:
-        """'soon' with interval but no granularity raises ValueError."""
-        with pytest.raises(ValueError, match="due_soon"):
-            resolve_date_filter(DueDateShortcut.SOON, "due", NOW, due_soon_interval=86400)
+    def test_soon_today_setting(self) -> None:
+        """TODAY setting (calendar-aligned): midnight_today + 1 day."""
+        after, before = resolve_date_filter(
+            DueDateShortcut.SOON,
+            "due",
+            NOW,
+            due_soon_setting=DueSoonSetting.TODAY,
+        )
+        assert after is None
+        assert before == datetime(2026, 4, 8, 0, 0, 0)
 
-    def test_soon_with_granularity_only_raises(self) -> None:
-        """'soon' with granularity but no interval raises ValueError."""
-        with pytest.raises(ValueError, match="due_soon"):
-            resolve_date_filter(DueDateShortcut.SOON, "due", NOW, due_soon_granularity=1)
+    def test_soon_one_week_setting(self) -> None:
+        """ONE_WEEK setting (calendar-aligned): midnight_today + 7 days."""
+        after, before = resolve_date_filter(
+            DueDateShortcut.SOON,
+            "due",
+            NOW,
+            due_soon_setting=DueSoonSetting.ONE_WEEK,
+        )
+        assert after is None
+        assert before == datetime(2026, 4, 14, 0, 0, 0)
+
+
+class TestDueSoonSettingProperties:
+    """Verify all 7 DueSoonSetting enum members have correct domain properties."""
+
+    def test_today(self) -> None:
+        assert DueSoonSetting.TODAY.days == 1
+        assert DueSoonSetting.TODAY.calendar_aligned is True
+
+    def test_twenty_four_hours(self) -> None:
+        assert DueSoonSetting.TWENTY_FOUR_HOURS.days == 1
+        assert DueSoonSetting.TWENTY_FOUR_HOURS.calendar_aligned is False
+
+    def test_two_days(self) -> None:
+        assert DueSoonSetting.TWO_DAYS.days == 2
+        assert DueSoonSetting.TWO_DAYS.calendar_aligned is True
+
+    def test_three_days(self) -> None:
+        assert DueSoonSetting.THREE_DAYS.days == 3
+        assert DueSoonSetting.THREE_DAYS.calendar_aligned is True
+
+    def test_four_days(self) -> None:
+        assert DueSoonSetting.FOUR_DAYS.days == 4
+        assert DueSoonSetting.FOUR_DAYS.calendar_aligned is True
+
+    def test_five_days(self) -> None:
+        assert DueSoonSetting.FIVE_DAYS.days == 5
+        assert DueSoonSetting.FIVE_DAYS.calendar_aligned is True
+
+    def test_one_week(self) -> None:
+        assert DueSoonSetting.ONE_WEEK.days == 7
+        assert DueSoonSetting.ONE_WEEK.calendar_aligned is True
+
+    def test_exactly_seven_members(self) -> None:
+        assert len(DueSoonSetting) == 7
+
+    def test_only_twenty_four_hours_is_rolling(self) -> None:
+        """Only TWENTY_FOUR_HOURS has calendar_aligned=False."""
+        rolling = [s for s in DueSoonSetting if not s.calendar_aligned]
+        assert rolling == [DueSoonSetting.TWENTY_FOUR_HOURS]
 
 
 class TestAnyShortcut:
-    """'any' is not a date filter — resolver should raise ValueError."""
+    """'any' is not a date filter -- resolver should raise ValueError."""
 
     def test_any_raises(self) -> None:
         with pytest.raises(ValueError, match="any"):

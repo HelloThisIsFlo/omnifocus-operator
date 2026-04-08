@@ -93,6 +93,8 @@ _INTERNAL_CLASSES = {
     "ListPerspectivesRepoQuery",
     # Internal sentinel
     "_Unset",
+    # Internal config enum -- not agent-facing, not in JSON Schema
+    "DueSoonSetting",
 }
 
 

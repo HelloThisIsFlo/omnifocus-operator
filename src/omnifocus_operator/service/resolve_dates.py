@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from omnifocus_operator.contracts.use_cases.list._date_filter import DateFilter
+    from omnifocus_operator.contracts.use_cases.list._enums import DueSoonSetting
 
 _DATE_DURATION_PATTERN = re.compile(r"^(\d*)([dwmy])$")
 
@@ -24,8 +25,7 @@ def resolve_date_filter(
     now: datetime,
     *,
     week_start: int = 0,
-    due_soon_interval: int | None = None,
-    due_soon_granularity: int | None = None,
+    due_soon_setting: DueSoonSetting | None = None,
 ) -> tuple[datetime | None, datetime | None]:
     """Resolve a date filter input to (after_bound, before_bound) datetimes.
 
@@ -34,16 +34,17 @@ def resolve_date_filter(
     Args:
         value: A StrEnum shortcut or DateFilter object.
         field_name: The date field being filtered (e.g. "due", "completed").
-        now: Current timestamp — caller ensures consistency across a single query.
+        now: Current timestamp -- caller ensures consistency across a single query.
         week_start: Python weekday value (0=Monday, 6=Sunday). Affects {this: "w"}.
-        due_soon_interval: Threshold in seconds from OmniFocus Settings table.
-        due_soon_granularity: 0=rolling from now, 1=calendar-aligned (snap to midnight).
+        due_soon_setting: OmniFocus due-soon threshold setting. Required when
+            resolving the "soon" shortcut. Provides ``days`` and
+            ``calendar_aligned`` properties.
 
     Returns:
         (after_bound, before_bound) tuple of datetime or None.
 
     Raises:
-        ValueError: If "soon" is requested without both due_soon config params,
+        ValueError: If "soon" is requested without due_soon_setting,
                     or if "any" shortcut is passed (not a date filter).
     """
     if isinstance(value, StrEnum):
@@ -51,8 +52,7 @@ def resolve_date_filter(
             value,
             field_name,
             now,
-            due_soon_interval=due_soon_interval,
-            due_soon_granularity=due_soon_granularity,
+            due_soon_setting=due_soon_setting,
         )
     return _resolve_date_filter_obj(value, now, week_start=week_start)
 
@@ -67,8 +67,7 @@ def _resolve_shortcut(
     field_name: str,
     now: datetime,
     *,
-    due_soon_interval: int | None,
-    due_soon_granularity: int | None,
+    due_soon_setting: DueSoonSetting | None,
 ) -> tuple[datetime | None, datetime | None]:
     value = shortcut.value
 
@@ -79,14 +78,16 @@ def _resolve_shortcut(
         return (None, now)
 
     if value == "soon":
-        if due_soon_interval is None or due_soon_granularity is None:
+        if due_soon_setting is None:
             msg = (
-                "Cannot resolve 'soon' without both due_soon_interval and "
-                "due_soon_granularity configuration. The caller must provide "
-                "these from the OmniFocus Settings table or environment."
+                "Cannot resolve 'soon' without due_soon_setting configuration. "
+                "The caller must provide a DueSoonSetting from the OmniFocus "
+                "Settings table or environment."
             )
             raise ValueError(msg)
-        threshold = _compute_soon_threshold(now, due_soon_interval, due_soon_granularity)
+        threshold = _compute_soon_threshold(
+            now, due_soon_setting.days, due_soon_setting.calendar_aligned
+        )
         return (None, threshold)
 
     if value == "any":
@@ -230,14 +231,22 @@ def _is_date_only(value: str) -> bool:
 
 def _compute_soon_threshold(
     now: datetime,
-    interval: int,
-    granularity: int,
+    days: int,
+    calendar_aligned: bool,
 ) -> datetime:
-    if granularity == 0:
-        # Rolling: now + interval seconds
-        return now + timedelta(seconds=interval)
-    # Calendar-aligned: midnight_today + interval seconds
-    return _midnight(now) + timedelta(seconds=interval)
+    """Compute the "due soon" threshold from domain properties.
+
+    Args:
+        now: Current timestamp.
+        days: Number of days in the threshold window.
+        calendar_aligned: If True, snap to midnight (start of day). If False,
+            use rolling N*24h from now.
+    """
+    if not calendar_aligned:
+        # Rolling: now + days * 24h
+        return now + timedelta(days=days)
+    # Calendar-aligned: midnight_today + days
+    return _midnight(now) + timedelta(days=days)
 
 
 # ---------------------------------------------------------------------------

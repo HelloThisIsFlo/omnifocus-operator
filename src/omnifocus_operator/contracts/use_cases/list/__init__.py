@@ -7,6 +7,7 @@ from omnifocus_operator.contracts.use_cases.list._date_filter import DateFilter
 from omnifocus_operator.contracts.use_cases.list._enums import (
     AvailabilityFilter,
     DueDateShortcut,
+    DueSoonSetting,
     FolderAvailabilityFilter,
     LifecycleDateShortcut,
     TagAvailabilityFilter,
@@ -39,6 +40,7 @@ __all__ = [
     "AvailabilityFilter",
     "DateFilter",
     "DueDateShortcut",
+    "DueSoonSetting",
     "DurationUnit",
     "FolderAvailabilityFilter",
     "LifecycleDateShortcut",
