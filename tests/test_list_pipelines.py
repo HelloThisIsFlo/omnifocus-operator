@@ -1551,3 +1551,50 @@ class TestListTasksDateFilterPipeline:
         assert "t-in-range" in task_ids  # 2026-04-07 is within [04-01, 04-15)
         assert "t-before-range" not in task_ids  # 2026-03-01 is before 04-01
         assert "t-after-range" not in task_ids  # 2026-04-20 is after 04-15
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t-due-today",
+                name="Due today",
+                effectiveDueDate=datetime.now(UTC).strftime("%Y-%m-%dT15:00:00.000Z"),
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-due-tomorrow",
+                name="Due tomorrow",
+                effectiveDueDate=(datetime.now(UTC) + timedelta(days=1)).strftime(
+                    "%Y-%m-%dT10:00:00.000Z"
+                ),
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-overdue",
+                name="Overdue task",
+                effectiveDueDate="2020-01-15T10:00:00.000Z",
+                project="proj-1",
+            ),
+        ],
+        projects=[make_project_dict(id="proj-1", name="Work")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_due_soon_none_threshold_falls_back_to_today_with_warning(
+        self, service: OperatorService
+    ) -> None:
+        """due='soon' with get_due_soon_setting returning None falls back to TODAY + warning.
+
+        When OPERATOR_DUE_SOON_THRESHOLD is not set, get_due_soon_setting() returns None.
+        The resolver defaults to TODAY bounds and emits an agent-facing warning.
+        """
+        # env var not set -> get_due_soon_setting returns None -> fallback to TODAY
+        result = await service.list_tasks(ListTasksQuery(due="soon"))
+        task_ids = {t.id for t in result.items}
+        # Only task due today should match (TODAY fallback bounds)
+        assert "t-due-today" in task_ids
+        assert "t-due-tomorrow" not in task_ids
+        assert "t-overdue" not in task_ids
+        # Warning should be propagated to the result
+        assert result.warnings is not None
+        assert any("Due-soon threshold was not detected" in w for w in result.warnings)
