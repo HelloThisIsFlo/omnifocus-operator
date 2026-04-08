@@ -1,5 +1,6 @@
 """Application configuration — hard-coded defaults and tunable parameters."""
 
+import os
 from dataclasses import dataclass
 
 from omnifocus_operator.models.enums import EntityType
@@ -41,7 +42,6 @@ WEEK_START_MAP: dict[str, int] = {"monday": 0, "sunday": 6}  # Python weekday() 
 
 def get_week_start() -> int:
     """Return Python weekday int for configured week start. Default Monday."""
-    import os
 
     raw = os.environ.get("OPERATOR_WEEK_START", "monday").lower()
     if raw not in WEEK_START_MAP:

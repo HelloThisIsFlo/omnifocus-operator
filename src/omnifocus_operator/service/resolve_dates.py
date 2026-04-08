@@ -10,8 +10,10 @@ from __future__ import annotations
 import re
 from datetime import date, datetime, timedelta
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
-from omnifocus_operator.contracts.use_cases.list._date_filter import DateFilter
+if TYPE_CHECKING:
+    from omnifocus_operator.contracts.use_cases.list._date_filter import DateFilter
 
 _DATE_DURATION_PATTERN = re.compile(r"^(\d*)([dwmy])$")
 

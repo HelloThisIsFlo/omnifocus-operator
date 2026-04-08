@@ -118,9 +118,9 @@ class TestDescriptionConsolidation:
         source = get_consumer_sources(_CONSUMER_MODULES)
         constants = get_upper_snake_constants(desc_mod)
         # Constants pre-defined for Plan 45-02 (date filter fields on ListTasksQuery).
-        # TODO(Phase 46): Remove _PENDING_CONSUMER_CONSTANTS once date filter fields
+        # TODO(Phase 46): Remove pending_consumer_constants once date filter fields
         # are wired into ListTasksQuery Field(description=...) calls.
-        _PENDING_CONSUMER_CONSTANTS = {
+        pending_consumer_constants = {
             "DUE_FILTER_DESC",
             "COMPLETED_FILTER_DESC",
             "DROPPED_FILTER_DESC",
@@ -129,7 +129,7 @@ class TestDescriptionConsolidation:
             "ADDED_FILTER_DESC",
             "MODIFIED_FILTER_DESC",
         }
-        unreferenced = {c for c in constants if c not in source} - _PENDING_CONSUMER_CONSTANTS
+        unreferenced = {c for c in constants if c not in source} - pending_consumer_constants
         assert unreferenced == set(), (
             f"Description constants not referenced in consumer modules: {unreferenced}"
         )

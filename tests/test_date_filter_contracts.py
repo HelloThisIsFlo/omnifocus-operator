@@ -1,6 +1,7 @@
 """Tests for DateFilter contract model, date shortcut StrEnums, and query date fields."""
 
 from datetime import datetime
+from typing import ClassVar
 
 import pytest
 from pydantic import BaseModel, ValidationError
@@ -364,7 +365,7 @@ class TestListTasksQueryDateFieldRejection:
 class TestListTasksRepoQueryDatetimeFields:
     """Verify ListTasksRepoQuery has 14 _after/_before datetime fields."""
 
-    _DATE_FIELD_PAIRS = [
+    _DATE_FIELD_PAIRS: ClassVar[list[tuple[str, str]]] = [
         ("due_after", "due_before"),
         ("defer_after", "defer_before"),
         ("planned_after", "planned_before"),

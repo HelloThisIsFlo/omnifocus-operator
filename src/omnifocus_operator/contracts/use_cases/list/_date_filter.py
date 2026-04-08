@@ -66,7 +66,7 @@ class DateFilter(QueryModel):
             date.fromisoformat(v)
             return v
         except (ValueError, TypeError):
-            raise ValueError(err.DATE_FILTER_INVALID_ABSOLUTE.format(value=v))
+            raise ValueError(err.DATE_FILTER_INVALID_ABSOLUTE.format(value=v)) from None
 
     @model_validator(mode="after")
     def _validate_groups(self) -> DateFilter:
@@ -86,18 +86,20 @@ class DateFilter(QueryModel):
             if count != 1:
                 raise ValueError(err.DATE_FILTER_MULTIPLE_SHORTHAND)
 
-        if has_absolute and self.before is not None and self.after is not None:
-            # Validate ordering when both are concrete dates (not "now")
-            if self.after != "now" and self.before != "now":
-                after_dt = _parse_to_comparable(self.after)
-                before_dt = _parse_to_comparable(self.before)
-                if after_dt is not None and before_dt is not None:
-                    if after_dt > before_dt:
-                        raise ValueError(
-                            err.DATE_FILTER_REVERSED_BOUNDS.format(
-                                after=self.after, before=self.before
-                            )
-                        )
+        if (
+            has_absolute
+            and self.before is not None
+            and self.after is not None
+            and self.after != "now"
+            and self.before != "now"
+        ):
+            # Validate ordering when both are concrete dates
+            after_dt = _parse_to_comparable(self.after)
+            before_dt = _parse_to_comparable(self.before)
+            if after_dt is not None and before_dt is not None and after_dt > before_dt:
+                raise ValueError(
+                    err.DATE_FILTER_REVERSED_BOUNDS.format(after=self.after, before=self.before)
+                )
 
         return self
 
