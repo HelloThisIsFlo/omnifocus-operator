@@ -66,7 +66,13 @@ omnifocus_operator/
         errors.py        -- Centralized error message constants
 ```
 
-**Split principle:** `models/` = what OmniFocus IS (domain entities, `OmniFocusBaseModel`). `contracts/` = what you can DO (operations, boundaries, `CommandModel` with `extra="forbid"`). Everything else = how it's done (implementations). Never embed a `models/` class directly in a `contracts/` command — the base class difference (`extra="forbid"`) means write-side models always need their own class, even with identical fields.
+> [!important] Split principle
+>
+> - `models/` = what OmniFocus **IS** (domain entities, `OmniFocusBaseModel`)
+> - `contracts/` = what you can **DO** (operations, boundaries, `CommandModel` with `extra="forbid"`)
+> - Everything else = **how it's done** (implementations)
+>
+> Never embed a `models/` class directly in a `contracts/` command — the base class difference (`extra="forbid"`) means write-side models always need their own class, even with identical fields.
 
 ## Dependency Direction
 
@@ -162,19 +168,20 @@ sequenceDiagram
     S-->>A: JSON response
 ```
 
-- **Service** does ALL processing: validation, parent/tag resolution, tag diff, move transformation, date serialization, no-op detection
-- **Repository** is a pure pass-through: `model_dump()` → `send_command()` → wrap result
-- **Bridge** is a dumb relay: receives pre-validated dicts, executes, returns minimal confirmation
+- **Service** does ALL processing — validation, parent/tag resolution, tag diff, move transformation, date serialization, no-op detection
+- **Repository** is a pure pass-through — `model_dump()` → `send_command()` → wrap result
+- **Bridge** is a dumb relay — receives pre-validated dicts, executes, returns minimal confirmation
 - Parent resolution: try `get_project` first, then `get_task` — **project takes precedence** (intentional, deterministic)
 - HybridRepository marks stale after write; BridgeOnlyRepository clears cache
 
-### Method Object Pattern (complex pipelines)
+### Method Object Pattern
 
-When a service method has many sequential steps with intermediate state, we use the **Method Object** pattern: extract the method body into a short-lived class where each step is a named method and intermediate values live on `self`.
+All service use cases use the **Method Object** pattern: extract the method body into a short-lived class where each step is a named method and intermediate values live on `self`.
 
-**Why:** Familiarity vs readability. A 100-line method with 12 local variables and numbered comments is *familiar* but forces you to track all state simultaneously. A Method Object with a 12-line `execute()` method and 3-8 line steps is *readable* — each step is self-contained, named, navigable, and shows up in stack traces.
-
-**How it works:**
+**Why:**
+- A 100-line method with 12 local variables is *familiar* but forces you to track all state simultaneously
+- A Method Object with a 12-line `execute()` method and 3-8 line steps is *readable* — each step is self-contained, named, navigable, and shows up in stack traces
+- The value is self-documenting orchestration, not complexity management — even `add_task` (5 steps) reads better as a pipeline
 
 ```python
 # Orchestrator stays thin -- one-liner delegation
@@ -192,42 +199,48 @@ class _EditTaskPipeline:
         ...
 ```
 
-**When to use:** All service-layer use cases — not just complex ones. The pattern makes any orchestration method self-documenting. Even `add_task` (5 steps) reads better as a pipeline than inline code with variables flowing between steps. The value is self-documenting orchestration, not complexity management.
-
 **Conventions:**
 - All pipelines inherit from `_Pipeline` (shared DI constructor)
 - Class name: `_VerbNounPipeline` (private, underscore prefix) — e.g., `_AddTaskPipeline`, `_EditTaskPipeline`
 - Constructor receives DI dependencies; `execute()` receives the input
 - Mutable state on `self` is acceptable — the object is created, executed, and discarded within a single call. The lifetime is bounded.
 - Step methods are private (`_verify_task_exists`, not `verify_task_exists`)
-- Read delegation methods (get_task, get_project, etc.) stay inline on OperatorService — they're one-liner pass-throughs, not pipelines
+- Read delegation methods (get_task, get_project, etc.) stay inline on OperatorService — one-liner pass-throughs, not pipelines
 
 ### Service Layer: Product Decisions vs Plumbing
 
-The service layer has several modules. The organizing principle is **not** "pure vs impure" or "stateful vs stateless" — it's **product opinion vs mechanical plumbing**.
+The service layer modules are organized around **product opinion vs mechanical plumbing** — not "pure vs impure" or "stateful vs stateless."
 
-**Litmus test:** "Would another OmniFocus tool make this same choice?" If yes → plumbing (any competent implementation needs it). If no → product decision (this is *our* choice, and it belongs in `domain.py`).
+> [!important] The litmus test
+>
+> "Would another OmniFocus tool make this same choice?"
+>
+> - **Yes** → plumbing (any competent implementation needs it)
+> - **No** → product decision (this is *our* choice, and it belongs in `domain.py`)
 
-`domain.py` is where you look to understand what makes OmniFocus Operator *this particular product*. If you want to tweak the behavior that defines the tool — the opinionated stuff — you should only need to look at domain and closely related code.
+`domain.py` is where you look to understand what makes OmniFocus Operator *this particular product*. If you want to tweak the behavior that defines the tool, you should only need to look here.
 
-Everything else in the service layer is plumbing: I/O sequencing, entity lookups, payload assembly, input validation. Necessary, but any implementation would do roughly the same thing.
+Everything else in the service layer is plumbing — I/O sequencing, entity lookups, payload assembly, input validation. Necessary, but any implementation would do roughly the same thing.
 
 | Concern | Where | Why |
 |---------|-------|-----|
-| "soon" without config → fall back to TODAY + warn | domain | Another tool might error or guess. We chose conservative bounds + transparency |
-| Lifecycle auto-include (completed filter → add COMPLETED availability) | domain | Another tool might require explicit opt-in |
-| `null` note → empty string | domain | OmniJS rejects null, but *how* to handle it is a product choice |
-| ALL mixed with other filters → warning | domain | Behavioral guidance for agents — our opinion on what's helpful |
-| No-op detection + educational warnings | domain | We chose to warn, not silently succeed |
-| Filter resolution warnings (multi-match, did-you-mean) | domain | Agent UX choices — fuzzy matching policy |
-| Fetching `due_soon_setting` from the repo | pipeline | I/O sequencing — mechanical |
-| Building `ListTasksRepoQuery` from resolved values | pipeline | Assembly — mechanical |
-| `{this: "w"}` → Monday-to-Sunday bounds | resolve_dates | Date arithmetic — any implementation needs this |
-| Name → ID resolution with fuzzy matching | resolve | Lookup mechanics — mechanical |
-| Spec-to-core model conversion | convert | Data mapping — structural |
-| Repo payload construction | payload | Assembly — structural |
+| "soon" without config → fall back to TODAY + warn | 🧠 domain | Another tool might error or guess. We chose conservative bounds + transparency |
+| Lifecycle auto-include (completed filter → add COMPLETED availability) | 🧠 domain | Another tool might require explicit opt-in |
+| `null` note → empty string | 🧠 domain | OmniJS rejects null, but *how* to handle it is a product choice |
+| ALL mixed with other filters → warning | 🧠 domain | Behavioral guidance for agents — our opinion on what's helpful |
+| No-op detection + educational warnings | 🧠 domain | We chose to warn, not silently succeed |
+| Filter resolution warnings (multi-match, did-you-mean) | 🧠 domain | Agent UX choices — fuzzy matching policy |
+| Fetching `due_soon_setting` from the repo | 🔧 pipeline | I/O sequencing — mechanical |
+| Building `ListTasksRepoQuery` from resolved values | 🔧 pipeline | Assembly — mechanical |
+| `{this: "w"}` → Monday-to-Sunday bounds | 📅 resolve_dates | Date arithmetic — any implementation needs this |
+| Name → ID resolution with fuzzy matching | 🔍 resolve | Lookup mechanics — mechanical |
+| Spec-to-core model conversion | 🔄 convert | Data mapping — structural |
+| Repo payload construction | 📦 payload | Assembly — structural |
 
-**`resolve_dates.py` sits in a middle ground.** It contains opinions (show-more boundary choices, day-snapping behavior), but at the per-field arithmetic level. Domain calls into it for individual field resolution and owns the cross-field orchestration — lifecycle mapping, edge-case fallbacks, what to do when configuration is missing.
+> [!note] Where does `resolve_dates.py` sit?
+>
+> - Contains opinions (show-more boundary choices, day-snapping behavior), but at the **per-field arithmetic** level
+> - Domain calls into it for individual field resolution and owns the **cross-field orchestration** — lifecycle mapping, edge-case fallbacks, what to do when configuration is missing
 
 ## Read Pipeline
 
@@ -285,42 +298,55 @@ Write tools use domain-native verbs, not CRUD:
 | `edit_*` | Modify an existing entity | `edit_tasks`, future `edit_projects` |
 | `delete_*` | Remove an entity | future `delete_tasks` |
 | `get_*` | Look up a single entity by ID | `get_task`, `get_project`, `get_tag` |
-| `list_*` | Filtered collection of one entity type | future `list_tasks`, `list_projects` |
+| `list_*` | Filtered collection of one entity type | `list_tasks`, `list_projects` |
 | `count_*` | Count entities matching a filter | future `count_tasks` |
 
-**Why "add" not "create":** Deliberate decision after extensive analysis. "Add" is the natural verb for task management ("add a task to my inbox"), matches OmniJS domain language, and forms a coherent verb system (add/edit/delete). "Create" is standard CRUD but sounds formal for the most common operation (tasks). Tool descriptions use natural language freely — e.g., `add_tasks` description can say "Create tasks in OmniFocus" — the tool name is the technical identifier, the description is the UX.
+**Why "add" not "create":**
+- "Add" is the natural verb for task management ("add a task to my inbox")
+- Matches OmniJS domain language
+- Forms a coherent verb system (add/edit/delete)
+- "Create" is standard CRUD but sounds formal for the most common operation
+- Tool descriptions use natural language freely — e.g., `add_tasks` description can say "Create tasks in OmniFocus." The tool name is the technical identifier, the description is the UX.
 
 ### Method names
 
 - `get_all()` → `AllEntities`: structured container with all entity types
 - `get_*` by ID → single entity lookup
-- `list_*(filters)` → flat list of one entity type (e.g., `list_tasks(status=...)`) — planned for v1.3
+- `list_*(filters)` → flat list of one entity type (e.g., `list_tasks(status=...)`)
 - `add_*` / `edit_*` → write operations
 - `get_*` = heterogeneous structured return; `list_*` = homogeneous filtered collection
 - `AllEntities` (not `DatabaseSnapshot`) — no caching/snapshot semantics at the protocol level
 
 ### Model taxonomy
 
-**Full taxonomy with decision tree and examples:** [Model Taxonomy](model-taxonomy.md)
+> [!tip] Full taxonomy with decision tree and examples
+>
+> See [Model Taxonomy](model-taxonomy.md) for the complete classification:
+>
+> - Core models vs boundary models
+> - Suffix conventions (`Read`, `Command`, `Result`, `RepoPayload`, `RepoResult`)
+> - Decision tree for where a new model goes
 
 ## Dumb Bridge, Smart Python
 
-The most important architectural invariant: **the bridge is a relay, not a brain**. All validation, resolution, diff computation, and business logic lives in Python. The bridge script receives pre-validated payloads and executes them without interpretation.
+> [!important] The key invariant
+>
+> **The bridge is a relay, not a brain.** All validation, resolution, diff computation, and business logic lives in Python. The bridge receives pre-validated payloads and executes them without interpretation.
 
 ### Why
 
-- **OmniJS freezes the UI.** Every line of bridge logic is user-visible latency — scanning 2,825 tasks takes ~1,264ms during which OmniFocus is unresponsive
-- **OmniJS is quirky.** Opaque enums, unreliable batch operations, null rejection — the runtime has sharp edges that are painful to debug
-- **Python is testable.** 534 pytest tests cover service logic, adapter transformations, and repository behavior. Bridge.js has 26 Vitest tests for basic relay correctness — that's the right ratio
-- **Python is typed.** Pydantic models, mypy strict mode, and structured error handling catch issues at development time, not at 7:30am in production
+- **OmniJS freezes the UI** — every line of bridge logic is user-visible latency. Scanning 2,825 tasks takes ~1,264ms during which OmniFocus is unresponsive
+- **OmniJS is quirky** — opaque enums, unreliable batch operations, null rejection. Sharp edges that are painful to debug
+- **Python is testable** — 534 pytest tests cover service logic, adapter transformations, and repository behavior. Bridge.js has 26 Vitest tests for basic relay correctness — that's the right ratio
+- **Python is typed** — Pydantic models, mypy strict mode, and structured error handling catch issues at development time, not at 7:30am in production
 
 ### Known OmniJS Quirks
 
-These are concrete examples of why logic stays out of the bridge:
+Concrete examples of why logic stays out of the bridge:
 
-- **`removeTags(array)` is unreliable** — bridge works around this by removing tags one at a time in a loop instead of batch (`bridge.js`, `handleEditTask`)
+- **`removeTags(array)` is unreliable** — bridge removes tags one at a time in a loop instead of batch (`bridge.js`, `handleEditTask`)
 - **`note = null` is rejected** — OmniFocus API requires empty string to clear notes. Service maps `null → ""` before building the repo payload
-- **Enums are opaque objects** — `.name` returns `undefined`. Only `===` comparison against known constants works. Bridge does minimal enum-to-string resolution and throws on unknowns (`bridge.js`, enum resolvers)
+- **Enums are opaque objects** — `.name` returns `undefined`. Only `===` comparison against known constants works. Bridge does minimal enum-to-string resolution and throws on unknowns
 - **Same-container moves are no-ops** — `beginning`/`ending` moves within the same container don't reorder. Service detects this and warns with a workaround
 - **Blocking state is invisible** — bridge cannot determine sequential dependencies or parent-child blocking. Only SQLite has full availability data (`BRIDGE-SPEC.md:FALL-02`)
 
@@ -328,16 +354,16 @@ These are concrete examples of why logic stays out of the bridge:
 
 | Concern | Where | Why |
 |---------|-------|-----|
-| Enum-to-string resolution | Bridge | Must happen at source (opaque objects) |
-| Tag name-to-ID resolution | Service | Case-insensitive matching, ambiguity errors |
-| Tag diff computation | Service | Minimal add/remove sets, no-op warnings |
-| Cycle detection (moves) | Service | Parent chain walk on cached snapshot — instant |
-| No-op detection + warnings | Service | Field comparison before bridge delegation |
-| Null-means-clear mapping | Service | Business logic, not transport |
-| RRULE string generation | Repository | Repository owns RRULE both directions (see [RRULE Utility Layer](#rrule-utility-layer)) |
-| Lifecycle (complete/drop) | Service + Bridge | Service validates state, bridge executes `markComplete()`/`drop()` |
-| Validation (structural) | Contract models | Pydantic validators on specs — value ranges, enum membership, field constraints |
-| Validation (semantic) | Service | State checks, no-op detection, cross-entity resolution |
+| Enum-to-string resolution | 🌉 Bridge | Must happen at source (opaque objects) |
+| Tag name-to-ID resolution | ⚙️ Service | Case-insensitive matching, ambiguity errors |
+| Tag diff computation | ⚙️ Service | Minimal add/remove sets, no-op warnings |
+| Cycle detection (moves) | ⚙️ Service | Parent chain walk on cached snapshot — instant |
+| No-op detection + warnings | ⚙️ Service | Field comparison before bridge delegation |
+| Null-means-clear mapping | ⚙️ Service | Business logic, not transport |
+| RRULE string generation | 🗄️ Repository | Repository owns RRULE both directions (see [RRULE Utility Layer](#rrule-utility-layer)) |
+| Lifecycle (complete/drop) | ⚙️ Service + 🌉 Bridge | Service validates state, bridge executes `markComplete()`/`drop()` |
+| Validation (structural) | 📐 Contract models | Pydantic validators on specs — value ranges, enum membership, field constraints |
+| Validation (semantic) | ⚙️ Service | State checks, no-op detection, cross-entity resolution |
 
 ### The Result
 
@@ -347,14 +373,18 @@ The bridge is ~400 lines of trivial relay code. The rest of the project is ~14,0
 
 In a task manager, error costs are asymmetric:
 
-- **Showing one extra task** = the user glances at it, sees it's irrelevant, moves on. Cost: near zero.
-- **Missing a task** = the user doesn't know what they can't see. They miss a deadline, forget a commitment, lose trust in the tool. Cost: high.
+- **Showing one extra task** — the user glances at it, sees it's irrelevant, moves on. Cost: near zero.
+- **Missing a task** — the user doesn't know what they can't see. They miss a deadline, forget a commitment, lose trust in the tool. Cost: high.
 
-This is the same tradeoff as tuning a classifier: the optimal bias depends on the domain. A spam filter tolerates some missed spam to avoid burying real emails — but for medical screening, you bias hard toward flagging anything suspicious, because missing a diagnosis is catastrophic while a false alarm just means more tests. Task management is closer to medical screening: the cost of a miss far outweighs the cost of showing too much.
+Same tradeoff as tuning a classifier — a spam filter tolerates false negatives to avoid burying real emails, but medical screening biases hard toward flagging anything suspicious. Task management is closer to medical screening: the cost of a miss far outweighs the cost of showing too much.
 
-**This asymmetry biases every ambiguous design decision toward inclusion.** When a boundary could be inclusive or exclusive, make it inclusive. When "due soon" could exclude or include overdue tasks, include them. When a time period's count is ambiguous, round toward showing more.
-
-This is NOT "show everything." Filters are strict — `flagged: true` means flagged, `project: "Work"` means the Work project. The principle applies specifically to **boundary cases where reasonable people could argue either way.** In those cases, the tiebreaker is always: show the task.
+> [!important] The rule
+>
+> **Every ambiguous boundary decision biases toward inclusion.**
+>
+> - Boundary could be inclusive or exclusive? → inclusive
+> - "Due soon" could exclude or include overdue? → include
+> - Time period count is ambiguous? → round toward showing more
 
 ### Applied examples
 
@@ -370,29 +400,23 @@ In every case: the generous option means "you might see one extra task." The cle
 
 ### When NOT to apply
 
-- **Strict filters are strict.** `flagged: true`, `availability: "available"` — no fuzziness. These aren't boundary cases, they're different questions.
-- **Default exclusions are intentional.** Completed/dropped tasks require an explicit filter. "Show active tasks" is a clear design choice, not an ambiguous boundary.
+- **Strict filters are strict** — `flagged: true`, `availability: "available"` — no fuzziness. These aren't boundary cases, they're different questions.
+- **Default exclusions are intentional** — completed/dropped tasks require an explicit filter. "Show active tasks" is a clear design choice, not an ambiguous boundary.
 - **The principle is a tiebreaker**, not a blanket rule. If the answer is obviously "exclude," exclude.
 
 ## Structure Over Discipline
 
 *Designing architecture for agents who always take the shortest path.*
 
-Design the architecture so the path of least resistance leads to the right outcome. Agents optimize
-for least resistance uniformly and instantly — they don't leave legible patterns you can learn from.
-So: pave first. Make the structure guide toward the right choice, not discipline or documentation.
+Agents optimize for least resistance uniformly and instantly — they don't leave legible patterns you can learn from. So: **pave first.** Make the structure guide toward the right choice, not discipline or documentation.
 
-In practice:
+- **Prefer duplication over shared abstractions** when paths will diverge — separate types per operation, separate classes even when fields match today. Agents won't recognize when a shared abstraction is the wrong fit.
+- **Use the type system to make wrong states unrepresentable** — distinct types at each boundary, sentinel types for ambiguous states. If the wrong choice doesn't compile, agents can't take it.
+- **Make module boundaries self-documenting** — when the module name tells you where new code goes, agents don't need to make judgment calls about placement.
 
-- **Prefer duplication over shared abstractions** when paths will diverge — separate types per
-  operation, separate classes even when fields match today. Agents won't recognize when a shared
-  abstraction is the wrong fit.
-- **Use the type system to make wrong states unrepresentable** — distinct types at each boundary,
-  sentinel types for ambiguous states. If the wrong choice doesn't compile, agents can't take it.
-- **Make module boundaries self-documenting** — when the module name tells you where new code goes,
-  agents don't need to make judgment calls about placement.
-
-**Full writeup with examples:** [Structure Over Discipline](structure-over-discipline.md)
+> [!tip] Full writeup with examples
+>
+> See [Structure Over Discipline](structure-over-discipline.md) for concrete examples of each principle applied in this codebase.
 
 ## Write API Patterns
 
@@ -447,14 +471,13 @@ The edit API separates **setters** (top-level fields) from **actions** (operatio
 }
 ```
 
-Design principles:
-- **Setters** are idempotent field replacements (top-level). Generic no-op warning when value unchanged.
-- **Actions** are operations that modify relative to current state (nested under `actions`). Action-specific warnings (e.g., "Tag 'X' is already on this task").
+- **Setters** — idempotent field replacements (top-level). Generic no-op warning when value unchanged.
+- **Actions** — operations that modify relative to current state (nested under `actions`). Action-specific warnings (e.g., "Tag 'X' is already on this task").
 - **Any field can graduate** from setter to action group when it needs more than simple replacement.
   - Migration path:
     1. Remove the field from top-level setters
     2. Add it as an action group under `actions` with `replace` + new operations
-  - Example: `note` could graduate to `actions.note: { replace: "...", append: "..." }` when append-note is needed.
+  - **Example:** `note` could graduate to `actions.note: { replace: "...", append: "..." }` when append-note is needed.
 - **Tags are the first graduated field:**
 
   ```json
@@ -469,10 +492,10 @@ Design principles:
 
 ### Agent-facing messages
 
-All agent-facing text — warnings, errors, and descriptions — is centralized in `agent_messages/` with AST-based test enforcement preventing inline regressions. Agents learn from every response, so message quality is a first-class concern.
+All agent-facing text is centralized in `agent_messages/` with AST-based test enforcement preventing inline regressions. Agents learn from every response, so message quality is a first-class concern.
 
 - Write results include optional `warnings` array for no-ops and edge cases
-- Errors (ValueError) use the same centralized constant + `.format()` pattern as warnings
+- Errors (`ValueError`) use the same centralized constant + `.format()` pattern as warnings
 - Examples:
   - Tag no-op: "Tag 'X' was not on this task — omit remove_tags to skip"
   - Setter no-op: "Field 'flagged' is already true — omit to skip"
@@ -481,8 +504,8 @@ All agent-facing text — warnings, errors, and descriptions — is centralized 
 
 ## Two-Axis Status Model
 
-- Urgency: `overdue`, `due_soon`, `none` — time-based, computed from dates
-- Availability: `available`, `blocked`, `completed`, `dropped` — lifecycle state
+- **Urgency**: `overdue`, `due_soon`, `none` — time-based, computed from dates
+- **Availability**: `available`, `blocked`, `completed`, `dropped` — lifecycle state
 - Replaces single-winner status enum from v1.0; matches OmniFocus internal representation
 
 ## Repetition Rule: Structured Fields, Not RRULE Strings
@@ -491,7 +514,10 @@ All agent-facing text — warnings, errors, and descriptions — is centralized 
 
 Agents never see RRULE strings. The read and write models expose repetition as structured fields with a flat frequency model. The RRULE string is an internal serialization detail between the service layer and the bridge.
 
-Why top-level (not inside `actions`): setting a repetition rule is idempotent — same input always produces the same result, regardless of current state. Follows the same pattern as `due_date`, `note` — set, clear, or leave unchanged.
+> [!note] Why top-level (not inside `actions`)?
+>
+> - Setting a repetition rule is **idempotent** — same input always produces the same result, regardless of current state
+> - Follows the same pattern as `due_date`, `note` — set, clear, or leave unchanged
 
 ### Repetition Rule Structure
 
@@ -640,7 +666,9 @@ The `repository/rrule/` package owns RRULE translation in both directions. Servi
 - `schedule.py`: `derive_schedule()` → `Schedule`, anchorDateKey → `BasedOn`
 - Assembled into `RepetitionRule` (core model) — service receives clean types
 
-> **Detailed flow diagrams** — write (add/edit) and read pipelines with full data flow: [docs/repetition-rule-flow.md](repetition-rule-flow.md)
+---
+
+_For detailed flow diagrams — write (add/edit) and read pipelines with full data flow: [repetition-rule-flow.md](repetition-rule-flow.md)_
 
 ### Validation Layers
 
