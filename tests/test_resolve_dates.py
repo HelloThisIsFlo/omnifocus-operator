@@ -162,12 +162,12 @@ class TestDueSoonSettingProperties:
         assert rolling == [DueSoonSetting.TWENTY_FOUR_HOURS]
 
 
-class TestAnyShortcut:
-    """'any' is not a date filter -- resolver should raise ValueError."""
+class TestAllShortcut:
+    """'all' is not a date filter -- resolver should raise ValueError."""
 
-    def test_any_raises(self) -> None:
-        with pytest.raises(ValueError, match="any"):
-            resolve_date_filter(LifecycleDateShortcut.ANY, "completed", NOW)
+    def test_all_raises(self) -> None:
+        with pytest.raises(ValueError, match="all"):
+            resolve_date_filter(LifecycleDateShortcut.ALL, "completed", NOW)
 
 
 # ---------------------------------------------------------------------------

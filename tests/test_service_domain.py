@@ -1053,6 +1053,96 @@ class TestResolveDateFilters:
 
 
 # ---------------------------------------------------------------------------
+# Defer hint detection (D-10, D-11)
+# ---------------------------------------------------------------------------
+
+
+class TestDeferHintDetection:
+    """DomainLogic.resolve_date_filters -- defer hint detection for after/before 'now'."""
+
+    def test_defer_after_now_produces_hint(self) -> None:
+        """defer: {after: 'now'} -> warning with 'future defer date' and 'blocked'."""
+        from omnifocus_operator.agent_messages.warnings import (  # noqa: PLC0415
+            DEFER_AFTER_NOW_HINT,
+        )
+
+        result = _domain().resolve_date_filters(
+            _date_query(defer=DateFilter(after="now")),
+            _NOW,
+            week_start=0,
+            due_soon_setting=None,
+        )
+        assert DEFER_AFTER_NOW_HINT in result.warnings
+        assert "future defer date" in DEFER_AFTER_NOW_HINT
+        assert "blocked" in DEFER_AFTER_NOW_HINT
+
+    def test_defer_before_now_produces_hint(self) -> None:
+        """defer: {before: 'now'} -> warning with 'defer date has passed' and 'available'."""
+        from omnifocus_operator.agent_messages.warnings import (  # noqa: PLC0415
+            DEFER_BEFORE_NOW_HINT,
+        )
+
+        result = _domain().resolve_date_filters(
+            _date_query(defer=DateFilter(before="now")),
+            _NOW,
+            week_start=0,
+            due_soon_setting=None,
+        )
+        assert DEFER_BEFORE_NOW_HINT in result.warnings
+        assert "defer date has passed" in DEFER_BEFORE_NOW_HINT
+        assert "available" in DEFER_BEFORE_NOW_HINT
+
+    def test_defer_after_now_with_before_still_hints(self) -> None:
+        """defer: {after: 'now', before: '2026-05-01'} -> after-now hint fires."""
+        from omnifocus_operator.agent_messages.warnings import (  # noqa: PLC0415
+            DEFER_AFTER_NOW_HINT,
+        )
+
+        result = _domain().resolve_date_filters(
+            _date_query(defer=DateFilter(after="now", before="2026-05-01")),
+            _NOW,
+            week_start=0,
+            due_soon_setting=None,
+        )
+        assert DEFER_AFTER_NOW_HINT in result.warnings
+
+    def test_defer_non_now_no_hint(self) -> None:
+        """defer: {after: '2026-01-01'} -> no defer hint (only 'now' triggers it)."""
+        result = _domain().resolve_date_filters(
+            _date_query(defer=DateFilter(after="2026-01-01")),
+            _NOW,
+            week_start=0,
+            due_soon_setting=None,
+        )
+        # No defer hints at all
+        for w in result.warnings:
+            assert "defer date" not in w.lower()
+            assert "Tip:" not in w
+
+    def test_non_defer_field_no_hint(self) -> None:
+        """due: {after: 'now'} -> no defer hint (field must be 'defer')."""
+        result = _domain().resolve_date_filters(
+            _date_query(due=DateFilter(after="now")),
+            _NOW,
+            week_start=0,
+            due_soon_setting=None,
+        )
+        for w in result.warnings:
+            assert "Tip:" not in w
+
+    def test_defer_hints_non_blocking(self) -> None:
+        """Query still resolves with bounds present alongside hint."""
+        result = _domain().resolve_date_filters(
+            _date_query(defer=DateFilter(after="now")),
+            _NOW,
+            week_start=0,
+            due_soon_setting=None,
+        )
+        assert "defer" in result.bounds
+        assert result.bounds["defer"].after == _NOW
+
+
+# ---------------------------------------------------------------------------
 # Availability expansion (moved from _expand_availability free function)
 # ---------------------------------------------------------------------------
 

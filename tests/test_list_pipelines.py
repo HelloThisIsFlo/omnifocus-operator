@@ -737,25 +737,26 @@ class TestMatchesInboxName:
 
 
 class TestAvailabilityExpansion:
-    """Pipeline expands AvailabilityFilter.ALL to all core Availability values."""
+    """Pipeline expands AvailabilityFilter.REMAINING to AVAILABLE + BLOCKED."""
 
     @pytest.mark.snapshot(
         tasks=[
             make_task_dict(id="t-avail", name="Available task"),
-            make_task_dict(id="t-dropped", name="Dropped task"),
+            make_task_dict(id="t-blocked", name="Blocked task"),
         ],
         projects=[],
         tags=[],
         folders=[],
         perspectives=[],
     )
-    async def test_tasks_all_returns_all_statuses(self, service: OperatorService) -> None:
-        """availability=['ALL'] expands to all core Availability values."""
+    async def test_tasks_remaining_returns_active_statuses(self, service: OperatorService) -> None:
+        """availability=['remaining'] expands to AVAILABLE + BLOCKED."""
 
-        result = await service.list_tasks(ListTasksQuery(availability=[AvailabilityFilter.ALL]))
-        # Should return all tasks regardless of status
+        result = await service.list_tasks(
+            ListTasksQuery(availability=[AvailabilityFilter.REMAINING])
+        )
         assert len(result.items) >= 1
-        assert result.warnings is None  # No mixed-ALL warning
+        assert result.warnings is None  # No redundancy warning
 
     @pytest.mark.snapshot(
         tasks=[
@@ -766,14 +767,16 @@ class TestAvailabilityExpansion:
         folders=[],
         perspectives=[],
     )
-    async def test_tasks_mixed_all_warns(self, service: OperatorService) -> None:
-        """availability=['ALL', 'available'] expands and adds warning."""
+    async def test_tasks_mixed_remaining_warns(self, service: OperatorService) -> None:
+        """availability=['remaining', 'available'] expands and adds redundancy warning."""
 
         result = await service.list_tasks(
-            ListTasksQuery(availability=[AvailabilityFilter.ALL, AvailabilityFilter.AVAILABLE])
+            ListTasksQuery(
+                availability=[AvailabilityFilter.REMAINING, AvailabilityFilter.AVAILABLE]
+            )
         )
         assert result.warnings is not None
-        assert any("already includes every status" in w for w in result.warnings)
+        assert any("already includes" in w for w in result.warnings)
 
     @pytest.mark.snapshot(
         tasks=[],
@@ -784,11 +787,13 @@ class TestAvailabilityExpansion:
         folders=[],
         perspectives=[],
     )
-    async def test_projects_all_returns_all_statuses(self, service: OperatorService) -> None:
-        """list_projects with availability=['ALL'] expands correctly."""
+    async def test_projects_remaining_returns_active_statuses(
+        self, service: OperatorService
+    ) -> None:
+        """list_projects with availability=['remaining'] expands correctly."""
 
         result = await service.list_projects(
-            ListProjectsQuery(availability=[AvailabilityFilter.ALL])
+            ListProjectsQuery(availability=[AvailabilityFilter.REMAINING])
         )
         assert len(result.items) >= 1
         assert result.warnings is None
@@ -1312,15 +1317,15 @@ class TestListTasksDateFilterPipeline:
         folders=[],
         perspectives=[],
     )
-    async def test_completed_any_returns_all_completed_regardless_of_date(
+    async def test_completed_all_returns_all_completed_regardless_of_date(
         self, service: OperatorService
     ) -> None:
-        """completed='any' adds lifecycle availability -- completed tasks appear (EXEC-05).
+        """completed='all' adds lifecycle availability -- completed tasks appear (EXEC-05).
 
-        "any" expands availability to include 'completed' but sets no date bounds.
+        "all" expands availability to include 'completed' but sets no date bounds.
         Available tasks remain visible (default availability unchanged).
         """
-        result = await service.list_tasks(ListTasksQuery(completed="any"))
+        result = await service.list_tasks(ListTasksQuery(completed="all"))
         task_ids = {t.id for t in result.items}
         # Both completed tasks visible regardless of completion date
         assert "t-completed-old" in task_ids
@@ -1357,15 +1362,15 @@ class TestListTasksDateFilterPipeline:
         folders=[],
         perspectives=[],
     )
-    async def test_dropped_any_returns_all_dropped_regardless_of_date(
+    async def test_dropped_all_returns_all_dropped_regardless_of_date(
         self, service: OperatorService
     ) -> None:
-        """dropped='any' adds lifecycle availability -- dropped tasks appear (EXEC-06).
+        """dropped='all' adds lifecycle availability -- dropped tasks appear (EXEC-06).
 
-        "any" expands availability to include 'dropped' but sets no date bounds.
+        "all" expands availability to include 'dropped' but sets no date bounds.
         Available tasks remain visible (default availability unchanged).
         """
-        result = await service.list_tasks(ListTasksQuery(dropped="any"))
+        result = await service.list_tasks(ListTasksQuery(dropped="all"))
         task_ids = {t.id for t in result.items}
         assert "t-dropped-old" in task_ids
         assert "t-dropped-recent" in task_ids
@@ -1393,14 +1398,14 @@ class TestListTasksDateFilterPipeline:
         folders=[],
         perspectives=[],
     )
-    async def test_completed_any_with_explicit_completed_availability_no_duplicate(
+    async def test_completed_all_with_empty_availability_only_completed(
         self, service: OperatorService
     ) -> None:
-        """completed='any' + availability=['completed'] produces no duplicate availability."""
+        """completed='all' + availability=[] returns only completed tasks."""
         result = await service.list_tasks(
             ListTasksQuery(
-                completed="any",
-                availability=[AvailabilityFilter.COMPLETED],
+                completed="all",
+                availability=[],
             )
         )
         task_ids = {t.id for t in result.items}

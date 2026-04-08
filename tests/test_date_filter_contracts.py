@@ -41,8 +41,8 @@ class TestDueDateShortcut:
 
 
 class TestLifecycleDateShortcut:
-    def test_any(self) -> None:
-        assert LifecycleDateShortcut("any") == LifecycleDateShortcut.ANY
+    def test_all(self) -> None:
+        assert LifecycleDateShortcut("all") == LifecycleDateShortcut.ALL
 
     def test_today(self) -> None:
         assert LifecycleDateShortcut("today") == LifecycleDateShortcut.TODAY
@@ -50,6 +50,11 @@ class TestLifecycleDateShortcut:
     def test_invalid_value_raises(self) -> None:
         with pytest.raises(ValueError):
             LifecycleDateShortcut("invalid")
+
+    def test_any_is_invalid(self) -> None:
+        """'any' is no longer a valid shortcut -- renamed to 'all'."""
+        with pytest.raises(ValueError):
+            LifecycleDateShortcut("any")
 
 
 # ---------------------------------------------------------------------------
@@ -246,9 +251,9 @@ class TestUnionDiscrimination:
         class _Probe(BaseModel):
             completed: LifecycleDateShortcut | DateFilter
 
-        probe = _Probe(completed="any")
+        probe = _Probe(completed="all")
         assert isinstance(probe.completed, LifecycleDateShortcut)
-        assert probe.completed == LifecycleDateShortcut.ANY
+        assert probe.completed == LifecycleDateShortcut.ALL
 
     def test_lifecycle_dict_becomes_date_filter(self) -> None:
         class _Probe(BaseModel):
@@ -287,10 +292,10 @@ class TestListTasksQueryDateFields:
         assert isinstance(q.due, DateFilter)
         assert q.due.this == "w"
 
-    def test_completed_any_shortcut(self) -> None:
-        q = ListTasksQuery(completed="any")
+    def test_completed_all_shortcut(self) -> None:
+        q = ListTasksQuery(completed="all")
         assert isinstance(q.completed, LifecycleDateShortcut)
-        assert q.completed == LifecycleDateShortcut.ANY
+        assert q.completed == LifecycleDateShortcut.ALL
 
     def test_defer_today_literal(self) -> None:
         q = ListTasksQuery(defer="today")
@@ -308,19 +313,19 @@ class TestListTasksQueryDateFields:
         q = ListTasksQuery(modified="today")
         assert q.modified == "today"
 
-    def test_dropped_any_shortcut(self) -> None:
-        q = ListTasksQuery(dropped="any")
+    def test_dropped_all_shortcut(self) -> None:
+        q = ListTasksQuery(dropped="all")
         assert isinstance(q.dropped, LifecycleDateShortcut)
-        assert q.dropped == LifecycleDateShortcut.ANY
+        assert q.dropped == LifecycleDateShortcut.ALL
 
 
 class TestListTasksQueryDateFieldRejection:
     """Verify invalid shortcuts are rejected on the correct fields."""
 
-    def test_due_any_rejected(self) -> None:
-        """'any' is not valid for due -- only for lifecycle fields."""
+    def test_due_all_rejected(self) -> None:
+        """'all' is not valid for due -- only for lifecycle fields."""
         with pytest.raises(ValidationError):
-            ListTasksQuery(due="any")
+            ListTasksQuery(due="all")
 
     def test_defer_overdue_rejected(self) -> None:
         """'overdue' is not valid for defer -- only for due."""
