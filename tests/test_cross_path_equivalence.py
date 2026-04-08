@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import plistlib
 import sqlite3
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -23,6 +23,7 @@ from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsRep
 from omnifocus_operator.contracts.use_cases.list.tags import ListTagsRepoQuery
 from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
 from omnifocus_operator.models.enums import (
+    Availability,
     FolderAvailability,
     TagAvailability,
 )
@@ -598,14 +599,14 @@ async def seed_sqlite_repo(data: dict[str, Any], tmp_path: Path) -> HybridReposi
                 effectiveFlagged INTEGER DEFAULT 0,
                 dateDue TEXT,
                 dateToStart TEXT,
-                effectiveDateDue TEXT,
-                effectiveDateToStart TEXT,
+                datePlanned TEXT,
+                effectiveDateDue INTEGER,
+                effectiveDateToStart INTEGER,
+                effectiveDatePlanned INTEGER,
                 dateCompleted REAL,
                 effectiveDateCompleted REAL,
                 dateHidden REAL,
                 effectiveDateHidden REAL,
-                datePlanned REAL,
-                effectiveDatePlanned REAL,
                 estimatedMinutes REAL,
                 childrenCount INTEGER DEFAULT 0,
                 inInbox INTEGER DEFAULT 0,
@@ -1198,3 +1199,112 @@ class TestSearchCrossPath:
         assert len(items) == 1
         assert items[0].id == "folder-2"
         assert items[0].name == "Archive"
+
+
+# ===========================================================================
+# Date filter cross-path equivalence tests (EXEC-10, EXEC-11)
+# ===========================================================================
+
+
+class TestDateFilterCrossPath:
+    """Date filter cross-path equivalence (EXEC-10, EXEC-11).
+
+    Proves SQL and bridge paths produce identical results for all date filter
+    variants, including tasks with inherited effective dates from parent projects.
+    """
+
+    @pytest.mark.asyncio
+    async def test_due_before_includes_direct_and_inherited(self, cross_repo: Repository) -> None:
+        """Due filter uses effective date -- includes task-7 with inherited due."""
+        threshold = _DUE_DATE + timedelta(days=1)
+        result = await cross_repo.list_tasks(ListTasksRepoQuery(due_before=threshold))
+        ids = sorted(t.id for t in result.items)
+        # task-1 (direct due), task-4 (direct due), task-7 (inherited due)
+        assert ids == ["task-1", "task-4", "task-7"]
+
+    @pytest.mark.asyncio
+    async def test_due_after_filters_correctly(self, cross_repo: Repository) -> None:
+        """Due after threshold excludes tasks with earlier/no due dates."""
+        threshold = _DUE_DATE + timedelta(days=1)
+        result = await cross_repo.list_tasks(ListTasksRepoQuery(due_after=threshold))
+        assert len(result.items) == 0
+
+    @pytest.mark.asyncio
+    async def test_due_after_exact_match(self, cross_repo: Repository) -> None:
+        """Due after exact _DUE_DATE returns all tasks with that effective due."""
+        result = await cross_repo.list_tasks(ListTasksRepoQuery(due_after=_DUE_DATE))
+        ids = sorted(t.id for t in result.items)
+        assert ids == ["task-1", "task-4", "task-7"]
+
+    @pytest.mark.asyncio
+    async def test_defer_before(self, cross_repo: Repository) -> None:
+        """Defer filter returns only task-2 (sole task with defer date)."""
+        threshold = _DEFER_DATE + timedelta(days=1)
+        result = await cross_repo.list_tasks(ListTasksRepoQuery(defer_before=threshold))
+        ids = [t.id for t in result.items]
+        assert ids == ["task-2"]
+
+    @pytest.mark.asyncio
+    async def test_planned_before(self, cross_repo: Repository) -> None:
+        """Planned filter returns only task-2."""
+        threshold = _PLANNED_DATE + timedelta(days=1)
+        result = await cross_repo.list_tasks(ListTasksRepoQuery(planned_before=threshold))
+        ids = [t.id for t in result.items]
+        assert ids == ["task-2"]
+
+    @pytest.mark.asyncio
+    async def test_completed_date_filter(self, cross_repo: Repository) -> None:
+        """Completed date filter with COMPLETED availability returns task-5."""
+        result = await cross_repo.list_tasks(
+            ListTasksRepoQuery(
+                availability=[Availability.AVAILABLE, Availability.BLOCKED, Availability.COMPLETED],
+                completed_after=_COMPLETED_DATE - timedelta(days=1),
+                completed_before=_COMPLETED_DATE + timedelta(days=1),
+            )
+        )
+        completed_ids = [t.id for t in result.items if t.availability == Availability.COMPLETED]
+        assert completed_ids == ["task-5"]
+
+    @pytest.mark.asyncio
+    async def test_dropped_date_filter(self, cross_repo: Repository) -> None:
+        """Dropped date filter with DROPPED availability returns task-6."""
+        result = await cross_repo.list_tasks(
+            ListTasksRepoQuery(
+                availability=[Availability.AVAILABLE, Availability.BLOCKED, Availability.DROPPED],
+                dropped_after=_DROPPED_DATE - timedelta(days=1),
+                dropped_before=_DROPPED_DATE + timedelta(days=1),
+            )
+        )
+        dropped_ids = [t.id for t in result.items if t.availability == Availability.DROPPED]
+        assert dropped_ids == ["task-6"]
+
+    @pytest.mark.asyncio
+    async def test_due_combined_with_flagged(self, cross_repo: Repository) -> None:
+        """Date filter + base filter combine with AND."""
+        threshold = _DUE_DATE + timedelta(days=1)
+        result = await cross_repo.list_tasks(ListTasksRepoQuery(due_before=threshold, flagged=True))
+        ids = sorted(t.id for t in result.items)
+        # task-1 (flagged, has due), task-4 (flagged, has due)
+        # task-7 has due but is NOT flagged
+        assert ids == ["task-1", "task-4"]
+
+    @pytest.mark.asyncio
+    async def test_added_date_range(self, cross_repo: Repository) -> None:
+        """Added date filter returns tasks within the range."""
+        result = await cross_repo.list_tasks(
+            ListTasksRepoQuery(
+                added_after=_ADDED - timedelta(days=1),
+                added_before=_ADDED + timedelta(days=1),
+            )
+        )
+        # All available+blocked tasks have _ADDED as their added date
+        assert len(result.items) >= 4
+
+    @pytest.mark.asyncio
+    async def test_null_date_excluded(self, cross_repo: Repository) -> None:
+        """Tasks with NULL date field are excluded from date filter results."""
+        # task-3 has no due date (all None). Due filter should not return it.
+        threshold = _DUE_DATE + timedelta(days=1)
+        result = await cross_repo.list_tasks(ListTasksRepoQuery(due_before=threshold))
+        ids = [t.id for t in result.items]
+        assert "task-3" not in ids
