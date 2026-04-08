@@ -1,0 +1,132 @@
+"""Tests for get_due_soon_setting() on both repository implementations."""
+
+from __future__ import annotations
+
+import sqlite3
+from pathlib import Path
+from unittest.mock import AsyncMock
+
+import pytest
+
+from omnifocus_operator.contracts.use_cases.list._enums import DueSoonSetting
+
+# -- HybridRepository tests --
+
+
+@pytest.fixture()
+def _setting_db(tmp_path: Path) -> Path:
+    """Create a temporary SQLite database with a Setting table."""
+    db_path = tmp_path / "OmniFocusDatabase.db"
+    conn = sqlite3.connect(str(db_path))
+    conn.execute("CREATE TABLE Setting (key TEXT PRIMARY KEY, value TEXT)")
+    conn.commit()
+    conn.close()
+    return db_path
+
+
+def _insert_settings(db_path: Path, interval: str, granularity: str) -> None:
+    """Insert DueSoonInterval and DueSoonGranularity into the Setting table."""
+    conn = sqlite3.connect(str(db_path))
+    conn.execute(
+        "INSERT OR REPLACE INTO Setting (key, value) VALUES ('DueSoonInterval', ?)",
+        (interval,),
+    )
+    conn.execute(
+        "INSERT OR REPLACE INTO Setting (key, value) VALUES ('DueSoonGranularity', ?)",
+        (granularity,),
+    )
+    conn.commit()
+    conn.close()
+
+
+def _make_hybrid_repo(db_path: Path):
+    """Create a HybridRepository pointing at a temp database."""
+    from omnifocus_operator.repository.hybrid.hybrid import HybridRepository
+
+    bridge = AsyncMock()
+    return HybridRepository(db_path=db_path, bridge=bridge)
+
+
+class TestHybridGetDueSoonSetting:
+    """HybridRepository.get_due_soon_setting() reads from SQLite Setting table."""
+
+    @pytest.mark.asyncio()
+    async def test_returns_today(self, _setting_db: Path) -> None:
+        _insert_settings(_setting_db, "86400", "1")
+        repo = _make_hybrid_repo(_setting_db)
+        result = await repo.get_due_soon_setting()
+        assert result is DueSoonSetting.TODAY
+
+    @pytest.mark.asyncio()
+    async def test_returns_twenty_four_hours(self, _setting_db: Path) -> None:
+        _insert_settings(_setting_db, "86400", "0")
+        repo = _make_hybrid_repo(_setting_db)
+        result = await repo.get_due_soon_setting()
+        assert result is DueSoonSetting.TWENTY_FOUR_HOURS
+
+    @pytest.mark.asyncio()
+    async def test_returns_two_days(self, _setting_db: Path) -> None:
+        _insert_settings(_setting_db, "172800", "1")
+        repo = _make_hybrid_repo(_setting_db)
+        result = await repo.get_due_soon_setting()
+        assert result is DueSoonSetting.TWO_DAYS
+
+    @pytest.mark.asyncio()
+    async def test_returns_three_days(self, _setting_db: Path) -> None:
+        _insert_settings(_setting_db, "259200", "1")
+        repo = _make_hybrid_repo(_setting_db)
+        result = await repo.get_due_soon_setting()
+        assert result is DueSoonSetting.THREE_DAYS
+
+    @pytest.mark.asyncio()
+    async def test_returns_four_days(self, _setting_db: Path) -> None:
+        _insert_settings(_setting_db, "345600", "1")
+        repo = _make_hybrid_repo(_setting_db)
+        result = await repo.get_due_soon_setting()
+        assert result is DueSoonSetting.FOUR_DAYS
+
+    @pytest.mark.asyncio()
+    async def test_returns_five_days(self, _setting_db: Path) -> None:
+        _insert_settings(_setting_db, "432000", "1")
+        repo = _make_hybrid_repo(_setting_db)
+        result = await repo.get_due_soon_setting()
+        assert result is DueSoonSetting.FIVE_DAYS
+
+    @pytest.mark.asyncio()
+    async def test_returns_one_week(self, _setting_db: Path) -> None:
+        _insert_settings(_setting_db, "604800", "1")
+        repo = _make_hybrid_repo(_setting_db)
+        result = await repo.get_due_soon_setting()
+        assert result is DueSoonSetting.ONE_WEEK
+
+    @pytest.mark.asyncio()
+    async def test_returns_none_for_unknown_pair(self, _setting_db: Path) -> None:
+        _insert_settings(_setting_db, "999999", "1")
+        repo = _make_hybrid_repo(_setting_db)
+        result = await repo.get_due_soon_setting()
+        assert result is None
+
+    @pytest.mark.asyncio()
+    async def test_returns_none_when_no_rows(self, _setting_db: Path) -> None:
+        repo = _make_hybrid_repo(_setting_db)
+        result = await repo.get_due_soon_setting()
+        assert result is None
+
+    @pytest.mark.asyncio()
+    async def test_returns_none_when_only_interval(self, _setting_db: Path) -> None:
+        conn = sqlite3.connect(str(_setting_db))
+        conn.execute("INSERT INTO Setting (key, value) VALUES ('DueSoonInterval', '86400')")
+        conn.commit()
+        conn.close()
+        repo = _make_hybrid_repo(_setting_db)
+        result = await repo.get_due_soon_setting()
+        assert result is None
+
+
+class TestRepositoryProtocolIncludesGetDueSoonSetting:
+    """Structural check that the Repository protocol includes get_due_soon_setting."""
+
+    def test_protocol_has_method(self) -> None:
+        from omnifocus_operator.contracts.protocols import Repository
+
+        assert hasattr(Repository, "get_due_soon_setting")
