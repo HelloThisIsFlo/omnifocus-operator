@@ -59,7 +59,7 @@ omnifocus_operator/
         convert.py       -- Spec-to-core model conversion at service boundary
         resolve.py       -- Entity resolution (parent, tags, task)
         validate.py      -- Pure input validation
-        domain.py        -- Business rules (lifecycle, tags, cycle, no-op, move)
+        domain.py        -- Product decisions: the opinionated logic that defines this tool's behavior
         payload.py       -- Typed repo payload construction
     agent_messages/  -- Agent-facing communication surface (warnings + errors)
         warnings.py      -- Centralized warning constants
@@ -201,6 +201,33 @@ class _EditTaskPipeline:
 - Mutable state on `self` is acceptable — the object is created, executed, and discarded within a single call. The lifetime is bounded.
 - Step methods are private (`_verify_task_exists`, not `verify_task_exists`)
 - Read delegation methods (get_task, get_project, etc.) stay inline on OperatorService — they're one-liner pass-throughs, not pipelines
+
+### Service Layer: Product Decisions vs Plumbing
+
+The service layer has several modules. The organizing principle is **not** "pure vs impure" or "stateful vs stateless" — it's **product opinion vs mechanical plumbing**.
+
+**Litmus test:** "Would another OmniFocus tool make this same choice?" If yes → plumbing (any competent implementation needs it). If no → product decision (this is *our* choice, and it belongs in `domain.py`).
+
+`domain.py` is where you look to understand what makes OmniFocus Operator *this particular product*. If you want to tweak the behavior that defines the tool — the opinionated stuff — you should only need to look at domain and closely related code.
+
+Everything else in the service layer is plumbing: I/O sequencing, entity lookups, payload assembly, input validation. Necessary, but any implementation would do roughly the same thing.
+
+| Concern | Where | Why |
+|---------|-------|-----|
+| "soon" without config → fall back to TODAY + warn | domain | Another tool might error or guess. We chose conservative bounds + transparency |
+| Lifecycle auto-include (completed filter → add COMPLETED availability) | domain | Another tool might require explicit opt-in |
+| `null` note → empty string | domain | OmniJS rejects null, but *how* to handle it is a product choice |
+| ALL mixed with other filters → warning | domain | Behavioral guidance for agents — our opinion on what's helpful |
+| No-op detection + educational warnings | domain | We chose to warn, not silently succeed |
+| Filter resolution warnings (multi-match, did-you-mean) | domain | Agent UX choices — fuzzy matching policy |
+| Fetching `due_soon_setting` from the repo | pipeline | I/O sequencing — mechanical |
+| Building `ListTasksRepoQuery` from resolved values | pipeline | Assembly — mechanical |
+| `{this: "w"}` → Monday-to-Sunday bounds | resolve_dates | Date arithmetic — any implementation needs this |
+| Name → ID resolution with fuzzy matching | resolve | Lookup mechanics — mechanical |
+| Spec-to-core model conversion | convert | Data mapping — structural |
+| Repo payload construction | payload | Assembly — structural |
+
+**`resolve_dates.py` sits in a middle ground.** It contains opinions (show-more boundary choices, day-snapping behavior), but at the per-field arithmetic level. Domain calls into it for individual field resolution and owns the cross-field orchestration — lifecycle mapping, edge-case fallbacks, what to do when configuration is missing.
 
 ## Read Pipeline
 

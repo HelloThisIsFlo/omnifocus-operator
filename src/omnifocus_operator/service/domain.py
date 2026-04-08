@@ -134,7 +134,10 @@ def _to_utc_ts(val: object) -> object:
 
 
 class DomainLogic:
-    """Applies business rules for the edit-task pipeline."""
+    """Product decisions — the opinionated logic that defines this tool's behavior.
+
+    See architecture.md "Service Layer: Product Decisions vs Plumbing".
+    """
 
     def __init__(self, repo: Repository, resolver: Resolver) -> None:
         self._repo = repo
