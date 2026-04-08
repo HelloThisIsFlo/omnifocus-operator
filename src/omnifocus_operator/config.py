@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     bridge_timeout: float = 10.0
     sqlite_path: str | None = None
     ofocus_path: str | None = None
+    due_soon_threshold: str | None = None
 
 
 _settings: Settings | None = None

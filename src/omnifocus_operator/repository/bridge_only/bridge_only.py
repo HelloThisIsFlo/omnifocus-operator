@@ -274,6 +274,26 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
             items = [p for p in items if lower_search in p.name.lower()]
         return _paginate(items, query.limit, query.offset)
 
+    async def get_due_soon_setting(self) -> DueSoonSetting | None:
+        """Return the due-soon threshold from OPERATOR_DUE_SOON_THRESHOLD env var.
+
+        Returns None if the env var is not set. Raises ValueError for
+        invalid values with a list of valid options.
+        """
+        from omnifocus_operator.config import get_settings
+        from omnifocus_operator.contracts.use_cases.list._enums import DueSoonSetting
+
+        threshold_name = get_settings().due_soon_threshold
+        if threshold_name is None:
+            return None
+        try:
+            return DueSoonSetting[threshold_name.upper()]
+        except KeyError:
+            valid = ", ".join(m.name for m in DueSoonSetting)
+            raise ValueError(
+                f"Invalid OPERATOR_DUE_SOON_THRESHOLD '{threshold_name}'. Valid values: {valid}"
+            ) from None
+
     async def _refresh(self, current_mtime: int) -> AllEntities:
         """Fetch fresh data from the bridge and update cache state.
 
