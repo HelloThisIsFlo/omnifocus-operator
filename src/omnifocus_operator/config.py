@@ -1,7 +1,10 @@
-"""Application configuration — hard-coded defaults and tunable parameters."""
+"""Application configuration -- hard-coded defaults and tunable parameters."""
 
-import os
+from __future__ import annotations
+
 from dataclasses import dataclass
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from omnifocus_operator.models.enums import EntityType
 
@@ -33,6 +36,45 @@ SYSTEM_LOCATIONS: dict[str, SystemLocation] = {
     "inbox": SystemLocation(id="$inbox", name="Inbox", type=EntityType.PROJECT),
 }
 
+
+# -- Centralized settings (pydantic-settings) ---------------------------------
+
+
+class Settings(BaseSettings):
+    """All OPERATOR_* environment variables in one place.
+
+    Each field maps to an env var via the ``OPERATOR_`` prefix.
+    For example ``log_level`` reads ``OPERATOR_LOG_LEVEL``.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="OPERATOR_")
+
+    log_level: str = "INFO"
+    week_start: str = "monday"
+    repository: str = "hybrid"
+    ipc_dir: str | None = None
+    bridge_timeout: float = 10.0
+    sqlite_path: str | None = None
+    ofocus_path: str | None = None
+
+
+_settings: Settings | None = None
+
+
+def get_settings() -> Settings:
+    """Return the cached Settings singleton (created on first access)."""
+    global _settings
+    if _settings is None:
+        _settings = Settings()
+    return _settings
+
+
+def reset_settings() -> None:
+    """Reset the cached Settings instance (for testing)."""
+    global _settings
+    _settings = None
+
+
 # -- Week start configuration ------------------------------------------------
 # Affects {this: "w"} calendar alignment in date filters.
 # Valid values: "monday", "sunday". Read from OPERATOR_WEEK_START env var.
@@ -43,7 +85,7 @@ WEEK_START_MAP: dict[str, int] = {"monday": 0, "sunday": 6}  # Python weekday() 
 def get_week_start() -> int:
     """Return Python weekday int for configured week start. Default Monday."""
 
-    raw = os.environ.get("OPERATOR_WEEK_START", "monday").lower()
+    raw = get_settings().week_start.lower()
     if raw not in WEEK_START_MAP:
         raise ValueError(f"Invalid OPERATOR_WEEK_START '{raw}' -- use 'monday' or 'sunday'")
     return WEEK_START_MAP[raw]

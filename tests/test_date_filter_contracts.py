@@ -396,6 +396,13 @@ class TestListTasksRepoQueryDatetimeFields:
 class TestGetWeekStart:
     """Verify get_week_start() reads OPERATOR_WEEK_START env var."""
 
+    @pytest.fixture(autouse=True)
+    def _reset_settings_cache(self) -> None:
+        """Reset the Settings singleton so monkeypatched env vars take effect."""
+        from omnifocus_operator.config import reset_settings
+
+        reset_settings()
+
     def test_default_is_monday(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("OPERATOR_WEEK_START", raising=False)
         assert get_week_start() == 0
