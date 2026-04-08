@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from omnifocus_operator.contracts.use_cases.list._enums import (
+    DueSoonSetting,  # noqa: TC001 — Pydantic needs this at runtime
+)
 from omnifocus_operator.models.enums import EntityType
 
 # -- Default pagination --------------------------------------------------------
@@ -58,11 +60,11 @@ class Settings(BaseSettings):
     bridge_timeout: float = 10.0
     sqlite_path: str | None = None
     ofocus_path: str | None = None
-    due_soon_threshold: Any = None
+    due_soon_threshold: DueSoonSetting | None = None
 
     @field_validator("due_soon_threshold", mode="before")
     @classmethod
-    def _validate_due_soon_threshold(cls, value: object) -> Any:
+    def _validate_due_soon_threshold(cls, value: object) -> DueSoonSetting | None:
         from omnifocus_operator.contracts.use_cases.list._enums import (  # noqa: PLC0415
             DueSoonSetting,
         )
