@@ -1,9 +1,12 @@
 ---
 phase: 45-date-models-resolution
-reviewed: 2026-04-07T00:00:00Z
+reviewed: 2026-04-08T09:46:23Z
 depth: standard
-files_reviewed: 14
+files_reviewed: 21
 files_reviewed_list:
+  - docs/configuration.md
+  - pyproject.toml
+  - src/omnifocus_operator/__main__.py
   - src/omnifocus_operator/agent_messages/descriptions.py
   - src/omnifocus_operator/agent_messages/errors.py
   - src/omnifocus_operator/config.py
@@ -11,7 +14,11 @@ files_reviewed_list:
   - src/omnifocus_operator/contracts/use_cases/list/_date_filter.py
   - src/omnifocus_operator/contracts/use_cases/list/_enums.py
   - src/omnifocus_operator/contracts/use_cases/list/tasks.py
+  - src/omnifocus_operator/repository/factory.py
+  - src/omnifocus_operator/repository/hybrid/hybrid.py
+  - src/omnifocus_operator/server.py
   - src/omnifocus_operator/service/resolve_dates.py
+  - tests/conftest.py
   - tests/test_date_filter_constants.py
   - tests/test_date_filter_contracts.py
   - tests/test_descriptions.py
@@ -20,151 +27,79 @@ files_reviewed_list:
   - tests/test_resolve_dates.py
 findings:
   critical: 0
-  warning: 3
-  info: 2
-  total: 5
+  warning: 1
+  info: 3
+  total: 4
 status: issues_found
 ---
 
 # Phase 45: Code Review Report
 
-**Reviewed:** 2026-04-07
+**Reviewed:** 2026-04-08T09:46:23Z
 **Depth:** standard
-**Files Reviewed:** 14
+**Files Reviewed:** 21
 **Status:** issues_found
 
 ## Summary
 
-This phase introduces the date filter contract models (`DateFilter`, `DueDateShortcut`, `LifecycleDateShortcut`), wires them into `ListTasksQuery` / `ListTasksRepoQuery`, adds the pure `resolve_date_filter` function, consolidates descriptions and error strings, and adds comprehensive test coverage.
+Phase 45 delivers three major changes:
 
-The work is well-structured and the test suite is thorough. No security vulnerabilities or data-loss risks were found. The issues below are logic correctness concerns and one silent-ambiguity trap in the validator.
+1. **Centralized Settings via pydantic-settings** -- All `os.environ.get("OPERATOR_*")` calls migrated to a `Settings` singleton in `config.py`, with `get_settings()` / `reset_settings()` lifecycle. Factory, server, `__main__`, and hybrid repository now use the singleton. An autouse test fixture `_reset_settings_cache` in `conftest.py` ensures monkeypatched env vars propagate correctly.
+
+2. **DueSoonSetting enum** -- Replaces raw `(interval_seconds, granularity_int)` parameters with a domain-property enum exposing `days` (int) and `calendar_aligned` (bool). The `resolve_date_filter` function signature now accepts `DueSoonSetting` instead of two raw integers. All 7 OmniFocus "due soon" threshold options are captured as enum members.
+
+3. **DATE_FILTER_INVALID_THIS_UNIT error constant** -- Bug fix from prior review: the `this` field validator was incorrectly reusing `DATE_FILTER_INVALID_DURATION`. Now uses a dedicated constant with contextually correct guidance ("use one of: d, w, m, y").
+
+The prior review (2026-04-07) found 3 warnings and 2 info items. **WR-01** (wrong error constant on `this` validator) and **WR-02** (`_parse_to_comparable` type mismatch crash) are both resolved. **WR-03** (pending consumer constants TODO) has been addressed with the recommended TODO comment.
+
+The code is well-structured. Settings consolidation is clean, the DueSoonSetting enum is solid domain modeling, and test coverage is comprehensive. One warning-level issue remains plus minor observations.
 
 ## Warnings
 
-### WR-01: `_validate_duration` runs after `_validate_this_unit` can't catch positive-count `this`
+### WR-01: `_parse_local_datetime` uses `replace(tzinfo=)` which does not resolve DST gaps
 
-**File:** `src/omnifocus_operator/contracts/use_cases/list/_date_filter.py:27-48`
+**File:** `src/omnifocus_operator/repository/hybrid/hybrid.py:168`
+**Issue:** The function does `naive.replace(tzinfo=_LOCAL_TZ)` to attach timezone info. Python's `replace(tzinfo=...)` stamps a fixed UTC offset derived from the timezone for that date, but does not correctly resolve ambiguous times during DST transitions. When a local time falls in a DST "gap" (e.g., 2:30 AM on US spring-forward day), `replace` may assign the pre-transition offset, producing a wall-clock time that never existed.
 
-**Issue:** `_validate_duration` is registered for `"last"` and `"next"` only. `_validate_this_unit` rejects anything that doesn't match `^[dwmy]$` via `_THIS_UNIT_PATTERN`. The pattern is correct, but the zero/negative guard in `_validate_duration` (lines 36-38) is NOT applied to `"this"`. A user who passes `this="0d"` gets `"Invalid duration"` from `_validate_this_unit` (because `"0d"` doesn't match `^[dwmy]$`), which is the right rejection but for a slightly wrong reason. This is a latent semantic confusion: the error message says "Invalid duration" but the real reason `this="0d"` is rejected is that `this` accepts only a single-character unit, not a count+unit. The existing test `test_this_only_accepts_single_unit` documents this correctly, but the error surfaced to the agent is `DATE_FILTER_INVALID_DURATION` (not a dedicated "this only accepts d/w/m/y" message).
+With `ZoneInfo` (as used here), the behavior is better than with `pytz` -- `ZoneInfo` does consult the transition table. However, gap times remain ambiguous: `replace` defaults to `fold=0`, which selects the pre-transition offset. For OmniFocus dates this is very low risk since tasks are unlikely to have due dates precisely during a DST gap (a 1-hour window once per year). But it is technically incorrect for those edge cases.
 
-This is a user-facing clarity issue rather than a correctness bug — the value is rejected either way. However, if `_THIS_UNIT_PATTERN` were ever relaxed to allow count+unit on `this`, the zero/negative guard would be silently missing.
-
-**Fix:** Either keep the current approach and document the intentional reuse of `DATE_FILTER_INVALID_DURATION`, or add a dedicated error constant for `this` unit validation. At minimum, add a comment to `_validate_this_unit`:
-
+**Fix:** If the trade-off is acceptable (and it likely is), add a comment documenting it:
 ```python
-@field_validator("this", mode="after")
-@classmethod
-def _validate_this_unit(cls, v: str | None) -> str | None:
-    if v is None:
-        return v
-    # 'this' accepts only a bare unit (d/w/m/y), not a count+unit.
-    # _DATE_DURATION_PATTERN is intentionally NOT used here.
-    if not _THIS_UNIT_PATTERN.match(v):
-        raise ValueError(err.DATE_FILTER_INVALID_DURATION.format(value=v))
-    return v
-```
-
----
-
-### WR-02: `_validate_groups` reversed-bounds check silently skips mixed datetime/date comparisons
-
-**File:** `src/omnifocus_operator/contracts/use_cases/list/_date_filter.py:87-98`
-
-**Issue:** The reversed-bounds guard (lines 87-98) calls `_parse_to_comparable` and only raises if both results are non-`None`. `_parse_to_comparable` returns `None` if parsing fails — but both `before` and `after` have already been validated by `_validate_absolute` at the field level, so they are guaranteed to be either `"now"` or a valid ISO date/datetime. The `None` path in `_parse_to_comparable` therefore can never be reached in practice, but the guard silently skips the check if it were hit.
-
-More concretely: `datetime.fromisoformat` can parse both `"2026-04-14"` (Python 3.11+ accepts date-only) AND `"2026-04-14T12:00:00"`. But `_parse_to_comparable` tries `datetime.fromisoformat` first, then falls back to `date.fromisoformat`. This means that when `after` is a datetime `"2026-04-14T12:00:00"` and `before` is a date-only `"2026-04-14"`, the comparison is between a `datetime` and a `date` object. In Python, `datetime > date` raises `TypeError`.
-
-**Reproduction:** `DateFilter(after="2026-04-14T12:00:00", before="2026-04-14")` — both are valid by field validators, not "now", so the comparison code runs. `after_dt` = `datetime(2026, 4, 14, 12, 0)`, `before_dt` = `date(2026, 4, 14)`. Comparing them raises `TypeError`, which is not caught, resulting in an unhandled exception during validation instead of a clean `ValidationError`.
-
-**Fix:** Normalize both values to `datetime` before comparing, or ensure `_parse_to_comparable` always returns a `datetime`:
-
-```python
-def _parse_to_comparable(value: str) -> datetime | None:
-    """Parse string to datetime for comparison. Returns None if unparseable."""
-    try:
-        return datetime.fromisoformat(value)
-    except (ValueError, TypeError):
-        pass
-    try:
-        d = date.fromisoformat(value)
-        return datetime(d.year, d.month, d.day)  # normalize to datetime
-    except (ValueError, TypeError):
+def _parse_local_datetime(value: str | None) -> str | None:
+    if value is None:
         return None
+    naive = datetime.fromisoformat(value)
+    # ZoneInfo handles DST correctly for unambiguous times. For DST gap times
+    # (which occur in a 1-hour window once/year), fold=0 is used (pre-transition
+    # offset). This matches OmniFocus behavior -- gap times are vanishingly rare
+    # in task dates.
+    local_dt = naive.replace(tzinfo=_LOCAL_TZ)
+    utc_dt = local_dt.astimezone(UTC)
+    return utc_dt.isoformat()
 ```
-
-This ensures all comparisons are between homogeneous types and eliminates the `TypeError` crash path.
-
----
-
-### WR-03: `_PENDING_CONSUMER_CONSTANTS` exemption in `test_descriptions.py` will silently pass even if the constants are never wired
-
-**File:** `tests/test_descriptions.py:122-131`
-
-**Issue:** The test `test_all_description_constants_referenced_in_consumers` has a hardcoded exemption set `_PENDING_CONSUMER_CONSTANTS` for 7 date-filter field description constants. The comment says "Remove this exemption once the fields are wired." The exemption subtracts these constants from the `unreferenced` set before asserting. If the constants are wired (consumed) in Phase 46 but the exemption is not removed, the test will still pass — the subtraction of an already-empty intersection is a no-op. The risk is that the exemption persists indefinitely and the enforcement test loses coverage for those 7 constants.
-
-**Fix:** This is acceptable as a temporary scaffold for phase 45, but add a `TODO` comment referencing a specific follow-up action so it doesn't get forgotten:
-
-```python
-# TODO(Phase 46): Remove _PENDING_CONSUMER_CONSTANTS once date filter fields
-# are wired into ListTasksQuery Field(description=...) calls.
-_PENDING_CONSUMER_CONSTANTS = {
-    "DUE_FILTER_DESC",
-    ...
-}
-```
-
----
 
 ## Info
 
-### IN-01: `_duration_to_timedelta` uses naive 30d/365d for months/years with no doc at call sites
+### IN-01: Duplicated `_DATE_DURATION_PATTERN` regex
 
-**File:** `src/omnifocus_operator/service/resolve_dates.py:263-274`
+**File:** `src/omnifocus_operator/service/resolve_dates.py:19` and `src/omnifocus_operator/contracts/use_cases/list/_date_filter.py:14`
+**Issue:** The regex `re.compile(r"^(\d*)([dwmy])$")` is defined independently in both files. If the pattern changes (e.g., adding hour support), both need synchronized updates.
+**Fix:** Defensible as-is for layer isolation. Could extract to a shared location if the pattern grows more complex.
 
-**Issue:** `_duration_to_timedelta` explicitly documents "Uses naive 30d/365d for m/y" in its docstring (line 264). This is intentional and matches the requirement. However, the callers `_resolve_last` and `_resolve_next` don't carry any comment acknowledging the approximation. The test comments do acknowledge this (e.g., `test_last_1_month_naive` says "30 days"), which is good. The sole concern is that a future maintainer editing `_resolve_last` or `_resolve_next` without reading `_duration_to_timedelta` might not realize months/years are approximated.
+### IN-02: Pending description constants tracked in test
 
-**Fix:** One-line comment at the call site in `_resolve_last` and `_resolve_next`:
+**File:** `tests/test_descriptions.py:125-133`
+**Issue:** Seven description constants (`DUE_FILTER_DESC`, `COMPLETED_FILTER_DESC`, etc.) are defined and imported but listed as `pending_consumer_constants` in the description consolidation test. The TODO comment correctly tracks this for Phase 46 wiring. Flagging for visibility only.
+**Fix:** No action needed now. Phase 46 should remove the exemption set when wiring these into `Field(description=...)` calls.
 
-```python
-def _resolve_last(duration: str, now: datetime) -> tuple[datetime, datetime]:
-    count, unit = _parse_duration(duration)
-    delta = _duration_to_timedelta(count, unit)  # m/y are naive 30d/365d
-    start = _midnight(now - delta)
-    return (start, now)
-```
+### IN-03: `_is_date_only` heuristic relies on upstream validation
 
----
-
-### IN-02: `test_descriptions.py` AST check for `Field(...)` has a dead branch
-
-**File:** `tests/test_descriptions.py:150-155`
-
-**Issue:** The `Field(...)` detection logic at lines 150-155 has a logical dead branch. The `if` condition is:
-
-```python
-if not (
-    isinstance(node.func, ast.Name) and node.func.attr == "Field"
-    if isinstance(node.func, ast.Attribute)
-    else isinstance(node.func, ast.Name) and node.func.id == "Field"
-):
-```
-
-This is a ternary nested inside `not(...)`. When `node.func` is an `ast.Attribute`, it evaluates `isinstance(node.func, ast.Name) and node.func.attr == "Field"`. But `node.func` is an `ast.Attribute`, so `isinstance(node.func, ast.Name)` is `False` — the `.attr` check is never reached. As a result, attribute-form `Field(...)` calls (e.g., `pydantic.Field(...)`) are never detected. The intended logic was likely: `isinstance(node.func, ast.Attribute) and node.func.attr == "Field"` for the attribute branch. The same pattern appears in `test_no_inline_examples_in_agent_models` (lines 229-234).
-
-In practice, `Field` is imported directly (`from pydantic import Field`) so it always appears as `ast.Name`, not `ast.Attribute`. The dead branch is harmless today but is misleading code.
-
-**Fix:**
-```python
-# Correct intent: match Field(...) as a bare name OR as attr.Field(...)
-if not (
-    (isinstance(node.func, ast.Attribute) and node.func.attr == "Field")
-    or (isinstance(node.func, ast.Name) and node.func.id == "Field")
-):
-    continue
-```
+**File:** `src/omnifocus_operator/service/resolve_dates.py:222-224`
+**Issue:** `_is_date_only` checks `"T" not in value and len(value) == 10`. This works for ISO 8601 date strings but would misclassify arbitrary 10-character strings. Safe in practice because all inputs have already passed through `DateFilter._validate_absolute`.
+**Fix:** Add a brief comment noting the precondition: `# Precondition: value already validated by DateFilter._validate_absolute`.
 
 ---
 
-_Reviewed: 2026-04-07_
+_Reviewed: 2026-04-08T09:46:23Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
