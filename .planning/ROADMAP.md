@@ -125,7 +125,7 @@
 
 - [x] **Phase 45: Date Models & Resolution** (5 plans) - DateFilter model, StrEnum shortcuts, query extensions, pure date resolver, config, agent messages + UAT gap closure (completed 2026-04-07)
 - [x] **Phase 46: Pipeline & Query Paths** (5 plans) - Service pipeline integration, SQL date predicates, bridge in-memory filtering + UAT gap closure (in progress) (completed 2026-04-08)
-- [ ] **Phase 47: Cross-Path Equivalence & Breaking Changes** - Equivalence tests with inherited dates, urgency removal, completed boolean migration, availability trimming
+- [ ] **Phase 47: Cross-Path Equivalence & Breaking Changes** (2 plans) - AvailabilityFilter trimming, lifecycle shortcut rename, defer hints, description updates, cross-path date filter equivalence tests with inherited dates
 
 ## Phase Details
 
@@ -173,7 +173,10 @@ Plans:
   3. `COMPLETED` and `DROPPED` removed from AvailabilityFilter enum — lifecycle state expressed exclusively via date filters
   4. `availability: "all"` and `availability: "any"` return educational errors with migration guidance; `defer` filters with `{after: "now"}` or `{before: "now"}` return hints about availability equivalents
   5. Tool descriptions updated with date filter syntax and availability vs defer distinction
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 47-01-PLAN.md — Enum trimming, lifecycle shortcut rename, defer hints, description updates, existing test fixes
+- [ ] 47-02-PLAN.md — Cross-path date filter equivalence tests with inherited effective dates
 
 ## Progress
 
@@ -189,4 +192,4 @@ Plans:
 | 39-44 | v1.3.1 | 15/15 | Complete | 2026-04-07 |
 | 45. Date Models & Resolution | v1.3.2 | 5/5 | Complete    | 2026-04-08 |
 | 46. Pipeline & Query Paths | v1.3.2 | 5/5 | Complete    | 2026-04-08 |
-| 47. Cross-Path Equivalence & Breaking Changes | v1.3.2 | 0/? | Not started | - |
+| 47. Cross-Path Equivalence & Breaking Changes | v1.3.2 | 0/2 | Not started | - |
