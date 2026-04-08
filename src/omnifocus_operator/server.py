@@ -9,7 +9,6 @@ which reads ``OPERATOR_REPOSITORY`` (default ``"hybrid"``).
 from __future__ import annotations
 
 import logging
-import os
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
@@ -97,11 +96,12 @@ async def app_lifespan(app: FastMCP) -> AsyncIterator[dict[str, object]]:
     logger.info("IPC sweep complete")
 
     try:
+        from omnifocus_operator.config import get_settings
         from omnifocus_operator.repository import create_repository
         from omnifocus_operator.service import OperatorService
 
-        repo_type = os.environ.get("OPERATOR_REPOSITORY")
-        logger.info("Repository type: %s", repo_type or "hybrid (default)")
+        repo_type = get_settings().repository
+        logger.info("Repository type: %s", repo_type)
 
         repository = create_repository(repo_type)
         service = OperatorService(repository=repository)

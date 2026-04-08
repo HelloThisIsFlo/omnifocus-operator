@@ -7,6 +7,7 @@ import os
 import sys
 from logging.handlers import RotatingFileHandler
 
+from omnifocus_operator.config import get_settings
 from omnifocus_operator.server import create_server
 
 
@@ -20,7 +21,7 @@ def _configure_logging() -> None:
     See: https://github.com/anthropics/claude-code/issues/29035
     The file handler may become redundant when that issue is resolved.
     """
-    level = os.environ.get("OPERATOR_LOG_LEVEL", "INFO").upper()
+    level = get_settings().log_level.upper()
     root = logging.getLogger("omnifocus_operator")
     root.setLevel(level)
     root.propagate = False  # Don't leak to Python root logger

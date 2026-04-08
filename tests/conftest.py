@@ -344,6 +344,23 @@ def make_snapshot(**overrides: Any) -> AllEntities:
 
 
 # ---------------------------------------------------------------------------
+# Settings cache reset -- ensures monkeypatched env vars take effect
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _reset_settings_cache() -> None:
+    """Reset the Settings singleton before every test.
+
+    Tests that monkeypatch OPERATOR_* env vars need the cached Settings
+    instance to be cleared so pydantic-settings re-reads the environment.
+    """
+    from omnifocus_operator.config import reset_settings  # noqa: PLC0415
+
+    reset_settings()
+
+
+# ---------------------------------------------------------------------------
 # Shared fixtures: marker-driven bridge -> repo -> service chain
 # ---------------------------------------------------------------------------
 
