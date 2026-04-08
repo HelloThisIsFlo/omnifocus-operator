@@ -138,13 +138,13 @@
   2. `resolve_date_filter()` converts every input form to an absolute DateRange with correct boundaries — calendar-aligned for `this`, day-snapped for `last`/`next`, inclusive for absolute
   3. Field-specific shortcut restrictions enforced — `"overdue"` and `"soon"` only on `due`, `"any"` only on `completed`/`dropped`
   4. `"now"` accepted in absolute forms, week start configurable via `OPERATOR_WEEK_START` env var, month/year use naive 30d/365d approximation
-**Plans:** 5 plans
+**Plans:** 5/5 plans complete
 Plans:
 - [x] 45-01-PLAN.md — DateFilter contract + StrEnums + agent messages
 - [x] 45-02-PLAN.md — ListTasksQuery/RepoQuery extensions + OPERATOR_WEEK_START config
 - [x] 45-03-PLAN.md — Pure resolve_date_filter() function (TDD)
-- [ ] 45-04-PLAN.md — Gap closure: this-field error message + DueSoonSetting enum
-- [ ] 45-05-PLAN.md — Gap closure: pydantic-settings config consolidation + docs
+- [x] 45-04-PLAN.md — Gap closure: this-field error message + DueSoonSetting enum
+- [x] 45-05-PLAN.md — Gap closure: pydantic-settings config consolidation + docs
 
 ### Phase 46: Pipeline & Query Paths
 **Goal**: Agents can filter tasks by date in `list_tasks` with correct results on both SQL and bridge paths
@@ -181,6 +181,6 @@ Plans:
 | 32-33.1 | v1.2.3 | 15/15 | Complete | 2026-03-29 |
 | 34-38 | v1.3 | 26/26 | Complete | 2026-04-05 |
 | 39-44 | v1.3.1 | 15/15 | Complete | 2026-04-07 |
-| 45. Date Models & Resolution | v1.3.2 | 3/5 | In progress | - |
+| 45. Date Models & Resolution | v1.3.2 | 5/5 | Complete   | 2026-04-08 |
 | 46. Pipeline & Query Paths | v1.3.2 | 0/? | Not started | - |
 | 47. Cross-Path Equivalence & Breaking Changes | v1.3.2 | 0/? | Not started | - |
