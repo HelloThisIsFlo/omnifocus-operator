@@ -493,6 +493,119 @@ class TestProjectsCombinedFilters:
 # ===========================================================================
 
 
+class TestDatePredicates:
+    """Date predicate generation for all 7 date dimensions."""
+
+    # Reference datetime and its CF epoch float
+    _REF_DT = datetime(2026, 4, 7, 14, 0, 0, tzinfo=UTC)
+    _CF_EPOCH = datetime(2001, 1, 1, tzinfo=UTC)
+    _REF_CF_SECONDS = (_REF_DT - _CF_EPOCH).total_seconds()
+
+    def test_due_after(self):
+        query = ListTasksRepoQuery(due_after=self._REF_DT)
+        data_q, _ = build_list_tasks_sql(query)
+        assert "t.effectiveDateDue >= ?" in data_q.sql
+        assert self._REF_CF_SECONDS in data_q.params
+
+    def test_due_before(self):
+        query = ListTasksRepoQuery(due_before=self._REF_DT)
+        data_q, _ = build_list_tasks_sql(query)
+        assert "t.effectiveDateDue < ?" in data_q.sql
+        assert self._REF_CF_SECONDS in data_q.params
+
+    def test_due_after_and_before(self):
+        after_dt = datetime(2026, 4, 1, 0, 0, 0, tzinfo=UTC)
+        before_dt = datetime(2026, 4, 10, 0, 0, 0, tzinfo=UTC)
+        query = ListTasksRepoQuery(due_after=after_dt, due_before=before_dt)
+        data_q, _ = build_list_tasks_sql(query)
+        assert "t.effectiveDateDue >= ?" in data_q.sql
+        assert "t.effectiveDateDue < ?" in data_q.sql
+        after_cf = (after_dt - self._CF_EPOCH).total_seconds()
+        before_cf = (before_dt - self._CF_EPOCH).total_seconds()
+        assert after_cf in data_q.params
+        assert before_cf in data_q.params
+
+    def test_completed_after(self):
+        query = ListTasksRepoQuery(completed_after=self._REF_DT)
+        data_q, _ = build_list_tasks_sql(query)
+        assert "t.effectiveDateCompleted >= ?" in data_q.sql
+        assert self._REF_CF_SECONDS in data_q.params
+
+    def test_dropped_before(self):
+        query = ListTasksRepoQuery(dropped_before=self._REF_DT)
+        data_q, _ = build_list_tasks_sql(query)
+        assert "t.effectiveDateHidden < ?" in data_q.sql
+        assert self._REF_CF_SECONDS in data_q.params
+
+    def test_added_after(self):
+        query = ListTasksRepoQuery(added_after=self._REF_DT)
+        data_q, _ = build_list_tasks_sql(query)
+        assert "t.dateAdded >= ?" in data_q.sql
+        assert self._REF_CF_SECONDS in data_q.params
+
+    def test_modified_before(self):
+        query = ListTasksRepoQuery(modified_before=self._REF_DT)
+        data_q, _ = build_list_tasks_sql(query)
+        assert "t.dateModified < ?" in data_q.sql
+        assert self._REF_CF_SECONDS in data_q.params
+
+    def test_defer_after(self):
+        query = ListTasksRepoQuery(defer_after=self._REF_DT)
+        data_q, _ = build_list_tasks_sql(query)
+        assert "t.effectiveDateToStart >= ?" in data_q.sql
+        assert self._REF_CF_SECONDS in data_q.params
+
+    def test_planned_before(self):
+        query = ListTasksRepoQuery(planned_before=self._REF_DT)
+        data_q, _ = build_list_tasks_sql(query)
+        assert "t.effectiveDatePlanned < ?" in data_q.sql
+        assert self._REF_CF_SECONDS in data_q.params
+
+    def test_date_predicates_combine_with_existing_filters(self):
+        """flagged + due_after -> both conditions in WHERE clause."""
+        query = ListTasksRepoQuery(flagged=True, due_after=self._REF_DT)
+        data_q, _ = build_list_tasks_sql(query)
+        assert "t.effectiveFlagged = ?" in data_q.sql
+        assert "t.effectiveDateDue >= ?" in data_q.sql
+        assert 1 in data_q.params  # flagged
+        assert self._REF_CF_SECONDS in data_q.params  # due_after
+
+    def test_cf_epoch_conversion_correct(self):
+        """Verify CF epoch conversion matches manual calculation."""
+        dt = datetime(2026, 4, 7, 14, 0, 0, tzinfo=UTC)
+        expected = (dt - datetime(2001, 1, 1, tzinfo=UTC)).total_seconds()
+        query = ListTasksRepoQuery(due_after=dt)
+        data_q, _ = build_list_tasks_sql(query)
+        # Find the CF seconds param (not the LIMIT param)
+        cf_params = [p for p in data_q.params if isinstance(p, float)]
+        assert expected in cf_params
+
+    def test_count_query_has_same_date_predicates(self):
+        """Count query has same date predicates but no LIMIT/OFFSET."""
+        query = ListTasksRepoQuery(due_after=self._REF_DT, limit=10, offset=5)
+        data_q, count_q = build_list_tasks_sql(query)
+        assert "t.effectiveDateDue >= ?" in data_q.sql
+        assert "t.effectiveDateDue >= ?" in count_q.sql
+        assert self._REF_CF_SECONDS in count_q.params
+        assert "LIMIT" not in count_q.sql
+        assert "OFFSET" not in count_q.sql
+
+    def test_no_date_fields_no_date_predicates(self):
+        """Query with no date fields set produces no date predicates (backward compatible)."""
+        query = ListTasksRepoQuery()
+        data_q, _ = build_list_tasks_sql(query)
+        for col in [
+            "effectiveDateDue",
+            "effectiveDateToStart",
+            "effectiveDatePlanned",
+            "effectiveDateCompleted",
+            "effectiveDateHidden",
+            "dateAdded",
+            "dateModified",
+        ]:
+            assert col not in data_q.sql
+
+
 class TestSqlQueryNamedTuple:
     def test_sql_query_has_sql_and_params(self):
         sq = SqlQuery(sql="SELECT 1", params=(42,))
