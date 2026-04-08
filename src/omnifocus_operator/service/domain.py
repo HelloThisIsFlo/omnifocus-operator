@@ -26,7 +26,6 @@ from omnifocus_operator.agent_messages.errors import (
     NO_POSITION_KEY,
 )
 from omnifocus_operator.agent_messages.warnings import (
-    AVAILABILITY_MIXED_ALL,
     DUE_SOON_THRESHOLD_NOT_DETECTED,
     EDIT_COMPLETED_TASK,
     EDIT_NO_CHANGES_DETECTED,
@@ -179,8 +178,8 @@ class DomainLogic:
             if field_name in self._LIFECYCLE_MAP:
                 lifecycle_additions.append(self._LIFECYCLE_MAP[field_name])
 
-            # "any" shortcut -- lifecycle expansion only, no date bounds
-            if isinstance(value, StrEnum) and value.value == "any":
+            # "all" shortcut -- lifecycle expansion only, no date bounds
+            if isinstance(value, StrEnum) and value.value == "all":
                 continue
 
             # "soon" without due_soon_setting -- domain owns fallback
@@ -217,16 +216,27 @@ class DomainLogic:
     ) -> tuple[list[Availability], list[str]]:
         """Expand availability filters + merge lifecycle additions.
 
+        REMAINING expands to {AVAILABLE, BLOCKED}. Redundant combos warn.
         Returns (expanded availability list, warnings).
         """
+        from omnifocus_operator.agent_messages.warnings import (
+            AVAILABILITY_REMAINING_INCLUDES_AVAILABLE,
+            AVAILABILITY_REMAINING_INCLUDES_BLOCKED,
+        )
+
         warnings: list[str] = []
-        has_all = AvailabilityFilter.ALL in filters
-        if has_all:
-            if len(filters) > 1:
-                warnings.append(AVAILABILITY_MIXED_ALL)
-            result_set = set(Availability)
-        else:
-            result_set = {Availability(f.value) for f in filters}
+        result_set: set[Availability] = set()
+
+        has_remaining = AvailabilityFilter.REMAINING in filters
+        if has_remaining:
+            result_set |= {Availability.AVAILABLE, Availability.BLOCKED}
+            if AvailabilityFilter.AVAILABLE in filters:
+                warnings.append(AVAILABILITY_REMAINING_INCLUDES_AVAILABLE)
+            if AvailabilityFilter.BLOCKED in filters:
+                warnings.append(AVAILABILITY_REMAINING_INCLUDES_BLOCKED)
+        for f in filters:
+            if f != AvailabilityFilter.REMAINING:
+                result_set.add(Availability(f.value))
 
         result_set |= set(lifecycle_additions)
         return list(result_set), warnings

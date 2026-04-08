@@ -161,6 +161,14 @@ AVAILABILITY_MIXED_ALL = (
     "'ALL' already includes every status -- no need to combine it with other values."
 )
 
+AVAILABILITY_REMAINING_INCLUDES_AVAILABLE = (
+    "'remaining' already includes 'available' -- no need to combine them."
+)
+
+AVAILABILITY_REMAINING_INCLUDES_BLOCKED = (
+    "'remaining' already includes 'blocked' -- no need to combine them."
+)
+
 FILTER_DID_YOU_MEAN = (
     "No {entity_type} found matching '{value}'. "
     "Did you mean: {suggestions}? "

@@ -1,9 +1,9 @@
-"""Filter-side availability enums with ALL shorthand, and due-soon config enum.
+"""Filter-side availability enums with shorthand values, and due-soon config enum.
 
 These mirror the core enums (Availability, TagAvailability, FolderAvailability)
-and add an ALL value for ergonomic "include everything" queries.
-Used in agent-facing query models. Service layer expands ALL to full list
-and maps back to core enums for repo queries.
+and add shorthand values for ergonomic queries: REMAINING on AvailabilityFilter
+(expands to AVAILABLE + BLOCKED), ALL on Tag/FolderAvailabilityFilter (expands
+to full list). Service layer expands shorthands and maps back to core enums.
 
 DueSoonSetting captures the 7 discrete "due soon" threshold options from
 OmniFocus preferences, expressed as domain properties rather than raw SQLite ints.
@@ -25,9 +25,7 @@ class AvailabilityFilter(StrEnum):
 
     AVAILABLE = "available"
     BLOCKED = "blocked"
-    COMPLETED = "completed"
-    DROPPED = "dropped"
-    ALL = "ALL"
+    REMAINING = "remaining"
 
 
 class TagAvailabilityFilter(StrEnum):
@@ -58,7 +56,7 @@ class DueDateShortcut(StrEnum):
 class LifecycleDateShortcut(StrEnum):
     __doc__ = LIFECYCLE_DATE_SHORTCUT_DOC
 
-    ANY = "any"
+    ALL = "all"
     TODAY = "today"
 
 

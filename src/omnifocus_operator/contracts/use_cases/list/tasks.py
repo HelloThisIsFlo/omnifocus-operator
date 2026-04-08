@@ -7,7 +7,6 @@ from typing import Literal
 
 from pydantic import Field, field_validator, model_validator
 
-from omnifocus_operator.agent_messages import errors as err
 from omnifocus_operator.agent_messages.descriptions import (
     ADDED_FILTER_DESC,
     COMPLETED_FILTER_DESC,
@@ -66,9 +65,7 @@ class ListTasksQuery(QueryModel):
     project: Patch[str] = Field(default=UNSET, description=PROJECT_FILTER_DESC)
     tags: Patch[list[str]] = Field(default=UNSET, description=TAGS_FILTER_DESC)
     estimated_minutes_max: Patch[int] = Field(default=UNSET, description=ESTIMATED_MINUTES_MAX_DESC)
-    availability: list[AvailabilityFilter] = Field(
-        default=[AvailabilityFilter.AVAILABLE, AvailabilityFilter.BLOCKED]
-    )
+    availability: list[AvailabilityFilter] = Field(default=[AvailabilityFilter.REMAINING])
     search: Patch[str] = Field(default=UNSET, description=SEARCH_FIELD_NAME_NOTES)
     due: Patch[DueDateShortcut | DateFilter] = Field(default=UNSET, description=DUE_FILTER_DESC)
     defer: Patch[Literal["today"] | DateFilter] = Field(
@@ -103,13 +100,6 @@ class ListTasksQuery(QueryModel):
     @classmethod
     def _reject_empty_tags(cls, v: list[str]) -> list[str]:
         validate_non_empty_list(v, "tags")
-        return v
-
-    @field_validator("availability")
-    @classmethod
-    def _reject_empty_availability(cls, v: list[AvailabilityFilter]) -> list[AvailabilityFilter]:
-        if len(v) == 0:
-            raise ValueError(err.AVAILABILITY_EMPTY.format(field="availability"))
         return v
 
     @model_validator(mode="after")

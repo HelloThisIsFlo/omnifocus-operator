@@ -137,7 +137,7 @@ DATE_FILTER_DOC = (
 DUE_DATE_SHORTCUT_DOC = "Shortcut for filtering by due date: overdue, soon, or today."
 
 LIFECYCLE_DATE_SHORTCUT_DOC = (
-    "Shortcut for filtering by lifecycle date: any (all in that state) or today."
+    "Shortcut for filtering by lifecycle date: all (every task in that state) or today."
 )
 
 DUE_FILTER_DESC = (
@@ -208,7 +208,12 @@ ALL_ENTITIES_DOC = "All OmniFocus entities from a repository."
 
 URGENCY_DOC = "Time pressure axis -- is this task/project pressing?"
 
-AVAILABILITY_DOC = "Can this be worked on?"
+AVAILABILITY_DOC = (
+    "Which lifecycle states to include. "
+    "'remaining' (default) = available + blocked. "
+    "Empty list [] = no remaining tasks (combine with completed/dropped filters for lifecycle-only results). "
+    "Completed/dropped tasks are included via their own date filters, not here."
+)
 
 TAG_AVAILABILITY_DOC = (
     "Is this tag active? "
