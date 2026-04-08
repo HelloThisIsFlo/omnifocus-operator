@@ -8,6 +8,7 @@ for obtaining these from the database/environment.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from enum import StrEnum
 from typing import TYPE_CHECKING
@@ -15,6 +16,21 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from omnifocus_operator.contracts.use_cases.list._date_filter import DateFilter
     from omnifocus_operator.contracts.use_cases.list._enums import DueSoonSetting
+
+
+@dataclass(frozen=True)
+class ResolvedDateBounds:
+    """Result of resolving a date filter to absolute datetime bounds.
+
+    ``after`` and ``before`` are the inclusive/exclusive bounds.
+    ``warnings`` contains any agent-facing messages generated during resolution
+    (e.g. fallback behaviour when configuration is missing).
+    """
+
+    after: datetime | None = None
+    before: datetime | None = None
+    warnings: list[str] = field(default_factory=list)
+
 
 _DATE_DURATION_PATTERN = re.compile(r"^(\d*)([dwmy])$")
 
@@ -26,26 +42,23 @@ def resolve_date_filter(
     *,
     week_start: int = 0,
     due_soon_setting: DueSoonSetting | None = None,
-) -> tuple[datetime | None, datetime | None]:
-    """Resolve a date filter input to (after_bound, before_bound) datetimes.
-
-    A None in either position means "unbounded on that side".
+) -> ResolvedDateBounds:
+    """Resolve a date filter input to absolute datetime bounds.
 
     Args:
         value: A StrEnum shortcut or DateFilter object.
         field_name: The date field being filtered (e.g. "due", "completed").
         now: Current timestamp -- caller ensures consistency across a single query.
         week_start: Python weekday value (0=Monday, 6=Sunday). Affects {this: "w"}.
-        due_soon_setting: OmniFocus due-soon threshold setting. Required when
-            resolving the "soon" shortcut. Provides ``days`` and
-            ``calendar_aligned`` properties.
+        due_soon_setting: OmniFocus due-soon threshold setting. When resolving
+            the "soon" shortcut and this is None, falls back to TODAY bounds
+            with a warning.
 
     Returns:
-        (after_bound, before_bound) tuple of datetime or None.
+        ResolvedDateBounds with after/before datetimes and any warnings.
 
     Raises:
-        ValueError: If "soon" is requested without due_soon_setting,
-                    or if "any" shortcut is passed (not a date filter).
+        ValueError: If "any" shortcut is passed (not a date filter).
     """
     if isinstance(value, StrEnum):
         return _resolve_shortcut(
@@ -68,27 +81,33 @@ def _resolve_shortcut(
     now: datetime,
     *,
     due_soon_setting: DueSoonSetting | None,
-) -> tuple[datetime | None, datetime | None]:
+) -> ResolvedDateBounds:
+    from omnifocus_operator.agent_messages.warnings import (  # noqa: PLC0415
+        DUE_SOON_THRESHOLD_NOT_DETECTED,
+    )
+
     value = shortcut.value
 
     if value == "today":
-        return _resolve_this("d", now, week_start=0)
+        after, before = _resolve_this("d", now, week_start=0)
+        return ResolvedDateBounds(after=after, before=before)
 
     if value == "overdue":
-        return (None, now)
+        return ResolvedDateBounds(after=None, before=now)
 
     if value == "soon":
         if due_soon_setting is None:
-            msg = (
-                "Cannot resolve 'soon' without due_soon_setting configuration. "
-                "The caller must provide a DueSoonSetting from the OmniFocus "
-                "Settings table or environment."
+            # Fallback: use TODAY bounds (conservative, narrowest window)
+            after, before = _resolve_this("d", now, week_start=0)
+            return ResolvedDateBounds(
+                after=after,
+                before=before,
+                warnings=[DUE_SOON_THRESHOLD_NOT_DETECTED],
             )
-            raise ValueError(msg)
         threshold = _compute_soon_threshold(
             now, due_soon_setting.days, due_soon_setting.calendar_aligned
         )
-        return (None, threshold)
+        return ResolvedDateBounds(after=None, before=threshold)
 
     if value == "any":
         msg = (
@@ -111,15 +130,19 @@ def _resolve_date_filter_obj(
     now: datetime,
     *,
     week_start: int,
-) -> tuple[datetime | None, datetime | None]:
+) -> ResolvedDateBounds:
     if df.this is not None:
-        return _resolve_this(df.this, now, week_start=week_start)
+        after, before = _resolve_this(df.this, now, week_start=week_start)
+        return ResolvedDateBounds(after=after, before=before)
     if df.last is not None:
-        return _resolve_last(df.last, now)
+        after, before = _resolve_last(df.last, now)
+        return ResolvedDateBounds(after=after, before=before)
     if df.next is not None:
-        return _resolve_next(df.next, now)
+        after, before = _resolve_next(df.next, now)
+        return ResolvedDateBounds(after=after, before=before)
     # Absolute: before/after
-    return _resolve_absolute(df, now)
+    after_dt, before_dt = _resolve_absolute(df, now)
+    return ResolvedDateBounds(after=after_dt, before=before_dt)
 
 
 # ---------------------------------------------------------------------------

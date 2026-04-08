@@ -123,6 +123,13 @@ REPETITION_ANCHOR_DATE_MISSING = (
     "predictable repetition behavior."
 )
 
+# --- Date Resolution ---
+
+DUE_SOON_THRESHOLD_NOT_DETECTED = (
+    "Due-soon threshold was not detected. Defaulting to today. "
+    "Set OPERATOR_DUE_SOON_THRESHOLD to override."
+)
+
 # --- Filter Resolution ---
 
 FILTER_MULTI_MATCH = (
