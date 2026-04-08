@@ -55,6 +55,7 @@ from omnifocus_operator.agent_messages.warnings import (
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
 from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
+from omnifocus_operator.contracts.use_cases.list.projects import DurationUnit
 from omnifocus_operator.models.enums import Availability, Schedule
 from omnifocus_operator.models.repetition_rule import (
     EndByDate,
@@ -83,7 +84,6 @@ if TYPE_CHECKING:
     )
     from omnifocus_operator.contracts.use_cases.list._enums import DueSoonSetting
     from omnifocus_operator.contracts.use_cases.list.projects import (
-        DurationUnit,
         ReviewDueFilter,
     )
     from omnifocus_operator.models.common import TagRef
@@ -237,17 +237,17 @@ class DomainLogic:
             return now
         unit: DurationUnit = f.unit  # type: ignore[assignment]
         amount = f.amount
-        if unit.value == "d":
+        if unit is DurationUnit.DAYS:
             return now + timedelta(days=amount)
-        if unit.value == "w":
+        if unit is DurationUnit.WEEKS:
             return now + timedelta(weeks=amount)
-        if unit.value == "m":
+        if unit is DurationUnit.MONTHS:
             month = now.month + amount
             year = now.year + (month - 1) // 12
             month = (month - 1) % 12 + 1
             day = min(now.day, calendar.monthrange(year, month)[1])
             return now.replace(year=year, month=month, day=day)
-        if unit.value == "y":
+        if unit is DurationUnit.YEARS:
             year = now.year + amount
             day = min(now.day, calendar.monthrange(year, now.month)[1])
             return now.replace(year=year, day=day)
