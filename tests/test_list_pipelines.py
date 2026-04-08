@@ -907,3 +907,219 @@ class TestAvailabilityExpansion:
         )
         assert result.warnings is not None
         assert any("already includes every status" in w for w in result.warnings)
+
+
+# ---------------------------------------------------------------------------
+# list_tasks: date filtering (bridge path)
+# ---------------------------------------------------------------------------
+
+
+class TestListTasksDateFiltering:
+    """Bridge path filters tasks by date using resolved datetime bounds."""
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t-due-soon",
+                name="Due soon",
+                effectiveDueDate="2026-04-08T10:00:00.000Z",
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-due-later",
+                name="Due later",
+                effectiveDueDate="2026-04-20T10:00:00.000Z",
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-no-due",
+                name="No due date",
+                project="proj-1",
+            ),
+        ],
+        projects=[make_project_dict(id="proj-1", name="Work")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_due_before_filters_and_excludes_null(self, service: OperatorService) -> None:
+        """Tasks with effectiveDueDate before the boundary are included; None excluded."""
+        from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
+
+        repo = service._repository
+        q = ListTasksRepoQuery(
+            due_before=datetime(2026, 4, 15, 0, 0, 0, tzinfo=UTC),
+            availability=[],
+        )
+        result = await repo.list_tasks(q)
+        task_ids = {t.id for t in result.items}
+        assert "t-due-soon" in task_ids  # 2026-04-08 < 2026-04-15
+        assert "t-due-later" not in task_ids  # 2026-04-20 >= 2026-04-15
+        assert "t-no-due" not in task_ids  # None excluded
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t-due-early",
+                name="Due early",
+                effectiveDueDate="2026-04-01T10:00:00.000Z",
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-due-late",
+                name="Due late",
+                effectiveDueDate="2026-04-20T10:00:00.000Z",
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-no-due",
+                name="No due date",
+                project="proj-1",
+            ),
+        ],
+        projects=[make_project_dict(id="proj-1", name="Work")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_due_after_includes_and_excludes_earlier(self, service: OperatorService) -> None:
+        """Tasks with effectiveDueDate >= boundary included; earlier tasks excluded."""
+        from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
+
+        repo = service._repository
+        q = ListTasksRepoQuery(
+            due_after=datetime(2026, 4, 10, 0, 0, 0, tzinfo=UTC),
+            availability=[],
+        )
+        result = await repo.list_tasks(q)
+        task_ids = {t.id for t in result.items}
+        assert "t-due-late" in task_ids  # 2026-04-20 >= 2026-04-10
+        assert "t-due-early" not in task_ids  # 2026-04-01 < 2026-04-10
+        assert "t-no-due" not in task_ids  # None excluded
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t-completed-recent",
+                name="Completed recently",
+                effectiveCompletionDate="2026-04-05T10:00:00.000Z",
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-completed-old",
+                name="Completed long ago",
+                effectiveCompletionDate="2026-01-01T10:00:00.000Z",
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-not-completed",
+                name="Not completed",
+                project="proj-1",
+            ),
+        ],
+        projects=[make_project_dict(id="proj-1", name="Work")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_completed_after_in_range_excludes_null(self, service: OperatorService) -> None:
+        """Tasks with completionDate in range included; None excluded."""
+        from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
+
+        repo = service._repository
+        q = ListTasksRepoQuery(
+            completed_after=datetime(2026, 3, 1, 0, 0, 0, tzinfo=UTC),
+            availability=[],
+        )
+        result = await repo.list_tasks(q)
+        task_ids = {t.id for t in result.items}
+        assert "t-completed-recent" in task_ids  # 2026-04-05 >= 2026-03-01
+        assert "t-completed-old" not in task_ids  # 2026-01-01 < 2026-03-01
+        assert "t-not-completed" not in task_ids  # None excluded
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t-flagged-due",
+                name="Flagged and due",
+                flagged=True,
+                effectiveDueDate="2026-04-05T10:00:00.000Z",
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-flagged-no-due",
+                name="Flagged no due",
+                flagged=True,
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-unflagged-due",
+                name="Not flagged but due",
+                effectiveDueDate="2026-04-05T10:00:00.000Z",
+                project="proj-1",
+            ),
+        ],
+        projects=[make_project_dict(id="proj-1", name="Work")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_date_filters_combine_with_existing(self, service: OperatorService) -> None:
+        """flagged=True + due_before -> both apply (AND composition)."""
+        from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
+
+        repo = service._repository
+        q = ListTasksRepoQuery(
+            flagged=True,
+            due_before=datetime(2026, 4, 10, 0, 0, 0, tzinfo=UTC),
+            availability=[],
+        )
+        result = await repo.list_tasks(q)
+        task_ids = {t.id for t in result.items}
+        assert "t-flagged-due" in task_ids  # flagged + due before cutoff
+        assert "t-flagged-no-due" not in task_ids  # flagged but None due -> excluded
+        assert "t-unflagged-due" not in task_ids  # not flagged -> excluded
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t-match",
+                name="Match both",
+                effectiveDueDate="2026-04-05T10:00:00.000Z",
+                effectiveCompletionDate="2026-04-06T10:00:00.000Z",
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-due-only",
+                name="Due but not completed in range",
+                effectiveDueDate="2026-04-05T10:00:00.000Z",
+                project="proj-1",
+            ),
+            make_task_dict(
+                id="t-completed-only",
+                name="Completed but due too late",
+                effectiveDueDate="2026-04-20T10:00:00.000Z",
+                effectiveCompletionDate="2026-04-06T10:00:00.000Z",
+                project="proj-1",
+            ),
+        ],
+        projects=[make_project_dict(id="proj-1", name="Work")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_multiple_date_filters_and_composition(self, service: OperatorService) -> None:
+        """due_before + completed_after -> intersection (AND)."""
+        from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
+
+        repo = service._repository
+        q = ListTasksRepoQuery(
+            due_before=datetime(2026, 4, 10, 0, 0, 0, tzinfo=UTC),
+            completed_after=datetime(2026, 4, 1, 0, 0, 0, tzinfo=UTC),
+            availability=[],
+        )
+        result = await repo.list_tasks(q)
+        task_ids = {t.id for t in result.items}
+        assert "t-match" in task_ids  # due < 4/10 AND completed >= 4/1
+        assert "t-due-only" not in task_ids  # no completion date -> excluded by completed_after
+        assert "t-completed-only" not in task_ids  # due >= 4/10 -> excluded by due_before
