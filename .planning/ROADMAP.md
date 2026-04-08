@@ -181,6 +181,6 @@ Plans:
 | 32-33.1 | v1.2.3 | 15/15 | Complete | 2026-03-29 |
 | 34-38 | v1.3 | 26/26 | Complete | 2026-04-05 |
 | 39-44 | v1.3.1 | 15/15 | Complete | 2026-04-07 |
-| 45. Date Models & Resolution | v1.3.2 | 5/5 | Complete   | 2026-04-08 |
+| 45. Date Models & Resolution | v1.3.2 | 5/5 | Complete    | 2026-04-08 |
 | 46. Pipeline & Query Paths | v1.3.2 | 0/? | Not started | - |
 | 47. Cross-Path Equivalence & Breaking Changes | v1.3.2 | 0/? | Not started | - |
