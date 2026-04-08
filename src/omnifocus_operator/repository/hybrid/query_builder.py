@@ -132,7 +132,7 @@ def build_list_tasks_sql(query: ListTasksRepoQuery) -> tuple[SqlQuery, SqlQuery]
             conditions.append("t.containingProjectInfo IS NOT NULL")
 
     if query.flagged is not None:
-        conditions.append("t.flagged = ?")
+        conditions.append("t.effectiveFlagged = ?")
         params.append(1 if query.flagged else 0)
 
     if query.project_ids is not None and len(query.project_ids) > 0:
@@ -221,7 +221,7 @@ def build_list_projects_sql(
         params.append(cf_seconds)
 
     if query.flagged is not None:
-        conditions.append("t.flagged = ?")
+        conditions.append("t.effectiveFlagged = ?")
         params.append(1 if query.flagged else 0)
 
     if query.search is not None:

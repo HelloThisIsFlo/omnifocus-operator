@@ -65,6 +65,9 @@ def make_task_dict(**overrides: Any) -> dict[str, Any]:
         # Tags -- list of TagRef objects {id, name}
         "tags": [],
     }
+    # Auto-sync effectiveFlagged from flagged when not explicitly overridden
+    if "flagged" in overrides and "effectiveFlagged" not in overrides:
+        overrides["effectiveFlagged"] = overrides["flagged"]
     return {**defaults, **overrides}
 
 
@@ -115,6 +118,9 @@ def make_project_dict(**overrides: Any) -> dict[str, Any]:
         # Tags -- list of TagRef objects {id, name}
         "tags": [],
     }
+    # Auto-sync effectiveFlagged from flagged when not explicitly overridden
+    if "flagged" in overrides and "effectiveFlagged" not in overrides:
+        overrides["effectiveFlagged"] = overrides["flagged"]
     return {**defaults, **overrides}
 
 
