@@ -1004,6 +1004,10 @@ class HybridRepository(BridgeWriteMixin, Repository):
     def _read_due_soon_setting_sync(self) -> DueSoonSetting | None:
         """Read DueSoonInterval and DueSoonGranularity from the SQLite Setting table.
 
+        The real OmniFocus schema stores settings as:
+        - persistentIdentifier TEXT (e.g. 'DueSoonInterval')
+        - valueData BLOB (plist-encoded integer)
+
         Returns the matching DueSoonSetting enum member, or None if:
         - The Setting table is missing the required rows
         - The interval/granularity pair doesn't match any known setting
@@ -1012,19 +1016,23 @@ class HybridRepository(BridgeWriteMixin, Repository):
         conn.row_factory = sqlite3.Row
         try:
             rows = conn.execute(
-                "SELECT key, value FROM Setting "
-                "WHERE key IN ('DueSoonInterval', 'DueSoonGranularity')"
+                "SELECT persistentIdentifier, valueData FROM Setting "
+                "WHERE persistentIdentifier IN ('DueSoonInterval', 'DueSoonGranularity')"
             ).fetchall()
-            settings: dict[str, str] = {row["key"]: row["value"] for row in rows}
+            settings: dict[str, bytes] = {
+                row["persistentIdentifier"]: row["valueData"] for row in rows
+            }
 
-            interval_raw = settings.get("DueSoonInterval")
-            granularity_raw = settings.get("DueSoonGranularity")
-            if interval_raw is None or granularity_raw is None:
+            interval_blob = settings.get("DueSoonInterval")
+            granularity_blob = settings.get("DueSoonGranularity")
+            if interval_blob is None or granularity_blob is None:
                 return None
 
             try:
-                key = (int(interval_raw), int(granularity_raw))
-            except (ValueError, TypeError):
+                interval_val = plistlib.loads(interval_blob)
+                granularity_val = plistlib.loads(granularity_blob)
+                key = (int(interval_val), int(granularity_val))
+            except (ValueError, TypeError, plistlib.InvalidFileException):
                 return None
 
             return _SETTING_MAP.get(key)
