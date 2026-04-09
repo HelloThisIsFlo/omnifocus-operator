@@ -130,27 +130,40 @@ blocked: 0
   reason: "User reported: Server returned SQL error 'no such column: key'. Completely broken — server crash, not incorrect results."
   severity: blocker
   tests: [2, 15]
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "hybrid.py _read_due_soon_setting_sync() uses wrong column names (key/value) for OmniFocus Setting table. Correct columns: persistentIdentifier/valueData. Also valueData is plist-encoded, needs plistlib.loads()."
+  artifacts:
+    - path: "src/omnifocus_operator/repository/hybrid/hybrid.py"
+      issue: "Lines 1015-1018: SELECT key, value FROM Setting — columns don't exist"
+  missing:
+    - "Use correct columns: persistentIdentifier, valueData"
+    - "Deserialize plist-encoded valueData with plistlib.loads()"
 
 - truth: "'today' shortcut works for non-due date fields (defer, added)"
   status: failed
   reason: "User reported: Server returned 'str' object has no attribute 'this'. The 'today' shortcut is not handled for non-due fields."
   severity: blocker
   tests: [13, 14]
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "Non-due fields use Literal['today'] (raw string) while due uses DueDateShortcut (StrEnum). resolve_date_filter checks isinstance(value, StrEnum) which catches enums but not strings. String falls through to _resolve_date_filter_obj which tries .this on it."
+  artifacts:
+    - path: "src/omnifocus_operator/service/resolve_dates.py"
+      issue: "Line 61: isinstance(value, StrEnum) check skips plain string 'today'"
+    - path: "src/omnifocus_operator/contracts/use_cases/list/"
+      issue: "defer/added/modified/planned use Literal['today'] instead of StrEnum"
+  missing:
+    - "Create DateFieldShortcut(StrEnum) with TODAY='today' for non-due/non-lifecycle fields"
+    - "Update contract type annotations from Literal['today'] to DateFieldShortcut | DateFilter"
 
 - truth: "Lifecycle date-based filters (completed: 'today', completed: {last: '1w'}) auto-include remaining tasks"
   status: failed
   reason: "User reported: Only lifecycle items returned (1 item). Expected remaining + lifecycle items. completed: 'all' works correctly but date-based lifecycle filters silently drop remaining tasks."
   severity: major
   tests: [6, 7]
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "Lifecycle date bounds (completed_after/completed_before) are applied as global AND conditions on ALL tasks. Remaining tasks have NULL completion dates — NULL fails both SQL comparison and Python is-not-None check, silently filtering out all remaining tasks. Both repo paths affected."
+  artifacts:
+    - path: "src/omnifocus_operator/repository/hybrid/query_builder.py"
+      issue: "Lines 48-53: WHERE t.effectiveDateCompleted >= ? applied globally — excludes NULL rows"
+    - path: "src/omnifocus_operator/repository/bridge_only/bridge_only.py"
+      issue: "Lines 208-218: completion_date is not None check filters out remaining tasks"
+  missing:
+    - "Lifecycle date bounds must scope to their lifecycle category only: WHERE (availability IN remaining) OR (availability = completed AND completionDate BETWEEN ? AND ?)"
+    - "Same fix needed on both bridge and SQL paths"
