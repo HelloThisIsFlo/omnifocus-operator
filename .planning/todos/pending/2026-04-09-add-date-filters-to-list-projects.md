@@ -19,6 +19,10 @@ files:
 
 `list_projects` does not support any of the 7 date filters added to `list_tasks` in v1.3.2 (Phases 45-47). This was a planning gap -- the spec only covered tasks. Projects should support the same date filtering: `due`, `defer`, `planned`, `completed`, `dropped`, `added`, `modified`.
 
+**Active regression (since Phase 47):** Phase 47 removed `COMPLETED` and `DROPPED` from the `AvailabilityFilter` enum. For tasks, this is fine -- the new `completed`/`dropped` date filters (with `"any"` shortcut) replaced that access path. But `list_projects` never got those date filters, so there is currently **no way to query completed or dropped projects at all**. Before Phase 47, `list_projects(availability=["completed"])` worked. Now it's a validation error with no alternative.
+
+Decision: Accept the gap rather than temporarily restoring the old enum values. The date filter phase is the real fix -- it restores and exceeds the old capability. Adding throwaway compatibility code would create churn for behavior that's about to be superseded. Pre-release, one user, low practical risk.
+
 ## What exists (reusable as-is)
 
 - **DateFilter contract** (`_date_filter.py`): Shared model with validators for shorthand (`this`/`last`/`next`) and absolute (`before`/`after`) forms. Entity-agnostic.
