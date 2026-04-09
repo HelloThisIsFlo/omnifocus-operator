@@ -78,6 +78,9 @@ Spawn four agents in parallel:
 - Cross-reference every warning/error string against existing suite coverage
 - Determine if new suites or composite restructuring is needed
 - **New suite detection**: if the analysis identifies that a new suite file is needed, flag it — this affects how chunks are structured (see Step 4)
+- **Known gaps**: distinguish between "not yet implemented" and "should work but doesn't":
+  - If a spec requirement belongs to a phase that hasn't been executed yet → skip it, no test needed yet
+  - If a feature should be working (phase completed) but has a known bug → create a test reflecting the spec's expected behavior. It will fail during UAT, which is correct — the suite caught a real gap.
 
 ### Step 4 — Chunk the work
 
@@ -154,7 +157,7 @@ After writing the suite changes, identify assumptions that need live verificatio
    - Run the MCP tool calls that exercise the assumptions
    - Report results: confirmed or discrepancy found
    - **Clean up**: create `⚠️ DELETE THIS AFTER UAT` in inbox (or reuse if one exists), move all verification tasks under it, tell user to delete it. Same cleanup protocol as the main uat-regression skill.
-   - If a discrepancy is found: update the suite file before proceeding to Step 5
+   - **If a discrepancy is found**: ask the user — "Did I misunderstand the spec, or is this a real bug?" If misunderstanding → correct the suite to match the user's clarification. If real bug → keep the test reflecting the spec's expected behavior (it will fail during UAT, which is the correct outcome — the suite caught a real gap).
 4. **If user declines** (or wants to check manually): proceed to Step 5 — list the spot-checks for them as before
 
 **Never run verification autonomously.** Always present assumptions first, always ask permission, always wait for explicit approval before touching OmniFocus.
