@@ -224,7 +224,10 @@ def _parse_absolute_after(value: str, now: datetime) -> datetime:
     if _is_date_only(value):
         d = date.fromisoformat(value)
         return datetime(d.year, d.month, d.day, tzinfo=now.tzinfo)
-    return datetime.fromisoformat(value)
+    dt = datetime.fromisoformat(value)
+    if dt.tzinfo is None and now.tzinfo is not None:
+        return dt.replace(tzinfo=now.tzinfo)
+    return dt
 
 
 def _parse_absolute_before(value: str, now: datetime) -> datetime:
@@ -237,7 +240,10 @@ def _parse_absolute_before(value: str, now: datetime) -> datetime:
     if _is_date_only(value):
         d = date.fromisoformat(value)
         return datetime(d.year, d.month, d.day, tzinfo=now.tzinfo) + timedelta(days=1)
-    return datetime.fromisoformat(value)
+    dt = datetime.fromisoformat(value)
+    if dt.tzinfo is None and now.tzinfo is not None:
+        return dt.replace(tzinfo=now.tzinfo)
+    return dt
 
 
 def _is_date_only(value: str) -> bool:
