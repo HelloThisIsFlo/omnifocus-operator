@@ -15,7 +15,7 @@ This file is the output of a research session that analyzed what v1.3.2 changed 
 - [ ] Chunk 1 — Date Filtering Suite: Shortcuts & Lifecycle
 - [ ] Chunk 2 — Date Filtering Suite: Absolute Bounds, Combos & Warnings
 - [ ] Chunk 3 — Availability Migration: list_tasks
-- [ ] Chunk 4 — Availability Migration: list_projects + Date Filter Validation + Composites
+- [ ] Chunk 4 — Date Filter Validation + list_projects [] fix + Composites
 - [ ] **Delete this file** (all chunks done, everything merged)
 
 ---
@@ -67,7 +67,9 @@ Create a new test suite for `list_tasks` date filtering — the biggest new feat
 | 3c | Shorthand | `due: {next: "1w"}` | Tasks due within rest of today + next 7 full days |
 | 3d | Non-due field | `defer: "today"` | Tasks with defer date today |
 | 3e | Non-due field | `added: "today"` | Tasks added today (test tasks just created should match) |
-| 4a | Fallback warning | `due: "soon"` (no threshold) | If OPERATOR_DUE_SOON_THRESHOLD not set and hybrid repo can't read SQLite setting, warning W021 fires: "Due-soon threshold was not detected. Defaulting to today." |
+| 4a | Soon ⊃ overdue | `due: "soon"` on tasks that are overdue | Overdue tasks ALSO appear in "soon" results — "soon" means `due < now + threshold`, overdue is a strict subset |
+| 4b | Inherited dates | `due: "overdue"` on task with inherited effective due | Task has no direct dueDate but effectiveDueDate inherited from project. Must appear in results. |
+| 4c | Inherited dates | `due: {before: "<future>"}` on inherited task | Same inherited-date task caught by absolute filter too |
 
 **Suite conventions to follow:**
 - Search isolation: include `search: "DF-"` on every test
@@ -75,9 +77,11 @@ Create a new test suite for `list_tasks` date filtering — the biggest new feat
 - Every lifecycle test verifies auto-inclusion by NOT setting availability (or using default)
 - "PASS if" criteria on every test
 - Tests that verify warnings must quote the expected warning substring
-- Test 4a may need special setup (env var control) — note as optional/conditional
+- Setup needs a project with a dueDate and a child task with no direct dueDate (for inheritance tests 4b/4c)
 
-**Est. scope:** ~15 new tests, 1 new file.
+**W021 note:** The due-soon fallback warning (W021: "Due-soon threshold was not detected") is NOT testable in standard UAT — the hybrid repo always reads the setting from SQLite. This is covered by automated tests only. If a future "interactive fallback mode" UAT section is added, it could go there (user manually sets env vars and restarts server).
+
+**Est. scope:** ~17 new tests, 1 new file.
 
 ---
 
@@ -152,7 +156,7 @@ Lifecycle state is now expressed exclusively via date filters on `list_tasks`. T
 
 6. **Test 5b (Tag + COMPLETED combo):** Was `tags: [...], availability: ["available", "blocked", "completed"]`. Rewrite to: `tags: ["<tag-a-name>"], completed: "all", search: "LT-"` — PASS if LT-Tagged-A, LT-Tagged-AB, AND LT-Completed all appear.
 
-7. **Test 8d (availability: [] error):** Check the actual error message. The error constant `AVAILABILITY_EMPTY` currently mentions `["ALL"]` as alternative, but ALL is no longer valid for list_tasks. Verify what error message actually fires. Update PASS criteria to match actual output. (The worker agent should test this live or check the validator code path to determine whether `availability: []` is even rejected for list_tasks — there may be no explicit empty-list validator for availability on this tool.)
+7. **Test 8d (availability: [] — behavior change):** `availability: []` is now **ACCEPTED** on list_tasks (the `_reject_empty_availability` validator was removed in Phase 47). Empty list means "no active-state tasks" — returns nothing unless date filters add lifecycle tasks. Rewrite from an error test to a behavior test: `list_tasks` with `availability: [], search: "LT-"` — PASS if: `items` is empty (no active tasks match empty availability); `total: 0`. Then test the combo: `availability: [], completed: "all", search: "LT-"` — PASS if: only LT-Completed appears (empty availability + lifecycle inclusion = completed-only query).
 
 **New tests (~3):**
 
@@ -171,33 +175,19 @@ Lifecycle state is now expressed exclusively via date filters on `list_tasks`. T
 
 ---
 
-### Chunk 4: Availability Migration (list_projects) + Date Filter Validation + Composites
+### Chunk 4: Date Filter Validation + list_projects [] fix + Composites
 
 **Suites:** `.claude/skills/uat-regression/tests/list-projects.md`, `.claude/skills/uat-regression/tests/validation-errors.md`, `.claude/skills/uat-regression/tests/reads-combined.md`
 
 **What to do — list_projects.md:**
 
-`list_projects` uses the same trimmed `AvailabilityFilter` (available, blocked, remaining) but does NOT have date filters. Completed/dropped projects cannot be queried via `list_projects` — this is a known gap that will be addressed in a future phase. Tests that used removed enum values become **error tests**.
+**IMPORTANT — Known gap, DO NOT rewrite availability tests.** `list_projects` shares the trimmed `AvailabilityFilter` (available, blocked, remaining) but has NO date filters. This means completed/dropped projects cannot be queried via `list_projects` at all — this is a known gap that will be addressed in a future phase (separate from v1.3.2).
 
-**Assertion fixes (~7):**
+Tests 2b, 2c, 2d, 2f, 2g, and 6c use removed enum values ("completed", "dropped", "ALL") and **will fail when run**. This is correct — the failures document the gap. **Leave these tests as-is.** Do NOT convert them to error tests or remove them.
 
-1. **Test 2b (Include COMPLETED):** Was `availability: ["available", "blocked", "completed"]`. Rewrite as ERROR test (run INDIVIDUALLY): PASS if Pydantic enum validation error — "completed" is not a valid value.
+**One fix needed:**
 
-2. **Test 2c (Include DROPPED):** Same — "dropped" not valid. Rewrite as ERROR test.
-
-3. **Test 2d (All four states):** Same — "completed"/"dropped" not valid. Rewrite as ERROR test.
-
-4. **Test 2f (ALL shorthand):** Was `availability: ["ALL"]`. Rewrite as ERROR test — "ALL" not valid for AvailabilityFilter (it IS valid for TagAvailabilityFilter/FolderAvailabilityFilter, but not here).
-
-5. **Test 2g (ALL mixed warning):** Was `availability: ["ALL", "dropped"]`. Rewrite to test REMAINING redundancy: `availability: ["remaining", "available"]` — PASS if warning W029.
-
-6. **Test 6c (Search + COMPLETED):** Was `availability: ["completed"]`. Rewrite as ERROR test — "completed" not valid.
-
-7. **Test 9c (availability: [] error):** Same issue as list_tasks test 8d — check actual error message. Update assertion if it mentions `["ALL"]`.
-
-**Also update:**
-- Suite description: note that completed/dropped projects are not queryable via list_projects (lifecycle filtering is list_tasks-only in v1.3.2)
-- Test 2a description: clarify default is REMAINING
+1. **Test 9c (availability: [] — behavior change):** Same as list_tasks test 8d — `availability: []` is now **ACCEPTED** (validator removed in Phase 47). Rewrite from error test to behavior test: `list_projects` with `availability: []` — PASS if: `items` is empty (no projects match empty availability); no error raised.
 
 **What to do — validation-errors.md:**
 
@@ -226,7 +216,7 @@ All 8 tests run INDIVIDUALLY (they error). Standard validation suite conventions
 - Update total test count (130 → 130 + date filtering count from chunks 1+2)
 - Keep existing A-D order unchanged
 
-**Est. scope:** ~8 new tests + ~7 assertion fixes + 1 structural update.
+**Est. scope:** ~8 new tests + ~1 assertion fix + 1 structural update.
 
 ---
 
@@ -260,6 +250,7 @@ Everything below is research output — the chunks above reference it.
 - `AvailabilityFilter` trimmed: removed COMPLETED, DROPPED, ALL; added REMAINING
 - `LifecycleDateShortcut.ANY` → `.ALL` (value: "all")
 - REMAINING expands to [AVAILABLE, BLOCKED] at service layer
+- `availability: []` now ACCEPTED on list_tasks and list_projects (validators removed) — enables `availability: [], completed: "all"` for lifecycle-only queries
 - Defer hints: W022 (after=now) and W023 (before=now) appended as tips
 - Tool descriptions updated with date filter syntax documentation
 - Cross-path equivalence tests with inherited effective dates
@@ -290,6 +281,8 @@ This is the biggest gap. v1.3.2 adds 7 date filter dimensions to `list_tasks` wi
 | No-date exclusion | due filter on tasks without dueDate | Tasks without dates are excluded, not matched |
 | Round-trip | filter → get_task verification | Dates on returned tasks match expectations |
 | Non-due fields | added, modified, planned, defer "today" | Coverage across all 7 dimensions |
+| Inherited dates | task with no direct due but effective due from project | Verifies date filters use effective (inherited) values end-to-end |
+| Soon ⊃ overdue | overdue task appears in "soon" results | Counterintuitive but intentional — "soon" = `due < now + threshold` |
 
 ---
 
@@ -312,7 +305,7 @@ This is the biggest gap. v1.3.2 adds 7 date filter dimensions to `list_tasks` wi
 |------|-------|
 | 2a | Description says "default is AVAILABLE + BLOCKED" — still true but default is now REMAINING |
 | 3f | Warning text may no longer mention `$inbox` (only `inInbox=true`) |
-| 8d | Error message mentions `["ALL"]` as alternative — ALL not valid for list_tasks anymore |
+| 8d | `availability: []` is now ACCEPTED (validator removed) — rewrite as behavior test, not error test |
 
 **New tests needed:**
 
@@ -324,26 +317,26 @@ This is the biggest gap. v1.3.2 adds 7 date filter dimensions to `list_tasks` wi
 
 ---
 
-### list-projects.md (33 tests) — NEEDS UPDATES
+### list-projects.md (33 tests) — KNOWN GAP (DO NOT REWRITE)
 
-`list_projects` uses the same trimmed `AvailabilityFilter` but has NO date filters. Completed/dropped projects cannot be queried via `list_projects` in v1.3.2 (known gap — future phase planned).
+`list_projects` shares the trimmed `AvailabilityFilter` but has NO date filters. This is a **known gap** — completed/dropped projects are not queryable in v1.3.2. A future phase will either restore these enum values on list_projects or add date filters.
 
-**Tests that WILL FAIL:**
+**Tests that WILL FAIL (leave as-is — failures document the gap):**
 
-| Test | Current Input | Fix |
-|------|--------------|-----|
-| 2b | `availability: ["available", "blocked", "completed"]` | Convert to ERROR test |
-| 2c | `availability: ["available", "blocked", "dropped"]` | Convert to ERROR test |
-| 2d | `availability: ["available", "blocked", "completed", "dropped"]` | Convert to ERROR test |
-| 2f | `availability: ["ALL"]` | Convert to ERROR test |
-| 2g | `availability: ["ALL", "dropped"]` | Test REMAINING+available redundancy instead |
-| 6c | `availability: ["completed"]` | Convert to ERROR test |
+| Test | Current Input | Why it fails |
+|------|--------------|-------------|
+| 2b | `availability: ["available", "blocked", "completed"]` | "completed" removed from AvailabilityFilter |
+| 2c | `availability: ["available", "blocked", "dropped"]` | "dropped" removed |
+| 2d | `availability: ["available", "blocked", "completed", "dropped"]` | Both removed |
+| 2f | `availability: ["ALL"]` | "ALL" removed |
+| 2g | `availability: ["ALL", "dropped"]` | "ALL" and "dropped" removed |
+| 6c | `availability: ["completed"]` | "completed" removed |
 
-**Assertion updates:**
+**One behavior change (DOES need updating):**
 
 | Test | Issue |
 |------|-------|
-| 9c | Error message may mention `["ALL"]` which is no longer valid |
+| 9c | `availability: []` is now ACCEPTED (validator removed) — rewrite as behavior test |
 
 ---
 
@@ -412,7 +405,7 @@ Every new warning/error from v1.3.2 that needs at least one UAT test:
 
 | ID | Text Pattern | Covered By |
 |----|-------------|------------|
-| W021 | "Due-soon threshold was not detected. Defaulting to today." | Chunk 1 → date-filtering 4a |
+| W021 | "Due-soon threshold was not detected. Defaulting to today." | Automated tests only — not triggerable in standard UAT (hybrid repo always reads SQLite setting) |
 | W022 | "Tip: This shows tasks with a future defer date..." | Chunk 2 → date-filtering 7a |
 | W023 | "Tip: This shows tasks whose defer date has passed..." | Chunk 2 → date-filtering 7b |
 | W029 | "'remaining' already includes 'available'..." | Chunk 3 → list-tasks 2g (rewritten) |
@@ -436,12 +429,12 @@ No other composite changes needed. The `writes-combined.md` is unaffected.
 
 | Suite | Action | New Tests | Assertion Fixes |
 |-------|--------|-----------|-----------------|
-| date-filtering.md | **Create** | ~30 | 0 |
+| date-filtering.md | **Create** | ~32 | 0 |
 | list-tasks.md | Update | ~3 | ~7 |
-| list-projects.md | Update | 0 | ~7 |
-| validation-errors.md | Update | ~8 | ~1 |
+| list-projects.md | Leave as-is (known gap) | 0 | ~1 (test 9c only) |
+| validation-errors.md | Update | ~8 | 0 |
 | reads-combined.md | Structural | 0 | 0 |
-| **Total** | | **~41** | **~15** |
+| **Total** | | **~43** | **~8** |
 
 ---
 
