@@ -158,12 +158,13 @@ blocked: 0
   reason: "User reported: Only lifecycle items returned (1 item). Expected remaining + lifecycle items. completed: 'all' works correctly but date-based lifecycle filters silently drop remaining tasks."
   severity: major
   tests: [6, 7]
-  root_cause: "Lifecycle date bounds (completed_after/completed_before) are applied as global AND conditions on ALL tasks. Remaining tasks have NULL completion dates — NULL fails both SQL comparison and Python is-not-None check, silently filtering out all remaining tasks. Both repo paths affected."
+  root_cause: "Semantic category error: lifecycle date filters (completed, dropped) are additive — 'also show these lifecycle items, scoped by date.' But the code treats them as restrictive — 'only show tasks matching this date' — same as due/defer/added. Remaining tasks have NULL completion dates; NULL fails SQL comparison (NULL >= ? is FALSE) and Python is-not-None check, silently excluding all remaining tasks. Both repo paths affected identically."
   artifacts:
     - path: "src/omnifocus_operator/repository/hybrid/query_builder.py"
-      issue: "Lines 48-53: WHERE t.effectiveDateCompleted >= ? applied globally — excludes NULL rows"
+      issue: "Lines 48-53: _add_date_conditions applies lifecycle fields identically to regular fields — global AND excludes NULL rows"
     - path: "src/omnifocus_operator/repository/bridge_only/bridge_only.py"
-      issue: "Lines 208-218: completion_date is not None check filters out remaining tasks"
+      issue: "Lines 208-218: same logic — completion_date is not None check filters out remaining tasks"
   missing:
-    - "Lifecycle date bounds must scope to their lifecycle category only: WHERE (availability IN remaining) OR (availability = completed AND completionDate BETWEEN ? AND ?)"
-    - "Same fix needed on both bridge and SQL paths"
+    - "Split _add_date_conditions: regular fields (due, defer, planned, added, modified) stay as global AND. Lifecycle fields (completed, dropped) use IS NULL OR pattern: (column IS NULL OR column >= ?) — lets remaining tasks through while scoping lifecycle items by date."
+    - "Bridge path: flip 'is not None and' to 'is None or' for lifecycle fields"
+    - "Cross-path equivalence tests for lifecycle date filtering with remaining tasks"
