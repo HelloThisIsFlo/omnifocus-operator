@@ -1308,3 +1308,26 @@ class TestDateFilterCrossPath:
         result = await cross_repo.list_tasks(ListTasksRepoQuery(due_before=threshold))
         ids = [t.id for t in result.items]
         assert "task-3" not in ids
+
+
+# ===========================================================================
+# Empty availability cross-path equivalence tests
+# ===========================================================================
+
+
+class TestEmptyAvailabilityCrossPath:
+    """availability=[] must return 0 items on both paths (gap 2 fix)."""
+
+    @pytest.mark.asyncio
+    async def test_empty_availability_returns_no_tasks(self, cross_repo: Repository) -> None:
+        """availability=[] matches zero availability states, so zero tasks returned."""
+        result = await cross_repo.list_tasks(ListTasksRepoQuery(availability=[]))
+        assert result.items == []
+        assert result.total == 0
+
+    @pytest.mark.asyncio
+    async def test_empty_availability_returns_no_projects(self, cross_repo: Repository) -> None:
+        """availability=[] matches zero availability states, so zero projects returned."""
+        result = await cross_repo.list_projects(ListProjectsRepoQuery(availability=[]))
+        assert result.items == []
+        assert result.total == 0
