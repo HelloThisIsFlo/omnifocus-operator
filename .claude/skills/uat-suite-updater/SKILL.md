@@ -43,6 +43,9 @@ Always run this first. Determines which mode to enter.
    - Unchecked content chunks exist → **Worker Mode**
    - All content chunks checked (only "Delete this file" unchecked) → **Completion Mode**
 4. **Override**: if the user names a specific suite + specific change (e.g., "just add X to edit-operations.md"), skip mode detection → **Ad-hoc Override**
+5. **Re-seed override**: if a seed file exists with unchecked chunks BUT the user explicitly asks to re-analyze or regenerate (e.g., "run it again", "re-seed", "fresh analysis"), ask: "Found existing seed with N unchecked chunks. Archive the old seed and generate a fresh analysis?" On confirmation, archive to `.research/uat-suite-seeds/` and enter Initialization Mode.
+
+**Idempotency**: this workflow is safe to re-run. Initialization always compares the spec against the current state of existing suites. If suites are already up to date (from a previous run or manual edits), the gap analysis will find fewer or no gaps. Running it twice on the same state produces the same result.
 
 ## Initialization Mode
 
@@ -79,7 +82,7 @@ Spawn four agents in parallel:
 ### Step 4 — Chunk the work
 
 - Group by suite affinity (shared themes/setup)
-- ~15 new tests + ~10 assertion fixes max per chunk
+- **Proportional sizing**: ~15 new tests + ~10 assertion fixes max per chunk, but scale down to match the actual gap. If total work is ≤15 tests + ≤10 fixes, that's 1 chunk, not 4. Don't create artificial chunk boundaries for small updates.
 - **New suite registration**: when a chunk creates a NEW suite file, that same chunk MUST include instructions to:
   1. Add the suite to the uat-regression SKILL.md skill table (name, file path, test count, coverage description)
   2. Add the suite to the appropriate combined suite (reads-combined or writes-combined) — or flag if a new combined suite is needed or an existing one should be split
@@ -113,9 +116,9 @@ Before committing, present all ambiguities encountered during research. The user
 
 If no ambiguities were found, say so explicitly ("no ambiguities — all requirements were clear and consistent") and proceed to commit.
 
-### Edge case — No gaps found
+### No gaps found (expected outcome on re-runs)
 
-If research shows suites are already up to date, say so with evidence (which warnings are covered, which assertions are current). Don't produce an empty seed file.
+If research shows suites are already up to date, say so with evidence (which spec requirements are covered, which warnings have tests). Don't produce an empty seed file — this is a successful result, not an edge case. This is the expected outcome when re-running on a milestone whose suites were already updated.
 
 ## Worker Mode
 
