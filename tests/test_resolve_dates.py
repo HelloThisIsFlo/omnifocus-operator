@@ -59,6 +59,14 @@ class TestTodayShortcut:
         assert resolved.after == datetime(2026, 4, 7, 0, 0, 0)
         assert resolved.before == datetime(2026, 4, 8, 0, 0, 0)
 
+    def test_date_field_shortcut_today(self) -> None:
+        """DateFieldShortcut.TODAY resolves to today's midnight bounds."""
+        from omnifocus_operator.contracts.use_cases.list._enums import DateFieldShortcut
+
+        result = resolve_date_filter(DateFieldShortcut.TODAY, "defer", NOW)
+        assert result.after == datetime(2026, 4, 7, 0, 0, 0)
+        assert result.before == datetime(2026, 4, 8, 0, 0, 0)
+
 
 class TestOverdueShortcut:
     """'overdue' resolves to (None, now) -- due before current moment."""

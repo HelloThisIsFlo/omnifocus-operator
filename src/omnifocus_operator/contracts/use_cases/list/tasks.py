@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
 
 from pydantic import Field, field_validator, model_validator
 
@@ -30,6 +29,7 @@ from omnifocus_operator.contracts.base import UNSET, Patch, QueryModel
 from omnifocus_operator.contracts.use_cases.list._date_filter import DateFilter
 from omnifocus_operator.contracts.use_cases.list._enums import (
     AvailabilityFilter,
+    DateFieldShortcut,
     DueDateShortcut,
     LifecycleDateShortcut,
 )
@@ -68,10 +68,10 @@ class ListTasksQuery(QueryModel):
     availability: list[AvailabilityFilter] = Field(default=[AvailabilityFilter.REMAINING])
     search: Patch[str] = Field(default=UNSET, description=SEARCH_FIELD_NAME_NOTES)
     due: Patch[DueDateShortcut | DateFilter] = Field(default=UNSET, description=DUE_FILTER_DESC)
-    defer: Patch[Literal["today"] | DateFilter] = Field(
+    defer: Patch[DateFieldShortcut | DateFilter] = Field(
         default=UNSET, description=DEFER_FILTER_DESC
     )
-    planned: Patch[Literal["today"] | DateFilter] = Field(
+    planned: Patch[DateFieldShortcut | DateFilter] = Field(
         default=UNSET, description=PLANNED_FILTER_DESC
     )
     completed: Patch[LifecycleDateShortcut | DateFilter] = Field(
@@ -80,10 +80,10 @@ class ListTasksQuery(QueryModel):
     dropped: Patch[LifecycleDateShortcut | DateFilter] = Field(
         default=UNSET, description=DROPPED_FILTER_DESC
     )
-    added: Patch[Literal["today"] | DateFilter] = Field(
+    added: Patch[DateFieldShortcut | DateFilter] = Field(
         default=UNSET, description=ADDED_FILTER_DESC
     )
-    modified: Patch[Literal["today"] | DateFilter] = Field(
+    modified: Patch[DateFieldShortcut | DateFilter] = Field(
         default=UNSET, description=MODIFIED_FILTER_DESC
     )
     limit: int | None = Field(default=DEFAULT_LIST_LIMIT, description=LIMIT_DESC)
