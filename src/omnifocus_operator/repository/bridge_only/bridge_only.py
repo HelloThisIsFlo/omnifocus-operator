@@ -60,6 +60,10 @@ _BRIDGE_FIELD_MAP: dict[str, str] = {
     "modified": "modified",
 }
 
+# Lifecycle date fields use additive semantics: remaining tasks (None attribute)
+# pass through alongside lifecycle items matching the date bounds.
+_LIFECYCLE_DATE_FIELDS = {"completed", "dropped"}
+
 
 def _paginate[T](items: list[T], limit: int | None, offset: int) -> ListRepoResult[T]:
     """Apply offset/limit slicing and compute total/has_more for Python-filtered lists."""
@@ -201,21 +205,37 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
             ]
 
         # Date filters (all 7 dimensions)
+        # Lifecycle fields (completed, dropped) use additive semantics:
+        # remaining tasks (None value) pass through alongside date-scoped items.
         for field_name, attr_name in _BRIDGE_FIELD_MAP.items():
             after_val = getattr(query, f"{field_name}_after", None)
             before_val = getattr(query, f"{field_name}_before", None)
-            if after_val is not None:
-                items = [
-                    t
-                    for t in items
-                    if getattr(t, attr_name) is not None and getattr(t, attr_name) >= after_val
-                ]
-            if before_val is not None:
-                items = [
-                    t
-                    for t in items
-                    if getattr(t, attr_name) is not None and getattr(t, attr_name) < before_val
-                ]
+            if field_name in _LIFECYCLE_DATE_FIELDS:
+                if after_val is not None:
+                    items = [
+                        t
+                        for t in items
+                        if getattr(t, attr_name) is None or getattr(t, attr_name) >= after_val
+                    ]
+                if before_val is not None:
+                    items = [
+                        t
+                        for t in items
+                        if getattr(t, attr_name) is None or getattr(t, attr_name) < before_val
+                    ]
+            else:
+                if after_val is not None:
+                    items = [
+                        t
+                        for t in items
+                        if getattr(t, attr_name) is not None and getattr(t, attr_name) >= after_val
+                    ]
+                if before_val is not None:
+                    items = [
+                        t
+                        for t in items
+                        if getattr(t, attr_name) is not None and getattr(t, attr_name) < before_val
+                    ]
 
         total = len(items)
 

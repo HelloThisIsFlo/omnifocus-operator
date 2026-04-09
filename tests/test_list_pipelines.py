@@ -983,8 +983,10 @@ class TestListTasksDateFiltering:
         folders=[],
         perspectives=[],
     )
-    async def test_completed_after_in_range_excludes_null(self, service: OperatorService) -> None:
-        """Tasks with completionDate in range included; None excluded."""
+    async def test_completed_after_in_range_preserves_remaining(
+        self, service: OperatorService
+    ) -> None:
+        """Lifecycle date filter is additive: remaining tasks (None) pass through."""
 
         repo = service._repository
         q = ListTasksRepoQuery(
@@ -995,7 +997,7 @@ class TestListTasksDateFiltering:
         task_ids = {t.id for t in result.items}
         assert "t-completed-recent" in task_ids  # 2026-04-05 >= 2026-03-01
         assert "t-completed-old" not in task_ids  # 2026-01-01 < 2026-03-01
-        assert "t-not-completed" not in task_ids  # None excluded
+        assert "t-not-completed" in task_ids  # remaining task preserved (additive)
 
     @pytest.mark.snapshot(
         tasks=[
@@ -1068,7 +1070,11 @@ class TestListTasksDateFiltering:
         perspectives=[],
     )
     async def test_multiple_date_filters_and_composition(self, service: OperatorService) -> None:
-        """due_before + completed_after -> intersection (AND)."""
+        """due_before (restrictive) + completed_after (additive) -> intersection (AND).
+
+        Lifecycle filter (completed_after) is additive: NULL completion passes through.
+        Non-lifecycle filter (due_before) is restrictive: NULL due excluded.
+        """
 
         repo = service._repository
         q = ListTasksRepoQuery(
@@ -1078,8 +1084,8 @@ class TestListTasksDateFiltering:
         )
         result = await repo.list_tasks(q)
         task_ids = {t.id for t in result.items}
-        assert "t-match" in task_ids  # due < 4/10 AND completed >= 4/1
-        assert "t-due-only" not in task_ids  # no completion date -> excluded by completed_after
+        assert "t-match" in task_ids  # due < 4/10 AND (completed is NULL OR >= 4/1)
+        assert "t-due-only" in task_ids  # due < 4/10, NULL completion passes additive filter
         assert "t-completed-only" not in task_ids  # due >= 4/10 -> excluded by due_before
 
 
@@ -1241,12 +1247,13 @@ class TestListTasksDateFilterPipeline:
 
         Default availability is [available, blocked] which excludes completed tasks.
         The pipeline should auto-add 'completed' to the availability list.
+        Lifecycle date filter is additive: remaining tasks (NULL completion) pass through.
         """
         result = await service.list_tasks(ListTasksQuery(completed="today"))
         task_ids = {t.id for t in result.items}
         assert "t-completed-today" in task_ids
         assert "t-completed-old" not in task_ids  # completed outside today
-        assert "t-available" not in task_ids  # no completion date
+        assert "t-available" in task_ids  # remaining task preserved (additive lifecycle filter)
 
     @pytest.mark.snapshot(
         tasks=[
@@ -1282,12 +1289,15 @@ class TestListTasksDateFilterPipeline:
     async def test_dropped_last_1w_auto_includes_dropped_availability(
         self, service: OperatorService
     ) -> None:
-        """dropped={last: '1w'} auto-includes Availability.DROPPED (EXEC-04)."""
+        """dropped={last: '1w'} auto-includes Availability.DROPPED (EXEC-04).
+
+        Lifecycle date filter is additive: remaining tasks (NULL drop date) pass through.
+        """
         result = await service.list_tasks(ListTasksQuery(dropped={"last": "1w"}))
         task_ids = {t.id for t in result.items}
         assert "t-dropped-recent" in task_ids  # dropped 2 days ago, within last week
         assert "t-dropped-old" not in task_ids  # dropped in 2020
-        assert "t-available" not in task_ids  # not dropped
+        assert "t-available" in task_ids  # remaining task preserved (additive lifecycle filter)
 
     @pytest.mark.snapshot(
         tasks=[
