@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import plistlib
 import sqlite3
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock
@@ -24,25 +25,27 @@ if TYPE_CHECKING:
 
 @pytest.fixture()
 def _setting_db(tmp_path: Path) -> Path:
-    """Create a temporary SQLite database with a Setting table."""
+    """Create a temporary SQLite database with a Setting table (real OmniFocus schema)."""
     db_path = tmp_path / "OmniFocusDatabase.db"
     conn = sqlite3.connect(str(db_path))
-    conn.execute("CREATE TABLE Setting (key TEXT PRIMARY KEY, value TEXT)")
+    conn.execute("CREATE TABLE Setting (persistentIdentifier TEXT PRIMARY KEY, valueData BLOB)")
     conn.commit()
     conn.close()
     return db_path
 
 
 def _insert_settings(db_path: Path, interval: str, granularity: str) -> None:
-    """Insert DueSoonInterval and DueSoonGranularity into the Setting table."""
+    """Insert DueSoonInterval and DueSoonGranularity as plist-encoded blobs."""
     conn = sqlite3.connect(str(db_path))
     conn.execute(
-        "INSERT OR REPLACE INTO Setting (key, value) VALUES ('DueSoonInterval', ?)",
-        (interval,),
+        "INSERT OR REPLACE INTO Setting (persistentIdentifier, valueData) "
+        "VALUES ('DueSoonInterval', ?)",
+        (plistlib.dumps(int(interval)),),
     )
     conn.execute(
-        "INSERT OR REPLACE INTO Setting (key, value) VALUES ('DueSoonGranularity', ?)",
-        (granularity,),
+        "INSERT OR REPLACE INTO Setting (persistentIdentifier, valueData) "
+        "VALUES ('DueSoonGranularity', ?)",
+        (plistlib.dumps(int(granularity)),),
     )
     conn.commit()
     conn.close()
@@ -123,7 +126,10 @@ class TestHybridGetDueSoonSetting:
     @pytest.mark.asyncio()
     async def test_returns_none_when_only_interval(self, _setting_db: Path) -> None:
         conn = sqlite3.connect(str(_setting_db))
-        conn.execute("INSERT INTO Setting (key, value) VALUES ('DueSoonInterval', '86400')")
+        conn.execute(
+            "INSERT INTO Setting (persistentIdentifier, valueData) VALUES ('DueSoonInterval', ?)",
+            (plistlib.dumps(86400),),
+        )
         conn.commit()
         conn.close()
         repo = _make_hybrid_repo(_setting_db)
