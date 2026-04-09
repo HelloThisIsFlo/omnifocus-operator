@@ -1,12 +1,12 @@
 # Date Filtering Test Suite
 
-Tests `list_tasks` date filtering — due date shortcuts (overdue, soon, today), lifecycle date filters (completed, dropped with auto-inclusion), shorthand period syntax (this/last/next), non-due date fields (defer, added), and inherited effective dates.
+Tests `list_tasks` date filtering — due date shortcuts (overdue, soon, today), lifecycle date filters (completed, dropped with auto-inclusion), shorthand period syntax (this/last/next), absolute date bounds (before/after/range), combo filters (date + base filter AND logic), defer hint warnings (W022/W023), other date fields (modified, planned, defer, added), edge cases (no-date exclusion, round-trip), and inherited effective dates.
 
 ## Conventions
 
 - **Search isolation.** Every test includes `search: "DF-"` to restrict results to test tasks only.
 - **Read-only suite.** `list_tasks` is idempotent. No cleanup between tests — only after the suite completes.
-- **Date sensitivity.** Tests depend on relative dates computed at setup time. If running after 10:30 PM local, tests 1b and 4a become unreliable — skip or reschedule.
+- **Date sensitivity.** Tests depend on relative dates computed at setup time. If running after 10:30 PM local, tests 1b and 4a become unreliable — skip or reschedule. Test 7b assumes the suite runs after 06:00 local (DF-DeferToday's defer date must have passed).
 - **Threshold-dependent.** Tests 1b and 4a depend on the user's OmniFocus "due soon" threshold, discovered during setup.
 
 ## Setup
@@ -44,6 +44,9 @@ Compute these ISO timestamps based on current time and the user's threshold:
 | `TODAY_DUE` | Today at 14:00 local (or now + 2h if past 14:00, cap at 23:00) | Due today, in the future |
 | `FUTURE_DUE` | now + 30 days | Well beyond any threshold |
 | `TODAY_DEFER` | Today at 06:00 local | Defer date clearly within today |
+| `TOMORROW_DATE` | Tomorrow (date-only YYYY-MM-DD) | Absolute bound: captures today, excludes far future |
+| `YESTERDAY_DATE` | Yesterday (date-only YYYY-MM-DD) | Absolute bound: everything from yesterday forward |
+| `TODAY_DATE_STR` | Today (date-only YYYY-MM-DD) | Absolute bound and planned date reference |
 
 **SOON_DUE strategy** (must be after now AND within threshold):
 - **Today (calendar-aligned):** now + 1.5 hours (must be before midnight)
@@ -87,11 +90,17 @@ Create DF-InheritParent first, then DF-InheritChild with parent set to DF-Inheri
 
 1. `edit_tasks` on DF-Completed: `actions: { lifecycle: "complete" }`
 2. `edit_tasks` on DF-Dropped: `actions: { lifecycle: "drop" }`
+3. `edit_tasks` on DF-Overdue: `flagged: true`
+4. `edit_tasks` on DF-DueToday: `flagged: true`
+5. `edit_tasks` on DF-DueSoon: `plannedDate: "TODAY_DATE_STR"`
 
 Verify via `get_task`:
 - DF-Completed: `availability: "completed"`
 - DF-Dropped: `availability: "dropped"`
 - DF-InheritChild: `dueDate` is null, `effectiveDueDate` matches OVERDUE_DUE (inherited from DF-InheritParent)
+- DF-Overdue: `flagged: true`
+- DF-DueToday: `flagged: true`
+- DF-DueSoon: `plannedDate` matches TODAY_DATE_STR
 
 ### Manual Actions
 
@@ -177,6 +186,77 @@ None — all setup is automated.
 1. `list_tasks` with `due: {before: "FUTURE_DUE_DATE"}, search: "DF-InheritChild"` (use the FUTURE_DUE date value from setup, formatted as date-only YYYY-MM-DD)
 2. PASS if: DF-InheritChild appears — its inherited effectiveDueDate (overdue) is well before the given future date. Absolute date filters also work on inherited values.
 
+### 5. Absolute Date Bounds
+
+#### Test 5a: due: {before: "TOMORROW_DATE"}
+1. `list_tasks` with `due: {before: "TOMORROW_DATE"}, search: "DF-"` (substitute the YYYY-MM-DD string computed in setup)
+2. PASS if: DF-Overdue, DF-DueSoon, DF-DueToday, DF-InheritParent, DF-InheritChild all appear (all have due dates before the resolved upper bound — date-only `before` resolves to midnight of day-after-tomorrow); DF-Future does NOT appear (30 days out); DF-NoDue does NOT appear (no due date)
+
+#### Test 5b: due: {after: "YESTERDAY_DATE"}
+1. `list_tasks` with `due: {after: "YESTERDAY_DATE"}, search: "DF-"` (substitute the YYYY-MM-DD string computed in setup)
+2. PASS if: DF-Overdue, DF-DueSoon, DF-DueToday, DF-Future, DF-InheritParent, DF-InheritChild all appear (all due dates are from today onward — after midnight yesterday, the resolved inclusive lower bound); DF-NoDue does NOT appear
+
+#### Test 5c: due: {after: "now", before: "TOMORROW_DATE"} — range
+1. `list_tasks` with `due: {after: "now", before: "TOMORROW_DATE"}, search: "DF-"`
+2. PASS if: DF-DueSoon and DF-DueToday appear (due dates after now but before day-after-tomorrow midnight); DF-Overdue does NOT appear (due date is before now — outside inclusive lower bound); DF-Future does NOT appear (30 days out — outside upper bound); DF-InheritParent, DF-InheritChild do NOT appear (inherited overdue dates are before now); DF-NoDue does NOT appear
+
+#### Test 5d: due: {before: "now"} — equivalent to overdue
+1. `list_tasks` with `due: {before: "now"}, search: "DF-"`
+2. PASS if: same result set as test 1a — DF-Overdue, DF-InheritParent, DF-InheritChild appear; all others excluded. `{before: "now"}` resolves to the same boundary as the "overdue" shortcut.
+
+#### Test 5e: due: {after: "now"} — future only
+1. `list_tasks` with `due: {after: "now"}, search: "DF-"`
+2. PASS if: DF-DueSoon, DF-DueToday, DF-Future appear (all have due dates after now); DF-Overdue does NOT appear (due before now); DF-InheritParent, DF-InheritChild do NOT appear (inherited overdue = before now); DF-NoDue does NOT appear
+
+### 6. Combo Filters (Date + Base)
+
+#### Test 6a: due: "overdue" + flagged: true
+1. `list_tasks` with `due: "overdue", flagged: true, search: "DF-"`
+2. PASS if: DF-Overdue appears (overdue AND flagged); DF-InheritParent, DF-InheritChild do NOT appear (overdue but not flagged); DF-DueToday does NOT appear (flagged but not overdue). Proves AND logic between date filter and base filter.
+
+#### Test 6b: completed: "all" + narrowed search
+1. `list_tasks` with `completed: "all", search: "DF-Completed"`
+2. PASS if: DF-Completed appears (lifecycle auto-inclusion makes completed tasks visible + search narrows to this one task); no other tasks appear
+
+#### Test 6c: due: "today" + flagged: true
+1. `list_tasks` with `due: "today", flagged: true, search: "DF-"`
+2. PASS if: DF-Overdue and DF-DueToday both appear (both are due today AND flagged); DF-DueSoon does NOT appear (not flagged even if due today); DF-InheritParent, DF-InheritChild do NOT appear (not flagged)
+
+#### Test 6d: Multi-dimension — defer + due (AND produces empty)
+1. `list_tasks` with `defer: {before: "now"}, due: {before: "now"}, search: "DF-"`
+2. PASS if: `items` array is empty and `total` is 0 — DF-DeferToday has defer before now but no due date (excluded by due filter); overdue tasks (DF-Overdue, DF-InheritParent, DF-InheritChild) have due before now but no defer date (excluded by defer filter). No single task satisfies both conditions. Warning W023 may be present (defer hint for `defer: {before: "now"}`). This proves AND logic across two date filter dimensions.
+
+### 7. Defer Hint Warnings
+
+#### Test 7a: defer: {after: "now"} — W022 hint
+1. `list_tasks` with `defer: {after: "now"}, search: "DF-"`
+2. PASS if: DF-Blocked appears (deferDate 2099 is after now); response warnings array includes text containing "Tip: This shows tasks with a future defer date. For all unavailable tasks regardless of reason, use availability: 'blocked'."
+
+#### Test 7b: defer: {before: "now"} — W023 hint
+1. `list_tasks` with `defer: {before: "now"}, search: "DF-"`
+2. PASS if: DF-DeferToday appears (deferDate at 06:00 today has passed — assumes test runs after 06:00 local); response warnings array includes text containing "Tip: This shows tasks whose defer date has passed. For all currently available tasks, use availability: 'available'."
+
+### 8. Other Date Fields
+
+#### Test 8a: modified: {last: "1w"}
+1. `list_tasks` with `modified: {last: "1w"}, search: "DF-"`
+2. PASS if: all remaining (available + blocked) DF-* tasks appear (all created/modified today, well within 1 week); DF-Completed and DF-Dropped do NOT appear (`modified` is not a lifecycle field — no auto-inclusion of completed/dropped availability)
+
+#### Test 8b: planned: "today"
+1. `list_tasks` with `planned: "today", search: "DF-"`
+2. PASS if: DF-DueSoon appears (plannedDate set to TODAY_DATE_STR during setup); no other DF-* tasks appear (only DF-DueSoon has a planned date set)
+
+### 9. Edge Cases
+
+#### Test 9a: due: "overdue" on task with no dueDate
+1. `list_tasks` with `due: "overdue", search: "DF-NoDue"`
+2. PASS if: `items` array is empty — DF-NoDue has no due date and is not treated as overdue. Tasks without the filtered date field are excluded, not matched.
+
+#### Test 9b: Round-trip — filter result vs get_task
+1. Call `list_tasks` with `due: "overdue", search: "DF-Overdue"` and note the returned task's ID and `dueDate`
+2. Call `get_task` with that task ID
+3. PASS if: both responses show the same `dueDate` value; the value matches the OVERDUE_DUE timestamp set during setup (dates survive the round-trip through date filtering and individual lookup)
+
 ## Report Table Rows
 
 | # | Test | Description | Result |
@@ -198,3 +278,18 @@ None — all setup is automated.
 | 4a | Soon ⊃ overdue | Overdue task explicitly found in "soon" results | |
 | 4b | Inherited: overdue | No direct dueDate; found by overdue filter via inherited effective date | |
 | 4c | Inherited: absolute | Inherited effective date caught by absolute {before} filter | |
+| 5a | Absolute: before tomorrow | Near-term tasks returned; 30-day future excluded; no-due excluded | |
+| 5b | Absolute: after yesterday | All dated tasks returned; no-due excluded | |
+| 5c | Absolute: range [now, tomorrow] | Future-today window; overdue and far-future both excluded | |
+| 5d | Absolute: before now = overdue | Equivalent result to "overdue" shortcut (test 1a) | |
+| 5e | Absolute: after now = future | Only future due dates; overdue and no-due excluded | |
+| 6a | Combo: overdue + flagged | AND logic; only flagged overdue task appears | |
+| 6b | Combo: completed + search | Lifecycle auto-inclusion + narrow search; single task returned | |
+| 6c | Combo: today + flagged | AND logic; flagged due-today tasks only | |
+| 6d | Combo: multi-dim defer + due | Both date dimensions AND'd; empty result proves intersection logic | |
+| 7a | Defer hint: after now | W022 tip about availability: 'blocked' alternative | |
+| 7b | Defer hint: before now | W023 tip about availability: 'available' alternative | |
+| 8a | Other: modified last week | All remaining tasks returned; no lifecycle auto-include for modified | |
+| 8b | Other: planned today | Only task with planned date today returned | |
+| 9a | Edge: no due date | Task without dueDate excluded from overdue filter | |
+| 9b | Edge: round-trip | dueDate consistent between list_tasks filter and get_task lookup | |
