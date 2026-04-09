@@ -12,7 +12,7 @@ This file is the output of a research session that analyzed what v1.3.2 changed 
 
 ## Progress
 
-- [ ] Chunk 1 — Date Filtering Suite: Shortcuts & Lifecycle
+- [x] Chunk 1 — Date Filtering Suite: Shortcuts & Lifecycle
 - [ ] Chunk 2 — Date Filtering Suite: Absolute Bounds, Combos & Warnings
 - [ ] Chunk 3 — Availability Migration: list_tasks
 - [ ] Chunk 4 — Date Filter Validation + list_projects [] fix + Composites
