@@ -135,7 +135,7 @@ def _build_availability_clause(
     """Build compound OR clause for availability filter. No params needed."""
     parts = [clause_map[v] for v in values if v in clause_map]
     if not parts:
-        return ""
+        return "1=0"
     if len(parts) == 1:
         return parts[0]
     return "(" + " OR ".join(parts) + ")"

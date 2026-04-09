@@ -190,9 +190,8 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
                 if t.estimated_minutes is not None
                 and t.estimated_minutes <= query.estimated_minutes_max
             ]
-        if query.availability:
-            avail_set = set(query.availability)
-            items = [t for t in items if t.availability in avail_set]
+        avail_set = set(query.availability)
+        items = [t for t in items if t.availability in avail_set]
         if query.search is not None:
             lower_search = query.search.lower()
             items = [
@@ -236,9 +235,8 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
         all_entities = await self.get_all()
         items = list(all_entities.projects)
 
-        if query.availability:
-            avail_set = set(query.availability)
-            items = [p for p in items if p.availability in avail_set]
+        avail_set = set(query.availability)
+        items = [p for p in items if p.availability in avail_set]
         if query.folder_ids is not None:
             fid_set = set(query.folder_ids)
             items = [p for p in items if p.folder is not None and p.folder.id in fid_set]
