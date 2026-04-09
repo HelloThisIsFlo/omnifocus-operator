@@ -8,6 +8,7 @@ from pydantic import BaseModel, ValidationError
 
 from omnifocus_operator.config import get_week_start
 from omnifocus_operator.contracts.use_cases.list import (
+    DateFieldShortcut,
     DateFilter,
     DueDateShortcut,
     LifecycleDateShortcut,
