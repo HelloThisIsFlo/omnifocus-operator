@@ -297,21 +297,49 @@ class TestListTasksQueryDateFields:
         assert isinstance(q.completed, LifecycleDateShortcut)
         assert q.completed == LifecycleDateShortcut.ALL
 
-    def test_defer_today_literal(self) -> None:
+    def test_defer_today_shortcut(self) -> None:
         q = ListTasksQuery(defer="today")
+        assert isinstance(q.defer, DateFieldShortcut)
+        assert q.defer == DateFieldShortcut.TODAY
         assert q.defer == "today"
 
-    def test_planned_today_literal(self) -> None:
+    def test_planned_today_shortcut(self) -> None:
         q = ListTasksQuery(planned="today")
+        assert isinstance(q.planned, DateFieldShortcut)
+        assert q.planned == DateFieldShortcut.TODAY
         assert q.planned == "today"
 
-    def test_added_today_literal(self) -> None:
+    def test_added_today_shortcut(self) -> None:
         q = ListTasksQuery(added="today")
+        assert isinstance(q.added, DateFieldShortcut)
+        assert q.added == DateFieldShortcut.TODAY
         assert q.added == "today"
 
-    def test_modified_today_literal(self) -> None:
+    def test_modified_today_shortcut(self) -> None:
         q = ListTasksQuery(modified="today")
+        assert isinstance(q.modified, DateFieldShortcut)
+        assert q.modified == DateFieldShortcut.TODAY
         assert q.modified == "today"
+
+    def test_defer_date_filter_object(self) -> None:
+        q = ListTasksQuery(defer={"this": "w"})
+        assert isinstance(q.defer, DateFilter)
+        assert q.defer.this == "w"
+
+    def test_planned_date_filter_object(self) -> None:
+        q = ListTasksQuery(planned={"last": "3d"})
+        assert isinstance(q.planned, DateFilter)
+        assert q.planned.last == "3d"
+
+    def test_added_date_filter_object(self) -> None:
+        q = ListTasksQuery(added={"next": "m"})
+        assert isinstance(q.added, DateFilter)
+        assert q.added.next == "m"
+
+    def test_modified_date_filter_object(self) -> None:
+        q = ListTasksQuery(modified={"before": "2026-04-14"})
+        assert isinstance(q.modified, DateFilter)
+        assert q.modified.before == "2026-04-14"
 
     def test_dropped_all_shortcut(self) -> None:
         q = ListTasksQuery(dropped="all")
