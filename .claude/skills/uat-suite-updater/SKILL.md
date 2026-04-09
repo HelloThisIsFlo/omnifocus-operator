@@ -48,12 +48,17 @@ Spawn four agents in parallel:
 - Per-suite: what new tests are needed, what assertions are broken (with line references)
 - Cross-reference every warning/error string against existing suite coverage
 - Determine if new suites or composite restructuring is needed
+- **New suite detection**: if the analysis identifies that a new suite file is needed, flag it — this affects how chunks are structured (see Step 4)
 
 ### Step 4 — Chunk the work
 
 - Group by suite affinity (shared themes/setup)
 - ~15 new tests + ~10 assertion fixes max per chunk
-- Final chunk for structural changes (composites, SKILL.md updates) if needed
+- **New suite registration**: when a chunk creates a NEW suite file, that same chunk MUST include instructions to:
+  1. Add the suite to the uat-regression SKILL.md skill table (name, file path, test count, coverage description)
+  2. Add the suite to the appropriate combined suite (reads-combined or writes-combined) — or flag if a new combined suite is needed or an existing one should be split
+  - Do NOT defer registration to a later chunk — the suite must be discoverable the moment it exists
+- If composites need deeper restructuring beyond adding a row, create a separate chunk for that
 - Always end with a "Delete this file" checkbox
 
 ### Step 5 — Write seed file
@@ -88,20 +93,30 @@ Pick up the next chunk from the seed file and execute it.
 - Write/update suite files per chunk instructions
 - Match existing suite format exactly (see **Suite Conventions** below)
 
-### Step 4 — Assumptions gate
+### Step 4 — Verification
 
-- If any test descriptions need live OmniFocus verification, present assumptions to user
-- Wait for approval before finalizing
+After writing the suite changes, identify assumptions that need live verification (e.g., exact warning text, filter behavior, edge cases).
+
+1. **Present assumptions**: list each assumption with what you'd check and how
+2. **Offer self-verification**: ask the user "Want me to run these checks myself against your live OmniFocus?"
+3. **If user approves**:
+   - Create minimal test tasks in inbox via MCP `add_tasks` (use a `UAT-Verify-` prefix for isolation)
+   - Run the MCP tool calls that exercise the assumptions
+   - Report results: confirmed or discrepancy found
+   - **Clean up**: create `⚠️ DELETE THIS AFTER UAT` in inbox (or reuse if one exists), move all verification tasks under it, tell user to delete it. Same cleanup protocol as the main uat-regression skill.
+   - If a discrepancy is found: update the suite file before proceeding to Step 5
+4. **If user declines** (or wants to check manually): proceed to Step 5 — list the spot-checks for them as before
+
+**Never run verification autonomously.** Always present assumptions first, always ask permission, always wait for explicit approval before touching OmniFocus.
 
 ### Step 5 — Completion protocol
 
-1. **Summarize**: files modified, tests added, assertions fixed
-2. **Suggest spot-checks**: specific MCP calls the user can try to sanity-check test descriptions
-3. **Wait for user validation** — user reviews, tries spot-checks, gives thumbs up or requests changes
-4. **On approval**:
+1. **Summarize**: files modified, tests added, assertions fixed. If self-verification ran, include results.
+2. **Wait for user sign-off** — user reviews the changes (and verification results if applicable)
+3. **On approval**:
    - Commit suite changes: `test(uat): ...`
    - Mark chunk done in separate commit: `chore: mark chunk N complete in UAT suite analysis`
-5. **If all content chunks now done**: inform user, suggest triggering this skill again for Completion mode
+4. **If all content chunks now done**: inform user, suggest triggering this skill again for Completion mode
 
 ### Edge case — Concurrent workers
 
@@ -152,10 +167,10 @@ This file is the output of a research session that analyzed what v{version} chan
 
 After finishing the suite edits for a chunk, the agent does NOT commit. Instead:
 
-1. **Summarize changes** — list every file modified, tests added, assertions fixed
-2. **Tell the user what to review** — which suite files to read, what to look for
-3. **Suggest spot-checks** — specific things the user can try in OmniFocus via the MCP tools
-4. **Wait for validation** — user reviews, tries the spot-checks, gives thumbs up or requests changes
+1. **Present assumptions** — list any assumptions about live behavior that the suite relies on (exact warning text, filter results, edge cases)
+2. **Offer self-verification** — "Want me to run these checks myself against your live OmniFocus?" If approved, the agent creates minimal test tasks via MCP, runs the checks, reports results, and cleans up (see Worker Mode Step 4 in the skill for the full protocol). If a discrepancy is found, the agent updates the suite before proceeding.
+3. **Summarize changes** — list every file modified, tests added, assertions fixed, and verification results if applicable
+4. **Wait for sign-off** — user reviews the changes
 5. **On approval**: commit the suite changes, then update the Progress checklist above (check the box)
 
 ---
