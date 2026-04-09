@@ -23,7 +23,6 @@ if TYPE_CHECKING:
         EditTaskRepoResult,
         EditTaskResult,
     )
-    from omnifocus_operator.contracts.use_cases.list._enums import DueSoonSetting
     from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult, ListResult
     from omnifocus_operator.contracts.use_cases.list.folders import (
         ListFoldersQuery,
@@ -46,6 +45,7 @@ if TYPE_CHECKING:
         ListTasksRepoQuery,
     )
     from omnifocus_operator.models import AllEntities, Folder, Perspective, Project, Tag, Task
+    from omnifocus_operator.models.enums import DueSoonSetting
 
 
 @runtime_checkable

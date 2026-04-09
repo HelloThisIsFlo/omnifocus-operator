@@ -32,12 +32,12 @@ if TYPE_CHECKING:
     from omnifocus_operator.contracts.protocols import Bridge
     from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskRepoPayload
     from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskRepoPayload
-    from omnifocus_operator.contracts.use_cases.list._enums import DueSoonSetting
     from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersRepoQuery
     from omnifocus_operator.contracts.use_cases.list.perspectives import ListPerspectivesRepoQuery
     from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsRepoQuery
     from omnifocus_operator.contracts.use_cases.list.tags import ListTagsRepoQuery
     from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
+    from omnifocus_operator.models.enums import DueSoonSetting
     from omnifocus_operator.models.folder import Folder
     from omnifocus_operator.models.perspective import Perspective
     from omnifocus_operator.models.project import Project

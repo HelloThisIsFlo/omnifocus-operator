@@ -70,13 +70,12 @@ if TYPE_CHECKING:
     )
     from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskCommand
     from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskCommand
-    from omnifocus_operator.contracts.use_cases.list._enums import DueSoonSetting
     from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersQuery
     from omnifocus_operator.contracts.use_cases.list.perspectives import ListPerspectivesQuery
     from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsQuery
     from omnifocus_operator.contracts.use_cases.list.tags import ListTagsQuery
     from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksQuery
-    from omnifocus_operator.models.enums import BasedOn, Schedule
+    from omnifocus_operator.models.enums import BasedOn, DueSoonSetting, Schedule
     from omnifocus_operator.models.folder import Folder
     from omnifocus_operator.models.perspective import Perspective
     from omnifocus_operator.models.project import Project

@@ -80,12 +80,11 @@ if TYPE_CHECKING:
         EditTaskCommand,
         EditTaskRepoPayload,
     )
-    from omnifocus_operator.contracts.use_cases.list._enums import DueSoonSetting
     from omnifocus_operator.contracts.use_cases.list.projects import (
         ReviewDueFilter,
     )
     from omnifocus_operator.models.common import TagRef
-    from omnifocus_operator.models.enums import BasedOn
+    from omnifocus_operator.models.enums import BasedOn, DueSoonSetting
     from omnifocus_operator.models.task import Task
     from omnifocus_operator.service.resolve import Resolver, _HasIdAndName
 

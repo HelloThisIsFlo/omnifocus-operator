@@ -18,9 +18,9 @@ import pytest
 from omnifocus_operator.contracts.use_cases.list._date_filter import DateFilter
 from omnifocus_operator.contracts.use_cases.list._enums import (
     DueDateShortcut,
-    DueSoonSetting,
     LifecycleDateShortcut,
 )
+from omnifocus_operator.models.enums import DueSoonSetting
 from omnifocus_operator.service.resolve_dates import ResolvedDateBounds, resolve_date_filter
 
 # Fixed "now" for all tests: Tuesday 2026-04-07 14:00:00

@@ -49,7 +49,7 @@ if TYPE_CHECKING:
 
 import logging
 
-from omnifocus_operator.contracts.use_cases.list._enums import DueSoonSetting
+from omnifocus_operator.models.enums import DueSoonSetting
 from omnifocus_operator.models.folder import Folder
 from omnifocus_operator.models.perspective import Perspective
 from omnifocus_operator.models.project import Project

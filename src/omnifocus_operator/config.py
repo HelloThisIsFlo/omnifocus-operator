@@ -7,10 +7,10 @@ from dataclasses import dataclass
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from omnifocus_operator.contracts.use_cases.list._enums import (
-    DueSoonSetting,  # noqa: TC001 — Pydantic needs this at runtime
+from omnifocus_operator.models.enums import (
+    DueSoonSetting,
+    EntityType,
 )
-from omnifocus_operator.models.enums import EntityType
 
 # -- Default pagination --------------------------------------------------------
 # Maximum items returned by list tools when no explicit limit is provided.
@@ -65,10 +65,6 @@ class Settings(BaseSettings):
     @field_validator("due_soon_threshold", mode="before")
     @classmethod
     def _validate_due_soon_threshold(cls, value: object) -> DueSoonSetting | None:
-        from omnifocus_operator.contracts.use_cases.list._enums import (  # noqa: PLC0415
-            DueSoonSetting,
-        )
-
         if value is None:
             return None
         if isinstance(value, DueSoonSetting):

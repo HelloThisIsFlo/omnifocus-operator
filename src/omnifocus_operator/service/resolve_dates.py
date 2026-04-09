@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from omnifocus_operator.contracts.use_cases.list._date_filter import DateFilter
-    from omnifocus_operator.contracts.use_cases.list._enums import DueSoonSetting
+    from omnifocus_operator.models.enums import DueSoonSetting
 
 
 @dataclass(frozen=True)

@@ -8,9 +8,10 @@ Values use snake_case strings matching the new two-axis model:
 - FolderAvailability: folder availability (available, dropped)
 - Schedule: repetition schedule type (regularly, regularly_with_catch_up, from_completion)
 - BasedOn: anchor date for repetition rules (due_date, defer_date, planned_date)
+- DueSoonSetting: OmniFocus "due soon" threshold preference (7 discrete options)
 """
 
-from enum import StrEnum
+from enum import Enum, StrEnum
 
 from omnifocus_operator.agent_messages.descriptions import (
     AVAILABILITY_DOC,
@@ -21,6 +22,50 @@ from omnifocus_operator.agent_messages.descriptions import (
     TAG_AVAILABILITY_DOC,
     URGENCY_DOC,
 )
+
+
+class DueSoonSetting(Enum):
+    """OmniFocus "due soon" threshold settings.
+
+    OmniFocus exposes exactly 7 discrete options for the "due soon" threshold
+    in its preferences. Each setting has two domain properties:
+
+    - ``days``: the number of days in the threshold window
+    - ``calendar_aligned``: whether the threshold snaps to midnight (True)
+      or rolls from the current time (False)
+
+    Calendar-aligned (``calendar_aligned=True``): "due soon" means the task is
+    due before midnight N days from now. At 11 PM with a 1-day setting, only
+    1 hour remains.
+
+    Rolling (``calendar_aligned=False``): "due soon" means the task is due
+    within N*24 hours from now. At 11 PM with a 1-day setting, 24 hours remain.
+
+    Only TWENTY_FOUR_HOURS uses rolling mode; all other settings are
+    calendar-aligned.
+    """
+
+    TODAY = (1, True)
+    TWENTY_FOUR_HOURS = (1, False)
+    TWO_DAYS = (2, True)
+    THREE_DAYS = (3, True)
+    FOUR_DAYS = (4, True)
+    FIVE_DAYS = (5, True)
+    ONE_WEEK = (7, True)
+
+    def __init__(self, days: int, calendar_aligned: bool) -> None:
+        self._days = days
+        self._calendar_aligned = calendar_aligned
+
+    @property
+    def days(self) -> int:
+        """Number of days in the threshold window."""
+        return self._days
+
+    @property
+    def calendar_aligned(self) -> bool:
+        """Whether the threshold snaps to midnight (True) or rolls from now (False)."""
+        return self._calendar_aligned
 
 
 class EntityType(StrEnum):

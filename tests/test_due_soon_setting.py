@@ -11,7 +11,7 @@ from pydantic import ValidationError
 
 from omnifocus_operator.config import Settings, get_settings
 from omnifocus_operator.contracts.protocols import Repository
-from omnifocus_operator.contracts.use_cases.list._enums import DueSoonSetting
+from omnifocus_operator.models.enums import DueSoonSetting
 from omnifocus_operator.repository.bridge_only.bridge_only import BridgeOnlyRepository
 from omnifocus_operator.repository.hybrid.hybrid import HybridRepository
 from tests.doubles import ConstantMtimeSource
