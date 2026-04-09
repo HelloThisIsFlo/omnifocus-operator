@@ -30,6 +30,7 @@ from omnifocus_operator.contracts.use_cases.list.projects import (
 )
 from omnifocus_operator.contracts.use_cases.list.tags import ListTagsQuery
 from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksQuery, ListTasksRepoQuery
+from omnifocus_operator.models.enums import Availability
 from omnifocus_operator.service.service import matches_inbox_name
 
 from .conftest import (
@@ -910,7 +911,7 @@ class TestListTasksDateFiltering:
         repo = service._repository
         q = ListTasksRepoQuery(
             due_before=datetime(2026, 4, 15, 0, 0, 0, tzinfo=UTC),
-            availability=[],
+            availability=list(Availability),
         )
         result = await repo.list_tasks(q)
         task_ids = {t.id for t in result.items}
@@ -949,7 +950,7 @@ class TestListTasksDateFiltering:
         repo = service._repository
         q = ListTasksRepoQuery(
             due_after=datetime(2026, 4, 10, 0, 0, 0, tzinfo=UTC),
-            availability=[],
+            availability=list(Availability),
         )
         result = await repo.list_tasks(q)
         task_ids = {t.id for t in result.items}
@@ -988,7 +989,7 @@ class TestListTasksDateFiltering:
         repo = service._repository
         q = ListTasksRepoQuery(
             completed_after=datetime(2026, 3, 1, 0, 0, 0, tzinfo=UTC),
-            availability=[],
+            availability=list(Availability),
         )
         result = await repo.list_tasks(q)
         task_ids = {t.id for t in result.items}
@@ -1030,7 +1031,7 @@ class TestListTasksDateFiltering:
         q = ListTasksRepoQuery(
             flagged=True,
             due_before=datetime(2026, 4, 10, 0, 0, 0, tzinfo=UTC),
-            availability=[],
+            availability=list(Availability),
         )
         result = await repo.list_tasks(q)
         task_ids = {t.id for t in result.items}
@@ -1073,7 +1074,7 @@ class TestListTasksDateFiltering:
         q = ListTasksRepoQuery(
             due_before=datetime(2026, 4, 10, 0, 0, 0, tzinfo=UTC),
             completed_after=datetime(2026, 4, 1, 0, 0, 0, tzinfo=UTC),
-            availability=[],
+            availability=list(Availability),
         )
         result = await repo.list_tasks(q)
         task_ids = {t.id for t in result.items}
