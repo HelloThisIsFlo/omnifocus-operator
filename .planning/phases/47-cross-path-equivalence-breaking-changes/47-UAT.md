@@ -1,9 +1,9 @@
 ---
 status: complete
 phase: 47-cross-path-equivalence-breaking-changes
-source: 47-01-SUMMARY.md, 47-02-SUMMARY.md
-started: 2026-04-09T12:00:00Z
-updated: 2026-04-09T12:15:00Z
+source: 47-01-SUMMARY.md, 47-02-SUMMARY.md, 47-03-SUMMARY.md
+started: 2026-04-09T14:00:00Z
+updated: 2026-04-09T15:30:00Z
 ---
 
 ## Current Test
@@ -12,75 +12,145 @@ updated: 2026-04-09T12:15:00Z
 
 ## Tests
 
-### 1. Enum Design — AvailabilityFilter Trimming
-expected: AvailabilityFilter has exactly 3 members: AVAILABLE, BLOCKED, REMAINING. REMAINING="remaining" is the default on both query models. COMPLETED/DROPPED/ALL removed — lifecycle is now gated by date filters. Review: does this design align with OmniFocus UI vocabulary?
-result: issue
-reported: "Enum trimming for tasks is correct, but ListProjectsQuery shares the same AvailabilityFilter — projects lost COMPLETED/DROPPED/ALL with no date filter alternative. Projects can no longer query for completed or dropped projects. Fix: introduce ProjectAvailabilityFilter with AVAILABLE, BLOCKED, COMPLETED, DROPPED, ALL, REMAINING — restoring pre-47 behavior with same warnings, defaults, and validation."
-severity: major
-
-### 2. Empty Availability Semantics
-expected: availability=[] is now accepted (no validation error). Combined with date filters, this enables queries like "only completed tasks" via `availability: [], completed: "all"`. Review: does the interaction model between empty availability and lifecycle date filters make sense?
-result: issue
-reported: "availability=[] bypasses the filter instead of meaning 'no remaining tasks'. Live test: availability=[] returns 2958 tasks (all remaining), while availability=['remaining'] returns 1662. Both repo paths skip the filter when list is empty: bridge uses `if query.availability:` (falsy), SQL builder returns empty clause. Combined with completed='all' it appears to work (581 completed + 2958 remaining = still shows completed) but the semantics are wrong — [] should mean zero remaining tasks, not 'no filter'."
-severity: major
-
-### 3. REMAINING Expansion & Redundancy Warnings
-expected: REMAINING expands to {AVAILABLE, BLOCKED} at the service layer. Providing [AVAILABLE, REMAINING] or [BLOCKED, REMAINING] produces a redundancy warning. Verify by reviewing TestExpandTaskAvailability tests — 7 cases covering expansion, redundancy, empty list, and lifecycle merge.
+### 1. Due: overdue
+expected: Overdue tasks returned; no-due and future excluded; inherited overdue included
 result: pass
+source: live-regression
 
-### 4. Defer Hint Detection
-expected: When a defer field uses DateFilter with after="now" or before="now", a non-blocking educational hint is appended to warnings. The hint explains that "now" in a defer context means "relative to when the task becomes available." Review TestDeferHintDetection — 6 test cases covering after/before/both/none.
+### 2. Due: soon
+expected: Tasks within threshold returned; overdue included (soon includes overdue); future excluded
+result: issue
+reported: "Server returned SQL error 'no such column: key'. The 'soon' shortcut is completely broken."
+severity: blocker
+source: live-regression
+
+### 3. Due: today
+expected: Tasks due today returned; future and no-due excluded
 result: pass
+source: live-regression
 
-### 5. D-17 Description Accuracy
-expected: All 7 per-field date filter descriptions updated to D-17b verbatim text (effective/inherited, semantic guidance). LIST_TASKS_TOOL_DOC appended with D-17a text. LIST_PROJECTS_TOOL_DOC includes effective-date note. AVAILABILITY_DOC updated to D-17c text. LIFECYCLE_DATE_SHORTCUT_DOC references "all" not "any". Review: do descriptions accurately describe field behavior?
-result: pass (autonomous)
-notes: Verified all 7 per-field descriptions in descriptions.py match the tool schema served by MCP. LIST_TASKS_TOOL_DOC has D-17a appendix (effective values, lifecycle expansion, availability vs defer). LIST_PROJECTS_TOOL_DOC has effective-date note. AVAILABILITY_DOC updated to D-17c. LIFECYCLE_DATE_SHORTCUT_DOC says "all" not "any".
+### 4. Lifecycle: completed all
+expected: All completed tasks appear alongside active; dropped excluded
+result: pass
+source: live-regression
 
-### 6. Cross-Path Date Filter Test Walkthrough
-expected: 10 parametrized tests (20 total across bridge/sqlite) proving SQL and bridge paths produce identical date filter results. Covers: due_after exact/beyond, defer_before, planned_after, completed_after, dropped_after, combined (due+flagged), null exclusion, inherited effective dates. Review: do these tests exercise real scenarios and cover the right edge cases?
-result: pass (autonomous)
-notes: Reviewed TestDateFilterCrossPath (test_cross_path_equivalence.py:1209). 10 methods confirmed — covers due_before (direct+inherited), due_after (boundary+beyond), defer_before, planned_before, completed/dropped with lifecycle availability, combined due+flagged (AND logic), added date range, null exclusion. All use cross_repo fixture (parametrized bridge/sqlite). Real scenarios with meaningful assertions.
+### 5. Lifecycle: dropped all
+expected: All dropped tasks appear alongside active; completed excluded
+result: pass
+source: live-regression
 
-### 7. Inherited Effective Date Proof
-expected: task-7 has due=None but effective_due=_DUE_DATE (inherited from parent proj-due). A due_before filter includes task-7 on both SQL and bridge paths. This proves D-16 inheritance behavior works correctly through date filters. Review the test data setup and assertion.
-result: pass (autonomous)
-notes: Confirmed task-7 setup at line 362: due=None, effective_due=_DUE_DATE, project_id="proj-due", parent_id="proj-due". proj-due has due=_DUE_DATE. test_due_before_includes_direct_and_inherited asserts task-7 is included alongside task-1 and task-4 (direct due). test_due_after_exact_match also includes task-7. Inheritance proof is solid.
+### 6. Lifecycle: completed today
+expected: Today's completions returned alongside remaining tasks. Auto-includes completed availability.
+result: issue
+reported: "Only DF-Completed returned (1 item). Expected 10 items (9 remaining + 1 completed today). completed: 'today' does not auto-include remaining tasks — acts as restrictive filter instead of additive."
+severity: major
+source: live-regression
 
-### 8. Full Suite Green
-expected: `uv run pytest -x -q` exits 0 with 1907+ passed tests. No regressions from enum trimming, description updates, or test data expansion.
-result: pass (autonomous)
-notes: 1907 passed in 24.68s, 97.77% coverage. Zero failures.
+### 7. Lifecycle: completed {last: 1w}
+expected: Tasks completed within last week returned alongside remaining tasks.
+result: issue
+reported: "Same behavior as completed 'today'. Only DF-Completed returned (1 item). Expected 10 items. DateFilter-based lifecycle filters do not auto-include remaining tasks."
+severity: major
+source: live-regression
+
+### 8. Lifecycle: auto-inclusion
+expected: completed filter adds COMPLETED to availability without explicit setting
+result: pass
+source: live-regression
+
+### 9. Lifecycle: available + completed
+expected: Explicit available-only + lifecycle auto-include; blocked excluded
+result: pass
+source: live-regression
+
+### 10. Shorthand: this week
+expected: Calendar week; today's tasks included, 30-day future excluded
+result: pass
+source: live-regression
+
+### 11. Shorthand: last 3 days
+expected: Rolling past [midnight-3d, now]; overdue included, future-today excluded
+result: pass
+source: live-regression
+
+### 12. Shorthand: next week
+expected: Rolling future [now, midnight+8d]; near-future included, 30-day excluded
+result: pass
+source: live-regression
+
+### 13. Non-due: defer today
+expected: Tasks with today's defer date only; others excluded
+result: issue
+reported: "Server returned 'str' object has no attribute 'this'. The 'today' string shortcut is not handled for the defer field."
+severity: blocker
+source: live-regression
+
+### 14. Non-due: added today
+expected: All today's tasks returned; no lifecycle auto-include for added
+result: issue
+reported: "Same error as defer today: 'str' object has no attribute 'this'. The 'today' shortcut broken for added as well."
+severity: blocker
+source: live-regression
+
+### 15. Soon includes overdue
+expected: Overdue task explicitly found in "soon" results
+result: issue
+reported: "Blocked by test 2 — 'soon' shortcut is completely broken with SQL error."
+severity: blocker
+source: live-regression
+
+### 16. Inherited: overdue
+expected: No direct dueDate; found by overdue filter via inherited effective date
+result: pass
+source: live-regression
+
+### 17. Inherited: absolute
+expected: Inherited effective date caught by absolute {before} filter
+result: pass
+source: live-regression
+
+### 18. availability=[] Returns Zero Items (Gap 2 Closure)
+expected: After Plan 03 fix: list_tasks(availability=[]) returns 0 tasks (not 2958). Combined: availability=[], completed="all" returns ONLY completed tasks (no remaining mixed in).
+result: pass
+notes: Live MCP test confirmed. availability=[] returned 0 items. availability=[] + completed="all" returned 582 items, all with availability=completed — zero remaining tasks mixed in.
 
 ## Summary
 
-total: 8
-passed: 6
-issues: 2
+total: 18
+passed: 12
+issues: 6
 pending: 0
 skipped: 0
 blocked: 0
 
 ## Gaps
 
-- truth: "AvailabilityFilter trimming should not remove lifecycle values from projects"
-  status: accepted
-  reason: "User reported: ListProjectsQuery shares trimmed AvailabilityFilter — projects lost COMPLETED/DROPPED/ALL with no date filter alternative. Cannot query completed or dropped projects."
-  severity: major
-  test: 1
-  root_cause: "Shared AvailabilityFilter enum trimmed for tasks but projects don't have date filters as replacement path"
-  resolution: "Accepted — will be resolved by inserting a new phase to add date filters to list_projects (same approach as tasks). A gap-closure plan to introduce ProjectAvailabilityFilter was considered but discarded as too awkward given the upcoming date filter work."
-
-- truth: "availability=[] should mean 'no remaining tasks' — only lifecycle inclusion filters produce results"
+- truth: "due: 'soon' returns tasks within threshold including overdue"
   status: failed
-  reason: "User reported: Live test shows availability=[] returns 2958 tasks (all remaining) instead of 0. Both repo paths skip the availability filter when list is empty: bridge uses `if query.availability:` (falsy), SQL builder returns empty clause."
+  reason: "User reported: Server returned SQL error 'no such column: key'. Completely broken — server crash, not incorrect results."
+  severity: blocker
+  tests: [2, 15]
+  root_cause: ""
+  artifacts: []
+  missing: []
+  debug_session: ""
+
+- truth: "'today' shortcut works for non-due date fields (defer, added)"
+  status: failed
+  reason: "User reported: Server returned 'str' object has no attribute 'this'. The 'today' shortcut is not handled for non-due fields."
+  severity: blocker
+  tests: [13, 14]
+  root_cause: ""
+  artifacts: []
+  missing: []
+  debug_session: ""
+
+- truth: "Lifecycle date-based filters (completed: 'today', completed: {last: '1w'}) auto-include remaining tasks"
+  status: failed
+  reason: "User reported: Only lifecycle items returned (1 item). Expected remaining + lifecycle items. completed: 'all' works correctly but date-based lifecycle filters silently drop remaining tasks."
   severity: major
-  test: 2
-  root_cause: "Bridge path: `if query.availability:` is falsy for empty list — skips filter. SQL path: `_build_availability_clause` returns empty string for empty list — no WHERE clause added."
-  artifacts:
-    - path: "src/omnifocus_operator/repository/bridge_only/bridge_only.py"
-      issue: "Line 193: `if query.availability:` skips filter for empty list"
-    - path: "src/omnifocus_operator/repository/hybrid/query_builder.py"
-      issue: "Line 137: `if not parts: return ''` produces no WHERE clause for empty list"
-  missing:
-    - "Both repo paths need explicit handling: empty availability list should match zero remaining tasks (return nothing unless lifecycle filters add rows)"
+  tests: [6, 7]
+  root_cause: ""
+  artifacts: []
+  missing: []
+  debug_session: ""
