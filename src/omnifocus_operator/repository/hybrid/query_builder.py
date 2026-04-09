@@ -31,6 +31,10 @@ _DATE_COLUMN_MAP: dict[str, str] = {
     "modified": "dateModified",
 }
 
+# Lifecycle date fields use additive semantics: remaining tasks (NULL column)
+# pass through alongside lifecycle items matching the date bounds.
+_LIFECYCLE_DATE_FIELDS = {"completed", "dropped"}
+
 
 def _add_date_conditions(
     conditions: list[str],
@@ -41,16 +45,28 @@ def _add_date_conditions(
 
     Uses >= for _after (inclusive lower bound) and < for _before (exclusive upper bound).
     All datetime values are converted to Core Foundation epoch seconds via _CF_EPOCH.
+
+    Lifecycle fields (completed, dropped) use ``IS NULL OR`` to preserve remaining
+    tasks -- these filters are additive ("also show lifecycle items in this date
+    range") rather than restrictive.
     """
     for field_name, column in _DATE_COLUMN_MAP.items():
         after_val = getattr(query, f"{field_name}_after", None)
         before_val = getattr(query, f"{field_name}_before", None)
-        if after_val is not None:
-            conditions.append(f"t.{column} >= ?")
-            params.append((after_val - _CF_EPOCH).total_seconds())
-        if before_val is not None:
-            conditions.append(f"t.{column} < ?")
-            params.append((before_val - _CF_EPOCH).total_seconds())
+        if field_name in _LIFECYCLE_DATE_FIELDS:
+            if after_val is not None:
+                conditions.append(f"(t.{column} IS NULL OR t.{column} >= ?)")
+                params.append((after_val - _CF_EPOCH).total_seconds())
+            if before_val is not None:
+                conditions.append(f"(t.{column} IS NULL OR t.{column} < ?)")
+                params.append((before_val - _CF_EPOCH).total_seconds())
+        else:
+            if after_val is not None:
+                conditions.append(f"t.{column} >= ?")
+                params.append((after_val - _CF_EPOCH).total_seconds())
+            if before_val is not None:
+                conditions.append(f"t.{column} < ?")
+                params.append((before_val - _CF_EPOCH).total_seconds())
 
 
 __all__ = ["SqlQuery", "build_list_projects_sql", "build_list_tasks_sql"]

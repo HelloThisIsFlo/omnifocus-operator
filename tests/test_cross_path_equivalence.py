@@ -1279,6 +1279,46 @@ class TestDateFilterCrossPath:
         assert dropped_ids == ["task-6"]
 
     @pytest.mark.asyncio
+    async def test_completed_date_filter_preserves_remaining_lifecycle(
+        self, cross_repo: Repository
+    ) -> None:
+        """Lifecycle date filter is additive: remaining tasks survive alongside completed."""
+        result = await cross_repo.list_tasks(
+            ListTasksRepoQuery(
+                availability=[Availability.AVAILABLE, Availability.BLOCKED, Availability.COMPLETED],
+                completed_after=_COMPLETED_DATE - timedelta(days=1),
+                completed_before=_COMPLETED_DATE + timedelta(days=1),
+            )
+        )
+        ids = sorted(t.id for t in result.items)
+        # 5 remaining (task-1..4, task-7) + 1 completed (task-5) = 6
+        remaining_ids = [t.id for t in result.items if t.availability != Availability.COMPLETED]
+        completed_ids = [t.id for t in result.items if t.availability == Availability.COMPLETED]
+        assert sorted(remaining_ids) == ["task-1", "task-2", "task-3", "task-4", "task-7"]
+        assert completed_ids == ["task-5"]
+        assert len(result.items) == 6
+
+    @pytest.mark.asyncio
+    async def test_dropped_date_filter_preserves_remaining_lifecycle(
+        self, cross_repo: Repository
+    ) -> None:
+        """Lifecycle date filter is additive: remaining tasks survive alongside dropped."""
+        result = await cross_repo.list_tasks(
+            ListTasksRepoQuery(
+                availability=[Availability.AVAILABLE, Availability.BLOCKED, Availability.DROPPED],
+                dropped_after=_DROPPED_DATE - timedelta(days=1),
+                dropped_before=_DROPPED_DATE + timedelta(days=1),
+            )
+        )
+        ids = sorted(t.id for t in result.items)
+        # 5 remaining (task-1..4, task-7) + 1 dropped (task-6) = 6
+        remaining_ids = [t.id for t in result.items if t.availability != Availability.DROPPED]
+        dropped_ids = [t.id for t in result.items if t.availability == Availability.DROPPED]
+        assert sorted(remaining_ids) == ["task-1", "task-2", "task-3", "task-4", "task-7"]
+        assert dropped_ids == ["task-6"]
+        assert len(result.items) == 6
+
+    @pytest.mark.asyncio
     async def test_due_combined_with_flagged(self, cross_repo: Repository) -> None:
         """Date filter + base filter combine with AND."""
         threshold = _DUE_DATE + timedelta(days=1)
