@@ -558,8 +558,8 @@ async def seed_bridge_repo(data: dict[str, Any]) -> BridgeOnlyRepository:
 _SQLITE_TASK_AVAILABILITY = {
     "available": {"blocked": 0, "dateCompleted": None, "dateHidden": None},
     "blocked": {"blocked": 1, "dateCompleted": None, "dateHidden": None},
-    "completed": {"blocked": 0, "dateCompleted": _to_cf_epoch(_MODIFIED), "dateHidden": None},
-    "dropped": {"blocked": 0, "dateCompleted": None, "dateHidden": _to_cf_epoch(_MODIFIED)},
+    "completed": {"blocked": 0, "dateCompleted": None, "dateHidden": None},
+    "dropped": {"blocked": 0, "dateCompleted": None, "dateHidden": None},
 }
 
 _SQLITE_TAG_AVAILABILITY = {
