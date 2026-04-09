@@ -26,10 +26,10 @@ This file is the output of a research session that analyzed what v1.3.2 changed 
 
 After finishing the suite edits for a chunk, the agent does NOT commit. Instead:
 
-1. **Summarize changes** — list every file modified, tests added, assertions fixed
-2. **Tell the user what to review** — which suite files to read, what to look for
-3. **Suggest spot-checks** — specific things the user can try in OmniFocus via the MCP tools
-4. **Wait for validation** — user reviews, tries the spot-checks, gives thumbs up or requests changes
+1. **Present assumptions** — list any assumptions about live behavior that the suite relies on (exact warning text, filter results, edge cases)
+2. **Offer self-verification** — "Want me to run these checks myself against your live OmniFocus?" If approved, the agent creates minimal test tasks via MCP, runs the checks, reports results, and cleans up (see Worker Mode Step 4 in the skill for the full protocol). If a discrepancy is found, the agent updates the suite before proceeding.
+3. **Summarize changes** — list every file modified, tests added, assertions fixed, and verification results if applicable
+4. **Wait for sign-off** — user reviews the changes
 5. **On approval**: commit the suite changes, then update the Progress checklist above (check the box)
 
 ---
