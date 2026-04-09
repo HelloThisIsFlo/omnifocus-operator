@@ -7,6 +7,32 @@ description: Create or update UAT regression test suites for OmniFocus Operator.
 
 Two-phase workflow for updating UAT regression suites after shipping a milestone: **initialize** (deep research → seed file) then **worker** (pick up chunks → execute).
 
+## Spec-Driven Principle
+
+These suites are **spec conformance tests** — "does the implementation match what was specified?" They are NOT derived from reading source code.
+
+**Allowed sources** (for both seed generation and workers):
+- **Milestone specs**: `.research/updated-spec/MILESTONE-v{X}.md` — the authoritative spec, supersedes originals
+- **Per-phase documents** in `.planning/phases/{N}-{name}/`:
+  - `{N}-CONTEXT.md` — phase requirements and scope
+  - `{N}-DISCUSSION-LOG.md` — decision resolutions ("we decided X instead of Y")
+  - `{N}-VERIFICATION.md` — did we build what was planned?
+  - `{N}-VALIDATION.md` — does it meet requirements?
+  - `{N}-{NN}-SUMMARY.md` — what each sub-plan delivered
+  - `{N}-UAT.md` — previous UAT results (if any)
+- **Project-level**: `.planning/ROADMAP.md`, `.planning/REQUIREMENTS.md`, `.planning/STATE.md`
+- **Archived milestones**: `.planning/milestones/v{X}-ROADMAP.md`, `v{X}-REQUIREMENTS.md`, `v{X}-phases/`
+- **Architecture docs**: `docs/architecture.md`, `docs/model-taxonomy.md`, `docs/omnifocus-concepts.md`
+- **Existing UAT suite files** in `.claude/skills/uat-regression/tests/`
+
+The agent should explore these locations autonomously — the list above is guidance, not exhaustive. If other non-code docs exist (e.g., `RETROSPECTIVE.md`, research notes), those are fair game too. The only hard rule is: **never read `.py` files or automated test files**.
+
+**Never read**: `.py` source files, automated test files, or any implementation code. If you derive tests by reading the code, you confirm what the code does — not what it should do. That's circular and defeats the purpose of UAT.
+
+**Warning/error assertions**: if the spec or planning docs include the exact warning text, use it. If they don't, the test asserts behavioral criteria instead — "warning is present, is helpful, contains no internals (no `type=`, `pydantic`, `input_value`)". The self-verification step (Worker Step 4) is where spec expectations meet reality.
+
+**Regression meaning**: once a suite passes, running it later should still pass — unless there's a documented, agreed-upon breaking change visible in planning docs. The suite updater's job is to update suites when the spec evolves, not when the code changes.
+
 ## Mode Detection
 
 Always run this first. Determines which mode to enter.
@@ -38,14 +64,14 @@ Deep research session that produces a seed file coordinating future worker sessi
 
 Spawn four agents in parallel:
 
-- **Agent A — Source diff**: `git diff {prev}..{tag} --stat`, group changes into themes
-- **Agent B — Warning/error inventory**: search service layer for all warning/error strings, record pattern + trigger condition. Focus on NEW strings vs prev tag.
+- **Agent A — Scope overview**: `git diff {prev}..{tag} --stat` to understand which areas changed, then read phase CONTEXT files and verification reports to understand what each phase delivered. Group into themes based on planning docs, not code.
+- **Agent B — Warning/error inventory**: read phase requirement specs, CONTEXT files, and verification reports. Extract every warning/error that was specified or confirmed — record ID, expected behavior, and trigger condition. Do NOT read source code to find warning strings.
 - **Agent C — Existing suite review**: read all suites in `.claude/skills/uat-regression/tests/`, catalog test counts and coverage domains
 - **Agent D — Planning context**: read milestone ROADMAP, phase CONTEXT files, understand what was *intended*
 
 ### Step 3 — Gap analysis
 
-- Per-suite: what new tests are needed, what assertions are broken (with line references)
+- Per-suite: what new tests are needed, what assertions are broken (with references to spec/planning docs)
 - Cross-reference every warning/error string against existing suite coverage
 - Determine if new suites or composite restructuring is needed
 - **New suite detection**: if the analysis identifies that a new suite file is needed, flag it — this affects how chunks are structured (see Step 4)
@@ -64,8 +90,28 @@ Spawn four agents in parallel:
 ### Step 5 — Write seed file
 
 - Write `UAT-SUITE-ANALYSIS.md` at repo root following the **Seed File Template** section below
-- Commit: `docs: add UAT suite gap analysis for v{version}`
 - **No suite editing in this mode** — the seed file IS the deliverable
+
+### Step 6 — Ambiguity gate
+
+Before committing, present all ambiguities encountered during research. The user will NOT review the seed itself — this is their only chance to catch misinterpretations before they get baked into chunk instructions.
+
+**Resolution hierarchy** (when sources conflict):
+1. Updated spec in `.research/updated-spec/` supersedes original spec
+2. Phase discussion logs often contain explicit "we decided X" resolutions — check these first
+3. Later phase CONTEXT files supersede earlier ones on the same topic
+4. If the resolution is clearly documented in any of the above → not an ambiguity, just use it
+5. If NOT clearly documented → flag it as an ambiguity below
+
+**Present each ambiguity** with:
+   - What was unclear (e.g., "original requirement says X, Phase N context says Y")
+   - What you chose and why (e.g., "went with Y because it's the later decision")
+   - Confidence level (high = clear resolution, medium = reasonable judgment call, low = coin flip)
+2. **Wait for user confirmation** — user reviews ambiguities, corrects any wrong calls
+3. **If corrections needed**: update the seed file, re-present the corrected items
+4. **On confirmation**: commit `docs: add UAT suite gap analysis for v{version}`
+
+If no ambiguities were found, say so explicitly ("no ambiguities — all requirements were clear and consistent") and proceed to commit.
 
 ### Edge case — No gaps found
 
@@ -84,9 +130,10 @@ Pick up the next chunk from the seed file and execute it.
 
 ### Step 2 — Targeted research
 
-- Verify warning strings and code paths from the seed against current source
+- Re-read the relevant planning docs (phase CONTEXT files, verification reports) for the specific suites in this chunk
 - Don't re-research the whole milestone — the seed has that context
-- **Line number drift**: verify line refs against actual files (earlier chunks may have shifted them)
+- If the seed references specific warning/error IDs, verify their expected behavior from planning docs — do NOT read source code
+- **Line number drift**: verify line refs in existing suite files against current state (earlier chunks may have shifted them)
 
 ### Step 3 — Execute
 
