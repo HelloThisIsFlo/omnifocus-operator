@@ -21,6 +21,7 @@ from omnifocus_operator.contracts.use_cases.list import _validators as contracts
 from omnifocus_operator.contracts.use_cases.list import folders as contracts_list_folders
 from omnifocus_operator.contracts.use_cases.list import projects as contracts_list_projects
 from omnifocus_operator.contracts.use_cases.list import tags as contracts_list_tags
+from omnifocus_operator.contracts.use_cases.list import tasks as contracts_list_tasks
 from omnifocus_operator.models import repetition_rule as models_repetition_rule
 from omnifocus_operator.service import domain as service_domain
 from omnifocus_operator.service import errors as service_errors
@@ -46,6 +47,7 @@ _ERROR_CONSUMERS = [
     contracts_list_validators,
     contracts_list_projects,
     contracts_list_tags,
+    contracts_list_tasks,
     models_repetition_rule,
 ]
 
