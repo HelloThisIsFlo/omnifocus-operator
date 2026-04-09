@@ -48,6 +48,26 @@ Create a new test suite for `list_tasks` date filtering — the biggest new feat
 - At least one task with NO due date (to verify exclusion behavior)
 - Tasks should use `DF-` prefix for search isolation
 - All tasks under a single inbox parent `UAT-DateFiltering`
+- A project with a dueDate and a child task with no direct dueDate (for inheritance tests)
+
+**Date strategy — relative dates with safety margins:**
+- **Overdue tasks:** dueDate at least 1 hour in the past (e.g., `now - 2h`)
+- **"Due soon" tasks:** dueDate within the user's threshold but with a 1.5-hour buffer from midnight. Example: if threshold is "today" (calendar-aligned), set due to `today + 1.5h` from now. This ensures the task is still "due soon" for the duration of the test run.
+- **"Today" tasks:** dueDate set to today (any time today)
+- **Future tasks:** dueDate well beyond any threshold (e.g., 30 days from now)
+- **Late-night guard:** If the current time is after 10:30 PM, the agent MUST flag this to the user: "Due-soon tests are unreliable near midnight because date boundaries shift. Run these tests earlier in the day, or skip tests 1b and 4a for now." Do NOT silently set up dates that will cross midnight.
+
+**Due-soon threshold discovery:**
+During setup, ask the user their OmniFocus due-soon threshold setting using AskUserQuestion with these options:
+- Today (calendar-aligned — due before midnight today)
+- 24 hours (rolling — due within 24h from now)
+- 2 days
+- 3 days
+- 4 days
+- 5 days
+- 1 week
+
+Store the answer and calibrate "soon" test expectations accordingly. For example: if threshold is "2 days", a task due tomorrow should appear in `due: "soon"` results, but a task due in 5 days should not.
 
 **Tests to write (~15):**
 
