@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, NoReturn
 
@@ -26,7 +26,7 @@ from omnifocus_operator.agent_messages.warnings import (
     LIST_TASKS_INBOX_PROJECT_WARNING,
     REPETITION_NO_OP,
 )
-from omnifocus_operator.config import get_week_start
+from omnifocus_operator.config import get_week_start, local_now
 from omnifocus_operator.contracts.base import is_set, unset_to_none
 from omnifocus_operator.contracts.protocols import Service
 from omnifocus_operator.contracts.shared.repetition_rule import RepetitionRuleRepoPayload
@@ -55,7 +55,7 @@ from omnifocus_operator.contracts.use_cases.list.tasks import (
 from omnifocus_operator.models.enums import Availability, FolderAvailability, TagAvailability
 from omnifocus_operator.models.repetition_rule import Frequency
 from omnifocus_operator.service.convert import end_condition_from_spec, frequency_from_spec
-from omnifocus_operator.service.domain import DomainLogic
+from omnifocus_operator.service.domain import DomainLogic, normalize_date_input
 from omnifocus_operator.service.payload import PayloadBuilder
 from omnifocus_operator.service.resolve import Resolver
 from omnifocus_operator.service.validate import (
@@ -386,7 +386,7 @@ class _ListTasksPipeline(_ReadPipeline):
 
     async def _resolve_date_filters(self) -> None:
         """Resolve all 7 date filter fields via domain delegation."""
-        self._now = datetime.now(UTC)
+        self._now = local_now()
 
         # Resolve due-soon setting conditionally (D-02) -- I/O stays in pipeline
         due_soon_setting: DueSoonSetting | None = None
@@ -478,7 +478,7 @@ class _ListProjectsPipeline(_ReadPipeline):
         review_due_before: datetime | None = None
         review_due_within = unset_to_none(self._query.review_due_within)
         if review_due_within is not None:
-            review_due_before = self._domain.expand_review_due(review_due_within, datetime.now(UTC))
+            review_due_before = self._domain.expand_review_due(review_due_within, local_now())
 
         expanded, avail_warns = self._domain.expand_task_availability(self._query.availability, [])
         self._warnings.extend(avail_warns)
@@ -510,11 +510,24 @@ class _AddTaskPipeline(_Pipeline):
         self._repetition_warnings: list[str] = []
 
         self._validate()
+        self._normalize_dates()
         await self._resolve_parent()
         await self._resolve_tags()
         self._process_repetition_rule()
         self._build_payload()
         return await self._delegate()
+
+    def _normalize_dates(self) -> None:
+        """Normalize date inputs (product decision: aware->local, date-only->midnight)."""
+        updates: dict[str, str] = {}
+        if self._command.due_date is not None:
+            updates["due_date"] = normalize_date_input(self._command.due_date)
+        if self._command.defer_date is not None:
+            updates["defer_date"] = normalize_date_input(self._command.defer_date)
+        if self._command.planned_date is not None:
+            updates["planned_date"] = normalize_date_input(self._command.planned_date)
+        if updates:
+            self._command = self._command.model_copy(update=updates)
 
     def _validate(self) -> None:
         logger.debug(
@@ -619,6 +632,7 @@ class _EditTaskPipeline(_Pipeline):
 
         await self._verify_task_exists()
         self._validate_and_normalize()
+        self._normalize_dates()
         self._resolve_actions()
         self._apply_lifecycle()
         self._check_completed_status()
@@ -643,6 +657,16 @@ class _EditTaskPipeline(_Pipeline):
     def _validate_and_normalize(self) -> None:
         validate_task_name_if_set(self._command.name)
         self._command = self._domain.normalize_clear_intents(self._command)
+
+    def _normalize_dates(self) -> None:
+        """Normalize date inputs (product decision: aware->local, date-only->midnight)."""
+        updates: dict[str, str] = {}
+        for field in ("due_date", "defer_date", "planned_date"):
+            value = getattr(self._command, field)
+            if is_set(value) and value is not None:
+                updates[field] = normalize_date_input(value)
+        if updates:
+            self._command = self._command.model_copy(update=updates)
 
     def _resolve_actions(self) -> None:
         actions = self._command.actions

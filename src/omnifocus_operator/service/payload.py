@@ -45,11 +45,11 @@ class PayloadBuilder:
         if resolved_tag_ids is not None:
             kwargs["tag_ids"] = resolved_tag_ids
         if command.due_date is not None:
-            kwargs["due_date"] = command.due_date.isoformat()
+            kwargs["due_date"] = command.due_date  # already str after domain normalization
         if command.defer_date is not None:
-            kwargs["defer_date"] = command.defer_date.isoformat()
+            kwargs["defer_date"] = command.defer_date
         if command.planned_date is not None:
-            kwargs["planned_date"] = command.planned_date.isoformat()
+            kwargs["planned_date"] = command.planned_date
         kwargs["flagged"] = command.flagged
         if command.estimated_minutes is not None:
             kwargs["estimated_minutes"] = command.estimated_minutes
@@ -105,8 +105,8 @@ class PayloadBuilder:
                 kwargs[field] = value
 
     def _add_dates_if_set(self, kwargs: dict[str, object], command: object, *fields: str) -> None:
-        """Add non-UNSET date fields, serialized to ISO string."""
+        """Add non-UNSET date fields to kwargs. Values are already str after domain normalization."""
         for field in fields:
             value = getattr(command, field)
             if is_set(value):
-                kwargs[field] = value.isoformat() if value is not None else None
+                kwargs[field] = value  # str or None; None = clear

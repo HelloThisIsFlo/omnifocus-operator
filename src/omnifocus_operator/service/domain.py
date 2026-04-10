@@ -120,19 +120,53 @@ class ResolvedDateFilters:
 # ---------------------------------------------------------------------------
 
 
+def normalize_date_input(value: str) -> str:
+    """Normalize a date input string to naive local ISO format for the bridge.
+
+    This is a product decision: "OmniFocus thinks in local time, so should the API."
+    See docs/architecture.md for rationale.
+
+    Three cases:
+    - Date-only ("2026-07-15"): append T00:00:00 (midnight local)
+      Interim behavior -- settings API todo will upgrade to DefaultDueTime.
+    - Naive datetime ("2026-07-15T17:00:00"): pass through as-is (already local by contract)
+    - Aware datetime ("2026-07-15T17:00:00Z", "...+01:00"): convert to local, strip tzinfo
+
+    Returns an ISO datetime string suitable for the JS bridge's new Date() constructor.
+    """
+    if "T" not in value and "t" not in value:
+        # Date-only: append midnight local
+        return f"{value}T00:00:00"
+
+    dt = datetime.fromisoformat(value)
+    if dt.tzinfo is not None:
+        # Aware: convert to system local, strip tzinfo
+        local_dt = dt.astimezone()
+        return local_dt.replace(tzinfo=None).isoformat()
+
+    # Naive: already local by contract — pass through
+    return value
+
+
 def _to_utc_ts(val: object) -> object:
-    """Normalize a date value to UTC timestamp for comparison, or return as-is."""
+    """Normalize a date value to UTC timestamp for comparison, or return as-is.
+
+    After Phase 49, date strings from commands are naive-local (no tzinfo).
+    Treat naive datetimes as local time for comparison.
+    """
     if val is None:
         return None
     if isinstance(val, datetime):
-        return val.astimezone(UTC).timestamp()
+        if val.tzinfo is not None:
+            return val.astimezone(UTC).timestamp()
+        # Naive datetime: treat as local, convert to UTC for comparison
+        return val.astimezone().astimezone(UTC).timestamp()
     if isinstance(val, str):
         dt = datetime.fromisoformat(val)
-        assert dt.tzinfo is not None, (
-            f"naive datetime {val!r} — callers must pass aware"
-            f" datetimes (from AwareDatetime fields via payload builder)"
-        )
-        return dt.astimezone(UTC).timestamp()
+        if dt.tzinfo is not None:
+            return dt.astimezone(UTC).timestamp()
+        # Naive string: treat as local time
+        return dt.astimezone().astimezone(UTC).timestamp()
     return val
 
 
