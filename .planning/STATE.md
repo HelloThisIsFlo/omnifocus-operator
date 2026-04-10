@@ -6,11 +6,11 @@ status: executing
 last_updated: "2026-04-10T17:22:26.307Z"
 last_activity: 2026-04-10
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 4
   total_plans: 18
   completed_plans: 18
-  percent: 100
+  percent: 80
 ---
 
 # Project State
@@ -20,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-07)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 45 — date-models-resolution
+**Current focus:** Phase 49 — naive-local-datetime-contract
 
 ## Current Position
 
-Phase: 48
+Phase: 49
 Plan: Not started
-Status: Executing Phase 45
+Status: Phase 49 context gathered, pending planning
 Last activity: 2026-04-10
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [████████░░] 80% (4/5 phases complete, Phase 49 pending)
 
 ## Performance Metrics
 
@@ -51,6 +51,7 @@ Key design decisions for v1.3.2:
 - `COMPLETED`/`DROPPED` removed from AvailabilityFilter; `ALL` removed with educational error
 - DateRange is internal resolved type, not agent-facing contract
 - `count_tasks` out of scope for this milestone
+- Naive-local datetime contract for all date inputs — `str` type (no `format: "date-time"`), normalization in domain.py, centralized local timezone helper
 
 ### Pending Todos
 

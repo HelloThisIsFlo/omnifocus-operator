@@ -61,6 +61,17 @@ Requirements for date filtering milestone. Each maps to roadmap phases.
 - [ ] **BREAK-07**: Tool descriptions updated with date filter syntax and availability vs defer distinction
 - [ ] **BREAK-08**: `availability: "all"` returns educational error — after trimming, ALL equals the default; guide to `completed: "any"` / `dropped: "any"` for lifecycle inclusion
 
+### Naive-Local DateTime Contract
+
+- [ ] **LOCAL-01**: Write-side date fields and read-side filter bounds use `str` type — no `format: "date-time"` in JSON Schema, no signal telling agents to include timezone
+- [ ] **LOCAL-02**: Naive datetime strings accepted and treated as local time on all date inputs (write fields + filter bounds) — this is the preferred format
+- [ ] **LOCAL-03**: Aware datetime strings (timezone offset or Z suffix) accepted on all date inputs, silently converted to naive local time
+- [ ] **LOCAL-04**: Date-only strings accepted on write-side date fields with midnight local appended before reaching the bridge — interim behavior until settings API provides DefaultDueTime
+- [ ] **LOCAL-05**: All `now` timestamps used for date filter resolution use local timezone — "today" = local today, week/month/year boundaries = local calendar
+- [ ] **LOCAL-06**: Aware→local normalization is a domain-layer product decision — contracts validate syntax, domain interprets semantics
+- [ ] **LOCAL-07**: Write tool descriptions and JSON Schema examples frame dates as naive local time; brief note that timezone offsets are also accepted
+- [ ] **LOCAL-08**: `architecture.md` documents the naive-local principle with rationale (OmniFocus stores naive local, server co-located, deep-dive evidence)
+
 ## Future Requirements
 
 ### count_tasks Date Filters
@@ -80,7 +91,7 @@ Requirements for date filtering milestone. Each maps to roadmap phases.
 | ~~Due-soon threshold configuration~~ | ~~Using OmniFocus pre-computed columns — matches UI exactly, zero config needed~~ Reinstated: reads `DueSoonInterval` + `DueSoonGranularity` from Settings table (45-CONTEXT D-06/D-07) |
 | `"none"` IS NULL filtering | Scoped out of v1.3.2 — niche use case, can be added later if requested (45-CONTEXT D-13) |
 | Calendar-aware month/year arithmetic | Explicitly deferred — naive 30d/365d approximation sufficient |
-| Timezone handling | Naive local time only — non-local TZ is future improvement |
+| Non-local timezone support | Naive local time implemented in Phase 49 — non-local TZ (per-event timezone annotations) is future improvement |
 | NLP date parsing | Anti-feature — structured input only, agents pass structured objects |
 
 ## Traceability
@@ -129,13 +140,21 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BREAK-06 | Phase 47 | Pending |
 | BREAK-07 | Phase 47 | Pending |
 | BREAK-08 | Phase 47 | Pending |
+| LOCAL-01 | Phase 49 | Pending |
+| LOCAL-02 | Phase 49 | Pending |
+| LOCAL-03 | Phase 49 | Pending |
+| LOCAL-04 | Phase 49 | Pending |
+| LOCAL-05 | Phase 49 | Pending |
+| LOCAL-06 | Phase 49 | Pending |
+| LOCAL-07 | Phase 49 | Pending |
+| LOCAL-08 | Phase 49 | Pending |
 
 **Coverage:**
-- v1.3.2 requirements: 40 total → 37 active (3 scoped out: DATE-07, DATE-08, EXEC-08)
+- v1.3.2 requirements: 48 total → 45 active (3 scoped out: DATE-07, DATE-08, EXEC-08)
 - Revised: 3 (DATE-06, RESOLVE-11, RESOLVE-12)
-- Mapped to phases: 37
+- Mapped to phases: 45
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-07*
-*Last updated: 2026-04-07 after Phase 45 context discussion*
+*Last updated: 2026-04-10 after Phase 49 context discussion (added LOCAL-01 through LOCAL-08)*
