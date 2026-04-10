@@ -3,14 +3,9 @@ created: "2026-04-10T20:00:28.312Z"
 title: Implement naive-local datetime contract for all date inputs
 area: contracts
 files:
-  - src/omnifocus_operator/service/service.py:389
-  - src/omnifocus_operator/service/service.py:485
-  - src/omnifocus_operator/contracts/use_cases/add/tasks.py:55-69
-  - src/omnifocus_operator/contracts/use_cases/edit/tasks.py:72-86
-  - src/omnifocus_operator/contracts/use_cases/list/_date_filter.py:52-69
-  - src/omnifocus_operator/service/payload.py:47-52
-  - src/omnifocus_operator/service/resolve_dates.py:215-246
-  - src/omnifocus_operator/agent_messages/descriptions.py:35
+  - src/omnifocus_operator/service/
+  - src/omnifocus_operator/contracts/use_cases/
+  - src/omnifocus_operator/agent_messages/descriptions.py
   - docs/architecture.md
 ---
 
@@ -30,50 +25,32 @@ Supersedes the completed todo `2026-04-09-design-timezone-consistency-policy-for
 
 Agents should never think about timezone — just like OmniFocus users don't. Send the time as the user expressed it.
 
-### 1. Read side — local `now`
+### 1. Read side — every `now` timestamp must use local timezone
 
-Change `datetime.now(UTC)` → `datetime.now().astimezone()` in:
-- `service.py:389` (list tasks pipeline)
-- `service.py:485` (review due date)
+Anywhere the service layer creates a "current time" reference for date filter resolution, it must use local timezone instead of UTC. All downstream calculations (midnight truncation, "today"/"this week" boundaries, date-only bound expansion) inherit from `now` — so fixing `now` fixes everything downstream. The CF epoch math in `query_builder.py` works unchanged because tz-aware subtraction handles the offset correctly.
 
-All downstream calculations (`_midnight()`, `_resolve_this()`, date-only bounds) then use local midnight/day boundaries. The CF epoch math in `query_builder.py` works unchanged — tz-aware subtraction handles it.
+Audit the entire service layer for `datetime.now(UTC)` or any UTC-anchored timestamp used as a date filter reference.
 
-### 2. Write side — `str` instead of `AwareDatetime`
+### 2. Write side — naive-preferred contract, aware-accepted
 
-Change `AwareDatetime` → `str` with a format validator in:
-- `add/tasks.py` (AddTaskAction)
-- `edit/tasks.py` (EditTaskAction)
+Replace `AwareDatetime` with `str` and a format validator on all date fields in the write contracts (add and edit). This changes the JSON Schema from `format: "date-time"` (RFC 3339, timezone mandatory) to plain `type: "string"` — removing the signal that tells agents to send timezone info.
 
-This drops `format: "date-time"` from the JSON Schema. The agent sees `type: "string"` with description and examples guiding naive local time. No RFC 3339 signal.
-
-Normalize in `payload.py` (~5 lines):
+The normalization logic in the payload builder should handle:
 - **Naive input** → pass through as-is (already local)
-- **Aware input** → convert to local, strip tzinfo (convenience for calendar copy-paste)
+- **Aware input** → convert to local, strip tzinfo (convenience for when agents copy dates from other APIs like calendars)
 - **Date-only input** → apply `DefaultDueTime`/`DefaultStartTime` from OmniFocus settings (future, can defer)
+
+Update examples and descriptions to show naive local time as the default.
 
 ### 3. Unify read-side filter inputs
 
-The `before`/`after` fields in `DateFilter` already accept `str`. The WR-01 defensive fix (inheriting `now.tzinfo` for naive inputs) becomes the correct behavior once `now` is local — no longer a workaround.
+The `before`/`after` fields in `DateFilter` already accept `str`. There's a defensive fix (WR-01) that inherits `now.tzinfo` when a parsed datetime is naive — once `now` is local, this becomes the correct behavior by design rather than a workaround. Verify consistency across the resolver and the contract's ordering check.
 
 ### 4. Document in architecture.md
 
-Add a section explaining the naive-local principle alongside the existing "show more" design philosophy. Key points:
+Add a section explaining the naive-local principle alongside the existing design philosophy sections. Key points:
 - OmniFocus stores naive local time, server is co-located → local is the only frame that makes sense
 - The API should feel like OmniFocus itself — you say "5pm", it stores 5pm
 - Agents spend their reasoning on the user's problem, not on API mechanics
-- `format: "date-time"` (RFC 3339) requires timezone by spec, so we use `str` to avoid contradicting our naive-preferred contract
+- `format: "date-time"` (RFC 3339) requires timezone by spec → we use `str` to avoid contradicting our naive-preferred contract
 - Aware inputs accepted as convenience (e.g., copying from calendar APIs) — server converts silently
-
-### Files affected
-
-| File | Change |
-|------|--------|
-| `service.py:389, 485` | `datetime.now(UTC)` → `datetime.now().astimezone()` |
-| `add/tasks.py` | `AwareDatetime` → `str` + validator |
-| `edit/tasks.py` | `AwareDatetime` → `str` + validator |
-| `payload.py` | `.isoformat()` → normalize function (~5 lines) |
-| `descriptions.py` | Example `"2026-03-15T17:00:00Z"` → `"2026-03-15T17:00:00"` |
-| `_date_filter.py` | Verify validator + ordering check consistency |
-| `resolve_dates.py` | WR-01 fix stays, now correct by design |
-| `docs/architecture.md` | New "Naive-local datetime" design principle section |
-| Tests | Update contract validation tests, update `NOW` fixture |
