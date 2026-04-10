@@ -19,7 +19,7 @@ from omnifocus_operator.agent_messages.descriptions import (
     PLANNED_DATE_WRITE,
     TAGS_ADD_COMMAND,
 )
-from omnifocus_operator.agent_messages.errors import ADD_PARENT_NULL
+from omnifocus_operator.agent_messages.errors import ADD_PARENT_NULL, INVALID_DATE_FORMAT
 from omnifocus_operator.contracts.base import UNSET, CommandModel, Patch
 from omnifocus_operator.contracts.shared.repetition_rule import (
     RepetitionRuleAddSpec,
@@ -35,11 +35,7 @@ def _validate_date_string(v: object) -> object:
     try:
         _datetime.fromisoformat(v)
     except ValueError:
-        raise ValueError(
-            f"Invalid date format '{v}'. Expected ISO date ('2026-07-15'), "
-            f"ISO datetime ('2026-07-15T17:00:00'), or datetime with "
-            f"timezone ('2026-07-15T17:00:00+01:00')."
-        )
+        raise ValueError(INVALID_DATE_FORMAT.format(value=v))
     return v
 
 

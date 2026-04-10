@@ -50,9 +50,9 @@ class TestBuildAdd:
             name="Full task",
             parent="proj-1",
             tags=["Work"],  # tags resolved externally
-            due_date=datetime(2026, 3, 15, 10, 0, tzinfo=UTC),
-            defer_date=datetime(2026, 3, 10, 8, 0, tzinfo=UTC),
-            planned_date=datetime(2026, 3, 12, 9, 0, tzinfo=UTC),
+            due_date="2026-03-15T10:00:00",
+            defer_date="2026-03-10T08:00:00",
+            planned_date="2026-03-12T09:00:00",
             flagged=True,
             estimated_minutes=45.0,
             note="Some note",
@@ -75,23 +75,20 @@ class TestBuildAdd:
         payload = builder.build_add(command, resolved_tag_ids=["tag-1", "tag-2"])
         assert payload.tag_ids == ["tag-1", "tag-2"]
 
-    def test_build_add_dates_as_iso(self) -> None:
-        """Datetime values serialized to ISO strings."""
+    def test_build_add_dates_passthrough(self) -> None:
+        """String date values pass through to payload unchanged."""
         builder = PayloadBuilder()
-        due = datetime(2026, 5, 1, 10, 0, tzinfo=UTC)
-        defer = datetime(2026, 4, 20, 8, 0, tzinfo=UTC)
-        planned = datetime(2026, 4, 25, 9, 0, tzinfo=UTC)
         command = AddTaskCommand(
             name="Dated",
-            due_date=due,
-            defer_date=defer,
-            planned_date=planned,
+            due_date="2026-05-01T10:00:00",
+            defer_date="2026-04-20T08:00:00",
+            planned_date="2026-04-25T09:00:00",
         )
         payload = builder.build_add(command, resolved_tag_ids=None)
 
-        assert payload.due_date == due.isoformat()
-        assert payload.defer_date == defer.isoformat()
-        assert payload.planned_date == planned.isoformat()
+        assert payload.due_date == "2026-05-01T10:00:00"
+        assert payload.defer_date == "2026-04-20T08:00:00"
+        assert payload.planned_date == "2026-04-25T09:00:00"
 
 
 # ---------------------------------------------------------------------------
@@ -138,15 +135,14 @@ class TestBuildEdit:
         assert payload.note is None
 
     def test_build_edit_dates(self) -> None:
-        """Dates serialized to ISO strings, None stays None (clear)."""
+        """String dates pass through, None stays None (clear)."""
         builder = PayloadBuilder()
-        due = datetime(2026, 5, 1, 10, 0, tzinfo=UTC)
-        command = EditTaskCommand(id="t1", due_date=due, defer_date=None)
+        command = EditTaskCommand(id="t1", due_date="2026-05-01T10:00:00", defer_date=None)
         payload = builder.build_edit(
             command, lifecycle=None, add_tag_ids=None, remove_tag_ids=None, move_to=None
         )
 
-        assert payload.due_date == due.isoformat()
+        assert payload.due_date == "2026-05-01T10:00:00"
         assert payload.defer_date is None  # None = clear
 
     def test_build_edit_lifecycle(self) -> None:

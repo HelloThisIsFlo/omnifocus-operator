@@ -127,6 +127,14 @@ REPETITION_INVALID_END_EMPTY = (
     "end requires either 'date' (ISO-8601 string) or 'occurrences' (integer >= 1)"
 )
 
+# --- Validation: Date Input ---
+
+INVALID_DATE_FORMAT = (
+    "Invalid date format '{value}'. Expected ISO date ('2026-07-15'), "
+    "ISO datetime ('2026-07-15T17:00:00'), or datetime with "
+    "timezone ('2026-07-15T17:00:00+01:00')."
+)
+
 # --- Validation: Date Filters ---
 
 DATE_FILTER_RANGE_EMPTY = (

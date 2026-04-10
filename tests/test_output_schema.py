@@ -652,3 +652,37 @@ class TestContractSchemaConstraints:
             f"EndByOccurrencesSpec.occurrences must advertise minimum: 1 so agents know "
             f"a repetition cannot end after zero occurrences. Got: {occurrences_prop}"
         )
+
+
+class TestWriteSchemaNoDateTimeFormat:
+    """Write tool date fields must NOT advertise format: 'date-time'.
+
+    RFC 3339 (referenced by JSON Schema's 'date-time' format) requires a
+    timezone offset. The naive-local contract accepts naive strings, so
+    format: 'date-time' would contradict the contract. Using plain 'str'
+    drops the format constraint entirely.
+    """
+
+    def test_add_task_command_no_date_time_format(self) -> None:
+        """AddTaskCommand schema must not contain format: 'date-time'."""
+        import json
+
+        from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskCommand
+
+        schema_str = json.dumps(AddTaskCommand.model_json_schema())
+        assert "date-time" not in schema_str, (
+            "AddTaskCommand schema contains 'date-time' format -- "
+            "this contradicts the naive-local contract. Date fields must be plain str."
+        )
+
+    def test_edit_task_command_no_date_time_format(self) -> None:
+        """EditTaskCommand schema must not contain format: 'date-time'."""
+        import json
+
+        from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskCommand
+
+        schema_str = json.dumps(EditTaskCommand.model_json_schema())
+        assert "date-time" not in schema_str, (
+            "EditTaskCommand schema contains 'date-time' format -- "
+            "this contradicts the naive-local contract. Date fields must be plain str."
+        )

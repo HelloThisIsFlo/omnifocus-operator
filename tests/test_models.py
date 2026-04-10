@@ -971,14 +971,14 @@ class TestAddTaskModels:
 
     def test_add_task_command_all_fields(self) -> None:
         """AddTaskCommand with all fields populated."""
-        dt = datetime(2024, 6, 15, 9, 0, tzinfo=UTC)
+        date_str = "2024-06-15T09:00:00"
         command = AddTaskCommand(
             name="Full task",
             parent="proj-001",
             tags=["errands", "morning"],
-            due_date=dt,
-            defer_date=dt,
-            planned_date=dt,
+            due_date=date_str,
+            defer_date=date_str,
+            planned_date=date_str,
             flagged=True,
             estimated_minutes=30.0,
             note="A note",
@@ -986,9 +986,9 @@ class TestAddTaskModels:
         assert command.name == "Full task"
         assert command.parent == "proj-001"
         assert command.tags == ["errands", "morning"]
-        assert command.due_date == dt
-        assert command.defer_date == dt
-        assert command.planned_date == dt
+        assert command.due_date == date_str
+        assert command.defer_date == date_str
+        assert command.planned_date == date_str
         assert command.flagged is True
         assert command.estimated_minutes == 30.0
         assert command.note == "A note"
@@ -1000,12 +1000,12 @@ class TestAddTaskModels:
 
     def test_add_task_command_camel_case_serialization(self) -> None:
         """AddTaskCommand serializes to camelCase via OmniFocusBaseModel."""
-        dt = datetime(2024, 6, 15, 9, 0, tzinfo=UTC)
+        date_str = "2024-06-15T09:00:00"
         command = AddTaskCommand(
             name="Test",
-            due_date=dt,
-            defer_date=dt,
-            planned_date=dt,
+            due_date=date_str,
+            defer_date=date_str,
+            planned_date=date_str,
             estimated_minutes=15.0,
         )
         dumped = command.model_dump(by_alias=True)

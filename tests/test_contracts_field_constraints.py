@@ -5,6 +5,7 @@ Verifies that AddTaskCommand and EditTaskCommand enforce:
 - AddTaskCommand.flagged defaults to False (not None)
 - MoveAction null rejection for all four fields
 - TagAction.replace still accepts None (PatchOrClear)
+- Date fields accept str (naive, aware, date-only) and reject invalid strings
 """
 
 from __future__ import annotations
@@ -148,3 +149,60 @@ class TestTagActionReplaceStillAcceptsNone:
     def test_replace_empty_list_accepted(self) -> None:
         action = TagAction(replace=[])
         assert action.replace == []
+
+
+class TestDateFieldStrType:
+    """Date fields on command models accept str (naive-local principle).
+
+    Naive, aware, and date-only ISO strings are all accepted.
+    Invalid strings are rejected with an educational error.
+    """
+
+    def test_add_naive_datetime_accepted(self) -> None:
+        """Naive datetime string is the preferred input."""
+        cmd = AddTaskCommand(name="Test", due_date="2026-07-15T17:00:00")
+        assert cmd.due_date == "2026-07-15T17:00:00"
+
+    def test_add_aware_datetime_accepted(self) -> None:
+        """Aware datetime string is accepted (converted to local by service)."""
+        cmd = AddTaskCommand(name="Test", due_date="2026-07-15T17:00:00Z")
+        assert cmd.due_date == "2026-07-15T17:00:00Z"
+
+    def test_add_date_only_accepted(self) -> None:
+        """Date-only string is accepted (midnight appended by service)."""
+        cmd = AddTaskCommand(name="Test", due_date="2026-07-15")
+        assert cmd.due_date == "2026-07-15"
+
+    def test_add_offset_datetime_accepted(self) -> None:
+        """Datetime with offset is accepted."""
+        cmd = AddTaskCommand(name="Test", due_date="2026-07-15T17:00:00+02:00")
+        assert cmd.due_date == "2026-07-15T17:00:00+02:00"
+
+    def test_add_invalid_string_rejected(self) -> None:
+        """Non-ISO string is rejected with educational error."""
+        with pytest.raises(ValidationError, match="Invalid date format"):
+            AddTaskCommand(name="Test", due_date="not-a-date")
+
+    def test_edit_naive_datetime_accepted(self) -> None:
+        cmd = EditTaskCommand(id="x", due_date="2026-07-15T17:00:00")
+        assert cmd.due_date == "2026-07-15T17:00:00"
+
+    def test_edit_aware_datetime_accepted(self) -> None:
+        cmd = EditTaskCommand(id="x", due_date="2026-07-15T17:00:00Z")
+        assert cmd.due_date == "2026-07-15T17:00:00Z"
+
+    def test_edit_date_only_accepted(self) -> None:
+        cmd = EditTaskCommand(id="x", due_date="2026-07-15")
+        assert cmd.due_date == "2026-07-15"
+
+    def test_edit_invalid_string_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="Invalid date format"):
+            EditTaskCommand(id="x", due_date="garbage")
+
+    def test_add_defer_date_naive_accepted(self) -> None:
+        cmd = AddTaskCommand(name="Test", defer_date="2026-07-10T08:00:00")
+        assert cmd.defer_date == "2026-07-10T08:00:00"
+
+    def test_add_planned_date_naive_accepted(self) -> None:
+        cmd = AddTaskCommand(name="Test", planned_date="2026-07-12T09:00:00")
+        assert cmd.planned_date == "2026-07-12T09:00:00"

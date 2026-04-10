@@ -1,6 +1,6 @@
 """Tests for DateFilter contract model, date shortcut StrEnums, and query date fields."""
 
-from datetime import date, datetime
+from datetime import datetime
 from typing import ClassVar
 
 import pytest
@@ -104,13 +104,11 @@ class TestDateFilterValidShorthand:
 class TestDateFilterValidAbsolute:
     def test_before_date_only(self) -> None:
         f = AbsoluteRangeFilter(before="2026-04-14")
-        assert isinstance(f.before, date)
-        assert not isinstance(f.before, datetime)
+        assert f.before == "2026-04-14"
 
     def test_after_date_only(self) -> None:
         f = AbsoluteRangeFilter(after="2026-04-01")
-        assert isinstance(f.after, date)
-        assert not isinstance(f.after, datetime)
+        assert f.after == "2026-04-01"
 
     def test_before_now(self) -> None:
         f = AbsoluteRangeFilter(before="now")
@@ -122,9 +120,14 @@ class TestDateFilterValidAbsolute:
 
     def test_both_absolute_with_aware_datetime(self) -> None:
         f = AbsoluteRangeFilter(after="2026-04-01T14:00:00Z", before="2026-04-14")
-        assert isinstance(f.after, datetime)
-        assert f.after.tzinfo is not None
-        assert isinstance(f.before, date)
+        assert f.after == "2026-04-01T14:00:00Z"
+        assert f.before == "2026-04-14"
+
+    def test_both_absolute_with_naive_datetime(self) -> None:
+        """Naive datetime is now accepted (no timezone required)."""
+        f = AbsoluteRangeFilter(after="2026-04-01T14:00:00", before="2026-04-14T18:00:00")
+        assert f.after == "2026-04-01T14:00:00"
+        assert f.before == "2026-04-14T18:00:00"
 
     def test_both_now_valid(self) -> None:
         """Both bounds as 'now' is valid (no ordering check needed)."""
@@ -205,7 +208,7 @@ class TestAbsoluteRangeOneSided:
 
     def test_before_only(self) -> None:
         f = AbsoluteRangeFilter(before="2024-01-01T00:00:00Z")
-        assert isinstance(f.before, datetime)
+        assert f.before == "2024-01-01T00:00:00Z"
 
     def test_after_only(self) -> None:
         f = AbsoluteRangeFilter(after="now")
@@ -249,22 +252,28 @@ class TestDateFilterDuration:
 
 class TestDateFilterAbsolute:
     def test_invalid_date_rejected(self) -> None:
-        """'not-a-date' doesn't match Literal['now'], AwareDatetime, or date."""
+        """'not-a-date' is rejected -- not a valid ISO date/datetime or 'now'."""
         with pytest.raises(ValidationError):
             AbsoluteRangeFilter(before="not-a-date")
 
     def test_aware_datetime_accepted(self) -> None:
         f = AbsoluteRangeFilter(after="2026-04-01T14:00:00Z")
-        assert isinstance(f.after, datetime)
-        assert f.after.tzinfo is not None
+        assert f.after == "2026-04-01T14:00:00Z"
 
-    def test_naive_datetime_rejected_before(self) -> None:
-        with pytest.raises(ValidationError, match="Datetime must include timezone"):
-            AbsoluteRangeFilter(before="2026-04-01T14:00:00")
+    def test_naive_datetime_accepted_before(self) -> None:
+        """Naive datetime is now accepted (naive-local principle)."""
+        f = AbsoluteRangeFilter(before="2026-04-01T14:00:00")
+        assert f.before == "2026-04-01T14:00:00"
 
-    def test_naive_datetime_rejected_after(self) -> None:
-        with pytest.raises(ValidationError, match="Datetime must include timezone"):
-            AbsoluteRangeFilter(after="2026-04-01T14:00:00")
+    def test_naive_datetime_accepted_after(self) -> None:
+        """Naive datetime is now accepted (naive-local principle)."""
+        f = AbsoluteRangeFilter(after="2026-04-01T14:00:00")
+        assert f.after == "2026-04-01T14:00:00"
+
+    def test_date_only_accepted(self) -> None:
+        """Date-only string is accepted."""
+        f = AbsoluteRangeFilter(after="2026-04-01")
+        assert f.after == "2026-04-01"
 
 
 # ---------------------------------------------------------------------------
@@ -280,12 +289,17 @@ class TestDateFilterReversedBounds:
     def test_equal_date_only_bounds_valid(self) -> None:
         """Equal date-only bounds are valid (matches single day per DATE-09)."""
         f = AbsoluteRangeFilter(after="2026-04-14", before="2026-04-14")
-        assert isinstance(f.after, date)
-        assert isinstance(f.before, date)
+        assert f.after == "2026-04-14"
+        assert f.before == "2026-04-14"
 
     def test_reversed_datetime_bounds_rejected(self) -> None:
         with pytest.raises(ValidationError, match="later than"):
             AbsoluteRangeFilter(after="2026-04-14T12:00:00Z", before="2026-04-01T08:00:00Z")
+
+    def test_reversed_naive_datetime_bounds_rejected(self) -> None:
+        """Naive datetime bounds are also checked for ordering."""
+        with pytest.raises(ValidationError, match="later than"):
+            AbsoluteRangeFilter(after="2026-04-14T12:00:00", before="2026-04-01T08:00:00")
 
 
 # ---------------------------------------------------------------------------
@@ -293,18 +307,23 @@ class TestDateFilterReversedBounds:
 # ---------------------------------------------------------------------------
 
 
-class TestDateFilterTypedBounds:
-    """Verify before/after are parsed into typed values, not kept as strings."""
+class TestDateFilterStringBounds:
+    """Verify before/after are stored as validated strings (naive-local principle)."""
 
-    def test_date_only_parses_as_date(self) -> None:
+    def test_date_only_stored_as_string(self) -> None:
         f = AbsoluteRangeFilter(before="2026-04-14")
-        assert isinstance(f.before, date)
-        assert not isinstance(f.before, datetime)
+        assert isinstance(f.before, str)
+        assert f.before == "2026-04-14"
 
-    def test_aware_datetime_parses_correctly(self) -> None:
+    def test_aware_datetime_stored_as_string(self) -> None:
         f = AbsoluteRangeFilter(before="2026-04-14T14:00:00Z")
-        assert isinstance(f.before, datetime)
-        assert f.before.tzinfo is not None
+        assert isinstance(f.before, str)
+        assert f.before == "2026-04-14T14:00:00Z"
+
+    def test_naive_datetime_stored_as_string(self) -> None:
+        f = AbsoluteRangeFilter(before="2026-04-14T14:00:00")
+        assert isinstance(f.before, str)
+        assert f.before == "2026-04-14T14:00:00"
 
     def test_now_literal_accepted(self) -> None:
         f = AbsoluteRangeFilter(before="now")
@@ -312,8 +331,8 @@ class TestDateFilterTypedBounds:
 
     def test_offset_timezone_accepted(self) -> None:
         f = AbsoluteRangeFilter(after="2026-04-01T14:00:00+02:00")
-        assert isinstance(f.after, datetime)
-        assert f.after.tzinfo is not None
+        assert isinstance(f.after, str)
+        assert f.after == "2026-04-01T14:00:00+02:00"
 
 
 # ---------------------------------------------------------------------------
@@ -449,7 +468,7 @@ class TestListTasksQueryDateFields:
     def test_modified_date_filter_object(self) -> None:
         q = ListTasksQuery(modified={"before": "2026-04-14"})
         assert isinstance(q.modified, AbsoluteRangeFilter)
-        assert isinstance(q.modified.before, date)
+        assert q.modified.before == "2026-04-14"
 
     def test_dropped_all_shortcut(self) -> None:
         q = ListTasksQuery(dropped="all")

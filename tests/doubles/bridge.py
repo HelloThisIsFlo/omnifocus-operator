@@ -29,6 +29,21 @@ _ANCHOR_DATE_KEY_MAP: dict[str, str] = {
 }
 
 
+def _ensure_tz_aware(value: str | None) -> str | None:
+    """Ensure a date string has timezone info for read-back parity.
+
+    OmniFocus stores dates as naive local and reads them back as tz-aware.
+    The InMemoryBridge simulates this: naive strings get '+00:00' appended
+    (test environment has no local tz offset to apply).
+    """
+    if value is None:
+        return None
+    dt = datetime.fromisoformat(value)
+    if dt.tzinfo is None:
+        return value + "+00:00"
+    return value
+
+
 def _parse_rrule_interval(rule_string: str) -> tuple[str, int]:
     """Parse an RRULE string into (frequency, interval).
 
@@ -352,9 +367,9 @@ class InMemoryBridge(Bridge):
             inInbox=not has_parent,
             parent=parent_str,
             project=project_str,
-            dueDate=params.get("dueDate"),
-            deferDate=defer_date,
-            plannedDate=params.get("plannedDate"),
+            dueDate=_ensure_tz_aware(params.get("dueDate")),
+            deferDate=_ensure_tz_aware(defer_date),
+            plannedDate=_ensure_tz_aware(params.get("plannedDate")),
             estimatedMinutes=params.get("estimatedMinutes"),
             tags=tags,
             status=status,
@@ -390,6 +405,7 @@ class InMemoryBridge(Bridge):
             raise ValueError(msg)
 
         # Simple field updates (both params and stored dicts use camelCase)
+        _DATE_KEYS = {"dueDate", "deferDate", "plannedDate"}
         for key in (
             "name",
             "note",
@@ -400,7 +416,10 @@ class InMemoryBridge(Bridge):
             "estimatedMinutes",
         ):
             if key in params:
-                task[key] = params[key]
+                value = params[key]
+                if key in _DATE_KEYS:
+                    value = _ensure_tz_aware(value)
+                task[key] = value
 
         # Sync effectiveFlagged when flagged is updated (ancestor-chain inheritance)
         if "flagged" in params:
