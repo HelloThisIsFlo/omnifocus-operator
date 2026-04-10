@@ -45,6 +45,18 @@ class ThisPeriodFilter(QueryModel):
     this: Literal["d", "w", "m", "y"] = Field(description=desc.THIS_PERIOD_UNIT)
 
 
+def _validate_duration(v: str) -> str:
+    """Validate a duration string like '3d', '2w', 'm', '1y'."""
+    match = _DATE_DURATION_PATTERN.match(v)
+    if not match:
+        raise ValueError(err.DATE_FILTER_INVALID_DURATION.format(value=v))
+    count_str = match.group(1)
+    count = int(count_str) if count_str else 1
+    if count <= 0:
+        raise ValueError(err.DATE_FILTER_ZERO_NEGATIVE.format(value=v))
+    return v
+
+
 class LastPeriodFilter(QueryModel):
     __doc__ = desc.LAST_PERIOD_FILTER_DOC
 
@@ -52,15 +64,8 @@ class LastPeriodFilter(QueryModel):
 
     @field_validator("last", mode="after")
     @classmethod
-    def _validate_duration(cls, v: str) -> str:
-        match = _DATE_DURATION_PATTERN.match(v)
-        if not match:
-            raise ValueError(err.DATE_FILTER_INVALID_DURATION.format(value=v))
-        count_str = match.group(1)
-        count = int(count_str) if count_str else 1
-        if count <= 0:
-            raise ValueError(err.DATE_FILTER_ZERO_NEGATIVE.format(value=v))
-        return v
+    def _check_duration(cls, v: str) -> str:
+        return _validate_duration(v)
 
 
 class NextPeriodFilter(QueryModel):
@@ -70,15 +75,8 @@ class NextPeriodFilter(QueryModel):
 
     @field_validator("next", mode="after")
     @classmethod
-    def _validate_duration(cls, v: str) -> str:
-        match = _DATE_DURATION_PATTERN.match(v)
-        if not match:
-            raise ValueError(err.DATE_FILTER_INVALID_DURATION.format(value=v))
-        count_str = match.group(1)
-        count = int(count_str) if count_str else 1
-        if count <= 0:
-            raise ValueError(err.DATE_FILTER_ZERO_NEGATIVE.format(value=v))
-        return v
+    def _check_duration(cls, v: str) -> str:
+        return _validate_duration(v)
 
 
 class AbsoluteRangeFilter(QueryModel):
@@ -109,7 +107,7 @@ class AbsoluteRangeFilter(QueryModel):
         return self
 
 
-def _route_date_filter(v: Any) -> str:
+def _route_date_filter(v: Any) -> str | None:
     """Route input to the correct DateFilter union branch."""
     if isinstance(v, dict):
         if "this" in v:
@@ -119,9 +117,8 @@ def _route_date_filter(v: Any) -> str:
         if "next" in v:
             return "next_period"
         return "absolute_range"
-    # Non-dict: route to absolute_range for Pydantic type rejection.
-    # Do NOT raise ValueError here -- it bypasses ValidationReformatterMiddleware.
-    return "absolute_range"
+    # Non-dict: return None so Pydantic raises ValidationError (union_tag_not_found).
+    return None
 
 
 DateFilter = Annotated[

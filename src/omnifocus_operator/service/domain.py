@@ -127,7 +127,9 @@ def _to_utc_ts(val: object) -> object:
     if isinstance(val, datetime):
         return val.astimezone(UTC).timestamp()
     if isinstance(val, str):
-        return datetime.fromisoformat(val).astimezone(UTC).timestamp()
+        dt = datetime.fromisoformat(val)
+        assert dt.tzinfo is not None, f"_to_utc_ts received naive datetime string: {val!r}"
+        return dt.astimezone(UTC).timestamp()
     return val
 
 
@@ -795,7 +797,9 @@ class DomainLogic:
             )
         if self._all_fields_match(payload, task, warnings):
             # No-op takes priority over status warnings
-            filtered = [w for w in warnings if "your changes were applied" not in w]
+            # Prefix derived from template constant -- stable regardless of {status} value
+            _prefix = EDIT_COMPLETED_TASK.split("{")[0]
+            filtered = [w for w in warnings if not w.startswith(_prefix)]
             if not filtered:
                 filtered = [EDIT_NO_CHANGES_DETECTED]
             return EditTaskResult(
