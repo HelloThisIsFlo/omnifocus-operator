@@ -84,9 +84,9 @@ NEXT_PERIOD_DURATION = (
     "'3d' (3 days), '2w' (2 weeks), 'm' (1 month). Omit count for 1."
 )
 
-ABSOLUTE_RANGE_BEFORE = "Upper bound. ISO date, ISO datetime with timezone, or 'now'."
+ABSOLUTE_RANGE_BEFORE = "Upper bound (exclusive). ISO date, ISO datetime with timezone, or 'now'."
 
-ABSOLUTE_RANGE_AFTER = "Lower bound. ISO date, ISO datetime with timezone, or 'now'."
+ABSOLUTE_RANGE_AFTER = "Lower bound (inclusive). ISO date, ISO datetime with timezone, or 'now'."
 ```
 
 ### What this structurally prevents (no validators needed)
@@ -112,8 +112,6 @@ Agents send the same JSON, schema is just tighter.
 - **`DATE_FILTER_DOC` becomes orphaned**: `DateFilter` is now a type alias, not a class — the old docstring has no home. The branch docstrings replace it entirely. Remove `DATE_FILTER_DOC`.
 - **Field descriptions reference "DateFilter" by name**: `DUE_FILTER_DESC`, `DEFER_FILTER_DESC`, etc. say "Or use DateFilter for range/shorthand." After the refactor, "DateFilter" isn't a named concept agents see in the schema — each branch appears directly in the `anyOf`. Update these descriptions to reference the actual options (e.g. "Or use a period/range filter").
 - **Schema shape change**: Each date field's `anyOf` goes from 2 branches (shortcut enum + DateFilter object) to 5 branches (shortcut enum + 4 filter objects). Each branch is small and well-described, so this is a net improvement — but worth verifying the rendered schema looks clean.
-- **Inclusive/exclusive semantics on `before`/`after`**: Not documented in the current descriptions. Decide during implementation whether to add this to the field descriptions. Coordinate with the timezone todo (`2026-04-09`).
-
 ## Spike before implementing
 
 Confirm Pydantic smart union error messages stay clean when no branch matches. E.g., `{"this": "3d"}` fails `Literal` on branch 1, fails because `this` isn't a valid field on branches 2-4. Verify the agent gets a useful error, not a wall of per-branch failures.
