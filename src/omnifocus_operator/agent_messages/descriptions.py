@@ -128,14 +128,15 @@ ESTIMATED_MINUTES_EDIT = "Time estimate in minutes. Set to null to clear."
 
 # --- Date Filter Models ---
 
-THIS_PERIOD_FILTER_DOC = "Filter to the current calendar period."
+THIS_PERIOD_FILTER_DOC = "Filter to today, this week, this month, or this year."
 LAST_PERIOD_FILTER_DOC = "Filter to a recent window ending now."
 NEXT_PERIOD_FILTER_DOC = "Filter to an upcoming window starting now."
 ABSOLUTE_RANGE_FILTER_DOC = "Filter by explicit date bounds. Set before, after, or both."
 
-THIS_PERIOD_UNIT = "Calendar period: d (today), w (this week), m (this month), y (this year)."
-LAST_PERIOD_DURATION = "How far back from now. Count + unit: '3d', '2w', 'm'. Omit count for 1."
-NEXT_PERIOD_DURATION = "How far ahead from now. Count + unit: '3d', '2w', 'm'. Omit count for 1."
+THIS_PERIOD_UNIT = "When? d (today), w (this week), m (this month), y (this year)."
+_DURATION_FORMAT = '"N<unit>" (unit: d/w/m/y). Omit count for 1. Examples: "3d", "2w", "m".'
+LAST_PERIOD_DURATION = f"How far back from now. {_DURATION_FORMAT}"
+NEXT_PERIOD_DURATION = f"How far ahead from now. {_DURATION_FORMAT}"
 ABSOLUTE_RANGE_BEFORE = "Upper bound (inclusive). ISO date, ISO datetime with timezone, or 'now'."
 ABSOLUTE_RANGE_AFTER = "Lower bound (inclusive). ISO date, ISO datetime with timezone, or 'now'."
 
@@ -368,9 +369,7 @@ LIMIT_DESC = "Max items to return. Pass null to return all."
 
 OFFSET_DESC = "Skip this many items. Requires limit to be set."
 
-REVIEW_DUE_WITHIN_DESC = (
-    'Review due within this window. "now" or "N<unit>" (unit: d/w/m/y). Examples: "1w", "2m".'
-)
+REVIEW_DUE_WITHIN_DESC = f'Review due within this window. "now" or {_DURATION_FORMAT}'
 
 # --- Field Descriptions: Entity-Reference Filters ---
 

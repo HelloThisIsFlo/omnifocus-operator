@@ -170,7 +170,7 @@ class TestDateFilterMutualExclusion:
 
 class TestDateFilterEmpty:
     def test_empty_filter_rejected(self) -> None:
-        with pytest.raises(ValidationError, match="AbsoluteRangeFilter requires at least one"):
+        with pytest.raises(ValidationError, match="Date range filter requires at least one"):
             _ta.validate_python({})
 
 

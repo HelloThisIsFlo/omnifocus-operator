@@ -94,7 +94,7 @@ class AbsoluteRangeFilter(QueryModel):
     @model_validator(mode="after")
     def _validate_bounds(self) -> AbsoluteRangeFilter:
         if not is_set(self.before) and not is_set(self.after):
-            raise ValueError(err.ABSOLUTE_RANGE_FILTER_EMPTY)
+            raise ValueError(err.DATE_FILTER_RANGE_EMPTY)
         if is_set(self.before) and is_set(self.after):
             before, after = self.before, self.after
             if before == "now" or after == "now":
@@ -114,7 +114,18 @@ class AbsoluteRangeFilter(QueryModel):
 
 
 def _route_date_filter(v: Any) -> str | None:
-    """Route input to the correct DateFilter union branch."""
+    """Route input to the correct DateFilter union branch.
+
+    Unrecognized dicts fall through to ``absolute_range`` intentionally:
+    raising ``ValueError`` here bypasses ValidationReformatterMiddleware
+    (Pydantic propagates it raw, not as ``ValidationError``).  The
+    absolute_range model_validator then rejects with a proper error.
+
+    Caveat: for truly unrecognized keys (e.g. ``{"foo": "bar"}``), the
+    error says "requires at least one of before/after" which is misleading —
+    the real issue is unrecognized keys.  Acceptable trade-off vs breaking
+    the middleware contract.
+    """
     if isinstance(v, dict):
         if "this" in v:
             return "this_period"

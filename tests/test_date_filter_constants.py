@@ -1,9 +1,9 @@
 """Tests for date filter agent message constants."""
 
 from omnifocus_operator.agent_messages.errors import (
-    ABSOLUTE_RANGE_FILTER_EMPTY,
     DATE_FILTER_INVALID_DURATION,
     DATE_FILTER_NAIVE_DATETIME,
+    DATE_FILTER_RANGE_EMPTY,
     DATE_FILTER_REVERSED_BOUNDS,
     DATE_FILTER_ZERO_NEGATIVE,
 )
@@ -12,10 +12,10 @@ from omnifocus_operator.agent_messages.errors import (
 class TestDateFilterErrorConstants:
     """Date filter error constants are importable and well-formed."""
 
-    def test_absolute_range_empty_importable(self) -> None:
-        assert isinstance(ABSOLUTE_RANGE_FILTER_EMPTY, str)
-        assert len(ABSOLUTE_RANGE_FILTER_EMPTY) > 0
-        assert "AbsoluteRangeFilter" in ABSOLUTE_RANGE_FILTER_EMPTY
+    def test_range_empty_importable(self) -> None:
+        assert isinstance(DATE_FILTER_RANGE_EMPTY, str)
+        assert len(DATE_FILTER_RANGE_EMPTY) > 0
+        assert "before" in DATE_FILTER_RANGE_EMPTY and "after" in DATE_FILTER_RANGE_EMPTY
 
     def test_naive_datetime_importable(self) -> None:
         assert isinstance(DATE_FILTER_NAIVE_DATETIME, str)

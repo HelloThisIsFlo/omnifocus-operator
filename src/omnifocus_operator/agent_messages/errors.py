@@ -129,8 +129,8 @@ REPETITION_INVALID_END_EMPTY = (
 
 # --- Validation: Date Filters ---
 
-ABSOLUTE_RANGE_FILTER_EMPTY = (
-    "AbsoluteRangeFilter requires at least one of: before or after. "
+DATE_FILTER_RANGE_EMPTY = (
+    "Date range filter requires at least one of: before or after. "
     "Each accepts an ISO date ('2026-04-01'), ISO datetime with timezone "
     "('2026-04-01T14:00:00Z'), or 'now'."
 )
