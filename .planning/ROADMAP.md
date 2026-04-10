@@ -192,10 +192,10 @@ Plans:
   3. Resolver uses isinstance dispatch on concrete classes, parse functions accept typed values
   4. domain.py isinstance targets AbsoluteRangeFilter for defer hint detection
   5. Full test suite passes with all constructions migrated to concrete classes
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 Plans:
-- [ ] 48-01-PLAN.md — Contract layer: 4 filter models + discriminator + errors + descriptions + contract tests
-- [ ] 48-02-PLAN.md — Service layer: resolver isinstance dispatch + domain fix + test migration + full suite green
+- [x] 48-01-PLAN.md — Contract layer: 4 filter models + discriminator + errors + descriptions + contract tests
+- [x] 48-02-PLAN.md — Service layer: resolver isinstance dispatch + domain fix + test migration + full suite green
 
 ## Progress
 
