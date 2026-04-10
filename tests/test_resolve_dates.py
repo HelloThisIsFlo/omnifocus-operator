@@ -17,6 +17,7 @@ import pytest
 
 from omnifocus_operator.contracts.use_cases.list._date_filter import DateFilter
 from omnifocus_operator.contracts.use_cases.list._enums import (
+    DateShortcut,
     DueDateShortcut,
     LifecycleDateShortcut,
 )
@@ -61,7 +62,6 @@ class TestTodayShortcut:
 
     def test_date_field_shortcut_today(self) -> None:
         """DateShortcut.TODAY resolves to today's midnight bounds."""
-        from omnifocus_operator.contracts.use_cases.list._enums import DateShortcut
 
         result = resolve_date_filter(DateShortcut.TODAY, "defer", NOW)
         assert result.after == datetime(2026, 4, 7, 0, 0, 0)

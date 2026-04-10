@@ -26,6 +26,10 @@ from omnifocus_operator.agent_messages.errors import (
     NO_POSITION_KEY,
 )
 from omnifocus_operator.agent_messages.warnings import (
+    AVAILABILITY_REMAINING_INCLUDES_AVAILABLE,
+    AVAILABILITY_REMAINING_INCLUDES_BLOCKED,
+    DEFER_AFTER_NOW_HINT,
+    DEFER_BEFORE_NOW_HINT,
     DUE_SOON_THRESHOLD_NOT_DETECTED,
     EDIT_COMPLETED_TASK,
     EDIT_NO_CHANGES_DETECTED,
@@ -53,6 +57,7 @@ from omnifocus_operator.agent_messages.warnings import (
 )
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
+from omnifocus_operator.contracts.use_cases.list._date_filter import DateFilter
 from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
 from omnifocus_operator.models.enums import Availability, DurationUnit, Schedule
 from omnifocus_operator.models.repetition_rule import (
@@ -178,13 +183,6 @@ class DomainLogic:
                 lifecycle_additions.append(self._LIFECYCLE_MAP[field_name])
 
             # Defer hint detection (D-10, D-11)
-            from omnifocus_operator.agent_messages.warnings import (
-                DEFER_AFTER_NOW_HINT,
-                DEFER_BEFORE_NOW_HINT,
-            )
-            from omnifocus_operator.contracts.use_cases.list._date_filter import (
-                DateFilter,
-            )
 
             if field_name == "defer" and isinstance(value, DateFilter):
                 if value.after == "now":
@@ -233,10 +231,6 @@ class DomainLogic:
         REMAINING expands to {AVAILABLE, BLOCKED}. Redundant combos warn.
         Returns (expanded availability list, warnings).
         """
-        from omnifocus_operator.agent_messages.warnings import (
-            AVAILABILITY_REMAINING_INCLUDES_AVAILABLE,
-            AVAILABILITY_REMAINING_INCLUDES_BLOCKED,
-        )
 
         warnings: list[str] = []
         result_set: set[Availability] = set()

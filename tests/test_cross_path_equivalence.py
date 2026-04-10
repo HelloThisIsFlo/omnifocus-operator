@@ -1290,7 +1290,6 @@ class TestDateFilterCrossPath:
                 completed_before=_COMPLETED_DATE + timedelta(days=1),
             )
         )
-        ids = sorted(t.id for t in result.items)
         # 5 remaining (task-1..4, task-7) + 1 completed (task-5) = 6
         remaining_ids = [t.id for t in result.items if t.availability != Availability.COMPLETED]
         completed_ids = [t.id for t in result.items if t.availability == Availability.COMPLETED]
@@ -1310,7 +1309,6 @@ class TestDateFilterCrossPath:
                 dropped_before=_DROPPED_DATE + timedelta(days=1),
             )
         )
-        ids = sorted(t.id for t in result.items)
         # 5 remaining (task-1..4, task-7) + 1 dropped (task-6) = 6
         remaining_ids = [t.id for t in result.items if t.availability != Availability.DROPPED]
         dropped_ids = [t.id for t in result.items if t.availability == Availability.DROPPED]
