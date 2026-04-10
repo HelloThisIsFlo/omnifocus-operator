@@ -68,6 +68,12 @@ This phase is purely structural. No new filter capabilities, no timezone strateg
    ('2026-04-01T14:00:00Z'), or 'now'."
   ```
 - **D-17:** `DATE_FILTER_EMPTY` itself may become dead (check during implementation — depends on whether any other code path references it).
+- **D-17b:** New `DATE_FILTER_INVALID_TYPE` for the discriminator's non-dict fallback:
+  ```
+  "Date filter must be an object. Use a shorthand period
+   ({\"this\": \"w\"}, {\"last\": \"3d\"}, {\"next\": \"1m\"})
+   or absolute bounds ({\"before\": \"...\", {\"after\": \"...\"})."
+  ```
 
 ### domain.py isinstance fix
 - **D-18:** `isinstance(value, DateFilter)` at `domain.py:187` must change to `isinstance(value, AbsoluteRangeFilter)`. The todo's reasoning (TypeError) is incorrect — Python 3.12 supports `isinstance` with `types.UnionType`. The real bug: `isinstance(value, DateFilter)` matches ANY filter type, then `value.after` raises `AttributeError` on non-AbsoluteRangeFilter types.
