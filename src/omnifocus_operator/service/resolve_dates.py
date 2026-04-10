@@ -13,8 +13,14 @@ from datetime import date, datetime, timedelta
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
+from omnifocus_operator.contracts.use_cases.list._date_filter import (
+    AbsoluteRangeFilter,
+    LastPeriodFilter,
+    NextPeriodFilter,
+    ThisPeriodFilter,
+)
+
 if TYPE_CHECKING:
-    from omnifocus_operator.contracts.use_cases.list._date_filter import DateFilter
     from omnifocus_operator.models.enums import DueSoonSetting
 
 
@@ -33,7 +39,7 @@ _DATE_DURATION_PATTERN = re.compile(r"^(\d*)([dwmy])$")
 
 
 def resolve_date_filter(
-    value: StrEnum | DateFilter,
+    value: StrEnum | ThisPeriodFilter | LastPeriodFilter | NextPeriodFilter | AbsoluteRangeFilter,
     field_name: str,
     now: datetime,
     *,
@@ -43,7 +49,7 @@ def resolve_date_filter(
     """Resolve a date filter input to absolute datetime bounds.
 
     Args:
-        value: A StrEnum shortcut or DateFilter object.
+        value: A StrEnum shortcut or concrete filter object.
         field_name: The date field being filtered (e.g. "due", "completed").
         now: Current timestamp -- caller ensures consistency across a single query.
         week_start: Python weekday value (0=Monday, 6=Sunday). Affects {this: "w"}.
@@ -116,23 +122,25 @@ def _resolve_shortcut(
 
 
 def _resolve_date_filter_obj(
-    df: DateFilter,
+    df: ThisPeriodFilter | LastPeriodFilter | NextPeriodFilter | AbsoluteRangeFilter,
     now: datetime,
     *,
     week_start: int,
 ) -> ResolvedDateBounds:
-    if df.this is not None:
+    if isinstance(df, ThisPeriodFilter):
         after, before = _resolve_this(df.this, now, week_start=week_start)
         return ResolvedDateBounds(after=after, before=before)
-    if df.last is not None:
+    if isinstance(df, LastPeriodFilter):
         after, before = _resolve_last(df.last, now)
         return ResolvedDateBounds(after=after, before=before)
-    if df.next is not None:
+    if isinstance(df, NextPeriodFilter):
         after, before = _resolve_next(df.next, now)
         return ResolvedDateBounds(after=after, before=before)
-    # Absolute: before/after
-    after_dt, before_dt = _resolve_absolute(df, now)
-    return ResolvedDateBounds(after=after_dt, before=before_dt)
+    if isinstance(df, AbsoluteRangeFilter):
+        after_dt, before_dt = _resolve_absolute(df, now)
+        return ResolvedDateBounds(after=after_dt, before=before_dt)
+    msg = f"Unknown date filter type: {type(df).__name__}"
+    raise AssertionError(msg)
 
 
 # ---------------------------------------------------------------------------
@@ -204,51 +212,46 @@ def _resolve_next(duration: str, now: datetime) -> tuple[datetime, datetime]:
 
 
 def _resolve_absolute(
-    df: DateFilter,
+    df: AbsoluteRangeFilter,
     now: datetime,
 ) -> tuple[datetime | None, datetime | None]:
-    after_dt = _parse_absolute_after(df.after, now) if df.after else None
-    before_dt = _parse_absolute_before(df.before, now) if df.before else None
+    after_dt = _parse_absolute_after(df.after, now) if df.after is not None else None
+    before_dt = _parse_absolute_before(df.before, now) if df.before is not None else None
     return (after_dt, before_dt)
 
 
-def _parse_absolute_after(value: str, now: datetime) -> datetime:
+def _parse_absolute_after(
+    value: str | datetime | date,
+    now: datetime,
+) -> datetime:
     """Parse 'after' value: date-only -> start of that day (RESOLVE-09).
 
-    Inherits tzinfo from ``now`` so the result is tz-aware when ``now`` is tz-aware.
-    This prevents ``TypeError: can't compare offset-naive and offset-aware datetimes``
-    when the bridge path compares resolved bounds against Task model AwareDatetime fields.
+    Contract guarantees typed input: Literal["now"], AwareDatetime, or date.
     """
     if value == "now":
         return now
-    if _is_date_only(value):
-        d = date.fromisoformat(value)
-        return datetime(d.year, d.month, d.day, tzinfo=now.tzinfo)
-    dt = datetime.fromisoformat(value)
-    if dt.tzinfo is None and now.tzinfo is not None:
-        return dt.replace(tzinfo=now.tzinfo)
-    return dt
+    if isinstance(value, date) and not isinstance(value, datetime):
+        return datetime(value.year, value.month, value.day, tzinfo=now.tzinfo)
+    # AwareDatetime -- contract guarantees tzinfo is set
+    assert isinstance(value, datetime) and value.tzinfo is not None
+    return value
 
 
-def _parse_absolute_before(value: str, now: datetime) -> datetime:
+def _parse_absolute_before(
+    value: str | datetime | date,
+    now: datetime,
+) -> datetime:
     """Parse 'before' value: date-only -> start of NEXT day (RESOLVE-08).
 
-    Inherits tzinfo from ``now`` so the result is tz-aware when ``now`` is tz-aware.
+    Contract guarantees typed input: Literal["now"], AwareDatetime, or date.
     """
     if value == "now":
         return now
-    if _is_date_only(value):
-        d = date.fromisoformat(value)
-        return datetime(d.year, d.month, d.day, tzinfo=now.tzinfo) + timedelta(days=1)
-    dt = datetime.fromisoformat(value)
-    if dt.tzinfo is None and now.tzinfo is not None:
-        return dt.replace(tzinfo=now.tzinfo)
-    return dt
-
-
-def _is_date_only(value: str) -> bool:
-    """Check if a string is date-only (YYYY-MM-DD) vs datetime (contains T or time)."""
-    return "T" not in value and len(value) == 10
+    if isinstance(value, date) and not isinstance(value, datetime):
+        return datetime(value.year, value.month, value.day, tzinfo=now.tzinfo) + timedelta(days=1)
+    # AwareDatetime -- contract guarantees tzinfo is set
+    assert isinstance(value, datetime) and value.tzinfo is not None
+    return value
 
 
 # ---------------------------------------------------------------------------
