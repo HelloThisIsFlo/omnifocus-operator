@@ -158,8 +158,29 @@ What we proved:
 
 What we did NOT test:
 - Whether the flag changes SQLite storage (→ script 02)
-- Whether the flag changes behavior when observed from a different timezone (that's the whole point of floating vs fixed)
 - Whether absolute notifications (not due-relative) would behave differently
+
+### G: Cross-timezone experiment — IN PROGRESS
+
+**Status**: Scripts written, not yet executed with results.
+
+**Setup**: Revised 01b to create TWO tasks with identical dueDate (`2026-07-15T10:00:00Z`):
+- `TZ-PROBE-Floating` (shouldUseFloatingTimeZone = true)
+- `TZ-PROBE-Fixed` (shouldUseFloatingTimeZone = false)
+- Both have due-relative notifications (-60min, -86400min)
+
+**Scripts**:
+- `01b-floating-probe.js` — creates the pair, captures BST baseline
+- `01c-cross-tz-inspect.js` — read-only inspection, compares both tasks + BST baseline
+- `CROSS-TZ-GUIDE.md` — step-by-step walkthrough for the full experiment
+
+**Preliminary finding** (from earlier single-task run in New York):
+- Floating task's `getTime()` shifted by +300 min (5h = BST↔EDT offset)
+- Wall clock time preserved at 11:00, UTC moment changed
+- Toggling floating=false on that task had NO effect
+- Need to re-run with the new two-task setup to compare floating vs fixed side by side
+
+**Next steps**: Run 01b in BST, switch to New York, run 01c, compare.
 
 ## Key Findings
 

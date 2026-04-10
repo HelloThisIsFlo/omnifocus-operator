@@ -1,35 +1,42 @@
-// 01b — Floating Timezone Probe
-// WRITES TO OMNIFOCUS DATABASE (creates one test task with notifications)
+// 01b — Floating vs Fixed Probe (Baseline)
+// WRITES TO OMNIFOCUS DATABASE (creates two test tasks)
 // Runtime: Omni Automation (OmniFocus Automation Console)
 //
-// Creates a task with a summer (BST) dueDate, adds two due-relative notifications,
-// then snapshots everything across floating=true → false → true.
+// Creates TWO tasks with identical dueDate:
+//   - TZ-PROBE-Floating: shouldUseFloatingTimeZone = true (default)
+//   - TZ-PROBE-Fixed:    shouldUseFloatingTimeZone = false
 //
-// Answers: What changes (if anything) when shouldUseFloatingTimeZone is toggled?
-// Also gives us a BST-period date to inspect (script 01 only sampled a GMT date).
-//
-// CAVEAT: This test runs from the same timezone where the task is created.
-// Cross-timezone behavior is NOT tested here.
+// Run this in your HOME timezone first to capture the baseline.
+// Then switch timezone and run 01c to compare.
 
 (() => {
-  let r = `=== 01b: Floating Timezone Probe ===\n\n`;
+  let r = `=== 01b: Floating vs Fixed Probe (Baseline) ===\n\n`;
 
-  // --- Create test task with a BST-period dueDate ---
-  const task = new Task("TZ-PROBE-Floating");
-  task.dueDate = new Date("2026-07-15T10:00:00Z");  // July = BST, 10:00 UTC = 11:00 BST
+  const DUE = "2026-07-15T10:00:00Z";  // July = BST, 10:00 UTC = 11:00 BST
 
-  // Add two due-relative notifications
-  task.addNotification(-60);       // 1 minute before due
-  task.addNotification(-86400);    // 1 day before due
+  // --- Create floating task ---
+  const floating = new Task("TZ-PROBE-Floating");
+  floating.dueDate = new Date(DUE);
+  floating.addNotification(-60);       // 1 minute before due
+  floating.addNotification(-86400);    // 1 day before due
+  // shouldUseFloatingTimeZone defaults to true
 
-  r += `Created: "${task.name}" (id: ${task.id.primaryKey})\n`;
-  r += `Input dueDate: new Date("2026-07-15T10:00:00Z")\n`;
-  r += `Notifications added: -60min (1min before due), -86400min (1 day before due)\n\n`;
+  // --- Create fixed task ---
+  const fixed = new Task("TZ-PROBE-Fixed");
+  fixed.dueDate = new Date(DUE);
+  fixed.addNotification(-60);          // 1 minute before due
+  fixed.addNotification(-86400);       // 1 day before due
+  fixed.shouldUseFloatingTimeZone = false;
 
-  // --- Helper to snapshot all date + notification properties ---
-  function snapshot(label) {
+  r += `Created two tasks with identical dueDate: new Date("${DUE}")\n`;
+  r += `Both have notifications: -60min (1min before), -86400min (1 day before)\n\n`;
+
+  // --- Helper ---
+  function snapshot(label, task) {
     r += `  --- ${label} ---\n`;
-    r += `  shouldUseFloatingTimeZone: ${task.shouldUseFloatingTimeZone}\n`;
+    r += `  name:     ${task.name}\n`;
+    r += `  id:       ${task.id.primaryKey}\n`;
+    r += `  floating: ${task.shouldUseFloatingTimeZone}\n`;
 
     const dd = task.dueDate;
     if (dd) {
@@ -38,8 +45,6 @@
       r += `    getTime():           ${dd.getTime()} (epoch ms)\n`;
       r += `    getTimezoneOffset(): ${dd.getTimezoneOffset()} (min from UTC)\n`;
       r += `    toString():          ${dd.toString()}\n`;
-    } else {
-      r += `  dueDate: null\n`;
     }
 
     const edd = task.effectiveDueDate;
@@ -47,11 +52,8 @@
       r += `  effectiveDueDate:\n`;
       r += `    toISOString():       ${edd.toISOString()}\n`;
       r += `    getTime():           ${edd.getTime()} (epoch ms)\n`;
-    } else {
-      r += `  effectiveDueDate: null\n`;
     }
 
-    // Notifications
     const notifs = task.notifications;
     r += `  Notifications: ${notifs.length}\n`;
     for (let i = 0; i < notifs.length; i++) {
@@ -60,59 +62,37 @@
       try { r += `, initialFireDate=${n.initialFireDate.toISOString()}`; } catch(e) {}
       try { r += `, relativeFireOffset=${n.relativeFireOffset}min`; } catch(e) {}
       r += `, usesFloatingTimeZone=${n.usesFloatingTimeZone}`;
-      r += `, isSnoozed=${n.isSnoozed}`;
       r += `\n`;
     }
     r += `\n`;
   }
 
-  // --- Snapshot as floating (default) ---
-  snapshot("FLOATING = true (default)");
-
-  const floatingEpochMs = task.dueDate ? task.dueDate.getTime() : null;
-  const floatingISO = task.dueDate ? task.dueDate.toISOString() : null;
-  const floatingOffset = task.dueDate ? task.dueDate.getTimezoneOffset() : null;
-
-  // --- Toggle to fixed ---
-  task.shouldUseFloatingTimeZone = false;
-  snapshot("FLOATING = false (just toggled)");
-
-  const fixedEpochMs = task.dueDate ? task.dueDate.getTime() : null;
-  const fixedISO = task.dueDate ? task.dueDate.toISOString() : null;
-  const fixedOffset = task.dueDate ? task.dueDate.getTimezoneOffset() : null;
-
-  // --- Toggle back to floating ---
-  task.shouldUseFloatingTimeZone = true;
-  snapshot("FLOATING = true (restored)");
-
-  const restoredEpochMs = task.dueDate ? task.dueDate.getTime() : null;
+  snapshot("FLOATING (shouldUseFloatingTimeZone = true)", floating);
+  snapshot("FIXED (shouldUseFloatingTimeZone = false)", fixed);
 
   // --- Comparison ---
-  r += `--- Comparison ---\n\n`;
-  r += `  Epoch ms (floating):  ${floatingEpochMs}\n`;
-  r += `  Epoch ms (fixed):     ${fixedEpochMs}\n`;
-  r += `  Epoch ms (restored):  ${restoredEpochMs}\n`;
-  r += `  floating→fixed delta: ${fixedEpochMs - floatingEpochMs} ms\n`;
-  r += `  fixed→restored delta: ${restoredEpochMs - fixedEpochMs} ms\n\n`;
-  r += `  ISO (floating): ${floatingISO}\n`;
-  r += `  ISO (fixed):    ${fixedISO}\n\n`;
-  r += `  TZ offset (floating): ${floatingOffset} min\n`;
-  r += `  TZ offset (fixed):    ${fixedOffset} min\n\n`;
+  r += `--- Baseline Comparison ---\n\n`;
 
-  if (floatingEpochMs === fixedEpochMs) {
-    r += `  RESULT: Toggling floating does NOT change the underlying Date moment (from same TZ).\n`;
+  const fEpoch = floating.dueDate.getTime();
+  const xEpoch = fixed.dueDate.getTime();
+
+  r += `  Floating getTime(): ${fEpoch}\n`;
+  r += `  Fixed    getTime(): ${xEpoch}\n`;
+  r += `  Delta:              ${xEpoch - fEpoch} ms\n\n`;
+
+  r += `  Floating toISOString(): ${floating.dueDate.toISOString()}\n`;
+  r += `  Fixed    toISOString(): ${fixed.dueDate.toISOString()}\n\n`;
+
+  if (fEpoch === xEpoch) {
+    r += `  RESULT: Both tasks have identical Date moments in home timezone.\n`;
+    r += `    Any difference in 01c (cross-timezone) proves the flag matters.\n`;
   } else {
-    r += `  RESULT: Toggling floating CHANGES the underlying Date moment!\n`;
-    r += `    Delta: ${(fixedEpochMs - floatingEpochMs) / 1000}s = ${(fixedEpochMs - floatingEpochMs) / 60000} min\n`;
+    r += `  RESULT: Tasks already differ in home timezone! Delta=${(xEpoch - fEpoch) / 60000} min\n`;
   }
 
-  r += `\n--- BST Date Offset Check ---\n`;
-  r += `  July 15 dueDate getTimezoneOffset: ${floatingOffset} min\n`;
-  r += `  (Expected: -60 for BST/UTC+1, or 0 if OmniJS ignores DST)\n`;
-
   r += `\n--- Cleanup ---\n`;
-  r += `  Task "${task.name}" (${task.id.primaryKey}) left in inbox.\n`;
-  r += `  Run cleanup.js to delete all TZ-DD-*/TZ-PROBE-* tasks.\n`;
+  r += `  Tasks left in inbox: TZ-PROBE-Floating, TZ-PROBE-Fixed\n`;
+  r += `  Run cleanup.js to delete all TZ-PROBE-* tasks.\n`;
 
   r += `\n=== END ===\n`;
   return r;
