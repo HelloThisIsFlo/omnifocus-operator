@@ -14,7 +14,7 @@ This file is the output of a research session that analyzed what v1.3.2 changed 
 
 ## Progress
 
-- [ ] Chunk 1 — list_tasks Availability Migration
+- [x] Chunk 1 — list_tasks Availability Migration
 - [ ] Chunk 2 — Date Filter Validation + Composites
 - [ ] **Delete this file** (all chunks done, everything merged)
 
