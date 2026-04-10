@@ -54,3 +54,101 @@ Add a section explaining the naive-local principle alongside the existing design
 - Agents spend their reasoning on the user's problem, not on API mechanics
 - `format: "date-time"` (RFC 3339) requires timezone by spec → we use `str` to avoid contradicting our naive-preferred contract
 - Aware inputs accepted as convenience (e.g., copying from calendar APIs) — server converts silently
+
+## Scenario matrix
+
+All examples assume user is in BST (UTC+1). OmniFocus default due time is 19:00.
+
+### Write side — add_tasks / edit_tasks
+
+**W1. User says "due tomorrow at 5pm" — agent sends naive (the common case)**
+- Input: `"dueDate": "2026-07-16T17:00:00"`
+- Current: **REJECTED** — `AwareDatetime` requires timezone
+- Target: accepted → bridge `new Date("...T17:00:00")` → JS treats as local → OmniFocus stores `17:00` ✅
+
+**W2. User says "due tomorrow at 5pm" — agent sends UTC**
+- Input: `"dueDate": "2026-07-16T16:00:00Z"`
+- Current: accepted → bridge `new Date("...T16:00:00Z")` → local = 17:00 BST → stored `17:00` ✅
+- Target: accepted → server converts 16:00Z → 17:00 local → bridge gets naive → stored `17:00` ✅
+
+**W3. User says "due tomorrow at 5pm" — agent sends explicit offset**
+- Input: `"dueDate": "2026-07-16T17:00:00+01:00"`
+- Current: accepted → stored `17:00` ✅
+- Target: accepted → server converts to naive local → stored `17:00` ✅
+
+**W4. User says "due July 15" — agent sends date-only**
+- Input: `"dueDate": "2026-07-15"`
+- Current: **REJECTED** — `AwareDatetime` can't parse date-only
+- Target: accepted → ideally apply `DefaultDueTime` (19:00) → stored `19:00` on July 15
+  - Default-time application can be deferred to a later todo
+
+**W5. Agent copies date from a calendar API (aware UTC input)**
+- Input: `"dueDate": "2026-07-15T16:00:00Z"` (agent passes through without thinking)
+- Current: accepted → stored `17:00` BST ✅
+- Target: accepted → server converts 16:00Z → 17:00 local → stored `17:00` ✅
+- Key: agent didn't need to know the user's timezone in either case, but in the current system the agent was lucky — it already had a Z timestamp. Without it, the agent would need to add one.
+
+**W6. Agent sends naive for a non-local time (agent error)**
+- Scenario: calendar gives `16:00Z`, agent strips Z without converting, sends `"2026-07-15T16:00:00"`
+- Current: **REJECTED** — `AwareDatetime` catches it (but for the wrong reason — it rejects the lack of TZ, not the wrong time)
+- Target: accepted as `16:00` local → stored `16:00` (off by 1h). This is an agent error — the contract says "local time." The old contract couldn't prevent this either if the agent sent `"16:00:00Z"` thinking it was local.
+
+### Read side — date filters (list_tasks)
+
+**R1. "Show me tasks due today" — shorthand**
+- Input: `{due: "today"}`
+- Current: "today" = midnight UTC to midnight UTC. A task due at 00:30 BST (= 23:30 UTC prev day) is **EXCLUDED** — it's "yesterday" in UTC ❌
+- Target: "today" = midnight local to midnight local → task at 00:30 BST included ✅
+
+**R2. "Tasks due after July 15" — date-only absolute**
+- Input: `{due: {after: "2026-07-15"}}`
+- Current: bound = midnight UTC July 15. Task due 00:30 BST July 15 (= 23:30 UTC July 14) **EXCLUDED** ❌
+- Target: bound = midnight BST July 15 (= 23:00 UTC July 14) → task at 00:30 BST included ✅
+
+**R3. "Tasks due before 5pm today" — naive datetime in filter**
+- Input: `{due: {before: "2026-07-15T17:00:00"}}`
+- Current: WR-01 attaches UTC tzinfo → bound = 17:00 **UTC** (= 18:00 BST). A task due at 17:30 BST (= 16:30 UTC) passes the filter even though it's after 5pm local ❌
+- Target: inherits local tzinfo → bound = 17:00 **BST** (= 16:00 UTC). Task at 17:30 BST correctly excluded ✅
+
+**R4. "Tasks due after midnight" — aware datetime in filter**
+- Input: `{due: {after: "2026-07-15T00:00:00+01:00"}}`
+- Current: works correctly — `fromisoformat` preserves offset ✅
+- Target: same behavior, no change ✅
+
+**R5. "Tasks due this week"**
+- Input: `{due: {this: "w"}}`
+- Current: week boundaries computed from UTC midnight → off by ±offset at week start/end
+- Target: week boundaries computed from local midnight ✅
+
+**R6. "Tasks due in the last 7 days"**
+- Input: `{due: {last: "7d"}}`
+- Current: start = midnight UTC 7 days ago → tasks near midnight local may be misclassified
+- Target: start = midnight local 7 days ago ✅
+
+**R7. "Overdue tasks"**
+- Input: `{due: "overdue"}`
+- Current: `before = now(UTC)` — correct moment regardless of representation ✅
+- Target: `before = now(local)` — same absolute moment, different tzinfo. **No behavior change** ✅
+
+**R8. "Due soon"**
+- Input: `{due: "soon"}`
+- Current: threshold from UTC `now`. Calendar-aligned mode snaps to UTC midnight.
+- Target: threshold from local `now`. Calendar-aligned snaps to local midnight ✅
+
+### Edge cases
+
+**E1. DST transition day — "tasks due today" on spring-forward**
+- Input: `{due: "today"}` on March 29 (clocks go 01:00 → 02:00)
+- Current: 24h window (UTC doesn't have DST) — may include/exclude tasks incorrectly near boundary
+- Target: "today" = midnight local to midnight local = 23h window. Correct — matches how OmniFocus and humans think about "today" on DST transition days.
+
+**E2. Task due exactly at midnight local**
+- Task due `00:00:00` BST July 15 (= 23:00 UTC July 14)
+- Filter: `{due: {after: "2026-07-15"}}` (inclusive, `>=`)
+- Current: bound = 00:00 UTC July 15. Task at 23:00 UTC July 14 **EXCLUDED** ❌
+- Target: bound = 00:00 BST July 15 = 23:00 UTC July 14. Task at 23:00 UTC July 14 **INCLUDED** (exactly on boundary, `>=`) ✅
+
+**E3. `"now"` keyword**
+- Input: `{due: {before: "now"}}` or `{due: {after: "now"}}`
+- Current: returns `now(UTC)` — correct absolute moment ✅
+- Target: returns `now(local)` — same absolute moment. **No behavior change** ✅
