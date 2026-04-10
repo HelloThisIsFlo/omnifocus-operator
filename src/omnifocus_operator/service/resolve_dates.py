@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
@@ -223,37 +223,53 @@ def _resolve_absolute(
 
 
 def _parse_absolute_after(
-    value: str | datetime | date,
+    value: str,
     now: datetime,
 ) -> datetime:
-    """Parse 'after' value: date-only -> start of that day (RESOLVE-09).
+    """Parse 'after' bound: date-only -> start of that day (RESOLVE-09).
 
-    Contract guarantees typed input: Literal["now"], AwareDatetime, or date.
+    After Phase 49, values arrive as str (validated ISO date or datetime).
     """
     if value == "now":
         return now
-    if isinstance(value, date) and not isinstance(value, datetime):
-        return datetime(value.year, value.month, value.day, tzinfo=now.tzinfo)
-    # AwareDatetime -- contract guarantees tzinfo is set
-    assert isinstance(value, datetime) and value.tzinfo is not None
-    return value
+
+    dt = datetime.fromisoformat(value)
+
+    # Date-only string: no 'T' means just a date -> start of that day
+    if "T" not in value and "t" not in value:
+        return datetime(dt.year, dt.month, dt.day, tzinfo=now.tzinfo)
+
+    # Datetime string: if naive, inherit now's tzinfo (local by contract)
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=now.tzinfo)
+
+    # Aware: use as-is (agent specified explicit timezone)
+    return dt
 
 
 def _parse_absolute_before(
-    value: str | datetime | date,
+    value: str,
     now: datetime,
 ) -> datetime:
-    """Parse 'before' value: date-only -> start of NEXT day (RESOLVE-08).
+    """Parse 'before' bound: date-only -> start of NEXT day (RESOLVE-08).
 
-    Contract guarantees typed input: Literal["now"], AwareDatetime, or date.
+    After Phase 49, values arrive as str (validated ISO date or datetime).
     """
     if value == "now":
         return now
-    if isinstance(value, date) and not isinstance(value, datetime):
-        return datetime(value.year, value.month, value.day, tzinfo=now.tzinfo) + timedelta(days=1)
-    # AwareDatetime -- contract guarantees tzinfo is set
-    assert isinstance(value, datetime) and value.tzinfo is not None
-    return value
+
+    dt = datetime.fromisoformat(value)
+
+    # Date-only string: no 'T' means just a date -> start of next day (inclusive end)
+    if "T" not in value and "t" not in value:
+        return datetime(dt.year, dt.month, dt.day, tzinfo=now.tzinfo) + timedelta(days=1)
+
+    # Datetime string: if naive, inherit now's tzinfo (local by contract)
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=now.tzinfo)
+
+    # Aware: use as-is
+    return dt
 
 
 # ---------------------------------------------------------------------------
