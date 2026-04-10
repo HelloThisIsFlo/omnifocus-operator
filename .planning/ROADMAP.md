@@ -210,11 +210,11 @@ Plans:
   6. Local timezone choice centralized in a named helper function with explanatory docstring
   7. Write tool descriptions and examples use naive-local format; brief note about timezone acceptance
   8. `architecture.md` documents the naive-local principle with rationale
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 Plans:
-- [ ] 49-01-PLAN.md — Contract types to str + local_now() helper + descriptions + dead code removal
-- [ ] 49-02-PLAN.md — Service layer: domain normalization, payload passthrough, resolve_dates parsing, now -> local
-- [ ] 49-03-PLAN.md — Test migration + architecture.md documentation
+- [x] 49-01-PLAN.md — Contract types to str + local_now() helper + descriptions + dead code removal
+- [x] 49-02-PLAN.md — Service layer: domain normalization, payload passthrough, resolve_dates parsing, now -> local
+- [x] 49-03-PLAN.md — Test migration + architecture.md documentation
 
 ## Progress
 
@@ -232,4 +232,4 @@ Plans:
 | 46. Pipeline & Query Paths | v1.3.2 | 5/5 | Complete    | 2026-04-08 |
 | 47. Cross-Path Equivalence & Breaking Changes | v1.3.2 | 6/6 | Complete   | 2026-04-09 |
 | 48. Discriminated Union Refactor | v1.3.2 | 2/2 | Complete | 2026-04-10 |
-| 49. Naive-Local DateTime Contract | v1.3.2 | 0/3 | In Progress | - |
+| 49. Naive-Local DateTime Contract | v1.3.2 | 3/3 | Complete    | 2026-04-10 |
