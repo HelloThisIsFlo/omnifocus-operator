@@ -70,8 +70,11 @@ Carried forward from v1.3.1:
 12. Fix OrdinalWeekdaySpec → OrdinalWeekday cross-layer coercion in edit pipeline (service)
 13. Golden master re-capture required after Phase 42 mapper rewrites (human-only per GOLD-01)
 14. Add date filters to list_projects — reuse v1.3.2 infrastructure, investigate effective* columns
-15. Refactor DateFilter into discriminated union with typed date bounds (contracts)
-16. Rethink timezone handling strategy for date filter inputs (contracts)
+15. ~~Design timezone consistency policy for date filter inputs~~ → completed, superseded by #18
+16. Refactor DateFilter into discriminated union for schema-level validation (contracts)
+17. ~~Rethink timezone handling strategy for date filter inputs~~ → completed by timezone deep-dive
+18. Implement naive-local datetime contract for all date inputs (contracts)
+19. Use OmniFocus settings API for date preferences and due-soon threshold (service) — depends on #18
 
 ### Roadmap Evolution
 
