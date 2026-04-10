@@ -31,6 +31,11 @@ Anywhere the service layer creates a "current time" reference for date filter re
 
 Audit the entire service layer for `datetime.now(UTC)` or any UTC-anchored timestamp used as a date filter reference.
 
+> [!tip] Evidence — conversion formula proven across DST
+>
+> - The timezone deep-dive proved the CF epoch formula works correctly with local timezone across 430 tasks (both BST and GMT) — see `.research/deep-dives/timezone-behavior/RESULTS.md` §2
+> - Changing `now` from UTC to local won't break `query_builder.py` — tz-aware subtraction handles the offset correctly
+
 ### 2. Write side — naive-preferred contract, aware-accepted
 
 Replace `AwareDatetime` with `str` and a format validator on all date fields in the write contracts (add and edit). This changes the JSON Schema from `format: "date-time"` (RFC 3339, timezone mandatory) to plain `type: "string"` — removing the signal that tells agents to send timezone info.
@@ -41,10 +46,18 @@ Replace `AwareDatetime` with `str` and a format validator on all date fields in 
 >
 > Why `format: "date-time"` is wrong for us: it references RFC 3339 (section 5.6), which **requires** a timezone offset. An agent reading this schema is told "you must send a timezone" — the opposite of what we want. Clients that pre-validate against JSON Schema (e.g., Claude Desktop co-work mode) may even reject naive datetimes before they reach the server. `NaiveDatetime` looks like the right answer but produces the wrong schema.
 
+> [!tip] Evidence — bridge behavior proven for every input format
+>
+> - The timezone deep-dive created tasks with every date format and read them back — see `.research/deep-dives/timezone-behavior/RESULTS.md` §3 (format normalization table) and `03-create-readback/FINDINGS.md`
+> - **Naive** `"09:00:00"` → JS `new Date()` treats as local → stored `09:00` local ✅
+> - **UTC** `"09:00:00Z"` → JS converts to local → stored `10:00` BST ✅
+> - **Offset** `"09:00:00+05:30"` → JS normalizes via UTC → stored `04:30` BST ✅
+> - **Date-only** `"2026-07-15"` → JS parses as **UTC midnight** → stored `01:00` BST ⚠️ (see below)
+
 The normalization logic in the payload builder should handle:
 - **Naive input** → pass through as-is (already local)
 - **Aware input** → convert to local, strip tzinfo (convenience for when agents copy dates from other APIs like calendars)
-- **Date-only input** → apply `DefaultDueTime`/`DefaultStartTime` from OmniFocus settings (future, can defer)
+- **Date-only input** → **must be intercepted before reaching the bridge**. JS `new Date("2026-07-15")` parses as UTC midnight (ECMA-262 spec), not local midnight — during BST the user gets 1am instead of their default time. Apply `DefaultDueTime`/`DefaultStartTime` from OmniFocus settings to construct a full naive datetime before sending to the bridge. (See todo `2026-04-10-use-omnifocus-settings-api-for-date-preferences-and-due-soon.md` — can defer to that todo if implementing separately.)
 
 Update examples and descriptions to show naive local time as the default. Consider also adding a global note in the tool-level description (not just per-field) framing all dates as local time — so the agent gets the principle before reading individual fields.
 
