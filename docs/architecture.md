@@ -242,6 +242,39 @@ Everything else in the service layer is plumbing — I/O sequencing, entity look
 > - Contains opinions (show-more boundary choices, day-snapping behavior), but at the **per-field arithmetic** level
 > - Domain calls into it for individual field resolution and owns the **cross-field orchestration** — lifecycle mapping, edge-case fallbacks, what to do when configuration is missing
 
+### Date Filter Bounds: Two-Layer Contract
+
+> [!note] The short version
+>
+> - 🤖 **Agent-facing** — **inclusive/inclusive** (`>=` and `<=`)
+>   - Per the [Show-More Principle](#show-more-principle), no off-by-one surprises
+> - ⚙️ **Internal** — **inclusive/exclusive** (`>=` and `<`)
+>   - Half-open intervals compose cleanly
+> - The resolution layer bridges the gap by shifting `before` values forward
+
+Two distinct semantics at different layers:
+
+- 🤖 **Agent-facing contract** (spec + tool descriptions)
+  - `before` and `after` are both **inclusive**
+  - Agents echo the user's dates: `{after: "2026-04-01", before: "2026-04-14"}` includes April 14
+  - No off-by-one thinking required
+- ⚙️ **Internal representation** (`ResolvedDateBounds`)
+  - Classic half-open interval — `after` is inclusive (`>=`), `before` is exclusive (`<`)
+  - Applied identically in SQL (`query_builder.py`) and bridge fallback (`bridge_only.py`)
+
+The **resolution layer** (`resolve_dates.py`) bridges the two:
+
+- `_parse_absolute_before()` bumps date-only `before` values to midnight of the *next* day
+  - `before: "2026-03-31"` → resolves to `2026-04-01T00:00:00` → `< April 1 midnight` includes all of March 31
+- Shorthand periods (`this`, `last`, `next`) produce half-open bounds natively
+  - `{this: "d"}` → `[today 00:00, tomorrow 00:00)` — adjacent periods share a boundary without overlap or gaps
+
+> [!important] When adding new date comparison logic
+>
+> - Always use `>=` for `after` and `<` for `before` against `ResolvedDateBounds`
+> - The resolution layer has already adjusted values to produce inclusive agent-facing behavior
+> - Using `<=` for `before` would double-include the boundary day
+
 ## Read Pipeline
 
 ```mermaid
