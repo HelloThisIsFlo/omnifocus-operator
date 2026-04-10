@@ -32,6 +32,12 @@ Two tasks with identical `dueDate = new Date("2026-07-15T10:00:00Z")`, created i
 | 🌊 **Floating** | 11:00 BST | **11:00 EDT** — UTC shifted +5h |
 | 📌 **Fixed** | 11:00 BST | **06:00 EDT** — UTC unchanged |
 
+### OmniJS TimeZone API constraints
+
+- **IANA names don't work** — `new TimeZone("Europe/London")` → null
+- Only **abbreviations**: `"EST"`, `"UTC"`, `"PST"`, `"BST"`, `"GMT"`
+- ⚠️ Abbreviations are **DST-aware** — `new TimeZone("EST")` → EDT in summer (UTC-4, not UTC-5)
+
 ## 2. Conversion Formula ✅
 
 ```
@@ -57,6 +63,12 @@ All inputs via bridge → `new Date(input)` → stored as 🌊 naive local time:
 | Naive (no Z) | `09:00:00` | `09:00:00.000` | `08:00 UTC` | JS treats as local |
 | Date-only | `2026-07-15` | `01:00:00.000` | `00:00 UTC` | ⚠️ See below |
 | Offset | `09:00:00+05:30` | `04:30:00.000` | `03:30 UTC` | Normalized via UTC |
+
+> [!note] Bridge always produces 🌊
+>
+> - Creating tasks via bridge **never** sets `shouldUseFloatingTimeZone=false`
+> - To create a 📌 fixed task: set `dueDate` first, then explicitly set `shouldUseFloatingTimeZone = false`
+> - Currently irrelevant (100% floating), but documents the constraint
 
 > [!warning] Date-only input quirk
 >
