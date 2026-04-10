@@ -71,6 +71,8 @@ Carried forward from v1.3.1:
 13. Golden master re-capture required after Phase 42 mapper rewrites (human-only per GOLD-01)
 14. Add date filters to list_projects — reuse v1.3.2 infrastructure, investigate effective* columns
 15. Design timezone consistency policy for date filter inputs (contracts)
+16. Refactor DateFilter into discriminated union for schema-level validation (contracts)
+17. Rethink timezone handling strategy for date filter inputs (contracts)
 
 ### Blockers/Concerns
 
