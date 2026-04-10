@@ -34,7 +34,10 @@ from omnifocus_operator.contracts.use_cases.edit.tasks import (
     EditTaskCommand,
     EditTaskRepoPayload,
 )
-from omnifocus_operator.contracts.use_cases.list._date_filter import DateFilter
+from omnifocus_operator.contracts.use_cases.list._date_filter import (
+    AbsoluteRangeFilter,
+    ThisPeriodFilter,
+)
 from omnifocus_operator.contracts.use_cases.list._enums import (
     AvailabilityFilter,
     DueDateShortcut,
@@ -1044,16 +1047,16 @@ class TestResolveDateFilters:
         assert result.warnings == []
 
     def test_date_filter_object(self) -> None:
-        """DateFilter object (e.g. {this: 'w'}) is resolved correctly."""
+        """Concrete filter object (e.g. ThisPeriodFilter) is resolved correctly."""
         result = _domain().resolve_date_filters(
-            _date_query(due=DateFilter(this="d")), _NOW, week_start=0, due_soon_setting=None
+            _date_query(due=ThisPeriodFilter(this="d")), _NOW, week_start=0, due_soon_setting=None
         )
         assert result.bounds["due"].after == datetime(2026, 4, 7, 0, 0, 0, tzinfo=UTC)
         assert result.bounds["due"].before == datetime(2026, 4, 8, 0, 0, 0, tzinfo=UTC)
 
 
 # ---------------------------------------------------------------------------
-# Defer hint detection (D-10, D-11)
+# Defer hint detection (D-18, D-19)
 # ---------------------------------------------------------------------------
 
 
@@ -1067,7 +1070,7 @@ class TestDeferHintDetection:
         )
 
         result = _domain().resolve_date_filters(
-            _date_query(defer=DateFilter(after="now")),
+            _date_query(defer=AbsoluteRangeFilter(after="now")),
             _NOW,
             week_start=0,
             due_soon_setting=None,
@@ -1083,7 +1086,7 @@ class TestDeferHintDetection:
         )
 
         result = _domain().resolve_date_filters(
-            _date_query(defer=DateFilter(before="now")),
+            _date_query(defer=AbsoluteRangeFilter(before="now")),
             _NOW,
             week_start=0,
             due_soon_setting=None,
@@ -1099,7 +1102,7 @@ class TestDeferHintDetection:
         )
 
         result = _domain().resolve_date_filters(
-            _date_query(defer=DateFilter(after="now", before="2026-05-01")),
+            _date_query(defer=AbsoluteRangeFilter(after="now", before="2026-05-01")),
             _NOW,
             week_start=0,
             due_soon_setting=None,
@@ -1109,7 +1112,7 @@ class TestDeferHintDetection:
     def test_defer_non_now_no_hint(self) -> None:
         """defer: {after: '2026-01-01'} -> no defer hint (only 'now' triggers it)."""
         result = _domain().resolve_date_filters(
-            _date_query(defer=DateFilter(after="2026-01-01")),
+            _date_query(defer=AbsoluteRangeFilter(after="2026-01-01")),
             _NOW,
             week_start=0,
             due_soon_setting=None,
@@ -1122,7 +1125,7 @@ class TestDeferHintDetection:
     def test_non_defer_field_no_hint(self) -> None:
         """due: {after: 'now'} -> no defer hint (field must be 'defer')."""
         result = _domain().resolve_date_filters(
-            _date_query(due=DateFilter(after="now")),
+            _date_query(due=AbsoluteRangeFilter(after="now")),
             _NOW,
             week_start=0,
             due_soon_setting=None,
@@ -1133,7 +1136,7 @@ class TestDeferHintDetection:
     def test_defer_hints_non_blocking(self) -> None:
         """Query still resolves with bounds present alongside hint."""
         result = _domain().resolve_date_filters(
-            _date_query(defer=DateFilter(after="now")),
+            _date_query(defer=AbsoluteRangeFilter(after="now")),
             _NOW,
             week_start=0,
             due_soon_setting=None,
