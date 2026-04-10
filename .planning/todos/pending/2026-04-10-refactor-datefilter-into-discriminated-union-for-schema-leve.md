@@ -47,44 +47,32 @@ DateFilter = ThisPeriodFilter | LastPeriodFilter | NextPeriodFilter | AbsoluteRa
 
 ### Descriptions (in `descriptions.py`)
 
+Class docstrings: short, name the concept only. Field descriptions: terse, carry the detail.
+
 ```python
 # --- Date Filter Branch Models ---
 
-THIS_PERIOD_FILTER_DOC = (
-    "Filter to the current calendar period. "
-    "d = today, w = this week, m = this month, y = this year."
-)
+THIS_PERIOD_FILTER_DOC = "Filter to the current calendar period."
 
-LAST_PERIOD_FILTER_DOC = (
-    "Filter to a recent window ending now. "
-    "Duration: optional count + unit (e.g. '3d', '2w', 'm'). Omit count for 1."
-)
+LAST_PERIOD_FILTER_DOC = "Filter to a recent window ending now."
 
-NEXT_PERIOD_FILTER_DOC = (
-    "Filter to an upcoming window starting now. "
-    "Duration: optional count + unit (e.g. '3d', '2w', 'm'). Omit count for 1."
-)
+NEXT_PERIOD_FILTER_DOC = "Filter to an upcoming window starting now."
 
-ABSOLUTE_RANGE_FILTER_DOC = (
-    "Filter by explicit date bounds. Set before, after, or both. "
-    "Accepts ISO date ('2026-04-01'), ISO datetime ('2026-04-01T14:00:00Z'), or 'now'."
-)
+ABSOLUTE_RANGE_FILTER_DOC = "Filter by explicit date bounds. Set before, after, or both."
 
 # Field descriptions
 
 THIS_PERIOD_UNIT = "Calendar period: d (today), w (this week), m (this month), y (this year)."
 
 LAST_PERIOD_DURATION = (
-    "How far back from now. Optional count + unit: "
-    "'3d' (3 days), '2w' (2 weeks), 'm' (1 month). Omit count for 1."
+    "How far back from now. Count + unit: '3d', '2w', 'm'. Omit count for 1."
 )
 
 NEXT_PERIOD_DURATION = (
-    "How far ahead from now. Optional count + unit: "
-    "'3d' (3 days), '2w' (2 weeks), 'm' (1 month). Omit count for 1."
+    "How far ahead from now. Count + unit: '3d', '2w', 'm'. Omit count for 1."
 )
 
-ABSOLUTE_RANGE_BEFORE = "Upper bound (exclusive). ISO date, ISO datetime with timezone, or 'now'."
+ABSOLUTE_RANGE_BEFORE = "Upper bound (inclusive). ISO date, ISO datetime with timezone, or 'now'."
 
 ABSOLUTE_RANGE_AFTER = "Lower bound (inclusive). ISO date, ISO datetime with timezone, or 'now'."
 ```
