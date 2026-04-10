@@ -197,6 +197,25 @@ Plans:
 - [x] 48-01-PLAN.md — Contract layer: 4 filter models + discriminator + errors + descriptions + contract tests
 - [x] 48-02-PLAN.md — Service layer: resolver isinstance dispatch + domain fix + test migration + full suite green
 
+### Phase 49: Implement naive-local datetime contract for all date inputs
+**Goal:** All date inputs (write fields + filter bounds) use naive-local datetime as the preferred format, aware inputs are silently converted to local, and `now` timestamps align with local timezone — making the API match OmniFocus's naive-local storage model
+**Requirements**: LOCAL-01, LOCAL-02, LOCAL-03, LOCAL-04, LOCAL-05, LOCAL-06, LOCAL-07, LOCAL-08
+**Depends on:** Phase 48
+**Success Criteria** (what must be TRUE):
+  1. Write-side date fields (dueDate, deferDate, plannedDate) use `str` type — no `format: "date-time"` in JSON Schema
+  2. Naive datetime strings accepted on all date inputs; aware datetime strings silently converted to naive local
+  3. Date-only strings on write side intercepted and converted to midnight local before bridge
+  4. Read-side `_DateBound` uses `str`, `_reject_naive_datetime` removed
+  5. All `now` timestamps in service layer use local timezone — "today" and period boundaries align with local calendar
+  6. Local timezone choice centralized in a named helper function with explanatory docstring
+  7. Write tool descriptions and examples use naive-local format; brief note about timezone acceptance
+  8. `architecture.md` documents the naive-local principle with rationale
+**Plans:** 3 plans
+Plans:
+- [ ] 49-01-PLAN.md — Contract types to str + local_now() helper + descriptions + dead code removal
+- [ ] 49-02-PLAN.md — Service layer: domain normalization, payload passthrough, resolve_dates parsing, now -> local
+- [ ] 49-03-PLAN.md — Test migration + architecture.md documentation
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -212,22 +231,5 @@ Plans:
 | 45. Date Models & Resolution | v1.3.2 | 5/5 | Complete    | 2026-04-08 |
 | 46. Pipeline & Query Paths | v1.3.2 | 5/5 | Complete    | 2026-04-08 |
 | 47. Cross-Path Equivalence & Breaking Changes | v1.3.2 | 6/6 | Complete   | 2026-04-09 |
-
-### Phase 49: Implement naive-local datetime contract for all date inputs
-
-**Goal:** All date inputs (write fields + filter bounds) use naive-local datetime as the preferred format, aware inputs are silently converted to local, and `now` timestamps align with local timezone — making the API match OmniFocus's naive-local storage model
-**Requirements**: LOCAL-01, LOCAL-02, LOCAL-03, LOCAL-04, LOCAL-05, LOCAL-06, LOCAL-07, LOCAL-08
-**Depends on:** Phase 48
-**Success Criteria** (what must be TRUE):
-  1. Write-side date fields (dueDate, deferDate, plannedDate) use `str` type — no `format: "date-time"` in JSON Schema
-  2. Naive datetime strings accepted on all date inputs; aware datetime strings silently converted to naive local
-  3. Date-only strings on write side intercepted and converted to midnight local before bridge
-  4. Read-side `_DateBound` uses `str`, `_reject_naive_datetime` removed
-  5. All `now` timestamps in service layer use local timezone — "today" and period boundaries align with local calendar
-  6. Local timezone choice centralized in a named helper function with explanatory docstring
-  7. Write tool descriptions and examples use naive-local format; brief note about timezone acceptance
-  8. `architecture.md` documents the naive-local principle with rationale
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 49 to break down)
+| 48. Discriminated Union Refactor | v1.3.2 | 2/2 | Complete | 2026-04-10 |
+| 49. Naive-Local DateTime Contract | v1.3.2 | 0/3 | In Progress | - |
