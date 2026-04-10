@@ -182,6 +182,21 @@ Plans:
 - [x] 47-05-PLAN.md — Gap closure: fix "today" shortcut crash on non-due fields (DateFieldShortcut enum)
 - [x] 47-06-PLAN.md — Gap closure: fix lifecycle date filters dropping remaining tasks (IS NULL OR pattern)
 
+### Phase 48: Refactor DateFilter into discriminated union with typed date bounds
+**Goal:** Replace flat DateFilter with 4-model discriminated union, type before/after bounds as Literal["now"] | AwareDatetime | date | None, cascade through resolver and tests
+**Requirements**: UNION-01, UNION-02, UNION-03, UNION-04, UNION-05, UNION-06, UNION-07, UNION-08
+**Depends on:** Phase 47
+**Success Criteria** (what must be TRUE):
+  1. DateFilter is a discriminated union of ThisPeriodFilter, LastPeriodFilter, NextPeriodFilter, AbsoluteRangeFilter with callable Discriminator routing
+  2. Naive datetimes rejected structurally via BeforeValidator on before/after fields
+  3. Resolver uses isinstance dispatch on concrete classes, parse functions accept typed values
+  4. domain.py isinstance targets AbsoluteRangeFilter for defer hint detection
+  5. Full test suite passes with all constructions migrated to concrete classes
+**Plans:** 2 plans
+Plans:
+- [ ] 48-01-PLAN.md — Contract layer: 4 filter models + discriminator + errors + descriptions + contract tests
+- [ ] 48-02-PLAN.md — Service layer: resolver isinstance dispatch + domain fix + test migration + full suite green
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -197,13 +212,3 @@ Plans:
 | 45. Date Models & Resolution | v1.3.2 | 5/5 | Complete    | 2026-04-08 |
 | 46. Pipeline & Query Paths | v1.3.2 | 5/5 | Complete    | 2026-04-08 |
 | 47. Cross-Path Equivalence & Breaking Changes | v1.3.2 | 6/6 | Complete   | 2026-04-09 |
-
-### Phase 48: Refactor DateFilter into discriminated union with typed date bounds
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 47
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 48 to break down)
