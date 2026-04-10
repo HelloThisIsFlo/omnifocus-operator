@@ -115,7 +115,7 @@ ABSOLUTE_RANGE_AFTER = "Lower bound (inclusive). ISO date, ISO datetime with tim
 - `last`/`next` count > 0 and valid unit — move existing `_validate_duration` validator to `LastPeriodFilter` and `NextPeriodFilter`
 - `this` bare unit check — move existing `_validate_this_unit` validator to `ThisPeriodFilter` (but this becomes redundant since `this: Literal["d","w","m","y"]` already enforces it structurally — remove the validator)
 - `after <= before` ordering (when both are concrete, non-"now" values) — keep in `AbsoluteRangeFilter` as `@model_validator`
-- `AbsoluteRangeFilter` at least one field set — keep as `@model_validator`; reuse existing `err.DATE_FILTER_EMPTY` error message
+- `AbsoluteRangeFilter` at least one field set — keep as `@model_validator`; error message must be educative: explain what `before`/`after` accept, not just that one is required. Update or replace `err.DATE_FILTER_EMPTY` accordingly.
 
 Module-level regex patterns (`_DATE_DURATION_PATTERN`, `_THIS_UNIT_PATTERN`) stay at module level.
 
@@ -165,12 +165,12 @@ Each date field's `anyOf` goes from 2 branches (shortcut enum + DateFilter objec
 
 ## Spike before implementing
 
-Two things to verify:
+**1. Pydantic parsing order for `Literal["now"] | AwareDatetime | date | None`**
 
-**1. Error message quality**: Confirm Pydantic smart union error messages stay clean when no branch matches. E.g., `{"this": "3d"}` fails `Literal` on branch 1, fails because `this` isn't a valid field on branches 2-4. Verify the agent gets a useful error, not a wall of per-branch failures.
+The real unknown: does `"2026-04-01"` (date-only string) correctly land on `date`, or does Pydantic try `AwareDatetime` first and succeed (producing an unintended datetime)? Pydantic tries union branches left to right — if `AwareDatetime` accepts date-only strings, `date` is never reached. Verify with a minimal test before committing to this type.
 
-**2. `AbsoluteRangeFilter` routing with all-optional fields**: `AbsoluteRangeFilter` is the only branch with no required fields. Verify that Pydantic correctly routes `{}` to `AbsoluteRangeFilter` (where the "at least one field set" validator fires) rather than silently failing to match any branch. If Pydantic doesn't route `{}` there, a discriminator annotation or structural workaround may be needed.
+**2. Rendered schema for typed bounds**
 
-**3. Typed bounds schema**: Verify `Literal["now"] | AwareDatetime | date | None` on `before`/`after` produces clean `anyOf` in the rendered JSON Schema.
+Hack `before`/`after` to `Literal["now"] | AwareDatetime | date | None` on a local branch (no commit), restart the server, and inspect the rendered JSON Schema from the agent's perspective. Verify the `anyOf` is clean and agents would understand it.
 
-Note: a quick spike was already run on the discriminated union shape (without typed bounds) and the schema looked clean. Items 2 and 3 are the untested parts.
+Note: a quick spike was already run on the discriminated union shape (without typed bounds) and the schema looked clean. Both items above are the untested parts.
