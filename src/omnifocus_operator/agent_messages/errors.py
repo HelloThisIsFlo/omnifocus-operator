@@ -131,13 +131,8 @@ REPETITION_INVALID_END_EMPTY = (
 
 DATE_FILTER_RANGE_EMPTY = (
     "Date range filter requires at least one of: before or after. "
-    "Each accepts an ISO date ('2026-04-01'), ISO datetime with timezone "
-    "('2026-04-01T14:00:00Z'), or 'now'."
-)
-
-DATE_FILTER_NAIVE_DATETIME = (
-    "Datetime must include timezone (e.g. '2026-04-01T14:00:00Z' or "
-    "'2026-04-01T14:00:00+02:00'). Date-only ('2026-04-01') is also accepted."
+    "Each accepts an ISO date ('2026-04-01'), ISO datetime "
+    "('2026-04-01T14:00:00'), or 'now'. Timezone offsets also accepted."
 )
 
 DATE_FILTER_INVALID_DURATION = (

@@ -32,7 +32,7 @@ EFFECTIVE_COMPLETION_DATE = (
 
 # --- Dates: Write-Side ---
 
-DATE_EXAMPLE = "2026-03-15T17:00:00Z"
+DATE_EXAMPLE = "2026-03-15T17:00:00"
 
 DUE_DATE_WRITE = (
     "Deadline with real consequences if missed. Not for intentions -- use plannedDate instead."
@@ -137,8 +137,12 @@ THIS_PERIOD_UNIT = "When? d (today), w (this week), m (this month), y (this year
 _DURATION_FORMAT = '"N<unit>" (unit: d/w/m/y). Omit count for 1. Examples: "3d", "2w", "m".'
 LAST_PERIOD_DURATION = f"How far back from now. {_DURATION_FORMAT}"
 NEXT_PERIOD_DURATION = f"How far ahead from now. {_DURATION_FORMAT}"
-ABSOLUTE_RANGE_BEFORE = "Upper bound (inclusive). ISO date, ISO datetime with timezone, or 'now'."
-ABSOLUTE_RANGE_AFTER = "Lower bound (inclusive). ISO date, ISO datetime with timezone, or 'now'."
+ABSOLUTE_RANGE_BEFORE = (
+    "Upper bound (inclusive). ISO date, ISO datetime, or 'now'. Dates are local time."
+)
+ABSOLUTE_RANGE_AFTER = (
+    "Lower bound (inclusive). ISO date, ISO datetime, or 'now'. Dates are local time."
+)
 
 DUE_DATE_SHORTCUT_DOC = "Shortcut for filtering by due date: overdue, soon, or today."
 
@@ -446,6 +450,9 @@ GET_TAG_TOOL_DOC = (
 ADD_TASKS_TOOL_DOC = (
     "Create tasks in OmniFocus. Limited to 1 item per call.\n"
     "\n"
+    "All dates are local time (no timezone needed). Timezone offsets also\n"
+    "accepted and silently converted to local.\n"
+    "\n"
     "Tags accept names (case-insensitive) or IDs; you can mix both.\n"
     "Non-existent names are rejected. Ambiguous names (case-insensitive\n"
     "collision) return an error.\n"
@@ -571,6 +578,9 @@ LIST_PERSPECTIVES_TOOL_DOC = (
 
 EDIT_TASKS_TOOL_DOC = (
     "Edit existing tasks in OmniFocus using patch semantics. Max 1 item per call.\n"
+    "\n"
+    "All dates are local time (no timezone needed). Timezone offsets also\n"
+    "accepted and silently converted to local.\n"
     "\n"
     "Patch: omit = no change, null = clear, value = update.\n"
     "\n"
