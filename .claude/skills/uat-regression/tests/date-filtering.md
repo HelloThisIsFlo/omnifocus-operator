@@ -6,7 +6,7 @@ Tests `list_tasks` date filtering — due date shortcuts (overdue, soon, today),
 
 - **Search isolation.** Every test includes `search: "DF-"` to restrict results to test tasks only.
 - **Read-only suite.** `list_tasks` is idempotent. No cleanup between tests — only after the suite completes.
-- **Date sensitivity.** Tests depend on relative dates computed at setup time. If running after 10:30 PM local, tests 1b and 4a become unreliable — skip or reschedule. Test 7b assumes the suite runs after 06:00 local (DF-DeferToday's defer date must have passed).
+- **Date sensitivity.** Tests depend on relative dates computed at setup time. If running after 10:30 PM local, tests 1b, 4a, 5f, 5g, and 5h become unreliable — skip or reschedule. Tests 5f–5h test boundary inclusivity using TODAY_DATE against tasks due today; if OVERDUE_DUE (now − 2h) crosses midnight, those tasks land on yesterday and the tests break. Test 7b assumes the suite runs after 06:00 local (DF-DeferToday's defer date must have passed).
 - **Threshold-dependent.** Tests 1b and 4a depend on the user's OmniFocus "due soon" threshold, discovered during setup.
 
 ## Setup
@@ -29,9 +29,9 @@ Store the answer as **due-soon-threshold**.
 
 Check the current local time. If after 10:30 PM:
 
-> Due-soon tests are unreliable near midnight because date boundaries shift. Run these tests earlier in the day, or skip tests 1b and 4a for now.
+> Due-soon and boundary-inclusivity tests are unreliable near midnight because date boundaries shift. Run these tests earlier in the day, or skip tests 1b, 4a, 5f, 5g, and 5h for now.
 
-If the user wants to proceed anyway, mark tests 1b and 4a as SKIP in the report.
+If the user wants to proceed anyway, mark tests 1b, 4a, 5f, 5g, and 5h as SKIP in the report.
 
 ### Step 3 — Compute Test Dates
 
@@ -208,6 +208,18 @@ None — all setup is automated.
 1. `list_tasks` with `due: {after: "now"}, search: "DF-"`
 2. PASS if: DF-DueSoon, DF-DueToday, DF-Future appear (all have due dates after now); DF-Overdue does NOT appear (due before now); DF-InheritParent, DF-InheritChild do NOT appear (inherited overdue = before now); DF-NoDue does NOT appear
 
+#### Test 5f: `before` boundary is inclusive — date-only
+1. `list_tasks` with `due: {before: "TODAY_DATE"}, search: "DF-"` (substitute today's YYYY-MM-DD)
+2. PASS if: DF-Overdue appears (due 2h ago — on today's date, proving `before` includes the boundary day); DF-DueToday appears (due later today — still on the boundary day); DF-InheritParent and DF-InheritChild appear (effective due date is today); DF-DueSoon appears if SOON_DUE is today (threshold-dependent — always true for "today" threshold). DF-Future does NOT appear (30 days out). DF-NoDue does NOT appear. Key signal: if `before` were exclusive on date-only, NO tasks due today would appear — they all do.
+
+#### Test 5g: `after` boundary is inclusive — date-only
+1. `list_tasks` with `due: {after: "TODAY_DATE"}, search: "DF-"` (substitute today's YYYY-MM-DD)
+2. PASS if: DF-Overdue appears (due 2h ago — on today's date, proving `after` includes the boundary day); DF-DueToday appears (due later today); DF-DueSoon appears (due today or later — always after TODAY_DATE midnight); DF-Future appears (30 days out); DF-InheritParent and DF-InheritChild appear (effective due date is today). DF-NoDue does NOT appear. Key signal: if `after` were exclusive on date-only, tasks due exactly on TODAY_DATE at 00:00 would be excluded — but all today's tasks appear.
+
+#### Test 5h: Same-day range — both bounds equal
+1. `list_tasks` with `due: {after: "TODAY_DATE", before: "TODAY_DATE"}, search: "DF-"` (both set to today's YYYY-MM-DD)
+2. PASS if: DF-Overdue and DF-DueToday appear (both due today — within the single-day window); DF-InheritParent and DF-InheritChild appear (effective due date is today); DF-DueSoon appears if SOON_DUE is today (threshold-dependent). DF-Future does NOT appear (30 days out — outside the single day). DF-NoDue does NOT appear. This proves the spec guarantee: equal date-only bounds match exactly one day.
+
 ### 6. Combo Filters (Date + Base)
 
 #### Test 6a: due: "overdue" + flagged: true
@@ -283,6 +295,9 @@ None — all setup is automated.
 | 5c | Absolute: range [now, tomorrow] | Future-today window; overdue and far-future both excluded | |
 | 5d | Absolute: before now = overdue | Equivalent result to "overdue" shortcut (test 1a) | |
 | 5e | Absolute: after now = future | Only future due dates; overdue and no-due excluded | |
+| 5f | Boundary: before inclusive | `before: "TODAY_DATE"` includes tasks due today; exclusive would miss them | |
+| 5g | Boundary: after inclusive | `after: "TODAY_DATE"` includes tasks due today; exclusive would miss 00:00 edge | |
+| 5h | Boundary: same-day range | Equal date-only bounds match exactly one day (spec guarantee) | |
 | 6a | Combo: overdue + flagged | AND logic; only flagged overdue task appears | |
 | 6b | Combo: completed + search | Lifecycle auto-inclusion + narrow search; single task returned | |
 | 6c | Combo: today + flagged | AND logic; flagged due-today tasks only | |
