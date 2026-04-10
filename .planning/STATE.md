@@ -73,6 +73,10 @@ Carried forward from v1.3.1:
 15. Refactor DateFilter into discriminated union with typed date bounds (contracts)
 16. Rethink timezone handling strategy for date filter inputs (contracts)
 
+### Roadmap Evolution
+
+- Phase 48 added: Refactor DateFilter into discriminated union with typed date bounds
+
 ### Blockers/Concerns
 
 (None)

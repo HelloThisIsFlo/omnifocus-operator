@@ -197,3 +197,13 @@ Plans:
 | 45. Date Models & Resolution | v1.3.2 | 5/5 | Complete    | 2026-04-08 |
 | 46. Pipeline & Query Paths | v1.3.2 | 5/5 | Complete    | 2026-04-08 |
 | 47. Cross-Path Equivalence & Breaking Changes | v1.3.2 | 6/6 | Complete   | 2026-04-09 |
+
+### Phase 48: Refactor DateFilter into discriminated union with typed date bounds
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 47
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 48 to break down)
