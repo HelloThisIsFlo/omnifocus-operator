@@ -105,7 +105,7 @@ class PayloadBuilder:
                 kwargs[field] = value
 
     def _add_dates_if_set(self, kwargs: dict[str, object], command: object, *fields: str) -> None:
-        """Add non-UNSET date fields to kwargs. Values are already str after domain normalization."""
+        """Add non-UNSET date fields to kwargs. Values are str after normalization."""
         for field in fields:
             value = getattr(command, field)
             if is_set(value):

@@ -13,9 +13,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, NoReturn
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 from omnifocus_operator.agent_messages.errors import (
     REPETITION_NO_EXISTING_RULE,

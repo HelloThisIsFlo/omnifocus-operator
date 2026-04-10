@@ -579,8 +579,7 @@ LIST_PERSPECTIVES_TOOL_DOC = (
 EDIT_TASKS_TOOL_DOC = (
     "Edit existing tasks in OmniFocus using patch semantics. Max 1 item per call.\n"
     "\n"
-    "All dates are local time (no timezone needed). Timezone offsets also\n"
-    "accepted and silently converted to local.\n"
+    "Dates are local time. Offsets accepted and converted.\n"
     "\n"
     "Patch: omit = no change, null = clear, value = update.\n"
     "\n"

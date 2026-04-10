@@ -31,7 +31,7 @@ def _validate_date_bound_string(v: object) -> object:
     try:
         _datetime.fromisoformat(v)
     except ValueError:
-        raise ValueError(err.INVALID_DATE_FORMAT.format(value=v))
+        raise ValueError(err.INVALID_DATE_FORMAT.format(value=v)) from None
     return v
 
 

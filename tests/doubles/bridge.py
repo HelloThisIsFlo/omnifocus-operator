@@ -405,7 +405,7 @@ class InMemoryBridge(Bridge):
             raise ValueError(msg)
 
         # Simple field updates (both params and stored dicts use camelCase)
-        _DATE_KEYS = {"dueDate", "deferDate", "plannedDate"}
+        date_keys = {"dueDate", "deferDate", "plannedDate"}
         for key in (
             "name",
             "note",
@@ -417,7 +417,7 @@ class InMemoryBridge(Bridge):
         ):
             if key in params:
                 value = params[key]
-                if key in _DATE_KEYS:
+                if key in date_keys:
                     value = _ensure_tz_aware(value)
                 task[key] = value
 

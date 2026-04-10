@@ -46,7 +46,7 @@ def _validate_date_string(v: object) -> object:
     try:
         _datetime.fromisoformat(v)
     except ValueError:
-        raise ValueError(INVALID_DATE_FORMAT.format(value=v))
+        raise ValueError(INVALID_DATE_FORMAT.format(value=v)) from None
     return v
 
 

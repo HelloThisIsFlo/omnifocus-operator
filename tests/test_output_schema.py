@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import importlib
 import inspect
+import json
 import pkgutil
 from typing import Any
 
@@ -23,8 +24,8 @@ from omnifocus_operator.contracts.shared.repetition_rule import (
     FrequencyAddSpec,
     FrequencyEditSpec,
 )
-from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskResult
-from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
+from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskCommand, AddTaskResult
+from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskCommand, EditTaskResult
 from omnifocus_operator.contracts.use_cases.list.common import ListResult
 from omnifocus_operator.models import AllEntities, Folder, Perspective, Project, Tag, Task
 from omnifocus_operator.models.enums import BasedOn, Schedule
@@ -665,9 +666,6 @@ class TestWriteSchemaNoDateTimeFormat:
 
     def test_add_task_command_no_date_time_format(self) -> None:
         """AddTaskCommand schema must not contain format: 'date-time'."""
-        import json
-
-        from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskCommand
 
         schema_str = json.dumps(AddTaskCommand.model_json_schema())
         assert "date-time" not in schema_str, (
@@ -677,9 +675,6 @@ class TestWriteSchemaNoDateTimeFormat:
 
     def test_edit_task_command_no_date_time_format(self) -> None:
         """EditTaskCommand schema must not contain format: 'date-time'."""
-        import json
-
-        from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskCommand
 
         schema_str = json.dumps(EditTaskCommand.model_json_schema())
         assert "date-time" not in schema_str, (

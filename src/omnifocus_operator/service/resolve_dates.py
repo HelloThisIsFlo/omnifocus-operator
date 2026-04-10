@@ -217,8 +217,8 @@ def _resolve_absolute(
     now: datetime,
 ) -> tuple[datetime | None, datetime | None]:
     after, before = df.after, df.before
-    after_dt = _parse_absolute_after(after, now) if is_set(after) else None  # type: ignore[arg-type]  # python/mypy#11907
-    before_dt = _parse_absolute_before(before, now) if is_set(before) else None  # type: ignore[arg-type]  # python/mypy#11907
+    after_dt = _parse_absolute_after(after, now) if is_set(after) else None
+    before_dt = _parse_absolute_before(before, now) if is_set(before) else None
     return (after_dt, before_dt)
 
 
