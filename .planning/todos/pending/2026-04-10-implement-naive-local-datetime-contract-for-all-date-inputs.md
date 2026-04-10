@@ -35,12 +35,18 @@ Audit the entire service layer for `datetime.now(UTC)` or any UTC-anchored times
 
 Replace `AwareDatetime` with `str` and a format validator on all date fields in the write contracts (add and edit). This changes the JSON Schema from `format: "date-time"` (RFC 3339, timezone mandatory) to plain `type: "string"` — removing the signal that tells agents to send timezone info.
 
+> [!warning] Don't use `NaiveDatetime`
+>
+> Pydantic's `NaiveDatetime`, `AwareDatetime`, and plain `datetime` all produce **identical** JSON Schema: `format: "date-time"`. Verified empirically. Only `str` drops the format constraint.
+>
+> Why `format: "date-time"` is wrong for us: it references RFC 3339 (section 5.6), which **requires** a timezone offset. An agent reading this schema is told "you must send a timezone" — the opposite of what we want. Clients that pre-validate against JSON Schema (e.g., Claude Desktop co-work mode) may even reject naive datetimes before they reach the server. `NaiveDatetime` looks like the right answer but produces the wrong schema.
+
 The normalization logic in the payload builder should handle:
 - **Naive input** → pass through as-is (already local)
 - **Aware input** → convert to local, strip tzinfo (convenience for when agents copy dates from other APIs like calendars)
 - **Date-only input** → apply `DefaultDueTime`/`DefaultStartTime` from OmniFocus settings (future, can defer)
 
-Update examples and descriptions to show naive local time as the default.
+Update examples and descriptions to show naive local time as the default. Consider also adding a global note in the tool-level description (not just per-field) framing all dates as local time — so the agent gets the principle before reading individual fields.
 
 ### 3. Unify read-side filter inputs
 
