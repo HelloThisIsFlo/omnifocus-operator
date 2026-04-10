@@ -163,14 +163,30 @@ Agents send the same JSON. Schema is just tighter and now documented.
 ### Schema shape
 Each date field's `anyOf` goes from 2 branches (shortcut enum + DateFilter object) to 5 branches (shortcut enum + 4 filter objects). Verify rendered schema looks clean after implementation.
 
-## Spike before implementing
+## Spike results (verified)
 
-**1. Pydantic parsing order for `Literal["now"] | AwareDatetime | date | None`**
+Both spikes completed — no open unknowns remain.
 
-The real unknown: does `"2026-04-01"` (date-only string) correctly land on `date`, or does Pydantic try `AwareDatetime` first and succeed (producing an unintended datetime)? Pydantic tries union branches left to right — if `AwareDatetime` accepts date-only strings, `date` is never reached. Verify with a minimal test before committing to this type.
+**1. Pydantic parsing order** — ✅ confirmed
 
-**2. Rendered schema for typed bounds**
+| Input | Parsed as | Correct? |
+|---|---|---|
+| `"2026-04-01"` | `date(2026, 4, 1)` | ✅ lands on `date`, not consumed by `AwareDatetime` |
+| `"2026-04-01T14:00:00Z"` | `datetime(..., tzinfo=UTC)` | ✅ |
+| `"2026-04-01T14:00:00"` (naive) | `ValidationError` | ✅ rejected structurally |
+| `"now"` | `str "now"` | ✅ `Literal["now"]` match |
+| `None` / omitted | `None` | ✅ |
 
-Hack `before`/`after` to `Literal["now"] | AwareDatetime | date | None` on a local branch (no commit), restart the server, and inspect the rendered JSON Schema from the agent's perspective. Verify the `anyOf` is clean and agents would understand it.
+**2. Rendered JSON Schema** — ✅ clean
 
-Note: a quick spike was already run on the discriminated union shape (without typed bounds) and the schema looked clean. Both items above are the untested parts.
+Each `before`/`after` field renders as:
+```json
+"anyOf": [
+  {"const": "now", "type": "string"},
+  {"format": "date-time", "type": "string"},
+  {"format": "date", "type": "string"},
+  {"type": "null"}
+]
+```
+
+`Literal["now"]` renders as `const` (not `enum`) — cleaner. Three distinct branches, all using standard JSON Schema annotations agents understand natively. Massive improvement over the previous bare `{"type": "string"}`.
