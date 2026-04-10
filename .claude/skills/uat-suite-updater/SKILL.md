@@ -7,6 +7,32 @@ description: Create or update UAT regression test suites for OmniFocus Operator.
 
 Two-phase workflow for updating UAT regression suites after shipping a milestone: **initialize** (deep research → seed file) then **worker** (pick up chunks → execute).
 
+## Spec-Driven Principle
+
+These suites are **spec conformance tests** — "does the implementation match what was specified?" They are NOT derived from reading source code.
+
+**Allowed sources** (for both seed generation and workers):
+- **Milestone specs**: `.research/updated-spec/MILESTONE-v{X}.md` — the authoritative spec, supersedes originals
+- **Per-phase documents** in `.planning/phases/{N}-{name}/`:
+  - `{N}-CONTEXT.md` — phase requirements and scope
+  - `{N}-DISCUSSION-LOG.md` — decision resolutions ("we decided X instead of Y")
+  - `{N}-VERIFICATION.md` — did we build what was planned?
+  - `{N}-VALIDATION.md` — does it meet requirements?
+  - `{N}-{NN}-SUMMARY.md` — what each sub-plan delivered
+  - `{N}-UAT.md` — previous UAT results (if any)
+- **Project-level**: `.planning/ROADMAP.md`, `.planning/REQUIREMENTS.md`, `.planning/STATE.md`
+- **Archived milestones**: `.planning/milestones/v{X}-ROADMAP.md`, `v{X}-REQUIREMENTS.md`, `v{X}-phases/`
+- **Architecture docs**: `docs/architecture.md`, `docs/model-taxonomy.md`, `docs/omnifocus-concepts.md`
+- **Existing UAT suite files** in `.claude/skills/uat-regression/tests/`
+
+The agent should explore these locations autonomously — the list above is guidance, not exhaustive. If other non-code docs exist (e.g., `RETROSPECTIVE.md`, research notes), those are fair game too. The only hard rule is: **never read `.py` files or automated test files**.
+
+**Never read**: `.py` source files, automated test files, or any implementation code. If you derive tests by reading the code, you confirm what the code does — not what it should do. That's circular and defeats the purpose of UAT.
+
+**Warning/error assertions**: if the spec or planning docs include the exact warning text, use it. If they don't, the test asserts behavioral criteria instead — "warning is present, is helpful, contains no internals (no `type=`, `pydantic`, `input_value`)". The self-verification step (Worker Step 4) is where spec expectations meet reality.
+
+**Regression meaning**: once a suite passes, running it later should still pass — unless there's a documented, agreed-upon breaking change visible in planning docs. The suite updater's job is to update suites when the spec evolves, not when the code changes.
+
 ## Mode Detection
 
 Always run this first. Determines which mode to enter.
@@ -17,6 +43,9 @@ Always run this first. Determines which mode to enter.
    - Unchecked content chunks exist → **Worker Mode**
    - All content chunks checked (only "Delete this file" unchecked) → **Completion Mode**
 4. **Override**: if the user names a specific suite + specific change (e.g., "just add X to edit-operations.md"), skip mode detection → **Ad-hoc Override**
+5. **Re-seed override**: if a seed file exists with unchecked chunks BUT the user explicitly asks to re-analyze or regenerate (e.g., "run it again", "re-seed", "fresh analysis"), ask: "Found existing seed with N unchecked chunks. Archive the old seed and generate a fresh analysis?" On confirmation, archive to `.research/uat-suite-seeds/` and enter Initialization Mode.
+
+**Idempotency**: this workflow is safe to re-run. Initialization always compares the spec against the current state of existing suites. If suites are already up to date (from a previous run or manual edits), the gap analysis will find fewer or no gaps. Running it twice on the same state produces the same result.
 
 ## Initialization Mode
 
@@ -38,33 +67,61 @@ Deep research session that produces a seed file coordinating future worker sessi
 
 Spawn four agents in parallel:
 
-- **Agent A — Source diff**: `git diff {prev}..{tag} --stat`, group changes into themes
-- **Agent B — Warning/error inventory**: search service layer for all warning/error strings, record pattern + trigger condition. Focus on NEW strings vs prev tag.
+- **Agent A — Scope overview**: `git diff {prev}..{tag} --stat` to understand which areas changed, then read phase CONTEXT files and verification reports to understand what each phase delivered. Group into themes based on planning docs, not code.
+- **Agent B — Warning/error inventory**: read phase requirement specs, CONTEXT files, and verification reports. Extract every warning/error that was specified or confirmed — record ID, expected behavior, and trigger condition. Do NOT read source code to find warning strings.
 - **Agent C — Existing suite review**: read all suites in `.claude/skills/uat-regression/tests/`, catalog test counts and coverage domains
 - **Agent D — Planning context**: read milestone ROADMAP, phase CONTEXT files, understand what was *intended*
 
 ### Step 3 — Gap analysis
 
-- Per-suite: what new tests are needed, what assertions are broken (with line references)
+- Per-suite: what new tests are needed, what assertions are broken (with references to spec/planning docs)
 - Cross-reference every warning/error string against existing suite coverage
 - Determine if new suites or composite restructuring is needed
+- **New suite detection**: if the analysis identifies that a new suite file is needed, flag it — this affects how chunks are structured (see Step 4)
+- **Known gaps**: distinguish between "not yet implemented" and "should work but doesn't":
+  - If a spec requirement belongs to a phase that hasn't been executed yet → skip it, no test needed yet
+  - If a feature should be working (phase completed) but has a known bug → create a test reflecting the spec's expected behavior. It will fail during UAT, which is correct — the suite caught a real gap.
 
 ### Step 4 — Chunk the work
 
 - Group by suite affinity (shared themes/setup)
-- ~15 new tests + ~10 assertion fixes max per chunk
-- Final chunk for structural changes (composites, SKILL.md updates) if needed
+- **Proportional sizing**: ~15 new tests + ~10 assertion fixes max per chunk, but scale down to match the actual gap. If total work is ≤15 tests + ≤10 fixes, that's 1 chunk, not 4. Don't create artificial chunk boundaries for small updates.
+- **New suite registration**: when a chunk creates a NEW suite file, that same chunk MUST include instructions to:
+  1. Add the suite to the uat-regression SKILL.md skill table (name, file path, test count, coverage description)
+  2. Add the suite to the appropriate combined suite (reads-combined or writes-combined) — or flag if a new combined suite is needed or an existing one should be split
+  - Do NOT defer registration to a later chunk — the suite must be discoverable the moment it exists
+- If composites need deeper restructuring beyond adding a row, create a separate chunk for that
 - Always end with a "Delete this file" checkbox
 
 ### Step 5 — Write seed file
 
 - Write `UAT-SUITE-ANALYSIS.md` at repo root following the **Seed File Template** section below
-- Commit: `docs: add UAT suite gap analysis for v{version}`
 - **No suite editing in this mode** — the seed file IS the deliverable
 
-### Edge case — No gaps found
+### Step 6 — Ambiguity gate
 
-If research shows suites are already up to date, say so with evidence (which warnings are covered, which assertions are current). Don't produce an empty seed file.
+Before committing, present all ambiguities encountered during research. The user will NOT review the seed itself — this is their only chance to catch misinterpretations before they get baked into chunk instructions.
+
+**Resolution hierarchy** (when sources conflict):
+1. Updated spec in `.research/updated-spec/` supersedes original spec
+2. Phase discussion logs often contain explicit "we decided X" resolutions — check these first
+3. Later phase CONTEXT files supersede earlier ones on the same topic
+4. If the resolution is clearly documented in any of the above → not an ambiguity, just use it
+5. If NOT clearly documented → flag it as an ambiguity below
+
+**Present each ambiguity** with:
+   - What was unclear (e.g., "original requirement says X, Phase N context says Y")
+   - What you chose and why (e.g., "went with Y because it's the later decision")
+   - Confidence level (high = clear resolution, medium = reasonable judgment call, low = coin flip)
+2. **Wait for user confirmation** — user reviews ambiguities, corrects any wrong calls
+3. **If corrections needed**: update the seed file, re-present the corrected items
+4. **On confirmation**: commit `docs: add UAT suite gap analysis for v{version}`
+
+If no ambiguities were found, say so explicitly ("no ambiguities — all requirements were clear and consistent") and proceed to commit.
+
+### No gaps found (expected outcome on re-runs)
+
+If research shows suites are already up to date, say so with evidence (which spec requirements are covered, which warnings have tests). Don't produce an empty seed file — this is a successful result, not an edge case. This is the expected outcome when re-running on a milestone whose suites were already updated.
 
 ## Worker Mode
 
@@ -79,29 +136,40 @@ Pick up the next chunk from the seed file and execute it.
 
 ### Step 2 — Targeted research
 
-- Verify warning strings and code paths from the seed against current source
+- Re-read the relevant planning docs (phase CONTEXT files, verification reports) for the specific suites in this chunk
 - Don't re-research the whole milestone — the seed has that context
-- **Line number drift**: verify line refs against actual files (earlier chunks may have shifted them)
+- If the seed references specific warning/error IDs, verify their expected behavior from planning docs — do NOT read source code
+- **Line number drift**: verify line refs in existing suite files against current state (earlier chunks may have shifted them)
 
 ### Step 3 — Execute
 
 - Write/update suite files per chunk instructions
 - Match existing suite format exactly (see **Suite Conventions** below)
 
-### Step 4 — Assumptions gate
+### Step 4 — Verification
 
-- If any test descriptions need live OmniFocus verification, present assumptions to user
-- Wait for approval before finalizing
+After writing the suite changes, identify assumptions that need live verification (e.g., exact warning text, filter behavior, edge cases).
+
+1. **Present assumptions**: list each assumption with what you'd check and how
+2. **Offer self-verification**: ask the user "Want me to run these checks myself against your live OmniFocus?"
+3. **If user approves**:
+   - Create minimal test tasks in inbox via MCP `add_tasks` (use a `UAT-Verify-` prefix for isolation)
+   - Run the MCP tool calls that exercise the assumptions
+   - Report results: confirmed or discrepancy found
+   - **Clean up**: create `⚠️ DELETE THIS AFTER UAT` in inbox (or reuse if one exists), move all verification tasks under it, tell user to delete it. Same cleanup protocol as the main uat-regression skill.
+   - **If a discrepancy is found**: ask the user — "Did I misunderstand the spec, or is this a real bug?" If misunderstanding → correct the suite to match the user's clarification. If real bug → keep the test reflecting the spec's expected behavior (it will fail during UAT, which is the correct outcome — the suite caught a real gap).
+4. **If user declines** (or wants to check manually): proceed to Step 5 — list the spot-checks for them as before
+
+**Never run verification autonomously.** Always present assumptions first, always ask permission, always wait for explicit approval before touching OmniFocus.
 
 ### Step 5 — Completion protocol
 
-1. **Summarize**: files modified, tests added, assertions fixed
-2. **Suggest spot-checks**: specific MCP calls the user can try to sanity-check test descriptions
-3. **Wait for user validation** — user reviews, tries spot-checks, gives thumbs up or requests changes
-4. **On approval**:
+1. **Summarize**: files modified, tests added, assertions fixed. If self-verification ran, include results.
+2. **Wait for user sign-off** — user reviews the changes (and verification results if applicable)
+3. **On approval**:
    - Commit suite changes: `test(uat): ...`
    - Mark chunk done in separate commit: `chore: mark chunk N complete in UAT suite analysis`
-5. **If all content chunks now done**: inform user, suggest triggering this skill again for Completion mode
+4. **If all content chunks now done**: inform user, suggest triggering this skill again for Completion mode
 
 ### Edge case — Concurrent workers
 
@@ -152,10 +220,10 @@ This file is the output of a research session that analyzed what v{version} chan
 
 After finishing the suite edits for a chunk, the agent does NOT commit. Instead:
 
-1. **Summarize changes** — list every file modified, tests added, assertions fixed
-2. **Tell the user what to review** — which suite files to read, what to look for
-3. **Suggest spot-checks** — specific things the user can try in OmniFocus via the MCP tools
-4. **Wait for validation** — user reviews, tries the spot-checks, gives thumbs up or requests changes
+1. **Present assumptions** — list any assumptions about live behavior that the suite relies on (exact warning text, filter results, edge cases)
+2. **Offer self-verification** — "Want me to run these checks myself against your live OmniFocus?" If approved, the agent creates minimal test tasks via MCP, runs the checks, reports results, and cleans up (see Worker Mode Step 4 in the skill for the full protocol). If a discrepancy is found, the agent updates the suite before proceeding.
+3. **Summarize changes** — list every file modified, tests added, assertions fixed, and verification results if applicable
+4. **Wait for sign-off** — user reviews the changes
 5. **On approval**: commit the suite changes, then update the Progress checklist above (check the box)
 
 ---

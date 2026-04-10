@@ -1,6 +1,6 @@
 # Validation & Error Formatting Test Suite
 
-Tests that validation errors across all tools produce clean, agent-friendly messages — no Pydantic internals, correct field casing, proper "Task N:" prefixing. Covers `add_tasks`, `edit_tasks`, all v1.3 list tools, and v1.3.1 null/system-location errors.
+Tests that validation errors across all tools produce clean, agent-friendly messages — no Pydantic internals, correct field casing, proper "Task N:" prefixing. Covers `add_tasks`, `edit_tasks`, all v1.3 list tools, v1.3.1 null/system-location errors, v1.3.2 DateFilter validation, and v1.3.2 breaking change rejections.
 
 ## Conventions
 
@@ -80,7 +80,7 @@ Run each test INDIVIDUALLY (will error):
 
 #### Test 3b: Invalid availability value (list_tasks)
 1. `list_tasks` with `availability: ["INVALID"]`
-2. PASS if: error about invalid availability value; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+2. PASS if: error about invalid availability value; valid values shown are `available`, `blocked`, `remaining`; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
 
 #### Test 3c: Invalid review_due_within (list_projects)
 1. `list_projects` with `reviewDueWithin: "abc"`
@@ -130,10 +130,6 @@ Run each test INDIVIDUALLY (will error):
 1. `list_tasks` with `tags: []`
 2. PASS if: error contains "cannot be empty" and mentions omitting the field; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
 
-#### Test 5d: Empty availability array
-1. `list_tasks` with `availability: []`
-2. PASS if: error contains "cannot be empty" and mentions `["ALL"]` as an alternative; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
-
 ### 6. v1.3.1 Write-Side Null Errors
 
 Run each test INDIVIDUALLY (will error):
@@ -166,6 +162,50 @@ Run each test INDIVIDUALLY (will error):
 1. `list_tasks` with `project: "$trash"`
 2. PASS if: error mentions `$` is reserved for system locations; same shape as 7b/7c but triggered from a list tool (cross-context consistency); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
 
+### 8. v1.3.2 DateFilter Validation
+
+Run each test INDIVIDUALLY (will error):
+
+#### Test 8a: DateFilter — invalid "this" unit
+1. `list_tasks` with `due: {this: "2w"}`
+2. PASS if: error mentions that `this` only accepts single calendar units (d, w, m, y) and does NOT accept count+unit; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+#### Test 8b: DateFilter — zero/negative count
+1. `list_tasks` with `due: {next: "0d"}`
+2. PASS if: error mentions zero or negative count; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+#### Test 8c: DateFilter — invalid duration unit
+1. `list_tasks` with `due: {last: "3x"}`
+2. PASS if: error mentions invalid unit `x` and lists valid units (d, w, m, y); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+#### Test 8d: DateFilter — after > before ordering
+1. `list_tasks` with `due: {after: "2026-03-15T12:00:00Z", before: "2026-03-10T12:00:00Z"}`
+2. PASS if: error mentions 'after' must be before or equal to 'before' and shows the actual values; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+#### Test 8e: DateFilter — mixed shorthand and absolute
+1. `list_tasks` with `due: {this: "w", after: "2026-03-01T00:00:00Z"}`
+2. PASS if: error mentions cannot mix shorthand (this/last/next) and absolute (before/after); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+#### Test 8f: DateFilter — empty object
+1. `list_tasks` with `due: {}`
+2. PASS if: error mentions DateFilter requires either shorthand or absolute bounds; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+### 9. v1.3.2 Breaking Change Validation
+
+Run each test INDIVIDUALLY (will error):
+
+#### Test 9a: Removed availability value — "all"
+1. `list_tasks` with `availability: ["all"]`
+2. PASS if: error rejects "all" as invalid; valid values shown are `available`, `blocked`, `remaining`; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+#### Test 9b: Removed availability value — "completed"
+1. `list_tasks` with `availability: ["completed"]`
+2. PASS if: error rejects "completed" as invalid; valid values shown are `available`, `blocked`, `remaining`; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+#### Test 9c: Boolean completed — removed
+1. `list_tasks` with `completed: true`
+2. PASS if: error rejects boolean; the `completed` field expects a string shortcut or DateFilter object, not a boolean; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
 ## Report Table Rows
 
 | # | Test | Description | Result |
@@ -179,7 +219,7 @@ Run each test INDIVIDUALLY (will error):
 | 2c | edit_tasks: empty name | Empty string name → clean error | |
 | 2d | edit_tasks: batch limit | 2 items → clean "exactly 1 item" error | |
 | 3a | list_tasks: offset w/o limit | Offset without limit → "offset requires limit" | |
-| 3b | list_tasks: invalid availability | Bad enum value → clean error | |
+| 3b | list_tasks: invalid availability | Bad enum value → clean error listing available/blocked/remaining | |
 | 3c | list_projects: invalid review_due_within | Bad format → error with valid examples | |
 | 3d | list_tasks: unknown filter | Unknown field → clean error | |
 | 3e | list_projects: offset w/o limit | Cross-tool: same error as 3a | |
@@ -190,10 +230,18 @@ Run each test INDIVIDUALLY (will error):
 | 5a | Null filter: string field | `project: null` → clean "cannot be null" with omit guidance | |
 | 5b | Null filter: cross-tool | `folder: null` → same shape as 5a from list_projects | |
 | 5c | Empty tags array | `tags: []` → clean "cannot be empty" with omit guidance | |
-| 5d | Empty availability array | `availability: []` → clean error mentioning `["ALL"]` | |
 | 6a | Null moveTo container | `ending: null` → clean error mentioning `$inbox` | |
 | 6b | Null parent on add | `parent: null` → clean error with omit-for-inbox guidance | |
 | 7a | $inbox not a project | `get_project("$inbox")` → educational error, suggests list_tasks | |
 | 7b | Reserved prefix: $trash | `parent: "$trash"` → lists valid system locations | |
 | 7c | Reserved prefix: $foo | `parent: "$foo"` → same shape as 7b, clean interpolation | |
 | 7d | Reserved prefix: read-side | `project: "$trash"` → same error from list_tasks context | |
+| 8a | DateFilter: invalid "this" unit | `due: {this: "2w"}` → error about single calendar units only | |
+| 8b | DateFilter: zero/negative count | `due: {next: "0d"}` → error about zero/negative count | |
+| 8c | DateFilter: invalid duration unit | `due: {last: "3x"}` → error listing valid units (d, w, m, y) | |
+| 8d | DateFilter: after > before | Inverted date range → error with actual values shown | |
+| 8e | DateFilter: mixed shorthand+absolute | `due: {this: "w", after: "..."}` → cannot mix groups | |
+| 8f | DateFilter: empty object | `due: {}` → requires shorthand or absolute bounds | |
+| 9a | Breaking: availability "all" | Removed value → error listing available/blocked/remaining | |
+| 9b | Breaking: availability "completed" | Removed value → same guidance as 9a | |
+| 9c | Breaking: boolean completed | `completed: true` → expects string shortcut or DateFilter | |
