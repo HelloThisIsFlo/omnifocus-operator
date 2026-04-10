@@ -1,6 +1,6 @@
 # Date Conversion Proof — Findings
 
-> Formula proven: `CF_seconds = (naive_local_as_tz(system_tz) → UTC - CF_EPOCH)`. Perfect match across 430 tasks, both BST and GMT. `shouldUseFloatingTimeZone` is NOT a SQLite column.
+> Formula proven: `CF_seconds = (naive_local_as_tz(system_tz) → UTC - CF_EPOCH)`. Perfect match across 430 tasks, both BST and GMT.
 
 **Date:** 2026-04-10
 **Script:** `02-conversion-proof/02-date-conversion-proof.py`
@@ -62,15 +62,6 @@ This confirms `_parse_local_datetime()` in `hybrid.py` is correct for the entire
 ### The one dateToStart mismatch: inherited effective date
 "Check if order has been accepted": delta = 1,267,200s = 14.67 days. The task's own `dateToStart` is April 26, but `effectiveDateToStart` comes from an ancestor with an earlier defer date. The script includes tasks where effective != direct because of inheritance — expected behavior, not a formula error.
 
-### shouldUseFloatingTimeZone is NOT in SQLite
-The column does not exist in the 58-column Task table. Only one vaguely TZ-related column: `latestTimeToStartAlarmPolicyString` (TEXT, all `'no-alarm'`).
-
-This means:
-- The flag lives in OmniFocus's XML/plist layer or a different table, not the SQLite cache
-- **Our SQLite reader can't distinguish floating vs fixed tasks**
-- In practice: 100% of tasks are floating (script 01), so this doesn't matter today
-- If we ever need to support fixed-timezone tasks, we'd need the bridge API to read the flag
-
 ### DST handling is correct
 The formula correctly handles both seasons because `ZoneInfo("Europe/London")` automatically applies the right offset based on the date itself:
 - Summer dates (months 4-10): offset = +1h (BST)
@@ -82,13 +73,10 @@ No special-casing needed — stdlib `zoneinfo` handles DST transitions.
 
 - **Conversion formula proven** across 430 tasks with zero errors (excluding one inherited effective date)
 - **DST is handled correctly** — summer BST (+1h) and winter GMT (+0h) both match perfectly
-- **`shouldUseFloatingTimeZone` is not a SQLite column** — flag lives outside the SQLite cache
-- **Only one TZ-adjacent column in SQLite**: `latestTimeToStartAlarmPolicyString` (irrelevant, all `'no-alarm'`)
 - **`_parse_local_datetime()` in `hybrid.py` is confirmed correct** for converting naive local text to UTC
 
 ## Surprises / Unexpected Results
 
-- `shouldUseFloatingTimeZone` not being in SQLite — the API exposes it but the cache doesn't store it
 - The `dateToStart` mismatch being exactly 14.67 days (inheritance, not a TZ error)
 - Zero delta on all direct→effective conversions — not even sub-second rounding differences
 
@@ -96,6 +84,6 @@ No special-casing needed — stdlib `zoneinfo` handles DST transitions.
 
 | Question | Answer | Evidence |
 |----------|--------|----------|
-| Q3 | No hidden timezone columns in SQLite. `shouldUseFloatingTimeZone` is NOT a column. Only `latestTimeToStartAlarmPolicyString` matches TZ keywords (irrelevant). | Section 2: PRAGMA table_info scan |
+| Q3 (column scan only) | No timezone-related column names in SQLite. Only `latestTimeToStartAlarmPolicyString` matches TZ keywords (irrelevant). The floating flag is encoded as Z-suffix on date strings — see script 01d. | Section 2: PRAGMA table_info scan |
 | Q4 | `effectiveDateDue = CF_seconds(naive_local_as_utc_via_system_tz - CF_EPOCH)`. Exact match for 200/200 tasks. | Section 3: 0.000s max delta |
 | Q5 | Yes — conversion holds perfectly across DST. 31 BST + 169 GMT dates all match for dateDue. | Sections 3-5: 0 mismatches in BST or GMT |

@@ -3,7 +3,7 @@
 > `shouldUseFloatingTimeZone` is NOT cosmetic — it changes how OmniFocus interprets stored dates across timezone changes. Floating = wall clock preserved, Fixed = UTC moment preserved. 100% of real tasks are floating=true.
 
 **Date:** 2026-04-10
-**Scripts:** `01-tz-api-audit.js`, `01b-floating-probe.js`, `01c-cross-tz-inspect.js`
+**Scripts:** `01-tz-api-audit.js`, `01b-floating-probe.js`, `01c-cross-tz-inspect.js`, `01d-sqlite-floating-inspect.py`
 
 ## Raw Output — Script 01 (API Audit)
 
@@ -229,11 +229,26 @@ Two tasks with identical `dueDate = new Date("2026-07-15T10:00:00Z")`, created i
 - DateComponents reporting GMT+1 for a March 25 date (current system state, not the date's)
 - Notification fire dates also shifting for floating tasks (even though `usesFloatingTimeZone=false` on the notification objects themselves)
 
+### H: SQLite storage of floating vs fixed (01d)
+
+The floating flag is NOT a separate SQLite column. It's encoded in the date text string itself:
+
+| Task | `dateDue` in SQLite | Meaning |
+|------|-------------------|---------|
+| TZ-PROBE-Floating | `2026-07-15T11:00:00.000` (no Z) | Floating — naive local time |
+| TZ-PROBE-Fixed | `2026-07-15T10:00:00.000Z` (has Z) | Fixed — UTC-anchored |
+
+Both have identical `effectiveDateDue: 805802400` (same UTC moment).
+
+Broader scan across all 465 `dateDue` values: only 1 ends with `Z` (our test task). Zero Z-suffix in `dateToStart` (0/510) and `datePlanned` (0/30). Confirms 100% floating in real data.
+
+**Detection rule**: `dateDue.endswith('Z')` → fixed timezone task. No separate column needed.
+
 ## Questions Answered
 
 | Question | Answer | Evidence |
 |----------|--------|----------|
 | Q1 | Only `shouldUseFloatingTimeZone` (bool, r/w). No other TZ properties on Task. | Section B: all probes returned `undefined` |
 | Q2 | Setting floating=false works. From same TZ: no API difference. From different TZ: fixed preserves UTC moment, floating preserves wall clock. | 01b: 0ms delta same-TZ. 01c: 300min delta cross-TZ |
-| Q3 (partial) | No hidden TZ properties on the API side. SQLite column scan pending (script 02). | Section B |
+| Q3 | No hidden TZ columns in SQLite. The floating flag is encoded as Z-suffix on date text strings, not a separate column. | 01d: side-by-side comparison + broader scan |
 | Q7 | Toggling floating on an existing task is instant and persists. The reinterpretation happens when OmniFocus next evaluates the date in a different timezone context. | 01b: toggle confirmed. 01c: reinterpretation observed |
