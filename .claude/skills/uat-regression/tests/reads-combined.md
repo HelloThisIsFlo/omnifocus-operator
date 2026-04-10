@@ -9,11 +9,11 @@ Run these base suites in order. Each suite keeps its own parent task, setup, and
 | Prefix | Suite | File | Tests |
 |--------|-------|------|------:|
 | A | List Tasks | `list-tasks.md` | 46 |
-| B | Date Filtering | `date-filtering.md` | 32 |
+| B | Date Filtering | `date-filtering.md` | 35 |
 | C | List Projects | `list-projects.md` | 33 |
 | D | Simple List Tools | `simple-list-tools.md` | 23 |
 | E | Validation & Errors | `validation-errors.md` | 35 |
 
-**Total: 169 tests**
+**Total: 172 tests**
 
 Report table rows use section prefixes (A-1a, B-2a, C-1, D-1a, ...) with bold section-header rows between suites. Each suite's `## Report Table Rows` section provides the row definitions.
