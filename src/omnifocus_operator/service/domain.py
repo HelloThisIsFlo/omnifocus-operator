@@ -128,7 +128,10 @@ def _to_utc_ts(val: object) -> object:
         return val.astimezone(UTC).timestamp()
     if isinstance(val, str):
         dt = datetime.fromisoformat(val)
-        assert dt.tzinfo is not None, f"_to_utc_ts received naive datetime string: {val!r}"
+        assert dt.tzinfo is not None, (
+            f"naive datetime {val!r} — callers must pass aware"
+            f" datetimes (from AwareDatetime fields via payload builder)"
+        )
         return dt.astimezone(UTC).timestamp()
     return val
 

@@ -25,8 +25,8 @@ _DATE_DURATION_PATTERN = re.compile(r"^(\d*)([dwmy])$")
 
 def _reject_naive_datetime(v: Any) -> Any:
     """Intercept naive datetime strings before Pydantic union dispatch."""
-    if isinstance(v, str) and "T" in v:
-        # Check if string looks like a datetime but lacks timezone indicator
+    if isinstance(v, str) and "T" in v:  # noqa: SIM102 — readability
+        # Looks like a datetime — reject if missing timezone indicator
         if not (v.endswith("Z") or "+" in v[19:] or "-" in v[19:]):
             raise ValueError(err.DATE_FILTER_NAIVE_DATETIME)
     return v
@@ -98,6 +98,13 @@ class AbsoluteRangeFilter(QueryModel):
         if self.before is not None and self.after is not None:
             if self.before == "now" or self.after == "now":
                 return self  # D-10: skip comparison when "now"
+            # Only Literal["now"] is str-typed; early return above handles it
+            assert not isinstance(self.after, str), (
+                f"unexpected str {self.after!r} — only 'now' is allowed and should be caught above"
+            )
+            assert not isinstance(self.before, str), (
+                f"unexpected str {self.before!r} — only 'now' is allowed and should be caught above"
+            )
             after_dt = _to_naive(self.after)
             before_dt = _to_naive(self.before)
             if after_dt > before_dt:
