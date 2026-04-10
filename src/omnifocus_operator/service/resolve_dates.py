@@ -13,6 +13,7 @@ from datetime import date, datetime, timedelta
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
+from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.use_cases.list._date_filter import (
     AbsoluteRangeFilter,
     LastPeriodFilter,
@@ -215,8 +216,8 @@ def _resolve_absolute(
     df: AbsoluteRangeFilter,
     now: datetime,
 ) -> tuple[datetime | None, datetime | None]:
-    after_dt = _parse_absolute_after(df.after, now) if df.after is not None else None
-    before_dt = _parse_absolute_before(df.before, now) if df.before is not None else None
+    after_dt = _parse_absolute_after(df.after, now) if is_set(df.after) else None
+    before_dt = _parse_absolute_before(df.before, now) if is_set(df.before) else None
     return (after_dt, before_dt)
 
 

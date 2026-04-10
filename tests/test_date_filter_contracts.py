@@ -175,6 +175,44 @@ class TestDateFilterEmpty:
 
 
 # ---------------------------------------------------------------------------
+# DateFilter: Null rejection on absolute bounds (Patch/UNSET)
+# ---------------------------------------------------------------------------
+
+
+class TestAbsoluteRangeNullRejection:
+    """Null is not a valid value for before/after — omit the field instead."""
+
+    def test_before_null_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            AbsoluteRangeFilter(after="2026-04-01", before=None)
+
+    def test_after_null_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            AbsoluteRangeFilter(before="2026-04-14", after=None)
+
+    def test_both_null_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            AbsoluteRangeFilter(before=None, after=None)
+
+
+# ---------------------------------------------------------------------------
+# DateFilter: One-sided absolute filters (Patch/UNSET)
+# ---------------------------------------------------------------------------
+
+
+class TestAbsoluteRangeOneSided:
+    """Omitting one bound (UNSET) is valid — only the provided bound applies."""
+
+    def test_before_only(self) -> None:
+        f = AbsoluteRangeFilter(before="2024-01-01T00:00:00Z")
+        assert isinstance(f.before, datetime)
+
+    def test_after_only(self) -> None:
+        f = AbsoluteRangeFilter(after="now")
+        assert f.after == "now"
+
+
+# ---------------------------------------------------------------------------
 # DateFilter: Duration validation (DATE-05)
 # ---------------------------------------------------------------------------
 

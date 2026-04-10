@@ -18,7 +18,7 @@ from pydantic import (
 
 from omnifocus_operator.agent_messages import descriptions as desc
 from omnifocus_operator.agent_messages import errors as err
-from omnifocus_operator.contracts.base import QueryModel
+from omnifocus_operator.contracts.base import UNSET, Patch, QueryModel, is_set
 
 _DATE_DURATION_PATTERN = re.compile(r"^(\d*)([dwmy])$")
 
@@ -30,6 +30,12 @@ def _reject_naive_datetime(v: Any) -> Any:
         if not (v.endswith("Z") or "+" in v[19:] or "-" in v[19:]):
             raise ValueError(err.DATE_FILTER_NAIVE_DATETIME)
     return v
+
+
+_DateBound = Annotated[
+    Literal["now"] | AwareDatetime | date,
+    BeforeValidator(_reject_naive_datetime),
+]
 
 
 def _to_naive(v: AwareDatetime | date) -> datetime:
@@ -82,20 +88,14 @@ class NextPeriodFilter(QueryModel):
 class AbsoluteRangeFilter(QueryModel):
     __doc__ = desc.ABSOLUTE_RANGE_FILTER_DOC
 
-    before: Annotated[
-        Literal["now"] | AwareDatetime | date | None,
-        BeforeValidator(_reject_naive_datetime),
-    ] = Field(default=None, description=desc.ABSOLUTE_RANGE_BEFORE)
-    after: Annotated[
-        Literal["now"] | AwareDatetime | date | None,
-        BeforeValidator(_reject_naive_datetime),
-    ] = Field(default=None, description=desc.ABSOLUTE_RANGE_AFTER)
+    before: Patch[_DateBound] = Field(default=UNSET, description=desc.ABSOLUTE_RANGE_BEFORE)
+    after: Patch[_DateBound] = Field(default=UNSET, description=desc.ABSOLUTE_RANGE_AFTER)
 
     @model_validator(mode="after")
     def _validate_bounds(self) -> AbsoluteRangeFilter:
-        if self.before is None and self.after is None:
+        if not is_set(self.before) and not is_set(self.after):
             raise ValueError(err.ABSOLUTE_RANGE_FILTER_EMPTY)
-        if self.before is not None and self.after is not None:
+        if is_set(self.before) and is_set(self.after):
             if self.before == "now" or self.after == "now":
                 return self  # D-10: skip comparison when "now"
             # Only Literal["now"] is str-typed; early return above handles it
