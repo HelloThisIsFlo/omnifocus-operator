@@ -96,21 +96,20 @@ class AbsoluteRangeFilter(QueryModel):
         if not is_set(self.before) and not is_set(self.after):
             raise ValueError(err.ABSOLUTE_RANGE_FILTER_EMPTY)
         if is_set(self.before) and is_set(self.after):
-            if self.before == "now" or self.after == "now":
+            before, after = self.before, self.after
+            if before == "now" or after == "now":
                 return self  # D-10: skip comparison when "now"
             # Only Literal["now"] is str-typed; early return above handles it
-            assert not isinstance(self.after, str), (
-                f"unexpected str {self.after!r} — only 'now' is allowed and should be caught above"
+            assert not isinstance(after, str), (
+                f"unexpected str {after!r} — only 'now' is allowed and should be caught above"
             )
-            assert not isinstance(self.before, str), (
-                f"unexpected str {self.before!r} — only 'now' is allowed and should be caught above"
+            assert not isinstance(before, str), (
+                f"unexpected str {before!r} — only 'now' is allowed and should be caught above"
             )
-            after_dt = _to_naive(self.after)
-            before_dt = _to_naive(self.before)
+            after_dt = _to_naive(after)  # type: ignore[arg-type]  # python/mypy#11907
+            before_dt = _to_naive(before)  # type: ignore[arg-type]  # python/mypy#11907
             if after_dt > before_dt:
-                raise ValueError(
-                    err.DATE_FILTER_REVERSED_BOUNDS.format(after=self.after, before=self.before)
-                )
+                raise ValueError(err.DATE_FILTER_REVERSED_BOUNDS.format(after=after, before=before))
         return self
 
 
