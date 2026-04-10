@@ -79,6 +79,7 @@ Carried forward from v1.3.1:
 ### Roadmap Evolution
 
 - Phase 48 added: Refactor DateFilter into discriminated union with typed date bounds
+- Phase 49 added: Implement naive-local datetime contract for all date inputs
 
 ### Blockers/Concerns
 
@@ -86,5 +87,5 @@ Carried forward from v1.3.1:
 
 ## Session Continuity
 
-Last activity: 2026-04-08 - Phase 47 context gathered
-Resume: .planning/phases/47-cross-path-equivalence-breaking-changes/47-CONTEXT.md
+Last activity: 2026-04-10 - Phase 49 context gathered
+Resume: .planning/phases/49-implement-naive-local-datetime-contract-for-all-date-inputs/49-CONTEXT.md
