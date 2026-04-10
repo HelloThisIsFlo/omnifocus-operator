@@ -129,29 +129,20 @@ REPETITION_INVALID_END_EMPTY = (
 
 # --- Validation: Date Filters ---
 
-DATE_FILTER_MIXED_GROUPS = (
-    "Cannot mix shorthand (this/last/next) with absolute (before/after) in the same date filter. "
-    'Use either a shorthand period like {{"last": "3d"}} or absolute bounds like '
-    '{{"after": "2026-04-01", "before": "2026-04-14"}}.'
+ABSOLUTE_RANGE_FILTER_EMPTY = (
+    "AbsoluteRangeFilter requires at least one of: before or after. "
+    "Each accepts an ISO date ('2026-04-01'), ISO datetime with timezone "
+    "('2026-04-01T14:00:00Z'), or 'now'."
 )
 
-DATE_FILTER_MULTIPLE_SHORTHAND = (
-    "Only one shorthand key allowed per date filter -- use exactly one of: this, last, next."
-)
-
-DATE_FILTER_EMPTY = (
-    "Date filter must specify at least one key. "
-    "Use a shorthand period (this/last/next) or absolute bounds (before/after)."
+DATE_FILTER_NAIVE_DATETIME = (
+    "Datetime must include timezone (e.g. '2026-04-01T14:00:00Z' or "
+    "'2026-04-01T14:00:00+02:00'). Date-only ('2026-04-01') is also accepted."
 )
 
 DATE_FILTER_INVALID_DURATION = (
     "Invalid duration '{value}' -- use a number followed by d/w/m/y (e.g. '3d', '2w', 'm'). "
     "Count defaults to 1 when omitted, so 'w' means '1w'."
-)
-
-DATE_FILTER_INVALID_THIS_UNIT = (
-    "Invalid period unit '{value}' for 'this' -- use one of: d (day), w (week), m (month), y (year). "
-    "'this' means the current period and accepts only a single unit character."
 )
 
 DATE_FILTER_ZERO_NEGATIVE = (
@@ -162,11 +153,6 @@ DATE_FILTER_ZERO_NEGATIVE = (
 DATE_FILTER_REVERSED_BOUNDS = (
     "Invalid date range: 'after' ({after}) is later than 'before' ({before}). "
     'Swap the values, or use a shorthand like {{"this": "d"}} for a single day.'
-)
-
-DATE_FILTER_INVALID_ABSOLUTE = (
-    "Invalid date value '{value}' -- use ISO 8601 format (e.g. '2026-04-01', "
-    "'2026-04-01T14:00:00'), or 'now' for the current time."
 )
 
 # --- Validation: List Filters ---

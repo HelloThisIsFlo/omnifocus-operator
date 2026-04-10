@@ -128,11 +128,16 @@ ESTIMATED_MINUTES_EDIT = "Time estimate in minutes. Set to null to clear."
 
 # --- Date Filter Models ---
 
-DATE_FILTER_DOC = (
-    "Date range filter. Use a shorthand period (this/last/next with a duration like '3d', 'w', '2m') "
-    "or absolute bounds (before/after with ISO dates or 'now'). "
-    "Cannot mix shorthand and absolute in the same filter."
-)
+THIS_PERIOD_FILTER_DOC = "Filter to the current calendar period."
+LAST_PERIOD_FILTER_DOC = "Filter to a recent window ending now."
+NEXT_PERIOD_FILTER_DOC = "Filter to an upcoming window starting now."
+ABSOLUTE_RANGE_FILTER_DOC = "Filter by explicit date bounds. Set before, after, or both."
+
+THIS_PERIOD_UNIT = "Calendar period: d (today), w (this week), m (this month), y (this year)."
+LAST_PERIOD_DURATION = "How far back from now. Count + unit: '3d', '2w', 'm'. Omit count for 1."
+NEXT_PERIOD_DURATION = "How far ahead from now. Count + unit: '3d', '2w', 'm'. Omit count for 1."
+ABSOLUTE_RANGE_BEFORE = "Upper bound (inclusive). ISO date, ISO datetime with timezone, or 'now'."
+ABSOLUTE_RANGE_AFTER = "Lower bound (inclusive). ISO date, ISO datetime with timezone, or 'now'."
 
 DUE_DATE_SHORTCUT_DOC = "Shortcut for filtering by due date: overdue, soon, or today."
 
@@ -147,7 +152,7 @@ DUE_FILTER_DESC = (
     "Due date = deadline with real consequences if missed. "
     "'overdue' = due before now. "
     "'soon' = due within threshold (includes overdue). "
-    "'today' = due today. Or use DateFilter for range/shorthand."
+    "'today' = due today. Or use a period/range filter."
 )
 
 DEFER_FILTER_DESC = (
@@ -155,33 +160,31 @@ DEFER_FILTER_DESC = (
     "Defer date = task hidden and unavailable until this date. "
     "For timing questions ('what becomes available this week?'), "
     "not availability state -- use availability: 'blocked' for all unavailable tasks. "
-    "'today' = deferred to today. Or use DateFilter for range/shorthand."
+    "'today' = deferred to today. Or use a period/range filter."
 )
 
 PLANNED_FILTER_DESC = (
     "Filter by planned date (effective/inherited). "
     "Planned date = when you intend to work on this; no urgency, no penalty for missing it. "
-    "'today' = planned for today. Or use DateFilter for range/shorthand."
+    "'today' = planned for today. Or use a period/range filter."
 )
 
 COMPLETED_FILTER_DESC = (
     "Inclusion filter: adds completed tasks to results "
     "(excluded by default). 'all' = every completed task regardless of date. "
-    "'today' = completed today. Or use DateFilter for a date range."
+    "'today' = completed today. Or use a period/range filter."
 )
 
 DROPPED_FILTER_DESC = (
     "Inclusion filter: adds dropped tasks to results "
     "(excluded by default). 'all' = every dropped task regardless of date. "
-    "'today' = dropped today. Or use DateFilter for a date range."
+    "'today' = dropped today. Or use a period/range filter."
 )
 
-ADDED_FILTER_DESC = (
-    "Filter by date added. 'today' = added today. Or use DateFilter for range/shorthand."
-)
+ADDED_FILTER_DESC = "Filter by date added. 'today' = added today. Or use a period/range filter."
 
 MODIFIED_FILTER_DESC = (
-    "Filter by date modified. 'today' = modified today. Or use DateFilter for range/shorthand."
+    "Filter by date modified. 'today' = modified today. Or use a period/range filter."
 )
 
 # --- Class Docstrings: Entities ---

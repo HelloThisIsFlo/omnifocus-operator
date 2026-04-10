@@ -3,7 +3,13 @@
 Re-exports all public names from submodules for convenient imports.
 """
 
-from omnifocus_operator.contracts.use_cases.list._date_filter import DateFilter
+from omnifocus_operator.contracts.use_cases.list._date_filter import (
+    AbsoluteRangeFilter,
+    DateFilter,
+    LastPeriodFilter,
+    NextPeriodFilter,
+    ThisPeriodFilter,
+)
 from omnifocus_operator.contracts.use_cases.list._enums import (
     AvailabilityFilter,
     DateShortcut,
@@ -36,11 +42,13 @@ from omnifocus_operator.contracts.use_cases.list.tasks import (
 )
 
 __all__ = [
+    "AbsoluteRangeFilter",
     "AvailabilityFilter",
     "DateFilter",
     "DateShortcut",
     "DueDateShortcut",
     "FolderAvailabilityFilter",
+    "LastPeriodFilter",
     "LifecycleDateShortcut",
     "ListFoldersQuery",
     "ListFoldersRepoQuery",
@@ -54,6 +62,8 @@ __all__ = [
     "ListTagsRepoQuery",
     "ListTasksQuery",
     "ListTasksRepoQuery",
+    "NextPeriodFilter",
     "ReviewDueFilter",
     "TagAvailabilityFilter",
+    "ThisPeriodFilter",
 ]
