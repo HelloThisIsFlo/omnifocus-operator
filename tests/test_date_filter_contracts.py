@@ -8,8 +8,8 @@ from pydantic import BaseModel, ValidationError
 
 from omnifocus_operator.config import get_week_start
 from omnifocus_operator.contracts.use_cases.list import (
-    DateFieldShortcut,
     DateFilter,
+    DateShortcut,
     DueDateShortcut,
     LifecycleDateShortcut,
     ListTasksQuery,
@@ -300,26 +300,26 @@ class TestListTasksQueryDateFields:
 
     def test_defer_today_shortcut(self) -> None:
         q = ListTasksQuery(defer="today")
-        assert isinstance(q.defer, DateFieldShortcut)
-        assert q.defer == DateFieldShortcut.TODAY
+        assert isinstance(q.defer, DateShortcut)
+        assert q.defer == DateShortcut.TODAY
         assert q.defer == "today"
 
     def test_planned_today_shortcut(self) -> None:
         q = ListTasksQuery(planned="today")
-        assert isinstance(q.planned, DateFieldShortcut)
-        assert q.planned == DateFieldShortcut.TODAY
+        assert isinstance(q.planned, DateShortcut)
+        assert q.planned == DateShortcut.TODAY
         assert q.planned == "today"
 
     def test_added_today_shortcut(self) -> None:
         q = ListTasksQuery(added="today")
-        assert isinstance(q.added, DateFieldShortcut)
-        assert q.added == DateFieldShortcut.TODAY
+        assert isinstance(q.added, DateShortcut)
+        assert q.added == DateShortcut.TODAY
         assert q.added == "today"
 
     def test_modified_today_shortcut(self) -> None:
         q = ListTasksQuery(modified="today")
-        assert isinstance(q.modified, DateFieldShortcut)
-        assert q.modified == DateFieldShortcut.TODAY
+        assert isinstance(q.modified, DateShortcut)
+        assert q.modified == DateShortcut.TODAY
         assert q.modified == "today"
 
     def test_defer_date_filter_object(self) -> None:

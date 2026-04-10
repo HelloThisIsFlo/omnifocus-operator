@@ -6,7 +6,7 @@ Re-exports all public names from submodules for convenient imports.
 from omnifocus_operator.contracts.use_cases.list._date_filter import DateFilter
 from omnifocus_operator.contracts.use_cases.list._enums import (
     AvailabilityFilter,
-    DateFieldShortcut,
+    DateShortcut,
     DueDateShortcut,
     FolderAvailabilityFilter,
     LifecycleDateShortcut,
@@ -37,8 +37,8 @@ from omnifocus_operator.contracts.use_cases.list.tasks import (
 
 __all__ = [
     "AvailabilityFilter",
-    "DateFieldShortcut",
     "DateFilter",
+    "DateShortcut",
     "DueDateShortcut",
     "FolderAvailabilityFilter",
     "LifecycleDateShortcut",

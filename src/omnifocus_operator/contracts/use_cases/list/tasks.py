@@ -29,7 +29,7 @@ from omnifocus_operator.contracts.base import UNSET, Patch, QueryModel
 from omnifocus_operator.contracts.use_cases.list._date_filter import DateFilter
 from omnifocus_operator.contracts.use_cases.list._enums import (
     AvailabilityFilter,
-    DateFieldShortcut,
+    DateShortcut,
     DueDateShortcut,
     LifecycleDateShortcut,
 )
@@ -68,10 +68,8 @@ class ListTasksQuery(QueryModel):
     availability: list[AvailabilityFilter] = Field(default=[AvailabilityFilter.REMAINING])
     search: Patch[str] = Field(default=UNSET, description=SEARCH_FIELD_NAME_NOTES)
     due: Patch[DueDateShortcut | DateFilter] = Field(default=UNSET, description=DUE_FILTER_DESC)
-    defer: Patch[DateFieldShortcut | DateFilter] = Field(
-        default=UNSET, description=DEFER_FILTER_DESC
-    )
-    planned: Patch[DateFieldShortcut | DateFilter] = Field(
+    defer: Patch[DateShortcut | DateFilter] = Field(default=UNSET, description=DEFER_FILTER_DESC)
+    planned: Patch[DateShortcut | DateFilter] = Field(
         default=UNSET, description=PLANNED_FILTER_DESC
     )
     completed: Patch[LifecycleDateShortcut | DateFilter] = Field(
@@ -80,10 +78,8 @@ class ListTasksQuery(QueryModel):
     dropped: Patch[LifecycleDateShortcut | DateFilter] = Field(
         default=UNSET, description=DROPPED_FILTER_DESC
     )
-    added: Patch[DateFieldShortcut | DateFilter] = Field(
-        default=UNSET, description=ADDED_FILTER_DESC
-    )
-    modified: Patch[DateFieldShortcut | DateFilter] = Field(
+    added: Patch[DateShortcut | DateFilter] = Field(default=UNSET, description=ADDED_FILTER_DESC)
+    modified: Patch[DateShortcut | DateFilter] = Field(
         default=UNSET, description=MODIFIED_FILTER_DESC
     )
     limit: int | None = Field(default=DEFAULT_LIST_LIMIT, description=LIMIT_DESC)

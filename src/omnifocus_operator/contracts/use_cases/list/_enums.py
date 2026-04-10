@@ -10,7 +10,7 @@ from enum import StrEnum
 
 from omnifocus_operator.agent_messages.descriptions import (
     AVAILABILITY_DOC,
-    DATE_FIELD_SHORTCUT_DOC,
+    DATE_SHORTCUT_DOC,
     DUE_DATE_SHORTCUT_DOC,
     FOLDER_AVAILABILITY_DOC,
     LIFECYCLE_DATE_SHORTCUT_DOC,
@@ -58,7 +58,7 @@ class LifecycleDateShortcut(StrEnum):
     TODAY = "today"
 
 
-class DateFieldShortcut(StrEnum):
-    __doc__ = DATE_FIELD_SHORTCUT_DOC
+class DateShortcut(StrEnum):
+    __doc__ = DATE_SHORTCUT_DOC
 
     TODAY = "today"

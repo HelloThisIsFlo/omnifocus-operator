@@ -140,7 +140,7 @@ LIFECYCLE_DATE_SHORTCUT_DOC = (
     "Shortcut for filtering by lifecycle date: all (every task in that state) or today."
 )
 
-DATE_FIELD_SHORTCUT_DOC = "Shortcut for date field filtering: today (tasks matching today's date)."
+DATE_SHORTCUT_DOC = "Shortcut for date field filtering: today (tasks matching today's date)."
 
 DUE_FILTER_DESC = (
     "Filter by due date (effective/inherited). "
