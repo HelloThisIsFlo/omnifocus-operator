@@ -1,6 +1,6 @@
 # Floating Timezone Experiment — Findings
 
-> Toggling floating is instant but invisible from the same TZ. Order matters: date must exist before setting floating=false. `new TimeZone("EST")` gives EDT in summer. SQLite re-encodes on toggle (naive local ↔ UTC+Z).
+> Toggling 🌊↔📌 is instant but invisible from the same TZ. Order matters: date must exist before `floating=false`. `new TimeZone("EST")` gives EDT in summer. SQLite re-encodes on toggle (naive local ↔ UTC+Z).
 
 **Date:** 2026-04-10
 **Script:** `04-floating-experiment/04-floating-tz-experiment.js`
@@ -112,61 +112,66 @@ cwIl1rVBAmG           TZ-DD-I: Date then toggle         2026-07-15T09:00:00.000Z
 
 ## Interpretation
 
-### Part 1: Toggle is instant but invisible from the same TZ
+### Part 1: Toggle is instant, invisible from same TZ
 
-`getTime()` = `1784106000000` before, during (false), and after (restored to true). From the same timezone, toggling floating changes nothing observable in the Date API. The reinterpretation only manifests when the system timezone changes (proven by script 01c's cross-TZ experiment).
+`getTime()` = `1784106000000` before, during (`false`), and after (restored to `true`). From the same timezone, toggling changes nothing in the Date API. Reinterpretation only manifests on TZ change (proven by script 01c).
 
-### Part 2: DateComponents with EST — DST resolution quirk
+### Part 2: DateComponents with "EST" — DST resolution
 
-- `new TimeZone("EST")` resolved to **EDT** (America/New_York in summer), `secondsFromGMT=-14400` (UTC-4)
-- Result: `09:00 EDT = 13:00 UTC`, not `14:00 UTC` as EST (UTC-5) would give
-- OmniJS applies current DST rules when resolving abbreviations — "EST" in July gives EDT
-- Task created as non-floating with `floating=false` — stored with Z suffix in SQLite
+> [!warning] Abbreviations are DST-aware
+>
+> - `new TimeZone("EST")` resolved to **EDT** (America/New_York in summer)
+> - `secondsFromGMT=-14400` (UTC-4), not UTC-5
+> - `09:00 EDT = 13:00 UTC` — **not** `14:00 UTC` as EST would give
+>
+> OmniJS applies current DST rules when resolving abbreviations => **"EST" in July gives EDT**
 
-### Part 3: Order enforced — date must exist before toggling floating
+Task created as 📌 non-floating — stored with Z suffix in SQLite.
 
-OmniFocus throws `"Set due or defer date to edit the time zone"` when setting `shouldUseFloatingTimeZone=false` on a dateless task. The task was still created (via `new Task()`), just dateless.
+### Part 3: Order enforced
+
+> [!warning] Date before flag
+>
+> - OmniFocus throws `"Set due or defer date to edit the time zone"` on `floating=false` for a dateless task
+> - The task was still created (`new Task()` succeeded), just dateless
+> - Only valid sequence: **set date first, then toggle floating**
 
 ### Part 4: Date-then-toggle works
 
-Setting dueDate first, then toggling floating=false — no error. `getTime()` unchanged from the same TZ (consistent with Part 1).
+Set `dueDate` first → toggle `floating=false` → no error. `getTime()` unchanged from same TZ (consistent with Part 1).
 
-### Part 5: H vs I — can't compare, but the error is the finding
+### Part 5: H vs I
 
-H failed, so no direct comparison. The takeaway: the only valid sequence is date first, then toggle floating.
+H failed => no direct comparison. The error itself is the finding.
 
 ### SQLite verification — re-encoding on toggle
 
-| Task | dateDue | Z? | Notes |
-|------|---------|-----|-------|
-| A-F (floating) | naive local time | No Z | Standard floating encoding |
-| G (fixed, DateComponents) | `13:00:00.000Z` | Z | UTC-anchored, matches 09:00 EDT |
-| H (error case) | *(empty)* | — | Task created but dateless |
-| I (date then toggle) | `09:00:00.000Z` | Z | Was `10:00:00.000` local when floating, re-encoded to UTC on toggle |
+| Task | `dateDue` | Z? | Notes |
+|------|-----------|-----|-------|
+| A-F (🌊) | naive local time | No | Standard floating encoding |
+| G (📌, DateComponents) | `13:00:00.000Z` | Yes | UTC-anchored, matches 09:00 EDT |
+| H (error) | *(empty)* | — | Created but dateless |
+| I (📌, toggled) | `09:00:00.000Z` | Yes | Was `10:00:00.000` local when 🌊, re-encoded to UTC |
 
-TZ-DD-I is the most interesting: originally stored as `10:00:00.000` (naive BST local) when floating, then re-encoded to `09:00:00.000Z` (UTC) when toggled to fixed. Same moment, different encoding. OmniFocus actively re-encodes the SQLite text when the floating flag changes.
+> [!important] Active re-encoding
+>
+> - TZ-DD-I was stored as `10:00:00.000` (naive BST local) when 🌊
+> - Toggled to 📌 → re-encoded to `09:00:00.000Z` (UTC)
+> - Same moment, different encoding — OmniFocus **rewrites the date text** on flag change
+> - `effectiveDateDue` (805798800) matches TZ-DD-A — same UTC moment
 
-TZ-DD-I's `effectiveDateDue` (805798800) matches TZ-DD-A's — both represent the same UTC moment (2026-07-15T09:00:00Z).
+## 🤯 Surprises
 
-## Key Findings
-
-- **Toggle is instant, invisible from same TZ.** `getTime()` unchanged across toggle. Reinterpretation only on TZ change.
-- **Order enforced**: must set a date before `shouldUseFloatingTimeZone=false`. OmniFocus throws if you try otherwise.
-- **`new TimeZone("EST")` gives EDT in summer.** Abbreviations resolve through current DST rules, not literal fixed offsets.
-- **SQLite re-encodes on floating toggle.** Floating = naive local (no Z), fixed = UTC (Z suffix). OmniFocus converts between them when the flag changes.
-- **IANA names still don't work** for `new TimeZone()` — but abbreviations resolve to the right IANA zone internally (EST → America/New_York).
-
-## Surprises / Unexpected Results
-
-- **The order enforcement** — didn't expect OmniFocus to throw on `floating=false` for a dateless task. The flag conceptually applies to the task, not the date.
-- **TZ-DD-H still exists** as a dateless task despite the error — `new Task()` succeeded, only the floating assignment failed.
-- **Active re-encoding** in SQLite when toggling the flag — OmniFocus doesn't just flip a boolean, it rewrites the date text representation.
-- **EST → EDT resolution** — the script expected fixed UTC-5, got DST-aware UTC-4. OmniJS abbreviations are DST-aware.
+- **Order enforcement** — didn't expect OmniFocus to throw on `floating=false` for a dateless task
+  - The flag conceptually applies to the task, not the date
+- **TZ-DD-H still exists** as a dateless task despite the error — `new Task()` succeeded, only the floating assignment failed
+- **Active re-encoding** — OmniFocus doesn't just flip a boolean, it rewrites the date text representation
+- **EST → EDT** — script expected fixed UTC-5, got DST-aware UTC-4
 
 ## Questions Answered
 
 | Question | Answer | Evidence |
 |----------|--------|----------|
-| Q2 | Setting floating=false works but only after a date exists. From same TZ: no observable difference. From different TZ: fixed preserves UTC (01c). SQLite stores fixed dates with Z suffix. | Part 1: identical getTime(). Part 3: error without date. SQLite: Z suffix on G, I. |
-| Q7 | Toggle is instant, persists, and triggers SQLite re-encoding (naive local ↔ UTC+Z). No getTime() change from same TZ. | Part 1: toggle + restore. SQLite: I re-encoded from local to UTC. |
-| Q8 | `new TimeZone("EST")` works but resolves to EDT in summer (DST-aware). IANA names (`Europe/London`) return null (script 01). Abbreviations map to IANA zones internally. | Part 2: EST → EDT, secondsFromGMT=-14400. Script 01d: Europe/London → null. |
+| Q2 | `floating=false` works but **only after a date exists**. Same TZ: no difference. Different TZ: 📌 preserves UTC (01c). SQLite stores 📌 with Z suffix. | Part 1: identical `getTime()`. Part 3: error. SQLite: Z on G, I. |
+| Q7 | Toggle is instant, persists, triggers SQLite re-encoding (naive local ↔ UTC+Z). No `getTime()` change from same TZ. | Part 1: toggle + restore. SQLite: I re-encoded. |
+| Q8 | `new TimeZone("EST")` works but gives EDT in summer (DST-aware). IANA names → null (script 01). Abbreviations map to IANA zones internally. | Part 2: EST → EDT, `-14400`. |

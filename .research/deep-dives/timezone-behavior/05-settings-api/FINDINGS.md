@@ -1,6 +1,6 @@
 # OmniFocus Settings API — Findings
 
-> `settings.objectForKey(key)` and `settings.defaultObjectForKey(key)` expose the full OmniFocus preferences via OmniJS. Discovered during script 03 create-and-readback.
+> `settings.objectForKey(key)` and `settings.defaultObjectForKey(key)` expose the full OmniFocus preferences via OmniJS. 66 keys, including date defaults and DueSoon thresholds.
 
 **Date:** 2026-04-10
 **Script:** `05-settings-api/05-list-settings-keys.js`
@@ -107,37 +107,39 @@ _ForecastTodayIncludesFlaggedItems
 === END ===
 ```
 
-## Date/Time-Relevant Keys
+## Date/Time Keys
 
 | Key | Value | Default | Use case |
 |-----|-------|---------|----------|
 | `DefaultDueTime` | `19:00:00` | `17:00` | Default time for due dates without time component |
 | `DefaultStartTime` | `08:00:00` | `00:00` | Default time for defer/start dates |
 | `DefaultPlannedTime` | `09:00` | `09:00` | Default time for planned dates |
-| `DefaultFloatingTimeZone` | `true` | `true` | Database-level floating TZ default |
+| `DefaultFloatingTimeZone` | `true` | `true` | Database-level 🌊 floating TZ default |
 | `DefaultScheduledNotificationTime` | `14:00` | `14:00` | Default notification time |
 | `DueSoonGranularity` | `1` | `1` | Granularity of "due soon" threshold |
 | `DueSoonInterval` | `86400` (1 day) | `172800` (2 days) | How far ahead "due soon" looks |
 
-## Actionable for Codebase
+## 🔧 Actionable for Codebase
 
 ### Date-only input handling
 
-When a date-only input arrives (no time component), the system should apply the user's configured default time instead of falling back to midnight. This matches OmniFocus UI behavior.
-
-- Detect date-only string at the service layer (bridge stays a pass-through)
-- Read `DefaultDueTime` / `DefaultStartTime` via bridge
-- Construct full datetime using the user's configured hours/minutes
+> [!important] Use OmniFocus default times for date-only inputs
+>
+> - Detect date-only string at the **service layer** (bridge stays a pass-through)
+> - Read `DefaultDueTime` / `DefaultStartTime` via bridge
+> - Construct full datetime using the user's configured hours/minutes
+>
+> This matches OmniFocus UI behavior — when a user types just a date, OF applies the default time
 
 ### DueSoon threshold
 
-- `DueSoonInterval` = `86400` seconds = 1 day (user-configured; OmniFocus default is 2 days)
-- `DueSoonGranularity` = `1` (day-level granularity)
+- `DueSoonInterval` = `86400`s = **1 day** (user-configured; OmniFocus default is 2 days)
+- `DueSoonGranularity` = `1` (day-level)
 - Could replace hardcoded thresholds to match OmniFocus's exact behavior
 
 ## Other Notable Keys
 
-- `DefaultFloatingTimeZone` = `true` — confirms floating is the database-level default
+- `DefaultFloatingTimeZone` = `true` — confirms 🌊 floating is the database-level default
 - `OFMTaskDefaultSequential` — whether new tasks default to sequential
 - `OFMCompleteWhenLastItemComplete` — completedByChildren default
 - `InboxIsActive` — whether inbox items count as "available"

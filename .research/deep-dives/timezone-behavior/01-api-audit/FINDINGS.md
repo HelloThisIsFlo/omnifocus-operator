@@ -1,6 +1,6 @@
 # Timezone API Audit — Findings
 
-> `shouldUseFloatingTimeZone` is NOT cosmetic — it changes how OmniFocus interprets stored dates across timezone changes. Floating = wall clock preserved, Fixed = UTC moment preserved. 100% of real tasks are floating=true.
+> `shouldUseFloatingTimeZone` is NOT cosmetic — it changes how OmniFocus interprets stored dates across timezone changes. 🌊 Floating = wall clock preserved, 📌 Fixed = UTC moment preserved. 100% of real tasks are 🌊.
 
 **Date:** 2026-04-10
 **Scripts:** `01-tz-api-audit.js`, `01b-floating-probe.js`, `01c-cross-tz-inspect.js`, `01d-sqlite-floating-inspect.py`
@@ -100,7 +100,7 @@ Total projects: 379
     floating=false: 0
 ```
 
-## Raw Output — Script 01b (Floating vs Fixed Baseline, BST)
+## Raw Output — Script 01b (🌊 vs 📌 Baseline, BST)
 
 Created two tasks with identical `dueDate = new Date("2026-07-15T10:00:00Z")` (July = BST).
 
@@ -166,89 +166,93 @@ Current environment:
 
 ## Interpretation
 
-### A: 100% floating — no exceptions
+### A: 100% 🌊 floating — no exceptions
+
 Every task (3341) and project (379) has `shouldUseFloatingTimeZone=true`. Zero `false` in the entire database.
 
 ### B: No hidden timezone properties
-`shouldUseFloatingTimeZone` is the **only** timezone-related property on Task. No `timeZone`, `calendar`, or other TZ properties exist.
+
+`shouldUseFloatingTimeZone` is the **only** timezone-related property on Task:
+- `task.timeZone` → `undefined`
+- `task.calendar` → `undefined`
+- `task.timezone` → `undefined`
+- `task.floatingTimeZone` → `undefined`
+- `task.taskTimeZone` → `undefined`
 
 ### C: OmniJS Dates are standard JS Dates in the system timezone
-- March 25 date (GMT period): `getTimezoneOffset()=0`, "Greenwich Mean Time"
-- July 15 date (BST period): `getTimezoneOffset()=-60`, "British Summer Time"
-- OmniJS Dates are fully DST-aware in the system timezone
-- `toISOString()` always outputs UTC — this is what the bridge's `d()` function uses
+
+- March 25 (GMT period) → `getTimezoneOffset()=0`, "Greenwich Mean Time"
+- July 15 (BST period) → `getTimezoneOffset()=-60`, "British Summer Time"
+- Fully DST-aware
+- `toISOString()` always outputs UTC — this is what the bridge's `d()` uses
 
 ### D: TimeZone class quirks
-- **IANA names don't work**: `new TimeZone("Europe/London")` returns null. Only abbreviations work.
-- **Abbreviations reflect current DST**: `new TimeZone("EST")` → EDT in April
-- **DateComponents.timeZone shows current system TZ**: Decomposing a March 25 date (GMT) shows GMT+1 because we ran it during BST
+
+> [!warning] IANA names don't work
+>
+> - `new TimeZone("Europe/London")` → **null** (throws on property access)
+> - Only abbreviations work: `"EST"`, `"UTC"`, `"PST"`, `"BST"`, `"GMT"`
+> - Abbreviations reflect **current DST**: `new TimeZone("EST")` → EDT in April
+> - `DateComponents.timeZone` shows **current system TZ** (not the date's own period)
 
 ### E: No observable "database default" difference
-All tasks floating=true regardless of whether they have dates.
+
+All tasks `floating=true` regardless of whether they have dates — 630 with dates, 2711 without, all floating.
 
 ### F: Same-timezone probe (01b)
-From BST (the creation timezone), floating and fixed tasks are **identical** through the Date API. Toggling the flag changes nothing observable — same epoch ms, same ISO string, same offset.
 
-UI difference only: "fixed" shows a GMT+1 label on notifications, "floating" hides it.
+> [!important] Same-TZ invisibility
+>
+> - 🌊 and 📌 are **identical** through the Date API from the creation timezone
+> - Same epoch ms, same ISO string, same offset
+> - Only UI difference: 📌 shows a GMT+1 label on notifications, 🌊 hides it
 
-### G: Cross-timezone experiment (01b + 01c) — THE KEY FINDING
+### G: Cross-timezone experiment (01b + 01c) — 🔑 THE KEY FINDING
 
 Two tasks with identical `dueDate = new Date("2026-07-15T10:00:00Z")`, created in BST:
 
 | | BST (home, UTC+1) | EDT (New York, UTC-4) |
 |---|---|---|
-| **Floating** | 11:00 BST, getTime=1784109600000 | **11:00 EDT**, getTime=**1784127600000** (+5h) |
-| **Fixed** | 11:00 BST, getTime=1784109600000 | **06:00 EDT**, getTime=**1784109600000** (unchanged) |
+| 🌊 **Floating** | 11:00 BST, `getTime=1784109600000` | **11:00 EDT**, `getTime=1784127600000` (+5h) |
+| 📌 **Fixed** | 11:00 BST, `getTime=1784109600000` | **06:00 EDT**, `getTime=1784109600000` (unchanged) |
 
-- **Floating = wall clock time**: "11:00" travels with the user. UTC moment recalculated for the new timezone.
-- **Fixed = UTC moment**: 10:00 UTC stays 10:00 UTC. Wall clock shifts to whatever that means locally.
+- 🌊 **Floating = wall clock** — "11:00" travels with you, UTC moment recalculated
+- 📌 **Fixed = UTC moment** — 10:00 UTC stays 10:00 UTC, wall clock shifts
 - **Delta = 300 min = 5h** — exactly BST(+1) to EDT(-4)
-- **Notifications shift too**: floating task's fire dates shifted by 5h, fixed task's unchanged
-- **`effectiveDueDate` follows the same pattern** as `dueDate`
+- Notifications shift too — 🌊 fire dates shifted by 5h, 📌 unchanged
+- `effectiveDueDate` follows the same pattern
 
 ### Codebase impact
 
-- **Bridge `d()` calls `.toISOString()`** — for floating tasks, bridge output is timezone-dependent. A snapshot taken in New York would show different UTC strings than one taken in London for the same floating task.
-- **`_parse_local_datetime()` in hybrid.py** interprets naive SQLite text as local time → correct for floating tasks (100% of real data). Fixed tasks may need different handling (script 02 will check SQLite storage).
-- **In practice: 100% floating=true, so current code is correct.** But we now understand the boundary condition.
+- **Bridge `d()` calls `.toISOString()`** — for 🌊 tasks, output is timezone-dependent
+  - Snapshot in New York ≠ snapshot in London for the same task
+- **`_parse_local_datetime()` in `hybrid.py`** — interprets naive SQLite text as local time
+  - ✅ Correct for 🌊 tasks (100% of real data)
+  - 📌 tasks would need different handling — but none exist in practice
 
-## Key Findings
+### H: SQLite storage of 🌊 vs 📌 (01d)
 
-- `shouldUseFloatingTimeZone` is NOT cosmetic — it fundamentally changes date interpretation across timezones
-- **Floating** = wall clock preserved, UTC moment shifts with timezone changes
-- **Fixed** = UTC moment preserved, wall clock shifts with timezone changes
-- From the same timezone, both look identical — the difference only manifests when the system timezone changes
-- 100% of 3341 tasks and 379 projects are floating=true
-- OmniJS Dates are DST-aware JS Dates: offset=-60 in BST, offset=0 in GMT
-- IANA timezone names can't be used with `new TimeZone()` — only abbreviations
+> [!important] The encoding rule
+>
+> - 🌊 Floating → **no Z suffix** — naive local time (e.g., `2026-07-15T11:00:00.000`)
+> - 📌 Fixed → **Z suffix** — UTC-anchored (e.g., `2026-07-15T10:00:00.000Z`)
+> - Both have identical `effectiveDateDue` — same UTC moment, different text encoding
+> - **Detection**: `dateDue.endswith('Z')` → 📌 fixed. No separate column needed.
 
-## Surprises / Unexpected Results
+Broader scan: 465 `dateDue` values → only 1 Z-suffix (our test task). Zero Z in `dateToStart` (0/510) and `datePlanned` (0/30). Confirms 100% 🌊 in real data.
 
-- The floating flag having a real, measurable effect on `getTime()` and `toISOString()` — not just a display hint
+## 🤯 Surprises
+
+- The floating flag having a **real, measurable effect** on `getTime()` and `toISOString()` — not just a display hint
 - `new TimeZone("Europe/London")` returning null
-- DateComponents reporting GMT+1 for a March 25 date (current system state, not the date's)
-- Notification fire dates also shifting for floating tasks (even though `usesFloatingTimeZone=false` on the notification objects themselves)
-
-### H: SQLite storage of floating vs fixed (01d)
-
-The floating flag is NOT a separate SQLite column. It's encoded in the date text string itself:
-
-| Task | `dateDue` in SQLite | Meaning |
-|------|-------------------|---------|
-| TZ-PROBE-Floating | `2026-07-15T11:00:00.000` (no Z) | Floating — naive local time |
-| TZ-PROBE-Fixed | `2026-07-15T10:00:00.000Z` (has Z) | Fixed — UTC-anchored |
-
-Both have identical `effectiveDateDue: 805802400` (same UTC moment).
-
-Broader scan across all 465 `dateDue` values: only 1 ends with `Z` (our test task). Zero Z-suffix in `dateToStart` (0/510) and `datePlanned` (0/30). Confirms 100% floating in real data.
-
-**Detection rule**: `dateDue.endswith('Z')` → fixed timezone task. No separate column needed.
+- `DateComponents.timeZone` reporting GMT+1 for a March 25 date — current system state, not the date's own period
+- Notification fire dates shifting for 🌊 tasks — even though `usesFloatingTimeZone=false` on the notification objects themselves
 
 ## Questions Answered
 
 | Question | Answer | Evidence |
 |----------|--------|----------|
-| Q1 | Only `shouldUseFloatingTimeZone` (bool, r/w). No other TZ properties on Task. | Section B: all probes returned `undefined` |
-| Q2 | Setting floating=false works. From same TZ: no API difference. From different TZ: fixed preserves UTC moment, floating preserves wall clock. | 01b: 0ms delta same-TZ. 01c: 300min delta cross-TZ |
-| Q3 | No hidden TZ columns in SQLite. The floating flag is encoded as Z-suffix on date text strings, not a separate column. | 01d: side-by-side comparison + broader scan |
-| Q7 | Toggling floating on an existing task is instant and persists. The reinterpretation happens when OmniFocus next evaluates the date in a different timezone context. | 01b: toggle confirmed. 01c: reinterpretation observed |
+| Q1 | Only `shouldUseFloatingTimeZone` (bool, r/w). No other TZ properties on Task. | Section B: all probes → `undefined` |
+| Q2 | Setting `floating=false` works. Same TZ: no API difference. Different TZ: 📌 preserves UTC, 🌊 preserves wall clock. | 01b: 0ms delta same-TZ. 01c: 300min delta cross-TZ |
+| Q3 | No hidden TZ columns in SQLite. Floating encoded as Z-suffix on date text strings. | 01d: side-by-side + broader scan |
+| Q7 | Toggling is instant and persists. Reinterpretation happens on next TZ change. | 01b: toggle confirmed. 01c: reinterpretation observed |

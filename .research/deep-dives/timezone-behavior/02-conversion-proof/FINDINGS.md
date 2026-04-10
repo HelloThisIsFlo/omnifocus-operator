@@ -1,6 +1,6 @@
 # Date Conversion Proof — Findings
 
-> Formula proven: `CF_seconds = (naive_local_as_tz(system_tz) → UTC - CF_EPOCH)`. Perfect match across 430 tasks, both BST and GMT.
+> ✅ Formula proven: `CF_seconds = (naive_local_as_tz(system_tz) → UTC - CF_EPOCH)`. Perfect match across 430 tasks, both BST and GMT.
 
 **Date:** 2026-04-10
 **Script:** `02-conversion-proof/02-date-conversion-proof.py`
@@ -46,44 +46,44 @@ Database: ~/Library/Group Containers/.../OmniFocusDatabase.db
 
 ## Interpretation
 
-### The formula is proven
-For all three direct→effective column pairs, the conversion is:
+### The formula
 
-```
+```python
 CF_seconds = (naive_local_datetime.replace(tzinfo=system_tz).astimezone(UTC) - CF_EPOCH).total_seconds()
 ```
 
-- **dateDue**: 200/200 match, 0.000s max delta, across both BST and GMT dates
-- **datePlanned**: 30/30 match, 0.000s max delta
-- **dateToStart**: 199/200 match — the one mismatch is explained below
+> [!important] Verification results
+>
+> - ✅ `dateDue` — 200/200 match, 0.000s max delta, across BST and GMT
+> - ✅ `datePlanned` — 30/30 match, 0.000s max delta
+> - ✅ `dateToStart` — 199/200 match — one mismatch is inheritance (not a formula error)
+>
+> => **`_parse_local_datetime()` in `hybrid.py` is confirmed correct** for the entire database
 
-This confirms `_parse_local_datetime()` in `hybrid.py` is correct for the entire database.
+### The one `dateToStart` mismatch: inherited effective date
 
-### The one dateToStart mismatch: inherited effective date
-"Check if order has been accepted": delta = 1,267,200s = 14.67 days. The task's own `dateToStart` is April 26, but `effectiveDateToStart` comes from an ancestor with an earlier defer date. The script includes tasks where effective != direct because of inheritance — expected behavior, not a formula error.
+- "Check if order has been accepted" — delta = 1,267,200s = 14.67 days
+- Task's own `dateToStart` = April 26
+- `effectiveDateToStart` comes from an **ancestor** with an earlier defer date
+- Expected behavior — OmniFocus inheritance, not a formula error
 
-### DST handling is correct
-The formula correctly handles both seasons because `ZoneInfo("Europe/London")` automatically applies the right offset based on the date itself:
-- Summer dates (months 4-10): offset = +1h (BST)
-- Winter dates (months 11-3): offset = +0h (GMT)
+### DST handling
+
+`ZoneInfo("Europe/London")` automatically applies the right offset based on the date itself:
+- Summer (months 4-10) → +1h (BST)
+- Winter (months 11-3) → +0h (GMT)
 
 No special-casing needed — stdlib `zoneinfo` handles DST transitions.
 
-## Key Findings
+## 🤯 Surprises
 
-- **Conversion formula proven** across 430 tasks with zero errors (excluding one inherited effective date)
-- **DST is handled correctly** — summer BST (+1h) and winter GMT (+0h) both match perfectly
-- **`_parse_local_datetime()` in `hybrid.py` is confirmed correct** for converting naive local text to UTC
-
-## Surprises / Unexpected Results
-
-- The `dateToStart` mismatch being exactly 14.67 days (inheritance, not a TZ error)
-- Zero delta on all direct→effective conversions — not even sub-second rounding differences
+- The `dateToStart` mismatch being exactly 14.67 days — inheritance, not a TZ error
+- **Zero delta** on all direct→effective conversions — not even sub-second rounding differences
 
 ## Questions Answered
 
 | Question | Answer | Evidence |
 |----------|--------|----------|
-| Q3 (column scan only) | No timezone-related column names in SQLite. Only `latestTimeToStartAlarmPolicyString` matches TZ keywords (irrelevant). The floating flag is encoded as Z-suffix on date strings — see script 01d. | Section 2: PRAGMA table_info scan |
-| Q4 | `effectiveDateDue = CF_seconds(naive_local_as_utc_via_system_tz - CF_EPOCH)`. Exact match for 200/200 tasks. | Section 3: 0.000s max delta |
-| Q5 | Yes — conversion holds perfectly across DST. 31 BST + 169 GMT dates all match for dateDue. | Sections 3-5: 0 mismatches in BST or GMT |
+| Q3 (column scan) | No TZ-related column names in SQLite. Only `latestTimeToStartAlarmPolicyString` matches keywords (irrelevant). Floating encoded as Z-suffix — see script 01d. | PRAGMA table_info scan |
+| Q4 | `effectiveDateDue = CF_seconds(naive_local_as_utc_via_system_tz - CF_EPOCH)`. Exact match 200/200. | 0.000s max delta |
+| Q5 | Conversion holds perfectly across DST. 31 BST + 169 GMT dates all match for `dateDue`. | 0 mismatches in BST or GMT |
