@@ -74,6 +74,7 @@ Carried forward from v1.3.1:
 16. Refactor DateFilter into discriminated union for schema-level validation (contracts)
 17. ~~Rethink timezone handling strategy for date filter inputs~~ → completed by timezone deep-dive
 18. Implement naive-local datetime contract for all date inputs (contracts)
+19. Use OmniFocus settings API for date preferences and due-soon threshold (service) — depends on #18
 
 ### Blockers/Concerns
 
