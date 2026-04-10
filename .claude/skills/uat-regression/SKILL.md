@@ -14,7 +14,7 @@ Run UAT regression tests for OmniFocus Operator MCP tools against live OmniFocus
 | Suite | File | Tests | Covers |
 |-------|------|------:|--------|
 | **Writes Combined** *(composite)* | `tests/writes-combined.md` | 154 | **Full write-side regression** — lookups, creation, edits, tags, moves, lifecycle, integration, inheritance, repetition rules |
-| **Reads Combined** *(composite)* | `tests/reads-combined.md` | 147 | **Full read-side regression** — list tasks, date filtering, list projects, simple list tools, validation & error formatting |
+| **Reads Combined** *(composite)* | `tests/reads-combined.md` | 169 | **Full read-side regression** — list tasks, date filtering, list projects, simple list tools, validation & error formatting |
 | Read Lookups | `tests/read-lookups.md` | 8 | get_task, get_project, get_tag — happy path, not-found errors, $inbox guard, enriched references |
 | Task Creation | `tests/task-creation.md` | 17 | add_tasks — inbox, $inbox parent, all fields, tag resolution, null/system-location errors, batch limit, enriched response shape |
 | Integration Flows | `tests/integration-flows.md` | 8 | End-to-end write-through: create→edit→move→tags→lifecycle→get_all |
@@ -24,11 +24,11 @@ Run UAT regression tests for OmniFocus Operator MCP tools against live OmniFocus
 | Lifecycle | `tests/lifecycle.md` | 12 | Complete, drop, cross-state, repeating tasks, validation |
 | Inheritance | `tests/inheritance.md` | 8 | Effective field inheritance — dueDate, deferDate, plannedDate, flagged from projects through task chains |
 | Repetition Rules | `tests/repetition-rules.md` | 40 | Creation, read model, set/clear/partial update/type change, no-ops, status warnings, lifecycle, normalization, validation errors, combos, regression guards |
-| List Tasks | `tests/list-tasks.md` | 47 | list_tasks — project/tag/$inbox/flagged/availability/estimate/search filters, ALL shorthand, null/empty rejection, contradictions, name resolution warnings, pagination, AND-logic combos, enriched response shape |
-| Date Filtering | `tests/date-filtering.md` | 17 | list_tasks date filters — due shortcuts (overdue/soon/today), lifecycle date filters (completed/dropped with auto-inclusion), shorthand periods (this/last/next), non-due fields (defer, added), inherited effective dates |
+| List Tasks | `tests/list-tasks.md` | 46 | list_tasks — project/tag/$inbox/flagged/availability (available/blocked/remaining)/estimate/search filters, lifecycle date filter auto-inclusion, availability redundancy warnings, null/empty rejection, contradictions, name resolution warnings, pagination, AND-logic combos, enriched response shape |
+| Date Filtering | `tests/date-filtering.md` | 32 | list_tasks date filters — due shortcuts (overdue/soon/today), lifecycle date filters (completed/dropped with auto-inclusion), shorthand periods (this/last/next), absolute bounds, combos, defer hints, non-due fields (defer, added, modified, planned), inherited effective dates, edge cases |
 | List Projects | `tests/list-projects.md` | 33 | list_projects — folder filter, review_due_within duration, flagged, availability, ALL shorthand, $inbox warning, null/empty rejection, search, folder resolution warnings, pagination, combos, enriched response shape |
 | Simple List Tools | `tests/simple-list-tools.md` | 23 | list_tags, list_folders, list_perspectives — availability defaults (tags vs folders), ALL shorthand, null/empty rejection, search, pagination, parent hierarchy, builtin flag, cross-tool consistency, enriched references |
-| Validation & Errors | `tests/validation-errors.md` | 27 | Cross-tool error formatting — unknown fields, invalid types, batch limits, filter null/empty, $inbox guard, system locations, reserved prefix, middleware reformatting, no pydantic internals, camelCase in errors |
+| Validation & Errors | `tests/validation-errors.md` | 35 | Cross-tool error formatting — unknown fields, invalid types, batch limits, filter null/empty, $inbox guard, system locations, reserved prefix, middleware reformatting, no pydantic internals, camelCase in errors, DateFilter validation, breaking change rejections |
 
 ## Flow
 
