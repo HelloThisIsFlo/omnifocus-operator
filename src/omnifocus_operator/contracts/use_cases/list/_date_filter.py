@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import re
-from datetime import date, datetime
+from datetime import datetime as _datetime
 from typing import Annotated, Any, Literal
 
 from pydantic import (
-    AwareDatetime,
     BeforeValidator,
     Discriminator,
     Field,
@@ -23,26 +22,27 @@ from omnifocus_operator.contracts.base import UNSET, Patch, QueryModel, is_set
 _DATE_DURATION_PATTERN = re.compile(r"^(\d*)([dwmy])$")
 
 
-def _reject_naive_datetime(v: Any) -> Any:
-    """Intercept naive datetime strings before Pydantic union dispatch."""
-    if isinstance(v, str) and "T" in v:  # noqa: SIM102 — readability
-        # Looks like a datetime — reject if missing timezone indicator
-        if not (v.endswith("Z") or "+" in v[19:] or "-" in v[19:]):
-            raise ValueError(err.DATE_FILTER_NAIVE_DATETIME)
+def _validate_date_bound_string(v: object) -> object:
+    """Validate date bound syntax. 'now' literal and non-str pass through."""
+    if not isinstance(v, str):
+        return v
+    if v == "now":
+        return v
+    try:
+        _datetime.fromisoformat(v)
+    except ValueError:
+        raise ValueError(
+            f"Invalid date format '{v}'. Expected ISO date ('2026-07-15'), "
+            f"ISO datetime ('2026-07-15T17:00:00'), or datetime with "
+            f"timezone ('2026-07-15T17:00:00+01:00'), or 'now'."
+        )
     return v
 
 
 _DateBound = Annotated[
-    Literal["now"] | AwareDatetime | date,
-    BeforeValidator(_reject_naive_datetime),
+    Literal["now"] | str,
+    BeforeValidator(_validate_date_bound_string),
 ]
-
-
-def _to_naive(v: AwareDatetime | date) -> datetime:
-    """Normalize to naive datetime for ordering comparison."""
-    if isinstance(v, datetime):
-        return v.replace(tzinfo=None)
-    return datetime(v.year, v.month, v.day)
 
 
 class ThisPeriodFilter(QueryModel):
@@ -99,16 +99,13 @@ class AbsoluteRangeFilter(QueryModel):
             before, after = self.before, self.after
             if before == "now" or after == "now":
                 return self  # D-10: skip comparison when "now"
-            # Only Literal["now"] is str-typed; early return above handles it
-            assert not isinstance(after, str), (
-                f"unexpected str {after!r} — only 'now' is allowed and should be caught above"
-            )
-            assert not isinstance(before, str), (
-                f"unexpected str {before!r} — only 'now' is allowed and should be caught above"
-            )
-            after_dt = _to_naive(after)  # type: ignore[arg-type]  # python/mypy#11907
-            before_dt = _to_naive(before)  # type: ignore[arg-type]  # python/mypy#11907
-            if after_dt > before_dt:
+            # Both are date/datetime strings -- parse and compare
+            after_dt = _datetime.fromisoformat(after)
+            before_dt = _datetime.fromisoformat(before)
+            # Strip tz for comparison (naive ordering is sufficient)
+            after_cmp = after_dt.replace(tzinfo=None) if after_dt.tzinfo else after_dt
+            before_cmp = before_dt.replace(tzinfo=None) if before_dt.tzinfo else before_dt
+            if after_cmp > before_cmp:
                 raise ValueError(err.DATE_FILTER_REVERSED_BOUNDS.format(after=after, before=before))
         return self
 

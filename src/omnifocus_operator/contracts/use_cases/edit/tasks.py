@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import datetime as _datetime
 from typing import Literal
 
-from pydantic import AwareDatetime, Field, field_validator
+from pydantic import Field, field_validator
 
 from omnifocus_operator.agent_messages.descriptions import (
     DATE_EXAMPLE,
@@ -32,6 +33,21 @@ from omnifocus_operator.contracts.shared.repetition_rule import (
     RepetitionRuleRepoPayload,
 )
 from omnifocus_operator.models.base import OmniFocusBaseModel
+
+
+def _validate_date_string(v: object) -> object:
+    """Validate that a string is a parseable ISO date or datetime (syntax only)."""
+    if not isinstance(v, str):
+        return v
+    try:
+        _datetime.fromisoformat(v)
+    except ValueError:
+        raise ValueError(
+            f"Invalid date format '{v}'. Expected ISO date ('2026-07-15'), "
+            f"ISO datetime ('2026-07-15T17:00:00'), or datetime with "
+            f"timezone ('2026-07-15T17:00:00+01:00')."
+        )
+    return v
 
 
 class EditTaskActions(CommandModel):
@@ -69,21 +85,28 @@ class EditTaskCommand(CommandModel):
 
     # Clearable fields (None = clear the value)
     note: PatchOrClear[str] = Field(default=UNSET, description=NOTE_EDIT_COMMAND)
-    due_date: PatchOrClear[AwareDatetime] = Field(
+    due_date: PatchOrClear[str] = Field(
         default=UNSET,
         description=DUE_DATE_WRITE,
         examples=[DATE_EXAMPLE],
     )
-    defer_date: PatchOrClear[AwareDatetime] = Field(
+    defer_date: PatchOrClear[str] = Field(
         default=UNSET,
         description=DEFER_DATE_WRITE,
         examples=[DATE_EXAMPLE],
     )
-    planned_date: PatchOrClear[AwareDatetime] = Field(
+    planned_date: PatchOrClear[str] = Field(
         default=UNSET,
         description=PLANNED_DATE_WRITE,
         examples=[DATE_EXAMPLE],
     )
+
+    @field_validator("due_date", "defer_date", "planned_date", mode="before")
+    @classmethod
+    def _check_date_format(cls, v: object) -> object:
+        """Validate date string syntax. UNSET and None pass through (patch semantics)."""
+        return _validate_date_string(v)
+
     estimated_minutes: PatchOrClear[float] = Field(
         default=UNSET, description=ESTIMATED_MINUTES_EDIT
     )

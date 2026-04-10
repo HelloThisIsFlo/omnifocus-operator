@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from pydantic import AwareDatetime, Field, field_validator
+from datetime import datetime as _datetime
+
+from pydantic import Field, field_validator
 
 from omnifocus_operator.agent_messages.descriptions import (
     ADD_TASK_RESULT_DOC,
@@ -24,6 +26,21 @@ from omnifocus_operator.contracts.shared.repetition_rule import (
     RepetitionRuleRepoPayload,
 )
 from omnifocus_operator.models.base import OmniFocusBaseModel
+
+
+def _validate_date_string(v: object) -> object:
+    """Validate that a string is a parseable ISO date or datetime (syntax only)."""
+    if not isinstance(v, str):
+        return v
+    try:
+        _datetime.fromisoformat(v)
+    except ValueError:
+        raise ValueError(
+            f"Invalid date format '{v}'. Expected ISO date ('2026-07-15'), "
+            f"ISO datetime ('2026-07-15T17:00:00'), or datetime with "
+            f"timezone ('2026-07-15T17:00:00+01:00')."
+        )
+    return v
 
 
 class AddTaskCommand(CommandModel):
@@ -52,21 +69,27 @@ class AddTaskCommand(CommandModel):
         default=None,
         description=TAGS_ADD_COMMAND,
     )
-    due_date: AwareDatetime | None = Field(
+    due_date: str | None = Field(
         default=None,
         description=DUE_DATE_WRITE,
         examples=[DATE_EXAMPLE],
     )
-    defer_date: AwareDatetime | None = Field(
+    defer_date: str | None = Field(
         default=None,
         description=DEFER_DATE_WRITE,
         examples=[DATE_EXAMPLE],
     )
-    planned_date: AwareDatetime | None = Field(
+    planned_date: str | None = Field(
         default=None,
         description=PLANNED_DATE_WRITE,
         examples=[DATE_EXAMPLE],
     )
+
+    @field_validator("due_date", "defer_date", "planned_date", mode="before")
+    @classmethod
+    def _check_date_format(cls, v: object) -> object:
+        return _validate_date_string(v)
+
     flagged: bool = Field(default=False, description=FLAGGED)
     estimated_minutes: float | None = Field(default=None, description=ESTIMATED_MINUTES)
     note: str | None = Field(default=None, description=NOTE_ADD_COMMAND)

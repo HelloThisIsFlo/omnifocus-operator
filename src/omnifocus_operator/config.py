@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -111,3 +112,20 @@ def get_week_start() -> int:
     if raw not in WEEK_START_MAP:
         raise ValueError(f"Invalid OPERATOR_WEEK_START '{raw}' -- use 'monday' or 'sunday'")
     return WEEK_START_MAP[raw]
+
+
+def local_now() -> datetime:
+    """Return current time as a tz-aware local datetime.
+
+    OmniFocus stores all dates as naive local time. The server runs on
+    the same Mac. Using local time means the API matches OmniFocus's
+    mental model: "5pm" means 5pm, period.
+
+    Returns tz-aware (not naive) so arithmetic with UTC-anchored values
+    (CF epoch subtraction in query_builder) works correctly -- Python
+    handles the offset automatically in tz-aware subtraction.
+
+    Evidence: timezone deep-dive proved the conversion formula across
+    430 tasks in both BST and GMT. See .research/deep-dives/timezone-behavior/
+    """
+    return datetime.now().astimezone()
