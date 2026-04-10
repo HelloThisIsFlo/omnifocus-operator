@@ -162,17 +162,18 @@ async def main() -> int:
     await asyncio.sleep(3)
 
     # -----------------------------------------------------------------------
-    # 5. Bridge readback via snapshot
+    # 5. Bridge readback via get_all
     # -----------------------------------------------------------------------
-    section("5. Bridge Readback (snapshot)")
+    section("5. Bridge Readback (get_all)")
 
+    bridge_tasks: dict[str, dict] = {}
     try:
-        snapshot = await bridge.send_command("snapshot")
-        tasks = snapshot.get("tasks", [])
+        all_data = await bridge.send_command("get_all")
+        tasks_list = all_data.get("tasks", [])
 
         # Filter to our test tasks
         id_set = {v["id"] for v in created.values() if v.get("id")}
-        bridge_tasks = {t["id"]: t for t in tasks if t["id"] in id_set}
+        bridge_tasks = {t["id"]: t for t in tasks_list if t["id"] in id_set}
 
         for label in ["A", "B", "C", "D", "E", "F"]:
             info = created.get(label, {})
@@ -190,7 +191,7 @@ async def main() -> int:
             print()
 
     except Exception as e:
-        print(f"  ERROR reading snapshot: {e}")
+        print(f"  ERROR reading get_all: {e}")
 
     # -----------------------------------------------------------------------
     # 6. SQLite readback
@@ -211,20 +212,22 @@ async def main() -> int:
                 continue
 
             row = conn.execute(
-                "SELECT dateDue, effectiveDateDue, shouldUseFloatingTimeZone "
-                "FROM Task WHERE persistentIdentifier = ?",
+                "SELECT dateDue, effectiveDateDue FROM Task WHERE persistentIdentifier = ?",
                 (tid,),
             ).fetchone()
 
             if row:
+                date_due = row["dateDue"]
+                # Floating flag is encoded in the date text: Z suffix = fixed, no Z = floating
+                is_fixed = date_due.endswith("Z") if date_due else False
                 print(f"  [{label}] {info['name']}")
                 print(f"    Input:                      {info['input']}")
-                print(f"    SQLite dateDue (text):      {row['dateDue']}")
+                print(f"    SQLite dateDue (text):      {date_due}")
                 print(
                     f"    SQLite effectiveDateDue:    {row['effectiveDateDue']} "
                     f"= {cf_to_iso(row['effectiveDateDue'])}"
                 )
-                print(f"    SQLite floatingTZ:          {row['shouldUseFloatingTimeZone']}")
+                print(f"    Floating (no Z = floating): {'fixed' if is_fixed else 'floating'}")
                 print()
             else:
                 print(f"  [{label}] {info['name']}: NOT FOUND in SQLite")
