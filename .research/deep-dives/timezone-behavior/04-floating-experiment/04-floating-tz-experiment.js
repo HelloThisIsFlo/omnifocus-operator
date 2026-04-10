@@ -169,8 +169,8 @@
   // =========================================================================
   r += `--- New Task IDs ---\n\n`;
   const tzTasks = [];
-  for (let i = 0; i < flattenedTasks.length; i++) {
-    const t = flattenedTasks[i];
+  for (let i = 0; i < tasks.length; i++) {
+    const t = tasks[i];
     if (t.name.indexOf("TZ-DD-") === 0) {
       tzTasks.push(t);
     }
