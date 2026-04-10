@@ -1,20 +1,26 @@
 """Tests for DateFilter contract model, date shortcut StrEnums, and query date fields."""
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import ClassVar
 
 import pytest
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from omnifocus_operator.config import get_week_start
 from omnifocus_operator.contracts.use_cases.list import (
+    AbsoluteRangeFilter,
     DateFilter,
     DateShortcut,
     DueDateShortcut,
+    LastPeriodFilter,
     LifecycleDateShortcut,
     ListTasksQuery,
     ListTasksRepoQuery,
+    NextPeriodFilter,
+    ThisPeriodFilter,
 )
+
+_ta = TypeAdapter(DateFilter)
 
 # ---------------------------------------------------------------------------
 # DueDateShortcut StrEnum (DATE-06)
@@ -65,28 +71,28 @@ class TestLifecycleDateShortcut:
 
 class TestDateFilterValidShorthand:
     def test_this_day(self) -> None:
-        f = DateFilter(this="d")
+        f = ThisPeriodFilter(this="d")
         assert f.this == "d"
 
     def test_last_3d(self) -> None:
-        f = DateFilter(last="3d")
+        f = LastPeriodFilter(last="3d")
         assert f.last == "3d"
 
     def test_next_week(self) -> None:
-        f = DateFilter(next="w")
+        f = NextPeriodFilter(next="w")
         assert f.next == "w"
 
     def test_last_2m(self) -> None:
-        f = DateFilter(last="2m")
+        f = LastPeriodFilter(last="2m")
         assert f.last == "2m"
 
     def test_next_1y(self) -> None:
-        f = DateFilter(next="1y")
+        f = NextPeriodFilter(next="1y")
         assert f.next == "1y"
 
     def test_count_defaults_to_1(self) -> None:
         """'w' is valid shorthand for last/next (same as '1w')."""
-        f = DateFilter(last="w")
+        f = LastPeriodFilter(last="w")
         assert f.last == "w"
 
 
@@ -97,54 +103,64 @@ class TestDateFilterValidShorthand:
 
 class TestDateFilterValidAbsolute:
     def test_before_date_only(self) -> None:
-        f = DateFilter(before="2026-04-14")
-        assert f.before == "2026-04-14"
+        f = AbsoluteRangeFilter(before="2026-04-14")
+        assert isinstance(f.before, date)
+        assert not isinstance(f.before, datetime)
 
     def test_after_date_only(self) -> None:
-        f = DateFilter(after="2026-04-01")
-        assert f.after == "2026-04-01"
+        f = AbsoluteRangeFilter(after="2026-04-01")
+        assert isinstance(f.after, date)
+        assert not isinstance(f.after, datetime)
 
     def test_before_now(self) -> None:
-        f = DateFilter(before="now")
+        f = AbsoluteRangeFilter(before="now")
         assert f.before == "now"
 
     def test_after_now(self) -> None:
-        f = DateFilter(after="now")
+        f = AbsoluteRangeFilter(after="now")
         assert f.after == "now"
 
-    def test_both_absolute_with_datetime(self) -> None:
-        f = DateFilter(after="2026-04-01T14:00:00", before="2026-04-14")
-        assert f.after == "2026-04-01T14:00:00"
-        assert f.before == "2026-04-14"
+    def test_both_absolute_with_aware_datetime(self) -> None:
+        f = AbsoluteRangeFilter(after="2026-04-01T14:00:00Z", before="2026-04-14")
+        assert isinstance(f.after, datetime)
+        assert f.after.tzinfo is not None
+        assert isinstance(f.before, date)
 
     def test_both_now_valid(self) -> None:
         """Both bounds as 'now' is valid (no ordering check needed)."""
-        f = DateFilter(after="now", before="now")
+        f = AbsoluteRangeFilter(after="now", before="now")
         assert f.after == "now"
         assert f.before == "now"
 
 
 # ---------------------------------------------------------------------------
-# DateFilter: Mutual exclusion (DATE-04)
+# DateFilter: Discriminator routing / mutual exclusion (DATE-04)
 # ---------------------------------------------------------------------------
 
 
 class TestDateFilterMutualExclusion:
-    def test_mixed_groups_rejected(self) -> None:
-        with pytest.raises(ValueError, match="Cannot mix shorthand"):
-            DateFilter(this="d", before="2026-04-14")
+    """With the union, mixed keys route to the first-matched branch which
+    rejects the extra key via extra='forbid'."""
 
-    def test_mixed_groups_last_and_after(self) -> None:
-        with pytest.raises(ValueError, match="Cannot mix shorthand"):
-            DateFilter(last="3d", after="2026-04-01")
+    def test_mixed_this_and_before_rejected(self) -> None:
+        """Discriminator sees 'this', routes to ThisPeriodFilter which rejects 'before'."""
+        with pytest.raises(ValidationError):
+            _ta.validate_python({"this": "d", "before": "2026-04-14"})
 
-    def test_multiple_shorthand_rejected(self) -> None:
-        with pytest.raises(ValueError, match="Only one shorthand key"):
-            DateFilter(this="d", last="3d")
+    def test_mixed_last_and_after_rejected(self) -> None:
+        """Discriminator sees 'last', routes to LastPeriodFilter which rejects 'after'."""
+        with pytest.raises(ValidationError):
+            _ta.validate_python({"last": "3d", "after": "2026-04-01"})
+
+    def test_mixed_this_and_last_rejected(self) -> None:
+        """Discriminator sees 'this' first, routes to ThisPeriodFilter which rejects 'last'."""
+        with pytest.raises(ValidationError):
+            _ta.validate_python({"this": "d", "last": "3d"})
 
     def test_all_three_shorthand_rejected(self) -> None:
-        with pytest.raises(ValueError, match="Only one shorthand key"):
-            DateFilter(this="d", last="3d", next="w")
+        """Discriminator sees 'this' first, ThisPeriodFilter rejects 'last' and 'next'."""
+        with pytest.raises(ValidationError):
+            _ta.validate_python({"this": "d", "last": "3d", "next": "w"})
 
 
 # ---------------------------------------------------------------------------
@@ -154,8 +170,8 @@ class TestDateFilterMutualExclusion:
 
 class TestDateFilterEmpty:
     def test_empty_filter_rejected(self) -> None:
-        with pytest.raises(ValueError, match="must specify at least one key"):
-            DateFilter()
+        with pytest.raises(ValidationError, match="AbsoluteRangeFilter requires at least one"):
+            _ta.validate_python({})
 
 
 # ---------------------------------------------------------------------------
@@ -165,26 +181,26 @@ class TestDateFilterEmpty:
 
 class TestDateFilterDuration:
     def test_zero_count_rejected(self) -> None:
-        with pytest.raises(ValueError, match="must be positive"):
-            DateFilter(last="0d")
+        with pytest.raises(ValidationError, match="must be positive"):
+            LastPeriodFilter(last="0d")
 
     def test_invalid_unit_rejected(self) -> None:
-        with pytest.raises(ValueError, match="Invalid duration"):
-            DateFilter(last="3x")
+        with pytest.raises(ValidationError, match="Invalid duration"):
+            LastPeriodFilter(last="3x")
 
     def test_negative_count_rejected(self) -> None:
         """Regex doesn't match negative, so it falls through to 'Invalid duration'."""
-        with pytest.raises(ValueError, match="Invalid duration"):
-            DateFilter(next="-1d")
+        with pytest.raises(ValidationError, match="Invalid duration"):
+            NextPeriodFilter(next="-1d")
 
-    def test_this_only_accepts_single_unit(self) -> None:
-        """'this' accepts only a bare unit char (d/w/m/y), not a count+unit."""
-        with pytest.raises(ValueError, match="period unit"):
-            DateFilter(this="3d")
+    def test_this_only_accepts_literal_units(self) -> None:
+        """'this' uses Literal["d","w","m","y"] -- '3d' is rejected by Pydantic."""
+        with pytest.raises(ValidationError):
+            ThisPeriodFilter(this="3d")
 
     def test_this_valid_units(self) -> None:
         for unit in ("d", "w", "m", "y"):
-            f = DateFilter(this=unit)
+            f = ThisPeriodFilter(this=unit)
             assert f.this == unit
 
 
@@ -195,12 +211,22 @@ class TestDateFilterDuration:
 
 class TestDateFilterAbsolute:
     def test_invalid_date_rejected(self) -> None:
-        with pytest.raises(ValueError, match="Invalid date value"):
-            DateFilter(before="not-a-date")
+        """'not-a-date' doesn't match Literal['now'], AwareDatetime, or date."""
+        with pytest.raises(ValidationError):
+            AbsoluteRangeFilter(before="not-a-date")
 
-    def test_iso_datetime_accepted(self) -> None:
-        f = DateFilter(after="2026-04-01T14:00:00")
-        assert f.after == "2026-04-01T14:00:00"
+    def test_aware_datetime_accepted(self) -> None:
+        f = AbsoluteRangeFilter(after="2026-04-01T14:00:00Z")
+        assert isinstance(f.after, datetime)
+        assert f.after.tzinfo is not None
+
+    def test_naive_datetime_rejected_before(self) -> None:
+        with pytest.raises(ValidationError, match="Datetime must include timezone"):
+            AbsoluteRangeFilter(before="2026-04-01T14:00:00")
+
+    def test_naive_datetime_rejected_after(self) -> None:
+        with pytest.raises(ValidationError, match="Datetime must include timezone"):
+            AbsoluteRangeFilter(after="2026-04-01T14:00:00")
 
 
 # ---------------------------------------------------------------------------
@@ -210,18 +236,63 @@ class TestDateFilterAbsolute:
 
 class TestDateFilterReversedBounds:
     def test_reversed_bounds_rejected(self) -> None:
-        with pytest.raises(ValueError, match="later than"):
-            DateFilter(after="2026-04-14", before="2026-04-01")
+        with pytest.raises(ValidationError, match="later than"):
+            AbsoluteRangeFilter(after="2026-04-14", before="2026-04-01")
 
     def test_equal_date_only_bounds_valid(self) -> None:
         """Equal date-only bounds are valid (matches single day per DATE-09)."""
-        f = DateFilter(after="2026-04-14", before="2026-04-14")
-        assert f.after == "2026-04-14"
-        assert f.before == "2026-04-14"
+        f = AbsoluteRangeFilter(after="2026-04-14", before="2026-04-14")
+        assert isinstance(f.after, date)
+        assert isinstance(f.before, date)
 
     def test_reversed_datetime_bounds_rejected(self) -> None:
-        with pytest.raises(ValueError, match="later than"):
-            DateFilter(after="2026-04-14T12:00:00", before="2026-04-01T08:00:00")
+        with pytest.raises(ValidationError, match="later than"):
+            AbsoluteRangeFilter(after="2026-04-14T12:00:00Z", before="2026-04-01T08:00:00Z")
+
+
+# ---------------------------------------------------------------------------
+# DateFilter: Typed bound parsing
+# ---------------------------------------------------------------------------
+
+
+class TestDateFilterTypedBounds:
+    """Verify before/after are parsed into typed values, not kept as strings."""
+
+    def test_date_only_parses_as_date(self) -> None:
+        f = AbsoluteRangeFilter(before="2026-04-14")
+        assert isinstance(f.before, date)
+        assert not isinstance(f.before, datetime)
+
+    def test_aware_datetime_parses_correctly(self) -> None:
+        f = AbsoluteRangeFilter(before="2026-04-14T14:00:00Z")
+        assert isinstance(f.before, datetime)
+        assert f.before.tzinfo is not None
+
+    def test_now_literal_accepted(self) -> None:
+        f = AbsoluteRangeFilter(before="now")
+        assert f.before == "now"
+
+    def test_offset_timezone_accepted(self) -> None:
+        f = AbsoluteRangeFilter(after="2026-04-01T14:00:00+02:00")
+        assert isinstance(f.after, datetime)
+        assert f.after.tzinfo is not None
+
+
+# ---------------------------------------------------------------------------
+# DateFilter: Discriminator non-dict input
+# ---------------------------------------------------------------------------
+
+
+class TestDateFilterNonDictInput:
+    """Non-dict input routes to AbsoluteRangeFilter for Pydantic rejection."""
+
+    def test_integer_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            _ta.validate_python(42)
+
+    def test_string_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            _ta.validate_python("invalid")
 
 
 # ---------------------------------------------------------------------------
@@ -240,12 +311,12 @@ class TestUnionDiscrimination:
         assert isinstance(probe.due, DueDateShortcut)
         assert probe.due == DueDateShortcut.OVERDUE
 
-    def test_dict_becomes_date_filter(self) -> None:
+    def test_dict_becomes_this_period_filter(self) -> None:
         class _Probe(BaseModel):
             due: DueDateShortcut | DateFilter
 
         probe = _Probe(due={"this": "d"})
-        assert isinstance(probe.due, DateFilter)
+        assert isinstance(probe.due, ThisPeriodFilter)
         assert probe.due.this == "d"
 
     def test_lifecycle_string_becomes_shortcut(self) -> None:
@@ -256,12 +327,12 @@ class TestUnionDiscrimination:
         assert isinstance(probe.completed, LifecycleDateShortcut)
         assert probe.completed == LifecycleDateShortcut.ALL
 
-    def test_lifecycle_dict_becomes_date_filter(self) -> None:
+    def test_lifecycle_dict_becomes_last_period_filter(self) -> None:
         class _Probe(BaseModel):
             completed: LifecycleDateShortcut | DateFilter
 
         probe = _Probe(completed={"last": "3d"})
-        assert isinstance(probe.completed, DateFilter)
+        assert isinstance(probe.completed, LastPeriodFilter)
         assert probe.completed.last == "3d"
 
 
@@ -290,7 +361,7 @@ class TestListTasksQueryDateFields:
 
     def test_due_date_filter_object(self) -> None:
         q = ListTasksQuery(due={"this": "w"})
-        assert isinstance(q.due, DateFilter)
+        assert isinstance(q.due, ThisPeriodFilter)
         assert q.due.this == "w"
 
     def test_completed_all_shortcut(self) -> None:
@@ -324,23 +395,23 @@ class TestListTasksQueryDateFields:
 
     def test_defer_date_filter_object(self) -> None:
         q = ListTasksQuery(defer={"this": "w"})
-        assert isinstance(q.defer, DateFilter)
+        assert isinstance(q.defer, ThisPeriodFilter)
         assert q.defer.this == "w"
 
     def test_planned_date_filter_object(self) -> None:
         q = ListTasksQuery(planned={"last": "3d"})
-        assert isinstance(q.planned, DateFilter)
+        assert isinstance(q.planned, LastPeriodFilter)
         assert q.planned.last == "3d"
 
     def test_added_date_filter_object(self) -> None:
         q = ListTasksQuery(added={"next": "m"})
-        assert isinstance(q.added, DateFilter)
+        assert isinstance(q.added, NextPeriodFilter)
         assert q.added.next == "m"
 
     def test_modified_date_filter_object(self) -> None:
         q = ListTasksQuery(modified={"before": "2026-04-14"})
-        assert isinstance(q.modified, DateFilter)
-        assert q.modified.before == "2026-04-14"
+        assert isinstance(q.modified, AbsoluteRangeFilter)
+        assert isinstance(q.modified.before, date)
 
     def test_dropped_all_shortcut(self) -> None:
         q = ListTasksQuery(dropped="all")
