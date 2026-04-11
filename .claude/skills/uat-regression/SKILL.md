@@ -53,7 +53,18 @@ When a selected suite file contains a `## Composite Suite` heading, it is a mani
 
 2. **Read all base suites**: Load every base suite file listed in the manifest. Extract each suite's Setup section (task hierarchies, entity/discovery needs, computed values), Conventions, and Manual Actions.
 
-3. **Consolidated discovery**: Perform a single `get_all` call that satisfies the discovery needs of all base suites (tags, projects, folders, tag-lookups, ambiguity checks). Build a unified **entity map** shared across all suites.
+3. **Consolidated discovery**: Build `--need`, `--count`, and `--find-ambiguous` arguments from all base suites' Setup sections. Run the discovery script:
+
+   ```
+   python3 .claude/skills/uat-regression/discover.py \
+     --need "project:proj-a:active,in_folder" \
+     --need "tag:tag-a:available,unambiguous" \
+     ... (one --need per required entity profile) \
+     --count "tags-default:tag:not_dropped" \
+     --find-ambiguous "tags,projects,folders"
+   ```
+
+   The script queries SQLite directly and returns ~2KB of JSON. Parse the output as the unified **entity map**. If any profiles appear in `unmatched`, prompt the user to create/configure the missing entities.
 
 4. **Create all task hierarchies upfront**: Each base suite keeps its own parent task name (UAT-ReadLookups, UAT-EditOps, etc.) — do not rename or renumber them. Create all hierarchies from all suites before running any tests. Build a unified **task ID map** (task name → OmniFocus ID) across all suites.
 
@@ -221,6 +232,26 @@ Some suites need real OmniFocus projects (not just inbox tasks). When a suite's 
 4. If the best candidate for a profile is missing required fields, tell the user exactly which field(s) to set and wait for them to fix it.
 5. After confirmation, call `get_project` on each selected project (can be parallel) to get fresh data. Store the field values needed for assertions.
 6. Validate all profiles are satisfied. If any precondition still fails, tell the user which field is wrong and wait.
+
+### Discovery Script
+
+For composite suites, entity discovery uses `discover.py` instead of `get_all`. The script queries the OmniFocus SQLite cache directly and returns compact JSON (~2KB vs ~50-100KB from `get_all`).
+
+**Location**: `discover.py` (same directory as this skill file)
+
+**Interface**: `python3 discover.py [--need SPEC]... [--count SPEC]... [--find-ambiguous TYPES] [--db PATH]`
+
+- `--need TYPE:LABEL[:COUNT]:FILTER[,FILTER,...]` — find first N entities matching all filters
+- `--count LABEL:TYPE[:FILTER,...]` — count matching entities
+- `--find-ambiguous TYPE[,TYPE,...]` — detect ambiguous names (tags: exact duplicates, projects/folders: substring overlap)
+
+**Filter reference**:
+- Project: `active`, `completed`, `dropped`, `blocked`, `has_due`, `no_due`, `has_defer`, `no_defer`, `has_planned`, `no_planned`, `flagged`, `not_flagged`, `in_folder`, `review_soon`
+- Tag: `available`, `blocked`, `dropped`, `not_dropped`, `unambiguous`
+- Folder: `available`, `dropped`, `has_parent`, `has_children`
+- Perspective: (none — any custom perspective matches)
+
+**Match priority**: `🧪 GM-` prefixed entities sort first.
 
 ## Report Template
 
