@@ -689,7 +689,7 @@ def _run_suite_mode(suite_paths: list[str], cache: _EntityCache) -> dict:
     all_profiles: dict[str, dict | None] = {}
     unmatched: list[str] = []
     if needs:
-        raw_profiles, unmatched = _resolve_profiles(needs, cache)
+        raw_profiles, unmatched = _resolve_profiles(needs, cache, distinct=True)
         for label, entities in raw_profiles.items():
             if entities is None:
                 all_profiles[label] = None
