@@ -70,7 +70,7 @@ Carried forward from v1.3.1:
 11. Null-stripping for read tool responses (v1.4)
 12. Fix OrdinalWeekdaySpec → OrdinalWeekday cross-layer coercion in edit pipeline (service)
 13. Golden master re-capture required after Phase 42 mapper rewrites (human-only per GOLD-01)
-14. Add date filters to list_projects — reuse v1.3.2 infrastructure, investigate effective* columns
+14. ~~Add date filters to list_projects — reuse v1.3.2 infrastructure, investigate effective* columns~~ → completed by quick task 260411-h2p
 15. ~~Design timezone consistency policy for date filter inputs~~ → completed, superseded by #18
 16. Refactor DateFilter into discriminated union for schema-level validation (contracts)
 17. ~~Rethink timezone handling strategy for date filter inputs~~ → completed by timezone deep-dive
@@ -91,8 +91,9 @@ Carried forward from v1.3.1:
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260411-fv2 | Make date filter before/after bounds inclusive for datetime | 2026-04-11 | cfa9de8 | [260411-fv2-make-date-filter-before-after-bounds-inc](./quick/260411-fv2-make-date-filter-before-after-bounds-inc/) |
+| 260411-h2p | Add date filters to list_projects | 2026-04-11 | 7e53841 | [260411-h2p-add-date-filters-to-list-projects](./quick/260411-h2p-add-date-filters-to-list-projects/) |
 
 ## Session Continuity
 
-Last activity: 2026-04-11 - Completed quick task 260411-fv2: Make date filter before/after bounds inclusive for datetime
+Last activity: 2026-04-11 - Completed quick task 260411-h2p: Add date filters to list_projects
 Resume: .planning/phases/49-implement-naive-local-datetime-contract-for-all-date-inputs/49-CONTEXT.md
