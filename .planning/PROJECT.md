@@ -8,13 +8,16 @@ A Python MCP server that exposes OmniFocus (macOS task manager) as structured ta
 
 Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
 
-## Current State
+## Current Milestone: v1.3.3 Ordering & Move Fix
 
-**Shipped:** v1.3.2 Date Filtering (2026-04-11)
+**Goal:** Agents can see child task ordering and reliably reorder tasks within the same container.
 
-Agents can filter tasks by any of 7 date dimensions (due, defer, planned, completed, dropped, added, modified) using string shortcuts (`"today"`, `"overdue"`, `"soon"`), shorthand periods (`{this: "w"}`, `{last: "2d"}`), or absolute bounds. Calendar-aware arithmetic with day clamping. Naive-local datetime contract aligned with OmniFocus storage model. OmniFocus preferences (default times, due-soon threshold) read from OmniJS settings API.
+**Target features:**
+- Add `order` field to task responses — read-only integer reflecting display order within parent (recursive CTE for tasks, simple ORDER BY for projects/folders/tags)
+- Fix same-container move — translate `moveTo beginning/ending` to `moveBefore`/`moveAfter` when target has children
+- Improve move no-op warning accuracy — check ordinal position, not just container membership
 
-**Next milestone:** v1.4 Field Selection & Task Writes
+**Previous:** v1.3.2 Date Filtering shipped 2026-04-11
 
 ## Requirements
 
@@ -240,4 +243,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-11 after v1.3.2 milestone complete — Date Filtering shipped. 6 phases, 23 plans, 56 requirements satisfied.*
+*Last updated: 2026-04-11 after v1.3.3 milestone started — Ordering & Move Fix.*

@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3.2
-milestone_name: Date Filtering
-status: shipped
-last_updated: "2026-04-11T21:30:00.000Z"
+milestone: v1.3.3
+milestone_name: Ordering & Move Fix
+status: defining_requirements
+last_updated: "2026-04-11T22:00:00.000Z"
 last_activity: 2026-04-11
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 23
-  completed_plans: 23
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-11)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Milestone v1.3.2 shipped. Ready for next milestone.
+**Current focus:** Milestone v1.3.3 — Ordering & Move Fix
 
 ## Current Position
 
-Milestone: v1.3.2 Date Filtering — SHIPPED 2026-04-11
-Status: Archived to .planning/milestones/
-
-Next: `/gsd-new-milestone` to start v1.4
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-11 — Milestone v1.3.3 started
 
 ## Performance Metrics
 
