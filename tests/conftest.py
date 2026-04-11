@@ -410,15 +410,17 @@ def repo(bridge: Any) -> Any:
 
 
 @pytest.fixture
-def service(repo: Any) -> Any:
-    """OperatorService wired to test repo.
+def service(repo: Any, bridge: Any) -> Any:
+    """OperatorService wired to test repo and preferences.
 
     Note: Return type is ``Any`` to avoid importing ``OperatorService`` at
     module level (keeping conftest lightweight).  Actual return: ``OperatorService``.
     """
     from omnifocus_operator.service import OperatorService  # noqa: PLC0415
+    from omnifocus_operator.service.preferences import OmniFocusPreferences  # noqa: PLC0415
 
-    return OperatorService(repository=repo)
+    preferences = OmniFocusPreferences(bridge)
+    return OperatorService(repository=repo, preferences=preferences)
 
 
 @pytest.fixture

@@ -76,7 +76,7 @@ class TestOperatorService:
 
         mock_repo = AsyncMock()
         mock_repo.get_all.side_effect = BridgeError("snapshot", "connection lost")
-        service = OperatorService(repository=mock_repo)
+        service = OperatorService(repository=mock_repo, preferences=AsyncMock())
 
         with pytest.raises(BridgeError, match="connection lost"):
             await service.get_all_data()
@@ -210,7 +210,7 @@ class TestAddTask:
         mock_repo = AsyncMock()
         mock_repo.get_project.return_value = None
         mock_repo.get_task.return_value = None
-        service = OperatorService(repository=mock_repo)
+        service = OperatorService(repository=mock_repo, preferences=AsyncMock())
 
         with pytest.raises(ValueError, match="No project/task found matching"):
             await service.add_task(AddTaskCommand(name="Task", parent="bad-id"))

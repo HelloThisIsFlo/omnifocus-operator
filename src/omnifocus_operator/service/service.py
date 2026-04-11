@@ -86,6 +86,7 @@ if TYPE_CHECKING:
     from omnifocus_operator.models.tag import Tag
     from omnifocus_operator.models.task import Task
     from omnifocus_operator.repository import Repository
+    from omnifocus_operator.service.preferences import OmniFocusPreferences
 
 __all__ = ["ErrorOperatorService", "OperatorService"]
 
@@ -133,8 +134,9 @@ class OperatorService(Service):  # explicitly implements Service protocol
         ``HybridRepository``) that provides ``get_all()``.
     """
 
-    def __init__(self, repository: Repository) -> None:
+    def __init__(self, repository: Repository, preferences: OmniFocusPreferences) -> None:
         self._repository = repository
+        self._preferences = preferences
         self._resolver = Resolver(repository)
         self._domain = DomainLogic(repository, self._resolver)
         self._payload = PayloadBuilder()
@@ -176,6 +178,7 @@ class OperatorService(Service):  # explicitly implements Service protocol
             self._domain,
             self._payload,
             self._repository,
+            self._preferences,
         )
         return await pipeline.execute(command)
 
@@ -195,6 +198,7 @@ class OperatorService(Service):  # explicitly implements Service protocol
             self._domain,
             self._payload,
             self._repository,
+            self._preferences,
         )
         return await pipeline.execute(command)
 
@@ -206,6 +210,7 @@ class OperatorService(Service):  # explicitly implements Service protocol
             self._resolver,
             self._domain,
             self._repository,
+            self._preferences,
         )
         return await pipeline.execute(query)
 
@@ -217,6 +222,7 @@ class OperatorService(Service):  # explicitly implements Service protocol
             self._resolver,
             self._domain,
             self._repository,
+            self._preferences,
         )
         return await pipeline.execute(query)
 
@@ -281,11 +287,13 @@ class _Pipeline:
         domain: DomainLogic,
         payload: PayloadBuilder,
         repository: Repository,
+        preferences: OmniFocusPreferences,
     ) -> None:
         self._resolver = resolver
         self._domain = domain
         self._payload = payload
         self._repository = repository
+        self._preferences = preferences
 
 
 # -- Read pipeline base ----------------------------------------------------
@@ -299,10 +307,12 @@ class _ReadPipeline:
         resolver: Resolver,
         domain: DomainLogic,
         repository: Repository,
+        preferences: OmniFocusPreferences,
     ) -> None:
         self._resolver = resolver
         self._domain = domain
         self._repository = repository
+        self._preferences = preferences
         self._warnings: list[str] = []
         self._query: Any = None  # Set by subclass execute() before use
 
@@ -317,7 +327,7 @@ class _ReadPipeline:
             and isinstance(self._query.due, StrEnum)
             and self._query.due.value == "soon"
         ):
-            due_soon_setting = await self._repository.get_due_soon_setting()
+            due_soon_setting = await self._preferences.get_due_soon_setting()
 
         week_start = get_week_start()
 
@@ -523,22 +533,21 @@ class _AddTaskPipeline(_Pipeline):
         self._repetition_warnings: list[str] = []
 
         self._validate()
-        self._normalize_dates()
+        await self._normalize_dates()
         await self._resolve_parent()
         await self._resolve_tags()
         self._process_repetition_rule()
         self._build_payload()
         return await self._delegate()
 
-    def _normalize_dates(self) -> None:
-        """Normalize date inputs (product decision: aware->local, date-only->midnight)."""
+    async def _normalize_dates(self) -> None:
+        """Normalize date inputs with user-configured default times from preferences."""
         updates: dict[str, str] = {}
-        if self._command.due_date is not None:
-            updates["due_date"] = normalize_date_input(self._command.due_date)
-        if self._command.defer_date is not None:
-            updates["defer_date"] = normalize_date_input(self._command.defer_date)
-        if self._command.planned_date is not None:
-            updates["planned_date"] = normalize_date_input(self._command.planned_date)
+        for field in ("due_date", "defer_date", "planned_date"):
+            value = getattr(self._command, field)
+            if value is not None:
+                default_time = await self._preferences.get_default_time(field)
+                updates[field] = normalize_date_input(value, default_time=default_time)
         if updates:
             self._command = self._command.model_copy(update=updates)
 
@@ -645,7 +654,7 @@ class _EditTaskPipeline(_Pipeline):
 
         await self._verify_task_exists()
         self._validate_and_normalize()
-        self._normalize_dates()
+        await self._normalize_dates()
         self._resolve_actions()
         self._apply_lifecycle()
         self._check_completed_status()
@@ -671,13 +680,14 @@ class _EditTaskPipeline(_Pipeline):
         validate_task_name_if_set(self._command.name)
         self._command = self._domain.normalize_clear_intents(self._command)
 
-    def _normalize_dates(self) -> None:
-        """Normalize date inputs (product decision: aware->local, date-only->midnight)."""
+    async def _normalize_dates(self) -> None:
+        """Normalize date inputs with user-configured default times from preferences."""
         updates: dict[str, str] = {}
         for field in ("due_date", "defer_date", "planned_date"):
             value = getattr(self._command, field)
             if is_set(value) and value is not None:
-                updates[field] = normalize_date_input(value)
+                default_time = await self._preferences.get_default_time(field)
+                updates[field] = normalize_date_input(value, default_time=default_time)
         if updates:
             self._command = self._command.model_copy(update=updates)
 

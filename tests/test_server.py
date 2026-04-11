@@ -226,7 +226,10 @@ class TestTOOL01ListAllStructuredOutput:
             }
         )
         repo = BridgeOnlyRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        service = OperatorService(repository=repo)
+        from omnifocus_operator.service.preferences import OmniFocusPreferences
+
+        preferences = OmniFocusPreferences(bridge)
+        service = OperatorService(repository=repo, preferences=preferences)
 
         # Build a server with a patched lifespan that injects our custom service
         patched_server = _build_patched_server(service)

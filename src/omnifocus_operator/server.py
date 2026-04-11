@@ -99,12 +99,14 @@ async def app_lifespan(app: FastMCP) -> AsyncIterator[dict[str, object]]:
         from omnifocus_operator.config import get_settings
         from omnifocus_operator.repository import create_repository
         from omnifocus_operator.service import OperatorService
+        from omnifocus_operator.service.preferences import OmniFocusPreferences
 
         repo_type = get_settings().repository
         logger.info("Repository type: %s", repo_type)
 
         repository = create_repository(repo_type)
-        service = OperatorService(repository=repository)
+        preferences = OmniFocusPreferences(repository._bridge)
+        service = OperatorService(repository=repository, preferences=preferences)
 
         yield {"service": service}
 

@@ -120,23 +120,23 @@ class ResolvedDateFilters:
 # ---------------------------------------------------------------------------
 
 
-def normalize_date_input(value: str) -> str:
+def normalize_date_input(value: str, default_time: str = "00:00:00") -> str:
     """Normalize a date input string to naive local ISO format for the bridge.
 
     This is a product decision: "OmniFocus thinks in local time, so should the API."
     See docs/architecture.md for rationale.
 
     Three cases:
-    - Date-only ("2026-07-15"): append T00:00:00 (midnight local)
-      Interim behavior -- settings API todo will upgrade to DefaultDueTime.
+    - Date-only ("2026-07-15"): append the caller's default_time (user-configured per date field).
+      Falls back to midnight ("00:00:00") when no default_time is provided.
     - Naive datetime ("2026-07-15T17:00:00"): pass through as-is (already local by contract)
     - Aware datetime ("2026-07-15T17:00:00Z", "...+01:00"): convert to local, strip tzinfo
 
     Returns an ISO datetime string suitable for the JS bridge's new Date() constructor.
     """
     if "T" not in value and "t" not in value:
-        # Date-only: append midnight local
-        return f"{value}T00:00:00"
+        # Date-only: append user-configured default time for this field
+        return f"{value}T{default_time}"
 
     dt = datetime.fromisoformat(value)
     if dt.tzinfo is not None:
@@ -235,10 +235,12 @@ class DomainLogic:
 
             # "soon" without due_soon_setting -- domain owns fallback
             if isinstance(value, StrEnum) and value.value == "soon" and due_soon_setting is None:
+                # Defensive: preferences module should always provide a value.
+                # Fall back to OmniFocus factory default (TWO_DAYS = 2 days, calendar-aligned).
                 midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
                 bounds[field_name] = ResolvedDateBounds(
                     after=midnight,
-                    before=midnight + timedelta(days=1),
+                    before=midnight + timedelta(days=2),
                 )
                 warnings.append(DUE_SOON_THRESHOLD_NOT_DETECTED)
                 continue

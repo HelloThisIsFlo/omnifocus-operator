@@ -1553,24 +1553,21 @@ class TestListTasksDateFilterPipeline:
         folders=[],
         perspectives=[],
     )
-    async def test_due_soon_none_threshold_falls_back_to_today_with_warning(
+    async def test_due_soon_uses_preferences_default_two_days(
         self, service: OperatorService
     ) -> None:
-        """due='soon' with get_due_soon_setting returning None falls back to TODAY + warning.
+        """due='soon' uses OmniFocusPreferences factory default (TWO_DAYS).
 
-        When OPERATOR_DUE_SOON_THRESHOLD is not set, get_due_soon_setting() returns None.
-        The resolver defaults to TODAY bounds and emits an agent-facing warning.
+        With default InMemoryBridge settings, OmniFocusPreferences returns
+        TWO_DAYS (OmniFocus factory default). "soon" means after=None (no lower
+        bound) + before=midnight+2days, so overdue tasks are also included.
         """
-        # env var not set -> get_due_soon_setting returns None -> fallback to TODAY
         result = await service.list_tasks(ListTasksQuery(due="soon"))
         task_ids = {t.id for t in result.items}
-        # Only task due today should match (TODAY fallback bounds)
+        # TWO_DAYS bounds: today, tomorrow, and overdue all match (after=None)
         assert "t-due-today" in task_ids
-        assert "t-due-tomorrow" not in task_ids
-        assert "t-overdue" not in task_ids
-        # Warning should be propagated to the result
-        assert result.warnings is not None
-        assert any("Due-soon threshold was not detected" in w for w in result.warnings)
+        assert "t-due-tomorrow" in task_ids
+        assert "t-overdue" in task_ids
 
 
 # ---------------------------------------------------------------------------

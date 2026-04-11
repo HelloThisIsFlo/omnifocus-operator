@@ -1025,12 +1025,12 @@ class TestResolveDateFilters:
         assert Availability.COMPLETED in result.lifecycle_additions
 
     def test_soon_without_due_soon_setting(self) -> None:
-        """'soon' without due_soon_setting -> domain computes TODAY bounds + warning."""
+        """'soon' without due_soon_setting -> domain falls back to TWO_DAYS bounds + warning."""
         result = _domain().resolve_date_filters(
             _date_query(due=DueDateShortcut.SOON), _NOW, week_start=0, due_soon_setting=None
         )
         assert result.bounds["due"].after == datetime(2026, 4, 7, 0, 0, 0, tzinfo=UTC)
-        assert result.bounds["due"].before == datetime(2026, 4, 8, 0, 0, 0, tzinfo=UTC)
+        assert result.bounds["due"].before == datetime(2026, 4, 9, 0, 0, 0, tzinfo=UTC)
         assert len(result.warnings) == 1
         assert "Due-soon threshold was not detected" in result.warnings[0]
 
@@ -1278,12 +1278,18 @@ class TestNormalizeDateInput:
 
     Requirements covered:
     - LOCAL-03: Aware strings silently converted to naive local
-    - LOCAL-04: Date-only strings get midnight appended
+    - LOCAL-04: Date-only strings use default_time (user-configured per date field)
     - LOCAL-06: Naive passthrough (normalization is domain-layer, not contract-layer)
     """
 
-    def test_date_only_gets_midnight_appended(self) -> None:
-        """LOCAL-04: Date-only input ('2026-07-15') returns '2026-07-15T00:00:00'."""
+    def test_date_only_uses_default_time(self) -> None:
+        """Date-only input with explicit default_time uses that time instead of midnight."""
+
+        result = normalize_date_input("2026-07-15", default_time="17:00:00")
+        assert result == "2026-07-15T17:00:00"
+
+    def test_date_only_midnight_when_no_default_time(self) -> None:
+        """Date-only input without default_time falls back to midnight."""
 
         result = normalize_date_input("2026-07-15")
         assert result == "2026-07-15T00:00:00"
