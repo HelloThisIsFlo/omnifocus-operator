@@ -34,7 +34,7 @@ Requirements for date filtering milestone. Each maps to roadmap phases.
 - ~~[ ] **RESOLVE-11**: `"overdue"` uses OmniFocus pre-computed `overdue` column (SQL) / urgency enum (bridge) — matches OmniFocus UI~~ (superseded per 45-CONTEXT D-04)
 - [ ] **RESOLVE-11** (revised): `"overdue"` resolves to timestamp comparison `effectiveDateDue < now` — both SQL and bridge paths use identical timestamp logic
 - ~~[ ] **RESOLVE-12**: `"soon"` uses OmniFocus pre-computed `dueSoon` OR `overdue` columns — includes overdue, matches OmniFocus UI~~ (superseded per 45-CONTEXT D-04/D-06)
-- [ ] **RESOLVE-12** (revised): `"soon"` resolves to timestamp comparison using `DueSoonInterval` + `DueSoonGranularity` from OmniFocus Settings table — two modes: rolling (`now + interval`) and calendar-aligned (`midnight_today + interval`). Fallback to `OPERATOR_DUE_SOON_THRESHOLD` env var in bridge-only mode. Fail fast if neither available.
+- ~~[ ] **RESOLVE-12** (revised): `"soon"` resolves to timestamp comparison using `DueSoonInterval` + `DueSoonGranularity` from OmniFocus Settings table — two modes: rolling (`now + interval`) and calendar-aligned (`midnight_today + interval`). Fallback to `OPERATOR_DUE_SOON_THRESHOLD` env var in bridge-only mode. Fail fast if neither available.~~ (superseded by PREF-08/PREF-09 — source changed to bridge OmniJS API, fallback changed to OmniFocus factory defaults)
 
 ### Query Execution
 
@@ -66,11 +66,36 @@ Requirements for date filtering milestone. Each maps to roadmap phases.
 - [ ] **LOCAL-01**: Write-side date fields and read-side filter bounds use `str` type — no `format: "date-time"` in JSON Schema, no signal telling agents to include timezone
 - [ ] **LOCAL-02**: Naive datetime strings accepted and treated as local time on all date inputs (write fields + filter bounds) — this is the preferred format
 - [ ] **LOCAL-03**: Aware datetime strings (timezone offset or Z suffix) accepted on all date inputs, silently converted to naive local time
-- [ ] **LOCAL-04**: Date-only strings accepted on write-side date fields with midnight local appended before reaching the bridge — interim behavior until settings API provides DefaultDueTime
+- ~~[ ] **LOCAL-04**: Date-only strings accepted on write-side date fields with midnight local appended before reaching the bridge — interim behavior until settings API provides DefaultDueTime~~ (superseded by PREF-04/PREF-05/PREF-06 — midnight replaced with user-configured default times)
 - [ ] **LOCAL-05**: All `now` timestamps used for date filter resolution use local timezone — "today" = local today, week/month/year boundaries = local calendar
 - [ ] **LOCAL-06**: Aware→local normalization is a domain-layer product decision — contracts validate syntax, domain interprets semantics
 - [ ] **LOCAL-07**: Write tool descriptions and JSON Schema examples frame dates as naive local time; brief note that timezone offsets are also accepted
 - [ ] **LOCAL-08**: `architecture.md` documents the naive-local principle with rationale (OmniFocus stores naive local, server co-located, deep-dive evidence)
+
+### OmniFocus Preferences Infrastructure
+
+- [ ] **PREF-01**: Bridge `get_settings` command reads date-related preferences via OmniJS `settings.objectForKey()` — returns raw primitives (`DefaultDueTime`, `DefaultStartTime`, `DefaultPlannedTime`, `DueSoonInterval`, `DueSoonGranularity`)
+- [ ] **PREF-02**: Preferences module loads settings lazily on first use, maps raw bridge values to domain types (`DueSoonSetting` enum, typed default times), and caches for server lifetime — consumers see domain concepts, never raw interval/granularity
+- [ ] **PREF-03**: When bridge settings unavailable (OmniFocus not running, bridge failure), module falls back to OmniFocus factory defaults (`DefaultDueTime=17:00`, `DefaultStartTime=00:00`, `DefaultPlannedTime=09:00`, `DueSoonInterval=172800`, `DueSoonGranularity=1`) and produces a warning
+
+### Date-Only Default Times
+
+- [ ] **PREF-04**: Date-only write input on `dueDate` enriched with user's `DefaultDueTime` (e.g., `"2026-07-15"` → `"2026-07-15T19:00:00"`)
+- [ ] **PREF-05**: Date-only write input on `deferDate` enriched with user's `DefaultStartTime`
+- [ ] **PREF-06**: Date-only write input on `plannedDate` enriched with user's `DefaultPlannedTime`
+- [ ] **PREF-07**: Date-only normalization is field-aware — domain.py applies the correct default time per date field (product decision per architecture litmus test)
+
+### DueSoon Threshold Migration
+
+- [ ] **PREF-08**: DueSoon threshold exposed as `DueSoonSetting` enum member (existing domain concept) — preferences module maps raw bridge values to enum internally, replacing SQLite plist-parsing and `OPERATOR_DUE_SOON_THRESHOLD` env var
+- [ ] **PREF-09**: When DueSoon settings unavailable, fallback to OmniFocus default (TWO_DAYS) + warning — replaces current behavior of TODAY bounds fallback
+- [ ] **PREF-10**: `get_due_soon_setting()` removed from Repository protocol — service reads DueSoon from preferences module
+
+### Preferences Cleanup & Documentation
+
+- [ ] **PREF-11**: SQLite `Setting` table plist-parsing code deleted from HybridRepository (`_read_due_soon_setting_sync`, `_SETTING_MAP`, `plistlib` imports)
+- [ ] **PREF-12**: `OPERATOR_DUE_SOON_THRESHOLD` env var and `due_soon_threshold` config field deleted
+- [ ] **PREF-13**: Tool descriptions updated — write tools document default time behavior for date-only inputs, list tools document "soon" threshold source, all affected tools note restart requirement for preference changes
 
 ## Future Requirements
 
@@ -120,7 +145,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RESOLVE-09 | Phase 45 | Pending |
 | RESOLVE-10 | Phase 45 | Pending |
 | RESOLVE-11 | Phase 46 | Revised (timestamp, not column) |
-| RESOLVE-12 | Phase 46 | Revised (two-mode threshold) |
+| ~~RESOLVE-12~~ | ~~Phase 46~~ | Superseded by PREF-08/09 |
 | EXEC-01 | Phase 46 | Pending |
 | EXEC-02 | Phase 46 | Pending |
 | EXEC-03 | Phase 46 | Pending |
@@ -143,18 +168,32 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LOCAL-01 | Phase 49 | Pending |
 | LOCAL-02 | Phase 49 | Pending |
 | LOCAL-03 | Phase 49 | Pending |
-| LOCAL-04 | Phase 49 | Pending |
+| ~~LOCAL-04~~ | ~~Phase 49~~ | Superseded by PREF-04/05/06 |
 | LOCAL-05 | Phase 49 | Pending |
 | LOCAL-06 | Phase 49 | Pending |
 | LOCAL-07 | Phase 49 | Pending |
 | LOCAL-08 | Phase 49 | Pending |
+| PREF-01 | Phase 50 | Pending |
+| PREF-02 | Phase 50 | Pending |
+| PREF-03 | Phase 50 | Pending |
+| PREF-04 | Phase 50 | Pending |
+| PREF-05 | Phase 50 | Pending |
+| PREF-06 | Phase 50 | Pending |
+| PREF-07 | Phase 50 | Pending |
+| PREF-08 | Phase 50 | Pending |
+| PREF-09 | Phase 50 | Pending |
+| PREF-10 | Phase 50 | Pending |
+| PREF-11 | Phase 50 | Pending |
+| PREF-12 | Phase 50 | Pending |
+| PREF-13 | Phase 50 | Pending |
 
 **Coverage:**
-- v1.3.2 requirements: 48 total → 45 active (3 scoped out: DATE-07, DATE-08, EXEC-08)
-- Revised: 3 (DATE-06, RESOLVE-11, RESOLVE-12)
-- Mapped to phases: 45
+- v1.3.2 requirements: 61 total → 56 active (3 scoped out: DATE-07, DATE-08, EXEC-08; 2 superseded: RESOLVE-12, LOCAL-04)
+- Revised: 2 (DATE-06, RESOLVE-11)
+- Superseded: 2 (RESOLVE-12 → PREF-08/09, LOCAL-04 → PREF-04/05/06)
+- Mapped to phases: 56
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-07*
-*Last updated: 2026-04-10 after Phase 49 context discussion (added LOCAL-01 through LOCAL-08)*
+*Last updated: 2026-04-11 after Phase 50 context discussion (added PREF-01 through PREF-13, superseded RESOLVE-12 and LOCAL-04)*

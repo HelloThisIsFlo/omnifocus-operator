@@ -82,6 +82,10 @@
 - **list_tasks / list_projects:** The "soon" shortcut uses the user's OmniFocus due-soon threshold preference
 - **All affected tools:** Brief note that date/time preferences are read from OmniFocus on first use; restart server if changed
 
+## Domain-Typed Settings Interface (added post-discussion)
+
+**User's request:** The preferences module must expose domain concepts (`DueSoonSetting` enum), NOT raw bridge values (`DueSoonInterval`/`DueSoonGranularity`). The raw-to-enum mapping (`_SETTING_MAP`) is an internal detail of the preferences module. Consumers never see interval seconds or granularity integers.
+
 ---
 
 ## Claude's Discretion

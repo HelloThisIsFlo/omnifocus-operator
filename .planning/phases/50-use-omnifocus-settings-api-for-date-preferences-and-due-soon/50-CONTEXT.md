@@ -44,6 +44,10 @@ Two deliverables:
 - **D-05b:** This is a product decision per the architecture litmus test: "Would another OmniFocus tool apply user-configured default times?" — No → domain.py.
 - **D-05c:** The exact mechanism for passing field context (parameter, caller provides the time, etc.) is Claude's discretion, guided by keeping domain.py focused on product decisions.
 
+### Domain-typed settings interface
+- **D-07:** The preferences module exposes domain-typed settings, NOT raw bridge values. DueSoon is exposed as `DueSoonSetting` enum (existing domain concept from `models/enums.py`), not raw `DueSoonInterval`/`DueSoonGranularity`. Default times are exposed as typed time strings per field.
+- **D-07b:** The raw-to-enum mapping (currently `_SETTING_MAP` in `hybrid.py`) moves INTO the preferences module as an internal implementation detail. Consumers never see interval seconds or granularity integers.
+
 ### Tool description updates
 - **D-06:** `ADD_TASKS_TOOL_DOC` and `EDIT_TASKS_TOOL_DOC` in `descriptions.py` must mention that date-only inputs (dueDate, deferDate, plannedDate) use the user's configured default times from OmniFocus preferences. Agents should know: "If you omit a time, the user's OmniFocus default time is applied (e.g., due dates default to 19:00 if that's what the user configured)."
 - **D-06b:** `LIST_TASKS_TOOL_DOC` and `LIST_PROJECTS_TOOL_DOC` must note that the `"soon"` shortcut uses the user's OmniFocus due-soon threshold preference (not a hardcoded value).
