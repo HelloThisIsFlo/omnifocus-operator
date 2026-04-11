@@ -377,7 +377,7 @@ Files/code being **deleted** (per D-02, D-02b, D-02c, PREF-11, PREF-12):
 
 **All assumptions verified. No user confirmation needed.**
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **How should the preferences module handle unknown DueSoonInterval/Granularity pairs?**
    - What we know: Current `_SETTING_MAP` returns `None` for unknown pairs. The domain fallback uses TODAY bounds.
