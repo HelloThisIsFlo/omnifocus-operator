@@ -290,3 +290,17 @@ These are the MCP tool description texts that agents see at call time. They are 
 ## Tools After This Milestone
 
 Thirteen (unchanged from v1.3): `get_all`, `get_task`, `get_project`, `get_tag`, `add_tasks`, `edit_tasks`, `list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives`, `count_tasks`, `count_projects`.
+
+---
+
+## Updates
+
+### 2026-04-11: Defer hints fire for all defer filters, not just literal `"now"`
+
+**Changed decision:** The original spec (lines 162, 203-206, 215) restricted defer hints to `defer: {after: "now"}` and `defer: {before: "now"}` only, reasoning that other forms like `{this: "w"}` or `{next: "3d"}` were "legitimate timing questions." This was too narrow — the hint is educational guidance, not a precision warning. An agent using any defer filter benefits from knowing that defer is one of four blocking reasons and that `availability: "available"/"blocked"` may be what they actually want.
+
+**New behavior:** Every defer filter produces a hint. Direction depends on resolved bounds:
+- Range entirely in the future (`after >= now`) → suggests `availability: "blocked"`
+- Range includes past dates (`after < now` or open lower bound) → suggests `availability: "available"`
+
+**Requirements updated:** BREAK-04 and BREAK-05 broadened accordingly.

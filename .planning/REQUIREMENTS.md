@@ -55,8 +55,8 @@ Requirements for date filtering milestone. Each maps to roadmap phases.
 - [ ] **BREAK-01**: `urgency` filter parameter removed — educational error if agent uses it
 - [ ] **BREAK-02**: `completed` field rejects boolean input — educational error guiding to string/object date filter form
 - [ ] **BREAK-03**: `COMPLETED` and `DROPPED` removed from `AvailabilityFilter` enum — lifecycle state expressed exclusively via date filters
-- [ ] **BREAK-04**: `defer: {after: "now"}` returns guidance hint suggesting `availability: "blocked"`
-- [ ] **BREAK-05**: `defer: {before: "now"}` returns guidance hint suggesting `availability: "available"`
+- [ ] **BREAK-04**: Any defer filter whose resolved range is entirely in the future returns guidance hint suggesting `availability: "blocked"`
+- [ ] **BREAK-05**: Any defer filter whose resolved range includes past dates returns guidance hint suggesting `availability: "available"`
 - [ ] **BREAK-06**: `availability: "any"` returns educational error suggesting to omit the filter
 - [ ] **BREAK-07**: Tool descriptions updated with date filter syntax and availability vs defer distinction
 - [ ] **BREAK-08**: `availability: "all"` returns educational error — after trimming, ALL equals the default; guide to `completed: "any"` / `dropped: "any"` for lifecycle inclusion

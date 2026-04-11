@@ -57,7 +57,6 @@ from omnifocus_operator.agent_messages.warnings import (
 )
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
-from omnifocus_operator.contracts.use_cases.list._date_filter import AbsoluteRangeFilter
 from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
 from omnifocus_operator.models.enums import Availability, DurationUnit, Schedule
 from omnifocus_operator.models.repetition_rule import (
@@ -221,14 +220,6 @@ class DomainLogic:
             if field_name in self._LIFECYCLE_MAP:
                 lifecycle_additions.append(self._LIFECYCLE_MAP[field_name])
 
-            # Defer hint detection (D-18, D-19): only AbsoluteRangeFilter has .after/.before
-
-            if field_name == "defer" and isinstance(value, AbsoluteRangeFilter):
-                if value.after == "now":
-                    warnings.append(DEFER_AFTER_NOW_HINT)
-                if value.before == "now":
-                    warnings.append(DEFER_BEFORE_NOW_HINT)
-
             # "all" shortcut -- lifecycle expansion only, no date bounds
             if isinstance(value, StrEnum) and value.value == "all":
                 continue
@@ -253,6 +244,17 @@ class DomainLogic:
                 week_start=week_start,
                 due_soon_setting=due_soon_setting,
             )
+
+            # Defer hint: every defer filter gets a hint. Defer is one of
+            # four blocking reasons -- the agent almost always wants
+            # availability: 'available' or 'blocked' instead.
+            if field_name == "defer":
+                resolved = bounds[field_name]
+                entirely_future = resolved.after is not None and resolved.after >= now
+                if entirely_future:
+                    warnings.append(DEFER_AFTER_NOW_HINT)
+                else:
+                    warnings.append(DEFER_BEFORE_NOW_HINT)
 
         return ResolvedDateFilters(
             bounds=bounds,

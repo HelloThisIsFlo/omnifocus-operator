@@ -171,7 +171,7 @@ Plans:
   1. Cross-path equivalence tests cover all date filter variants and both paths produce identical results — including tasks with inherited effective dates (direct NULL, effective non-NULL)
   2. `urgency` filter returns educational error pointing to `due: "overdue"` / `due: "soon"`; `completed: true` returns educational error pointing to `completed: "any"` / `completed: {last: "1w"}`
   3. `COMPLETED` and `DROPPED` removed from AvailabilityFilter enum — lifecycle state expressed exclusively via date filters
-  4. `availability: "all"` and `availability: "any"` return educational errors with migration guidance; `defer` filters with `{after: "now"}` or `{before: "now"}` return hints about availability equivalents
+  4. `availability: "all"` and `availability: "any"` return educational errors with migration guidance; ~~`defer` filters with `{after: "now"}` or `{before: "now"}` return hints about availability equivalents~~ every `defer` filter returns a hint about availability equivalents (direction based on resolved bounds vs now)
   5. Tool descriptions updated with date filter syntax and availability vs defer distinction
 **Plans:** 6/6 plans complete
 Plans:
@@ -190,7 +190,7 @@ Plans:
   1. DateFilter is a discriminated union of ThisPeriodFilter, LastPeriodFilter, NextPeriodFilter, AbsoluteRangeFilter with callable Discriminator routing
   2. Naive datetimes rejected structurally via BeforeValidator on before/after fields
   3. Resolver uses isinstance dispatch on concrete classes, parse functions accept typed values
-  4. domain.py isinstance targets AbsoluteRangeFilter for defer hint detection
+  4. ~~domain.py isinstance targets AbsoluteRangeFilter for defer hint detection~~ Superseded: defer hints now check resolved bounds, not input type
   5. Full test suite passes with all constructions migrated to concrete classes
 **Plans:** 2/2 plans complete
 Plans:

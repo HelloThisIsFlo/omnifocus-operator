@@ -144,15 +144,22 @@ SETTINGS_UNKNOWN_DUE_SOON_PAIR = (
 
 # --- Defer Hints ---
 
-DEFER_AFTER_NOW_HINT = (
-    "Tip: This shows tasks with a future defer date. "
-    "For all unavailable tasks regardless of reason, use availability: 'blocked'. "
+_DEFER_HINT = (
+    "Tip: This shows tasks {description}. "
+    "For all {adjective} tasks regardless of reason, use availability: '{filter}'. "
     "Defer is one of four blocking reasons."
 )
 
-DEFER_BEFORE_NOW_HINT = (
-    "Tip: This shows tasks whose defer date has passed. "
-    "For all currently available tasks, use availability: 'available'."
+DEFER_AFTER_NOW_HINT = _DEFER_HINT.format(
+    description="with a future defer date",
+    adjective="unavailable",
+    filter="blocked",
+)
+
+DEFER_BEFORE_NOW_HINT = _DEFER_HINT.format(
+    description="whose defer date has passed",
+    adjective="currently available",
+    filter="available",
 )
 
 # --- Filter Resolution ---

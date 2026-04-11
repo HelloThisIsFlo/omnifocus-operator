@@ -36,10 +36,13 @@ from omnifocus_operator.contracts.use_cases.edit.tasks import (
 )
 from omnifocus_operator.contracts.use_cases.list._date_filter import (
     AbsoluteRangeFilter,
+    LastPeriodFilter,
+    NextPeriodFilter,
     ThisPeriodFilter,
 )
 from omnifocus_operator.contracts.use_cases.list._enums import (
     AvailabilityFilter,
+    DateShortcut,
     DueDateShortcut,
     LifecycleDateShortcut,
 )
@@ -1109,18 +1112,89 @@ class TestDeferHintDetection:
         )
         assert DEFER_AFTER_NOW_HINT in result.warnings
 
-    def test_defer_non_now_no_hint(self) -> None:
-        """defer: {after: '2026-01-01'} -> no defer hint (only 'now' triggers it)."""
+    def test_defer_past_absolute_date_produces_before_hint(self) -> None:
+        """defer: {after: '2026-01-01'} -> before-now hint (range starts in the past)."""
+        from omnifocus_operator.agent_messages.warnings import (  # noqa: PLC0415
+            DEFER_BEFORE_NOW_HINT,
+        )
+
         result = _domain().resolve_date_filters(
             _date_query(defer=AbsoluteRangeFilter(after="2026-01-01")),
             _NOW,
             week_start=0,
             due_soon_setting=None,
         )
-        # No defer hints at all
-        for w in result.warnings:
-            assert "defer date" not in w.lower()
-            assert "Tip:" not in w
+        assert DEFER_BEFORE_NOW_HINT in result.warnings
+
+    def test_defer_today_shortcut_produces_before_hint(self) -> None:
+        """defer: 'today' -> before-now hint (today's range starts at midnight, before now)."""
+        from omnifocus_operator.agent_messages.warnings import (  # noqa: PLC0415
+            DEFER_BEFORE_NOW_HINT,
+        )
+
+        result = _domain().resolve_date_filters(
+            _date_query(defer=DateShortcut.TODAY),
+            _NOW,
+            week_start=0,
+            due_soon_setting=None,
+        )
+        assert DEFER_BEFORE_NOW_HINT in result.warnings
+
+    def test_defer_last_period_produces_before_hint(self) -> None:
+        """defer: {last: '3d'} -> before-now hint (entirely in the past)."""
+        from omnifocus_operator.agent_messages.warnings import (  # noqa: PLC0415
+            DEFER_BEFORE_NOW_HINT,
+        )
+
+        result = _domain().resolve_date_filters(
+            _date_query(defer=LastPeriodFilter(last="3d")),
+            _NOW,
+            week_start=0,
+            due_soon_setting=None,
+        )
+        assert DEFER_BEFORE_NOW_HINT in result.warnings
+
+    def test_defer_this_week_produces_before_hint(self) -> None:
+        """defer: {this: 'w'} -> before-now hint (week started before now)."""
+        from omnifocus_operator.agent_messages.warnings import (  # noqa: PLC0415
+            DEFER_BEFORE_NOW_HINT,
+        )
+
+        result = _domain().resolve_date_filters(
+            _date_query(defer=ThisPeriodFilter(this="w")),
+            _NOW,
+            week_start=0,
+            due_soon_setting=None,
+        )
+        assert DEFER_BEFORE_NOW_HINT in result.warnings
+
+    def test_defer_next_period_produces_after_hint(self) -> None:
+        """defer: {next: '3d'} -> after-now hint (entirely in the future)."""
+        from omnifocus_operator.agent_messages.warnings import (  # noqa: PLC0415
+            DEFER_AFTER_NOW_HINT,
+        )
+
+        result = _domain().resolve_date_filters(
+            _date_query(defer=NextPeriodFilter(next="3d")),
+            _NOW,
+            week_start=0,
+            due_soon_setting=None,
+        )
+        assert DEFER_AFTER_NOW_HINT in result.warnings
+
+    def test_defer_future_absolute_date_produces_after_hint(self) -> None:
+        """defer: {after: '2026-06-01'} -> after-now hint (starts after now)."""
+        from omnifocus_operator.agent_messages.warnings import (  # noqa: PLC0415
+            DEFER_AFTER_NOW_HINT,
+        )
+
+        result = _domain().resolve_date_filters(
+            _date_query(defer=AbsoluteRangeFilter(after="2026-06-01")),
+            _NOW,
+            week_start=0,
+            due_soon_setting=None,
+        )
+        assert DEFER_AFTER_NOW_HINT in result.warnings
 
     def test_non_defer_field_no_hint(self) -> None:
         """due: {after: 'now'} -> no defer hint (field must be 'defer')."""
