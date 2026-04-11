@@ -182,22 +182,29 @@ This is fundamentally collaborative. Unlike UAT suite updates where the worker w
 
 For each gap/trap identified in the seed's chunk instructions, present a **concrete draft** — not an abstract concept. The user can't evaluate a trap without seeing the actual prompt. Generate the real prompt upfront; it's cheap to draft and essential for review.
 
-**Format per trap:**
+**Format per trap** (use `====================` between traps for visual separation):
+
 ```
+====================
+
 ### Trap N: {one-line concept}
 
-**Draft prompt:**
-> {Full draft prompt — conversational, natural, as a real user would say it to an agent.
-> This is the actual text that would go in the scenario's Prompt field.
-> Make it concrete, not a placeholder.}
+**Prompt:**
+`{Full draft prompt — conversational, natural, as a real user would say it to an agent. This is the actual text that would go in the scenario's Prompt field. Make it concrete, not a placeholder.}`
 
-**The trap:** {Why this is tricky — what a model is likely to get wrong and why}
+**The trap:**
+> - {Key insight — what the correct mapping is}
+> - {Likely mistakes — what models will reach for instead}
+> - {Doc evidence — what the docs say that resolves it}
 
-**Expected behavior:** {What the correct payload should look like, and WHY — explain the
-opinionated decision. E.g., "We expect `status: available` here because the docs say X,
-not `completed` because the user said 'current' which implies active tasks."}
+**Expected:**
+> - {Correct field/value} — {why}
+> - {What should NOT be present} — {why}
 
-**Tests:** {tool_name} — {field(s) involved}
+**Tests:**
+> `{tool_name}` — {field(s) involved}
+
+====================
 ```
 
 **Key rules for this step:**
