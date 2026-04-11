@@ -216,6 +216,24 @@ Plans:
 - [x] 49-02-PLAN.md — Service layer: domain normalization, payload passthrough, resolve_dates parsing, now -> local
 - [x] 49-03-PLAN.md — Test migration + architecture.md documentation
 
+### Phase 50: Use OmniFocus settings API for date preferences and due-soon threshold
+**Goal:** Replace fragile SQLite plist-parsing for DueSoon threshold with OmniJS settings API, and upgrade date-only write inputs from midnight-local to user-configured default times — matching OmniFocus UI behavior
+**Requirements**: PREF-01, PREF-02, PREF-03, PREF-04, PREF-05, PREF-06, PREF-07, PREF-08, PREF-09, PREF-10, PREF-11, PREF-12, PREF-13
+**Depends on:** Phase 49
+**Success Criteria** (what must be TRUE):
+  1. Bridge `get_settings` command reads date-related OmniFocus preferences via OmniJS `settings.objectForKey()` and returns them as clean primitives
+  2. Preferences module loads settings lazily on first use, caches for server lifetime, and exposes domain-typed values (`DueSoonSetting` enum, typed default times) — consumers never see raw interval/granularity
+  3. Date-only write input on `dueDate`/`deferDate`/`plannedDate` enriched with user's configured default time instead of midnight
+  4. DueSoon threshold sourced from bridge settings via preferences module — SQLite plist-parsing and `OPERATOR_DUE_SOON_THRESHOLD` env var deleted
+  5. When settings unavailable, OmniFocus factory defaults used with a warning — no error-serving mode, no request failure
+  6. `get_due_soon_setting()` removed from Repository protocol — service reads DueSoon from preferences module
+  7. Tool descriptions document default time behavior, "soon" threshold source, and restart requirement for preference changes
+**Plans:** 2 plans
+
+Plans:
+- [ ] 50-01-PLAN.md — Bridge get_settings command + OmniFocusPreferences module with lazy load/cache/fallback
+- [ ] 50-02-PLAN.md — Service rewiring (DueSoon + field-aware normalization) + legacy deletion + descriptions
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -233,21 +251,4 @@ Plans:
 | 47. Cross-Path Equivalence & Breaking Changes | v1.3.2 | 6/6 | Complete   | 2026-04-09 |
 | 48. Discriminated Union Refactor | v1.3.2 | 2/2 | Complete | 2026-04-10 |
 | 49. Naive-Local DateTime Contract | v1.3.2 | 3/3 | Complete    | 2026-04-10 |
-
-### Phase 50: Use OmniFocus settings API for date preferences and due-soon threshold
-
-**Goal:** Replace fragile SQLite plist-parsing for DueSoon threshold with OmniJS settings API, and upgrade date-only write inputs from midnight-local to user-configured default times — matching OmniFocus UI behavior
-**Requirements**: PREF-01, PREF-02, PREF-03, PREF-04, PREF-05, PREF-06, PREF-07, PREF-08, PREF-09, PREF-10, PREF-11, PREF-12, PREF-13
-**Depends on:** Phase 49
-**Success Criteria** (what must be TRUE):
-  1. Bridge `get_settings` command reads date-related OmniFocus preferences via OmniJS `settings.objectForKey()` and returns them as clean primitives
-  2. Preferences module loads settings lazily on first use, caches for server lifetime, and exposes domain-typed values (`DueSoonSetting` enum, typed default times) — consumers never see raw interval/granularity
-  3. Date-only write input on `dueDate`/`deferDate`/`plannedDate` enriched with user's configured default time instead of midnight
-  4. DueSoon threshold sourced from bridge settings via preferences module — SQLite plist-parsing and `OPERATOR_DUE_SOON_THRESHOLD` env var deleted
-  5. When settings unavailable, OmniFocus factory defaults used with a warning — no error-serving mode, no request failure
-  6. `get_due_soon_setting()` removed from Repository protocol — service reads DueSoon from preferences module
-  7. Tool descriptions document default time behavior, "soon" threshold source, and restart requirement for preference changes
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 50 to break down)
+| 50. OmniFocus Settings API | v1.3.2 | 0/2 | In Progress | |
