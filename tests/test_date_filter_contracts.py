@@ -1,4 +1,4 @@
-"""Tests for DateFilter contract model, date shortcut StrEnums, and query date fields."""
+"""Tests for DatePeriodFilter contract model, date shortcut StrEnums, and query date fields."""
 
 import re
 from datetime import datetime
@@ -11,7 +11,7 @@ from omnifocus_operator.agent_messages import errors as err
 from omnifocus_operator.config import get_week_start
 from omnifocus_operator.contracts.use_cases.list import (
     AbsoluteRangeFilter,
-    DateFilter,
+    DatePeriodFilter,
     DateShortcut,
     DueDateShortcut,
     LastPeriodFilter,
@@ -22,13 +22,13 @@ from omnifocus_operator.contracts.use_cases.list import (
     ThisPeriodFilter,
 )
 from omnifocus_operator.contracts.use_cases.list._date_filter import (
-    DateInput,
-    DueDateInput,
-    LifecycleDateInput,
+    DateFilter,
+    DueDateFilter,
+    LifecycleDateFilter,
     _make_date_input_validator,
 )
 
-_ta = TypeAdapter(DateFilter)
+_ta = TypeAdapter(DatePeriodFilter)
 
 # ---------------------------------------------------------------------------
 # DueDateShortcut StrEnum (DATE-06)
@@ -73,7 +73,7 @@ class TestLifecycleDateShortcut:
 
 
 # ---------------------------------------------------------------------------
-# DateFilter: Valid shorthand (DATE-02, DATE-03)
+# DatePeriodFilter: Valid shorthand (DATE-02, DATE-03)
 # ---------------------------------------------------------------------------
 
 
@@ -105,7 +105,7 @@ class TestDateFilterValidShorthand:
 
 
 # ---------------------------------------------------------------------------
-# DateFilter: Valid absolute (DATE-02)
+# DatePeriodFilter: Valid absolute (DATE-02)
 # ---------------------------------------------------------------------------
 
 
@@ -145,7 +145,7 @@ class TestDateFilterValidAbsolute:
 
 
 # ---------------------------------------------------------------------------
-# DateFilter: Discriminator routing / mutual exclusion (DATE-04)
+# DatePeriodFilter: Discriminator routing / mutual exclusion (DATE-04)
 # ---------------------------------------------------------------------------
 
 
@@ -175,7 +175,7 @@ class TestDateFilterMutualExclusion:
 
 
 # ---------------------------------------------------------------------------
-# DateFilter: Empty filter
+# DatePeriodFilter: Empty filter
 # ---------------------------------------------------------------------------
 
 
@@ -186,7 +186,7 @@ class TestDateFilterEmpty:
 
 
 # ---------------------------------------------------------------------------
-# DateFilter: Null rejection on absolute bounds (Patch/UNSET)
+# DatePeriodFilter: Null rejection on absolute bounds (Patch/UNSET)
 # ---------------------------------------------------------------------------
 
 
@@ -207,7 +207,7 @@ class TestAbsoluteRangeNullRejection:
 
 
 # ---------------------------------------------------------------------------
-# DateFilter: One-sided absolute filters (Patch/UNSET)
+# DatePeriodFilter: One-sided absolute filters (Patch/UNSET)
 # ---------------------------------------------------------------------------
 
 
@@ -224,7 +224,7 @@ class TestAbsoluteRangeOneSided:
 
 
 # ---------------------------------------------------------------------------
-# DateFilter: Duration validation (DATE-05)
+# DatePeriodFilter: Duration validation (DATE-05)
 # ---------------------------------------------------------------------------
 
 
@@ -254,7 +254,7 @@ class TestDateFilterDuration:
 
 
 # ---------------------------------------------------------------------------
-# DateFilter: Absolute validation
+# DatePeriodFilter: Absolute validation
 # ---------------------------------------------------------------------------
 
 
@@ -285,7 +285,7 @@ class TestDateFilterAbsolute:
 
 
 # ---------------------------------------------------------------------------
-# DateFilter: Reversed bounds (DATE-09)
+# DatePeriodFilter: Reversed bounds (DATE-09)
 # ---------------------------------------------------------------------------
 
 
@@ -311,7 +311,7 @@ class TestDateFilterReversedBounds:
 
 
 # ---------------------------------------------------------------------------
-# DateFilter: Typed bound parsing
+# DatePeriodFilter: Typed bound parsing
 # ---------------------------------------------------------------------------
 
 
@@ -344,7 +344,7 @@ class TestDateFilterStringBounds:
 
 
 # ---------------------------------------------------------------------------
-# DateFilter: Discriminator non-dict input
+# DatePeriodFilter: Discriminator non-dict input
 # ---------------------------------------------------------------------------
 
 
@@ -370,7 +370,7 @@ class TestUnionDiscrimination:
 
     def test_string_becomes_shortcut(self) -> None:
         class _Probe(BaseModel):
-            due: DueDateShortcut | DateFilter
+            due: DueDateShortcut | DatePeriodFilter
 
         probe = _Probe(due="overdue")
         assert isinstance(probe.due, DueDateShortcut)
@@ -378,7 +378,7 @@ class TestUnionDiscrimination:
 
     def test_dict_becomes_this_period_filter(self) -> None:
         class _Probe(BaseModel):
-            due: DueDateShortcut | DateFilter
+            due: DueDateShortcut | DatePeriodFilter
 
         probe = _Probe(due={"this": "d"})
         assert isinstance(probe.due, ThisPeriodFilter)
@@ -386,7 +386,7 @@ class TestUnionDiscrimination:
 
     def test_lifecycle_string_becomes_shortcut(self) -> None:
         class _Probe(BaseModel):
-            completed: LifecycleDateShortcut | DateFilter
+            completed: LifecycleDateShortcut | DatePeriodFilter
 
         probe = _Probe(completed="all")
         assert isinstance(probe.completed, LifecycleDateShortcut)
@@ -394,7 +394,7 @@ class TestUnionDiscrimination:
 
     def test_lifecycle_dict_becomes_last_period_filter(self) -> None:
         class _Probe(BaseModel):
-            completed: LifecycleDateShortcut | DateFilter
+            completed: LifecycleDateShortcut | DatePeriodFilter
 
         probe = _Probe(completed={"last": "3d"})
         assert isinstance(probe.completed, LastPeriodFilter)
@@ -592,9 +592,9 @@ class TestGetWeekStart:
 # Date input type-rejection validators
 # ---------------------------------------------------------------------------
 
-_lifecycle_ta = TypeAdapter(LifecycleDateInput)
-_due_ta = TypeAdapter(DueDateInput)
-_date_ta = TypeAdapter(DateInput)
+_lifecycle_ta = TypeAdapter(LifecycleDateFilter)
+_due_ta = TypeAdapter(DueDateFilter)
+_date_ta = TypeAdapter(DateFilter)
 
 
 class TestMakeDateInputValidator:
@@ -632,7 +632,7 @@ class TestMakeDateInputValidator:
 
 
 class TestLifecycleDateInput:
-    """LifecycleDateInput accepts 'all'/'today', DateFilter objects, rejects invalid types."""
+    """LifecycleDateFilter: 'all'/'today' shortcuts + DatePeriodFilter objects."""
 
     def test_accepts_shortcut_string(self) -> None:
         result = _lifecycle_ta.validate_python("all")
@@ -652,7 +652,7 @@ class TestLifecycleDateInput:
 
 
 class TestDueDateInput:
-    """DueDateInput accepts 'overdue'/'soon'/'today', DateFilter objects, rejects invalid types."""
+    """DueDateFilter: 'overdue'/'soon'/'today' shortcuts + DatePeriodFilter objects."""
 
     def test_accepts_shortcut_string(self) -> None:
         result = _due_ta.validate_python("soon")
@@ -668,7 +668,7 @@ class TestDueDateInput:
 
 
 class TestDateInput:
-    """DateInput accepts 'today', DateFilter objects, rejects invalid types."""
+    """DateFilter accepts 'today', DatePeriodFilter objects, rejects invalid types."""
 
     def test_accepts_shortcut_string(self) -> None:
         result = _date_ta.validate_python("today")

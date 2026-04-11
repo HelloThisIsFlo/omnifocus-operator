@@ -110,7 +110,7 @@ class AbsoluteRangeFilter(QueryModel):
 
 
 def _route_date_filter(v: Any) -> str | None:
-    """Route input to the correct DateFilter union branch.
+    """Route input to the correct DatePeriodFilter union branch.
 
     Unrecognized dicts fall through to ``absolute_range`` intentionally:
     raising ``ValueError`` here bypasses ValidationReformatterMiddleware
@@ -134,7 +134,7 @@ def _route_date_filter(v: Any) -> str | None:
     return None
 
 
-DateFilter = Annotated[
+DatePeriodFilter = Annotated[
     Annotated[ThisPeriodFilter, Tag("this_period")]
     | Annotated[LastPeriodFilter, Tag("last_period")]
     | Annotated[NextPeriodFilter, Tag("next_period")]
@@ -145,7 +145,7 @@ DateFilter = Annotated[
 
 # ── Annotated date input types with type-rejection validators ─────────
 #
-# Wrap Shortcut | DateFilter unions with a BeforeValidator that rejects
+# Wrap Shortcut | DatePeriodFilter unions with a BeforeValidator that rejects
 # non-string/non-dict input (like true, 123, []) with a helpful message
 # listing both shortcut strings and object forms.
 
@@ -161,17 +161,17 @@ def _make_date_input_validator(*shortcuts: str) -> Callable[[object], object]:
     return validate
 
 
-LifecycleDateInput = Annotated[
-    LifecycleDateShortcut | DateFilter,
+LifecycleDateFilter = Annotated[
+    LifecycleDateShortcut | DatePeriodFilter,
     BeforeValidator(_make_date_input_validator("all", "today")),
 ]
 
-DueDateInput = Annotated[
-    DueDateShortcut | DateFilter,
+DueDateFilter = Annotated[
+    DueDateShortcut | DatePeriodFilter,
     BeforeValidator(_make_date_input_validator("overdue", "soon", "today")),
 ]
 
-DateInput = Annotated[
-    DateShortcut | DateFilter,
+DateFilter = Annotated[
+    DateShortcut | DatePeriodFilter,
     BeforeValidator(_make_date_input_validator("today")),
 ]

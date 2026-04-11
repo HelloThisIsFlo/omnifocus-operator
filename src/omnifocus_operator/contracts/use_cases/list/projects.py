@@ -29,9 +29,9 @@ from omnifocus_operator.agent_messages.descriptions import (
 from omnifocus_operator.config import DEFAULT_LIST_LIMIT
 from omnifocus_operator.contracts.base import UNSET, Patch, QueryModel
 from omnifocus_operator.contracts.use_cases.list._date_filter import (
-    DateInput,
-    DueDateInput,
-    LifecycleDateInput,
+    DateFilter,
+    DueDateFilter,
+    LifecycleDateFilter,
 )
 from omnifocus_operator.contracts.use_cases.list._enums import (
     AvailabilityFilter,
@@ -116,13 +116,13 @@ class ListProjectsQuery(QueryModel):
     )
     flagged: Patch[bool] = Field(default=UNSET, description=FLAGGED_FILTER_DESC)
     search: Patch[str] = Field(default=UNSET, description=SEARCH_FIELD_NAME_NOTES)
-    due: Patch[DueDateInput] = Field(default=UNSET, description=DUE_FILTER_DESC)
-    defer: Patch[DateInput] = Field(default=UNSET, description=DEFER_FILTER_DESC)
-    planned: Patch[DateInput] = Field(default=UNSET, description=PLANNED_FILTER_DESC)
-    completed: Patch[LifecycleDateInput] = Field(default=UNSET, description=COMPLETED_FILTER_DESC)
-    dropped: Patch[LifecycleDateInput] = Field(default=UNSET, description=DROPPED_FILTER_DESC)
-    added: Patch[DateInput] = Field(default=UNSET, description=ADDED_FILTER_DESC)
-    modified: Patch[DateInput] = Field(default=UNSET, description=MODIFIED_FILTER_DESC)
+    due: Patch[DueDateFilter] = Field(default=UNSET, description=DUE_FILTER_DESC)
+    defer: Patch[DateFilter] = Field(default=UNSET, description=DEFER_FILTER_DESC)
+    planned: Patch[DateFilter] = Field(default=UNSET, description=PLANNED_FILTER_DESC)
+    completed: Patch[LifecycleDateFilter] = Field(default=UNSET, description=COMPLETED_FILTER_DESC)
+    dropped: Patch[LifecycleDateFilter] = Field(default=UNSET, description=DROPPED_FILTER_DESC)
+    added: Patch[DateFilter] = Field(default=UNSET, description=ADDED_FILTER_DESC)
+    modified: Patch[DateFilter] = Field(default=UNSET, description=MODIFIED_FILTER_DESC)
     limit: int | None = Field(default=DEFAULT_LIST_LIMIT, description=LIMIT_DESC)
     offset: int = Field(default=0, description=OFFSET_DESC)
 

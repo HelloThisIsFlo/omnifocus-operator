@@ -125,7 +125,7 @@ def _resolve_shortcut(
 
 
 # ---------------------------------------------------------------------------
-# DateFilter object resolution
+# DatePeriodFilter object resolution
 # ---------------------------------------------------------------------------
 
 
