@@ -60,7 +60,7 @@ from omnifocus_operator.models.repetition_rule import (
 )
 from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.models.task import Task
-from omnifocus_operator.service.domain import DomainLogic
+from omnifocus_operator.service.domain import DomainLogic, _to_utc_ts, normalize_date_input
 from omnifocus_operator.service.errors import EntityTypeMismatchError
 from tests.conftest import make_snapshot_dict
 from tests.doubles import InMemoryBridge
@@ -1266,3 +1266,83 @@ class TestExpandReviewDue:
         f = ReviewDueFilter(amount=1, unit=DurationUnit.YEARS)
         result = _domain().expand_review_due(f, _NOW)
         assert result == datetime(2027, 4, 7, 14, 0, 0, tzinfo=UTC)
+
+
+# ---------------------------------------------------------------------------
+# normalize_date_input (LOCAL-03, LOCAL-04, LOCAL-06)
+# ---------------------------------------------------------------------------
+
+
+class TestNormalizeDateInput:
+    """normalize_date_input() -- domain-layer product decision for date normalization.
+
+    Requirements covered:
+    - LOCAL-03: Aware strings silently converted to naive local
+    - LOCAL-04: Date-only strings get midnight appended
+    - LOCAL-06: Naive passthrough (normalization is domain-layer, not contract-layer)
+    """
+
+    def test_date_only_gets_midnight_appended(self) -> None:
+        """LOCAL-04: Date-only input ('2026-07-15') returns '2026-07-15T00:00:00'."""
+
+        result = normalize_date_input("2026-07-15")
+        assert result == "2026-07-15T00:00:00"
+
+    def test_naive_datetime_passes_through_unchanged(self) -> None:
+        """LOCAL-06: Naive datetime string returns unchanged (already local by contract)."""
+
+        result = normalize_date_input("2026-07-15T17:00:00")
+        assert result == "2026-07-15T17:00:00"
+
+    def test_aware_utc_string_converted_to_naive_local(self) -> None:
+        """LOCAL-03: UTC-aware (Z suffix) converted to naive local."""
+
+        result = normalize_date_input("2026-07-15T16:00:00Z")
+        # Result must be naive: no Z, no +, and no offset suffix after position 10
+        assert "Z" not in result
+        assert "+" not in result
+        # Date portion must still be present; result is a valid ISO string
+        assert "T" in result
+        # Verify it parses as naive
+        parsed = datetime.fromisoformat(result)
+        assert parsed.tzinfo is None, f"Expected naive datetime, got tzinfo={parsed.tzinfo!r}"
+
+    def test_aware_offset_string_converted_to_naive_local(self) -> None:
+        """LOCAL-03: Offset-aware (+01:00) converted to naive local."""
+
+        result = normalize_date_input("2026-07-15T17:00:00+01:00")
+        assert "Z" not in result
+        assert "+" not in result
+        assert "T" in result
+        parsed = datetime.fromisoformat(result)
+        assert parsed.tzinfo is None, f"Expected naive datetime, got tzinfo={parsed.tzinfo!r}"
+
+
+# ---------------------------------------------------------------------------
+# _to_utc_ts naive string handling (SUPPLEMENTARY)
+# ---------------------------------------------------------------------------
+
+
+class TestToUtcTsNaiveString:
+    """_to_utc_ts() handles naive strings as local time (post-Phase-49 behavior).
+
+    The old assertion `assert dt.tzinfo is not None` was removed. After Phase 49,
+    payload dates are naive-local strings and must be comparable without error.
+    """
+
+    def test_naive_string_returns_float(self) -> None:
+        """_to_utc_ts('2026-07-15T17:00:00') returns a float, no assertion error."""
+
+        result = _to_utc_ts("2026-07-15T17:00:00")
+        assert isinstance(result, float), f"Expected float, got {type(result).__name__}: {result!r}"
+
+    def test_none_returns_none(self) -> None:
+        """_to_utc_ts(None) returns None (cleared field passthrough)."""
+
+        assert _to_utc_ts(None) is None
+
+    def test_aware_string_returns_float(self) -> None:
+        """_to_utc_ts with aware string returns float (existing behavior preserved)."""
+
+        result = _to_utc_ts("2026-07-15T17:00:00Z")
+        assert isinstance(result, float)
