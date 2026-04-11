@@ -264,8 +264,9 @@ Two distinct semantics at different layers:
 
 The **resolution layer** (`resolve_dates.py`) bridges the two:
 
-- `_parse_absolute_before()` bumps date-only `before` values to midnight of the *next* day
-  - `before: "2026-03-31"` → resolves to `2026-04-01T00:00:00` → `< April 1 midnight` includes all of March 31
+- `_parse_absolute_before()` bumps `before` values so `< before` includes the agent's boundary:
+  - Date-only: +1 day — `before: "2026-03-31"` → `2026-04-01T00:00:00` → `< April 1 midnight` includes all of March 31
+  - Datetime: +1 minute — `before: "2026-03-31T18:00:00"` → `2026-03-31T18:01:00` → `< 18:01` includes tasks due at exactly 18:00
 - Shorthand periods (`this`, `last`, `next`) produce half-open bounds natively
   - `{this: "d"}` → `[today 00:00, tomorrow 00:00)` — adjacent periods share a boundary without overlap or gaps
 

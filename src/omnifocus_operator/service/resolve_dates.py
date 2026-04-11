@@ -258,7 +258,11 @@ def _parse_absolute_before(
     value: str,
     now: datetime,
 ) -> datetime:
-    """Parse 'before' bound: date-only -> start of NEXT day (RESOLVE-08).
+    """Parse 'before' bound with inclusive-boundary bump (RESOLVE-08).
+
+    Bumps the value forward so half-open ``< before`` includes the agent's
+    boundary: +1 day for date-only strings, +1 minute for datetime strings.
+    The ``"now"`` literal is returned as-is (exact snapshot semantics).
 
     After Phase 49, values arrive as str (validated ISO date or datetime).
     """
