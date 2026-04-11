@@ -1,5 +1,28 @@
 # Milestones
 
+## v1.3.2 Date Filtering (Shipped: 2026-04-11)
+
+**Phases:** 6 (45-50) | **Plans:** 23 executed
+**Requirements:** 56/56 satisfied (3 scoped out, 2 superseded)
+**Tests:** 1,951 pytest at milestone completion (up from 1,693)
+**Timeline:** 5 days (2026-04-07 → 2026-04-11) | 351 commits
+**LOC:** ~11,472 Python (src/)
+**Git range:** v1.3.1..v1.3.2
+
+**Key accomplishments:**
+
+1. Full date filtering on 7 dimensions — agents can filter tasks by due, defer, planned, completed, dropped, added, and modified dates using string shortcuts (`"today"`, `"overdue"`, `"soon"`), shorthand periods (`{this: "w"}`, `{last: "2d"}`), or absolute bounds (`{after: "2026-04-01"}`)
+2. Calendar-aware period arithmetic — `{last: "1m"}` and `{next: "1y"}` use proper calendar math with day clamping (Jan 31 + 1m → Feb 28), unified `add_duration` helper across date filters and `review_due_within`
+3. Type-safe discriminated union — DateFilter refactored into 4 concrete models (ThisPeriodFilter, LastPeriodFilter, NextPeriodFilter, AbsoluteRangeFilter) with callable discriminator routing — invalid input shapes caught at parse time
+4. Naive-local datetime contract — all date inputs use `str` type (no `format: "date-time"` in JSON Schema), aware datetimes silently converted to local — aligns API with OmniFocus's naive-local storage model
+5. OmniFocus settings API integration — due-soon threshold and default times (due, defer, planned) read from OmniJS settings API, replacing fragile SQLite plist parsing — date-only inputs enriched with user's configured default times
+6. Cross-path equivalence proof — 20 parametrized tests proving SQL and bridge paths produce identical date filter results, including tasks with inherited effective dates
+7. Agent-first input guidance — educational errors guide agents from intuitive-but-wrong inputs (like `completed: true` or `urgency`) to the correct date filter syntax — self-teaching API surface
+
+**Delivered:** Complete date filtering infrastructure for all 7 date dimensions. Agents can filter by calendar-aligned periods, rolling windows, or absolute bounds. Naive-local datetime contract matches OmniFocus storage model. OmniFocus user preferences (default times, due-soon threshold) integrated via OmniJS settings API
+
+---
+
 ## v1.3.1 First-Class References (Shipped: 2026-04-07)
 
 **Phases:** 6 (39-44) | **Plans:** 15 executed

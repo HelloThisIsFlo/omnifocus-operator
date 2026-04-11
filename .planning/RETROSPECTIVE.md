@@ -383,6 +383,54 @@
 
 ---
 
+## Milestone: v1.3.2 -- Date Filtering
+
+**Shipped:** 2026-04-11
+**Phases:** 6 | **Plans:** 23 executed
+
+### What Was Built
+- Full date filtering on 7 dimensions (due, defer, planned, completed, dropped, added, modified) with string shortcuts, shorthand periods, and absolute bounds
+- Calendar-aware period arithmetic with day clamping (`{last: "1m"}` uses proper calendar math, not naive 30-day approximation)
+- Type-safe DateFilter discriminated union (ThisPeriodFilter, LastPeriodFilter, NextPeriodFilter, AbsoluteRangeFilter) with callable discriminator
+- Naive-local datetime contract — all date inputs use `str` type, aware datetimes silently converted to local
+- OmniFocus settings API integration — due-soon threshold and default times via OmniJS `settings.objectForKey()`
+- Agent-first input guidance — educational errors for intuitive-but-wrong inputs (`completed: true`, `urgency`)
+
+### What Worked
+- The milestone evolved naturally from 3 to 6 phases — Phases 48-50 emerged from deep-dive analysis (timezone handling, contract type safety, OmniFocus preferences)
+- Timezone deep-dive research proved the naive-local contract was correct — OmniFocus stores naive local, server co-located with OmniFocus, timezone conversion is unnecessary complexity
+- Discriminated union refactor (Phase 48) was worth it — removed runtime `TypeError` from malformed filter shapes by making invalid states unrepresentable at parse time
+- OmniFocus settings API (Phase 50) replaced 3 fragile mechanisms (SQLite plist parsing, env var, factory defaults) with single authoritative source
+- Cross-path equivalence tests caught SQL/bridge divergence for inherited effective dates — the 20 parametrized tests saved debugging time
+- Quick tasks (3 total) handled boundary-condition fixes without disrupting the main roadmap
+
+### What Was Inefficient
+- Phase 45-47 were planned with ~30-day approximations for month/year, then calendar-aware arithmetic was added in 46-05 — should have been in original requirements
+- RESOLVE-12 (DueSoon threshold) went through 3 specification changes: pre-computed columns → SQLite plist → OmniJS API. Original v1.3.2 scope didn't anticipate the OmniFocus settings API discovery
+- Phase 49 requirements (LOCAL-*) superseded Phase 48 requirements (timezone rejection) — the discriminated union's `_reject_naive_datetime` validator was deleted one phase after being added
+- Traceability table checkboxes still not automated — 56 requirements all "Pending" status despite being code-verified
+
+### Patterns Established
+- Callable Discriminator with Tag for union routing (first usage of Pydantic's `Discriminator(callable)` pattern)
+- `local_now()` helper as centralized local timezone source in `config.py`
+- OmniFocusPreferences module pattern: lazy load on first use, cache for server lifetime, domain-typed output, factory-default fallback with warning
+- Field-aware date normalization: `normalize_date_input(value, default_time)` applies per-field default times from preferences
+- `add_duration` helper for calendar-aware arithmetic shared across all duration consumers
+
+### Key Lessons
+1. **Deep-dive research changes scope for the better** — the timezone deep-dive proved naive-local was correct and surfaced the OmniFocus settings API opportunity. Three phases emerged from that research
+2. **Make invalid states unrepresentable** — the discriminated union refactor (Phase 48) replaced runtime errors with parse-time validation. The pattern works well for "exactly one of N input shapes" contracts
+3. **Single source of truth for settings** — OmniFocus settings API replaced env var + SQLite plist + factory defaults. More reliable and matches what users configure in OmniFocus
+4. **Pre-release means no migration burden** — educational errors for `urgency` and `completed: true` are agent UX choices, not backward compatibility work. We just removed them from the schema
+5. **Calendar-aware arithmetic is worth the complexity** — `{last: "1m"}` on Jan 31 should give Feb 28, not Jan 1. The `add_duration` helper handles day clamping correctly
+
+### Cost Observations
+- Model mix: ~60% opus (research, planning, complex phases), ~40% sonnet (execution, validation)
+- Sessions: ~8-10 across 5 days
+- Notable: 351 commits in 5 days, 23 plans. Deep-dive research sessions (timezone, OmniFocus settings) accounted for ~30% of total time but eliminated rework
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -397,6 +445,7 @@
 | v1.2.3 | 4 | 15 | First domain-feature milestone -- research spike → read model → write model → refactor arc |
 | v1.3 | 12 | 26 | Largest feature milestone -- 7 decimal insertions, cross-path equivalence as hard requirement |
 | v1.3.1 | 6 | 15 | Cleanest feature milestone -- 1 insertion, 3-day execution, null elimination across all surfaces |
+| v1.3.2 | 6 | 23 | Deep-dive driven milestone -- 3→6 phases from research, naive-local contract, OmniFocus settings API |
 
 ### Cumulative Quality
 
@@ -410,6 +459,7 @@
 | v1.2.3 | 1,139 (1,113 pytest + 26 vitest) | ~94% | 6 (all cosmetic/documentation) |
 | v1.3 | 1,554 (1,528 pytest + 26 vitest) | ~94% | 4 (Nyquist gaps on 4 phases, all process artifacts) |
 | v1.3.1 | 1,719 (1,693 pytest + 26 vitest) | ~98% | 2 (golden master re-capture, SUMMARY frontmatter gaps) |
+| v1.3.2 | 1,977 (1,951 pytest + 26 vitest) | ~94% | 1 (pre-existing TODO(v1.5) in descriptions.py) |
 
 ### Top Lessons (Verified Across Milestones)
 

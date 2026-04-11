@@ -8,19 +8,13 @@ A Python MCP server that exposes OmniFocus (macOS task manager) as structured ta
 
 Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
 
-## Current Milestone: v1.3.2 Date Filtering
+## Current State
 
-**Goal:** Agents can filter tasks by any date dimension — due, defer, planned, completion, drop, creation, and modification dates — using shorthand periods, absolute bounds, or semantic shortcuts.
+**Shipped:** v1.3.2 Date Filtering (2026-04-11)
 
-**Target features:**
-- 7 date filter fields on `list_tasks` and `count_tasks`: due, defer, planned, completed, dropped, added, modified
-- String shortcuts: `"today"`, `"overdue"`, `"soon"`, `"any"`, `"none"` (field-specific)
-- Object form — shorthand: `{this: "w"}` (calendar-aligned), `{last: "3d"}` (rolling past), `{next: "1m"}` (rolling future)
-- Object form — absolute: `{before: "...", after: "..."}` (both inclusive)
-- Due-soon threshold configuration (TBD: env var vs server config flag vs MCP resource)
-- Changes to existing filters: `urgency` removed, `completed` boolean → date filter, `availability` trimmed
-- Educational warnings for defer vs availability confusion
-- Bridge fallback with identical date filter semantics
+Agents can filter tasks by any of 7 date dimensions (due, defer, planned, completed, dropped, added, modified) using string shortcuts (`"today"`, `"overdue"`, `"soon"`), shorthand periods (`{this: "w"}`, `{last: "2d"}`), or absolute bounds. Calendar-aware arithmetic with day clamping. Naive-local datetime contract aligned with OmniFocus storage model. OmniFocus preferences (default times, due-soon threshold) read from OmniJS settings API.
+
+**Next milestone:** v1.4 Field Selection & Task Writes
 
 ## Requirements
 
@@ -102,12 +96,16 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 - ✓ Bridge-only `adapt_snapshot` filters project root tasks (parity with SQL `LEFT JOIN ProjectInfo`) — v1.3.1 (Phase 43)
 - ✓ List query filter fields migrated to `Patch[T]` — null eliminated from agent-facing schemas, UNSET→None at repo boundary — v1.3.1 (Phase 44)
 - ✓ `AvailabilityFilter` enums with `ALL` shorthand, empty-list rejection, mixed `["all", "available"]` warning — v1.3.1 (Phase 44)
+- ✓ Date filtering on list_tasks — 7 date fields (due, defer, planned, completed, dropped, added, modified) with string shortcuts, shorthand periods, and absolute bounds — v1.3.2
+- ✓ Calendar-aware period arithmetic with day clamping (`{last: "1m"}` uses proper calendar math) — v1.3.2
+- ✓ Type-safe DateFilter discriminated union (ThisPeriodFilter, LastPeriodFilter, NextPeriodFilter, AbsoluteRangeFilter) — v1.3.2
+- ✓ Naive-local datetime contract — all date inputs use `str` type, aware datetimes converted to local — v1.3.2
+- ✓ OmniFocus settings API integration — due-soon threshold and default times via OmniJS `settings.objectForKey()` — v1.3.2
+- ✓ Filter cleanup: `urgency` removed, `completed` boolean → date filter, `availability` trimmed (`COMPLETED`/`DROPPED` removed) — v1.3.2
+- ✓ Defer vs availability hints — educational guidance when defer filter implies availability equivalents — v1.3.2
 
 ### Active
 
-- [~] Date filtering on list_tasks and count_tasks — 7 date fields with shorthand, absolute, and string shortcuts (v1.3.2) — Phase 45-46 complete: DateFilter model, StrEnum shortcuts, query extensions, pure resolver, DueSoonSetting enum, config consolidation, SQL date predicates, bridge in-memory filtering, service pipeline integration, startup-time threshold validation, ResolvedDateBounds rich return type
-- [~] Due-soon threshold configuration (v1.3.2) — Phase 46 complete: env var → DueSoonSetting enum at startup via field_validator, error-serving mode on invalid values, agent-facing warning on missing threshold. Phase 50 complete: OmniJS settings API replaces SQLite plist-parsing and env var, OmniFocusPreferences module with lazy cache and factory-default fallback
-- [ ] Existing filter changes: urgency removed, completed boolean → date filter, availability trimmed (v1.3.2)
 - [ ] Field selection, task deletion, notes append (v1.4)
 - [ ] Fuzzy search (v1.4.1)
 - [ ] TaskPaper output format (v1.4.2)
@@ -136,14 +134,16 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 ## Context
 
-Shipped v1.3.1 with ~9,947 LOC Python (src/), ~215k LOC JS (bridge + deps), ~28k TS (tests).
+Shipped v1.3.2 with ~11,472 LOC Python (src/), ~215k LOC JS (bridge + deps), ~28k TS (tests).
 Tech stack: Python 3.12, uv, Pydantic v2, FastMCP v3 (`fastmcp>=3.1.1`), pydantic-settings, OmniJS bridge, SQLite3 (stdlib).
-1,981 pytest tests, 26 Vitest tests, UAT passed on all phases.
+1,951 pytest tests, 26 Vitest tests, UAT passed on all phases.
 Real OmniFocus database: ~2,400 tasks, ~363 projects, ~64 tags, ~79 folders.
 Read path: SQLite (default, ~46ms for full snapshot, <6ms for filtered queries). Write path: OmniJS bridge with write-through guarantee.
 11 MCP tools: get_all, get_task, get_project, get_tag, add_tasks, edit_tasks, list_tasks, list_projects, list_tags, list_folders, list_perspectives.
 Architecture: service/ package (Resolver, DomainLogic, PayloadBuilder, orchestrator + read pipelines), contracts/ package (per-use-case packages: list/, add/, edit/), tests/doubles/ (InMemoryBridge, StubBridge, SimulatorBridge).
 Query infrastructure: typed query models → service resolution cascade → parameterized SQL builder → repository → ListResult[T] with total_count and warnings.
+Date filtering: 7-dimension date filters with discriminated union (ThisPeriod, LastPeriod, NextPeriod, AbsoluteRange), calendar-aware arithmetic, naive-local datetime contract.
+OmniFocus preferences: OmniFocusPreferences module reads user settings via OmniJS `settings.objectForKey()`, lazy-loaded with factory-default fallback.
 Agent-facing docs: all descriptions centralized in agent_messages/descriptions.py with AST enforcement tests.
 RRULE: rrule/ module (parse_rrule, build_rrule) shared by both read paths, flat Frequency model with 6 types, FrequencyAddSpec/FrequencyEditSpec command models.
 Golden master: 43 scenarios in 7 categories, contract tests verify InMemoryBridge matches RealBridge.
@@ -240,4 +240,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-10 after Phase 49 complete — Naive-local datetime contract for all date inputs. All 5 phases in v1.3.2 milestone complete.*
+*Last updated: 2026-04-11 after v1.3.2 milestone complete — Date Filtering shipped. 6 phases, 23 plans, 56 requirements satisfied.*
