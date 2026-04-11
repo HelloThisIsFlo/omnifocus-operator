@@ -237,29 +237,95 @@ class TestTestDoubleRelocation:
     def test_in_memory_bridge_not_importable_from_old_path(self) -> None:
         """in_memory module removed from bridge package."""
         with pytest.raises(ModuleNotFoundError):
-            from omnifocus_operator.bridge.in_memory import InMemoryBridge  # noqa: F401
+            from omnifocus_operator.bridge.in_memory import InMemoryBridge
 
     def test_bridge_call_not_importable_from_old_path(self) -> None:
         """BridgeCall removed with in_memory module."""
         with pytest.raises(ModuleNotFoundError):
-            from omnifocus_operator.bridge.in_memory import BridgeCall  # noqa: F401
+            from omnifocus_operator.bridge.in_memory import BridgeCall
 
     def test_simulator_bridge_not_importable_from_old_path(self) -> None:
         """simulator module removed from bridge package."""
         with pytest.raises(ModuleNotFoundError):
-            from omnifocus_operator.bridge.simulator import SimulatorBridge  # noqa: F401
+            from omnifocus_operator.bridge.simulator import SimulatorBridge
 
     def test_in_memory_repository_not_importable_from_old_path(self) -> None:
         """in_memory module removed from repository package."""
         with pytest.raises(ModuleNotFoundError):
-            from omnifocus_operator.repository.in_memory import InMemoryRepository  # noqa: F401
+            from omnifocus_operator.repository.in_memory import InMemoryRepository
 
     def test_in_memory_repository_not_in_doubles_exports(self) -> None:
         """InMemoryRepository removed from test doubles."""
         with pytest.raises(ImportError):
-            from tests.doubles.repository import InMemoryRepository  # noqa: F401
+            from tests.doubles.repository import InMemoryRepository
 
     def test_constant_mtime_source_not_importable_from_old_path(self) -> None:
         """ConstantMtimeSource removed from bridge.mtime module."""
         with pytest.raises(ImportError):
-            from omnifocus_operator.bridge.mtime import ConstantMtimeSource  # noqa: F401
+            from omnifocus_operator.bridge.mtime import ConstantMtimeSource
+
+
+# ---------------------------------------------------------------------------
+# InMemoryBridge: get_settings
+# ---------------------------------------------------------------------------
+
+
+class TestInMemoryBridgeGetSettings:
+    """InMemoryBridge get_settings operation: factory defaults, overrides, isolation."""
+
+    FACTORY_DEFAULTS = {
+        "DefaultDueTime": "17:00",
+        "DefaultStartTime": "00:00",
+        "DefaultPlannedTime": "09:00",
+        "DueSoonInterval": 172800,
+        "DueSoonGranularity": 1,
+    }
+
+    async def test_get_settings_returns_factory_defaults(self) -> None:
+        """get_settings returns OmniFocus factory defaults when unconfigured."""
+        bridge = InMemoryBridge()
+
+        result = await bridge.send_command("get_settings")
+
+        assert result == self.FACTORY_DEFAULTS
+
+    async def test_get_settings_with_custom_overrides(self) -> None:
+        """configure_settings merges overrides into factory defaults."""
+        bridge = InMemoryBridge()
+        bridge.configure_settings({"DefaultDueTime": "19:00:00", "DueSoonInterval": 86400})
+
+        result = await bridge.send_command("get_settings")
+
+        assert result["DefaultDueTime"] == "19:00:00"
+        assert result["DueSoonInterval"] == 86400
+        # Non-overridden keys stay at factory defaults
+        assert result["DefaultStartTime"] == "00:00"
+        assert result["DefaultPlannedTime"] == "09:00"
+        assert result["DueSoonGranularity"] == 1
+
+    async def test_get_settings_returns_copy(self) -> None:
+        """Returned dict is a copy -- mutation does not affect internal state."""
+        bridge = InMemoryBridge()
+
+        result = await bridge.send_command("get_settings")
+        result["DefaultDueTime"] = "MUTATED"
+
+        second_result = await bridge.send_command("get_settings")
+        assert second_result["DefaultDueTime"] == "17:00"
+
+    async def test_get_settings_records_call(self) -> None:
+        """get_settings records the call in call history."""
+        bridge = InMemoryBridge()
+
+        await bridge.send_command("get_settings")
+
+        assert bridge.call_count == 1
+        assert bridge.calls[0] == BridgeCall(operation="get_settings", params=None)
+
+    async def test_get_settings_respects_error_simulation(self) -> None:
+        """set_error causes get_settings to raise."""
+        bridge = InMemoryBridge()
+        bridge.set_error(RuntimeError("OmniFocus not running"))
+
+        with pytest.raises(RuntimeError, match="OmniFocus not running"):
+            await bridge.send_command("get_settings")
