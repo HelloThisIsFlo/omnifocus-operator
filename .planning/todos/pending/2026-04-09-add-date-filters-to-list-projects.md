@@ -85,6 +85,7 @@ The earlier concern that `effectiveDateCompleted` might be "task-only — always
 - The function only does `getattr(query, f"{field_name}_after", None)` — pure structural access
 - Protocol expresses "has the right shape" without coupling to specific query types
 - Open for extension if other entity types get date filters later
+- **Location:** Define in `query_builder.py` itself — it's the only consumer, private implementation detail
 
 ## Design decisions (already made)
 
