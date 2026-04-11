@@ -511,10 +511,16 @@ class TestRepoQueryFieldParity:
         """Non-filter fields must match between Query and RepoQuery."""
         query_fields = set(ListProjectsQuery.model_fields.keys())
         repo_fields = set(ListProjectsRepoQuery.model_fields.keys())
-        # Fields that diverged: Query has folder/review_due_within,
-        # RepoQuery has folder_ids/review_due_before
-        query_only = {"folder", "review_due_within"}
-        repo_only = {"folder_ids", "review_due_before"}
+        # Fields that diverged:
+        # - Query has folder/review_due_within, RepoQuery has folder_ids/review_due_before
+        # - Query has 7 date fields (due, defer, planned, completed, dropped, added, modified)
+        #   RepoQuery has 14 resolved _after/_before datetime fields
+        _date_fields = {"due", "defer", "planned", "completed", "dropped", "added", "modified"}
+        _date_repo_fields = {
+            f"{name}_{bound}" for name in _date_fields for bound in ("after", "before")
+        }
+        query_only = {"folder", "review_due_within"} | _date_fields
+        repo_only = {"folder_ids", "review_due_before"} | _date_repo_fields
         assert query_fields - query_only == repo_fields - repo_only
 
     def test_projects_repo_query_has_id_fields(self) -> None:
