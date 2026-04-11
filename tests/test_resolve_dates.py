@@ -352,11 +352,18 @@ class TestAbsoluteBefore:
         assert resolved.before == datetime(2026, 4, 15, 0, 0, 0, tzinfo=UTC)
 
     def test_before_datetime(self) -> None:
-        """Full datetime before -> exact value."""
+        """Full datetime before -> +1 minute (inclusive bound for half-open < comparison)."""
         resolved = resolve_date_filter(
             AbsoluteRangeFilter(before="2026-04-14T18:00:00Z"), "due", NOW
         )
-        assert resolved.before == datetime(2026, 4, 14, 18, 0, 0, tzinfo=UTC)
+        assert resolved.before == datetime(2026, 4, 14, 18, 1, 0, tzinfo=UTC)
+
+    def test_before_datetime_naive(self) -> None:
+        """Naive datetime before -> inherits tzinfo from NOW, then +1 minute bump."""
+        resolved = resolve_date_filter(
+            AbsoluteRangeFilter(before="2026-04-14T18:00:00"), "due", NOW
+        )
+        assert resolved.before == datetime(2026, 4, 14, 18, 1, 0, tzinfo=UTC)
 
     def test_before_now(self) -> None:
         """'now' -> the passed-in now timestamp."""
@@ -413,7 +420,7 @@ class TestAbsoluteBoth:
             NOW,
         )
         assert resolved.after == datetime(2026, 4, 1, 9, 0, 0, tzinfo=UTC)
-        assert resolved.before == datetime(2026, 4, 14, 18, 0, 0, tzinfo=UTC)
+        assert resolved.before == datetime(2026, 4, 14, 18, 1, 0, tzinfo=UTC)
 
 
 # ---------------------------------------------------------------------------
