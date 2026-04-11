@@ -45,10 +45,14 @@ result: pass
 expected: Inspect the JSON Schema for `add_tasks` inputSchema. Date fields (dueDate, deferDate, completionDate) should NOT have `"format": "date-time"` — they should be plain `string` type.
 result: pass
 
+### 9. Date filter with naive datetime bounds
+expected: Call `list_tasks` with `due: {after: "2026-07-01T00:00:00", before: "2026-08-15T23:59:59"}` (naive bounds). Tasks with due dates in that range are returned correctly.
+result: pass
+
 ## Summary
 
-total: 8
-passed: 7
+total: 9
+passed: 8
 issues: 0
 pending: 0
 skipped: 1
