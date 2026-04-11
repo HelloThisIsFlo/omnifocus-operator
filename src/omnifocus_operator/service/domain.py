@@ -260,7 +260,7 @@ class DomainLogic:
 
     # -- Availability expansion ------------------------------------------------
 
-    def expand_task_availability(
+    def expand_availability(
         self,
         filters: list[AvailabilityFilter],
         lifecycle_additions: list[Availability],

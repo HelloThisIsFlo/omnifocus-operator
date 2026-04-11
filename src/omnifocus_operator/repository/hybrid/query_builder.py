@@ -7,7 +7,7 @@ All user-provided values use ? placeholders (INFRA-01: no SQL injection).
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, NamedTuple
+from typing import TYPE_CHECKING, Any, NamedTuple, Protocol
 
 from omnifocus_operator.models.enums import Availability
 
@@ -36,10 +36,33 @@ _DATE_COLUMN_MAP: dict[str, str] = {
 _LIFECYCLE_DATE_FIELDS = {"completed", "dropped"}
 
 
+class HasDateBounds(Protocol):
+    """Structural type for queries with date _after/_before fields.
+
+    Used by _add_date_conditions to accept both ListTasksRepoQuery and
+    ListProjectsRepoQuery without coupling to either concrete type.
+    """
+
+    due_after: datetime | None
+    due_before: datetime | None
+    defer_after: datetime | None
+    defer_before: datetime | None
+    planned_after: datetime | None
+    planned_before: datetime | None
+    completed_after: datetime | None
+    completed_before: datetime | None
+    dropped_after: datetime | None
+    dropped_before: datetime | None
+    added_after: datetime | None
+    added_before: datetime | None
+    modified_after: datetime | None
+    modified_before: datetime | None
+
+
 def _add_date_conditions(
     conditions: list[str],
     params: list[Any],
-    query: ListTasksRepoQuery,
+    query: HasDateBounds,
 ) -> None:
     """Append date predicates to conditions/params for each set _after/_before field.
 
@@ -283,6 +306,9 @@ def build_list_projects_sql(
         conditions.append("(t.name LIKE ? COLLATE NOCASE OR t.plainTextNote LIKE ? COLLATE NOCASE)")
         params.append(f"%{query.search}%")
         params.append(f"%{query.search}%")
+
+    # Date filters (all 7 dimensions)
+    _add_date_conditions(conditions, params, query)
 
     # -- Build WHERE clause --
     where_clause = ""

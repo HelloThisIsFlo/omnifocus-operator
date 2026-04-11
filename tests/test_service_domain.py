@@ -1151,11 +1151,11 @@ class TestDeferHintDetection:
 
 
 class TestExpandTaskAvailability:
-    """DomainLogic.expand_task_availability -- REMAINING expansion + lifecycle merge."""
+    """DomainLogic.expand_availability -- REMAINING expansion + lifecycle merge."""
 
     def test_remaining_expands_to_available_and_blocked(self) -> None:
         """[REMAINING] -> {AVAILABLE, BLOCKED}, no warnings."""
-        expanded, warnings = _domain().expand_task_availability([AvailabilityFilter.REMAINING], [])
+        expanded, warnings = _domain().expand_availability([AvailabilityFilter.REMAINING], [])
         assert set(expanded) == {Availability.AVAILABLE, Availability.BLOCKED}
         assert warnings == []
 
@@ -1165,7 +1165,7 @@ class TestExpandTaskAvailability:
             AVAILABILITY_REMAINING_INCLUDES_AVAILABLE,
         )
 
-        expanded, warnings = _domain().expand_task_availability(
+        expanded, warnings = _domain().expand_availability(
             [AvailabilityFilter.AVAILABLE, AvailabilityFilter.REMAINING], []
         )
         assert set(expanded) == {Availability.AVAILABLE, Availability.BLOCKED}
@@ -1178,7 +1178,7 @@ class TestExpandTaskAvailability:
             AVAILABILITY_REMAINING_INCLUDES_BLOCKED,
         )
 
-        expanded, warnings = _domain().expand_task_availability(
+        expanded, warnings = _domain().expand_availability(
             [AvailabilityFilter.BLOCKED, AvailabilityFilter.REMAINING], []
         )
         assert set(expanded) == {Availability.AVAILABLE, Availability.BLOCKED}
@@ -1187,25 +1187,25 @@ class TestExpandTaskAvailability:
 
     def test_empty_filters_expands_to_empty(self) -> None:
         """[] -> empty set, no warnings."""
-        expanded, warnings = _domain().expand_task_availability([], [])
+        expanded, warnings = _domain().expand_availability([], [])
         assert expanded == []
         assert warnings == []
 
     def test_single_available_no_warning(self) -> None:
         """[AVAILABLE] -> {AVAILABLE}, no warnings."""
-        expanded, warnings = _domain().expand_task_availability([AvailabilityFilter.AVAILABLE], [])
+        expanded, warnings = _domain().expand_availability([AvailabilityFilter.AVAILABLE], [])
         assert set(expanded) == {Availability.AVAILABLE}
         assert warnings == []
 
     def test_empty_plus_lifecycle_completed(self) -> None:
         """[] + lifecycle_additions=[COMPLETED] -> {COMPLETED} only."""
-        expanded, warnings = _domain().expand_task_availability([], [Availability.COMPLETED])
+        expanded, warnings = _domain().expand_availability([], [Availability.COMPLETED])
         assert set(expanded) == {Availability.COMPLETED}
         assert warnings == []
 
     def test_remaining_plus_lifecycle_completed(self) -> None:
         """[REMAINING] + lifecycle_additions=[COMPLETED] -> {AVAILABLE, BLOCKED, COMPLETED}."""
-        expanded, warnings = _domain().expand_task_availability(
+        expanded, warnings = _domain().expand_availability(
             [AvailabilityFilter.REMAINING], [Availability.COMPLETED]
         )
         assert set(expanded) == {

@@ -173,14 +173,14 @@ PLANNED_FILTER_DESC = (
 )
 
 COMPLETED_FILTER_DESC = (
-    "Inclusion filter: adds completed tasks to results "
-    "(excluded by default). 'all' = every completed task regardless of date. "
+    "Inclusion filter: adds completed items to results "
+    "(excluded by default). 'all' = every completed item regardless of date. "
     "'today' = completed today. Or use a period/range filter."
 )
 
 DROPPED_FILTER_DESC = (
-    "Inclusion filter: adds dropped tasks to results "
-    "(excluded by default). 'all' = every dropped task regardless of date. "
+    "Inclusion filter: adds dropped items to results "
+    "(excluded by default). 'all' = every dropped item regardless of date. "
     "'today' = dropped today. Or use a period/range filter."
 )
 

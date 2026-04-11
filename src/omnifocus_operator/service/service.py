@@ -409,7 +409,7 @@ class _ListTasksPipeline(_ReadPipeline):
 
     def _build_repo_query(self) -> None:
         # Expand availability + merge lifecycle additions via domain
-        expanded, avail_warns = self._domain.expand_task_availability(
+        expanded, avail_warns = self._domain.expand_availability(
             self._query.availability, self._date_result.lifecycle_additions
         )
         self._warnings.extend(avail_warns)
@@ -455,6 +455,7 @@ class _ListProjectsPipeline(_ReadPipeline):
 
         self._resolve_folder()
         self._check_inbox_search_warning()
+        await self._resolve_date_filters()
         self._build_repo_query()
         return await self._delegate()
 
@@ -476,14 +477,43 @@ class _ListProjectsPipeline(_ReadPipeline):
             )
         )
 
+    async def _resolve_date_filters(self) -> None:
+        """Resolve all 7 date filter fields via domain delegation."""
+        self._now = local_now()
+
+        # Resolve due-soon setting conditionally (D-02) -- I/O stays in pipeline
+        due_soon_setting: DueSoonSetting | None = None
+        if (
+            is_set(self._query.due)
+            and isinstance(self._query.due, StrEnum)
+            and self._query.due.value == "soon"
+        ):
+            due_soon_setting = await self._repository.get_due_soon_setting()
+
+        week_start = get_week_start()
+
+        # Delegate to domain -- field extraction + UNSET filtering handled there
+        self._date_result = self._domain.resolve_date_filters(
+            self._query, self._now, week_start, due_soon_setting
+        )
+        self._warnings.extend(self._date_result.warnings)
+
     def _build_repo_query(self) -> None:
         review_due_before: datetime | None = None
         review_due_within = unset_to_none(self._query.review_due_within)
         if review_due_within is not None:
             review_due_before = self._domain.expand_review_due(review_due_within, local_now())
 
-        expanded, avail_warns = self._domain.expand_task_availability(self._query.availability, [])
+        expanded, avail_warns = self._domain.expand_availability(
+            self._query.availability, self._date_result.lifecycle_additions
+        )
         self._warnings.extend(avail_warns)
+
+        # Unpack date bounds from domain result
+        date_kwargs: dict[str, datetime | None] = {}
+        for name, bounds in self._date_result.bounds.items():
+            date_kwargs[f"{name}_after"] = bounds.after
+            date_kwargs[f"{name}_before"] = bounds.before
 
         self._repo_query = ListProjectsRepoQuery(
             availability=expanded,
@@ -493,6 +523,7 @@ class _ListProjectsPipeline(_ReadPipeline):
             search=unset_to_none(self._query.search),
             limit=self._query.limit,
             offset=self._query.offset,
+            **date_kwargs,
         )
 
     async def _delegate(self) -> ListResult[Project]:

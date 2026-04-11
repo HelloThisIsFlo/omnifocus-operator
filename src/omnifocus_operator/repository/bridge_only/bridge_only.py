@@ -60,6 +60,13 @@ _BRIDGE_FIELD_MAP: dict[str, str] = {
     "modified": "modified",
 }
 
+# Project-specific field map: projects use completion_date (not effective_completion_date)
+# because projects don't inherit completion dates -- they're always root entities.
+_BRIDGE_PROJECT_FIELD_MAP: dict[str, str] = {
+    **_BRIDGE_FIELD_MAP,
+    "completed": "completion_date",
+}
+
 # Lifecycle date fields use additive semantics: remaining tasks (None attribute)
 # pass through alongside lifecycle items matching the date bounds.
 _LIFECYCLE_DATE_FIELDS = {"completed", "dropped"}
@@ -275,6 +282,37 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
                 for p in items
                 if lower_search in p.name.lower() or (p.note and lower_search in p.note.lower())
             ]
+
+        # Date filters (all 7 dimensions) -- uses project-specific field map
+        for field_name, attr_name in _BRIDGE_PROJECT_FIELD_MAP.items():
+            after_val = getattr(query, f"{field_name}_after", None)
+            before_val = getattr(query, f"{field_name}_before", None)
+            if field_name in _LIFECYCLE_DATE_FIELDS:
+                if after_val is not None:
+                    items = [
+                        p
+                        for p in items
+                        if getattr(p, attr_name) is None or getattr(p, attr_name) >= after_val
+                    ]
+                if before_val is not None:
+                    items = [
+                        p
+                        for p in items
+                        if getattr(p, attr_name) is None or getattr(p, attr_name) < before_val
+                    ]
+            else:
+                if after_val is not None:
+                    items = [
+                        p
+                        for p in items
+                        if getattr(p, attr_name) is not None and getattr(p, attr_name) >= after_val
+                    ]
+                if before_val is not None:
+                    items = [
+                        p
+                        for p in items
+                        if getattr(p, attr_name) is not None and getattr(p, attr_name) < before_val
+                    ]
 
         total = len(items)
 
