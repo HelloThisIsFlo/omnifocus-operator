@@ -60,26 +60,26 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ORDER-01 | — | Pending |
-| ORDER-02 | — | Pending |
-| ORDER-03 | — | Pending |
-| ORDER-04 | — | Pending |
-| ORDER-05 | — | Pending |
-| MOVE-01 | — | Pending |
-| MOVE-02 | — | Pending |
-| MOVE-03 | — | Pending |
-| MOVE-04 | — | Pending |
-| MOVE-05 | — | Pending |
-| MOVE-06 | — | Pending |
-| WARN-01 | — | Pending |
-| WARN-02 | — | Pending |
-| WARN-03 | — | Pending |
+| ORDER-01 | Phase 51 | Pending |
+| ORDER-02 | Phase 51 | Pending |
+| ORDER-03 | Phase 51 | Pending |
+| ORDER-04 | Phase 51 | Pending |
+| ORDER-05 | Phase 51 | Pending |
+| MOVE-01 | Phase 52 | Pending |
+| MOVE-02 | Phase 52 | Pending |
+| MOVE-03 | Phase 52 | Pending |
+| MOVE-04 | Phase 52 | Pending |
+| MOVE-05 | Phase 52 | Pending |
+| MOVE-06 | Phase 52 | Pending |
+| WARN-01 | Phase 52 | Pending |
+| WARN-02 | Phase 52 | Pending |
+| WARN-03 | Phase 52 | Pending |
 
 **Coverage:**
 - v1.3.3 requirements: 14 total
-- Mapped to phases: 0
-- Unmapped: 14 (pending roadmap)
+- Mapped to phases: 14
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-11*
-*Last updated: 2026-04-11 after initial definition*
+*Last updated: 2026-04-11 after roadmap creation*
