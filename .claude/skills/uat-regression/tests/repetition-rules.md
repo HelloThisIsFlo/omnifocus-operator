@@ -1,3 +1,43 @@
+---
+suite: repetition-rules
+display: Repetition Rules
+test_count: 40
+
+setup: |
+  ### Task Hierarchy
+
+  Create this structure in the inbox using `add_tasks`:
+
+  ```
+  UAT-RepetitionRule (parent)
+  +-- T1-SetRule
+  +-- T2-ClearRule
+  +-- T3-Partial
+  +-- T4-TypeChange
+  +-- T5-NoOp
+  +-- T6-StatusComplete
+  +-- T7-StatusDrop
+  +-- T8-Lifecycle
+  +-- T9-LifecycleDrop
+  +-- T10-Errors
+  +-- T11-Normalize
+  +-- T12-EndPast
+  +-- T13-Combos
+  ```
+
+  Create the parent first, then all children (can be parallel). Store all IDs.
+
+  ### Post-Create
+
+  1. `edit_tasks` on T6-StatusComplete: `actions: { lifecycle: "complete" }`
+  2. `edit_tasks` on T7-StatusDrop: `actions: { lifecycle: "drop" }`
+
+  ### Verify
+
+  T6: availability=completed
+  T7: availability=dropped
+---
+
 # Repetition Rules Test Suite
 
 Tests repetition rule creation, read model, editing (set/clear/partial update/type change), no-op detection, status warnings, lifecycle interactions, normalization, validation errors, combo scenarios, and regression guards for `add_tasks` and `edit_tasks`.
@@ -8,41 +48,6 @@ Tests repetition rule creation, read model, editing (set/clear/partial update/ty
 - **Timezone required.** Date fields need timezone info in ISO 8601 (e.g., `+01:00` or `Z`). Without it, Pydantic rejects the value.
 - **1-item limit.** `edit_tasks` currently accepts exactly 1 item per call.
 - **Due date for lifecycle tests.** Tasks used in lifecycle tests (7a, 7b) need a `dueDate` set before the lifecycle action — a repeating task without its anchor date won't produce the next occurrence.
-
-## Setup
-
-### Task Hierarchy
-
-Create this structure in the inbox using `add_tasks`:
-
-```
-UAT-RepetitionRule (parent)
-+-- T1-SetRule
-+-- T2-ClearRule
-+-- T3-Partial
-+-- T4-TypeChange
-+-- T5-NoOp
-+-- T6-StatusComplete
-+-- T7-StatusDrop
-+-- T8-Lifecycle
-+-- T9-LifecycleDrop
-+-- T10-Errors
-+-- T11-Normalize
-+-- T12-EndPast
-+-- T13-Combos
-```
-
-Create the parent first, then all children (can be parallel). Store all IDs.
-
-### Automated Setup Actions
-
-After creating all tasks, run these lifecycle actions:
-1. `edit_tasks` on T6-StatusComplete: `actions: { lifecycle: "complete" }`
-2. `edit_tasks` on T7-StatusDrop: `actions: { lifecycle: "drop" }`
-
-Verify T6 shows `availability: "completed"` and T7 shows `availability: "dropped"` via `get_task`.
-
-Then tell the user: "Setup complete. Running all tests now. I'll report results when done."
 
 ## Tests
 

@@ -1,3 +1,59 @@
+---
+suite: list-tasks
+display: List Tasks
+test_count: 46
+
+discovery:
+  needs:
+    - type: project
+      label: proj-a
+      filters: [active, in_folder]
+    - type: tag
+      label: tag-a
+      filters: [available, unambiguous]
+    - type: tag
+      label: tag-b
+      filters: [available, unambiguous]
+  ambiguous:
+    tags: 3
+    projects: 3
+
+setup: |
+  ### Tasks
+  UAT-ListTasks (inbox parent)
+
+  Batch A — Inbox tasks (parent: UAT-ListTasks):
+    LT-Inbox1          (plain — no tags, unflagged, no estimate, no note)
+    LT-Tagged-A        (tags: [tag-a])
+    LT-Tagged-B        (tags: [tag-b])
+    LT-Tagged-AB       (tags: [tag-a, tag-b])
+    LT-Flagged         (flagged: true)
+    LT-Est30           (estimatedMinutes: 30)
+    LT-Est120          (estimatedMinutes: 120)
+    LT-NoEstimate      (plain — explicitly no estimate)
+    LT-SearchNote      (note: "unicorn_xK7_marker")
+    LT-Deferred        (deferDate: "2099-01-01T00:00:00Z")
+    LT-Completed       (tags: [tag-a])
+    LT-Dropped         (plain)
+
+  Batch B — Project tasks (parent: proj-a, NOT under UAT-ListTasks):
+    LT-ProjTask1       (estimatedMinutes: 15)
+    LT-ProjTask2       (flagged: true)
+    LT-ProjTask3       (plain)
+
+  ### Post-Create
+  1. complete: LT-Completed
+  2. drop: LT-Dropped
+
+  ### Verify
+  LT-Completed: availability=completed
+  LT-Dropped: availability=dropped
+  LT-Deferred: availability=blocked
+
+manual_actions:
+  - "If no ambiguous project or tag substrings found in discovery, tell user what's needed for tests 3a and 3e (project/tag names matching multiple entities) and ask them to create duplicates."
+---
+
 # List Tasks Test Suite
 
 Tests `list_tasks` tool — filtering by project, tags, inbox status, flagged, availability (available/blocked/remaining), estimated minutes, search, pagination, name resolution warnings, filter combinations, `$inbox` system location, lifecycle date filter auto-inclusion, availability redundancy warnings, and null/empty filter rejection.
@@ -7,72 +63,6 @@ Tests `list_tasks` tool — filtering by project, tags, inbox status, flagged, a
 - **Search isolation.** Most tests include `search: "LT-"` to restrict results to test tasks only, avoiding interference from the user's real OmniFocus data. Tests that specifically verify search behavior (1i, 1j) use different terms.
 - **Approximate counts.** `total` assertions use the expected count from test tasks. If the user happens to have other tasks matching "LT-" in their database, counts may differ — adjust expectations based on setup discovery.
 - **Read-only suite.** `list_tasks` is idempotent. No cleanup is needed between tests — only after the suite completes (consolidate setup tasks under cleanup umbrella).
-
-## Setup
-
-### Step 1 — Discover Entities
-
-Call `get_all` and store:
-
-- **1 project** — pick an active project with a recognizable name. Store its ID and name as **proj-a**.
-- **2 tags** — pick 2 tags with distinct, unambiguous names. Store as **tag-a** and **tag-b** (IDs and names).
-
-Then scan for resolution test candidates:
-
-- **Ambiguous project substring**: Find a short substring that matches 2+ project names (e.g., if "Work" and "Workout" both exist, the substring "Work" is ambiguous). Store as **ambig-proj** if found.
-- **Ambiguous tag substring**: Same for tags — a substring matching 2+ tag names. Store as **ambig-tag** if found.
-- **Close project name**: Note proj-a's full name. During test 3b, craft a misspelling (swap or add a letter, e.g., "Development" → "Developmentt") — NOT a prefix/suffix, which could accidentally substring-match.
-
-Present discoveries to the user in a table and confirm before proceeding.
-
-### Step 2 — Create Task Hierarchy
-
-Create the inbox parent first:
-
-```
-UAT-ListTasks (inbox parent)
-```
-
-Then create children in two batches:
-
-**Batch A — Inbox tasks** (parent: UAT-ListTasks):
-
-```
-+-- LT-Inbox1          (plain — no tags, unflagged, no estimate, no note)
-+-- LT-Tagged-A        (tags: [tag-a])
-+-- LT-Tagged-B        (tags: [tag-b])
-+-- LT-Tagged-AB       (tags: [tag-a, tag-b])
-+-- LT-Flagged         (flagged: true)
-+-- LT-Est30           (estimatedMinutes: 30)
-+-- LT-Est120          (estimatedMinutes: 120)
-+-- LT-NoEstimate      (plain — explicitly no estimate)
-+-- LT-SearchNote      (note: "unicorn_xK7_marker")
-+-- LT-Deferred        (deferDate: "2099-01-01T00:00:00Z")
-+-- LT-Completed       (tags: [tag-a])
-+-- LT-Dropped         (plain)
-```
-
-**Batch B — Project tasks** (parent: proj-a ID, NOT under UAT-ListTasks):
-
-```
-LT-ProjTask1           (estimatedMinutes: 15)
-LT-ProjTask2           (flagged: true)
-LT-ProjTask3           (plain)
-```
-
-### Step 3 — Automated Setup Actions
-
-1. `edit_tasks` on LT-Completed: `actions: { lifecycle: "complete" }`
-2. `edit_tasks` on LT-Dropped: `actions: { lifecycle: "drop" }`
-
-Verify via `get_task`:
-- LT-Completed has `availability: "completed"`
-- LT-Dropped has `availability: "dropped"`
-- LT-Deferred has `availability: "blocked"` (deferred until 2099)
-
-### Manual Actions
-
-If no ambiguous project or tag substrings were found in Step 1, tell the user what's needed for tests 3a and 3e (project/tag names that match multiple entities) and ask them to create duplicates. Wait for confirmation before proceeding.
 
 ## Tests
 

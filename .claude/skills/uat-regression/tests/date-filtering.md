@@ -1,3 +1,63 @@
+---
+suite: date-filtering
+display: Date Filtering
+test_count: 35
+
+computed_values:
+  OVERDUE_DUE: "now - 2h"
+  SOON_DUE: "threshold-dependent: Today=now+1.5h, 24h=now+12h, 2d+=tomorrow@12:00"
+  TODAY_DUE: "today@14:00 local (or now+2h if past 14:00, cap at 23:00)"
+  FUTURE_DUE: "now + 30 days"
+  TODAY_DEFER: "today@06:00 local"
+  TOMORROW_DATE: "tomorrow (date-only YYYY-MM-DD)"
+  YESTERDAY_DATE: "yesterday (date-only YYYY-MM-DD)"
+  TODAY_DATE_STR: "today (date-only YYYY-MM-DD)"
+
+user_prompts:
+  - key: due-soon-threshold
+    question: "OmniFocus due-soon threshold? (Preferences > Dates & Times > 'Due Soon means due within')"
+    options: ["Today", "24 hours", "2 days", "3 days", "4 days", "5 days", "1 week"]
+    default: "Today"
+
+setup: |
+  ### Late-Night Guard
+  Check local time. If after 10:30 PM: skip tests 1b, 4a, 5f, 5g, 5h
+  (date boundaries shift near midnight).
+
+  ### Tasks
+  UAT-DateFiltering (inbox parent)
+
+  Batch A — Main tasks (parent: UAT-DateFiltering):
+    DF-Overdue          (dueDate: OVERDUE_DUE)
+    DF-DueSoon          (dueDate: SOON_DUE)
+    DF-DueToday         (dueDate: TODAY_DUE)
+    DF-Future           (dueDate: FUTURE_DUE)
+    DF-NoDue            (no dates — plain task)
+    DF-Blocked          (deferDate: "2099-01-01T00:00:00Z" — far-future deferred)
+    DF-Completed        (plain — will be completed in Post-Create)
+    DF-Dropped          (plain — will be dropped in Post-Create)
+    DF-DeferToday       (deferDate: TODAY_DEFER)
+
+  Batch B — Inheritance chain (parent: UAT-DateFiltering):
+    DF-InheritParent    (dueDate: OVERDUE_DUE — same overdue date)
+      DF-InheritChild   (no dates — inherits effectiveDueDate from parent)
+
+  ### Post-Create
+  1. complete: DF-Completed
+  2. drop: DF-Dropped
+  3. flag: DF-Overdue (flagged: true)
+  4. flag: DF-DueToday (flagged: true)
+  5. set: DF-DueSoon (plannedDate: TODAY_DATE_STR)
+
+  ### Verify
+  DF-Completed: availability=completed
+  DF-Dropped: availability=dropped
+  DF-InheritChild: dueDate=null, effectiveDueDate=OVERDUE_DUE
+  DF-Overdue: flagged=true
+  DF-DueToday: flagged=true
+  DF-DueSoon: plannedDate=TODAY_DATE_STR
+---
+
 # Date Filtering Test Suite
 
 Tests `list_tasks` date filtering — due date shortcuts (overdue, soon, today), lifecycle date filters (completed, dropped with auto-inclusion), shorthand period syntax (this/last/next), absolute date bounds (before/after/range), combo filters (date + base filter AND logic), defer hint warnings (W022/W023), other date fields (modified, planned, defer, added), edge cases (no-date exclusion, round-trip), and inherited effective dates.
@@ -8,103 +68,6 @@ Tests `list_tasks` date filtering — due date shortcuts (overdue, soon, today),
 - **Read-only suite.** `list_tasks` is idempotent. No cleanup between tests — only after the suite completes.
 - **Date sensitivity.** Tests depend on relative dates computed at setup time. If running after 10:30 PM local, tests 1b, 4a, 5f, 5g, and 5h become unreliable — skip or reschedule. Tests 5f–5h test boundary inclusivity using TODAY_DATE against tasks due today; if OVERDUE_DUE (now − 2h) crosses midnight, those tasks land on yesterday and the tests break. Test 7b assumes the suite runs after 06:00 local (DF-DeferToday's defer date must have passed).
 - **Threshold-dependent.** Tests 1b and 4a depend on the user's OmniFocus "due soon" threshold, discovered during setup.
-
-## Setup
-
-### Step 1 — Due-Soon Threshold Discovery
-
-Ask the user their OmniFocus due-soon threshold setting (Preferences > Dates & Times > "Due Soon means due within"). Recommend **Today** as the default — it's the OmniFocus factory default and the most common setting:
-
-- **Today (calendar-aligned)** ← recommended default
-- 24 hours (rolling)
-- 2 days
-- 3 days
-- 4 days
-- 5 days
-- 1 week
-
-Store the answer as **due-soon-threshold**.
-
-### Step 2 — Late-Night Guard
-
-Check the current local time. If after 10:30 PM:
-
-> Due-soon and boundary-inclusivity tests are unreliable near midnight because date boundaries shift. Run these tests earlier in the day, or skip tests 1b, 4a, 5f, 5g, and 5h for now.
-
-If the user wants to proceed anyway, mark tests 1b, 4a, 5f, 5g, and 5h as SKIP in the report.
-
-### Step 3 — Compute Test Dates
-
-Compute these ISO timestamps based on current time and the user's threshold:
-
-| Reference | Formula | Purpose |
-|-----------|---------|---------|
-| `OVERDUE_DUE` | now - 2 hours | Past due date (overdue) |
-| `SOON_DUE` | See strategy below | Within threshold, after now |
-| `TODAY_DUE` | Today at 14:00 local (or now + 2h if past 14:00, cap at 23:00) | Due today, in the future |
-| `FUTURE_DUE` | now + 30 days | Well beyond any threshold |
-| `TODAY_DEFER` | Today at 06:00 local | Defer date clearly within today |
-| `TOMORROW_DATE` | Tomorrow (date-only YYYY-MM-DD) | Absolute bound: captures today, excludes far future |
-| `YESTERDAY_DATE` | Yesterday (date-only YYYY-MM-DD) | Absolute bound: everything from yesterday forward |
-| `TODAY_DATE_STR` | Today (date-only YYYY-MM-DD) | Absolute bound and planned date reference |
-
-**SOON_DUE strategy** (must be after now AND within threshold):
-- **Today (calendar-aligned):** now + 1.5 hours (must be before midnight)
-- **24 hours (rolling):** now + 12 hours
-- **2+ days:** Tomorrow at 12:00 local
-
-### Step 4 — Create Task Hierarchy
-
-Create the inbox parent first:
-
-```
-UAT-DateFiltering (inbox parent)
-```
-
-Then create children in two batches:
-
-**Batch A — Main tasks** (parent: UAT-DateFiltering):
-
-```
-+-- DF-Overdue          (dueDate: OVERDUE_DUE)
-+-- DF-DueSoon          (dueDate: SOON_DUE)
-+-- DF-DueToday         (dueDate: TODAY_DUE)
-+-- DF-Future           (dueDate: FUTURE_DUE)
-+-- DF-NoDue            (no dates — plain task)
-+-- DF-Blocked          (deferDate: "2099-01-01T00:00:00Z" — far-future deferred)
-+-- DF-Completed        (plain — will be completed in Step 5)
-+-- DF-Dropped          (plain — will be dropped in Step 5)
-+-- DF-DeferToday       (deferDate: TODAY_DEFER)
-```
-
-**Batch B — Inheritance chain** (parent: UAT-DateFiltering):
-
-```
-+-- DF-InheritParent    (dueDate: OVERDUE_DUE — same overdue date)
-    +-- DF-InheritChild (no dates — inherits effectiveDueDate from parent)
-```
-
-Create DF-InheritParent first, then DF-InheritChild with parent set to DF-InheritParent's ID.
-
-### Step 5 — Automated Setup Actions
-
-1. `edit_tasks` on DF-Completed: `actions: { lifecycle: "complete" }`
-2. `edit_tasks` on DF-Dropped: `actions: { lifecycle: "drop" }`
-3. `edit_tasks` on DF-Overdue: `flagged: true`
-4. `edit_tasks` on DF-DueToday: `flagged: true`
-5. `edit_tasks` on DF-DueSoon: `plannedDate: "TODAY_DATE_STR"`
-
-Verify via `get_task`:
-- DF-Completed: `availability: "completed"`
-- DF-Dropped: `availability: "dropped"`
-- DF-InheritChild: `dueDate` is null, `effectiveDueDate` matches OVERDUE_DUE (inherited from DF-InheritParent)
-- DF-Overdue: `flagged: true`
-- DF-DueToday: `flagged: true`
-- DF-DueSoon: `plannedDate` matches TODAY_DATE_STR
-
-### Manual Actions
-
-None — all setup is automated.
 
 ## Tests
 

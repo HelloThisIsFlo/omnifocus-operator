@@ -1,3 +1,36 @@
+---
+suite: edit-operations
+display: Edit Operations
+test_count: 23
+
+setup: |
+  ### Task Hierarchy
+
+  Create this structure in the inbox using `add_tasks`:
+
+  ```
+  UAT-EditOps (parent)
+  +-- T1-NoteOps
+  +-- T2-FieldEditing
+  +-- T3-NoopWarnings
+  +-- T4-StatusComplete
+  +-- T5-StatusDrop
+  +-- T6-Errors
+  ```
+
+  Create the parent first, then all children (can be parallel). Store all IDs.
+
+  ### Post-Create
+
+  1. `edit_tasks` on T4-StatusComplete: `actions: { lifecycle: "complete" }`
+  2. `edit_tasks` on T5-StatusDrop: `actions: { lifecycle: "drop" }`
+
+  ### Verify
+
+  T4: availability=completed
+  T5: availability=dropped
+---
+
 # Edit Operations Test Suite
 
 Tests field editing, patch semantics, no-op warnings, status warnings, error handling, and combo scenarios for `edit_tasks`.
@@ -7,34 +40,6 @@ Tests field editing, patch semantics, no-op warnings, status warnings, error han
 - **Inbox only.** Never create tasks in projects. Every task goes to inbox (no `parent` for top-level, or under the test parent task).
 - **Timezone required.** Date fields need timezone info in ISO 8601 (e.g., `+01:00` or `Z`). Without it, Pydantic rejects the value.
 - **1-item limit.** `edit_tasks` currently accepts exactly 1 item per call.
-
-## Setup
-
-### Task Hierarchy
-
-Create this structure in the inbox using `add_tasks`:
-
-```
-UAT-EditOps (parent)
-+-- T1-NoteOps
-+-- T2-FieldEditing
-+-- T3-NoopWarnings
-+-- T4-StatusComplete
-+-- T5-StatusDrop
-+-- T6-Errors
-```
-
-Create the parent first, then all children (can be parallel). Store all IDs.
-
-### Automated Setup Actions
-
-After creating all tasks, run these lifecycle actions:
-1. `edit_tasks` on T4-StatusComplete: `actions: { lifecycle: "complete" }`
-2. `edit_tasks` on T5-StatusDrop: `actions: { lifecycle: "drop" }`
-
-Verify T4 shows `availability: "completed"` and T5 shows `availability: "dropped"` via `get_task`.
-
-Then tell the user: "Setup complete. Running all tests now. I'll report results when done."
 
 ## Tests
 

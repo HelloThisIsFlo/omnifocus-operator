@@ -1,3 +1,46 @@
+---
+suite: inheritance
+display: Inheritance
+test_count: 8
+
+discovery:
+  needs:
+    - type: project
+      label: dated-project
+      filters: [active, has_due, has_defer, has_planned, flagged]
+    - type: project
+      label: undated-project
+      filters: [active, no_due, no_defer, no_planned, not_flagged]
+
+setup: |
+  Store dated-project's dueDate, deferDate, plannedDate values — these are the
+  expected inherited values for all assertions.
+
+  ### Tasks
+  Tasks under dated-project:
+    T1-InheritDirect
+    T2-ChainParent
+      T2a-ChainChild
+    T3-L1
+      T3a-L2
+        T3b-L3
+    T4-MoveAway
+    T6-OwnOverride
+    T7-ChainMoveParent
+      T7a-ChainMoveChild
+
+  Task in inbox (no parent):
+    T5-MoveIn
+
+  Creation order:
+  1. T1, T2, T3, T4, T5, T6, T7 (parallel — T1/T2/T3/T4/T6/T7 under dated-project, T5 in inbox)
+  2. T2a under T2, T3a under T3, T7a under T7 (parallel, need parents from step 1)
+  3. T3b under T3a (needs T3a from step 2)
+
+manual_actions:
+  - "If dated-project or undated-project profiles are missing, tell user exactly what to create or configure and wait for confirmation."
+---
+
 # Inheritance Test Suite
 
 Tests effective field inheritance — `effectiveDueDate`, `effectiveDeferDate`, `effectivePlannedDate`, `effectiveFlagged` — from parent projects through task chains, including multi-level nesting, move-induced changes, and own-value override behavior.
@@ -7,47 +50,6 @@ Tests effective field inheritance — `effectiveDueDate`, `effectiveDeferDate`, 
 - **Project-based.** Unlike other suites, this one creates tasks under real projects (not inbox). Uses the shared **Project Discovery** procedure (SKILL.md).
 - **1-item limit.** `edit_tasks` currently accepts exactly 1 item per call.
 - **Read-back required.** Every test uses `get_task` to verify effective fields — inheritance is only observable through reads.
-
-## Setup
-
-### Step 1 — Discover Projects
-
-Follow the **Project Discovery** procedure (SKILL.md). Required profiles:
-
-- **dated-project**: `dueDate` set, `deferDate` set, `plannedDate` set, `flagged=true` — all four required
-- **undated-project**: `dueDate` null, `deferDate` null, `plannedDate` null, `flagged` false
-
-Store the dated project's `dueDate`, `deferDate`, `plannedDate` values — these are the expected inherited values for all assertions.
-
-### Step 2 — Create Test Hierarchy
-
-Create this structure using `add_tasks`:
-
-```
-Tasks under dated-project:
-  T1-InheritDirect
-  T2-ChainParent
-    +-- T2a-ChainChild
-  T3-L1
-    +-- T3a-L2
-        +-- T3b-L3
-  T4-MoveAway
-  T6-OwnOverride
-  T7-ChainMoveParent
-    +-- T7a-ChainMoveChild
-
-Task in inbox (no parent):
-  T5-MoveIn
-```
-
-Creation order:
-1. T1, T2, T3, T4, T5, T6, T7 (can be parallel — T1/T2/T3/T4/T6/T7 under dated-project, T5 in inbox)
-2. T2a under T2, T3a under T3, T7a under T7 (can be parallel, need parents from step 1)
-3. T3b under T3a (needs T3a from step 2)
-
-Store all IDs.
-
-Then tell the user: "Running all tests now. I'll report results when done."
 
 ## Tests
 

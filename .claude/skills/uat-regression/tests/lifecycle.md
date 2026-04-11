@@ -1,3 +1,40 @@
+---
+suite: lifecycle
+display: Lifecycle
+test_count: 12
+
+setup: |
+  ### Task Hierarchy
+
+  Create this structure in the inbox using `add_tasks`:
+
+  ```
+  UAT-Lifecycle (parent)
+  +-- T1-Complete
+  +-- T2-Drop
+  +-- T3-CrossStateA
+  +-- T4-CrossStateB
+  +-- T5-Repeating
+  +-- T6-Combo
+  +-- T7-InvalidLifecycle
+  +-- T8-DeferLifecycle
+  ```
+
+  Create the parent first, then all children (can be parallel). Store all IDs.
+
+  ### Post-Create
+
+  1. `edit_tasks` on T3-CrossStateA: `actions: { lifecycle: "drop" }`
+  2. `edit_tasks` on T4-CrossStateB: `actions: { lifecycle: "complete" }`
+  3. `edit_tasks` on T5-Repeating: `repetitionRule: { frequency: { type: "weekly" }, schedule: "regularly", basedOn: "due_date" }`, `dueDate: "2026-06-15T12:00:00Z"`
+
+  ### Verify
+
+  T3: availability=dropped
+  T4: availability=completed
+  T5: has repetitionRule
+---
+
 # Lifecycle Test Suite
 
 Tests task completion, dropping, cross-state transitions, repeating task behavior, and lifecycle validation for `edit_tasks`.
@@ -8,37 +45,6 @@ Tests task completion, dropping, cross-state transitions, repeating task behavio
 - **1-item limit.** `edit_tasks` currently accepts exactly 1 item per call.
 
 **Known issue — spurious "no changes" warning:** When a lifecycle action results in a no-op (e.g., completing an already-completed task) AND no field edits are in the request, a spurious "No changes specified/detected" warning fires alongside the specific lifecycle warning. Document in the report's Observations section if encountered.
-
-## Setup
-
-### Task Hierarchy
-
-Create this structure in the inbox using `add_tasks`:
-
-```
-UAT-Lifecycle (parent)
-+-- T1-Complete
-+-- T2-Drop
-+-- T3-CrossStateA
-+-- T4-CrossStateB
-+-- T5-Repeating
-+-- T6-Combo
-+-- T7-InvalidLifecycle
-+-- T8-DeferLifecycle
-```
-
-Create the parent first, then all children (can be parallel). Store all IDs.
-
-### Automated Setup Actions
-
-After creating all tasks, run these setup actions:
-1. `edit_tasks` on T3-CrossStateA: `actions: { lifecycle: "drop" }`
-2. `edit_tasks` on T4-CrossStateB: `actions: { lifecycle: "complete" }`
-3. `edit_tasks` on T5-Repeating: `repetitionRule: { frequency: { type: "weekly" }, schedule: "regularly", basedOn: "due_date" }`, `dueDate: "2026-06-15T12:00:00Z"`
-
-Verify T3 shows `availability: "dropped"`, T4 shows `availability: "completed"`, and T5 has a `repetitionRule` via `get_task`.
-
-Then tell the user: "Setup complete. Running all tests now. I'll report results when done."
 
 ## Tests
 

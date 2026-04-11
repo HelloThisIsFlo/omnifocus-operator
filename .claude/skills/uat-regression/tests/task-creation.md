@@ -1,3 +1,30 @@
+---
+suite: task-creation
+display: Task Creation
+test_count: 17
+
+discovery:
+  needs:
+    - type: tag
+      label: tag-a
+      filters: [available, unambiguous]
+    - type: tag
+      label: tag-b
+      filters: [available, unambiguous]
+    - type: tag
+      label: tag-c
+      filters: [available, unambiguous]
+  ambiguous:
+    tags: 3
+
+setup: |
+  ### Tasks
+  UAT-TaskCreation (inbox parent)
+
+manual_actions:
+  - "If no ambiguous tag name found in discovery, ask user to create two tags with the same name (e.g., 'TestDupe') under different parent tags for test 5c. Otherwise test 5c will be skipped."
+---
+
 # Task Creation Test Suite
 
 Tests `add_tasks` — inbox creation, parent assignment, all fields, tag resolution, error handling, and batch constraints.
@@ -8,35 +35,6 @@ Tests `add_tasks` — inbox creation, parent assignment, all fields, tag resolut
 - **Timezone required.** Date fields need timezone info in ISO 8601 (e.g., `+01:00` or `Z`). Without it, Pydantic rejects the value.
 - **Tags by ID.** Some tag names are ambiguous. Discover tags via `get_all` first, then use IDs where names might collide.
 - **1-item limit.** `add_tasks` currently accepts exactly 1 item per call.
-
-## Setup
-
-### Step 1 — Discover Tags
-
-Call `get_all` and extract the tags list. Pick 3 tags that:
-- Have unique names (no ambiguity)
-- Are simple/safe to use
-
-Store their IDs and names as tag-a, tag-b, tag-c. Also check if any tag name maps to 2+ tag IDs (for ambiguity test). Store the ambiguous name if found.
-
-### Step 2 — Create Test Parent
-
-Create this structure in the inbox using `add_tasks`:
-
-```
-UAT-TaskCreation (parent)
-```
-
-Store the parent ID.
-
-### Step 3 — Manual Actions
-
-If no ambiguous tag name was found in Step 1, ask the user:
-"If you'd like to test ambiguous tag handling (test 5c), create two tags with the same name (e.g., 'TestDupe') under different parent tags in OmniFocus. Otherwise that test will be skipped. Let me know when ready."
-
-If the user created the duplicate tag, re-fetch tags via `get_all` and store the ambiguous name.
-
-Wait for confirmation before proceeding. Then tell them: "Running all tests now. I'll report results when done."
 
 ## Tests
 
