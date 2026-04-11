@@ -500,12 +500,13 @@ Scenarios testing whether LLMs can construct correct `{tool_name}` payloads from
 
 ### Key conventions
 
-- **Prompt** is conversational — written as a real user would speak to an agent. Never robotic or formulaic. **Avoid schema vocabulary** — this means field names, filter names, shortcut names, AND near-synonyms that directly map to a specific field. The test is: would saying this word make the model immediately reach for the right field? If yes, rephrase.
-  - "past due" not "overdue" (that's a shortcut name)
-  - "become workable" not "come off their deferred dates" (maps directly to `defer`)
-  - "I'm running behind" not "overdue tasks"
-  - "sometime this month" not `{this: "m"}`
-  - If the prompt sounds like the schema, the trap is wasted.
+- **Prompt** is conversational — written as a real user would speak to an agent. Never robotic or formulaic. **Avoid schema vocabulary** — this means field names, filter names, shortcut names, AND near-synonyms that directly map to a specific field. The litmus test: would saying this word make the model immediately reach for the right field? If yes, it's too easy.
+  - Don't just swap synonyms ("past due" for "overdue") — that's still handing the model the concept on a plate. Instead, express the **human intent** behind the filter. A real user doesn't think in filters; they think in situations:
+    - "I've dropped the ball this week — what should I have finished by now?" (not "show me overdue tasks")
+    - "What can I start working on this week that I couldn't touch before?" (not "what's coming off defer?")
+    - "Something feels off in my system — what changed in the last few days?" (not "filter by modified date")
+    - "What should I focus on first?" (not "show me due soon tasks")
+  - The prompt should describe a **situation or feeling**, not a query. The model's job is to figure out which filters map to that situation.
 - **Trap** is human-only context — explains why this is tricky. NEVER included in the exam prompt sent to models.
 - **Expected** shows the reference-correct payload.
 - **Expected** payloads must reason through defaults. Ask: "What does the default return? Would the user actually want those extra results?" If the default adds unwanted data, the explicit override belongs in Expected. Don't just test the happy path — test that the model knows when to *not* rely on defaults.
@@ -534,7 +535,7 @@ Bad traps:
 - Are so obscure that no real user would encounter them
 - Have ambiguous correct answers (if the docs genuinely don't specify, that's a doc issue to fix, not a scenario to write)
 - **Assume backward compatibility confusion**: the test model receives ONLY the current tool docs in a fresh context — it has never seen a previous schema version. "Might use the old field name" or "might do it the way it worked before v1.2" is not a real trap. The model has no memory of previous versions. Traps must stem from what's ambiguous or confusing in the *current* documentation, not from migration history.
-- **Use schema vocabulary in the prompt** — this includes field names, filter names, shortcut names, AND near-synonyms that directly map to a field. The test: would this word make the model immediately reach for the right field? If yes, rephrase. "overdue" → "past due" or "slipped"; "deferred dates" → "become workable"; "flagged" → "important" or "marked urgent". The whole point is testing whether the model can *find* the right field from natural speech.
+- **Use schema vocabulary in the prompt** — this includes field names, filter names, shortcut names, AND near-synonyms that directly map to a field. Don't just swap synonyms either ("past due" for "overdue" is still too obvious). The prompt should describe a situation or feeling, not a query. The whole point is testing whether the model can figure out which filters map to a human intent, not whether it can match a keyword to a field name.
 
 ### Coverage cross-reference
 
