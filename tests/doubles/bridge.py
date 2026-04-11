@@ -118,6 +118,14 @@ class InMemoryBridge(Bridge):
         self._folders: list[dict[str, Any]] = list(seed.get("folders", []))
         self._perspectives: list[dict[str, Any]] = list(seed.get("perspectives", []))
 
+        self._settings: dict[str, Any] = {
+            "DefaultDueTime": "17:00",
+            "DefaultStartTime": "00:00",
+            "DefaultPlannedTime": "09:00",
+            "DueSoonInterval": 172800,
+            "DueSoonGranularity": 1,
+        }
+
         self._calls: list[BridgeCall] = []
         self._error: Exception | None = None
         self._wal_path: Path | None = Path(wal_path) if wal_path else None
@@ -142,6 +150,10 @@ class InMemoryBridge(Bridge):
         """Remove the configured error so subsequent calls succeed."""
         self._error = None
 
+    def configure_settings(self, overrides: dict[str, Any]) -> None:
+        """Merge overrides into the settings dict (for test setup)."""
+        self._settings.update(overrides)
+
     async def send_command(
         self,
         operation: str,
@@ -160,6 +172,8 @@ class InMemoryBridge(Bridge):
             return self._handle_add_task(params or {})
         if operation == "edit_task":
             return self._handle_edit_task(params or {})
+        if operation == "get_settings":
+            return dict(self._settings)
 
         # Unknown operations return the assembled snapshot
         return self._handle_get_all()

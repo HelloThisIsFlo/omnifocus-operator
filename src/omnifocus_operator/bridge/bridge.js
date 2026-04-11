@@ -370,6 +370,23 @@ function handleEditTask(params) {
     return { id: task.id.primaryKey, name: task.name };
 }
 
+// --- Settings ---
+
+function handleGetSettings() {
+    var result = {};
+    var keys = [
+        "DefaultDueTime",
+        "DefaultStartTime",
+        "DefaultPlannedTime",
+        "DueSoonInterval",
+        "DueSoonGranularity"
+    ];
+    for (var i = 0; i < keys.length; i++) {
+        result[keys[i]] = settings.objectForKey(keys[i]);
+    }
+    return result;
+}
+
 // --- Dispatch ---
 
 function dispatch(ipcDir, filePrefix) {
@@ -389,6 +406,9 @@ function dispatch(ipcDir, filePrefix) {
                 success: true,
                 data: editResult,
             });
+        } else if (operation === "get_settings") {
+            var settingsData = handleGetSettings();
+            writeResponse(ipcDir, filePrefix, { success: true, data: settingsData });
         } else {
             writeResponse(ipcDir, filePrefix, {
                 success: false,
