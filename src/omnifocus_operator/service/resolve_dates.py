@@ -272,11 +272,12 @@ def _parse_absolute_before(
         return datetime(dt.year, dt.month, dt.day, tzinfo=now.tzinfo) + timedelta(days=1)
 
     # Datetime string: if naive, inherit now's tzinfo (local by contract)
+    # +1 minute bump so half-open `< before` includes the agent's boundary value
     if dt.tzinfo is None:
-        return dt.replace(tzinfo=now.tzinfo)
+        return dt.replace(tzinfo=now.tzinfo) + timedelta(minutes=1)
 
-    # Aware: use as-is
-    return dt
+    # Aware: +1 minute bump (same inclusive-bound logic)
+    return dt + timedelta(minutes=1)
 
 
 # ---------------------------------------------------------------------------
