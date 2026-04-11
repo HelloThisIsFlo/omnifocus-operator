@@ -500,7 +500,12 @@ Scenarios testing whether LLMs can construct correct `{tool_name}` payloads from
 
 ### Key conventions
 
-- **Prompt** is conversational — written as a real user would speak to an agent. Never robotic or formulaic. **Avoid schema vocabulary**: use natural language, not field names or JSON snippets. "I'm running behind on this" not "set status to overdue"; "sometime this month" not `{this: "m"}`. If the prompt sounds like the schema, the trap is wasted.
+- **Prompt** is conversational — written as a real user would speak to an agent. Never robotic or formulaic. **Avoid schema vocabulary** — this means field names, filter names, shortcut names, AND near-synonyms that directly map to a specific field. The test is: would saying this word make the model immediately reach for the right field? If yes, rephrase.
+  - "past due" not "overdue" (that's a shortcut name)
+  - "become workable" not "come off their deferred dates" (maps directly to `defer`)
+  - "I'm running behind" not "overdue tasks"
+  - "sometime this month" not `{this: "m"}`
+  - If the prompt sounds like the schema, the trap is wasted.
 - **Trap** is human-only context — explains why this is tricky. NEVER included in the exam prompt sent to models.
 - **Expected** shows the reference-correct payload.
 - **Expected** payloads must reason through defaults. Ask: "What does the default return? Would the user actually want those extra results?" If the default adds unwanted data, the explicit override belongs in Expected. Don't just test the happy path — test that the model knows when to *not* rely on defaults.
@@ -529,7 +534,7 @@ Bad traps:
 - Are so obscure that no real user would encounter them
 - Have ambiguous correct answers (if the docs genuinely don't specify, that's a doc issue to fix, not a scenario to write)
 - **Assume backward compatibility confusion**: the test model receives ONLY the current tool docs in a fresh context — it has never seen a previous schema version. "Might use the old field name" or "might do it the way it worked before v1.2" is not a real trap. The model has no memory of previous versions. Traps must stem from what's ambiguous or confusing in the *current* documentation, not from migration history.
-- **Use schema vocabulary in the prompt**: if the prompt says "set deferDate" or "use `{this: "m"}`", the trap is wasted — you're handing the model the answer. Prompts must use the vaguest natural language that still maps to one correct answer. "I'm running behind" not "overdue"; "this month" not a JSON snippet. The whole point is testing whether the model can *find* the right field from natural speech.
+- **Use schema vocabulary in the prompt** — this includes field names, filter names, shortcut names, AND near-synonyms that directly map to a field. The test: would this word make the model immediately reach for the right field? If yes, rephrase. "overdue" → "past due" or "slipped"; "deferred dates" → "become workable"; "flagged" → "important" or "marked urgent". The whole point is testing whether the model can *find* the right field from natural speech.
 
 ### Coverage cross-reference
 
