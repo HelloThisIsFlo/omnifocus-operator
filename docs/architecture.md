@@ -242,48 +242,6 @@ Everything else in the service layer is plumbing — I/O sequencing, entity look
 > - Contains opinions (show-more boundary choices, day-snapping behavior), but at the **per-field arithmetic** level
 > - Domain calls into it for individual field resolution and owns the **cross-field orchestration** — lifecycle mapping, edge-case fallbacks, what to do when configuration is missing
 
-### Naive-Local DateTime Principle
-
-**All date inputs are local time. The API matches how OmniFocus thinks.**
-
-#### Why
-
-OmniFocus stores every date as naive local time -- "5pm" means 5pm in whatever timezone you're in when you set it. The server runs on the same Mac as OmniFocus. Using local time in the API means:
-
-- Agents never reason about timezone -- they pass the time as the user expressed it
-- "Due at 5pm" becomes `"dueDate": "2026-07-15T17:00:00"` -- no offset, no conversion
-- `format: "date-time"` (RFC 3339) requires timezone by spec, so we use `str` to avoid contradicting the contract
-- Period boundaries ("today", "this week") align with the user's local calendar
-
-#### Evidence
-
-The timezone deep-dive tested 430 tasks across BST and GMT, proving:
-- OmniFocus uses floating naive-local storage (Core Foundation epoch + implicit local tz)
-- The conversion formula `(cf_epoch_seconds + CF_EPOCH_OFFSET)` produces correct local timestamps
-- Every input format (naive, UTC, offset, date-only) has known bridge behavior
-
-See `.research/deep-dives/timezone-behavior/RESULTS.md` for full empirical data.
-
-#### Contract
-
-| Input Format | Write Side | Read Side (filter bound) |
-|--------------|-----------|--------------------------|
-| Naive (`"17:00:00"`) | Preferred. Passed to bridge as-is. | Treated as local time. |
-| Aware (`"17:00:00Z"`, `"+01:00"`) | Accepted. Converted to local, stripped. | Accepted. Used with offset for comparison. |
-| Date-only (`"2026-07-15"`) | Midnight local appended (`T00:00:00`). | Start-of-day (after) or start-of-next-day (before). |
-
-#### Architecture
-
-- **Contract layer**: `str` type + syntax validator (is it parseable ISO?). No transformation.
-- **Domain layer**: `normalize_date_input()` -- product decision. Converts aware->local, appends midnight to date-only.
-- **Payload builder**: Passes normalized string through to bridge.
-- **Resolver**: `local_now()` provides local-anchored "now". Period boundaries align with local calendar.
-- **`local_now()`**: `datetime.now().astimezone()` -- tz-aware local. Lives in `config.py`. CF epoch math works unchanged (tz-aware subtraction handles offset).
-
-#### Why not `NaiveDatetime` or `datetime`?
-
-Pydantic's `NaiveDatetime`, `AwareDatetime`, and plain `datetime` all produce identical JSON Schema: `{"type": "string", "format": "date-time"}`. That format references RFC 3339 section 5.6 which **requires** a timezone offset. Only `str` drops the format constraint entirely.
-
 ### Date Filter Bounds: Two-Layer Contract
 
 > [!note] The short version
@@ -443,6 +401,47 @@ Concrete examples of why logic stays out of the bridge:
 ### The Result
 
 The bridge is ~400 lines of trivial relay code. The rest of the project is ~14,000 lines of validated, typed, tested Python. That's the right split.
+
+## Intuitive Time Principle
+
+All dates are local time — the API matches how OmniFocus thinks and how users talk about time.
+
+> [!important] The rule
+>
+> - Agents pass dates exactly as the user expressed them — no timezone reasoning
+> - `"Due at 5pm"` → `"dueDate": "2026-07-15T17:00:00"` — no offset, no conversion
+> - Period boundaries (`"today"`, `"this week"`) align with the user's local calendar
+> - Applies to **all** date handling — writes, reads, and filters
+
+### Why local time?
+
+OmniFocus stores every date as **naive local time** — "5pm" means 5pm in whatever timezone you're in when you set it. The server runs on the same Mac as OmniFocus. Local time in the API means zero conversion at every layer.
+
+### Input contract
+
+| Input | Behavior |
+|-------|----------|
+| 📍 Naive (`"17:00:00"`) | **Preferred** — passed through as-is on writes, treated as local on reads |
+| 🌐 Aware (`"17:00:00Z"`, `"+01:00"`) | Accepted — converted to local, offset stripped |
+| 📅 Date-only (`"2026-07-15"`) | Midnight local appended on writes; day-snapped on reads |
+
+### Where each layer touches dates
+
+- 📐 **Contract** — `str` type + syntax validator (parseable ISO?). No transformation
+- 🧠 **Domain** — `normalize_date_input()` converts aware → local, appends midnight to date-only
+- 📦 **Payload** — passes normalized string through to bridge
+- 📅 **Resolver** — `local_now()` provides local-anchored "now"; period boundaries align with local calendar
+  - `local_now()` = `datetime.now().astimezone()` — tz-aware local, lives in `config.py`
+
+> [!warning] Why `str` and not Pydantic datetime types?
+>
+> - `NaiveDatetime`, `AwareDatetime`, and plain `datetime` all produce identical JSON Schema: `{"type": "string", "format": "date-time"}`
+> - RFC 3339 §5.6 **requires** a timezone offset — contradicts our local-time contract
+> - Only `str` drops the `format` constraint entirely
+
+---
+
+_Empirically verified across 430 tasks in BST and GMT. See `.research/deep-dives/timezone-behavior/RESULTS.md` for full data._
 
 ## Show-More Principle
 
