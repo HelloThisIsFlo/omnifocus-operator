@@ -101,6 +101,7 @@ This is the creative analysis step. For each gap identified in Step 3, brainstor
 6. **Multi-tool**: operations requiring two tool calls that models try to do in one
 7. **Buried information**: task details scattered in conversational prose that models must extract
 8. **Edge cases**: computed dates, ambiguous language, format requirements
+   - **Period-based traps**: always explore both the noun form ("last week" = previous Mon–Sun) and the prepositional form ("in the last week" = rolling 7 days). These often have different correct answers — a single scenario testing one form misses the other.
 9. **Mode conflicts**: mutually exclusive options where models pick the wrong one (add/remove vs replace for tags)
 10. **Default confusion**: when changing type triggers creation defaults, losing existing values
 
@@ -113,6 +114,7 @@ This is the creative analysis step. For each gap identified in Step 3, brainstor
 For each surviving trap concept, record:
 - Which tool/field it tests
 - The trap idea (one sentence)
+- **Rough Expected sketch** (key fields, not full JSON) — e.g., `availability: "remaining", status: "active"`. This surfaces default-reasoning issues early: "would the default actually return what the user wants?" If you can't sketch the Expected without reading code, the trap may be testing implementation, not docs.
 - Why it matters (what real-world mistake it catches)
 - Estimated difficulty for models (easy/medium/hard)
 
@@ -202,6 +204,7 @@ not `completed` because the user said 'current' which implies active tasks."}
 - Draft a **real prompt**, not "something about overdue tasks." The user needs to see the actual phrasing to judge if it's too specific, too vague, or doesn't feel natural.
 - **Explain your reasoning** for the expected behavior. The user may disagree with your interpretation of the docs — surface the decision explicitly so they can course-correct.
 - Don't be precious about drafts — the user will reshape them. Get something concrete on the table fast.
+- **Space related traps apart.** When two scenarios test the same concept (e.g., rolling vs calendar period), give them different framing and separate them in the suite. If they're adjacent and similar, they read as a pair — the model can guess by pattern, not by understanding.
 
 Present all trap concepts for this chunk, then **wait for user feedback**:
 - User may approve, modify, reject, or add new trap ideas
@@ -394,39 +397,39 @@ Current state of every tool's documentation, with scenario coverage status.
 Creative trap concepts organized by category. Workers use these as starting points for collaborative scenario writing.
 
 ### Field Confusion
-| ID | Trap Concept | Tool | Fields | Difficulty | Why It Matters |
-|----|-------------|------|--------|------------|---------------|
-| FC-01 | ... | ... | ... | medium | ... |
+| ID | Trap Concept | Tool | Fields | Rough Expected | Difficulty | Why It Matters |
+|----|-------------|------|--------|----------------|------------|---------------|
+| FC-01 | ... | ... | ... | key fields, not full JSON | medium | ... |
 
 ### Implicit Requirements
-| ID | Trap Concept | Tool | Fields | Difficulty | Why It Matters |
-|----|-------------|------|--------|------------|---------------|
-| IR-01 | ... | ... | ... | hard | ... |
+| ID | Trap Concept | Tool | Fields | Rough Expected | Difficulty | Why It Matters |
+|----|-------------|------|--------|----------------|------------|---------------|
+| IR-01 | ... | ... | ... | key fields, not full JSON | hard | ... |
 
 ### Semantic Subtlety
-| ID | Trap Concept | Tool | Fields | Difficulty | Why It Matters |
-|----|-------------|------|--------|------------|---------------|
-| SS-01 | ... | ... | ... | medium | ... |
+| ID | Trap Concept | Tool | Fields | Rough Expected | Difficulty | Why It Matters |
+|----|-------------|------|--------|----------------|------------|---------------|
+| SS-01 | ... | ... | ... | key fields, not full JSON | medium | ... |
 
 ### Structural Traps
-| ID | Trap Concept | Tool | Fields | Difficulty | Why It Matters |
-|----|-------------|------|--------|------------|---------------|
-| ST-01 | ... | ... | ... | hard | ... |
+| ID | Trap Concept | Tool | Fields | Rough Expected | Difficulty | Why It Matters |
+|----|-------------|------|--------|----------------|------------|---------------|
+| ST-01 | ... | ... | ... | key fields, not full JSON | hard | ... |
 
 ### Null Semantics
-| ID | Trap Concept | Tool | Fields | Difficulty | Why It Matters |
-|----|-------------|------|--------|------------|---------------|
-| NS-01 | ... | ... | ... | medium | ... |
+| ID | Trap Concept | Tool | Fields | Rough Expected | Difficulty | Why It Matters |
+|----|-------------|------|--------|----------------|------------|---------------|
+| NS-01 | ... | ... | ... | key fields, not full JSON | medium | ... |
 
 ### Multi-Tool
-| ID | Trap Concept | Tool | Fields | Difficulty | Why It Matters |
-|----|-------------|------|--------|------------|---------------|
-| MT-01 | ... | ... | ... | hard | ... |
+| ID | Trap Concept | Tool | Fields | Rough Expected | Difficulty | Why It Matters |
+|----|-------------|------|--------|----------------|------------|---------------|
+| MT-01 | ... | ... | ... | key fields, not full JSON | hard | ... |
 
 ### Other
-| ID | Trap Concept | Tool | Fields | Difficulty | Why It Matters |
-|----|-------------|------|--------|------------|---------------|
-| OT-01 | ... | ... | ... | ... | ... |
+| ID | Trap Concept | Tool | Fields | Rough Expected | Difficulty | Why It Matters |
+|----|-------------|------|--------|----------------|------------|---------------|
+| OT-01 | ... | ... | ... | key fields, not full JSON | ... | ... |
 
 {Only include categories that have entries. Omit empty categories.}
 
@@ -484,9 +487,10 @@ Scenarios testing whether LLMs can construct correct `{tool_name}` payloads from
 
 ### Key conventions
 
-- **Prompt** is conversational — written as a real user would speak to an agent. Never robotic or formulaic.
+- **Prompt** is conversational — written as a real user would speak to an agent. Never robotic or formulaic. **Avoid schema vocabulary**: use natural language, not field names or JSON snippets. "I'm running behind on this" not "set status to overdue"; "sometime this month" not `{this: "m"}`. If the prompt sounds like the schema, the trap is wasted.
 - **Trap** is human-only context — explains why this is tricky. NEVER included in the exam prompt sent to models.
 - **Expected** shows the reference-correct payload.
+- **Expected** payloads must reason through defaults. Ask: "What does the default return? Would the user actually want those extra results?" If the default adds unwanted data, the explicit override belongs in Expected. Don't just test the happy path — test that the model knows when to *not* rely on defaults.
 - **Grading** uses three severity levels:
   - `MUST` — hard fail if not met
   - `MUST NOT` — hard fail if present
@@ -494,6 +498,7 @@ Scenarios testing whether LLMs can construct correct `{tool_name}` payloads from
 - For date fields, accept any reasonable timezone offset
 - For fuzzy dates, check month and year, not exact day
 - Multi-tool scenarios: Expected line says `tool_a then tool_b`, show both payloads
+- **Shortcut vs verbose forms**: when a shortcut and equivalent verbose form both exist (e.g., `"overdue"` vs `{before: "now"}`), both MUST pass. Use SHOULD to prefer the cleaner form. This is a general convention — apply it everywhere, not just one-off.
 - Multiple valid approaches: list Option A / Option B, pass if ANY match
 - Scenarios are numbered sequentially within each file
 - Each scenario is separated by `---`
@@ -511,6 +516,7 @@ Bad traps:
 - Are so obscure that no real user would encounter them
 - Have ambiguous correct answers (if the docs genuinely don't specify, that's a doc issue to fix, not a scenario to write)
 - **Assume backward compatibility confusion**: the test model receives ONLY the current tool docs in a fresh context — it has never seen a previous schema version. "Might use the old field name" or "might do it the way it worked before v1.2" is not a real trap. The model has no memory of previous versions. Traps must stem from what's ambiguous or confusing in the *current* documentation, not from migration history.
+- **Use schema vocabulary in the prompt**: if the prompt says "set deferDate" or "use `{this: "m"}`", the trap is wasted — you're handing the model the answer. Prompts must use the vaguest natural language that still maps to one correct answer. "I'm running behind" not "overdue"; "this month" not a JSON snippet. The whole point is testing whether the model can *find* the right field from natural speech.
 
 ### Coverage cross-reference
 
