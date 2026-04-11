@@ -104,7 +104,13 @@ This is the creative analysis step. For each gap identified in Step 3, brainstor
 9. **Mode conflicts**: mutually exclusive options where models pick the wrong one (add/remove vs replace for tags)
 10. **Default confusion**: when changing type triggers creation defaults, losing existing values
 
-For each trap concept, record:
+**Filter out bad traps** before recording. A trap is bad if it:
+- Assumes **backward compatibility confusion** — the test model receives ONLY current docs in a fresh context. It has never seen a previous schema version. "Agent may try the old urgency filter" is not a real trap — the model doesn't know urgency ever existed. Only traps rooted in what's ambiguous or confusing in the *current* docs are valid.
+- Tests knowledge that only comes from reading implementation code
+- Is so obscure no real user would phrase it that way
+- Has no clear correct answer derivable from the current docs
+
+For each surviving trap concept, record:
 - Which tool/field it tests
 - The trap idea (one sentence)
 - Why it matters (what real-world mistake it catches)
@@ -172,28 +178,38 @@ This is fundamentally collaborative. Unlike UAT suite updates where the worker w
 
 ### Step 3 — Present trap concepts
 
-For each gap/trap identified in the seed's chunk instructions, present to the user:
+For each gap/trap identified in the seed's chunk instructions, present a **concrete draft** — not an abstract concept. The user can't evaluate a trap without seeing the actual prompt. Generate the real prompt upfront; it's cheap to draft and essential for review.
 
 **Format per trap:**
 ```
-### Trap: {one-line concept}
+### Trap N: {one-line concept}
+
+**Draft prompt:**
+> {Full draft prompt — conversational, natural, as a real user would say it to an agent.
+> This is the actual text that would go in the scenario's Prompt field.
+> Make it concrete, not a placeholder.}
+
+**The trap:** {Why this is tricky — what a model is likely to get wrong and why}
+
+**Expected behavior:** {What the correct payload should look like, and WHY — explain the
+opinionated decision. E.g., "We expect `status: available` here because the docs say X,
+not `completed` because the user said 'current' which implies active tasks."}
 
 **Tests:** {tool_name} — {field(s) involved}
-**Why it matters:** {what real-world mistake this catches}
-**Difficulty:** {easy/medium/hard for models}
-
-**Rough prompt idea:**
-> {draft natural-language prompt — conversational, as an agent would receive it}
-
-**The trick:** {what makes this confusing — why a model might get it wrong}
 ```
+
+**Key rules for this step:**
+- Draft a **real prompt**, not "something about overdue tasks." The user needs to see the actual phrasing to judge if it's too specific, too vague, or doesn't feel natural.
+- **Explain your reasoning** for the expected behavior. The user may disagree with your interpretation of the docs — surface the decision explicitly so they can course-correct.
+- Don't be precious about drafts — the user will reshape them. Get something concrete on the table fast.
 
 Present all trap concepts for this chunk, then **wait for user feedback**:
 - User may approve, modify, reject, or add new trap ideas
 - User may reorder priorities ("do this one first, skip that one")
-- User may suggest prompt rewording ("make it more conversational", "bury the detail deeper")
+- User may say the prompt is too specific/vague and suggest rewording
+- User may disagree with expected behavior ("no, that should actually be X because...")
 
-**Do NOT write finished scenarios yet** — this step is about aligning on *what* to test.
+**Do NOT write finished scenarios yet** — this step is about aligning on *what* to test and getting the prompt tone right. Step 4 produces the formal scenario with Expected JSON + Grading criteria.
 
 ### Step 4 — Co-write scenarios
 
@@ -494,6 +510,7 @@ Bad traps:
 - Test knowledge that only comes from reading the code
 - Are so obscure that no real user would encounter them
 - Have ambiguous correct answers (if the docs genuinely don't specify, that's a doc issue to fix, not a scenario to write)
+- **Assume backward compatibility confusion**: the test model receives ONLY the current tool docs in a fresh context — it has never seen a previous schema version. "Might use the old field name" or "might do it the way it worked before v1.2" is not a real trap. The model has no memory of previous versions. Traps must stem from what's ambiguous or confusing in the *current* documentation, not from migration history.
 
 ### Coverage cross-reference
 
