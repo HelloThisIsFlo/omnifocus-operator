@@ -72,6 +72,51 @@ _BRIDGE_PROJECT_FIELD_MAP: dict[str, str] = {
 _LIFECYCLE_DATE_FIELDS = {"completed", "dropped"}
 
 
+def _apply_date_filters[T](
+    items: list[T],
+    query: object,
+    field_map: dict[str, str],
+) -> list[T]:
+    """Filter items by date _after/_before bounds using the given field map.
+
+    For lifecycle fields (completed, dropped), uses additive semantics:
+    items with None pass through alongside date-scoped items.
+    For regular fields, items with None are excluded.
+    """
+    for field_name, attr_name in field_map.items():
+        after_val = getattr(query, f"{field_name}_after", None)
+        before_val = getattr(query, f"{field_name}_before", None)
+        if field_name in _LIFECYCLE_DATE_FIELDS:
+            if after_val is not None:
+                items = [
+                    item
+                    for item in items
+                    if getattr(item, attr_name) is None or getattr(item, attr_name) >= after_val
+                ]
+            if before_val is not None:
+                items = [
+                    item
+                    for item in items
+                    if getattr(item, attr_name) is None or getattr(item, attr_name) < before_val
+                ]
+        else:
+            if after_val is not None:
+                items = [
+                    item
+                    for item in items
+                    if getattr(item, attr_name) is not None
+                    and getattr(item, attr_name) >= after_val
+                ]
+            if before_val is not None:
+                items = [
+                    item
+                    for item in items
+                    if getattr(item, attr_name) is not None
+                    and getattr(item, attr_name) < before_val
+                ]
+    return items
+
+
 def _paginate[T](items: list[T], limit: int | None, offset: int) -> ListRepoResult[T]:
     """Apply offset/limit slicing and compute total/has_more for Python-filtered lists."""
     total = len(items)
@@ -212,37 +257,7 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
             ]
 
         # Date filters (all 7 dimensions)
-        # Lifecycle fields (completed, dropped) use additive semantics:
-        # remaining tasks (None value) pass through alongside date-scoped items.
-        for field_name, attr_name in _BRIDGE_FIELD_MAP.items():
-            after_val = getattr(query, f"{field_name}_after", None)
-            before_val = getattr(query, f"{field_name}_before", None)
-            if field_name in _LIFECYCLE_DATE_FIELDS:
-                if after_val is not None:
-                    items = [
-                        t
-                        for t in items
-                        if getattr(t, attr_name) is None or getattr(t, attr_name) >= after_val
-                    ]
-                if before_val is not None:
-                    items = [
-                        t
-                        for t in items
-                        if getattr(t, attr_name) is None or getattr(t, attr_name) < before_val
-                    ]
-            else:
-                if after_val is not None:
-                    items = [
-                        t
-                        for t in items
-                        if getattr(t, attr_name) is not None and getattr(t, attr_name) >= after_val
-                    ]
-                if before_val is not None:
-                    items = [
-                        t
-                        for t in items
-                        if getattr(t, attr_name) is not None and getattr(t, attr_name) < before_val
-                    ]
+        items = _apply_date_filters(items, query, _BRIDGE_FIELD_MAP)
 
         total = len(items)
 
@@ -284,35 +299,7 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
             ]
 
         # Date filters (all 7 dimensions) -- uses project-specific field map
-        for field_name, attr_name in _BRIDGE_PROJECT_FIELD_MAP.items():
-            after_val = getattr(query, f"{field_name}_after", None)
-            before_val = getattr(query, f"{field_name}_before", None)
-            if field_name in _LIFECYCLE_DATE_FIELDS:
-                if after_val is not None:
-                    items = [
-                        p
-                        for p in items
-                        if getattr(p, attr_name) is None or getattr(p, attr_name) >= after_val
-                    ]
-                if before_val is not None:
-                    items = [
-                        p
-                        for p in items
-                        if getattr(p, attr_name) is None or getattr(p, attr_name) < before_val
-                    ]
-            else:
-                if after_val is not None:
-                    items = [
-                        p
-                        for p in items
-                        if getattr(p, attr_name) is not None and getattr(p, attr_name) >= after_val
-                    ]
-                if before_val is not None:
-                    items = [
-                        p
-                        for p in items
-                        if getattr(p, attr_name) is not None and getattr(p, attr_name) < before_val
-                    ]
+        items = _apply_date_filters(items, query, _BRIDGE_PROJECT_FIELD_MAP)
 
         total = len(items)
 

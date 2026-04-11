@@ -304,6 +304,28 @@ class _ReadPipeline:
         self._domain = domain
         self._repository = repository
         self._warnings: list[str] = []
+        self._query: Any = None  # Set by subclass execute() before use
+
+    async def _resolve_date_filters(self) -> None:
+        """Resolve all 7 date filter fields via domain delegation."""
+        self._now = local_now()
+
+        # Resolve due-soon setting conditionally (D-02) -- I/O stays in pipeline
+        due_soon_setting: DueSoonSetting | None = None
+        if (
+            is_set(self._query.due)
+            and isinstance(self._query.due, StrEnum)
+            and self._query.due.value == "soon"
+        ):
+            due_soon_setting = await self._repository.get_due_soon_setting()
+
+        week_start = get_week_start()
+
+        # Delegate to domain -- field extraction + UNSET filtering handled there
+        self._date_result = self._domain.resolve_date_filters(
+            self._query, self._now, week_start, due_soon_setting
+        )
+        self._warnings.extend(self._date_result.warnings)
 
     def _result_from_repo[T](self, repo_result: ListRepoResult[T]) -> ListResult[T]:
         """Convert ListRepoResult to ListResult with accumulated warnings."""
@@ -386,27 +408,6 @@ class _ListTasksPipeline(_ReadPipeline):
         if all_resolved:
             self._tag_ids = all_resolved
 
-    async def _resolve_date_filters(self) -> None:
-        """Resolve all 7 date filter fields via domain delegation."""
-        self._now = local_now()
-
-        # Resolve due-soon setting conditionally (D-02) -- I/O stays in pipeline
-        due_soon_setting: DueSoonSetting | None = None
-        if (
-            is_set(self._query.due)
-            and isinstance(self._query.due, StrEnum)
-            and self._query.due.value == "soon"
-        ):
-            due_soon_setting = await self._repository.get_due_soon_setting()
-
-        week_start = get_week_start()
-
-        # Delegate to domain -- field extraction + UNSET filtering handled there
-        self._date_result = self._domain.resolve_date_filters(
-            self._query, self._now, week_start, due_soon_setting
-        )
-        self._warnings.extend(self._date_result.warnings)
-
     def _build_repo_query(self) -> None:
         # Expand availability + merge lifecycle additions via domain
         expanded, avail_warns = self._domain.expand_availability(
@@ -476,27 +477,6 @@ class _ListProjectsPipeline(_ReadPipeline):
                 self._query.folder, resolved, self._folders, "folder"
             )
         )
-
-    async def _resolve_date_filters(self) -> None:
-        """Resolve all 7 date filter fields via domain delegation."""
-        self._now = local_now()
-
-        # Resolve due-soon setting conditionally (D-02) -- I/O stays in pipeline
-        due_soon_setting: DueSoonSetting | None = None
-        if (
-            is_set(self._query.due)
-            and isinstance(self._query.due, StrEnum)
-            and self._query.due.value == "soon"
-        ):
-            due_soon_setting = await self._repository.get_due_soon_setting()
-
-        week_start = get_week_start()
-
-        # Delegate to domain -- field extraction + UNSET filtering handled there
-        self._date_result = self._domain.resolve_date_filters(
-            self._query, self._now, week_start, due_soon_setting
-        )
-        self._warnings.extend(self._date_result.warnings)
 
     def _build_repo_query(self) -> None:
         review_due_before: datetime | None = None
