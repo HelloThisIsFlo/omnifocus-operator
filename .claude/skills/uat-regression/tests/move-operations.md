@@ -1,3 +1,45 @@
+---
+suite: move-operations
+display: Move Operations
+test_count: 23
+
+setup: |
+  ### Task Hierarchy
+
+  Create this structure in the inbox using `add_tasks`:
+
+  ```
+  UAT-MoveOps (parent)
+  +-- T1-MoveTarget
+  +-- T2-MoveChild
+  |   +-- T2a-Grandchild
+  +-- T3-CompletedMove
+  +-- T4-DroppedMove
+  +-- T5-CrossParent
+  +-- T6-SameParentA
+  +-- T7-SameParentB
+  +-- T8-Errors
+  ```
+
+  Also create a second parent for cross-parent testing:
+
+  ```
+  UAT-MoveOps-Alt (second parent, in inbox, no children)
+  ```
+
+  Create parents first, then level-1 children (can be parallel), then T2a (needs T2 to exist first). Store all IDs.
+
+  ### Post-Create
+
+  1. `edit_tasks` on T3-CompletedMove: `actions: { lifecycle: "complete" }`
+  2. `edit_tasks` on T4-DroppedMove: `actions: { lifecycle: "drop" }`
+
+  ### Verify
+
+  T3: availability=completed
+  T4: availability=dropped
+---
+
 # Move Operations Test Suite
 
 Tests task movement including all 5 move modes, cross-level moves, circular reference detection, completed/dropped task movement, cross-parent moves, and known same-parent limitations.
@@ -10,43 +52,6 @@ Tests task movement including all 5 move modes, cross-level moves, circular refe
 - **1-item limit.** `edit_tasks` currently accepts exactly 1 item per call.
 
 **Known issue — spurious "no changes" warning:** When a move action results in a no-op (e.g., same-parent move) AND no field edits are in the request, a spurious "No changes specified/detected" warning fires alongside the specific move warning. Document in the report's Observations section if encountered.
-
-## Setup
-
-### Task Hierarchy
-
-Create this structure in the inbox using `add_tasks`:
-
-```
-UAT-MoveOps (parent)
-+-- T1-MoveTarget
-+-- T2-MoveChild
-|   +-- T2a-Grandchild
-+-- T3-CompletedMove
-+-- T4-DroppedMove
-+-- T5-CrossParent
-+-- T6-SameParentA
-+-- T7-SameParentB
-+-- T8-Errors
-```
-
-Also create a second parent for cross-parent testing:
-
-```
-UAT-MoveOps-Alt (second parent, in inbox, no children)
-```
-
-Create parents first, then level-1 children (can be parallel), then T2a (needs T2 to exist first). Store all IDs.
-
-### Automated Setup Actions
-
-After creating all tasks, run these lifecycle actions:
-1. `edit_tasks` on T3-CompletedMove: `actions: { lifecycle: "complete" }`
-2. `edit_tasks` on T4-DroppedMove: `actions: { lifecycle: "drop" }`
-
-Verify T3 shows `availability: "completed"` and T4 shows `availability: "dropped"` via `get_task`.
-
-Then tell the user: "Setup complete. Running all tests now. I'll report results when done."
 
 ## Tests
 

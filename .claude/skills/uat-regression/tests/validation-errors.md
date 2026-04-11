@@ -1,3 +1,21 @@
+---
+suite: validation-errors
+display: Validation & Errors
+test_count: 35
+
+setup: |
+  ### Task Hierarchy
+
+  Create one task in the inbox using `add_tasks`:
+
+  ```
+  UAT-ValidationErrors (inbox parent)
+  +-- VE-TempTask
+  ```
+
+  Create parent first, then child. Store the child's ID as **temp-id** — used by edit_tasks tests.
+---
+
 # Validation & Error Formatting Test Suite
 
 Tests that validation errors across all tools produce clean, agent-friendly messages — no Pydantic internals, correct field casing, proper "Task N:" prefixing. Covers `add_tasks`, `edit_tasks`, all v1.3 list tools, v1.3.1 null/system-location errors, v1.3.2 DateFilter validation, and v1.3.2 breaking change rejections.
@@ -8,25 +26,6 @@ Tests that validation errors across all tools produce clean, agent-friendly mess
 - **Run each test INDIVIDUALLY.** Claude Code cancels sibling MCP calls when one errors. Never batch error-expecting calls.
 - **Minimal setup.** Most tests are error-path — they don't need pre-existing tasks. One temp task is created for edit_tasks tests that need a valid ID.
 - **No overlap with domain suites.** Task-creation, edit-operations, move-operations, and lifecycle suites already test domain logic (tag mutual exclusion, circular moves, etc.). This suite tests the *formatting* of errors that cross tool boundaries or exercise the middleware layer specifically.
-
-## Setup
-
-### Task Hierarchy
-
-Create one task in the inbox using `add_tasks`:
-
-```
-UAT-ValidationErrors (inbox parent)
-+-- VE-TempTask
-```
-
-Create parent first, then child. Store the child's ID as **temp-id** — used by edit_tasks tests.
-
-### Manual Actions
-
-None.
-
-Then tell the user: "Setup complete. Running all tests now. I'll report results when done."
 
 ## Tests
 
