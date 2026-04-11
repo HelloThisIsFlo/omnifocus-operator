@@ -273,3 +273,178 @@ Scenarios testing whether LLMs can construct correct `list_tasks` payloads from 
 - `query.completed` MUST NOT be `{"last": "1w"}` (rolling — would bleed into current week)
 - `query.completed` MUST NOT be `{"this": "w"}` (current week, not previous)
 - `query.availability` MUST equal `[]`
+
+---
+
+### Scenario 12: Blocked tasks — state not timing
+
+**Prompt:**
+> I want to see the tasks I can't move forward on right now — stuff that's stalled, waiting on something, or just not available yet.
+
+**Trap:** "Can't move forward on" = availability: ["blocked"], NOT a defer filter. Availability covers all four blocking reasons (deferred, held project, sequential prerequisite, future dates); defer is timing-only (one of four).
+
+**Expected:** `list_tasks`
+```json
+{
+  "query": {
+    "availability": ["blocked"]
+  }
+}
+```
+
+**Grading:**
+- `query.availability` MUST equal `["blocked"]`
+- `query.defer` MUST NOT be present
+- `query.availability` MUST NOT contain `"available"` or `"remaining"`
+
+---
+
+### Scenario 13: Tags — OR logic in arrays
+
+**Prompt:**
+> I need to tackle some house stuff. Pull up anything I've tagged as Errands, Cleaning, and Groceries.
+
+**Trap:** Tags use OR logic per docs. "Tagged as X, Y, and Z" uses "and" as a list conjunction (union) but models may parse as intersection. Array must contain all three names in a single call.
+
+**Expected:** `list_tasks`
+```json
+{
+  "query": {
+    "tags": ["Errands", "Cleaning", "Groceries"]
+  }
+}
+```
+
+**Grading:**
+- `query.tags` MUST be an array containing `"Errands"`, `"Cleaning"`, and `"Groceries"`
+- Response MUST be a single `list_tasks` call, not multiple calls
+
+---
+
+### Scenario 14: Becoming available — defer timing not state
+
+**Prompt:**
+> I'm planning ahead for next week. What tasks are going to become workable in the next seven days? I want to see what's about to open up.
+
+**Trap:** Timing question → defer: {next: "1w"}, NOT availability: ["blocked"]. Docs: "defer filter answers 'what becomes available when?' (timing only)." Blocked gives all blocked tasks regardless of when they unblock.
+
+**Expected:** `list_tasks`
+```json
+{
+  "query": {
+    "defer": {"next": "1w"}
+  }
+}
+```
+
+**Grading:**
+- `query.defer` MUST be `{"next": "1w"}`, `{"next": "w"}`, or `{"next": "7d"}`
+- `query.availability` MUST NOT equal `["blocked"]`
+- `query.availability` SHOULD NOT be present (default is fine)
+
+---
+
+### Scenario 15: Counting tasks — limit 0 for count only
+
+**Prompt:**
+> How many things am I behind on? I don't need the details, just a number.
+
+**Trap:** "Behind on" = due: "overdue". "Just a number" = limit: 0 — returns {items: [], total: N} so the total gives the count without transferring task data. Models may fetch all items and count client-side, or use default limit 50 (wrong if >50).
+
+**Expected:** `list_tasks`
+```json
+{
+  "query": {
+    "due": "overdue",
+    "limit": 0
+  }
+}
+```
+
+**Grading:**
+- `query.due` MUST equal `"overdue"` OR `{"before": "now"}`
+- `query.limit` MUST equal `0`
+- `query.limit` MUST NOT be `null` or omitted
+
+---
+
+### Scenario 16: Actionable tasks this week — available only
+
+**Prompt:**
+> What are the things I can actually pick up and work on that are due this week? Skip anything I'm waiting on or can't start yet.
+
+**Trap:** "Can actually pick up" + "skip anything waiting on" = availability: ["available"], NOT default ["remaining"] which includes blocked. "Due this week" = due: {this: "w"} (calendar week). Model may omit availability, leaving blocked tasks in.
+
+**Expected:** `list_tasks`
+```json
+{
+  "query": {
+    "availability": ["available"],
+    "due": {"this": "w"}
+  }
+}
+```
+
+**Grading:**
+- `query.availability` MUST equal `["available"]`
+- `query.availability` MUST NOT contain `"blocked"` or `"remaining"`
+- `query.due` MUST be `{"this": "w"}`
+
+---
+
+### Scenario 17: Inbox tasks — dedicated filter
+
+**Prompt:**
+> Show me what's sitting in my inbox — the stuff I haven't sorted into projects yet.
+
+**Trap:** Two valid forms: inInbox: true (recommended, purpose-built) or project: "$inbox" (works but repurposes a name-resolution filter). Model should pick one, not both.
+
+**Expected:** `list_tasks`
+
+**Option A (recommended):**
+```json
+{
+  "query": {
+    "inInbox": true
+  }
+}
+```
+
+**Option B:**
+```json
+{
+  "query": {
+    "project": "$inbox"
+  }
+}
+```
+
+**Grading:**
+- `query.inInbox` MUST equal `true` OR `query.project` MUST equal `"$inbox"`
+- `query` MUST NOT contain both `inInbox` and `project` simultaneously
+- `query.inInbox` SHOULD equal `true` (preferred form)
+
+---
+
+### Scenario 18: Full system audit — lifecycle inclusion
+
+**Prompt:**
+> I'm doing a full system audit. Show me every single task — active, completed, dropped, everything. The complete picture.
+
+**Trap:** Need completed: "all" + dropped: "all" to include lifecycle states excluded by default. Default availability ["remaining"] already handles active tasks (available + blocked). Model may try availability: "all" (errors — not a valid enum value).
+
+**Expected:** `list_tasks`
+```json
+{
+  "query": {
+    "completed": "all",
+    "dropped": "all"
+  }
+}
+```
+
+**Grading:**
+- `query.completed` MUST equal `"all"`
+- `query.dropped` MUST equal `"all"`
+- `query.availability` MUST NOT equal `"all"`, `["all"]`, or `[]` (empty list excludes active tasks)
+- `query.availability` SHOULD NOT be present (default handles active tasks)
