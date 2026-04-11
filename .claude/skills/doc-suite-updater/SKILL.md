@@ -110,6 +110,10 @@ This is the creative analysis step. For each gap identified in Step 3, brainstor
 - Tests knowledge that only comes from reading implementation code
 - Is so obscure no real user would phrase it that way
 - Has no clear correct answer derivable from the current docs
+- **Transplants a pattern from another tool's suite.** If `limit: null` is already tested in a list_tasks suite, testing the identical pattern on list_projects isn't a new trap — it's busywork. Every trap must test something specific to *this tool's* fields, field interactions, or unique confusion points. Generic patterns (pagination, completed inclusion) only earn a spot if there's a tool-specific twist.
+
+**Quality bar — multi-field combinations:**
+- At least half the traps in a suite should combine 2+ fields in a single prompt. Single-field traps are easy — real user prompts exercise multiple concerns at once ("catch up on reviews for my Work projects" = reviewDueWithin + folder). If most traps test exactly one field, the suite is too simplistic.
 
 For each surviving trap concept, record:
 - Which tool/field it tests
