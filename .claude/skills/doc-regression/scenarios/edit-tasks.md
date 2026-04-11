@@ -18,7 +18,7 @@ Scenarios testing whether LLMs can construct correct `edit_tasks` payloads from 
     "id": "oRx3bL",
     "note": null,
     "flagged": false,
-    "plannedDate": "2026-04-15T00:00:00Z"
+    "plannedDate": "2026-04-15T00:00:00"
   }]
 }
 ```
@@ -131,7 +131,7 @@ Scenarios testing whether LLMs can construct correct `edit_tasks` payloads from 
 {
   "items": [{
     "id": "pL3kJ7",
-    "deferDate": "2026-05-01T00:00:00Z"
+    "deferDate": "2026-05-01T00:00:00"
   }]
 }
 ```
@@ -155,7 +155,7 @@ Scenarios testing whether LLMs can construct correct `edit_tasks` payloads from 
 {
   "items": [{
     "id": "mN4bV6",
-    "plannedDate": "2026-04-07T00:00:00Z"
+    "plannedDate": "2026-04-07T00:00:00"
   }]
 }
 ```
@@ -179,9 +179,9 @@ Scenarios testing whether LLMs can construct correct `edit_tasks` payloads from 
 {
   "items": [{
     "id": "xC8vB2",
-    "deferDate": "2026-06-01T00:00:00Z",
-    "plannedDate": "2026-06-10T00:00:00Z",
-    "dueDate": "2026-06-15T00:00:00Z"
+    "deferDate": "2026-06-01T00:00:00",
+    "plannedDate": "2026-06-10T00:00:00",
+    "dueDate": "2026-06-15T00:00:00"
   }]
 }
 ```
@@ -510,12 +510,12 @@ Scenarios testing whether LLMs can construct correct `edit_tasks` payloads from 
 
 ---
 
-### Scenario 20: Move to inbox — null, not string
+### Scenario 20: Move to inbox — $inbox, not null
 
 **Prompt:**
 > Pull task qW5eR7 out of its project and put it back in the inbox.
 
-**Trap:** Inbox is represented by null, not the string "inbox". Docs: "ending/beginning with null moves to inbox." Models often write `"ending": "inbox"`.
+**Trap:** Inbox is represented by `"$inbox"`, not null. `ending: null` errors with guidance to use `$inbox`. Models might try `null` or `"inbox"` (missing $).
 
 **Expected:** `edit_tasks`
 ```json
@@ -523,15 +523,16 @@ Scenarios testing whether LLMs can construct correct `edit_tasks` payloads from 
   "items": [{
     "id": "qW5eR7",
     "actions": {
-      "move": { "ending": null }
+      "move": { "ending": "$inbox" }
     }
   }]
 }
 ```
 
 **Grading:**
-- `items[0].actions.move` MUST have `ending: null` or `beginning: null`
-- `items[0].actions.move.ending` MUST NOT be a string (must be null)
+- `items[0].actions.move` MUST have `ending: "$inbox"` or `beginning: "$inbox"`
+- `items[0].actions.move.ending` MUST NOT be null
+- `items[0].actions.move.ending` MUST NOT be "inbox" (missing $)
 
 ---
 
@@ -597,7 +598,7 @@ Scenarios testing whether LLMs can construct correct `edit_tasks` payloads from 
 {
   "items": [{
     "id": "dF6gH2",
-    "dueDate": "2026-07-31T00:00:00Z",
+    "dueDate": "2026-07-31T00:00:00",
     "note": "Needs sign-off from legal before publishing.",
     "estimatedMinutes": 90,
     "repetitionRule": {
@@ -626,3 +627,29 @@ Scenarios testing whether LLMs can construct correct `edit_tasks` payloads from 
 - `items[0].actions.tags.remove` MUST contain "Draft"
 - `items[0].actions.tags.replace` MUST NOT be present
 - `items[0].actions.move.beginning` MUST be "pX5cZ8"
+
+---
+
+### Scenario 24: Position after sibling
+
+**Prompt:**
+> The task I just created (tK9mN7) for reviewing the budget — put it right after "Draft proposal" in the list.
+
+**Trap:** `after` positions among siblings, not into a container. Models might confuse with `ending` (container targeting). `after` accepts name or ID for the sibling.
+
+**Expected:** `edit_tasks`
+```json
+{
+  "items": [{
+    "id": "tK9mN7",
+    "actions": {
+      "move": { "after": "Draft proposal" }
+    }
+  }]
+}
+```
+
+**Grading:**
+- `items[0].actions.move.after` MUST be "Draft proposal" or a task ID
+- `items[0].actions.move.ending` MUST NOT be present
+- `items[0].actions.move.beginning` MUST NOT be present
