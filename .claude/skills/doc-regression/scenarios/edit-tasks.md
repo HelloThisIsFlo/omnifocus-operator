@@ -510,12 +510,12 @@ Scenarios testing whether LLMs can construct correct `edit_tasks` payloads from 
 
 ---
 
-### Scenario 20: Move to inbox — null, not string
+### Scenario 20: Move to inbox — $inbox sentinel
 
 **Prompt:**
 > Pull task qW5eR7 out of its project and put it back in the inbox.
 
-**Trap:** Inbox is represented by null, not the string "inbox". Docs: "ending/beginning with null moves to inbox." Models often write `"ending": "inbox"`.
+**Trap:** Inbox uses the sentinel string "$inbox", not a bare "inbox" or null. Docs: "Container to move into (project name/ID, task name/ID, or '$inbox')." Models sometimes write `"ending": "inbox"` (missing the $) or `"ending": null`.
 
 **Expected:** `edit_tasks`
 ```json
@@ -523,15 +523,15 @@ Scenarios testing whether LLMs can construct correct `edit_tasks` payloads from 
   "items": [{
     "id": "qW5eR7",
     "actions": {
-      "move": { "ending": null }
+      "move": { "ending": "$inbox" }
     }
   }]
 }
 ```
 
 **Grading:**
-- `items[0].actions.move` MUST have `ending: null` or `beginning: null`
-- `items[0].actions.move.ending` MUST NOT be a string (must be null)
+- `items[0].actions.move` MUST have `ending: "$inbox"` or `beginning: "$inbox"`
+- `items[0].actions.move.ending` MUST be the string "$inbox" (not "inbox", not null)
 
 ---
 
