@@ -27,9 +27,16 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class ResolvedDateBounds:
-    """Result of resolving a date filter to absolute datetime bounds.
+    """Resolved date filter bounds, ready for the repository layer.
 
-    ``after`` and ``before`` are the inclusive/exclusive bounds.
+    Contracts:
+    - Agent: inclusive-inclusive (both bounds include the boundary).
+    - Repo: half-open (>= after, < before).
+
+    Adjustments:
+    - `after`: none needed (`>=` is naturally inclusive).
+    - `before`: pre-bumped by the resolution step (+1 day for dates,
+      +1 min for datetimes) so `< before` includes the agent's boundary.
     """
 
     after: datetime | None = None
