@@ -58,7 +58,8 @@ from omnifocus_operator.agent_messages.warnings import (
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
 from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
-from omnifocus_operator.models.enums import Availability, DurationUnit, Schedule
+from omnifocus_operator.contracts.use_cases.list._validators import DURATION_PATTERN
+from omnifocus_operator.models.enums import Availability, Schedule
 from omnifocus_operator.models.repetition_rule import (
     EndByDate,
     Frequency,
@@ -83,9 +84,6 @@ if TYPE_CHECKING:
     from omnifocus_operator.contracts.use_cases.edit.tasks import (
         EditTaskCommand,
         EditTaskRepoPayload,
-    )
-    from omnifocus_operator.contracts.use_cases.list.projects import (
-        ReviewDueFilter,
     )
     from omnifocus_operator.models.common import TagRef
     from omnifocus_operator.models.enums import BasedOn, DueSoonSetting
@@ -294,27 +292,30 @@ class DomainLogic:
 
     # -- Review-due expansion --------------------------------------------------
 
-    def expand_review_due(self, f: ReviewDueFilter, now: datetime) -> datetime:
-        """Expand ReviewDueFilter to a concrete datetime threshold."""
-        if f.amount is None:
+    def expand_review_due(self, value: str, now: datetime) -> datetime:
+        """Expand a review-due duration string to a concrete datetime threshold."""
+        if value == "now":
             return now
-        unit: DurationUnit = f.unit  # type: ignore[assignment]
-        amount = f.amount
-        if unit is DurationUnit.DAYS:
+        match = DURATION_PATTERN.match(value)
+        assert match, f"invalid duration (should be caught by contract validator): {value}"
+        count_str = match.group(1)
+        amount = int(count_str) if count_str else 1
+        unit = match.group(2)
+        if unit == "d":
             return now + timedelta(days=amount)
-        if unit is DurationUnit.WEEKS:
+        if unit == "w":
             return now + timedelta(weeks=amount)
-        if unit is DurationUnit.MONTHS:
+        if unit == "m":
             month = now.month + amount
             year = now.year + (month - 1) // 12
             month = (month - 1) % 12 + 1
             day = min(now.day, calendar.monthrange(year, month)[1])
             return now.replace(year=year, month=month, day=day)
-        if unit is DurationUnit.YEARS:
+        if unit == "y":
             year = now.year + amount
             day = min(now.day, calendar.monthrange(year, now.month)[1])
             return now.replace(year=year, day=day)
-        raise AssertionError  # unreachable: all DurationUnit members handled above
+        raise AssertionError  # unreachable: regex limits unit to d/w/m/y
 
     # -- Filter resolution -----------------------------------------------------
 

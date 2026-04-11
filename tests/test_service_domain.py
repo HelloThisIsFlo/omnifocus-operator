@@ -46,13 +46,11 @@ from omnifocus_operator.contracts.use_cases.list._enums import (
     DueDateShortcut,
     LifecycleDateShortcut,
 )
-from omnifocus_operator.contracts.use_cases.list.projects import ReviewDueFilter
 from omnifocus_operator.models.common import TagRef
 from omnifocus_operator.models.enums import (
     Availability,
     BasedOn,
     DueSoonSetting,
-    DurationUnit,
     EntityType,
     Schedule,
 )
@@ -1298,48 +1296,45 @@ class TestExpandTaskAvailability:
 class TestExpandReviewDue:
     """DomainLogic.expand_review_due -- deterministic with fixed now."""
 
-    def test_amount_none_returns_now(self) -> None:
-        """amount=None -> returns now exactly."""
-        f = ReviewDueFilter(amount=None, unit=None)
-        result = _domain().expand_review_due(f, _NOW)
+    def test_now_returns_now(self) -> None:
+        result = _domain().expand_review_due("now", _NOW)
         assert result == _NOW
 
     def test_days(self) -> None:
         """1 day -> now + 1 day."""
-        f = ReviewDueFilter(amount=1, unit=DurationUnit.DAYS)
-        result = _domain().expand_review_due(f, _NOW)
+        result = _domain().expand_review_due("1d", _NOW)
         assert result == datetime(2026, 4, 8, 14, 0, 0, tzinfo=UTC)
 
     def test_weeks(self) -> None:
         """1 week -> now + 7 days."""
-        f = ReviewDueFilter(amount=1, unit=DurationUnit.WEEKS)
-        result = _domain().expand_review_due(f, _NOW)
+        result = _domain().expand_review_due("1w", _NOW)
         assert result == datetime(2026, 4, 14, 14, 0, 0, tzinfo=UTC)
 
     def test_30_days(self) -> None:
         """30 days -> now + 30 days."""
-        f = ReviewDueFilter(amount=30, unit=DurationUnit.DAYS)
-        result = _domain().expand_review_due(f, _NOW)
+        result = _domain().expand_review_due("30d", _NOW)
         assert result == datetime(2026, 5, 7, 14, 0, 0, tzinfo=UTC)
 
     def test_months(self) -> None:
         """2 months with calendar arithmetic."""
-        f = ReviewDueFilter(amount=2, unit=DurationUnit.MONTHS)
-        result = _domain().expand_review_due(f, _NOW)
+        result = _domain().expand_review_due("2m", _NOW)
         assert result == datetime(2026, 6, 7, 14, 0, 0, tzinfo=UTC)
 
     def test_months_day_clamping(self) -> None:
         """Jan 31 + 1 month -> Feb 28 (day clamped)."""
         jan31 = datetime(2026, 1, 31, 14, 0, 0, tzinfo=UTC)
-        f = ReviewDueFilter(amount=1, unit=DurationUnit.MONTHS)
-        result = _domain().expand_review_due(f, jan31)
+        result = _domain().expand_review_due("1m", jan31)
         assert result == datetime(2026, 2, 28, 14, 0, 0, tzinfo=UTC)
 
     def test_years(self) -> None:
         """1 year -> now + 1 year."""
-        f = ReviewDueFilter(amount=1, unit=DurationUnit.YEARS)
-        result = _domain().expand_review_due(f, _NOW)
+        result = _domain().expand_review_due("1y", _NOW)
         assert result == datetime(2027, 4, 7, 14, 0, 0, tzinfo=UTC)
+
+    def test_count_omitted_defaults_to_1(self) -> None:
+        """'w' means 1 week -- count omitted."""
+        result = _domain().expand_review_due("w", _NOW)
+        assert result == datetime(2026, 4, 14, 14, 0, 0, tzinfo=UTC)
 
 
 # ---------------------------------------------------------------------------

@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-import re
 from datetime import datetime
-from typing import Annotated
 
-from pydantic import BeforeValidator, Field, WithJsonSchema, model_validator
+from pydantic import Field, field_validator, model_validator
 
-from omnifocus_operator.agent_messages import errors as err
 from omnifocus_operator.agent_messages.descriptions import (
     ADDED_FILTER_DESC,
     COMPLETED_FILTER_DESC,
@@ -22,7 +19,6 @@ from omnifocus_operator.agent_messages.descriptions import (
     MODIFIED_FILTER_DESC,
     OFFSET_DESC,
     PLANNED_FILTER_DESC,
-    REVIEW_DUE_FILTER_DOC,
     REVIEW_DUE_WITHIN_DESC,
     SEARCH_FIELD_NAME_NOTES,
 )
@@ -38,11 +34,10 @@ from omnifocus_operator.contracts.use_cases.list._enums import (
 )
 from omnifocus_operator.contracts.use_cases.list._validators import (
     reject_null_filters,
+    validate_duration,
     validate_offset_requires_limit,
 )
-from omnifocus_operator.models.enums import Availability, DurationUnit
-
-_DURATION_PATTERN = re.compile(r"^(\d+)([dwmy])$")
+from omnifocus_operator.models.enums import Availability
 
 _PATCH_FIELDS = [
     "folder",
@@ -59,61 +54,12 @@ _PATCH_FIELDS = [
 ]
 
 
-class ReviewDueFilter(QueryModel):
-    __doc__ = REVIEW_DUE_FILTER_DOC
-
-    amount: int | None = None  # None for "now"
-    unit: DurationUnit | None = None  # None for "now"
-
-
-def parse_review_due_within(value: str) -> ReviewDueFilter:
-    """Parse a duration string like '1w', '2m', 'now' into ReviewDueFilter.
-
-    Raises ValueError with educational message on invalid format.
-    """
-    if not value:
-        raise ValueError(err.REVIEW_DUE_WITHIN_INVALID.format(value=value))
-
-    if value == "now":
-        return ReviewDueFilter(amount=None, unit=None)
-
-    match = _DURATION_PATTERN.match(value)
-    if not match:
-        raise ValueError(err.REVIEW_DUE_WITHIN_INVALID.format(value=value))
-
-    amount = int(match.group(1))
-    unit_str = match.group(2)
-
-    if amount <= 0:
-        raise ValueError(err.REVIEW_DUE_WITHIN_INVALID.format(value=value))
-
-    return ReviewDueFilter(amount=amount, unit=DurationUnit(unit_str))
-
-
-def _coerce_review_due_input(v: object) -> object:
-    """Convert string input to ReviewDueFilter; pass through model instances."""
-    if isinstance(v, ReviewDueFilter):
-        return v
-    if isinstance(v, str):
-        return parse_review_due_within(v)
-    raise ValueError(err.REVIEW_DUE_WITHIN_INVALID.format(value=v))
-
-
-ReviewDueWithinInput = Annotated[
-    ReviewDueFilter,
-    BeforeValidator(_coerce_review_due_input),
-    WithJsonSchema({"type": "string", "description": REVIEW_DUE_WITHIN_DESC}),
-]
-
-
 class ListProjectsQuery(QueryModel):
     __doc__ = LIST_PROJECTS_QUERY_DOC
 
     availability: list[AvailabilityFilter] = Field(default=[AvailabilityFilter.REMAINING])
     folder: Patch[str] = Field(default=UNSET, description=FOLDER_FILTER_DESC)
-    review_due_within: Patch[ReviewDueWithinInput] = Field(
-        default=UNSET, description=REVIEW_DUE_WITHIN_DESC
-    )
+    review_due_within: Patch[str] = Field(default=UNSET, description=REVIEW_DUE_WITHIN_DESC)
     flagged: Patch[bool] = Field(default=UNSET, description=FLAGGED_FILTER_DESC)
     search: Patch[str] = Field(default=UNSET, description=SEARCH_FIELD_NAME_NOTES)
     due: Patch[DueDateFilter] = Field(default=UNSET, description=DUE_FILTER_DESC)
@@ -125,6 +71,13 @@ class ListProjectsQuery(QueryModel):
     modified: Patch[DateFilter] = Field(default=UNSET, description=MODIFIED_FILTER_DESC)
     limit: int | None = Field(default=DEFAULT_LIST_LIMIT, description=LIMIT_DESC)
     offset: int = Field(default=0, description=OFFSET_DESC)
+
+    @field_validator("review_due_within", mode="after")
+    @classmethod
+    def _check_review_due_within(cls, v: str) -> str:
+        if v == "now":
+            return v
+        return validate_duration(v)
 
     @model_validator(mode="before")
     @classmethod

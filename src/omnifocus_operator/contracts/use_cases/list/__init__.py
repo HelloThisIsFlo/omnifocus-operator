@@ -33,7 +33,6 @@ from omnifocus_operator.contracts.use_cases.list.perspectives import (
 from omnifocus_operator.contracts.use_cases.list.projects import (
     ListProjectsQuery,
     ListProjectsRepoQuery,
-    ReviewDueFilter,
 )
 from omnifocus_operator.contracts.use_cases.list.tags import (
     ListTagsQuery,
@@ -69,7 +68,6 @@ __all__ = [
     "ListTasksQuery",
     "ListTasksRepoQuery",
     "NextPeriodFilter",
-    "ReviewDueFilter",
     "TagAvailabilityFilter",
     "ThisPeriodFilter",
 ]

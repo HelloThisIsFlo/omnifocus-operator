@@ -2,12 +2,27 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 from omnifocus_operator.agent_messages import errors as err
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+DURATION_PATTERN = re.compile(r"^(\d*)([dwmy])$")
+
+
+def validate_duration(v: str) -> str:
+    """Validate a duration string like '3d', '2w', 'm', '1y'."""
+    match = DURATION_PATTERN.match(v)
+    if not match:
+        raise ValueError(err.DATE_FILTER_INVALID_DURATION.format(value=v))
+    count_str = match.group(1)
+    count = int(count_str) if count_str else 1
+    if count <= 0:
+        raise ValueError(err.DATE_FILTER_ZERO_NEGATIVE.format(value=v))
+    return v
 
 
 def reject_null_filters(data: dict[str, object], field_names: list[str]) -> None:

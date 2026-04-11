@@ -170,11 +170,6 @@ AVAILABILITY_EMPTY = "'{field}' cannot be empty -- include at least one status v
 
 OFFSET_REQUIRES_LIMIT = "offset requires limit -- set limit when using offset"
 
-REVIEW_DUE_WITHIN_INVALID = (
-    "Invalid review_due_within '{value}' -- "
-    "valid formats: 'now', or a number followed by d/w/m/y (e.g. '1w', '2m', '30d')"
-)
-
 # --- Name Resolution ---
 
 AMBIGUOUS_NAME_MATCH = (

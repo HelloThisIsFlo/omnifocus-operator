@@ -348,10 +348,6 @@ LIST_FOLDERS_QUERY_DOC = "Filter and paginate folders."
 
 LIST_PERSPECTIVES_QUERY_DOC = "Filter and paginate perspectives."
 
-DURATION_UNIT_DOC = "Unit for duration-based filters."
-
-REVIEW_DUE_FILTER_DOC = "Duration threshold for the review_due_within filter."
-
 # --- Field Descriptions: Query Models ---
 
 SEARCH_FIELD_NAME_NOTES = "Case-insensitive substring match on name and notes."

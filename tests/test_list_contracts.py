@@ -13,9 +13,10 @@ import pytest
 from pydantic import ValidationError
 
 from omnifocus_operator.agent_messages.errors import (
+    DATE_FILTER_INVALID_DURATION,
+    DATE_FILTER_ZERO_NEGATIVE,
     FILTER_NULL,
     OFFSET_REQUIRES_LIMIT,
-    REVIEW_DUE_WITHIN_INVALID,
     TAGS_EMPTY,
 )
 from omnifocus_operator.contracts import (
@@ -42,9 +43,7 @@ from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult
 from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersRepoQuery
 from omnifocus_operator.contracts.use_cases.list.perspectives import ListPerspectivesQuery
 from omnifocus_operator.contracts.use_cases.list.projects import (
-    DurationUnit,
     ListProjectsRepoQuery,
-    ReviewDueFilter,
 )
 from omnifocus_operator.contracts.use_cases.list.tags import ListTagsRepoQuery
 from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
@@ -241,8 +240,7 @@ class TestQueryModelAcceptance:
         )
         assert query.availability == [AvailabilityFilter.AVAILABLE, AvailabilityFilter.BLOCKED]
         assert query.folder == "Personal"
-        assert query.review_due_within is not None
-        assert query.review_due_within.amount == 1
+        assert query.review_due_within == "1w"
         assert query.flagged is True
         assert query.limit == 20
         assert query.offset == 0
@@ -324,73 +322,37 @@ class TestOffsetRequiresLimit:
 
 
 class TestReviewDueFilter:
-    """Verify review_due_within parsing on ListProjectsQuery."""
+    """Verify review_due_within string validation on ListProjectsQuery."""
 
-    def test_1w_parses_to_weeks(self) -> None:
+    def test_valid_durations_pass_through(self) -> None:
+        for value in ("1w", "2m", "30d", "1y"):
+            query = ListProjectsQuery(review_due_within=value)
+            assert query.review_due_within == value
 
-        query = ListProjectsQuery(review_due_within="1w")
-        assert query.review_due_within is not None
-        assert query.review_due_within.amount == 1
-        assert query.review_due_within.unit == DurationUnit.WEEKS
-
-    def test_2m_parses_to_months(self) -> None:
-
-        query = ListProjectsQuery(review_due_within="2m")
-        assert query.review_due_within is not None
-        assert query.review_due_within.amount == 2
-        assert query.review_due_within.unit == DurationUnit.MONTHS
-
-    def test_30d_parses_to_days(self) -> None:
-
-        query = ListProjectsQuery(review_due_within="30d")
-        assert query.review_due_within is not None
-        assert query.review_due_within.amount == 30
-        assert query.review_due_within.unit == DurationUnit.DAYS
-
-    def test_1y_parses_to_years(self) -> None:
-
-        query = ListProjectsQuery(review_due_within="1y")
-        assert query.review_due_within is not None
-        assert query.review_due_within.amount == 1
-        assert query.review_due_within.unit == DurationUnit.YEARS
-
-    def test_now_parses_to_none_amount_and_unit(self) -> None:
+    def test_now_passes_through(self) -> None:
         query = ListProjectsQuery(review_due_within="now")
-        assert query.review_due_within is not None
-        assert query.review_due_within.amount is None
-        assert query.review_due_within.unit is None
+        assert query.review_due_within == "now"
+
+    def test_count_omitted_defaults_to_1(self) -> None:
+        """'m' means '1m' -- shared regex allows omitted count."""
+        for value in ("d", "w", "m", "y"):
+            query = ListProjectsQuery(review_due_within=value)
+            assert query.review_due_within == value
 
     def test_invalid_string_raises(self) -> None:
-        expected = REVIEW_DUE_WITHIN_INVALID.format(value="banana")
+        expected = DATE_FILTER_INVALID_DURATION.format(value="banana")
         with pytest.raises(ValidationError, match=re.escape(expected)):
             ListProjectsQuery(review_due_within="banana")
 
     def test_empty_string_raises(self) -> None:
-        expected = REVIEW_DUE_WITHIN_INVALID.format(value="")
+        expected = DATE_FILTER_INVALID_DURATION.format(value="")
         with pytest.raises(ValidationError, match=re.escape(expected)):
             ListProjectsQuery(review_due_within="")
 
     def test_zero_amount_raises(self) -> None:
-        expected = REVIEW_DUE_WITHIN_INVALID.format(value="0w")
+        expected = DATE_FILTER_ZERO_NEGATIVE.format(value="0w")
         with pytest.raises(ValidationError, match=re.escape(expected)):
             ListProjectsQuery(review_due_within="0w")
-
-    def test_negative_amount_raises(self) -> None:
-        expected = REVIEW_DUE_WITHIN_INVALID.format(value="-1w")
-        with pytest.raises(ValidationError, match=re.escape(expected)):
-            ListProjectsQuery(review_due_within="-1w")
-
-    def test_direct_construction(self) -> None:
-
-        f = ReviewDueFilter(amount=1, unit=DurationUnit.WEEKS)
-        assert f.amount == 1
-        assert f.unit == DurationUnit.WEEKS
-
-    def test_direct_construction_now(self) -> None:
-
-        f = ReviewDueFilter(amount=None, unit=None)
-        assert f.amount is None
-        assert f.unit is None
 
 
 # ---------------------------------------------------------------------------
@@ -408,8 +370,7 @@ class TestQueryModelCamelCaseAliases:
 
     def test_list_projects_query_camel_case_construction(self) -> None:
         query = ListProjectsQuery(reviewDueWithin="2w")
-        assert query.review_due_within is not None
-        assert query.review_due_within.amount == 2
+        assert query.review_due_within == "2w"
 
 
 # ---------------------------------------------------------------------------

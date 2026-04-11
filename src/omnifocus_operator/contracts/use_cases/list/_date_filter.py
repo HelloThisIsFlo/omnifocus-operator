@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from datetime import datetime as _datetime
 from typing import TYPE_CHECKING, Annotated, Any, Literal
 
@@ -27,8 +26,7 @@ from omnifocus_operator.contracts.use_cases.list._enums import (
     DueDateShortcut,
     LifecycleDateShortcut,
 )
-
-_DATE_DURATION_PATTERN = re.compile(r"^(\d*)([dwmy])$")
+from omnifocus_operator.contracts.use_cases.list._validators import validate_duration
 
 
 def _validate_date_bound_string(v: object) -> object:
@@ -50,18 +48,6 @@ class ThisPeriodFilter(QueryModel):
     this: Literal["d", "w", "m", "y"] = Field(description=desc.THIS_PERIOD_UNIT)
 
 
-def _validate_duration(v: str) -> str:
-    """Validate a duration string like '3d', '2w', 'm', '1y'."""
-    match = _DATE_DURATION_PATTERN.match(v)
-    if not match:
-        raise ValueError(err.DATE_FILTER_INVALID_DURATION.format(value=v))
-    count_str = match.group(1)
-    count = int(count_str) if count_str else 1
-    if count <= 0:
-        raise ValueError(err.DATE_FILTER_ZERO_NEGATIVE.format(value=v))
-    return v
-
-
 class LastPeriodFilter(QueryModel):
     __doc__ = desc.LAST_PERIOD_FILTER_DOC
 
@@ -70,7 +56,7 @@ class LastPeriodFilter(QueryModel):
     @field_validator("last", mode="after")
     @classmethod
     def _check_duration(cls, v: str) -> str:
-        return _validate_duration(v)
+        return validate_duration(v)
 
 
 class NextPeriodFilter(QueryModel):
@@ -81,7 +67,7 @@ class NextPeriodFilter(QueryModel):
     @field_validator("next", mode="after")
     @classmethod
     def _check_duration(cls, v: str) -> str:
-        return _validate_duration(v)
+        return validate_duration(v)
 
 
 class AbsoluteRangeFilter(QueryModel):
