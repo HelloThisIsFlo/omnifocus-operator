@@ -329,6 +329,9 @@ class _ReadPipeline:
         ):
             due_soon_setting = await self._preferences.get_due_soon_setting()
 
+        # Drain preferences warnings (PREF-03) — surfaces fallback/unknown warnings
+        self._warnings.extend(await self._preferences.get_warnings())
+
         week_start = get_week_start()
 
         # Delegate to domain -- field extraction + UNSET filtering handled there
@@ -531,6 +534,7 @@ class _AddTaskPipeline(_Pipeline):
         """Run the full create-task pipeline."""
         self._command = command
         self._repetition_warnings: list[str] = []
+        self._preferences_warnings: list[str] = []
 
         self._validate()
         await self._normalize_dates()
@@ -550,6 +554,8 @@ class _AddTaskPipeline(_Pipeline):
                 updates[field] = normalize_date_input(value, default_time=default_time)
         if updates:
             self._command = self._command.model_copy(update=updates)
+        # Drain preferences warnings (PREF-03) — surfaces fallback/unknown warnings
+        self._preferences_warnings.extend(await self._preferences.get_warnings())
 
     def _validate(self) -> None:
         logger.debug(
@@ -636,9 +642,9 @@ class _AddTaskPipeline(_Pipeline):
     async def _delegate(self) -> AddTaskResult:
         logger.debug("OperatorService.add_task: delegating to repository")
         repo_result = await self._repository.add_task(self._repo_payload)
-        warnings = self._repetition_warnings or None
+        all_warnings = self._preferences_warnings + self._repetition_warnings
         return AddTaskResult(
-            success=True, id=repo_result.id, name=repo_result.name, warnings=warnings
+            success=True, id=repo_result.id, name=repo_result.name, warnings=all_warnings or None
         )
 
 
@@ -651,6 +657,7 @@ class _EditTaskPipeline(_Pipeline):
     async def execute(self, command: EditTaskCommand) -> EditTaskResult:
         """Run the full edit-task pipeline."""
         self._command = command
+        self._preferences_warnings: list[str] = []
 
         await self._verify_task_exists()
         self._validate_and_normalize()
@@ -690,6 +697,8 @@ class _EditTaskPipeline(_Pipeline):
                 updates[field] = normalize_date_input(value, default_time=default_time)
         if updates:
             self._command = self._command.model_copy(update=updates)
+        # Drain preferences warnings (PREF-03) — surfaces fallback/unknown warnings
+        self._preferences_warnings.extend(await self._preferences.get_warnings())
 
     def _resolve_actions(self) -> None:
         actions = self._command.actions
@@ -941,7 +950,11 @@ class _EditTaskPipeline(_Pipeline):
             self._repo_payload.model_fields_set,
         )
         self._all_warnings = (
-            self._lifecycle_warns + self._status_warns + self._repetition_warns + self._tag_warns
+            self._preferences_warnings
+            + self._lifecycle_warns
+            + self._status_warns
+            + self._repetition_warns
+            + self._tag_warns
         )
 
     def _detect_noop(self) -> EditTaskResult | None:
