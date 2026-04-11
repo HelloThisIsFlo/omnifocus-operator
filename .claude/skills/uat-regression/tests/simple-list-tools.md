@@ -1,3 +1,53 @@
+---
+suite: simple-list-tools
+display: Simple List Tools
+test_count: 23
+
+discovery:
+  needs:
+    - type: tag
+      label: tag-a
+      filters: [available]
+    - type: tag
+      label: tag-blocked
+      filters: [blocked]
+    - type: tag
+      label: tag-dropped
+      filters: [dropped]
+    - type: folder
+      label: folder-a
+      filters: [available]
+    - type: folder
+      label: folder-nested
+      filters: [available, has_parent]
+    - type: folder
+      label: folder-dropped
+      filters: [dropped]
+    - type: perspective
+      label: persp-a
+  counts:
+    - label: tags-default
+      type: tag
+      filters: [not_dropped]
+    - label: folder-avail-only
+      type: folder
+      filters: [available]
+    - label: folder-all
+      type: folder
+
+setup: |
+  No task creation needed — discovery only.
+
+  Present all discovered entities to user in a table and confirm.
+
+manual_actions:
+  - "tag-blocked: If no blocked tags exist, ask user to put a tag 'on hold' in OmniFocus (Tags perspective > right-click > Status > On Hold)."
+  - "tag-dropped: If no dropped tags exist, ask user to drop a tag in OmniFocus (Tags perspective > right-click > Status > Dropped)."
+  - "folder-dropped: If no dropped folders exist, ask user to drop a folder in OmniFocus."
+  - "folder-nested: If no nested folders exist, ask user to create a folder inside another folder."
+  - "persp-a: If no custom perspectives exist, ask user to create one (Perspectives > + button)."
+---
+
 # Simple List Tools Test Suite
 
 Tests `list_tags`, `list_folders`, and `list_perspectives` — three tools sharing identical architecture (fetch-all + Python filter + paginate), combined into one suite. Covers availability defaults, `ALL` shorthand, enriched parent references, search, pagination, null/empty filter rejection, and cross-tool consistency.
@@ -8,61 +58,6 @@ Tests `list_tags`, `list_folders`, and `list_perspectives` — three tools shari
 - **Response size control.** Every call MUST include `limit` to cap response size. Use `limit: 0` for count-only checks, `limit: 1–5` for presence/absence verification.
 - **Approximate counts.** `total` assertions use expected counts from discovered entities. If the user's database changes between setup and testing, adjust expectations.
 - **Read-only suite.** All three tools are idempotent. No cleanup is needed.
-
-## Setup
-
-### Step 1 — Discover Entities
-
-Run these calls to survey the user's database:
-
-1. `list_tags` with `limit: 10` — scan available+blocked tags (default availability)
-2. `list_tags` with `availability: ["dropped"], limit: 5` — check for dropped tags
-3. `list_folders` with `availability: ["available", "dropped"], limit: 20` — all folders, scan for parent-child pairs and dropped folders
-4. `list_folders` with `limit: 0` — count of available-only (default)
-5. `list_perspectives` with `limit: 10` — scan custom perspectives
-
-Build these profiles:
-
-**Tag profiles:**
-
-| Profile | Requirements | Stored As |
-|---------|-------------|-----------|
-| **tag-a** | Available, recognizable searchable name | Name, ID |
-| **tag-blocked** | `availability: "blocked"` (if one exists) | Name, ID |
-| **tag-dropped** | `availability: "dropped"` (if one exists) | Name, ID |
-
-**Folder profiles:**
-
-| Profile | Requirements | Stored As |
-|---------|-------------|-----------|
-| **folder-a** | Available, recognizable searchable name | Name, ID |
-| **folder-nested** | A folder with a non-null `parent` field (child of another folder) | Name, ID, parent ID |
-| **folder-dropped** | `availability: "dropped"` (if one exists) | Name, ID |
-
-**Perspective profiles:**
-
-| Profile | Requirements | Stored As |
-|---------|-------------|-----------|
-| **persp-a** | A custom perspective with a searchable name | Name, ID |
-
-Also record:
-- **tag-default-total**: `total` from call 1 (available+blocked count)
-- **folder-avail-only-total**: `total` from call 4 (available-only count)
-- **folder-all-total**: `total` from call 3 (available+dropped count)
-
-Present discoveries to the user in a table and confirm before proceeding.
-
-### Manual Actions
-
-If any profile is missing:
-
-- **tag-blocked**: If no blocked tags exist, ask the user to put a tag "on hold" in OmniFocus (Tags perspective → right-click → Status → On Hold). Wait for confirmation.
-- **tag-dropped**: If no dropped tags exist, ask the user to drop a tag in OmniFocus (Tags perspective → right-click → Status → Dropped). Wait for confirmation.
-- **folder-dropped**: If no dropped folders exist, ask the user to drop a folder in OmniFocus. Wait for confirmation.
-- **folder-nested**: If no nested folders exist, ask the user to create a folder inside another folder. Wait for confirmation.
-- **persp-a**: If no custom perspectives exist, ask the user to create one (Perspectives → + button). Wait for confirmation.
-
-After manual actions, re-run the relevant discovery call to confirm the entity is now visible.
 
 ## Tests
 

@@ -1,3 +1,45 @@
+---
+suite: list-projects
+display: List Projects
+test_count: 33
+
+discovery:
+  needs:
+    - type: project
+      label: proj-a
+      filters: [active, in_folder]
+    - type: project
+      label: proj-flagged
+      filters: [active, flagged]
+    - type: project
+      label: proj-completed
+      filters: [completed]
+    - type: project
+      label: proj-dropped
+      filters: [dropped]
+    - type: project
+      label: proj-review-soon
+      filters: [active, review_soon]
+    - type: folder
+      label: folder-a
+      filters: [available]
+    - type: folder
+      label: folder-with-multiple
+      filters: [available, has_children]
+  ambiguous:
+    folders: 3
+
+setup: |
+  No task creation needed — discovery only.
+
+  folder-a should be the folder containing proj-a (derive from proj-a's folderName).
+
+  Present all discovered entities to user in a table and confirm.
+
+manual_actions:
+  - "If any project or folder profile is missing, tell user exactly what to create or configure and wait for confirmation."
+---
+
 # List Projects Test Suite
 
 Tests `list_projects` tool — filtering by folder, review due date, flagged, availability, search, pagination, folder name resolution warnings, filter combinations, `$inbox` guard warning, `ALL` availability shorthand, and null/empty filter rejection.
@@ -9,40 +51,6 @@ Tests `list_projects` tool — filtering by folder, review due date, flagged, av
 - **Approximate counts.** `total` assertions use expected counts from discovered projects. If the user's database changes between setup and testing, adjust expectations.
 - **Read-only suite.** `list_projects` is idempotent. No cleanup is needed between tests — only after the suite completes (consolidate any setup tasks under cleanup umbrella).
 - **Review date dependency.** Tests 4a–4c require projects with `nextReviewDate` set. OmniFocus manages review dates via its review system — the user may need to configure review schedules manually on test projects.
-
-## Setup
-
-### Step 1 — Discover Entities
-
-Call `get_all` and scan projects and folders. Build the following profiles:
-
-**Project profiles** (find one project per profile):
-
-| Profile | Requirements | Stored As |
-|---------|-------------|-----------|
-| **proj-a** | Active (available), in a folder, recognizable name | Name, ID, folder name |
-| **proj-flagged** | `flagged: true` | Name, ID |
-| **proj-completed** | `availability: "completed"` | Name, ID |
-| **proj-dropped** | `availability: "dropped"` | Name, ID |
-| **proj-review-soon** | `nextReviewDate` within the next 2 weeks | Name, ID, nextReviewDate |
-
-**Folder profiles:**
-
-| Profile | Requirements | Stored As |
-|---------|-------------|-----------|
-| **folder-a** | The folder containing proj-a | Name, ID |
-| **folder-with-multiple** | A folder containing 2+ active projects | Name, ID, project count |
-
-**Resolution candidates:**
-
-- **Ambiguous folder substring**: A short substring matching 2+ folder names (e.g., if "Work" and "Workout" folders exist, substring "Work" is ambiguous). Store as **ambig-folder** if found.
-- **Close folder name**: Note folder-a's full name. During test 3d, craft a misspelling (swap/add a letter) — NOT a prefix/suffix that could substring-match.
-
-Present discoveries to the user in a table and confirm before proceeding.
-
-### Manual Actions
-
-Follow the **Project Discovery** procedure (SKILL.md). If any profile is missing, tell the user exactly what to create or configure and wait for confirmation before proceeding.
 
 ## Tests
 

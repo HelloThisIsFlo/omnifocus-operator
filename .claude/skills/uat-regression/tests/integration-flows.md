@@ -1,3 +1,26 @@
+---
+suite: integration-flows
+display: Integration Flows
+test_count: 8
+
+discovery:
+  needs:
+    - type: tag
+      label: tag-a
+      filters: [available, unambiguous]
+    - type: tag
+      label: tag-b
+      filters: [available, unambiguous]
+    - type: tag
+      label: tag-c
+      filters: [available, unambiguous]
+
+setup: |
+  ### Tasks
+  UAT-Integration (inbox parent)
+  UAT-Integration-Alt (second inbox parent)
+---
+
 # Integration Flows Test Suite
 
 End-to-end flows verifying write-through guarantees and data consistency across tools. Each test writes via one tool, then reads back via `get_task` to confirm persistence.
@@ -9,35 +32,6 @@ End-to-end flows verifying write-through guarantees and data consistency across 
 - **Tags by ID.** Some tag names are ambiguous. Discover tags via `get_all` first, then use IDs where names might collide.
 - **1-item limit.** Both `add_tasks` and `edit_tasks` currently accept exactly 1 item per call.
 - **Sequential tests.** Tests in this suite build on each other (G-1 creates the task, G-2 through G-7 modify and verify it). Run them in order.
-
-## Setup
-
-### Step 1 — Discover Entities
-
-Call `get_all` and store:
-- **3 tags** with unique names (no ambiguity). Store as tag-a, tag-b, tag-c.
-
-### Step 2 — Create Test Hierarchy
-
-Create this structure in the inbox using `add_tasks`:
-
-```
-UAT-Integration (parent)
-```
-
-Also create a second parent:
-
-```
-UAT-Integration-Alt (second parent, in inbox)
-```
-
-Store both IDs.
-
-### Manual Actions
-
-None required.
-
-Tell the user: "Running all tests now. I'll report results when done."
 
 ## Tests
 

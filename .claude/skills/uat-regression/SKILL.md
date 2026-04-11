@@ -33,12 +33,17 @@ Run UAT regression tests for OmniFocus Operator MCP tools against live OmniFocus
 ## Flow
 
 1. **Present the suites** — show the table above and ask which suite to run
-2. **Read the selected suite** — load the test file from the `tests/` directory (relative to this skill file)
-3. **Execute three phases:**
-   - **Phase 1 — Interactive setup**: Create test tasks as described in the suite's Setup section. Ask the user for any manual actions. Wait for confirmation.
-   - **Phase 2 — Autonomous testing**: Run all tests in the suite, collect results (PASS/FAIL/SKIP). After a test that modifies state, clean up if the task is reused later (e.g., rename back, remove tags).
-   - **Phase 3 — Report**: Generate the report using the template below.
-4. **Cleanup consolidation**: After the report, consolidate all test artifacts into a single deletable task:
+2. **Suite-driven setup** — run the discovery script with the selected suite:
+   ```
+   uv run python3 .claude/skills/uat-regression/discover.py \
+     --suite .claude/skills/uat-regression/tests/<suite>.md
+   ```
+   The JSON output contains everything needed for setup: `setup` instructions, `entities`, `manual_actions`, `computed_values`, `user_prompts`. Follow the setup instructions to create tasks, handle unmatched entities, present user prompts and manual actions.
+3. **Read the suite file** — load the test file to get `## Conventions`, `## Tests`, and `## Report Table Rows` sections.
+4. **Execute two phases:**
+   - **Phase 1 — Autonomous testing**: Run all tests in the suite, collect results (PASS/FAIL/SKIP). After a test that modifies state, clean up if the task is reused later (e.g., rename back, remove tags).
+   - **Phase 2 — Report**: Generate the report using the template below.
+5. **Cleanup consolidation**: After the report, consolidate all test artifacts into a single deletable task:
    1. Check if `⚠️ DELETE THIS AFTER UAT` already exists (via `get_all` or by tracking its ID from earlier in the session). Reuse it if found; only create a new one if it doesn't exist.
    2. Move all top-level test parents (e.g., `UAT-v1.2`, `UAT-v1.2-Alt`) under it — children follow automatically
    3. Move any stray leaf tasks created during testing (e.g., B1-InboxTask, B4-TagByName — tasks created in the inbox without a test parent) under it too
@@ -49,45 +54,47 @@ Run UAT regression tests for OmniFocus Operator MCP tools against live OmniFocus
 
 When a selected suite file contains a `## Composite Suite` heading, it is a manifest referencing multiple base suites — not a test file itself. Use this flow instead of the standard single-suite flow.
 
-1. **Detection**: After reading the selected suite file, check for the `## Composite Suite` heading. If present, parse the manifest table to get the ordered list of base suite files, their section prefixes, and suite names.
+1. **Detection**: After reading the selected suite file, check for the `## Composite Suite` heading. If present, parse the manifest table to get the ordered list of base suite file paths, their section prefixes, and suite names.
 
-2. **Read all base suites**: Load every base suite file listed in the manifest. Extract each suite's Setup section (task hierarchies, entity/discovery needs, computed values), Conventions, and Manual Actions.
-
-3. **Consolidated discovery**: Build `--need`, `--count`, and `--find-ambiguous` arguments from all base suites' Setup sections. Run the discovery script:
+2. **Suite-driven discovery**: Run the discovery script with all base suite paths:
 
    ```
-   python3 .claude/skills/uat-regression/discover.py \
-     --need "project:proj-a:active,in_folder" \
-     --need "tag:tag-a:available,unambiguous" \
-     ... (one --need per required entity profile) \
-     --count "tags-default:tag:not_dropped" \
-     --find-ambiguous "tags,projects,folders"
+   uv run python3 .claude/skills/uat-regression/discover.py \
+     --suite .claude/skills/uat-regression/tests/list-tasks.md \
+     --suite .claude/skills/uat-regression/tests/date-filtering.md \
+     ... (one --suite per base suite)
    ```
 
-   The script queries SQLite directly and returns ~2KB of JSON. Parse the output as the unified **entity map**. If any profiles appear in `unmatched`, prompt the user to create/configure the missing entities.
+   The script reads YAML frontmatter from each suite, consolidates discovery needs, queries SQLite, and returns JSON with: resolved entities + setup instructions + manual actions + computed values per suite.
 
-4. **Create all task hierarchies upfront**: Each base suite keeps its own parent task name (UAT-ReadLookups, UAT-EditOps, etc.) — do not rename or renumber them. Create all hierarchies from all suites before running any tests. Build a unified **task ID map** (task name → OmniFocus ID) across all suites.
+   **Do not read individual suite files or the script source.** The JSON output is the complete setup context.
 
-5. **Consolidated manual actions**: Collect all manual actions from all base suites into one numbered list. Present it to the user once, get one confirmation, then proceed.
+3. **Handle unmatched**: If `unmatched` is non-empty, prompt the user to create/configure the missing entities before proceeding.
 
-6. **Compute suite-specific values**: For suites that need computed values (e.g., date-filtering needs OVERDUE_DUE, SOON_DUE, etc.), compute them now. Store as a per-suite computed values map.
+4. **User prompts**: If any suite has `user_prompts`, present them to the user and store answers.
 
-7. **Sequential sub-agent execution**: For each base suite in manifest order:
+5. **Compute dynamic values**: For suites with `computed_values`, compute the actual values using `user_prompts` answers and current time.
+
+6. **Create all task hierarchies**: Follow each suite's `setup` instructions to create tasks. Each base suite keeps its own parent task name (UAT-ReadLookups, UAT-EditOps, etc.) — do not rename or renumber them. Build a unified **task ID map** (task name → OmniFocus ID) across all suites.
+
+7. **Consolidated manual actions**: Collect all `manual_actions` from all suites, present once as a numbered list. Get one confirmation, then proceed.
+
+8. **Sequential sub-agent execution**: For each base suite in manifest order:
    a. Build the sub-agent prompt using the **Sub-Agent Prompt Template** below, filling in the suite name, prefix, file path, entity map, task ID map, and computed values.
    b. Spawn a **general-purpose sub-agent** (via the Agent tool) with the built prompt.
    c. Wait for the sub-agent to complete.
    d. Parse the structured results from the sub-agent's response.
    e. **If the sub-agent fails** (crash, timeout, unparseable output): record all tests from this suite as SKIP with reason "Sub-agent execution failed" and continue to the next suite.
 
-8. **Consolidated report**: Assemble one report from all sub-agent results:
+9. **Consolidated report**: Assemble one report from all sub-agent results:
    - **Report table**: One table with section prefixes (A-1, A-2a, B-1, B-2a, C-1, ...). Insert bold section-header rows between suites (e.g., **`A — Read Lookups`**). Use each sub-agent's report rows. Totals: sum all sub-agent pass/fail/skip counts.
    - **User Report warnings/errors**: Merge all sub-agent warning and error inventories. Deduplicate entries with identical warning/error text — combine their "Triggered By" fields. Merge observations.
 
-9. **Single cleanup umbrella**: Create one `⚠️ DELETE THIS AFTER UAT` task. Move all parent tasks from all suites under it. Same cleanup rules as the standard flow.
+10. **Single cleanup umbrella**: Create one `⚠️ DELETE THIS AFTER UAT` task. Move all parent tasks from all suites under it. Same cleanup rules as the standard flow.
 
 ## Sub-Agent Prompt Template
 
-When spawning a sub-agent for step 7 of Composite Suite Handling, construct the prompt from this template. Replace all `{placeholders}` with actual values.
+When spawning a sub-agent for step 8 of Composite Suite Handling, construct the prompt from this template. Replace all `{placeholders}` with actual values.
 
 ---
 
@@ -116,7 +123,6 @@ Read the test suite at:
 
 - Read the `## Conventions` section — follow its domain-specific rules during test execution.
 - Execute ONLY the `## Tests` section, in order.
-- **Skip `## Setup` entirely** — the orchestrator already created all tasks and completed setup actions.
 - **Skip any cleanup instructions** — the orchestrator handles cleanup after all suites complete.
 - Read the `## Report Table Rows` section — use it as the template for your results output.
 
@@ -235,15 +241,26 @@ Some suites need real OmniFocus projects (not just inbox tasks). When a suite's 
 
 ### Discovery Script
 
-For composite suites, entity discovery uses `discover.py` instead of `get_all`. The script queries the OmniFocus SQLite cache directly and returns compact JSON (~2KB vs ~50-100KB from `get_all`).
+Entity discovery uses `discover.py` instead of `get_all`. The script queries the OmniFocus SQLite cache directly and returns compact JSON (~2-5KB vs ~50-100KB from `get_all`).
 
 **Location**: `discover.py` (same directory as this skill file)
 
-**Interface**: `python3 discover.py [--need SPEC]... [--count SPEC]... [--find-ambiguous TYPES] [--db PATH]`
+**Primary interface** (suite-driven — used by composite and single-suite flows):
+```
+uv run python3 discover.py --suite PATH [--suite PATH]... [--db PATH]
+```
+Reads YAML frontmatter from each suite file, consolidates discovery needs, and returns JSON with resolved entities, setup instructions, manual actions, computed values, and user prompts per suite. **Do not read the script source or individual suite files** — the JSON output is the complete setup context.
+
+**Ad-hoc interface** (for manual discovery outside suite context):
+```
+uv run python3 discover.py [--need SPEC]... [--count SPEC]... [--find-ambiguous TYPES] [--db PATH]
+```
 
 - `--need TYPE:LABEL[:COUNT]:FILTER[,FILTER,...]` — find first N entities matching all filters
 - `--count LABEL:TYPE[:FILTER,...]` — count matching entities
 - `--find-ambiguous TYPE[,TYPE,...]` — detect ambiguous names (tags: exact duplicates, projects/folders: substring overlap)
+
+The two interfaces are mutually exclusive.
 
 **Filter reference**:
 - Project: `active`, `completed`, `dropped`, `blocked`, `has_due`, `no_due`, `has_defer`, `no_defer`, `has_planned`, `no_planned`, `flagged`, `not_flagged`, `in_folder`, `review_soon`

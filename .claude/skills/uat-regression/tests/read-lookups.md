@@ -1,3 +1,23 @@
+---
+suite: read-lookups
+display: Read Lookups
+test_count: 8
+
+discovery:
+  needs:
+    - type: project
+      label: proj-a
+      filters: [active]
+    - type: tag
+      label: tag-a
+      filters: [available, unambiguous]
+
+setup: |
+  ### Tasks
+  UAT-ReadLookups (inbox parent)
+    T1-LookupTarget
+---
+
 # Read Lookups Test Suite
 
 Tests `get_task`, `get_project`, and `get_tag` tools — happy-path lookups and not-found error handling.
@@ -6,31 +26,6 @@ Tests `get_task`, `get_project`, and `get_tag` tools — happy-path lookups and 
 
 - **Inbox only.** Never create tasks in projects. Every task goes to inbox (no `parent` for top-level, or under the test parent task).
 - **Discover real entities first.** Use `get_all` to find existing projects, tags, and tasks to look up.
-
-## Setup
-
-### Step 1 — Discover Entities
-
-Call `get_all` and store:
-- **1 project** — pick any real project. Store its ID and name as proj-a.
-- **1 tag** — pick any tag with a unique name. Store its ID and name as tag-a.
-
-### Step 2 — Create Test Hierarchy
-
-Create this structure in the inbox using `add_tasks`:
-
-```
-UAT-ReadLookups (parent)
-+-- T1-LookupTarget
-```
-
-Create the parent first, then the child. Store all IDs.
-
-### Manual Actions
-
-None required.
-
-Tell the user: "Running all tests now. I'll report results when done."
 
 ## Tests
 

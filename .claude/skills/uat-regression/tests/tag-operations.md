@@ -1,3 +1,32 @@
+---
+suite: tag-operations
+display: Tag Operations
+test_count: 15
+
+discovery:
+  needs:
+    - type: tag
+      label: tag-a
+      filters: [available, unambiguous]
+    - type: tag
+      label: tag-b
+      filters: [available, unambiguous]
+    - type: tag
+      label: tag-c
+      filters: [available, unambiguous]
+  ambiguous:
+    tags: 3
+
+setup: |
+  ### Tasks
+  UAT-TagOps (inbox parent)
+    T1-TagRegression
+    T2-TagOps
+
+manual_actions:
+  - "If no ambiguous tag name found in discovery, ask user to create two tags with the same name (e.g., 'TestDupe') under different parent tags for test 2g. Otherwise test 2g will be skipped."
+---
+
 # Tag Operations Test Suite
 
 Tests tag add/remove/replace, ambiguity handling, no-op warnings, and error cases for `edit_tasks`.
@@ -9,37 +38,6 @@ Tests tag add/remove/replace, ambiguity handling, no-op warnings, and error case
 - **1-item limit.** `edit_tasks` currently accepts exactly 1 item per call.
 
 **Known issue — spurious "no changes" warning:** When a tag action results in a no-op AND no field edits are in the request, a spurious "No changes specified/detected" warning fires alongside the specific tag warning. This is because the field-level no-op check doesn't account for actions being present. Document in the report's Observations section if encountered.
-
-## Setup
-
-### Step 1 — Discover Tags
-
-Call `get_all` and extract the tags list. Pick 3 tags that:
-- Have unique names (no ambiguity)
-- Are simple/safe to add and remove
-
-Store their IDs and names as tag-a, tag-b, tag-c. Also check if any tag name maps to 2+ tag IDs (for test 2g). Store the ambiguous name if found.
-
-### Step 2 — Create Test Hierarchy
-
-Create this structure in the inbox using `add_tasks`:
-
-```
-UAT-TagOps (parent)
-+-- T1-TagRegression
-+-- T2-TagOps
-```
-
-Create the parent first, then both children (can be parallel). Store all IDs.
-
-### Step 3 — Manual Actions
-
-If no ambiguous tag name was found in Step 1, ask the user:
-"If you'd like to test ambiguous tag handling (test 2g), create two tags with the same name (e.g., 'TestDupe') under different parent tags in OmniFocus. Otherwise that test will be skipped. Let me know when ready."
-
-If the user created the duplicate tag, re-fetch tags via `get_all` and store the ambiguous name.
-
-Wait for confirmation before proceeding. Then tell them: "Running all tests now. I'll report results when done."
 
 ## Tests
 

@@ -6,7 +6,15 @@ profile specs. Returns compact JSON (~2KB) instead of a full get_all
 dump (~50-100KB), dramatically reducing context window usage during
 composite UAT setup.
 
-Standalone — uses only stdlib modules, no project imports.
+Primary interface: --suite PATH [--suite PATH]...
+  Reads YAML frontmatter from each suite file, consolidates discovery
+  needs across suites, queries SQLite, and returns JSON with resolved
+  entities + setup instructions per suite.
+
+Ad-hoc interface: --need SPEC [--count SPEC] [--find-ambiguous TYPES]
+  Lower-level interface for individual queries.
+
+Standalone — uses only stdlib + yaml (pyyaml), no project imports.
 """
 
 from __future__ import annotations
@@ -21,6 +29,8 @@ import sys
 from collections import Counter
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
+
+import yaml
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -431,11 +441,20 @@ def _parse_count_spec(spec: str) -> dict:
 
 
 def _resolve_profiles(
-    needs: list[dict], cache: _EntityCache
+    needs: list[dict],
+    cache: _EntityCache,
+    distinct: bool = False,
 ) -> tuple[dict[str, list[dict] | None], list[str]]:
-    """Resolve --need specs. Returns (profiles, unmatched)."""
+    """Resolve --need specs. Returns (profiles, unmatched).
+
+    When distinct=True, entities already assigned to a previous need of the
+    same type are excluded from subsequent picks. This ensures that e.g.
+    tag-a, tag-b, tag-c resolve to three different tags.
+    """
     profiles: dict[str, list[dict] | None] = {}
     unmatched: list[str] = []
+    # Track assigned entity IDs per type for distinct mode
+    assigned: dict[str, set[str]] = {}
 
     for need in needs:
         entity_type = need["type"]
@@ -452,10 +471,22 @@ def _resolve_profiles(
 
         entities = loader()
         matched = [e for e in entities if _matches_filters(e, entity_type, filters)]
+
+        # In distinct mode, exclude already-assigned IDs of the same type
+        if distinct:
+            used = assigned.get(entity_type, set())
+            matched = [e for e in matched if e["id"] not in used]
+
         matched.sort(key=_sort_key)
 
         if matched:
-            profiles[label] = [_strip_internal(e) for e in matched[:count]]
+            picked = matched[:count]
+            profiles[label] = [_strip_internal(e) for e in picked]
+            if distinct:
+                if entity_type not in assigned:
+                    assigned[entity_type] = set()
+                for e in picked:
+                    assigned[entity_type].add(e["id"])
         else:
             profiles[label] = None
             unmatched.append(label)
@@ -486,26 +517,38 @@ def _resolve_counts(counts: list[dict], cache: _EntityCache) -> dict[str, int]:
     return result
 
 
-def _resolve_ambiguous(types: list[str], cache: _EntityCache) -> dict[str, list[dict]]:
-    """Resolve --find-ambiguous specs."""
+def _resolve_ambiguous(
+    types: list[str], cache: _EntityCache, caps: dict[str, int] | None = None
+) -> dict[str, list[dict]]:
+    """Resolve --find-ambiguous specs.
+
+    Args:
+        caps: optional per-type max results, e.g. {"tags": 3, "projects": 3}.
+              Default cap is 3 when called from --suite mode.
+    """
     result: dict[str, list[dict]] = {}
+    caps = caps or {}
 
     for entity_type in types:
         if entity_type == "tags":
             tags = cache.tags()
-            name_counts = Counter(t["name"] for t in tags)
+            # Filter empty names to avoid spurious matches
+            name_counts = Counter(t["name"] for t in tags if t["name"])
             dupes = []
             for name, cnt in name_counts.items():
                 if cnt >= 2:
                     ids = [t["id"] for t in tags if t["name"] == name]
                     dupes.append({"name": name, "count": cnt, "ids": ids})
             if dupes:
-                result["tags"] = sorted(dupes, key=lambda d: d["name"])
+                sorted_dupes = sorted(dupes, key=lambda d: d["name"])
+                cap = caps.get("tags", 0)
+                result["tags"] = sorted_dupes[:cap] if cap else sorted_dupes
 
         elif entity_type in ("projects", "folders"):
             loader = cache.projects if entity_type == "projects" else cache.folders
             entities = loader()
-            names = [e["name"] for e in entities]
+            # Filter empty names
+            names = [e["name"] for e in entities if e["name"]]
             # Substring overlap: name A is substring of name B (A != B)
             overlaps: dict[str, list[str]] = {}
             for i, a in enumerate(names):
@@ -534,9 +577,173 @@ def _resolve_ambiguous(types: list[str], cache: _EntityCache) -> dict[str, list[
                             "all_names": all_names,
                         }
                     )
-                result[entity_type] = entries
+                cap = caps.get(entity_type, 0)
+                result[entity_type] = entries[:cap] if cap else entries
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# Suite mode: YAML frontmatter parsing and consolidation
+# ---------------------------------------------------------------------------
+
+
+def _parse_frontmatter(path: str) -> dict:
+    """Read a suite file and extract YAML frontmatter between --- markers."""
+    with open(path) as f:
+        content = f.read()
+
+    if not content.startswith("---"):
+        return {}
+
+    end = content.find("\n---", 3)
+    if end == -1:
+        return {}
+
+    yaml_text = content[4:end]  # skip opening "---\n"
+    try:
+        data = yaml.safe_load(yaml_text)
+    except yaml.YAMLError as e:
+        print(f"Warning: failed to parse YAML in {path}: {e}", file=sys.stderr)
+        return {}
+
+    return data if isinstance(data, dict) else {}
+
+
+def _consolidate_suites(
+    frontmatters: dict[str, dict],
+) -> tuple[list[dict], list[dict], dict[str, int]]:
+    """Merge discovery blocks across suites.
+
+    Returns (consolidated_needs, consolidated_counts, ambiguous_caps).
+    Deduplicates by label — first occurrence wins.
+    """
+    seen_need_labels: set[str] = set()
+    needs: list[dict] = []
+
+    seen_count_labels: set[str] = set()
+    counts: list[dict] = []
+
+    # Ambiguous caps: merge max across suites per type
+    ambiguous_caps: dict[str, int] = {}
+
+    for fm in frontmatters.values():
+        discovery = fm.get("discovery")
+        if not discovery:
+            continue
+
+        for need in discovery.get("needs", []):
+            label = need["label"]
+            if label not in seen_need_labels:
+                seen_need_labels.add(label)
+                needs.append(
+                    {
+                        "type": need["type"],
+                        "label": label,
+                        "count": need.get("count", 1),
+                        "filters": need.get("filters", []),
+                    }
+                )
+
+        for count_spec in discovery.get("counts", []):
+            label = count_spec["label"]
+            if label not in seen_count_labels:
+                seen_count_labels.add(label)
+                counts.append(
+                    {
+                        "type": count_spec["type"],
+                        "label": label,
+                        "filters": count_spec.get("filters", []),
+                    }
+                )
+
+        amb = discovery.get("ambiguous", {})
+        for amb_type, cap in amb.items():
+            current = ambiguous_caps.get(amb_type, 0)
+            ambiguous_caps[amb_type] = max(current, cap)
+
+    return needs, counts, ambiguous_caps
+
+
+def _slim_profile(entity: dict) -> dict:
+    """Strip entity to {id, name} only for compact output."""
+    return {"id": entity["id"], "name": entity["name"]}
+
+
+def _run_suite_mode(suite_paths: list[str], cache: _EntityCache) -> dict:
+    """Execute suite-driven discovery and return consolidated output."""
+    # Parse all frontmatters
+    frontmatters: dict[str, dict] = {}
+    for path in suite_paths:
+        if not os.path.exists(path):
+            print(f"Error: suite file not found: {path}", file=sys.stderr)
+            sys.exit(2)
+        fm = _parse_frontmatter(path)
+        slug = fm.get("suite", os.path.basename(path).replace(".md", ""))
+        frontmatters[slug] = fm
+
+    # Consolidate discovery specs
+    needs, counts, ambiguous_caps = _consolidate_suites(frontmatters)
+
+    # Resolve needs → slim profiles
+    all_profiles: dict[str, dict | None] = {}
+    unmatched: list[str] = []
+    if needs:
+        raw_profiles, unmatched = _resolve_profiles(needs, cache)
+        for label, entities in raw_profiles.items():
+            if entities is None:
+                all_profiles[label] = None
+            elif len(entities) == 1:
+                all_profiles[label] = _slim_profile(entities[0])
+            else:
+                all_profiles[label] = [_slim_profile(e) for e in entities]
+
+    # Resolve counts
+    all_counts: dict[str, int] = {}
+    if counts:
+        all_counts = _resolve_counts(counts, cache)
+
+    # Resolve ambiguous
+    all_ambiguous: dict[str, list[dict]] = {}
+    if ambiguous_caps:
+        # Map cap keys to plural type names for _resolve_ambiguous
+        amb_type_map = {"tags": "tags", "projects": "projects", "folders": "folders"}
+        amb_types = [amb_type_map[k] for k in ambiguous_caps if k in amb_type_map]
+        if amb_types:
+            all_ambiguous = _resolve_ambiguous(amb_types, cache, ambiguous_caps)
+
+    # Build per-suite output
+    suites_output: dict[str, dict] = {}
+    for slug, fm in frontmatters.items():
+        # Collect entity labels this suite needs
+        discovery = fm.get("discovery", {})
+        suite_labels = [n["label"] for n in discovery.get("needs", [])]
+
+        suite_entities: dict[str, dict | list | None] = {}
+        for label in suite_labels:
+            if label in all_profiles:
+                suite_entities[label] = all_profiles[label]
+
+        suites_output[slug] = {
+            "display": fm.get("display", slug),
+            "test_count": fm.get("test_count", 0),
+            "entities": suite_entities,
+            "setup": fm.get("setup", ""),
+            "computed_values": fm.get("computed_values", {}),
+            "user_prompts": fm.get("user_prompts", []),
+            "manual_actions": fm.get("manual_actions", []),
+        }
+
+    # Build final output
+    output: dict = {"suites": suites_output}
+    if all_counts:
+        output["counts"] = all_counts
+    if all_ambiguous:
+        output["ambiguous"] = all_ambiguous
+    if unmatched:
+        output["unmatched"] = unmatched
+
+    return output
 
 
 # ---------------------------------------------------------------------------
@@ -546,6 +753,13 @@ def _resolve_ambiguous(types: list[str], cache: _EntityCache) -> dict[str, list[
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Discover OmniFocus entities for UAT setup")
+    parser.add_argument(
+        "--suite",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help="Suite file path — reads YAML frontmatter for discovery specs",
+    )
     parser.add_argument(
         "--need",
         action="append",
@@ -569,9 +783,19 @@ def main() -> None:
     parser.add_argument("--db", default=None, metavar="PATH", help="Override database path")
     args = parser.parse_args()
 
+    # Validate mutual exclusivity
+    has_suite = bool(args.suite)
+    has_adhoc = bool(args.need or args.count or args.find_ambiguous)
+    if has_suite and has_adhoc:
+        print(
+            "Error: --suite is mutually exclusive with --need/--count/--find-ambiguous",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
     db_path = args.db or _DEFAULT_DB_PATH
     if not os.path.exists(db_path):
-        json.dump({"error": f"Database not found: {db_path}"}, sys.stdout, indent=2)
+        json.dump({"error": f"Database not found: {db_path}"}, sys.stdout)
         print()
         sys.exit(1)
 
@@ -579,30 +803,35 @@ def main() -> None:
     conn.row_factory = sqlite3.Row
     try:
         cache = _EntityCache(conn)
-        output: dict = {}
 
-        # Resolve --need
-        if args.need:
-            need_specs = [_parse_need_spec(s) for s in args.need]
-            profiles, unmatched = _resolve_profiles(need_specs, cache)
-            output["profiles"] = profiles
-            if unmatched:
-                output["unmatched"] = unmatched
+        if has_suite:
+            # Suite mode: compact output (no indent)
+            output = _run_suite_mode(args.suite, cache)
+            json.dump(output, sys.stdout)
+            print()
+        else:
+            # Ad-hoc mode: readable output (indent=2)
+            output: dict = {}
 
-        # Resolve --count
-        if args.count:
-            count_specs = [_parse_count_spec(s) for s in args.count]
-            output["counts"] = _resolve_counts(count_specs, cache)
+            if args.need:
+                need_specs = [_parse_need_spec(s) for s in args.need]
+                profiles, unmatched = _resolve_profiles(need_specs, cache)
+                output["profiles"] = profiles
+                if unmatched:
+                    output["unmatched"] = unmatched
 
-        # Resolve --find-ambiguous
-        if args.find_ambiguous:
-            amb_types = [t.strip() for t in args.find_ambiguous.split(",")]
-            ambiguous = _resolve_ambiguous(amb_types, cache)
-            if ambiguous:
-                output["ambiguous"] = ambiguous
+            if args.count:
+                count_specs = [_parse_count_spec(s) for s in args.count]
+                output["counts"] = _resolve_counts(count_specs, cache)
 
-        json.dump(output, sys.stdout, indent=2)
-        print()
+            if args.find_ambiguous:
+                amb_types = [t.strip() for t in args.find_ambiguous.split(",")]
+                ambiguous = _resolve_ambiguous(amb_types, cache)
+                if ambiguous:
+                    output["ambiguous"] = ambiguous
+
+            json.dump(output, sys.stdout, indent=2)
+            print()
 
     finally:
         conn.close()
