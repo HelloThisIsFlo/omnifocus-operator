@@ -405,14 +405,22 @@ The bridge is ~400 lines of trivial relay code. The rest of the project is ~14,0
 
 ## Intuitive Time Principle
 
-All dates are local time — the API matches how OmniFocus thinks and how users talk about time.
+Date handling should match how users think about time — no timezone gymnastics, no off-by-one surprises. Two sub-principles:
 
-> [!important] The rule
+- **Local time** — agents pass dates exactly as the user expressed them
+- **Inclusive bounds** — `before: "July 15"` includes July 15 (see [Why inclusive?](#why-inclusive))
+
+> [!important] Local time rule
 >
-> - Agents pass dates exactly as the user expressed them — no timezone reasoning
 > - `"Due at 5pm"` → `"dueDate": "2026-07-15T17:00:00"` — no offset, no conversion
 > - Period boundaries (`"today"`, `"this week"`) align with the user's local calendar
 > - Applies to **all** date handling — writes, reads, and filters
+
+> [!important] Inclusive bounds rule
+>
+> - `before: "2026-07-15"` includes July 15 — agents echo the user's dates, no off-by-one thinking
+> - `after: "2026-04-01"` includes April 1
+> - Ephemeral bounds (`"overdue"`, `"soon"`, `"now"`) are exempt — [why?](#why-inclusive)
 
 ### Why local time?
 
@@ -439,6 +447,35 @@ OmniFocus stores every date as **naive local time** — "5pm" means 5pm in whate
 > - `NaiveDatetime`, `AwareDatetime`, and plain `datetime` all produce identical JSON Schema: `{"type": "string", "format": "date-time"}`
 > - RFC 3339 §5.6 **requires** a timezone offset — contradicts our local-time contract
 > - Only `str` drops the `format` constraint entirely
+
+### Why inclusive?
+
+Both `after` and `before` are **inclusive** from the agent's perspective — per the [Show-More Principle](#show-more-principle), boundary tasks should never silently disappear.
+
+Internally, the repo uses half-open intervals (`>= after`, `< before`). The resolution layer bridges the gap by bumping `before` forward:
+
+| Input type | Bump | Example |
+|------------|------|---------|
+| 📅 Date-only | +1 day | `"2026-07-15"` → `< July 16 midnight` — includes all of July 15 |
+| 🕐 Datetime | +1 minute | `"2026-07-15T18:00:00"` → `< 18:01` — includes tasks due at exactly 18:00 |
+| ⏱️ `"now"` literal | none | exact snapshot — see below |
+
+> [!note] Why `"now"`, `"overdue"`, and `"soon"` are NOT bumped
+>
+> These are **ephemeral boundaries** — they move every second. Bumping creates observable wrongness that lasts longer than the edge case it fixes:
+>
+> - 🕐 **`"overdue"` / `before: "now"`** — a task due at *exactly* this second is excluded
+>   - One second later → correctly included (genuinely past-due)
+>   - Bumping +1 minute → tasks due *1 minute in the future* show as overdue for a full minute
+>   - Transient 1-second edge case vs 1-minute observable wrongness => **don't bump**
+> - ⏳ **`"soon"`** — computed threshold, not agent-specified
+>   - Calendar-aligned (`due_soon_setting.calendar_aligned`) → snaps to midnight, day granularity — same analysis as overdue
+>   - Rolling (24h window) → `now + N*24h` — boundary moves every second, same 1-second transient
+>
+> **The principle:** bump policy follows intent, not mechanics
+>
+> - Agent specifies a **deliberate** boundary → bump it (honor inclusive contract)
+> - System computes an **ephemeral** boundary → don't bump (the boundary is already moving)
 
 ---
 
