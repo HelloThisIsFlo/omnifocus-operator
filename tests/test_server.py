@@ -19,6 +19,7 @@ from fastmcp.exceptions import ToolError
 from omnifocus_operator.repository import BridgeOnlyRepository
 from omnifocus_operator.server import _register_tools, create_server
 from omnifocus_operator.service import OperatorService
+from omnifocus_operator.service.preferences import OmniFocusPreferences
 from tests.conftest import (
     make_folder_dict,
     make_perspective_dict,
@@ -226,7 +227,6 @@ class TestTOOL01ListAllStructuredOutput:
             }
         )
         repo = BridgeOnlyRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
-        from omnifocus_operator.service.preferences import OmniFocusPreferences
 
         preferences = OmniFocusPreferences(bridge)
         service = OperatorService(repository=repo, preferences=preferences)

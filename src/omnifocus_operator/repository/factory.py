@@ -1,10 +1,8 @@
 """Repository factory -- creates the appropriate repository implementation.
 
+The ``create_real_bridge`` function builds the production bridge from config.
 The ``create_repository`` function selects a repository based on a string type
 identifier (typically from the ``OPERATOR_REPOSITORY`` environment variable).
-
-Production code always creates a ``RealBridge`` directly -- the bridge factory
-and ``OPERATOR_BRIDGE`` env var are no longer used.
 """
 
 from __future__ import annotations
@@ -19,7 +17,7 @@ from omnifocus_operator.config import get_settings
 if TYPE_CHECKING:
     from omnifocus_operator.contracts.protocols import Bridge, Repository
 
-__all__ = ["create_repository"]
+__all__ = ["create_real_bridge", "create_repository"]
 
 logger = logging.getLogger(__name__)
 
@@ -32,11 +30,28 @@ _DEFAULT_DB_PATH = os.path.expanduser(
 )
 
 
-def create_repository(repo_type: str | None = None) -> Repository:
+def create_real_bridge() -> Bridge:
+    """Create a RealBridge reading config from Settings."""
+    from omnifocus_operator.bridge.real import DEFAULT_IPC_DIR, RealBridge
+
+    settings = get_settings()
+    ipc_dir = Path(settings.ipc_dir) if settings.ipc_dir else DEFAULT_IPC_DIR
+    timeout = settings.bridge_timeout
+    logger.debug(
+        "Creating RealBridge: timeout=%.1fs, ipc_dir=%s",
+        timeout,
+        ipc_dir,
+    )
+    return RealBridge(ipc_dir=ipc_dir, timeout=timeout)
+
+
+def create_repository(bridge: Bridge, repo_type: str | None = None) -> Repository:
     """Create a repository instance for the given *repo_type*.
 
     Parameters
     ----------
+    bridge:
+        The bridge instance to use for OmniJS communication.
     repo_type:
         One of ``"hybrid"`` or ``"bridge-only"``.
         If *None*, reads ``OPERATOR_REPOSITORY`` env var (default ``"hybrid"``).
@@ -58,30 +73,15 @@ def create_repository(repo_type: str | None = None) -> Repository:
 
     match repo_type:
         case "hybrid":
-            return _create_hybrid_repository()
+            return _create_hybrid_repository(bridge)
         case "bridge-only":
-            return _create_bridge_repository()
+            return _create_bridge_repository(bridge)
         case _:
             msg = f"Unknown repository type: {repo_type!r}. Use: hybrid, bridge-only"
             raise ValueError(msg)
 
 
-def _create_real_bridge() -> Bridge:
-    """Create a RealBridge reading config from Settings."""
-    from omnifocus_operator.bridge.real import DEFAULT_IPC_DIR, RealBridge
-
-    settings = get_settings()
-    ipc_dir = Path(settings.ipc_dir) if settings.ipc_dir else DEFAULT_IPC_DIR
-    timeout = settings.bridge_timeout
-    logger.debug(
-        "Creating RealBridge: timeout=%.1fs, ipc_dir=%s",
-        timeout,
-        ipc_dir,
-    )
-    return RealBridge(ipc_dir=ipc_dir, timeout=timeout)
-
-
-def _create_hybrid_repository() -> Repository:
+def _create_hybrid_repository(bridge: Bridge) -> Repository:
     """Create a HybridRepository with path validation."""
     from omnifocus_operator.repository.hybrid import HybridRepository
 
@@ -101,12 +101,10 @@ def _create_hybrid_repository() -> Repository:
         )
         raise FileNotFoundError(msg)
 
-    bridge = _create_real_bridge()
-
     return HybridRepository(db_path=Path(db_path), bridge=bridge)
 
 
-def _create_bridge_repository() -> Repository:  # pragma: no cover
+def _create_bridge_repository(bridge: Bridge) -> Repository:  # pragma: no cover
     """Create a BridgeOnlyRepository with FileMtimeSource.
 
     SAFE-01: real bridge path, tested via UAT only.
@@ -114,8 +112,6 @@ def _create_bridge_repository() -> Repository:  # pragma: no cover
     from omnifocus_operator.bridge.mtime import FileMtimeSource, MtimeSource
     from omnifocus_operator.bridge.real import DEFAULT_OFOCUS_PATH
     from omnifocus_operator.repository.bridge_only import BridgeOnlyRepository
-
-    bridge = _create_real_bridge()
 
     mtime_source: MtimeSource
     ofocus_path = get_settings().ofocus_path or str(DEFAULT_OFOCUS_PATH)

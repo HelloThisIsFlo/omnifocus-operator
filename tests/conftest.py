@@ -366,6 +366,23 @@ def _reset_settings_cache() -> None:
     reset_settings()
 
 
+@pytest.fixture(autouse=True)
+def _mock_real_bridge_factory(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Prevent create_real_bridge() from instantiating RealBridge in tests.
+
+    The server lifespan calls create_real_bridge() to construct the production
+    bridge. In tests, this returns an InMemoryBridge to satisfy SAFE-01.
+    Tests that mock create_repository already skip the real factory path;
+    this fixture ensures the bridge creation step is also safe.
+    """
+    from tests.doubles import InMemoryBridge  # noqa: PLC0415 — circular import guard
+
+    monkeypatch.setattr(
+        "omnifocus_operator.repository.create_real_bridge",
+        lambda: InMemoryBridge(),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Shared fixtures: marker-driven bridge -> repo -> service chain
 # ---------------------------------------------------------------------------

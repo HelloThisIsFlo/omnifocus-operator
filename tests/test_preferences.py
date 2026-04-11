@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import pytest
-from omnifocus_operator.service.preferences import OmniFocusPreferences
 
 from omnifocus_operator.agent_messages.warnings import (
     SETTINGS_FALLBACK_WARNING,
     SETTINGS_UNKNOWN_DUE_SOON_PAIR,
 )
 from omnifocus_operator.models.enums import DueSoonSetting
+from omnifocus_operator.service.preferences import OmniFocusPreferences
 from tests.doubles.bridge import InMemoryBridge
 
 # ---------------------------------------------------------------------------

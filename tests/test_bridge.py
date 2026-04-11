@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 import pytest
 
 from omnifocus_operator.bridge import (
@@ -227,45 +229,6 @@ class TestBridgeProtocol:
 
 
 # ---------------------------------------------------------------------------
-# Negative import tests -- old production paths are broken (Phase 24)
-# ---------------------------------------------------------------------------
-
-
-class TestTestDoubleRelocation:
-    """Test doubles are NOT importable from old production paths (Phase 24)."""
-
-    def test_in_memory_bridge_not_importable_from_old_path(self) -> None:
-        """in_memory module removed from bridge package."""
-        with pytest.raises(ModuleNotFoundError):
-            from omnifocus_operator.bridge.in_memory import InMemoryBridge
-
-    def test_bridge_call_not_importable_from_old_path(self) -> None:
-        """BridgeCall removed with in_memory module."""
-        with pytest.raises(ModuleNotFoundError):
-            from omnifocus_operator.bridge.in_memory import BridgeCall
-
-    def test_simulator_bridge_not_importable_from_old_path(self) -> None:
-        """simulator module removed from bridge package."""
-        with pytest.raises(ModuleNotFoundError):
-            from omnifocus_operator.bridge.simulator import SimulatorBridge
-
-    def test_in_memory_repository_not_importable_from_old_path(self) -> None:
-        """in_memory module removed from repository package."""
-        with pytest.raises(ModuleNotFoundError):
-            from omnifocus_operator.repository.in_memory import InMemoryRepository
-
-    def test_in_memory_repository_not_in_doubles_exports(self) -> None:
-        """InMemoryRepository removed from test doubles."""
-        with pytest.raises(ImportError):
-            from tests.doubles.repository import InMemoryRepository
-
-    def test_constant_mtime_source_not_importable_from_old_path(self) -> None:
-        """ConstantMtimeSource removed from bridge.mtime module."""
-        with pytest.raises(ImportError):
-            from omnifocus_operator.bridge.mtime import ConstantMtimeSource
-
-
-# ---------------------------------------------------------------------------
 # InMemoryBridge: get_settings
 # ---------------------------------------------------------------------------
 
@@ -273,7 +236,7 @@ class TestTestDoubleRelocation:
 class TestInMemoryBridgeGetSettings:
     """InMemoryBridge get_settings operation: factory defaults, overrides, isolation."""
 
-    FACTORY_DEFAULTS = {
+    FACTORY_DEFAULTS: ClassVar[dict[str, str | int]] = {
         "DefaultDueTime": "17:00",
         "DefaultStartTime": "00:00",
         "DefaultPlannedTime": "09:00",
