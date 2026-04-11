@@ -81,6 +81,7 @@ Carried forward from v1.3.1:
 
 - Phase 48 added: Refactor DateFilter into discriminated union with typed date bounds
 - Phase 49 added: Implement naive-local datetime contract for all date inputs
+- Phase 50 added: Use OmniFocus settings API for date preferences and due-soon threshold
 
 ### Blockers/Concerns
 

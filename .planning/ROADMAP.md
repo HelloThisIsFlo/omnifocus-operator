@@ -233,3 +233,13 @@ Plans:
 | 47. Cross-Path Equivalence & Breaking Changes | v1.3.2 | 6/6 | Complete   | 2026-04-09 |
 | 48. Discriminated Union Refactor | v1.3.2 | 2/2 | Complete | 2026-04-10 |
 | 49. Naive-Local DateTime Contract | v1.3.2 | 3/3 | Complete    | 2026-04-10 |
+
+### Phase 50: Use OmniFocus settings API for date preferences and due-soon threshold
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 49
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 50 to break down)
