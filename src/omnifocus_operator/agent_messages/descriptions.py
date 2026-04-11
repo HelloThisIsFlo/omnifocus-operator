@@ -34,6 +34,8 @@ EFFECTIVE_COMPLETION_DATE = (
 
 DATE_EXAMPLE = "2026-03-15T17:00:00"
 
+_DATE_INPUT_NOTE = "All dates use local time. Timezone offsets are accepted."
+
 DUE_DATE_WRITE = (
     "Deadline with real consequences if missed. Not for intentions -- use plannedDate instead."
 )
@@ -450,8 +452,7 @@ GET_TAG_TOOL_DOC = (
 ADD_TASKS_TOOL_DOC = (
     "Create tasks in OmniFocus. Limited to 1 item per call.\n"
     "\n"
-    "All dates are local time (no timezone needed). Timezone offsets also\n"
-    "accepted and silently converted to local.\n"
+    f"{_DATE_INPUT_NOTE}\n"
     "\n"
     "Tags accept names (case-insensitive) or IDs; you can mix both.\n"
     "Non-existent names are rejected. Ambiguous names (case-insensitive\n"
@@ -579,7 +580,7 @@ LIST_PERSPECTIVES_TOOL_DOC = (
 EDIT_TASKS_TOOL_DOC = (
     "Edit existing tasks in OmniFocus using patch semantics. Max 1 item per call.\n"
     "\n"
-    "Dates are local time. Offsets accepted and converted.\n"
+    f"{_DATE_INPUT_NOTE}\n"
     "\n"
     "Patch: omit = no change, null = clear, value = update.\n"
     "\n"

@@ -129,18 +129,18 @@ REPETITION_INVALID_END_EMPTY = (
 
 # --- Validation: Date Input ---
 
-INVALID_DATE_FORMAT = (
-    "Invalid date format '{value}'. Expected ISO date ('2026-07-15'), "
-    "ISO datetime ('2026-07-15T17:00:00'), or datetime with "
-    "timezone ('2026-07-15T17:00:00+01:00')."
+_DATE_FORMAT_EXAMPLES = (
+    "ISO date ('2026-07-15'), ISO datetime ('2026-07-15T17:00:00'), "
+    "or datetime with offset ('2026-07-15T17:00:00+01:00')"
 )
+
+INVALID_DATE_FORMAT = "Invalid date format '{value}'. Expected " + _DATE_FORMAT_EXAMPLES + "."
 
 # --- Validation: Date Filters ---
 
 DATE_FILTER_RANGE_EMPTY = (
     "Date range filter requires at least one of: before or after. "
-    "Each accepts an ISO date ('2026-04-01'), ISO datetime "
-    "('2026-04-01T14:00:00'), or 'now'. Timezone offsets also accepted."
+    "Each accepts " + _DATE_FORMAT_EXAMPLES + ", or 'now'."
 )
 
 DATE_FILTER_INVALID_DURATION = (
