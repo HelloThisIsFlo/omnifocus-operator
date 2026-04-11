@@ -126,8 +126,20 @@ REPETITION_ANCHOR_DATE_MISSING = (
 # --- Date Resolution ---
 
 DUE_SOON_THRESHOLD_NOT_DETECTED = (
-    "Due-soon threshold was not detected. Defaulting to today. "
-    "Set OPERATOR_DUE_SOON_THRESHOLD to override."
+    "Due-soon threshold was not detected from OmniFocus preferences. "
+    "Defaulting to 2 days (OmniFocus factory default). "
+    "Restart the server if you changed this setting."
+)
+
+SETTINGS_FALLBACK_WARNING = (
+    "Could not read OmniFocus preferences (app may not be running). "
+    "Using factory defaults for date/time settings. "
+    "Restart the server after OmniFocus is available."
+)
+
+SETTINGS_UNKNOWN_DUE_SOON_PAIR = (
+    "OmniFocus due-soon preference has an unrecognized value. "
+    "Defaulting to 2 days (OmniFocus factory default)."
 )
 
 # --- Defer Hints ---
