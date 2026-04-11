@@ -1571,3 +1571,129 @@ class TestListTasksDateFilterPipeline:
         # Warning should be propagated to the result
         assert result.warnings is not None
         assert any("Due-soon threshold was not detected" in w for w in result.warnings)
+
+
+# ---------------------------------------------------------------------------
+# list_projects: date filter pipeline integration (service layer)
+# ---------------------------------------------------------------------------
+
+
+class TestListProjectsDateFiltering:
+    """Pipeline resolves date filters to datetime bounds for list_projects.
+
+    Verifies end-to-end behavior through the service layer pipeline
+    (_resolve_date_filters + _build_repo_query) for project date filtering.
+    """
+
+    @pytest.mark.snapshot(
+        tasks=[],
+        projects=[
+            make_project_dict(
+                id="proj-due-soon",
+                name="Due soon project",
+                effectiveDueDate="2026-04-08T10:00:00.000Z",
+            ),
+            make_project_dict(
+                id="proj-due-later",
+                name="Due later project",
+                effectiveDueDate="2026-04-20T10:00:00.000Z",
+            ),
+            make_project_dict(
+                id="proj-no-due",
+                name="No due date project",
+            ),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_due_absolute_range_filters_projects(self, service: OperatorService) -> None:
+        """due={after: ..., before: ...} filters projects by date range."""
+        result = await service.list_projects(
+            ListProjectsQuery(due={"after": "2026-04-01", "before": "2026-04-14"})
+        )
+        project_ids = {p.id for p in result.items}
+        assert "proj-due-soon" in project_ids  # 2026-04-08 in range
+        assert "proj-due-later" not in project_ids  # 2026-04-20 after range
+        assert "proj-no-due" not in project_ids  # NULL excluded
+
+    @pytest.mark.snapshot(
+        tasks=[],
+        projects=[
+            make_project_dict(
+                id="proj-completed-today",
+                name="Completed today",
+                status="Active",
+                taskStatus="Completed",
+                completionDate=datetime.now(UTC).strftime("%Y-%m-%dT09:00:00.000Z"),
+                effectiveCompletionDate=datetime.now(UTC).strftime("%Y-%m-%dT09:00:00.000Z"),
+            ),
+            make_project_dict(
+                id="proj-completed-old",
+                name="Completed long ago",
+                status="Active",
+                taskStatus="Completed",
+                completionDate="2020-01-01T09:00:00.000Z",
+                effectiveCompletionDate="2020-01-01T09:00:00.000Z",
+            ),
+            make_project_dict(
+                id="proj-available",
+                name="Available project",
+            ),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_completed_today_auto_includes_completed_availability(
+        self, service: OperatorService
+    ) -> None:
+        """completed='today' auto-includes Availability.COMPLETED for projects.
+
+        Default availability is [available, blocked] which excludes completed projects.
+        The pipeline should auto-add 'completed' to the availability list.
+        Lifecycle date filter is additive: remaining projects (NULL completion) pass through.
+        """
+        result = await service.list_projects(ListProjectsQuery(completed="today"))
+        project_ids = {p.id for p in result.items}
+        assert "proj-completed-today" in project_ids
+        assert "proj-completed-old" not in project_ids  # completed outside today
+        assert "proj-available" in project_ids  # remaining project preserved (additive)
+
+    @pytest.mark.snapshot(
+        tasks=[],
+        projects=[
+            make_project_dict(
+                id="proj-completed-old",
+                name="Completed long ago",
+                status="Active",
+                taskStatus="Completed",
+                completionDate="2020-06-01T09:00:00.000Z",
+                effectiveCompletionDate="2020-06-01T09:00:00.000Z",
+            ),
+            make_project_dict(
+                id="proj-completed-recent",
+                name="Completed recently",
+                status="Active",
+                taskStatus="Completed",
+                completionDate=datetime.now(UTC).strftime("%Y-%m-%dT09:00:00.000Z"),
+                effectiveCompletionDate=datetime.now(UTC).strftime("%Y-%m-%dT09:00:00.000Z"),
+            ),
+            make_project_dict(
+                id="proj-available",
+                name="Available project",
+            ),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_completed_all_returns_all_completed_regardless_of_date(
+        self, service: OperatorService
+    ) -> None:
+        """completed='all' adds lifecycle availability -- all completed projects appear."""
+        result = await service.list_projects(ListProjectsQuery(completed="all"))
+        project_ids = {p.id for p in result.items}
+        assert "proj-completed-old" in project_ids
+        assert "proj-completed-recent" in project_ids
+        assert "proj-available" in project_ids  # default availability still includes available

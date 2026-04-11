@@ -218,6 +218,50 @@ def _build_neutral_test_data() -> dict[str, Any]:
                 "dropped": None,
                 "effective_dropped": None,
             },
+            {
+                "id": "proj-completed",
+                "name": "Completed Project",
+                "note": "",
+                "availability": "completed",
+                "flagged": False,
+                "folder_id": "folder-1",
+                "next_review_date": _REVIEW_PAST,
+                "last_review_date": _REVIEW_PAST,
+                "added": _ADDED,
+                "modified": _MODIFIED,
+                "due": None,
+                "effective_due": None,
+                "defer": None,
+                "effective_defer": None,
+                "planned": None,
+                "effective_planned": None,
+                "completed": _COMPLETED_DATE,
+                "effective_completed": _COMPLETED_DATE,
+                "dropped": None,
+                "effective_dropped": None,
+            },
+            {
+                "id": "proj-dropped",
+                "name": "Dropped Project",
+                "note": "",
+                "availability": "dropped",
+                "flagged": False,
+                "folder_id": "folder-1",
+                "next_review_date": _REVIEW_PAST,
+                "last_review_date": _REVIEW_PAST,
+                "added": _ADDED,
+                "modified": _MODIFIED,
+                "due": None,
+                "effective_due": None,
+                "defer": None,
+                "effective_defer": None,
+                "planned": None,
+                "effective_planned": None,
+                "completed": None,
+                "effective_completed": None,
+                "dropped": _DROPPED_DATE,
+                "effective_dropped": _DROPPED_DATE,
+            },
         ],
         "tasks": [
             {
@@ -480,7 +524,12 @@ async def seed_bridge_repo(data: dict[str, Any]) -> BridgeOnlyRepository:
                 flagged=p["flagged"],
                 effectiveFlagged=p["flagged"],
                 folder=p["folder_id"],
-                status="Active" if p["availability"] in ("available", "blocked") else "Dropped",
+                status={
+                    "available": "Active",
+                    "blocked": "OnHold",
+                    "completed": "Done",
+                    "dropped": "Dropped",
+                }[p["availability"]],
                 taskStatus=_BRIDGE_AVAILABILITY_MAP[p["availability"]],
                 nextReviewDate=_dt_to_iso(p["next_review_date"]),
                 lastReviewDate=_dt_to_iso(p["last_review_date"]),
@@ -1346,6 +1395,94 @@ class TestDateFilterCrossPath:
         result = await cross_repo.list_tasks(ListTasksRepoQuery(due_before=threshold))
         ids = [t.id for t in result.items]
         assert "task-3" not in ids
+
+
+# ===========================================================================
+# Project date filter cross-path equivalence tests
+# ===========================================================================
+
+
+class TestProjectDateFilterCrossPath:
+    """Project date filter cross-path equivalence.
+
+    Proves SQL and bridge paths produce identical results for project date
+    filters, including lifecycle (completed/dropped) additive semantics.
+    """
+
+    @pytest.mark.asyncio
+    async def test_due_before_returns_project_with_due_date(self, cross_repo: Repository) -> None:
+        """Due before threshold includes proj-due."""
+        threshold = _DUE_DATE + timedelta(days=1)
+        result = await cross_repo.list_projects(ListProjectsRepoQuery(due_before=threshold))
+        ids = [p.id for p in result.items]
+        assert "proj-due" in ids
+
+    @pytest.mark.asyncio
+    async def test_due_after_exact_match(self, cross_repo: Repository) -> None:
+        """Due after exact _DUE_DATE returns proj-due (inclusive lower bound)."""
+        result = await cross_repo.list_projects(ListProjectsRepoQuery(due_after=_DUE_DATE))
+        ids = [p.id for p in result.items]
+        assert "proj-due" in ids
+
+    @pytest.mark.asyncio
+    async def test_completed_date_filter(self, cross_repo: Repository) -> None:
+        """Completed date filter with COMPLETED availability returns proj-completed."""
+        result = await cross_repo.list_projects(
+            ListProjectsRepoQuery(
+                availability=[Availability.AVAILABLE, Availability.BLOCKED, Availability.COMPLETED],
+                completed_after=_COMPLETED_DATE - timedelta(days=1),
+                completed_before=_COMPLETED_DATE + timedelta(days=1),
+            )
+        )
+        completed_ids = [p.id for p in result.items if p.availability == Availability.COMPLETED]
+        assert completed_ids == ["proj-completed"]
+
+    @pytest.mark.asyncio
+    async def test_dropped_date_filter(self, cross_repo: Repository) -> None:
+        """Dropped date filter with DROPPED availability returns proj-dropped."""
+        result = await cross_repo.list_projects(
+            ListProjectsRepoQuery(
+                availability=[Availability.AVAILABLE, Availability.BLOCKED, Availability.DROPPED],
+                dropped_after=_DROPPED_DATE - timedelta(days=1),
+                dropped_before=_DROPPED_DATE + timedelta(days=1),
+            )
+        )
+        dropped_ids = [p.id for p in result.items if p.availability == Availability.DROPPED]
+        assert dropped_ids == ["proj-dropped"]
+
+    @pytest.mark.asyncio
+    async def test_completed_preserves_remaining(self, cross_repo: Repository) -> None:
+        """Lifecycle date filter is additive: remaining projects survive alongside completed."""
+        result = await cross_repo.list_projects(
+            ListProjectsRepoQuery(
+                availability=[Availability.AVAILABLE, Availability.BLOCKED, Availability.COMPLETED],
+                completed_after=_COMPLETED_DATE - timedelta(days=1),
+                completed_before=_COMPLETED_DATE + timedelta(days=1),
+            )
+        )
+        remaining_ids = sorted(
+            p.id for p in result.items if p.availability != Availability.COMPLETED
+        )
+        completed_ids = [p.id for p in result.items if p.availability == Availability.COMPLETED]
+        # 4 remaining (proj-1, proj-2, proj-3, proj-due) + 1 completed (proj-completed)
+        assert remaining_ids == ["proj-1", "proj-2", "proj-3", "proj-due"]
+        assert completed_ids == ["proj-completed"]
+
+    @pytest.mark.asyncio
+    async def test_date_filter_combined_with_folder(self, cross_repo: Repository) -> None:
+        """Date filter + folder_ids combine with AND."""
+        threshold = _DUE_DATE + timedelta(days=1)
+        result = await cross_repo.list_projects(
+            ListProjectsRepoQuery(
+                due_before=threshold,
+                folder_ids=["folder-1"],
+            )
+        )
+        ids = [p.id for p in result.items]
+        # proj-due has due date and is in folder-1
+        assert "proj-due" in ids
+        # proj-2 is NOT in folder-1 (folder_id=None)
+        assert "proj-2" not in ids
 
 
 # ===========================================================================
