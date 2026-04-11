@@ -13,10 +13,9 @@ import pytest
 from pydantic import ValidationError
 
 from omnifocus_operator.agent_messages.errors import (
-    DATE_FILTER_INVALID_DURATION,
-    DATE_FILTER_ZERO_NEGATIVE,
     FILTER_NULL,
     OFFSET_REQUIRES_LIMIT,
+    REVIEW_DUE_WITHIN_INVALID,
     TAGS_EMPTY,
 )
 from omnifocus_operator.contracts import (
@@ -340,17 +339,17 @@ class TestReviewDueFilter:
             assert query.review_due_within == value
 
     def test_invalid_string_raises(self) -> None:
-        expected = DATE_FILTER_INVALID_DURATION.format(value="banana")
+        expected = REVIEW_DUE_WITHIN_INVALID.format(value="banana")
         with pytest.raises(ValidationError, match=re.escape(expected)):
             ListProjectsQuery(review_due_within="banana")
 
     def test_empty_string_raises(self) -> None:
-        expected = DATE_FILTER_INVALID_DURATION.format(value="")
+        expected = REVIEW_DUE_WITHIN_INVALID.format(value="")
         with pytest.raises(ValidationError, match=re.escape(expected)):
             ListProjectsQuery(review_due_within="")
 
     def test_zero_amount_raises(self) -> None:
-        expected = DATE_FILTER_ZERO_NEGATIVE.format(value="0w")
+        expected = REVIEW_DUE_WITHIN_INVALID.format(value="0w")
         with pytest.raises(ValidationError, match=re.escape(expected)):
             ListProjectsQuery(review_due_within="0w")
 

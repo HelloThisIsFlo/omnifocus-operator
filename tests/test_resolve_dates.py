@@ -287,17 +287,17 @@ class TestLastDuration:
         assert resolved.after == datetime(2026, 3, 31, 0, 0, 0, tzinfo=UTC)
         assert resolved.before == NOW
 
-    def test_last_1_month_naive(self) -> None:
-        """{last: '1m'} = 30 days ago midnight through now (RESOLVE-07 naive)."""
+    def test_last_1_month(self) -> None:
+        """{last: '1m'} = 1 calendar month ago midnight through now."""
         resolved = resolve_date_filter(LastPeriodFilter(last="m"), "due", NOW)
-        # 30 days before Apr 7 = Mar 8
-        assert resolved.after == datetime(2026, 3, 8, 0, 0, 0, tzinfo=UTC)
+        # 1 calendar month before Apr 7 = Mar 7
+        assert resolved.after == datetime(2026, 3, 7, 0, 0, 0, tzinfo=UTC)
         assert resolved.before == NOW
 
-    def test_last_1_year_naive(self) -> None:
-        """{last: '1y'} = 365 days ago midnight through now."""
+    def test_last_1_year(self) -> None:
+        """{last: '1y'} = 1 calendar year ago midnight through now."""
         resolved = resolve_date_filter(LastPeriodFilter(last="y"), "due", NOW)
-        # 365 days before 2026-04-07 = 2025-04-07
+        # 1 calendar year before 2026-04-07 = 2025-04-07
         assert resolved.after == datetime(2025, 4, 7, 0, 0, 0, tzinfo=UTC)
         assert resolved.before == NOW
 
@@ -324,17 +324,18 @@ class TestNextDuration:
         # midnight(now) + 7d + 1d = Apr 7 00:00 + 8d = Apr 15 00:00
         assert resolved.before == datetime(2026, 4, 15, 0, 0, 0, tzinfo=UTC)
 
-    def test_next_1_month_naive(self) -> None:
-        """{next: '1m'} -> now through 31 days from today midnight (30d + rest of today)."""
+    def test_next_1_month(self) -> None:
+        """{next: '1m'} -> now through 1 calendar month from today midnight + 1d."""
         resolved = resolve_date_filter(NextPeriodFilter(next="m"), "due", NOW)
         assert resolved.after == NOW
-        # midnight(now) + 30d + 1d = Apr 7 00:00 + 31d = May 8 00:00
+        # midnight(Apr 7) + 1 calendar month = May 7, + 1d = May 8 00:00
         assert resolved.before == datetime(2026, 5, 8, 0, 0, 0, tzinfo=UTC)
 
-    def test_next_1_year_naive(self) -> None:
+    def test_next_1_year(self) -> None:
+        """{next: '1y'} -> now through 1 calendar year from today midnight + 1d."""
         resolved = resolve_date_filter(NextPeriodFilter(next="y"), "due", NOW)
         assert resolved.after == NOW
-        # midnight(now) + 365d + 1d = Apr 7 00:00 + 366d = Apr 8 2027 00:00
+        # midnight(Apr 7 2026) + 1 calendar year = Apr 7 2027, + 1d = Apr 8 2027
         assert resolved.before == datetime(2027, 4, 8, 0, 0, 0, tzinfo=UTC)
 
 

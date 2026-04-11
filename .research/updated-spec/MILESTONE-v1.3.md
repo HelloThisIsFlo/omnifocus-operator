@@ -47,7 +47,7 @@ One new MCP tool with optional filter parameters. Primary path uses SQL WHERE cl
 |--------|------|----------|
 | `status` | list (OR) | Concrete: `active`, `on_hold`, `done`, `dropped`. Shorthands: `remaining` (active + on_hold, **the default**), `available` (active only), `all`. |
 | `folder` | string | Case-insensitive partial match on folder name |
-| `review_due_within` | string | Projects where `nextReviewDate <= now + duration`. Format: `now`, `<number><unit>` (d/w/m/y). E.g., `1w`, `2m`. Invalid values return a human-readable error. Month/year arithmetic is naive (~30d, ~365d). Projects with no review schedule are excluded. |
+| `review_due_within` | string | Projects where `nextReviewDate <= now + duration`. Format: `now`, `<number><unit>` (d/w/m/y). E.g., `1w`, `2m`. Invalid values return a human-readable error. Month/year arithmetic is calendar-aware with day clamping. Projects with no review schedule are excluded. |
 | `flagged` | bool | Flagged projects |
 | `limit` | int | Maximum number of results to return (default: no limit) |
 | `offset` | int | Skip this many results before returning (default: 0). Requires `limit`. |

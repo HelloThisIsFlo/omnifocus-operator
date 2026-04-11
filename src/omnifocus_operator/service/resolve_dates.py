@@ -7,7 +7,7 @@ for obtaining these from the database/environment.
 
 from __future__ import annotations
 
-import re
+import calendar
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import StrEnum
@@ -20,6 +20,7 @@ from omnifocus_operator.contracts.use_cases.list._date_filter import (
     NextPeriodFilter,
     ThisPeriodFilter,
 )
+from omnifocus_operator.contracts.use_cases.list._validators import parse_duration
 
 if TYPE_CHECKING:
     from omnifocus_operator.models.enums import DueSoonSetting
@@ -41,9 +42,6 @@ class ResolvedDateBounds:
 
     after: datetime | None = None
     before: datetime | None = None
-
-
-_DATE_DURATION_PATTERN = re.compile(r"^(\d*)([dwmy])$")
 
 
 def resolve_date_filter(
@@ -195,9 +193,8 @@ def _resolve_this(
 
 
 def _resolve_last(duration: str, now: datetime) -> tuple[datetime, datetime]:
-    count, unit = _parse_duration(duration)
-    delta = _duration_to_timedelta(count, unit)
-    start = _midnight(now - delta)
+    count, unit = parse_duration(duration)
+    start = _midnight(add_duration(now, -count, unit))
     return (start, now)
 
 
@@ -207,10 +204,9 @@ def _resolve_last(duration: str, now: datetime) -> tuple[datetime, datetime]:
 
 
 def _resolve_next(duration: str, now: datetime) -> tuple[datetime, datetime]:
-    count, unit = _parse_duration(duration)
-    delta = _duration_to_timedelta(count, unit)
-    # "rest of today + N full periods": midnight(now) + delta + 1 day
-    end = _midnight(now) + delta + timedelta(days=1)
+    count, unit = parse_duration(duration)
+    # "rest of today + N full periods": add duration to midnight, then +1 day
+    end = add_duration(_midnight(now), count, unit) + timedelta(days=1)
     return (now, end)
 
 
@@ -319,27 +315,26 @@ def _midnight(dt: datetime) -> datetime:
     return dt.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
-def _parse_duration(value: str) -> tuple[int, str]:
-    """Parse "[N]unit" -> (count, unit). Count defaults to 1."""
-    match = _DATE_DURATION_PATTERN.match(value)
-    if not match:
-        msg = f"Invalid duration format: {value!r}"
-        raise ValueError(msg)
-    count_str = match.group(1)
-    count = int(count_str) if count_str else 1
-    unit = match.group(2)
-    return (count, unit)
+def add_duration(dt: datetime, count: int, unit: str) -> datetime:
+    """Add a calendar-aware duration to a datetime.
 
-
-def _duration_to_timedelta(count: int, unit: str) -> timedelta:
-    """Convert (count, unit) to timedelta. Uses naive 30d/365d for m/y."""
+    Positive count = future, negative count = past.
+    d/w: timedelta arithmetic.
+    m/y: calendar arithmetic with day clamping (e.g. Jan 31 + 1m → Feb 28).
+    """
     if unit == "d":
-        return timedelta(days=count)
+        return dt + timedelta(days=count)
     if unit == "w":
-        return timedelta(weeks=count)
+        return dt + timedelta(weeks=count)
     if unit == "m":
-        return timedelta(days=count * 30)
+        month = dt.month + count
+        year = dt.year + (month - 1) // 12
+        month = (month - 1) % 12 + 1
+        day = min(dt.day, calendar.monthrange(year, month)[1])
+        return dt.replace(year=year, month=month, day=day)
     if unit == "y":
-        return timedelta(days=count * 365)
+        year = dt.year + count
+        day = min(dt.day, calendar.monthrange(year, dt.month)[1])
+        return dt.replace(year=year, day=day)
     msg = f"Unknown duration unit: {unit!r}"
     raise ValueError(msg)

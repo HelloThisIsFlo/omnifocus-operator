@@ -38,7 +38,7 @@ Pick exactly one of `this`, `last`, `next`:
 
 Units: `d` (day), `w` (week), `m` (month), `y` (year). Count defaults to 1 when omitted (`"w"` = `"1w"`). Zero or negative count → error with guidance ("use `last` instead of `next` with negative value").
 
-**Month/year arithmetic:** Naive approximation — 1 month ≈ 30 days, 1 year ≈ 365 days. Same convention as `review_due_within` in v1.3. Calendar-aware arithmetic (handling Feb 28/29, variable month lengths) is a future improvement (see FUTURE-IDEAS.md).
+**Month/year arithmetic:** Calendar-aware with day clamping — e.g. Jan 31 + 1m → Feb 28, Mar 31 − 1m → Feb 28. Shared `add_duration` helper used by `last`/`next` date filters and `review_due_within`. ~~Naive approximation~~ superseded.
 
 **Period resolution:**
 

@@ -137,7 +137,7 @@
   1. Agent can submit any valid date filter form (string shortcut, shorthand object, absolute object) on any of 7 fields and get clean validation — invalid forms return educational errors
   2. `resolve_date_filter()` converts every input form to an absolute DateRange with correct boundaries — calendar-aligned for `this`, day-snapped for `last`/`next`, inclusive for absolute
   3. Field-specific shortcut restrictions enforced — `"overdue"` and `"soon"` only on `due`, `"any"` only on `completed`/`dropped`
-  4. `"now"` accepted in absolute forms, week start configurable via `OPERATOR_WEEK_START` env var, month/year use naive 30d/365d approximation
+  4. `"now"` accepted in absolute forms, week start configurable via `OPERATOR_WEEK_START` env var, month/year use calendar-aware arithmetic with day clamping
 **Plans:** 5/5 plans complete
 Plans:
 - [x] 45-01-PLAN.md — DateFilter contract + StrEnums + agent messages

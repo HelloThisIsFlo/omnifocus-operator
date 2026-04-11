@@ -13,13 +13,27 @@ if TYPE_CHECKING:
 DURATION_PATTERN = re.compile(r"^(\d*)([dwmy])$")
 
 
-def validate_duration(v: str) -> str:
-    """Validate a duration string like '3d', '2w', 'm', '1y'."""
-    match = DURATION_PATTERN.match(v)
+def parse_duration(value: str) -> tuple[int, str]:
+    """Parse "[N]unit" -> (count, unit). Count defaults to 1.
+
+    Raises ValueError if the string doesn't match the duration pattern.
+    Contract-layer validation (validate_duration) runs first, so this
+    is a defensive guard — callers should never hit this path.
+    """
+    match = DURATION_PATTERN.match(value)
     if not match:
-        raise ValueError(err.DATE_FILTER_INVALID_DURATION.format(value=v))
+        raise ValueError(err.DATE_FILTER_INVALID_DURATION.format(value=value))
     count_str = match.group(1)
     count = int(count_str) if count_str else 1
+    return (count, match.group(2))
+
+
+def validate_duration(v: str) -> str:
+    """Validate a duration string like '3d', '2w', 'm', '1y'."""
+    try:
+        count, _ = parse_duration(v)
+    except ValueError:
+        raise ValueError(err.DATE_FILTER_INVALID_DURATION.format(value=v)) from None
     if count <= 0:
         raise ValueError(err.DATE_FILTER_ZERO_NEGATIVE.format(value=v))
     return v

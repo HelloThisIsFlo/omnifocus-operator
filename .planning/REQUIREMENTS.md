@@ -27,7 +27,8 @@ Requirements for date filtering milestone. Each maps to roadmap phases.
 - [ ] **RESOLVE-04**: `{next: "[N]unit"}` resolves to now through midnight N+1 periods from now (rest of today + N full future days)
 - [ ] **RESOLVE-05**: `"now"` evaluated once at query start — consistent timestamp across all date filters in same query
 - [ ] **RESOLVE-06**: Week start configurable via `OPERATOR_WEEK_START` env var (monday default, sunday option) — affects `{this: "w"}` only
-- [ ] **RESOLVE-07**: Month ≈ 30 days, year ≈ 365 days (naive approximation, same convention as review_due_within)
+- ~~[ ] **RESOLVE-07**: Month ≈ 30 days, year ≈ 365 days (naive approximation, same convention as review_due_within)~~ (superseded — calendar-aware arithmetic implemented)
+- [ ] **RESOLVE-07** (revised): Month/year durations use calendar-aware arithmetic with day clamping (e.g. Jan 31 + 1m → Feb 28). Same `add_duration` helper across all duration consumers (`last`/`next` date filters, `review_due_within`).
 - [ ] **RESOLVE-08**: Absolute `before` with date-only resolves to start of next day internally (end-of-day inclusive)
 - [ ] **RESOLVE-09**: Absolute `after` with date-only resolves to start of that day (start-of-day inclusive)
 - [ ] **RESOLVE-10**: Both `before` and `after` inclusive — `{after: "2026-04-01", before: "2026-04-14"}` includes April 14
@@ -115,7 +116,7 @@ Requirements for date filtering milestone. Each maps to roadmap phases.
 | `count_tasks` date filters | Removed from v1.3.2 scope — future milestone |
 | ~~Due-soon threshold configuration~~ | ~~Using OmniFocus pre-computed columns — matches UI exactly, zero config needed~~ Reinstated: reads `DueSoonInterval` + `DueSoonGranularity` from Settings table (45-CONTEXT D-06/D-07) |
 | `"none"` IS NULL filtering | Scoped out of v1.3.2 — niche use case, can be added later if requested (45-CONTEXT D-13) |
-| Calendar-aware month/year arithmetic | Explicitly deferred — naive 30d/365d approximation sufficient |
+| ~~Calendar-aware month/year arithmetic~~ | ~~Explicitly deferred — naive 30d/365d approximation sufficient~~ Implemented — unified `add_duration` with day clamping |
 | Non-local timezone support | Naive local time implemented in Phase 49 — non-local TZ (per-event timezone annotations) is future improvement |
 | NLP date parsing | Anti-feature — structured input only, agents pass structured objects |
 

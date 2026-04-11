@@ -148,6 +148,12 @@ DATE_FILTER_INVALID_DURATION = (
     "Count defaults to 1 when omitted, so 'w' means '1w'."
 )
 
+REVIEW_DUE_WITHIN_INVALID = (
+    "Invalid reviewDueWithin '{value}' -- "
+    "valid formats: 'now', or a duration like '1w', '2m', '30d'. "
+    "Count defaults to 1 when omitted, so 'w' means '1w'."
+)
+
 DATE_FILTER_ZERO_NEGATIVE = (
     "Duration count must be positive (got '{value}'). "
     "Use a positive number followed by d/w/m/y (e.g. '1d', '2w')."

@@ -6,6 +6,7 @@ from datetime import datetime
 
 from pydantic import Field, field_validator, model_validator
 
+from omnifocus_operator.agent_messages import errors as err
 from omnifocus_operator.agent_messages.descriptions import (
     ADDED_FILTER_DESC,
     COMPLETED_FILTER_DESC,
@@ -77,7 +78,11 @@ class ListProjectsQuery(QueryModel):
     def _check_review_due_within(cls, v: str) -> str:
         if v == "now":
             return v
-        return validate_duration(v)
+        try:
+            validate_duration(v)
+        except ValueError:
+            raise ValueError(err.REVIEW_DUE_WITHIN_INVALID.format(value=v)) from None
+        return v
 
     @model_validator(mode="before")
     @classmethod
