@@ -44,6 +44,7 @@ Decision: Accept the gap rather than temporarily restoring the old enum values. 
 
 3. **SQL builder** (`query_builder.py`, `build_list_projects_sql()`):
    - Add one call: `_add_date_conditions(conditions, params, query)` after existing folder conditions
+   - Widen `_add_date_conditions` type signature — see "Protocol for date bounds" below
 
 4. **Bridge path** (`bridge_only.py`):
    - Add in-memory date filtering for projects (same pattern as tasks, shared resolver)
@@ -54,29 +55,36 @@ Decision: Accept the gap rather than temporarily restoring the old enum values. 
 
 6. **Server** (`server.py`): Nothing -- FastMCP introspects `ListProjectsQuery` automatically.
 
-## Investigation needed before implementation
+## Column mapping: verified, no overrides needed
 
-**Key question**: Which `effective*` date columns are actually populated for projects in the SQLite DB?
+All 7 `_DATE_COLUMN_MAP` entries work for projects as-is. No project-specific column overrides required.
 
-Projects are Task table rows joined to ProjectInfo. Tasks have `effective*` columns because they inherit dates from parent projects. Projects sit at the top of the hierarchy (in folders, not nested under other projects), so inheritance semantics differ.
+**Source:** Ground truth script 02 (`02-project-effective-fields.js`) ran against all 368 projects and confirmed zero divergences for all 6 effective fields. Full results in `.research/deep-dives/omnifocus-api-ground-truth/FINDINGS.md`, section "2. Project Type > Effective Fields Bug".
 
-Specific columns to verify against the live OmniFocus SQLite database:
+| Filter | SQLite Column | Projects with data (of 368) | Notes |
+|--------|---------------|----------------------------|-------|
+| `due` | `effectiveDateDue` | 17 | Works identically to tasks |
+| `defer` | `effectiveDateToStart` | 10 | Works identically to tasks |
+| `planned` | `effectiveDatePlanned` | 0 (all null) | Column exists, no projects use planned dates — filter just won't match |
+| `completed` | `effectiveDateCompleted` | 6 | Already used by `_PROJECT_AVAILABILITY_CLAUSES` (line 140) |
+| `dropped` | `effectiveDateHidden` | 23 | Already used by `_PROJECT_AVAILABILITY_CLAUSES` (line 143); includes folder-inherited drops |
+| `added` | `dateAdded` | 368 (all) | Always present |
+| `modified` | `dateModified` | 368 (all) | Always present |
 
-| Column | Question | Why it matters |
-|--------|----------|----------------|
-| `effectiveDateDue` | Populated for projects with a due date? Probably yes (equals direct `dateDue`). | The `_DATE_COLUMN_MAP` maps `"due"` -> `effectiveDateDue`. If NULL for projects, need project-specific column override. |
-| `effectiveDateToStart` | Same question for defer dates. | Maps to `"defer"` filter. |
-| `effectiveDatePlanned` | Same question for planned dates. | Maps to `"planned"` filter. |
-| `effectiveDateCompleted` | Populated for completed projects? **Likely NOT** -- projects don't have `effective_completion_date` in the model (task.py:21 comment: "task-only -- always null on projects"). | If NULL, `"completed"` filter must map to `dateCompleted` instead for projects. |
-| `effectiveDateHidden` | Populated for dropped projects? **Uncertain** -- folders CAN be dropped, so projects might inherit drop status. | If folder dropping cascades an effective date, the existing column works. If not, need `dateHidden`. |
+The earlier concern that `effectiveDateCompleted` might be "task-only — always null on projects" was disproven by the ground truth audit. The existing `_PROJECT_AVAILABILITY_CLAUSES` already rely on these columns in production.
 
-**How to verify**: Query the live OmniFocus SQLite DB for a few projects:
-- An active project with due/defer dates set
-- A completed project
-- A dropped project (if one exists)
-- A project inside a dropped folder (if possible -- tests folder-to-project inheritance)
+**Further reading:**
+- SQLite schema: `.research/deep-dives/direct-database-access/1-initial-discovery/sqlite_schema.sql`
+- Field coverage verification: `.research/deep-dives/direct-database-access/4-final-checks/FINDINGS.md`
+- Ground truth audit scripts: `.research/deep-dives/omnifocus-api-ground-truth/scripts/`
 
-Check whether `effective*` columns have values vs NULL compared to their direct counterparts (`dateDue`, `dateCompleted`, `dateHidden`, etc.).
+## Protocol for date bounds
+
+`_add_date_conditions()` currently types `query` as `ListTasksRepoQuery` (query_builder.py:42). To reuse it for projects, introduce a `HasDateBounds` Protocol rather than a union:
+
+- The function only does `getattr(query, f"{field_name}_after", None)` — pure structural access
+- Protocol expresses "has the right shape" without coupling to specific query types
+- Open for extension if other entity types get date filters later
 
 ## Design decisions (already made)
 
@@ -86,4 +94,4 @@ Check whether `effective*` columns have values vs NULL compared to their direct 
 
 ## Complexity estimate
 
-Low. The v1.3.2 infrastructure was designed as a general-purpose date filtering system. ~15 lines of new production code (mostly copy-paste from tasks), plus tests. Single phase, likely single plan. The only variable is the column investigation above, which determines whether `_DATE_COLUMN_MAP` needs a project-specific override for `completed`/`dropped`.
+Low. The v1.3.2 infrastructure was designed as a general-purpose date filtering system. ~15 lines of new production code (mostly copy-paste from tasks), plus tests. Single phase, likely single plan.
