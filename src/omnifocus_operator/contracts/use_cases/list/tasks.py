@@ -26,12 +26,13 @@ from omnifocus_operator.agent_messages.descriptions import (
 )
 from omnifocus_operator.config import DEFAULT_LIST_LIMIT
 from omnifocus_operator.contracts.base import UNSET, Patch, QueryModel
-from omnifocus_operator.contracts.use_cases.list._date_filter import DateFilter
+from omnifocus_operator.contracts.use_cases.list._date_filter import (
+    DateInput,
+    DueDateInput,
+    LifecycleDateInput,
+)
 from omnifocus_operator.contracts.use_cases.list._enums import (
     AvailabilityFilter,
-    DateShortcut,
-    DueDateShortcut,
-    LifecycleDateShortcut,
 )
 from omnifocus_operator.contracts.use_cases.list._validators import (
     reject_null_filters,
@@ -67,21 +68,13 @@ class ListTasksQuery(QueryModel):
     estimated_minutes_max: Patch[int] = Field(default=UNSET, description=ESTIMATED_MINUTES_MAX_DESC)
     availability: list[AvailabilityFilter] = Field(default=[AvailabilityFilter.REMAINING])
     search: Patch[str] = Field(default=UNSET, description=SEARCH_FIELD_NAME_NOTES)
-    due: Patch[DueDateShortcut | DateFilter] = Field(default=UNSET, description=DUE_FILTER_DESC)
-    defer: Patch[DateShortcut | DateFilter] = Field(default=UNSET, description=DEFER_FILTER_DESC)
-    planned: Patch[DateShortcut | DateFilter] = Field(
-        default=UNSET, description=PLANNED_FILTER_DESC
-    )
-    completed: Patch[LifecycleDateShortcut | DateFilter] = Field(
-        default=UNSET, description=COMPLETED_FILTER_DESC
-    )
-    dropped: Patch[LifecycleDateShortcut | DateFilter] = Field(
-        default=UNSET, description=DROPPED_FILTER_DESC
-    )
-    added: Patch[DateShortcut | DateFilter] = Field(default=UNSET, description=ADDED_FILTER_DESC)
-    modified: Patch[DateShortcut | DateFilter] = Field(
-        default=UNSET, description=MODIFIED_FILTER_DESC
-    )
+    due: Patch[DueDateInput] = Field(default=UNSET, description=DUE_FILTER_DESC)
+    defer: Patch[DateInput] = Field(default=UNSET, description=DEFER_FILTER_DESC)
+    planned: Patch[DateInput] = Field(default=UNSET, description=PLANNED_FILTER_DESC)
+    completed: Patch[LifecycleDateInput] = Field(default=UNSET, description=COMPLETED_FILTER_DESC)
+    dropped: Patch[LifecycleDateInput] = Field(default=UNSET, description=DROPPED_FILTER_DESC)
+    added: Patch[DateInput] = Field(default=UNSET, description=ADDED_FILTER_DESC)
+    modified: Patch[DateInput] = Field(default=UNSET, description=MODIFIED_FILTER_DESC)
     limit: int | None = Field(default=DEFAULT_LIST_LIMIT, description=LIMIT_DESC)
     offset: int = Field(default=0, description=OFFSET_DESC)
 

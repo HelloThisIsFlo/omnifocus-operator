@@ -31,6 +31,7 @@ from omnifocus_operator.__main__ import _configure_logging
 from omnifocus_operator.middleware import (
     ToolLoggingMiddleware,
     _clean_loc,
+    _extract_error_field_name,
     _extract_item_index,
     _format_validation_errors,
     _strip_items_prefix,
@@ -484,6 +485,65 @@ class TestUnionTagNotFoundSuppression:
         exc.errors = lambda: [union_tag_error]  # type: ignore[assignment]
         messages = _format_validation_errors(exc)
         assert len(messages) == 0  # Middleware falls back to INVALID_INPUT
+
+
+# ── _extract_error_field_name ──────────────────────────────────────────
+
+
+class TestExtractErrorFieldName:
+    """Unit tests for _extract_error_field_name -- skips tool param wrapper."""
+
+    def test_skips_query_wrapper(self) -> None:
+        assert _extract_error_field_name(("query", "completed")) == "completed"
+
+    def test_single_element_returned(self) -> None:
+        assert _extract_error_field_name(("completed",)) == "completed"
+
+    def test_nested_returns_first_after_wrapper(self) -> None:
+        assert _extract_error_field_name(("query", "due", "this")) == "due"
+
+    def test_empty_returns_none(self) -> None:
+        assert _extract_error_field_name(()) is None
+
+    def test_only_integers_returns_none(self) -> None:
+        assert _extract_error_field_name((0, 1)) is None
+
+    def test_integer_after_wrapper_skipped(self) -> None:
+        assert _extract_error_field_name(("items", 0, "name")) == "name"
+
+
+# ── Value error prefix stripping ──────────────────────────────────────
+
+
+class TestValueErrorPrefixStripping:
+    """'Value error, ' prefix from BeforeValidator ValueErrors is stripped."""
+
+    def test_value_error_prefix_stripped(self) -> None:
+        exc = _capture_validation_error(_TestModel, {"bogus": "x"})
+        error_with_prefix = {
+            "type": "value_error",
+            "loc": ("query", "completed"),
+            "msg": "Value error, Input should be 'all', 'today', or a date filter",
+            "input": True,
+        }
+        exc.errors = lambda: [error_with_prefix]  # type: ignore[assignment]
+        messages = _format_validation_errors(exc)
+        assert len(messages) == 1
+        assert not messages[0].startswith("Value error")
+        assert "Input should be" in messages[0]
+
+    def test_non_prefixed_messages_unchanged(self) -> None:
+        exc = _capture_validation_error(_TestModel, {"bogus": "x"})
+        normal_error = {
+            "type": "value_error",
+            "loc": ("query", "completed"),
+            "msg": "Input should be 'all' or 'today'",
+            "input": True,
+        }
+        exc.errors = lambda: [normal_error]  # type: ignore[assignment]
+        messages = _format_validation_errors(exc)
+        assert len(messages) == 1
+        assert "Input should be" in messages[0]
 
 
 # ── Logging integration (WRIT-10) ─────────────────────────────────────

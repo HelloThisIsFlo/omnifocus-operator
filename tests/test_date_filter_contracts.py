@@ -1,11 +1,13 @@
 """Tests for DateFilter contract model, date shortcut StrEnums, and query date fields."""
 
+import re
 from datetime import datetime
 from typing import ClassVar
 
 import pytest
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
+from omnifocus_operator.agent_messages import errors as err
 from omnifocus_operator.config import get_week_start
 from omnifocus_operator.contracts.use_cases.list import (
     AbsoluteRangeFilter,
@@ -18,6 +20,12 @@ from omnifocus_operator.contracts.use_cases.list import (
     ListTasksRepoQuery,
     NextPeriodFilter,
     ThisPeriodFilter,
+)
+from omnifocus_operator.contracts.use_cases.list._date_filter import (
+    DateInput,
+    DueDateInput,
+    LifecycleDateInput,
+    _make_date_input_validator,
 )
 
 _ta = TypeAdapter(DateFilter)
@@ -578,3 +586,98 @@ class TestGetWeekStart:
         monkeypatch.setenv("OPERATOR_WEEK_START", "wednesday")
         with pytest.raises(ValueError, match="Invalid OPERATOR_WEEK_START"):
             get_week_start()
+
+
+# ---------------------------------------------------------------------------
+# Date input type-rejection validators
+# ---------------------------------------------------------------------------
+
+_lifecycle_ta = TypeAdapter(LifecycleDateInput)
+_due_ta = TypeAdapter(DueDateInput)
+_date_ta = TypeAdapter(DateInput)
+
+
+class TestMakeDateInputValidator:
+    """Unit tests for the _make_date_input_validator factory."""
+
+    def test_passes_string_through(self) -> None:
+        validate = _make_date_input_validator("all", "today")
+        assert validate("today") == "today"
+
+    def test_passes_dict_through(self) -> None:
+        validate = _make_date_input_validator("all", "today")
+        d = {"this": "d"}
+        assert validate(d) is d
+
+    def test_rejects_bool_with_shortcuts_in_message(self) -> None:
+        validate = _make_date_input_validator("all", "today")
+        with pytest.raises(ValueError, match="'all', 'today'"):
+            validate(True)
+
+    def test_rejects_int(self) -> None:
+        validate = _make_date_input_validator("today")
+        with pytest.raises(ValueError, match="date filter"):
+            validate(42)
+
+    def test_rejects_list(self) -> None:
+        validate = _make_date_input_validator("overdue", "soon", "today")
+        with pytest.raises(ValueError, match="'overdue', 'soon', 'today'"):
+            validate([1, 2])
+
+    def test_message_uses_error_constant(self) -> None:
+        validate = _make_date_input_validator("all", "today")
+        expected = err.DATE_INPUT_INVALID_TYPE.format(shortcuts="'all', 'today'")
+        with pytest.raises(ValueError, match=re.escape(expected)):
+            validate(True)
+
+
+class TestLifecycleDateInput:
+    """LifecycleDateInput accepts 'all'/'today', DateFilter objects, rejects invalid types."""
+
+    def test_accepts_shortcut_string(self) -> None:
+        result = _lifecycle_ta.validate_python("all")
+        assert result == LifecycleDateShortcut.ALL
+
+    def test_accepts_date_filter_dict(self) -> None:
+        result = _lifecycle_ta.validate_python({"this": "d"})
+        assert isinstance(result, ThisPeriodFilter)
+
+    def test_rejects_bool(self) -> None:
+        with pytest.raises(ValidationError, match="'all', 'today'"):
+            _lifecycle_ta.validate_python(True)
+
+    def test_rejects_int(self) -> None:
+        with pytest.raises(ValidationError, match="date filter"):
+            _lifecycle_ta.validate_python(99)
+
+
+class TestDueDateInput:
+    """DueDateInput accepts 'overdue'/'soon'/'today', DateFilter objects, rejects invalid types."""
+
+    def test_accepts_shortcut_string(self) -> None:
+        result = _due_ta.validate_python("soon")
+        assert result == DueDateShortcut.SOON
+
+    def test_accepts_date_filter_dict(self) -> None:
+        result = _due_ta.validate_python({"last": "3d"})
+        assert isinstance(result, LastPeriodFilter)
+
+    def test_rejects_bool(self) -> None:
+        with pytest.raises(ValidationError, match="'overdue', 'soon', 'today'"):
+            _due_ta.validate_python(True)
+
+
+class TestDateInput:
+    """DateInput accepts 'today', DateFilter objects, rejects invalid types."""
+
+    def test_accepts_shortcut_string(self) -> None:
+        result = _date_ta.validate_python("today")
+        assert result == DateShortcut.TODAY
+
+    def test_accepts_date_filter_dict(self) -> None:
+        result = _date_ta.validate_python({"next": "2w"})
+        assert isinstance(result, NextPeriodFilter)
+
+    def test_rejects_bool(self) -> None:
+        with pytest.raises(ValidationError, match="'today'"):
+            _date_ta.validate_python(True)

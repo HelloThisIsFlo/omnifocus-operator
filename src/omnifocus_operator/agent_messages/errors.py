@@ -216,3 +216,8 @@ ENTITY_TYPE_MISMATCH_ANCHOR = (
     "Anchor positions (before/after) require a task reference. "
     "To move into {value}, use 'ending' or 'beginning' instead."
 )
+
+DATE_INPUT_INVALID_TYPE = (
+    "Input should be {shortcuts}, "
+    'or a date filter like {{"this": "d"}}, {{"last": "3d"}}, {{"next": "2w"}}'
+)

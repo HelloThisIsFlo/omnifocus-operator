@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import re
 from datetime import datetime as _datetime
-from typing import Annotated, Any, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 from pydantic import (
     BeforeValidator,
@@ -19,6 +22,11 @@ from omnifocus_operator.agent_messages import descriptions as desc
 from omnifocus_operator.agent_messages import errors as err
 from omnifocus_operator.contracts.base import UNSET, Patch, QueryModel, is_set
 from omnifocus_operator.contracts.shared.dates import validate_date_string
+from omnifocus_operator.contracts.use_cases.list._enums import (
+    DateShortcut,
+    DueDateShortcut,
+    LifecycleDateShortcut,
+)
 
 _DATE_DURATION_PATTERN = re.compile(r"^(\d*)([dwmy])$")
 
@@ -132,4 +140,38 @@ DateFilter = Annotated[
     | Annotated[NextPeriodFilter, Tag("next_period")]
     | Annotated[AbsoluteRangeFilter, Tag("absolute_range")],
     Discriminator(_route_date_filter),
+]
+
+
+# ── Annotated date input types with type-rejection validators ─────────
+#
+# Wrap Shortcut | DateFilter unions with a BeforeValidator that rejects
+# non-string/non-dict input (like true, 123, []) with a helpful message
+# listing both shortcut strings and object forms.
+
+
+def _make_date_input_validator(*shortcuts: str) -> Callable[[object], object]:
+    shortcut_list = ", ".join(f"'{s}'" for s in shortcuts)
+
+    def validate(v: object) -> object:
+        if isinstance(v, (str, dict)):
+            return v
+        raise ValueError(err.DATE_INPUT_INVALID_TYPE.format(shortcuts=shortcut_list))
+
+    return validate
+
+
+LifecycleDateInput = Annotated[
+    LifecycleDateShortcut | DateFilter,
+    BeforeValidator(_make_date_input_validator("all", "today")),
+]
+
+DueDateInput = Annotated[
+    DueDateShortcut | DateFilter,
+    BeforeValidator(_make_date_input_validator("overdue", "soon", "today")),
+]
+
+DateInput = Annotated[
+    DateShortcut | DateFilter,
+    BeforeValidator(_make_date_input_validator("today")),
 ]

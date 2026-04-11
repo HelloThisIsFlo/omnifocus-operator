@@ -138,6 +138,8 @@ def _format_validation_errors(exc: ValidationError) -> list[str]:
             msg = UNKNOWN_FIELD.format(field=field)
         else:
             msg = e["msg"]
+            if msg.startswith("Value error, "):
+                msg = msg[len("Value error, ") :]
             field_name = _extract_error_field_name(stripped_loc)
             if field_name:
                 msg = f"{field_name}: {msg}"
