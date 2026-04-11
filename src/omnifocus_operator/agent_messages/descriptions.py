@@ -139,12 +139,8 @@ THIS_PERIOD_UNIT = "When? d (today), w (this week), m (this month), y (this year
 _DURATION_FORMAT = '"N<unit>" (unit: d/w/m/y). Omit count for 1. Examples: "3d", "2w", "m".'
 LAST_PERIOD_DURATION = f"How far back from now. {_DURATION_FORMAT}"
 NEXT_PERIOD_DURATION = f"How far ahead from now. {_DURATION_FORMAT}"
-ABSOLUTE_RANGE_BEFORE = (
-    "Upper bound (inclusive). ISO date, ISO datetime, or 'now'. Dates are local time."
-)
-ABSOLUTE_RANGE_AFTER = (
-    "Lower bound (inclusive). ISO date, ISO datetime, or 'now'. Dates are local time."
-)
+ABSOLUTE_RANGE_BEFORE = "Upper bound (inclusive). ISO date, ISO datetime, or 'now'."
+ABSOLUTE_RANGE_AFTER = "Lower bound (inclusive). ISO date, ISO datetime, or 'now'."
 
 DUE_DATE_SHORTCUT_DOC = "Shortcut for filtering by due date: overdue, soon, or today."
 
@@ -499,6 +495,8 @@ ADD_TASKS_TOOL_DOC = (
 LIST_TASKS_TOOL_DOC = (
     "List and filter tasks. All filters combine with AND logic.\n"
     "\n"
+    f"{_DATE_INPUT_NOTE}\n"
+    "\n"
     "Returns a flat list. Reconstruct hierarchy using parent (direct container) "
     "or project (containing project at any depth). "
     "For root tasks both point to the same project; for subtasks they diverge. "
@@ -529,6 +527,8 @@ LIST_TASKS_TOOL_DOC = (
 
 LIST_PROJECTS_TOOL_DOC = (
     "List and filter projects. All filters combine with AND logic.\n"
+    "\n"
+    f"{_DATE_INPUT_NOTE}\n"
     "\n"
     "Response: {items, total, hasMore, warnings?}\n"
     "\n"
