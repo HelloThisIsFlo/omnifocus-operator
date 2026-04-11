@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime as _datetime
 from typing import Literal
 
 from pydantic import Field, field_validator
@@ -21,7 +20,6 @@ from omnifocus_operator.agent_messages.descriptions import (
     PLANNED_DATE_WRITE,
 )
 from omnifocus_operator.agent_messages.errors import (
-    INVALID_DATE_FORMAT,
     LIFECYCLE_INVALID_VALUE,
     TASK_NAME_EMPTY,
 )
@@ -32,22 +30,12 @@ from omnifocus_operator.contracts.base import (
     PatchOrClear,
 )
 from omnifocus_operator.contracts.shared.actions import MoveAction, TagAction
+from omnifocus_operator.contracts.shared.dates import validate_date_string
 from omnifocus_operator.contracts.shared.repetition_rule import (
     RepetitionRuleEditSpec,
     RepetitionRuleRepoPayload,
 )
 from omnifocus_operator.models.base import OmniFocusBaseModel
-
-
-def _validate_date_string(v: object) -> object:
-    """Validate that a string is a parseable ISO date or datetime (syntax only)."""
-    if not isinstance(v, str):
-        return v
-    try:
-        _datetime.fromisoformat(v)
-    except ValueError:
-        raise ValueError(INVALID_DATE_FORMAT.format(value=v)) from None
-    return v
 
 
 class EditTaskActions(CommandModel):
@@ -105,7 +93,7 @@ class EditTaskCommand(CommandModel):
     @classmethod
     def _check_date_format(cls, v: object) -> object:
         """Validate date string syntax. UNSET and None pass through (patch semantics)."""
-        return _validate_date_string(v)
+        return validate_date_string(v)
 
     estimated_minutes: PatchOrClear[float] = Field(
         default=UNSET, description=ESTIMATED_MINUTES_EDIT

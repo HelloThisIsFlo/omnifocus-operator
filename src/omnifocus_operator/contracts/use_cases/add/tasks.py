@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime as _datetime
-
 from pydantic import Field, field_validator
 
 from omnifocus_operator.agent_messages.descriptions import (
@@ -19,24 +17,14 @@ from omnifocus_operator.agent_messages.descriptions import (
     PLANNED_DATE_WRITE,
     TAGS_ADD_COMMAND,
 )
-from omnifocus_operator.agent_messages.errors import ADD_PARENT_NULL, INVALID_DATE_FORMAT
+from omnifocus_operator.agent_messages.errors import ADD_PARENT_NULL
 from omnifocus_operator.contracts.base import UNSET, CommandModel, Patch
+from omnifocus_operator.contracts.shared.dates import validate_date_string
 from omnifocus_operator.contracts.shared.repetition_rule import (
     RepetitionRuleAddSpec,
     RepetitionRuleRepoPayload,
 )
 from omnifocus_operator.models.base import OmniFocusBaseModel
-
-
-def _validate_date_string(v: object) -> object:
-    """Validate that a string is a parseable ISO date or datetime (syntax only)."""
-    if not isinstance(v, str):
-        return v
-    try:
-        _datetime.fromisoformat(v)
-    except ValueError:
-        raise ValueError(INVALID_DATE_FORMAT.format(value=v)) from None
-    return v
 
 
 class AddTaskCommand(CommandModel):
@@ -84,7 +72,7 @@ class AddTaskCommand(CommandModel):
     @field_validator("due_date", "defer_date", "planned_date", mode="before")
     @classmethod
     def _check_date_format(cls, v: object) -> object:
-        return _validate_date_string(v)
+        return validate_date_string(v)
 
     flagged: bool = Field(default=False, description=FLAGGED)
     estimated_minutes: float | None = Field(default=None, description=ESTIMATED_MINUTES)

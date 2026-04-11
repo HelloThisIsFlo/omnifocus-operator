@@ -18,21 +18,16 @@ from pydantic import (
 from omnifocus_operator.agent_messages import descriptions as desc
 from omnifocus_operator.agent_messages import errors as err
 from omnifocus_operator.contracts.base import UNSET, Patch, QueryModel, is_set
+from omnifocus_operator.contracts.shared.dates import validate_date_string
 
 _DATE_DURATION_PATTERN = re.compile(r"^(\d*)([dwmy])$")
 
 
 def _validate_date_bound_string(v: object) -> object:
     """Validate date bound syntax. 'now' literal and non-str pass through."""
-    if not isinstance(v, str):
+    if isinstance(v, str) and v == "now":
         return v
-    if v == "now":
-        return v
-    try:
-        _datetime.fromisoformat(v)
-    except ValueError:
-        raise ValueError(err.INVALID_DATE_FORMAT.format(value=v)) from None
-    return v
+    return validate_date_string(v)
 
 
 _DateBound = Annotated[
