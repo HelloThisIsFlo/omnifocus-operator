@@ -93,8 +93,9 @@ Carried forward from v1.3.1:
 |---|-------------|------|--------|-----------|
 | 260411-fv2 | Make date filter before/after bounds inclusive for datetime | 2026-04-11 | cfa9de8 | [260411-fv2-make-date-filter-before-after-bounds-inc](./quick/260411-fv2-make-date-filter-before-after-bounds-inc/) |
 | 260411-h2p | Add date filters to list_projects | 2026-04-11 | 7e53841 | [260411-h2p-add-date-filters-to-list-projects](./quick/260411-h2p-add-date-filters-to-list-projects/) |
+| 260411-uf3 | Surface preferences warnings to agent responses (PREF-03) | 2026-04-11 | e054961 | [260411-uf3-surface-preferences-warnings-to-agent-re](./quick/260411-uf3-surface-preferences-warnings-to-agent-re/) |
 
 ## Session Continuity
 
-Last activity: 2026-04-11 - Completed quick task 260411-h2p: Add date filters to list_projects
+Last activity: 2026-04-11 - Completed quick task 260411-uf3: Surface preferences warnings to agent responses (PREF-03)
 Resume: .planning/phases/49-implement-naive-local-datetime-contract-for-all-date-inputs/49-CONTEXT.md
