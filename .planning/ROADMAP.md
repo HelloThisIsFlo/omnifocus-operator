@@ -228,11 +228,11 @@ Plans:
   5. When settings unavailable, OmniFocus factory defaults used with a warning — no error-serving mode, no request failure
   6. `get_due_soon_setting()` removed from Repository protocol — service reads DueSoon from preferences module
   7. Tool descriptions document default time behavior, "soon" threshold source, and restart requirement for preference changes
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 50-01-PLAN.md — Bridge get_settings command + OmniFocusPreferences module with lazy load/cache/fallback
-- [ ] 50-02-PLAN.md — Service rewiring (DueSoon + field-aware normalization) + legacy deletion + descriptions
+- [x] 50-01-PLAN.md — Bridge get_settings command + OmniFocusPreferences module with lazy load/cache/fallback
+- [x] 50-02-PLAN.md — Service rewiring (DueSoon + field-aware normalization) + legacy deletion + descriptions
 
 ## Progress
 
@@ -251,4 +251,4 @@ Plans:
 | 47. Cross-Path Equivalence & Breaking Changes | v1.3.2 | 6/6 | Complete   | 2026-04-09 |
 | 48. Discriminated Union Refactor | v1.3.2 | 2/2 | Complete | 2026-04-10 |
 | 49. Naive-Local DateTime Contract | v1.3.2 | 3/3 | Complete    | 2026-04-10 |
-| 50. OmniFocus Settings API | v1.3.2 | 0/2 | In Progress | |
+| 50. OmniFocus Settings API | v1.3.2 | 2/2 | Complete    | 2026-04-11 |
