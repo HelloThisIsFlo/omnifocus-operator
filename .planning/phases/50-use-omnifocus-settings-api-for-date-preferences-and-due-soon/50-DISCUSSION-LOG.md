@@ -75,6 +75,15 @@
 
 ---
 
+## Tool Description Updates (added post-discussion)
+
+**User's request:** Tool descriptions must inform agents about the user-configured defaults:
+- **add_tasks / edit_tasks:** Date-only inputs use the user's OmniFocus default times (e.g., due dates default to configured time, not midnight)
+- **list_tasks / list_projects:** The "soon" shortcut uses the user's OmniFocus due-soon threshold preference
+- **All affected tools:** Brief note that date/time preferences are read from OmniFocus on first use; restart server if changed
+
+---
+
 ## Claude's Discretion
 
 - Bridge command design (name, response shape, which keys)

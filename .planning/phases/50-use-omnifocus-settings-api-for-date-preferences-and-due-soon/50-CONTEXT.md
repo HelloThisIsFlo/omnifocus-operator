@@ -44,6 +44,12 @@ Two deliverables:
 - **D-05b:** This is a product decision per the architecture litmus test: "Would another OmniFocus tool apply user-configured default times?" — No → domain.py.
 - **D-05c:** The exact mechanism for passing field context (parameter, caller provides the time, etc.) is Claude's discretion, guided by keeping domain.py focused on product decisions.
 
+### Tool description updates
+- **D-06:** `ADD_TASKS_TOOL_DOC` and `EDIT_TASKS_TOOL_DOC` in `descriptions.py` must mention that date-only inputs (dueDate, deferDate, plannedDate) use the user's configured default times from OmniFocus preferences. Agents should know: "If you omit a time, the user's OmniFocus default time is applied (e.g., due dates default to 19:00 if that's what the user configured)."
+- **D-06b:** `LIST_TASKS_TOOL_DOC` and `LIST_PROJECTS_TOOL_DOC` must note that the `"soon"` shortcut uses the user's OmniFocus due-soon threshold preference (not a hardcoded value).
+- **D-06c:** Both descriptions should include a brief note: "Date/time preferences are read from OmniFocus on first use. If you change them in OmniFocus, restart the server." This sets agent expectations about the lazy-singleton lifecycle.
+- **D-06d:** Keep it minimal — one sentence per concern, inline with existing tool docs. Not a separate section.
+
 ### Claude's Discretion
 - Bridge command name and response shape (e.g., `get_settings` returning a dict of key-value pairs)
 - Which OmniFocus settings keys to fetch (at minimum: `DefaultDueTime`, `DefaultStartTime`, `DefaultPlannedTime`, `DueSoonInterval`, `DueSoonGranularity`)
@@ -93,6 +99,7 @@ Two deliverables:
 - `src/omnifocus_operator/service/domain.py:236-243` — DueSoon fallback to upgrade (TODAY → TWO_DAYS)
 - `src/omnifocus_operator/service/service.py:314-320` — Pipeline DueSoon resolution to rewire
 - `src/omnifocus_operator/bridge/bridge.js` — Add `get_settings` command handler
+- `src/omnifocus_operator/agent_messages/descriptions.py` — Tool descriptions to update (D-06: add/edit default times, list soon threshold, restart note)
 
 </canonical_refs>
 
