@@ -197,9 +197,15 @@ For each gap/trap identified in the seed's chunk instructions, present a **concr
 > - {Likely mistakes — what models will reach for instead}
 > - {Doc evidence — what the docs say that resolves it}
 
-**Expected:**
-> - {Correct field/value} — {why}
-> - {What should NOT be present} — {why}
+**Expected:** `{tool_name}`
+```json
+{
+  "field": "value",
+  "otherField": "value"
+}
+```
+> - {Why this field/value is correct}
+> - {What should NOT be present — and why}
 
 **Tests:**
 > `{tool_name}` — {field(s) involved}
