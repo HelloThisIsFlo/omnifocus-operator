@@ -12,7 +12,7 @@ This file is the output of a research session that analyzed what v1.3.2 changed 
 
 ## Progress
 
-- [ ] Chunk 1 — Naive datetime contract + validation fixes
+- [x] Chunk 1 — Naive datetime contract + validation fixes
 - [ ] **Delete this file** (all chunks done, everything merged)
 
 ---
