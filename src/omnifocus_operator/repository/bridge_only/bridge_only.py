@@ -16,7 +16,7 @@ import asyncio
 import logging
 from typing import TYPE_CHECKING, Any
 
-from omnifocus_operator.config import SYSTEM_LOCATIONS, get_settings
+from omnifocus_operator.config import SYSTEM_LOCATIONS
 from omnifocus_operator.contracts.protocols import Repository
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskRepoResult
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskRepoResult
@@ -37,7 +37,6 @@ if TYPE_CHECKING:
     from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsRepoQuery
     from omnifocus_operator.contracts.use_cases.list.tags import ListTagsRepoQuery
     from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
-    from omnifocus_operator.models.enums import DueSoonSetting
     from omnifocus_operator.models.folder import Folder
     from omnifocus_operator.models.perspective import Perspective
     from omnifocus_operator.models.project import Project
@@ -348,15 +347,6 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
             lower_search = query.search.lower()
             items = [p for p in items if lower_search in p.name.lower()]
         return _paginate(items, query.limit, query.offset)
-
-    async def get_due_soon_setting(self) -> DueSoonSetting | None:
-        """Return the pre-validated due-soon threshold from Settings.
-
-        The field is validated at Settings construction time by a
-        field_validator that converts str -> DueSoonSetting. Invalid
-        values trigger error-serving mode at startup, not here.
-        """
-        return get_settings().due_soon_threshold
 
     async def _refresh(self, current_mtime: int) -> AllEntities:
         """Fetch fresh data from the bridge and update cache state.

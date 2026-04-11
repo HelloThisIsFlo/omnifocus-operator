@@ -49,7 +49,6 @@ if TYPE_CHECKING:
 
 import logging
 
-from omnifocus_operator.models.enums import DueSoonSetting
 from omnifocus_operator.models.folder import Folder
 from omnifocus_operator.models.perspective import Perspective
 from omnifocus_operator.models.project import Project
@@ -60,19 +59,6 @@ from omnifocus_operator.models.task import Task
 logger = logging.getLogger(__name__)
 
 __all__ = ["HybridRepository"]
-
-# Map (DueSoonInterval_seconds, DueSoonGranularity) -> DueSoonSetting enum member.
-# DueSoonInterval is stored in seconds in the SQLite Setting table.
-# DueSoonGranularity: 1 = calendar-aligned (snap to midnight), 0 = rolling (from now).
-_SETTING_MAP: dict[tuple[int, int], DueSoonSetting] = {
-    (86400, 1): DueSoonSetting.TODAY,
-    (86400, 0): DueSoonSetting.TWENTY_FOUR_HOURS,
-    (172800, 1): DueSoonSetting.TWO_DAYS,
-    (259200, 1): DueSoonSetting.THREE_DAYS,
-    (345600, 1): DueSoonSetting.FOUR_DAYS,
-    (432000, 1): DueSoonSetting.FIVE_DAYS,
-    (604800, 1): DueSoonSetting.ONE_WEEK,
-}
 
 
 def _paginate[T](items: list[T], limit: int | None, offset: int) -> ListRepoResult[T]:
@@ -998,47 +984,3 @@ class HybridRepository(BridgeWriteMixin, Repository):
     ) -> ListRepoResult[Perspective]:
         """Return perspectives from the SQLite cache, optionally filtered by search."""
         return await asyncio.to_thread(self._list_perspectives_sync, query)
-
-    # -- Due-soon setting --
-
-    def _read_due_soon_setting_sync(self) -> DueSoonSetting | None:
-        """Read DueSoonInterval and DueSoonGranularity from the SQLite Setting table.
-
-        The real OmniFocus schema stores settings as:
-        - persistentIdentifier TEXT (e.g. 'DueSoonInterval')
-        - valueData BLOB (plist-encoded integer)
-
-        Returns the matching DueSoonSetting enum member, or None if:
-        - The Setting table is missing the required rows
-        - The interval/granularity pair doesn't match any known setting
-        """
-        conn = sqlite3.connect(f"file:{self._db_path}?mode=ro", uri=True)
-        conn.row_factory = sqlite3.Row
-        try:
-            rows = conn.execute(
-                "SELECT persistentIdentifier, valueData FROM Setting "
-                "WHERE persistentIdentifier IN ('DueSoonInterval', 'DueSoonGranularity')"
-            ).fetchall()
-            settings: dict[str, bytes] = {
-                row["persistentIdentifier"]: row["valueData"] for row in rows
-            }
-
-            interval_blob = settings.get("DueSoonInterval")
-            granularity_blob = settings.get("DueSoonGranularity")
-            if interval_blob is None or granularity_blob is None:
-                return None
-
-            try:
-                interval_val = plistlib.loads(interval_blob)
-                granularity_val = plistlib.loads(granularity_blob)
-                key = (int(interval_val), int(granularity_val))
-            except (ValueError, TypeError, plistlib.InvalidFileException):
-                return None
-
-            return _SETTING_MAP.get(key)
-        finally:
-            conn.close()
-
-    async def get_due_soon_setting(self) -> DueSoonSetting | None:
-        """Return the OmniFocus due-soon threshold setting, or None if unavailable."""
-        return await asyncio.to_thread(self._read_due_soon_setting_sync)

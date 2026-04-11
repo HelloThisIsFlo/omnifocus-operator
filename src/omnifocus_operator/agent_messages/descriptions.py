@@ -34,7 +34,11 @@ EFFECTIVE_COMPLETION_DATE = (
 
 DATE_EXAMPLE = "2026-03-15T17:00:00"
 
-_DATE_INPUT_NOTE = "All dates use local time. Timezone offsets are accepted."
+_DATE_INPUT_NOTE = (
+    "All dates use local time. Timezone offsets are accepted. "
+    "Date-only inputs (no time) use your OmniFocus default time for that field. "
+    "Date/time preferences are read from OmniFocus on server start; restart if you change them."
+)
 
 DUE_DATE_WRITE = (
     "Deadline with real consequences if missed. Not for intentions -- use plannedDate instead."
@@ -519,6 +523,7 @@ LIST_TASKS_TOOL_DOC = (
     "\n"
     "completed/dropped filters include those lifecycle states in results\n"
     "(excluded by default). All other filters only restrict.\n"
+    "The 'soon' shortcut uses your OmniFocus due-soon threshold preference.\n"
     "\n"
     "availability vs defer: 'available'/'blocked' answers 'can I act on this?'\n"
     "(covers all four blocking reasons). defer filter answers 'what becomes\n"
@@ -541,7 +546,9 @@ LIST_PROJECTS_TOOL_DOC = (
     "effective*: inherited from the parent hierarchy when not set directly.\n"
     "\n"
     "Filters use effective (inherited) values -- projects inherit dates and flags\n"
-    "from parent folders. The effective* output fields show these values."
+    "from parent folders. The effective* output fields show these values.\n"
+    "\n"
+    "The 'soon' shortcut uses your OmniFocus due-soon threshold preference."
 )
 
 LIST_TAGS_TOOL_DOC = (
@@ -584,54 +591,25 @@ EDIT_TASKS_TOOL_DOC = (
     "\n"
     "Patch: omit = no change, null = clear, value = update.\n"
     "\n"
-    "Tags (in all tag fields) accept names (case-insensitive) or IDs;\n"
-    "you can mix both. Non-existent names are rejected. Ambiguous names\n"
-    "(case-insensitive collision) return an error.\n"
+    "Tags accept names (case-insensitive) or IDs; you can mix both.\n"
     "\n"
     "repetitionRule partial updates:\n"
-    "  - Task has no existing rule: all three root fields required\n"
-    "    (frequency, schedule, basedOn) -- same as creation.\n"
-    "  - Task has existing rule: omitted root fields are preserved.\n"
-    "  - frequency.type can be omitted (inferred from existing rule)\n"
-    "    unless changing to a different type.\n"
-    "  - Same type: omitted frequency sub-fields preserved.\n"
-    "  - Different type: full replacement with creation defaults.\n"
-    "  - on and onDates are mutually exclusive -- setting one clears\n"
-    "    the other.\n"
-    "  - null clears the entire repetition rule.\n"
+    "  - No existing rule: all root fields required (frequency, schedule, basedOn).\n"
+    "  - Has existing rule: omitted root fields preserved.\n"
+    "  - frequency.type omittable (inferred) unless changing type.\n"
+    "  - Same type: sub-fields preserved. Different type: full replacement.\n"
+    "  - on/onDates mutually exclusive. null clears the rule.\n"
     "\n"
     "Examples (repetitionRule):\n"
-    "  Change just the interval (type inferred from existing):\n"
-    "    {frequency: {interval: 5}}\n"
+    "  Change interval: {frequency: {interval: 5}}\n"
+    '  Add days: {frequency: {onDays: ["MO", "WE", "FR"]}}\n'
+    "  Remove days: {frequency: {onDays: null}}\n"
+    '  Change type: {frequency: {type: "weekly", onDays: ["MO", "FR"]}}\n'
+    "  Clear: null\n"
     "\n"
-    "  Add specific days to a weekly task (no type change):\n"
-    '    {frequency: {onDays: ["MO", "WE", "FR"]}}\n'
-    "\n"
-    "  Remove day constraint from weekly:\n"
-    "    {frequency: {onDays: null}}\n"
-    "\n"
-    "  Switch monthly from dates to weekday pattern (onDates auto-cleared):\n"
-    '    {frequency: {on: {"last": "friday"}}}\n'
-    "\n"
-    "  Change from daily to weekly (type required):\n"
-    '    {frequency: {type: "weekly", onDays: ["MO", "FR"]}}\n'
-    "\n"
-    "  Clear:\n"
-    "    null\n"
-    "\n"
-    "actions.move: exactly one key must be set. Use ending/beginning with\n"
-    "'$inbox' to move to inbox, or a project/task name or ID.\n"
-    "\n"
-    "actions.lifecycle:\n"
-    '  - "complete": marks the task as complete.\n'
-    '  - "drop": skips/cancels the task without completing it.\n'
-    "  On repeating tasks, both actions apply to the current occurrence\n"
-    "  only -- the next occurrence is automatically created. Dropping an\n"
-    "  entire repeating sequence is not supported via this API.\n"
-    "\n"
-    "actions.tags: replace is standalone. add/remove are combinable with\n"
-    "each other but not with replace.\n"
-    "\n"
+    "actions.move: one key (ending/beginning with '$inbox'/name/ID, or before/after).\n"
+    'actions.lifecycle: "complete" or "drop". Repeating tasks: applies to current occurrence.\n'
+    "actions.tags: replace (standalone) or add/remove (combinable).\n"
     "\n"
     "Returns: [{success, id, name, warnings?}]"
 )

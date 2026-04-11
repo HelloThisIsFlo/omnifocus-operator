@@ -5,13 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from omnifocus_operator.models.enums import (
-    DueSoonSetting,
-    EntityType,
-)
+from omnifocus_operator.models.enums import EntityType
 
 # -- Default pagination --------------------------------------------------------
 # Maximum items returned by list tools when no explicit limit is provided.
@@ -61,24 +57,6 @@ class Settings(BaseSettings):
     bridge_timeout: float = 10.0
     sqlite_path: str | None = None
     ofocus_path: str | None = None
-    due_soon_threshold: DueSoonSetting | None = None
-
-    @field_validator("due_soon_threshold", mode="before")
-    @classmethod
-    def _validate_due_soon_threshold(cls, value: object) -> DueSoonSetting | None:
-        if value is None:
-            return None
-        if isinstance(value, DueSoonSetting):
-            return value
-        if isinstance(value, str):
-            try:
-                return DueSoonSetting[value.upper()]
-            except KeyError:
-                valid = ", ".join(m.name for m in DueSoonSetting)
-                raise ValueError(
-                    f"Invalid OPERATOR_DUE_SOON_THRESHOLD '{value}'. Valid values: {valid}"
-                ) from None
-        raise ValueError(f"Expected string or None, got {type(value).__name__}")
 
 
 _settings: Settings | None = None

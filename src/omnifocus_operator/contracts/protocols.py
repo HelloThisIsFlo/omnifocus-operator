@@ -45,7 +45,6 @@ if TYPE_CHECKING:
         ListTasksRepoQuery,
     )
     from omnifocus_operator.models import AllEntities, Folder, Perspective, Project, Tag, Task
-    from omnifocus_operator.models.enums import DueSoonSetting
 
 
 @runtime_checkable
@@ -102,8 +101,6 @@ class Repository(Protocol):
     async def list_perspectives(
         self, query: ListPerspectivesRepoQuery
     ) -> ListRepoResult[Perspective]: ...
-
-    async def get_due_soon_setting(self) -> DueSoonSetting | None: ...
 
 
 @runtime_checkable
