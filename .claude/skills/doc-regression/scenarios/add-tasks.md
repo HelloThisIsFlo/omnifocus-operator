@@ -16,9 +16,9 @@ Scenarios testing whether LLMs can construct correct `add_tasks` payloads from t
 {
   "items": [{
     "name": "Kitchen renovation kickoff",
-    "deferDate": "2026-06-01T00:00:00Z",
-    "plannedDate": "2026-06-10T00:00:00Z",
-    "dueDate": "2026-06-15T00:00:00Z"
+    "deferDate": "2026-06-01T00:00:00",
+    "plannedDate": "2026-06-10T00:00:00",
+    "dueDate": "2026-06-15T00:00:00"
   }]
 }
 ```
@@ -43,7 +43,7 @@ Scenarios testing whether LLMs can construct correct `add_tasks` payloads from t
 {
   "items": [{
     "name": "Order new furniture",
-    "deferDate": "2026-09-01T00:00:00Z"
+    "deferDate": "2026-09-01T00:00:00"
   }]
 }
 ```
@@ -67,7 +67,7 @@ Scenarios testing whether LLMs can construct correct `add_tasks` payloads from t
 {
   "items": [{
     "name": "Organize photos from vacation",
-    "plannedDate": "2026-06-01T00:00:00Z"
+    "plannedDate": "2026-06-01T00:00:00"
   }]
 }
 ```
@@ -91,7 +91,7 @@ Scenarios testing whether LLMs can construct correct `add_tasks` payloads from t
 {
   "items": [{
     "name": "File tax return",
-    "dueDate": "2026-04-15T00:00:00Z"
+    "dueDate": "2026-04-15T00:00:00"
   }]
 }
 ```
@@ -114,8 +114,8 @@ Scenarios testing whether LLMs can construct correct `add_tasks` payloads from t
 {
   "items": [{
     "name": "Renew apartment lease",
-    "deferDate": "2026-06-30T00:00:00Z",
-    "dueDate": "2026-08-31T00:00:00Z"
+    "deferDate": "2026-06-30T00:00:00",
+    "dueDate": "2026-08-31T00:00:00"
   }]
 }
 ```
@@ -139,7 +139,7 @@ Scenarios testing whether LLMs can construct correct `add_tasks` payloads from t
 {
   "items": [{
     "name": "Clean out garage",
-    "plannedDate": "2026-04-03T00:00:00Z"
+    "plannedDate": "2026-04-03T00:00:00"
   }]
 }
 ```
@@ -162,7 +162,7 @@ Scenarios testing whether LLMs can construct correct `add_tasks` payloads from t
 {
   "items": [{
     "name": "Submit sign-up form for neighborhood barbecue",
-    "dueDate": "2026-05-20T00:00:00Z"
+    "dueDate": "2026-05-20T00:00:00"
   }]
 }
 ```
@@ -185,7 +185,7 @@ Scenarios testing whether LLMs can construct correct `add_tasks` payloads from t
 {
   "items": [{
     "name": "Water the plants",
-    "dueDate": "2026-06-01T00:00:00Z",
+    "dueDate": "2026-06-01T00:00:00",
     "repetitionRule": {
       "frequency": { "type": "daily", "interval": 3 },
       "schedule": "from_completion",
@@ -215,7 +215,7 @@ Scenarios testing whether LLMs can construct correct `add_tasks` payloads from t
 {
   "items": [{
     "name": "Team standup notes",
-    "dueDate": "2026-06-01T00:00:00Z",
+    "dueDate": "2026-06-01T00:00:00",
     "repetitionRule": {
       "frequency": { "type": "weekly", "interval": 2, "onDays": ["MO", "WE"] },
       "schedule": "regularly",
@@ -248,7 +248,7 @@ Scenarios testing whether LLMs can construct correct `add_tasks` payloads from t
 {
   "items": [{
     "name": "Monthly expense report",
-    "dueDate": "2026-06-01T00:00:00Z",
+    "dueDate": "2026-06-01T00:00:00",
     "repetitionRule": {
       "frequency": { "type": "monthly", "on": { "last": "friday" } },
       "schedule": "regularly",
@@ -277,7 +277,7 @@ Scenarios testing whether LLMs can construct correct `add_tasks` payloads from t
 {
   "items": [{
     "name": "Invoice clients",
-    "dueDate": "2026-06-01T00:00:00Z",
+    "dueDate": "2026-06-01T00:00:00",
     "repetitionRule": {
       "frequency": { "type": "monthly", "onDates": [1, 15, -1] },
       "schedule": "regularly",
@@ -305,7 +305,7 @@ Scenarios testing whether LLMs can construct correct `add_tasks` payloads from t
 {
   "items": [{
     "name": "Review insurance policy",
-    "plannedDate": "2026-06-01T00:00:00Z",
+    "plannedDate": "2026-06-01T00:00:00",
     "repetitionRule": {
       "frequency": { "type": "yearly" },
       "schedule": "regularly",
@@ -335,12 +335,12 @@ Scenarios testing whether LLMs can construct correct `add_tasks` payloads from t
 {
   "items": [{
     "name": "Take antibiotics",
-    "dueDate": "2026-04-02T00:00:00Z",
+    "dueDate": "2026-04-02T00:00:00",
     "repetitionRule": {
       "frequency": { "type": "daily" },
       "schedule": "regularly",
       "basedOn": "due_date",
-      "end": { "date": "2026-06-30T00:00:00Z" }
+      "end": { "date": "2026-06-30" }
     }
   }]
 }
@@ -366,7 +366,7 @@ Scenarios testing whether LLMs can construct correct `add_tasks` payloads from t
 {
   "items": [{
     "name": "Sign new lease agreement",
-    "dueDate": "2026-05-31T00:00:00Z",
+    "dueDate": "2026-05-31T00:00:00",
     "estimatedMinutes": 45
   }]
 }
@@ -390,7 +390,7 @@ Scenarios testing whether LLMs can construct correct `add_tasks` payloads from t
 {
   "items": [{
     "name": "Buy anniversary gift",
-    "dueDate": "2026-04-20T00:00:00Z",
+    "dueDate": "2026-04-20T00:00:00",
     "flagged": true
   }]
 }
@@ -438,7 +438,7 @@ Scenarios testing whether LLMs can construct correct `add_tasks` payloads from t
 {
   "items": [{
     "name": "Prepare Q3 board presentation",
-    "dueDate": "2026-07-15T00:00:00Z",
+    "dueDate": "2026-07-15T00:00:00",
     "estimatedMinutes": 120,
     "tags": ["Work", "Presentations"]
   }]
@@ -587,7 +587,7 @@ Call 2 (using the ID returned from call 1):
 {
   "items": [{
     "name": "Research flights",
-    "dueDate": "2026-05-30T00:00:00Z",
+    "dueDate": "2026-05-30T00:00:00",
     "tags": ["Travel", "Personal"]
   }]
 }
@@ -596,3 +596,97 @@ Call 2 (using the ID returned from call 1):
 **Grading:**
 - `items[0].tags` MUST be an array containing "Travel" and "Personal"
 - `items[0].actions` MUST NOT be present
+
+---
+
+### Scenario 23: Explicit inbox targeting
+
+**Prompt:**
+> I want to capture a quick thought: "Check if passport needs renewal". Put it directly in the inbox — I haven't figured out which project it belongs to yet.
+
+**Trap:** "Directly in the inbox" suggests explicit targeting. Omitting `parent` goes to inbox by default, but `parent: "$inbox"` is also valid. Models might try `parent: null` (warns) or `parent: "inbox"` (wrong — missing $).
+
+**Expected:** `add_tasks`
+```json
+{
+  "items": [{
+    "name": "Check if passport needs renewal"
+  }]
+}
+```
+
+**Grading:**
+- `items[0].name` MUST contain "passport"
+- `items[0].parent` MUST be omitted OR equal "$inbox"
+- `items[0].parent` MUST NOT be null
+- `items[0].parent` MUST NOT be "inbox" (missing $)
+
+---
+
+### Scenario 24: Date-only input
+
+**Prompt:**
+> Create a task "Dentist appointment" for March 15th.
+
+**Trap:** Date-only input is valid: `"2026-03-15"`. OmniFocus enriches with user's default time, not midnight. Models might add `T00:00:00` unnecessarily.
+
+**Expected:** `add_tasks`
+```json
+{
+  "items": [{
+    "name": "Dentist appointment",
+    "dueDate": "2026-03-15"
+  }]
+}
+```
+
+**Grading:**
+- `items[0].dueDate` MUST be a date in March 2026
+- `items[0].dueDate` SHOULD be date-only format (no time component)
+
+---
+
+### Scenario 25: Naive-local datetime
+
+**Prompt:**
+> Add a task "Submit quarterly report" due April 10th at 5pm.
+
+**Trap:** Preferred format is naive-local: `"2026-04-10T17:00:00"` (no Z, no offset). Models may add `Z` suffix from habit.
+
+**Expected:** `add_tasks`
+```json
+{
+  "items": [{
+    "name": "Submit quarterly report",
+    "dueDate": "2026-04-10T17:00:00"
+  }]
+}
+```
+
+**Grading:**
+- `items[0].dueDate` MUST be a datetime around April 10 2026 at 5pm
+- `items[0].dueDate` MUST use naive-local format (no Z, no timezone offset)
+
+---
+
+### Scenario 26: Timezone passthrough from external data
+
+**Prompt:**
+> I fetched my calendar and there's a deadline coming up: {"title": "Board presentation", "end": "2026-04-15T14:00:00-07:00"}. Create a task for it.
+
+**Trap:** When prompt contains data WITH timezone, passing it through is acceptable. Model shouldn't strip the offset — it's meaningful context. This is the exception to "prefer naive-local".
+
+**Expected:** `add_tasks`
+```json
+{
+  "items": [{
+    "name": "Board presentation",
+    "dueDate": "2026-04-15T14:00:00-07:00"
+  }]
+}
+```
+
+**Grading:**
+- `items[0].name` MUST contain "Board presentation" or similar
+- `items[0].dueDate` MUST be a datetime around April 15 2026 at 2pm
+- `items[0].dueDate` SHOULD preserve timezone offset from source data (acceptable: `-07:00` or converted naive-local)
