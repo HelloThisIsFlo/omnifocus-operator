@@ -314,6 +314,15 @@ class TestCleanLoc:
     def test_strips_literal_prefix(self) -> None:
         assert _clean_loc(("literal[complete]",)) == ()
 
+    def test_strips_tagged_union_prefix(self) -> None:
+        """tagged-union[...] from discriminated unions should be stripped."""
+        assert _clean_loc(
+            ("tagged-union[ThisPeriodFilter,LastPeriodFilter]", "this_period", "after")
+        ) == (
+            "this_period",
+            "after",
+        )
+
     def test_empty_tuple(self) -> None:
         assert _clean_loc(()) == ()
 
@@ -434,6 +443,47 @@ class TestUnsetFiltering:
         messages = _format_validation_errors(exc)
         assert len(messages) == 1
         assert "Real validation failure" in messages[0]
+
+
+# ── union_tag_not_found suppression ─────────────────────────────────────
+
+
+class TestUnionTagNotFoundSuppression:
+    """union_tag_not_found from discriminated unions leaks function names -- suppress it."""
+
+    def test_union_tag_not_found_is_suppressed(self) -> None:
+        """Discriminator function name should not appear in agent-facing errors."""
+        exc = _capture_validation_error(_TestModel, {"bogus": "x"})
+        union_tag_error = {
+            "type": "union_tag_not_found",
+            "loc": ("completed",),
+            "msg": "Unable to extract tag using discriminator _route_date_filter()",
+            "input": True,
+        }
+        real_error = {
+            "type": "value_error",
+            "loc": ("completed",),
+            "msg": "Input should be 'all' or 'today'",
+            "input": True,
+        }
+        exc.errors = lambda: [union_tag_error, real_error]  # type: ignore[assignment]
+        messages = _format_validation_errors(exc)
+        assert len(messages) == 1
+        assert "_route_date_filter" not in messages[0]
+        assert "Input should be" in messages[0]
+
+    def test_union_tag_not_found_alone_produces_fallback(self) -> None:
+        """If union_tag_not_found is the only error, empty list triggers INVALID_INPUT fallback."""
+        exc = _capture_validation_error(_TestModel, {"bogus": "x"})
+        union_tag_error = {
+            "type": "union_tag_not_found",
+            "loc": ("field",),
+            "msg": "Unable to extract tag using discriminator _route_date_filter()",
+            "input": True,
+        }
+        exc.errors = lambda: [union_tag_error]  # type: ignore[assignment]
+        messages = _format_validation_errors(exc)
+        assert len(messages) == 0  # Middleware falls back to INVALID_INPUT
 
 
 # ── Logging integration (WRIT-10) ─────────────────────────────────────

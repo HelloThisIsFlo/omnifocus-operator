@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
+from typing import Annotated
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import BeforeValidator, Field, WithJsonSchema, model_validator
 
 from omnifocus_operator.agent_messages import errors as err
 from omnifocus_operator.agent_messages.descriptions import (
@@ -26,7 +27,7 @@ from omnifocus_operator.agent_messages.descriptions import (
     SEARCH_FIELD_NAME_NOTES,
 )
 from omnifocus_operator.config import DEFAULT_LIST_LIMIT
-from omnifocus_operator.contracts.base import UNSET, Patch, QueryModel, _Unset
+from omnifocus_operator.contracts.base import UNSET, Patch, QueryModel
 from omnifocus_operator.contracts.use_cases.list._date_filter import DateFilter
 from omnifocus_operator.contracts.use_cases.list._enums import (
     AvailabilityFilter,
@@ -88,12 +89,28 @@ def parse_review_due_within(value: str) -> ReviewDueFilter:
     return ReviewDueFilter(amount=amount, unit=DurationUnit(unit_str))
 
 
+def _coerce_review_due_input(v: object) -> object:
+    """Convert string input to ReviewDueFilter; pass through model instances."""
+    if isinstance(v, ReviewDueFilter):
+        return v
+    if isinstance(v, str):
+        return parse_review_due_within(v)
+    raise ValueError(err.REVIEW_DUE_WITHIN_INVALID.format(value=v))
+
+
+ReviewDueWithinInput = Annotated[
+    ReviewDueFilter,
+    BeforeValidator(_coerce_review_due_input),
+    WithJsonSchema({"type": "string", "description": REVIEW_DUE_WITHIN_DESC}),
+]
+
+
 class ListProjectsQuery(QueryModel):
     __doc__ = LIST_PROJECTS_QUERY_DOC
 
     availability: list[AvailabilityFilter] = Field(default=[AvailabilityFilter.REMAINING])
     folder: Patch[str] = Field(default=UNSET, description=FOLDER_FILTER_DESC)
-    review_due_within: Patch[ReviewDueFilter] = Field(
+    review_due_within: Patch[ReviewDueWithinInput] = Field(
         default=UNSET, description=REVIEW_DUE_WITHIN_DESC
     )
     flagged: Patch[bool] = Field(default=UNSET, description=FLAGGED_FILTER_DESC)
@@ -122,15 +139,6 @@ class ListProjectsQuery(QueryModel):
         if isinstance(data, dict):
             reject_null_filters(data, _PATCH_FIELDS)
         return data
-
-    @field_validator("review_due_within", mode="before")
-    @classmethod
-    def _parse_review_due_within(cls, v: object) -> object:
-        if isinstance(v, (ReviewDueFilter, _Unset)):
-            return v
-        if isinstance(v, str):
-            return parse_review_due_within(v)
-        raise ValueError(err.REVIEW_DUE_WITHIN_INVALID.format(value=v))
 
     @model_validator(mode="after")
     def _check_offset_requires_limit(self) -> ListProjectsQuery:

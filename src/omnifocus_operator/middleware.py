@@ -65,6 +65,7 @@ def _clean_loc(loc: tuple[str | int, ...]) -> tuple[str | int, ...]:
             and not part.startswith("function-")
             and not part.startswith("is-instance")
             and not part.startswith("literal[")
+            and not part.startswith("tagged-union[")
         )
     )
 
@@ -92,6 +93,24 @@ def _extract_item_index(loc: tuple[str | int, ...]) -> int | None:
     return None
 
 
+def _extract_error_field_name(loc: tuple[str | int, ...]) -> str | None:
+    """Extract the field that caused the validation error from a cleaned loc.
+
+    Used to prefix error messages so agents know *which* field is wrong.
+    Example: loc ("query", "completed") → "completed", producing
+    "completed: Input should be 'all' or 'today'" instead of bare
+    "Input should be 'all' or 'today'".
+
+    Skips the first element when possible — it's typically the tool parameter
+    wrapper (e.g. "query") which isn't meaningful to agents.
+    """
+    search = loc[1:] if len(loc) > 1 else loc
+    for part in search:
+        if isinstance(part, str):
+            return part
+    return None
+
+
 def _format_validation_errors(exc: ValidationError) -> list[str]:
     """Extract clean, agent-friendly messages from a Pydantic ValidationError.
 
@@ -108,6 +127,8 @@ def _format_validation_errors(exc: ValidationError) -> list[str]:
             continue
         if e["type"] == "missing":
             continue
+        if e["type"] == "union_tag_not_found":
+            continue
         raw_loc = e.get("loc", ())
         idx = _extract_item_index(raw_loc)
         cleaned_loc = _clean_loc(raw_loc)
@@ -117,6 +138,9 @@ def _format_validation_errors(exc: ValidationError) -> list[str]:
             msg = UNKNOWN_FIELD.format(field=field)
         else:
             msg = e["msg"]
+            field_name = _extract_error_field_name(stripped_loc)
+            if field_name:
+                msg = f"{field_name}: {msg}"
         if idx is not None:
             msg = f"Task {idx + 1}: {msg}"
         messages.append(msg)
