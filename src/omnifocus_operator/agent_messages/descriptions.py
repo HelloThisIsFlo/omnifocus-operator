@@ -591,7 +591,9 @@ EDIT_TASKS_TOOL_DOC = (
     "\n"
     "Patch: omit = no change, null = clear, value = update.\n"
     "\n"
-    "Tags accept names (case-insensitive) or IDs; you can mix both.\n"
+    "Tags (in all tag fields) accept names (case-insensitive) or IDs;\n"
+    "you can mix both. Non-existent names are rejected. Ambiguous names\n"
+    "(case-insensitive collision) return an error.\n"
     "\n"
     "repetitionRule partial updates:\n"
     "  - No existing rule: all root fields required (frequency, schedule, basedOn).\n"
@@ -608,7 +610,9 @@ EDIT_TASKS_TOOL_DOC = (
     "  Clear: null\n"
     "\n"
     "actions.move: one key (ending/beginning with '$inbox'/name/ID, or before/after).\n"
-    'actions.lifecycle: "complete" or "drop". Repeating tasks: applies to current occurrence.\n'
+    'actions.lifecycle: "complete" or "drop". Repeating tasks: current\n'
+    "occurrence only; next occurrence auto-created. Cannot drop an entire\n"
+    "repeating sequence.\n"
     "actions.tags: replace (standalone) or add/remove (combinable).\n"
     "\n"
     "Returns: [{success, id, name, warnings?}]"
