@@ -1,7 +1,7 @@
 ---
 suite: task-creation
 display: Task Creation
-test_count: 17
+test_count: 19
 
 discovery:
   needs:
@@ -139,6 +139,18 @@ Run INDIVIDUALLY (will error):
 1. `add_tasks` with `name: "T6c-BadSystem", parent: "$trash"`
 2. PASS if: error contains "'$trash' starts with '$' which is reserved for system locations" and mentions "$inbox" as valid
 
+### 7. Naive Datetime & Date-Only
+
+#### Test 7a: Naive datetime acceptance
+1. `add_tasks` with `items: [{ name: "T7a-NaiveDT", dueDate: "2026-07-15T17:00:00" }]` (no Z, no offset)
+2. `get_task` on the returned ID
+3. PASS if: task created successfully; no error; `dueDate` in response contains `2026-07-15` and a time component
+
+#### Test 7b: Date-only enrichment with default time
+1. `add_tasks` with `items: [{ name: "T7b-DateOnly", dueDate: "2026-07-15" }]`
+2. `get_task` on the returned ID
+3. PASS if: task created; `dueDate` in response is NOT `T00:00:00` (midnight) — proves enrichment with user's DefaultDueTime (typically 17:00). The exact time depends on user's OmniFocus preferences, but it must NOT be midnight.
+
 ## Report Table Rows
 
 | # | Test | Description | Result |
@@ -160,3 +172,5 @@ Run INDIVIDUALLY (will error):
 | 6a | $inbox parent | `parent: "$inbox"` creates task in inbox, same as omitting parent | |
 | 6b | Error: null parent | `parent: null` returns educational error about inbox syntax | |
 | 6c | Error: system location | `parent: "$trash"` returns reserved prefix error listing valid locations | |
+| 7a | Create: naive datetime | Naive datetime (no Z) accepted; task created with correct dueDate | |
+| 7b | Create: date-only | Date-only enriched with DefaultDueTime (not midnight); proves PREF-04 | |

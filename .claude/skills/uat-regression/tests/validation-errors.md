@@ -37,9 +37,9 @@ Run each test INDIVIDUALLY (will error):
 1. `add_tasks` with `items: [{ name: "VE-1a", priority: "high" }]`
 2. PASS if: error mentions "Unknown field" and "priority"; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
 
-#### Test 1b: Invalid date format (no timezone)
-1. `add_tasks` with `items: [{ name: "VE-1b", dueDate: "2026-03-15" }]`
-2. PASS if: error about date/datetime format; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+#### Test 1b: Invalid date format (unparseable)
+1. `add_tasks` with `items: [{ name: "VE-1b", dueDate: "March 15, 2026" }]`
+2. PASS if: error about invalid date format mentioning accepted formats (ISO date, ISO datetime, or datetime with timezone); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
 
 #### Test 1c: Empty items array
 1. `add_tasks` with `items: []`
@@ -183,11 +183,11 @@ Run each test INDIVIDUALLY (will error):
 
 #### Test 8e: DateFilter — mixed shorthand and absolute
 1. `list_tasks` with `due: {this: "w", after: "2026-03-01T00:00:00Z"}`
-2. PASS if: error mentions cannot mix shorthand (this/last/next) and absolute (before/after); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+2. PASS if: error mentions "Unknown field" and "after" (discriminated union routes to ThisPeriodFilter which rejects extra keys via `extra="forbid"`); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
 
 #### Test 8f: DateFilter — empty object
 1. `list_tasks` with `due: {}`
-2. PASS if: error mentions DateFilter requires either shorthand or absolute bounds; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+2. PASS if: error mentions "Date range filter requires at least one of: before or after" and lists accepted formats (ISO date, ISO datetime, datetime with offset, or 'now'); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
 
 ### 9. v1.3.2 Breaking Change Validation
 
@@ -210,7 +210,7 @@ Run each test INDIVIDUALLY (will error):
 | # | Test | Description | Result |
 |---|------|-------------|--------|
 | 1a | add_tasks: unknown field | Unknown field → clean "Unknown field" error | |
-| 1b | add_tasks: invalid date | Date without timezone → clean format error | |
+| 1b | add_tasks: invalid date | Unparseable date format → clean error listing accepted formats | |
 | 1c | add_tasks: empty items | Empty items array → clean error | |
 | 1d | add_tasks: missing name | No name field → "Task 1:" prefixed error | |
 | 2a | edit_tasks: unknown field | Unknown field → clean "Unknown field" error | |
@@ -239,8 +239,8 @@ Run each test INDIVIDUALLY (will error):
 | 8b | DateFilter: zero/negative count | `due: {next: "0d"}` → error about zero/negative count | |
 | 8c | DateFilter: invalid duration unit | `due: {last: "3x"}` → error listing valid units (d, w, m, y) | |
 | 8d | DateFilter: after > before | Inverted date range → error with actual values shown | |
-| 8e | DateFilter: mixed shorthand+absolute | `due: {this: "w", after: "..."}` → cannot mix groups | |
-| 8f | DateFilter: empty object | `due: {}` → requires shorthand or absolute bounds | |
+| 8e | DateFilter: mixed shorthand+absolute | `due: {this: "w", after: "..."}` → "Unknown field: after" (extra="forbid") | |
+| 8f | DateFilter: empty object | `due: {}` → "Date range filter requires at least one of: before or after" | |
 | 9a | Breaking: availability "all" | Removed value → error listing available/blocked/remaining | |
 | 9b | Breaking: availability "completed" | Removed value → same guidance as 9a | |
 | 9c | Breaking: boolean completed | `completed: true` → expects string shortcut or DateFilter | |

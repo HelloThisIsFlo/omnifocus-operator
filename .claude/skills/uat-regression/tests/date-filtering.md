@@ -1,7 +1,7 @@
 ---
 suite: date-filtering
 display: Date Filtering
-test_count: 35
+test_count: 37
 
 computed_values:
   OVERDUE_DUE: "now - 2h"
@@ -211,6 +211,14 @@ Tests `list_tasks` date filtering — due date shortcuts (overdue, soon, today),
 1. `list_tasks` with `defer: {before: "now"}, search: "DF-"`
 2. PASS if: DF-DeferToday appears (deferDate at 06:00 today has passed — assumes test runs after 06:00 local); response warnings array includes text containing "Tip: This shows tasks whose defer date has passed. For all currently available tasks, use availability: 'available'."
 
+#### Test 7c: defer: {last: "1w"} — W023 hint on shorthand
+1. `list_tasks` with `defer: {last: "1w"}, search: "DF-"`
+2. PASS if: DF-DeferToday appears (its deferDate at 06:00 today is within the last week range); response warnings array includes W023 hint text about availability: 'available' (shorthand `last` also triggers the past-range hint)
+
+#### Test 7d: defer: {after: "2090-01-01", before: "2099-12-31"} — W022 hint on absolute non-now
+1. `list_tasks` with `defer: {after: "2090-01-01", before: "2099-12-31"}, search: "DF-"`
+2. PASS if: DF-Blocked appears (deferDate 2099-01-01 is within this far-future range); response warnings array includes W022 hint text about availability: 'blocked' (absolute future range also triggers the hint)
+
 ### 8. Other Date Fields
 
 #### Test 8a: modified: {last: "1w"}
@@ -267,6 +275,8 @@ Tests `list_tasks` date filtering — due date shortcuts (overdue, soon, today),
 | 6d | Combo: multi-dim defer + due | Both date dimensions AND'd; empty result proves intersection logic | |
 | 7a | Defer hint: after now | W022 tip about availability: 'blocked' alternative | |
 | 7b | Defer hint: before now | W023 tip about availability: 'available' alternative | |
+| 7c | Defer hint: shorthand last | `{last: "1w"}` also triggers W023 past-range hint | |
+| 7d | Defer hint: absolute future | Far-future absolute range triggers W022 hint | |
 | 8a | Other: modified last week | All remaining tasks returned; no lifecycle auto-include for modified | |
 | 8b | Other: planned today | Only task with planned date today returned | |
 | 9a | Edge: no due date | Task without dueDate excluded from overdue filter | |

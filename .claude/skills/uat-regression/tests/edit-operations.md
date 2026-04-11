@@ -1,7 +1,7 @@
 ---
 suite: edit-operations
 display: Edit Operations
-test_count: 23
+test_count: 24
 
 setup: |
   ### Task Hierarchy
@@ -91,6 +91,12 @@ Tests field editing, patch semantics, no-op warnings, status warnings, error han
 2. `get_task` to verify `plannedDate` is set and `effectivePlannedDate` matches
 3. `plannedDate: null` on T2
 4. PASS if: both set and clear succeed, effective field mirrors base field when set
+
+#### Test 2g: Naive datetime on edit
+1. `dueDate: "2026-07-15T14:00:00"` on T2 (no Z, no offset — naive local)
+2. `get_task` on T2
+3. PASS if: edit succeeds; no error; `dueDate` in response contains `2026-07-15` and `14:00`
+4. Clean up: `dueDate: null` on T2
 
 ### 3. No-Op Warnings
 
@@ -186,6 +192,7 @@ Run each INDIVIDUALLY (they will error):
 | 2d | Name change | Renaming a task; response reflects the new name | |
 | 2e | Multi-field single call | 4 fields in one call; all applied; effective fields mirror | |
 | 2f | plannedDate set + clear | Set plannedDate; effectivePlannedDate mirrors; then clear | |
+| 2g | Naive datetime on edit | Naive local datetime (no Z) accepted; dueDate set correctly | |
 | 3a | No-op: empty edit | Sending only an ID with no fields returns "no changes specified" | |
 | 3b | No-op: same flagged | Setting flagged to its current value returns "no changes detected" | |
 | 3c | No-op: same name | Setting name to its current value returns a warning | |
