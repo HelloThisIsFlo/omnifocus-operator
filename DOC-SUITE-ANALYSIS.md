@@ -22,7 +22,7 @@ This file is the output of a research session that analyzed what v1.3 through v1
 - [x] Chunk 1 — list-tasks: Date filters & shortcuts (NEW SUITE)
 - [x] Chunk 2 — list-tasks: Availability, lifecycle & base filters
 - [x] Chunk 3 — list-projects (NEW SUITE)
-- [ ] Chunk 4 — Write tool updates (add-tasks.md + edit-tasks.md)
+- [x] Chunk 4 — Write tool updates (add-tasks.md + edit-tasks.md)
 - [ ] **Delete this file** (all chunks done, everything merged)
 
 ---
