@@ -106,13 +106,9 @@ Task: {scenario prompt}
 
 ### Step 5: Run Models
 
-Spawn Agent subagents with `model` override. To avoid spawning too many agents at once:
+Spawn **one Agent per model** — each agent receives ALL scenarios as a single exam and answers every one. With 2 models that's 2 agents; with 3 models, 3 agents. Launch all model agents in parallel.
 
-- **Batch by scenario:** For each scenario, launch up to 3 agents (one per model) in parallel.
-- **Process scenarios sequentially** or in small batches of 2-3 scenarios.
-- Each agent gets the exam prompt from Step 4 and returns the model's response.
-
-Agent prompt is exactly the exam prompt — nothing more.
+Construct the agent prompt by concatenating ALL scenario exam prompts (from Step 4) into one message, separated by `---`. The agent answers each scenario in order. Agent prompt is exactly the combined exam — nothing more.
 
 ### Step 6: Grade
 
