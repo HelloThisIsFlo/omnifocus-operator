@@ -8,7 +8,7 @@ default:
 setup:
     uv sync
     cd bridge && npm install
-    uv run pre-
+    uv run pre-commit install
 
 # ─── MCP Install ──────────────────────────────────────────────────────────────
 
