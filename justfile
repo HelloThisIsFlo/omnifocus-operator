@@ -140,6 +140,11 @@ clean:
 
 # ─── CI ──────────────────────────────────────────────────────────────────────
 
+# Install dependencies for CI (strict lockfile, no hooks)
+setup-ci:
+    uv sync --locked --dev
+    cd bridge && npm ci
+
 # SAFE-01: No test may reference RealBridge outside allowed files
 safety:
     @violations=$(grep -r "RealBridge" tests/ --include="*.py" --exclude-dir=doubles -l \
@@ -153,6 +158,13 @@ safety:
     fi
 
 # Replicate CI pipeline locally (lint/typecheck first = fail fast)
-ci: lint typecheck safety test-js
+ci: setup-ci lint typecheck safety test-js
     uv run pytest --cov-fail-under=80
     @echo "CI pipeline passed."
+
+# Push and watch CI run
+push-watch:
+    git push
+    @echo "Waiting for CI run to start..."
+    sleep 3
+    gh run watch
