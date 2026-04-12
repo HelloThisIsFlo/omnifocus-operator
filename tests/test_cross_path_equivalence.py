@@ -667,7 +667,8 @@ async def seed_sqlite_repo(data: dict[str, Any], tmp_path: Path) -> HybridReposi
                 repetitionRuleString TEXT,
                 repetitionScheduleTypeString TEXT,
                 repetitionAnchorDateKey TEXT,
-                catchUpAutomatically INTEGER DEFAULT 0
+                catchUpAutomatically INTEGER DEFAULT 0,
+                rank INTEGER DEFAULT 0
             );
             CREATE TABLE ProjectInfo (
                 pk TEXT PRIMARY KEY,

@@ -109,7 +109,8 @@ def create_test_db(
                 repetitionRuleString TEXT,
                 repetitionScheduleTypeString TEXT,
                 repetitionAnchorDateKey TEXT,
-                catchUpAutomatically INTEGER DEFAULT 0
+                catchUpAutomatically INTEGER DEFAULT 0,
+                rank INTEGER DEFAULT 0
             );
 
             CREATE TABLE ProjectInfo (
@@ -3025,3 +3026,455 @@ class TestListPerspectives:
         assert result.has_more is False
         assert result.total == len(result.items)
         assert result.total == 3
+
+
+# ============================================================================
+# TASK ORDERING (CTE-based outline order + dotted path computation)
+# ============================================================================
+
+
+class TestTaskOrdering:
+    """Verify CTE-based outline ordering and dotted order computation.
+
+    These tests validate ORDER-02 (sequential sibling ordinals),
+    ORDER-04 (outline order), and ORDER-05 (inbox after projects).
+    """
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        projects=[
+            _minimal_project(
+                {
+                    "persistentIdentifier": "proj-root",
+                    "name": "My Project",
+                    "rank": 1000,
+                }
+            ),
+        ],
+        tasks=[
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t1",
+                    "name": "First",
+                    "parent": "proj-root",
+                    "containingProjectInfo": "pi-proj-root",
+                    "rank": 100000,
+                }
+            ),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t2",
+                    "name": "Second",
+                    "parent": "proj-root",
+                    "containingProjectInfo": "pi-proj-root",
+                    "rank": 200000,
+                }
+            ),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t3",
+                    "name": "Third",
+                    "parent": "proj-root",
+                    "containingProjectInfo": "pi-proj-root",
+                    "rank": 300000,
+                }
+            ),
+        ],
+    )
+    async def test_siblings_have_sequential_order(self, hybrid_repo: HybridRepository) -> None:
+        """Siblings under the same parent get sequential 1-based order values."""
+        result = await hybrid_repo.list_tasks(ListTasksRepoQuery())
+        tasks_by_name = {t.name: t for t in result.items}
+        assert tasks_by_name["First"].order == "1"
+        assert tasks_by_name["Second"].order == "2"
+        assert tasks_by_name["Third"].order == "3"
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        projects=[
+            _minimal_project(
+                {
+                    "persistentIdentifier": "proj-root",
+                    "name": "My Project",
+                    "rank": 1000,
+                }
+            ),
+        ],
+        tasks=[
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t1",
+                    "name": "First",
+                    "parent": "proj-root",
+                    "containingProjectInfo": "pi-proj-root",
+                    "rank": 100000,
+                }
+            ),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t2",
+                    "name": "Child of First",
+                    "parent": "t1",
+                    "containingProjectInfo": "pi-proj-root",
+                    "rank": 50000,
+                }
+            ),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t3",
+                    "name": "Second child of First",
+                    "parent": "t1",
+                    "containingProjectInfo": "pi-proj-root",
+                    "rank": 150000,
+                }
+            ),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t4",
+                    "name": "Second",
+                    "parent": "proj-root",
+                    "containingProjectInfo": "pi-proj-root",
+                    "rank": 200000,
+                }
+            ),
+        ],
+    )
+    async def test_subtasks_have_dotted_order(self, hybrid_repo: HybridRepository) -> None:
+        """Subtasks get dotted order reflecting the full hierarchy."""
+        result = await hybrid_repo.list_tasks(ListTasksRepoQuery())
+        tasks_by_name = {t.name: t for t in result.items}
+        assert tasks_by_name["First"].order == "1"
+        assert tasks_by_name["Child of First"].order == "1.1"
+        assert tasks_by_name["Second child of First"].order == "1.2"
+        assert tasks_by_name["Second"].order == "2"
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        projects=[
+            _minimal_project(
+                {
+                    "persistentIdentifier": "proj-root",
+                    "name": "My Project",
+                    "rank": 1000,
+                }
+            ),
+        ],
+        tasks=[
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t1",
+                    "name": "Project Task",
+                    "parent": "proj-root",
+                    "containingProjectInfo": "pi-proj-root",
+                    "rank": 100000,
+                }
+            ),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t2",
+                    "name": "Inbox Task",
+                    "parent": None,
+                    "containingProjectInfo": None,
+                    "rank": 50000,
+                }
+            ),
+        ],
+    )
+    async def test_inbox_tasks_sort_after_project_tasks(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """Inbox tasks sort after all project tasks in list_tasks."""
+        result = await hybrid_repo.list_tasks(ListTasksRepoQuery())
+        names = [t.name for t in result.items]
+        assert names == ["Project Task", "Inbox Task"]
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task(
+                {
+                    "persistentIdentifier": "inbox-1",
+                    "name": "Inbox First",
+                    "parent": None,
+                    "containingProjectInfo": None,
+                    "rank": 100000,
+                }
+            ),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "inbox-2",
+                    "name": "Inbox Second",
+                    "parent": None,
+                    "containingProjectInfo": None,
+                    "rank": 200000,
+                }
+            ),
+        ],
+    )
+    async def test_inbox_tasks_own_namespace(self, hybrid_repo: HybridRepository) -> None:
+        """Inbox tasks have their own namespace starting at 1."""
+        result = await hybrid_repo.list_tasks(ListTasksRepoQuery())
+        tasks_by_name = {t.name: t for t in result.items}
+        assert tasks_by_name["Inbox First"].order == "1"
+        assert tasks_by_name["Inbox Second"].order == "2"
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        projects=[
+            _minimal_project(
+                {
+                    "persistentIdentifier": "proj-root",
+                    "name": "My Project",
+                    "rank": 1000,
+                }
+            ),
+        ],
+        tasks=[
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t1",
+                    "name": "First",
+                    "parent": "proj-root",
+                    "containingProjectInfo": "pi-proj-root",
+                    "rank": 100000,
+                }
+            ),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t2",
+                    "name": "Child of First",
+                    "parent": "t1",
+                    "containingProjectInfo": "pi-proj-root",
+                    "rank": 50000,
+                }
+            ),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t3",
+                    "name": "Second",
+                    "parent": "proj-root",
+                    "containingProjectInfo": "pi-proj-root",
+                    "rank": 200000,
+                }
+            ),
+        ],
+    )
+    async def test_list_tasks_returns_outline_order(self, hybrid_repo: HybridRepository) -> None:
+        """list_tasks returns tasks in depth-first outline order."""
+        result = await hybrid_repo.list_tasks(ListTasksRepoQuery())
+        names = [t.name for t in result.items]
+        # Depth-first: First, then its child, then Second
+        assert names == ["First", "Child of First", "Second"]
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        projects=[
+            _minimal_project(
+                {
+                    "persistentIdentifier": "proj-root",
+                    "name": "My Project",
+                    "rank": 1000,
+                }
+            ),
+        ],
+        tasks=[
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t1",
+                    "name": "First",
+                    "parent": "proj-root",
+                    "containingProjectInfo": "pi-proj-root",
+                    "rank": 100000,
+                    "effectiveFlagged": 1,
+                    "flagged": 1,
+                }
+            ),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t2",
+                    "name": "Unflagged",
+                    "parent": "proj-root",
+                    "containingProjectInfo": "pi-proj-root",
+                    "rank": 200000,
+                }
+            ),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t3",
+                    "name": "Third flagged",
+                    "parent": "proj-root",
+                    "containingProjectInfo": "pi-proj-root",
+                    "rank": 300000,
+                    "effectiveFlagged": 1,
+                    "flagged": 1,
+                }
+            ),
+        ],
+    )
+    async def test_filtered_results_preserve_outline_order(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """Filtered list_tasks results preserve outline order with sparse values."""
+        result = await hybrid_repo.list_tasks(ListTasksRepoQuery(flagged=True))
+        names = [t.name for t in result.items]
+        assert names == ["First", "Third flagged"]
+        # Order values may be sparse (1, 3 since middle sibling filtered out)
+        assert result.items[0].order == "1"
+        assert result.items[1].order == "3"
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        projects=[
+            _minimal_project(
+                {
+                    "persistentIdentifier": "proj-root",
+                    "name": "My Project",
+                    "rank": 1000,
+                }
+            ),
+        ],
+        tasks=[
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t1",
+                    "name": "First",
+                    "parent": "proj-root",
+                    "containingProjectInfo": "pi-proj-root",
+                    "rank": 100000,
+                }
+            ),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t2",
+                    "name": "Second",
+                    "parent": "proj-root",
+                    "containingProjectInfo": "pi-proj-root",
+                    "rank": 200000,
+                }
+            ),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t3",
+                    "name": "Third",
+                    "parent": "proj-root",
+                    "containingProjectInfo": "pi-proj-root",
+                    "rank": 300000,
+                }
+            ),
+        ],
+    )
+    async def test_pagination_with_cte_ordering(self, hybrid_repo: HybridRepository) -> None:
+        """Pagination with LIMIT/OFFSET works correctly with CTE ordering."""
+        result = await hybrid_repo.list_tasks(ListTasksRepoQuery(limit=2, offset=0))
+        assert len(result.items) == 2
+        assert result.items[0].name == "First"
+        assert result.items[1].name == "Second"
+        assert result.has_more is True
+
+        result2 = await hybrid_repo.list_tasks(ListTasksRepoQuery(limit=2, offset=2))
+        assert len(result2.items) == 1
+        assert result2.items[0].name == "Third"
+        assert result2.has_more is False
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        projects=[
+            _minimal_project(
+                {
+                    "persistentIdentifier": "proj-root",
+                    "name": "My Project",
+                    "rank": 1000,
+                }
+            ),
+        ],
+        tasks=[
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t1",
+                    "name": "First",
+                    "parent": "proj-root",
+                    "containingProjectInfo": "pi-proj-root",
+                    "rank": 100000,
+                }
+            ),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t2",
+                    "name": "Second",
+                    "parent": "proj-root",
+                    "containingProjectInfo": "pi-proj-root",
+                    "rank": 200000,
+                }
+            ),
+        ],
+    )
+    async def test_get_task_returns_correct_order(self, hybrid_repo: HybridRepository) -> None:
+        """get_task returns the correct dotted order for a single task."""
+        task = await hybrid_repo.get_task("t2")
+        assert task is not None
+        assert task.order == "2"
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        projects=[
+            _minimal_project(
+                {
+                    "persistentIdentifier": "proj-root",
+                    "name": "My Project",
+                    "rank": 1000,
+                }
+            ),
+        ],
+        tasks=[
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t1",
+                    "name": "First",
+                    "parent": "proj-root",
+                    "containingProjectInfo": "pi-proj-root",
+                    "rank": 100000,
+                }
+            ),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t2",
+                    "name": "Child of First",
+                    "parent": "t1",
+                    "containingProjectInfo": "pi-proj-root",
+                    "rank": 50000,
+                }
+            ),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t3",
+                    "name": "Second",
+                    "parent": "proj-root",
+                    "containingProjectInfo": "pi-proj-root",
+                    "rank": 200000,
+                }
+            ),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "inbox-1",
+                    "name": "Inbox Task",
+                    "parent": None,
+                    "containingProjectInfo": None,
+                    "rank": 100000,
+                }
+            ),
+        ],
+    )
+    async def test_get_all_returns_tasks_in_outline_order(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """get_all returns tasks in outline order with order field populated."""
+        result = await hybrid_repo.get_all()
+        names = [t.name for t in result.tasks]
+        # Project tasks in depth-first order, then inbox tasks
+        assert names == ["First", "Child of First", "Second", "Inbox Task"]
+        # Order values reflect per-namespace dotted paths
+        tasks_by_name = {t.name: t for t in result.tasks}
+        assert tasks_by_name["First"].order == "1"
+        assert tasks_by_name["Child of First"].order == "1.1"
+        assert tasks_by_name["Second"].order == "2"
+        assert tasks_by_name["Inbox Task"].order == "1"

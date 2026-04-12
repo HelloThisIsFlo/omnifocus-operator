@@ -92,7 +92,7 @@ def _add_date_conditions(
                 params.append((before_val - _CF_EPOCH).total_seconds())
 
 
-__all__ = ["SqlQuery", "build_list_projects_sql", "build_list_tasks_sql"]
+__all__ = ["_TASK_ORDER_CTE", "SqlQuery", "build_list_projects_sql", "build_list_tasks_sql"]
 
 
 class SqlQuery(NamedTuple):
@@ -117,6 +117,51 @@ _TASKS_COUNT_BASE = (
     "SELECT COUNT(*)\n"
     "FROM Task t\n"
     "LEFT JOIN ProjectInfo pi ON t.persistentIdentifier = pi.task\n"
+    "WHERE pi.task IS NULL"
+)
+
+# ---------------------------------------------------------------------------
+# Recursive CTE for task outline ordering (ORDER-04, ORDER-05)
+# ---------------------------------------------------------------------------
+# Builds a sort_path from rank values at each depth level. Three anchors:
+# 1. Project root tasks (the task row that IS the project) -- start of each project tree
+# 2. Inbox root tasks (no parent, no project) -- prefixed with ZZZZZZZZZZ/ to sort after projects
+# 3. Recursive children -- append shifted rank to parent's sort_path
+#
+# The outer query uses LEFT JOIN so orphan tasks still appear (order=None).
+# printf('%010d', rank + 2147483648) converts signed 32-bit rank to unsigned
+# for correct lexicographic sorting (handles negative ranks from drag-and-drop).
+
+_TASK_ORDER_CTE = (
+    "WITH RECURSIVE task_order(id, sort_path) AS (\n"
+    "  SELECT t.persistentIdentifier,\n"
+    "         printf('%010d', t.rank + 2147483648)\n"
+    "  FROM Task t\n"
+    "  JOIN ProjectInfo pi ON t.persistentIdentifier = pi.task\n"
+    "\n"
+    "  UNION ALL\n"
+    "\n"
+    "  SELECT t.persistentIdentifier,\n"
+    "         'ZZZZZZZZZZ/' || printf('%010d', t.rank + 2147483648)\n"
+    "  FROM Task t\n"
+    "  WHERE t.parent IS NULL\n"
+    "    AND t.containingProjectInfo IS NULL\n"
+    "    AND t.persistentIdentifier NOT IN (SELECT pi2.task FROM ProjectInfo pi2)\n"
+    "\n"
+    "  UNION ALL\n"
+    "\n"
+    "  SELECT t.persistentIdentifier,\n"
+    "         o.sort_path || '/' || printf('%010d', t.rank + 2147483648)\n"
+    "  FROM Task t\n"
+    "  JOIN task_order o ON t.parent = o.id\n"
+    ")\n"
+)
+
+_TASKS_DATA_BASE = (
+    _TASK_ORDER_CTE + "SELECT t.*, o.sort_path\n"
+    "FROM Task t\n"
+    "LEFT JOIN ProjectInfo pi ON t.persistentIdentifier = pi.task\n"
+    "LEFT JOIN task_order o ON t.persistentIdentifier = o.id\n"
     "WHERE pi.task IS NULL"
 )
 
@@ -250,11 +295,11 @@ def build_list_tasks_sql(query: ListTasksRepoQuery) -> tuple[SqlQuery, SqlQuery]
     if conditions:
         where_suffix = " AND " + " AND ".join(conditions)
 
-    # -- Data query --
-    data_sql = _TASKS_BASE + where_suffix
+    # -- Data query (with CTE for outline ordering) --
+    data_sql = _TASKS_DATA_BASE + where_suffix
 
-    # Deterministic ordering for pagination (ORDER BY before LIMIT/OFFSET)
-    data_sql += " ORDER BY t.persistentIdentifier"
+    # Outline ordering via CTE sort_path (ORDER-04), ID tiebreaker for deterministic pagination
+    data_sql += " ORDER BY o.sort_path, t.persistentIdentifier"
     data_params = list(params)
 
     if query.limit is not None:

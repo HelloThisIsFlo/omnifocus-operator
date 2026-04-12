@@ -239,7 +239,7 @@ class TestTasksLimitOffset:
         """ORDER BY must appear before LIMIT for deterministic pagination."""
         query = ListTasksRepoQuery(limit=10)
         data_q, _ = build_list_tasks_sql(query)
-        assert "ORDER BY t.persistentIdentifier" in data_q.sql
+        assert "ORDER BY o.sort_path, t.persistentIdentifier" in data_q.sql
         order_pos = data_q.sql.index("ORDER BY")
         limit_pos = data_q.sql.index("LIMIT")
         assert order_pos < limit_pos
@@ -261,7 +261,7 @@ class TestTasksLimitOffset:
         """ORDER BY is always present on data queries for deterministic results."""
         query = ListTasksRepoQuery()
         data_q, count_q = build_list_tasks_sql(query)
-        assert "ORDER BY t.persistentIdentifier" in data_q.sql
+        assert "ORDER BY o.sort_path, t.persistentIdentifier" in data_q.sql
         assert "ORDER BY" not in count_q.sql
 
 

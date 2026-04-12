@@ -30,6 +30,7 @@ from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskRepoResult
 from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult
 from omnifocus_operator.repository.bridge_write_mixin import BridgeWriteMixin
 from omnifocus_operator.repository.hybrid.query_builder import (
+    _TASK_ORDER_CTE,
     build_list_projects_sql,
     build_list_tasks_sql,
 )
@@ -332,6 +333,69 @@ def _build_parent_and_project(
     return parent_ref, project_ref
 
 
+# -- Dotted order computation --
+
+
+def _compute_dotted_orders(rows: list[sqlite3.Row]) -> dict[str, str]:
+    """Compute dotted order strings from sorted task rows.
+
+    Rows MUST be pre-sorted by sort_path (CTE output order).
+    Returns {task_id: dotted_order} e.g. {"abc": "1", "def": "1.1", "ghi": "2"}.
+
+    Each project/inbox namespace starts numbering at 1.
+    Siblings under the same parent get sequential 1-based ordinals.
+    """
+    # Track per-parent sibling counter
+    parent_counters: dict[str | None, int] = {}
+    # Track each task's ordinal within its parent
+    task_ordinal: dict[str, int] = {}
+    # Track each task's parent for path building
+    task_parent: dict[str, str | None] = {}
+
+    for row in rows:
+        task_id = row["persistentIdentifier"]
+        parent_id = row["parent"]
+        task_parent[task_id] = parent_id
+
+        if parent_id not in parent_counters:
+            parent_counters[parent_id] = 0
+        parent_counters[parent_id] += 1
+        task_ordinal[task_id] = parent_counters[parent_id]
+
+    # Build dotted paths by walking up the parent chain
+    result: dict[str, str] = {}
+    for task_id in task_ordinal:
+        parts: list[str] = []
+        current: str | None = task_id
+        while current is not None and current in task_ordinal:
+            parts.append(str(task_ordinal[current]))
+            current = task_parent.get(current)
+        parts.reverse()
+        result[task_id] = ".".join(parts)
+
+    return result
+
+
+def _build_full_dotted_orders(conn: sqlite3.Connection) -> dict[str, str]:
+    """Compute dotted orders for ALL tasks using the full unfiltered CTE.
+
+    This ensures siblings retain their original ordinals even when WHERE
+    filters remove some tasks from the result set (e.g. flagged=True
+    yields sparse order values like "1", "3" when the 2nd sibling is
+    unflagged).
+    """
+    full_sql = (
+        _TASK_ORDER_CTE + "SELECT t.*, o.sort_path\n"
+        "FROM Task t\n"
+        "LEFT JOIN ProjectInfo pi ON t.persistentIdentifier = pi.task\n"
+        "LEFT JOIN task_order o ON t.persistentIdentifier = o.id\n"
+        "WHERE pi.task IS NULL\n"
+        "ORDER BY o.sort_path, t.persistentIdentifier"
+    )
+    all_rows = conn.execute(full_sql).fetchall()
+    return _compute_dotted_orders(all_rows)
+
+
 # -- Row mapping --
 
 
@@ -340,6 +404,8 @@ def _map_task_row(
     tag_lookup: dict[str, list[dict[str, str]]],
     project_info_lookup: dict[str, dict[str, str]],
     task_name_lookup: dict[str, str],
+    *,
+    order: str | None = None,
 ) -> dict[str, Any]:
     """Map a Task SQLite row to a dict matching the Task Pydantic model."""
     task_id = row["persistentIdentifier"]
@@ -347,6 +413,7 @@ def _map_task_row(
     return {
         "id": task_id,
         "name": row["name"],
+        "order": order,
         "url": f"omnifocus:///task/{task_id}",
         "added": _parse_timestamp(row["dateAdded"]),
         "modified": _parse_timestamp(row["dateModified"]),
@@ -649,10 +716,26 @@ class HybridRepository(BridgeWriteMixin, Repository):
             task_name_lookup = _build_task_name_lookup(conn)
             folder_name_lookup = _build_folder_name_lookup(conn)
 
-            # 2. Read all entity types
+            # 2. Read all entity types (tasks with CTE ordering)
+            ordered_tasks_sql = (
+                _TASK_ORDER_CTE + "SELECT t.*, o.sort_path\n"
+                "FROM Task t\n"
+                "LEFT JOIN ProjectInfo pi ON t.persistentIdentifier = pi.task\n"
+                "LEFT JOIN task_order o ON t.persistentIdentifier = o.id\n"
+                "WHERE pi.task IS NULL\n"
+                "ORDER BY o.sort_path, t.persistentIdentifier"
+            )
+            task_rows = conn.execute(ordered_tasks_sql).fetchall()
+            dotted_orders = _compute_dotted_orders(task_rows)
             tasks = [
-                _map_task_row(row, task_tag_map, project_info_lookup, task_name_lookup)
-                for row in conn.execute(_TASKS_SQL).fetchall()
+                _map_task_row(
+                    row,
+                    task_tag_map,
+                    project_info_lookup,
+                    task_name_lookup,
+                    order=dotted_orders.get(row["persistentIdentifier"]),
+                )
+                for row in task_rows
             ]
             projects = [
                 _map_project_row(row, task_tag_map, folder_name_lookup, task_name_lookup)
@@ -732,9 +815,50 @@ class HybridRepository(BridgeWriteMixin, Repository):
                 if name_row is not None:
                     task_name_lookup[parent_task_id] = name_row["name"]
 
-            return _map_task_row(row, task_tag_map, project_info_lookup, task_name_lookup)
+            # Compute dotted order for this task via scoped CTE
+            order = self._compute_task_order(conn, row)
+            return _map_task_row(
+                row, task_tag_map, project_info_lookup, task_name_lookup, order=order
+            )
         finally:
             conn.close()
+
+    def _compute_task_order(self, conn: sqlite3.Connection, row: sqlite3.Row) -> str | None:
+        """Compute the dotted order string for a single task.
+
+        Runs the CTE scoped to the task's project or inbox namespace,
+        then uses _compute_dotted_orders to find this task's position.
+        """
+        containing_pi = row["containingProjectInfo"]
+        task_id = row["persistentIdentifier"]
+
+        if containing_pi is not None:
+            # Project-based task: run CTE for all tasks in this project
+            scoped_sql = (
+                _TASK_ORDER_CTE + "SELECT t.*, o.sort_path\n"
+                "FROM Task t\n"
+                "LEFT JOIN ProjectInfo pi ON t.persistentIdentifier = pi.task\n"
+                "LEFT JOIN task_order o ON t.persistentIdentifier = o.id\n"
+                "WHERE pi.task IS NULL\n"
+                "  AND t.containingProjectInfo = ?\n"
+                "ORDER BY o.sort_path, t.persistentIdentifier"
+            )
+            sibling_rows = conn.execute(scoped_sql, (containing_pi,)).fetchall()
+        else:
+            # Inbox task: run CTE for all inbox tasks (no containingProjectInfo)
+            scoped_sql = (
+                _TASK_ORDER_CTE + "SELECT t.*, o.sort_path\n"
+                "FROM Task t\n"
+                "LEFT JOIN ProjectInfo pi ON t.persistentIdentifier = pi.task\n"
+                "LEFT JOIN task_order o ON t.persistentIdentifier = o.id\n"
+                "WHERE pi.task IS NULL\n"
+                "  AND t.containingProjectInfo IS NULL\n"
+                "ORDER BY o.sort_path, t.persistentIdentifier"
+            )
+            sibling_rows = conn.execute(scoped_sql).fetchall()
+
+        dotted_orders = _compute_dotted_orders(sibling_rows)
+        return dotted_orders.get(task_id)
 
     def _read_project(self, project_id: str) -> dict[str, Any] | None:
         """Read a single project by ID from SQLite. Returns None if not found."""
@@ -852,10 +976,20 @@ class HybridRepository(BridgeWriteMixin, Repository):
             data_rows = conn.execute(data_q.sql, data_q.params).fetchall()
             count_row = conn.execute(count_q.sql, count_q.params).fetchone()
 
+            # Compute dotted orders from FULL unfiltered CTE (not just filtered rows)
+            # so siblings retain their original ordinals even when filters remove some
+            dotted_orders = _build_full_dotted_orders(conn)
+
             # Map rows to Task models
             tasks = [
                 Task.model_validate(
-                    _map_task_row(row, task_tag_map, project_info_lookup, task_name_lookup)
+                    _map_task_row(
+                        row,
+                        task_tag_map,
+                        project_info_lookup,
+                        task_name_lookup,
+                        order=dotted_orders.get(row["persistentIdentifier"]),
+                    )
                 )
                 for row in data_rows
             ]
