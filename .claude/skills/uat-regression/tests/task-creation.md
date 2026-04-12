@@ -68,7 +68,7 @@ Tests `add_tasks` — inbox creation, parent assignment, all fields, tag resolut
 
 #### Test 2: Result contains expected fields
 1. `add_tasks` with `name: "T2-ResultShape"`
-2. PASS if: result contains `success: true`, `id` (non-empty string), `name: "T2-ResultShape"`, enriched `parent` (tagged wrapper with `project` or `task` key), enriched `project` (`{id, name}` reference)
+2. PASS if: result contains `success: true`, `id` (non-empty string), `name: "T2-ResultShape"`. Note: write operations return slim responses — use `get_task` for full details including parent/project.
 
 ### 3. Tag Resolution
 
@@ -158,7 +158,7 @@ Run INDIVIDUALLY (will error):
 | 1a | Create: basic inbox | Task created in inbox; project is `{id: "$inbox", name: "Inbox"}` | |
 | 1b | Create: with parent | Task created under parent; `parent` is tagged wrapper, `project` is enriched ref | |
 | 1c | Create: all fields | All fields set; verified via get_task | |
-| 2 | Create: result shape | Result has success, id, name, enriched parent (tagged wrapper), enriched project | |
+| 2 | Create: result shape | Result has success, id, name (slim response; use get_task for full details) | |
 | 3a | Create: tag by name | Case-insensitive tag resolution | |
 | 3b | Create: tag by ID | Tag resolved by ID fallback | |
 | 3c | Create: multiple tags | Two tags in one create call | |

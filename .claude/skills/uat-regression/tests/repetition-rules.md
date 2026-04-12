@@ -232,7 +232,7 @@ Run each INDIVIDUALLY (they will error):
 
 #### Test 9c: Invalid ordinal
 1. `edit_tasks` on T10: `repetitionRule: { frequency: { type: "monthly", on: { "sixth": "tuesday" } }, schedule: "regularly", basedOn: "due_date" }`
-2. PASS if: error containing "Invalid ordinal"
+2. PASS if: error rejecting "sixth" — either "Invalid ordinal" OR "Unknown field" (schema-level rejection is equally valid)
 
 #### Test 9d: Invalid day name
 1. `edit_tasks` on T10: `repetitionRule: { frequency: { type: "monthly", on: { "second": "funday" } }, schedule: "regularly", basedOn: "due_date" }`
@@ -312,7 +312,7 @@ Run INDIVIDUALLY:
 | 8e | Mutual exclusion: onDates→on | Set onDates, then edit with on; auto-clear warning, onDates absent (reverse of 8c) | |
 | 9a | Error: invalid interval | interval=0 returns clean error | |
 | 9b | Error: invalid day code | onDays=["XX"] returns clean error | |
-| 9c | Error: invalid ordinal | on={"sixth":...} returns clean error | |
+| 9c | Error: invalid ordinal | on={"sixth":...} rejected (Invalid ordinal or Unknown field) | |
 | 9d | Error: invalid day name | on={...:"funday"} returns clean error | |
 | 9e | Error: invalid onDate | onDates=[0] returns clean error | |
 | 9f | Error: invalid end occurrences | occurrences=0 returns clean error | |
