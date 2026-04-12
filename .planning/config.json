@@ -23,5 +23,15 @@
   "hooks": {
     "context_warnings": false
   },
-  "granularity": "coarse"
+  "granularity": "coarse",
+  "model_overrides": {
+    "gsd-planner": "claude-opus-4-5-20251101",
+    "gsd-roadmapper": "claude-opus-4-5-20251101",
+    "gsd-executor": "claude-opus-4-5-20251101",
+    "gsd-phase-researcher": "claude-opus-4-5-20251101",
+    "gsd-project-researcher": "claude-opus-4-5-20251101",
+    "gsd-debugger": "claude-opus-4-5-20251101",
+    "gsd-ui-researcher": "claude-opus-4-5-20251101",
+    "gsd-doc-writer": "claude-opus-4-5-20251101"
+  }
 }
