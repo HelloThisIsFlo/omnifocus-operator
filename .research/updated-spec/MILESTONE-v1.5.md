@@ -67,4 +67,4 @@ This allows agents to say "here, look at this task" and navigate the user direct
 
 ## Tools After This Milestone
 
-Sixteen: all thirteen from v1.4.3, plus `show_perspective`, `get_current_perspective`, `open_task`.
+Fourteen: all eleven from v1.4, plus `show_perspective`, `get_current_perspective`, `open_task`.

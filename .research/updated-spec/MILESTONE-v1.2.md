@@ -171,4 +171,4 @@ Six: `list_all`, `get_task`, `get_project`, `get_tag`, `add_tasks`, `edit_tasks`
 ## Not Included (Deferred)
 
 - `delete_tasks` -- discarded. Blast radius too high for agent-driven ops; safer pattern is move-to-container + user deletes manually. See DISCARDED-IDEAS.md.
-- `add_projects`, `edit_projects` -- deferred to ~~v1.4~~ → v1.4.3. Project writes have unverified OmniJS APIs (Project.Status, Project.ReviewInterval, markReviewed) and are low priority for the user's workflow (tasks are promoted to projects manually).
+- `add_projects`, `edit_projects` -- deferred to v1.7. Project writes have unverified OmniJS APIs (Project.Status, Project.ReviewInterval, markReviewed) and are low priority for the user's workflow (tasks are promoted to projects manually).

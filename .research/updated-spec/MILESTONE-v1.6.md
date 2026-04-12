@@ -65,4 +65,4 @@ Prioritize based on real-world usage data, not hypothetical concerns.
 
 ## Tools After This Milestone
 
-Sixteen (unchanged from v1.5).
+Fourteen (unchanged from v1.5).

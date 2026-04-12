@@ -29,7 +29,7 @@ One new MCP tool with optional filter parameters. Primary path uses SQL WHERE cl
 
 **Note:** Date-based filtering (due, defer, completed, dropped, added, modified, planned) is deferred to v1.3.2. This milestone builds the query infrastructure that v1.3.2 extends.
 
-- Substring search only -- no fuzzy matching. Fuzzy deferred to v1.4.1.
+- Substring search only -- no fuzzy matching (see MAYBE-IDEAS.md).
 
 **SQL implementation (HybridRepository):**
 - Build WHERE clauses dynamically from filter parameters
@@ -81,7 +81,7 @@ All hierarchy is flat with ID references (parent_id, folder_id, project_id). No 
 - `availability` supports `available` and `blocked`. Completed/dropped task visibility will be handled by date filters in v1.3.2.
 - Counts reuse the same filtering logic as list tools. One code path prevents count/list divergence.
 - SQL-level filtering is the primary path. In-memory filtering exists only for bridge fallback.
-- No fuzzy search. Substring matching via SQL LIKE is sufficient for now. Fuzzy deferred to v1.4.1.
+- No fuzzy search. Substring matching via SQL LIKE is sufficient for now (see MAYBE-IDEAS.md).
 - Pagination via `limit`/`offset` on `list_tasks` and `list_projects`. SQL uses `LIMIT ? OFFSET ?`. Bridge fallback slices in-memory. `offset` without `limit` is an error. `count_*` tools are unaffected (always return total count for the filters).
 
 ## Key Acceptance Criteria
