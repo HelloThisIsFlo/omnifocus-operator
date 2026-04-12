@@ -25,6 +25,10 @@ EDIT_NO_CHANGES_DETECTED = (
     "If you don't want to change a field, omit it from the request."
 )
 
+MOVE_ALREADY_AT_POSITION = (
+    "Task is already at the {position} of its container -- no reordering needed."
+)
+
 # --- Lifecycle ---
 
 LIFECYCLE_ALREADY_IN_STATE = (
@@ -188,10 +192,6 @@ AVAILABILITY_REMAINING_INCLUDES_AVAILABLE = (
 
 AVAILABILITY_REMAINING_INCLUDES_BLOCKED = (
     "'remaining' already includes 'blocked' -- no need to combine them."
-)
-
-MOVE_ALREADY_AT_POSITION = (
-    "Task is already at the {position} of its container -- no reordering needed."
 )
 
 FILTER_DID_YOU_MEAN = (

@@ -678,9 +678,13 @@ class DomainLogic:
         tag_names: dict[str, str],
     ) -> list[str]:
         """Warn for each resolved tag that is already on the task."""
+        assert len(resolved_ids) == len(input_names), (
+            f"resolve_tags must return one ID per input; "
+            f"got {len(resolved_ids)} for {len(input_names)} inputs"
+        )
         warns: list[str] = []
         for i, name in enumerate(input_names):
-            if i < len(resolved_ids) and resolved_ids[i] in current_ids:
+            if resolved_ids[i] in current_ids:
                 display = tag_names.get(resolved_ids[i], name)
                 warns.append(TAG_ALREADY_ON_TASK.format(display=display, tag_id=resolved_ids[i]))
         return warns
@@ -693,9 +697,13 @@ class DomainLogic:
         tag_names: dict[str, str],
     ) -> list[str]:
         """Warn for each resolved tag that is not currently on the task."""
+        assert len(resolved_ids) == len(input_names), (
+            f"resolve_tags must return one ID per input; "
+            f"got {len(resolved_ids)} for {len(input_names)} inputs"
+        )
         warns: list[str] = []
         for i, name in enumerate(input_names):
-            if i < len(resolved_ids) and resolved_ids[i] not in current_ids:
+            if resolved_ids[i] not in current_ids:
                 display = tag_names.get(resolved_ids[i], name)
                 warns.append(TAG_NOT_ON_TASK.format(display=display, tag_id=resolved_ids[i]))
         return warns
@@ -785,7 +793,12 @@ class DomainLogic:
                 effective_parent_id = inbox_id
             else:
                 effective_parent_id = resolved_id
-                # If container is a task, check for circular reference
+                # If container is a task, check for circular reference.
+                # check_cycle walks the ancestor chain and terminates at project-level
+                # parents (t.parent.task is None), so it correctly guards against
+                # task-under-task cycles. Cross-container cycles (task A moved under
+                # project B that contains A's ancestor) are structurally impossible:
+                # OmniFocus does not allow project nesting.
                 container_task = await self._repo.get_task(resolved_id)
                 if container_task is not None:
                     await self.check_cycle(task_id, resolved_id)
@@ -938,9 +951,12 @@ class DomainLogic:
                 # Same empty container -> no-op (task is alone, already at beginning AND ending)
                 warnings.append(MOVE_ALREADY_AT_POSITION.format(position=move.position))
             else:
-                # Direct before/after without anchor_id should not happen after translation,
-                # but if it does, we can't detect no-op
-                return False
+                # before/after without anchor_id is unreachable after translation
+                assert False, (  # noqa: B011
+                    f"_all_fields_match: before/after move with no anchor_id "
+                    f"(payload.id={payload.id}); this should never happen after "
+                    f"_process_container_move translation"
+                )
 
         return True
 
