@@ -276,9 +276,9 @@ class TestTimeout:
 
     @pytest.mark.asyncio
     async def test_timeout_configurable_for_testing(self, tmp_path: Path) -> None:
-        """Bridge accepts a timeout parameter (default 10.0) for fast tests."""
+        """Bridge accepts a timeout parameter (default 30.0) for fast tests."""
         bridge_default = SimulatorBridge(ipc_dir=tmp_path)
-        assert bridge_default._timeout == 10.0
+        assert bridge_default._timeout == 30.0
 
         bridge_custom = SimulatorBridge(ipc_dir=tmp_path, timeout=0.5)
         assert bridge_custom._timeout == 0.5

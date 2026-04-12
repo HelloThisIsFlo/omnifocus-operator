@@ -113,7 +113,7 @@ class RealBridge(Bridge):
     Explicitly implements the ``Bridge`` protocol.
     """
 
-    def __init__(self, ipc_dir: Path, *, timeout: float = 10.0) -> None:
+    def __init__(self, ipc_dir: Path, *, timeout: float = 30.0) -> None:
         self._guard_automated_testing()
         self._ipc_dir = ipc_dir
         self._pid = os.getpid()

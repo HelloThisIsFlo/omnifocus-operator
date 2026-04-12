@@ -172,7 +172,7 @@ def _gather_config() -> tuple[Path, dict[str, str]]:
         "OPERATOR_LOG_LEVEL": _prompt_choice(
             "Log level", ["DEBUG", "INFO", "WARNING", "ERROR"], "DEBUG"
         ),
-        "OPERATOR_BRIDGE_TIMEOUT": _prompt_value("Bridge timeout in seconds", "10"),
+        "OPERATOR_BRIDGE_TIMEOUT": _prompt_value("Bridge timeout in seconds", "30"),
     }
     return project_dir, env
 

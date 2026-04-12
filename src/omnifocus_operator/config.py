@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     week_start: str = "monday"
     repository: str = "hybrid"
     ipc_dir: str | None = None
-    bridge_timeout: float = 10.0
+    bridge_timeout: float = 30.0
     sqlite_path: str | None = None
     ofocus_path: str | None = None
 

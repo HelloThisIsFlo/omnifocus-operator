@@ -56,6 +56,8 @@ Directory for bridge IPC files. Only relevant when using the bridge.
 
 ### `OPERATOR_BRIDGE_TIMEOUT`
 
-Timeout in seconds for bridge calls. Increase if OmniFocus is slow to respond (large databases, App Nap).
+Timeout in seconds for bridge calls.
 
-**Default:** `10`
+**Default:** `30`
+
+**Why 30s?** macOS App Nap throttles OmniFocus CPU scheduling when it's backgrounded. Lightweight operations (e.g., adding a task) complete quickly even when napped, but heavy reads (`get_all`) can take 10-20s under throttling. The previous 10s default caused spurious timeouts. 30s accommodates App Nap degradation while still failing fast on genuine hangs (OmniFocus not running, bridge crash). In hybrid mode, reads bypass the bridge entirely (SQLite), so App Nap mainly affects writes and bridge-only configurations.
