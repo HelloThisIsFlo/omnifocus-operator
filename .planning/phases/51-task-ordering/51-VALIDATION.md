@@ -1,10 +1,11 @@
 ---
 phase: 51
 slug: task-ordering
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-04-12
+validated: 2026-04-12
 ---
 
 # Phase 51 — Validation Strategy
@@ -38,9 +39,9 @@ created: 2026-04-12
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 51-01-T1 | 01 | 1 | ORDER-01, ORDER-03 | T-51-01 | extra="forbid" rejects order on edit | unit | `uv run pytest tests/test_output_schema.py -x -q` | ✅ | ⬜ pending |
-| 51-01-T2 | 01 | 1 | ORDER-01 (D-05) | — | N/A | unit | `uv run pytest tests/ -x -q` | ✅ | ⬜ pending |
-| 51-02-T1 | 02 | 2 | ORDER-02, ORDER-04, ORDER-05 | T-51-03, T-51-04 | N/A | unit | `uv run pytest tests/ -x -q` | ❌ W0 | ⬜ pending |
+| 51-01-T1 | 01 | 1 | ORDER-01, ORDER-03 | T-51-01 | extra="forbid" rejects order on edit | unit | `uv run pytest tests/test_models.py::TestCommandModelStrictness::test_edit_task_command_rejects_order_field -v` | ✅ | ✅ green |
+| 51-01-T2 | 01 | 1 | ORDER-01 (D-05) | — | N/A | unit | `uv run pytest tests/ -x -q` | ✅ | ✅ green |
+| 51-02-T1 | 02 | 2 | ORDER-02, ORDER-04, ORDER-05 | T-51-03, T-51-04 | N/A | unit | `uv run pytest tests/test_hybrid_repository.py::TestTaskOrdering -v` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -53,9 +54,9 @@ created: 2026-04-12
 
 ## Wave 0 Requirements
 
-- [ ] `tests/conftest.py` — add `order` default to `make_model_task_dict()`
-- [ ] `tests/test_cross_path_equivalence.py` — exclude `order` from `assert_equivalent()`
-- [ ] New tests in `tests/test_hybrid_repository.py` for order field presence, outline ordering, inbox-after-projects (TDD in Plan 02)
+- [x] `tests/conftest.py` — add `order` default to `make_model_task_dict()`
+- [x] `tests/test_cross_path_equivalence.py` — exclude `order` from `assert_equivalent()`
+- [x] New tests in `tests/test_hybrid_repository.py` for order field presence, outline ordering, inbox-after-projects (TDD in Plan 02)
 
 ---
 
@@ -71,11 +72,30 @@ created: 2026-04-12
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** validated
+
+---
+
+## Validation Audit 2026-04-12
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 1 |
+| Resolved | 1 |
+| Escalated | 0 |
+
+### Gap Resolution
+
+**ORDER-03** (51-01-T1): Added explicit test proving `EditTaskCommand` rejects `order` field.
+- Test: `tests/test_models.py::TestCommandModelStrictness::test_edit_task_command_rejects_order_field`
+- Behavior: Verifies `EditTaskCommand.model_validate({"id": "t1", "order": "2.3.1"})` raises `ValidationError` matching "order"
+- Status: ✅ green
+
+Full test suite: 2030 passed, 98% coverage
