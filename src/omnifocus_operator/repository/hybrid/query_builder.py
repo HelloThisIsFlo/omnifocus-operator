@@ -92,7 +92,7 @@ def _add_date_conditions(
                 params.append((before_val - _CF_EPOCH).total_seconds())
 
 
-__all__ = ["_TASK_ORDER_CTE", "SqlQuery", "build_list_projects_sql", "build_list_tasks_sql"]
+__all__ = ["TASK_ORDER_CTE", "SqlQuery", "build_list_projects_sql", "build_list_tasks_sql"]
 
 
 class SqlQuery(NamedTuple):
@@ -132,7 +132,7 @@ _TASKS_COUNT_BASE = (
 # printf('%010d', rank + 2147483648) converts signed 32-bit rank to unsigned
 # for correct lexicographic sorting (handles negative ranks from drag-and-drop).
 
-_TASK_ORDER_CTE = (
+TASK_ORDER_CTE = (
     "WITH RECURSIVE task_order(id, sort_path) AS (\n"
     "  SELECT t.persistentIdentifier,\n"
     "         printf('%010d', t.rank + 2147483648)\n"
@@ -146,7 +146,7 @@ _TASK_ORDER_CTE = (
     "  FROM Task t\n"
     "  WHERE t.parent IS NULL\n"
     "    AND t.containingProjectInfo IS NULL\n"
-    "    AND t.persistentIdentifier NOT IN (SELECT pi2.task FROM ProjectInfo pi2)\n"
+    "    AND NOT EXISTS (SELECT 1 FROM ProjectInfo pi2 WHERE pi2.task = t.persistentIdentifier)\n"
     "\n"
     "  UNION ALL\n"
     "\n"
@@ -158,7 +158,7 @@ _TASK_ORDER_CTE = (
 )
 
 _TASKS_DATA_BASE = (
-    _TASK_ORDER_CTE + "SELECT t.*, o.sort_path\n"
+    TASK_ORDER_CTE + "SELECT t.*, o.sort_path\n"
     "FROM Task t\n"
     "LEFT JOIN ProjectInfo pi ON t.persistentIdentifier = pi.task\n"
     "LEFT JOIN task_order o ON t.persistentIdentifier = o.id\n"

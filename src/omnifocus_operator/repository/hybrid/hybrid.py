@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import functools
+import logging
 import os
 import pathlib
 import plistlib
@@ -30,7 +31,7 @@ from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskRepoResult
 from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult
 from omnifocus_operator.repository.bridge_write_mixin import BridgeWriteMixin
 from omnifocus_operator.repository.hybrid.query_builder import (
-    _TASK_ORDER_CTE,
+    TASK_ORDER_CTE,
     build_list_projects_sql,
     build_list_tasks_sql,
 )
@@ -48,7 +49,6 @@ if TYPE_CHECKING:
     from omnifocus_operator.contracts.use_cases.list.tags import ListTagsRepoQuery
     from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
 
-import logging
 
 from omnifocus_operator.models.folder import Folder
 from omnifocus_operator.models.perspective import Perspective
@@ -344,6 +344,11 @@ def _compute_dotted_orders(rows: list[sqlite3.Row]) -> dict[str, str]:
 
     Each project/inbox namespace starts numbering at 1.
     Siblings under the same parent get sequential 1-based ordinals.
+
+    IMPORTANT: Rows must already exclude project-root task rows (i.e., the SQL
+    query must include `WHERE pi.task IS NULL`). If project-root rows are
+    included, sibling counters will be corrupted and dotted paths will be
+    silently wrong. This is a caller contract, not validated here.
     """
     # Track per-parent sibling counter
     parent_counters: dict[str | None, int] = {}
@@ -385,7 +390,7 @@ def _build_full_dotted_orders(conn: sqlite3.Connection) -> dict[str, str]:
     unflagged).
     """
     full_sql = (
-        _TASK_ORDER_CTE + "SELECT t.*, o.sort_path\n"
+        TASK_ORDER_CTE + "SELECT t.*, o.sort_path\n"
         "FROM Task t\n"
         "LEFT JOIN ProjectInfo pi ON t.persistentIdentifier = pi.task\n"
         "LEFT JOIN task_order o ON t.persistentIdentifier = o.id\n"
@@ -718,7 +723,7 @@ class HybridRepository(BridgeWriteMixin, Repository):
 
             # 2. Read all entity types (tasks with CTE ordering)
             ordered_tasks_sql = (
-                _TASK_ORDER_CTE + "SELECT t.*, o.sort_path\n"
+                TASK_ORDER_CTE + "SELECT t.*, o.sort_path\n"
                 "FROM Task t\n"
                 "LEFT JOIN ProjectInfo pi ON t.persistentIdentifier = pi.task\n"
                 "LEFT JOIN task_order o ON t.persistentIdentifier = o.id\n"
@@ -835,7 +840,7 @@ class HybridRepository(BridgeWriteMixin, Repository):
         if containing_pi is not None:
             # Project-based task: run CTE for all tasks in this project
             scoped_sql = (
-                _TASK_ORDER_CTE + "SELECT t.*, o.sort_path\n"
+                TASK_ORDER_CTE + "SELECT t.*, o.sort_path\n"
                 "FROM Task t\n"
                 "LEFT JOIN ProjectInfo pi ON t.persistentIdentifier = pi.task\n"
                 "LEFT JOIN task_order o ON t.persistentIdentifier = o.id\n"
@@ -844,10 +849,16 @@ class HybridRepository(BridgeWriteMixin, Repository):
                 "ORDER BY o.sort_path, t.persistentIdentifier"
             )
             sibling_rows = conn.execute(scoped_sql, (containing_pi,)).fetchall()
+            if not sibling_rows:
+                logger.warning(
+                    "_compute_task_order: no rows for containingProjectInfo=%s (stale reference?)",
+                    containing_pi,
+                )
+                return None
         else:
             # Inbox task: run CTE for all inbox tasks (no containingProjectInfo)
             scoped_sql = (
-                _TASK_ORDER_CTE + "SELECT t.*, o.sort_path\n"
+                TASK_ORDER_CTE + "SELECT t.*, o.sort_path\n"
                 "FROM Task t\n"
                 "LEFT JOIN ProjectInfo pi ON t.persistentIdentifier = pi.task\n"
                 "LEFT JOIN task_order o ON t.persistentIdentifier = o.id\n"
