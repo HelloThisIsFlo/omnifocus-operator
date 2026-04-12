@@ -167,4 +167,4 @@ push-watch:
     git push
     @echo "Waiting for CI run to start..."
     sleep 3
-    gh run watch
+    gh run watch $(gh run list --limit 1 --json databaseId --jq '.[0].databaseId')
