@@ -16,7 +16,7 @@
 ## Phases
 
 - [x] **Phase 51: Task Ordering** - Add `order` field to task responses with correct outline ordering via recursive CTE (completed 2026-04-12)
-- [ ] **Phase 52: Same-Container Move Fix** - Service-layer translation of beginning/ending to moveBefore/moveAfter, with accurate no-op detection
+- [x] **Phase 52: Same-Container Move Fix** - Service-layer translation of beginning/ending to moveBefore/moveAfter, with accurate no-op detection (completed 2026-04-12)
 
 ## Phase Details
 
@@ -50,11 +50,11 @@ Plans:
   7. Moving the first child to "ending" does NOT trigger a no-op warning (it would actually reorder)
   8. Moving the first child to "beginning" DOES trigger a no-op warning (already in position)
   9. Moving the last child to "ending" DOES trigger a no-op warning (already in position)
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 52-01-PLAN.md — Repository get_edge_child_id + domain translation logic
-- [ ] 52-02-PLAN.md — Warning cleanup + no-op detection rewrite
+- [x] 52-01-PLAN.md — Repository get_edge_child_id + domain translation logic
+- [x] 52-02-PLAN.md — Warning cleanup + no-op detection rewrite
 
 ## Progress
 
@@ -64,4 +64,4 @@ Phases execute in numeric order: 51 → 52
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 51. Task Ordering | v1.3.3 | 2/2 | Complete   | 2026-04-12 |
-| 52. Same-Container Move Fix | v1.3.3 | 0/2 | Not started | - |
+| 52. Same-Container Move Fix | v1.3.3 | 2/2 | Complete    | 2026-04-12 |
