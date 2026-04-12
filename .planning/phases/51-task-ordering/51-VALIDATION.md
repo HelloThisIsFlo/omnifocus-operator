@@ -38,24 +38,24 @@ created: 2026-04-12
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 51-01-01 | 01 | 1 | ORDER-01 | — | N/A | unit | `uv run pytest tests/test_hybrid_repository.py -x -q -k order` | ❌ W0 | ⬜ pending |
-| 51-01-02 | 01 | 1 | ORDER-01 | — | N/A | unit | `uv run pytest tests/test_bridge_only_repository.py -x -q -k order` | ❌ W0 | ⬜ pending |
-| 51-02-01 | 02 | 1 | ORDER-02 | — | N/A | unit | `uv run pytest tests/test_query_builder.py -x -q -k order` | ❌ W0 | ⬜ pending |
-| 51-03-01 | 03 | 1 | ORDER-03 | — | N/A | unit | `uv run pytest tests/test_output_schema.py -x -q` | ✅ | ⬜ pending |
-| 51-04-01 | 04 | 2 | ORDER-04 | — | N/A | unit | `uv run pytest tests/test_hybrid_repository.py -x -q -k outline_order` | ❌ W0 | ⬜ pending |
-| 51-05-01 | 05 | 2 | ORDER-05 | — | N/A | unit | `uv run pytest tests/test_hybrid_repository.py -x -q -k inbox_after` | ❌ W0 | ⬜ pending |
+| 51-01-T1 | 01 | 1 | ORDER-01, ORDER-03 | T-51-01 | extra="forbid" rejects order on edit | unit | `uv run pytest tests/test_output_schema.py -x -q` | ✅ | ⬜ pending |
+| 51-01-T2 | 01 | 1 | ORDER-01 (D-05) | — | N/A | unit | `uv run pytest tests/ -x -q` | ✅ | ⬜ pending |
+| 51-02-T1 | 02 | 2 | ORDER-02, ORDER-04, ORDER-05 | T-51-03, T-51-04 | N/A | unit | `uv run pytest tests/ -x -q` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+
+**Task breakdown:**
+- **51-01-T1** (Plan 01, Task 1): Add order field to Task model, update descriptions, fix bridge adapter. Covers ORDER-01 (field exists), ORDER-03 (edit rejected by extra="forbid").
+- **51-01-T2** (Plan 01, Task 2): Update test factories and cross-path equivalence. Covers ORDER-01 (defaults) and D-05 (cross-path divergence).
+- **51-02-T1** (Plan 02, Task 1): CTE ordering + dotted path computation. Covers ORDER-02 (sequential siblings), ORDER-04 (outline order), ORDER-05 (inbox after projects).
 
 ---
 
 ## Wave 0 Requirements
 
-- [ ] `tests/test_hybrid_repository.py` — tests for order field presence, outline ordering, inbox-after-projects
-- [ ] `tests/test_bridge_only_repository.py` — test for order=None on bridge path
-- [ ] `tests/test_query_builder.py` — tests for CTE-based ordering SQL
-- [ ] `tests/conftest.py` — add `order` default to `make_model_task_dict()` and `make_task_dict()`
+- [ ] `tests/conftest.py` — add `order` default to `make_model_task_dict()`
 - [ ] `tests/test_cross_path_equivalence.py` — exclude `order` from `assert_equivalent()`
+- [ ] New tests in `tests/test_hybrid_repository.py` for order field presence, outline ordering, inbox-after-projects (TDD in Plan 02)
 
 ---
 

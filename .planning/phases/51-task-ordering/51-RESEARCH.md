@@ -165,7 +165,7 @@ WITH RECURSIVE task_order(id, sort_path, dotted_order, depth) AS (
 **Warning signs:** SQL error or incorrect ordinal values in recursive step output.
 
 ### Pitfall 2: Cross-Path Equivalence Test Breakage
-**What goes wrong:** 32 parametrized tests fail because HybridRepository now returns `order="2.3.1"` while BridgeOnlyRepository returns `order=None`.
+**What goes wrong:** 32 parametrised tests fail because HybridRepository now returns `order="2.3.1"` while BridgeOnlyRepository returns `order=None`.
 **Why it happens:** `assert_equivalent()` compares full model instances.
 **How to avoid:** Modify `assert_equivalent()` to exclude `order` from comparison. Use `model_dump(exclude={"order"})` or sort items by ID and compare field-by-field excluding `order`.
 **Warning signs:** Test failures in `test_cross_path_equivalence.py` immediately after adding the field.
@@ -302,12 +302,13 @@ def _adapt_task(raw: dict[str, Any]) -> None:
 |---|-------|---------|---------------|
 | A1 | SQLite window functions (`ROW_NUMBER()`) work inside recursive CTE branches | CTE Design | Dotted path must be computed in Python instead of SQL. Sort path still works -- only the ordinal computation changes. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **ROW_NUMBER() in recursive CTE**
    - What we know: SQLite supports window functions (added 3.25.0, 2018). Recursive CTEs are supported.
    - What's unclear: Whether `ROW_NUMBER()` works correctly inside `UNION ALL` branches of a recursive CTE. The deep dive CTE doesn't use window functions -- it only builds `sort_path`.
    - Recommendation: Try SQL-based dotted path first. If it fails, compute ordinals in Python from sorted results (trivial: iterate sorted list, track parent, count siblings).
+   - **RESOLVED:** Plan 02 avoids the issue entirely by using Python-side `_compute_dotted_orders` instead of SQL-side `ROW_NUMBER()`. The CTE provides `sort_path` for ordering only; dotted ordinals are computed in Python from the sorted result set. Assumption A1 is no longer relevant to implementation.
 
 ## Validation Architecture
 
