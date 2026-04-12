@@ -8,6 +8,7 @@ from pydantic import AwareDatetime, Field, field_serializer
 
 from omnifocus_operator.agent_messages.descriptions import (
     EFFECTIVE_COMPLETION_DATE,
+    ORDER_FIELD,
     TASK_DOC,
     TASK_PROJECT_DESC,
 )
@@ -16,6 +17,9 @@ from omnifocus_operator.models.common import ActionableEntity, ParentRef, Projec
 
 class Task(ActionableEntity):
     __doc__ = TASK_DOC
+
+    # Ordering (read-only, populated by HybridRepository CTE)
+    order: str | None = Field(default=None, description=ORDER_FIELD)
 
     # Dates (task-only -- always null on projects)
     effective_completion_date: AwareDatetime | None = Field(

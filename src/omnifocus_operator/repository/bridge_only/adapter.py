@@ -383,6 +383,7 @@ def adapt_snapshot(raw: dict[str, Any]) -> dict[str, Any]:
     # Per-entity adaptation (status mapping, dead field removal, parent ref)
     for task in raw.get("tasks", []):
         _adapt_task(task)
+        task["order"] = None  # D-03: bridge path cannot compute order
     for project in raw.get("projects", []):
         _adapt_project(project)
     for tag in raw.get("tags", []):

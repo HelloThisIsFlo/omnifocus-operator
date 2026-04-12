@@ -94,6 +94,14 @@ ON_WEEKDAY_PATTERN = (
 
 END_BY_DATE_DATE = "Repeat until this date."
 
+# --- Order ---
+
+ORDER_FIELD = (
+    "Hierarchical position among siblings (dotted notation like '2.3.1'). "
+    "Each dot level is the 1-based position at that depth within the parent project or inbox. "
+    "null when ordering data is unavailable (degraded mode)."
+)
+
 # --- Entities ---
 
 PARENT = "Project or task ID to place this task under. Omit for inbox."
@@ -405,6 +413,8 @@ GET_ALL_TOOL_DOC = (
     "snapshot.\n"
     "\n"
     "Response contains: tasks, projects, tags, folders, perspectives arrays.\n"
+    "Each task includes an order field (dotted notation like '2.3.1') showing "
+    "hierarchical position within its project or inbox.\n"
     "The response uses camelCase field names."
 )
 
@@ -414,7 +424,10 @@ GET_TASK_TOOL_DOC = (
     "Fields: urgency, availability, dueDate, deferDate, plannedDate, "
     "effectiveDueDate, flagged, effectiveFlagged, "
     "tags [{id, name}], parent (project {id, name} or task {id, name}), "
-    "project {id, name}, repetitionRule.\n"
+    "project {id, name}, order, repetitionRule.\n"
+    "\n"
+    "order: hierarchical position in dotted notation (e.g. '2.3.1'). "
+    "Null in degraded mode.\n"
     "\n"
     "parent: direct container — a project or parent task.\n"
     "project: containing project at any nesting depth, or $inbox.\n"
@@ -502,13 +515,17 @@ LIST_TASKS_TOOL_DOC = (
     "For root tasks both point to the same project; for subtasks they diverge. "
     'Inbox tasks use project id="$inbox".\n'
     "\n"
+    "order: hierarchical position in dotted notation (e.g. '2.3.1'). "
+    "Filtered results may show sparse values (e.g. '2.1', '2.5') because "
+    "non-matching siblings are omitted.\n"
+    "\n"
     "Response: {items, total, hasMore, warnings?}\n"
     "\n"
     "Fields per task: urgency, availability, flagged, effectiveFlagged, "
     "dueDate, deferDate, plannedDate, effectiveDueDate, effectiveDeferDate, "
     "estimatedMinutes, tags [{id, name}], "
     "parent (project {id, name} or task {id, name}), "
-    "project {id, name}, hasChildren, repetitionRule, completionDate.\n"
+    "project {id, name}, order, hasChildren, repetitionRule, completionDate.\n"
     "\n"
     "parent: direct container — a project or parent task.\n"
     "project: containing project at any nesting depth, or $inbox.\n"
