@@ -17,18 +17,18 @@ Requirements for Ordering & Move Fix milestone. Each maps to roadmap phases.
 
 ### Move Fix
 
-- [ ] **MOVE-01**: `moveTo beginning` on same container reorders task to first position
-- [ ] **MOVE-02**: `moveTo ending` on same container reorders task to last position
-- [ ] **MOVE-03**: Service translates to `moveBefore`/`moveAfter` when target container has children
-- [ ] **MOVE-04**: Move to empty container works without translation (direct `moveTo`)
-- [ ] **MOVE-05**: Move to different container works as before (no regression)
-- [ ] **MOVE-06**: Remove the "same-container move not fully supported" warning — it's now fixed
+- [x] **MOVE-01**: `moveTo beginning` on same container reorders task to first position
+- [x] **MOVE-02**: `moveTo ending` on same container reorders task to last position
+- [x] **MOVE-03**: Service translates to `moveBefore`/`moveAfter` when target container has children
+- [x] **MOVE-04**: Move to empty container works without translation (direct `moveTo`)
+- [x] **MOVE-05**: Move to different container works as before (no regression)
+- [x] **MOVE-06**: Remove the "same-container move not fully supported" warning — it's now fixed
 
 ### Warning Accuracy
 
-- [ ] **WARN-01**: No-op warning only fires when task is already in the requested position
-- [ ] **WARN-02**: "beginning" position check uses `MIN(rank)` among siblings
-- [ ] **WARN-03**: "ending" position check uses `MAX(rank)` among siblings
+- [x] **WARN-01**: No-op warning only fires when task is already in the requested position
+- [x] **WARN-02**: "beginning" position check uses `MIN(rank)` among siblings
+- [x] **WARN-03**: "ending" position check uses `MAX(rank)` among siblings
 
 ## Future Requirements
 
@@ -65,15 +65,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ORDER-03 | Phase 51 | Complete |
 | ORDER-04 | Phase 51 | Complete |
 | ORDER-05 | Phase 51 | Complete (revised — ~~after~~ → **before** projects) |
-| MOVE-01 | Phase 52 | Pending |
-| MOVE-02 | Phase 52 | Pending |
-| MOVE-03 | Phase 52 | Pending |
-| MOVE-04 | Phase 52 | Pending |
-| MOVE-05 | Phase 52 | Pending |
-| MOVE-06 | Phase 52 | Pending |
-| WARN-01 | Phase 52 | Pending |
-| WARN-02 | Phase 52 | Pending |
-| WARN-03 | Phase 52 | Pending |
+| MOVE-01 | Phase 52 | Complete |
+| MOVE-02 | Phase 52 | Complete |
+| MOVE-03 | Phase 52 | Complete |
+| MOVE-04 | Phase 52 | Complete |
+| MOVE-05 | Phase 52 | Complete |
+| MOVE-06 | Phase 52 | Complete |
+| WARN-01 | Phase 52 | Complete |
+| WARN-02 | Phase 52 | Complete |
+| WARN-03 | Phase 52 | Complete |
 
 **Coverage:**
 - v1.3.3 requirements: 14 total

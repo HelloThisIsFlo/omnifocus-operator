@@ -15,7 +15,7 @@ provides:
   - "list_tasks returns tasks in outline order with dotted order field"
   - "get_all returns tasks in outline order with dotted order field"
   - "get_task returns correct dotted order via scoped CTE"
-  - "Inbox tasks sort after projects via ZZZZZZZZZZ/ prefix"
+  - "Inbox tasks sort before projects via 0000000000/ prefix"
 affects: []
 
 # Tech tracking
@@ -68,7 +68,7 @@ completed: 2026-04-12
 - Recursive CTE (`_TASK_ORDER_CTE`) with project-root, inbox-root, and recursive-child anchors produces correct outline ordering
 - Python-side `_compute_dotted_orders()` generates sequential 1-based ordinals with dotted notation (1, 1.1, 1.2, 2)
 - All three read paths wired: `list_tasks` (via `_build_full_dotted_orders`), `get_all` (inline CTE), `get_task` (scoped `_compute_task_order`)
-- Inbox tasks sort after all project tasks via `ZZZZZZZZZZ/` sort_path prefix
+- Inbox tasks sort before all project tasks via `0000000000/` sort_path prefix
 - Filtered results preserve original ordinals (sparse values like 1, 3 when sibling 2 is filtered out)
 - Full test suite: 2029 passed, 98% coverage
 

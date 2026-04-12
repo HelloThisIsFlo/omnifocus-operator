@@ -22,7 +22,7 @@ overrides_applied: 0
 | 1 | Task responses include an integer `order` field reflecting position within parent (1-based, gap-free) | VERIFIED | `Task.order: str | None = Field(default=None, description=ORDER_FIELD)` in `models/task.py`. Uses dotted notation (string not int — per D-01, LLM-readability choice). HybridRepository populates real dotted paths; BridgeOnlyRepository sets `None`. |
 | 2 | Siblings under the same parent have sequential order values (1, 2, 3...) matching OmniFocus display order | VERIFIED | `_compute_dotted_orders()` builds per-parent counters (sequential 1-based). `test_siblings_have_sequential_order` asserts "1","2","3". `test_subtasks_have_dotted_order` asserts "1","1.1","1.2","2". CTE uses `rank` with `printf('%010d', rank+2147483648)` for correct sign-extended lexicographic sort. |
 | 3 | `get_all` and `list_tasks` return tasks in outline order — siblings grouped under their parent, depth respected | VERIFIED | `_read_all` executes `_TASK_ORDER_CTE` SQL with `ORDER BY o.sort_path, t.persistentIdentifier`. `_list_tasks_sync` uses `_TASKS_DATA_BASE` (which embeds the CTE) + same ORDER BY. `test_list_tasks_returns_outline_order` asserts depth-first ["First","Child of First","Second"]. `test_get_all_returns_tasks_in_outline_order` asserts same pattern including inbox. |
-| 4 | Inbox tasks appear after project tasks in get_all/list_tasks responses | VERIFIED | CTE second anchor uses `'ZZZZZZZZZZ/' || printf(...)` prefix for inbox root tasks, ensuring they sort after all project tasks lexicographically. `test_inbox_tasks_sort_after_project_tasks` asserts ["Project Task","Inbox Task"]. `test_get_all_returns_tasks_in_outline_order` confirms inbox last. |
+| 4 | Inbox tasks appear before project tasks in get_all/list_tasks responses | VERIFIED | CTE second anchor uses `'0000000000/' || printf(...)` prefix for inbox root tasks, ensuring they sort before all project tasks lexicographically. `test_inbox_tasks_sort_before_project_tasks` asserts ["Inbox Task","Project Task"]. `test_get_all_returns_tasks_in_outline_order` confirms inbox first. |
 | 5 | `order` field cannot be set via `edit_tasks` — it is read-only | VERIFIED | `EditTaskCommand.model_fields` has no `order` field — confirmed programmatically. Fields: ['id','name','flagged','note','due_date','defer_date','planned_date','estimated_minutes','repetition_rule','actions']. No `order` key in `EditTaskRepoPayload` either. |
 
 **Score:** 5/5 truths verified
@@ -69,7 +69,7 @@ The ROADMAP says "integer `order` field" but the implementation uses `str | None
 |----------|---------|--------|--------|
 | Task model has order field | `uv run python -c "from omnifocus_operator.models.task import Task; print(Task.model_fields['order'].annotation)"` | `str | None` | PASS |
 | `order` not in EditTaskCommand | `uv run python -c "from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskCommand; print('order' in EditTaskCommand.model_fields)"` | `False` | PASS |
-| CTE has ZZZZZZZZZZ inbox prefix | `uv run python -c "from omnifocus_operator.repository.hybrid.query_builder import _TASK_ORDER_CTE; print('ZZZZZZZZZZ' in _TASK_ORDER_CTE)"` | `True` | PASS |
+| CTE has 0000000000 inbox prefix | `uv run python -c "from omnifocus_operator.repository.hybrid.query_builder import _TASK_ORDER_CTE; print('0000000000' in _TASK_ORDER_CTE)"` | `True` | PASS |
 | TestTaskOrdering suite passes | `uv run pytest tests/test_hybrid_repository.py::TestTaskOrdering --no-cov -q` | `9 passed` | PASS |
 | Full test suite passes | `uv run pytest --no-cov -q` | `2030 passed` | PASS |
 
@@ -102,7 +102,7 @@ No gaps. All 5 success criteria are met:
 1. `order` field exists on Task model with `str | None` type and dotted notation semantics (the "integer" wording in ROADMAP SC-1 was superseded by D-01 before planning — this is the intended design, not a deviation).
 2. Sequential gap-free ordinals are computed by `_compute_dotted_orders()` from CTE-sorted rows.
 3. All three read paths (`get_all`, `list_tasks`, `get_task`) return tasks in CTE outline order.
-4. Inbox tasks sort after projects via `ZZZZZZZZZZ/` prefix in the CTE.
+4. Inbox tasks sort before projects via `0000000000/` prefix in the CTE.
 5. `order` is absent from `EditTaskCommand` and `EditTaskRepoPayload` — structurally read-only.
 
 ---
