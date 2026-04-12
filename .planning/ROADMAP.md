@@ -50,7 +50,11 @@ Plans:
   7. Moving the first child to "ending" does NOT trigger a no-op warning (it would actually reorder)
   8. Moving the first child to "beginning" DOES trigger a no-op warning (already in position)
   9. Moving the last child to "ending" DOES trigger a no-op warning (already in position)
-**Plans**: TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 52-01-PLAN.md — Repository get_edge_child_id + domain translation logic
+- [ ] 52-02-PLAN.md — Warning cleanup + no-op detection rewrite
 
 ## Progress
 
@@ -60,4 +64,4 @@ Phases execute in numeric order: 51 → 52
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 51. Task Ordering | v1.3.3 | 2/2 | Complete   | 2026-04-12 |
-| 52. Same-Container Move Fix | v1.3.3 | 0/? | Not started | - |
+| 52. Same-Container Move Fix | v1.3.3 | 0/2 | Not started | - |
