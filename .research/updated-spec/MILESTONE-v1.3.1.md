@@ -485,6 +485,6 @@ The `$` prefix creates a syntactically disjoint namespace. The resolver checks f
 
 ## Tools After This Milestone
 
-Unchanged from v1.3: `get_all`, `get_task`, `get_project`, `get_tag`, `add_tasks`, `edit_tasks`, `list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives`, `count_tasks`, `count_projects`.
+Unchanged from v1.3: `get_all`, `get_task`, `get_project`, `get_tag`, `add_tasks`, `edit_tasks`, `list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives`.
 
 No new tools. This milestone changes contracts and models, not the tool surface.

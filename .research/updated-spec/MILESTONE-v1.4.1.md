@@ -2,7 +2,7 @@
 
 ## Goal
 
-Agents can find tasks despite typos and partial recall. After this milestone, the `search` parameter on `list_tasks` and `count_tasks` supports fuzzy matching in addition to the existing substring search (SQL LIKE) from v1.3. No new tools -- enhances existing search parameter.
+Agents can find tasks despite typos and partial recall. After this milestone, the `search` parameter on `list_tasks` supports fuzzy matching in addition to the existing substring search (SQL LIKE) from v1.3. No new tools -- enhances existing search parameter.
 
 ## What to Build
 
@@ -11,7 +11,7 @@ Agents can find tasks despite typos and partial recall. After this milestone, th
 - Index-based fuzzy matching for task names and notes
 - In-memory index built from snapshot, refreshed on snapshot change
 - Substring (SQL LIKE) matches rank higher than fuzzy matches
-- Builds on v1.3 filtering infrastructure (`list_tasks`, `count_tasks`)
+- Builds on v1.3 filtering infrastructure (`list_tasks`)
 
 ### Edge Cases
 
@@ -21,7 +21,7 @@ Agents can find tasks despite typos and partial recall. After this milestone, th
 
 ### Integration
 
-- Same `search` parameter on `list_tasks` and `count_tasks` -- fuzzy is additive, not a separate mode
+- Same `search` parameter on `list_tasks` -- fuzzy is additive, not a separate mode
 - Fuzzy results appended after exact/substring matches (ranking: exact > substring > fuzzy)
 - Bridge fallback: fuzzy matching runs in Python against the snapshot (same as SQLite path uses the in-memory index)
 
@@ -35,4 +35,4 @@ Agents can find tasks despite typos and partial recall. After this milestone, th
 
 ## Tools After This Milestone
 
-Thirteen (unchanged from v1.4).
+Eleven (unchanged from v1.4).

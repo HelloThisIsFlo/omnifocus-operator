@@ -90,7 +90,6 @@ File-based JSON request/response via OmniFocus's sandbox directory. Both sides u
 - `list_projects(...)` -- projects with filters (v1.3)
 - `list_tags(...)`, `list_folders(...)` -- with status filter (v1.3)
 - `list_perspectives()` -- all perspectives (v1.3)
-- `count_tasks(...)`, `count_projects(...)` -- same filters, returns integer (v1.3)
 
 ### Writes
 - `add_tasks([...])` -- task creation (v1.2)

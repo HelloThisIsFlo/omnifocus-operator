@@ -64,10 +64,6 @@ Same pattern as tags.
 
 No filters. Returns all perspectives (built-in + custom) with `id` (null for built-ins), `name`, and `builtin` flag.
 
-### Count Tools
-
-**`count_tasks(...)`** and **`count_projects(...)`** -- same filter parameters as their `list_*` counterparts, return a single integer. Implemented as `len(filtered_results)` or `SELECT COUNT(*)` -- one code path to prevent count/list divergence.
-
 ### Pydantic Model Considerations
 
 All models needed for filtering are already defined from v1.0/v1.1. This milestone adds:
@@ -99,13 +95,10 @@ All hierarchy is flat with ID references (parent_id, folder_id, project_id). No 
 - `review_due_within: 'now'` returns projects overdue for review. Invalid values return helpful error messages.
 - Status shorthands work: `remaining`, `available`, `all`.
 - `get_task` with a known ID returns the full Task object (from v1.2 -- no regression).
-- `count_tasks()` equals `len(list_tasks())` for the same filters.
 - Substring search finds case-insensitive matches in name and notes.
 - Tool descriptions are detailed enough for an LLM to call correctly.
 - Bridge fallback produces identical results to SQL path for the same filters.
 - `list_tasks(limit: 5)` returns at most 5 results. `list_tasks(limit: 5, offset: 5)` returns the next page.
-- `count_tasks()` returns total count regardless of `limit`/`offset` — agents can compute total pages.
-
 ## Tools After This Milestone
 
-Thirteen: `get_all`, `get_task`, `get_project`, `get_tag`, `add_tasks`, `edit_tasks`, `list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives`, `count_tasks`, `count_projects`.
+Eleven: `get_all`, `get_task`, `get_project`, `get_tag`, `add_tasks`, `edit_tasks`, `list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives`.

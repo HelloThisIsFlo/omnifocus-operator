@@ -17,6 +17,11 @@ Ideas considered and intentionally rejected. Documented so they don't get re-pro
 - **Why discarded:** Blast radius too high for an agent-driven operation — permanent, no undo, cascades to children. The safer pattern is already well-supported: agent moves tasks under a single root via `moveTo`, then asks the user to delete manually. User keeps full control over destruction. Same reasoning as "Delete projects" above.
 - **Date:** 2026-04-12
 
+## Count tools (`count_tasks`, `count_projects`)
+- **What:** Dedicated tools returning a single integer count, same filter parameters as `list_*` counterparts
+- **Why discarded:** Redundant. Agents can use `list_*` with filtering and count the results. Dedicated count tools add API surface without meaningful value — agents rarely need "just the number" without also wanting to see the items.
+- **Date:** 2026-04-12
+
 ## "Why is this blocked?" blocking reason
 - **What:** Expose the reason a task has `availability: blocked` (sequential parent, project on hold, blocking tag)
 - **Why discarded:** Niche use case. If something is blocked, it's blocked. Agent can send user a deep link to the task if they need to investigate.

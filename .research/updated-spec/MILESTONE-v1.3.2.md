@@ -161,10 +161,6 @@ Configurable threshold for what counts as "due soon." Options: `today`, `24h`, `
 
 The system returns a guidance hint when `defer: {after: "now"}` or `defer: {before: "now"}` is used (see Warnings section below).
 
-### `count_tasks` Extension
-
-`count_tasks` gains the same date filter parameters. One code path shared with `list_tasks` (from v1.3 design).
-
 ### Agent Usage Patterns
 
 Realistic scenarios showing how agents compose date filters. These patterns informed the design — each filter earns its place by answering a distinct question.
@@ -176,7 +172,7 @@ Realistic scenarios showing how agents compose date filters. These patterns info
 | "What can I work on right now?" | `availability: "available"` | State question — no dates needed |
 | "What's blocked?" | `availability: "blocked"` | All 4 blocking reasons, not just defer |
 | "How's my week looking?" | `due: {this: "w"}` + `defer: {this: "w"}` + `planned: {this: "w"}` | Deadlines + incoming deferred tasks + planned work = full picture |
-| "Is next week going to be busy?" | `due: {next: "1w"}` + `defer: {next: "1w"}` (via `count_tasks`) | Deadline count + incoming load = workload forecast |
+| "Is next week going to be busy?" | `due: {next: "1w"}` + `defer: {next: "1w"}` | Deadline count + incoming load = workload forecast |
 | "What did I plan for today?" | `planned: "today"` | Planning review |
 | "What's becoming available soon?" | `defer: {next: "3d"}` or `defer: {this: "w"}` | Timing of deferrals — what's landing on my plate |
 | "Review my deferrals" | `defer: {after: "now"}` | Deferral hygiene — see future defer dates to reschedule (niche; warning returned) |
@@ -274,7 +270,6 @@ These are the MCP tool description texts that agents see at call time. They are 
 - Shorthand and absolute groups are mutually exclusive per field — mixing returns an error.
 - Invalid string shortcuts on wrong fields (e.g., `defer: "soon"`) return educational error.
 - Date filters combine with AND with each other and with v1.3 base filters.
-- `count_tasks` with date filters returns correct count.
 - Bridge fallback produces identical results to SQL path for date filters.
 - Tasks with no due date are excluded from `due` filters (not treated as overdue or due soon).
 - Tasks with no defer date are excluded from `defer` filters.
@@ -289,7 +284,7 @@ These are the MCP tool description texts that agents see at call time. They are 
 
 ## Tools After This Milestone
 
-Thirteen (unchanged from v1.3): `get_all`, `get_task`, `get_project`, `get_tag`, `add_tasks`, `edit_tasks`, `list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives`, `count_tasks`, `count_projects`.
+Eleven (unchanged from v1.3): `get_all`, `get_task`, `get_project`, `get_tag`, `add_tasks`, `edit_tasks`, `list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives`.
 
 ---
 
