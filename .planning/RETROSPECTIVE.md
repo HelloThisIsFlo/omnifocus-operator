@@ -431,6 +431,46 @@
 
 ---
 
+## Milestone: v1.3.3 — Ordering & Move Fix
+
+**Shipped:** 2026-04-12
+**Phases:** 2 | **Plans:** 4 executed
+
+### What Was Built
+- Task `order` field — read-only dotted notation (1, 1.1, 1.2) reflecting outline position within parent via recursive CTE
+- Inbox-first ordering — inbox tasks sort before project tasks in all read responses (ORDER-05 revised during UAT)
+- Same-container move fix — `moveTo beginning/ending` translates to `moveBefore`/`moveAfter` via `get_edge_child_id`
+- Position-specific no-op detection — `MOVE_ALREADY_AT_POSITION` with `{position}` placeholder replaces removed `MOVE_SAME_CONTAINER`
+
+### What Worked
+- Compact milestone — 2 phases, 4 plans, 1 day. Tight scope made execution clean and fast
+- Phase 51 CTE infrastructure paid immediate dividends in Phase 52 (`get_edge_child_id` reuses rank column)
+- TDD caught real bugs: adapter idempotency violation, sparse ordinal computation, ORDER BY tiebreaker — all found during GREEN phase runs
+- UAT-driven requirement revision (ORDER-05: inbox sorts before, not after) — caught before code was downstream
+
+### What Was Inefficient
+- No research phase — skipped for this milestone. Scope was small enough that inline research during planning sufficed, but the empty `.planning/research/` directory was confusing
+- Plan 52-01 auto-fixed 3 deviations that could have been caught in planning (warning removal, no-op detection update, service test updates) — all direct consequences of the translation feature
+
+### Patterns Established
+- Recursive CTE with three anchors (project roots, inbox roots, recursive children) for outline ordering
+- Python-side dotted ordinal computation (avoids SQLite ROW_NUMBER() limitation in recursive CTEs)
+- Full unfiltered CTE for order lookup, filtered query for results (preserves sparse ordinals)
+- Edge child lookup: SQL rank-based for hybrid, snapshot positional for bridge-only
+- Position reverse-mapping (before→beginning, after→ending) for user-facing messages
+
+### Key Lessons
+1. **Small milestones execute in a day** — 2 phases with tight requirements can go from plan to shipped in a single session. Not every milestone needs multi-day execution
+2. **Infrastructure phases enable feature phases** — Phase 51's rank column and CTE directly enabled Phase 52's `get_edge_child_id`. Plan dependency ordering works
+3. **UAT revisions are first-class outcomes** — ORDER-05 changed from "inbox after projects" to "inbox before projects" during UAT. This is the system working correctly
+
+### Cost Observations
+- Model mix: ~80% opus (planning, execution), ~20% sonnet (validation)
+- Sessions: 2 (one for each phase + milestone completion)
+- Notable: 41 commits including docs/validation, 4 plans executed in ~34 minutes total compute time
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -446,6 +486,7 @@
 | v1.3 | 12 | 26 | Largest feature milestone -- 7 decimal insertions, cross-path equivalence as hard requirement |
 | v1.3.1 | 6 | 15 | Cleanest feature milestone -- 1 insertion, 3-day execution, null elimination across all surfaces |
 | v1.3.2 | 6 | 23 | Deep-dive driven milestone -- 3→6 phases from research, naive-local contract, OmniFocus settings API |
+| v1.3.3 | 2 | 4 | Smallest milestone -- 1-day execution, CTE infrastructure enabled move fix, UAT-driven requirement revision |
 
 ### Cumulative Quality
 
@@ -460,6 +501,7 @@
 | v1.3 | 1,554 (1,528 pytest + 26 vitest) | ~94% | 4 (Nyquist gaps on 4 phases, all process artifacts) |
 | v1.3.1 | 1,719 (1,693 pytest + 26 vitest) | ~98% | 2 (golden master re-capture, SUMMARY frontmatter gaps) |
 | v1.3.2 | 1,977 (1,951 pytest + 26 vitest) | ~94% | 1 (pre-existing TODO(v1.5) in descriptions.py) |
+| v1.3.3 | 2,067 (2,041 pytest + 26 vitest) | ~94% | 2 (pre-existing TODO(v1.5), no direct repo tests for get_edge_child_id) |
 
 ### Top Lessons (Verified Across Milestones)
 

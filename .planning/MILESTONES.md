@@ -1,5 +1,18 @@
 # Milestones
 
+## v1.3.3 Ordering & Move Fix (Shipped: 2026-04-12)
+
+**Phases completed:** 2 phases, 4 plans, 6 tasks
+
+**Key accomplishments:**
+
+- Added order: str | None field to Task model with dotted notation description, bridge degraded-mode handling, and cross-path test exclusion
+- Recursive CTE with three-anchor sort_path produces exact OmniFocus outline order; Python computes dotted ordinals (1.2.3) for all read paths
+- get_edge_child_id on both repo implementations, _process_container_move translates beginning/ending to before/after when container has children, no-op detection via anchor_id == task_id
+- MOVE_ALREADY_AT_POSITION warning with position placeholder replaces generic no-op message for same-container move detection
+
+---
+
 ## v1.3.2 Date Filtering (Shipped: 2026-04-11)
 
 **Phases:** 6 (45-50) | **Plans:** 23 executed

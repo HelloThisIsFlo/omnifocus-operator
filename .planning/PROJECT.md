@@ -2,25 +2,22 @@
 
 ## What This Is
 
-A Python MCP server that exposes OmniFocus (macOS task manager) as structured task infrastructure for AI agents. Reads via SQLite cache (~46ms), writes via OmniJS bridge. Eleven MCP tools: `get_all`, `get_task`, `get_project`, `get_tag`, `add_tasks`, `edit_tasks`, `list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives`. Agent-first design with educational warnings, typed query models, patch semantics, and structured actions for tags/movement/lifecycle.
+A Python MCP server that exposes OmniFocus (macOS task manager) as structured task infrastructure for AI agents. Reads via SQLite cache (~46ms), writes via OmniJS bridge. Eleven MCP tools: `get_all`, `get_task`, `get_project`, `get_tag`, `add_tasks`, `edit_tasks`, `list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives`. Agent-first design with educational warnings, typed query models, patch semantics, structured actions for tags/movement/lifecycle, and outline-ordered task responses.
 
 ## Core Value
 
 Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
 
-## Current Milestone: v1.3.3 Ordering & Move Fix — COMPLETE
+## Current State
 
-**Goal:** Agents can see child task ordering and reliably reorder tasks within the same container.
+**Latest shipped:** v1.3.3 Ordering & Move Fix (2026-04-12)
+**Next milestone:** Not yet planned — run `/gsd-new-milestone` to start
 
-**Shipped:** 2026-04-12
-
-**Delivered:**
-- `order` field on task responses — read-only integer reflecting display order within parent (recursive CTE, rank-based)
-- Same-container move fix — `moveTo beginning/ending` translates to `moveBefore`/`moveAfter` via `get_edge_child_id` when container has children
-- Position-specific no-op detection — `anchor_id == task_id` self-reference check replaces container-membership comparison
-- `MOVE_ALREADY_AT_POSITION` warning with `{position}` placeholder replaces removed `MOVE_SAME_CONTAINER`
-
-**Previous:** v1.3.2 Date Filtering shipped 2026-04-11
+**v1.3.3 delivered:**
+- `order` field on task responses — read-only integer reflecting outline position via recursive CTE
+- Inbox-first ordering — inbox tasks sort before projects in all read responses
+- Same-container move fix — `moveTo beginning/ending` translates to `moveBefore`/`moveAfter` via `get_edge_child_id`
+- Position-specific no-op detection — `MOVE_ALREADY_AT_POSITION` with `{position}` placeholder
 
 ## Requirements
 
@@ -144,9 +141,9 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 ## Context
 
-Shipped v1.3.2 with ~11,472 LOC Python (src/), ~215k LOC JS (bridge + deps), ~28k TS (tests).
+Shipped v1.3.3 with ~11,600 LOC Python (src/), ~215k LOC JS (bridge + deps), ~28k TS (tests).
 Tech stack: Python 3.12, uv, Pydantic v2, FastMCP v3 (`fastmcp>=3.1.1`), pydantic-settings, OmniJS bridge, SQLite3 (stdlib).
-1,951 pytest tests, 26 Vitest tests, UAT passed on all phases.
+2,041 pytest tests, 26 Vitest tests, UAT passed on all phases.
 Real OmniFocus database: ~2,400 tasks, ~363 projects, ~64 tags, ~79 folders.
 Read path: SQLite (default, ~46ms for full snapshot, <6ms for filtered queries). Write path: OmniJS bridge with write-through guarantee.
 11 MCP tools: get_all, get_task, get_project, get_tag, add_tasks, edit_tasks, list_tasks, list_projects, list_tags, list_folders, list_perspectives.
@@ -230,6 +227,11 @@ Patch semantics: all write fields and list query filters use `Patch[T]` — null
 | pydantic-settings Settings class | All 7 OPERATOR_* env vars consolidated from 5 scattered files into single BaseSettings class with `get_settings()` singleton | ✓ Good — v1.3.2, single source of truth for config |
 | OmniFocusPreferences module via bridge settings | Lazy-loaded singleton reading OmniJS `settings.objectForKey()`, domain-typed output (DueSoonSetting enum, normalized time strings), factory-default fallback with warning | ✓ Good — v1.3.2, single source of truth for OmniFocus preferences |
 | Field-aware date normalization | `normalize_date_input(value, default_time)` — caller provides default time from preferences, keeps domain.py pure/sync. Each date field gets its configured default | ✓ Good — v1.3.2, matches OmniFocus UI behavior |
+| Recursive CTE for outline ordering | Three-anchor CTE (project roots, inbox roots, recursive children) with rank-based sort_path. Python computes dotted ordinals from sorted rows (avoids SQLite ROW_NUMBER() in recursive CTEs) | ✓ Good — v1.3.3, exact OmniFocus outline order |
+| Full CTE for sparse ordinals | list_tasks runs full unfiltered CTE to compute orders, then filtered query for results. Preserves original ordinals (1, 3) when filters remove siblings | ✓ Good — v1.3.3, consistent ordering across filtered views |
+| Always-translate move pattern | `_process_container_move` always translates beginning/ending to before/after when container has children. No same-vs-different branching | ✓ Good — v1.3.3, simpler code path, fixes OmniFocus API quirk |
+| Move translation in domain.py | Translation lives in domain.py per architecture litmus test — product decision to fix OmniFocus API limitation, not universal plumbing | ✓ Good — v1.3.3, correct layer placement |
+| Position-specific no-op via self-reference | `anchor_id == task_id` detects no-op after translation. MOVE_ALREADY_AT_POSITION with `{position}` placeholder shows "already at beginning/ending" | ✓ Good — v1.3.3, actionable agent guidance |
 
 ---
 ## Evolution
@@ -250,4 +252,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-11 after v1.3.3 milestone started — Ordering & Move Fix.*
+*Last updated: 2026-04-12 after v1.3.3 milestone completed — Ordering & Move Fix.*
