@@ -30,10 +30,10 @@
   3. `get_all` and `list_tasks` return tasks in outline order -- siblings grouped under their parent, depth respected
   4. Inbox tasks appear after project tasks in get_all/list_tasks responses
   5. `order` field cannot be set via `edit_tasks` -- it is read-only
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] 51-01-PLAN.md -- Model field, descriptions, bridge adapter, test infrastructure
+- [x] 51-01-PLAN.md -- Model field, descriptions, bridge adapter, test infrastructure
 - [ ] 51-02-PLAN.md -- CTE ordering, dotted path computation, hybrid repository integration
 
 ### Phase 52: Same-Container Move Fix
@@ -59,5 +59,5 @@ Phases execute in numeric order: 51 → 52
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 51. Task Ordering | v1.3.3 | 0/2 | Planned | - |
+| 51. Task Ordering | v1.3.3 | 1/2 | In Progress|  |
 | 52. Same-Container Move Fix | v1.3.3 | 0/? | Not started | - |

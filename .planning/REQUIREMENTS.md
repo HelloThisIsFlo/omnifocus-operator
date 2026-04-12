@@ -9,9 +9,9 @@ Requirements for Ordering & Move Fix milestone. Each maps to roadmap phases.
 
 ### Ordering
 
-- [ ] **ORDER-01**: Task responses include an `order` integer field reflecting display order within parent
+- [x] **ORDER-01**: Task responses include an `order` integer field reflecting display order within parent
 - [ ] **ORDER-02**: Siblings under the same parent have sequential, gap-free order values (1, 2, 3...)
-- [ ] **ORDER-03**: `order` field is read-only — not settable via `edit_tasks`
+- [x] **ORDER-03**: `order` field is read-only — not settable via `edit_tasks`
 - [ ] **ORDER-04**: Tasks returned in outline order (siblings grouped, depth and relative order respected); recursive CTE for HybridRepository, approximate ordering acceptable for BridgeOnlyRepository fallback
 - [ ] **ORDER-05**: Inbox tasks sort after projects in get_all/list_tasks responses
 
@@ -60,9 +60,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ORDER-01 | Phase 51 | Pending |
+| ORDER-01 | Phase 51 | Complete |
 | ORDER-02 | Phase 51 | Pending |
-| ORDER-03 | Phase 51 | Pending |
+| ORDER-03 | Phase 51 | Complete |
 | ORDER-04 | Phase 51 | Pending |
 | ORDER-05 | Phase 51 | Pending |
 | MOVE-01 | Phase 52 | Pending |

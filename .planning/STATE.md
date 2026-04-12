@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.3.3
 milestone_name: Ordering & Move Fix
-status: ready_to_plan
-last_updated: "2026-04-11T23:00:00.000Z"
-last_activity: 2026-04-11
+status: executing
+last_updated: "2026-04-12T12:58:11.445Z"
+last_activity: 2026-04-12 -- Completed 51-01 (Task model order field)
 progress:
   total_phases: 2
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_plans: 2
+  completed_plans: 1
+  percent: 50
 ---
 
 # Project State
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-04-11)
 ## Current Position
 
 Phase: 51 of 52 (Task Ordering)
-Plan: —
-Status: Ready to plan
-Last activity: 2026-04-11 — Roadmap created for v1.3.3
+Plan: 1 of 2
+Status: Executing
+Last activity: 2026-04-12 -- Completed 51-01 (Task model order field)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
@@ -43,7 +43,7 @@ Progress: [░░░░░░░░░░] 0%
 
 ### Decisions
 
-Cleared at milestone boundary. See PROJECT.md Key Decisions for full history.
+- [51-01] Moved order=None inside _adapt_task() rather than adapt_snapshot() loop to preserve adapter idempotency
 
 ### Pending Todos
 
@@ -73,5 +73,5 @@ Cleared at milestone boundary. See v1.3.2-ROADMAP.md for history.
 
 ## Session Continuity
 
-Last activity: 2026-04-11 - Roadmap created for v1.3.3 Ordering & Move Fix
-Resume: `/gsd-plan-phase 51`
+Last activity: 2026-04-12 - Completed 51-01-PLAN.md (Task model order field)
+Resume: `/gsd-execute-phase 51` (Plan 02 next)
