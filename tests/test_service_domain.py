@@ -16,6 +16,7 @@ from omnifocus_operator.agent_messages.warnings import (
     EDIT_COMPLETED_TASK,
     LIFECYCLE_REPEATING_COMPLETE,
     LIFECYCLE_REPEATING_DROP,
+    MOVE_ALREADY_AT_POSITION,
     REPETITION_AUTO_CLEAR_ON,
     REPETITION_AUTO_CLEAR_ON_DATES,
     REPETITION_EMPTY_ON,
@@ -33,6 +34,7 @@ from omnifocus_operator.contracts.use_cases.edit.tasks import (
     EditTaskActions,
     EditTaskCommand,
     EditTaskRepoPayload,
+    MoveToRepoPayload,
 )
 from omnifocus_operator.contracts.use_cases.list._date_filter import (
     AbsoluteRangeFilter,
@@ -407,6 +409,104 @@ class TestDetectEarlyReturn:
         payload = EditTaskRepoPayload.model_validate({"id": "t1", "name": "Bar"})
         result = _domain().detect_early_return(payload, task, [])
         assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Move no-op detection (D-12, D-13)
+# ---------------------------------------------------------------------------
+
+
+class TestMoveNoOpDetection:
+    """No-op detection for translated moves (D-12, D-13).
+
+    After Plan 01 translates beginning/ending to before/after with anchor IDs,
+    the no-op check uses anchor_id == task_id to detect self-reference.
+    """
+
+    def test_anchor_id_equals_task_id_beginning_is_noop(self) -> None:
+        """First child -> beginning -> before(self) is a no-op with position warning."""
+        task = _make_task(
+            id="t1",
+            name="Task",
+            parent={"task": {"id": "parent-1", "name": "P"}},
+            project={"id": "proj-1", "name": "Proj"},
+        )
+        payload = EditTaskRepoPayload(
+            id="t1", move_to=MoveToRepoPayload(position="before", anchor_id="t1")
+        )
+        warnings: list[str] = []
+        result = _domain().detect_early_return(payload, task, warnings)
+        assert result is not None  # early return = no-op
+        assert result.success is True
+        assert result.warnings is not None
+        assert any("beginning" in w for w in result.warnings)
+        assert any("already at the" in w for w in result.warnings)
+
+    def test_anchor_id_equals_task_id_ending_is_noop(self) -> None:
+        """Last child -> ending -> after(self) is a no-op with position warning."""
+        task = _make_task(
+            id="t1",
+            name="Task",
+            parent={"task": {"id": "parent-1", "name": "P"}},
+            project={"id": "proj-1", "name": "Proj"},
+        )
+        payload = EditTaskRepoPayload(
+            id="t1", move_to=MoveToRepoPayload(position="after", anchor_id="t1")
+        )
+        warnings: list[str] = []
+        result = _domain().detect_early_return(payload, task, warnings)
+        assert result is not None
+        assert result.success is True
+        assert result.warnings is not None
+        assert any("ending" in w for w in result.warnings)
+        assert any("already at the" in w for w in result.warnings)
+
+    def test_anchor_id_different_from_task_id_not_noop(self) -> None:
+        """Non-edge child -> beginning -> before(first) proceeds."""
+        task = _make_task(
+            id="t1",
+            name="Task",
+            parent={"task": {"id": "parent-1", "name": "P"}},
+            project={"id": "proj-1", "name": "Proj"},
+        )
+        payload = EditTaskRepoPayload(
+            id="t1", move_to=MoveToRepoPayload(position="before", anchor_id="other-child")
+        )
+        result = _domain().detect_early_return(payload, task, [])
+        assert result is None  # not a no-op, proceed
+
+    def test_untranslated_same_container_is_noop(self) -> None:
+        """Empty container, same parent -> no-op with position warning."""
+        task = _make_task(
+            id="t1",
+            name="Task",
+            parent={"project": {"id": "proj-1", "name": "P"}},
+            project={"id": "proj-1", "name": "Proj"},
+        )
+        payload = EditTaskRepoPayload(
+            id="t1", move_to=MoveToRepoPayload(position="beginning", container_id="proj-1")
+        )
+        warnings: list[str] = []
+        result = _domain().detect_early_return(payload, task, warnings)
+        assert result is not None
+        assert result.success is True
+        assert result.warnings is not None
+        assert any("beginning" in w for w in result.warnings)
+        assert any("already at the" in w for w in result.warnings)
+
+    def test_untranslated_different_container_not_noop(self) -> None:
+        """Empty different container -> proceed."""
+        task = _make_task(
+            id="t1",
+            name="Task",
+            parent={"project": {"id": "proj-1", "name": "P"}},
+            project={"id": "proj-1", "name": "Proj"},
+        )
+        payload = EditTaskRepoPayload(
+            id="t1", move_to=MoveToRepoPayload(position="beginning", container_id="proj-2")
+        )
+        result = _domain().detect_early_return(payload, task, [])
+        assert result is None  # different container, proceed
 
 
 # ---------------------------------------------------------------------------

@@ -190,6 +190,10 @@ AVAILABILITY_REMAINING_INCLUDES_BLOCKED = (
     "'remaining' already includes 'blocked' -- no need to combine them."
 )
 
+MOVE_ALREADY_AT_POSITION = (
+    "Task is already at the {position} of its container -- no reordering needed."
+)
+
 FILTER_DID_YOU_MEAN = (
     "No {entity_type} found matching '{value}'. "
     "Did you mean: {suggestions}? "
