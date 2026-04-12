@@ -40,6 +40,7 @@ from omnifocus_operator.agent_messages.warnings import (
     LIFECYCLE_CROSS_STATE,
     LIFECYCLE_REPEATING_COMPLETE,
     LIFECYCLE_REPEATING_DROP,
+    MOVE_ALREADY_AT_POSITION,
     REPETITION_ANCHOR_DATE_MISSING,
     REPETITION_AUTO_CLEAR_ON,
     REPETITION_AUTO_CLEAR_ON_DATES,
@@ -913,18 +914,19 @@ class DomainLogic:
 
         # Check move_to
         if "move_to" in fields_set and payload.move_to is not None:
-            position = payload.move_to.position
-            if position in ("before", "after") and payload.move_to.anchor_id is not None:
-                # Translated or direct anchor move -- check self-reference (D-12, D-13)
-                if payload.move_to.anchor_id == task.id:
-                    # Task is already at this position (e.g. first child -> beginning,
-                    # last child -> ending, or direct before/after self)
-                    return True
-                return False
-            elif position in ("beginning", "ending"):
-                # Empty container pass-through (no translation occurred)
-                container_id = payload.move_to.container_id
-                # Extract direct parent ID from tagged ParentRef
+            move = payload.move_to
+            if move.anchor_id is not None:
+                # Translated move (before/after with anchor)
+                # Self-reference = already in position (D-12, D-13)
+                if move.anchor_id != payload.id:
+                    return False
+                # anchor_id == task_id: no-op
+                # Determine original position for the warning message
+                original_position = "beginning" if move.position == "before" else "ending"
+                warnings.append(MOVE_ALREADY_AT_POSITION.format(position=original_position))
+            elif move.position in ("beginning", "ending"):
+                # Untranslated move (empty container) -- compare container
+                container_id = move.container_id
                 if task.parent.task is not None:
                     current_parent_id = task.parent.task.id
                 elif task.parent.project is not None:
@@ -933,8 +935,11 @@ class DomainLogic:
                     current_parent_id = None
                 if container_id != current_parent_id:
                     return False
-                # Same empty container -- no-op
+                # Same empty container -> no-op (task is alone, already at beginning AND ending)
+                warnings.append(MOVE_ALREADY_AT_POSITION.format(position=move.position))
             else:
+                # Direct before/after without anchor_id should not happen after translation,
+                # but if it does, we can't detect no-op
                 return False
 
         return True

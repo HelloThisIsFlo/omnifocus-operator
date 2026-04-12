@@ -1326,7 +1326,7 @@ class TestEditTask:
         )
         assert result.success is True
         assert result.warnings is not None
-        assert any("No changes detected" in w for w in result.warnings)
+        assert any("already at the ending" in w for w in result.warnings)
 
     @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
     async def test_lifecycle_complete_available_task(self, service: OperatorService) -> None:
@@ -1564,7 +1564,7 @@ class TestEditTask:
         )
         assert result.success is True
         assert result.warnings is not None
-        assert any("No changes detected" in w for w in result.warnings)
+        assert any("already at the ending" in w for w in result.warnings)
         assert len(result.warnings) == 1
 
     @pytest.mark.snapshot(
