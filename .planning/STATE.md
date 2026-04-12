@@ -2,9 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.3.3
 milestone_name: Ordering & Move Fix
-status: executing
-last_updated: "2026-04-12T13:23:37.694Z"
-last_activity: 2026-04-12
+status: completed
+stopped_at: Phase 52 context gathered
+last_updated: "2026-04-12T15:42:26.635Z"
+last_activity: 2026-04-12 -- Completed 51-02 (CTE outline ordering)
 progress:
   total_phases: 2
   completed_phases: 1
@@ -20,7 +21,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-11)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 51 — Task Ordering
+**Current focus:** Phase 52 — Same-Container Move Fix
 
 ## Current Position
 
@@ -46,6 +47,11 @@ Progress: [██████████] 100%
 - [51-01] Moved order=None inside _adapt_task() rather than adapt_snapshot() loop to preserve adapter idempotency
 - [Phase 51]: Compute dotted orders from full unfiltered CTE to preserve sparse ordinals in filtered results
 - [Phase 51]: Add t.persistentIdentifier tiebreaker to ORDER BY o.sort_path for deterministic pagination
+- [Phase 52]: New repo protocol method `get_edge_child_id(parent_id: str, edge)` — non-nullable, uses `SYSTEM_LOCATIONS["inbox"].id` for inbox
+- [Phase 52]: Translation always-when-children-exist: beginning→moveBefore(first), ending→moveAfter(last). Both paths translate (no degraded mode)
+- [Phase 52]: Translation lives in domain.py per architecture litmus test — product decision to fix OmniFocus API quirk, not universal plumbing
+- [Phase 52]: No-op detection: translation runs first, `_all_fields_match` catches self-reference via `anchor_id == task_id`
+- [Phase 52]: Batch freshness already handled by write-through (hybrid) and cache-clear (bridge-only) — no special design needed, documented for future batch work
 
 ### Pending Todos
 
@@ -76,4 +82,4 @@ Cleared at milestone boundary. See v1.3.2-ROADMAP.md for history.
 ## Session Continuity
 
 Last activity: 2026-04-12 - Completed 51-02-PLAN.md (CTE outline ordering)
-Stopped at: Completed 51-02-PLAN.md
+Stopped at: Phase 52 context gathered
