@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3.3
 milestone_name: Ordering & Move Fix
 status: executing
-last_updated: "2026-04-12T12:58:11.445Z"
-last_activity: 2026-04-12 -- Completed 51-01 (Task model order field)
+last_updated: "2026-04-12T13:23:37.694Z"
+last_activity: 2026-04-12
 progress:
   total_phases: 2
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
-  percent: 50
+  completed_plans: 2
+  percent: 100
 ---
 
 # Project State
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-04-11)
 ## Current Position
 
 Phase: 51 of 52 (Task Ordering)
-Plan: 1 of 2
-Status: Executing
-Last activity: 2026-04-12 -- Completed 51-01 (Task model order field)
+Plan: 2 of 2
+Status: Complete
+Last activity: 2026-04-12 -- Completed 51-02 (CTE outline ordering)
 
-Progress: [█████░░░░░] 50%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -44,6 +44,8 @@ Progress: [█████░░░░░] 50%
 ### Decisions
 
 - [51-01] Moved order=None inside _adapt_task() rather than adapt_snapshot() loop to preserve adapter idempotency
+- [Phase 51]: Compute dotted orders from full unfiltered CTE to preserve sparse ordinals in filtered results
+- [Phase 51]: Add t.persistentIdentifier tiebreaker to ORDER BY o.sort_path for deterministic pagination
 
 ### Pending Todos
 
@@ -73,5 +75,5 @@ Cleared at milestone boundary. See v1.3.2-ROADMAP.md for history.
 
 ## Session Continuity
 
-Last activity: 2026-04-12 - Completed 51-01-PLAN.md (Task model order field)
-Resume: `/gsd-execute-phase 51` (Plan 02 next)
+Last activity: 2026-04-12 - Completed 51-02-PLAN.md (CTE outline ordering)
+Stopped at: Completed 51-02-PLAN.md
