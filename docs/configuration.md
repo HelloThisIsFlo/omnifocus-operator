@@ -61,3 +61,15 @@ Timeout in seconds for bridge calls.
 **Default:** `30`
 
 **Why 30s?** macOS App Nap throttles OmniFocus CPU scheduling when it's backgrounded. Lightweight operations (e.g., adding a task) complete quickly even when napped, but heavy reads (`get_all`) can take 10-20s under throttling. The previous 10s default caused spurious timeouts. 30s accommodates App Nap degradation while still failing fast on genuine hangs (OmniFocus not running, bridge crash). In hybrid mode, reads bypass the bridge entirely (SQLite), so App Nap mainly affects writes and bridge-only configurations.
+
+### Disable App Nap for OmniFocus (optional)
+
+macOS App Nap throttles OmniFocus when it's in the background, slowing bridge operations. The 30s default timeout handles this, but you can eliminate the slowdown entirely:
+
+```bash
+defaults write com.omnigroup.OmniFocus4 NSAppSleepDisabled -bool YES
+```
+
+Then restart OmniFocus. This is a one-time setting that persists across reboots and app updates.
+
+To undo: `defaults delete com.omnigroup.OmniFocus4 NSAppSleepDisabled`
