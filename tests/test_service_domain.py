@@ -459,6 +459,44 @@ class TestProcessMove:
         with pytest.raises(ValueError, match="No task found"):
             await domain.process_move(MoveAction(before="bad-ref"), "task-1")
 
+    # -- Translation: beginning/ending -> before/after when container has children --
+
+    async def test_move_beginning_translates_to_before_first_child(self) -> None:
+        """beginning + container has children -> before(first_child)."""
+        domain = _domain(edge_children={("proj-1", "first"): "child-1"})
+        result = await domain.process_move(MoveAction(beginning="proj-1"), "task-1")
+        assert result == {"position": "before", "anchor_id": "child-1"}
+
+    async def test_move_ending_translates_to_after_last_child(self) -> None:
+        """ending + container has children -> after(last_child)."""
+        domain = _domain(edge_children={("proj-1", "last"): "child-99"})
+        result = await domain.process_move(MoveAction(ending="proj-1"), "task-1")
+        assert result == {"position": "after", "anchor_id": "child-99"}
+
+    async def test_move_beginning_empty_container_no_translation(self) -> None:
+        """beginning + empty container -> passes through unchanged."""
+        domain = _domain()  # no edge_children = empty container
+        result = await domain.process_move(MoveAction(beginning="proj-1"), "task-1")
+        assert result == {"position": "beginning", "container_id": "proj-1"}
+
+    async def test_move_ending_empty_container_no_translation(self) -> None:
+        """ending + empty container -> passes through unchanged."""
+        domain = _domain()
+        result = await domain.process_move(MoveAction(ending="proj-1"), "task-1")
+        assert result == {"position": "ending", "container_id": "proj-1"}
+
+    async def test_move_to_inbox_beginning_translates(self) -> None:
+        """beginning + inbox with children -> before(first inbox child)."""
+        domain = _domain(edge_children={("$inbox", "first"): "inbox-child-1"})
+        result = await domain.process_move(MoveAction(beginning="$inbox"), "task-1")
+        assert result == {"position": "before", "anchor_id": "inbox-child-1"}
+
+    async def test_move_to_inbox_ending_empty_no_translation(self) -> None:
+        """ending + empty inbox -> passes through unchanged."""
+        domain = _domain()
+        result = await domain.process_move(MoveAction(ending="$inbox"), "task-1")
+        assert result == {"position": "ending", "container_id": None}
+
 
 # ---------------------------------------------------------------------------
 # check_cycle
