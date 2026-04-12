@@ -215,6 +215,7 @@ def _adapt_task(raw: dict[str, Any]) -> None:
 
     _adapt_repetition_rule(raw)
     _adapt_parent_ref(raw)
+    raw["order"] = None  # D-03: bridge path cannot compute order
 
 
 def _adapt_project(raw: dict[str, Any]) -> None:
@@ -383,7 +384,6 @@ def adapt_snapshot(raw: dict[str, Any]) -> dict[str, Any]:
     # Per-entity adaptation (status mapping, dead field removal, parent ref)
     for task in raw.get("tasks", []):
         _adapt_task(task)
-        task["order"] = None  # D-03: bridge path cannot compute order
     for project in raw.get("projects", []):
         _adapt_project(project)
     for tag in raw.get("tags", []):

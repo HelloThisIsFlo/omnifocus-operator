@@ -227,9 +227,10 @@ def make_model_task_dict(**overrides: Any) -> dict[str, Any]:
         "effectivePlannedDate": None,
         "dropDate": None,
         "effectiveDropDate": None,
-        # Metadata (2)
+        # Metadata (3)
         "estimatedMinutes": None,
         "hasChildren": False,
+        "order": None,
         # Relationships
         "repetitionRule": None,
         "parent": {"project": {"id": "$inbox", "name": "Inbox"}},

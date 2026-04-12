@@ -954,10 +954,15 @@ async def seed_sqlite_repo(data: dict[str, Any], tmp_path: Path) -> HybridReposi
 
 
 def assert_equivalent(result_a: ListRepoResult, result_b: ListRepoResult) -> None:  # type: ignore[type-arg]
-    """Assert two ListRepoResult instances are equivalent (items sorted by ID)."""
+    """Assert two ListRepoResult instances are equivalent (items sorted by ID).
+
+    Excludes ``order`` from comparison -- intentional divergence (D-05):
+    HybridRepository returns dotted path strings, BridgeOnlyRepository returns None.
+    """
     items_a = sorted(result_a.items, key=lambda x: x.id or "")
     items_b = sorted(result_b.items, key=lambda x: x.id or "")
-    assert items_a == items_b
+    for a, b in zip(items_a, items_b, strict=True):
+        assert a.model_dump(exclude={"order"}) == b.model_dump(exclude={"order"})
     assert result_a.total == result_b.total
 
 

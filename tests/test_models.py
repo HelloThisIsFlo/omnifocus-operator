@@ -451,9 +451,9 @@ class TestFactoryFunctions:
     """Factory functions produce valid new-shape dicts with correct field counts."""
 
     def test_make_model_task_dict_field_count(self) -> None:
-        """make_model_task_dict returns exactly 26 fields (new model shape with unified parent)."""
+        """make_model_task_dict returns exactly 27 fields (model shape + order)."""
         d = make_model_task_dict()
-        assert len(d) == 26
+        assert len(d) == 27
 
     def test_make_model_task_dict_overrides(self) -> None:
         """make_model_task_dict supports keyword overrides."""
@@ -560,8 +560,8 @@ class TestTaskModel:
         assert task.tags[0].id == "t1"
         assert task.tags[1].name == "morning"
 
-        # Verify total field count (26: parent+project replaced in_inbox)
-        assert len(Task.model_fields) == 26
+        # Verify total field count (27: parent+project replaced in_inbox, + order)
+        assert len(Task.model_fields) == 27
 
         # Serialize back to camelCase and verify round-trip
         dumped = task.model_dump(mode="json", by_alias=True)
