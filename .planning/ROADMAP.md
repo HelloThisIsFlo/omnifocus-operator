@@ -28,7 +28,7 @@
   1. Task responses include an integer `order` field reflecting position within parent (1-based, gap-free)
   2. Siblings under the same parent have sequential order values (1, 2, 3...) matching OmniFocus display order
   3. `get_all` and `list_tasks` return tasks in outline order -- siblings grouped under their parent, depth respected
-  4. Inbox tasks appear after project tasks in get_all/list_tasks responses
+  4. ~~Inbox tasks appear after project tasks~~ → Inbox tasks appear **before** project tasks in get_all/list_tasks responses
   5. `order` field cannot be set via `edit_tasks` -- it is read-only
 **Plans:** 2/2 plans complete
 
