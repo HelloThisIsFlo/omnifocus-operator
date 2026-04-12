@@ -43,4 +43,4 @@ See: `2026-03-08-enforce-mutually-exclusive-tags-at-service-layer.md`
 
 ## Tools After This Milestone
 
-Sixteen: all fourteen from v1.4.1, plus `add_projects`, `edit_projects`.
+Fifteen: all thirteen from v1.4.2, plus `add_projects`, `edit_projects`.

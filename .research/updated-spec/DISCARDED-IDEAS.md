@@ -9,8 +9,13 @@ Ideas considered and intentionally rejected. Documented so they don't get re-pro
 
 ## Delete projects
 - **What:** `delete_projects` tool to permanently remove projects
-- **Why discarded:** Blast radius too large, no recovery possible. Already cautious about `delete_tasks`. Project deletion stays manual in OmniFocus UI.
+- **Why discarded:** Blast radius too large, no recovery possible. Same reasoning as `delete_tasks` — all deletion stays manual in OmniFocus UI.
 - **Date:** 2026-03-17
+
+## Delete tasks
+- **What:** `delete_tasks` tool to permanently remove tasks by ID
+- **Why discarded:** Blast radius too high for an agent-driven operation — permanent, no undo, cascades to children. The safer pattern is already well-supported: agent moves tasks under a single root via `moveTo`, then asks the user to delete manually. User keeps full control over destruction. Same reasoning as "Delete projects" above.
+- **Date:** 2026-04-12
 
 ## "Why is this blocked?" blocking reason
 - **What:** Expose the reason a task has `availability: blocked` (sequential parent, project on hold, blocking tag)

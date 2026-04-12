@@ -1,8 +1,8 @@
-# Milestone v1.4 -- Field Selection, Null-Stripping, Task Deletion & Notes Append
+# Milestone v1.4 -- Field Selection, Null-Stripping & Notes Append
 
 ## Goal
 
-Agents get control over what data they receive and gain two new write capabilities. Field selection and null-stripping reduce token usage — projection limits *which* fields appear, null-stripping limits *which values* appear. Task deletion adds permanent removal. Notes append enables incremental note updates without read-modify-write cycles. No new data paths — all within existing architecture.
+Agents get control over what data they receive and gain a new write capability. Field selection and null-stripping reduce token usage — projection limits *which* fields appear, null-stripping limits *which values* appear. Notes append enables incremental note updates without read-modify-write cycles. No new data paths — all within existing architecture.
 
 ## What to Build
 
@@ -37,12 +37,6 @@ A typical task has ~8-10 null fields (`dueDate`, `deferDate`, `completionDate`, 
 - Should this also strip empty lists (`tags: []`) and/or false-y defaults (`flagged: false`)? Or strictly just `null`?
 - Interaction with field selection: if an agent explicitly requests a field via `fields` and it's null, should it still be omitted? (Likely yes — the agent asked for the field "if it has a value", not "always include it".)
 
-### Task Deletion (Deferred from v1.2)
-
-**`delete_tasks([...])`** -- permanently removes tasks by ID. Deleting a parent task removes all children. Returns `[{ success }]`.
-
-The tool description must warn about permanent deletion.
-
 ### Notes Append (Field Graduation)
 
 Extend `edit_tasks` to support notes append via the field graduation pattern (see architecture.md):
@@ -72,11 +66,10 @@ This is the second field graduation after tags (v1.2), following the same patter
 - Omitting `fields` returns curated default set, not everything
 - Projection doesn't affect filtering
 - Null fields omitted from responses by default
-- Task deletion is permanent and removes children
 - Notes append adds text with newline separator to existing note
 - Notes append on empty note sets the note (no leading newline)
 - Validation error when both top-level `note` and `actions.note` are provided
 
 ## Tools After This Milestone
 
-Fourteen: all thirteen from v1.3, plus `delete_tasks`.
+Thirteen (unchanged from v1.3). No new tools — all enhancements to existing read and edit tools.

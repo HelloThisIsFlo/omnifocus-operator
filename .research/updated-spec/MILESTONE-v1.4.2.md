@@ -36,4 +36,4 @@ Alternative serialization format offering ~5x token reduction compared to JSON.
 
 ## Tools After This Milestone
 
-Fourteen (unchanged from v1.4.1 -- no new tools, new output format).
+Thirteen (unchanged from v1.4.1 -- no new tools, new output format).

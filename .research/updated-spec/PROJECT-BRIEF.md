@@ -95,7 +95,6 @@ File-based JSON request/response via OmniFocus's sandbox directory. Both sides u
 ### Writes
 - `add_tasks([...])` -- task creation (v1.2)
 - `edit_tasks([{ id, changes }])` -- task editing with patch semantics (v1.2)
-- `delete_tasks([...])` -- task deletion (v1.4)
 - `add_projects([...])` -- project creation (v1.4.3)
 - `edit_projects([{ id, changes }])` -- project editing (v1.4.3)
 
