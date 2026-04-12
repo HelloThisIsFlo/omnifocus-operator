@@ -69,5 +69,6 @@ Cleared at milestone boundary. See v1.3.3-ROADMAP.md for history.
 
 ## Session Continuity
 
-Last activity: 2026-04-12 - Milestone v1.3.3 archived
-Stopped at: Milestone archived
+Last activity: 2026-04-12 - Milestone v1.3.1 summary generated
+Stopped at: Milestone v1.3.1 summary generated
+Resume file: .planning/reports/MILESTONE_SUMMARY-v1.3.1.md
