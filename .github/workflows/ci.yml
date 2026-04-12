@@ -22,34 +22,11 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked --dev
 
-      - name: Lint
-        run: uv run ruff check
+      - name: Install just
+        uses: extractions/setup-just@v2
 
-      - name: Format check
-        run: uv run ruff format --check
-
-      - name: Type check
-        run: uv run mypy src/
-
-      - name: Safety check (SAFE-01)
-        run: |
-          # SAFE-01: No test may use RealBridge directly.
-          # Allowed references:
-          #   - tests/doubles/ (SimulatorBridge inherits RealBridge — the approved path)
-          #   - test_smoke.py, test_ipc_engine.py (verify SAFE-01 enforcement itself)
-          violations=$(grep -r "RealBridge" tests/ --include="*.py" --exclude-dir=doubles -l \
-            | grep -v "test_smoke\.py" \
-            | grep -v "test_ipc_engine\.py" || true)
-          if [ -n "$violations" ]; then
-            echo "$violations"
-            echo "ERROR: Test files must not reference RealBridge (SAFE-01)"
-            echo "Use InMemoryBridge or SimulatorBridge for automated testing."
-            echo "Allowed: tests/doubles/ (infrastructure), test_smoke.py, test_ipc_engine.py (enforcement tests)"
-            exit 1
-          fi
-
-      - name: Test
-        run: uv run pytest --cov-fail-under=80
+      - name: Run CI
+        run: just ci
 
   deploy-pages:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'

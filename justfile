@@ -57,13 +57,13 @@ test-cov:
 
 # Check linting and formatting (no changes)
 lint:
-    uv run ruff check src/ tests/
-    uv run ruff format --check src/ tests/
+    uv run ruff check
+    uv run ruff format --check
 
 # Auto-fix lint issues and reformat
 fix:
-    uv run ruff check --fix src/ tests/
-    uv run ruff format src/ tests/
+    uv run ruff check --fix
+    uv run ruff format
 
 # Run mypy type checking
 typecheck:
@@ -140,6 +140,19 @@ clean:
 
 # ─── CI ──────────────────────────────────────────────────────────────────────
 
+# SAFE-01: No test may reference RealBridge outside allowed files
+safety:
+    @violations=$(grep -r "RealBridge" tests/ --include="*.py" --exclude-dir=doubles -l \
+        | grep -v "test_smoke\.py" \
+        | grep -v "test_ipc_engine\.py" || true); \
+    if [ -n "$violations" ]; then \
+        echo "$$violations"; \
+        echo "ERROR: SAFE-01 violation — test files must not reference RealBridge"; \
+        echo "Use InMemoryBridge or SimulatorBridge. Allowed: doubles/, test_smoke.py, test_ipc_engine.py"; \
+        exit 1; \
+    fi
+
 # Replicate CI pipeline locally (lint/typecheck first = fail fast)
-ci: lint typecheck test-python test-js
+ci: lint typecheck safety test-js
+    uv run pytest --cov-fail-under=80
     @echo "CI pipeline passed."

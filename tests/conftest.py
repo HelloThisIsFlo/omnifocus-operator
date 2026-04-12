@@ -368,7 +368,7 @@ def _reset_settings_cache() -> None:
 
 @pytest.fixture(autouse=True)
 def _mock_real_bridge_factory(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Prevent create_real_bridge() from instantiating RealBridge in tests.
+    """Prevent create_real_bridge() from instantiating the real Bridge in tests.
 
     The server lifespan calls create_real_bridge() to construct the production
     bridge. In tests, this returns an InMemoryBridge to satisfy SAFE-01.
