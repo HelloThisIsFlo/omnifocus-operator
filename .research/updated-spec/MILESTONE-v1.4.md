@@ -25,7 +25,9 @@ JSON repeats field names for every item in a list — for 50 tasks with 8 fields
 
 ## Goal
 
-Agents get control over what data they receive and gain a new write capability. Field selection reduces token usage by controlling *which* fields appear. A compact output format (CSV or null-stripped JSON — see spike above) reduces structural overhead. Notes append enables incremental note updates without read-modify-write cycles. No new data paths — all within existing architecture.
+**Problem:** List tool responses are bloated. Every task in a JSON array repeats all field names, includes ~8-10 null fields the agent doesn't care about, and returns fields the agent never asked for. A 50-task response wastes hundreds of tokens on structural noise.
+
+**Fix:** Give agents control over response shape. Field selection picks *which* fields appear. A compact output format (CSV or null-stripped JSON — spike determines which) eliminates structural repetition. Together these can reduce response size 5-6x. Additionally, notes append enables incremental note updates without read-modify-write cycles.
 
 ## What to Build
 
