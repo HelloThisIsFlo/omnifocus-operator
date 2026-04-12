@@ -1079,6 +1079,11 @@ class TestCommandModelStrictness:
         with pytest.raises(ValidationError, match="bogus_field"):
             EditTaskCommand.model_validate({"id": "t1", "bogus_field": "x"})
 
+    def test_edit_task_command_rejects_order_field(self) -> None:
+        """ORDER-03: agents cannot write order -- it is read-only, computed by repo."""
+        with pytest.raises(ValidationError, match="order"):
+            EditTaskCommand.model_validate({"id": "t1", "order": "2.3.1"})
+
     def test_move_action_rejects_unknown_field(self) -> None:
         with pytest.raises(ValidationError, match="bogus_field"):
             MoveAction.model_validate({"ending": "p1", "bogus_field": "x"})
