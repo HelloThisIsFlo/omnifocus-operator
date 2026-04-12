@@ -8,14 +8,17 @@ A Python MCP server that exposes OmniFocus (macOS task manager) as structured ta
 
 Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
 
-## Current Milestone: v1.3.3 Ordering & Move Fix
+## Current Milestone: v1.3.3 Ordering & Move Fix — COMPLETE
 
 **Goal:** Agents can see child task ordering and reliably reorder tasks within the same container.
 
-**Target features:**
-- Add `order` field to task responses — read-only integer reflecting display order within parent (recursive CTE for tasks, simple ORDER BY for projects/folders/tags)
-- Fix same-container move — translate `moveTo beginning/ending` to `moveBefore`/`moveAfter` when target has children
-- Improve move no-op warning accuracy — check ordinal position, not just container membership
+**Shipped:** 2026-04-12
+
+**Delivered:**
+- `order` field on task responses — read-only integer reflecting display order within parent (recursive CTE, rank-based)
+- Same-container move fix — `moveTo beginning/ending` translates to `moveBefore`/`moveAfter` via `get_edge_child_id` when container has children
+- Position-specific no-op detection — `anchor_id == task_id` self-reference check replaces container-membership comparison
+- `MOVE_ALREADY_AT_POSITION` warning with `{position}` placeholder replaces removed `MOVE_SAME_CONTAINER`
 
 **Previous:** v1.3.2 Date Filtering shipped 2026-04-11
 
@@ -106,6 +109,10 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 - ✓ OmniFocus settings API integration — due-soon threshold and default times via OmniJS `settings.objectForKey()` — v1.3.2
 - ✓ Filter cleanup: `urgency` removed, `completed` boolean → date filter, `availability` trimmed (`COMPLETED`/`DROPPED` removed) — v1.3.2
 - ✓ Defer vs availability hints — educational guidance when defer filter implies availability equivalents — v1.3.2
+- ✓ Task `order` field — read-only integer reflecting outline position within parent via recursive CTE (rank-based) — v1.3.3
+- ✓ Inbox-first ordering — inbox tasks sort before project tasks in get_all/list_tasks responses — v1.3.3
+- ✓ Same-container move fix — `moveTo beginning/ending` translates to `moveBefore`/`moveAfter` via `get_edge_child_id` when container has children — v1.3.3
+- ✓ Position-specific no-op detection — `anchor_id == task_id` self-reference check with `MOVE_ALREADY_AT_POSITION` warning — v1.3.3
 
 ### Active
 
