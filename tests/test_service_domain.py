@@ -118,6 +118,7 @@ class StubRepo:
         tasks: list[Task] | None = None,
         tags: list[object] | None = None,
         snapshot: AllEntities | None = None,
+        edge_children: dict[tuple[str, str], str | None] | None = None,
     ) -> None:
         if snapshot is not None:
             self._snapshot = snapshot
@@ -135,6 +136,7 @@ class StubRepo:
                 self._snapshot.tasks.extend(tasks)
             if tags:
                 self._snapshot.tags.extend(tags)  # type: ignore[arg-type]
+        self._edge_children: dict[tuple[str, str], str | None] = edge_children or {}
 
     async def get_all(self) -> AllEntities:
         return self._snapshot
@@ -144,6 +146,9 @@ class StubRepo:
 
     async def get_project(self, project_id: str) -> object:
         return next((p for p in self._snapshot.projects if p.id == project_id), None)
+
+    async def get_edge_child_id(self, parent_id: str, edge: str) -> str | None:
+        return self._edge_children.get((parent_id, edge))
 
 
 # ---------------------------------------------------------------------------
@@ -162,10 +167,11 @@ def _domain(
     tags: list[object] | None = None,
     snapshot: AllEntities | None = None,
     anchor_errors: dict[str, str] | None = None,
+    edge_children: dict[tuple[str, str], str | None] | None = None,
 ) -> DomainLogic:
     """Build a DomainLogic with stub dependencies."""
     resolver = StubResolver(tag_map, tasks=tasks, anchor_errors=anchor_errors)
-    repo = StubRepo(tasks=tasks, tags=tags, snapshot=snapshot)
+    repo = StubRepo(tasks=tasks, tags=tags, snapshot=snapshot, edge_children=edge_children)
     return DomainLogic(repo, resolver)  # type: ignore[arg-type]
 
 

@@ -348,6 +348,30 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
             items = [p for p in items if lower_search in p.name.lower()]
         return _paginate(items, query.limit, query.offset)
 
+    async def get_edge_child_id(self, parent_id: str, edge: str) -> str | None:
+        """Return the first or last child task ID from the cached snapshot."""
+        all_entities = await self.get_all()
+        inbox_id = SYSTEM_LOCATIONS["inbox"].id
+
+        if parent_id == inbox_id:
+            # Inbox: direct inbox children (project == $inbox, no parent task)
+            children = [
+                t for t in all_entities.tasks if t.project.id == inbox_id and t.parent.task is None
+            ]
+        else:
+            # Regular container: tasks whose direct parent matches
+            children = [
+                t
+                for t in all_entities.tasks
+                if (t.parent.task is not None and t.parent.task.id == parent_id)
+                or (t.parent.project is not None and t.parent.project.id == parent_id)
+            ]
+
+        if not children:
+            return None
+        # Bridge returns tasks in display order; first/last by position
+        return children[0].id if edge == "first" else children[-1].id
+
     async def _refresh(self, current_mtime: int) -> AllEntities:
         """Fetch fresh data from the bridge and update cache state.
 

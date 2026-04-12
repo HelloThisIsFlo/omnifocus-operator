@@ -6,7 +6,7 @@ so a single import shows the full typed contract.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from typing import Any
@@ -101,6 +101,10 @@ class Repository(Protocol):
     async def list_perspectives(
         self, query: ListPerspectivesRepoQuery
     ) -> ListRepoResult[Perspective]: ...
+
+    async def get_edge_child_id(
+        self, parent_id: str, edge: Literal["first", "last"]
+    ) -> str | None: ...
 
 
 @runtime_checkable

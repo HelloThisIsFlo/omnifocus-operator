@@ -1129,3 +1129,41 @@ class HybridRepository(BridgeWriteMixin, Repository):
     ) -> ListRepoResult[Perspective]:
         """Return perspectives from the SQLite cache, optionally filtered by search."""
         return await asyncio.to_thread(self._list_perspectives_sync, query)
+
+    # -- Edge child lookup (for move translation) --
+
+    def _read_edge_child_id(self, parent_id: str, edge: str) -> str | None:
+        """Read the first or last child task ID for a container from SQLite."""
+        inbox_id = SYSTEM_LOCATIONS["inbox"].id
+        order = "ASC" if edge == "first" else "DESC"
+
+        conn = sqlite3.connect(f"file:{self._db_path}?mode=ro", uri=True)
+        conn.row_factory = sqlite3.Row
+        try:
+            if parent_id == inbox_id:
+                # Inbox: tasks with no parent and no ProjectInfo row
+                row = conn.execute(
+                    "SELECT persistentIdentifier FROM Task"
+                    " WHERE parent IS NULL"
+                    "   AND containingProjectInfo IS NULL"
+                    "   AND NOT EXISTS"
+                    " (SELECT 1 FROM ProjectInfo pi WHERE pi.task = persistentIdentifier)"
+                    f" ORDER BY rank {order} LIMIT 1",
+                    (),
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    "SELECT persistentIdentifier FROM Task"
+                    " WHERE parent = ?"
+                    f" ORDER BY rank {order} LIMIT 1",
+                    (parent_id,),
+                ).fetchone()
+            if row is None:
+                return None
+            return str(row["persistentIdentifier"])
+        finally:
+            conn.close()
+
+    async def get_edge_child_id(self, parent_id: str, edge: str) -> str | None:
+        """Return the first or last child task ID for a container."""
+        return await asyncio.to_thread(self._read_edge_child_id, parent_id, edge)
