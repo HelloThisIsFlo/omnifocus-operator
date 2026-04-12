@@ -54,6 +54,7 @@ from omnifocus_operator.agent_messages.warnings import (
     TAG_NOT_ON_TASK,
     TAGS_ALREADY_MATCH,
 )
+from omnifocus_operator.config import SYSTEM_LOCATIONS
 from omnifocus_operator.contracts.base import is_set
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
 from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
@@ -779,7 +780,6 @@ class DomainLogic:
         has children (D-06, D-07). OmniFocus silently no-ops on same-container
         beginning/ending moves -- this translation makes them work.
         """
-        from omnifocus_operator.config import SYSTEM_LOCATIONS
 
         inbox_id = SYSTEM_LOCATIONS["inbox"].id
 
