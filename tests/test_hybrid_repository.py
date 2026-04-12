@@ -3180,13 +3180,13 @@ class TestTaskOrdering:
             ),
         ],
     )
-    async def test_inbox_tasks_sort_after_project_tasks(
+    async def test_inbox_tasks_sort_before_project_tasks(
         self, hybrid_repo: HybridRepository
     ) -> None:
-        """Inbox tasks sort after all project tasks in list_tasks."""
+        """Inbox tasks sort before all project tasks in list_tasks."""
         result = await hybrid_repo.list_tasks(ListTasksRepoQuery())
         names = [t.name for t in result.items]
-        assert names == ["Project Task", "Inbox Task"]
+        assert names == ["Inbox Task", "Project Task"]
 
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(
@@ -3470,8 +3470,8 @@ class TestTaskOrdering:
         """get_all returns tasks in outline order with order field populated."""
         result = await hybrid_repo.get_all()
         names = [t.name for t in result.tasks]
-        # Project tasks in depth-first order, then inbox tasks
-        assert names == ["First", "Child of First", "Second", "Inbox Task"]
+        # Inbox tasks first, then project tasks in depth-first order
+        assert names == ["Inbox Task", "First", "Child of First", "Second"]
         # Order values reflect per-namespace dotted paths
         tasks_by_name = {t.name: t for t in result.tasks}
         assert tasks_by_name["First"].order == "1"

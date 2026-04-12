@@ -125,7 +125,7 @@ _TASKS_COUNT_BASE = (
 # ---------------------------------------------------------------------------
 # Builds a sort_path from rank values at each depth level. Three anchors:
 # 1. Project root tasks (the task row that IS the project) -- start of each project tree
-# 2. Inbox root tasks (no parent, no project) -- prefixed with ZZZZZZZZZZ/ to sort after projects
+# 2. Inbox root tasks (no parent, no project) -- prefixed with 0000000000/ to sort before projects
 # 3. Recursive children -- append shifted rank to parent's sort_path
 #
 # The outer query uses LEFT JOIN so orphan tasks still appear (order=None).
@@ -142,7 +142,7 @@ TASK_ORDER_CTE = (
     "  UNION ALL\n"
     "\n"
     "  SELECT t.persistentIdentifier,\n"
-    "         'ZZZZZZZZZZ/' || printf('%010d', t.rank + 2147483648)\n"
+    "         '0000000000/' || printf('%010d', t.rank + 2147483648)\n"
     "  FROM Task t\n"
     "  WHERE t.parent IS NULL\n"
     "    AND t.containingProjectInfo IS NULL\n"
