@@ -2,7 +2,7 @@
 
 ## Goal
 
-Reliability and polish. No new tools -- the full 19-tool API surface is complete from v1.5. This milestone makes the server robust enough for daily use without supervision.
+Reliability and polish. No new tools -- the full API surface is complete from v1.5. This milestone makes the server robust enough for daily use without supervision.
 
 ## What to Build
 
@@ -61,8 +61,8 @@ Prioritize based on real-world usage data, not hypothetical concerns.
 - Server recovers gracefully from OmniFocus crashes/restarts
 - Bridge timeouts produce actionable error messages with retry information
 - Server can run a full daily review session without manual intervention
-- No new tools -- same 19-tool API surface as v1.5
+- No new tools -- same API surface as v1.5
 
 ## Tools After This Milestone
 
-Nineteen (unchanged from v1.5).
+Fourteen (unchanged from v1.5).

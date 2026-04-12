@@ -14,7 +14,7 @@ Expose child ordering via an integer field on task responses so agents can see s
 - When listing children of a parent, return them in display order with `order`
 - Example: `[{"id": "abc", "name": "Design", "order": 0, "parent": {"id": "xyz", ...}}, ...]`
 - Independent of actions.move -- purely read-side
-- Complements TaskPaper output (v1.4.2) which shows hierarchy via indentation: `order` is for programmatic use, TaskPaper for visual comprehension
+- `order` is for programmatic use; visual hierarchy (e.g., TaskPaper) is a maybe-idea
 
 **Research findings** (from [deep dive](../deep-dives/direct-database-access-ordering/RESULTS.md)):
 - SQLite `rank` column is unique within parent, uses signed 32-bit with 65536 gaps between siblings
@@ -82,4 +82,4 @@ See: `2026-03-09-move-no-op-warning-check-ordinal-position-not-just-container.md
 
 ## Tools After This Milestone
 
-Thirteen (unchanged from v1.3.2): `get_all`, `get_task`, `get_project`, `get_tag`, `add_tasks`, `edit_tasks`, `list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives`, `count_tasks`, `count_projects`.
+Eleven (unchanged from v1.3.2): `get_all`, `get_task`, `get_project`, `get_tag`, `add_tasks`, `edit_tasks`, `list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives`.

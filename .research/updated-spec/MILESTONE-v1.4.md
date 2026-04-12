@@ -1,8 +1,33 @@
-# Milestone v1.4 -- Field Selection, Null-Stripping, Task Deletion & Notes Append
+# Milestone v1.4 -- Response Shaping & Notes Append
+
+## ⚠️ Pre-Planning Spike: CSV Output Format
+
+**Before planning this milestone, run a deep dive on CSV serialization for list tools.**
+
+JSON repeats field names for every item in a list — for 50 tasks with 8 fields, that's ~400 tokens of pure structural repetition. CSV eliminates this: one header row, then pure data. Estimated 1.5-2x token reduction on top of field selection, for ~5-6x total from raw JSON baseline.
+
+**Why this matters for milestone scope:**
+- If CSV lands, **null-stripping may be unnecessary** — an empty CSV cell is already zero overhead (no `"dueDate": null` syntax). The entire null-stripping feature might be subsumed.
+- CSV + field selection is a natural pair: agent picks columns via `fields`, gets a clean table back.
+- FastMCP may support a serialization hook/formatter — if so, CSV lives entirely at the output boundary with zero changes to service/repo layers.
+
+**Spike should answer:**
+- Does FastMCP support custom output formatters? What's the hook?
+- How do nested objects flatten? (`parent.id` → `parent_id` column)
+- How do multi-value fields serialize? (tags → pipe-delimited `"Planning|Urgent"`)
+- Is CSV only for `list_*` tools, or also useful for `get_*` single-item tools?
+- Does this make null-stripping redundant?
+- Agent experience: does an LLM work better with CSV or JSON for list results?
+
+**Outcome:** spike results determine whether this milestone is {field selection + CSV + notes append} or {field selection + null-stripping + notes append}.
+
+---
 
 ## Goal
 
-Agents get control over what data they receive and gain two new write capabilities. Field selection and null-stripping reduce token usage — projection limits *which* fields appear, null-stripping limits *which values* appear. Task deletion adds permanent removal. Notes append enables incremental note updates without read-modify-write cycles. No new data paths — all within existing architecture.
+**Problem:** List tool responses are bloated. Every task in a JSON array repeats all field names, includes ~8-10 null fields the agent doesn't care about, and returns fields the agent never asked for. A 50-task response wastes hundreds of tokens on structural noise.
+
+**Fix:** Give agents control over response shape. Field selection picks *which* fields appear. A compact output format (CSV or null-stripped JSON — spike determines which) eliminates structural repetition. Together these can reduce response size 5-6x. Additionally, notes append enables incremental note updates without read-modify-write cycles.
 
 ## What to Build
 
@@ -25,23 +50,20 @@ Agents get control over what data they receive and gain two new write capabiliti
 - Should `fields` accept the string `"all"` (or `["*"]`) as an escape hatch to return everything? If so, which syntax?
 - Should `fields` accept either a list of strings or a single string value (for the `"all"` case)?
 
-### Null-Stripping
+### Compact Output Format (spike-dependent)
 
-Null fields are omitted from responses by default. This is orthogonal to field selection and compounds with it — field selection controls *which* fields, null-stripping controls *which values*.
+**Option A: CSV format** (preferred if spike validates)
+- `format: "csv"` parameter on `list_*` tools
+- One header row with field names, then one row per item
+- Nested objects flatten: `parent.id` → `parent_id` column
+- Multi-value fields join with delimiter: tags → `"Planning|Urgent"`
+- Nulls are empty cells — no explicit representation needed
+- JSON remains the default; CSV is opt-in
 
-A typical task has ~8-10 null fields (`dueDate`, `deferDate`, `completionDate`, `dropDate`, `estimatedMinutes`, `repetitionRule`, etc.) that carry no information. Stripping them reduces response size significantly across bulk reads.
-
-**Open questions:**
-- Parameter name? (`exclude_null`, `strip_null`, `omit_null`?)
-- Default `true` (nulls omitted unless explicitly requested) — or always on with no toggle?
-- Should this also strip empty lists (`tags: []`) and/or false-y defaults (`flagged: false`)? Or strictly just `null`?
-- Interaction with field selection: if an agent explicitly requests a field via `fields` and it's null, should it still be omitted? (Likely yes — the agent asked for the field "if it has a value", not "always include it".)
-
-### Task Deletion (Deferred from v1.2)
-
-**`delete_tasks([...])`** -- permanently removes tasks by ID. Deleting a parent task removes all children. Returns `[{ success }]`.
-
-The tool description must warn about permanent deletion.
+**Option B: Null-stripping** (fallback if CSV doesn't work out)
+- Null fields omitted from JSON responses by default
+- Orthogonal to field selection — compounds with it
+- Open questions: parameter name, default behavior, strip empty lists too?
 
 ### Notes Append (Field Graduation)
 
@@ -71,12 +93,11 @@ This is the second field graduation after tags (v1.2), following the same patter
 - `id` always included in projected output
 - Omitting `fields` returns curated default set, not everything
 - Projection doesn't affect filtering
-- Null fields omitted from responses by default
-- Task deletion is permanent and removes children
+- Compact output reduces token usage for list results (CSV or null-stripping — spike determines which)
 - Notes append adds text with newline separator to existing note
 - Notes append on empty note sets the note (no leading newline)
 - Validation error when both top-level `note` and `actions.note` are provided
 
 ## Tools After This Milestone
 
-Fourteen: all thirteen from v1.3, plus `delete_tasks`.
+Eleven (unchanged from v1.3). No new tools — all enhancements to existing read and edit tools.

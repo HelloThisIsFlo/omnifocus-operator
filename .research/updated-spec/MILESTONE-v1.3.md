@@ -29,7 +29,7 @@ One new MCP tool with optional filter parameters. Primary path uses SQL WHERE cl
 
 **Note:** Date-based filtering (due, defer, completed, dropped, added, modified, planned) is deferred to v1.3.2. This milestone builds the query infrastructure that v1.3.2 extends.
 
-- Substring search only -- no fuzzy matching. Fuzzy deferred to v1.4.1.
+- Substring search only -- no fuzzy matching (see MAYBE-IDEAS.md).
 
 **SQL implementation (HybridRepository):**
 - Build WHERE clauses dynamically from filter parameters
@@ -64,10 +64,6 @@ Same pattern as tags.
 
 No filters. Returns all perspectives (built-in + custom) with `id` (null for built-ins), `name`, and `builtin` flag.
 
-### Count Tools
-
-**`count_tasks(...)`** and **`count_projects(...)`** -- same filter parameters as their `list_*` counterparts, return a single integer. Implemented as `len(filtered_results)` or `SELECT COUNT(*)` -- one code path to prevent count/list divergence.
-
 ### Pydantic Model Considerations
 
 All models needed for filtering are already defined from v1.0/v1.1. This milestone adds:
@@ -85,7 +81,7 @@ All hierarchy is flat with ID references (parent_id, folder_id, project_id). No 
 - `availability` supports `available` and `blocked`. Completed/dropped task visibility will be handled by date filters in v1.3.2.
 - Counts reuse the same filtering logic as list tools. One code path prevents count/list divergence.
 - SQL-level filtering is the primary path. In-memory filtering exists only for bridge fallback.
-- No fuzzy search. Substring matching via SQL LIKE is sufficient for now. Fuzzy deferred to v1.4.1.
+- No fuzzy search. Substring matching via SQL LIKE is sufficient for now (see MAYBE-IDEAS.md).
 - Pagination via `limit`/`offset` on `list_tasks` and `list_projects`. SQL uses `LIMIT ? OFFSET ?`. Bridge fallback slices in-memory. `offset` without `limit` is an error. `count_*` tools are unaffected (always return total count for the filters).
 
 ## Key Acceptance Criteria
@@ -99,13 +95,10 @@ All hierarchy is flat with ID references (parent_id, folder_id, project_id). No 
 - `review_due_within: 'now'` returns projects overdue for review. Invalid values return helpful error messages.
 - Status shorthands work: `remaining`, `available`, `all`.
 - `get_task` with a known ID returns the full Task object (from v1.2 -- no regression).
-- `count_tasks()` equals `len(list_tasks())` for the same filters.
 - Substring search finds case-insensitive matches in name and notes.
 - Tool descriptions are detailed enough for an LLM to call correctly.
 - Bridge fallback produces identical results to SQL path for the same filters.
 - `list_tasks(limit: 5)` returns at most 5 results. `list_tasks(limit: 5, offset: 5)` returns the next page.
-- `count_tasks()` returns total count regardless of `limit`/`offset` — agents can compute total pages.
-
 ## Tools After This Milestone
 
-Thirteen: `get_all`, `get_task`, `get_project`, `get_tag`, `add_tasks`, `edit_tasks`, `list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives`, `count_tasks`, `count_projects`.
+Eleven: `get_all`, `get_task`, `get_project`, `get_tag`, `add_tasks`, `edit_tasks`, `list_tasks`, `list_projects`, `list_tags`, `list_folders`, `list_perspectives`.

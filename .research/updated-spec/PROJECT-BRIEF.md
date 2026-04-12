@@ -90,14 +90,12 @@ File-based JSON request/response via OmniFocus's sandbox directory. Both sides u
 - `list_projects(...)` -- projects with filters (v1.3)
 - `list_tags(...)`, `list_folders(...)` -- with status filter (v1.3)
 - `list_perspectives()` -- all perspectives (v1.3)
-- `count_tasks(...)`, `count_projects(...)` -- same filters, returns integer (v1.3)
 
 ### Writes
 - `add_tasks([...])` -- task creation (v1.2)
 - `edit_tasks([{ id, changes }])` -- task editing with patch semantics (v1.2)
-- `delete_tasks([...])` -- task deletion (v1.4)
-- `add_projects([...])` -- project creation (v1.4.3)
-- `edit_projects([{ id, changes }])` -- project editing (v1.4.3)
+- `add_projects([...])` -- project creation (v1.7)
+- `edit_projects([{ id, changes }])` -- project editing (v1.7)
 
 ### UI
 - `show_perspective(name)` -- switches OmniFocus UI perspective (v1.5)
@@ -115,13 +113,11 @@ File-based JSON request/response via OmniFocus's sandbox directory. Both sides u
 | v1.0 | Foundation | 1 (`list_all`) | Architecture + real IPC pipeline |
 | v1.1 | HUGE Performance Upgrade | 1 | SQLite read path + two-axis status model |
 | v1.2 | Writes & Lookups | 6 | Get-by-ID + task write pipeline |
-| v1.3 | Read Tools | 13 | SQL filtering, entity browsing, counts |
-| v1.4 | Field Selection & Writes | 14 | Field projection, task deletion, notes append |
-| v1.4.1 | Fuzzy Search | 14 | Typo-tolerant search |
-| v1.4.2 | TaskPaper Output | 14 | ~5x token reduction output format |
-| v1.4.3 | Project Writes | 16 | Project creation, editing, review marking |
-| v1.5 | UI & Perspectives | 19 | Perspective switching, deep link, UI data path |
-| v1.6 | Production Hardening | 19 | Retry, crash recovery, serial execution |
+| v1.3 | Read Tools | 11 | SQL filtering, entity browsing |
+| v1.4 | Response Shaping & Notes Append | 11 | Field projection, compact output (CSV or null-stripping), notes append |
+| v1.5 | UI & Perspectives | 14 | Perspective switching, deep link, UI data path |
+| v1.6 | Production Hardening | 14 | Retry, crash recovery, serial execution |
+| v1.7 | Project Writes | 16 | Project creation, editing, review marking |
 
 Each milestone has its own detailed spec file.
 
