@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from datetime import date as date_type
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -40,7 +40,6 @@ from omnifocus_operator.agent_messages.warnings import (
     LIFECYCLE_CROSS_STATE,
     LIFECYCLE_REPEATING_COMPLETE,
     LIFECYCLE_REPEATING_DROP,
-    MOVE_SAME_CONTAINER,
     REPETITION_ANCHOR_DATE_MISSING,
     REPETITION_AUTO_CLEAR_ON,
     REPETITION_AUTO_CLEAR_ON_DATES,
@@ -765,20 +764,41 @@ class DomainLogic:
         container_id: str | None,
         task_id: str,
     ) -> dict[str, object]:
-        """Move to beginning/ending of a container (or inbox if None)."""
+        """Move to beginning/ending of a container (or inbox if None).
+
+        Translates beginning/ending to before/after when the target container
+        has children (D-06, D-07). OmniFocus silently no-ops on same-container
+        beginning/ending moves -- this translation makes them work.
+        """
+        from omnifocus_operator.config import SYSTEM_LOCATIONS
+
+        inbox_id = SYSTEM_LOCATIONS["inbox"].id
+
         if container_id is None:
-            return {"position": position, "container_id": None}
+            resolved_id = None
+            effective_parent_id = inbox_id
+        else:
+            # Resolve container name/ID to canonical ID ($inbox -> None)
+            resolved_id = await self._resolver.resolve_container(container_id)
+            if resolved_id is None:
+                effective_parent_id = inbox_id
+            else:
+                effective_parent_id = resolved_id
+                # If container is a task, check for circular reference
+                container_task = await self._repo.get_task(resolved_id)
+                if container_task is not None:
+                    await self.check_cycle(task_id, resolved_id)
 
-        # Resolve container name/ID to canonical ID ($inbox -> None)
-        resolved_id = await self._resolver.resolve_container(container_id)
-        if resolved_id is None:
-            return {"position": position, "container_id": None}
+        # Translate beginning/ending to before/after when container has children (D-06, D-07)
+        edge: Literal["first", "last"] = "first" if position == "beginning" else "last"
+        edge_child_id = await self._repo.get_edge_child_id(effective_parent_id, edge)
 
-        # If container is a task, check for circular reference
-        container_task = await self._repo.get_task(resolved_id)
-        if container_task is not None:
-            await self.check_cycle(task_id, resolved_id)
+        if edge_child_id is not None:
+            # Container has children -- translate to anchor-based move
+            translated_position = "before" if position == "beginning" else "after"
+            return {"position": translated_position, "anchor_id": edge_child_id}
 
+        # Empty container -- direct moveTo (D-07)
         return {"position": position, "container_id": resolved_id}
 
     async def _process_anchor_move(
@@ -849,8 +869,8 @@ class DomainLogic:
         """Compare each payload field against current task state.
 
         Returns True if every set field already matches the task's value,
-        meaning the edit would be a no-op. May append MOVE_SAME_CONTAINER
-        warning to the warnings list.
+        meaning the edit would be a no-op. Detects translated move no-ops
+        via anchor_id == task_id (D-12, D-13).
         """
         _date_keys = {"due_date", "defer_date", "planned_date"}
         field_comparisons: dict[str, object] = {
@@ -894,7 +914,15 @@ class DomainLogic:
         # Check move_to
         if "move_to" in fields_set and payload.move_to is not None:
             position = payload.move_to.position
-            if position in ("beginning", "ending"):
+            if position in ("before", "after") and payload.move_to.anchor_id is not None:
+                # Translated or direct anchor move -- check self-reference (D-12, D-13)
+                if payload.move_to.anchor_id == task.id:
+                    # Task is already at this position (e.g. first child -> beginning,
+                    # last child -> ending, or direct before/after self)
+                    return True
+                return False
+            elif position in ("beginning", "ending"):
+                # Empty container pass-through (no translation occurred)
                 container_id = payload.move_to.container_id
                 # Extract direct parent ID from tagged ParentRef
                 if task.parent.task is not None:
@@ -905,10 +933,8 @@ class DomainLogic:
                     current_parent_id = None
                 if container_id != current_parent_id:
                     return False
-                # Same container -- no-op, but warn
-                warnings.append(MOVE_SAME_CONTAINER)
+                # Same empty container -- no-op
             else:
-                # before/after -- can't detect same position
                 return False
 
         return True

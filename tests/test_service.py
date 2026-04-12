@@ -1315,8 +1315,8 @@ class TestEditTask:
             )
         ],
     )
-    async def test_same_container_move_warning(self, service: OperatorService) -> None:
-        """Moving task to same container (ending) produces location warning (UAT #70)."""
+    async def test_same_container_move_noop_detected(self, service: OperatorService) -> None:
+        """Moving last child to ending of same container is a no-op (anchor_id == task_id)."""
 
         result = await service.edit_task(
             EditTaskCommand(
@@ -1326,7 +1326,7 @@ class TestEditTask:
         )
         assert result.success is True
         assert result.warnings is not None
-        assert any("already in this container" in w for w in result.warnings)
+        assert any("No changes detected" in w for w in result.warnings)
 
     @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
     async def test_lifecycle_complete_available_task(self, service: OperatorService) -> None:
@@ -1553,10 +1553,8 @@ class TestEditTask:
             )
         ],
     )
-    async def test_noop_same_container_move_no_spurious_noop_warning(
-        self, service: OperatorService
-    ) -> None:
-        """Same-container move should NOT add 'No changes detected'."""
+    async def test_noop_same_container_move_single_warning(self, service: OperatorService) -> None:
+        """Same-container move (last child -> ending) detected as no-op via translation."""
 
         result = await service.edit_task(
             EditTaskCommand(
@@ -1566,8 +1564,7 @@ class TestEditTask:
         )
         assert result.success is True
         assert result.warnings is not None
-        assert any("already" in w.lower() for w in result.warnings)
-        assert not any("No changes detected" in w for w in result.warnings)
+        assert any("No changes detected" in w for w in result.warnings)
         assert len(result.warnings) == 1
 
     @pytest.mark.snapshot(
@@ -1697,9 +1694,9 @@ class TestEditTask:
             )
         )
         assert result.success is True
-        # No "already in this container" warning
+        # Different container move should not be a no-op
         if result.warnings:
-            assert not any("already in this container" in w for w in result.warnings)
+            assert not any("No changes detected" in w for w in result.warnings)
 
 
 # ---------------------------------------------------------------------------

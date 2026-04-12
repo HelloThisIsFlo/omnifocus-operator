@@ -25,17 +25,6 @@ EDIT_NO_CHANGES_DETECTED = (
     "If you don't want to change a field, omit it from the request."
 )
 
-# --- Move ---
-
-MOVE_SAME_CONTAINER = (
-    "Task is already in this container. OmniFocus API "
-    "limitation: 'beginning'/'ending' moves within the "
-    "same container does not change position.\n"
-    "This will be fixed in a future release.\n"
-    "Workaround: use 'before' or 'after' with a sibling "
-    "task ID to control ordering within a container."
-)
-
 # --- Lifecycle ---
 
 LIFECYCLE_ALREADY_IN_STATE = (
