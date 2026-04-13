@@ -37,6 +37,11 @@ Ideas considered and intentionally rejected. Documented so they don't get re-pro
 - **Why discarded:** Not needed for agent workflows. Bridge already extracts attachment data (BRIDGE-SPEC Section 7) but model intentionally excludes it.
 - **Date:** 2026-03-17
 
+## CSV output format for list tools
+- **What:** `format: "csv"` parameter on `list_*` tools. One header row with field names, then one row per item. Nested objects flatten (`parent.id` → `parent_id`), multi-value fields join with delimiter (tags → `"Planning|Urgent"`), nulls are empty cells.
+- **Why discarded:** Multiple LLMs consistently reported that JSON is easier to work with than CSV, especially with nested structures (review intervals, repetition rules, tagged parent refs). Field selection + universal stripping closes most of the token gap without the implementation complexity of flattening/delimiting. CSV implementation cost is high for marginal gain over stripped JSON.
+- **Date:** 2026-04-13
+
 ## Performance benchmark documentation
 - **What:** Formal latency targets, SLAs, scale testing docs
 - **Why discarded:** Benchmarks done manually. Not worth maintaining as formal documentation.

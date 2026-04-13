@@ -1,102 +1,176 @@
-# Milestone v1.4 -- Response Shaping, Batch Processing & Notes Append
-
-## ⚠️ Pre-Planning Spike: CSV Output Format
-
-**Before planning this milestone, run a deep dive on CSV serialization for list tools.**
-
-JSON repeats field names for every item in a list — for 50 tasks with 8 fields, that's ~400 tokens of pure structural repetition. CSV eliminates this: one header row, then pure data. Estimated 1.5-2x token reduction on top of field selection, for ~5-6x total from raw JSON baseline.
-
-**Why this matters for milestone scope:**
-- If CSV lands, **null-stripping may be unnecessary** — an empty CSV cell is already zero overhead (no `"dueDate": null` syntax). The entire null-stripping feature might be subsumed.
-- CSV + field selection is a natural pair: agent picks columns via `fields`, gets a clean table back.
-- FastMCP may support a serialization hook/formatter — if so, CSV lives entirely at the output boundary with zero changes to service/repo layers.
-
-**Spike should answer:**
-- Does FastMCP support custom output formatters? What's the hook?
-- How do nested objects flatten? (`parent.id` → `parent_id` column)
-- How do multi-value fields serialize? (tags → pipe-delimited `"Planning|Urgent"`)
-- Is CSV only for `list_*` tools, or also useful for `get_*` single-item tools?
-- Does this make null-stripping redundant?
-- Agent experience: does an LLM work better with CSV or JSON for list results?
-
-**Outcome:** spike results determine whether this milestone is {field selection + CSV + notes append} or {field selection + null-stripping + notes append}.
-
----
+# Milestone v1.4 -- Response Shaping, Batch Processing & Notes Graduation
 
 ## Goal
 
-**Problem:** List tool responses are bloated. Every task in a JSON array repeats all field names, includes ~8-10 null fields the agent doesn't care about, and returns fields the agent never asked for. A 50-task response wastes hundreds of tokens on structural noise.
+**Problem:** List tool responses are bloated. Every task in a JSON array repeats all field names, includes ~8-10 null fields the agent doesn't care about, and returns fields the agent never asked for. A 50-task response wastes hundreds of tokens on structural noise. Write tools are limited to one item per call. Notes can only be fully replaced, requiring read-modify-write for appends.
 
-**Fix:** Give agents control over response shape. Field selection picks *which* fields appear. A compact output format (CSV or null-stripped JSON — spike determines which) eliminates structural repetition. Together these can reduce response size 5-6x. Batch processing lifts the single-item constraint on write tools so agents can create/edit multiple tasks per call. Notes append enables incremental note updates without read-modify-write cycles.
+**Fix:** Give agents control over response shape. Field groups (`include`) let agents opt into extra detail. Individual field selection (`only`) enables surgical precision for high-volume queries. Universal stripping eliminates null/empty/falsy noise from every response. Batch processing lifts the single-item constraint on write tools. Notes graduate to the `actions` block, gaining append semantics.
 
 ## What to Build
 
-### Field Selection
+### Response Stripping (Universal)
 
-`fields` parameter on all `list_*` and `get_*` tools. Controls which fields appear in the response.
+**Always on, no toggle, all tool responses.** Stripped values:
+- `null` (any field)
+- `[]` (empty arrays, e.g. tags)
+- `""` (empty strings, e.g. note)
+- `false` (booleans: `flagged`, `inheritedFlagged`, `hasChildren`)
+- `"none"` (urgency)
 
-**Rules:**
-- `id` is always included, even if not listed
-- Invalid field names are silently ignored with a server-side warning log
-- Field names use snake_case (matching Pydantic model names)
-- `availability` and `urgency` are independent top-level fields
-- Nested objects (`review_interval`, `repetition_rule`) are atomic -- no sub-field selection
-- Projection happens post-filter, pre-serialization. Filters run against full objects.
-- Omitting `fields` returns a **curated default set** of the most commonly used fields — not everything. This keeps responses compact by default.
-- The tool description lists all available fields so agents can opt in to more when needed.
+Stripping applies to **entity fields only** — not to result envelope fields (`hasMore`, `total`, `status`, etc.).
 
-**Open questions:**
-- What is the curated default field set? (per entity type — tasks, projects, tags)
-- Should `fields` accept the string `"all"` (or `["*"]`) as an escape hatch to return everything? If so, which syntax?
-- Should `fields` accept either a list of strings or a single string value (for the `"all"` case)?
+**Never stripped:** `availability` — always informative, even when `"available"`.
 
-### Compact Output Format (spike-dependent)
+Absent field = not set / default / empty. No parameter needed.
 
-**Option A: CSV format** (preferred if spike validates)
-- `format: "csv"` parameter on `list_*` tools
-- One header row with field names, then one row per item
-- Nested objects flatten: `parent.id` → `parent_id` column
-- Multi-value fields join with delimiter: tags → `"Planning|Urgent"`
-- Nulls are empty cells — no explicit representation needed
-- JSON remains the default; CSV is opt-in
+**Rationale:** ~10-12 null fields per task x 80 tasks = 800+ wasted tokens. No list-query use case needs explicit nulls/falsy values. With aggressive stripping, the default field set can be generous — most fields are stripped for most tasks.
 
-**Option B: Null-stripping** (fallback if CSV doesn't work out)
-- Null fields omitted from JSON responses by default
-- Orthogonal to field selection — compounds with it
-- Open questions: parameter name, default behavior, strip empty lists too?
+### Inherited Field Rename (Universal)
+
+`effective*` fields renamed to `inherited*` across all tools:
+- `effectiveDueDate` → `inheritedDueDate`
+- `effectiveDeferDate` → `inheritedDeferDate`
+- `effectivePlannedDate` → `inheritedPlannedDate`
+- `effectiveFlagged` → `inheritedFlagged`
+- `effectiveCompletionDate` → `inheritedCompletionDate`
+- `effectiveDropDate` → `inheritedDropDate`
+
+"Inherited" = value from anywhere above in the **hierarchy** (parent task, project, folder — not just direct parent).
+
+**Three states per field** (e.g. due date):
+- `dueDate` present → set directly on this task
+- `inheritedDueDate` present (no `dueDate`) → inherited from hierarchy
+- Neither present → no due date at all
+- Both can coexist (they may differ — the sooner one applies)
+
+Read/write symmetry: `dueDate` = what you'd edit; `inheritedDueDate` = what the hierarchy imposes (read-only).
+
+### Field Selection (`include` and `only`)
+
+Two top-level parameters on `list_tasks` and `list_projects` only. Not on `get_*` tools (always return full stripped entities), not on `get_all`.
+
+#### `include` — Semantic Field Groups
+
+Additive on top of defaults. Agent opts into extra detail by group name.
+
+**Default fields — tasks** (always returned):
+`id`, `name`, `availability`, `order`, `project`, `dueDate`, `inheritedDueDate`, `deferDate`, `inheritedDeferDate`, `plannedDate`, `inheritedPlannedDate`, `flagged`, `inheritedFlagged`, `urgency`, `tags`
+
+**Default fields — projects** (additionally):
+`folder`
+
+**Opt-in groups** (`include` is additive on top of defaults):
+- **`notes`** — `note`
+- **`metadata`** — `added`, `modified`, `completionDate`, `dropDate`, `inheritedCompletionDate`, `inheritedDropDate`, `url`
+- **`hierarchy`** — `parent`, `hasChildren`
+- **`time`** — `estimatedMinutes`, `repetitionRule`
+- **`review`** — `nextReviewDate`, `reviewInterval`, `lastReviewDate`, `nextTask` (**projects only** — not available on `list_tasks`)
+- **`*`** — everything, all groups
+
+Available groups differ per tool: `list_tasks` has `notes`, `metadata`, `hierarchy`, `time`, `*`. `list_projects` additionally has `review`.
+
+**Invalid group names → validation error** (fail-fast). Small fixed set — a typo is likely a real mistake.
+
+Group definitions centralized in `config.py`.
+
+#### `only` — Individual Field Selection
+
+Precise field-level control for targeted queries on large result sets. Uses camelCase field names (matching JSON output).
+
+- `only` always includes `id` regardless of what's listed
+- Mutually exclusive with `include` — providing both is a validation error
+- **Invalid field names → warning in response** (unlike `include` which errors). Larger field set — typos are more likely and the agent may be exploring available fields.
+- Should be used sparingly — prefer `include` for most queries
+
+**Examples:**
+```json
+// Daily review triage: defaults are enough
+{}
+
+// Project review: defaults + notes + review info
+{"include": ["notes", "review"]}
+
+// Targeted: just project membership for 200 tasks
+{"only": ["project"]}
+
+// Everything
+{"include": ["*"]}
+```
+
+**Documentation strategy:** Field-level JSON Schema descriptions on `include` and `only` explain what each does and their interaction. Tool description gets a brief tip: prefer `include`, use `only` for targeted high-volume queries.
+
+#### Scope
+
+- `list_tasks`, `list_projects` — support `include` and `only`
+- `list_tags`, `list_folders`, `list_perspectives` — no field selection (already compact)
+- `get_task`, `get_project`, `get_tag` — always return full stripped entities
+- `get_all` — no field selection (snapshot tool), stripping applies
+
+#### Architecture
+
+Projection is a **presentation concern** — lives at the server layer, not service. Service returns full Pydantic models; the server's projection layer does `model_dump(include=...)` and returns a plain dict. This sidesteps `outputSchema` drift (MCP clients strip outputSchema anyway; available fields documented in tool description).
+
+### Count-Only Mode
+
+No dedicated parameter — use `limit: 0`. Returns `{"items": [], "total": N, "hasMore": <total > 0>}`. Document this in the tool description.
 
 ### Batch Processing for Write Tools
 
-Lift the single-item constraint on `add_tasks` and `edit_tasks`. Currently both tools accept an `items` array but enforce `len(items) == 1` at the handler level. The scaffolding for batch is already in place: error messages use `"Task {idx+1}: {field}"` format, progress reporting loops exist, and the service layer processes items sequentially.
+Lift the single-item constraint on `add_tasks` and `edit_tasks`. The scaffolding is already in place: error messages use `"Task {idx+1}: {field}"` format, progress reporting loops exist, and the service layer processes items sequentially.
 
 **What changes:**
 - Remove the `len(items) != 1` guard in both handlers
-- Items are processed **serially within a batch** — one after the other, in order. This is controlled at the service layer.
-- Each item gets its own result entry in the response
-- No upper limit on batch size (bridge throughput is self-regulating)
+- Items processed **serially within a batch** in array order
+- Hard limit: **50 items** per call, enforced via Pydantic model validator (`maxItems`), configurable in `config.py`
+- Input shape unchanged — `items: [{...}]` as before
 
-**Hierarchy creation in batch: not supported.**
-Batch items cannot reference other items in the same batch (no placeholder IDs, no "create parent then child in one call"). If an agent needs to create a 4-level hierarchy, it makes 4 sequential calls. This keeps the implementation simple and avoids a class of ordering/dependency bugs. The tool description should make this explicit.
+**Hierarchy creation in batch: not supported.** Batch items cannot reference other items in the same batch. If an agent needs to create a 4-level hierarchy, it makes 4 sequential calls. Document in tool description.
 
-**Open questions:**
+#### Failure Semantics
 
-**Partial failure semantics** — if item 3 of 5 fails:
-- Option A: **Fail-fast** — stop at first error. Items 1-2 are already committed (bridge writes are immediate). Items 4-5 are skipped. Response includes results for 1-2 (success) and 3 (error), with a warning that 4-5 were not processed.
-- Option B: **Best-effort** — continue processing 4-5 even after 3 fails. Response includes per-item success/error for all 5.
-- Leaning toward fail-fast (simpler, predictable), but needs design discussion.
+Different strategy per tool:
 
-**Response format for batch results:**
-- Array of per-item results, each with status (success/error) + data or error message
-- How does this interact with the existing single-item response shape? Is it always an array now, even for batch-of-1?
-- How does field selection apply to batch write responses?
+**`add_tasks` — best-effort.** Every item is processed regardless of earlier failures. Each item produces `"success"` or `"error"`. Rationale: created tasks are always independent.
 
-**Serial execution across concurrent calls** — items within a single batch are serial (we control this). But what about two concurrent `edit_tasks` calls from different agent threads? The bridge processes osascript calls — is there an OS-level or OmniFocus-level serialization guarantee? If not, interleaved edits from separate batches could produce surprising results. This is flagged as a v1.6 concern (serial execution guarantee), but batch makes it more relevant. Document the limitation.
+**`edit_tasks` — fail-fast.** Stop at first error. Earlier items are already committed (bridge writes are immediate). Later items get `"skipped"` status. Rationale: moves can create implicit ordering dependencies — if item 2's move fails, item 3's positional reference may resolve against stale state.
 
-**Ordering guarantees within a batch** — serial execution means items are processed in array order. For `edit_tasks`, this means an agent could move task A, then move task B relative to A's new position — **but only if the second move re-queries** to find A's updated position. The current implementation already re-queries per operation (each pipeline instance reads fresh state). Document that array order is respected and edits see the results of prior items in the same batch.
+**Same-task in batch:** Allowed. Array order applies — edits to the same task are processed sequentially and each sees the prior's result.
 
-### Notes Append (Field Graduation)
+#### Response Shape
 
-Extend `edit_tasks` to support notes append via the field graduation pattern (see architecture.md):
+Flat array of per-item results. `status` enum replaces `success: bool`:
+
+```json
+// add_tasks (best-effort) — item 2 fails, item 3 still processed
+[
+  {"status": "success", "id": "abc", "name": "Buy milk", "warnings": ["Tag already on task"]},
+  {"status": "error", "error": "Invalid tag 'Foo'"},
+  {"status": "success", "id": "ghi", "name": "Call dentist"}
+]
+
+// edit_tasks (fail-fast) — item 2 fails, items 3-4 skipped
+[
+  {"status": "success", "id": "abc", "name": "Buy milk"},
+  {"status": "error", "id": "def", "error": "Task not found"},
+  {"status": "skipped", "id": "ghi", "warnings": ["Skipped: item 2 failed"]},
+  {"status": "skipped", "id": "jkl", "warnings": ["Skipped: item 2 failed"]}
+]
+```
+
+- `name` present on success only — absent on error/skipped
+- `id` present on success and edit errors/skips (known from input). Absent on failed `add_tasks` items (no OmniFocus ID exists yet)
+- `warnings` array available on all status types
+- Existing per-item warnings (tag guidance, lifecycle notes, etc.) preserved on success items
+
+#### Concurrency
+
+Concurrent batch calls from separate agent threads are not serialized at the server level. Items within a single batch are serial; interleaving across batches is possible. Document as a known limitation — serial execution guarantee is a v1.6 concern.
+
+### Notes Graduation
+
+Notes graduate from top-level setter to `actions.note` block — second field graduation after tags (v1.2), following the pattern documented in architecture.md.
+
+**Top-level `note` field removed from `edit_tasks`.** Only the actions block remains. `add_tasks` keeps its top-level `note` field — initial note content is a simple setter, not a graduated operation.
 
 ```json
 {
@@ -107,31 +181,53 @@ Extend `edit_tasks` to support notes append via the field graduation pattern (se
 }
 ```
 
-**Semantics:**
-- `"note": "new text"` (top-level) — replace entire note (existing behavior, unchanged)
-- `"note": null` (top-level) — clear note (existing behavior, unchanged)
-- `"actions.note.append"` — append text to existing note with newline separator
-- `"actions.note.replace"` — same as top-level replace (for symmetry within actions block)
-- If both top-level `note` and `actions.note` are provided, return a validation error
+**Operations:**
+- `actions.note.append` — append text to existing note with `\n\n` separator (paragraph break)
+- `actions.note.replace` — replace entire note
 
-This is the second field graduation after tags (v1.2), following the same pattern documented in architecture.md.
+**Type conventions** (following tag action pattern):
+- `append`: `Patch[str]` — null rejected by type, `""` is a no-op
+- `replace`: `PatchOrClear[str]` — null and `""` both clear the note
+
+**Edge cases:**
+- Append on empty/whitespace-only note → set directly (no leading separator)
+- Whitespace-only existing note treated as empty (strip and check)
+- Note action alone is valid — no tags/move required in the actions block
 
 ## Key Acceptance Criteria
 
-- Field projection works on all `list_*` and `get_*` tools
-- `id` always included in projected output
-- Omitting `fields` returns curated default set, not everything
-- Projection doesn't affect filtering
-- Compact output reduces token usage for list results (CSV or null-stripping — spike determines which)
-- `add_tasks` and `edit_tasks` accept multiple items per call
-- Batch items are processed serially in array order
-- Batch response includes per-item result (success + data or error)
-- Batch with cross-item references (hierarchy in one call) is rejected with a clear error — or documented as unsupported with guidance in the tool description
-- Partial failure behavior is well-defined and documented (fail-fast or best-effort — open question)
-- Notes append adds text with newline separator to existing note
-- Notes append on empty note sets the note (no leading newline)
-- Validation error when both top-level `note` and `actions.note` are provided
+**Response shaping:**
+- Universal stripping active on all tool responses (null, `[]`, `""`, `false`, `"none"`)
+- `availability` never stripped
+- `inherited*` rename applied universally
+- `include` groups additive on curated defaults (`list_tasks`, `list_projects`)
+- `only` field-level selection with `id` always included
+- `include` and `only` mutually exclusive (validation error)
+- Invalid group names → validation error
+- `include: ["*"]` returns all fields
+- Projection doesn't affect filtering (post-filter, pre-serialization)
+- `limit: 0` returns count-only (`{items: [], total: N, hasMore: <total > 0>}`)
+- Invalid `only` field names → warning in response
+- Group definitions centralized in `config.py`
+
+**Batch processing:**
+- `add_tasks` and `edit_tasks` accept up to 50 items (Pydantic `maxItems`)
+- `add_tasks`: best-effort — all items processed, per-item success/error
+- `edit_tasks`: fail-fast — stop at first error, remaining items skipped
+- Flat array response with `status: "success" | "error" | "skipped"`
+- `name` on success only, absent on error/skipped
+- `warnings` array on all result types
+- Array order respected, edits see results of prior items
+- Cross-item references not supported (documented in tool description)
+- Concurrency limitation documented
+
+**Notes graduation:**
+- Top-level `note` removed from `edit_tasks`
+- `actions.note.append` adds text with `\n\n` separator
+- `actions.note.replace` replaces entire note
+- null/`""` on replace clears the note
+- Append on empty/whitespace-only note sets directly (no leading separator)
 
 ## Tools After This Milestone
 
-Eleven (unchanged from v1.3). No new tools — all enhancements to existing read and edit tools.
+Eleven (unchanged from v1.3). No new tools — all enhancements to existing tools.
