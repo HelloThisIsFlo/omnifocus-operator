@@ -1,0 +1,18 @@
+{
+  "json_pretty": {
+    "chars": 129112,
+    "tokens": 38207
+  },
+  "json_compact": {
+    "chars": 93585,
+    "tokens": 27745
+  },
+  "taskpaper_full": {
+    "chars": 32452,
+    "tokens": 12184
+  },
+  "taskpaper_llm": {
+    "chars": 18334,
+    "tokens": 6408
+  }
+}
