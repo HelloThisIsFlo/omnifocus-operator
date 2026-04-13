@@ -1,3 +1,5 @@
+import? 'justfile.local'
+
 # Default: show available recipes
 default:
     @just --list --unsorted
@@ -130,6 +132,13 @@ doc-regression-scenarios:
 # Open MCP Inspector connected to the operator
 inspect:
     npx @modelcontextprotocol/inspector uv run omnifocus-operator
+
+# Dump MCP schemas to .sandbox/ (full + without outputSchema)
+schema:
+    @mkdir -p .sandbox
+    uv run fastmcp list --json --command 'uv run omnifocus-operator' 2>/dev/null > .sandbox/schema-all.json
+    jq '.tools |= map(del(.outputSchema))' .sandbox/schema-all.json > .sandbox/schema-input.json
+    @echo "Written to .sandbox/schema-all.json and .sandbox/schema-input.json"
 
 # ─── Housekeeping ────────────────────────────────────────────────────────────
 

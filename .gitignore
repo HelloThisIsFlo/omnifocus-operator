@@ -39,6 +39,9 @@ node_modules/
 
 .research/deep-dives/portfolio/working-files/
 
+# Local overrides
+justfile.local
+
 # OS
 .DS_Store
 .claude/worktrees/
