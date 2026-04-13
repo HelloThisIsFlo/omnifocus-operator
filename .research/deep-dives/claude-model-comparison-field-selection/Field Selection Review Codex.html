@@ -1,0 +1,2013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Field Selection Review Codex</title>
+  <style>
+    :root {
+      --bg: #f4efe6;
+      --bg-soft: #fbf8f2;
+      --paper: rgba(255, 252, 246, 0.82);
+      --paper-strong: rgba(255, 252, 246, 0.96);
+      --ink: #1a1713;
+      --muted: #675d52;
+      --line: rgba(27, 23, 17, 0.12);
+      --gold: #b06a12;
+      --gold-soft: #f8cf8e;
+      --green: #1d7a63;
+      --green-soft: #d4f2ea;
+      --brick: #933b28;
+      --brick-soft: #f6dbd4;
+      --navy: #193f59;
+      --navy-soft: #dbeef9;
+      --shadow: 0 20px 55px rgba(39, 28, 13, 0.12);
+      --shadow-soft: 0 12px 28px rgba(39, 28, 13, 0.08);
+      --radius-xl: 28px;
+      --radius-lg: 22px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+      --max: 1220px;
+      --sans: "Avenir Next", "Segoe UI", "Trebuchet MS", "Helvetica Neue", sans-serif;
+      --serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", "Baskerville", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 15% 20%, rgba(176, 106, 18, 0.16), transparent 28%),
+        radial-gradient(circle at 85% 18%, rgba(29, 122, 99, 0.14), transparent 30%),
+        radial-gradient(circle at 55% 82%, rgba(25, 63, 89, 0.12), transparent 34%),
+        linear-gradient(180deg, #f7f1e8 0%, #f1eadf 34%, #ece4d7 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.2;
+      background-image:
+        linear-gradient(rgba(30, 22, 15, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(30, 22, 15, 0.03) 1px, transparent 1px);
+      background-size: 22px 22px;
+      mask-image: radial-gradient(circle at center, black 46%, transparent 88%);
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .page-shell {
+      position: relative;
+      isolation: isolate;
+    }
+
+    .ambient-orb {
+      position: fixed;
+      width: 34rem;
+      height: 34rem;
+      border-radius: 50%;
+      filter: blur(28px);
+      opacity: 0.38;
+      pointer-events: none;
+      mix-blend-mode: multiply;
+      z-index: -1;
+      animation: drift 18s ease-in-out infinite;
+    }
+
+    .ambient-orb.one {
+      top: -10rem;
+      left: -8rem;
+      background: radial-gradient(circle, rgba(248, 207, 142, 0.95), rgba(248, 207, 142, 0));
+    }
+
+    .ambient-orb.two {
+      top: 24rem;
+      right: -9rem;
+      background: radial-gradient(circle, rgba(212, 242, 234, 0.95), rgba(212, 242, 234, 0));
+      animation-delay: -6s;
+    }
+
+    .ambient-orb.three {
+      bottom: -10rem;
+      left: 34%;
+      background: radial-gradient(circle, rgba(219, 238, 249, 0.92), rgba(219, 238, 249, 0));
+      animation-delay: -11s;
+    }
+
+    @keyframes drift {
+      0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+      50% { transform: translate3d(0, 1.6rem, 0) scale(1.08); }
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(16px);
+      background: rgba(248, 242, 233, 0.7);
+      border-bottom: 1px solid rgba(32, 23, 12, 0.08);
+    }
+
+    .topbar-inner {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 0.95rem 1.25rem;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 2.3rem;
+      height: 2.3rem;
+      border-radius: 0.9rem;
+      background:
+        linear-gradient(145deg, #b06a12, #e49d46 56%, #f3d9ae);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), 0 10px 26px rgba(176, 106, 18, 0.25);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .brand-mark::after {
+      content: "";
+      position: absolute;
+      inset: 0.28rem;
+      border-radius: 0.65rem;
+      border: 1px solid rgba(255,255,255,0.55);
+    }
+
+    .brand-copy {
+      min-width: 0;
+    }
+
+    .brand-copy strong {
+      display: block;
+      font-size: 0.95rem;
+      letter-spacing: 0.02em;
+    }
+
+    .brand-copy span {
+      display: block;
+      font-size: 0.74rem;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .nav-pills {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 0.55rem;
+    }
+
+    .nav-pills a {
+      text-decoration: none;
+      color: var(--muted);
+      font-size: 0.82rem;
+      padding: 0.5rem 0.8rem;
+      border-radius: 999px;
+      border: 1px solid rgba(28, 22, 16, 0.08);
+      background: rgba(255,255,255,0.36);
+      transition: 180ms ease;
+    }
+
+    .nav-pills a:hover,
+    .nav-pills a:focus-visible {
+      color: var(--ink);
+      background: rgba(255,255,255,0.8);
+      transform: translateY(-1px);
+    }
+
+    main {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 2rem 1.25rem 5rem;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      border-radius: 40px;
+      padding: 3.2rem;
+      min-height: 32rem;
+      background:
+        linear-gradient(135deg, rgba(255, 248, 236, 0.94), rgba(249, 243, 232, 0.75)),
+        radial-gradient(circle at top right, rgba(176, 106, 18, 0.12), transparent 36%);
+      border: 1px solid rgba(28, 22, 16, 0.08);
+      box-shadow: var(--shadow);
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: auto -7rem -9rem auto;
+      width: 28rem;
+      height: 28rem;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 224, 178, 0.92), rgba(255, 224, 178, 0));
+      opacity: 0.8;
+      animation: pulse 8s ease-in-out infinite;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      top: -10rem;
+      left: -8rem;
+      width: 24rem;
+      height: 24rem;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(212, 242, 234, 0.94), rgba(212, 242, 234, 0));
+      opacity: 0.75;
+      animation: pulse 10s ease-in-out infinite reverse;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 0.72; }
+      50% { transform: scale(1.08); opacity: 0.96; }
+    }
+
+    .hero-grid {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(19rem, 0.92fr);
+      gap: 2rem;
+      align-items: stretch;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0.45rem 0.8rem;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.7);
+      border: 1px solid rgba(28, 22, 16, 0.08);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.13em;
+      color: var(--navy);
+      font-weight: 700;
+    }
+
+    .hero h1 {
+      margin: 1.1rem 0 1rem;
+      font-family: var(--serif);
+      font-size: clamp(2.5rem, 5vw, 4.6rem);
+      line-height: 0.96;
+      letter-spacing: -0.04em;
+      max-width: 11.8ch;
+    }
+
+    .hero p.lead {
+      margin: 0 0 1.4rem;
+      max-width: 55ch;
+      font-size: 1.06rem;
+      line-height: 1.72;
+      color: #433b33;
+    }
+
+    .hero-callouts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1.8rem;
+    }
+
+    .hero-callouts span {
+      padding: 0.58rem 0.85rem;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.76);
+      border: 1px solid rgba(28, 22, 16, 0.08);
+      font-size: 0.86rem;
+      color: var(--muted);
+    }
+
+    .hero-stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.8rem;
+      max-width: 44rem;
+    }
+
+    .hero-stat {
+      padding: 1rem 1rem 1.05rem;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.72);
+      border: 1px solid rgba(28, 22, 16, 0.08);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .hero-stat strong {
+      display: block;
+      font-size: 1.4rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .hero-stat span {
+      display: block;
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .hero-side {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .winner-card {
+      position: relative;
+      padding: 1.35rem;
+      border-radius: 28px;
+      background: linear-gradient(145deg, rgba(255, 252, 246, 0.95), rgba(252, 246, 236, 0.84));
+      border: 1px solid rgba(28, 22, 16, 0.08);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .winner-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 0.45rem;
+      background: linear-gradient(180deg, #1d7a63, #b06a12);
+    }
+
+    .winner-card h2 {
+      margin: 0 0 0.35rem;
+      font-size: 1.1rem;
+      letter-spacing: 0.01em;
+    }
+
+    .winner-card .winner-name {
+      display: inline-block;
+      margin: 0.15rem 0 0.6rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 999px;
+      background: var(--green-soft);
+      color: #145646;
+      font-family: var(--mono);
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .winner-card p {
+      margin: 0;
+      color: #463d36;
+      line-height: 1.62;
+    }
+
+    .score-stack {
+      display: grid;
+      gap: 0.8rem;
+    }
+
+    .score-card {
+      padding: 1rem 1rem 1.05rem;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.64);
+      border: 1px solid rgba(28, 22, 16, 0.08);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .score-card header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.7rem;
+      margin-bottom: 0.6rem;
+    }
+
+    .score-card strong {
+      font-size: 0.96rem;
+    }
+
+    .score-card span {
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .bar-track {
+      position: relative;
+      height: 0.68rem;
+      border-radius: 999px;
+      background: rgba(28, 22, 16, 0.08);
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: calc(var(--score) * 1%);
+      border-radius: inherit;
+      background: linear-gradient(90deg, rgba(29, 122, 99, 0.72), rgba(29, 122, 99, 1));
+      transform-origin: left;
+      transform: scaleX(0);
+      transition: transform 900ms cubic-bezier(.2,.8,.2,1);
+    }
+
+    .score-card[data-tone="gold"] .bar-fill {
+      background: linear-gradient(90deg, rgba(176,106,18,0.72), rgba(176,106,18,1));
+    }
+
+    .score-card[data-tone="brick"] .bar-fill {
+      background: linear-gradient(90deg, rgba(147,59,40,0.72), rgba(147,59,40,1));
+    }
+
+    .score-card.visible .bar-fill {
+      transform: scaleX(1);
+    }
+
+    section {
+      margin-top: 2rem;
+    }
+
+    .panel {
+      background: var(--paper);
+      border: 1px solid rgba(28, 22, 16, 0.08);
+      border-radius: var(--radius-xl);
+      padding: 2rem;
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: blur(10px);
+    }
+
+    .section-head {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: end;
+      margin-bottom: 1.4rem;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-family: var(--serif);
+      font-size: clamp(1.8rem, 3vw, 2.7rem);
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+
+    .section-head p {
+      margin: 0;
+      max-width: 48ch;
+      color: var(--muted);
+      line-height: 1.62;
+    }
+
+    .ranking-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .ranking-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 0.95rem;
+      padding: 1.2rem;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.74);
+      border: 1px solid rgba(28,22,16,0.08);
+      transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+    }
+
+    .ranking-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow);
+    }
+
+    .ranking-card.best {
+      background: linear-gradient(145deg, rgba(227, 251, 245, 0.86), rgba(255,255,255,0.8));
+      border-color: rgba(29, 122, 99, 0.24);
+    }
+
+    .ranking-card.good {
+      background: linear-gradient(145deg, rgba(255, 245, 227, 0.88), rgba(255,255,255,0.8));
+      border-color: rgba(176, 106, 18, 0.22);
+    }
+
+    .ranking-card.third {
+      background: linear-gradient(145deg, rgba(252, 238, 235, 0.88), rgba(255,255,255,0.8));
+      border-color: rgba(147, 59, 40, 0.18);
+    }
+
+    .rank-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      width: fit-content;
+      padding: 0.45rem 0.7rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .best .rank-badge {
+      background: var(--green-soft);
+      color: #145646;
+    }
+
+    .good .rank-badge {
+      background: #fff0d2;
+      color: #875212;
+    }
+
+    .third .rank-badge {
+      background: var(--brick-soft);
+      color: #743121;
+    }
+
+    .ranking-card h3 {
+      margin: 0;
+      font-size: 1.18rem;
+      letter-spacing: 0.01em;
+    }
+
+    .code-chip {
+      display: inline-flex;
+      width: fit-content;
+      align-items: center;
+      font-family: var(--mono);
+      font-size: 0.9rem;
+      padding: 0.35rem 0.55rem;
+      border-radius: 10px;
+      background: rgba(20, 19, 17, 0.06);
+    }
+
+    code {
+      font-family: var(--mono);
+      font-size: 0.96em;
+      padding: 0.08rem 0.24rem;
+      border-radius: 0.38rem;
+      background: rgba(20, 19, 17, 0.06);
+    }
+
+    .ranking-card p {
+      margin: 0;
+      color: #4b4239;
+      line-height: 1.62;
+    }
+
+    .ranking-card ul {
+      margin: 0;
+      padding-left: 1.1rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .interactive-wrap {
+      display: grid;
+      grid-template-columns: minmax(0, 0.96fr) minmax(20rem, 1.04fr);
+      gap: 1rem;
+      align-items: stretch;
+    }
+
+    .agent-picker {
+      display: grid;
+      gap: 0.8rem;
+    }
+
+    .agent-button {
+      text-align: left;
+      padding: 1rem 1rem 1.05rem;
+      border-radius: 18px;
+      border: 1px solid rgba(28,22,16,0.08);
+      background: rgba(255,255,255,0.7);
+      cursor: pointer;
+      transition: 180ms ease;
+    }
+
+    .agent-button:hover,
+    .agent-button:focus-visible {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .agent-button.active {
+      background: linear-gradient(145deg, rgba(255,255,255,0.92), rgba(245, 255, 251, 0.95));
+      border-color: rgba(29, 122, 99, 0.28);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .agent-button header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 0.9rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .agent-button strong {
+      font-size: 1rem;
+    }
+
+    .agent-button small {
+      color: var(--muted);
+      display: block;
+      margin-top: 0.2rem;
+    }
+
+    .agent-button .mini-score {
+      font-weight: 700;
+      color: var(--navy);
+      font-size: 0.9rem;
+    }
+
+    .agent-button p {
+      margin: 0;
+      font-size: 0.88rem;
+      color: #51483f;
+      line-height: 1.55;
+    }
+
+    .focus-card {
+      min-height: 100%;
+      padding: 1.45rem;
+      border-radius: 24px;
+      background: rgba(255,255,255,0.78);
+      border: 1px solid rgba(28,22,16,0.08);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .focus-card .status-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 1rem;
+    }
+
+    .status-pill {
+      padding: 0.42rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.11em;
+      font-weight: 700;
+    }
+
+    .status-pill.best {
+      background: var(--green-soft);
+      color: #145646;
+    }
+
+    .status-pill.good {
+      background: #fff0d2;
+      color: #875212;
+    }
+
+    .status-pill.third {
+      background: var(--brick-soft);
+      color: #743121;
+    }
+
+    .focus-card h3 {
+      margin: 0 0 0.55rem;
+      font-size: 1.45rem;
+      letter-spacing: -0.02em;
+    }
+
+    .focus-card p {
+      margin: 0;
+      color: #4f463e;
+      line-height: 1.68;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.85rem;
+      margin-top: 1.25rem;
+    }
+
+    .detail-box {
+      padding: 0.9rem;
+      border-radius: 16px;
+      background: rgba(244, 239, 230, 0.78);
+      border: 1px solid rgba(28,22,16,0.08);
+    }
+
+    .detail-box strong {
+      display: block;
+      font-size: 0.84rem;
+      margin-bottom: 0.3rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    .detail-box span {
+      display: block;
+      line-height: 1.55;
+    }
+
+    .detail-list {
+      display: grid;
+      gap: 0.7rem;
+      margin-top: 1.2rem;
+    }
+
+    .detail-item {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      padding: 0.85rem 0.9rem;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.7);
+      border: 1px solid rgba(28,22,16,0.08);
+    }
+
+    .detail-item b {
+      min-width: 6.2rem;
+      font-size: 0.84rem;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .diagram-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .stack-card {
+      padding: 1.2rem;
+      border-radius: 24px;
+      background: rgba(255,255,255,0.74);
+      border: 1px solid rgba(28,22,16,0.08);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .stack-card.best {
+      background: linear-gradient(180deg, rgba(231, 251, 246, 0.9), rgba(255,255,255,0.78));
+      border-color: rgba(29, 122, 99, 0.28);
+    }
+
+    .stack-card h3 {
+      margin: 0 0 0.8rem;
+      font-size: 1.05rem;
+    }
+
+    .stack {
+      display: grid;
+      gap: 0.7rem;
+    }
+
+    .stack-node {
+      position: relative;
+      padding: 0.9rem 0.95rem;
+      border-radius: 16px;
+      background: rgba(244, 239, 230, 0.78);
+      border: 1px solid rgba(28,22,16,0.08);
+      min-height: 4.6rem;
+    }
+
+    .stack-node strong {
+      display: block;
+      margin-bottom: 0.25rem;
+      font-size: 0.9rem;
+    }
+
+    .stack-node span {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .stack-arrow {
+      height: 1.4rem;
+      position: relative;
+    }
+
+    .stack-arrow::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 0;
+      width: 2px;
+      height: 100%;
+      background: linear-gradient(180deg, rgba(25,63,89,0.1), rgba(25,63,89,0.4), rgba(25,63,89,0.1));
+      transform: translateX(-50%);
+    }
+
+    .stack-card.best .stack-node.server {
+      background: rgba(212, 242, 234, 0.72);
+      border-color: rgba(29,122,99,0.2);
+    }
+
+    .stack-card.good .stack-node.service,
+    .stack-card.third .stack-node.service {
+      background: rgba(255, 240, 210, 0.76);
+      border-color: rgba(176,106,18,0.2);
+    }
+
+    .stack-card.third .stack-node.warning {
+      background: rgba(246, 219, 212, 0.86);
+      border-color: rgba(147,59,40,0.2);
+    }
+
+    .callflow-shell {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .flow-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.8rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .flow-controls .toggle-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+    }
+
+    .flow-tag {
+      padding: 0.52rem 0.78rem;
+      border-radius: 999px;
+      border: 1px solid rgba(28,22,16,0.08);
+      background: rgba(255,255,255,0.72);
+      cursor: pointer;
+      font-size: 0.84rem;
+      transition: 180ms ease;
+    }
+
+    .flow-tag.active {
+      background: var(--navy);
+      color: white;
+      border-color: var(--navy);
+    }
+
+    .play-button {
+      appearance: none;
+      border: 0;
+      border-radius: 999px;
+      padding: 0.8rem 1.1rem;
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: white;
+      background: linear-gradient(135deg, #1d7a63, #193f59);
+      box-shadow: 0 14px 26px rgba(25, 63, 89, 0.18);
+      cursor: pointer;
+      transition: transform 180ms ease, box-shadow 180ms ease;
+    }
+
+    .play-button:hover,
+    .play-button:focus-visible {
+      transform: translateY(-2px);
+      box-shadow: 0 18px 32px rgba(25, 63, 89, 0.2);
+    }
+
+    .flow-lane {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 0.8rem;
+      align-items: center;
+    }
+
+    .flow-line {
+      position: absolute;
+      left: 6%;
+      right: 6%;
+      top: 50%;
+      height: 3px;
+      border-radius: 999px;
+      background: rgba(25, 63, 89, 0.1);
+      transform: translateY(-50%);
+      z-index: 0;
+    }
+
+    .flow-progress {
+      position: absolute;
+      left: 6%;
+      top: 50%;
+      height: 3px;
+      width: 0;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #1d7a63, #b06a12);
+      transform: translateY(-50%);
+      transition: width 2.8s cubic-bezier(.2,.7,.2,1);
+      z-index: 1;
+    }
+
+    .flow-lane.playing .flow-progress {
+      width: 88%;
+    }
+
+    .flow-node {
+      position: relative;
+      z-index: 2;
+      padding: 1rem 0.9rem;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.82);
+      border: 1px solid rgba(28,22,16,0.08);
+      text-align: center;
+      min-height: 8rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 0.38rem;
+      box-shadow: var(--shadow-soft);
+      transition: 280ms ease;
+    }
+
+    .flow-node strong {
+      font-size: 0.94rem;
+    }
+
+    .flow-node span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.42;
+    }
+
+    .flow-node.active {
+      transform: translateY(-8px) scale(1.01);
+      box-shadow: 0 18px 34px rgba(29, 122, 99, 0.16);
+      border-color: rgba(29, 122, 99, 0.28);
+      background: rgba(235, 252, 247, 0.9);
+    }
+
+    .flow-summary {
+      padding: 1rem 1.1rem;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.76);
+      border: 1px solid rgba(28,22,16,0.08);
+      color: #493f36;
+      line-height: 1.62;
+    }
+
+    .example-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .code-card {
+      padding: 1rem;
+      border-radius: 22px;
+      background: #171614;
+      color: #f4eee4;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .code-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto auto 0;
+      width: 100%;
+      height: 3.1rem;
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0));
+      pointer-events: none;
+    }
+
+    .code-card header {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-bottom: 0.9rem;
+      color: #d6c4ae;
+      font-size: 0.84rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .code-dot {
+      width: 0.7rem;
+      height: 0.7rem;
+      border-radius: 50%;
+      background: #b06a12;
+      box-shadow: 1rem 0 0 #1d7a63, 2rem 0 0 #193f59;
+      margin-right: 2.35rem;
+    }
+
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: var(--mono);
+      font-size: 0.89rem;
+      line-height: 1.6;
+    }
+
+    .example-caption {
+      margin-top: 1rem;
+      display: grid;
+      gap: 0.85rem;
+    }
+
+    .callout-box {
+      padding: 1rem 1.05rem;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.76);
+      border: 1px solid rgba(28,22,16,0.08);
+    }
+
+    .callout-box strong {
+      display: block;
+      margin-bottom: 0.35rem;
+    }
+
+    .callout-box p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.58;
+    }
+
+    .matrix-table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.76);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .matrix-table th,
+    .matrix-table td {
+      padding: 1rem 1rem;
+      border-bottom: 1px solid rgba(28,22,16,0.08);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .matrix-table th {
+      font-size: 0.82rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: rgba(244,239,230,0.82);
+    }
+
+    .matrix-table tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .matrix-table .cell-head {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      margin-bottom: 0.25rem;
+      font-weight: 700;
+    }
+
+    .tone-dot {
+      width: 0.7rem;
+      height: 0.7rem;
+      border-radius: 50%;
+      flex: none;
+    }
+
+    .tone-dot.green { background: var(--green); }
+    .tone-dot.gold { background: var(--gold); }
+    .tone-dot.brick { background: var(--brick); }
+    .tone-dot.navy { background: var(--navy); }
+
+    .matrix-table p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .insight-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .insight-card {
+      padding: 1.15rem;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.76);
+      border: 1px solid rgba(28,22,16,0.08);
+    }
+
+    .insight-card h3 {
+      margin: 0 0 0.55rem;
+      font-size: 1rem;
+    }
+
+    .insight-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.62;
+    }
+
+    .insight-card.best {
+      background: linear-gradient(180deg, rgba(231,251,246,0.92), rgba(255,255,255,0.78));
+      border-color: rgba(29, 122, 99, 0.24);
+    }
+
+    .insight-card.warn {
+      background: linear-gradient(180deg, rgba(255,240,210,0.88), rgba(255,255,255,0.78));
+      border-color: rgba(176,106,18,0.22);
+    }
+
+    .insight-card.risk {
+      background: linear-gradient(180deg, rgba(246,219,212,0.9), rgba(255,255,255,0.78));
+      border-color: rgba(147,59,40,0.2);
+    }
+
+    .footer-note {
+      margin-top: 1rem;
+      padding: 1rem 1.1rem;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.72);
+      border: 1px solid rgba(28,22,16,0.08);
+      color: var(--muted);
+      line-height: 1.62;
+      font-size: 0.95rem;
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 700ms ease, transform 700ms ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 1080px) {
+      .hero {
+        padding: 2.3rem;
+      }
+
+      .hero-grid,
+      .interactive-wrap,
+      .example-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .ranking-grid,
+      .diagram-grid,
+      .insight-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .flow-lane {
+        grid-template-columns: 1fr;
+      }
+
+      .flow-line,
+      .flow-progress {
+        display: none;
+      }
+
+      .detail-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .topbar-inner {
+        align-items: start;
+        flex-direction: column;
+      }
+
+      .nav-pills {
+        justify-content: flex-start;
+      }
+
+      .hero {
+        border-radius: 30px;
+        padding: 1.55rem;
+        min-height: auto;
+      }
+
+      .panel {
+        padding: 1.35rem;
+      }
+
+      .hero-stat-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .matrix-table,
+      .matrix-table thead,
+      .matrix-table tbody,
+      .matrix-table th,
+      .matrix-table td,
+      .matrix-table tr {
+        display: block;
+      }
+
+      .matrix-table thead {
+        display: none;
+      }
+
+      .matrix-table tr {
+        padding: 0.8rem 0;
+      }
+
+      .matrix-table td {
+        border-bottom: 0;
+        padding: 0.55rem 0;
+      }
+
+      .matrix-table td::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 0.2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <div class="ambient-orb one"></div>
+    <div class="ambient-orb two"></div>
+    <div class="ambient-orb three"></div>
+
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true"></div>
+          <div class="brand-copy">
+            <strong>Field Selection Review Codex</strong>
+            <span>Interactive comparison of three competing implementations</span>
+          </div>
+        </div>
+        <nav class="nav-pills" aria-label="Sections">
+          <a href="#ranking">Ranking</a>
+          <a href="#compare">Compare</a>
+          <a href="#architecture">Architecture</a>
+          <a href="#flow">Flow</a>
+          <a href="#example">Example</a>
+          <a href="#decision">Decision</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero reveal" id="top">
+        <div class="hero-grid">
+          <div>
+            <div class="eyebrow">Codex Review / Three Worktrees / One Recommendation</div>
+            <h1>The winner is not just cleaner. It respects the contract.</h1>
+            <p class="lead">
+              Three agents built the same field-selection feature for <code>list_tasks</code> and
+              <code>list_projects</code>. All three are functional enough to be credible. Only one
+              implementation solves the feature and the architectural consequences of the feature at the same time.
+            </p>
+            <div class="hero-callouts">
+              <span>Projection layer placement</span>
+              <span>Service contract integrity</span>
+              <span>MCP output schema quality</span>
+              <span>Caller ergonomics</span>
+            </div>
+            <div class="hero-stat-grid">
+              <div class="hero-stat">
+                <strong data-counter="3">0</strong>
+                <span>implementations reviewed side by side</span>
+              </div>
+              <div class="hero-stat">
+                <strong data-counter="1">0</strong>
+                <span>clear winner once architecture matters</span>
+              </div>
+              <div class="hero-stat">
+                <strong data-counter="816">0</strong>
+                <span>targeted tests passed across the reviewed suites</span>
+              </div>
+            </div>
+          </div>
+          <aside class="hero-side">
+            <div class="winner-card">
+              <h2>Recommended branch</h2>
+              <div class="winner-name">agent-1edcddf2</div>
+              <p>
+                The best implementation keeps projection at the server boundary, preserves the
+                service-layer model contract, and explicitly relaxes the output schema so projected
+                responses stay valid for MCP clients.
+              </p>
+            </div>
+            <div class="score-stack">
+              <div class="score-card visible">
+                <header>
+                  <strong>Architecture Fit</strong>
+                  <span>9.7 / 10</span>
+                </header>
+                <div class="bar-track"><div class="bar-fill" style="--score:97"></div></div>
+              </div>
+              <div class="score-card visible" data-tone="gold">
+                <header>
+                  <strong>Runner Up Quality</strong>
+                  <span>7.4 / 10</span>
+                </header>
+                <div class="bar-track"><div class="bar-fill" style="--score:74"></div></div>
+              </div>
+              <div class="score-card visible" data-tone="brick">
+                <header>
+                  <strong>Contract Risk</strong>
+                  <span>6.8 / 10</span>
+                </header>
+                <div class="bar-track"><div class="bar-fill" style="--score:68"></div></div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="ranking" class="reveal">
+        <div class="panel">
+          <div class="section-head">
+            <div>
+              <h2>Ranking</h2>
+            </div>
+            <p>
+              This is not a “which one passed tests” decision. It is a “which one leaves the codebase
+              in the healthiest state after the feature lands” decision.
+            </p>
+          </div>
+          <div class="ranking-grid">
+            <article class="ranking-card best">
+              <div class="rank-badge">1 / Best</div>
+              <div class="code-chip">agent-1edcddf2</div>
+              <h3>Best overall implementation</h3>
+              <p>
+                Projection lives at the server boundary, the service still returns full models, and
+                the MCP schema is adapted to match projected output instead of being weakened or faked.
+              </p>
+              <ul>
+                <li>Best architecture</li>
+                <li>Best schema handling</li>
+                <li>Best user-facing ergonomics</li>
+              </ul>
+            </article>
+            <article class="ranking-card good">
+              <div class="rank-badge">2 / Good</div>
+              <div class="code-chip">agent-904b6be1</div>
+              <h3>Solid, but schema quality drops</h3>
+              <p>
+                The implementation is direct and disciplined, especially around field validation, but
+                it downgrades the response type to generic dict-shaped items instead of preserving a
+                useful documented output contract.
+              </p>
+              <ul>
+                <li>Simplest implementation</li>
+                <li>Strong validation</li>
+                <li>Lower schema fidelity</li>
+              </ul>
+            </article>
+            <article class="ranking-card third">
+              <div class="rank-badge">3 / Third</div>
+              <div class="code-chip">agent-878a38d0</div>
+              <h3>Capable, but contract honesty slips</h3>
+              <p>
+                It keeps the old service signature while sometimes returning projected dicts instead
+                of models. That hidden shape-shift makes the service layer harder to trust and maintain.
+              </p>
+              <ul>
+                <li>Good tests</li>
+                <li>Less coherent docs</li>
+                <li>Weakest type honesty</li>
+              </ul>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="compare" class="reveal">
+        <div class="panel">
+          <div class="section-head">
+            <div>
+              <h2>Interactive Comparison</h2>
+            </div>
+            <p>
+              Use the selector to switch between the three branches. The right-hand panel explains what
+              each branch gets right, what it compromises, and why the final ranking landed where it did.
+            </p>
+          </div>
+          <div class="interactive-wrap">
+            <div class="agent-picker" role="tablist" aria-label="Branch comparison">
+              <button class="agent-button active" data-agent="agent-1edcddf2" role="tab" aria-selected="true">
+                <header>
+                  <div>
+                    <strong>agent-1edcddf2</strong>
+                    <small>Best implementation</small>
+                  </div>
+                  <div class="mini-score">9.7</div>
+                </header>
+                <p>Projection at the server boundary, full models preserved below, output schema explicitly relaxed.</p>
+              </button>
+              <button class="agent-button" data-agent="agent-904b6be1" role="tab" aria-selected="false">
+                <header>
+                  <div>
+                    <strong>agent-904b6be1</strong>
+                    <small>Runner up</small>
+                  </div>
+                  <div class="mini-score">7.4</div>
+                </header>
+                <p>Clear and direct implementation, but the response schema gets flattened to generic dicts.</p>
+              </button>
+              <button class="agent-button" data-agent="agent-878a38d0" role="tab" aria-selected="false">
+                <header>
+                  <div>
+                    <strong>agent-878a38d0</strong>
+                    <small>Third place</small>
+                  </div>
+                  <div class="mini-score">6.9</div>
+                </header>
+                <p>Passes targeted suites, but the service signature and runtime item shape no longer fully agree.</p>
+              </button>
+            </div>
+
+            <article class="focus-card" id="focus-card" aria-live="polite">
+              <div class="status-row">
+                <span class="status-pill best" id="focus-status">Best</span>
+                <span class="code-chip" id="focus-name">agent-1edcddf2</span>
+              </div>
+              <h3 id="focus-title">Best architectural fit</h3>
+              <p id="focus-summary">
+                This branch solves the feature where it belongs: at the server edge, after the service
+                has already finished producing real domain models.
+              </p>
+              <div class="detail-grid">
+                <div class="detail-box">
+                  <strong>Projection layer</strong>
+                  <span id="focus-layer">Server boundary</span>
+                </div>
+                <div class="detail-box">
+                  <strong>Service contract</strong>
+                  <span id="focus-contract">Full models preserved</span>
+                </div>
+                <div class="detail-box">
+                  <strong>Schema handling</strong>
+                  <span id="focus-schema">Relaxed output schema with documented fields</span>
+                </div>
+                <div class="detail-box">
+                  <strong>Caller ergonomics</strong>
+                  <span id="focus-ergonomics">High resilience and easy recovery</span>
+                </div>
+              </div>
+              <div class="detail-list" id="focus-details"></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="architecture" class="reveal">
+        <div class="panel">
+          <div class="section-head">
+            <div>
+              <h2>Architecture Overview</h2>
+            </div>
+            <p>
+              The heart of the decision is simple: field selection is a presentation concern. The
+              winning branch is the one that keeps it closest to presentation.
+            </p>
+          </div>
+          <div class="diagram-grid">
+            <article class="stack-card good">
+              <h3><span class="code-chip">agent-904b6be1</span></h3>
+              <div class="stack">
+                <div class="stack-node">
+                  <strong>Caller</strong>
+                  <span>Requests a smaller response</span>
+                </div>
+                <div class="stack-arrow"></div>
+                <div class="stack-node">
+                  <strong>FastMCP Tool</strong>
+                  <span>Accepts fields and null controls</span>
+                </div>
+                <div class="stack-arrow"></div>
+                <div class="stack-node service">
+                  <strong>OperatorService</strong>
+                  <span>Performs projection inside the service and returns dict-shaped items</span>
+                </div>
+                <div class="stack-arrow"></div>
+                <div class="stack-node">
+                  <strong>Result</strong>
+                  <span>Works, but schema quality is lower because item shape becomes generic</span>
+                </div>
+              </div>
+            </article>
+
+            <article class="stack-card best">
+              <h3><span class="code-chip">agent-1edcddf2</span></h3>
+              <div class="stack">
+                <div class="stack-node">
+                  <strong>Caller</strong>
+                  <span>Requests specific fields</span>
+                </div>
+                <div class="stack-arrow"></div>
+                <div class="stack-node">
+                  <strong>FastMCP Tool</strong>
+                  <span>Owns the final response contract</span>
+                </div>
+                <div class="stack-arrow"></div>
+                <div class="stack-node">
+                  <strong>OperatorService</strong>
+                  <span>Still returns full <code>Task</code> and <code>Project</code> models</span>
+                </div>
+                <div class="stack-arrow"></div>
+                <div class="stack-node server">
+                  <strong>Projection Module</strong>
+                  <span>Applies final projection and publishes a relaxed output schema for MCP clients</span>
+                </div>
+              </div>
+            </article>
+
+            <article class="stack-card third">
+              <h3><span class="code-chip">agent-878a38d0</span></h3>
+              <div class="stack">
+                <div class="stack-node">
+                  <strong>Caller</strong>
+                  <span>Can request projection</span>
+                </div>
+                <div class="stack-arrow"></div>
+                <div class="stack-node">
+                  <strong>FastMCP Tool</strong>
+                  <span>Mostly unchanged outwardly</span>
+                </div>
+                <div class="stack-arrow"></div>
+                <div class="stack-node service">
+                  <strong>OperatorService</strong>
+                  <span>Sometimes returns full models, sometimes projected dict-like items</span>
+                </div>
+                <div class="stack-arrow"></div>
+                <div class="stack-node warning">
+                  <strong>Hidden risk</strong>
+                  <span>Type signatures keep saying “model result” while runtime values can be projected dicts</span>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="flow" class="reveal">
+        <div class="panel">
+          <div class="section-head">
+            <div>
+              <h2>Request Flow Simulator</h2>
+            </div>
+            <p>
+              Same feature request, three different paths through the stack. The winning path keeps the
+              internal layers stable and shapes the output at the last responsible moment.
+            </p>
+          </div>
+          <div class="callflow-shell">
+            <div class="flow-controls">
+              <div class="toggle-row" id="flow-toggles">
+                <button class="flow-tag active" data-flow="agent-1edcddf2">agent-1edcddf2</button>
+                <button class="flow-tag" data-flow="agent-904b6be1">agent-904b6be1</button>
+                <button class="flow-tag" data-flow="agent-878a38d0">agent-878a38d0</button>
+              </div>
+              <button class="play-button" id="play-flow">Replay Animation</button>
+            </div>
+            <div class="flow-lane" id="flow-lane">
+              <div class="flow-line"></div>
+              <div class="flow-progress"></div>
+              <div class="flow-node" data-step="0">
+                <strong>Request</strong>
+                <span>Caller asks for a reduced field set</span>
+              </div>
+              <div class="flow-node" data-step="1">
+                <strong>Tool Layer</strong>
+                <span id="flow-step-1">Accepts query and forwards request</span>
+              </div>
+              <div class="flow-node" data-step="2">
+                <strong>Service Layer</strong>
+                <span id="flow-step-2">Still works with full models</span>
+              </div>
+              <div class="flow-node" data-step="3">
+                <strong>Projection</strong>
+                <span id="flow-step-3">Applied at the edge</span>
+              </div>
+              <div class="flow-node" data-step="4">
+                <strong>Final Contract</strong>
+                <span id="flow-step-4">Client receives projected JSON with matching schema</span>
+              </div>
+            </div>
+            <div class="flow-summary" id="flow-summary">
+              The strongest flow is the one where the service never has to lie about what it returns.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="example" class="reveal">
+        <div class="panel">
+          <div class="section-head">
+            <div>
+              <h2>Concrete Example</h2>
+            </div>
+            <p>
+              The example below shows the feature as a caller actually experiences it: request in,
+              reduced response out, and the architectural explanation underneath.
+            </p>
+          </div>
+          <div class="example-grid">
+            <article class="code-card">
+              <header><span class="code-dot"></span>Request</header>
+<pre>{
+  "query": {
+    "fields": ["name", "flagged"],
+    "excludeNull": true
+  }
+}</pre>
+            </article>
+            <article class="code-card">
+              <header><span class="code-dot"></span>Projected Response</header>
+<pre>{
+  "items": [
+    {
+      "id": "task-123",
+      "name": "Review roadmap",
+      "flagged": true
+    }
+  ],
+  "total": 1,
+  "hasMore": false
+}</pre>
+            </article>
+          </div>
+          <div class="example-caption">
+            <div class="callout-box">
+              <strong>Why the winning branch handles this best</strong>
+              <p>
+                In <span class="code-chip">agent-1edcddf2</span>, the repository still returns a real
+                <code>Task</code>, the service still reasons in full models, and only the final tool
+                response is projected. That keeps the feature precise for callers without distorting the layers underneath it.
+              </p>
+            </div>
+            <div class="callout-box">
+              <strong>What the other branches compromise</strong>
+              <p>
+                <span class="code-chip">agent-904b6be1</span> solves the feature by lowering schema richness.
+                <span class="code-chip">agent-878a38d0</span> solves the feature by letting the service return
+                projected dict-like items behind a model-shaped signature.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="reveal">
+        <div class="panel">
+          <div class="section-head">
+            <div>
+              <h2>Decision Matrix</h2>
+            </div>
+            <p>
+              These are the dimensions that actually drove the decision. Not every dimension matters equally.
+              The highest-weight categories were architecture fit, type honesty, and output schema quality.
+            </p>
+          </div>
+          <table class="matrix-table">
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>agent-904b6be1</th>
+                <th>agent-1edcddf2</th>
+                <th>agent-878a38d0</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td data-label="Category"><div class="cell-head"><span class="tone-dot navy"></span>Projection layer</div><p>Where the feature lives</p></td>
+                <td data-label="agent-904b6be1"><p>Service layer</p></td>
+                <td data-label="agent-1edcddf2"><p>Server boundary</p></td>
+                <td data-label="agent-878a38d0"><p>Service layer</p></td>
+              </tr>
+              <tr>
+                <td data-label="Category"><div class="cell-head"><span class="tone-dot green"></span>Service contract</div><p>Does the service keep returning rich models?</p></td>
+                <td data-label="agent-904b6be1"><p>No, projected dicts become the service result</p></td>
+                <td data-label="agent-1edcddf2"><p>Yes, full model results are preserved</p></td>
+                <td data-label="agent-878a38d0"><p>Not consistently</p></td>
+              </tr>
+              <tr>
+                <td data-label="Category"><div class="cell-head"><span class="tone-dot gold"></span>Schema handling</div><p>How the output contract adapts</p></td>
+                <td data-label="agent-904b6be1"><p>Response type weakened to generic dict items</p></td>
+                <td data-label="agent-1edcddf2"><p>Relaxed schema preserves field documentation and client validity</p></td>
+                <td data-label="agent-878a38d0"><p>No full schema adjustment at the final boundary</p></td>
+              </tr>
+              <tr>
+                <td data-label="Category"><div class="cell-head"><span class="tone-dot brick"></span>Type honesty</div><p>Declared types versus runtime values</p></td>
+                <td data-label="agent-904b6be1"><p>Reasonably honest, but lower-fidelity output type</p></td>
+                <td data-label="agent-1edcddf2"><p>Strongest alignment</p></td>
+                <td data-label="agent-878a38d0"><p>Weakest due to dicts masquerading as models</p></td>
+              </tr>
+              <tr>
+                <td data-label="Category"><div class="cell-head"><span class="tone-dot green"></span>Caller ergonomics</div><p>How friendly the API feels in practice</p></td>
+                <td data-label="agent-904b6be1"><p>Strict camelCase validation</p></td>
+                <td data-label="agent-1edcddf2"><p><code>["*"]</code>, automatic <code>id</code>, snake_case normalization, warnings</p></td>
+                <td data-label="agent-878a38d0"><p>Mixed and less coherent</p></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="decision" class="reveal">
+        <div class="panel">
+          <div class="section-head">
+            <div>
+              <h2>Why This Branch Is The Best</h2>
+            </div>
+            <p>
+              The final recommendation is not subtle. The winning branch is the only one that stays
+              clean at every level that matters.
+            </p>
+          </div>
+          <div class="insight-grid">
+            <article class="insight-card best">
+              <h3>It respects the architecture</h3>
+              <p>
+                Projection belongs at the presentation boundary. <span class="code-chip">agent-1edcddf2</span>
+                is the only branch that follows that principle consistently.
+              </p>
+            </article>
+            <article class="insight-card best">
+              <h3>It respects the contract</h3>
+              <p>
+                The service continues to return full <code>Task</code> and <code>Project</code> models.
+                Internal callers do not have to guess whether the result shape changed.
+              </p>
+            </article>
+            <article class="insight-card best">
+              <h3>It respects MCP clients</h3>
+              <p>
+                The output schema is relaxed instead of abandoned. Clients still see what fields exist,
+                and projected responses remain structurally valid.
+              </p>
+            </article>
+            <article class="insight-card warn">
+              <h3>Why the runner-up loses</h3>
+              <p>
+                <span class="code-chip">agent-904b6be1</span> is direct and disciplined, but it pays for
+                that simplicity by making the response schema less informative than it needs to be.
+              </p>
+            </article>
+            <article class="insight-card risk">
+              <h3>Why third place stays third</h3>
+              <p>
+                <span class="code-chip">agent-878a38d0</span> passes targeted tests, but the service
+                signature stops being fully honest once projected dict-like items are returned behind model-like types.
+              </p>
+            </article>
+            <article class="insight-card best">
+              <h3>The shortest possible conclusion</h3>
+              <p>
+                <span class="code-chip">agent-1edcddf2</span> is the only implementation that solves the
+                feature and the contract implications of the feature.
+              </p>
+            </article>
+          </div>
+          <div class="footer-note">
+            Targeted source-pinned test runs were used during the review with each worktree importing its own
+            <code>src/</code> tree. The choice therefore comes down to architecture quality and contract integrity,
+            not to one branch simply failing outright.
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const agentData = {
+      "agent-1edcddf2": {
+        statusClass: "best",
+        statusLabel: "Best",
+        title: "Best architectural fit",
+        summary: "This branch solves field selection at the server boundary, after the service has already finished producing real domain models. It is the cleanest fit for the repo's architecture.",
+        layer: "Server boundary",
+        contract: "Full model results preserved",
+        schema: "Relaxed output schema with documented fields",
+        ergonomics: "Most practical for agent callers",
+        details: [
+          ["Why it wins", "Projection is treated as presentation, not domain logic. That keeps internal layers stable."],
+          ["Contract", "The service still returns full ListResult[Task] and ListResult[Project] values."],
+          ["Schema", "Projected responses remain valid for MCP clients because the published output schema is explicitly relaxed."],
+          ["API feel", "Supports [\"*\"] for all fields, always includes id, normalizes snake_case inputs, and warns instead of hard-failing on bad field names."]
+        ]
+      },
+      "agent-904b6be1": {
+        statusClass: "good",
+        statusLabel: "Good",
+        title: "Solid implementation with a weaker schema story",
+        summary: "This branch is clear and disciplined, especially around validation, but it solves the feature by lowering response type fidelity more than necessary.",
+        layer: "Service layer",
+        contract: "Service returns projected dict items",
+        schema: "Generic dict result type",
+        ergonomics: "Strict and explicit",
+        details: [
+          ["What it does well", "Strong validation against real model fields and a very direct implementation path."],
+          ["Tradeoff", "The return annotation becomes ListResult[dict[str, Any]], which makes the output schema much less informative."],
+          ["Why it ranks second", "It works and is maintainable, but the client contract loses richness compared with the winning branch."],
+          ["Best use case", "If the team wanted the simplest possible implementation and cared less about output schema precision, this would be defensible."]
+        ]
+      },
+      "agent-878a38d0": {
+        statusClass: "third",
+        statusLabel: "Third",
+        title: "Capable implementation with contract drift",
+        summary: "This branch has useful projection utilities and good targeted tests, but the service signature no longer fully matches what it can return at runtime.",
+        layer: "Service layer",
+        contract: "Mixed: full models or projected dict-like items",
+        schema: "Less coherent boundary story",
+        ergonomics: "Mixed and harder to reason about",
+        details: [
+          ["Main issue", "The service still advertises model results while sometimes returning projected dict-like items with a type ignore."],
+          ["Why this matters", "That hidden shape shift makes the service layer harder to trust, document, and reuse."],
+          ["Secondary issue", "The field-selection story is less coherent because internal snake_case field sets and public camelCase output must be mentally translated."],
+          ["Why it ranks third", "The feature works, but the internal contract becomes less honest than the runner-up and much less clean than the winner."]
+        ]
+      }
+    };
+
+    const flowData = {
+      "agent-1edcddf2": {
+        step1: "Tool receives query and owns final output contract",
+        step2: "Service continues to work with full models only",
+        step3: "Projection is applied at the server edge",
+        step4: "Client gets projected JSON plus a matching relaxed schema",
+        summary: "This path is strongest because the service never has to pretend a projected dict is still a full model result."
+      },
+      "agent-904b6be1": {
+        step1: "Tool forwards the request into the service",
+        step2: "Service performs projection and returns dict-shaped items",
+        step3: "No dedicated final-boundary projection stage remains",
+        step4: "Client gets the feature, but via a lower-fidelity schema",
+        summary: "The feature works, but the contract becomes generic earlier than necessary."
+      },
+      "agent-878a38d0": {
+        step1: "Tool forwards the request mostly unchanged",
+        step2: "Service may switch between model results and projected dict-like items",
+        step3: "Projection is mixed into service-level behavior",
+        step4: "Client gets the feature, but the service contract is less honest",
+        summary: "This path is the hardest to reason about because the service result shape depends on projection mode."
+      }
+    };
+
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("visible");
+        }
+      });
+    }, { threshold: 0.14 });
+
+    document.querySelectorAll(".reveal").forEach((node) => revealObserver.observe(node));
+
+    function animateCounter(el) {
+      const target = Number(el.dataset.counter || "0");
+      const duration = 1300;
+      const start = performance.now();
+
+      function frame(now) {
+        const progress = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        el.textContent = Math.round(target * eased).toLocaleString();
+        if (progress < 1) {
+          requestAnimationFrame(frame);
+        }
+      }
+
+      requestAnimationFrame(frame);
+    }
+
+    const heroObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          document.querySelectorAll("[data-counter]").forEach(animateCounter);
+          observer.disconnect();
+        }
+      });
+    }, { threshold: 0.35 });
+
+    const hero = document.querySelector(".hero");
+    if (hero) heroObserver.observe(hero);
+
+    const buttons = [...document.querySelectorAll(".agent-button")];
+    const focusStatus = document.getElementById("focus-status");
+    const focusName = document.getElementById("focus-name");
+    const focusTitle = document.getElementById("focus-title");
+    const focusSummary = document.getElementById("focus-summary");
+    const focusLayer = document.getElementById("focus-layer");
+    const focusContract = document.getElementById("focus-contract");
+    const focusSchema = document.getElementById("focus-schema");
+    const focusErgonomics = document.getElementById("focus-ergonomics");
+    const focusDetails = document.getElementById("focus-details");
+
+    function renderAgent(agentKey) {
+      const data = agentData[agentKey];
+      buttons.forEach((button) => {
+        const active = button.dataset.agent === agentKey;
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-selected", String(active));
+      });
+
+      focusStatus.className = "status-pill " + data.statusClass;
+      focusStatus.textContent = data.statusLabel;
+      focusName.textContent = agentKey;
+      focusTitle.textContent = data.title;
+      focusSummary.textContent = data.summary;
+      focusLayer.textContent = data.layer;
+      focusContract.textContent = data.contract;
+      focusSchema.textContent = data.schema;
+      focusErgonomics.textContent = data.ergonomics;
+      focusDetails.innerHTML = data.details.map(([label, value]) => `
+        <div class="detail-item">
+          <b>${label}</b>
+          <span>${value}</span>
+        </div>
+      `).join("");
+    }
+
+    buttons.forEach((button) => {
+      button.addEventListener("click", () => renderAgent(button.dataset.agent));
+    });
+    renderAgent("agent-1edcddf2");
+
+    const flowTags = [...document.querySelectorAll(".flow-tag")];
+    const flowLane = document.getElementById("flow-lane");
+    const flowSummary = document.getElementById("flow-summary");
+    const flowNodes = [...document.querySelectorAll(".flow-node")];
+    const playFlow = document.getElementById("play-flow");
+    let activeFlow = "agent-1edcddf2";
+
+    function updateFlow(agentKey) {
+      activeFlow = agentKey;
+      const data = flowData[agentKey];
+      flowTags.forEach((tag) => tag.classList.toggle("active", tag.dataset.flow === agentKey));
+      document.getElementById("flow-step-1").textContent = data.step1;
+      document.getElementById("flow-step-2").textContent = data.step2;
+      document.getElementById("flow-step-3").textContent = data.step3;
+      document.getElementById("flow-step-4").textContent = data.step4;
+      flowSummary.textContent = data.summary;
+      replayFlow();
+    }
+
+    function replayFlow() {
+      flowLane.classList.remove("playing");
+      flowNodes.forEach((node) => node.classList.remove("active"));
+      void flowLane.offsetWidth;
+      flowLane.classList.add("playing");
+      flowNodes.forEach((node, index) => {
+        setTimeout(() => {
+          node.classList.add("active");
+        }, 260 + index * 360);
+      });
+      setTimeout(() => {
+        flowNodes.forEach((node) => node.classList.remove("active"));
+      }, 3600);
+    }
+
+    flowTags.forEach((tag) => {
+      tag.addEventListener("click", () => updateFlow(tag.dataset.flow));
+    });
+    playFlow.addEventListener("click", replayFlow);
+    updateFlow(activeFlow);
+  </script>
+</body>
+</html>
