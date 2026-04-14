@@ -29,10 +29,12 @@ For each missing milestone version:
 
 ### Step 3: Generate the entry
 
-For each audited milestone, read these sources:
-- `.research/updated-spec/MILESTONE-v{VERSION}.md` — the spec (what was planned)
+For each audited milestone, read these sources (in priority order):
+- `.planning/milestones/v{VERSION}-REQUIREMENTS.md` — the requirements (source of truth for what was delivered)
 - `.planning/milestones/v{VERSION}-MILESTONE-AUDIT.md` — the audit (what was verified)
-- `.planning/milestones/v{VERSION}-REQUIREMENTS.md` — the requirements (what was delivered)
+- Phase summaries in `.planning/milestones/v{VERSION}-phases/` — detailed implementation results
+
+**Note:** `.research/updated-spec/MILESTONE-v{VERSION}.md` is the *initial* spec — it may be outdated as milestones evolve during development. Always prefer the requirements and audit in `.planning/milestones/` as the source of truth. Also check `.planning/archive/` for milestones that have been archived after completion.
 
 Generate a changelog entry following the existing format in `CHANGELOG.md`:
 - Use [Keep a Changelog](https://keepachangelog.com/) categories: **Added**, **Changed**, **Fixed**
@@ -63,7 +65,7 @@ Generate a changelog entry following the existing format in `CHANGELOG.md`:
 
 ## Rules
 
-- Never invent changes — everything must trace to the audit or spec
+- Never invent changes — everything must trace to the requirements, audit, or phase summaries
 - Don't include internal refactors unless they're breaking (changed public API)
 - Match the tone and density of existing entries in the file
 - One milestone per entry — don't combine multiple milestones into one section
