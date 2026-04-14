@@ -39,15 +39,15 @@ _STRIPPING_NOTE = (
 
 _INHERITED_TASKS_EXPLANATION = (
     "inherited* fields: value inherited from the hierarchy "
-    "(parent task, project, folder). Both direct and inherited can coexist "
-    "\u2014 the sooner date applies. inherited fields are read-only; "
+    "(parent task, project, folder). Both direct and inherited can coexist. "
+    "The sooner date applies. inherited fields are read-only; "
     "to edit, use the direct field (dueDate, not inheritedDueDate)."
 )
 
 _INHERITED_PROJECTS_EXPLANATION = (
     "inherited* fields: value inherited from the hierarchy "
-    "(folder). Both direct and inherited can coexist "
-    "\u2014 the sooner date applies. inherited fields are read-only; "
+    "(folder). Both direct and inherited can coexist. "
+    "The sooner date applies. inherited fields are read-only; "
     "to edit, use the direct field (dueDate, not inheritedDueDate)."
 )
 
@@ -483,8 +483,8 @@ GET_TASK_TOOL_DOC = (
 GET_PROJECT_TOOL_DOC = (
     "Look up a single project by its ID.\n"
     "\n"
-    "$inbox is not a real project and cannot be looked up here \u2014 "
-    "it has no review schedule, status, or other project properties. "
+    "$inbox is not a real project and cannot be looked up here. "
+    "It has no review schedule, status, or other project properties. "
     "To query inbox tasks, use list_tasks with inInbox=true.\n"
     "\n"
     f"{_STRIPPING_NOTE}\n"
@@ -494,7 +494,7 @@ GET_PROJECT_TOOL_DOC = (
     "tags [{id, name}], nextTask {id, name}, folder {id, name}, "
     "reviewInterval, nextReviewDate.\n"
     "\n"
-    "nextTask: first available (unblocked) task \u2014 useful for identifying what to work on next.\n"
+    "nextTask: first available (unblocked) task. Useful for identifying what to work on next.\n"
     f"{_INHERITED_PROJECTS_EXPLANATION}"
 )
 
@@ -561,11 +561,11 @@ LIST_TASKS_TOOL_DOC = (
     f"{_STRIPPING_NOTE}\n"
     "\n"
     "include: optional array of field groups, additive on top of defaults.\n"
-    '  - "notes" \u2014 note\n'
-    '  - "metadata" \u2014 added, modified, completionDate, dropDate, url\n'
-    '  - "hierarchy" \u2014 parent, hasChildren\n'
-    '  - "time" \u2014 estimatedMinutes, repetitionRule\n'
-    '  - "*" \u2014 all fields\n'
+    '  - "notes": note\n'
+    '  - "metadata": added, modified, completionDate (+inherited), dropDate (+inherited), url\n'
+    '  - "hierarchy": parent, hasChildren\n'
+    '  - "time": estimatedMinutes, repetitionRule\n'
+    '  - "*": all fields\n'
     "Default fields (always returned): id, name, availability, order, project, "
     "dueDate, inheritedDueDate, deferDate, inheritedDeferDate, plannedDate, "
     "inheritedPlannedDate, flagged, inheritedFlagged, urgency, tags.\n"
@@ -584,7 +584,7 @@ LIST_TASKS_TOOL_DOC = (
     "\n"
     "Response: {{items, total, hasMore, warnings?}}\n"
     "\n"
-    "Filters use inherited (effective) values \u2014 tasks inherit dates and flags "
+    "Filters use inherited (effective) values. Tasks inherit dates and flags "
     "from parent hierarchy.\n"
     "\n"
     "completed/dropped filters include those lifecycle states in results "
@@ -602,12 +602,12 @@ LIST_PROJECTS_TOOL_DOC = (
     f"{_STRIPPING_NOTE}\n"
     "\n"
     "include: optional array of field groups, additive on top of defaults.\n"
-    '  - "notes" \u2014 note\n'
-    '  - "metadata" \u2014 added, modified, completionDate, dropDate, url\n'
-    '  - "hierarchy" \u2014 hasChildren\n'
-    '  - "time" \u2014 estimatedMinutes, repetitionRule\n'
-    '  - "review" \u2014 nextReviewDate, reviewInterval, lastReviewDate, nextTask\n'
-    '  - "*" \u2014 all fields\n'
+    '  - "notes": note\n'
+    '  - "metadata": added, modified, completionDate, dropDate (+inherited), url\n'
+    '  - "hierarchy": hasChildren\n'
+    '  - "time": estimatedMinutes, repetitionRule\n'
+    '  - "review": nextReviewDate, reviewInterval, lastReviewDate, nextTask\n'
+    '  - "*": all fields\n'
     "Default fields (always returned): id, name, availability, folder, "
     "dueDate, inheritedDueDate, deferDate, inheritedDeferDate, plannedDate, "
     "inheritedPlannedDate, flagged, inheritedFlagged, urgency, tags.\n"
@@ -620,10 +620,10 @@ LIST_PROJECTS_TOOL_DOC = (
     "\n"
     "Response: {{items, total, hasMore, warnings?}}\n"
     "\n"
-    "nextTask (in review group): first available (unblocked) task \u2014 "
-    "useful for identifying what to work on next.\n"
+    "nextTask (in review group): first available (unblocked) task. "
+    "Useful for identifying what to work on next.\n"
     "\n"
-    "Filters use inherited (effective) values \u2014 projects inherit dates and flags "
+    "Filters use inherited (effective) values. Projects inherit dates and flags "
     "from parent folders.\n"
     "\n"
     "completed/dropped filters include those lifecycle states in results "
