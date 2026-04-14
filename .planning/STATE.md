@@ -1,31 +1,34 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3.3
-milestone_name: Ordering & Move Fix
-status: archived
-stopped_at: Milestone archived
-last_updated: "2026-04-12T20:00:00.000Z"
-last_activity: 2026-04-12
+milestone: v1.4
+milestone_name: Response Shaping, Batch Processing & Notes Graduation
+status: active
+stopped_at: Defining requirements
+last_updated: "2026-04-14T00:00:00.000Z"
+last_activity: 2026-04-14
 progress:
-  total_phases: 2
-  completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-12)
+See: .planning/PROJECT.md (updated 2026-04-14)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Planning next milestone
+**Current focus:** Defining requirements for v1.4
 
 ## Current Position
 
-Milestone v1.3.3 archived. Run `/gsd-new-milestone` to start next milestone.
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-14 — Milestone v1.4 started
 
 ## Performance Metrics
 
@@ -43,7 +46,7 @@ Cleared at milestone boundary. Full log in PROJECT.md Key Decisions table.
 
 ### Pending Todos
 
-Carried forward to next milestone:
+Carried forward from v1.3.3:
 
 1. Add retry logic for OmniFocus bridge timeouts (v1.6)
 2. Investigate macOS App Nap impact on OmniFocus responsiveness (v1.6)
@@ -54,10 +57,8 @@ Carried forward to next milestone:
 7. Add built-in perspectives to list_perspectives (repository — needs design discussion)
 8. Return full inbox hierarchy from inInbox query (repository)
 9. Add path field for hierarchical entities (models)
-10. Field selection with curated defaults for read tools (v1.4)
-11. Null-stripping for read tool responses (v1.4)
-12. Fix OrdinalWeekdaySpec → OrdinalWeekday cross-layer coercion in edit pipeline (service)
-13. Golden master re-capture required after Phase 42 mapper rewrites (human-only per GOLD-01)
+10. Fix OrdinalWeekdaySpec → OrdinalWeekday cross-layer coercion in edit pipeline (service)
+11. Golden master re-capture required after Phase 42 mapper rewrites (human-only per GOLD-01)
 
 ### Blockers/Concerns
 
@@ -69,6 +70,6 @@ Cleared at milestone boundary. See v1.3.3-ROADMAP.md for history.
 
 ## Session Continuity
 
-Last activity: 2026-04-12 - Milestone v1.2.2 summary generated
-Stopped at: Milestone v1.2.2 summary generated
-Resume file: .planning/reports/MILESTONE_SUMMARY-v1.2.2.md
+Last activity: 2026-04-14 - Milestone v1.4 started
+Stopped at: Defining requirements
+Resume file: —

@@ -8,16 +8,17 @@ A Python MCP server that exposes OmniFocus (macOS task manager) as structured ta
 
 Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
 
-## Current State
+## Current Milestone: v1.4 Response Shaping, Batch Processing & Notes Graduation
 
-**Latest shipped:** v1.3.3 Ordering & Move Fix (2026-04-12)
-**Next milestone:** Not yet planned — run `/gsd-new-milestone` to start
+**Goal:** Give agents control over response shape and lift write constraints — reduce token waste via stripping/projection, enable multi-item writes, graduate notes to actions block.
 
-**v1.3.3 delivered:**
-- `order` field on task responses — read-only integer reflecting outline position via recursive CTE
-- Inbox-first ordering — inbox tasks sort before projects in all read responses
-- Same-container move fix — `moveTo beginning/ending` translates to `moveBefore`/`moveAfter` via `get_edge_child_id`
-- Position-specific no-op detection — `MOVE_ALREADY_AT_POSITION` with `{position}` placeholder
+**Target features:**
+- Universal response stripping (null, [], "", false, "none") on all entity fields
+- Inherited field rename (effective* → inherited*) across all tools
+- Field selection on list tools — `include` (semantic groups) and `only` (individual fields)
+- Count-only mode via `limit: 0`
+- Batch processing for add_tasks/edit_tasks (up to 50 items)
+- Notes graduation to `actions.note` block (append/replace semantics)
 
 ## Requirements
 
@@ -113,12 +114,10 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 ### Active
 
-- [ ] Field selection, task deletion, notes append (v1.4)
-- [ ] Fuzzy search (v1.4.1)
-- [ ] TaskPaper output format (v1.4.2)
-- [ ] Project writes (v1.4.3)
-- [ ] Perspectives support, deep links (v1.5)
+- [ ] Response shaping, batch processing, notes graduation (v1.4)
+- [ ] UI & Perspectives — show/get perspective, open_task, live UI reads (v1.5)
 - [ ] Production hardening — retry, crash recovery, serial execution (v1.6)
+- [ ] Project writes — add_projects, edit_projects (v1.7)
 
 ### Out of Scope
 
@@ -252,4 +251,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-12 after v1.3.3 milestone completed — Ordering & Move Fix.*
+*Last updated: 2026-04-14 after v1.4 milestone started — Response Shaping, Batch Processing & Notes Graduation.*
