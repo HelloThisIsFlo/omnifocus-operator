@@ -88,12 +88,27 @@ if TYPE_CHECKING:
     )
     from omnifocus_operator.models.common import TagRef
     from omnifocus_operator.models.enums import BasedOn, DueSoonSetting
+    from omnifocus_operator.models.project import Project
     from omnifocus_operator.models.task import Task
     from omnifocus_operator.service.resolve import Resolver, _HasIdAndName
 
 logger = logging.getLogger(__name__)
 
 __all__ = ["DomainLogic", "ResolvedDateFilters"]
+
+
+# ---------------------------------------------------------------------------
+# Inherited field pairs (D-05): direct field -> inherited field on Task
+# ---------------------------------------------------------------------------
+
+_INHERITED_FIELD_PAIRS: tuple[tuple[str, str], ...] = (
+    ("flagged", "inherited_flagged"),
+    ("due_date", "inherited_due_date"),
+    ("defer_date", "inherited_defer_date"),
+    ("planned_date", "inherited_planned_date"),
+    ("drop_date", "inherited_drop_date"),
+    ("completion_date", "inherited_completion_date"),
+)
 
 
 # ---------------------------------------------------------------------------
@@ -182,6 +197,73 @@ class DomainLogic:
     def __init__(self, repo: Repository, resolver: Resolver) -> None:
         self._repo = repo
         self._resolver = resolver
+
+    # -- True inheritance walk -------------------------------------------------
+
+    async def compute_true_inheritance(self, tasks: list[Task]) -> list[Task]:
+        """Walk parent hierarchy to determine truly inherited fields (D-03).
+
+        For each task, walks ancestor tasks and the containing project (D-01)
+        to check whether each inherited field is actually set by an ancestor.
+        Self-echoed inherited values (where no ancestor sets the field) are
+        reset to their "no inheritance" value (False for flagged, None for dates).
+
+        Calls ``self._repo.get_all()`` internally -- cache makes this free (D-03).
+        """
+        if not tasks:
+            return []
+        all_data = await self._repo.get_all()
+        task_map: dict[str, Task] = {t.id: t for t in all_data.tasks}
+        project_map: dict[str, Project] = {p.id: p for p in all_data.projects}
+        return [self._walk_one(t, task_map, project_map) for t in tasks]
+
+    def _walk_one(
+        self,
+        task: Task,
+        task_map: dict[str, Task],
+        project_map: dict[str, Project],
+    ) -> Task:
+        """Determine which inherited fields are truly inherited for one task."""
+        # Track whether any ancestor sets each inherited field
+        ancestor_sets: dict[str, bool] = {inh: False for _, inh in _INHERITED_FIELD_PAIRS}
+
+        # Walk ancestor task chain via parent.task.id
+        current_id: str | None = task.parent.task.id if task.parent.task else None
+        while current_id is not None:
+            ancestor = task_map.get(current_id)
+            if ancestor is None:
+                break
+            for direct, inherited in _INHERITED_FIELD_PAIRS:
+                if not ancestor_sets[inherited]:
+                    val = getattr(ancestor, direct)
+                    if direct == "flagged":
+                        ancestor_sets[inherited] = val is True
+                    else:
+                        ancestor_sets[inherited] = val is not None
+            current_id = ancestor.parent.task.id if ancestor.parent.task else None
+
+        # Check containing project as final ancestor (D-01)
+        # Use task.project.id (not task.parent.project.id) -- Pitfall 3
+        project = project_map.get(task.project.id)
+        if project is not None:
+            for direct, inherited in _INHERITED_FIELD_PAIRS:
+                if not ancestor_sets[inherited] and hasattr(project, direct):
+                    val = getattr(project, direct)
+                    if direct == "flagged":
+                        ancestor_sets[inherited] = val is True
+                    else:
+                        ancestor_sets[inherited] = val is not None
+
+        # Build update dict for fields where no ancestor sets the value
+        updates: dict[str, object] = {}
+        for _, inherited in _INHERITED_FIELD_PAIRS:
+            if not ancestor_sets[inherited]:
+                if inherited == "inherited_flagged":
+                    updates[inherited] = False
+                else:
+                    updates[inherited] = None
+
+        return task.model_copy(update=updates) if updates else task
 
     # -- Date filter resolution ------------------------------------------------
 
