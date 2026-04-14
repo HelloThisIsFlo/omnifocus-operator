@@ -50,7 +50,7 @@ All tool responses are leaner and agents control which fields list tools return.
 ### Field group validation
 - **D-05:** Valid `only` field names derived from union of all field groups (defaults + all opt-in groups). No separate "all fields" constant.
 - **Enforcement test** guarantees every model field appears in exactly one group, and every group field exists on the model. Catches drift in both directions.
-- Invalid `only` names → warning in response (not error). Invalid `include` group names → validation error (via Literal type — Pydantic rejects unknown values automatically).
+- Invalid `only` names → warning in response (not error). Invalid `include` group names → validation error with educational error message (follow existing `@field_validator` pattern — clean, agent-friendly messages like frequency type/interval validators, not raw Pydantic Literal rejection).
 - **Case-insensitive matching** on `only` field names — more resilient, not documented to agents (implementation detail).
 
 ### `include` + `only` conflict handling
