@@ -65,19 +65,17 @@ def strip_all_entities(data: dict[str, Any]) -> dict[str, Any]:
 
 def resolve_fields(
     *,
-    include: Sequence[str] | None,
-    only: Sequence[str] | None,
+    include: Sequence[str],
+    only: Sequence[str],
     default_fields: frozenset[str],
     field_groups: dict[str, frozenset[str]],
-) -> tuple[frozenset[str] | None, list[str]]:
+) -> tuple[frozenset[str], list[str]]:
     """Resolve which fields to keep after stripping.
 
     Returns (allowed_fields, warnings).
-    - allowed_fields is None when no projection is needed (use all stripped fields).
-    - allowed_fields is a frozenset when projection should be applied.
 
     Rules:
-    - No include, no only -> None (no projection)
+    - No include, no only -> default_fields (default projection)
     - include adds group fields to defaults
     - include: ["*"] returns all fields (defaults + all groups)
     - only returns exact fields + id (always included)
@@ -89,23 +87,19 @@ def resolve_fields(
     # All valid field names (union of defaults + all groups)
     all_fields = default_fields | frozenset().union(*field_groups.values())
 
-    if include is None and only is None:
-        return None, warnings
-
     # Conflict: only takes precedence (D-06)
-    if include is not None and only is not None:
+    if include and only:
         warnings.append(
             "'include' and 'only' are mutually exclusive. "
             "'include' was ignored because 'only' was provided. "
             "Use one or the other."
         )
-        include = None  # Fall through to only handling
-
-    if only is not None:
         return _resolve_only(only, all_fields, warnings)
 
-    # include handling
-    assert include is not None
+    if only:
+        return _resolve_only(only, all_fields, warnings)
+
+    # include handling (empty include → defaults only)
     return _resolve_include(include, default_fields, field_groups, all_fields, warnings)
 
 
@@ -168,8 +162,8 @@ def project_entity(entity: dict[str, Any], allowed_fields: frozenset[str]) -> di
 def shape_list_response[T: OmniFocusBaseModel](
     result: ListResult[T],
     *,
-    include: Sequence[str] | None,
-    only: Sequence[str] | None,
+    include: Sequence[str],
+    only: Sequence[str],
     default_fields: frozenset[str],
     field_groups: dict[str, frozenset[str]],
     warnings_from_service: list[str] | None = None,
@@ -178,7 +172,7 @@ def shape_list_response[T: OmniFocusBaseModel](
 
     1. Serialize each item via model_dump(by_alias=True)
     2. Strip each entity dict
-    3. If include or only specified, resolve fields and project
+    3. Resolve fields and project
     4. Build envelope: {items, total, hasMore}
     5. If warnings exist (service + projection), add warnings list
     """
@@ -195,8 +189,7 @@ def shape_list_response[T: OmniFocusBaseModel](
         default_fields=default_fields,
         field_groups=field_groups,
     )
-    if allowed_fields is not None:
-        items = [project_entity(item, allowed_fields) for item in items]
+    items = [project_entity(item, allowed_fields) for item in items]
 
     # 4. Build envelope
     envelope: dict[str, Any] = {

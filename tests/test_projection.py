@@ -116,8 +116,8 @@ class TestStripping:
         )
         envelope = shape_list_response(
             result,
-            include=None,
-            only=None,
+            include=[],
+            only=[],
             default_fields=TASK_DEFAULT_FIELDS,
             field_groups=TASK_FIELD_GROUPS,
         )
@@ -134,20 +134,20 @@ class TestStripping:
 class TestFieldSelection:
     """Unit tests for resolve_fields — FSEL-01 through FSEL-08."""
 
-    def test_default_fields_no_projection(self) -> None:
+    def test_default_fields_when_both_omitted(self) -> None:
         fields, warnings = resolve_fields(
-            include=None,
-            only=None,
+            include=[],
+            only=[],
             default_fields=TASK_DEFAULT_FIELDS,
             field_groups=TASK_FIELD_GROUPS,
         )
-        assert fields is None
+        assert fields == TASK_DEFAULT_FIELDS
         assert warnings == []
 
     def test_include_adds_group(self) -> None:
         fields, warnings = resolve_fields(
             include=["notes"],
-            only=None,
+            only=[],
             default_fields=TASK_DEFAULT_FIELDS,
             field_groups=TASK_FIELD_GROUPS,
         )
@@ -162,7 +162,7 @@ class TestFieldSelection:
         all_fields = TASK_DEFAULT_FIELDS | frozenset().union(*TASK_FIELD_GROUPS.values())
         fields, warnings = resolve_fields(
             include=["*"],
-            only=None,
+            only=[],
             default_fields=TASK_DEFAULT_FIELDS,
             field_groups=TASK_FIELD_GROUPS,
         )
@@ -171,7 +171,7 @@ class TestFieldSelection:
 
     def test_only_exact_fields(self) -> None:
         fields, warnings = resolve_fields(
-            include=None,
+            include=[],
             only=["project", "dueDate"],
             default_fields=TASK_DEFAULT_FIELDS,
             field_groups=TASK_FIELD_GROUPS,
@@ -181,7 +181,7 @@ class TestFieldSelection:
 
     def test_only_always_includes_id(self) -> None:
         fields, _warnings = resolve_fields(
-            include=None,
+            include=[],
             only=["name"],
             default_fields=TASK_DEFAULT_FIELDS,
             field_groups=TASK_FIELD_GROUPS,
@@ -204,7 +204,7 @@ class TestFieldSelection:
 
     def test_invalid_only_warning(self) -> None:
         fields, warnings = resolve_fields(
-            include=None,
+            include=[],
             only=["nonexistent"],
             default_fields=TASK_DEFAULT_FIELDS,
             field_groups=TASK_FIELD_GROUPS,
@@ -218,7 +218,7 @@ class TestFieldSelection:
 
     def test_only_case_insensitive(self) -> None:
         fields, warnings = resolve_fields(
-            include=None,
+            include=[],
             only=["DueDate"],
             default_fields=TASK_DEFAULT_FIELDS,
             field_groups=TASK_FIELD_GROUPS,
@@ -240,7 +240,7 @@ class TestFieldSelection:
     def test_include_multiple_groups(self) -> None:
         fields, warnings = resolve_fields(
             include=["notes", "time"],
-            only=None,
+            only=[],
             default_fields=TASK_DEFAULT_FIELDS,
             field_groups=TASK_FIELD_GROUPS,
         )
@@ -255,7 +255,7 @@ class TestFieldSelection:
     def test_project_include_review_group(self) -> None:
         fields, warnings = resolve_fields(
             include=["review"],
-            only=None,
+            only=[],
             default_fields=PROJECT_DEFAULT_FIELDS,
             field_groups=PROJECT_FIELD_GROUPS,
         )
@@ -268,7 +268,7 @@ class TestFieldSelection:
 
     def test_only_with_multiple_invalid_produces_multiple_warnings(self) -> None:
         fields, warnings = resolve_fields(
-            include=None,
+            include=[],
             only=["bogus1", "bogus2", "name"],
             default_fields=TASK_DEFAULT_FIELDS,
             field_groups=TASK_FIELD_GROUPS,
@@ -285,24 +285,28 @@ class TestShapeListResponse:
     """Integration tests for shape_list_response."""
 
     def test_shape_with_default_fields(self) -> None:
-        task = Task.model_validate(make_model_task_dict(name="Buy milk"))
+        task = Task.model_validate(
+            make_model_task_dict(name="Buy milk", added="2024-01-15T10:30:00.000Z")
+        )
 
         result = ListResult[Task](items=[task], total=1, has_more=False)
         envelope = shape_list_response(
             result,
-            include=None,
-            only=None,
+            include=[],
+            only=[],
             default_fields=TASK_DEFAULT_FIELDS,
             field_groups=TASK_FIELD_GROUPS,
         )
         assert envelope["total"] == 1
         assert envelope["hasMore"] is False
         assert len(envelope["items"]) == 1
-        # Default: no projection, only stripping
         item = envelope["items"][0]
+        # Default projection: only default fields survive
         assert "id" in item
         assert "name" in item
-        # Stripped values should be gone
+        # Non-default fields excluded even when they have values
+        assert "added" not in item  # metadata group, excluded by default projection
+        # Stripped values also gone
         assert "note" not in item  # empty string stripped
         assert "dueDate" not in item  # None stripped
 
@@ -314,7 +318,7 @@ class TestShapeListResponse:
         result = ListResult[Task](items=[task], total=1, has_more=False)
         envelope = shape_list_response(
             result,
-            include=None,
+            include=[],
             only=["name", "dueDate"],
             default_fields=TASK_DEFAULT_FIELDS,
             field_groups=TASK_FIELD_GROUPS,

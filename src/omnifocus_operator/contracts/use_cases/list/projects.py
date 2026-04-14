@@ -77,16 +77,16 @@ class ListProjectsQuery(QueryModel):
     dropped: Patch[LifecycleDateFilter] = Field(default=UNSET, description=DROPPED_FILTER_DESC)
     added: Patch[DateFilter] = Field(default=UNSET, description=ADDED_FILTER_DESC)
     modified: Patch[DateFilter] = Field(default=UNSET, description=MODIFIED_FILTER_DESC)
-    include: list[ProjectFieldGroup] | None = Field(default=None, description=INCLUDE_FIELD_DESC)
-    only: list[str] | None = Field(default=None, description=ONLY_FIELD_DESC)
+    include: list[ProjectFieldGroup] = Field(default=[], description=INCLUDE_FIELD_DESC)
+    only: list[str] = Field(default=[], description=ONLY_FIELD_DESC)
     limit: int | None = Field(default=DEFAULT_LIST_LIMIT, description=LIMIT_DESC)
     offset: int = Field(default=0, description=OFFSET_DESC)
 
     @field_validator("include", mode="before")
     @classmethod
-    def _validate_include(cls, v: list[str] | None) -> list[str] | None:
-        if v is None:
-            return v
+    def _validate_include(cls, v: list[str]) -> list[str]:
+        if not isinstance(v, list):
+            return v  # Let Pydantic handle type validation
         invalid = [g for g in v if g not in _PROJECT_FIELD_GROUPS_VALID]
         if invalid:
             raise ValueError(

@@ -1717,11 +1717,11 @@ class TestListTasks:
         items = sc["items"]
         assert len(items) >= 1
         task = items[0]
-        # camelCase keys expected
-        assert "dueDate" in task or "hasChildren" in task or "parent" in task
+        # camelCase keys expected (use default-group fields that have values)
+        assert "inheritedFlagged" in task or "inheritedDueDate" in task
         # snake_case keys must NOT be present
+        assert "inherited_flagged" not in task
         assert "due_date" not in task
-        assert "has_children" not in task
 
     async def test_list_tasks_invalid_availability_returns_tool_error(self, client: Any) -> None:
         with pytest.raises(ToolError):
