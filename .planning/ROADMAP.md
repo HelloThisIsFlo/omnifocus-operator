@@ -55,10 +55,11 @@ Plans:
   2. Task under a flagged project (no flagged ancestor tasks) shows inheritedFlagged in response
   3. Projects in get_all, get_project, and list_projects responses have zero inherited* fields
   4. get_all, get_task, and list_tasks all apply true inheritance processing
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 53.1 to break down)
+- [ ] 53.1-01-PLAN.md — Model surgery: move inherited fields from ActionableEntity to Task, cascade through repos/config/tests
+- [ ] 53.1-02-PLAN.md — Hierarchy walk: compute_true_inheritance on DomainLogic, wire into service layer
 
 ### Phase 54: Batch Processing
 **Goal**: Agents can create or edit up to 50 tasks in a single call with clear per-item success/failure reporting
@@ -90,6 +91,6 @@ Phases execute in numeric order: 53 -> 53.1 -> 54 -> 55
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 53. Response Shaping | 5/5 | Complete    | 2026-04-14 |
-| 53.1. True Inherited Fields | 0/TBD | Not started | - |
+| 53.1. True Inherited Fields | 0/2 | Not started | - |
 | 54. Batch Processing | 0/TBD | Not started | - |
 | 55. Notes Graduation | 0/TBD | Not started | - |
