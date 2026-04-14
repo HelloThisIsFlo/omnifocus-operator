@@ -119,19 +119,7 @@ class TestDescriptionConsolidation:
         """Every constant in descriptions.py must appear in at least one consumer (DESC-04)."""
         source = get_consumer_sources(_CONSUMER_MODULES)
         constants = get_upper_snake_constants(desc_mod)
-        # Constants pre-defined for Plan 45-02 (date filter fields on ListTasksQuery).
-        # TODO(Phase 46): Remove pending_consumer_constants once date filter fields
-        # are wired into ListTasksQuery Field(description=...) calls.
-        pending_consumer_constants = {
-            "DUE_FILTER_DESC",
-            "COMPLETED_FILTER_DESC",
-            "DROPPED_FILTER_DESC",
-            "DEFER_FILTER_DESC",
-            "PLANNED_FILTER_DESC",
-            "ADDED_FILTER_DESC",
-            "MODIFIED_FILTER_DESC",
-        }
-        unreferenced = {c for c in constants if c not in source} - pending_consumer_constants
+        unreferenced = {c for c in constants if c not in source}
         assert unreferenced == set(), (
             f"Description constants not referenced in consumer modules: {unreferenced}"
         )

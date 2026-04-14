@@ -24,6 +24,7 @@ from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult
 from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.repository.bridge_only.adapter import adapt_snapshot
 from omnifocus_operator.repository.bridge_write_mixin import BridgeWriteMixin
+from omnifocus_operator.repository.pagination import paginate
 
 logger = logging.getLogger(__name__)
 
@@ -114,20 +115,6 @@ def _apply_date_filters[T](
                     and getattr(item, attr_name) < before_val
                 ]
     return items
-
-
-def _paginate[T](items: list[T], limit: int | None, offset: int) -> ListRepoResult[T]:
-    """Apply offset/limit slicing and compute total/has_more for Python-filtered lists."""
-    total = len(items)
-    start = offset
-    if start:
-        items = items[start:]
-    if limit is not None:
-        has_more = len(items) > limit
-        items = items[:limit]
-    else:
-        has_more = False
-    return ListRepoResult(items=items, total=total, has_more=has_more)
 
 
 class BridgeOnlyRepository(BridgeWriteMixin, Repository):
@@ -258,18 +245,10 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
         # Date filters (all 7 dimensions)
         items = _apply_date_filters(items, query, _BRIDGE_FIELD_MAP)
 
-        total = len(items)
-
         # Deterministic ordering for pagination
         items.sort(key=lambda t: t.id)
 
-        offset = query.offset
-        if offset:
-            items = items[offset:]
-        if query.limit is not None:
-            items = items[: query.limit]
-
-        return ListRepoResult(items=items, total=total, has_more=(offset + len(items)) < total)
+        return paginate(items, query.limit, query.offset)
 
     async def list_projects(self, query: ListProjectsRepoQuery) -> ListRepoResult[Project]:
         """Fetch-all + Python filter for projects (fallback path)."""
@@ -300,18 +279,10 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
         # Date filters (all 7 dimensions) -- uses project-specific field map
         items = _apply_date_filters(items, query, _BRIDGE_PROJECT_FIELD_MAP)
 
-        total = len(items)
-
         # Deterministic ordering for pagination
         items.sort(key=lambda p: p.id)
 
-        offset = query.offset
-        if offset:
-            items = items[offset:]
-        if query.limit is not None:
-            items = items[: query.limit]
-
-        return ListRepoResult(items=items, total=total, has_more=(offset + len(items)) < total)
+        return paginate(items, query.limit, query.offset)
 
     async def list_tags(self, query: ListTagsRepoQuery) -> ListRepoResult[Tag]:
         """Fetch-all + Python filter for tags."""
@@ -323,7 +294,7 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
         if query.search is not None:
             lower_search = query.search.lower()
             items = [t for t in items if lower_search in t.name.lower()]
-        return _paginate(items, query.limit, query.offset)
+        return paginate(items, query.limit, query.offset)
 
     async def list_folders(self, query: ListFoldersRepoQuery) -> ListRepoResult[Folder]:
         """Fetch-all + Python filter for folders."""
@@ -335,7 +306,7 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
         if query.search is not None:
             lower_search = query.search.lower()
             items = [f for f in items if lower_search in f.name.lower()]
-        return _paginate(items, query.limit, query.offset)
+        return paginate(items, query.limit, query.offset)
 
     async def list_perspectives(
         self, query: ListPerspectivesRepoQuery
@@ -346,7 +317,7 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
         if query.search is not None:
             lower_search = query.search.lower()
             items = [p for p in items if lower_search in p.name.lower()]
-        return _paginate(items, query.limit, query.offset)
+        return paginate(items, query.limit, query.offset)
 
     async def get_edge_child_id(self, parent_id: str, edge: str) -> str | None:
         """Return the first or last child task ID from the cached snapshot."""

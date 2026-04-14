@@ -35,6 +35,7 @@ from omnifocus_operator.repository.hybrid.query_builder import (
     build_list_projects_sql,
     build_list_tasks_sql,
 )
+from omnifocus_operator.repository.pagination import paginate
 from omnifocus_operator.repository.rrule import derive_schedule, parse_end_condition, parse_rrule
 
 if TYPE_CHECKING:
@@ -60,20 +61,6 @@ from omnifocus_operator.models.task import Task
 logger = logging.getLogger(__name__)
 
 __all__ = ["HybridRepository"]
-
-
-def _paginate[T](items: list[T], limit: int | None, offset: int) -> ListRepoResult[T]:
-    """Apply offset/limit slicing and compute total/has_more for Python-filtered lists."""
-    total = len(items)
-    start = offset
-    if start:
-        items = items[start:]
-    if limit is not None:
-        has_more = len(items) > limit
-        items = items[:limit]
-    else:
-        has_more = False
-    return ListRepoResult(items=items, total=total, has_more=has_more)
 
 
 # Core Foundation epoch: Jan 1, 2001 00:00:00 UTC
@@ -146,6 +133,7 @@ def _parse_timestamp(value: float | str | None) -> str | None:
         except ValueError:
             pass
         # ISO 8601 string -- ensure timezone info is present
+        assert len(value) >= 10, f"OmniFocus timestamp unexpectedly short: {value!r}"
         if value.endswith("Z"):
             return value.replace("Z", "+00:00")
         if "+" not in value and "-" not in value[10:]:
@@ -1070,7 +1058,7 @@ class HybridRepository(BridgeWriteMixin, Repository):
             if query.search is not None:
                 lower_search = query.search.lower()
                 filtered = [t for t in filtered if lower_search in t.name.lower()]
-            return _paginate(filtered, query.limit, query.offset)
+            return paginate(filtered, query.limit, query.offset)
         finally:
             conn.close()
 
@@ -1093,7 +1081,7 @@ class HybridRepository(BridgeWriteMixin, Repository):
             if query.search is not None:
                 lower_search = query.search.lower()
                 filtered = [f for f in filtered if lower_search in f.name.lower()]
-            return _paginate(filtered, query.limit, query.offset)
+            return paginate(filtered, query.limit, query.offset)
         finally:
             conn.close()
 
@@ -1120,7 +1108,7 @@ class HybridRepository(BridgeWriteMixin, Repository):
             if query.search is not None:
                 lower_search = query.search.lower()
                 perspectives = [p for p in perspectives if lower_search in p.name.lower()]
-            return _paginate(perspectives, query.limit, query.offset)
+            return paginate(perspectives, query.limit, query.offset)
         finally:
             conn.close()
 
