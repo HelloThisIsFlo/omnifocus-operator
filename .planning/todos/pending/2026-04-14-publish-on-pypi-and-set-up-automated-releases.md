@@ -178,25 +178,27 @@ This todo is designed for **multiple sessions**. Each phase ends with a checkpoi
 ### Phase 3: Build Validation & Pre-Publish Scan
 > **Checkpoint**: Verify the package before it goes to PyPI
 
-- [ ] Create a git tag for testing: `v1.3.0` (or current milestone version)
-- [ ] `uv build` — build both sdist and wheel
-- [ ] Inspect wheel contents — list all files, verify:
+- [x] ~~Create a git tag for testing~~ — not needed, hatch-vcs derives dev version from v1.3.3
+- [x] `uv build` — build both sdist and wheel (version: 1.3.4.dev73)
+- [x] Inspect wheel contents — list all files, verify:
   - `bridge.js` is included
   - No test files, docs, .planning, or other non-source files
   - No personal data (OmniFocus task IDs, real names beyond author)
-- [ ] Verify README renders correctly (optional: `twine check dist/*`)
-- [ ] **CHECKPOINT**: Package is clean and ready.
+- [x] **Fix**: sdist exclude `"bridge/"` was stripping `src/omnifocus_operator/bridge/` too — changed to `"/bridge/"` (root-relative)
+- [x] Verify README renders correctly (`twine check dist/*` — PASSED)
+- [x] **CHECKPOINT**: Package is clean and ready.
 
 ### Phase 4: CI Workflow & First Publish
 > **Checkpoint**: The big moment — first public release
 
-- [ ] Create `.github/workflows/publish.yml`:
+- [x] Create `.github/workflows/publish.yml`:
   - Trigger: tag push matching `v*`
-  - Jobs: test (pytest + mypy) → build → publish
+  - Jobs: test (just ci) → build → publish
   - Uses trusted publishing (OIDC) — no secrets needed
   - Publish only if tests pass
+  - `fetch-depth: 0` in publish job for hatch-vcs version derivation
 - [ ] Push the publish workflow to main
-- [ ] Push tag `v1.3.0` → CI runs → publishes to PyPI
+- [ ] Push tag (next release) → CI runs → publishes to PyPI
 - [ ] Verify PyPI page: metadata, README rendering, classifiers
 - [ ] E2E validation: `uvx omnifocus-operator` → verify server starts and responds to MCP calls
 - [ ] **CHECKPOINT**: Published and verified!

@@ -67,7 +67,7 @@ exclude = [
     ".claude/",
     ".research/",
     ".sandbox/",
-    "bridge/",
+    "/bridge/",
 ]
 
 [dependency-groups]
