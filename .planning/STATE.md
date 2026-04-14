@@ -62,6 +62,7 @@ Carried forward from v1.3.3:
 10. Fix OrdinalWeekdaySpec -> OrdinalWeekday cross-layer coercion in edit pipeline (service)
 11. Golden master re-capture required after Phase 42 mapper rewrites (human-only per GOLD-01)
 12. Publish on PyPI and set up automated releases (tooling)
+13. Compute true inherited fields by walking parent hierarchy (service)
 
 ### Blockers/Concerns
 
