@@ -225,7 +225,44 @@ class TestListTasksResolution:
 
 
 # ---------------------------------------------------------------------------
-# list_projects: name resolution
+# list_tasks: true inheritance walk
+# ---------------------------------------------------------------------------
+
+
+class TestListTasksTrueInheritance:
+    """list_tasks applies true inheritance walk -- self-echoed inherited fields stripped."""
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t1",
+                name="Self-echo task",
+                flagged=True,
+                effectiveFlagged=True,
+                dueDate=None,
+                effectiveDueDate=None,
+                project="proj-1",
+                parent="proj-1",
+            ),
+        ],
+        projects=[
+            make_project_dict(id="proj-1", name="Proj", flagged=False),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_list_tasks_strips_self_echoed_inherited(self, service: OperatorService) -> None:
+        """list_tasks applies true inheritance walk in pipeline."""
+        result = await service.list_tasks(ListTasksQuery())
+        assert len(result.items) == 1
+        task = result.items[0]
+        # Task has flagged=True but no ancestor sets flagged -> inherited_flagged=False
+        assert task.inherited_flagged is False
+
+
+# ---------------------------------------------------------------------------
+# list_tasks: inbox filter
 # ---------------------------------------------------------------------------
 
 

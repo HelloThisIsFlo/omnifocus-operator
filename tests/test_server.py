@@ -217,10 +217,26 @@ class TestTOOL01ListAllStructuredOutput:
             "project": {"id": "proj-1", "name": "My Project"},
             "due_date": "2026-06-01T12:00:00+00:00",
         }
+        # Project with flagged=True so inherited_flagged on task is truly inherited
+        project_data = {
+            "id": "proj-1",
+            "name": "My Project",
+            "url": "omnifocus:///project/proj-1",
+            "note": "",
+            "added": "2024-01-15T10:30:00.000Z",
+            "modified": "2024-01-15T10:30:00.000Z",
+            "urgency": "none",
+            "availability": "available",
+            "flagged": True,
+            "has_children": True,
+            "last_review_date": "2024-01-10T10:00:00+00:00",
+            "next_review_date": "2024-01-17T10:00:00+00:00",
+            "review_interval": {"steps": 7, "unit": "days"},
+        }
         bridge = InMemoryBridge(
             data={
                 "tasks": [task_data],
-                "projects": [],
+                "projects": [project_data],
                 "tags": [],
                 "folders": [],
                 "perspectives": [],
@@ -1717,10 +1733,10 @@ class TestListTasks:
         items = sc["items"]
         assert len(items) >= 1
         task = items[0]
-        # camelCase keys expected (use default-group fields that have values)
-        assert "inheritedFlagged" in task or "inheritedDueDate" in task
+        # camelCase keys expected (use fields that have non-default values)
+        assert "hasChildren" in task or "availability" in task
         # snake_case keys must NOT be present
-        assert "inherited_flagged" not in task
+        assert "has_children" not in task
         assert "due_date" not in task
 
     async def test_list_tasks_invalid_availability_returns_tool_error(self, client: Any) -> None:

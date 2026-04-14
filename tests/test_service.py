@@ -109,6 +109,60 @@ class TestOperatorService:
         with pytest.raises(ValueError, match="Tag not found: nonexistent"):
             await service.get_tag("nonexistent")
 
+    # -- True inheritance walk integration tests --
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t1",
+                name="Self-echo task",
+                flagged=True,
+                effectiveFlagged=True,
+                dueDate=None,
+                effectiveDueDate=None,
+                project="proj-1",
+                parent="proj-1",
+            ),
+        ],
+        projects=[
+            make_project_dict(id="proj-1", name="Proj", flagged=False),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_get_all_data_strips_self_echoed_inherited(
+        self, service: OperatorService
+    ) -> None:
+        """get_all_data applies true inheritance walk -- self-echoed fields cleared."""
+        result = await service.get_all_data()
+        task = result.tasks[0]
+        # Task has flagged=True but no ancestor sets flagged -> inherited_flagged=False
+        assert task.inherited_flagged is False
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t1",
+                name="Child",
+                flagged=True,
+                effectiveFlagged=True,
+                project="proj-1",
+                parent="proj-1",
+            ),
+        ],
+        projects=[
+            make_project_dict(id="proj-1", name="Proj", flagged=False),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_get_task_strips_self_echoed_inherited(self, service: OperatorService) -> None:
+        """get_task applies true inheritance walk -- self-echoed fields cleared."""
+        task = await service.get_task("t1")
+        assert task.inherited_flagged is False
+
 
 # ---------------------------------------------------------------------------
 # OperatorService.add_task

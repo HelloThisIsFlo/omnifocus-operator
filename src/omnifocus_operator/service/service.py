@@ -146,12 +146,16 @@ class OperatorService(Service):  # explicitly implements Service protocol
     async def get_all_data(self) -> AllEntities:
         """Return all OmniFocus entities from the repository."""
         logger.debug("OperatorService.get_all_data: delegating to repository")
-        return await self._repository.get_all()
+        raw = await self._repository.get_all()
+        walked_tasks = await self._domain.compute_true_inheritance(raw.tasks)
+        return raw.model_copy(update={"tasks": walked_tasks})
 
     async def get_task(self, task_id: str) -> Task:
         """Return a single task by ID. Raises ValueError if not found."""
         logger.debug("OperatorService.get_task: id=%s", task_id)
-        return await self._resolver.lookup_task(task_id)
+        task = await self._resolver.lookup_task(task_id)
+        walked = await self._domain.compute_true_inheritance([task])
+        return walked[0]
 
     async def get_project(self, project_id: str) -> Project:
         """Return a single project by ID. Raises ValueError if not found."""
@@ -449,7 +453,9 @@ class _ListTasksPipeline(_ReadPipeline):
 
     async def _delegate(self) -> ListResult[Task]:
         repo_result = await self._repository.list_tasks(self._repo_query)
-        return self._result_from_repo(repo_result)
+        walked_items = await self._domain.compute_true_inheritance(repo_result.items)
+        walked_result = repo_result.model_copy(update={"items": walked_items})
+        return self._result_from_repo(walked_result)
 
 
 # -- list_projects pipeline (Method Object) ---------------------------------
