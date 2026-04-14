@@ -149,12 +149,43 @@ No formal question — analyzed and presented.
 
 ---
 
+## 13. Description Text Refinements (follow-up discussion)
+
+No formal question — extended discussion with iterative feedback on proposed description text.
+
+**Decisions made:**
+
+1. **Separate include types per tool** — `TaskFieldGroup` and `ProjectFieldGroup` as separate Literal types. Projects have `"review"`, tasks don't. Two separate query model fields, not a shared type. The Field description is shared (one constant).
+
+2. **`include` in tool description, `only` in Field description only** — `include` is complex (groups, contents) and benefits from being in the tool description alongside group listings. `only` is straightforward — Field description suffices. Same pattern as repetition rule examples in edit_tasks tool description vs simpler fields.
+
+3. **`INCLUDE_FIELD_DESC`** — succinct: "Add field groups to the response, on top of defaults. See tool description for available groups."
+
+4. **`ONLY_FIELD_DESC`** — refined wording:
+   - Removed camelCase mention (agents always see camelCase, never tempted to use Python names)
+   - Changed "takes precedence" to "mutually exclusive with include"
+   - Reworded use case: "Use case: targeted high-volume queries (prefer include for most use cases)."
+   - Kept stripping note, removed "absent field means not set" (already in tool description)
+
+5. **`INHERITED_FIELD_DESC`** — one shared constant for all 6 fields. Uses "entity" everywhere (not "task" for some).
+
+6. **`LIMIT_DESC`** — "Tip: pass 0 for count only" framing.
+
+7. **Case-insensitive matching on `only`** — do it for resilience, don't document to agents.
+
+8. **Reusable fragments** — use `_STRIPPING_NOTE`, `_DATE_INPUT_NOTE`, and other fragments wherever there's reuse opportunity. Extract aggressively — easier to maintain.
+
+9. **Draft tool descriptions** — user provided full drafts for `list_tasks` and `list_projects` descriptions. These are the target output structure (groups as one-liners, defaults listed, count-only tip, inherited explanation, etc.).
+
+---
+
 ## Claude's Discretion
 
 - Exact stripping function implementation (recursive dict walk vs key-by-key)
 - Whether strip_entity and shape_list_response are separate functions or composed
 - Test organization for stripping/projection
-- Exact wording of tool descriptions (follow descriptions.py patterns)
+- Exact wording of `get_*` tool descriptions (update effective* → inherited*, add stripping note)
+- Fragment extraction opportunities beyond `_STRIPPING_NOTE`
 
 ## Deferred Ideas
 

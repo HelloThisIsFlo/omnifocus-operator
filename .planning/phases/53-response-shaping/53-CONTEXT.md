@@ -39,10 +39,19 @@ All tool responses are leaner and agents control which fields list tools return.
 - Groups: `notes`, `metadata`, `hierarchy`, `time`, `review` (projects only), `*` (everything).
 - Default fields defined per entity type (tasks, projects).
 
+### Separate include types per tool
+- **D-04b:** `include` parameter uses different Literal types per tool — `TaskFieldGroup` and `ProjectFieldGroup`. Projects additionally support `"review"`. This means two separate query model fields, not a shared type.
+  ```python
+  TaskFieldGroup = Literal["notes", "metadata", "hierarchy", "time", "*"]
+  ProjectFieldGroup = Literal["notes", "metadata", "hierarchy", "time", "review", "*"]
+  ```
+- The `include` Field description is shared (one constant) — group details are in the tool description, not the field description.
+
 ### Field group validation
 - **D-05:** Valid `only` field names derived from union of all field groups (defaults + all opt-in groups). No separate "all fields" constant.
 - **Enforcement test** guarantees every model field appears in exactly one group, and every group field exists on the model. Catches drift in both directions.
-- Invalid `only` names → warning in response (not error). Invalid `include` group names → validation error.
+- Invalid `only` names → warning in response (not error). Invalid `include` group names → validation error (via Literal type — Pydantic rejects unknown values automatically).
+- **Case-insensitive matching** on `only` field names — more resilient, not documented to agents (implementation detail).
 
 ### `include` + `only` conflict handling
 - **D-06:** ~~Validation error~~ → **Warning with `only` taking precedence**.
@@ -67,27 +76,132 @@ All tool responses are leaner and agents control which fields list tools return.
 - Different tools clearly apply different transforms. 3-4 lines per handler.
 
 ### Tool description updates
-- **D-10:** Brief tip in tool descriptions, full detail in Field descriptions.
-  - Tool descriptions get 1-2 line notes about `include`/`only`, stripping, `limit: 0`.
-  - `include` and `only` Field descriptions carry full detail: group names, contents, mutual interaction, stripping behavior.
+- **D-10:** `include` groups are documented **in the tool description** (one line per group, with field contents). `only` is documented **only in its Field description** — it's straightforward enough that the field-level docs suffice. `include` is more complex and benefits from being visible in the tool description alongside group contents.
   - All `effective*` references → `inherited*` in tool descriptions.
-  - Add stripping note to all read tool descriptions: *"Null, empty, and default values are stripped — absent field means not set."*
+  - Stripping note added to all read tool descriptions.
+  - `inherited*` explanation added: "value inherited from hierarchy, both direct and inherited can coexist, inherited fields are read-only."
+  - Count-only tip: "use limit: 0 to get {items: [], total: N} without fetching data."
   - Follows existing pattern: tool descriptions stay scannable, Field-level docs carry precision.
+
+### Agent-facing description text (verbatim)
+- **D-11:** Agreed verbatim text for new/updated description constants:
+
+  **`INCLUDE_FIELD_DESC`** (shared, used on both `ListTasksQuery.include` and `ListProjectsQuery.include`):
+  ```
+  Add field groups to the response, on top of defaults.
+  See tool description for available groups.
+  ```
+
+  **`ONLY_FIELD_DESC`** (shared):
+  ```
+  Return only these fields (plus id, always included).
+  Mutually exclusive with include.
+  Use case: targeted high-volume queries (prefer include for most use cases).
+  Null/empty values are still stripped — absent field means not set.
+  ```
+
+  **`INHERITED_FIELD_DESC`** (one shared constant for all 6 inherited fields):
+  ```
+  Inherited from parent hierarchy when not set directly on this entity.
+  ```
+
+  **`LIMIT_DESC`** (updated):
+  ```
+  Max items to return. Pass null to return all. Tip: pass 0 for count only.
+  ```
+
+  **`_STRIPPING_NOTE`** (fragment for tool descriptions):
+  ```
+  Response stripping: null values, empty arrays, empty strings,
+  false booleans, and "none" urgency are omitted. Absent field = not set.
+  ```
+
+  **Principle:** Use reusable fragments (`_STRIPPING_NOTE`, `_DATE_INPUT_NOTE`, etc.) wherever there is opportunity for reuse across tool descriptions. Easier to maintain.
+
+- **D-11b:** Draft tool descriptions for `list_tasks` and `list_projects` exist — see Specific Ideas section for the full drafts. These are the target output; the planner/executor should implement descriptions that match this structure.
 
 ### Claude's Discretion
 - Exact stripping function implementation (recursive dict walk, or key-by-key check)
 - Whether `strip_entity` and `shape_list_response` are separate functions or composed from primitives
 - Test organization for stripping/projection (unit tests on functions vs integration tests through tools)
-- Exact wording of tool descriptions (follow existing `descriptions.py` patterns)
+- Exact wording of `get_*` tool descriptions (follow existing `descriptions.py` patterns, update `effective*` → `inherited*`)
+- Fragment extraction opportunities beyond `_STRIPPING_NOTE` — find and extract reusable fragments
 
 </decisions>
 
 <specifics>
 ## Specific Ideas
 
-- `only` field description should make two things explicit: (1) takes precedence over `include`, (2) stripping still applies even on explicitly-requested fields
 - The enforcement test for field groups should verify bidirectional sync: every model field in exactly one group, every group field exists on the model
 - When documenting stripping in tool descriptions, keep it to one line — don't over-explain
+- Use reusable fragments everywhere there's opportunity — `_STRIPPING_NOTE`, `_DATE_INPUT_NOTE`, inherited explanation, etc. Extract aggressively.
+
+### Draft tool descriptions (target output)
+
+These drafts are the target structure. The planner/executor should produce descriptions matching this format.
+
+**list_tasks:**
+```
+List and filter tasks. All filters combine with AND logic.
+
+Response stripping: null values, empty arrays, empty strings, false booleans, and "none" urgency are omitted. Absent field = not set.
+
+include: optional array of field groups, additive on top of defaults.
+  - "notes" — note
+  - "metadata" — added, modified, completionDate, dropDate, url
+  - "hierarchy" — parent, hasChildren
+  - "time" — estimatedMinutes, repetitionRule
+  - "*" — all fields
+Default fields (always returned): id, name, availability, order, project, dueDate, inheritedDueDate, deferDate, inheritedDeferDate, plannedDate, inheritedPlannedDate, flagged, inheritedFlagged, urgency, tags.
+
+Count-only: use limit: 0 to get {items: [], total: N} without fetching data.
+
+All dates use local time. Timezone offsets are accepted. Date-only inputs (no time) use your OmniFocus default time for that field.
+
+Returns a flat list. Reconstruct hierarchy using order (dotted notation, e.g. '2.3.1') and project {id, name}. Filtered results may have sparse order values because non-matching siblings are omitted. Inbox tasks use project id="$inbox".
+
+inherited* fields: value inherited from the hierarchy (parent task, project, folder). Both direct and inherited can coexist — the sooner date applies. inherited fields are read-only; to edit, use the direct field (dueDate, not inheritedDueDate).
+
+Response: {items, total, hasMore, warnings?}
+
+Filters use inherited (effective) values — tasks inherit dates and flags from parent hierarchy.
+
+completed/dropped filters include those lifecycle states in results (excluded by default). All other filters only restrict.
+The 'soon' shortcut uses your OmniFocus due-soon threshold preference.
+
+availability vs defer: 'available'/'blocked' answers 'can I act on this?' (covers all blocking reasons). defer answers 'what becomes available when?' (timing only).
+```
+
+**list_projects:**
+```
+List and filter projects. All filters combine with AND logic.
+
+Response stripping: null values, empty arrays, empty strings, false booleans, and "none" urgency are omitted. Absent field = not set.
+
+include: optional array of field groups, additive on top of defaults.
+  - "notes" — note
+  - "metadata" — added, modified, completionDate, dropDate, url
+  - "hierarchy" — hasChildren
+  - "time" — estimatedMinutes, repetitionRule
+  - "review" — nextReviewDate, reviewInterval, lastReviewDate, nextTask
+  - "*" — all fields
+Default fields (always returned): id, name, availability, folder, dueDate, inheritedDueDate, deferDate, inheritedDeferDate, plannedDate, inheritedPlannedDate, flagged, inheritedFlagged, urgency, tags.
+
+Count-only: use limit: 0 to get {items: [], total: N} without fetching data.
+
+All dates use local time. Timezone offsets are accepted. Date-only inputs (no time) use your OmniFocus default time for that field.
+
+inherited* fields: value inherited from the hierarchy (folder). Both direct and inherited can coexist — the sooner date applies. inherited fields are read-only; to edit, use the direct field (dueDate, not inheritedDueDate).
+
+Response: {items, total, hasMore, warnings?}
+
+nextTask (in review group): first available (unblocked) task — useful for identifying what to work on next.
+
+Filters use inherited (effective) values — projects inherit dates and flags from parent folders.
+
+completed/dropped filters include those lifecycle states in results (excluded by default). All other filters only restrict.
+The 'soon' shortcut uses your OmniFocus due-soon threshold preference.
+```
 
 </specifics>
 
