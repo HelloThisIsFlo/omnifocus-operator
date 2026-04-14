@@ -87,7 +87,15 @@ _TASK_DEAD_FIELDS = (
     "shouldUseFloatingTimeZone",
 )
 
-_PROJECT_EXTRA_DEAD_FIELDS = ("containsSingletonActions", "effectiveCompletionDate")
+_PROJECT_EXTRA_DEAD_FIELDS = (
+    "containsSingletonActions",
+    "effectiveCompletionDate",
+    "effectiveFlagged",
+    "effectiveDueDate",
+    "effectiveDeferDate",
+    "effectivePlannedDate",
+    "effectiveDropDate",
+)
 
 _TAG_DEAD_FIELDS = ("allowsNextAction", "active", "effectiveActive")
 
@@ -407,7 +415,6 @@ def adapt_snapshot(raw: dict[str, Any]) -> dict[str, Any]:
         _rename_inherited_fields(task)
     for project in raw.get("projects", []):
         _adapt_project(project)
-        _rename_inherited_fields(project)
     for tag in raw.get("tags", []):
         _adapt_tag(tag)
     for folder in raw.get("folders", []):

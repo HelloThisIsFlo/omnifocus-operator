@@ -377,19 +377,14 @@ class TestActionableEntityDates:
             availability=Availability.AVAILABLE,
             note="",
             flagged=False,
-            inherited_flagged=False,
             has_children=False,
             tags=[],
         )
         assert entity.due_date is None
         assert entity.defer_date is None
-        assert entity.inherited_due_date is None
-        assert entity.inherited_defer_date is None
         assert entity.completion_date is None
         assert entity.planned_date is None
-        assert entity.inherited_planned_date is None
         assert entity.drop_date is None
-        assert entity.inherited_drop_date is None
         assert entity.estimated_minutes is None
         assert entity.repetition_rule is None
 
@@ -430,7 +425,6 @@ class TestInheritanceHierarchy:
             availability=Availability.AVAILABLE,
             note="A note",
             flagged=True,
-            inherited_flagged=True,
             due_date=dt,
             has_children=False,
             tags=[TagRef(id="tag-001", name="errands")],
@@ -462,9 +456,9 @@ class TestFactoryFunctions:
         assert d["urgency"] == "overdue"
 
     def test_make_model_project_dict_field_count(self) -> None:
-        """make_model_project_dict returns exactly 28 fields (no effectiveCompletionDate)."""
+        """make_model_project_dict returns exactly 23 fields (no inherited fields)."""
         d = make_model_project_dict()
-        assert len(d) == 28
+        assert len(d) == 23
 
     def test_make_model_tag_dict_field_count(self) -> None:
         """make_model_tag_dict returns exactly 8 fields (new model shape)."""
@@ -645,10 +639,10 @@ class TestTaskModel:
 
 
 class TestProjectModel:
-    """Project model parses all 28 fields including nested objects."""
+    """Project model parses all 23 fields including nested objects (no inherited fields)."""
 
     def test_project_from_bridge_json(self) -> None:
-        """Parse make_model_project_dict(), verify all 28 fields."""
+        """Parse make_model_project_dict(), verify all 23 fields."""
         data = make_model_project_dict()
         project = Project.model_validate(data)
 
@@ -676,8 +670,8 @@ class TestProjectModel:
         assert project.folder is None
         assert project.tags == []
 
-        # Verify total field count (no effectiveCompletionDate -- Task-only)
-        assert len(Project.model_fields) == 28
+        # Verify total field count (no inherited fields -- projects cannot inherit)
+        assert len(Project.model_fields) == 23
 
         # Serialize back and verify camelCase keys
         dumped = project.model_dump(mode="json", by_alias=True)

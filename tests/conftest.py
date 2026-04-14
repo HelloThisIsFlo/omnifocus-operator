@@ -244,8 +244,8 @@ def make_model_task_dict(**overrides: Any) -> dict[str, Any]:
 def make_model_project_dict(**overrides: Any) -> dict[str, Any]:
     """Factory for model-format project dict (camelCase keys).
 
-    Returns a complete project dict with all 28 model fields.
-    (Project does NOT have effectiveCompletionDate -- that's Task-only.)
+    Returns a complete project dict with all 23 model fields.
+    Projects have no inherited fields (cannot inherit from folders).
     """
     defaults: dict[str, Any] = {
         # Identity (3) + lifecycle from OmniFocusEntity
@@ -259,20 +259,15 @@ def make_model_project_dict(**overrides: Any) -> dict[str, Any]:
         # Two-axis status (2)
         "urgency": "none",
         "availability": "available",
-        # Completion date (1 -- inheritedCompletionDate is Task-only)
+        # Completion date (1)
         "completionDate": None,
-        # Flags (2)
+        # Flags (1 -- no inheritedFlagged on projects)
         "flagged": False,
-        "inheritedFlagged": False,
-        # Dates (8)
+        # Dates (4 -- no inherited dates on projects)
         "dueDate": None,
         "deferDate": None,
-        "inheritedDueDate": None,
-        "inheritedDeferDate": None,
         "plannedDate": None,
-        "inheritedPlannedDate": None,
         "dropDate": None,
-        "inheritedDropDate": None,
         # Metadata (2)
         "estimatedMinutes": None,
         "hasChildren": True,

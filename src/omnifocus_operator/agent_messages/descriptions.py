@@ -16,7 +16,7 @@ PLANNED_DATE = (
     "When the user intends to work on this. No urgency signal, no penalty for missing it."
 )
 
-_INHERITED_FIELD_DESC = "Inherited from parent hierarchy when not set directly on this entity."
+_INHERITED_FIELD_DESC = "Inherited from parent hierarchy when not set directly on this task."
 
 INHERITED_FLAGGED = _INHERITED_FIELD_DESC
 
@@ -43,11 +43,8 @@ inherited* fields: value inherited from the hierarchy \
 The sooner date applies. inherited fields are read-only; \
 to edit, use the direct field (dueDate, not inheritedDueDate)."""
 
-_INHERITED_PROJECTS_EXPLANATION = """\
-inherited* fields: value inherited from the hierarchy \
-(folder). Both direct and inherited can coexist. \
-The sooner date applies. inherited fields are read-only; \
-to edit, use the direct field (dueDate, not inheritedDueDate)."""
+# _INHERITED_PROJECTS_EXPLANATION removed -- projects no longer have inherited fields.
+# Projects cannot meaningfully inherit dates/flags (folders have none).
 
 _COUNT_ONLY_TIP = "Count-only: use limit: 0 to get {items: [], total: N} without fetching data."
 
@@ -473,12 +470,10 @@ To query inbox tasks, use list_tasks with inInbox=true.
 {_STRIPPING_NOTE}
 
 Fields: urgency, availability, dueDate, deferDate, plannedDate, \
-inheritedDueDate, flagged, inheritedFlagged, \
-tags [{{id, name}}], nextTask {{id, name}}, folder {{id, name}}, \
+flagged, tags [{{id, name}}], nextTask {{id, name}}, folder {{id, name}}, \
 reviewInterval, nextReviewDate.
 
-nextTask: first available (unblocked) task. Useful for identifying what to work on next.
-{_INHERITED_PROJECTS_EXPLANATION}"""
+nextTask: first available (unblocked) task. Useful for identifying what to work on next."""
 
 GET_TAG_TOOL_DOC = f"""\
 Look up a single tag by its ID.
@@ -578,28 +573,22 @@ List and filter projects. {_FILTERS_AND_LOGIC}
 
 include: optional array of field groups, additive on top of defaults.
   - "notes": note
-  - "metadata": added, modified, completionDate, dropDate (+inherited), url
+  - "metadata": added, modified, completionDate, dropDate, url
   - "hierarchy": folder, hasChildren
   - "time": estimatedMinutes, repetitionRule
   - "review": nextReviewDate, reviewInterval, lastReviewDate, nextTask
   - "*": all fields
 Default fields (always returned): id, name, availability, \
-dueDate, inheritedDueDate, deferDate, inheritedDeferDate, plannedDate, \
-inheritedPlannedDate, flagged, inheritedFlagged, urgency, tags.
+dueDate, deferDate, plannedDate, flagged, urgency, tags.
 
 {_COUNT_ONLY_TIP}
 
 {_DATE_INPUT_NOTE}
 
-{_INHERITED_PROJECTS_EXPLANATION}
-
 Response: {{items, total, hasMore, warnings?}}
 
 nextTask (in review group): first available (unblocked) task. \
 Useful for identifying what to work on next.
-
-Filters use inherited (effective) values. Projects inherit dates and flags \
-from parent folders.
 
 {_LIFECYCLE_FILTER_NOTE}"""
 

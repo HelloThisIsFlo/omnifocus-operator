@@ -8,11 +8,6 @@ from omnifocus_operator.agent_messages.descriptions import (
     DEFER_DATE,
     DUE_DATE,
     FOLDER_REF_DOC,
-    INHERITED_DEFER_DATE,
-    INHERITED_DROP_DATE,
-    INHERITED_DUE_DATE,
-    INHERITED_FLAGGED,
-    INHERITED_PLANNED_DATE,
     PARENT_REF_DOC,
     PARENT_REF_PROJECT_FIELD,
     PARENT_REF_TASK_FIELD,
@@ -101,9 +96,6 @@ class ActionableEntity(OmniFocusEntity):
 
     # Flags
     flagged: bool
-    inherited_flagged: bool = Field(
-        description=INHERITED_FLAGGED,
-    )
 
     # Dates (all optional, timezone-aware)
     due_date: AwareDatetime | None = Field(
@@ -120,23 +112,6 @@ class ActionableEntity(OmniFocusEntity):
     )
     completion_date: AwareDatetime | None = None
     drop_date: AwareDatetime | None = None
-    inherited_due_date: AwareDatetime | None = Field(
-        default=None,
-        description=INHERITED_DUE_DATE,
-    )
-    inherited_defer_date: AwareDatetime | None = Field(
-        default=None,
-        description=INHERITED_DEFER_DATE,
-    )
-    inherited_planned_date: AwareDatetime | None = Field(
-        default=None,
-        description=INHERITED_PLANNED_DATE,
-    )
-    # inherited_completion_date is only present on Task, not Project
-    inherited_drop_date: AwareDatetime | None = Field(
-        default=None,
-        description=INHERITED_DROP_DATE,
-    )
 
     # Metadata
     estimated_minutes: float | None = None

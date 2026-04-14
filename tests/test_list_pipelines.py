@@ -1588,12 +1588,12 @@ class TestListProjectsDateFiltering:
             make_project_dict(
                 id="proj-due-soon",
                 name="Due soon project",
-                effectiveDueDate="2026-04-08T10:00:00.000Z",
+                dueDate="2026-04-08T10:00:00.000Z",
             ),
             make_project_dict(
                 id="proj-due-later",
                 name="Due later project",
-                effectiveDueDate="2026-04-20T10:00:00.000Z",
+                dueDate="2026-04-20T10:00:00.000Z",
             ),
             make_project_dict(
                 id="proj-no-due",

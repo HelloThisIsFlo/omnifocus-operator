@@ -60,11 +60,16 @@ _BRIDGE_FIELD_MAP: dict[str, str] = {
     "modified": "modified",
 }
 
-# Project-specific field map: projects use completion_date (not inherited_completion_date)
-# because projects don't inherit completion dates -- they're always root entities.
+# Project-specific field map: projects have no inherited fields (cannot inherit from folders).
+# All date filters use direct fields instead of inherited fields.
 _BRIDGE_PROJECT_FIELD_MAP: dict[str, str] = {
-    **_BRIDGE_FIELD_MAP,
+    "due": "due_date",
+    "defer": "defer_date",
+    "planned": "planned_date",
     "completed": "completion_date",
+    "dropped": "drop_date",
+    "added": "added",
+    "modified": "modified",
 }
 
 # Lifecycle date fields use additive semantics: remaining tasks (None attribute)
@@ -261,7 +266,7 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
             fid_set = set(query.folder_ids)
             items = [p for p in items if p.folder is not None and p.folder.id in fid_set]
         if query.flagged is not None:
-            items = [p for p in items if p.inherited_flagged == query.flagged]
+            items = [p for p in items if p.flagged == query.flagged]
         if query.review_due_before is not None:
             items = [
                 p
