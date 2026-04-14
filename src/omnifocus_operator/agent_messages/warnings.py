@@ -20,10 +20,9 @@ EDIT_NO_CHANGES_SPECIFIED = (
     "No changes specified -- if you intended to change fields, include them in the request"
 )
 
-EDIT_NO_CHANGES_DETECTED = (
-    "No changes detected -- the task already has these values. "
-    "If you don't want to change a field, omit it from the request."
-)
+EDIT_NO_CHANGES_DETECTED = """\
+No changes detected -- the task already has these values. \
+If you don't want to change a field, omit it from the request."""
 
 MOVE_ALREADY_AT_POSITION = (
     "Task is already at the {position} of its container -- no reordering needed."
@@ -35,23 +34,21 @@ LIFECYCLE_ALREADY_IN_STATE = (
     "Task is already {state_word} -- nothing changed. Omit actions.lifecycle to skip."
 )
 
-LIFECYCLE_CROSS_STATE = (
-    "Task was already {prior_state} -- lifecycle action applied, "
-    "task is now {new_state}. Confirm with user that this was intended."
-)
+LIFECYCLE_CROSS_STATE = """\
+Task was already {prior_state} -- lifecycle action applied, \
+task is now {new_state}. Confirm with user that this was intended."""
 
 LIFECYCLE_REPEATING_COMPLETE = (
     "Repeating task -- this occurrence completed, next occurrence created."
 )
 
-LIFECYCLE_REPEATING_DROP = (
-    "Repeating task -- this occurrence was skipped, "
-    "next occurrence created.\n"
-    "If the user wanted to drop the entire repeating "
-    "sequence, let them know this must be done in the "
-    "OmniFocus UI (intentional restriction against "
-    "destructive operations)."
-)
+LIFECYCLE_REPEATING_DROP = """\
+Repeating task -- this occurrence was skipped, \
+next occurrence created.
+If the user wanted to drop the entire repeating \
+sequence, let them know this must be done in the \
+OmniFocus UI (intentional restriction against \
+destructive operations)."""
 
 # --- Tags ---
 
@@ -63,77 +60,65 @@ TAG_NOT_ON_TASK = "Tag '{display}' ({tag_id}) is not on this task"
 
 # --- Repetition Rule ---
 
-REPETITION_END_DATE_PAST = (
-    "The end date {date} is in the past -- the repetition rule was set, "
-    "but no future occurrences will be generated. Was this intentional?"
-)
+REPETITION_END_DATE_PAST = """\
+The end date {date} is in the past -- the repetition rule was set, \
+but no future occurrences will be generated. Was this intentional?"""
 
-REPETITION_EMPTY_ON_DATES = (
-    "monthly with empty onDates is equivalent to plain monthly (no date constraint). "
-    "The empty onDates was ignored. Omit onDates or use type 'monthly' directly next time."
-)
+REPETITION_EMPTY_ON_DATES = """\
+monthly with empty onDates is equivalent to plain monthly (no date constraint). \
+The empty onDates was ignored. Omit onDates or use type 'monthly' directly next time."""
 
-REPETITION_EMPTY_ON_DAYS = (
-    "weekly with empty onDays is equivalent to plain weekly (no day constraint). "
-    "The empty onDays was ignored. Omit onDays or use type 'weekly' directly next time."
-)
+REPETITION_EMPTY_ON_DAYS = """\
+weekly with empty onDays is equivalent to plain weekly (no day constraint). \
+The empty onDays was ignored. Omit onDays or use type 'weekly' directly next time."""
 
-REPETITION_EMPTY_ON = (
-    "monthly with empty on is equivalent to plain monthly (no weekday constraint). "
-    "The empty on was ignored. Omit on or use type 'monthly' directly next time."
-)
+REPETITION_EMPTY_ON = """\
+monthly with empty on is equivalent to plain monthly (no weekday constraint). \
+The empty on was ignored. Omit on or use type 'monthly' directly next time."""
 
-REPETITION_AUTO_CLEAR_ON_DATES = (
-    "on and onDates are mutually exclusive on monthly. "
-    "Since on was set, onDates was automatically cleared."
-)
+REPETITION_AUTO_CLEAR_ON_DATES = """\
+on and onDates are mutually exclusive on monthly. \
+Since on was set, onDates was automatically cleared."""
 
-REPETITION_AUTO_CLEAR_ON = (
-    "on and onDates are mutually exclusive on monthly. "
-    "Since onDates was set, on was automatically cleared."
-)
+REPETITION_AUTO_CLEAR_ON = """\
+on and onDates are mutually exclusive on monthly. \
+Since onDates was set, on was automatically cleared."""
 
-REPETITION_NO_OP = (
-    "The repetition rule is identical to the existing one -- no changes applied. "
-    "Omit repetitionRule from the request if you don't want to change it."
-)
+REPETITION_NO_OP = """\
+The repetition rule is identical to the existing one -- no changes applied. \
+Omit repetitionRule from the request if you don't want to change it."""
 
-REPETITION_FROM_COMPLETION_BYDAY = (
-    "from_completion with day-of-week patterns (onDays) can produce "
-    "counterintuitive results: same-day completions are skipped (never "
-    "lands on today), biweekly/monthly grids reset from the completion "
-    "date, and early completions can land back on the original due date. "
-    "Consider regularly_with_catch_up for day-of-week schedules unless "
-    "the minimum gap between occurrences is what matters."
-)
+REPETITION_FROM_COMPLETION_BYDAY = """\
+from_completion with day-of-week patterns (onDays) can produce \
+counterintuitive results: same-day completions are skipped (never \
+lands on today), biweekly/monthly grids reset from the completion \
+date, and early completions can land back on the original due date. \
+Consider regularly_with_catch_up for day-of-week schedules unless \
+the minimum gap between occurrences is what matters."""
 
-REPETITION_ANCHOR_DATE_MISSING = (
-    "basedOn is '{based_on}' but no {date_field} is set on this task -- "
-    "OmniFocus will create the missing {date_field} on the next occurrence "
-    "using the completion date and the user's default time for that date type "
-    "(configured in Settings > Dates & Times). This produces a valid but "
-    "potentially surprising schedule. Set the {date_field} explicitly for "
-    "predictable repetition behavior."
-)
+REPETITION_ANCHOR_DATE_MISSING = """\
+basedOn is '{based_on}' but no {date_field} is set on this task -- \
+OmniFocus will create the missing {date_field} on the next occurrence \
+using the completion date and the user's default time for that date type \
+(configured in Settings > Dates & Times). This produces a valid but \
+potentially surprising schedule. Set the {date_field} explicitly for \
+predictable repetition behavior."""
 
 # --- Date Resolution ---
 
-DUE_SOON_THRESHOLD_NOT_DETECTED = (
-    "Due-soon threshold was not detected from OmniFocus preferences. "
-    "Defaulting to 2 days (OmniFocus factory default). "
-    "Restart the server if you changed this setting."
-)
+DUE_SOON_THRESHOLD_NOT_DETECTED = """\
+Due-soon threshold was not detected from OmniFocus preferences. \
+Defaulting to 2 days (OmniFocus factory default). \
+Restart the server if you changed this setting."""
 
-SETTINGS_FALLBACK_WARNING = (
-    "Could not read OmniFocus preferences (app may not be running). "
-    "Using factory defaults for date/time settings. "
-    "Restart the server after OmniFocus is available."
-)
+SETTINGS_FALLBACK_WARNING = """\
+Could not read OmniFocus preferences (app may not be running). \
+Using factory defaults for date/time settings. \
+Restart the server after OmniFocus is available."""
 
-SETTINGS_UNKNOWN_DUE_SOON_PAIR = (
-    "OmniFocus due-soon preference has an unrecognized value. "
-    "Defaulting to 2 days (OmniFocus factory default)."
-)
+SETTINGS_UNKNOWN_DUE_SOON_PAIR = """\
+OmniFocus due-soon preference has an unrecognized value. \
+Defaulting to 2 days (OmniFocus factory default)."""
 
 # --- Defer Hints ---
 
@@ -165,20 +150,18 @@ FILTER_NO_MATCH = "No {entity_type} found matching '{value}'. This filter was sk
 
 # --- Project Tool: Inbox Search ---
 
-LIST_PROJECTS_INBOX_WARNING = (
-    "The '$inbox' appears as a project on tasks but is not a real OmniFocus project "
-    "and won't appear in results. "
-    "To query inbox tasks, use list_tasks with 'inInbox=true'."
-)
+LIST_PROJECTS_INBOX_WARNING = """\
+The '$inbox' appears as a project on tasks but is not a real OmniFocus project \
+and won't appear in results. \
+To query inbox tasks, use list_tasks with 'inInbox=true'."""
 
 # --- Task Tool: Inbox Project Filter ---
 
-LIST_TASKS_INBOX_PROJECT_WARNING = (
-    "The 'project=\"{value}\"' filter also matches the OmniFocus Inbox by name, "
-    "but the Inbox is a virtual location, not a named project. "
-    "Inbox tasks are not included in these results. "
-    "Use 'inInbox=true' to query them."
-)
+LIST_TASKS_INBOX_PROJECT_WARNING = """\
+The 'project="{value}"' filter also matches the OmniFocus Inbox by name, \
+but the Inbox is a virtual location, not a named project. \
+Inbox tasks are not included in these results. \
+Use 'inInbox=true' to query them."""
 
 # --- Availability Filter ---
 
@@ -194,8 +177,7 @@ AVAILABILITY_REMAINING_INCLUDES_BLOCKED = (
     "'remaining' already includes 'blocked' -- no need to combine them."
 )
 
-FILTER_DID_YOU_MEAN = (
-    "No {entity_type} found matching '{value}'. "
-    "Did you mean: {suggestions}? "
-    "This filter was skipped."
-)
+FILTER_DID_YOU_MEAN = """\
+No {entity_type} found matching '{value}'. \
+Did you mean: {suggestions}? \
+This filter was skipped."""

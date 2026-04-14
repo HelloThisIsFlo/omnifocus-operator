@@ -57,30 +57,26 @@ TAG_NO_OPERATION = "tags must specify at least one of: add, remove, replace"
 
 MOVE_EXACTLY_ONE_KEY = "moveTo must have exactly one key (beginning, ending, before, or after)"
 
-MOVE_NULL_CONTAINER = (
-    "{field} cannot be null. To move a task to the inbox, use '$inbox'. "
-    "To move into a project or task, provide its name or ID."
-)
+MOVE_NULL_CONTAINER = """\
+{field} cannot be null. To move a task to the inbox, use '$inbox'. \
+To move into a project or task, provide its name or ID."""
 
-MOVE_NULL_ANCHOR = (
-    "{field} cannot be null. before/after positions require a task reference "
-    "(name or ID). To move into a container, use 'beginning' or 'ending' instead."
-)
+MOVE_NULL_ANCHOR = """\
+{field} cannot be null. before/after positions require a task reference \
+(name or ID). To move into a container, use 'beginning' or 'ending' instead."""
 
 # --- Validation: AddTaskCommand ---
 
-ADD_PARENT_NULL = (
-    "parent cannot be null. Omit the field to create a task in the inbox, "
-    "or provide a project/task name or ID."
-)
+ADD_PARENT_NULL = """\
+parent cannot be null. Omit the field to create a task in the inbox, \
+or provide a project/task name or ID."""
 
 # --- Repetition Rule ---
 
-REPETITION_NO_EXISTING_RULE = (
-    "Cannot partially update a repetition rule -- this task has no existing rule. "
-    "To set a repetition rule, provide all required fields: "
-    "frequency (with type), schedule, and basedOn."
-)
+REPETITION_NO_EXISTING_RULE = """\
+Cannot partially update a repetition rule -- this task has no existing rule. \
+To set a repetition rule, provide all required fields: \
+frequency (with type), schedule, and basedOn."""
 
 REPETITION_INVALID_DAY_CODE = (
     "Invalid day code '{code}' in onDays. Valid codes: MO, TU, WE, TH, FR, SA, SU"
@@ -90,20 +86,18 @@ REPETITION_AT_MOST_ONE_ORDINAL = (
     'on must specify exactly one ordinal (e.g. {{"last": "friday"}}), got {count} keys'
 )
 
-REPETITION_INVALID_DAY_NAME = (
-    "Invalid day name '{day}' in on field. "
-    "Valid days: monday, tuesday, wednesday, thursday, friday, "
-    "saturday, sunday, weekday, weekend_day"
-)
+REPETITION_INVALID_DAY_NAME = """\
+Invalid day name '{day}' in on field. \
+Valid days: monday, tuesday, wednesday, thursday, friday, \
+saturday, sunday, weekday, weekend_day"""
 
 REPETITION_INVALID_ON_DATE = (
     "Invalid date value {value} in onDates. Valid range: -1, 1 to 31 (use -1 for last day of month)"
 )
 
-REPETITION_INVALID_FREQUENCY_TYPE = (
-    "Invalid frequency type '{freq_type}' -- "
-    "valid types: minutely, hourly, daily, weekly, monthly, yearly"
-)
+REPETITION_INVALID_FREQUENCY_TYPE = """\
+Invalid frequency type '{freq_type}' -- \
+valid types: minutely, hourly, daily, weekly, monthly, yearly"""
 
 REPETITION_FIELD_WRONG_TYPE_WEEKLY = (
     "{field} is not valid for type '{type}'. {field} can only be used with type 'weekly'."
@@ -129,10 +123,9 @@ REPETITION_INVALID_END_EMPTY = (
 
 # --- Validation: Date Input ---
 
-_DATE_FORMAT_EXAMPLES = (
-    "ISO date ('2026-07-15'), ISO datetime ('2026-07-15T17:00:00'), "
-    "or datetime with offset ('2026-07-15T17:00:00+01:00')"
-)
+_DATE_FORMAT_EXAMPLES = """\
+ISO date ('2026-07-15'), ISO datetime ('2026-07-15T17:00:00'), \
+or datetime with offset ('2026-07-15T17:00:00+01:00')"""
 
 INVALID_DATE_FORMAT = "Invalid date format '{value}'. Expected " + _DATE_FORMAT_EXAMPLES + "."
 
@@ -143,21 +136,18 @@ DATE_FILTER_RANGE_EMPTY = (
     "Each accepts " + _DATE_FORMAT_EXAMPLES + ", or 'now'."
 )
 
-DATE_FILTER_INVALID_DURATION = (
-    "Invalid duration '{value}' -- use a number followed by d/w/m/y (e.g. '3d', '2w', 'm'). "
-    "Count defaults to 1 when omitted, so 'w' means '1w'."
-)
+DATE_FILTER_INVALID_DURATION = """\
+Invalid duration '{value}' -- use a number followed by d/w/m/y (e.g. '3d', '2w', 'm'). \
+Count defaults to 1 when omitted, so 'w' means '1w'."""
 
-REVIEW_DUE_WITHIN_INVALID = (
-    "Invalid reviewDueWithin '{value}' -- "
-    "valid formats: 'now', or a duration like '1w', '2m', '30d'. "
-    "Count defaults to 1 when omitted, so 'w' means '1w'."
-)
+REVIEW_DUE_WITHIN_INVALID = """\
+Invalid reviewDueWithin '{value}' -- \
+valid formats: 'now', or a duration like '1w', '2m', '30d'. \
+Count defaults to 1 when omitted, so 'w' means '1w'."""
 
-DATE_FILTER_ZERO_NEGATIVE = (
-    "Duration count must be positive (got '{value}'). "
-    "Use a positive number followed by d/w/m/y (e.g. '1d', '2w')."
-)
+DATE_FILTER_ZERO_NEGATIVE = """\
+Duration count must be positive (got '{value}'). \
+Use a positive number followed by d/w/m/y (e.g. '1d', '2w')."""
 
 DATE_FILTER_REVERSED_BOUNDS = (
     "Invalid date range: 'after' ({after}) is later than 'before' ({before}). "
@@ -178,45 +168,40 @@ OFFSET_REQUIRES_LIMIT = "offset requires limit -- set limit when using offset"
 
 # --- Name Resolution ---
 
-AMBIGUOUS_NAME_MATCH = (
-    "Ambiguous {entity_type} '{name}': multiple matches: {matches}. "
-    "Use the ID to specify which one."
-)
+AMBIGUOUS_NAME_MATCH = """\
+Ambiguous {entity_type} '{name}': multiple matches: {matches}. \
+Use the ID to specify which one."""
 
 NAME_NOT_FOUND = "No {entity_type} found matching '{name}'.{suggestions}"
 
-RESERVED_PREFIX = (
-    "'{value}' starts with '{prefix}' which is reserved for system locations. "
-    "Valid system locations: {valid_locations}. "
-    "If your entity name starts with '{prefix}', refer to it by ID instead."
-)
+RESERVED_PREFIX = """\
+'{value}' starts with '{prefix}' which is reserved for system locations. \
+Valid system locations: {valid_locations}. \
+If your entity name starts with '{prefix}', refer to it by ID instead."""
 
 # --- Filter: Contradictory Inbox ---
 
-CONTRADICTORY_INBOX_FALSE = (
-    "Contradictory filters: 'project=\"$inbox\"' selects inbox tasks, "
-    "but 'inInbox=false' excludes them. Use one or the other."
-)
-CONTRADICTORY_INBOX_PROJECT = (
-    "Contradictory filters: 'inInbox=true' selects tasks with no project. "
-    "Combining with a 'project' filter always yields nothing. Use one or the other."
-)
+CONTRADICTORY_INBOX_FALSE = """\
+Contradictory filters: 'project="$inbox"' selects inbox tasks, \
+but 'inInbox=false' excludes them. Use one or the other."""
+
+CONTRADICTORY_INBOX_PROJECT = """\
+Contradictory filters: 'inInbox=true' selects tasks with no project. \
+Combining with a 'project' filter always yields nothing. Use one or the other."""
 
 # --- Project Tool: Inbox Guard ---
 
-GET_PROJECT_INBOX_ERROR = (
-    "The '$inbox' appears as a project on tasks but is not a real OmniFocus project "
-    "\u2014 it has no review schedule, status, or other project properties. "
-    "To query inbox tasks, use list_tasks with 'inInbox=true'."
-)
+GET_PROJECT_INBOX_ERROR = """\
+The '$inbox' appears as a project on tasks but is not a real OmniFocus project \
+\u2014 it has no review schedule, status, or other project properties. \
+To query inbox tasks, use list_tasks with 'inInbox=true'."""
 
 ENTITY_TYPE_MISMATCH = "'{value}' resolved to {resolved_type}, but only {accepted} is accepted here"
 
-ENTITY_TYPE_MISMATCH_ANCHOR = (
-    "'{value}' is a {resolved_type}. "
-    "Anchor positions (before/after) require a task reference. "
-    "To move into {value}, use 'ending' or 'beginning' instead."
-)
+ENTITY_TYPE_MISMATCH_ANCHOR = """\
+'{value}' is a {resolved_type}. \
+Anchor positions (before/after) require a task reference. \
+To move into {value}, use 'ending' or 'beginning' instead."""
 
 DATE_INPUT_INVALID_TYPE = (
     "Input should be {shortcuts}, "
