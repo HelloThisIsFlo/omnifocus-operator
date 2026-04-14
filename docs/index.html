@@ -336,6 +336,54 @@ nav.scrolled {
   color: var(--accent-green);
   border-color: rgba(52, 211, 153, 0.3);
 }
+.hero-options {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  justify-content: center;
+}
+.hero-or {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-style: italic;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.hero-prompt {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: 12px;
+  padding: 16px 24px 20px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-align: left;
+  max-width: 380px;
+}
+.hero-prompt:hover {
+  border-color: var(--accent-teal);
+  box-shadow: 0 0 30px rgba(56, 189, 248, 0.1);
+}
+.hero-prompt:hover .hero-install-copy {
+  color: var(--accent-teal);
+  border-color: rgba(56, 189, 248, 0.3);
+}
+.hero-prompt.copied .hero-install-copy {
+  color: var(--accent-green);
+  border-color: rgba(52, 211, 153, 0.3);
+}
+.hero-prompt-text {
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-style: italic;
+  color: var(--text-primary);
+  line-height: 1.6;
+  margin: 0;
+  padding: 12px 0 0 16px;
+  border-left: 2px solid var(--accent-teal);
+  opacity: 0.9;
+}
 
 /* ─── Stats Bar ──────────────────────────────────── */
 .stats-bar {
@@ -1451,6 +1499,9 @@ footer p {
   .stats-inner { gap: 32px; }
   .stat-item:not(:last-child)::after { display: none; }
   .nav-links { display: none; }
+  .hero-options { flex-direction: column; gap: 16px; }
+  .hero-or { margin: -8px 0; }
+  .hero-config, .hero-prompt { max-width: 100%; }
   .arch-spread { flex-direction: column; align-items: center; gap: 12px; }
   .arch-spread::after { display: none; }
   .arch-repo-col .arch-arrow { display: none; }
@@ -1494,9 +1545,10 @@ footer p {
       </div>
       <h1>The OmniFocus MCP server your agent can <em>actually</em> depend on.</h1>
       <p class="hero-sub">Production-grade infrastructure for AI agents. 46ms reads. 2,086 tests. Your tasks deserve a bridge that won't break under pressure.</p>
-      <div class="hero-config" onclick="copyConfig(this)" title="Click to copy">
-        <div class="hero-config-label">Claude Desktop config <span class="hero-install-copy">Copy</span></div>
-        <pre class="hero-config-code">{
+      <div class="hero-options">
+        <div class="hero-config" onclick="copyConfig(this)" title="Click to copy">
+          <div class="hero-config-label">Paste into Claude Desktop config <span class="hero-install-copy">Copy</span></div>
+          <pre class="hero-config-code">{
   "mcpServers": {
     "omnifocus-operator": {
       "command": "uvx",
@@ -1504,6 +1556,12 @@ footer p {
     }
   }
 }</pre>
+        </div>
+        <div class="hero-or">or</div>
+        <div class="hero-prompt" onclick="copyPrompt(this)" title="Click to copy">
+          <div class="hero-config-label">Ask your agent <span class="hero-install-copy">Copy</span></div>
+          <blockquote class="hero-prompt-text">Set up the OmniFocus Operator MCP server for me — uvx omnifocus-operator</blockquote>
+        </div>
       </div>
     </div>
   </div>
@@ -2151,6 +2209,19 @@ const configJson = `{
 
 function copyConfig(el) {
   navigator.clipboard.writeText(configJson).then(() => {
+    el.classList.add('copied');
+    const btn = el.querySelector('.hero-install-copy');
+    btn.textContent = 'Copied';
+    setTimeout(() => {
+      el.classList.remove('copied');
+      btn.textContent = 'Copy';
+    }, 2000);
+  });
+}
+
+function copyPrompt(el) {
+  const text = 'Set up the OmniFocus Operator MCP server for me — uvx omnifocus-operator';
+  navigator.clipboard.writeText(text).then(() => {
     el.classList.add('copied');
     const btn = el.querySelector('.hero-install-copy');
     btn.textContent = 'Copied';

@@ -32,6 +32,10 @@ Production-grade MCP server exposing OmniFocus as structured task infrastructure
 
 That's it. No install step — `uvx` downloads, isolates, and runs the server automatically.
 
+**Or just ask your agent:**
+
+> Set up the OmniFocus Operator MCP server for me — uvx omnifocus-operator
+
 <details>
 <summary><strong>Development install (contributors)</strong></summary>
 
