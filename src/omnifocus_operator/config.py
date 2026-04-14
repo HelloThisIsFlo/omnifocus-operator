@@ -38,6 +38,76 @@ SYSTEM_LOCATIONS: dict[str, SystemLocation] = {
 }
 
 
+# -- Field groups for response projection (D-04) --------------------------------
+# Field names use camelCase (alias names) -- they operate on model_dump(by_alias=True) output.
+
+TASK_DEFAULT_FIELDS: frozenset[str] = frozenset(
+    {
+        "id",
+        "name",
+        "availability",
+        "order",
+        "project",
+        "dueDate",
+        "inheritedDueDate",
+        "deferDate",
+        "inheritedDeferDate",
+        "plannedDate",
+        "inheritedPlannedDate",
+        "flagged",
+        "inheritedFlagged",
+        "urgency",
+        "tags",
+    }
+)
+
+TASK_FIELD_GROUPS: dict[str, frozenset[str]] = {
+    "notes": frozenset({"note"}),
+    "metadata": frozenset(
+        {
+            "added",
+            "modified",
+            "completionDate",
+            "dropDate",
+            "inheritedCompletionDate",
+            "inheritedDropDate",
+            "url",
+        }
+    ),
+    "hierarchy": frozenset({"parent", "hasChildren"}),
+    "time": frozenset({"estimatedMinutes", "repetitionRule"}),
+}
+
+PROJECT_DEFAULT_FIELDS: frozenset[str] = frozenset(
+    {
+        "id",
+        "name",
+        "availability",
+        "folder",
+        "dueDate",
+        "inheritedDueDate",
+        "deferDate",
+        "inheritedDeferDate",
+        "plannedDate",
+        "inheritedPlannedDate",
+        "flagged",
+        "inheritedFlagged",
+        "urgency",
+        "tags",
+    }
+)
+
+PROJECT_FIELD_GROUPS: dict[str, frozenset[str]] = {
+    "notes": frozenset({"note"}),
+    "metadata": frozenset(
+        {"added", "modified", "completionDate", "dropDate", "inheritedDropDate", "url"}
+    ),
+    "hierarchy": frozenset({"hasChildren"}),
+    "time": frozenset({"estimatedMinutes", "repetitionRule"}),
+    "review": frozenset({"nextReviewDate", "reviewInterval", "lastReviewDate", "nextTask"}),
+}
+
+
 # -- Centralized settings (pydantic-settings) ---------------------------------
 
 
