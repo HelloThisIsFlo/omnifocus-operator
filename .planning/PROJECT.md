@@ -99,6 +99,8 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 - ✓ `get_project("$inbox")` guard, `list_projects` search warning for inbox-related terms — v1.3.1 (Phase 43)
 - ✓ Bridge-only `adapt_snapshot` filters project root tasks (parity with SQL `LEFT JOIN ProjectInfo`) — v1.3.1 (Phase 43)
 - ✓ List query filter fields migrated to `Patch[T]` — null eliminated from agent-facing schemas, UNSET→None at repo boundary — v1.3.1 (Phase 44)
+- ✓ True inherited fields: `inherited*` on tasks reflect genuine ancestry (parent hierarchy walk), not OmniFocus self-echoes — v1.4 (Phase 53.1)
+- ✓ Projects have zero `inherited*` fields — structurally impossible via model surgery (fields moved from ActionableEntity to Task) — v1.4 (Phase 53.1)
 - ✓ `AvailabilityFilter` enums with `ALL` shorthand, empty-list rejection, mixed `["all", "available"]` warning — v1.3.1 (Phase 44)
 - ✓ Date filtering on list_tasks — 7 date fields (due, defer, planned, completed, dropped, added, modified) with string shortcuts, shorthand periods, and absolute bounds — v1.3.2
 - ✓ Calendar-aware period arithmetic with day clamping (`{last: "1m"}` uses proper calendar math) — v1.3.2
