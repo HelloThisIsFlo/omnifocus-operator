@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: resolved
 phase: 53-response-shaping
 source: 53-01-SUMMARY.md, 53-02-SUMMARY.md, 53-03-SUMMARY.md, 53-04-SUMMARY.md, 53-05-SUMMARY.md
 started: 2026-04-14T14:30:00Z
-updated: 2026-04-14T19:30:00Z
+updated: 2026-04-14T21:00:00Z
 ---
 
 ## Current Test
@@ -103,11 +103,11 @@ blocked: 0
 ## Gaps
 
 - truth: "inherited* fields should only appear when the value actually comes from the parent hierarchy, not when OmniFocus echoes the task's own direct value"
-  status: deferred
+  status: resolved
   reason: "OmniFocus always fills effective* (now inherited*) with the resolved value, even when nothing is inherited. The rename from effective→inherited made this semantically wrong."
   severity: major
   test: 1
-  disposition: "Deferred to standalone todo. Will be a proper feature: walk the parent hierarchy to determine true inheritance (same infrastructure as cycle detection) rather than heuristic strip-when-equal. Avoids edge cases with booleans (flagged) where coincidental equality is common."
+  disposition: "Resolved by Phase 53.1 (True Inherited Fields). compute_true_inheritance on DomainLogic walks the parent hierarchy to determine true inheritance. Self-echoes are stripped at the service layer."
 
 - truth: "Default field projection should apply when include/only are omitted — only default fields returned"
   status: fixed
