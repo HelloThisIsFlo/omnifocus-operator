@@ -67,6 +67,16 @@ _ANCHOR_DATE_KEY_MAP: dict[str, str] = {
     "PlannedDate": "planned_date",
 }
 
+# Rename mapping: bridge camelCase -> model camelCase (effective* -> inherited*)
+_INHERITED_FIELD_RENAMES: dict[str, str] = {
+    "effectiveFlagged": "inheritedFlagged",
+    "effectiveDueDate": "inheritedDueDate",
+    "effectiveDeferDate": "inheritedDeferDate",
+    "effectivePlannedDate": "inheritedPlannedDate",
+    "effectiveDropDate": "inheritedDropDate",
+    "effectiveCompletionDate": "inheritedCompletionDate",
+}
+
 # Dead fields to remove from tasks and projects
 _TASK_DEAD_FIELDS = (
     "active",
@@ -194,6 +204,16 @@ def _adapt_parent_ref(raw: dict[str, Any]) -> None:
     # Clean up convenience fields
     raw.pop("parentName", None)
     raw.pop("projectName", None)
+
+
+def _rename_inherited_fields(raw: dict[str, Any]) -> None:
+    """Rename bridge effective* keys to model inherited* keys.
+
+    Safe to call on already-renamed data: missing old keys are skipped.
+    """
+    for old_key, new_key in _INHERITED_FIELD_RENAMES.items():
+        if old_key in raw:
+            raw[new_key] = raw.pop(old_key)
 
 
 def _adapt_task(raw: dict[str, Any]) -> None:
@@ -384,8 +404,10 @@ def adapt_snapshot(raw: dict[str, Any]) -> dict[str, Any]:
     # Per-entity adaptation (status mapping, dead field removal, parent ref)
     for task in raw.get("tasks", []):
         _adapt_task(task)
+        _rename_inherited_fields(task)
     for project in raw.get("projects", []):
         _adapt_project(project)
+        _rename_inherited_fields(project)
     for tag in raw.get("tags", []):
         _adapt_tag(tag)
     for folder in raw.get("folders", []):

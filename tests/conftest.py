@@ -215,18 +215,18 @@ def make_model_task_dict(**overrides: Any) -> dict[str, Any]:
         "availability": "available",
         # Flags (2)
         "flagged": False,
-        "effectiveFlagged": False,
+        "inheritedFlagged": False,
         # Dates (10)
         "dueDate": None,
         "deferDate": None,
-        "effectiveDueDate": None,
-        "effectiveDeferDate": None,
+        "inheritedDueDate": None,
+        "inheritedDeferDate": None,
         "completionDate": None,
-        "effectiveCompletionDate": None,
+        "inheritedCompletionDate": None,
         "plannedDate": None,
-        "effectivePlannedDate": None,
+        "inheritedPlannedDate": None,
         "dropDate": None,
-        "effectiveDropDate": None,
+        "inheritedDropDate": None,
         # Metadata (3)
         "estimatedMinutes": None,
         "hasChildren": False,
@@ -259,20 +259,20 @@ def make_model_project_dict(**overrides: Any) -> dict[str, Any]:
         # Two-axis status (2)
         "urgency": "none",
         "availability": "available",
-        # Completion date (1 -- effectiveCompletionDate is Task-only)
+        # Completion date (1 -- inheritedCompletionDate is Task-only)
         "completionDate": None,
         # Flags (2)
         "flagged": False,
-        "effectiveFlagged": False,
+        "inheritedFlagged": False,
         # Dates (8)
         "dueDate": None,
         "deferDate": None,
-        "effectiveDueDate": None,
-        "effectiveDeferDate": None,
+        "inheritedDueDate": None,
+        "inheritedDeferDate": None,
         "plannedDate": None,
-        "effectivePlannedDate": None,
+        "inheritedPlannedDate": None,
         "dropDate": None,
-        "effectiveDropDate": None,
+        "inheritedDropDate": None,
         # Metadata (2)
         "estimatedMinutes": None,
         "hasChildren": True,

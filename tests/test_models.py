@@ -377,19 +377,19 @@ class TestActionableEntityDates:
             availability=Availability.AVAILABLE,
             note="",
             flagged=False,
-            effective_flagged=False,
+            inherited_flagged=False,
             has_children=False,
             tags=[],
         )
         assert entity.due_date is None
         assert entity.defer_date is None
-        assert entity.effective_due_date is None
-        assert entity.effective_defer_date is None
+        assert entity.inherited_due_date is None
+        assert entity.inherited_defer_date is None
         assert entity.completion_date is None
         assert entity.planned_date is None
-        assert entity.effective_planned_date is None
+        assert entity.inherited_planned_date is None
         assert entity.drop_date is None
-        assert entity.effective_drop_date is None
+        assert entity.inherited_drop_date is None
         assert entity.estimated_minutes is None
         assert entity.repetition_rule is None
 
@@ -430,7 +430,7 @@ class TestInheritanceHierarchy:
             availability=Availability.AVAILABLE,
             note="A note",
             flagged=True,
-            effective_flagged=True,
+            inherited_flagged=True,
             due_date=dt,
             has_children=False,
             tags=[TagRef(id="tag-001", name="errands")],
@@ -528,19 +528,19 @@ class TestTaskModel:
 
         # Flags
         assert task.flagged is False
-        assert task.effective_flagged is False
+        assert task.inherited_flagged is False
 
         # Dates
         assert task.due_date is not None
         assert task.defer_date is None
-        assert task.effective_due_date is None
-        assert task.effective_defer_date is None
+        assert task.inherited_due_date is None
+        assert task.inherited_defer_date is None
         assert task.completion_date is None
-        assert task.effective_completion_date is None
+        assert task.inherited_completion_date is None
         assert task.planned_date is None
-        assert task.effective_planned_date is None
+        assert task.inherited_planned_date is None
         assert task.drop_date is None
-        assert task.effective_drop_date is None
+        assert task.inherited_drop_date is None
 
         # Metadata
         assert task.estimated_minutes is None
@@ -566,7 +566,7 @@ class TestTaskModel:
         # Serialize back to camelCase and verify round-trip
         dumped = task.model_dump(mode="json", by_alias=True)
         assert "dueDate" in dumped
-        assert "effectiveFlagged" in dumped
+        assert "inheritedFlagged" in dumped
         assert "parent" in dumped
         assert "project" in dumped
         assert "url" in dumped

@@ -211,7 +211,7 @@ class TestTOOL01ListAllStructuredOutput:
             "urgency": "none",
             "availability": "available",
             "flagged": False,
-            "effective_flagged": True,
+            "inherited_flagged": True,
             "has_children": False,
             "parent": {"project": {"id": "proj-1", "name": "My Project"}},
             "project": {"id": "proj-1", "name": "My Project"},
@@ -243,9 +243,9 @@ class TestTOOL01ListAllStructuredOutput:
             task = tasks[0]
             # Must use camelCase, not snake_case
             assert "dueDate" in task
-            assert "effectiveFlagged" in task
+            assert "inheritedFlagged" in task
             assert "due_date" not in task
-            assert "effective_flagged" not in task
+            assert "inherited_flagged" not in task
 
 
 # ---------------------------------------------------------------------------
@@ -349,7 +349,7 @@ class TestTOOL03OutputSchema:
             assert "tasks" in props
             assert "projects" in props
 
-            # Check nested Task schema uses camelCase (e.g. dueDate, effectiveFlagged).
+            # Check nested Task schema uses camelCase (e.g. dueDate, inheritedFlagged).
             # FastMCP v3 inlines definitions rather than using $defs references,
             # so look for Task properties in the tasks array items schema.
             tasks_schema = props["tasks"]
@@ -357,7 +357,7 @@ class TestTOOL03OutputSchema:
             assert "dueDate" in task_props, (
                 f"Expected camelCase 'dueDate', got: {list(task_props.keys())}"
             )
-            assert "effectiveFlagged" in task_props
+            assert "inheritedFlagged" in task_props
 
 
 # ---------------------------------------------------------------------------

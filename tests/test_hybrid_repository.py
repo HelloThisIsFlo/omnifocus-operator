@@ -442,7 +442,7 @@ class TestTaskBasicFields:
         assert task.url == "omnifocus:///task/abc123"
         assert task.note == "Remember oat milk"
         assert task.flagged is True
-        assert task.effective_flagged is True
+        assert task.inherited_flagged is True
         assert task.project.id == "$inbox"
         assert task.has_children is True
         assert task.added is not None
@@ -494,11 +494,11 @@ class TestTaskTimestamps:
         result = await hybrid_repo.get_all()
         task = result.tasks[0]
 
-        assert task.effective_due_date is not None
-        assert task.effective_due_date.year == 2026
-        assert task.effective_due_date.month == 2
-        assert task.effective_due_date.day == 16
-        assert task.effective_defer_date is not None
+        assert task.inherited_due_date is not None
+        assert task.inherited_due_date.year == 2026
+        assert task.inherited_due_date.month == 2
+        assert task.inherited_due_date.day == 16
+        assert task.inherited_defer_date is not None
 
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(tasks=[_minimal_task()])
@@ -1418,7 +1418,7 @@ class TestGetTask:
         assert task.name == "Buy milk"
         assert task.note == "Oat milk"
         assert task.flagged is True
-        assert task.effective_flagged is True
+        assert task.inherited_flagged is True
         assert task.has_children is True
         assert task.urgency == "overdue"
         assert task.availability == "available"
@@ -1781,12 +1781,12 @@ class TestLocalDatetimeParsing:
         result = await hybrid_repo.get_all()
         task = result.tasks[0]
 
-        assert task.effective_due_date is not None
-        assert task.effective_due_date.year == 2026
-        assert task.effective_due_date.month == 2
-        assert task.effective_due_date.day == 20
-        assert task.effective_due_date.hour == 15
-        assert task.effective_defer_date is not None
+        assert task.inherited_due_date is not None
+        assert task.inherited_due_date.year == 2026
+        assert task.inherited_due_date.month == 2
+        assert task.inherited_due_date.day == 20
+        assert task.inherited_due_date.hour == 15
+        assert task.inherited_defer_date is not None
 
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(
