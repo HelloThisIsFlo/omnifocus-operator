@@ -16,25 +16,53 @@ PLANNED_DATE = (
     "When the user intends to work on this. No urgency signal, no penalty for missing it."
 )
 
-INHERITED_FLAGGED = "Inherited from parent project if not set directly on this task."
+_INHERITED_FIELD_DESC = "Inherited from parent hierarchy when not set directly on this entity."
 
-INHERITED_DUE_DATE = "Inherited from parent project or task if not set directly on this entity."
+INHERITED_FLAGGED = _INHERITED_FIELD_DESC
 
-INHERITED_DEFER_DATE = "Inherited from parent project or task if not set directly on this entity."
+INHERITED_DUE_DATE = _INHERITED_FIELD_DESC
 
-INHERITED_PLANNED_DATE = "Inherited from parent project or task if not set directly on this entity."
+INHERITED_DEFER_DATE = _INHERITED_FIELD_DESC
 
-INHERITED_DROP_DATE = "Inherited from parent project or task if not set directly on this entity."
+INHERITED_PLANNED_DATE = _INHERITED_FIELD_DESC
 
-INHERITED_COMPLETION_DATE = (
-    "Inherited from parent project or task if not set directly on this task."
+INHERITED_DROP_DATE = _INHERITED_FIELD_DESC
+
+INHERITED_COMPLETION_DATE = _INHERITED_FIELD_DESC
+
+# --- Reusable Fragments ---
+
+_STRIPPING_NOTE = (
+    "Response stripping: null values, empty arrays, empty strings, "
+    'false booleans, and "none" urgency are omitted. Absent field = not set.'
 )
+
+_INHERITED_TASKS_EXPLANATION = (
+    "inherited* fields: value inherited from the hierarchy "
+    "(parent task, project, folder). Both direct and inherited can coexist "
+    "\u2014 the sooner date applies. inherited fields are read-only; "
+    "to edit, use the direct field (dueDate, not inheritedDueDate)."
+)
+
+_INHERITED_PROJECTS_EXPLANATION = (
+    "inherited* fields: value inherited from the hierarchy "
+    "(folder). Both direct and inherited can coexist "
+    "\u2014 the sooner date applies. inherited fields are read-only; "
+    "to edit, use the direct field (dueDate, not inheritedDueDate)."
+)
+
+_COUNT_ONLY_TIP = "Count-only: use limit: 0 to get {items: [], total: N} without fetching data."
 
 # --- Dates: Write-Side ---
 
 DATE_EXAMPLE = "2026-03-15T17:00:00"
 
 _DATE_INPUT_NOTE = (
+    "All dates use local time. Timezone offsets are accepted. "
+    "Date-only inputs (no time) use your OmniFocus default time for that field."
+)
+
+_DATE_INPUT_NOTE_FULL = (
     "All dates use local time. Timezone offsets are accepted. "
     "Date-only inputs (no time) use your OmniFocus default time for that field. "
     "Date/time preferences are read from OmniFocus on server start; restart if you change them."
@@ -163,7 +191,7 @@ LIFECYCLE_DATE_SHORTCUT_DOC = (
 DATE_SHORTCUT_DOC = "Shortcut for date field filtering: today (tasks matching today's date)."
 
 DUE_FILTER_DESC = (
-    "Filter by due date (effective/inherited). "
+    "Filter by due date (inherited). "
     "Due date = deadline with real consequences if missed. "
     "'overdue' = due before now. "
     "'soon' = due within threshold (includes overdue). "
@@ -171,7 +199,7 @@ DUE_FILTER_DESC = (
 )
 
 DEFER_FILTER_DESC = (
-    "Filter by defer date (effective/inherited). "
+    "Filter by defer date (inherited). "
     "Defer date = task hidden and unavailable until this date. "
     "For timing questions ('what becomes available this week?'), "
     "not availability state -- use availability: 'blocked' for all unavailable tasks. "
@@ -179,7 +207,7 @@ DEFER_FILTER_DESC = (
 )
 
 PLANNED_FILTER_DESC = (
-    "Filter by planned date (effective/inherited). "
+    "Filter by planned date (inherited). "
     "Planned date = when you intend to work on this; no urgency, no penalty for missing it. "
     "'today' = planned for today. Or use a period/range filter."
 )
@@ -426,6 +454,8 @@ GET_ALL_TOOL_DOC = (
     "entire database and should only be used when you need a complete\n"
     "snapshot.\n"
     "\n"
+    f"{_STRIPPING_NOTE}\n"
+    "\n"
     "Response contains: tasks, projects, tags, folders, perspectives arrays.\n"
     "Each task includes an order field (dotted notation like '2.3.1') showing "
     "hierarchical position within its project or inbox.\n"
@@ -435,8 +465,10 @@ GET_ALL_TOOL_DOC = (
 GET_TASK_TOOL_DOC = (
     "Look up a single task by its ID.\n"
     "\n"
+    f"{_STRIPPING_NOTE}\n"
+    "\n"
     "Fields: urgency, availability, dueDate, deferDate, plannedDate, "
-    "effectiveDueDate, flagged, effectiveFlagged, "
+    "inheritedDueDate, flagged, inheritedFlagged, "
     "tags [{id, name}], parent (project {id, name} or task {id, name}), "
     "project {id, name}, order, repetitionRule.\n"
     "\n"
@@ -445,7 +477,7 @@ GET_TASK_TOOL_DOC = (
     "\n"
     "parent: direct container — a project or parent task.\n"
     "project: containing project at any nesting depth, or $inbox.\n"
-    "effective*: inherited from the parent hierarchy when not set directly."
+    f"{_INHERITED_TASKS_EXPLANATION}"
 )
 
 GET_PROJECT_TOOL_DOC = (
@@ -455,17 +487,21 @@ GET_PROJECT_TOOL_DOC = (
     "it has no review schedule, status, or other project properties. "
     "To query inbox tasks, use list_tasks with inInbox=true.\n"
     "\n"
+    f"{_STRIPPING_NOTE}\n"
+    "\n"
     "Fields: urgency, availability, dueDate, deferDate, plannedDate, "
-    "effectiveDueDate, flagged, effectiveFlagged, "
+    "inheritedDueDate, flagged, inheritedFlagged, "
     "tags [{id, name}], nextTask {id, name}, folder {id, name}, "
     "reviewInterval, nextReviewDate.\n"
     "\n"
     "nextTask: first available (unblocked) task \u2014 useful for identifying what to work on next.\n"
-    "effective*: inherited from the parent hierarchy when not set directly."
+    f"{_INHERITED_PROJECTS_EXPLANATION}"
 )
 
 GET_TAG_TOOL_DOC = (
     "Look up a single tag by its ID.\n"
+    "\n"
+    f"{_STRIPPING_NOTE}\n"
     "\n"
     "Fields: availability, childrenAreMutuallyExclusive, parent {id, name}.\n"
     "\n"
@@ -475,7 +511,7 @@ GET_TAG_TOOL_DOC = (
 ADD_TASKS_TOOL_DOC = (
     "Create tasks in OmniFocus. Limited to 1 item per call.\n"
     "\n"
-    f"{_DATE_INPUT_NOTE}\n"
+    f"{_DATE_INPUT_NOTE_FULL}\n"
     "\n"
     "Tags accept names (case-insensitive) or IDs; you can mix both.\n"
     "Non-existent names are rejected. Ambiguous names (case-insensitive\n"
@@ -522,71 +558,90 @@ ADD_TASKS_TOOL_DOC = (
 LIST_TASKS_TOOL_DOC = (
     "List and filter tasks. All filters combine with AND logic.\n"
     "\n"
+    f"{_STRIPPING_NOTE}\n"
+    "\n"
+    "include: optional array of field groups, additive on top of defaults.\n"
+    '  - "notes" \u2014 note\n'
+    '  - "metadata" \u2014 added, modified, completionDate, dropDate, url\n'
+    '  - "hierarchy" \u2014 parent, hasChildren\n'
+    '  - "time" \u2014 estimatedMinutes, repetitionRule\n'
+    '  - "*" \u2014 all fields\n'
+    "Default fields (always returned): id, name, availability, order, project, "
+    "dueDate, inheritedDueDate, deferDate, inheritedDeferDate, plannedDate, "
+    "inheritedPlannedDate, flagged, inheritedFlagged, urgency, tags.\n"
+    "\n"
+    f"{_COUNT_ONLY_TIP}\n"
+    "\n"
     f"{_DATE_INPUT_NOTE}\n"
     "\n"
-    "Returns a flat list. Reconstruct hierarchy using parent (direct container) "
-    "or project (containing project at any depth). "
-    "For root tasks both point to the same project; for subtasks they diverge. "
+    "Returns a flat list. Reconstruct hierarchy using order "
+    "(dotted notation, e.g. '2.3.1') and project {{id, name}}. "
+    "Filtered results may have sparse order values because "
+    "non-matching siblings are omitted. "
     'Inbox tasks use project id="$inbox".\n'
     "\n"
-    "order: hierarchical position in dotted notation (e.g. '2.3.1'). "
-    "Filtered results may show sparse values (e.g. '2.1', '2.5') because "
-    "non-matching siblings are omitted.\n"
+    f"{_INHERITED_TASKS_EXPLANATION}\n"
     "\n"
-    "Response: {items, total, hasMore, warnings?}\n"
+    "Response: {{items, total, hasMore, warnings?}}\n"
     "\n"
-    "Fields per task: urgency, availability, flagged, effectiveFlagged, "
-    "dueDate, deferDate, plannedDate, effectiveDueDate, effectiveDeferDate, "
-    "estimatedMinutes, tags [{id, name}], "
-    "parent (project {id, name} or task {id, name}), "
-    "project {id, name}, order, hasChildren, repetitionRule, completionDate.\n"
+    "Filters use inherited (effective) values \u2014 tasks inherit dates and flags "
+    "from parent hierarchy.\n"
     "\n"
-    "parent: direct container — a project or parent task.\n"
-    "project: containing project at any nesting depth, or $inbox.\n"
-    "effective*: inherited from the parent hierarchy when not set directly.\n"
-    "\n"
-    "Filters use effective (inherited) values -- tasks inherit dates and flags\n"
-    "from parent projects/tasks. The effective* output fields show these values.\n"
-    "\n"
-    "completed/dropped filters include those lifecycle states in results\n"
+    "completed/dropped filters include those lifecycle states in results "
     "(excluded by default). All other filters only restrict.\n"
     "The 'soon' shortcut uses your OmniFocus due-soon threshold preference.\n"
     "\n"
-    "availability vs defer: 'available'/'blocked' answers 'can I act on this?'\n"
-    "(covers all four blocking reasons). defer filter answers 'what becomes\n"
-    "available when?' (timing only -- one of four blocking reasons)."
+    "availability vs defer: 'available'/'blocked' answers 'can I act on this?' "
+    "(covers all blocking reasons). "
+    "defer answers 'what becomes available when?' (timing only)."
 )
 
 LIST_PROJECTS_TOOL_DOC = (
     "List and filter projects. All filters combine with AND logic.\n"
     "\n"
+    f"{_STRIPPING_NOTE}\n"
+    "\n"
+    "include: optional array of field groups, additive on top of defaults.\n"
+    '  - "notes" \u2014 note\n'
+    '  - "metadata" \u2014 added, modified, completionDate, dropDate, url\n'
+    '  - "hierarchy" \u2014 hasChildren\n'
+    '  - "time" \u2014 estimatedMinutes, repetitionRule\n'
+    '  - "review" \u2014 nextReviewDate, reviewInterval, lastReviewDate, nextTask\n'
+    '  - "*" \u2014 all fields\n'
+    "Default fields (always returned): id, name, availability, folder, "
+    "dueDate, inheritedDueDate, deferDate, inheritedDeferDate, plannedDate, "
+    "inheritedPlannedDate, flagged, inheritedFlagged, urgency, tags.\n"
+    "\n"
+    f"{_COUNT_ONLY_TIP}\n"
+    "\n"
     f"{_DATE_INPUT_NOTE}\n"
     "\n"
-    "Response: {items, total, hasMore, warnings?}\n"
+    f"{_INHERITED_PROJECTS_EXPLANATION}\n"
     "\n"
-    "Fields per project: urgency, availability, flagged, effectiveFlagged, "
-    "dueDate, deferDate, plannedDate, effectiveDueDate, "
-    "tags [{id, name}], folder {id, name}, nextTask {id, name}, "
-    "reviewInterval, nextReviewDate, hasChildren, repetitionRule, completionDate.\n"
+    "Response: {{items, total, hasMore, warnings?}}\n"
     "\n"
-    "nextTask: first available (unblocked) task — useful for identifying what to work on next.\n"
-    "effective*: inherited from the parent hierarchy when not set directly.\n"
+    "nextTask (in review group): first available (unblocked) task \u2014 "
+    "useful for identifying what to work on next.\n"
     "\n"
-    "Filters use effective (inherited) values -- projects inherit dates and flags\n"
-    "from parent folders. The effective* output fields show these values.\n"
+    "Filters use inherited (effective) values \u2014 projects inherit dates and flags "
+    "from parent folders.\n"
     "\n"
+    "completed/dropped filters include those lifecycle states in results "
+    "(excluded by default). All other filters only restrict.\n"
     "The 'soon' shortcut uses your OmniFocus due-soon threshold preference."
 )
 
 LIST_TAGS_TOOL_DOC = (
     "List and filter tags.\n"
     "\n"
-    "Returns a flat list. Each tag includes a parent field {id, name} "
+    f"{_STRIPPING_NOTE}\n"
+    "\n"
+    "Returns a flat list. Each tag includes a parent field {{id, name}} "
     "that can be used to reconstruct hierarchy.\n"
     "\n"
-    "Response: {items, total, hasMore}\n"
+    "Response: {{items, total, hasMore}}\n"
     "\n"
-    "Fields per tag: availability, childrenAreMutuallyExclusive, parent {id, name}.\n"
+    "Fields per tag: availability, childrenAreMutuallyExclusive, parent {{id, name}}.\n"
     "\n"
     "childrenAreMutuallyExclusive: when true, child tags behave like radio buttons."
 )
@@ -594,18 +649,22 @@ LIST_TAGS_TOOL_DOC = (
 LIST_FOLDERS_TOOL_DOC = (
     "List and filter folders.\n"
     "\n"
-    "Returns a flat list. Each folder includes a parent field {id, name} "
+    f"{_STRIPPING_NOTE}\n"
+    "\n"
+    "Returns a flat list. Each folder includes a parent field {{id, name}} "
     "that can be used to reconstruct hierarchy.\n"
     "\n"
-    "Response: {items, total, hasMore}\n"
+    "Response: {{items, total, hasMore}}\n"
     "\n"
-    "Fields per folder: availability, parent {id, name}."
+    "Fields per folder: availability, parent {{id, name}}."
 )
 
 LIST_PERSPECTIVES_TOOL_DOC = (
     f"List perspectives. {_PERSPECTIVES_BUILTIN_NOTE}\n"
     "\n"
-    "Response: {items, total, hasMore}\n"
+    f"{_STRIPPING_NOTE}\n"
+    "\n"
+    "Response: {{items, total, hasMore}}\n"
     "\n"
     "Key fields per perspective: id, name.\n"
     "The response uses camelCase field names."
@@ -614,7 +673,7 @@ LIST_PERSPECTIVES_TOOL_DOC = (
 EDIT_TASKS_TOOL_DOC = (
     "Edit existing tasks in OmniFocus using patch semantics. Max 1 item per call.\n"
     "\n"
-    f"{_DATE_INPUT_NOTE}\n"
+    f"{_DATE_INPUT_NOTE_FULL}\n"
     "\n"
     "Patch: omit = no change, null = clear, value = update.\n"
     "\n"
