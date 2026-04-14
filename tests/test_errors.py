@@ -8,7 +8,7 @@ consumer modules.
 import ast
 import inspect
 
-from omnifocus_operator import middleware, server
+from omnifocus_operator import middleware
 from omnifocus_operator.agent_messages import errors as err_mod
 from omnifocus_operator.contracts.shared import actions as contracts_common
 from omnifocus_operator.contracts.shared import dates as contracts_shared_dates
@@ -24,6 +24,7 @@ from omnifocus_operator.contracts.use_cases.list import projects as contracts_li
 from omnifocus_operator.contracts.use_cases.list import tags as contracts_list_tags
 from omnifocus_operator.contracts.use_cases.list import tasks as contracts_list_tasks
 from omnifocus_operator.models import repetition_rule as models_repetition_rule
+from omnifocus_operator.server import handlers as server_handlers
 from omnifocus_operator.service import domain as service_domain
 from omnifocus_operator.service import errors as service_errors
 from omnifocus_operator.service import resolve
@@ -33,7 +34,7 @@ from tests.agent_messages_helpers import get_consumer_sources, get_upper_snake_c
 
 _ERROR_CONSUMERS = [
     middleware,
-    server,
+    server_handlers,
     resolve,
     service_domain,
     service_errors,

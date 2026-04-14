@@ -8,8 +8,8 @@ consumer modules.
 import ast
 import inspect
 
-from omnifocus_operator import server
 from omnifocus_operator.agent_messages import warnings as warn_mod
+from omnifocus_operator.server import handlers as server_handlers
 from omnifocus_operator.service import domain as service_domain
 from omnifocus_operator.service import preferences as service_preferences
 from omnifocus_operator.service import resolve_dates as service_resolve_dates
@@ -25,7 +25,7 @@ _WARNING_CONSUMERS = [
     service_domain,
     service_resolve_dates,
     service_preferences,
-    server,
+    server_handlers,
 ]
 
 

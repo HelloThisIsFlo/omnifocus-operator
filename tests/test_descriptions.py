@@ -9,7 +9,6 @@ import ast
 import inspect
 import pathlib
 
-from omnifocus_operator import server as server_mod
 from omnifocus_operator.agent_messages import descriptions as desc_mod
 from omnifocus_operator.contracts.shared import actions as contracts_actions
 from omnifocus_operator.contracts.shared import repetition_rule as contracts_repetition_rule
@@ -36,6 +35,7 @@ from omnifocus_operator.models import repetition_rule as models_repetition_rule
 from omnifocus_operator.models import snapshot as models_snapshot
 from omnifocus_operator.models import tag as models_tag
 from omnifocus_operator.models import task as models_task
+from omnifocus_operator.server import handlers as server_handlers_mod
 from tests.agent_messages_helpers import get_consumer_sources, get_upper_snake_constants
 
 _CONSUMER_MODULES = [
@@ -60,7 +60,7 @@ _CONSUMER_MODULES = [
     contracts_list_tags,
     contracts_list_folders,
     contracts_list_perspectives,
-    server_mod,
+    server_handlers_mod,
 ]
 
 
@@ -272,7 +272,7 @@ _SKIP_FILES = {"__init__.py", "base.py", "_validators.py"}
 # Tool description enforcement tests (DESC-07)
 # ---------------------------------------------------------------------------
 
-_SERVER_PATH = _SRC_ROOT / "server.py"
+_SERVER_PATH = _SRC_ROOT / "server" / "handlers.py"
 
 # Claude Code truncates MCP tool descriptions at this byte limit.
 # https://code.claude.com/docs/en/mcp
