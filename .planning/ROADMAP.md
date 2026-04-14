@@ -35,7 +35,14 @@
   3. Providing both include and only produces a validation error; invalid group names produce validation error; invalid only field names produce a warning (not error)
   4. `limit: 0` on any list tool returns `{items: [], total: N, hasMore: true/false}` with no entities
   5. server.py is a server/ package; projection and stripping are server-layer concerns separate from tool handlers; service layer returns full Pydantic models unchanged
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 53-01-PLAN.md — Inherited rename (effective_* -> inherited_* across codebase)
+- [ ] 53-02-PLAN.md — Server package restructure (server.py -> server/ package)
+- [ ] 53-03-PLAN.md — Stripping + field group config + projection module
+- [ ] 53-04-PLAN.md — Field selection contracts + handler wiring
+- [ ] 53-05-PLAN.md — Description updates + count-only mode
 
 ### Phase 54: Batch Processing
 **Goal**: Agents can create or edit up to 50 tasks in a single call with clear per-item success/failure reporting
@@ -66,6 +73,6 @@ Phases execute in numeric order: 53 -> 54 -> 55
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 53. Response Shaping | 0/TBD | Not started | - |
+| 53. Response Shaping | 0/5 | Planned | - |
 | 54. Batch Processing | 0/TBD | Not started | - |
 | 55. Notes Graduation | 0/TBD | Not started | - |
