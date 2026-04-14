@@ -16,17 +16,17 @@ PLANNED_DATE = (
     "When the user intends to work on this. No urgency signal, no penalty for missing it."
 )
 
-EFFECTIVE_FLAGGED = "Inherited from parent project if not set directly on this task."
+INHERITED_FLAGGED = "Inherited from parent project if not set directly on this task."
 
-EFFECTIVE_DUE_DATE = "Inherited from parent project or task if not set directly on this entity."
+INHERITED_DUE_DATE = "Inherited from parent project or task if not set directly on this entity."
 
-EFFECTIVE_DEFER_DATE = "Inherited from parent project or task if not set directly on this entity."
+INHERITED_DEFER_DATE = "Inherited from parent project or task if not set directly on this entity."
 
-EFFECTIVE_PLANNED_DATE = "Inherited from parent project or task if not set directly on this entity."
+INHERITED_PLANNED_DATE = "Inherited from parent project or task if not set directly on this entity."
 
-EFFECTIVE_DROP_DATE = "Inherited from parent project or task if not set directly on this entity."
+INHERITED_DROP_DATE = "Inherited from parent project or task if not set directly on this entity."
 
-EFFECTIVE_COMPLETION_DATE = (
+INHERITED_COMPLETION_DATE = (
     "Inherited from parent project or task if not set directly on this task."
 )
 

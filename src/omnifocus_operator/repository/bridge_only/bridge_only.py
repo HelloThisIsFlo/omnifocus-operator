@@ -50,16 +50,16 @@ __all__ = ["BridgeOnlyRepository"]
 # ---------------------------------------------------------------------------
 
 _BRIDGE_FIELD_MAP: dict[str, str] = {
-    "due": "effective_due_date",
-    "defer": "effective_defer_date",
-    "planned": "effective_planned_date",
-    "completed": "effective_completion_date",
-    "dropped": "effective_drop_date",
+    "due": "inherited_due_date",
+    "defer": "inherited_defer_date",
+    "planned": "inherited_planned_date",
+    "completed": "inherited_completion_date",
+    "dropped": "inherited_drop_date",
     "added": "added",
     "modified": "modified",
 }
 
-# Project-specific field map: projects use completion_date (not effective_completion_date)
+# Project-specific field map: projects use completion_date (not inherited_completion_date)
 # because projects don't inherit completion dates -- they're always root entities.
 _BRIDGE_PROJECT_FIELD_MAP: dict[str, str] = {
     **_BRIDGE_FIELD_MAP,
@@ -231,7 +231,7 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
             else:
                 items = [t for t in items if t.project.id != inbox_id]
         if query.flagged is not None:
-            items = [t for t in items if t.effective_flagged == query.flagged]
+            items = [t for t in items if t.inherited_flagged == query.flagged]
         if query.project_ids is not None:
             pid_set = set(query.project_ids)
             items = [t for t in items if t.project.id in pid_set]
@@ -282,7 +282,7 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
             fid_set = set(query.folder_ids)
             items = [p for p in items if p.folder is not None and p.folder.id in fid_set]
         if query.flagged is not None:
-            items = [p for p in items if p.effective_flagged == query.flagged]
+            items = [p for p in items if p.inherited_flagged == query.flagged]
         if query.review_due_before is not None:
             items = [
                 p

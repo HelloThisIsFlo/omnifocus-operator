@@ -7,7 +7,7 @@ from typing import Any
 from pydantic import AwareDatetime, Field, field_serializer
 
 from omnifocus_operator.agent_messages.descriptions import (
-    EFFECTIVE_COMPLETION_DATE,
+    INHERITED_COMPLETION_DATE,
     ORDER_FIELD,
     TASK_DOC,
     TASK_PROJECT_DESC,
@@ -22,9 +22,9 @@ class Task(ActionableEntity):
     order: str | None = Field(default=None, description=ORDER_FIELD)
 
     # Dates (task-only -- always null on projects)
-    effective_completion_date: AwareDatetime | None = Field(
+    inherited_completion_date: AwareDatetime | None = Field(
         default=None,
-        description=EFFECTIVE_COMPLETION_DATE,
+        description=INHERITED_COMPLETION_DATE,
     )
 
     # Parent reference (tagged wrapper: project or task)

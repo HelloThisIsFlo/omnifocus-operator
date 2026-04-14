@@ -7,12 +7,12 @@ from pydantic import AwareDatetime, Field, model_validator
 from omnifocus_operator.agent_messages.descriptions import (
     DEFER_DATE,
     DUE_DATE,
-    EFFECTIVE_DEFER_DATE,
-    EFFECTIVE_DROP_DATE,
-    EFFECTIVE_DUE_DATE,
-    EFFECTIVE_FLAGGED,
-    EFFECTIVE_PLANNED_DATE,
     FOLDER_REF_DOC,
+    INHERITED_DEFER_DATE,
+    INHERITED_DROP_DATE,
+    INHERITED_DUE_DATE,
+    INHERITED_FLAGGED,
+    INHERITED_PLANNED_DATE,
     PARENT_REF_DOC,
     PARENT_REF_PROJECT_FIELD,
     PARENT_REF_TASK_FIELD,
@@ -101,8 +101,8 @@ class ActionableEntity(OmniFocusEntity):
 
     # Flags
     flagged: bool
-    effective_flagged: bool = Field(
-        description=EFFECTIVE_FLAGGED,
+    inherited_flagged: bool = Field(
+        description=INHERITED_FLAGGED,
     )
 
     # Dates (all optional, timezone-aware)
@@ -120,22 +120,22 @@ class ActionableEntity(OmniFocusEntity):
     )
     completion_date: AwareDatetime | None = None
     drop_date: AwareDatetime | None = None
-    effective_due_date: AwareDatetime | None = Field(
+    inherited_due_date: AwareDatetime | None = Field(
         default=None,
-        description=EFFECTIVE_DUE_DATE,
+        description=INHERITED_DUE_DATE,
     )
-    effective_defer_date: AwareDatetime | None = Field(
+    inherited_defer_date: AwareDatetime | None = Field(
         default=None,
-        description=EFFECTIVE_DEFER_DATE,
+        description=INHERITED_DEFER_DATE,
     )
-    effective_planned_date: AwareDatetime | None = Field(
+    inherited_planned_date: AwareDatetime | None = Field(
         default=None,
-        description=EFFECTIVE_PLANNED_DATE,
+        description=INHERITED_PLANNED_DATE,
     )
-    # effective_completion_date is only present on Task, not Project
-    effective_drop_date: AwareDatetime | None = Field(
+    # inherited_completion_date is only present on Task, not Project
+    inherited_drop_date: AwareDatetime | None = Field(
         default=None,
-        description=EFFECTIVE_DROP_DATE,
+        description=INHERITED_DROP_DATE,
     )
 
     # Metadata
