@@ -1949,3 +1949,25 @@ class TestResponseShaping:
         assert item["success"] is True
         assert "id" in item
         assert "name" in item
+
+    async def test_list_tasks_limit_zero_returns_count_only(self, client: Any) -> None:
+        """limit: 0 returns empty items with total count (COUNT-01)."""
+        result = await client.call_tool("list_tasks", {"query": {"limit": 0}})
+        sc = result.structured_content
+        assert sc is not None
+        assert sc["items"] == []
+        assert isinstance(sc["total"], int)
+        assert sc["total"] == 2  # seed data has 2 tasks
+        assert sc["hasMore"] is True  # total > 0 means hasMore is True
+        # No entity fields should leak into the response envelope
+        assert set(sc.keys()) <= {"items", "total", "hasMore", "warnings"}
+
+    async def test_list_projects_limit_zero_returns_count_only(self, client: Any) -> None:
+        """limit: 0 on list_projects returns empty items with total count."""
+        result = await client.call_tool("list_projects", {"query": {"limit": 0}})
+        sc = result.structured_content
+        assert sc is not None
+        assert sc["items"] == []
+        assert isinstance(sc["total"], int)
+        assert sc["total"] == 2  # seed data has 2 projects
+        assert sc["hasMore"] is True
