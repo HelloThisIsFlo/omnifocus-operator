@@ -95,13 +95,44 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (populated by roadmapper) | | |
+| STRIP-01 | Phase 53 | Pending |
+| STRIP-02 | Phase 53 | Pending |
+| STRIP-03 | Phase 53 | Pending |
+| RENAME-01 | Phase 53 | Pending |
+| FSEL-01 | Phase 53 | Pending |
+| FSEL-02 | Phase 53 | Pending |
+| FSEL-03 | Phase 53 | Pending |
+| FSEL-04 | Phase 53 | Pending |
+| FSEL-05 | Phase 53 | Pending |
+| FSEL-06 | Phase 53 | Pending |
+| FSEL-07 | Phase 53 | Pending |
+| FSEL-08 | Phase 53 | Pending |
+| FSEL-09 | Phase 53 | Pending |
+| FSEL-10 | Phase 53 | Pending |
+| FSEL-11 | Phase 53 | Pending |
+| FSEL-12 | Phase 53 | Pending |
+| FSEL-13 | Phase 53 | Pending |
+| COUNT-01 | Phase 53 | Pending |
+| BATCH-01 | Phase 54 | Pending |
+| BATCH-02 | Phase 54 | Pending |
+| BATCH-03 | Phase 54 | Pending |
+| BATCH-04 | Phase 54 | Pending |
+| BATCH-05 | Phase 54 | Pending |
+| BATCH-06 | Phase 54 | Pending |
+| BATCH-07 | Phase 54 | Pending |
+| BATCH-08 | Phase 54 | Pending |
+| BATCH-09 | Phase 54 | Pending |
+| NOTE-01 | Phase 55 | Pending |
+| NOTE-02 | Phase 55 | Pending |
+| NOTE-03 | Phase 55 | Pending |
+| NOTE-04 | Phase 55 | Pending |
+| NOTE-05 | Phase 55 | Pending |
 
 **Coverage:**
 - v1.4 requirements: 29 total
-- Mapped to phases: 0
-- Unmapped: 29 ⚠️
+- Mapped to phases: 29
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-14*
-*Last updated: 2026-04-14 after initial definition*
+*Last updated: 2026-04-14 after roadmap revision (merged Phases 53+54 into Phase 53)*

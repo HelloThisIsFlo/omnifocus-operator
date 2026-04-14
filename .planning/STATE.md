@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Response Shaping, Batch Processing & Notes Graduation
 status: active
-stopped_at: Defining requirements
+stopped_at: Roadmap revised (3 phases), ready to plan Phase 53
 last_updated: "2026-04-14T00:00:00.000Z"
 last_activity: 2026-04-14
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,14 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-14)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Defining requirements for v1.4
+**Current focus:** v1.4 Phase 53 - Response Shaping
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 53 (1 of 3) — Response Shaping
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-14 — Milestone v1.4 started
+Status: Ready to plan
+Last activity: 2026-04-14 — Roadmap revised for v1.4 (merged old 53+54 into Phase 53)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -57,7 +59,7 @@ Carried forward from v1.3.3:
 7. Add built-in perspectives to list_perspectives (repository — needs design discussion)
 8. Return full inbox hierarchy from inInbox query (repository)
 9. Add path field for hierarchical entities (models)
-10. Fix OrdinalWeekdaySpec → OrdinalWeekday cross-layer coercion in edit pipeline (service)
+10. Fix OrdinalWeekdaySpec -> OrdinalWeekday cross-layer coercion in edit pipeline (service)
 11. Golden master re-capture required after Phase 42 mapper rewrites (human-only per GOLD-01)
 
 ### Blockers/Concerns
@@ -70,6 +72,6 @@ Cleared at milestone boundary. See v1.3.3-ROADMAP.md for history.
 
 ## Session Continuity
 
-Last activity: 2026-04-14 - Milestone v1.4 started
-Stopped at: Defining requirements
+Last activity: 2026-04-14 - Roadmap revised for v1.4 (3 phases)
+Stopped at: Roadmap revised (3 phases), ready to plan Phase 53
 Resume file: —
