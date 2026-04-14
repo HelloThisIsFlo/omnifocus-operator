@@ -171,9 +171,9 @@ This todo is designed for **multiple sessions**. Each phase ends with a checkpoi
   - Convert relative links to absolute GitHub URLs
   - Verify PyPI markdown compatibility
   - **Note**: Landing page (`docs/index.html`) refreshed alongside README — same numbers, install commands, tools section, roadmap.
-- [ ] CONTRIBUTING.md refresh (experienced dev audience, concise)
-- [ ] CHANGELOG.md creation (Keep a Changelog format, from milestone summaries)
-- [ ] **CHECKPOINT**: All docs ready for publish.
+- [x] CONTRIBUTING.md refresh (experienced dev audience, concise)
+- [x] CHANGELOG.md creation (Keep a Changelog format, from milestone summaries)
+- [x] **CHECKPOINT**: All docs ready for publish.
 
 ### Phase 3: Build Validation & Pre-Publish Scan
 > **Checkpoint**: Verify the package before it goes to PyPI
