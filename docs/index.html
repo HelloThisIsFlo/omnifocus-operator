@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OmniFocus Operator — The OmniFocus MCP Server Your Agent Can Depend On</title>
-<meta name="description" content="Production-grade MCP server for OmniFocus. 46ms reads, 534 tests, agent-first design. The last OmniFocus MCP server you'll ever need.">
+<meta name="description" content="Production-grade MCP server for OmniFocus. 46ms reads, 2,086 tests, agent-first design. The last OmniFocus MCP server you'll ever need.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -1299,6 +1299,11 @@ nav.scrolled {
   background: var(--bg-card);
   border-color: var(--text-muted);
 }
+.roadmap-dot.current {
+  background: var(--accent-gold-soft);
+  border-color: var(--accent-gold);
+  animation: pulse-dot 2s infinite;
+}
 .roadmap-version {
   font-family: var(--font-mono);
   font-size: 14px;
@@ -1307,6 +1312,7 @@ nav.scrolled {
   min-width: 50px;
 }
 .roadmap-version.done { color: var(--accent-green); }
+.roadmap-version.current { color: var(--accent-gold); }
 .roadmap-version.planned { color: var(--text-muted); }
 .roadmap-desc {
   font-size: 14px;
@@ -1444,13 +1450,13 @@ footer p {
     <div class="hero-content reveal">
       <div class="hero-badge">
         <span class="hero-badge-dot"></span>
-        v1.2 — Writes &amp; Lookups
+        v1.4 — Response Shaping
       </div>
       <h1>The OmniFocus MCP server your agent can <em>actually</em> depend on.</h1>
-      <p class="hero-sub">Production-grade infrastructure for AI agents. 46ms reads. 534 tests. Your tasks deserve a bridge that won't break under pressure.</p>
+      <p class="hero-sub">Production-grade infrastructure for AI agents. 46ms reads. 2,086 tests. Your tasks deserve a bridge that won't break under pressure.</p>
       <div class="hero-install" onclick="copyInstall(this)" title="Click to copy">
         <span class="hero-install-prefix">$</span>
-        <span>pipx install git+https://github.com/HelloThisIsFlo/omnifocus-operator.git</span>
+        <span>uvx omnifocus-operator</span>
         <span class="hero-install-copy">Copy</span>
       </div>
     </div>
@@ -1462,11 +1468,11 @@ footer p {
   <div class="container">
     <div class="stats-inner reveal">
       <div class="stat-item">
-        <div class="stat-value">534</div>
+        <div class="stat-value">2,086</div>
         <div class="stat-label">Tests</div>
       </div>
       <div class="stat-item">
-        <div class="stat-value">94%</div>
+        <div class="stat-value">97%</div>
         <div class="stat-label">Coverage</div>
       </div>
       <div class="stat-item">
@@ -1474,8 +1480,8 @@ footer p {
         <div class="stat-label">Full Read</div>
       </div>
       <div class="stat-item">
-        <div class="stat-value">1</div>
-        <div class="stat-label">Dependency</div>
+        <div class="stat-value">11</div>
+        <div class="stat-label">Tools</div>
       </div>
       <div class="stat-item">
         <div class="stat-value">3</div>
@@ -1509,7 +1515,7 @@ footer p {
       <div class="step reveal">
         <div class="step-number">01</div>
         <h3>Install</h3>
-        <p>One command. No config files. No environment variables. Just <code>pipx install</code> and you're done.</p>
+        <p>One command. No config files. No environment variables. Just <code>uvx</code> and you're done.</p>
       </div>
       <div class="step reveal" style="transition-delay: 0.1s">
         <div class="step-number">02</div>
@@ -1728,7 +1734,7 @@ footer p {
   <div class="container">
     <div class="reveal">
       <div class="section-label">Capabilities</div>
-      <h2 class="section-title">Six tools. Full control.</h2>
+      <h2 class="section-title">Eleven tools. Full control.</h2>
       <p class="section-subtitle">All read tools are idempotent. Write tools support tags, dates, flags, notes, estimated duration, and task movement.</p>
     </div>
     <div class="tools-grid reveal">
@@ -1761,6 +1767,31 @@ footer p {
         <div class="tool-name">edit_tasks</div>
         <span class="tool-type write">Write</span>
         <div class="tool-desc">Edit tasks with patch semantics</div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-name">list_tasks</div>
+        <span class="tool-type read">Read</span>
+        <div class="tool-desc">Filter by date, flags, tags, project — with pagination</div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-name">list_projects</div>
+        <span class="tool-type read">Read</span>
+        <div class="tool-desc">Filter by status, folder, review schedule, flags</div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-name">list_tags</div>
+        <span class="tool-type read">Read</span>
+        <div class="tool-desc">List tags with parent hierarchy</div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-name">list_folders</div>
+        <span class="tool-type read">Read</span>
+        <div class="tool-desc">List folders with parent hierarchy</div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-name">list_perspectives</div>
+        <span class="tool-type read">Read</span>
+        <div class="tool-desc">List custom perspectives</div>
       </div>
     </div>
 
@@ -1882,21 +1913,21 @@ footer p {
           </tr>
           <tr>
             <td>Tools</td>
-            <td class="ours">6</td>
+            <td class="ours">11</td>
             <td class="dim">10</td>
             <td class="dim">17</td>
             <td class="dim">13</td>
           </tr>
           <tr>
             <td>Automated Tests</td>
-            <td class="ours">534</td>
+            <td class="ours">2,086</td>
             <td class="dim">0</td>
             <td class="dim">12</td>
             <td class="dim">~4 suites</td>
           </tr>
           <tr>
             <td>Code Coverage</td>
-            <td class="ours">94%</td>
+            <td class="ours">97%</td>
             <td class="dim">—</td>
             <td class="dim">—</td>
             <td class="dim">—</td>
@@ -1929,13 +1960,6 @@ footer p {
             <td class="dim"><span class="cross">—</span></td>
             <td class="dim"><span class="cross">—</span></td>
           </tr>
-          <tr>
-            <td>Runtime Dependencies</td>
-            <td class="ours">1</td>
-            <td class="dim">Multiple</td>
-            <td class="dim">Multiple</td>
-            <td class="dim">Multiple</td>
-          </tr>
         </tbody>
       </table>
     </div>
@@ -1948,15 +1972,15 @@ footer p {
     <div class="reveal">
       <div class="section-label">Quality</div>
       <h2 class="section-title">You can trust it.</h2>
-      <p class="section-subtitle">466 Python tests + 68 JavaScript tests. Strict mypy with Pydantic plugin. Ruff linting across 9 rule categories. The build fails below 80% coverage.</p>
+      <p class="section-subtitle">2,086 tests across Python and JavaScript. Strict mypy with Pydantic plugin. Ruff linting across 9 rule categories. The build fails below 80% coverage.</p>
     </div>
     <div class="testing-stats reveal">
       <div class="test-stat">
-        <div class="test-stat-value">534</div>
+        <div class="test-stat-value">2,086</div>
         <div class="test-stat-label">Total tests</div>
       </div>
       <div class="test-stat">
-        <div class="test-stat-value">94%</div>
+        <div class="test-stat-value">97%</div>
         <div class="test-stat-label">Coverage</div>
       </div>
       <div class="test-stat">
@@ -2012,19 +2036,24 @@ footer p {
         <div class="roadmap-desc">Writes &amp; Lookups — add/edit tasks, get-by-ID tools</div>
       </div>
       <div class="roadmap-item">
-        <div class="roadmap-dot planned"></div>
-        <div class="roadmap-version planned">v1.3</div>
-        <div class="roadmap-desc">Read Tools — SQL filtering, search, list/count</div>
+        <div class="roadmap-dot done"></div>
+        <div class="roadmap-version done">v1.3</div>
+        <div class="roadmap-desc">Read Tools — SQL filtering, list/count, 5 new tools</div>
       </div>
       <div class="roadmap-item">
-        <div class="roadmap-dot planned"></div>
-        <div class="roadmap-version planned">v1.4</div>
-        <div class="roadmap-desc">Output &amp; UI — perspectives, TaskPaper, field selection</div>
+        <div class="roadmap-dot current"></div>
+        <div class="roadmap-version current">v1.4</div>
+        <div class="roadmap-desc">Response Shaping &amp; Batch Processing</div>
       </div>
       <div class="roadmap-item">
         <div class="roadmap-dot planned"></div>
         <div class="roadmap-version planned">v1.5</div>
-        <div class="roadmap-desc">Production Hardening — retry, crash recovery, fuzzy search</div>
+        <div class="roadmap-desc">UI &amp; Perspectives — perspective switching, deep links</div>
+      </div>
+      <div class="roadmap-item">
+        <div class="roadmap-dot planned"></div>
+        <div class="roadmap-version planned">v1.6</div>
+        <div class="roadmap-desc">Production Hardening — retry, crash recovery, serial execution</div>
       </div>
     </div>
   </div>
@@ -2038,13 +2067,13 @@ footer p {
       <p class="final-sub">macOS, OmniFocus 4, Python 3.12+. That's all you need.</p>
       <div class="final-install" onclick="copyInstall(this)" title="Click to copy">
         <span class="hero-install-prefix">$</span>
-        <span>pipx install git+https://github.com/HelloThisIsFlo/omnifocus-operator.git</span>
+        <span>uvx omnifocus-operator</span>
         <span class="hero-install-copy">Copy</span>
       </div>
       <div class="final-links">
         <a href="https://github.com/HelloThisIsFlo/omnifocus-operator">GitHub</a>
         <a href="https://github.com/HelloThisIsFlo/omnifocus-operator/issues">Issues</a>
-        <a href="https://github.com/HelloThisIsFlo/omnifocus-operator/blob/main/LICENSE">MIT License</a>
+        <a href="https://pypi.org/project/omnifocus-operator/">PyPI</a>
       </div>
     </div>
   </div>
@@ -2060,7 +2089,7 @@ footer p {
 <script>
 // ─── Copy to clipboard ──────────────────────────────
 function copyInstall(el) {
-  const text = 'pipx install git+https://github.com/HelloThisIsFlo/omnifocus-operator.git';
+  const text = 'uvx omnifocus-operator';
   navigator.clipboard.writeText(text).then(() => {
     el.classList.add('copied');
     const btn = el.querySelector('.hero-install-copy');

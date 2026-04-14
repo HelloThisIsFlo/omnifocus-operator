@@ -140,36 +140,37 @@ This todo is designed for **multiple sessions**. Each phase ends with a checkpoi
 ### Phase 1: Account & Build Config
 > **Checkpoint**: Flo does these steps himself, agent guides
 
-- [ ] Create PyPI account at pypi.org with `flo@kempenich.ai`
-- [ ] Enable 2FA on PyPI account (required)
-- [ ] Configure trusted publisher on PyPI for `omnifocus-operator`:
+- [x] Create PyPI account at pypi.org with `flo@kempenich.ai`
+- [x] Enable 2FA on PyPI account (required)
+- [x] Configure trusted publisher on PyPI for `omnifocus-operator`:
   - Owner: `HelloThisIsFlo`
   - Repository: `omnifocus-operator`
   - Workflow: `publish.yml`
   - Environment: (optional, can use default)
-- [ ] Add `hatch-vcs` to build dependencies in pyproject.toml
-- [ ] Switch to dynamic versioning (remove hardcoded version from pyproject.toml and `__init__.py`)
-- [ ] Update `__init__.py` to use `importlib.metadata.version("omnifocus-operator")`
-- [ ] Update pyproject.toml metadata:
+- [x] Add `hatch-vcs` to build dependencies in pyproject.toml
+- [x] Switch to dynamic versioning (remove hardcoded version from pyproject.toml and `__init__.py`)
+- [x] Update `__init__.py` to use `importlib.metadata.version("omnifocus-operator")`
+- [x] Update pyproject.toml metadata:
   - `license = "Proprietary"`
   - Author name + email
   - Classifiers (Python 3.12+, macOS, Framework :: FastMCP, etc.)
   - Keywords
   - URLs (homepage → landing page, repository, issues, documentation)
-- [ ] Add platform check in `__main__.py` — non-macOS prints clear error and exits
-- [ ] Configure explicit wheel exclusions in pyproject.toml
-- [ ] **CHECKPOINT**: Build config complete. Prose work next.
+- [x] Add platform check in `__main__.py` — non-macOS prints clear error and exits
+- [x] Configure explicit wheel exclusions in pyproject.toml
+- [x] **CHECKPOINT**: Build config complete. Prose work next.
 
 ### Phase 2: Docs Refresh (separate session recommended)
 > **Agent instruction**: "The README, CONTRIBUTING, and CHANGELOG refresh is best done in a focused session. Go do that separately and come back when you're ready for Phase 3."
 
-- [ ] Full README refresh:
+- [x] Full README refresh:
   - Update test count and coverage badges
   - Update license badge (MIT → Proprietary or remove)
   - Update roadmap status
   - Update install instructions (show uvx command)
   - Convert relative links to absolute GitHub URLs
   - Verify PyPI markdown compatibility
+  - **Note**: Landing page (`docs/index.html`) refreshed alongside README — same numbers, install commands, tools section, roadmap.
 - [ ] CONTRIBUTING.md refresh (experienced dev audience, concise)
 - [ ] CHANGELOG.md creation (Keep a Changelog format, from milestone summaries)
 - [ ] **CHECKPOINT**: All docs ready for publish.
