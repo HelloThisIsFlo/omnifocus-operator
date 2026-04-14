@@ -20,6 +20,7 @@
 ## Phases
 
 - [x] **Phase 53: Response Shaping** - Server package restructure, response stripping, inherited rename, field selection, count-only mode (completed 2026-04-14)
+- [ ] **Phase 53.1: True Inherited Fields** - Strip self-echoed inherited fields from tasks, remove from projects (INSERTED)
 - [ ] **Phase 54: Batch Processing** - Multi-item writes with best-effort/fail-fast semantics
 - [ ] **Phase 55: Notes Graduation** - Notes move to actions block with append/replace semantics
 
@@ -43,6 +44,21 @@ Plans:
 - [x] 53-03-PLAN.md — Stripping + field group config + projection module
 - [x] 53-04-PLAN.md — Field selection contracts + handler wiring
 - [x] 53-05-PLAN.md — Description updates + count-only mode
+
+### Phase 53.1: True Inherited Fields (INSERTED)
+
+**Goal:** inherited* fields on tasks reflect true inheritance (ancestor set the value), not OmniFocus self-echoes; projects have no inherited fields (structurally impossible)
+**Requirements**: INHERIT-01, INHERIT-02, INHERIT-03, INHERIT-04
+**Depends on:** Phase 53
+**Success Criteria** (what must be TRUE):
+  1. Task with plannedDate but no ancestor setting plannedDate shows no inheritedPlannedDate in any response
+  2. Task under a flagged project (no flagged ancestor tasks) shows inheritedFlagged in response
+  3. Projects in get_all, get_project, and list_projects responses have zero inherited* fields
+  4. get_all, get_task, and list_tasks all apply true inheritance processing
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 53.1 to break down)
 
 ### Phase 54: Batch Processing
 **Goal**: Agents can create or edit up to 50 tasks in a single call with clear per-item success/failure reporting
@@ -69,10 +85,11 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 53 -> 54 -> 55
+Phases execute in numeric order: 53 -> 53.1 -> 54 -> 55
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 53. Response Shaping | 5/5 | Complete    | 2026-04-14 |
+| 53.1. True Inherited Fields | 0/TBD | Not started | - |
 | 54. Batch Processing | 0/TBD | Not started | - |
 | 55. Notes Graduation | 0/TBD | Not started | - |

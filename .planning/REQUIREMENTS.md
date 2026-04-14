@@ -33,6 +33,13 @@ Requirements for milestone v1.4: Response Shaping, Batch Processing & Notes Grad
 - [ ] **FSEL-12**: Service layer returns full Pydantic models; projection and stripping are server-layer concerns
 - [ ] **FSEL-13**: server.py becomes a server/ package containing existing server and middleware modules plus a new projection module
 
+### True Inherited Fields
+
+- [ ] **INHERIT-01**: inherited* fields on tasks only appear when truly inherited from an ancestor (parent task or containing project) — self-echoes are stripped
+- [ ] **INHERIT-02**: Projects never have inherited* fields in any response (task-only — folders cannot set dates/flags)
+- [ ] **INHERIT-03**: Walk covers all 6 inherited field pairs: flagged, dueDate, deferDate, plannedDate, dropDate, completionDate
+- [ ] **INHERIT-04**: True inheritance applies to get_all, get_task, and list_tasks responses
+
 ### Count-Only
 
 - [ ] **COUNT-01**: limit: 0 returns count-only response ({items: [], total: N, hasMore: <total > 0>})
@@ -127,10 +134,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | NOTE-03 | Phase 55 | Pending |
 | NOTE-04 | Phase 55 | Pending |
 | NOTE-05 | Phase 55 | Pending |
+| INHERIT-01 | Phase 53.1 | Pending |
+| INHERIT-02 | Phase 53.1 | Pending |
+| INHERIT-03 | Phase 53.1 | Pending |
+| INHERIT-04 | Phase 53.1 | Pending |
 
 **Coverage:**
-- v1.4 requirements: 29 total
-- Mapped to phases: 29
+- v1.4 requirements: 33 total
+- Mapped to phases: 33
 - Unmapped: 0
 
 ---
