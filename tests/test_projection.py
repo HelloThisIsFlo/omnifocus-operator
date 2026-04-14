@@ -18,10 +18,11 @@ from omnifocus_operator.server.projection import (
     project_entity,
     resolve_fields,
     shape_list_response,
+    shape_list_response_strip_only,
     strip_all_entities,
     strip_entity,
 )
-from tests.conftest import make_model_project_dict, make_model_task_dict
+from tests.conftest import make_model_project_dict, make_model_tag_dict, make_model_task_dict
 
 
 class TestStripping:
@@ -347,6 +348,40 @@ class TestShapeListResponse:
         assert "service warning" in envelope["warnings"]
         assert "result warning" in envelope["warnings"]
         assert any("mutually exclusive" in w.lower() for w in envelope["warnings"])
+
+
+class TestShapeListResponseStripOnly:
+    """Unit tests for shape_list_response_strip_only (list_tags/folders/perspectives)."""
+
+    def test_strips_items_and_preserves_envelope(self) -> None:
+        from omnifocus_operator.contracts.use_cases.list.common import ListResult
+        from omnifocus_operator.models.tag import Tag
+
+        tag = Tag.model_validate(make_model_tag_dict(id="tag-1", name="Work"))
+        result = ListResult[Tag](items=[tag], total=1, has_more=False, warnings=["test warning"])
+        envelope = shape_list_response_strip_only(result)
+
+        assert envelope["total"] == 1
+        assert envelope["hasMore"] is False
+        assert envelope["warnings"] == ["test warning"]
+        assert len(envelope["items"]) == 1
+        item = envelope["items"][0]
+        assert item["id"] == "tag-1"
+        assert item["name"] == "Work"
+        assert item["availability"] == "available"
+        # False is stripped
+        assert "childrenAreMutuallyExclusive" not in item
+        # None is stripped
+        assert "parent" not in item
+
+    def test_no_warnings_omitted_from_envelope(self) -> None:
+        from omnifocus_operator.contracts.use_cases.list.common import ListResult
+        from omnifocus_operator.models.tag import Tag
+
+        tag = Tag.model_validate(make_model_tag_dict(id="tag-1", name="Work"))
+        result = ListResult[Tag](items=[tag], total=1, has_more=False)
+        envelope = shape_list_response_strip_only(result)
+        assert "warnings" not in envelope
 
 
 class TestFieldGroupSync:

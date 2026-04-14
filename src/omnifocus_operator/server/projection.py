@@ -216,3 +216,18 @@ def shape_list_response(
         envelope["warnings"] = all_warnings
 
     return envelope
+
+
+def shape_list_response_strip_only(
+    result: ListResult[T],
+) -> dict[str, Any]:
+    """Strip items only (no field selection). For list_tags, list_folders, list_perspectives."""
+    items = [strip_entity(item.model_dump(by_alias=True)) for item in result.items]
+    envelope: dict[str, Any] = {
+        "items": items,
+        "total": result.total,
+        "hasMore": result.has_more,
+    }
+    if result.warnings:
+        envelope["warnings"] = result.warnings
+    return envelope

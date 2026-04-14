@@ -7,6 +7,7 @@ from typing import Literal
 
 from pydantic import Field, field_validator, model_validator
 
+from omnifocus_operator.agent_messages import errors as err
 from omnifocus_operator.agent_messages.descriptions import (
     ADDED_FILTER_DESC,
     COMPLETED_FILTER_DESC,
@@ -102,8 +103,7 @@ class ListTasksQuery(QueryModel):
         invalid = [g for g in v if g not in _TASK_FIELD_GROUPS_VALID]
         if invalid:
             raise ValueError(
-                f"Unknown field group(s): {', '.join(repr(g) for g in invalid)}. "
-                f"Valid groups: notes, metadata, hierarchy, time, *"
+                err.INCLUDE_INVALID_TASK.format(groups=", ".join(repr(g) for g in invalid))
             )
         return v
 

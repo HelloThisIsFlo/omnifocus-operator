@@ -324,11 +324,17 @@ class TestTOOL03OutputSchema:
             get_all = next(t for t in tools if t.name == "get_all")
             assert get_all.outputSchema is not None
 
-    async def test_output_schema_uses_camelcase(
+    async def test_write_tools_retain_typed_output_schema(
         self,
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Any,
     ) -> None:
+        """Write tools (add_tasks, edit_tasks) still return typed models with structured outputSchema.
+
+        Read tools return dict[str, Any] after response shaping (D-09), so their
+        outputSchema is generic. This is an accepted trade-off per D-09:
+        "MCP clients strip outputSchema anyway; available fields documented in tool description."
+        """
         bridge = SimulatorBridge(ipc_dir=tmp_path)
         repo = BridgeOnlyRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
         monkeypatch.setattr(
@@ -340,24 +346,15 @@ class TestTOOL03OutputSchema:
 
         async with Client(server) as client:
             tools = await client.list_tools()
-            get_all = next(t for t in tools if t.name == "get_all")
-            schema = get_all.outputSchema
-            assert schema is not None
-
-            # Top-level properties should have the 5 collection names
-            props = schema.get("properties", {})
-            assert "tasks" in props
-            assert "projects" in props
-
-            # Check nested Task schema uses camelCase (e.g. dueDate, inheritedFlagged).
-            # FastMCP v3 inlines definitions rather than using $defs references,
-            # so look for Task properties in the tasks array items schema.
-            tasks_schema = props["tasks"]
-            task_props = tasks_schema.get("items", {}).get("properties", {})
-            assert "dueDate" in task_props, (
-                f"Expected camelCase 'dueDate', got: {list(task_props.keys())}"
-            )
-            assert "inheritedFlagged" in task_props
+            add = next(t for t in tools if t.name == "add_tasks")
+            edit = next(t for t in tools if t.name == "edit_tasks")
+            # Write tools still have typed outputSchema with properties
+            add_props = _extract_all_property_keys(add.outputSchema or {})
+            assert "success" in add_props
+            assert "id" in add_props
+            edit_props = _extract_all_property_keys(edit.outputSchema or {})
+            assert "success" in edit_props
+            assert "id" in edit_props
 
 
 # ---------------------------------------------------------------------------
@@ -787,9 +784,9 @@ class TestEditTasks:
         )
         assert edit_result.structured_content["result"][0]["success"] is True  # type: ignore[index]
 
-        # Verify due date is cleared
+        # Verify due date is cleared (stripped from response — absent field = not set)
         get_result = await client.call_tool("get_task", {"id": task_id})
-        assert get_result.structured_content["dueDate"] is None  # type: ignore[index]
+        assert "dueDate" not in get_result.structured_content  # type: ignore[index]
 
     # -- Tag replace --
 
@@ -1276,9 +1273,9 @@ class TestEditTasksRepetitionRule:
         items = edit_result.structured_content["result"]
         assert items[0]["success"] is True
 
-        # Verify it was cleared
+        # Verify it was cleared (stripped from response — absent field = not set)
         get_result = await client.call_tool("get_task", {"id": task_id})
-        assert get_result.structured_content["repetitionRule"] is None
+        assert "repetitionRule" not in get_result.structured_content
 
     async def test_edit_tasks_repetition_partial_update(self, client: Any) -> None:
         """Partial update changes only the specified root field."""
@@ -1841,3 +1838,114 @@ class TestListPerspectives:
         assert tool.annotations is not None
         assert tool.annotations.readOnlyHint is True
         assert tool.annotations.idempotentHint is True
+
+
+# ---------------------------------------------------------------------------
+# SHAPING: Response stripping and field selection integration tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.snapshot(**_LIST_SEED_DATA)
+class TestResponseShaping:
+    """Integration tests for response stripping and field selection (D-03, D-09)."""
+
+    async def test_get_task_strips_null_fields(self, client: Any) -> None:
+        """get_task returns stripped entity — null/false/empty values absent."""
+        result = await client.call_tool("get_task", {"id": "t-normal"})
+        sc = result.structured_content
+        assert sc is not None
+        # Normal task has flagged=False, dueDate=None — both stripped
+        assert "dueDate" not in sc
+        assert "flagged" not in sc
+        # But id and name are always present
+        assert sc["id"] == "t-normal"
+        assert sc["name"] == "Normal Task"
+
+    async def test_get_all_strips_entities(self, client: Any) -> None:
+        """get_all strips null/false/empty from each entity in collections."""
+        result = await client.call_tool("get_all")
+        sc = result.structured_content
+        assert sc is not None
+        tasks = sc["tasks"]
+        assert len(tasks) >= 1
+        normal = next(t for t in tasks if t["id"] == "t-normal")
+        # Stripped: flagged=False, dueDate=None, tags=[], note=""
+        assert "dueDate" not in normal
+        assert "flagged" not in normal
+
+    async def test_list_tasks_strips_items(self, client: Any) -> None:
+        """list_tasks strips null/false/empty from each item."""
+        result = await client.call_tool("list_tasks", {"query": {}})
+        sc = result.structured_content
+        assert sc is not None
+        items = sc["items"]
+        normal = next(i for i in items if i["id"] == "t-normal")
+        assert "dueDate" not in normal
+        assert "flagged" not in normal
+
+    async def test_list_tasks_with_include_notes(self, client: Any) -> None:
+        """list_tasks with include=['notes'] returns note field (when set)."""
+        result = await client.call_tool("list_tasks", {"query": {"include": ["notes"]}})
+        sc = result.structured_content
+        assert sc is not None
+        # items exist and have envelope structure
+        assert "items" in sc
+        assert "total" in sc
+        assert "hasMore" in sc
+
+    async def test_list_tasks_with_only_returns_selected_fields(self, client: Any) -> None:
+        """list_tasks with only=['name'] returns only id and name."""
+        result = await client.call_tool("list_tasks", {"query": {"only": ["name"]}})
+        sc = result.structured_content
+        assert sc is not None
+        items = sc["items"]
+        assert len(items) >= 1
+        for item in items:
+            # id is always included; name was requested
+            assert "id" in item
+            assert "name" in item
+            # No other fields should be present
+            non_id_name = {k for k in item if k not in ("id", "name")}
+            assert not non_id_name, f"Unexpected fields with only=['name']: {non_id_name}"
+
+    async def test_list_tasks_with_include_star_returns_all_fields(self, client: Any) -> None:
+        """list_tasks with include=['*'] returns all fields (stripped)."""
+        result = await client.call_tool(
+            "list_tasks", {"query": {"include": ["*"], "flagged": True}}
+        )
+        sc = result.structured_content
+        assert sc is not None
+        items = sc["items"]
+        assert len(items) >= 1
+        flagged = items[0]
+        # With *, all field groups are included — flagged task should have flagged=True
+        assert flagged["flagged"] is True
+
+    async def test_list_tasks_invalid_include_returns_error(self, client: Any) -> None:
+        """list_tasks with invalid include group produces validation error."""
+        with pytest.raises(ToolError, match="Unknown field group"):
+            await client.call_tool("list_tasks", {"query": {"include": ["bogus"]}})
+
+    async def test_list_tags_strips_items(self, client: Any) -> None:
+        """list_tags strips null/false/empty from each item."""
+        result = await client.call_tool("list_tags", {"query": {}})
+        sc = result.structured_content
+        assert sc is not None
+        assert "items" in sc
+        assert "total" in sc
+        for item in sc["items"]:
+            assert "id" in item
+            assert "name" in item
+
+    async def test_add_tasks_returns_unmodified(self, client: Any) -> None:
+        """add_tasks returns result as-is — no stripping applied to write results."""
+        result = await client.call_tool("add_tasks", {"items": [{"name": "Test Shaping"}]})
+        sc = result.structured_content
+        assert sc is not None
+        # Write results are wrapped in {"result": [...]}
+        items = sc["result"]
+        assert len(items) == 1
+        item = items[0]
+        assert item["success"] is True
+        assert "id" in item
+        assert "name" in item

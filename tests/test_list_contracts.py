@@ -451,11 +451,12 @@ class TestRepoQueryFieldParity:
         # - Query has project/tags, RepoQuery has project_ids/tag_ids
         # - Query has 7 date fields (due, defer, planned, completed, dropped, added, modified)
         #   RepoQuery has 14 resolved _after/_before datetime fields
+        # - Query has include/only (server-layer presentation concern, not passed to repo)
         _date_fields = {"due", "defer", "planned", "completed", "dropped", "added", "modified"}
         _date_repo_fields = {
             f"{name}_{bound}" for name in _date_fields for bound in ("after", "before")
         }
-        query_only = {"project", "tags"} | _date_fields
+        query_only = {"project", "tags", "include", "only"} | _date_fields
         repo_only = {"project_ids", "tag_ids"} | _date_repo_fields
         assert query_fields - query_only == repo_fields - repo_only
 
@@ -475,11 +476,12 @@ class TestRepoQueryFieldParity:
         # - Query has folder/review_due_within, RepoQuery has folder_ids/review_due_before
         # - Query has 7 date fields (due, defer, planned, completed, dropped, added, modified)
         #   RepoQuery has 14 resolved _after/_before datetime fields
+        # - Query has include/only (server-layer presentation concern, not passed to repo)
         _date_fields = {"due", "defer", "planned", "completed", "dropped", "added", "modified"}
         _date_repo_fields = {
             f"{name}_{bound}" for name in _date_fields for bound in ("after", "before")
         }
-        query_only = {"folder", "review_due_within"} | _date_fields
+        query_only = {"folder", "review_due_within", "include", "only"} | _date_fields
         repo_only = {"folder_ids", "review_due_before"} | _date_repo_fields
         assert query_fields - query_only == repo_fields - repo_only
 

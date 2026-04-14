@@ -222,3 +222,13 @@ DATE_INPUT_INVALID_TYPE = (
     "Input should be {shortcuts}, "
     'or a date filter like {{"this": "d"}}, {{"last": "3d"}}, {{"next": "2w"}}'
 )
+
+# --- Validation: Field Selection ---
+
+INCLUDE_INVALID_TASK = (
+    "Unknown field group(s): {groups}. Valid groups: notes, metadata, hierarchy, time, *"
+)
+
+INCLUDE_INVALID_PROJECT = (
+    "Unknown field group(s): {groups}. Valid groups: notes, metadata, hierarchy, time, review, *"
+)

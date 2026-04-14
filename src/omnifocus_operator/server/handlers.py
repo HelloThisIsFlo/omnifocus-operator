@@ -7,6 +7,7 @@ All 11 MCP tool definitions live here.  ``_register_tools`` is called by
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from fastmcp import Context, FastMCP
 from mcp.types import (
@@ -35,6 +36,12 @@ from omnifocus_operator.agent_messages.errors import (
     ADD_TASKS_BATCH_LIMIT,
     EDIT_TASKS_BATCH_LIMIT,
 )
+from omnifocus_operator.config import (
+    PROJECT_DEFAULT_FIELDS,
+    PROJECT_FIELD_GROUPS,
+    TASK_DEFAULT_FIELDS,
+    TASK_FIELD_GROUPS,
+)
 from omnifocus_operator.contracts.use_cases.add.tasks import (  # noqa: TC001 — FastMCP resolves param annotations at runtime
     AddTaskCommand,
     AddTaskResult,
@@ -44,7 +51,7 @@ from omnifocus_operator.contracts.use_cases.edit.tasks import (  # noqa: TC001
     EditTaskResult,
 )
 from omnifocus_operator.contracts.use_cases.list.common import (
-    ListResult,  # noqa: TC001 — FastMCP needs runtime
+    ListResult,
 )
 from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersQuery  # noqa: TC001
 from omnifocus_operator.contracts.use_cases.list.perspectives import (
@@ -53,13 +60,19 @@ from omnifocus_operator.contracts.use_cases.list.perspectives import (
 from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsQuery  # noqa: TC001
 from omnifocus_operator.contracts.use_cases.list.tags import ListTagsQuery  # noqa: TC001
 from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksQuery  # noqa: TC001
-from omnifocus_operator.models import (  # noqa: TC001 — FastMCP needs runtime names
+from omnifocus_operator.models import (
     AllEntities,
     Folder,
     Perspective,
     Project,
     Tag,
     Task,
+)
+from omnifocus_operator.server.projection import (
+    shape_list_response,
+    shape_list_response_strip_only,
+    strip_all_entities,
+    strip_entity,
 )
 
 logger = logging.getLogger(__name__)
@@ -76,7 +89,7 @@ def _register_tools(mcp: FastMCP) -> None:
         description=GET_ALL_TOOL_DOC,
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
-    async def get_all(ctx: Context) -> AllEntities:
+    async def get_all(ctx: Context) -> dict[str, Any]:
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
         service: OperatorService = ctx.lifespan_context["service"]
@@ -87,43 +100,43 @@ def _register_tools(mcp: FastMCP) -> None:
             len(result.projects),
             len(result.tags),
         )
-        return result
+        return strip_all_entities(result.model_dump(by_alias=True))
 
     @mcp.tool(
         description=GET_TASK_TOOL_DOC,
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
-    async def get_task(id: str, ctx: Context) -> Task:
+    async def get_task(id: str, ctx: Context) -> dict[str, Any]:
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
         service: OperatorService = ctx.lifespan_context["service"]
         result = await service.get_task(id)
         logger.debug("server.get_task: returning name=%s", result.name)
-        return result
+        return strip_entity(result.model_dump(by_alias=True))
 
     @mcp.tool(
         description=GET_PROJECT_TOOL_DOC,
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
-    async def get_project(id: str, ctx: Context) -> Project:
+    async def get_project(id: str, ctx: Context) -> dict[str, Any]:
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
         service: OperatorService = ctx.lifespan_context["service"]
         result = await service.get_project(id)
         logger.debug("server.get_project: returning name=%s", result.name)
-        return result
+        return strip_entity(result.model_dump(by_alias=True))
 
     @mcp.tool(
         description=GET_TAG_TOOL_DOC,
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
-    async def get_tag(id: str, ctx: Context) -> Tag:
+    async def get_tag(id: str, ctx: Context) -> dict[str, Any]:
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
         service: OperatorService = ctx.lifespan_context["service"]
         result = await service.get_tag(id)
         logger.debug("server.get_tag: returning name=%s", result.name)
-        return result
+        return strip_entity(result.model_dump(by_alias=True))
 
     @mcp.tool(
         description=ADD_TASKS_TOOL_DOC,
@@ -192,50 +205,65 @@ def _register_tools(mcp: FastMCP) -> None:
         description=LIST_TASKS_TOOL_DOC,
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
-    async def list_tasks(query: ListTasksQuery, ctx: Context) -> ListResult[Task]:
+    async def list_tasks(query: ListTasksQuery, ctx: Context) -> dict[str, Any]:
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
         service: OperatorService = ctx.lifespan_context["service"]
-        return await service.list_tasks(query)
+        result = await service.list_tasks(query)
+        return shape_list_response(
+            result,
+            include=query.include,
+            only=query.only,
+            default_fields=TASK_DEFAULT_FIELDS,
+            field_groups=TASK_FIELD_GROUPS,
+        )
 
     @mcp.tool(
         description=LIST_PROJECTS_TOOL_DOC,
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
-    async def list_projects(query: ListProjectsQuery, ctx: Context) -> ListResult[Project]:
+    async def list_projects(query: ListProjectsQuery, ctx: Context) -> dict[str, Any]:
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
         service: OperatorService = ctx.lifespan_context["service"]
-        return await service.list_projects(query)
+        result = await service.list_projects(query)
+        return shape_list_response(
+            result,
+            include=query.include,
+            only=query.only,
+            default_fields=PROJECT_DEFAULT_FIELDS,
+            field_groups=PROJECT_FIELD_GROUPS,
+        )
 
     @mcp.tool(
         description=LIST_TAGS_TOOL_DOC,
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
-    async def list_tags(query: ListTagsQuery, ctx: Context) -> ListResult[Tag]:
+    async def list_tags(query: ListTagsQuery, ctx: Context) -> dict[str, Any]:
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
         service: OperatorService = ctx.lifespan_context["service"]
-        return await service.list_tags(query)
+        result = await service.list_tags(query)
+        return shape_list_response_strip_only(result)
 
     @mcp.tool(
         description=LIST_FOLDERS_TOOL_DOC,
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
-    async def list_folders(query: ListFoldersQuery, ctx: Context) -> ListResult[Folder]:
+    async def list_folders(query: ListFoldersQuery, ctx: Context) -> dict[str, Any]:
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
         service: OperatorService = ctx.lifespan_context["service"]
-        return await service.list_folders(query)
+        result = await service.list_folders(query)
+        return shape_list_response_strip_only(result)
 
     @mcp.tool(
         description=LIST_PERSPECTIVES_TOOL_DOC,
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
-    async def list_perspectives(
-        query: ListPerspectivesQuery, ctx: Context
-    ) -> ListResult[Perspective]:
+    async def list_perspectives(query: ListPerspectivesQuery, ctx: Context) -> dict[str, Any]:
         from omnifocus_operator.service import OperatorService  # noqa: TC001
 
         service: OperatorService = ctx.lifespan_context["service"]
-        return await service.list_perspectives(query)
+        result = await service.list_perspectives(query)
+        return shape_list_response_strip_only(result)

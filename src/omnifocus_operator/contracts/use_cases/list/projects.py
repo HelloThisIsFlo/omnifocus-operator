@@ -90,8 +90,7 @@ class ListProjectsQuery(QueryModel):
         invalid = [g for g in v if g not in _PROJECT_FIELD_GROUPS_VALID]
         if invalid:
             raise ValueError(
-                f"Unknown field group(s): {', '.join(repr(g) for g in invalid)}. "
-                f"Valid groups: notes, metadata, hierarchy, time, review, *"
+                err.INCLUDE_INVALID_PROJECT.format(groups=", ".join(repr(g) for g in invalid))
             )
         return v
 
