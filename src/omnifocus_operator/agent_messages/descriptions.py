@@ -579,11 +579,11 @@ List and filter projects. {_FILTERS_AND_LOGIC}
 include: optional array of field groups, additive on top of defaults.
   - "notes": note
   - "metadata": added, modified, completionDate, dropDate (+inherited), url
-  - "hierarchy": hasChildren
+  - "hierarchy": folder, hasChildren
   - "time": estimatedMinutes, repetitionRule
   - "review": nextReviewDate, reviewInterval, lastReviewDate, nextTask
   - "*": all fields
-Default fields (always returned): id, name, availability, folder, \
+Default fields (always returned): id, name, availability, \
 dueDate, inheritedDueDate, deferDate, inheritedDeferDate, plannedDate, \
 inheritedPlannedDate, flagged, inheritedFlagged, urgency, tags.
 

@@ -20,7 +20,7 @@ Requirements for milestone v1.4: Response Shaping, Batch Processing & Notes Grad
 ### Field Selection
 
 - [ ] **FSEL-01**: Agent can use `include` on list_tasks/list_projects to add semantic groups to curated defaults
-- [ ] **FSEL-02**: Default task fields: id, name, availability, order, project, dueDate, inheritedDueDate, deferDate, inheritedDeferDate, plannedDate, inheritedPlannedDate, flagged, inheritedFlagged, urgency, tags (projects additionally: folder)
+- [ ] **FSEL-02**: ~~Default task fields: id, name, availability, order, project, dueDate, inheritedDueDate, deferDate, inheritedDeferDate, plannedDate, inheritedPlannedDate, flagged, inheritedFlagged, urgency, tags (projects additionally: folder)~~ Default task fields: id, name, availability, order, project, dueDate, inheritedDueDate, deferDate, inheritedDeferDate, plannedDate, inheritedPlannedDate, flagged, inheritedFlagged, urgency, tags. Projects share the same defaults (folder moved to hierarchy group)
 - [ ] **FSEL-03**: Available include groups: notes, metadata, hierarchy, time, * (list_tasks); additionally review (list_projects)
 - [ ] **FSEL-04**: Invalid include group names produce validation error
 - [ ] **FSEL-05**: Agent can use `only` for individual field selection (id always included)

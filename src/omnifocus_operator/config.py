@@ -83,7 +83,6 @@ PROJECT_DEFAULT_FIELDS: frozenset[str] = frozenset(
         "id",
         "name",
         "availability",
-        "folder",
         "dueDate",
         "inheritedDueDate",
         "deferDate",
@@ -102,7 +101,7 @@ PROJECT_FIELD_GROUPS: dict[str, frozenset[str]] = {
     "metadata": frozenset(
         {"added", "modified", "completionDate", "dropDate", "inheritedDropDate", "url"}
     ),
-    "hierarchy": frozenset({"hasChildren"}),
+    "hierarchy": frozenset({"folder", "hasChildren"}),
     "time": frozenset({"estimatedMinutes", "repetitionRule"}),
     "review": frozenset({"nextReviewDate", "reviewInterval", "lastReviewDate", "nextTask"}),
 }
