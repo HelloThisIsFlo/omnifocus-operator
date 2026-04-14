@@ -11,10 +11,10 @@ import logging
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
-from fastmcp import FastMCP
-
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
+
+    from fastmcp import FastMCP
 
 logger = logging.getLogger(__name__)
 

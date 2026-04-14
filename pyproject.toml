@@ -80,12 +80,25 @@ exclude = [".research", ".claude"]
 select = ["E", "F", "I", "N", "UP", "B", "SIM", "TCH", "RUF", "PLC0415"]
 
 [tool.ruff.lint.per-file-ignores]
+# FastMCP resolves annotations via get_type_hints() — Context/FastMCP must stay runtime
+"src/omnifocus_operator/server/handlers.py" = ["TC002"]
+# Lifespan: imports deferred inside try/except → graceful degradation.
+#
+# Goal: any startup failure → ErrorOperatorService → server stays alive.
+#
+# How: all heavy imports live inside a try/except in app_lifespan().
+#   - Errors can come from the imports themselves OR the calls
+#   - try/except catches both → falls back to ErrorOperatorService
+#   - If these were top-level, a failing import kills the module → no fallback
+#
+# Note: today these imports are pure Python and won't fail even without
+# OmniFocus. But deferring them means we're covered if any module in the
+# chain (bridge.real, repository, config) ever gains eager side-effects.
+"src/omnifocus_operator/server/lifespan.py" = ["PLC0415"]
 # Intentional late imports: deferred so monkeypatch can intercept before binding
-"src/omnifocus_operator/server.py" = ["PLC0415"]
 "src/omnifocus_operator/repository/factory.py" = ["PLC0415"]
 # Intentional late imports: the import IS the test (verifying importability / broken paths)
 "tests/test_smoke.py" = ["PLC0415"]
-"tests/test_bridge.py" = ["PLC0415"]
 # Agent-facing descriptions are schema text — line length shouldn't constrain them
 "src/omnifocus_operator/agent_messages/*" = ["E501"]
 

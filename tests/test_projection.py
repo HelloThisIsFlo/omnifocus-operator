@@ -4,15 +4,15 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
 from omnifocus_operator.config import (
     PROJECT_DEFAULT_FIELDS,
     PROJECT_FIELD_GROUPS,
     TASK_DEFAULT_FIELDS,
     TASK_FIELD_GROUPS,
 )
+from omnifocus_operator.contracts.use_cases.list.common import ListResult
 from omnifocus_operator.models.project import Project
+from omnifocus_operator.models.tag import Tag
 from omnifocus_operator.models.task import Task
 from omnifocus_operator.server.projection import (
     project_entity,
@@ -109,7 +109,6 @@ class TestStripping:
 
     def test_envelope_fields_not_in_entity_scope(self) -> None:
         """shape_list_response preserves total/hasMore/warnings at envelope level."""
-        from omnifocus_operator.contracts.use_cases.list.common import ListResult
 
         task = Task.model_validate(make_model_task_dict(name="Buy milk"))
         result = ListResult[Task](
@@ -181,7 +180,7 @@ class TestFieldSelection:
         assert warnings == []
 
     def test_only_always_includes_id(self) -> None:
-        fields, warnings = resolve_fields(
+        fields, _warnings = resolve_fields(
             include=None,
             only=["name"],
             default_fields=TASK_DEFAULT_FIELDS,
@@ -287,7 +286,6 @@ class TestShapeListResponse:
 
     def test_shape_with_default_fields(self) -> None:
         task = Task.model_validate(make_model_task_dict(name="Buy milk"))
-        from omnifocus_operator.contracts.use_cases.list.common import ListResult
 
         result = ListResult[Task](items=[task], total=1, has_more=False)
         envelope = shape_list_response(
@@ -312,7 +310,6 @@ class TestShapeListResponse:
         task = Task.model_validate(
             make_model_task_dict(name="Buy milk", dueDate="2026-04-15T17:00:00+00:00")
         )
-        from omnifocus_operator.contracts.use_cases.list.common import ListResult
 
         result = ListResult[Task](items=[task], total=1, has_more=False)
         envelope = shape_list_response(
@@ -327,7 +324,6 @@ class TestShapeListResponse:
 
     def test_shape_collects_all_warnings(self) -> None:
         task = Task.model_validate(make_model_task_dict(name="Buy milk"))
-        from omnifocus_operator.contracts.use_cases.list.common import ListResult
 
         result = ListResult[Task](
             items=[task],
@@ -354,8 +350,6 @@ class TestShapeListResponseStripOnly:
     """Unit tests for shape_list_response_strip_only (list_tags/folders/perspectives)."""
 
     def test_strips_items_and_preserves_envelope(self) -> None:
-        from omnifocus_operator.contracts.use_cases.list.common import ListResult
-        from omnifocus_operator.models.tag import Tag
 
         tag = Tag.model_validate(make_model_tag_dict(id="tag-1", name="Work"))
         result = ListResult[Tag](items=[tag], total=1, has_more=False, warnings=["test warning"])
@@ -375,8 +369,6 @@ class TestShapeListResponseStripOnly:
         assert "parent" not in item
 
     def test_no_warnings_omitted_from_envelope(self) -> None:
-        from omnifocus_operator.contracts.use_cases.list.common import ListResult
-        from omnifocus_operator.models.tag import Tag
 
         tag = Tag.model_validate(make_model_tag_dict(id="tag-1", name="Work"))
         result = ListResult[Tag](items=[tag], total=1, has_more=False)

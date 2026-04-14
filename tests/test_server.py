@@ -329,7 +329,7 @@ class TestTOOL03OutputSchema:
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Any,
     ) -> None:
-        """Write tools (add_tasks, edit_tasks) still return typed models with structured outputSchema.
+        """Write tools (add/edit) return typed models with structured outputSchema.
 
         Read tools return dict[str, Any] after response shaping (D-09), so their
         outputSchema is generic. This is an accepted trade-off per D-09:

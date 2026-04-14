@@ -20,7 +20,6 @@ from omnifocus_operator.config import SYSTEM_LOCATIONS
 from omnifocus_operator.contracts.protocols import Repository
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskRepoResult
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskRepoResult
-from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult
 from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.repository.bridge_only.adapter import adapt_snapshot
 from omnifocus_operator.repository.bridge_write_mixin import BridgeWriteMixin
@@ -33,6 +32,7 @@ if TYPE_CHECKING:
     from omnifocus_operator.contracts.protocols import Bridge
     from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskRepoPayload
     from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskRepoPayload
+    from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult
     from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersRepoQuery
     from omnifocus_operator.contracts.use_cases.list.perspectives import ListPerspectivesRepoQuery
     from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsRepoQuery

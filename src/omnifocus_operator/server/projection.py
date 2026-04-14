@@ -7,10 +7,13 @@ Both operate on model_dump(by_alias=True) output dicts -- pure dict transforms.
 
 from __future__ import annotations
 
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any
 
-from omnifocus_operator.contracts.use_cases.list.common import ListResult
-from omnifocus_operator.models.base import OmniFocusBaseModel
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from omnifocus_operator.contracts.use_cases.list.common import ListResult
+    from omnifocus_operator.models.base import OmniFocusBaseModel
 
 # -- Stripping constants (STRIP-01, STRIP-02) ---------------------------------
 
@@ -19,8 +22,6 @@ NEVER_STRIP: frozenset[str] = frozenset({"availability"})
 
 _STRIP_HASHABLE: frozenset[Any] = frozenset({None, "", False, "none"})
 """Hashable values that cause a key to be stripped."""
-
-T = TypeVar("T", bound=OmniFocusBaseModel)
 
 
 def _is_strip_value(v: Any) -> bool:
@@ -64,8 +65,8 @@ def strip_all_entities(data: dict[str, Any]) -> dict[str, Any]:
 
 def resolve_fields(
     *,
-    include: list[str] | None,
-    only: list[str] | None,
+    include: Sequence[str] | None,
+    only: Sequence[str] | None,
     default_fields: frozenset[str],
     field_groups: dict[str, frozenset[str]],
 ) -> tuple[frozenset[str] | None, list[str]]:
@@ -109,7 +110,7 @@ def resolve_fields(
 
 
 def _resolve_only(
-    only: list[str],
+    only: Sequence[str],
     all_fields: frozenset[str],
     warnings: list[str],
 ) -> tuple[frozenset[str], list[str]]:
@@ -132,7 +133,7 @@ def _resolve_only(
 
 
 def _resolve_include(
-    include: list[str],
+    include: Sequence[str],
     default_fields: frozenset[str],
     field_groups: dict[str, frozenset[str]],
     all_fields: frozenset[str],
@@ -164,11 +165,11 @@ def project_entity(entity: dict[str, Any], allowed_fields: frozenset[str]) -> di
 # -- List response shaping (full pipeline) -------------------------------------
 
 
-def shape_list_response(
+def shape_list_response[T: OmniFocusBaseModel](
     result: ListResult[T],
     *,
-    include: list[str] | None,
-    only: list[str] | None,
+    include: Sequence[str] | None,
+    only: Sequence[str] | None,
     default_fields: frozenset[str],
     field_groups: dict[str, frozenset[str]],
     warnings_from_service: list[str] | None = None,
@@ -218,7 +219,7 @@ def shape_list_response(
     return envelope
 
 
-def shape_list_response_strip_only(
+def shape_list_response_strip_only[T: OmniFocusBaseModel](
     result: ListResult[T],
 ) -> dict[str, Any]:
     """Strip items only (no field selection). For list_tags, list_folders, list_perspectives."""

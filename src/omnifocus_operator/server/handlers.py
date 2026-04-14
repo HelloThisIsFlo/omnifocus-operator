@@ -7,18 +7,19 @@ All 11 MCP tool definitions live here.  ``_register_tools`` is called by
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from fastmcp import Context, FastMCP
 from mcp.types import (
     ToolAnnotations,  # TODO(Phase 30): no fastmcp equivalent; revisit if fastmcp adds re-export
 )
 
-# NOTE: AllEntities MUST be a runtime import (not TYPE_CHECKING) because
-# FastMCP introspects the return type annotation at registration time to
-# generate outputSchema.  With `from __future__ import annotations` the
-# annotation is a string; FastMCP resolves it via get_type_hints() which
-# needs the name in the module namespace.
+if TYPE_CHECKING:
+    from omnifocus_operator.service import OperatorService
+
+# NOTE: Imports below MUST stay at runtime (not TYPE_CHECKING) because
+# FastMCP introspects return/param type annotations at registration time
+# via get_type_hints() which needs names in the module namespace.
 from omnifocus_operator.agent_messages.descriptions import (
     ADD_TASKS_TOOL_DOC,
     EDIT_TASKS_TOOL_DOC,
@@ -50,9 +51,6 @@ from omnifocus_operator.contracts.use_cases.edit.tasks import (  # noqa: TC001
     EditTaskCommand,
     EditTaskResult,
 )
-from omnifocus_operator.contracts.use_cases.list.common import (
-    ListResult,
-)
 from omnifocus_operator.contracts.use_cases.list.folders import ListFoldersQuery  # noqa: TC001
 from omnifocus_operator.contracts.use_cases.list.perspectives import (
     ListPerspectivesQuery,  # noqa: TC001
@@ -60,14 +58,6 @@ from omnifocus_operator.contracts.use_cases.list.perspectives import (
 from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsQuery  # noqa: TC001
 from omnifocus_operator.contracts.use_cases.list.tags import ListTagsQuery  # noqa: TC001
 from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksQuery  # noqa: TC001
-from omnifocus_operator.models import (
-    AllEntities,
-    Folder,
-    Perspective,
-    Project,
-    Tag,
-    Task,
-)
 from omnifocus_operator.server.projection import (
     shape_list_response,
     shape_list_response_strip_only,
@@ -90,8 +80,6 @@ def _register_tools(mcp: FastMCP) -> None:
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
     async def get_all(ctx: Context) -> dict[str, Any]:
-        from omnifocus_operator.service import OperatorService  # noqa: TC001
-
         service: OperatorService = ctx.lifespan_context["service"]
         result = await service.get_all_data()
         logger.debug(
@@ -107,8 +95,6 @@ def _register_tools(mcp: FastMCP) -> None:
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
     async def get_task(id: str, ctx: Context) -> dict[str, Any]:
-        from omnifocus_operator.service import OperatorService  # noqa: TC001
-
         service: OperatorService = ctx.lifespan_context["service"]
         result = await service.get_task(id)
         logger.debug("server.get_task: returning name=%s", result.name)
@@ -119,8 +105,6 @@ def _register_tools(mcp: FastMCP) -> None:
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
     async def get_project(id: str, ctx: Context) -> dict[str, Any]:
-        from omnifocus_operator.service import OperatorService  # noqa: TC001
-
         service: OperatorService = ctx.lifespan_context["service"]
         result = await service.get_project(id)
         logger.debug("server.get_project: returning name=%s", result.name)
@@ -131,8 +115,6 @@ def _register_tools(mcp: FastMCP) -> None:
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
     async def get_tag(id: str, ctx: Context) -> dict[str, Any]:
-        from omnifocus_operator.service import OperatorService  # noqa: TC001
-
         service: OperatorService = ctx.lifespan_context["service"]
         result = await service.get_tag(id)
         logger.debug("server.get_tag: returning name=%s", result.name)
@@ -151,8 +133,6 @@ def _register_tools(mcp: FastMCP) -> None:
         if len(items) != 1:
             msg = ADD_TASKS_BATCH_LIMIT.format(count=len(items))
             raise ValueError(msg)
-
-        from omnifocus_operator.service import OperatorService  # noqa: TC001
 
         service: OperatorService = ctx.lifespan_context["service"]
         command = items[0]
@@ -181,8 +161,6 @@ def _register_tools(mcp: FastMCP) -> None:
             msg = EDIT_TASKS_BATCH_LIMIT.format(count=len(items))
             raise ValueError(msg)
 
-        from omnifocus_operator.service import OperatorService  # noqa: TC001
-
         service: OperatorService = ctx.lifespan_context["service"]
         command = items[0]
         # Progress reporting (scaffolding for future batch support per D-05):
@@ -206,8 +184,6 @@ def _register_tools(mcp: FastMCP) -> None:
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
     async def list_tasks(query: ListTasksQuery, ctx: Context) -> dict[str, Any]:
-        from omnifocus_operator.service import OperatorService  # noqa: TC001
-
         service: OperatorService = ctx.lifespan_context["service"]
         result = await service.list_tasks(query)
         return shape_list_response(
@@ -223,8 +199,6 @@ def _register_tools(mcp: FastMCP) -> None:
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
     async def list_projects(query: ListProjectsQuery, ctx: Context) -> dict[str, Any]:
-        from omnifocus_operator.service import OperatorService  # noqa: TC001
-
         service: OperatorService = ctx.lifespan_context["service"]
         result = await service.list_projects(query)
         return shape_list_response(
@@ -240,8 +214,6 @@ def _register_tools(mcp: FastMCP) -> None:
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
     async def list_tags(query: ListTagsQuery, ctx: Context) -> dict[str, Any]:
-        from omnifocus_operator.service import OperatorService  # noqa: TC001
-
         service: OperatorService = ctx.lifespan_context["service"]
         result = await service.list_tags(query)
         return shape_list_response_strip_only(result)
@@ -251,8 +223,6 @@ def _register_tools(mcp: FastMCP) -> None:
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
     async def list_folders(query: ListFoldersQuery, ctx: Context) -> dict[str, Any]:
-        from omnifocus_operator.service import OperatorService  # noqa: TC001
-
         service: OperatorService = ctx.lifespan_context["service"]
         result = await service.list_folders(query)
         return shape_list_response_strip_only(result)
@@ -262,8 +232,6 @@ def _register_tools(mcp: FastMCP) -> None:
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     )
     async def list_perspectives(query: ListPerspectivesQuery, ctx: Context) -> dict[str, Any]:
-        from omnifocus_operator.service import OperatorService  # noqa: TC001
-
         service: OperatorService = ctx.lifespan_context["service"]
         result = await service.list_perspectives(query)
         return shape_list_response_strip_only(result)
