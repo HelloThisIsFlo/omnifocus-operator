@@ -13,7 +13,7 @@ from omnifocus_operator.agent_messages.descriptions import (
     EDIT_TASK_ACTIONS_DOC,
     EDIT_TASK_RESULT_DOC,
     ESTIMATED_MINUTES_EDIT,
-    FLAGGED_EDIT_COMMAND,
+    FLAGGED,
     ID_EDIT_COMMAND,
     NAME_EDIT_COMMAND,
     NOTE_EDIT_COMMAND,
@@ -59,7 +59,7 @@ class EditTaskCommand(CommandModel):
 
     # Value-only fields (no None -- these can't be "cleared")
     name: Patch[str] = Field(default=UNSET, description=NAME_EDIT_COMMAND)
-    flagged: Patch[bool] = Field(default=UNSET, description=FLAGGED_EDIT_COMMAND)
+    flagged: Patch[bool] = Field(default=UNSET, description=FLAGGED)
 
     @field_validator("name", mode="before")
     @classmethod

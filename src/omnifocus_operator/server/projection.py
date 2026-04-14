@@ -95,8 +95,8 @@ def resolve_fields(
     # Conflict: only takes precedence (D-06)
     if include is not None and only is not None:
         warnings.append(
-            "include and only are mutually exclusive. "
-            "include was ignored because only was provided. "
+            "'include' and 'only' are mutually exclusive. "
+            "'include' was ignored because 'only' was provided. "
             "Use one or the other."
         )
         include = None  # Fall through to only handling

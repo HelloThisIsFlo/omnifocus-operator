@@ -53,6 +53,22 @@ _INHERITED_PROJECTS_EXPLANATION = (
 
 _COUNT_ONLY_TIP = "Count-only: use limit: 0 to get {items: [], total: N} without fetching data."
 
+_FILTERS_AND_LOGIC = "All filters combine with AND logic."
+
+_LIFECYCLE_FILTER_NOTE = (
+    "completed/dropped filters include those lifecycle states in results "
+    "(excluded by default). All other filters only restrict.\n"
+    "The 'soon' shortcut uses your OmniFocus due-soon threshold preference."
+)
+
+_TAGS_INPUT_NOTE = (
+    "Tags accept names (case-insensitive) or IDs; you can mix both.\n"
+    "Non-existent names are rejected. Ambiguous names (case-insensitive\n"
+    "collision) return an error."
+)
+
+_WRITE_RETURNS = "Returns: [{success, id, name, warnings?}]"
+
 # --- Dates: Write-Side ---
 
 DATE_EXAMPLE = "2026-03-15T17:00:00"
@@ -163,8 +179,6 @@ NOTE_ADD_COMMAND = "Plain-text note attached to the task."
 NOTE_EDIT_COMMAND = "Plain-text note. Set to null to clear."
 
 ID_EDIT_COMMAND = "OmniFocus task ID to edit."
-
-FLAGGED_EDIT_COMMAND = "Mark task for priority attention. Surfaces in Flagged perspective."
 
 ESTIMATED_MINUTES_EDIT = "Time estimate in minutes. Set to null to clear."
 
@@ -513,9 +527,7 @@ ADD_TASKS_TOOL_DOC = (
     "\n"
     f"{_DATE_INPUT_NOTE_FULL}\n"
     "\n"
-    "Tags accept names (case-insensitive) or IDs; you can mix both.\n"
-    "Non-existent names are rejected. Ambiguous names (case-insensitive\n"
-    "collision) return an error.\n"
+    f"{_TAGS_INPUT_NOTE}\n"
     "\n"
     "repetitionRule requires all three root fields (frequency, schedule,\n"
     "basedOn) when creating. on and onDates within frequency are\n"
@@ -552,11 +564,11 @@ ADD_TASKS_TOOL_DOC = (
     "    }\n"
     "\n"
     "\n"
-    "Returns: [{success, id, name, warnings?}]"
+    f"{_WRITE_RETURNS}"
 )
 
 LIST_TASKS_TOOL_DOC = (
-    "List and filter tasks. All filters combine with AND logic.\n"
+    f"List and filter tasks. {_FILTERS_AND_LOGIC}\n"
     "\n"
     f"{_STRIPPING_NOTE}\n"
     "\n"
@@ -587,9 +599,7 @@ LIST_TASKS_TOOL_DOC = (
     "Filters use inherited (effective) values. Tasks inherit dates and flags "
     "from parent hierarchy.\n"
     "\n"
-    "completed/dropped filters include those lifecycle states in results "
-    "(excluded by default). All other filters only restrict.\n"
-    "The 'soon' shortcut uses your OmniFocus due-soon threshold preference.\n"
+    f"{_LIFECYCLE_FILTER_NOTE}\n"
     "\n"
     "availability vs defer: 'available'/'blocked' answers 'can I act on this?' "
     "(covers all blocking reasons). "
@@ -597,7 +607,7 @@ LIST_TASKS_TOOL_DOC = (
 )
 
 LIST_PROJECTS_TOOL_DOC = (
-    "List and filter projects. All filters combine with AND logic.\n"
+    f"List and filter projects. {_FILTERS_AND_LOGIC}\n"
     "\n"
     f"{_STRIPPING_NOTE}\n"
     "\n"
@@ -626,9 +636,7 @@ LIST_PROJECTS_TOOL_DOC = (
     "Filters use inherited (effective) values. Projects inherit dates and flags "
     "from parent folders.\n"
     "\n"
-    "completed/dropped filters include those lifecycle states in results "
-    "(excluded by default). All other filters only restrict.\n"
-    "The 'soon' shortcut uses your OmniFocus due-soon threshold preference."
+    f"{_LIFECYCLE_FILTER_NOTE}"
 )
 
 LIST_TAGS_TOOL_DOC = (
@@ -677,9 +685,7 @@ EDIT_TASKS_TOOL_DOC = (
     "\n"
     "Patch: omit = no change, null = clear, value = update.\n"
     "\n"
-    "Tags (in all tag fields) accept names (case-insensitive) or IDs;\n"
-    "you can mix both. Non-existent names are rejected. Ambiguous names\n"
-    "(case-insensitive collision) return an error.\n"
+    f"{_TAGS_INPUT_NOTE}\n"
     "\n"
     "repetitionRule partial updates:\n"
     "  - No existing rule: all root fields required (frequency, schedule, basedOn).\n"
@@ -701,5 +707,5 @@ EDIT_TASKS_TOOL_DOC = (
     "repeating sequence.\n"
     "actions.tags: replace (standalone) or add/remove (combinable).\n"
     "\n"
-    "Returns: [{success, id, name, warnings?}]"
+    f"{_WRITE_RETURNS}"
 )
