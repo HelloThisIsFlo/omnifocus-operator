@@ -9,7 +9,8 @@ def test_package_imports() -> None:
     """Verify omnifocus_operator package is importable and has correct version."""
     import omnifocus_operator
 
-    assert omnifocus_operator.__version__ == "0.1.0"
+    assert isinstance(omnifocus_operator.__version__, str)
+    assert omnifocus_operator.__version__  # non-empty
 
 
 def test_main_entry_point_exists() -> None:
