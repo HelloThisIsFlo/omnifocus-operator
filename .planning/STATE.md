@@ -61,6 +61,7 @@ Carried forward from v1.3.3:
 9. Add path field for hierarchical entities (models)
 10. Fix OrdinalWeekdaySpec -> OrdinalWeekday cross-layer coercion in edit pipeline (service)
 11. Golden master re-capture required after Phase 42 mapper rewrites (human-only per GOLD-01)
+12. Publish on PyPI and set up automated releases (tooling)
 
 ### Blockers/Concerns
 
