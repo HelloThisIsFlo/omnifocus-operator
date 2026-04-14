@@ -55,6 +55,7 @@ from omnifocus_operator.models.enums import (
     EntityType,
     Schedule,
 )
+from omnifocus_operator.models.project import Project
 from omnifocus_operator.models.repetition_rule import (
     EndByDate,
     Frequency,
@@ -67,7 +68,13 @@ from omnifocus_operator.service.errors import EntityTypeMismatchError
 from tests.conftest import make_snapshot_dict
 from tests.doubles import InMemoryBridge
 
-from .conftest import make_model_tag_dict, make_model_task_dict, make_snapshot, make_task_dict
+from .conftest import (
+    make_model_project_dict,
+    make_model_tag_dict,
+    make_model_task_dict,
+    make_snapshot,
+    make_task_dict,
+)
 
 # ---------------------------------------------------------------------------
 # Stubs
@@ -1564,3 +1571,310 @@ class TestToUtcTsNaiveString:
 
         result = _to_utc_ts("2026-07-15T17:00:00Z")
         assert isinstance(result, float)
+
+
+# ---------------------------------------------------------------------------
+# True inheritance walk
+# ---------------------------------------------------------------------------
+
+
+def _make_project(**overrides: object) -> Project:
+    """Create a Project model from make_model_project_dict defaults."""
+    return Project.model_validate(make_model_project_dict(**overrides))
+
+
+def _make_snapshot_with(
+    tasks: list[Task] | None = None,
+    projects: list[Project] | None = None,
+) -> AllEntities:
+    """Build a minimal AllEntities with given tasks and projects."""
+    from tests.conftest import (  # noqa: PLC0415
+        make_model_snapshot_dict,
+    )
+
+    data = make_model_snapshot_dict(
+        tasks=[],
+        projects=[],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    snapshot = AllEntities.model_validate(data)
+    if tasks:
+        snapshot.tasks.extend(tasks)
+    if projects:
+        snapshot.projects.extend(projects)
+    return snapshot
+
+
+async def _walk(domain: DomainLogic, tasks: list[Task]) -> list[Task]:
+    """Shorthand for compute_true_inheritance."""
+    return await domain.compute_true_inheritance(tasks)
+
+
+class TestComputeTrueInheritance:
+    """Unit tests for DomainLogic.compute_true_inheritance -- hierarchy walk."""
+
+    # -- Self-echo stripping (no ancestors set the field) --------------------
+
+    @pytest.mark.anyio
+    async def test_self_echo_flagged_stripped(self) -> None:
+        """Task with flagged=True, inherited_flagged=True, no ancestors -> inherited_flagged=False."""
+        task = _make_task(
+            id="t1",
+            flagged=True,
+            inheritedFlagged=True,
+            parent={"project": {"id": "proj-1", "name": "P"}},
+            project={"id": "proj-1", "name": "P"},
+        )
+        project = _make_project(id="proj-1", flagged=False)
+        snapshot = _make_snapshot_with(tasks=[task], projects=[project])
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [task])
+
+        assert len(result) == 1
+        assert result[0].inherited_flagged is False
+
+    @pytest.mark.anyio
+    async def test_self_echo_due_date_stripped(self) -> None:
+        """Task with due_date set, no ancestor with due_date -> inherited_due_date=None."""
+        task = _make_task(
+            id="t1",
+            dueDate="2026-07-15T17:00:00.000Z",
+            inheritedDueDate="2026-07-15T17:00:00.000Z",
+            parent={"project": {"id": "proj-1", "name": "P"}},
+            project={"id": "proj-1", "name": "P"},
+        )
+        project = _make_project(id="proj-1", dueDate=None)
+        snapshot = _make_snapshot_with(tasks=[task], projects=[project])
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [task])
+
+        assert result[0].inherited_due_date is None
+
+    # -- Truly inherited from parent task ------------------------------------
+
+    @pytest.mark.anyio
+    async def test_truly_inherited_flagged_from_parent_task(self) -> None:
+        """Task under flagged parent task -> inherited_flagged stays True."""
+        parent = _make_task(
+            id="t-parent",
+            flagged=True,
+            parent={"project": {"id": "proj-1", "name": "P"}},
+            project={"id": "proj-1", "name": "P"},
+            hasChildren=True,
+        )
+        child = _make_task(
+            id="t-child",
+            flagged=False,
+            inheritedFlagged=True,
+            parent={"task": {"id": "t-parent", "name": "Parent"}},
+            project={"id": "proj-1", "name": "P"},
+        )
+        project = _make_project(id="proj-1", flagged=False)
+        snapshot = _make_snapshot_with(tasks=[parent, child], projects=[project])
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [child])
+
+        assert result[0].inherited_flagged is True
+
+    @pytest.mark.anyio
+    async def test_truly_inherited_due_date_from_parent_task(self) -> None:
+        """Task under parent with due_date -> inherited_due_date stays."""
+        parent = _make_task(
+            id="t-parent",
+            dueDate="2026-08-01T12:00:00.000Z",
+            parent={"project": {"id": "proj-1", "name": "P"}},
+            project={"id": "proj-1", "name": "P"},
+            hasChildren=True,
+        )
+        child = _make_task(
+            id="t-child",
+            dueDate=None,
+            inheritedDueDate="2026-08-01T12:00:00.000Z",
+            parent={"task": {"id": "t-parent", "name": "Parent"}},
+            project={"id": "proj-1", "name": "P"},
+        )
+        project = _make_project(id="proj-1", dueDate=None)
+        snapshot = _make_snapshot_with(tasks=[parent, child], projects=[project])
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [child])
+
+        assert result[0].inherited_due_date is not None
+
+    # -- Truly inherited from project (D-01) ---------------------------------
+
+    @pytest.mark.anyio
+    async def test_truly_inherited_flagged_from_project(self) -> None:
+        """Task under flagged project -> inherited_flagged stays True."""
+        task = _make_task(
+            id="t1",
+            flagged=False,
+            inheritedFlagged=True,
+            parent={"project": {"id": "proj-1", "name": "P"}},
+            project={"id": "proj-1", "name": "P"},
+        )
+        project = _make_project(id="proj-1", flagged=True)
+        snapshot = _make_snapshot_with(tasks=[task], projects=[project])
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [task])
+
+        assert result[0].inherited_flagged is True
+
+    @pytest.mark.anyio
+    async def test_truly_inherited_due_date_from_project(self) -> None:
+        """Task under project with due_date -> inherited_due_date preserved."""
+        task = _make_task(
+            id="t1",
+            dueDate=None,
+            inheritedDueDate="2026-09-01T10:00:00.000Z",
+            parent={"project": {"id": "proj-1", "name": "P"}},
+            project={"id": "proj-1", "name": "P"},
+        )
+        project = _make_project(id="proj-1", dueDate="2026-09-01T10:00:00.000Z")
+        snapshot = _make_snapshot_with(tasks=[task], projects=[project])
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [task])
+
+        assert result[0].inherited_due_date is not None
+
+    # -- Deep hierarchy (grandparent sets field) -----------------------------
+
+    @pytest.mark.anyio
+    async def test_deep_hierarchy_grandparent_flagged(self) -> None:
+        """task -> parent -> grandparent(flagged) -> project: inherited_flagged preserved."""
+        grandparent = _make_task(
+            id="t-gp",
+            flagged=True,
+            parent={"project": {"id": "proj-1", "name": "P"}},
+            project={"id": "proj-1", "name": "P"},
+            hasChildren=True,
+        )
+        parent = _make_task(
+            id="t-parent",
+            flagged=False,
+            parent={"task": {"id": "t-gp", "name": "GP"}},
+            project={"id": "proj-1", "name": "P"},
+            hasChildren=True,
+        )
+        child = _make_task(
+            id="t-child",
+            flagged=False,
+            inheritedFlagged=True,
+            parent={"task": {"id": "t-parent", "name": "Parent"}},
+            project={"id": "proj-1", "name": "P"},
+        )
+        project = _make_project(id="proj-1", flagged=False)
+        snapshot = _make_snapshot_with(tasks=[grandparent, parent, child], projects=[project])
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [child])
+
+        assert result[0].inherited_flagged is True
+
+    # -- All 6 field pairs are checked ---------------------------------------
+
+    @pytest.mark.anyio
+    async def test_all_six_field_pairs_self_echo_stripped(self) -> None:
+        """All 6 inherited fields are stripped when self-echoed (no ancestors)."""
+        task = _make_task(
+            id="t1",
+            flagged=True,
+            inheritedFlagged=True,
+            dueDate="2026-07-15T17:00:00.000Z",
+            inheritedDueDate="2026-07-15T17:00:00.000Z",
+            deferDate="2026-07-10T09:00:00.000Z",
+            inheritedDeferDate="2026-07-10T09:00:00.000Z",
+            plannedDate="2026-07-12T08:00:00.000Z",
+            inheritedPlannedDate="2026-07-12T08:00:00.000Z",
+            dropDate="2026-08-01T00:00:00.000Z",
+            inheritedDropDate="2026-08-01T00:00:00.000Z",
+            completionDate="2026-06-30T12:00:00.000Z",
+            inheritedCompletionDate="2026-06-30T12:00:00.000Z",
+            parent={"project": {"id": "proj-1", "name": "P"}},
+            project={"id": "proj-1", "name": "P"},
+        )
+        project = _make_project(
+            id="proj-1",
+            flagged=False,
+            dueDate=None,
+            deferDate=None,
+            plannedDate=None,
+            dropDate=None,
+            completionDate=None,
+        )
+        snapshot = _make_snapshot_with(tasks=[task], projects=[project])
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [task])
+
+        walked = result[0]
+        assert walked.inherited_flagged is False
+        assert walked.inherited_due_date is None
+        assert walked.inherited_defer_date is None
+        assert walked.inherited_planned_date is None
+        assert walked.inherited_drop_date is None
+        assert walked.inherited_completion_date is None
+
+    # -- Inbox task (no real project) ----------------------------------------
+
+    @pytest.mark.anyio
+    async def test_inbox_task_self_echoes_cleared(self) -> None:
+        """Inbox task ($inbox project) with self-echoed inherited fields -> all cleared."""
+        task = _make_task(
+            id="t1",
+            flagged=True,
+            inheritedFlagged=True,
+            dueDate="2026-07-15T17:00:00.000Z",
+            inheritedDueDate="2026-07-15T17:00:00.000Z",
+            parent={"project": {"id": "$inbox", "name": "Inbox"}},
+            project={"id": "$inbox", "name": "Inbox"},
+        )
+        # No project in project_map for $inbox
+        snapshot = _make_snapshot_with(tasks=[task], projects=[])
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [task])
+
+        assert result[0].inherited_flagged is False
+        assert result[0].inherited_due_date is None
+
+    # -- Empty list ----------------------------------------------------------
+
+    @pytest.mark.anyio
+    async def test_empty_list_returns_empty(self) -> None:
+        """Empty task list -> returns empty list."""
+        snapshot = _make_snapshot_with(tasks=[], projects=[])
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [])
+
+        assert result == []
+
+    # -- Orphan task (parent not in task_map) --------------------------------
+
+    @pytest.mark.anyio
+    async def test_orphan_task_walk_terminates_safely(self) -> None:
+        """Task whose parent task is not in task_map -> walk terminates, self-echoes stripped."""
+        task = _make_task(
+            id="t1",
+            flagged=True,
+            inheritedFlagged=True,
+            parent={"task": {"id": "t-missing", "name": "Missing"}},
+            project={"id": "proj-1", "name": "P"},
+        )
+        project = _make_project(id="proj-1", flagged=False)
+        # Note: t-missing is NOT in the snapshot
+        snapshot = _make_snapshot_with(tasks=[task], projects=[project])
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [task])
+
+        # Parent missing, project not flagged -> inherited_flagged should be False
+        assert result[0].inherited_flagged is False
