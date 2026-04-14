@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import Field, field_validator, model_validator
 
@@ -15,10 +16,12 @@ from omnifocus_operator.agent_messages.descriptions import (
     ESTIMATED_MINUTES_MAX_DESC,
     FLAGGED_FILTER_DESC,
     IN_INBOX_FILTER_DESC,
+    INCLUDE_FIELD_DESC,
     LIMIT_DESC,
     LIST_TASKS_QUERY_DOC,
     MODIFIED_FILTER_DESC,
     OFFSET_DESC,
+    ONLY_FIELD_DESC,
     PLANNED_FILTER_DESC,
     PROJECT_FILTER_DESC,
     SEARCH_FIELD_NAME_NOTES,
@@ -40,6 +43,10 @@ from omnifocus_operator.contracts.use_cases.list._validators import (
     validate_offset_requires_limit,
 )
 from omnifocus_operator.models.enums import Availability
+
+TaskFieldGroup = Literal["notes", "metadata", "hierarchy", "time", "*"]
+
+_TASK_FIELD_GROUPS_VALID: set[str] = {"notes", "metadata", "hierarchy", "time", "*"}
 
 _PATCH_FIELDS = [
     "in_inbox",
@@ -75,6 +82,8 @@ class ListTasksQuery(QueryModel):
     dropped: Patch[LifecycleDateFilter] = Field(default=UNSET, description=DROPPED_FILTER_DESC)
     added: Patch[DateFilter] = Field(default=UNSET, description=ADDED_FILTER_DESC)
     modified: Patch[DateFilter] = Field(default=UNSET, description=MODIFIED_FILTER_DESC)
+    include: list[TaskFieldGroup] | None = Field(default=None, description=INCLUDE_FIELD_DESC)
+    only: list[str] | None = Field(default=None, description=ONLY_FIELD_DESC)
     limit: int | None = Field(default=DEFAULT_LIST_LIMIT, description=LIMIT_DESC)
     offset: int = Field(default=0, description=OFFSET_DESC)
 
@@ -84,6 +93,19 @@ class ListTasksQuery(QueryModel):
         if isinstance(data, dict):
             reject_null_filters(data, _PATCH_FIELDS)
         return data
+
+    @field_validator("include", mode="before")
+    @classmethod
+    def _validate_include(cls, v: list[str] | None) -> list[str] | None:
+        if v is None:
+            return v
+        invalid = [g for g in v if g not in _TASK_FIELD_GROUPS_VALID]
+        if invalid:
+            raise ValueError(
+                f"Unknown field group(s): {', '.join(repr(g) for g in invalid)}. "
+                f"Valid groups: notes, metadata, hierarchy, time, *"
+            )
+        return v
 
     @field_validator("tags", mode="after")
     @classmethod

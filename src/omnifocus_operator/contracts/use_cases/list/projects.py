@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import Field, field_validator, model_validator
 
@@ -15,10 +16,12 @@ from omnifocus_operator.agent_messages.descriptions import (
     DUE_FILTER_DESC,
     FLAGGED_FILTER_DESC,
     FOLDER_FILTER_DESC,
+    INCLUDE_FIELD_DESC,
     LIMIT_DESC,
     LIST_PROJECTS_QUERY_DOC,
     MODIFIED_FILTER_DESC,
     OFFSET_DESC,
+    ONLY_FIELD_DESC,
     PLANNED_FILTER_DESC,
     REVIEW_DUE_WITHIN_DESC,
     SEARCH_FIELD_NAME_NOTES,
@@ -39,6 +42,10 @@ from omnifocus_operator.contracts.use_cases.list._validators import (
     validate_offset_requires_limit,
 )
 from omnifocus_operator.models.enums import Availability
+
+ProjectFieldGroup = Literal["notes", "metadata", "hierarchy", "time", "review", "*"]
+
+_PROJECT_FIELD_GROUPS_VALID: set[str] = {"notes", "metadata", "hierarchy", "time", "review", "*"}
 
 _PATCH_FIELDS = [
     "folder",
@@ -70,8 +77,23 @@ class ListProjectsQuery(QueryModel):
     dropped: Patch[LifecycleDateFilter] = Field(default=UNSET, description=DROPPED_FILTER_DESC)
     added: Patch[DateFilter] = Field(default=UNSET, description=ADDED_FILTER_DESC)
     modified: Patch[DateFilter] = Field(default=UNSET, description=MODIFIED_FILTER_DESC)
+    include: list[ProjectFieldGroup] | None = Field(default=None, description=INCLUDE_FIELD_DESC)
+    only: list[str] | None = Field(default=None, description=ONLY_FIELD_DESC)
     limit: int | None = Field(default=DEFAULT_LIST_LIMIT, description=LIMIT_DESC)
     offset: int = Field(default=0, description=OFFSET_DESC)
+
+    @field_validator("include", mode="before")
+    @classmethod
+    def _validate_include(cls, v: list[str] | None) -> list[str] | None:
+        if v is None:
+            return v
+        invalid = [g for g in v if g not in _PROJECT_FIELD_GROUPS_VALID]
+        if invalid:
+            raise ValueError(
+                f"Unknown field group(s): {', '.join(repr(g) for g in invalid)}. "
+                f"Valid groups: notes, metadata, hierarchy, time, review, *"
+            )
+        return v
 
     @field_validator("review_due_within", mode="after")
     @classmethod

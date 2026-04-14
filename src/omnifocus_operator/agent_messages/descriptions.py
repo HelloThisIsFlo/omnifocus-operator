@@ -375,9 +375,23 @@ ESTIMATED_MINUTES_MAX_DESC = (
     "Include tasks with estimate <= this value (minutes). Tasks with no estimate are excluded."
 )
 
-LIMIT_DESC = "Max items to return. Pass null to return all."
+LIMIT_DESC = "Max items to return. Pass null to return all. Tip: pass 0 for count only."
 
 OFFSET_DESC = "Skip this many items. Requires limit to be set."
+
+# --- Field Selection ---
+
+INCLUDE_FIELD_DESC = (
+    "Add field groups to the response, on top of defaults. "
+    "See tool description for available groups."
+)
+
+ONLY_FIELD_DESC = (
+    "Return only these fields (plus id, always included). "
+    "Mutually exclusive with include. "
+    "Use case: targeted high-volume queries (prefer include for most use cases). "
+    "Null/empty values are still stripped — absent field means not set."
+)
 
 REVIEW_DUE_WITHIN_DESC = f'Review due within this window. "now" or {_DURATION_FORMAT}'
 
