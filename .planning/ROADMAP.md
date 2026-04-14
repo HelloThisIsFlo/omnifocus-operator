@@ -19,7 +19,7 @@
 
 ## Phases
 
-- [ ] **Phase 53: Response Shaping** - Server package restructure, response stripping, inherited rename, field selection, count-only mode
+- [x] **Phase 53: Response Shaping** - Server package restructure, response stripping, inherited rename, field selection, count-only mode (completed 2026-04-14)
 - [ ] **Phase 54: Batch Processing** - Multi-item writes with best-effort/fail-fast semantics
 - [ ] **Phase 55: Notes Graduation** - Notes move to actions block with append/replace semantics
 
@@ -38,11 +38,11 @@
 **Plans**: 5 plans
 
 Plans:
-- [ ] 53-01-PLAN.md — Inherited rename (effective_* -> inherited_* across codebase)
-- [ ] 53-02-PLAN.md — Server package restructure (server.py -> server/ package)
-- [ ] 53-03-PLAN.md — Stripping + field group config + projection module
-- [ ] 53-04-PLAN.md — Field selection contracts + handler wiring
-- [ ] 53-05-PLAN.md — Description updates + count-only mode
+- [x] 53-01-PLAN.md — Inherited rename (effective_* -> inherited_* across codebase)
+- [x] 53-02-PLAN.md — Server package restructure (server.py -> server/ package)
+- [x] 53-03-PLAN.md — Stripping + field group config + projection module
+- [x] 53-04-PLAN.md — Field selection contracts + handler wiring
+- [x] 53-05-PLAN.md — Description updates + count-only mode
 
 ### Phase 54: Batch Processing
 **Goal**: Agents can create or edit up to 50 tasks in a single call with clear per-item success/failure reporting
@@ -73,6 +73,6 @@ Phases execute in numeric order: 53 -> 54 -> 55
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 53. Response Shaping | 0/5 | Planned | - |
+| 53. Response Shaping | 5/5 | Complete    | 2026-04-14 |
 | 54. Batch Processing | 0/TBD | Not started | - |
 | 55. Notes Graduation | 0/TBD | Not started | - |
