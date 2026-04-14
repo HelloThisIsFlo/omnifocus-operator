@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 53-response-shaping
 source: 53-01-SUMMARY.md, 53-02-SUMMARY.md, 53-03-SUMMARY.md, 53-04-SUMMARY.md, 53-05-SUMMARY.md
 started: 2026-04-14T14:30:00Z
-updated: 2026-04-14T17:00:00Z
+updated: 2026-04-14T19:30:00Z
 ---
 
 ## Current Test
@@ -23,9 +23,9 @@ result: pass
 
 ### 3. Default Field Selection on list_tasks
 expected: Call `list_tasks` (no include/only params). Response items should contain only the default field set (id, name, availability, order, project, dueDate, inheritedDueDate, deferDate, inheritedDeferDate, plannedDate, inheritedPlannedDate, flagged, inheritedFlagged, urgency, tags). Notes, metadata extras, and hierarchy details should NOT appear unless they have non-empty values.
-result: issue
+result: pass (fixed)
 reported: "When include/only are omitted (None), projection is skipped entirely — all fields with values appear. With include: [] it works correctly. The None vs [] distinction causes the bug."
-severity: major
+fix: "Changed include/only contract defaults from None to []. Projection now always applies. Commit ecafa788."
 
 ### 4. Include Notes Group
 expected: Call `list_tasks` with `include: ["notes"]`. Each task in the response should now include the `note` field (if non-empty). All default fields remain present.
@@ -94,8 +94,8 @@ result: pass
 ## Summary
 
 total: 19
-passed: 17
-issues: 2
+passed: 18
+issues: 1
 pending: 0
 skipped: 0
 blocked: 0
@@ -110,18 +110,9 @@ blocked: 0
   disposition: "Deferred to standalone todo. Will be a proper feature: walk the parent hierarchy to determine true inheritance (same infrastructure as cycle detection) rather than heuristic strip-when-equal. Avoids edge cases with booleans (flagged) where coincidental equality is common."
 
 - truth: "Default field projection should apply when include/only are omitted — only default fields returned"
-  status: failed
+  status: fixed
   reason: "User reported: When include/only are omitted (None), projection is skipped entirely — all fields with values appear. With include: [] it works correctly. The None vs [] distinction causes the bug."
   severity: major
   test: 3
-  root_cause: "include/only default to None on the query contract. Projection logic likely checks truthiness (if include:) which treats both None and [] as falsy, skipping projection for both. But None (omitted) should still trigger default projection."
-  artifacts:
-    - path: "src/omnifocus_operator/contracts/use_cases/list/tasks.py"
-      issue: "include defaults to None instead of []"
-    - path: "src/omnifocus_operator/contracts/use_cases/list/projects.py"
-      issue: "include defaults to None instead of []"
-    - path: "src/omnifocus_operator/server/projection.py"
-      issue: "resolve_fields or shape_list_response likely skips projection when include is None"
-  missing:
-    - "Change include/only defaults from None to [] on ListTasksQuery and ListProjectsQuery so projection always runs"
-  debug_session: ""
+  root_cause: "include/only defaulted to None on contracts. resolve_fields treated (None, None) as 'skip projection'. Fix: changed contract defaults to [] so projection always runs."
+  fix: "ecafa788 — include/only default to [] on ListTasksQuery and ListProjectsQuery. Removed all None paths from resolve_fields and shape_list_response."
