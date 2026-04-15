@@ -1619,7 +1619,7 @@ class TestComputeTrueInheritance:
 
     @pytest.mark.anyio
     async def test_self_echo_flagged_stripped(self) -> None:
-        """Task with flagged=True, inherited_flagged=True, no ancestors -> inherited_flagged=False."""
+        """flagged=True, inherited_flagged=True, no ancestors -> inherited_flagged=False."""
         task = _make_task(
             id="t1",
             flagged=True,
@@ -1878,3 +1878,202 @@ class TestComputeTrueInheritance:
 
         # Parent missing, project not flagged -> inherited_flagged should be False
         assert result[0].inherited_flagged is False
+
+    # -- Computed ancestor values (not OF effective) ---------------------------
+
+    @pytest.mark.anyio
+    async def test_computed_due_date_from_project_not_of_effective(self) -> None:
+        """Task dueDate=2026-05-01, project dueDate=2036-03-01 -> inheritedDueDate is 2036-03-01.
+
+        OF resolves inheritedDueDate = min(own, project) = 2026-05-01.
+        True inheritance should show the project's actual date: 2036-03-01.
+        """
+        task = _make_task(
+            id="t1",
+            dueDate="2026-05-01T17:00:00.000Z",
+            # OF sets inheritedDueDate to min(task, project) = task's own date
+            inheritedDueDate="2026-05-01T17:00:00.000Z",
+            parent={"project": {"id": "proj-1", "name": "P"}},
+            project={"id": "proj-1", "name": "P"},
+        )
+        project = _make_project(id="proj-1", dueDate="2036-03-01T17:00:00.000Z")
+        snapshot = _make_snapshot_with(tasks=[task], projects=[project])
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [task])
+
+        assert result[0].inherited_due_date == datetime(2036, 3, 1, 17, 0, tzinfo=UTC)
+
+    @pytest.mark.anyio
+    async def test_computed_due_date_soonest_ancestor_not_own(self) -> None:
+        """Task dueDate=2026-05-01, parent dueDate=2026-06-15, project dueDate=2036-03-01.
+
+        inheritedDueDate should be 2026-06-15 (soonest ancestor), not 2026-05-01 (task's own).
+        """
+        parent = _make_task(
+            id="t-parent",
+            dueDate="2026-06-15T17:00:00.000Z",
+            parent={"project": {"id": "proj-1", "name": "P"}},
+            project={"id": "proj-1", "name": "P"},
+            hasChildren=True,
+        )
+        child = _make_task(
+            id="t-child",
+            dueDate="2026-05-01T17:00:00.000Z",
+            inheritedDueDate="2026-05-01T17:00:00.000Z",
+            parent={"task": {"id": "t-parent", "name": "Parent"}},
+            project={"id": "proj-1", "name": "P"},
+        )
+        project = _make_project(id="proj-1", dueDate="2036-03-01T17:00:00.000Z")
+        snapshot = _make_snapshot_with(tasks=[parent, child], projects=[project])
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [child])
+
+        assert result[0].inherited_due_date == datetime(2026, 6, 15, 17, 0, tzinfo=UTC)
+
+    @pytest.mark.anyio
+    async def test_computed_due_date_soonest_among_ancestors(self) -> None:
+        """Grandparent dueDate=2027-01-01, parent dueDate=2026-06-15 -> soonest is 2026-06-15."""
+        grandparent = _make_task(
+            id="t-gp",
+            dueDate="2027-01-01T12:00:00.000Z",
+            parent={"project": {"id": "proj-1", "name": "P"}},
+            project={"id": "proj-1", "name": "P"},
+            hasChildren=True,
+        )
+        parent = _make_task(
+            id="t-parent",
+            dueDate="2026-06-15T17:00:00.000Z",
+            parent={"task": {"id": "t-gp", "name": "GP"}},
+            project={"id": "proj-1", "name": "P"},
+            hasChildren=True,
+        )
+        child = _make_task(
+            id="t-child",
+            dueDate=None,
+            inheritedDueDate="2026-06-15T17:00:00.000Z",
+            parent={"task": {"id": "t-parent", "name": "Parent"}},
+            project={"id": "proj-1", "name": "P"},
+        )
+        project = _make_project(id="proj-1", dueDate=None)
+        snapshot = _make_snapshot_with(tasks=[grandparent, parent, child], projects=[project])
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [child])
+
+        assert result[0].inherited_due_date == datetime(2026, 6, 15, 17, 0, tzinfo=UTC)
+
+    @pytest.mark.anyio
+    async def test_computed_flagged_from_ancestor_chain(self) -> None:
+        """Task not flagged, parent not flagged, project flagged -> inheritedFlagged is True."""
+        task = _make_task(
+            id="t1",
+            flagged=False,
+            inheritedFlagged=True,
+            parent={"project": {"id": "proj-1", "name": "P"}},
+            project={"id": "proj-1", "name": "P"},
+        )
+        project = _make_project(id="proj-1", flagged=True)
+        snapshot = _make_snapshot_with(tasks=[task], projects=[project])
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [task])
+
+        # This already passes (existing test checks is True), but we assert exact value
+        assert result[0].inherited_flagged is True
+
+    @pytest.mark.anyio
+    async def test_computed_flagged_parent_contributes(self) -> None:
+        """Task flagged, parent flagged, project not flagged -> inheritedFlagged True.
+
+        Parent is an ancestor, so it contributes to inherited_flagged.
+        """
+        parent = _make_task(
+            id="t-parent",
+            flagged=True,
+            parent={"project": {"id": "proj-1", "name": "P"}},
+            project={"id": "proj-1", "name": "P"},
+            hasChildren=True,
+        )
+        child = _make_task(
+            id="t-child",
+            flagged=True,
+            inheritedFlagged=True,
+            parent={"task": {"id": "t-parent", "name": "Parent"}},
+            project={"id": "proj-1", "name": "P"},
+        )
+        project = _make_project(id="proj-1", flagged=False)
+        snapshot = _make_snapshot_with(tasks=[parent, child], projects=[project])
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [child])
+
+        assert result[0].inherited_flagged is True
+
+    @pytest.mark.anyio
+    async def test_all_six_date_fields_compute_ancestor_values(self) -> None:
+        """All 6 inherited field pairs compute actual ancestor value, not OF effective.
+
+        Task has distinct dates from project. inheritedX should show project dates.
+        """
+        task = _make_task(
+            id="t1",
+            flagged=True,
+            # OF sets inherited to task's own (self-echo or min resolution)
+            inheritedFlagged=True,
+            dueDate="2026-05-01T17:00:00.000Z",
+            inheritedDueDate="2026-05-01T17:00:00.000Z",
+            deferDate="2026-04-01T09:00:00.000Z",
+            inheritedDeferDate="2026-04-01T09:00:00.000Z",
+            plannedDate="2026-04-15T08:00:00.000Z",
+            inheritedPlannedDate="2026-04-15T08:00:00.000Z",
+            dropDate="2026-06-01T00:00:00.000Z",
+            inheritedDropDate="2026-06-01T00:00:00.000Z",
+            completionDate="2026-03-31T12:00:00.000Z",
+            inheritedCompletionDate="2026-03-31T12:00:00.000Z",
+            parent={"project": {"id": "proj-1", "name": "P"}},
+            project={"id": "proj-1", "name": "P"},
+        )
+        project = _make_project(
+            id="proj-1",
+            flagged=True,
+            dueDate="2036-03-01T17:00:00.000Z",
+            deferDate="2036-01-01T09:00:00.000Z",
+            plannedDate="2036-02-01T08:00:00.000Z",
+            dropDate="2036-06-01T00:00:00.000Z",
+            completionDate="2036-05-01T12:00:00.000Z",
+        )
+        snapshot = _make_snapshot_with(tasks=[task], projects=[project])
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [task])
+
+        walked = result[0]
+        assert walked.inherited_flagged is True
+        assert walked.inherited_due_date == datetime(2036, 3, 1, 17, 0, tzinfo=UTC)
+        assert walked.inherited_defer_date == datetime(2036, 1, 1, 9, 0, tzinfo=UTC)
+        assert walked.inherited_planned_date == datetime(2036, 2, 1, 8, 0, tzinfo=UTC)
+        assert walked.inherited_drop_date == datetime(2036, 6, 1, 0, 0, tzinfo=UTC)
+        assert walked.inherited_completion_date == datetime(2036, 5, 1, 12, 0, tzinfo=UTC)
+
+    @pytest.mark.anyio
+    async def test_simple_inheritance_no_own_date_exact_value(self) -> None:
+        """Task has no dueDate, project has dueDate 2036-03-01 -> inheritedDueDate is 2036-03-01.
+
+        Simple case (already passes for is not None) but asserts exact value.
+        """
+        task = _make_task(
+            id="t1",
+            dueDate=None,
+            inheritedDueDate="2036-03-01T17:00:00.000Z",
+            parent={"project": {"id": "proj-1", "name": "P"}},
+            project={"id": "proj-1", "name": "P"},
+        )
+        project = _make_project(id="proj-1", dueDate="2036-03-01T17:00:00.000Z")
+        snapshot = _make_snapshot_with(tasks=[task], projects=[project])
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [task])
+
+        assert result[0].inherited_due_date == datetime(2036, 3, 1, 17, 0, tzinfo=UTC)
