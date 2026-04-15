@@ -16,10 +16,11 @@ PROJECT_NOT_FOUND = "Project not found: {id}"
 TAG_NOT_FOUND = "Tag not found: {name}"
 
 # --- Batch Limit ---
+# Kept for reference — Pydantic max_length now enforces this at schema level.
 
-ADD_TASKS_BATCH_LIMIT = "add_tasks currently accepts exactly 1 item, got {count}"
+ADD_TASKS_BATCH_LIMIT = "add_tasks accepts up to {max} items per call, got {count}"
 
-EDIT_TASKS_BATCH_LIMIT = "edit_tasks currently accepts exactly 1 item, got {count}"
+EDIT_TASKS_BATCH_LIMIT = "edit_tasks accepts up to {max} items per call, got {count}"
 
 # --- Validation Fallback ---
 
