@@ -10,7 +10,7 @@ All findings derived from live OmniFocus testing on 2026-04-15.
 - Planned date semantics: **REPLICATED** ✅ (2026-04-15, fresh hierarchy + 2027→2037 swap experiment)
 - Flagged semantics: **REPLICATED** ✅ (2026-04-15, project unflagged + mid-chain flag test)
 - Drop date semantics: **REPLICATED** ✅ (2026-04-15, reverse-drop test + nearer-ancestor test)
-- Completion date semantics: **HIGH confidence** (2026-04-15, max ruled out + identical to drop in all tests)
+- Completion date semantics: **REPLICATED** ✅ (2026-04-15, max + min independently ruled out)
 
 ## Background
 
@@ -480,7 +480,7 @@ Min ruled out in sessions 1+2. Max ruled out in session 3. First-found confirmed
 
 ## Finding 6: Completion Date — Override (own ?? parent)
 
-**Confidence: HIGH**
+**Confidence: REPLICATED** ✅
 
 **Rule:** `effectiveCompletionDate = own completionDate ?? parent's effectiveCompletionDate`
 
@@ -544,11 +544,37 @@ Then re-dropped Leaf → new timestamp 17:50:29. No memory of 17:23:48.
 This proves: drop and completion use the exact same override/first-found rule. Own value
 wins outright. Remove own → ancestor takes over immediately. No latching, no history.
 
-### Min vs first-found
+### Session 4 replication (2026-04-15) — min independently ruled out ✅
 
-Min not independently ruled out for completion (would need reverse-order completion test).
-However, min IS ruled out for drop (same override family, session 2), and completion behaves
-identically to drop in all tests. Conclusion: first-found, by family consistency.
+Reverse-order completion test. Hierarchy in `🧪 GM-TestProject` with blocker siblings:
+
+```
+UAT-CompMin-Root
+├── UAT-CompMin-Root-Blocker
+└── UAT-CompMin-Mid
+    ├── UAT-CompMin-Mid-Blocker
+    └── UAT-CompMin-Inner          ← observation point
+```
+
+**Step 1: Complete Root (T1 = 18:38:31)**
+
+All descendants get effectiveCompletionDate = 18:38:31 (inherited from Root).
+
+**Step 2: Complete Mid (T2 = 18:39:01) — 30 seconds later**
+
+| Task | own completionDate | effectiveCompletionDate |
+|------|-------------------|------------------------|
+| Root | 18:38:31 | 18:38:31 |
+| Root-Blocker | — | 18:38:31 |
+| Mid | 18:39:01 | 18:39:01 |
+| Mid-Blocker | — | 18:39:01 |
+| **Inner** | **—** | **18:39:01 (T2 = Mid's)** |
+
+**Min ruled out:** If min, Inner would show 18:38:31 (Root's T1, the earlier timestamp).
+Instead Inner shows 18:39:01 — Mid's timestamp, the **nearer** ancestor.
+
+Combined with session 3 (max ruled out), only **first-found** is consistent with all tests.
+Completion date is now independently confirmed at the same level as drop date.
 
 ### Implication for `inheritedCompletionDate`
 
@@ -625,6 +651,47 @@ Both lifecycle states coexist in the data model for inherited-drop + own-complet
 - Drop-to-completion flips are real and erase drop data — any caching/snapshot logic must handle this
 - This behavior is NOT directly relevant to `inherited*` field computation, but is important for
   understanding lifecycle state transitions in the data model
+
+
+---
+
+## Finding 8: Project-to-Task Lifecycle Inheritance
+
+**Confidence: REPLICATED** ✅
+
+All prior lifecycle tests (drop, completion) used task-to-task inheritance only. `_walk_one`
+includes the containing project as the final ancestor, but this was untested for lifecycle fields.
+(Date and flag inheritance through projects was already confirmed in sessions 1-2.)
+
+### Test (2026-04-15, session 4)
+
+Hierarchy in `🧪 GM-TestProject` (no dates, no flags):
+
+```
+🧪 GM-TestProject              (project)
+├── UAT-ProjLC-Parent           (task)
+│   └── UAT-ProjLC-Child        (nested task — 2 levels deep)
+└── UAT-ProjLC-Sibling          (task)
+```
+
+**Before:** All tasks show dropDate=—, effectiveDropDate=—.
+
+**After dropping the project:**
+
+| Entity | own dropDate | effectiveDropDate |
+|--------|-------------|-------------------|
+| Project | 18:36:10 | 18:36:10 |
+| Parent | — | 18:36:10 |
+| Child | — | 18:36:10 |
+| Sibling | — | 18:36:10 |
+
+All three tasks inherit the project's drop date. The nested Child (two levels deep) confirms
+the walk goes: Child → Parent (no drop) → Project (drop found).
+
+### Implication for `_walk_one`
+
+The project-as-final-ancestor code path works for lifecycle fields, not just dates/flags.
+No code changes needed — this confirms existing behavior is correct.
 
 
 ---
@@ -707,7 +774,14 @@ have the field set. This is the mirror of the current min implementation.
 
 ## Test Artifacts Still in OmniFocus
 
-### Session 3 (current)
+### Session 4 (current)
+
+- `UAT-ProjLC-Parent`, `UAT-ProjLC-Child`, `UAT-ProjLC-Sibling` — project lifecycle test in
+  `🧪 GM-TestProject`. Project was dropped and un-dropped. Tasks should be active.
+- `UAT-CompMin-Root/Mid/Inner` + `*-Blocker` — reverse-order completion test. Root completed
+  at 18:38:31, Mid completed at 18:39:01. Inner shows Mid's timestamp (first-found confirmed).
+
+### Session 3
 
 - `UAT-Due-L1` through `UAT-Due-L5` — 5-level date/flag hierarchy. Dates cleared, L3 flagged,
   project unflagged. Active/blocked status.
@@ -736,13 +810,16 @@ have the field set. This is the mirror of the current min implementation.
 
 Reverse-drop test confirmed first-found. See Finding 5 replication (session 3) above.
 
-### ✅ Test B: Completion date — DONE (session 3)
+### ✅ Test B: Completion date — DONE (sessions 3+4)
 
-Max ruled out via distinct-timestamp test + drop/completion parity test.
-First-found confirmed by family consistency (min independently ruled out for drop).
-See Finding 6 replication (session 3) above.
+Max ruled out via distinct-timestamp test (session 3). Min independently ruled out via
+reverse-order completion test (session 4). See Finding 6 replications above.
 
-### All 6 fields confirmed. Next: Fix `_walk_one` implementation
+### ✅ Test C: Project-to-task lifecycle — DONE (session 4)
+
+Project drop date inherited by direct children and nested grandchild. See Finding 8 above.
+
+### All 6 fields confirmed, all gaps closed. Next: Fix `_walk_one` implementation
 
 1. Fix `_walk_one` in `service/domain.py` — three code paths:
    - `min` for `due_date` (already correct)

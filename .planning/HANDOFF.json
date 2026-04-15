@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-04-15T18:05:46.198Z",
+  "timestamp": "2026-04-15T18:44:36.816Z",
   "phase": "53.1",
   "phase_name": "true-inherited-fields",
   "phase_dir": ".planning/phases/53.1-true-inherited-fields",
@@ -21,11 +21,11 @@
     {"id": 10, "name": "Rule out MAX for drop date — reverse-order drop test + nearer-ancestor bonus", "status": "done"},
     {"id": 11, "name": "Completion date test — max ruled out, parity with drop confirmed", "status": "done"},
     {"id": 12, "name": "Document 'derived not stored' insight + un-drop/re-drop proof", "status": "done"},
-    {"id": 13, "name": "Architecture.md — separate inherited* (ours) from effective* (OmniFocus)", "status": "done"}
+    {"id": 13, "name": "Architecture.md — separate inherited* (ours) from effective* (OmniFocus)", "status": "done"},
+    {"id": 14, "name": "Reverse-order completion test — min independently ruled out", "status": "done"},
+    {"id": 15, "name": "Project-to-task lifecycle test — project drop inherited by all descendants", "status": "done"}
   ],
   "remaining_tasks": [
-    {"id": 14, "name": "Optional: rule out min independently for completion date (reverse-order completion test)", "status": "not_started"},
-    {"id": 15, "name": "Optional: test project-to-task lifecycle inheritance (drop/complete a project)", "status": "not_started"},
     {"id": 16, "name": "Fix _walk_one: defer→max, planned/drop/completion→first-found", "status": "not_started"},
     {"id": 17, "name": "Write tests for new semantics (TDD RED → GREEN)", "status": "not_started"},
     {"id": 18, "name": "Update UAT file with results", "status": "not_started"},
@@ -33,22 +33,23 @@
   ],
   "blockers": [],
   "human_actions_pending": [
-    {"action": "Optional: reverse-order completion test to independently rule out min", "context": "Currently inferred from family consistency. Complete Root first (earlier timestamp), then Mid (later). If first-found, Inner-Blocker shows Mid's (nearer). If min, shows Root's (earlier).", "blocking": false},
-    {"action": "Optional: drop or complete a project to verify project-to-task lifecycle inheritance", "context": "All lifecycle tests were task-to-task. _walk_one includes project as final ancestor, so same rule should apply, but untested.", "blocking": false}
+    {"action": "Clean up UAT test hierarchies from OmniFocus", "context": "UAT-CompMin-*, UAT-ProjLC-*, plus older UAT-Due-*, UAT-Drop-*, UAT-Test-*, UAT-Comp-* hierarchies still in OmniFocus. Also re-flag 🧪 GM-TestProject-Dated (unflagged during session 2 testing) and un-drop 🧪 GM-TestProject (if not already restored).", "blocking": false}
   ],
   "decisions": [
-    {"decision": "Due date uses min (cascading minimum)", "rationale": "REPLICATED — fresh 5-level hierarchy, all 5 match", "phase": "53.1"},
-    {"decision": "Defer date uses max (cascading maximum)", "rationale": "REPLICATED — L3 decisive (own=2025, eff=2027 from L2)", "phase": "53.1"},
-    {"decision": "Planned date uses first-found/override", "rationale": "REPLICATED — two rounds + 2027→2037 swap", "phase": "53.1"},
-    {"decision": "Flagged uses any-True / OR", "rationale": "REPLICATED — unflagged project, L3 flagged, L1/L2 false proves downward-only", "phase": "53.1"},
-    {"decision": "Drop date uses first-found", "rationale": "REPLICATED — reverse-order drop (Mid first, Root second) + nearer-ancestor drop (Inner). Min ruled out session 2, max ruled out session 3.", "phase": "53.1"},
-    {"decision": "Completion date uses first-found", "rationale": "HIGH confidence — max ruled out empirically, identical behavior to drop in all tests. Min inferred from family consistency.", "phase": "53.1"},
-    {"decision": "Auto-complete triggers when ALL children have own lifecycle status", "rationale": "HIGH confidence — effectively dropped doesn't count; always produces completed; erases dropDate", "phase": "53.1"},
-    {"decision": "Planned date = scoped intent, not completion target", "rationale": "Design discussion: min would collapse phased schedules. Updated descriptions.py and omnifocus-concepts.md", "phase": "53.1"},
-    {"decision": "Effective values are derived, not stored", "rationale": "Proven: nearer-ancestor drop changed effective despite already effectively dropped. Un-drop/re-drop cycle showed no memory of previous state.", "phase": "53.1"},
-    {"decision": "Our inherited* replaces OmniFocus effective* — ancestor-only, no self-echo", "rationale": "Architecture doc clarified: OmniFocus has own+effective (merged). We have own+inherited (ancestor contribution only, absent when no ancestor contributes).", "phase": "53.1"}
+    {"decision": "Due date uses min (cascading minimum)", "rationale": "REPLICATED", "phase": "53.1"},
+    {"decision": "Defer date uses max (cascading maximum)", "rationale": "REPLICATED", "phase": "53.1"},
+    {"decision": "Planned date uses first-found/override", "rationale": "REPLICATED", "phase": "53.1"},
+    {"decision": "Flagged uses any-True / OR", "rationale": "REPLICATED", "phase": "53.1"},
+    {"decision": "Drop date uses first-found", "rationale": "REPLICATED — min + max independently ruled out", "phase": "53.1"},
+    {"decision": "Completion date uses first-found", "rationale": "REPLICATED — min + max independently ruled out (session 4)", "phase": "53.1"},
+    {"decision": "Project-to-task lifecycle inheritance confirmed", "rationale": "REPLICATED — project drop propagates to direct children and nested grandchild", "phase": "53.1"},
+    {"decision": "Effective values are derived, not stored", "rationale": "Proven via nearer-ancestor changes + un-drop/re-drop cycle", "phase": "53.1"},
+    {"decision": "Our inherited* replaces OmniFocus effective* — ancestor-only, no self-echo", "rationale": "Architecture doc updated", "phase": "53.1"}
   ],
-  "uncommitted_files": [],
-  "next_action": "Decide on two optional gaps (min-for-completion, project-to-task lifecycle), then proceed to fix _walk_one implementation. Two gaps are optional — can skip if user considers family consistency sufficient.",
-  "context_notes": "Session 3 completed the full empirical study. All 6 inherited fields confirmed. Key insight documented: effective values are derived (live tree walk), not stored/latched. Architecture.md updated to clearly separate our inherited* concept from OmniFocus effective*. FIXME comments in domain.py and descriptions.py link to FINDINGS.md. Project is currently UNFLAGGED — re-flag before non-inheritance work. Test hierarchies still in OmniFocus (UAT-Due-L*, UAT-Drop-*, UAT-Test-*, UAT-Comp-*)."
+  "uncommitted_files": [
+    ".planning/phases/53.1-true-inherited-fields/.continue-here.md",
+    ".research/deep-dives/omnifocus-inheritance-semantics/FINDINGS.md"
+  ],
+  "next_action": "Decide whether to use /gsd-plan-phase for the _walk_one implementation or go straight to coding. Then: fix _walk_one (3 code paths), write tests (TDD), update UAT, clean up OmniFocus test tasks.",
+  "context_notes": "Empirical study 100% complete across 4 sessions. All 6 inherited fields confirmed at REPLICATED confidence, both optional gaps closed (completion min independently ruled out + project lifecycle confirmed). FINDINGS.md is the canonical reference. Implementation is straightforward — _walk_one needs 3 code paths instead of 1. User is deciding whether to use formal GSD planning or go direct. FIXME comments in domain.py and descriptions.py link to FINDINGS.md. GM-TestProject-Dated is UNFLAGGED — re-flag before non-inheritance work."
 }
