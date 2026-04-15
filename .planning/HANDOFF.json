@@ -1,0 +1,49 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-04-15T15:14:09.617Z",
+  "phase": "53.1",
+  "phase_name": "true-inherited-fields",
+  "phase_dir": ".planning/phases/53.1-true-inherited-fields",
+  "plan": 3,
+  "task": null,
+  "total_tasks": null,
+  "status": "paused",
+  "completed_tasks": [
+    {"id": 1, "name": "Empirical testing of due/defer/planned/flagged semantics", "status": "done"},
+    {"id": 2, "name": "Drop date testing with blocker siblings", "status": "done"},
+    {"id": 3, "name": "Completion date basic test", "status": "done"},
+    {"id": 4, "name": "Document findings in deep-dive", "status": "done"}
+  ],
+  "remaining_tasks": [
+    {"id": 5, "name": "Discuss plannedDate semantics with user", "status": "not_started"},
+    {"id": 6, "name": "Run completion date test with blocker siblings", "status": "not_started"},
+    {"id": 7, "name": "Fix _walk_one: defer→max, planned/drop/completion→first-found", "status": "not_started"},
+    {"id": 8, "name": "Write tests for new semantics", "status": "not_started"},
+    {"id": 9, "name": "Create architecture documentation for inheritance", "status": "not_started"},
+    {"id": 10, "name": "Update UAT file with new gaps and re-test results", "status": "not_started"},
+    {"id": 11, "name": "Clean up test tasks from OmniFocus", "status": "not_started"}
+  ],
+  "blockers": [
+    {"description": "Completion date aggregation unconfirmed (all timestamps identical in test)", "type": "technical", "workaround": "Run test with blocker siblings for distinct timestamps"}
+  ],
+  "human_actions_pending": [
+    {"action": "Discuss plannedDate semantics before implementation", "context": "User specifically requested discussion on how inheritedPlannedDate should work", "blocking": true},
+    {"action": "Optionally run completion date test with blocker siblings", "context": "Low confidence on completion semantics", "blocking": false}
+  ],
+  "decisions": [
+    {"decision": "Due date uses min (cascading minimum)", "rationale": "Empirically verified with 5-level hierarchy", "phase": "53.1"},
+    {"decision": "Defer date uses max (cascading maximum)", "rationale": "Empirically verified - L3 own=2025-01 but effective=2027-05 from L2", "phase": "53.1"},
+    {"decision": "Planned date uses override (own ?? parent_eff)", "rationale": "Empirically verified - L1 ruled out min, L5 ruled out max", "phase": "53.1"},
+    {"decision": "Drop date uses first-found/override", "rationale": "Test 3 ruled out max, Test 4 ruled out min, only first-found consistent", "phase": "53.1"},
+    {"decision": "Flagged uses any-True / OR", "rationale": "Consistent with all data and OmniFocus documentation", "phase": "53.1"},
+    {"decision": "Completion date likely uses first-found (tentative)", "rationale": "By analogy with drop, but not empirically distinguished yet", "phase": "53.1"}
+  ],
+  "uncommitted_files": [
+    ".research/deep-dives/omnifocus-inheritance-semantics/FINDINGS.md",
+    ".research/deep-dives/omnifocus-inheritance-semantics/README.md",
+    ".planning/phases/53.1-true-inherited-fields/.continue-here.md",
+    ".planning/HANDOFF.json"
+  ],
+  "next_action": "Read FINDINGS.md, then discuss plannedDate semantics with user before implementing fixes",
+  "context_notes": "UAT re-verification revealed 4 bugs in _walk_one. Comprehensive empirical testing completed. User wants to discuss planned date handling and is not 100% convinced all findings are confirmed. Context window was getting full, so pausing here."
+}
