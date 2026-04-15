@@ -224,8 +224,11 @@ class DomainLogic:
         project_map: dict[str, Project],
     ) -> Task:
         """Determine which inherited fields are truly inherited for one task."""
-        # Track whether any ancestor sets each inherited field
-        ancestor_sets: dict[str, bool] = {inh: False for _, inh in _INHERITED_FIELD_PAIRS}
+        # Track actual ancestor values (not just presence booleans).
+        # inherited_flagged: any-True semantics (False until an ancestor is True).
+        # Date fields: soonest (min) date among ancestors that have the field set.
+        ancestor_vals: dict[str, object] = {inh: None for _, inh in _INHERITED_FIELD_PAIRS}
+        ancestor_vals["inherited_flagged"] = False
 
         # Walk ancestor task chain via parent.task.id
         current_id: str | None = task.parent.task.id if task.parent.task else None
@@ -234,12 +237,15 @@ class DomainLogic:
             if ancestor is None:
                 break
             for direct, inherited in _INHERITED_FIELD_PAIRS:
-                if not ancestor_sets[inherited]:
-                    val = getattr(ancestor, direct)
-                    if direct == "flagged":
-                        ancestor_sets[inherited] = val is True
-                    else:
-                        ancestor_sets[inherited] = val is not None
+                val = getattr(ancestor, direct)
+                if direct == "flagged":
+                    # any-True: once True, stays True
+                    if val is True:
+                        ancestor_vals[inherited] = True
+                elif val is not None:
+                    cur = ancestor_vals[inherited]
+                    if cur is None or val < cur:
+                        ancestor_vals[inherited] = val
             current_id = ancestor.parent.task.id if ancestor.parent.task else None
 
         # Check containing project as final ancestor (D-01)
@@ -247,23 +253,25 @@ class DomainLogic:
         project = project_map.get(task.project.id)
         if project is not None:
             for direct, inherited in _INHERITED_FIELD_PAIRS:
-                if not ancestor_sets[inherited] and hasattr(project, direct):
-                    val = getattr(project, direct)
-                    if direct == "flagged":
-                        ancestor_sets[inherited] = val is True
-                    else:
-                        ancestor_sets[inherited] = val is not None
+                if not hasattr(project, direct):
+                    continue
+                val = getattr(project, direct)
+                if direct == "flagged":
+                    if val is True:
+                        ancestor_vals[inherited] = True
+                elif val is not None:
+                    cur = ancestor_vals[inherited]
+                    if cur is None or val < cur:
+                        ancestor_vals[inherited] = val
 
-        # Build update dict for fields where no ancestor sets the value
+        # Build update dict: always set all 6 inherited fields to computed
+        # ancestor values. Replaces OF's effective value with the true
+        # ancestor value (or the "no inheritance" default).
         updates: dict[str, object] = {}
         for _, inherited in _INHERITED_FIELD_PAIRS:
-            if not ancestor_sets[inherited]:
-                if inherited == "inherited_flagged":
-                    updates[inherited] = False
-                else:
-                    updates[inherited] = None
+            updates[inherited] = ancestor_vals[inherited]
 
-        return task.model_copy(update=updates) if updates else task
+        return task.model_copy(update=updates)
 
     # -- Date filter resolution ------------------------------------------------
 
