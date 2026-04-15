@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import Field, field_validator
 
 from omnifocus_operator.agent_messages.descriptions import (
@@ -83,9 +85,10 @@ class AddTaskCommand(CommandModel):
 class AddTaskResult(OmniFocusBaseModel):
     __doc__ = ADD_TASK_RESULT_DOC
 
-    success: bool
-    id: str
-    name: str
+    status: Literal["success", "error", "skipped"]
+    id: str | None = None
+    name: str | None = None
+    error: str | None = None
     warnings: list[str] | None = None
 
 

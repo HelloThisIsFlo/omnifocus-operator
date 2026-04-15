@@ -14,6 +14,10 @@ from omnifocus_operator.models.enums import EntityType
 # Agents can override with limit=null to get all results.
 DEFAULT_LIST_LIMIT: int = 50
 
+# -- Batch processing ----------------------------------------------------------
+# Maximum items accepted in a single add_tasks or edit_tasks call.
+MAX_BATCH_SIZE: int = 50
+
 # -- Fuzzy matching (used by DomainLogic.suggest_close_matches) ---------------
 # Maximum number of suggestions returned for a failed name resolution.
 FUZZY_MATCH_MAX_SUGGESTIONS: int = 3

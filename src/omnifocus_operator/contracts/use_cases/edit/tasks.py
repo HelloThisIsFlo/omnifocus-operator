@@ -109,9 +109,10 @@ class EditTaskCommand(CommandModel):
 class EditTaskResult(OmniFocusBaseModel):
     __doc__ = EDIT_TASK_RESULT_DOC
 
-    success: bool
-    id: str
-    name: str
+    status: Literal["success", "error", "skipped"]
+    id: str | None = None
+    name: str | None = None
+    error: str | None = None
     warnings: list[str] | None = None
 
 
