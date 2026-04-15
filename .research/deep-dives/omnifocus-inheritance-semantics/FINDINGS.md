@@ -8,9 +8,9 @@ All findings derived from live OmniFocus testing on 2026-04-15.
 - Due date semantics: **REPLICATED** ✅ (2026-04-15, fresh 5-level hierarchy)
 - Defer date semantics: **REPLICATED** ✅ (2026-04-15, fresh 5-level hierarchy)
 - Planned date semantics: **REPLICATED** ✅ (2026-04-15, fresh hierarchy + 2027→2037 swap experiment)
-- Flagged semantics: **high confidence** (not yet replicated)
-- Drop date semantics: **medium confidence** (not yet replicated)
-- Completion date semantics: **low confidence** (not yet replicated)
+- Flagged semantics: **REPLICATED** ✅ (2026-04-15, project unflagged + mid-chain flag test)
+- Drop date semantics: **PARTIAL** — min ruled out in session 2; max vs first-found needs fresh hierarchy
+- Completion date semantics: **low confidence** (not yet replicated, needs distinct timestamps)
 
 ## Background
 
@@ -287,14 +287,21 @@ All 5 levels show effectiveFlagged: true
 Project is flagged (true), so all descendants are effectively flagged.
 ```
 
-### Limitation
+### Limitation (original test)
 
-Since the project is flagged, all tasks show `effectiveFlagged: true` regardless of their
-own value. This is consistent with any-True / OR, but we can't distinguish from other
-aggregations (like max-True) because there's no FALSE → TRUE → FALSE pattern to test.
+Since the project was flagged, all tasks showed `effectiveFlagged: true` regardless of their
+own value. Consistent with any-True / OR, but couldn't distinguish from other aggregations.
 
-However, the OR/any-True semantics are well-documented in OmniFocus and consistent with
-how flagging works conceptually (attention signal propagates).
+### Replication (2026-04-15, session 2) — DECISIVE
+
+Project unflagged manually, then only L3 flagged. Result:
+- L1: false/false, L2: false/false (above the flag — unaffected)
+- L3: true/true (own flag)
+- L4: false/true, L5: false/true (below the flag — propagates down)
+
+This proves flag propagates **downward only** via OR. L1/L2 being false rules out any
+whole-chain aggregation. The original limitation is now resolved.
+**REPLICATED.**
 
 ### Implication for `inheritedFlagged`
 
@@ -393,7 +400,7 @@ In all tests, Leaf never received its own `dropDate`. It only got `effectiveDrop
 from ancestors. This confirms that inheritance IS meaningful for drop dates — children
 don't get their own date when a parent is dropped.
 
-### Caveats (why medium confidence)
+### Caveats (why medium confidence in session 1)
 
 1. **Auto-completion side effects:** Dropping a task's only child auto-completes the parent,
    which can change lifecycle states unexpectedly. Blocker siblings mitigate but don't
@@ -401,10 +408,27 @@ don't get their own date when a parent is dropped.
 2. **Only tested task-to-task inheritance**, not project-to-task (dropping a project).
 3. **Small sample size:** Only 4 tests, with 2 being decisive.
 
+### Replication (2026-04-15, session 2) — PARTIAL
+
+5-level hierarchy with blocker siblings at every level (UAT-Drop-A through E, plus *-Blocker).
+Drops applied top-down: A first (16:12:31), then C (16:13:19), then D (16:14:01).
+
+**Min ruled out:** After dropping C, tasks below C (D, D-Blocker, E) switched from A's 16:12:31
+to C's 16:13:19. If min, they would have kept A's earlier timestamp.
+
+**Max vs first-found NOT YET distinguished** in this test: each successive drop was both nearer
+AND later, so max and first-found give the same answer. Need fresh hierarchy with reverse drop
+order (nearer ancestor dropped first/earlier, further ancestor dropped second/later).
+
+**Auto-completion discovery (major finding — see Finding 7 below):** After drop testing,
+we explored lifecycle interactions by completing/dropping blocker siblings. This revealed
+rich auto-completion behavior documented in Finding 7.
+
 ### Implication for `inheritedDropDate`
 
 Should be: nearest ancestor's drop date (first non-null walking up).
 **Current implementation uses min — WRONG. Should be first-found (same as planned).**
+Min ruled out in both sessions. Max still needs independent ruling-out (next step).
 
 
 ---
@@ -470,6 +494,77 @@ Tentatively: nearest ancestor's completion date (first non-null walking up).
 
 ---
 
+## Finding 7: Auto-Completion Lifecycle Behavior (session 2)
+
+**Confidence: HIGH** — replicated with 5-level hierarchy, multiple rounds.
+
+Discovered during drop date testing. When all children of a task have their **own** lifecycle
+status (completed or dropped), OmniFocus auto-completes the parent. This interacts with
+drop/completion inheritance in important ways.
+
+### Test hierarchy
+
+```
+UAT-Drop-A                          dropped at 16:12:31
+├── UAT-Drop-A-Blocker              completed at 16:24:58
+└── UAT-Drop-B                      (effectively dropped, no own status)
+    ├── UAT-Drop-B-Blocker          completed at 16:29:00
+    └── UAT-Drop-C                  dropped at 16:13:19 → FLIPPED to completed at 16:25:31
+        ├── UAT-Drop-C-Blocker      dropped at 16:25:31
+        └── UAT-Drop-D              dropped at 16:14:01
+            ├── UAT-Drop-D-Blocker  completed at 16:20:21
+            └── UAT-Drop-E          (effectively dropped, no own status)
+```
+
+### Key findings
+
+**1. Auto-complete requires ALL children to have own lifecycle status.**
+
+| Parent | Children status | Auto-complete? | Why |
+|--------|----------------|----------------|-----|
+| D | D-Blocker completed + E effectively dropped | NO | E has no own status |
+| C | C-Blocker explicitly dropped + D explicitly dropped | YES | Both have own status |
+| A | A-Blocker completed + B effectively dropped | NO (initially) | B had no own status |
+| B | B-Blocker completed + C completed | YES | Both have own status |
+| A | A-Blocker completed + B completed | YES (cascaded) | Both now have own status |
+
+"Effectively dropped" (inherited only, no own dropDate) does NOT count as "done."
+
+**2. Auto-complete always produces "completed", never "dropped".**
+
+C had both children dropped (C-Blocker dropped, D dropped). C still became **completed**,
+not dropped. Auto-completion is about "all work is resolved," and the resolution is always completion.
+
+**3. Auto-complete erases existing dropDate.**
+
+C was explicitly dropped at 16:13:19. When auto-complete triggered, the dropDate was **cleared**
+and replaced with completionDate 16:25:31. The drop is gone — no trace in the data model.
+Same happened to A: explicitly dropped at 16:12:31, auto-completed at 16:29:00, drop erased.
+
+**4. Auto-complete cascades upward.**
+
+Completing B-Blocker at 16:29:00 triggered a chain:
+- B auto-completed (children: B-Blocker completed + C completed) → B gets completionDate 16:29:00
+- A auto-completed (children: A-Blocker completed + B just completed) → A gets completionDate 16:29:00
+- Both B and A received the same timestamp as the triggering action
+
+**5. Completing a task in an effectively-dropped subtree works normally.**
+
+D-Blocker was effectively dropped (inherited from D), but we could still complete it.
+It received both own completionDate=16:20:21 AND effectiveDropDate=16:14:01 simultaneously.
+Both lifecycle states coexist in the data model for inherited-drop + own-completion.
+
+### Implications for the operator
+
+- Auto-completion is driven by the "complete when completing last item" OmniFocus setting (on by default)
+- The distinction between "own" and "effective" lifecycle status is critical — only own status counts
+- Drop-to-completion flips are real and erase drop data — any caching/snapshot logic must handle this
+- This behavior is NOT directly relevant to `inherited*` field computation, but is important for
+  understanding lifecycle state transitions in the data model
+
+
+---
+
 ## Summary: Three Semantic Families
 
 | Family | Fields | Rule | Rationale |
@@ -520,13 +615,82 @@ have the field set. This is the mirror of the current min implementation.
 
 ## Test Artifacts Still in OmniFocus
 
-The following test tasks remain in `🧪 GM-TestProject-Dated` and should be cleaned up:
+### Session 2 (current)
+
+- `UAT-Due-L1` through `UAT-Due-L5` — 5-level hierarchy used for due/defer/planned/flagged tests.
+  Dates cleared, L3 flagged, project unflagged. Can be reused or deleted.
+- `UAT-Drop-A` through `UAT-Drop-E` + `*-Blocker` — 5-level drop/completion test hierarchy.
+  Final state: A/B/C completed, C-Blocker/D dropped, A-Blocker/B-Blocker/D-Blocker completed,
+  E effectively dropped (no own status). Should be deleted before next tests.
+
+### Session 1 (may have been deleted by user)
 
 - `UAT-Inheritance-Parent` / `UAT-Inheritance-Child` (2-level, first simple test)
-- `UAT-Deep-L1` through `UAT-Deep-L5` (5-level hierarchy for date/flag testing)
+- `UAT-Deep-L1` through `UAT-Deep-L5` (5-level hierarchy — original, deleted and recreated in session 2)
 - `UAT-Lifecycle-A` through `UAT-Lifecycle-D` (completion test — all completed)
 - `UAT-Drop1-*`, `UAT-Drop2-*` (drop tests without blockers — dropped/completed)
 - `UAT-Drop3-*`, `UAT-Drop4-*` (drop tests with blockers — dropped)
+
+
+---
+
+## Next Steps (for next session)
+
+### Must do: One fresh hierarchy to test BOTH remaining unknowns
+
+Create a single 4-level hierarchy with blocker siblings:
+
+```
+UAT-Test-Root
+├── UAT-Test-Root-Blocker
+└── UAT-Test-Mid
+    ├── UAT-Test-Mid-Blocker
+    └── UAT-Test-Inner
+        ├── UAT-Test-Inner-Blocker
+        └── UAT-Test-Leaf
+```
+
+#### Test A: Rule out MAX for drop date (reverse drop order)
+
+1. Drop Mid first (nearer to Leaf, timestamp T1)
+2. Wait ~5 seconds
+3. Drop Root second (further from Leaf, timestamp T2, where T2 > T1)
+4. Check Leaf's effectiveDropDate:
+   - If T1 (Mid's, nearer) → **first-found confirmed**
+   - If T2 (Root's, later) → **max** (would contradict session 1 findings)
+
+This is the decisive test. In session 2 we dropped top-down (further first, nearer second),
+so max and first-found gave the same answer. Reverse order distinguishes them.
+
+#### Test B: Completion date inheritance with distinct timestamps
+
+After drop testing (or with a separate fresh hierarchy if drop test consumes the tasks):
+
+1. Complete Inner (manually, not via auto-complete) — gets timestamp T1
+2. Wait ~5 seconds
+3. Complete Mid (manually) — gets timestamp T2
+4. Wait ~5 seconds
+5. Complete Root — gets timestamp T3
+6. Check Leaf's effectiveCompletionDate:
+   - If T1 (Inner's, nearest) → first-found
+   - If T3 (Root's, latest) → max
+   - If T1 (Inner's, earliest) → min (but min is unlikely given all other findings)
+
+**Note:** Completing a task with active children may auto-complete them. May need to complete
+Leaf + blocker siblings first at each level, then the parent. Protocol TBD — think through
+auto-completion cascades before executing.
+
+### Then: Fix `_walk_one` implementation
+
+After all 6 fields are confirmed:
+1. Fix `_walk_one` in `service/domain.py` — three code paths:
+   - `min` for `due_date`
+   - `max` for `defer_date`
+   - `first-found` for `planned_date`, `drop_date`, `completion_date`
+   - `any-True` for `flagged` (already correct)
+2. Write tests (TDD RED → GREEN)
+3. Update UAT file
+4. Architecture documentation for inheritance semantics
 
 
 ---
