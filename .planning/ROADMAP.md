@@ -48,7 +48,7 @@ Plans:
 ### Phase 53.1: True Inherited Fields (INSERTED)
 
 **Goal:** inherited* fields on tasks reflect true inheritance (ancestor set the value), not OmniFocus self-echoes; projects have no inherited fields (structurally impossible)
-**Requirements**: INHERIT-01, INHERIT-02, INHERIT-03, INHERIT-04
+**Requirements**: INHERIT-01, INHERIT-02, INHERIT-03, INHERIT-04, INHERIT-05, INHERIT-06, INHERIT-07, INHERIT-08, INHERIT-09, INHERIT-10
 **Depends on:** Phase 53
 **Success Criteria** (what must be TRUE):
   1. Task with plannedDate but no ancestor setting plannedDate shows no inheritedPlannedDate in any response
@@ -92,6 +92,6 @@ Phases execute in numeric order: 53 -> 53.1 -> 54 -> 55
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 53. Response Shaping | 5/5 | Complete    | 2026-04-14 |
-| 53.1. True Inherited Fields | 3/3 | Complete | 2026-04-15 |
+| 53.1. True Inherited Fields | 3/3 | Gap closure pending (INHERIT-05–10) | 2026-04-15 |
 | 54. Batch Processing | 0/TBD | Not started | - |
 | 55. Notes Graduation | 0/TBD | Not started | - |
