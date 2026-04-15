@@ -197,8 +197,11 @@ This todo is designed for **multiple sessions**. Each phase ends with a checkpoi
   - Uses trusted publishing (OIDC) — no secrets needed
   - Publish only if tests pass
   - `fetch-depth: 0` in publish job for hatch-vcs version derivation
-- [ ] Push the publish workflow to main
-- [ ] Push tag (next release) → CI runs → publishes to PyPI
+- [x] Push the publish workflow to main (merged `setup-pypi-publishing` branch)
+- [ ] Push tag `v1.4.0` → CI runs → publishes to PyPI
+  - **Blocked on v1.4 milestone completion** — can't tag v1.4.0 until the work is done
+  - Can't re-push v1.3.3 either — workflow didn't exist at that commit, so GitHub Actions won't trigger
+  - No intermediate versions (v1.3.4 etc.) — breaks milestone numbering
 - [ ] Verify PyPI page: metadata, README rendering, classifiers
 - [ ] E2E validation: `uvx omnifocus-operator` → verify server starts and responds to MCP calls
 - [ ] **CHECKPOINT**: Published and verified!
