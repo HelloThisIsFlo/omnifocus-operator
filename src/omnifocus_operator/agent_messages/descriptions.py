@@ -5,6 +5,10 @@ This makes it easy to review, audit, and maintain all agent-facing schema text
 in one place.
 """
 
+# Mirror of config.MAX_BATCH_SIZE — kept here to avoid a circular import
+# (descriptions <- config <- models.enums <- models.common <- descriptions).
+# If MAX_BATCH_SIZE changes in config.py, update this value too.
+_MAX_BATCH_SIZE = 50
 
 # --- Dates: Read-Side ---
 
@@ -63,7 +67,24 @@ Tags accept names (case-insensitive) or IDs; you can mix both.
 Non-existent names are rejected. Ambiguous names (case-insensitive
 collision) return an error."""
 
-_WRITE_RETURNS = "Returns: [{success, id, name, warnings?}]"
+_BATCH_RETURNS = (
+    "Returns: array of per-item results. "
+    "Each item: status ('success' | 'error' | 'skipped'), "
+    "id (success + edit errors/skips), name (success only), "
+    "warnings (any status), error (error only)."
+)
+
+_BATCH_LIMIT_NOTE = f"Up to {_MAX_BATCH_SIZE} items per call."
+
+_BATCH_CROSS_ITEM_NOTE = (
+    "Items are independent: batch items cannot reference "
+    "other items created or edited in the same batch. "
+    "For hierarchies (parent-child), use sequential calls."
+)
+
+_BATCH_CONCURRENCY_NOTE = "Note: concurrent batch calls from separate agents are not serialized."
+
+_WRITE_RETURNS = _BATCH_RETURNS
 
 # --- Dates: Write-Side ---
 
@@ -489,7 +510,10 @@ Fields: availability, childrenAreMutuallyExclusive, parent {{id, name}}.
 childrenAreMutuallyExclusive: when true, child tags behave like radio buttons."""
 
 ADD_TASKS_TOOL_DOC = f"""\
-Create tasks in OmniFocus. Limited to 1 item per call.
+Create tasks in OmniFocus. {_BATCH_LIMIT_NOTE}
+
+Best-effort: all items are processed regardless of earlier failures. \
+Each item gets its own status (success or error).
 
 {_DATE_INPUT_NOTE_FULL}
 
@@ -529,8 +553,11 @@ Examples (repetitionRule):
       basedOn: "due_date"
     }}
 
+{_BATCH_CROSS_ITEM_NOTE}
 
-{_WRITE_RETURNS}"""
+{_BATCH_CONCURRENCY_NOTE}
+
+{_BATCH_RETURNS}"""
 
 LIST_TASKS_TOOL_DOC = f"""\
 List and filter tasks. {_FILTERS_AND_LOGIC}
@@ -633,7 +660,11 @@ Key fields per perspective: id, name.
 The response uses camelCase field names."""
 
 EDIT_TASKS_TOOL_DOC = f"""\
-Edit existing tasks in OmniFocus using patch semantics. Max 1 item per call.
+Edit existing tasks in OmniFocus using patch semantics. {_BATCH_LIMIT_NOTE}
+
+Fail-fast: processing stops at the first error. \
+Earlier items are committed; later items get status 'skipped' \
+with a warning referencing the failed item.
 
 {_DATE_INPUT_NOTE_FULL}
 
@@ -661,4 +692,8 @@ occurrence only; next occurrence auto-created. Cannot drop an entire
 repeating sequence.
 actions.tags: replace (standalone) or add/remove (combinable).
 
-{_WRITE_RETURNS}"""
+{_BATCH_CROSS_ITEM_NOTE}
+
+{_BATCH_CONCURRENCY_NOTE}
+
+{_BATCH_RETURNS}"""

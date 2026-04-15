@@ -662,19 +662,21 @@ class TestAddTasks:
         assert items[0]["status"] == "success"
         assert items[0]["name"] == "Full task"
 
-    # -- Constraint enforcement --
+    # -- Batch constraint enforcement --
 
-    async def test_add_tasks_single_item_constraint(self, client: Any) -> None:
-        """Passing 2 items returns an error."""
-        with pytest.raises(ToolError, match="exactly 1 item"):
-            await client.call_tool(
-                "add_tasks",
-                {"items": [{"name": "A"}, {"name": "B"}]},
-            )
+    async def test_add_tasks_two_items_best_effort(self, client: Any) -> None:
+        """Passing 2 items processes both (best-effort batch)."""
+        result = await client.call_tool(
+            "add_tasks",
+            {"items": [{"name": "A"}, {"name": "B"}]},
+        )
+        items = result.structured_content["result"]
+        assert len(items) == 2
+        assert all(item["status"] == "success" for item in items)
 
     async def test_add_tasks_empty_array(self, client: Any) -> None:
-        """Passing 0 items returns an error."""
-        with pytest.raises(ToolError, match="exactly 1 item"):
+        """Passing 0 items returns an error (min_length=1)."""
+        with pytest.raises(ToolError):
             await client.call_tool("add_tasks", {"items": []})
 
     # -- Validation errors --
@@ -685,20 +687,24 @@ class TestAddTasks:
             await client.call_tool("add_tasks", {"items": [{"note": "no name"}]})
 
     async def test_add_tasks_invalid_parent(self, client: Any) -> None:
-        """Non-existent parent returns error."""
-        with pytest.raises(ToolError, match="nonexistent-id"):
-            await client.call_tool(
-                "add_tasks",
-                {"items": [{"name": "Orphan", "parent": "nonexistent-id"}]},
-            )
+        """Non-existent parent returns per-item error (best-effort: no ToolError raised)."""
+        result = await client.call_tool(
+            "add_tasks",
+            {"items": [{"name": "Orphan", "parent": "nonexistent-id"}]},
+        )
+        items = result.structured_content["result"]
+        assert items[0]["status"] == "error"
+        assert "nonexistent-id" in items[0]["error"]
 
     async def test_add_tasks_invalid_tag(self, client: Any) -> None:
-        """Non-existent tag returns error."""
-        with pytest.raises(ToolError, match="Nonexistent Tag"):
-            await client.call_tool(
-                "add_tasks",
-                {"items": [{"name": "Bad tag", "tags": ["Nonexistent Tag"]}]},
-            )
+        """Non-existent tag returns per-item error (best-effort: no ToolError raised)."""
+        result = await client.call_tool(
+            "add_tasks",
+            {"items": [{"name": "Bad tag", "tags": ["Nonexistent Tag"]}]},
+        )
+        items = result.structured_content["result"]
+        assert items[0]["status"] == "error"
+        assert "Nonexistent Tag" in items[0]["error"]
 
     # -- Unknown field rejection (STRCT-01) --
 
@@ -736,20 +742,12 @@ class TestAddTasks:
 class TestEditTasks:
     """Verify edit_tasks MCP tool registration and behaviour."""
 
-    # -- Single-item constraint (EDIT-09) --
+    # -- Batch constraint enforcement --
 
     async def test_edit_tasks_rejects_empty_array(self, client: Any) -> None:
-        """Passing 0 items returns an error."""
-        with pytest.raises(ToolError, match="exactly 1 item"):
+        """Passing 0 items returns an error (min_length=1)."""
+        with pytest.raises(ToolError):
             await client.call_tool("edit_tasks", {"items": []})
-
-    async def test_edit_tasks_rejects_multi_item_array(self, client: Any) -> None:
-        """Passing 2+ items returns an error."""
-        with pytest.raises(ToolError, match="exactly 1 item"):
-            await client.call_tool(
-                "edit_tasks",
-                {"items": [{"id": "a"}, {"id": "b"}]},
-            )
 
     # -- Unknown field rejection (STRCT-01) --
 
@@ -896,12 +894,14 @@ class TestEditTasks:
     # -- Task not found --
 
     async def test_edit_tasks_not_found(self, client: Any) -> None:
-        """Edit with non-existent ID returns error."""
-        with pytest.raises(ToolError, match="nonexistent-id"):
-            await client.call_tool(
-                "edit_tasks",
-                {"items": [{"id": "nonexistent-id", "name": "Nope"}]},
-            )
+        """Edit with non-existent ID returns per-item error (fail-fast: no ToolError raised)."""
+        result = await client.call_tool(
+            "edit_tasks",
+            {"items": [{"id": "nonexistent-id", "name": "Nope"}]},
+        )
+        items = result.structured_content["result"]
+        assert items[0]["status"] == "error"
+        assert "nonexistent-id" in items[0]["error"]
 
     # -- Full roundtrip freshness --
 
