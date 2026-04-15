@@ -110,6 +110,19 @@ _INHERITED_FIELD_PAIRS: tuple[tuple[str, str], ...] = (
     ("completion_date", "inherited_completion_date"),
 )
 
+# Per-field aggregation strategies (INHERIT-05 through INHERIT-10)
+# See: .research/deep-dives/omnifocus-inheritance-semantics/FINDINGS.md
+_MIN_FIELDS: frozenset[str] = frozenset({"inherited_due_date"})
+_MAX_FIELDS: frozenset[str] = frozenset({"inherited_defer_date"})
+_FIRST_FOUND_FIELDS: frozenset[str] = frozenset(
+    {
+        "inherited_planned_date",
+        "inherited_drop_date",
+        "inherited_completion_date",
+    }
+)
+# inherited_flagged uses any-True (separate code path, not date-based)
+
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -208,6 +221,10 @@ class DomainLogic:
         Self-echoed inherited values (where no ancestor sets the field) are
         reset to their "no inheritance" value (False for flagged, None for dates).
 
+        Each field uses a specific aggregation strategy when multiple ancestors
+        contribute: min (due), max (defer), first-found (planned/drop/completion),
+        any-True (flagged). See FINDINGS.md for empirical evidence.
+
         Calls ``self._repo.get_all()`` internally -- cache makes this free (D-03).
         """
         if not tasks:
@@ -223,12 +240,13 @@ class DomainLogic:
         task_map: dict[str, Task],
         project_map: dict[str, Project],
     ) -> Task:
-        """Determine which inherited fields are truly inherited for one task."""
+        """Determine truly inherited field values using per-field aggregation.
+
+        Strategies: min (due_date), max (defer_date), first-found
+        (planned/drop/completion), any-True (flagged).
+        """
         # Track actual ancestor values (not just presence booleans).
         # inherited_flagged: any-True semantics (False until an ancestor is True).
-        # FIXME: Date fields use min for ALL dates — wrong for defer (should be max)
-        # and planned/drop/completion (should be first-found). Pending spike results.
-        # See: .research/deep-dives/omnifocus-inheritance-semantics/FINDINGS.md
         ancestor_vals: dict[str, object] = {inh: None for _, inh in _INHERITED_FIELD_PAIRS}
         ancestor_vals["inherited_flagged"] = False
 
@@ -246,8 +264,18 @@ class DomainLogic:
                         ancestor_vals[inherited] = True
                 elif val is not None:
                     cur = ancestor_vals[inherited]
-                    if cur is None or val < cur:
-                        ancestor_vals[inherited] = val
+                    if inherited in _FIRST_FOUND_FIELDS:
+                        # Override family: take first non-null, skip once found
+                        if cur is None:
+                            ancestor_vals[inherited] = val
+                    elif inherited in _MAX_FIELDS:
+                        # Constraint (max): latest block wins
+                        if cur is None or val > cur:
+                            ancestor_vals[inherited] = val
+                    else:
+                        # Constraint (min): tightest deadline wins (due_date)
+                        if cur is None or val < cur:
+                            ancestor_vals[inherited] = val
             current_id = ancestor.parent.task.id if ancestor.parent.task else None
 
         # Check containing project as final ancestor (D-01)
@@ -263,8 +291,15 @@ class DomainLogic:
                         ancestor_vals[inherited] = True
                 elif val is not None:
                     cur = ancestor_vals[inherited]
-                    if cur is None or val < cur:
-                        ancestor_vals[inherited] = val
+                    if inherited in _FIRST_FOUND_FIELDS:
+                        if cur is None:
+                            ancestor_vals[inherited] = val
+                    elif inherited in _MAX_FIELDS:
+                        if cur is None or val > cur:
+                            ancestor_vals[inherited] = val
+                    else:
+                        if cur is None or val < cur:
+                            ancestor_vals[inherited] = val
 
         # Build update dict: always set all 6 inherited fields to computed
         # ancestor values. Replaces OF's effective value with the true
