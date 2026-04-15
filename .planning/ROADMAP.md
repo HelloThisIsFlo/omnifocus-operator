@@ -73,7 +73,12 @@ Plans:
   3. edit_tasks stops at the first error (fail-fast) -- earlier items committed, later items get status "skipped" with a warning
   4. Response is a flat array with `status`, `id` (when known), `name` (success only), `warnings` (any status), and `error` (error only)
   5. Same-task edits within a batch see the results of prior items; cross-item references are documented as unsupported
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 54-01-PLAN.md — Model surgery: config constant, result model rewrite (success->status), mechanical migration across codebase
+- [ ] 54-02-PLAN.md — Handler rewrite: batch loops (best-effort + fail-fast), error messages, tool descriptions
+- [ ] 54-03-PLAN.md — Batch test scenarios: add_tasks best-effort tests, edit_tasks fail-fast tests
 
 ### Phase 55: Notes Graduation
 **Goal**: Agents can append to or replace task notes via the actions block -- no more read-modify-write for note updates
@@ -94,5 +99,5 @@ Phases execute in numeric order: 53 -> 53.1 -> 54 -> 55
 |-------|----------------|--------|-----------|
 | 53. Response Shaping | 5/5 | Complete    | 2026-04-14 |
 | 53.1. True Inherited Fields | 4/4 | Complete | 2026-04-15 |
-| 54. Batch Processing | 0/TBD | Not started | - |
+| 54. Batch Processing | 0/3 | Not started | - |
 | 55. Notes Graduation | 0/TBD | Not started | - |
