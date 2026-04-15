@@ -44,12 +44,12 @@ Requirements for milestone v1.4: Response Shaping, Batch Processing & Notes Grad
 
 Each inherited field uses a specific aggregation strategy when walking the ancestor chain. These rules match OmniFocus's own `effective*` resolution, empirically verified in `.research/deep-dives/omnifocus-inheritance-semantics/FINDINGS.md`.
 
-- [ ] **INHERIT-05**: inheritedDueDate uses **min** across all ancestors — tightest deadline in the hierarchy wins. A child cannot escape a parent's deadline
-- [ ] **INHERIT-06**: inheritedDeferDate uses **max** across all ancestors — latest block in the hierarchy wins. A child cannot unblock itself past a parent's deferral
-- [ ] **INHERIT-07**: inheritedPlannedDate uses **first-found** — nearest ancestor's planned date walking up. No aggregation; own planned date always overrides ancestors (scoped intent)
-- [ ] **INHERIT-08**: inheritedFlagged uses **any-True** (boolean OR) — if any ancestor is flagged, the attention signal propagates to all descendants
-- [ ] **INHERIT-09**: inheritedDropDate uses **first-found** — nearest ancestor's drop date walking up. No aggregation; effective values are derived from current tree state, not latched
-- [ ] **INHERIT-10**: inheritedCompletionDate uses **first-found** — nearest ancestor's completion date walking up. Same semantics as drop date (override family)
+- [x] **INHERIT-05**: inheritedDueDate uses **min** across all ancestors — tightest deadline in the hierarchy wins. A child cannot escape a parent's deadline
+- [x] **INHERIT-06**: inheritedDeferDate uses **max** across all ancestors — latest block in the hierarchy wins. A child cannot unblock itself past a parent's deferral
+- [x] **INHERIT-07**: inheritedPlannedDate uses **first-found** — nearest ancestor's planned date walking up. No aggregation; own planned date always overrides ancestors (scoped intent)
+- [x] **INHERIT-08**: inheritedFlagged uses **any-True** (boolean OR) — if any ancestor is flagged, the attention signal propagates to all descendants
+- [x] **INHERIT-09**: inheritedDropDate uses **first-found** — nearest ancestor's drop date walking up. No aggregation; effective values are derived from current tree state, not latched
+- [x] **INHERIT-10**: inheritedCompletionDate uses **first-found** — nearest ancestor's completion date walking up. Same semantics as drop date (override family)
 
 ### Count-Only
 
@@ -149,12 +149,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INHERIT-02 | Phase 53.1 | Complete |
 | INHERIT-03 | Phase 53.1 | Complete |
 | INHERIT-04 | Phase 53.1 | Complete |
-| INHERIT-05 | Phase 53.1 | Pending |
-| INHERIT-06 | Phase 53.1 | Pending |
-| INHERIT-07 | Phase 53.1 | Pending |
-| INHERIT-08 | Phase 53.1 | Pending |
-| INHERIT-09 | Phase 53.1 | Pending |
-| INHERIT-10 | Phase 53.1 | Pending |
+| INHERIT-05 | Phase 53.1 | Complete |
+| INHERIT-06 | Phase 53.1 | Complete |
+| INHERIT-07 | Phase 53.1 | Complete |
+| INHERIT-08 | Phase 53.1 | Complete |
+| INHERIT-09 | Phase 53.1 | Complete |
+| INHERIT-10 | Phase 53.1 | Complete |
 
 **Coverage:**
 - v1.4 requirements: 39 total
