@@ -3,11 +3,11 @@
 **The last OmniFocus MCP Server you'll ever need.**
 
 ![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue?logo=python&logoColor=white)
-![Tests 534](https://img.shields.io/badge/tests-534-brightgreen)
-![Coverage 94%](https://img.shields.io/badge/coverage-94%25-brightgreen)
-![License MIT](https://img.shields.io/badge/license-MIT-green)
+![Tests 2086](https://img.shields.io/badge/tests-2086-brightgreen)
+![Coverage 97%](https://img.shields.io/badge/coverage-97%25-brightgreen)
+![macOS only](https://img.shields.io/badge/platform-macOS-lightgrey?logo=apple)
 
-Production-grade MCP server exposing OmniFocus as structured task infrastructure for AI agents. Agent-first design, SQLite-cached performance, 534 tests.
+Production-grade MCP server exposing OmniFocus as structured task infrastructure for AI agents. Agent-first design, SQLite-cached performance, 2,086 tests.
 
 ### [**→ See the full landing page**](https://hellothisisflo.github.io/omnifocus-operator) — features, architecture, benchmarks, and comparison
 
@@ -17,9 +17,27 @@ Production-grade MCP server exposing OmniFocus as structured task infrastructure
 
 **Prerequisites:** macOS, OmniFocus 4, Python 3.12+
 
-**Install:**
+**Claude Desktop config** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
 
-> **Note:** PyPI/pipx publishing is coming soon. For now, install from source:
+```json
+{
+  "mcpServers": {
+    "omnifocus-operator": {
+      "command": "uvx",
+      "args": ["omnifocus-operator"]
+    }
+  }
+}
+```
+
+That's it. No install step — `uvx` downloads, isolates, and runs the server automatically.
+
+**Or just ask your agent:**
+
+> Set up the OmniFocus Operator MCP server for me — uvx omnifocus-operator
+
+<details>
+<summary><strong>Development install (contributors)</strong></summary>
 
 ```bash
 git clone https://github.com/HelloThisIsFlo/omnifocus-operator.git
@@ -27,49 +45,72 @@ cd omnifocus-operator
 uv sync
 ```
 
-**Claude Desktop config** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+See [CONTRIBUTING.md](https://github.com/HelloThisIsFlo/omnifocus-operator/blob/main/CONTRIBUTING.md) for dev workflow details.
 
-```json
-{
-  "mcpServers": {
-    "omnifocus-operator": {
-      "command": "omnifocus-operator"
-    }
-  }
-}
-```
-
-That's it. The server auto-detects your OmniFocus database and starts serving.
+</details>
 
 ---
 
 ## ✨ Features
 
-- ⚡ **46ms reads** via SQLite caching (30–60x faster than bridge-only)
-- 🏗️ **Three-layer architecture** — MCP Server → Service → Repository
-- 🤖 **Agent-first design** — warnings and guidance built into every response
-- 🧪 **534 tests, 94% coverage**, strict mypy
-- 🛡️ **Graceful degradation** — server stays alive, errors educate
+- ⚡ **46ms reads** — SQLite caching gives 30–60x faster reads than bridge-only servers
+- 🛠️ **11 MCP tools** — lookups, filtered lists, task creation & editing
+- 🤖 **Agent-first design** — warnings that teach, errors that educate, guidance in every response
+- 🧪 **2,086 tests, 97% coverage** — strict mypy, no corners cut
+- 🛡️ **Graceful degradation** — server stays alive no matter what, always recoverable
 - 🔄 **Automatic fallback** — SQLite → OmniJS bridge when needed
+
+See the [full documentation](https://hellothisisflo.github.io/omnifocus-operator) for architecture details, examples, and deep dives.
 
 ---
 
 ## 🛠️ Available Tools
 
-| Tool | Description | Type |
-|------|-------------|------|
-| `get_all` | Return the full OmniFocus database as structured data | Read |
-| `get_task` | Look up a single task by its ID | Read |
-| `get_project` | Look up a single project by its ID | Read |
-| `get_tag` | Look up a single tag by its ID | Read |
-| `add_tasks` | Create tasks in OmniFocus | Write |
-| `edit_tasks` | Edit existing tasks using patch semantics | Write |
+### Lookups
 
-All read tools are idempotent. Write tools support full field control including tags, dates, flags, notes, and task movement.
+| Tool | Description |
+|------|-------------|
+| `get_all` | Full OmniFocus database as structured data (last-resort debugging) |
+| `get_task` | Single task by ID — urgency, availability, dates, tags, parent, project |
+| `get_project` | Single project by ID — status, review interval, next task |
+| `get_tag` | Single tag by ID — availability, parent hierarchy |
+
+### List & Filter
+
+| Tool | Description |
+|------|-------------|
+| `list_tasks` | Filter by date, availability, flags, tags, project, search — with pagination and field selection |
+| `list_projects` | Filter by status, folder, review schedule, flags |
+| `list_tags` | List tags with parent hierarchy |
+| `list_folders` | List folders with parent hierarchy |
+| `list_perspectives` | List custom perspectives |
+
+### Write
+
+| Tool | Description |
+|------|-------------|
+| `add_tasks` | Create tasks with full field control — parent, tags, dates, flags, notes, repetition rules |
+| `edit_tasks` | Patch semantics — update fields, move tasks, complete/drop, manage tags and repetition rules |
+
+All read tools are idempotent. Write tools reference projects and tags by name or ID.
 
 ---
 
 ## 🔍 Tool Examples
+
+**Filter tasks** (`list_tasks`):
+
+```json
+{
+  "query": {
+    "flagged": true,
+    "due": "soon",
+    "availability": "remaining",
+    "include": ["notes"],
+    "limit": 10
+  }
+}
+```
 
 **Create a task** (`add_tasks`):
 
@@ -77,9 +118,9 @@ All read tools are idempotent. Write tools support full field control including 
 {
   "items": [{
     "name": "Review Q3 roadmap",
-    "parent": "pJKx9xL5beb",
-    "tags": ["Work", "Planning"],
-    "dueDate": "2026-03-15T17:00:00Z",
+    "parent": {"project": {"name": "Work Projects"}},
+    "tags": ["Planning"],
+    "dueDate": "2026-03-15T17:00:00",
     "flagged": true,
     "estimatedMinutes": 30,
     "note": "Focus on v1.3-v1.5 milestones"
@@ -95,7 +136,7 @@ All read tools are idempotent. Write tools support full field control including 
     "id": "oRx3bL_UYq7",
     "addTags": ["Urgent"],
     "dueDate": null,
-    "moveTo": {"ending": "pJKx9xL5beb"}
+    "moveTo": {"ending": {"project": {"name": "Work Projects"}}}
   }]
 }
 ```
@@ -110,17 +151,6 @@ All read tools are idempotent. Write tools support full field control including 
 
 ---
 
-## 🏗️ What Makes This Different?
-
-- ⚡ **46ms reads** — SQLite caching gives you 30–60x faster reads than bridge-only servers
-- 🧪 **534 tests, 94% coverage** — strict mypy, no corners cut
-- 🤖 **Agent-first design** — warnings that teach, errors that educate, guidance in every response
-- 🛡️ **Degraded mode** — server stays alive no matter what, always recoverable
-
-See the [full documentation](https://hellothisisflo.github.io/omnifocus-operator) for architecture details, examples, and deep dives.
-
----
-
 ## 🗺️ Roadmap
 
 | Version | Focus |
@@ -128,9 +158,14 @@ See the [full documentation](https://hellothisisflo.github.io/omnifocus-operator
 | **v1.0** | Foundation — read tools, three-layer arch, test suite ✅ |
 | **v1.1** | Performance — SQLite caching, 30–60x speedup ✅ |
 | **v1.2** | Writes & Lookups — add/edit tasks, get-by-ID ✅ |
-| **v1.3** | Read Tools — SQL filtering, search, list/count |
-| **v1.4** | Field Selection & Writes — projection, task deletion, notes append |
-| **v1.4.x** | Fuzzy Search, TaskPaper Output, Project Writes |
+| **v1.2.1** | Architectural Cleanup — contracts, service refactor, golden master tests ✅ |
+| **v1.2.2** | FastMCP v3 Migration ✅ |
+| **v1.2.3** | Repetition Rule Write Support ✅ |
+| **v1.3** | Read Tools — SQL filtering, list/count, 5 new tools ✅ |
+| **v1.3.1** | First-Class References — name resolution, `$inbox`, rich refs ✅ |
+| **v1.3.2** | Date Filtering — 7 dimensions, shortcuts, calendar math ✅ |
+| **v1.3.3** | Task Ordering — dotted notation, outline order ✅ |
+| **v1.4** | Response Shaping & Batch Processing 🔧 |
 | **v1.5** | UI & Perspectives — perspective switching, deep links |
 | **v1.6** | Production Hardening — retry, crash recovery, serial execution |
 
@@ -139,6 +174,7 @@ See the [full documentation](https://hellothisisflo.github.io/omnifocus-operator
 ## 🔗 Links
 
 - 📖 [Full Documentation](https://hellothisisflo.github.io/omnifocus-operator) — features, architecture, examples
+- 📦 [PyPI](https://pypi.org/project/omnifocus-operator/) — package page
 - 🐛 [Issues](https://github.com/HelloThisIsFlo/omnifocus-operator/issues)
 - 💬 [Discussions](https://github.com/HelloThisIsFlo/omnifocus-operator/discussions)
 
@@ -146,8 +182,8 @@ See the [full documentation](https://hellothisisflo.github.io/omnifocus-operator
 
 ## 📄 License
 
-MIT
+Proprietary — all rights reserved. Free to use, not to redistribute. License under review.
 
 ## 🤝 Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines. In short: fork, branch, test, PR.
+See [CONTRIBUTING.md](https://github.com/HelloThisIsFlo/omnifocus-operator/blob/main/CONTRIBUTING.md) for guidelines. In short: fork, branch, test, PR.

@@ -1,20 +1,74 @@
 [project]
 name = "omnifocus-operator"
-version = "0.1.0"
+dynamic = ["version"]
 description = "MCP server exposing OmniFocus as structured task infrastructure for AI agents"
 readme = "README.md"
 requires-python = ">=3.12"
+license = "LicenseRef-Proprietary"
+keywords = [
+    "omnifocus",
+    "mcp",
+    "model-context-protocol",
+    "task-management",
+    "productivity",
+    "ai-agent",
+    "macos",
+    "automation",
+    "sqlite",
+    "omnijs",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business",
+    "Topic :: Software Development :: Libraries",
+    "Typing :: Typed",
+]
 dependencies = [
     "fastmcp>=3.1.1",
     "pydantic-settings>=2.0",
 ]
 
+[[project.authors]]
+name = "Flo Kempenich"
+email = "flo@kempenich.ai"
+
+[project.urls]
+Homepage = "https://hellothisisflo.github.io/omnifocus-operator"
+Repository = "https://github.com/HelloThisIsFlo/omnifocus-operator"
+Issues = "https://github.com/HelloThisIsFlo/omnifocus-operator/issues"
+
 [project.scripts]
 omnifocus-operator = "omnifocus_operator.__main__:main"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/omnifocus_operator/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/omnifocus_operator"]
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "tests/",
+    "uat/",
+    "docs/",
+    ".planning/",
+    ".github/",
+    ".claude/",
+    ".research/",
+    ".sandbox/",
+    "/bridge/",
+]
 
 [dependency-groups]
 dev = [

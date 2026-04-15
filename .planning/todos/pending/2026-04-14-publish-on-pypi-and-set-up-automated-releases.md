@@ -140,62 +140,65 @@ This todo is designed for **multiple sessions**. Each phase ends with a checkpoi
 ### Phase 1: Account & Build Config
 > **Checkpoint**: Flo does these steps himself, agent guides
 
-- [ ] Create PyPI account at pypi.org with `flo@kempenich.ai`
-- [ ] Enable 2FA on PyPI account (required)
-- [ ] Configure trusted publisher on PyPI for `omnifocus-operator`:
+- [x] Create PyPI account at pypi.org with `flo@kempenich.ai`
+- [x] Enable 2FA on PyPI account (required)
+- [x] Configure trusted publisher on PyPI for `omnifocus-operator`:
   - Owner: `HelloThisIsFlo`
   - Repository: `omnifocus-operator`
   - Workflow: `publish.yml`
   - Environment: (optional, can use default)
-- [ ] Add `hatch-vcs` to build dependencies in pyproject.toml
-- [ ] Switch to dynamic versioning (remove hardcoded version from pyproject.toml and `__init__.py`)
-- [ ] Update `__init__.py` to use `importlib.metadata.version("omnifocus-operator")`
-- [ ] Update pyproject.toml metadata:
+- [x] Add `hatch-vcs` to build dependencies in pyproject.toml
+- [x] Switch to dynamic versioning (remove hardcoded version from pyproject.toml and `__init__.py`)
+- [x] Update `__init__.py` to use `importlib.metadata.version("omnifocus-operator")`
+- [x] Update pyproject.toml metadata:
   - `license = "Proprietary"`
   - Author name + email
   - Classifiers (Python 3.12+, macOS, Framework :: FastMCP, etc.)
   - Keywords
   - URLs (homepage → landing page, repository, issues, documentation)
-- [ ] Add platform check in `__main__.py` — non-macOS prints clear error and exits
-- [ ] Configure explicit wheel exclusions in pyproject.toml
-- [ ] **CHECKPOINT**: Build config complete. Prose work next.
+- [x] Add platform check in `__main__.py` — non-macOS prints clear error and exits
+- [x] Configure explicit wheel exclusions in pyproject.toml
+- [x] **CHECKPOINT**: Build config complete. Prose work next.
 
 ### Phase 2: Docs Refresh (separate session recommended)
 > **Agent instruction**: "The README, CONTRIBUTING, and CHANGELOG refresh is best done in a focused session. Go do that separately and come back when you're ready for Phase 3."
 
-- [ ] Full README refresh:
+- [x] Full README refresh:
   - Update test count and coverage badges
   - Update license badge (MIT → Proprietary or remove)
   - Update roadmap status
   - Update install instructions (show uvx command)
   - Convert relative links to absolute GitHub URLs
   - Verify PyPI markdown compatibility
-- [ ] CONTRIBUTING.md refresh (experienced dev audience, concise)
-- [ ] CHANGELOG.md creation (Keep a Changelog format, from milestone summaries)
-- [ ] **CHECKPOINT**: All docs ready for publish.
+  - **Note**: Landing page (`docs/index.html`) refreshed alongside README — same numbers, install commands, tools section, roadmap.
+- [x] CONTRIBUTING.md refresh (experienced dev audience, concise)
+- [x] CHANGELOG.md creation (Keep a Changelog format, from milestone summaries)
+- [x] **CHECKPOINT**: All docs ready for publish.
 
 ### Phase 3: Build Validation & Pre-Publish Scan
 > **Checkpoint**: Verify the package before it goes to PyPI
 
-- [ ] Create a git tag for testing: `v1.3.0` (or current milestone version)
-- [ ] `uv build` — build both sdist and wheel
-- [ ] Inspect wheel contents — list all files, verify:
+- [x] ~~Create a git tag for testing~~ — not needed, hatch-vcs derives dev version from v1.3.3
+- [x] `uv build` — build both sdist and wheel (version: 1.3.4.dev73)
+- [x] Inspect wheel contents — list all files, verify:
   - `bridge.js` is included
   - No test files, docs, .planning, or other non-source files
   - No personal data (OmniFocus task IDs, real names beyond author)
-- [ ] Verify README renders correctly (optional: `twine check dist/*`)
-- [ ] **CHECKPOINT**: Package is clean and ready.
+- [x] **Fix**: sdist exclude `"bridge/"` was stripping `src/omnifocus_operator/bridge/` too — changed to `"/bridge/"` (root-relative)
+- [x] Verify README renders correctly (`twine check dist/*` — PASSED)
+- [x] **CHECKPOINT**: Package is clean and ready.
 
 ### Phase 4: CI Workflow & First Publish
 > **Checkpoint**: The big moment — first public release
 
-- [ ] Create `.github/workflows/publish.yml`:
+- [x] Create `.github/workflows/publish.yml`:
   - Trigger: tag push matching `v*`
-  - Jobs: test (pytest + mypy) → build → publish
+  - Jobs: test (just ci) → build → publish
   - Uses trusted publishing (OIDC) — no secrets needed
   - Publish only if tests pass
+  - `fetch-depth: 0` in publish job for hatch-vcs version derivation
 - [ ] Push the publish workflow to main
-- [ ] Push tag `v1.3.0` → CI runs → publishes to PyPI
+- [ ] Push tag (next release) → CI runs → publishes to PyPI
 - [ ] Verify PyPI page: metadata, README rendering, classifiers
 - [ ] E2E validation: `uvx omnifocus-operator` → verify server starts and responds to MCP calls
 - [ ] **CHECKPOINT**: Published and verified!
