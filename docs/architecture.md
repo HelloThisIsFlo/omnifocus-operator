@@ -481,6 +481,87 @@ Internally, the repo uses half-open intervals (`>= after`, `< before`). The reso
 
 _Empirically verified across 430 tasks in BST and GMT. See `.research/deep-dives/timezone-behavior/RESULTS.md` for full data._
 
+## True Inheritance Principle
+
+OmniFocus stores "effective" values for inherited fields — `effectiveDueDate`, `effectiveFlagged`, etc. These are the resolved result of `min(own, ancestor)` for dates and `any(own, ancestor)` for flags. The problem: OmniFocus **always** populates these fields, even when no ancestor contributes. A task with `dueDate: May 1` and no ancestors gets `effectiveDueDate: May 1` — a self-echo, not true inheritance.
+
+Self-echoes are misleading for agents. An agent seeing `inheritedDueDate` assumes an ancestor set that deadline. If it's just the task's own date reflected back, the agent has false context about where the constraint comes from.
+
+> [!important] The rule
+>
+> **`inherited*` fields only appear when an ancestor actually contributes the value.**
+>
+> - No ancestor has the field set → strip `inherited*` from the response (self-echo)
+> - An ancestor has the field set → show `inherited*` with the ancestor's actual value
+> - The task's own value and the inherited value coexist independently
+
+### How it works: the hierarchy walk
+
+The service layer's `DomainLogic.compute_true_inheritance()` reconstructs inherited values by walking the ancestor chain:
+
+1. Build `task_map` and `project_map` from the full snapshot (`get_all()`)
+2. For each task, walk up: `parent.task.id` → grandparent → ... → containing `project.id`
+3. For each of the 6 inherited field pairs (`flagged`/`inherited_flagged`, `due_date`/`inherited_due_date`, etc.):
+   - Check if any ancestor has the source field set
+   - **If yes** → compute the inherited value from ancestors (soonest date, or `True` for flags)
+   - **If no** → reset inherited field to `None`/`False` (strip self-echo)
+4. Return `task.model_copy(update=...)` with corrected inherited fields
+
+The walk runs in the service layer, applied to all three task-returning paths: `get_all`, `get_task`, and `list_tasks`. Projects have no inherited fields (structurally removed from the model).
+
+### The two-field model
+
+Every inheritable field has two output fields:
+
+| Field | Meaning | Editable? |
+|-------|---------|-----------|
+| `dueDate` | The task's own directly-set due date | Yes — `edit_tasks` |
+| `inheritedDueDate` | The soonest due date from the ancestor chain | No — edit the ancestor instead |
+
+> [!important] Effective date = soonest of direct + inherited
+>
+> The agent determines the real deadline by taking the soonest of `dueDate` and `inheritedDueDate`. But in practice, **agents rarely need to compute this** — filtering uses effective dates server-side. `list_tasks due: {next: "w"}` returns the right tasks regardless of whether the due date is own or inherited.
+
+### Concrete examples
+
+**Inbox task with own due date, no ancestors:**
+
+```
+dueDate: 2026-05-01          ← own date, editable
+                              ← no inheritedDueDate (stripped — no ancestor has due date)
+```
+
+**Task in a flagged project (task itself not flagged):**
+
+```
+                              ← no flagged field (false, stripped)
+inheritedFlagged: true        ← project is flagged, truly inherited
+```
+
+**Subtask with earlier due date than parent:**
+
+```
+dueDate: 2026-04-25           ← own date (sooner)
+inheritedDueDate: 2026-05-01  ← parent task's due date (later, but real)
+```
+
+The agent sees both and understands: the task's own deadline is sooner, but an ancestor also imposes a constraint. Editing `dueDate` works directly. To change the inherited date, edit the parent.
+
+**Subtask with own defer date earlier than project's:**
+
+```
+deferDate: 2026-03-10         ← own defer date
+inheritedDeferDate: 2026-03-21 ← project's defer date (governs actual availability)
+```
+
+For defer dates, the **later** value governs — the task can't be available before the project is. Both fields appear, the agent sees the full picture.
+
+### Why this works for agents
+
+- **Filtering handles the 90% case** — `list_tasks due: {next: "w"}` uses effective dates. The agent asks "what's due this week?" and gets the right answer without thinking about inheritance.
+- **Read-write symmetry** — `dueDate` in the response is the same `dueDate` in `edit_tasks`. What you see is what you can edit.
+- **Detail on demand** — the inherited field explains *why* a task has a constraint. Most of the time agents don't need it. When they do (debugging, re-prioritizing), it's right there.
+
 ## Show-More Principle
 
 In a task manager, error costs are asymmetric:
