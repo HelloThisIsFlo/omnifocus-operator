@@ -1987,3 +1987,467 @@ class TestResponseShaping:
         assert isinstance(sc["total"], int)
         assert sc["total"] == 2  # seed data has 2 projects
         assert sc["hasMore"] is True
+
+
+# ---------------------------------------------------------------------------
+# BATCH-ADD: add_tasks batch processing (best-effort semantics)
+# ---------------------------------------------------------------------------
+
+
+class TestAddTasksBatch:
+    """Verify add_tasks batch processing: best-effort semantics, per-item errors, limits."""
+
+    # -- All succeed (best-effort) --
+
+    async def test_batch_all_succeed(self, client: Any) -> None:
+        """Submitting 2 items both succeeds — best-effort processes all items."""
+        result = await client.call_tool(
+            "add_tasks",
+            {"items": [{"name": "Task A"}, {"name": "Task B"}]},
+        )
+        items = result.structured_content["result"]
+        assert len(items) == 2
+        assert items[0]["status"] == "success"
+        assert items[1]["status"] == "success"
+
+    async def test_batch_three_items_all_succeed(self, client: Any) -> None:
+        """Submitting 3 items all succeed when all are valid."""
+        result = await client.call_tool(
+            "add_tasks",
+            {"items": [{"name": "A"}, {"name": "B"}, {"name": "C"}]},
+        )
+        items = result.structured_content["result"]
+        assert len(items) == 3
+        assert all(item["status"] == "success" for item in items)
+
+    # -- Mixed failures (best-effort: item 2 fails but item 3 still processed) --
+
+    async def test_batch_middle_item_fails_others_still_processed(self, client: Any) -> None:
+        """3 items where item 2 fails: [success, error, success] — best-effort continues."""
+        result = await client.call_tool(
+            "add_tasks",
+            {
+                "items": [
+                    {"name": "Good Task 1"},
+                    {"name": "Bad Task", "parent": "nonexistent-parent-id"},
+                    {"name": "Good Task 3"},
+                ]
+            },
+        )
+        items = result.structured_content["result"]
+        assert len(items) == 3
+        assert items[0]["status"] == "success"
+        assert items[1]["status"] == "error"
+        assert items[2]["status"] == "success"  # best-effort: item 3 still processed
+
+    async def test_batch_first_item_fails_rest_still_processed(self, client: Any) -> None:
+        """Item 1 fails: [error, success, success] — best-effort continues from item 2."""
+        result = await client.call_tool(
+            "add_tasks",
+            {
+                "items": [
+                    {"name": "Bad Task", "parent": "nonexistent-parent-id"},
+                    {"name": "Good Task 2"},
+                    {"name": "Good Task 3"},
+                ]
+            },
+        )
+        items = result.structured_content["result"]
+        assert len(items) == 3
+        assert items[0]["status"] == "error"
+        assert items[1]["status"] == "success"
+        assert items[2]["status"] == "success"
+
+    async def test_batch_all_fail(self, client: Any) -> None:
+        """All items fail: [error, error] — each gets its own error."""
+        result = await client.call_tool(
+            "add_tasks",
+            {
+                "items": [
+                    {"name": "Bad 1", "parent": "nonexistent-id-1"},
+                    {"name": "Bad 2", "parent": "nonexistent-id-2"},
+                ]
+            },
+        )
+        items = result.structured_content["result"]
+        assert len(items) == 2
+        assert items[0]["status"] == "error"
+        assert items[1]["status"] == "error"
+
+    # -- Error message format (BATCH-06) --
+
+    async def test_batch_error_has_task_n_prefix(self, client: Any) -> None:
+        """Error items have 'Task N:' prefix in error string (1-indexed)."""
+        result = await client.call_tool(
+            "add_tasks",
+            {
+                "items": [
+                    {"name": "Good Task"},
+                    {"name": "Bad Task", "parent": "nonexistent-id"},
+                    {"name": "Another Bad", "parent": "also-nonexistent"},
+                ]
+            },
+        )
+        items = result.structured_content["result"]
+        # Item 2 fails -> "Task 2: ..."
+        assert items[1]["error"].startswith("Task 2:")
+        # Item 3 fails -> "Task 3: ..."
+        assert items[2]["error"].startswith("Task 3:")
+
+    async def test_batch_first_item_error_has_task_1_prefix(self, client: Any) -> None:
+        """First item error has 'Task 1:' prefix."""
+        result = await client.call_tool(
+            "add_tasks",
+            {
+                "items": [
+                    {"name": "Bad", "parent": "nonexistent-id"},
+                ]
+            },
+        )
+        items = result.structured_content["result"]
+        assert items[0]["status"] == "error"
+        assert items[0]["error"].startswith("Task 1:")
+
+    # -- Field presence by status (BATCH-05) --
+
+    async def test_batch_success_item_has_id_and_name(self, client: Any) -> None:
+        """Success items have non-empty id and name populated."""
+        result = await client.call_tool(
+            "add_tasks",
+            {"items": [{"name": "Has Fields"}]},
+        )
+        items = result.structured_content["result"]
+        assert items[0]["status"] == "success"
+        assert items[0].get("id") is not None
+        assert items[0]["id"] != ""
+        assert items[0].get("name") is not None
+        assert items[0]["name"] != ""
+
+    async def test_batch_error_item_has_no_id_or_name(self, client: Any) -> None:
+        """Error items have id=None and name=None (no OmniFocus ID for failed creates)."""
+        result = await client.call_tool(
+            "add_tasks",
+            {
+                "items": [
+                    {"name": "Bad Task", "parent": "nonexistent-id"},
+                ]
+            },
+        )
+        items = result.structured_content["result"]
+        assert items[0]["status"] == "error"
+        # id and name should be absent or None for failed creates
+        assert items[0].get("id") is None
+        assert items[0].get("name") is None
+
+    async def test_batch_success_with_warnings(self, client: Any) -> None:
+        """Success items can have warnings (e.g. anchor date missing)."""
+        result = await client.call_tool(
+            "add_tasks",
+            {
+                "items": [
+                    {
+                        "name": "Missing anchor",
+                        "repetitionRule": {
+                            "frequency": {"type": "daily"},
+                            "schedule": "regularly",
+                            "basedOn": "due_date",
+                        },
+                    }
+                ]
+            },
+        )
+        items = result.structured_content["result"]
+        assert items[0]["status"] == "success"
+        assert items[0].get("warnings") is not None
+        assert len(items[0]["warnings"]) > 0
+
+    # -- Batch size limits (BATCH-01, BATCH-02) --
+
+    async def test_batch_50_items_accepted(self, client: Any) -> None:
+        """50 items accepted — no validation error at max batch size."""
+        items_payload = [{"name": f"Task {i}"} for i in range(50)]
+        result = await client.call_tool("add_tasks", {"items": items_payload})
+        result_items = result.structured_content["result"]
+        assert len(result_items) == 50
+
+    async def test_batch_51_items_rejected_at_schema_level(self, client: Any) -> None:
+        """51 items rejected with ToolError — schema-level maxItems enforcement."""
+        items_payload = [{"name": f"Task {i}"} for i in range(51)]
+        with pytest.raises(ToolError):
+            await client.call_tool("add_tasks", {"items": items_payload})
+
+    async def test_batch_0_items_rejected_at_schema_level(self, client: Any) -> None:
+        """0 items rejected with ToolError — schema-level minItems enforcement."""
+        with pytest.raises(ToolError):
+            await client.call_tool("add_tasks", {"items": []})
+
+
+# ---------------------------------------------------------------------------
+# BATCH-EDIT: edit_tasks batch processing (fail-fast semantics)
+# ---------------------------------------------------------------------------
+
+
+class TestEditTasksBatch:
+    """Verify edit_tasks batch processing: fail-fast semantics, skip messages, limits."""
+
+    # -- All succeed --
+
+    async def test_batch_all_succeed(self, client: Any) -> None:
+        """Submitting 2 items both succeed — both processed sequentially."""
+        add_result = await client.call_tool(
+            "add_tasks",
+            {"items": [{"name": "Edit Me 1"}, {"name": "Edit Me 2"}]},
+        )
+        id1 = add_result.structured_content["result"][0]["id"]
+        id2 = add_result.structured_content["result"][1]["id"]
+
+        edit_result = await client.call_tool(
+            "edit_tasks",
+            {"items": [{"id": id1, "name": "Edited 1"}, {"id": id2, "name": "Edited 2"}]},
+        )
+        items = edit_result.structured_content["result"]
+        assert len(items) == 2
+        assert items[0]["status"] == "success"
+        assert items[1]["status"] == "success"
+
+    # -- Fail-fast: item 1 fails -> items 2 and 3 skipped --
+
+    async def test_batch_first_item_fails_rest_skipped(self, client: Any) -> None:
+        """3 items where item 1 fails: [error, skipped, skipped] — fail-fast."""
+        add_result = await client.call_tool(
+            "add_tasks",
+            {"items": [{"name": "Valid Task 1"}, {"name": "Valid Task 2"}]},
+        )
+        id1 = add_result.structured_content["result"][0]["id"]
+        id2 = add_result.structured_content["result"][1]["id"]
+
+        edit_result = await client.call_tool(
+            "edit_tasks",
+            {
+                "items": [
+                    {"id": "nonexistent-bad-id", "name": "Fail"},
+                    {"id": id1, "name": "Should be skipped"},
+                    {"id": id2, "name": "Also skipped"},
+                ]
+            },
+        )
+        items = edit_result.structured_content["result"]
+        assert len(items) == 3
+        assert items[0]["status"] == "error"
+        assert items[1]["status"] == "skipped"
+        assert items[2]["status"] == "skipped"
+
+    # -- Fail-fast: item 2 fails -> item 3 skipped but item 1 succeeds --
+
+    async def test_batch_middle_item_fails_later_items_skipped(self, client: Any) -> None:
+        """3 items where item 2 fails: [success, error, skipped]."""
+        add_result = await client.call_tool(
+            "add_tasks",
+            {"items": [{"name": "Valid 1"}, {"name": "Valid 3"}]},
+        )
+        id1 = add_result.structured_content["result"][0]["id"]
+        id3 = add_result.structured_content["result"][1]["id"]
+
+        edit_result = await client.call_tool(
+            "edit_tasks",
+            {
+                "items": [
+                    {"id": id1, "name": "Updated 1"},
+                    {"id": "nonexistent-bad-id", "name": "Will fail"},
+                    {"id": id3, "name": "Should be skipped"},
+                ]
+            },
+        )
+        items = edit_result.structured_content["result"]
+        assert len(items) == 3
+        assert items[0]["status"] == "success"
+        assert items[1]["status"] == "error"
+        assert items[2]["status"] == "skipped"
+
+    # -- Skip message references the failing item index (BATCH-07) --
+
+    async def test_batch_skipped_items_reference_failing_item(self, client: Any) -> None:
+        """Skipped items have warnings containing 'Skipped: task N failed' (1-indexed N)."""
+        add_result = await client.call_tool(
+            "add_tasks",
+            {"items": [{"name": "Will be skipped"}, {"name": "Also skipped"}]},
+        )
+        id1 = add_result.structured_content["result"][0]["id"]
+        id2 = add_result.structured_content["result"][1]["id"]
+
+        edit_result = await client.call_tool(
+            "edit_tasks",
+            {
+                "items": [
+                    {"id": "nonexistent-fail", "name": "Fail"},  # item 1 fails
+                    {"id": id1, "name": "Skipped"},
+                    {"id": id2, "name": "Also skipped"},
+                ]
+            },
+        )
+        items = edit_result.structured_content["result"]
+        # Both skipped items reference item 1 as the failing item
+        assert items[1]["status"] == "skipped"
+        assert items[1]["warnings"] is not None
+        assert any("Skipped: task 1 failed" in w for w in items[1]["warnings"])
+        assert items[2]["status"] == "skipped"
+        assert any("Skipped: task 1 failed" in w for w in items[2]["warnings"])
+
+    async def test_batch_skipped_items_reference_second_failing_item(self, client: Any) -> None:
+        """When item 2 fails, skipped item 3 references 'task 2 failed'."""
+        add_result = await client.call_tool(
+            "add_tasks",
+            {"items": [{"name": "First"}, {"name": "Third"}]},
+        )
+        id1 = add_result.structured_content["result"][0]["id"]
+        id3 = add_result.structured_content["result"][1]["id"]
+
+        edit_result = await client.call_tool(
+            "edit_tasks",
+            {
+                "items": [
+                    {"id": id1, "name": "Succeeds"},
+                    {"id": "nonexistent-fail", "name": "Fails"},  # item 2 fails
+                    {"id": id3, "name": "Skipped"},
+                ]
+            },
+        )
+        items = edit_result.structured_content["result"]
+        assert items[2]["status"] == "skipped"
+        assert items[2]["warnings"] is not None
+        assert any("Skipped: task 2 failed" in w for w in items[2]["warnings"])
+
+    # -- Field presence by status (BATCH-05 for edit) --
+
+    async def test_batch_skipped_item_has_id_from_command(self, client: Any) -> None:
+        """Skipped items have id populated from the command input."""
+        add_result = await client.call_tool(
+            "add_tasks",
+            {"items": [{"name": "Will be skipped"}]},
+        )
+        task_id = add_result.structured_content["result"][0]["id"]
+
+        edit_result = await client.call_tool(
+            "edit_tasks",
+            {
+                "items": [
+                    {"id": "nonexistent-fail", "name": "Fail"},
+                    {"id": task_id, "name": "Skipped"},
+                ]
+            },
+        )
+        items = edit_result.structured_content["result"]
+        assert items[1]["status"] == "skipped"
+        assert items[1].get("id") == task_id  # id from command input
+
+    async def test_batch_skipped_item_has_no_name(self, client: Any) -> None:
+        """Skipped items have name=None — never processed by service."""
+        add_result = await client.call_tool(
+            "add_tasks",
+            {"items": [{"name": "Will be skipped"}]},
+        )
+        task_id = add_result.structured_content["result"][0]["id"]
+
+        edit_result = await client.call_tool(
+            "edit_tasks",
+            {
+                "items": [
+                    {"id": "nonexistent-fail", "name": "Fail"},
+                    {"id": task_id, "name": "Skipped"},
+                ]
+            },
+        )
+        items = edit_result.structured_content["result"]
+        assert items[1]["status"] == "skipped"
+        assert items[1].get("name") is None
+
+    async def test_batch_error_item_has_id_from_command(self, client: Any) -> None:
+        """Error items (fail-fast) have id populated from the command input."""
+        edit_result = await client.call_tool(
+            "edit_tasks",
+            {
+                "items": [
+                    {"id": "nonexistent-task-id", "name": "Fail"},
+                ]
+            },
+        )
+        items = edit_result.structured_content["result"]
+        assert items[0]["status"] == "error"
+        assert items[0].get("id") == "nonexistent-task-id"
+
+    async def test_batch_error_item_has_task_n_prefix(self, client: Any) -> None:
+        """Error items have 'Task N:' prefix in error string (1-indexed)."""
+        add_result = await client.call_tool(
+            "add_tasks",
+            {"items": [{"name": "Valid"}]},
+        )
+        id1 = add_result.structured_content["result"][0]["id"]
+
+        edit_result = await client.call_tool(
+            "edit_tasks",
+            {
+                "items": [
+                    {"id": id1, "name": "Succeeds"},
+                    {"id": "nonexistent-fail", "name": "Fails"},  # item 2 fails
+                ]
+            },
+        )
+        items = edit_result.structured_content["result"]
+        assert items[1]["status"] == "error"
+        assert items[1]["error"].startswith("Task 2:")
+
+    # -- Same-task edits (BATCH-08): sequential processing --
+
+    async def test_batch_same_task_edits_both_succeed(self, client: Any) -> None:
+        """Two edits to the same task ID both succeed (sequential processing)."""
+        add_result = await client.call_tool(
+            "add_tasks",
+            {"items": [{"name": "Original"}]},
+        )
+        task_id = add_result.structured_content["result"][0]["id"]
+
+        # Two edits to the same task: first sets name, second sets flagged
+        edit_result = await client.call_tool(
+            "edit_tasks",
+            {
+                "items": [
+                    {"id": task_id, "name": "After First Edit"},
+                    {"id": task_id, "flagged": True},
+                ]
+            },
+        )
+        items = edit_result.structured_content["result"]
+        assert len(items) == 2
+        assert items[0]["status"] == "success"
+        assert items[1]["status"] == "success"
+
+        # Both edits took effect — name changed and flagged set
+        get_result = await client.call_tool("get_task", {"id": task_id})
+        assert get_result.structured_content["name"] == "After First Edit"
+        assert get_result.structured_content["flagged"] is True
+
+    # -- Batch size limits (BATCH-01, BATCH-02) --
+
+    async def test_batch_50_items_accepted(self, client: Any) -> None:
+        """50 items accepted — no validation error at max batch size.
+
+        Items may fail individually (bad IDs) but the batch itself is not rejected.
+        """
+        items_payload = [{"id": f"task-{i}", "name": f"Edit {i}"} for i in range(50)]
+        # These IDs don't exist in InMemoryBridge — each will return error status
+        # but the batch size limit is not triggered.
+        result = await client.call_tool("edit_tasks", {"items": items_payload})
+        result_items = result.structured_content["result"]
+        # 50 items returned: first is error, rest are skipped (fail-fast from first failure)
+        assert len(result_items) == 50
+
+    async def test_batch_51_items_rejected_at_schema_level(self, client: Any) -> None:
+        """51 items rejected with ToolError — schema-level maxItems enforcement."""
+        items_payload = [{"id": f"task-{i}", "name": f"Edit {i}"} for i in range(51)]
+        with pytest.raises(ToolError):
+            await client.call_tool("edit_tasks", {"items": items_payload})
+
+    async def test_batch_0_items_rejected_at_schema_level(self, client: Any) -> None:
+        """0 items rejected with ToolError — schema-level minItems enforcement."""
+        with pytest.raises(ToolError):
+            await client.call_tool("edit_tasks", {"items": []})
