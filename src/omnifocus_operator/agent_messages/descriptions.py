@@ -86,6 +86,7 @@ Not for 'I don't want to work on it yet' -- use plannedDate for that."""
 
 PLANNED_DATE_WRITE = """\
 When you intend to work on this task. \
+Not a target completion date -- just when you plan to give it attention. \
 No urgency signal, no visibility change, no penalty for missing it."""
 
 # --- Tags ---

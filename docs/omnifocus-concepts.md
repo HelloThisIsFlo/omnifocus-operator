@@ -30,13 +30,14 @@ The task is **impossible to act on** until this date. Not "I don't want to work 
 
 ### Planned Date
 
-"I wish I worked on this on that date."
+"I want to give this attention on that date."
 
 Fills the gap between due (too urgent — implies negative consequences) and defer (too hidden — removes from view):
 
 - **No urgency signal** — won't turn red or yellow as it approaches
 - **Task stays visible** — unlike defer, the task remains in your views before the planned date
 - **Pure intention** — signals when you'd like to work on it, with no penalty for missing it
+- **Not a completion target** — planned date means "when I'll engage with this," not "when it'll be done." A leaf task might be completed the same day; a parent task almost certainly won't be. Even leaf tasks can span multiple days. The date is about when this enters your attention, not when it exits your backlog.
 
 **Example:** "I'd like to review the Q3 roadmap on Thursday." No consequence if you do it Friday. You still want to see it before Thursday in case you get to it early. Not urgent, not blocked — just planned.
 

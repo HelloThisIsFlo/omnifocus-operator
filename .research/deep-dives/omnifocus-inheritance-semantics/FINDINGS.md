@@ -5,12 +5,12 @@ All findings derived from live OmniFocus testing on 2026-04-15.
 
 ## Status: In Progress
 
-- Due date semantics: **high confidence**
-- Defer date semantics: **high confidence**
-- Planned date semantics: **high confidence**
-- Flagged semantics: **high confidence**
-- Drop date semantics: **medium confidence** (tested, but cascading behavior introduces complexity)
-- Completion date semantics: **low confidence** (single test, all timestamps identical)
+- Due date semantics: **REPLICATED** ✅ (2026-04-15, fresh 5-level hierarchy)
+- Defer date semantics: **REPLICATED** ✅ (2026-04-15, fresh 5-level hierarchy)
+- Planned date semantics: **REPLICATED** ✅ (2026-04-15, fresh hierarchy + 2027→2037 swap experiment)
+- Flagged semantics: **high confidence** (not yet replicated)
+- Drop date semantics: **medium confidence** (not yet replicated)
+- Completion date semantics: **low confidence** (not yet replicated)
 
 ## Background
 
@@ -97,6 +97,11 @@ Tightest deadline in the ancestor chain wins. A child cannot escape a parent's d
 
 All 5 levels match. **MIN confirmed.**
 
+### Replication (2026-04-15, session 2)
+
+Fresh 5-level hierarchy (UAT-Due-L1–L5) created from scratch. Same date pattern, same gaps.
+All 5 levels matched min prediction identically. **REPLICATED.**
+
 ### Implication for `inheritedDueDate`
 
 Our `_walk_one` should compute: min of all ancestor due dates in the chain.
@@ -151,6 +156,11 @@ Latest deferral in the ancestor chain wins. A child cannot unblock itself past a
 L3 is the key proof: own defer is 2025-01 (past!), but effective is 2027-05 (from L2).
 If min, L3 would show 2025-01. It shows 2027-05. **MAX confirmed.**
 
+### Replication (2026-04-15, session 2)
+
+Same 5-level hierarchy reused (defer dates added to UAT-Due-L* tasks). Same gap/date pattern.
+All 5 levels matched max prediction identically. **REPLICATED.**
+
 ### Implication for `inheritedDeferDate`
 
 Our `_walk_one` should compute: max of all ancestor defer dates in the chain.
@@ -203,11 +213,61 @@ falls back to the parent's effective. This is a simple cascade/override.
 **L5 rules out max** (max would give 2030-07, OF shows 2027-11).
 Only **own ?? parent** matches both.
 
+### Replication (2026-04-15, session 2)
+
+Fresh hierarchy, two rounds:
+1. Same date pattern as original — all 5 levels matched first-found. L1 rules out min, L5 rules out max.
+2. Moved planned from L3 to L2, then swapped L2's date from 2027-12-01 → 2037-12-01.
+   L3/L4 followed L2 in both cases (2027 and 2037), confirming no comparison — purely nearest ancestor.
+   The 2037 swap is especially decisive: max would also give 2037, but the 2027 round already ruled out max.
+   UI confirmed: L3/L4 shown as "inherited" (gray), L1/L2/L5 as "real" (own values).
+**REPLICATED.**
+
 ### Implication for `inheritedPlannedDate`
 
 Our `_walk_one` should compute: the nearest ancestor's planned date (first non-null walking up).
 Equivalent to: parent's effectivePlannedDate.
 **Current implementation uses min — WRONG. Must change to first-found.**
+
+### Design Discussion: Why first-found is the right choice for `inheritedPlannedDate`
+
+After replicating the empirical findings, we discussed whether to match OmniFocus (first-found) or
+expose a different aggregation (e.g. min) that might be more useful. Conclusion: **first-found is
+correct both empirically and conceptually.**
+
+**Key reframing:** Planned date means "when I'll engage with this / give it attention," NOT "when
+I plan to complete this." For leaf tasks the distinction is subtle (you might finish the same day),
+but for parent tasks it's structural — you can't finish a parent the day you start it. Even leaf
+tasks can span multiple days in practice.
+
+**Why min (earliest ancestor) is wrong conceptually:**
+
+Consider a phased project:
+```
+Launch Website Redesign                    planned: March 1
+├── Phase 1: Design                        planned: March 15
+│   ├── Write copy                         (no plan) → inherits March 15
+│   └── Create mockups                     (no plan) → inherits March 15
+└── Phase 2: Build                         planned: April 1
+    ├── Frontend                           (no plan) → inherits April 1
+    └── Backend API                        planned: April 15
+        └── Auth endpoints                 (no plan) → inherits April 15
+```
+
+With min, ALL unplanned tasks would collapse to March 1 (the project root). The user's phased
+schedule disappears. Filtering "what should I work on March 15?" would surface Build and Backend
+tasks — work the user deliberately scheduled for April.
+
+With first-found, filtering "March 15" shows Design tasks. Filtering "April 1" shows Build tasks.
+The phased schedule is preserved.
+
+**Why first-found works:** Planned dates are **scoped intent** — "I plan to engage with this scope
+on this date." A deeper node overriding a shallower one isn't a contradiction; it's a refinement.
+Like nested variable scoping: the closest declaration wins.
+
+**Decision:** Match OmniFocus semantics (first-found). `inheritedPlannedDate` = nearest ancestor's
+planned date walking up. This is consistent with how due/defer also match OmniFocus exactly, and
+it preserves the user's phased scheduling intent.
 
 
 ---
