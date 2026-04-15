@@ -241,8 +241,8 @@ _SNAPSHOT = AllEntities.model_validate(
 )
 
 # Write tool result fixtures
-_ADD_TASK_RESULT = AddTaskResult(success=True, id="new-task-001", name="Created Task")
-_EDIT_TASK_RESULT = EditTaskResult(success=True, id="task-001", name="Edited Task", warnings=[])
+_ADD_TASK_RESULT = AddTaskResult(status="success", id="new-task-001", name="Created Task")
+_EDIT_TASK_RESULT = EditTaskResult(status="success", id="task-001", name="Edited Task", warnings=[])
 
 # List tool result fixtures
 _FOLDER = Folder.model_validate(make_model_folder_dict())
@@ -342,7 +342,7 @@ class TestSchemaValidation:
     def test_add_task_result_with_warnings_validates(self) -> None:
         """AddTaskResult with populated warnings list validates against outputSchema."""
         result = AddTaskResult(
-            success=True,
+            status="success",
             id="task-with-warnings",
             name="Task With Warnings",
             warnings=["End date is in the past", "Setting repetition on completed task"],
@@ -356,7 +356,7 @@ class TestSchemaValidation:
 
     def test_add_task_result_without_warnings_validates(self) -> None:
         """AddTaskResult with warnings=None validates (optional field)."""
-        result = AddTaskResult(success=True, id="task-no-warnings", name="No Warnings")
+        result = AddTaskResult(status="success", id="task-no-warnings", name="No Warnings")
         schema = _TOOL_SCHEMAS["add_tasks"]
         if schema.get("x-fastmcp-wrap-result", False):
             data = {"result": serialize_like_fastmcp([result])}

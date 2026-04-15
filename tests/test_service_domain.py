@@ -443,7 +443,7 @@ class TestMoveNoOpDetection:
         warnings: list[str] = []
         result = _domain().detect_early_return(payload, task, warnings)
         assert result is not None  # early return = no-op
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert any("beginning" in w for w in result.warnings)
         assert any("already at the" in w for w in result.warnings)
@@ -462,7 +462,7 @@ class TestMoveNoOpDetection:
         warnings: list[str] = []
         result = _domain().detect_early_return(payload, task, warnings)
         assert result is not None
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert any("ending" in w for w in result.warnings)
         assert any("already at the" in w for w in result.warnings)
@@ -495,7 +495,7 @@ class TestMoveNoOpDetection:
         warnings: list[str] = []
         result = _domain().detect_early_return(payload, task, warnings)
         assert result is not None
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert any("beginning" in w for w in result.warnings)
         assert any("already at the" in w for w in result.warnings)

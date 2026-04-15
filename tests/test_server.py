@@ -366,10 +366,10 @@ class TestTOOL03OutputSchema:
             edit = next(t for t in tools if t.name == "edit_tasks")
             # Write tools still have typed outputSchema with properties
             add_props = _extract_all_property_keys(add.outputSchema or {})
-            assert "success" in add_props
+            assert "status" in add_props
             assert "id" in add_props
             edit_props = _extract_all_property_keys(edit.outputSchema or {})
-            assert "success" in edit_props
+            assert "status" in edit_props
             assert "id" in edit_props
 
 
@@ -616,7 +616,7 @@ class TestAddTasks:
         items = result.structured_content["result"]
         assert isinstance(items, list)
         assert len(items) == 1
-        assert items[0]["success"] is True
+        assert items[0]["status"] == "success"
         assert items[0]["name"] == "Buy milk"
         assert "id" in items[0]
 
@@ -627,7 +627,7 @@ class TestAddTasks:
             {"items": [{"name": "Sub task", "parent": "proj-001"}]},
         )
         items = result.structured_content["result"]
-        assert items[0]["success"] is True
+        assert items[0]["status"] == "success"
 
     async def test_add_tasks_with_tags(self, client: Any) -> None:
         """Create a task with tag names resolved."""
@@ -636,7 +636,7 @@ class TestAddTasks:
             {"items": [{"name": "Tagged task", "tags": ["Test Tag"]}]},
         )
         items = result.structured_content["result"]
-        assert items[0]["success"] is True
+        assert items[0]["status"] == "success"
 
     async def test_add_tasks_all_fields(self, client: Any) -> None:
         """Create a task with all optional fields set."""
@@ -659,7 +659,7 @@ class TestAddTasks:
             },
         )
         items = result.structured_content["result"]
-        assert items[0]["success"] is True
+        assert items[0]["status"] == "success"
         assert items[0]["name"] == "Full task"
 
     # -- Constraint enforcement --
@@ -775,7 +775,7 @@ class TestEditTasks:
             {"items": [{"id": task_id, "name": "Updated"}]},
         )
         items = edit_result.structured_content["result"]  # type: ignore[index]
-        assert items[0]["success"] is True
+        assert items[0]["status"] == "success"
         assert items[0]["name"] == "Updated"
 
         # Verify via get_task
@@ -798,7 +798,7 @@ class TestEditTasks:
             "edit_tasks",
             {"items": [{"id": task_id, "dueDate": None}]},
         )
-        assert edit_result.structured_content["result"][0]["success"] is True  # type: ignore[index]
+        assert edit_result.structured_content["result"][0]["status"] == "success"  # type: ignore[index]
 
         # Verify due date is cleared (stripped from response — absent field = not set)
         get_result = await client.call_tool("get_task", {"id": task_id})
@@ -835,7 +835,7 @@ class TestEditTasks:
             "edit_tasks",
             {"items": [{"id": task_id, "actions": {"tags": {"replace": ["New Tag"]}}}]},
         )
-        assert edit_result.structured_content["result"][0]["success"] is True  # type: ignore[index]
+        assert edit_result.structured_content["result"][0]["status"] == "success"  # type: ignore[index]
 
         # Verify tags replaced
         get_result = await client.call_tool("get_task", {"id": task_id})
@@ -857,7 +857,7 @@ class TestEditTasks:
             "edit_tasks",
             {"items": [{"id": task_id, "actions": {"move": {"ending": "proj-001"}}}]},
         )
-        assert edit_result.structured_content["result"][0]["success"] is True  # type: ignore[index]
+        assert edit_result.structured_content["result"][0]["status"] == "success"  # type: ignore[index]
 
         # Verify parent changed (tagged ParentRef: {"task": {id, name}} when parent is project ID
         # because InMemoryBridge sets both parent and project to the same project ID)
@@ -885,7 +885,7 @@ class TestEditTasks:
             "edit_tasks",
             {"items": [{"id": task_id, "actions": {"move": {"ending": "$inbox"}}}]},
         )
-        assert edit_result.structured_content["result"][0]["success"] is True  # type: ignore[index]
+        assert edit_result.structured_content["result"][0]["status"] == "success"  # type: ignore[index]
 
         # Verify parent points to $inbox
         get_result = await client.call_tool("get_task", {"id": task_id})
@@ -999,7 +999,7 @@ class TestEditTasksLifecycle:
             {"items": [{"id": task_id, "actions": {"lifecycle": "complete"}}]},
         )
         items = edit_result.structured_content["result"]  # type: ignore[index]
-        assert items[0]["success"] is True
+        assert items[0]["status"] == "success"
 
         # Verify task is completed via get_task
         get_result = await client.call_tool("get_task", {"id": task_id})
@@ -1017,7 +1017,7 @@ class TestEditTasksLifecycle:
             {"items": [{"id": task_id, "actions": {"lifecycle": "drop"}}]},
         )
         items = edit_result.structured_content["result"]  # type: ignore[index]
-        assert items[0]["success"] is True
+        assert items[0]["status"] == "success"
 
         # Verify task is dropped
         get_result = await client.call_tool("get_task", {"id": task_id})
@@ -1060,7 +1060,7 @@ class TestEditTasksLifecycle:
             {"items": [{"id": "completed-task", "actions": {"lifecycle": "complete"}}]},
         )
         items = edit_result.structured_content["result"]  # type: ignore[index]
-        assert items[0]["success"] is True
+        assert items[0]["status"] == "success"
         warnings = items[0].get("warnings", [])
         assert any("already" in w.lower() for w in warnings)
 
@@ -1091,7 +1091,7 @@ class TestAddTasksRepetitionRule:
             },
         )
         items = result.structured_content["result"]
-        assert items[0]["success"] is True
+        assert items[0]["status"] == "success"
         assert items[0]["name"] == "Repeating task"
         assert "id" in items[0]
 
@@ -1259,7 +1259,7 @@ class TestEditTasksRepetitionRule:
             },
         )
         items = edit_result.structured_content["result"]
-        assert items[0]["success"] is True
+        assert items[0]["status"] == "success"
 
     async def test_edit_tasks_clear_repetition_rule(self, client: Any) -> None:
         """Setting repetitionRule to null clears it."""
@@ -1287,7 +1287,7 @@ class TestEditTasksRepetitionRule:
             {"items": [{"id": task_id, "repetitionRule": None}]},
         )
         items = edit_result.structured_content["result"]
-        assert items[0]["success"] is True
+        assert items[0]["status"] == "success"
 
         # Verify it was cleared (stripped from response — absent field = not set)
         get_result = await client.call_tool("get_task", {"id": task_id})
@@ -1326,7 +1326,7 @@ class TestEditTasksRepetitionRule:
             },
         )
         items = edit_result.structured_content["result"]
-        assert items[0]["success"] is True
+        assert items[0]["status"] == "success"
 
     async def test_edit_tasks_interval_zero_clean_error(self, client: Any) -> None:
         """interval=0 on edit returns clean error without pydantic internals."""
@@ -1501,7 +1501,7 @@ class TestAnchorDateWarning:
             },
         )
         items = result.structured_content["result"]
-        assert items[0]["success"] is True
+        assert items[0]["status"] == "success"
         assert items[0]["warnings"] is not None
         warnings = items[0]["warnings"]
         assert any("basedOn is 'due_date'" in w for w in warnings)
@@ -1526,7 +1526,7 @@ class TestAnchorDateWarning:
             },
         )
         items = result.structured_content["result"]
-        assert items[0]["success"] is True
+        assert items[0]["status"] == "success"
         # No warnings at all, or no anchor-related warning
         warnings = items[0].get("warnings") or []
         assert not any("basedOn" in w for w in warnings)
@@ -1566,7 +1566,7 @@ class TestAnchorDateWarning:
             },
         )
         items = edit_result.structured_content["result"]
-        assert items[0]["success"] is True
+        assert items[0]["status"] == "success"
         warnings = items[0].get("warnings") or []
         assert not any("basedOn" in w for w in warnings)
 
@@ -1962,7 +1962,7 @@ class TestResponseShaping:
         items = sc["result"]
         assert len(items) == 1
         item = items[0]
-        assert item["success"] is True
+        assert item["status"] == "success"
         assert "id" in item
         assert "name" in item
 

@@ -177,23 +177,23 @@ class TestAddTask:
         result = await service.add_task(AddTaskCommand(name="Buy milk"))
 
         assert isinstance(result, AddTaskResult)
-        assert result.success is True
+        assert result.status == "success"
         assert result.name == "Buy milk"
 
     async def test_create_with_parent_project(self, service: OperatorService) -> None:
         """Parent ID matching a project resolves successfully."""
         result = await service.add_task(AddTaskCommand(name="Sub task", parent="proj-001"))
-        assert result.success is True
+        assert result.status == "success"
 
     async def test_create_with_parent_task(self, service: OperatorService) -> None:
         """Parent ID matching a task (not project) resolves successfully."""
         result = await service.add_task(AddTaskCommand(name="Sub task", parent="task-001"))
-        assert result.success is True
+        assert result.status == "success"
 
     async def test_no_parent_inbox(self, service: OperatorService) -> None:
         """No parent -> task goes to inbox."""
         result = await service.add_task(AddTaskCommand(name="Inbox task"))
-        assert result.success is True
+        assert result.status == "success"
 
     async def test_parent_not_found(self, service: OperatorService) -> None:
         """Non-existent parent raises ValueError."""
@@ -205,14 +205,14 @@ class TestAddTask:
         """Case-insensitive tag name resolution."""
         # "work" (lowercase) should match "Work"
         result = await service.add_task(AddTaskCommand(name="Task", tags=["work"]))
-        assert result.success is True
+        assert result.status == "success"
 
     @pytest.mark.snapshot(tags=[make_tag_dict(id="tag-work", name="Work")])
     async def test_tags_by_id_fallback(self, service: OperatorService) -> None:
         """Tag name that doesn't match tries ID fallback."""
         # "tag-work" as name doesn't match, but as ID it does
         result = await service.add_task(AddTaskCommand(name="Task", tags=["tag-work"]))
-        assert result.success is True
+        assert result.status == "success"
 
     async def test_tag_not_found(self, service: OperatorService) -> None:
         """Non-existent tag raises ValueError."""
@@ -246,7 +246,7 @@ class TestAddTask:
             note="Some note",
         )
         result = await service.add_task(command)
-        assert result.success is True
+        assert result.status == "success"
 
     async def test_empty_name(self, service: OperatorService) -> None:
         """Empty string name raises ValidationError at model level."""
@@ -277,13 +277,13 @@ class TestAddTask:
         """Parent task in inbox, then child under that parent (UAT #5)."""
         # Create parent in inbox (no parent field)
         parent_result = await service.add_task(AddTaskCommand(name="Parent task"))
-        assert parent_result.success is True
+        assert parent_result.status == "success"
 
         # Create child under that parent
         child_result = await service.add_task(
             AddTaskCommand(name="Child task", parent=parent_result.id)
         )
-        assert child_result.success is True
+        assert child_result.status == "success"
 
         # Verify child exists in repo
         child = await repo.get_task(child_result.id)
@@ -302,7 +302,7 @@ class TestAddTask:
         result = await service.add_task(
             AddTaskCommand(name="Multi-tag task", tags=["Urgent", "Work", "Home"])
         )
-        assert result.success is True
+        assert result.status == "success"
 
     async def test_planned_date_only(self, service: OperatorService) -> None:
         """Task with only plannedDate set (no due/defer) succeeds (UAT #11)."""
@@ -312,14 +312,14 @@ class TestAddTask:
                 planned_date="2026-03-12T09:00:00",
             )
         )
-        assert result.success is True
+        assert result.status == "success"
 
     async def test_emoji_and_special_chars(self, service: OperatorService) -> None:
         """Task name with emoji and special characters round-trips (UAT #18)."""
         name = '🎯 Buy <milk> & "eggs"'
         result = await service.add_task(AddTaskCommand(name=name))
 
-        assert result.success is True
+        assert result.status == "success"
         assert result.name == name
 
     async def test_fractional_estimated_minutes(
@@ -329,7 +329,7 @@ class TestAddTask:
         result = await service.add_task(
             AddTaskCommand(name="Fractional estimate", estimated_minutes=150.5)
         )
-        assert result.success is True
+        assert result.status == "success"
 
         task = await repo.get_task(result.id)
         assert task is not None
@@ -358,7 +358,7 @@ class TestAddTaskRepetitionRule:
             based_on=BasedOn.DUE_DATE,
         )
         result = await service.add_task(AddTaskCommand(name="Daily", repetition_rule=spec))
-        assert result.success is True
+        assert result.status == "success"
 
         # Verify bridge received correct payload
         task = await repo.get_task(result.id)
@@ -388,7 +388,7 @@ class TestAddTaskRepetitionRule:
             result = await service.add_task(
                 AddTaskCommand(name=f"Freq {freq.type}", repetition_rule=spec)
             )
-            assert result.success is True, f"Failed for type {freq.type}"
+            assert result.status == "success", f"Failed for type {freq.type}"
 
     async def test_interval(self, service: OperatorService, repo: BridgeOnlyRepository) -> None:
         """ADD-03: Custom interval preserved."""
@@ -428,7 +428,7 @@ class TestAddTaskRepetitionRule:
             based_on=BasedOn.DUE_DATE,
         )
         result = await service.add_task(AddTaskCommand(name="Weekly bare", repetition_rule=spec))
-        assert result.success is True
+        assert result.status == "success"
 
     async def test_monthly_day_of_week(self, service: OperatorService) -> None:
         """ADD-06: Monthly with on (day-of-week pattern) succeeds."""
@@ -438,7 +438,7 @@ class TestAddTaskRepetitionRule:
             based_on=BasedOn.DUE_DATE,
         )
         result = await service.add_task(AddTaskCommand(name="2nd Tue", repetition_rule=spec))
-        assert result.success is True
+        assert result.status == "success"
 
     async def test_monthly_day_in_month(self, service: OperatorService) -> None:
         """ADD-07: Monthly with on_dates (day-in-month pattern) succeeds."""
@@ -448,7 +448,7 @@ class TestAddTaskRepetitionRule:
             based_on=BasedOn.DUE_DATE,
         )
         result = await service.add_task(AddTaskCommand(name="1st&15th", repetition_rule=spec))
-        assert result.success is True
+        assert result.status == "success"
 
     async def test_empty_on_dates_normalizes_to_monthly(
         self, service: OperatorService, repo: BridgeOnlyRepository
@@ -460,7 +460,7 @@ class TestAddTaskRepetitionRule:
             based_on=BasedOn.DUE_DATE,
         )
         result = await service.add_task(AddTaskCommand(name="Empty onDates", repetition_rule=spec))
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert any("monthly" in w.lower() for w in result.warnings)
 
@@ -538,7 +538,7 @@ class TestAddTaskRepetitionRule:
             based_on=BasedOn.DUE_DATE,
         )
         result = await service.add_task(AddTaskCommand(name="Forever", repetition_rule=spec))
-        assert result.success is True
+        assert result.status == "success"
 
     async def test_default_interval(
         self, service: OperatorService, repo: BridgeOnlyRepository
@@ -568,7 +568,7 @@ class TestAddTaskRepetitionRule:
             based_on=BasedOn.DUE_DATE,
         )
         result = await service.add_task(AddTaskCommand(name="FC+BYDAY", repetition_rule=spec))
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert any("from_completion" in w and "onDays" in w for w in result.warnings)
 
@@ -582,7 +582,7 @@ class TestAddTaskRepetitionRule:
             based_on=BasedOn.DEFER_DATE,
         )
         result = await service.add_task(AddTaskCommand(name="FC daily", repetition_rule=spec))
-        assert result.success is True
+        assert result.status == "success"
         # May have other warnings (e.g. anchor date), but not the BYDAY one
         if result.warnings:
             assert not any("from_completion" in w and "onDays" in w for w in result.warnings)
@@ -604,7 +604,7 @@ class TestEditTask:
 
         result = await service.edit_task(EditTaskCommand(id="task-001", name="New Name"))
 
-        assert result.success is True
+        assert result.status == "success"
         assert result.name == "New Name"
         # Verify other fields unchanged
         task = await repo.get_task("task-001")
@@ -618,7 +618,7 @@ class TestEditTask:
         """Editing only note leaves other fields unchanged."""
 
         result = await service.edit_task(EditTaskCommand(id="task-001", note="New note"))
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task("task-001")
         assert task is not None
         assert task.note == "New note"
@@ -630,7 +630,7 @@ class TestEditTask:
         """Editing only flagged leaves other fields unchanged."""
 
         result = await service.edit_task(EditTaskCommand(id="task-001", flagged=True))
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task("task-001")
         assert task is not None
         assert task.flagged is True
@@ -644,7 +644,7 @@ class TestEditTask:
         """Setting due_date=None clears it (EDIT-01)."""
 
         result = await service.edit_task(EditTaskCommand(id="task-001", due_date=None))
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task("task-001")
         assert task is not None
         assert task.due_date is None
@@ -656,7 +656,7 @@ class TestEditTask:
         result = await service.edit_task(
             EditTaskCommand(id="task-001", due_date="2026-05-01T10:00:00")
         )
-        assert result.success is True
+        assert result.status == "success"
 
     @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
     async def test_set_estimated_minutes(
@@ -665,7 +665,7 @@ class TestEditTask:
         """Setting estimated_minutes updates it (EDIT-02)."""
 
         result = await service.edit_task(EditTaskCommand(id="task-001", estimated_minutes=30.0))
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task("task-001")
         assert task is not None
         assert task.estimated_minutes == 30.0
@@ -683,7 +683,7 @@ class TestEditTask:
                 actions=EditTaskActions(tags=TagAction(replace=["NewTag"])),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task("task-001")
         assert task is not None
         assert len(task.tags) == 1
@@ -705,7 +705,7 @@ class TestEditTask:
                 actions=EditTaskActions(tags=TagAction(add=["B"])),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task("task-001")
         assert task is not None
         assert len(task.tags) == 2
@@ -735,7 +735,7 @@ class TestEditTask:
                 actions=EditTaskActions(tags=TagAction(remove=["A"])),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task("task-001")
         assert task is not None
         assert len(task.tags) == 1
@@ -783,7 +783,7 @@ class TestEditTask:
                 actions=EditTaskActions(tags=TagAction(add=["B"], remove=["A"])),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task("task-001")
         assert task is not None
         assert len(task.tags) == 1
@@ -803,7 +803,7 @@ class TestEditTask:
                 actions=EditTaskActions(move=MoveAction(ending="proj-001")),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task("task-001")
         assert task is not None
         assert task.parent is not None
@@ -831,7 +831,7 @@ class TestEditTask:
                 actions=EditTaskActions(move=MoveAction(beginning="task-parent")),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task("task-001")
         assert task is not None
         assert task.parent is not None
@@ -860,7 +860,7 @@ class TestEditTask:
                 actions=EditTaskActions(move=MoveAction(ending="$inbox")),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task("task-001")
         assert task is not None
         assert task.parent.project is not None
@@ -918,7 +918,7 @@ class TestEditTask:
                 actions=EditTaskActions(tags=TagAction(remove=["X"])),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert any("is not on this task" in w for w in result.warnings)
         assert any("(tag-x)" in w for w in result.warnings)
@@ -936,7 +936,7 @@ class TestEditTask:
         """note=None maps to empty string (null-means-clear)."""
 
         result = await service.edit_task(EditTaskCommand(id="task-001", note=None))
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task("task-001")
         assert task is not None
         assert task.note == ""
@@ -956,7 +956,7 @@ class TestEditTask:
                 actions=EditTaskActions(tags=TagAction(replace=None)),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task("task-001")
         assert task is not None
         assert task.tags == []
@@ -1084,7 +1084,7 @@ class TestEditTask:
                 actions=EditTaskActions(tags=TagAction(remove=["tag-x"])),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         # Warning should show resolved name "X", not the raw ID "tag-x"
         assert any("Tag 'X'" in w and "(tag-x)" in w for w in result.warnings)
@@ -1110,7 +1110,7 @@ class TestEditTask:
         """Empty edit (only id, no fields) returns warning without calling bridge."""
 
         result = await service.edit_task(EditTaskCommand(id="task-001"))
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert any("No changes specified" in w for w in result.warnings)
 
@@ -1119,7 +1119,7 @@ class TestEditTask:
         """Editing name to same value triggers no-op detection."""
 
         result = await service.edit_task(EditTaskCommand(id="task-001", name="Foo"))
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert any("No changes detected" in w for w in result.warnings)
 
@@ -1139,7 +1139,7 @@ class TestEditTask:
         result = await service.edit_task(
             EditTaskCommand(id="task-001", estimated_minutes=45.0, flagged=True)
         )
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task("task-001")
         assert task is not None
         assert task.estimated_minutes == 45.0
@@ -1158,7 +1158,7 @@ class TestEditTask:
                 planned_date="2026-03-12T09:00:00Z",
             )
         )
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task("task-001")
         assert task is not None
         assert task.defer_date is not None
@@ -1184,7 +1184,7 @@ class TestEditTask:
                 estimated_minutes=60.0,
             )
         )
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task("task-001")
         assert task is not None
         assert task.name == "New Name"
@@ -1197,7 +1197,7 @@ class TestEditTask:
         """Start with flagged=True, edit to flagged=False (UAT #6)."""
 
         result = await service.edit_task(EditTaskCommand(id="task-001", flagged=False))
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task("task-001")
         assert task is not None
         assert task.flagged is False
@@ -1209,7 +1209,7 @@ class TestEditTask:
         """Edit task with note='' clears note (UAT #9)."""
 
         result = await service.edit_task(EditTaskCommand(id="task-001", note=""))
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task("task-001")
         assert task is not None
         assert task.note == ""
@@ -1221,7 +1221,7 @@ class TestEditTask:
         """Set estimated_minutes=None clears the estimate (UAT #10)."""
 
         result = await service.edit_task(EditTaskCommand(id="task-001", estimated_minutes=None))
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task("task-001")
         assert task is not None
         assert task.estimated_minutes is None
@@ -1243,7 +1243,7 @@ class TestEditTask:
         """Editing only name preserves note, flagged, estimatedMinutes (UAT #11)."""
 
         result = await service.edit_task(EditTaskCommand(id="task-001", name="Updated"))
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task("task-001")
         assert task is not None
         assert task.name == "Updated"
@@ -1266,7 +1266,7 @@ class TestEditTask:
                 actions=EditTaskActions(move=MoveAction(after="task-002")),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
 
     @pytest.mark.snapshot(
         tasks=[
@@ -1283,7 +1283,7 @@ class TestEditTask:
                 actions=EditTaskActions(move=MoveAction(before="task-002")),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
 
     @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
     async def test_cycle_self_reference(self, service: OperatorService) -> None:
@@ -1324,7 +1324,7 @@ class TestEditTask:
                 actions=EditTaskActions(move=MoveAction(ending="proj-001")),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task("task-001")
         assert task is not None
         assert task.name == "Renamed"
@@ -1355,7 +1355,7 @@ class TestEditTask:
                 due_date="2026-03-10T08:00:00+01:00",
             )
         )
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert any("No changes detected" in w for w in result.warnings)
 
@@ -1378,7 +1378,7 @@ class TestEditTask:
                 actions=EditTaskActions(move=MoveAction(ending="proj-001")),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert any("already at the ending" in w for w in result.warnings)
 
@@ -1389,7 +1389,7 @@ class TestEditTask:
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="complete"))
         )
-        assert result.success is True
+        assert result.status == "success"
         # No lifecycle-specific warnings for fresh complete
         if result.warnings:
             assert not any("already" in w.lower() for w in result.warnings)
@@ -1401,7 +1401,7 @@ class TestEditTask:
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="drop"))
         )
-        assert result.success is True
+        assert result.status == "success"
         if result.warnings:
             assert not any("already" in w.lower() for w in result.warnings)
 
@@ -1414,7 +1414,7 @@ class TestEditTask:
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="complete"))
         )
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert any("already complete" in w.lower() for w in result.warnings)
 
@@ -1425,7 +1425,7 @@ class TestEditTask:
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="drop"))
         )
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert any("already dropped" in w.lower() for w in result.warnings)
 
@@ -1438,7 +1438,7 @@ class TestEditTask:
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="complete"))
         )
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert any("dropped" in w and "complete" in w.lower() for w in result.warnings)
 
@@ -1451,7 +1451,7 @@ class TestEditTask:
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="drop"))
         )
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert any("completed" in w and "drop" in w.lower() for w in result.warnings)
 
@@ -1477,7 +1477,7 @@ class TestEditTask:
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="complete"))
         )
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert any("repeating" in w.lower() and "occurrence" in w.lower() for w in result.warnings)
 
@@ -1501,7 +1501,7 @@ class TestEditTask:
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="drop"))
         )
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert any("repeating" in w.lower() and "skipped" in w.lower() for w in result.warnings)
         assert any("OmniFocus UI" in w for w in result.warnings)
@@ -1529,7 +1529,7 @@ class TestEditTask:
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="complete"))
         )
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         # Both cross-state and repeating warnings should be present
         all_warnings = " ".join(result.warnings).lower()
@@ -1549,7 +1549,7 @@ class TestEditTask:
                 actions=EditTaskActions(lifecycle="complete"),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task("task-001")
         assert task is not None
         assert task.flagged is True
@@ -1561,7 +1561,7 @@ class TestEditTask:
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="complete"))
         )
-        assert result.success is True
+        assert result.status == "success"
         # Should NOT have "No changes specified" warning
         if result.warnings:
             assert not any("no changes specified" in w.lower() for w in result.warnings)
@@ -1573,7 +1573,7 @@ class TestEditTask:
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="complete"))
         )
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         # Should have no-op warning, but NOT the generic status warning or empty edit warning
         assert any("already complete" in w.lower() for w in result.warnings)
@@ -1591,7 +1591,7 @@ class TestEditTask:
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="complete"))
         )
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert any("already complete" in w.lower() for w in result.warnings)
         assert not any("No changes specified" in w for w in result.warnings)
@@ -1616,7 +1616,7 @@ class TestEditTask:
                 actions=EditTaskActions(move=MoveAction(ending="proj-001")),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert any("already at the ending" in w for w in result.warnings)
         assert len(result.warnings) == 1
@@ -1634,7 +1634,7 @@ class TestEditTask:
                 actions=EditTaskActions(tags=TagAction(replace=["A"])),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert any("already match" in w.lower() for w in result.warnings)
         assert not any("No changes specified" in w for w in result.warnings)
@@ -1649,7 +1649,7 @@ class TestEditTask:
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="drop"))
         )
-        assert result.success is True
+        assert result.status == "success"
         # Should have cross-state warning, but NOT the generic status warning
         if result.warnings:
             assert not any(
@@ -1667,7 +1667,7 @@ class TestEditTask:
         result = await service.edit_task(
             EditTaskCommand(id="task-001", actions=EditTaskActions(lifecycle="complete"))
         )
-        assert result.success is True
+        assert result.status == "success"
         if result.warnings:
             assert not any("no changes detected" in w.lower() for w in result.warnings)
 
@@ -1676,7 +1676,7 @@ class TestEditTask:
         """EditTaskActions() with all UNSET fields behaves like empty edit."""
 
         result = await service.edit_task(EditTaskCommand(id="task-001", actions=EditTaskActions()))
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert any("No changes" in w for w in result.warnings)
 
@@ -1695,7 +1695,7 @@ class TestEditTask:
                 actions=EditTaskActions(tags=TagAction(replace=["A"])),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert any("Tags already match" in w for w in result.warnings)
         # Tags unchanged
@@ -1718,7 +1718,7 @@ class TestEditTask:
                 actions=EditTaskActions(tags=TagAction(add=["A"])),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         # Should have per-tag warning only (no generic empty-edit warning)
         assert any("already on this task" in w for w in result.warnings)
@@ -1747,7 +1747,7 @@ class TestEditTask:
                 actions=EditTaskActions(move=MoveAction(ending="proj-002")),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
         # Different container move should not be a no-op
         if result.warnings:
             assert not any("No changes detected" in w for w in result.warnings)
@@ -1794,7 +1794,7 @@ class TestEditTaskRepetitionRule:
             based_on=BasedOn.DUE_DATE,
         )
         result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
-        assert result.success is True
+        assert result.status == "success"
 
         task = await repo.get_task("t1")
         assert task is not None
@@ -1809,7 +1809,7 @@ class TestEditTaskRepetitionRule:
     async def test_clear_rule(self, service: OperatorService, repo: BridgeOnlyRepository) -> None:
         """EDIT-02: repetition_rule=None -> clears rule."""
         result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=None))
-        assert result.success is True
+        assert result.status == "success"
 
         task = await repo.get_task("t1")
         assert task is not None
@@ -1823,7 +1823,7 @@ class TestEditTaskRepetitionRule:
     ) -> None:
         """EDIT-03: repetition_rule=UNSET (omitted) -> no change."""
         result = await service.edit_task(EditTaskCommand(id="t1", name="Renamed"))
-        assert result.success is True
+        assert result.status == "success"
 
         task = await repo.get_task("t1")
         assert task is not None
@@ -1839,7 +1839,7 @@ class TestEditTaskRepetitionRule:
         """EDIT-04: Only schedule set -> preserves frequency/basedOn/end."""
         spec = RepetitionRuleEditSpec(schedule=Schedule.FROM_COMPLETION)
         result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
-        assert result.success is True
+        assert result.status == "success"
 
         task = await repo.get_task("t1")
         assert task is not None
@@ -1857,7 +1857,7 @@ class TestEditTaskRepetitionRule:
         """EDIT-05: Only based_on set -> preserves frequency/schedule/end."""
         spec = RepetitionRuleEditSpec(based_on=BasedOn.DEFER_DATE)
         result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
-        assert result.success is True
+        assert result.status == "success"
 
         task = await repo.get_task("t1")
         assert task is not None
@@ -1874,7 +1874,7 @@ class TestEditTaskRepetitionRule:
         """EDIT-06: Only end set -> adds end condition."""
         spec = RepetitionRuleEditSpec(end=EndByOccurrencesSpec(occurrences=10))
         result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
-        assert result.success is True
+        assert result.status == "success"
 
         task = await repo.get_task("t1")
         assert task is not None
@@ -1901,7 +1901,7 @@ class TestEditTaskRepetitionRule:
         """EDIT-07: end=None -> removes end condition."""
         spec = RepetitionRuleEditSpec(end=None)
         result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
-        assert result.success is True
+        assert result.status == "success"
 
         task = await repo.get_task("t1")
         assert task is not None
@@ -1928,7 +1928,7 @@ class TestEditTaskRepetitionRule:
         """EDIT-08: End changed from date to occurrences."""
         spec = RepetitionRuleEditSpec(end=EndByOccurrencesSpec(occurrences=20))
         result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
-        assert result.success is True
+        assert result.status == "success"
 
         task = await repo.get_task("t1")
         assert task is not None
@@ -1944,7 +1944,7 @@ class TestEditTaskRepetitionRule:
         """EDIT-09/10: Same type, change interval -> merges."""
         spec = RepetitionRuleEditSpec(frequency=FrequencyEditSpec(interval=5))
         result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
-        assert result.success is True
+        assert result.status == "success"
 
         task = await repo.get_task("t1")
         assert task is not None
@@ -1967,7 +1967,7 @@ class TestEditTaskRepetitionRule:
         """EDIT-11: Same type, change on_days -> interval preserved."""
         spec = RepetitionRuleEditSpec(frequency=FrequencyEditSpec(on_days=["TU", "TH"]))
         result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
-        assert result.success is True
+        assert result.status == "success"
 
         task = await repo.get_task("t1")
         assert task is not None
@@ -1997,7 +1997,7 @@ class TestEditTaskRepetitionRule:
         """EDIT-12: Same monthly_day_of_week type, change on -> interval preserved."""
         spec = RepetitionRuleEditSpec(frequency=FrequencyEditSpec(on={"last": "friday"}))
         result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
-        assert result.success is True
+        assert result.status == "success"
 
         task = await repo.get_task("t1")
         assert task is not None
@@ -2029,7 +2029,7 @@ class TestEditTaskRepetitionRule:
         """
         spec = RepetitionRuleEditSpec(frequency=FrequencyEditSpec(on_dates=[1, 15]))
         result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
-        assert result.success is True
+        assert result.status == "success"
 
         task = await repo.get_task("t1")
         assert task is not None
@@ -2067,7 +2067,7 @@ class TestEditTaskRepetitionRule:
         """
         spec = RepetitionRuleEditSpec(frequency=FrequencyEditSpec(on={"last": "friday"}))
         result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
-        assert result.success is True
+        assert result.status == "success"
 
         task = await repo.get_task("t1")
         assert task is not None
@@ -2091,7 +2091,7 @@ class TestEditTaskRepetitionRule:
             frequency=FrequencyEditSpec(type="weekly", on_days=["MO", "WE", "FR"])
         )
         result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
-        assert result.success is True
+        assert result.status == "success"
 
         task = await repo.get_task("t1")
         assert task is not None
@@ -2110,7 +2110,7 @@ class TestEditTaskRepetitionRule:
             frequency=FrequencyEditSpec(type="monthly", on={"last": "friday"})
         )
         result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
-        assert result.success is True
+        assert result.status == "success"
 
         task = await repo.get_task("t1")
         assert task is not None
@@ -2137,7 +2137,7 @@ class TestEditTaskRepetitionRule:
             based_on=BasedOn.DUE_DATE,
         )
         result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert any("no changes" in w.lower() for w in result.warnings)
 
@@ -2154,7 +2154,7 @@ class TestEditTaskRepetitionRule:
         result = await service.edit_task(
             EditTaskCommand(id="t1", name="Renamed", repetition_rule=spec)
         )
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert any("no changes" in w.lower() for w in result.warnings)
         assert result.name == "Renamed"
@@ -2178,7 +2178,7 @@ class TestEditTaskRepetitionRule:
             based_on=BasedOn.DUE_DATE,
         )
         result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert any("completed" in w for w in result.warnings)
 
@@ -2201,7 +2201,7 @@ class TestEditTaskRepetitionRule:
             based_on=BasedOn.DUE_DATE,
         )
         result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert any("dropped" in w for w in result.warnings)
 
@@ -2214,7 +2214,7 @@ class TestEditTaskRepetitionRule:
             based_on=BasedOn.DUE_DATE,
         )
         result = await service.edit_task(EditTaskCommand(id="t1", repetition_rule=spec))
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert any("from_completion" in w and "onDays" in w for w in result.warnings)
 
@@ -2381,7 +2381,7 @@ class TestNameResolutionIntegration:
     async def test_add_task_parent_by_name(self, service: OperatorService) -> None:
         """add_task with parent='Project One' resolves to proj-1 (NRES-01)."""
         result = await service.add_task(AddTaskCommand(name="New Task", parent="Project One"))
-        assert result.success is True
+        assert result.status == "success"
 
     @pytest.mark.snapshot(
         tasks=[make_task_dict(id="task-001", name="Inbox Task")],
@@ -2390,12 +2390,12 @@ class TestNameResolutionIntegration:
     async def test_add_task_parent_by_name_substring(self, service: OperatorService) -> None:
         """add_task with parent='Proj' substring-matches 'Project One' (NRES-01)."""
         result = await service.add_task(AddTaskCommand(name="New Task", parent="Proj"))
-        assert result.success is True
+        assert result.status == "success"
 
     async def test_add_task_parent_system_location(self, service: OperatorService) -> None:
         """add_task with parent='$inbox' resolves to inbox (NRES-01)."""
         result = await service.add_task(AddTaskCommand(name="Inbox Task", parent="$inbox"))
-        assert result.success is True
+        assert result.status == "success"
 
     @pytest.mark.snapshot(
         tasks=[make_task_dict(id="task-001", name="Inbox Task")],
@@ -2420,7 +2420,7 @@ class TestNameResolutionIntegration:
                 actions=EditTaskActions(move=MoveAction(ending="Project One")),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
 
     @pytest.mark.snapshot(
         tasks=[make_task_dict(id="task-001", name="Task To Move")],
@@ -2434,7 +2434,7 @@ class TestNameResolutionIntegration:
                 actions=EditTaskActions(move=MoveAction(beginning="Project One")),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
 
     # -- edit_task: moveTo before/after by name --
 
@@ -2452,7 +2452,7 @@ class TestNameResolutionIntegration:
                 actions=EditTaskActions(move=MoveAction(before="Alpha")),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
 
     @pytest.mark.snapshot(
         tasks=[
@@ -2468,7 +2468,7 @@ class TestNameResolutionIntegration:
                 actions=EditTaskActions(move=MoveAction(after="Alpha")),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
 
     @pytest.mark.snapshot(
         tasks=[make_task_dict(id="task-001", name="Task To Move")],
@@ -2494,7 +2494,7 @@ class TestNameResolutionIntegration:
                 actions=EditTaskActions(move=MoveAction(ending="$inbox")),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
 
 
 # ---------------------------------------------------------------------------
@@ -2510,7 +2510,7 @@ class TestAddTaskInboxPipeline:
     ) -> None:
         """Parent UNSET (omitted) -> task created in inbox (WRIT-02)."""
         result = await service.add_task(AddTaskCommand(name="Inbox via omit"))
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task(result.id)
         assert task is not None
         assert task.parent.project is not None
@@ -2522,7 +2522,7 @@ class TestAddTaskInboxPipeline:
     ) -> None:
         """Parent '$inbox' -> resolve_container returns None -> inbox (WRIT-01)."""
         result = await service.add_task(AddTaskCommand(name="Inbox via $inbox", parent="$inbox"))
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task(result.id)
         assert task is not None
         assert task.parent.project is not None
@@ -2534,7 +2534,7 @@ class TestAddTaskInboxPipeline:
     ) -> None:
         """Parent set to project ID -> resolves to that project."""
         result = await service.add_task(AddTaskCommand(name="Under project", parent="proj-001"))
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task(result.id)
         assert task is not None
         assert task.project.id != "$inbox"
@@ -2564,7 +2564,7 @@ class TestEditTaskInboxPipeline:
                 actions=EditTaskActions(move=MoveAction(ending="$inbox")),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task("task-001")
         assert task is not None
         assert task.parent.project is not None
@@ -2592,7 +2592,7 @@ class TestEditTaskInboxPipeline:
                 actions=EditTaskActions(move=MoveAction(beginning="$inbox")),
             )
         )
-        assert result.success is True
+        assert result.status == "success"
         task = await repo.get_task("task-001")
         assert task is not None
         assert task.parent.project is not None

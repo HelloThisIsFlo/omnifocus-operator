@@ -1013,15 +1013,15 @@ class TestAddTaskModels:
 
     def test_add_task_result_round_trip(self) -> None:
         """AddTaskResult parses and serializes correctly."""
-        result = AddTaskResult(success=True, id="task-new-001", name="New Task")
-        assert result.success is True
+        result = AddTaskResult(status="success", id="task-new-001", name="New Task")
+        assert result.status == "success"
         assert result.id == "task-new-001"
         assert result.name == "New Task"
 
         # camelCase round-trip (fields are already camelCase-friendly)
         dumped = result.model_dump(by_alias=True)
         result2 = AddTaskResult.model_validate(dumped)
-        assert result2.success is True
+        assert result2.status == "success"
         assert result2.id == "task-new-001"
         assert result2.name == "New Task"
 
@@ -1094,16 +1094,16 @@ class TestCommandModelStrictness:
 
     def test_add_task_result_accepts_unknown_field(self) -> None:
         result = AddTaskResult.model_validate(
-            {"success": True, "id": "t1", "name": "T", "bogus": "x"}
+            {"status": "success", "id": "t1", "name": "T", "bogus": "x"}
         )
-        assert result.success is True
+        assert result.status == "success"
         assert not hasattr(result, "bogus")
 
     def test_edit_task_result_accepts_unknown_field(self) -> None:
         result = EditTaskResult.model_validate(
-            {"success": True, "id": "t1", "name": "T", "bogus": "x"}
+            {"status": "success", "id": "t1", "name": "T", "bogus": "x"}
         )
-        assert result.success is True
+        assert result.status == "success"
         assert not hasattr(result, "bogus")
 
     def test_read_model_task_accepts_unknown_field(self) -> None:

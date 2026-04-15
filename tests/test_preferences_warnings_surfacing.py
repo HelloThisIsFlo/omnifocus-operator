@@ -78,7 +78,7 @@ class TestAddTaskSurfacesPreferencesWarnings:
         # Use date-only to trigger preferences call for default time
         result = await service.add_task(AddTaskCommand(name="Test task", due_date="2026-07-15"))
 
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert SETTINGS_FALLBACK_WARNING in result.warnings
 
@@ -101,7 +101,7 @@ class TestEditTaskSurfacesPreferencesWarnings:
         # Use date-only to trigger preferences call for default time
         result = await service.edit_task(EditTaskCommand(id="task-001", due_date="2026-07-15"))
 
-        assert result.success is True
+        assert result.status == "success"
         assert result.warnings is not None
         assert SETTINGS_FALLBACK_WARNING in result.warnings
 
