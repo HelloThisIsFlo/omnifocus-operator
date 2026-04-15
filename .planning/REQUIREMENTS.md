@@ -35,9 +35,9 @@ Requirements for milestone v1.4: Response Shaping, Batch Processing & Notes Grad
 
 ### True Inherited Fields
 
-- [ ] **INHERIT-01**: inherited* fields on tasks only appear when truly inherited from an ancestor (parent task or containing project) — self-echoes are stripped
+- [x] **INHERIT-01**: inherited* fields on tasks only appear when truly inherited from an ancestor (parent task or containing project) — self-echoes are stripped
 - [ ] **INHERIT-02**: Projects never have inherited* fields in any response (task-only — folders cannot set dates/flags)
-- [ ] **INHERIT-03**: Walk covers all 6 inherited field pairs: flagged, dueDate, deferDate, plannedDate, dropDate, completionDate
+- [x] **INHERIT-03**: Walk covers all 6 inherited field pairs: flagged, dueDate, deferDate, plannedDate, dropDate, completionDate
 - [ ] **INHERIT-04**: True inheritance applies to get_all, get_task, and list_tasks responses
 
 ### Count-Only
@@ -134,9 +134,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | NOTE-03 | Phase 55 | Pending |
 | NOTE-04 | Phase 55 | Pending |
 | NOTE-05 | Phase 55 | Pending |
-| INHERIT-01 | Phase 53.1 | Pending |
+| INHERIT-01 | Phase 53.1 | Complete |
 | INHERIT-02 | Phase 53.1 | Pending |
-| INHERIT-03 | Phase 53.1 | Pending |
+| INHERIT-03 | Phase 53.1 | Complete |
 | INHERIT-04 | Phase 53.1 | Pending |
 
 **Coverage:**
