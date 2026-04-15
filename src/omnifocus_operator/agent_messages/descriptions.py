@@ -37,6 +37,9 @@ _STRIPPING_NOTE = (
     'false booleans, and "none" urgency are omitted. Absent field = not set.'
 )
 
+# FIXME: "The sooner date applies" is only correct for dueDate (min).
+# deferDate uses max (later wins), planned/drop/completion use first-found (nearest ancestor).
+# See: .research/deep-dives/omnifocus-inheritance-semantics/FINDINGS.md
 _INHERITED_TASKS_EXPLANATION = """\
 inherited* fields: value inherited from the hierarchy \
 (parent task, project, folder). Both direct and inherited can coexist. \

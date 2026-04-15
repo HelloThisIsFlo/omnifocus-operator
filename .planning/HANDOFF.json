@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-04-15T16:35:46.680Z",
+  "timestamp": "2026-04-15T17:00:00.000Z",
   "phase": "53.1",
   "phase_name": "true-inherited-fields",
   "phase_dir": ".planning/phases/53.1-true-inherited-fields",
@@ -17,36 +17,35 @@
     {"id": 6, "name": "Update descriptions.py, omnifocus-concepts.md with planned date reframing", "status": "done"},
     {"id": 7, "name": "Drop date partial replication — min ruled out, max vs first-found pending", "status": "done"},
     {"id": 8, "name": "Auto-completion lifecycle discovery (Finding 7)", "status": "done"},
-    {"id": 9, "name": "Document all findings in FINDINGS.md and .continue-here.md", "status": "done"}
+    {"id": 9, "name": "Document all findings in FINDINGS.md and .continue-here.md", "status": "done"},
+    {"id": 10, "name": "Rule out MAX for drop date — reverse-order drop test", "status": "done"},
+    {"id": 11, "name": "Document 'derived not stored' insight + update architecture.md", "status": "done"}
   ],
   "remaining_tasks": [
-    {"id": 10, "name": "Rule out MAX for drop date — reverse-order drop test", "status": "not_started"},
-    {"id": 11, "name": "Test completion date inheritance with distinct timestamps", "status": "not_started"},
-    {"id": 12, "name": "Fix _walk_one: defer→max, planned/drop/completion→first-found", "status": "not_started"},
-    {"id": 13, "name": "Write tests for new semantics", "status": "not_started"},
-    {"id": 14, "name": "Create architecture documentation for inheritance", "status": "not_started"},
+    {"id": 12, "name": "Test completion date inheritance with distinct timestamps", "status": "not_started"},
+    {"id": 13, "name": "Fix _walk_one: defer→max, planned/drop/completion→first-found", "status": "not_started"},
+    {"id": 14, "name": "Write tests for new semantics", "status": "not_started"},
     {"id": 15, "name": "Update UAT file with new gaps and re-test results", "status": "not_started"},
     {"id": 16, "name": "Clean up test tasks from OmniFocus", "status": "not_started"}
   ],
   "blockers": [
-    {"description": "Drop date max not independently ruled out — need reverse-order test", "type": "technical", "workaround": "Fresh hierarchy: drop nearer ancestor first, further ancestor second"},
     {"description": "Completion date aggregation unconfirmed — need distinct timestamps", "type": "technical", "workaround": "Fresh hierarchy with manual completions at each level with pauses"}
   ],
   "human_actions_pending": [
-    {"action": "Run reverse-order drop test (drop Mid first, then Root)", "context": "User must manually drop tasks in OmniFocus UI and run OmniJS script", "blocking": true},
     {"action": "Run completion date test with distinct timestamps", "context": "User must manually complete tasks in OmniFocus UI", "blocking": true}
   ],
   "decisions": [
     {"decision": "Due date uses min (cascading minimum)", "rationale": "REPLICATED session 3 — fresh 5-level hierarchy, all 5 match", "phase": "53.1"},
     {"decision": "Defer date uses max (cascading maximum)", "rationale": "REPLICATED session 3 — L3 decisive (own=2025, eff=2027 from L2)", "phase": "53.1"},
-    {"decision": "Planned date uses first-found/override", "rationale": "REPLICATED session 3 — two rounds + 2027→2037 swap. Design discussion: planned = scoped intent, not completion target", "phase": "53.1"},
+    {"decision": "Planned date uses first-found/override", "rationale": "REPLICATED session 3 — two rounds + 2027→2037 swap", "phase": "53.1"},
     {"decision": "Flagged uses any-True / OR", "rationale": "REPLICATED session 3 — unflagged project, L3 flagged, L1/L2 false proves downward-only", "phase": "53.1"},
-    {"decision": "Drop date uses first-found (min ruled out, max needs independent ruling-out)", "rationale": "Session 3: min ruled out (top-down drops). Session 1: max ruled out. Independent max test pending.", "phase": "53.1"},
+    {"decision": "Drop date uses first-found", "rationale": "REPLICATED session 3 — reverse-order drop (Mid first, Root second) + nearer-ancestor drop (Inner). Max ruled out.", "phase": "53.1"},
     {"decision": "Completion date likely uses first-found (tentative)", "rationale": "By analogy with drop, but not empirically verified with distinct timestamps", "phase": "53.1"},
-    {"decision": "Auto-complete triggers when ALL children have own lifecycle status", "rationale": "Session 3 Finding 7 — effectively dropped doesn't count; always produces completed; erases dropDate", "phase": "53.1"},
-    {"decision": "Planned date = scoped intent, not completion target", "rationale": "Design discussion: min would collapse phased schedules. Updated descriptions.py and omnifocus-concepts.md", "phase": "53.1"}
+    {"decision": "Auto-complete triggers when ALL children have own lifecycle status", "rationale": "Session 2 Finding 7 — effectively dropped doesn't count; always produces completed; erases dropDate", "phase": "53.1"},
+    {"decision": "Planned date = scoped intent, not completion target", "rationale": "Design discussion: min would collapse phased schedules. Updated descriptions.py and omnifocus-concepts.md", "phase": "53.1"},
+    {"decision": "Effective values are derived, not stored", "rationale": "Session 3: dropping nearer ancestor (Inner) changed Leaf's effectiveDropDate despite already being effectively dropped. No latching on first transition.", "phase": "53.1"}
   ],
   "uncommitted_files": [],
-  "next_action": "Create fresh 4-level hierarchy (UAT-Test-Root/Mid/Inner/Leaf + blockers). Execute Test A: drop Mid first, then Root (reverse order to distinguish max from first-found). Then Test B: completion with distinct timestamps. See FINDINGS.md 'Next Steps' for full protocol.",
-  "context_notes": "Session 3 replicated 4 of 6 fields from scratch. Major planned date design discussion led to documentation updates (commit bffdd4e5). Auto-completion lifecycle discovery was unexpected bonus finding. User insists on independent replication of ALL findings — do not rely on session 1/2 data alone. Project is currently UNFLAGGED (changed during flagged testing) — re-flag before non-inheritance work."
+  "next_action": "Create fresh hierarchy for completion date test (Test B). Protocol: complete tasks at different levels with pauses for distinct timestamps. Think through auto-completion cascades (Finding 7) before executing.",
+  "context_notes": "Session 3 replicated 5 of 6 fields. Drop date confirmed first-found via reverse-order test + bonus nearer-ancestor test. 'Derived not stored' insight documented. Architecture.md updated with per-field rules table. FIXME comments added to domain.py and descriptions.py. Only completion date remains. Project is currently UNFLAGGED — re-flag before non-inheritance work."
 }

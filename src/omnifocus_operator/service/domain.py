@@ -226,7 +226,9 @@ class DomainLogic:
         """Determine which inherited fields are truly inherited for one task."""
         # Track actual ancestor values (not just presence booleans).
         # inherited_flagged: any-True semantics (False until an ancestor is True).
-        # Date fields: soonest (min) date among ancestors that have the field set.
+        # FIXME: Date fields use min for ALL dates — wrong for defer (should be max)
+        # and planned/drop/completion (should be first-found). Pending spike results.
+        # See: .research/deep-dives/omnifocus-inheritance-semantics/FINDINGS.md
         ancestor_vals: dict[str, object] = {inh: None for _, inh in _INHERITED_FIELD_PAIRS}
         ancestor_vals["inherited_flagged"] = False
 

@@ -9,7 +9,7 @@ All findings derived from live OmniFocus testing on 2026-04-15.
 - Defer date semantics: **REPLICATED** ✅ (2026-04-15, fresh 5-level hierarchy)
 - Planned date semantics: **REPLICATED** ✅ (2026-04-15, fresh hierarchy + 2027→2037 swap experiment)
 - Flagged semantics: **REPLICATED** ✅ (2026-04-15, project unflagged + mid-chain flag test)
-- Drop date semantics: **PARTIAL** — min ruled out in session 2; max vs first-found needs fresh hierarchy
+- Drop date semantics: **REPLICATED** ✅ (2026-04-15, reverse-drop test + nearer-ancestor test)
 - Completion date semantics: **low confidence** (not yet replicated, needs distinct timestamps)
 
 ## Background
@@ -408,7 +408,7 @@ don't get their own date when a parent is dropped.
 2. **Only tested task-to-task inheritance**, not project-to-task (dropping a project).
 3. **Small sample size:** Only 4 tests, with 2 being decisive.
 
-### Replication (2026-04-15, session 2) — PARTIAL
+### Replication (2026-04-15, session 2) — min ruled out, max not yet distinguished
 
 5-level hierarchy with blocker siblings at every level (UAT-Drop-A through E, plus *-Blocker).
 Drops applied top-down: A first (16:12:31), then C (16:13:19), then D (16:14:01).
@@ -417,18 +417,63 @@ Drops applied top-down: A first (16:12:31), then C (16:13:19), then D (16:14:01)
 to C's 16:13:19. If min, they would have kept A's earlier timestamp.
 
 **Max vs first-found NOT YET distinguished** in this test: each successive drop was both nearer
-AND later, so max and first-found give the same answer. Need fresh hierarchy with reverse drop
-order (nearer ancestor dropped first/earlier, further ancestor dropped second/later).
+AND later, so max and first-found give the same answer.
 
 **Auto-completion discovery (major finding — see Finding 7 below):** After drop testing,
 we explored lifecycle interactions by completing/dropping blocker siblings. This revealed
 rich auto-completion behavior documented in Finding 7.
 
+### Replication (2026-04-15, session 3) — CONFIRMED first-found ✅
+
+Fresh 4-level hierarchy with blocker siblings (UAT-Test-Root/Mid/Inner/Leaf + *-Blocker).
+**Reverse drop order** — nearer ancestor dropped first (earlier timestamp), further ancestor
+dropped second (later timestamp). This is the decisive test that distinguishes max from first-found.
+
+**Step 1: Drop Mid (T1 = 16:44:11)**
+
+| Task | own dropDate | effectiveDropDate |
+|------|-------------|-------------------|
+| Root | — | — |
+| Root-Blocker | — | — |
+| Mid | 16:44:11 | 16:44:11 |
+| Mid-Blocker | — | 16:44:11 |
+| Inner | — | 16:44:11 |
+| Inner-Blocker | — | 16:44:11 |
+| Leaf | — | 16:44:11 |
+
+**Step 2: Drop Root (T2 = 16:45:05)**
+
+| Task | own dropDate | effectiveDropDate |
+|------|-------------|-------------------|
+| Root | 16:45:05 | 16:45:05 |
+| Root-Blocker | — | 16:45:05 |
+| Mid | 16:44:11 | 16:44:11 |
+| Mid-Blocker | — | 16:44:11 |
+| Inner | — | 16:44:11 |
+| Inner-Blocker | — | 16:44:11 |
+| **Leaf** | **—** | **16:44:11** |
+
+**Max ruled out:** If max, Leaf would show 16:45:05 (Root's later timestamp). Instead Leaf
+shows 16:44:11 — Mid's timestamp, the **nearest** ancestor with a drop date.
+
+**Step 3: Drop Inner (T3 = 16:51:54) — bonus confirmation**
+
+| Task | own dropDate | effectiveDropDate |
+|------|-------------|-------------------|
+| Root | 16:45:05 | 16:45:05 |
+| Mid | 16:44:11 | 16:44:11 |
+| Inner | 16:51:54 | 16:51:54 |
+| **Leaf** | **—** | **16:51:54** |
+
+Leaf's effectiveDropDate **changed** from 16:44:11 (Mid) to 16:51:54 (Inner), because Inner
+is nearer. This proves the value is not latched on first transition — it recalculates from the
+current tree state (see "Effective values are derived, not stored" below).
+
 ### Implication for `inheritedDropDate`
 
-Should be: nearest ancestor's drop date (first non-null walking up).
+Nearest ancestor's drop date (first non-null walking up).
 **Current implementation uses min — WRONG. Should be first-found (same as planned).**
-Min ruled out in both sessions. Max still needs independent ruling-out (next step).
+Min ruled out in sessions 1+2. Max ruled out in session 3. First-found confirmed across all sessions.
 
 
 ---
@@ -584,6 +629,27 @@ Both lifecycle states coexist in the data model for inherited-drop + own-complet
 - **Flagged is a SIGNAL** — once any ancestor is flagged, the attention signal
   propagates to all descendants.
 
+### Effective values are derived, not stored
+
+There is no "effectively dropped at" event. OmniFocus doesn't timestamp when a task
+*becomes* effectively dropped — it re-walks the ancestor chain every time and derives the
+value from the current tree state.
+
+This means:
+- Dropping a **further** ancestor when a nearer one is already dropped → no change (nearer
+  still intercepted first)
+- Dropping a **nearer** ancestor → effective value **changes**, even though the task was
+  already effectively dropped
+
+**Proof (session 3):** Drop Mid (T1=16:44:11), then Root (T2=16:45:05) → Leaf sees T1.
+Then drop Inner (T3=16:51:54) → Leaf switches to T3. The value isn't latched on first
+transition — it's recomputed from the tree.
+
+This applies to all override-family fields (planned, drop, completion) and extends to
+constraint fields (min/max also recompute from current state). The effective value at any
+point in time is purely a function of the current ancestor chain, with no memory of
+previous states.
+
 
 ---
 
@@ -615,18 +681,19 @@ have the field set. This is the mirror of the current min implementation.
 
 ## Test Artifacts Still in OmniFocus
 
-### Session 2 (current)
+### Session 3 (current)
 
-- `UAT-Due-L1` through `UAT-Due-L5` — 5-level hierarchy used for due/defer/planned/flagged tests.
-  Dates cleared, L3 flagged, project unflagged. Can be reused or deleted.
-- `UAT-Drop-A` through `UAT-Drop-E` + `*-Blocker` — 5-level drop/completion test hierarchy.
-  Final state: A/B/C completed, C-Blocker/D dropped, A-Blocker/B-Blocker/D-Blocker completed,
-  E effectively dropped (no own status). Should be deleted before next tests.
+- `UAT-Due-L1` through `UAT-Due-L5` — 5-level date/flag hierarchy. Dates cleared, L3 flagged,
+  project unflagged. Active/blocked status.
+- `UAT-Drop-A` through `UAT-Drop-E` + `*-Blocker` — session 2 drop hierarchy. All completed/dropped.
+  User deleted the old session 1 tasks at start of session 3.
+- `UAT-Test-Root/Mid/Inner/Leaf` + `*-Blocker` — session 3 drop test hierarchy. All dropped
+  (Root at 16:45:05, Mid at 16:44:11, Inner at 16:51:54). Spent — cannot reuse for completion test.
 
-### Session 1 (may have been deleted by user)
+### Session 1 (deleted by user at start of session 3)
 
 - `UAT-Inheritance-Parent` / `UAT-Inheritance-Child` (2-level, first simple test)
-- `UAT-Deep-L1` through `UAT-Deep-L5` (5-level hierarchy — original, deleted and recreated in session 2)
+- `UAT-Deep-L1` through `UAT-Deep-L5` (5-level hierarchy — original)
 - `UAT-Lifecycle-A` through `UAT-Lifecycle-D` (completion test — all completed)
 - `UAT-Drop1-*`, `UAT-Drop2-*` (drop tests without blockers — dropped/completed)
 - `UAT-Drop3-*`, `UAT-Drop4-*` (drop tests with blockers — dropped)
@@ -634,51 +701,32 @@ have the field set. This is the mirror of the current min implementation.
 
 ---
 
-## Next Steps (for next session)
+## Next Steps
 
-### Must do: One fresh hierarchy to test BOTH remaining unknowns
+### ✅ Test A: Drop date — DONE (session 3)
 
-Create a single 4-level hierarchy with blocker siblings:
+Reverse-drop test confirmed first-found. See Finding 5 replication (session 3) above.
+
+### Remaining: Test B — Completion date inheritance with distinct timestamps
+
+Needs a fresh hierarchy (drop test hierarchy is spent). Create with blocker siblings:
 
 ```
-UAT-Test-Root
-├── UAT-Test-Root-Blocker
-└── UAT-Test-Mid
-    ├── UAT-Test-Mid-Blocker
-    └── UAT-Test-Inner
-        ├── UAT-Test-Inner-Blocker
-        └── UAT-Test-Leaf
+UAT-Comp-Root
+├── UAT-Comp-Root-Blocker
+└── UAT-Comp-Mid
+    ├── UAT-Comp-Mid-Blocker
+    └── UAT-Comp-Inner
+        ├── UAT-Comp-Inner-Blocker
+        └── UAT-Comp-Leaf
 ```
 
-#### Test A: Rule out MAX for drop date (reverse drop order)
+Protocol: complete tasks at different levels with pauses to get distinct timestamps.
+Think through auto-completion cascades before executing (Finding 7 — auto-complete fires
+when ALL children have own lifecycle status).
 
-1. Drop Mid first (nearer to Leaf, timestamp T1)
-2. Wait ~5 seconds
-3. Drop Root second (further from Leaf, timestamp T2, where T2 > T1)
-4. Check Leaf's effectiveDropDate:
-   - If T1 (Mid's, nearer) → **first-found confirmed**
-   - If T2 (Root's, later) → **max** (would contradict session 1 findings)
-
-This is the decisive test. In session 2 we dropped top-down (further first, nearer second),
-so max and first-found gave the same answer. Reverse order distinguishes them.
-
-#### Test B: Completion date inheritance with distinct timestamps
-
-After drop testing (or with a separate fresh hierarchy if drop test consumes the tasks):
-
-1. Complete Inner (manually, not via auto-complete) — gets timestamp T1
-2. Wait ~5 seconds
-3. Complete Mid (manually) — gets timestamp T2
-4. Wait ~5 seconds
-5. Complete Root — gets timestamp T3
-6. Check Leaf's effectiveCompletionDate:
-   - If T1 (Inner's, nearest) → first-found
-   - If T3 (Root's, latest) → max
-   - If T1 (Inner's, earliest) → min (but min is unlikely given all other findings)
-
-**Note:** Completing a task with active children may auto-complete them. May need to complete
-Leaf + blocker siblings first at each level, then the parent. Protocol TBD — think through
-auto-completion cascades before executing.
+Hypothesis: completion uses first-found (same as drop), with auto-completion as a separate
+mechanism that creates own completionDates on parents when triggered.
 
 ### Then: Fix `_walk_one` implementation
 

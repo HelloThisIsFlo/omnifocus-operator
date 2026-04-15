@@ -483,7 +483,7 @@ _Empirically verified across 430 tasks in BST and GMT. See `.research/deep-dives
 
 ## True Inheritance Principle
 
-OmniFocus stores "effective" values for inherited fields — `effectiveDueDate`, `effectiveFlagged`, etc. These are the resolved result of `min(own, ancestor)` for dates and `any(own, ancestor)` for flags. The problem: OmniFocus **always** populates these fields, even when no ancestor contributes. A task with `dueDate: May 1` and no ancestors gets `effectiveDueDate: May 1` — a self-echo, not true inheritance.
+OmniFocus stores "effective" values for inherited fields — `effectiveDueDate`, `effectiveFlagged`, etc. These are derived from the ancestor chain using field-specific rules (see "Per-field inheritance rules" below). The problem: OmniFocus **always** populates these fields, even when no ancestor contributes. A task with `dueDate: May 1` and no ancestors gets `effectiveDueDate: May 1` — a self-echo, not true inheritance.
 
 Self-echoes are misleading for agents. An agent seeing `inheritedDueDate` assumes an ancestor set that deadline. If it's just the task's own date reflected back, the agent has false context about where the constraint comes from.
 
@@ -503,7 +503,7 @@ The service layer's `DomainLogic.compute_true_inheritance()` reconstructs inheri
 2. For each task, walk up: `parent.task.id` → grandparent → ... → containing `project.id`
 3. For each of the 6 inherited field pairs (`flagged`/`inherited_flagged`, `due_date`/`inherited_due_date`, etc.):
    - Check if any ancestor has the source field set
-   - **If yes** → compute the inherited value from ancestors (soonest date, or `True` for flags)
+   - **If yes** → compute the inherited value from ancestors (per-field rule — see below)
    - **If no** → reset inherited field to `None`/`False` (strip self-echo)
 4. Return `task.model_copy(update=...)` with corrected inherited fields
 
@@ -516,11 +516,22 @@ Every inheritable field has two output fields:
 | Field | Meaning | Editable? |
 |-------|---------|-----------|
 | `dueDate` | The task's own directly-set due date | Yes — `edit_tasks` |
-| `inheritedDueDate` | The soonest due date from the ancestor chain | No — edit the ancestor instead |
+| `inheritedDueDate` | The due date contributed by the ancestor chain (see per-field rules) | No — edit the ancestor instead |
 
-> [!important] Effective date = soonest of direct + inherited
+> [!important] Per-field inheritance rules
 >
-> The agent determines the real deadline by taking the soonest of `dueDate` and `inheritedDueDate`. But in practice, **agents rarely need to compute this** — filtering uses effective dates server-side. `list_tasks due: {next: "w"}` returns the right tasks regardless of whether the due date is own or inherited.
+> Each field family uses a different aggregation strategy when walking the ancestor chain:
+>
+> | Family | Fields | Rule | How to read it |
+> |--------|--------|------|----------------|
+> | **Constraint (min)** | `dueDate` | `min` across all ancestors | Tightest deadline wins — effective = soonest of own + inherited |
+> | **Constraint (max)** | `deferDate` | `max` across all ancestors | Latest block wins — effective = latest of own + inherited |
+> | **Override (first-found)** | `plannedDate`, `dropDate`, `completionDate` | Walk up, stop at first ancestor with a value | Nearest ancestor speaks for you — own always takes precedence |
+> | **Boolean OR** | `flagged` | `any(own, ancestors)` | Any ancestor flagged → you're flagged |
+>
+> **Effective values are derived, not stored.** OmniFocus re-walks the ancestor chain every time — there is no cached "effectively dropped at" event. Dropping a nearer ancestor changes the effective value even if the task was already effectively dropped from a further ancestor.
+>
+> In practice, **agents rarely need to compute this** — filtering uses effective dates server-side. `list_tasks due: {next: "w"}` returns the right tasks regardless of whether the due date is own or inherited.
 
 ### Concrete examples
 
@@ -572,6 +583,20 @@ Response for "Draft timeline":
 ```
 
 For defer dates, the **later** value governs — the task can't be available before the project is. Both fields appear, the agent sees the full picture.
+
+**Override (first-found) — planned date from nearest ancestor:**
+
+```
+📋 Q3 Planning (project)         ← plannedDate: 2026-04-01
+  └── Design phase                ← plannedDate: 2026-05-15
+       └── Pick color palette     ← (no own plannedDate)
+
+Response for "Pick color palette":
+                                  ← no plannedDate (not set directly)
+  inheritedPlannedDate: 2026-05-15 ← from "Design phase" (nearest ancestor)
+```
+
+The project's planned date (April) exists further up, but the walk stops at "Design phase" (May) because it's the nearest ancestor with a value. This is the override/first-found rule — unlike min/max, further ancestors are invisible once a nearer one has the field set.
 
 ### Why this works for agents
 
