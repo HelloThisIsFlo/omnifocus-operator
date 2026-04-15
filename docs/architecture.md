@@ -527,22 +527,35 @@ Every inheritable field has two output fields:
 **Inbox task with own due date, no ancestors:**
 
 ```
-dueDate: 2026-05-01          ← own date, editable
-                              ← no inheritedDueDate (stripped — no ancestor has due date)
+Inbox
+  └── Buy groceries              ← dueDate: 2026-05-01
+
+Response:
+  dueDate: 2026-05-01            ← own date, editable
+                                  ← no inheritedDueDate (stripped — no ancestor)
 ```
 
 **Task in a flagged project (task itself not flagged):**
 
 ```
-                              ← no flagged field (false, stripped)
-inheritedFlagged: true        ← project is flagged, truly inherited
+🚩 Launch Website (project)      ← flagged: true
+  └── Update copy                 ← flagged: false
+
+Response for "Update copy":
+                                  ← no flagged field (false, stripped)
+  inheritedFlagged: true          ← from project, truly inherited
 ```
 
 **Subtask with earlier due date than parent:**
 
 ```
-dueDate: 2026-04-25           ← own date (sooner)
-inheritedDueDate: 2026-05-01  ← parent task's due date (later, but real)
+📋 Q3 Planning (project)         ← dueDate: 2036-03-01
+  └── Review roadmap              ← dueDate: 2026-05-01
+       └── Check milestones       ← dueDate: 2026-04-25
+
+Response for "Check milestones":
+  dueDate: 2026-04-25            ← own date (sooner)
+  inheritedDueDate: 2026-05-01   ← parent task's due date (soonest ancestor)
 ```
 
 The agent sees both and understands: the task's own deadline is sooner, but an ancestor also imposes a constraint. Editing `dueDate` works directly. To change the inherited date, edit the parent.
@@ -550,8 +563,12 @@ The agent sees both and understands: the task's own deadline is sooner, but an a
 **Subtask with own defer date earlier than project's:**
 
 ```
-deferDate: 2026-03-10         ← own defer date
-inheritedDeferDate: 2026-03-21 ← project's defer date (governs actual availability)
+📋 Q3 Planning (project)         ← deferDate: 2026-03-21
+  └── Draft timeline              ← deferDate: 2026-03-10
+
+Response for "Draft timeline":
+  deferDate: 2026-03-10          ← own defer date
+  inheritedDeferDate: 2026-03-21 ← project's defer date (governs availability)
 ```
 
 For defer dates, the **later** value governs — the task can't be available before the project is. Both fields appear, the agent sees the full picture.
