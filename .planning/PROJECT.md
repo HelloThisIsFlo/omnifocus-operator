@@ -101,6 +101,10 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 - ✓ List query filter fields migrated to `Patch[T]` — null eliminated from agent-facing schemas, UNSET→None at repo boundary — v1.3.1 (Phase 44)
 - ✓ True inherited fields: `inherited*` on tasks reflect genuine ancestry (parent hierarchy walk), not OmniFocus self-echoes — v1.4 (Phase 53.1)
 - ✓ Projects have zero `inherited*` fields — structurally impossible via model surgery (fields moved from ActionableEntity to Task) — v1.4 (Phase 53.1)
+- ✓ Batch processing: add_tasks/edit_tasks accept up to 50 items per call with per-item status/error reporting — v1.4 (Phase 54)
+- ✓ add_tasks best-effort: processes all items regardless of failures, per-item `status: "success"|"error"` — v1.4 (Phase 54)
+- ✓ edit_tasks fail-fast: stops at first error, remaining items `status: "skipped"` with warning referencing failing item — v1.4 (Phase 54)
+- ✓ Flat result model: `status: Literal["success","error","skipped"]` with optional `id`/`name`/`error`/`warnings` — v1.4 (Phase 54)
 - ✓ `AvailabilityFilter` enums with `ALL` shorthand, empty-list rejection, mixed `["all", "available"]` warning — v1.3.1 (Phase 44)
 - ✓ Date filtering on list_tasks — 7 date fields (due, defer, planned, completed, dropped, added, modified) with string shortcuts, shorthand periods, and absolute bounds — v1.3.2
 - ✓ Calendar-aware period arithmetic with day clamping (`{last: "1m"}` uses proper calendar math) — v1.3.2
@@ -144,7 +148,7 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 Shipped v1.3.3 with ~11,600 LOC Python (src/), ~215k LOC JS (bridge + deps), ~28k TS (tests).
 Tech stack: Python 3.12, uv, Pydantic v2, FastMCP v3 (`fastmcp>=3.1.1`), pydantic-settings, OmniJS bridge, SQLite3 (stdlib).
-2,041 pytest tests, 26 Vitest tests, UAT passed on all phases.
+2,147 pytest tests, 26 Vitest tests, UAT passed on all phases.
 Real OmniFocus database: ~2,400 tasks, ~363 projects, ~64 tags, ~79 folders.
 Read path: SQLite (default, ~46ms for full snapshot, <6ms for filtered queries). Write path: OmniJS bridge with write-through guarantee.
 11 MCP tools: get_all, get_task, get_project, get_tag, add_tasks, edit_tasks, list_tasks, list_projects, list_tags, list_folders, list_perspectives.
