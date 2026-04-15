@@ -51,10 +51,9 @@ def _configure_logging() -> None:
 def main() -> None:
     """Run the OmniFocus Operator MCP server."""
     if sys.platform != "darwin":
-        print(
+        sys.stderr.write(
             "omnifocus-operator requires macOS (OmniFocus is macOS-only).\n"
-            "See https://github.com/HelloThisIsFlo/omnifocus-operator for details.",
-            file=sys.stderr,
+            "See https://github.com/HelloThisIsFlo/omnifocus-operator for details.\n"
         )
         sys.exit(1)
     _configure_logging()
