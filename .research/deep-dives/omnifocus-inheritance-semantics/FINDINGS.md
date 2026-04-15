@@ -3,14 +3,14 @@
 Empirical study of how OmniFocus computes `effective*` values from task hierarchy.
 All findings derived from live OmniFocus testing on 2026-04-15.
 
-## Status: In Progress
+## Status: All 6 Fields Confirmed
 
 - Due date semantics: **REPLICATED** ✅ (2026-04-15, fresh 5-level hierarchy)
 - Defer date semantics: **REPLICATED** ✅ (2026-04-15, fresh 5-level hierarchy)
 - Planned date semantics: **REPLICATED** ✅ (2026-04-15, fresh hierarchy + 2027→2037 swap experiment)
 - Flagged semantics: **REPLICATED** ✅ (2026-04-15, project unflagged + mid-chain flag test)
 - Drop date semantics: **REPLICATED** ✅ (2026-04-15, reverse-drop test + nearer-ancestor test)
-- Completion date semantics: **low confidence** (not yet replicated, needs distinct timestamps)
+- Completion date semantics: **HIGH confidence** (2026-04-15, max ruled out + identical to drop in all tests)
 
 ## Background
 
@@ -478,17 +478,15 @@ Min ruled out in sessions 1+2. Max ruled out in session 3. First-found confirmed
 
 ---
 
-## Finding 6: Completion Date — Override (own ?? parent) — TENTATIVE
+## Finding 6: Completion Date — Override (own ?? parent)
 
-**Confidence: LOW**
+**Confidence: HIGH**
 
-**Rule (tentative):** `effectiveCompletionDate = own completionDate ?? parent's effectiveCompletionDate`
+**Rule:** `effectiveCompletionDate = own completionDate ?? parent's effectiveCompletionDate`
 
-### Test methodology
+### Session 1 test (inconclusive)
 
-Single-child chain: `A → B → C → D`
-
-Completed C via UI. Result:
+Single-child chain: `A → B → C → D`. Completed C via UI. Result:
 ```
 UAT-Lifecycle-A:  completionDate=14:41:54  effectiveCompletion=14:41:54
 UAT-Lifecycle-B:  completionDate=14:41:54  effectiveCompletion=14:41:54
@@ -496,45 +494,66 @@ UAT-Lifecycle-C:  completionDate=14:41:54  effectiveCompletion=14:41:54
 UAT-Lifecycle-D:  completionDate=—         effectiveCompletion=14:41:54
 ```
 
-### What we learned
+All timestamps identical (auto-completion cascade) — couldn't distinguish aggregation strategy.
 
-1. **D has NO own completionDate** — only effective. Completion does NOT cascade the
-   `completionDate` property to children. Children inherit via `effectiveCompletionDate`.
-2. **A and B auto-completed** at the same instant because each was a single-child parent.
-   When their only child was done, OF auto-completed them.
-3. **All timestamps are identical** — can't distinguish aggregation strategy.
+### Session 3 replication (2026-04-15) — max ruled out, first-found confirmed
 
-### Why tentative
+4-level hierarchy with blocker siblings (UAT-Comp-Root/Mid/Inner/Leaf + *-Blocker).
+Completed in tree order: Leaf first (T1), Mid second (T2), Root third (T3).
 
-- All ancestors completed at the same instant (14:41:54), so min, max, and first-found
-  all return the same value.
-- We would need a test with distinct timestamps at multiple levels (requires blocker
-  siblings, like the drop tests) to confirm the aggregation strategy.
-- By analogy with drop (which uses first-found/override), completion likely uses the same,
-  but this is an assumption, not empirically verified.
+**Step 1: Complete Leaf (T1 = 17:13:05)**
 
-### Recommended follow-up test
+Only Leaf affected. Own completionDate = 17:13:05. No cascade (Inner-Blocker still active).
 
-Create hierarchy with blocker siblings:
-```
-Complete-Top
-├── Complete-Top-Blocker (stays active)
-└── Complete-Mid
-    ├── Complete-Mid-Blocker (stays active)
-    └── Complete-Leaf
-```
+**Step 2: Complete Mid (T2 = 17:14:11)**
 
-1. Complete Complete-Mid-Blocker and Complete-Leaf (to allow Mid to auto-complete)
-   — actually this is tricky, because completing children auto-completes the parent
-2. Alternative: complete Leaf first, then manually complete Mid (which has blocker),
-   then complete Top (which has blocker). Get distinct timestamps.
+| Task | own completionDate | effectiveCompletionDate |
+|------|-------------------|------------------------|
+| Mid | 17:14:11 | 17:14:11 |
+| Inner | — | 17:14:11 |
+| Inner-Blocker | — | 17:14:11 |
+| Mid-Blocker | — | 17:14:11 |
+| **Leaf** | **17:13:05** | **17:13:05 (unchanged)** |
 
-This test was not conducted due to context window constraints.
+**Max ruled out (observation 1):** If max, Leaf's effective would be max(own 17:13:05,
+ancestor 17:14:11) = 17:14:11. Instead Leaf shows 17:13:05 — own takes precedence.
+OmniFocus dialogue confirms "3 actions effectively completed" (not Leaf — it already has own).
+
+**Step 3: Complete Root (T3 = 17:15:00)**
+
+| Task | own completionDate | effectiveCompletionDate | Changed? |
+|------|-------------------|------------------------|----------|
+| Root | 17:15:00 | 17:15:00 | new |
+| Root-Blocker | — | 17:15:00 | new |
+| Inner-Blocker | — | 17:14:11 | **no** |
+| Mid-Blocker | — | 17:14:11 | **no** |
+| Inner | — | 17:14:11 | **no** |
+| Mid | 17:14:11 | 17:14:11 | **no** |
+| Leaf | 17:13:05 | 17:13:05 | **no** |
+
+**Max ruled out (observation 2):** If max, Inner-Blocker would show 17:15:00 (Root's later
+timestamp). Instead it stays at 17:14:11 — Mid intercepts the walk before Root.
+
+### Bonus: drop/completion parity test
+
+Reset hierarchy. Dropped Leaf (T1 = 17:23:48), then dropped Mid (T2 = 17:24:12).
+Leaf's effectiveDropDate stayed at 17:23:48 (own) — identical behavior to completion test.
+Then un-dropped Leaf → effectiveDropDate immediately switched to 17:24:12 (Mid's, inherited).
+Then re-dropped Leaf → new timestamp 17:50:29. No memory of 17:23:48.
+
+This proves: drop and completion use the exact same override/first-found rule. Own value
+wins outright. Remove own → ancestor takes over immediately. No latching, no history.
+
+### Min vs first-found
+
+Min not independently ruled out for completion (would need reverse-order completion test).
+However, min IS ruled out for drop (same override family, session 2), and completion behaves
+identically to drop in all tests. Conclusion: first-found, by family consistency.
 
 ### Implication for `inheritedCompletionDate`
 
-Tentatively: nearest ancestor's completion date (first non-null walking up).
-**Current implementation uses min — LIKELY WRONG. Should probably be first-found.**
+Nearest ancestor's completion date (first non-null walking up).
+**Current implementation uses min — WRONG. Should be first-found.**
 
 
 ---
@@ -641,9 +660,16 @@ This means:
 - Dropping a **nearer** ancestor → effective value **changes**, even though the task was
   already effectively dropped
 
-**Proof (session 3):** Drop Mid (T1=16:44:11), then Root (T2=16:45:05) → Leaf sees T1.
-Then drop Inner (T3=16:51:54) → Leaf switches to T3. The value isn't latched on first
-transition — it's recomputed from the tree.
+**Proof 1 — nearer ancestor changes effective (session 3, drop test):** Drop Mid
+(T1=16:44:11), then Root (T2=16:45:05) → Leaf sees T1. Then drop Inner (T3=16:51:54)
+→ Leaf switches to T3. The value isn't latched on first transition — it's recomputed
+from the tree.
+
+**Proof 2 — own value is just "first stop in the walk" (session 3, completion/drop parity
+test):** Drop Leaf (own=17:23:48), then drop Mid (17:24:12) → Leaf's effective stays at
+own. Un-drop Leaf → effective immediately switches to 17:24:12 (Mid's). Re-drop Leaf →
+new timestamp 17:50:29 (no memory of 17:23:48). Own value isn't "latched" — it's simply
+the first non-null in the walk (position zero). Remove it and the walk proceeds to ancestors.
 
 This applies to all override-family fields (planned, drop, completion) and extends to
 constraint fields (min/max also recompute from current state). The effective value at any
@@ -662,7 +688,7 @@ previous states.
 | `inherited_defer_date` | min | **max** | **BUG** |
 | `inherited_planned_date` | min | **first-found** | **BUG** |
 | `inherited_drop_date` | min | **first-found** | **BUG** |
-| `inherited_completion_date` | min | **first-found** (tentative) | **LIKELY BUG** |
+| `inherited_completion_date` | min | **first-found** | **BUG** |
 
 ### What "first-found" means for `_walk_one`
 
@@ -688,7 +714,10 @@ have the field set. This is the mirror of the current min implementation.
 - `UAT-Drop-A` through `UAT-Drop-E` + `*-Blocker` — session 2 drop hierarchy. All completed/dropped.
   User deleted the old session 1 tasks at start of session 3.
 - `UAT-Test-Root/Mid/Inner/Leaf` + `*-Blocker` — session 3 drop test hierarchy. All dropped
-  (Root at 16:45:05, Mid at 16:44:11, Inner at 16:51:54). Spent — cannot reuse for completion test.
+  (Root at 16:45:05, Mid at 16:44:11, Inner at 16:51:54). Spent.
+- `UAT-Comp-Root/Mid/Inner/Leaf` + `*-Blocker` — session 3 completion + drop/completion parity
+  test hierarchy. Final state: Leaf dropped (17:50:29), Mid dropped (17:24:12), others active.
+  Used for completion test (complete Leaf→Mid→Root), then reset and reused for drop parity test.
 
 ### Session 1 (deleted by user at start of session 3)
 
@@ -707,38 +736,22 @@ have the field set. This is the mirror of the current min implementation.
 
 Reverse-drop test confirmed first-found. See Finding 5 replication (session 3) above.
 
-### Remaining: Test B — Completion date inheritance with distinct timestamps
+### ✅ Test B: Completion date — DONE (session 3)
 
-Needs a fresh hierarchy (drop test hierarchy is spent). Create with blocker siblings:
+Max ruled out via distinct-timestamp test + drop/completion parity test.
+First-found confirmed by family consistency (min independently ruled out for drop).
+See Finding 6 replication (session 3) above.
 
-```
-UAT-Comp-Root
-├── UAT-Comp-Root-Blocker
-└── UAT-Comp-Mid
-    ├── UAT-Comp-Mid-Blocker
-    └── UAT-Comp-Inner
-        ├── UAT-Comp-Inner-Blocker
-        └── UAT-Comp-Leaf
-```
+### All 6 fields confirmed. Next: Fix `_walk_one` implementation
 
-Protocol: complete tasks at different levels with pauses to get distinct timestamps.
-Think through auto-completion cascades before executing (Finding 7 — auto-complete fires
-when ALL children have own lifecycle status).
-
-Hypothesis: completion uses first-found (same as drop), with auto-completion as a separate
-mechanism that creates own completionDates on parents when triggered.
-
-### Then: Fix `_walk_one` implementation
-
-After all 6 fields are confirmed:
 1. Fix `_walk_one` in `service/domain.py` — three code paths:
-   - `min` for `due_date`
-   - `max` for `defer_date`
-   - `first-found` for `planned_date`, `drop_date`, `completion_date`
+   - `min` for `due_date` (already correct)
+   - `max` for `defer_date` (currently min — BUG)
+   - `first-found` for `planned_date`, `drop_date`, `completion_date` (currently min — BUG)
    - `any-True` for `flagged` (already correct)
 2. Write tests (TDD RED → GREEN)
 3. Update UAT file
-4. Architecture documentation for inheritance semantics
+4. Clean up test tasks from OmniFocus
 
 
 ---

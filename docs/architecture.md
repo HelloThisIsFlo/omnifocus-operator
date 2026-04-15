@@ -518,20 +518,35 @@ Every inheritable field has two output fields:
 | `dueDate` | The task's own directly-set due date | Yes — `edit_tasks` |
 | `inheritedDueDate` | The due date contributed by the ancestor chain (see per-field rules) | No — edit the ancestor instead |
 
-> [!important] Per-field inheritance rules
+> [!important] How `inherited*` is computed (the ancestor walk)
 >
-> Each field family uses a different aggregation strategy when walking the ancestor chain:
+> The `inherited*` field is **purely the ancestor contribution** — the task's own value is never part of this computation. Each field family uses a different aggregation strategy:
 >
-> | Family | Fields | Rule | How to read it |
-> |--------|--------|------|----------------|
-> | **Constraint (min)** | `dueDate` | `min` across all ancestors | Tightest deadline wins — effective = soonest of own + inherited |
-> | **Constraint (max)** | `deferDate` | `max` across all ancestors | Latest block wins — effective = latest of own + inherited |
-> | **Override (first-found)** | `plannedDate`, `dropDate`, `completionDate` | Walk up, stop at first ancestor with a value | Nearest ancestor speaks for you — own always takes precedence |
-> | **Boolean OR** | `flagged` | `any(own, ancestors)` | Any ancestor flagged → you're flagged |
+> | Family | `inherited*` field | Ancestor walk rule |
+> |--------|-------------------|-------------------|
+> | **Constraint (min)** | `inheritedDueDate` | `min` across all ancestors with the field set |
+> | **Constraint (max)** | `inheritedDeferDate` | `max` across all ancestors with the field set |
+> | **Override (first-found)** | `inheritedPlannedDate`, `inheritedDropDate`, `inheritedCompletionDate` | Walk up, stop at the first ancestor with a value |
+> | **Boolean OR** | `inheritedFlagged` | `True` if any ancestor is flagged |
 >
-> **Effective values are derived, not stored.** OmniFocus re-walks the ancestor chain every time — there is no cached "effectively dropped at" event. Dropping a nearer ancestor changes the effective value even if the task was already effectively dropped from a further ancestor.
+> Both own and inherited are always shown independently when they exist. The agent sees both.
+
+> [!note] How OmniFocus computes `effective*` (context)
 >
-> In practice, **agents rarely need to compute this** — filtering uses effective dates server-side. `list_tasks due: {next: "w"}` returns the right tasks regardless of whether the due date is own or inherited.
+> OmniFocus exposes both `dueDate` (own) and `effectiveDueDate` (resolved) for each field. We replace `effective*` with `inherited*` because the ancestor's actual contribution has more signal than the merged result — and no self-echo when ancestors don't contribute. For reference, how OmniFocus resolves its effective values:
+>
+> | Family | OmniFocus `effective*` rule |
+> |--------|---------------------------|
+> | Constraint (min) | `min(own dueDate, parent's effectiveDueDate)` — soonest deadline in the hierarchy wins |
+> | Constraint (max) | `max(own deferDate, parent's effectiveDeferDate)` — latest block in the hierarchy wins |
+> | Override | `own completionDate ?? parent's effectiveCompletionDate` — own always takes precedence; ancestors only matter when own is unset |
+> | Boolean OR | `own flagged \|\| parent's effectiveFlagged` — any flagged node in the hierarchy flags all descendants |
+>
+> By replacing `effective*` with `inherited*`, agents see the ancestor's actual contribution rather than a merged result — and no field at all when ancestors don't contribute (eliminating self-echoes).
+>
+> **Effective values are derived, not stored.** OmniFocus re-walks the ancestor chain every time — there is no cached "effectively dropped at" event. Dropping a nearer ancestor changes the effective value even if the task was already effectively dropped from a further ancestor. See `.research/deep-dives/omnifocus-inheritance-semantics/FINDINGS.md` for the full empirical study.
+>
+> In practice, **agents rarely need to think about this** — filtering uses effective dates server-side. `list_tasks due: {next: "w"}` returns the right tasks regardless of whether the due date is own or inherited.
 
 ### Concrete examples
 
