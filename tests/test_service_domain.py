@@ -2077,3 +2077,342 @@ class TestComputeTrueInheritance:
         result = await _walk(d, [task])
 
         assert result[0].inherited_due_date == datetime(2036, 3, 1, 17, 0, tzinfo=UTC)
+
+    # -- Per-field aggregation semantics (INHERIT-05 through INHERIT-10) -------
+
+    @pytest.mark.anyio
+    async def test_aggregation_defer_max(self) -> None:
+        """Defer uses max: grandparent=2025-01-01, parent=2027-05-01 -> 2027-05-01."""
+        grandparent = _make_task(
+            id="t-gp",
+            deferDate="2025-01-01T00:00:00.000Z",
+            parent={"project": {"id": "proj-1", "name": "P"}},
+            project={"id": "proj-1", "name": "P"},
+            hasChildren=True,
+        )
+        parent = _make_task(
+            id="t-parent",
+            deferDate="2027-05-01T00:00:00.000Z",
+            parent={"task": {"id": "t-gp", "name": "GP"}},
+            project={"id": "proj-1", "name": "P"},
+            hasChildren=True,
+        )
+        child = _make_task(
+            id="t-child",
+            deferDate=None,
+            parent={"task": {"id": "t-parent", "name": "Parent"}},
+            project={"id": "proj-1", "name": "P"},
+        )
+        project = _make_project(id="proj-1", deferDate=None)
+        snapshot = _make_snapshot_with(
+            tasks=[grandparent, parent, child],
+            projects=[project],
+        )
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [child])
+
+        # max -> 2027-05-01 (parent). min would give 2025-01-01 (WRONG).
+        assert result[0].inherited_defer_date == datetime(2027, 5, 1, 0, 0, tzinfo=UTC)
+
+    @pytest.mark.anyio
+    async def test_aggregation_defer_max_with_project(self) -> None:
+        """Defer max includes project: parent=2026-06-01, project=2027-05-01 -> 2027-05-01."""
+        parent = _make_task(
+            id="t-parent",
+            deferDate="2026-06-01T00:00:00.000Z",
+            parent={"project": {"id": "proj-1", "name": "P"}},
+            project={"id": "proj-1", "name": "P"},
+            hasChildren=True,
+        )
+        child = _make_task(
+            id="t-child",
+            deferDate=None,
+            parent={"task": {"id": "t-parent", "name": "Parent"}},
+            project={"id": "proj-1", "name": "P"},
+        )
+        project = _make_project(id="proj-1", deferDate="2027-05-01T00:00:00.000Z")
+        snapshot = _make_snapshot_with(tasks=[parent, child], projects=[project])
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [child])
+
+        # max -> 2027-05-01 (project). min would give 2026-06-01 (WRONG).
+        assert result[0].inherited_defer_date == datetime(2027, 5, 1, 0, 0, tzinfo=UTC)
+
+    @pytest.mark.anyio
+    async def test_aggregation_planned_first_found(self) -> None:
+        """Planned uses first-found: grandparent=2028-01-01, parent=2030-07-01 -> 2030-07-01."""
+        grandparent = _make_task(
+            id="t-gp",
+            plannedDate="2028-01-01T00:00:00.000Z",
+            parent={"project": {"id": "proj-1", "name": "P"}},
+            project={"id": "proj-1", "name": "P"},
+            hasChildren=True,
+        )
+        parent = _make_task(
+            id="t-parent",
+            plannedDate="2030-07-01T00:00:00.000Z",
+            parent={"task": {"id": "t-gp", "name": "GP"}},
+            project={"id": "proj-1", "name": "P"},
+            hasChildren=True,
+        )
+        child = _make_task(
+            id="t-child",
+            plannedDate=None,
+            parent={"task": {"id": "t-parent", "name": "Parent"}},
+            project={"id": "proj-1", "name": "P"},
+        )
+        project = _make_project(id="proj-1", plannedDate=None)
+        snapshot = _make_snapshot_with(
+            tasks=[grandparent, parent, child],
+            projects=[project],
+        )
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [child])
+
+        # first-found -> 2030-07-01 (parent, nearest). min would give 2028-01-01 (WRONG).
+        assert result[0].inherited_planned_date == datetime(2030, 7, 1, 0, 0, tzinfo=UTC)
+
+    @pytest.mark.anyio
+    async def test_aggregation_planned_first_found_gap(self) -> None:
+        """Planned first-found skips gap: grandparent=2028-01-01, parent=None -> 2028-01-01."""
+        grandparent = _make_task(
+            id="t-gp",
+            plannedDate="2028-01-01T00:00:00.000Z",
+            parent={"project": {"id": "proj-1", "name": "P"}},
+            project={"id": "proj-1", "name": "P"},
+            hasChildren=True,
+        )
+        parent = _make_task(
+            id="t-parent",
+            plannedDate=None,
+            parent={"task": {"id": "t-gp", "name": "GP"}},
+            project={"id": "proj-1", "name": "P"},
+            hasChildren=True,
+        )
+        child = _make_task(
+            id="t-child",
+            plannedDate=None,
+            parent={"task": {"id": "t-parent", "name": "Parent"}},
+            project={"id": "proj-1", "name": "P"},
+        )
+        project = _make_project(id="proj-1", plannedDate=None)
+        snapshot = _make_snapshot_with(
+            tasks=[grandparent, parent, child],
+            projects=[project],
+        )
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [child])
+
+        # Single non-null ancestor -> all strategies agree: 2028-01-01.
+        assert result[0].inherited_planned_date == datetime(2028, 1, 1, 0, 0, tzinfo=UTC)
+
+    @pytest.mark.anyio
+    async def test_aggregation_drop_first_found(self) -> None:
+        """Drop first-found: parent=T1(earlier), grandparent=T2(later) -> T1."""
+        grandparent = _make_task(
+            id="t-gp",
+            dropDate="2026-04-15T16:45:05.000Z",
+            parent={"project": {"id": "proj-1", "name": "P"}},
+            project={"id": "proj-1", "name": "P"},
+            hasChildren=True,
+        )
+        parent = _make_task(
+            id="t-parent",
+            dropDate="2026-04-15T16:44:11.000Z",
+            parent={"task": {"id": "t-gp", "name": "GP"}},
+            project={"id": "proj-1", "name": "P"},
+            hasChildren=True,
+        )
+        child = _make_task(
+            id="t-child",
+            dropDate=None,
+            parent={"task": {"id": "t-parent", "name": "Parent"}},
+            project={"id": "proj-1", "name": "P"},
+        )
+        project = _make_project(id="proj-1", dropDate=None)
+        snapshot = _make_snapshot_with(
+            tasks=[grandparent, parent, child],
+            projects=[project],
+        )
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [child])
+
+        # Nearer ancestor (parent) is earlier -> min also matches. Tests first-found.
+        assert result[0].inherited_drop_date == datetime(
+            2026,
+            4,
+            15,
+            16,
+            44,
+            11,
+            tzinfo=UTC,
+        )
+
+    @pytest.mark.anyio
+    async def test_aggregation_drop_first_found_reverse(self) -> None:
+        """Drop first-found reverse: parent=T3(later), grandparent=T1(earlier) -> T3."""
+        grandparent = _make_task(
+            id="t-gp",
+            dropDate="2026-04-15T16:44:11.000Z",
+            parent={"project": {"id": "proj-1", "name": "P"}},
+            project={"id": "proj-1", "name": "P"},
+            hasChildren=True,
+        )
+        parent = _make_task(
+            id="t-parent",
+            dropDate="2026-04-15T16:51:54.000Z",
+            parent={"task": {"id": "t-gp", "name": "GP"}},
+            project={"id": "proj-1", "name": "P"},
+            hasChildren=True,
+        )
+        child = _make_task(
+            id="t-child",
+            dropDate=None,
+            parent={"task": {"id": "t-parent", "name": "Parent"}},
+            project={"id": "proj-1", "name": "P"},
+        )
+        project = _make_project(id="proj-1", dropDate=None)
+        snapshot = _make_snapshot_with(
+            tasks=[grandparent, parent, child],
+            projects=[project],
+        )
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [child])
+
+        # first-found -> 16:51:54 (parent, nearer). min would give 16:44:11 (WRONG).
+        assert result[0].inherited_drop_date == datetime(
+            2026,
+            4,
+            15,
+            16,
+            51,
+            54,
+            tzinfo=UTC,
+        )
+
+    @pytest.mark.anyio
+    async def test_aggregation_completion_first_found(self) -> None:
+        """Completion first-found: parent=T2(earlier), grandparent=T3(later) -> T2."""
+        grandparent = _make_task(
+            id="t-gp",
+            completionDate="2026-04-15T17:15:00.000Z",
+            parent={"project": {"id": "proj-1", "name": "P"}},
+            project={"id": "proj-1", "name": "P"},
+            hasChildren=True,
+        )
+        parent = _make_task(
+            id="t-parent",
+            completionDate="2026-04-15T17:14:11.000Z",
+            parent={"task": {"id": "t-gp", "name": "GP"}},
+            project={"id": "proj-1", "name": "P"},
+            hasChildren=True,
+        )
+        child = _make_task(
+            id="t-child",
+            completionDate=None,
+            parent={"task": {"id": "t-parent", "name": "Parent"}},
+            project={"id": "proj-1", "name": "P"},
+        )
+        project = _make_project(id="proj-1", completionDate=None)
+        snapshot = _make_snapshot_with(
+            tasks=[grandparent, parent, child],
+            projects=[project],
+        )
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [child])
+
+        # Nearer ancestor (parent) is earlier -> min also matches. Tests first-found.
+        assert result[0].inherited_completion_date == datetime(
+            2026,
+            4,
+            15,
+            17,
+            14,
+            11,
+            tzinfo=UTC,
+        )
+
+    @pytest.mark.anyio
+    async def test_aggregation_completion_first_found_reverse(self) -> None:
+        """Completion first-found reverse: parent=T2(later), grandparent=T1(earlier) -> T2."""
+        grandparent = _make_task(
+            id="t-gp",
+            completionDate="2026-04-15T18:38:31.000Z",
+            parent={"project": {"id": "proj-1", "name": "P"}},
+            project={"id": "proj-1", "name": "P"},
+            hasChildren=True,
+        )
+        parent = _make_task(
+            id="t-parent",
+            completionDate="2026-04-15T18:39:01.000Z",
+            parent={"task": {"id": "t-gp", "name": "GP"}},
+            project={"id": "proj-1", "name": "P"},
+            hasChildren=True,
+        )
+        child = _make_task(
+            id="t-child",
+            completionDate=None,
+            parent={"task": {"id": "t-parent", "name": "Parent"}},
+            project={"id": "proj-1", "name": "P"},
+        )
+        project = _make_project(id="proj-1", completionDate=None)
+        snapshot = _make_snapshot_with(
+            tasks=[grandparent, parent, child],
+            projects=[project],
+        )
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [child])
+
+        # first-found -> 18:39:01 (parent, nearer). min would give 18:38:31 (WRONG).
+        assert result[0].inherited_completion_date == datetime(
+            2026,
+            4,
+            15,
+            18,
+            39,
+            1,
+            tzinfo=UTC,
+        )
+
+    @pytest.mark.anyio
+    async def test_aggregation_due_min_regression(self) -> None:
+        """Due still uses min: parent=2032-06-15, grandparent=2029-12-31 -> 2029-12-31."""
+        grandparent = _make_task(
+            id="t-gp",
+            dueDate="2029-12-31T00:00:00.000Z",
+            parent={"project": {"id": "proj-1", "name": "P"}},
+            project={"id": "proj-1", "name": "P"},
+            hasChildren=True,
+        )
+        parent = _make_task(
+            id="t-parent",
+            dueDate="2032-06-15T00:00:00.000Z",
+            parent={"task": {"id": "t-gp", "name": "GP"}},
+            project={"id": "proj-1", "name": "P"},
+            hasChildren=True,
+        )
+        child = _make_task(
+            id="t-child",
+            dueDate=None,
+            parent={"task": {"id": "t-parent", "name": "Parent"}},
+            project={"id": "proj-1", "name": "P"},
+        )
+        project = _make_project(id="proj-1", dueDate=None)
+        snapshot = _make_snapshot_with(
+            tasks=[grandparent, parent, child],
+            projects=[project],
+        )
+        d = _domain(snapshot=snapshot)
+
+        result = await _walk(d, [child])
+
+        # min -> 2029-12-31 (grandparent, soonest). Regression guard.
+        assert result[0].inherited_due_date == datetime(2029, 12, 31, 0, 0, tzinfo=UTC)
