@@ -969,13 +969,13 @@ class DomainLogic:
         if self._is_empty_edit(payload, warnings):
             if warnings:
                 return EditTaskResult(
-                    success=True,
+                    status="success",
                     id=payload.id,
                     name=task.name,
                     warnings=warnings,
                 )
             return EditTaskResult(
-                success=True,
+                status="success",
                 id=payload.id,
                 name=task.name,
                 warnings=[EDIT_NO_CHANGES_SPECIFIED],
@@ -988,7 +988,7 @@ class DomainLogic:
             if not filtered:
                 filtered = [EDIT_NO_CHANGES_DETECTED]
             return EditTaskResult(
-                success=True,
+                status="success",
                 id=payload.id,
                 name=task.name,
                 warnings=filtered,

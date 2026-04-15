@@ -650,7 +650,10 @@ class _AddTaskPipeline(_Pipeline):
         repo_result = await self._repository.add_task(self._repo_payload)
         all_warnings = self._preferences_warnings + self._repetition_warnings
         return AddTaskResult(
-            success=True, id=repo_result.id, name=repo_result.name, warnings=all_warnings or None
+            status="success",
+            id=repo_result.id,
+            name=repo_result.name,
+            warnings=all_warnings or None,
         )
 
 
@@ -974,7 +977,7 @@ class _EditTaskPipeline(_Pipeline):
         logger.debug("OperatorService.edit_task: delegating to repository")
         repo_result = await self._repository.edit_task(self._repo_payload)
         return EditTaskResult(
-            success=True,
+            status="success",
             id=repo_result.id,
             name=repo_result.name,
             warnings=self._all_warnings or None,

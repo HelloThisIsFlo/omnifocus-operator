@@ -172,9 +172,9 @@ def _register_tools(mcp: FastMCP) -> None:
             results.append(result)
         await ctx.report_progress(progress=total, total=total)
         logger.debug(
-            "server.edit_tasks: returning id=%s, success=%s, warnings=%s",
+            "server.edit_tasks: returning id=%s, status=%s, warnings=%s",
             results[0].id,
-            results[0].success,
+            results[0].status,
             results[0].warnings,
         )
         return results
