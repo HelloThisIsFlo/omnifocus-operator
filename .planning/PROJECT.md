@@ -257,4 +257,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-14 — Phase 53 (Response Shaping) complete. Stripping, inherited rename, field selection, count-only mode shipped as server/ package.*
+*Last updated: 2026-04-16 — Phase 55 (Notes Graduation) complete. actions.note block (append/replace) with three no-op warnings shipped; top-level note removed from edit_tasks. v1.4 phase work (53, 53.1, 54, 55) all complete — milestone awaits /gsd-complete-milestone.*
