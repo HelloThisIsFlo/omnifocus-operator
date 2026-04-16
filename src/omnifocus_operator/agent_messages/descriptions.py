@@ -684,14 +684,12 @@ Patch: omit = no change, null = clear, value = update.
 repetitionRule partial updates:
   - No existing rule: all root fields required (frequency, schedule, basedOn).
   - Has existing rule: omitted root fields preserved.
-  - frequency.type omittable (inferred) unless changing type.
   - Same type: sub-fields preserved. Different type: full replacement.
   - on/onDates mutually exclusive. null clears the rule.
 
 Examples (repetitionRule):
   Change interval: {{frequency: {{interval: 5}}}}
   Add days: {{frequency: {{onDays: ["MO", "WE", "FR"]}}}}
-  Remove days: {{frequency: {{onDays: null}}}}
   Change type: {{frequency: {{type: "weekly", onDays: ["MO", "FR"]}}}}
   Clear: null
 
@@ -700,6 +698,8 @@ actions.lifecycle: "complete" or "drop". Repeating tasks: current
 occurrence only; next occurrence auto-created. Cannot drop an entire
 repeating sequence.
 actions.tags: replace (standalone) or add/remove (combinable).
+actions.note: append adds text (blank-line separator; "" is a no-op).
+replace sets new content (null or "" clears). Modes are exclusive.
 
 {_BATCH_CROSS_ITEM_NOTE}
 
