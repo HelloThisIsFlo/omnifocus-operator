@@ -29,7 +29,7 @@ from omnifocus_operator.agent_messages.warnings import (
     REPETITION_NO_OP,
 )
 from omnifocus_operator.config import get_week_start, local_now
-from omnifocus_operator.contracts.base import is_set, unset_to_none
+from omnifocus_operator.contracts.base import UNSET, _Unset, is_set, unset_to_none
 from omnifocus_operator.contracts.protocols import Service
 from omnifocus_operator.contracts.shared.repetition_rule import RepetitionRuleRepoPayload
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskResult
@@ -678,6 +678,7 @@ class _EditTaskPipeline(_Pipeline):
         self._apply_repetition_rule()
         await self._apply_tag_diff()
         await self._apply_move()
+        self._apply_note_action()
         self._build_payload()
 
         if (early := self._detect_noop()) is not None:
@@ -716,10 +717,12 @@ class _EditTaskPipeline(_Pipeline):
             self._lifecycle_action = None
             self._tag_actions = None
             self._move_action = None
+            self._note_action = None
             return
         self._lifecycle_action = actions.lifecycle if is_set(actions.lifecycle) else None
         self._tag_actions = actions.tags if is_set(actions.tags) else None
         self._move_action = actions.move if is_set(actions.move) else None
+        self._note_action = actions.note if is_set(actions.note) else None
 
     def _apply_lifecycle(self) -> None:
         self._lifecycle: str | None = None
@@ -941,6 +944,15 @@ class _EditTaskPipeline(_Pipeline):
             self._command.id,
         )
 
+    def _apply_note_action(self) -> None:
+        self._note_value: str | _Unset = UNSET
+        self._note_warns: list[str] = []
+        value, _skip, self._note_warns = self._domain.process_note_action(
+            self._command,
+            self._task,
+        )
+        self._note_value = value
+
     def _build_payload(self) -> None:
         self._repo_payload = self._payload.build_edit(
             self._command,
@@ -948,6 +960,7 @@ class _EditTaskPipeline(_Pipeline):
             self._tag_adds,
             self._tag_removes,
             self._move_to,
+            note_value=self._note_value,
             repetition_rule_payload=self._repetition_rule_payload,
             repetition_rule_clear=self._repetition_rule_clear,
         )
@@ -961,6 +974,7 @@ class _EditTaskPipeline(_Pipeline):
             + self._status_warns
             + self._repetition_warns
             + self._tag_warns
+            + self._note_warns
         )
 
     def _detect_noop(self) -> EditTaskResult | None:

@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from omnifocus_operator.contracts.base import is_set
+from omnifocus_operator.contracts.base import UNSET, _Unset, is_set
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskRepoPayload
 from omnifocus_operator.contracts.use_cases.edit.tasks import (
     EditTaskRepoPayload,
@@ -66,6 +66,8 @@ class PayloadBuilder:
         add_tag_ids: list[str] | None,
         remove_tag_ids: list[str] | None,
         move_to: dict[str, object] | None,
+        *,
+        note_value: str | _Unset = UNSET,
         repetition_rule_payload: RepetitionRuleRepoPayload | None = None,
         repetition_rule_clear: bool = False,
     ) -> EditTaskRepoPayload:
@@ -73,8 +75,12 @@ class PayloadBuilder:
         # --- 1. Extract command fields ---
         kwargs: dict[str, object] = {"id": command.id}
 
-        # Simple fields (name, note, flagged, estimated_minutes)
+        # Simple fields (name, flagged, estimated_minutes)
         self._add_if_set(kwargs, command, "name", "flagged", "estimated_minutes")
+
+        # Note enters via explicit note_value kwarg (composed by process_note_action)
+        if is_set(note_value):
+            kwargs["note"] = note_value
 
         # Date fields -> ISO strings (None stays None = clear)
         self._add_dates_if_set(kwargs, command, "due_date", "defer_date", "planned_date")
