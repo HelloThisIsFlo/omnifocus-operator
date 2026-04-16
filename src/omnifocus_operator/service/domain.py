@@ -41,6 +41,9 @@ from omnifocus_operator.agent_messages.warnings import (
     LIFECYCLE_REPEATING_COMPLETE,
     LIFECYCLE_REPEATING_DROP,
     MOVE_ALREADY_AT_POSITION,
+    NOTE_ALREADY_EMPTY,
+    NOTE_APPEND_EMPTY,
+    NOTE_REPLACE_ALREADY_CONTENT,
     REPETITION_ANCHOR_DATE_MISSING,
     REPETITION_AUTO_CLEAR_ON,
     REPETITION_AUTO_CLEAR_ON_DATES,
@@ -55,7 +58,7 @@ from omnifocus_operator.agent_messages.warnings import (
     TAGS_ALREADY_MATCH,
 )
 from omnifocus_operator.config import SYSTEM_LOCATIONS
-from omnifocus_operator.contracts.base import is_set
+from omnifocus_operator.contracts.base import UNSET, _Unset, is_set
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
 from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
 from omnifocus_operator.contracts.use_cases.list._validators import parse_duration
@@ -522,6 +525,70 @@ class DomainLogic:
                 warnings.append(LIFECYCLE_REPEATING_DROP)
 
         return True, warnings
+
+    # -- Note action -------------------------------------------------------
+
+    def process_note_action(
+        self,
+        command: EditTaskCommand,
+        task: Task,
+    ) -> tuple[str | _Unset, bool, list[str]]:
+        """Compose note state from actions.note.
+
+        Returns (new_value_or_UNSET, should_skip_bridge, warnings):
+        - UNSET => leave note absent from the bridge payload (no-op at this layer)
+        - str  => send this string to the bridge (empty string clears the note)
+        - skip => True when the whole note operation is a no-op
+
+        D-04 N1: empty append -> no-op with NOTE_APPEND_EMPTY warning
+        D-05 N2: identical replace -> no-op with NOTE_REPLACE_ALREADY_CONTENT
+        D-06 N3: clear on already-empty note -> no-op with NOTE_ALREADY_EMPTY
+        D-08/D-09: strip-and-check; whitespace-only existing note treated as empty
+        D-07: append that duplicates existing content is a REAL change, not a no-op
+        """
+        warnings: list[str] = []
+
+        # No note action -> skip
+        if not is_set(command.actions):
+            return UNSET, True, warnings
+        actions = command.actions
+        if not is_set(actions.note):
+            return UNSET, True, warnings
+
+        note_action = actions.note
+        existing = task.note or ""
+        existing_stripped = existing.strip()
+
+        # Append branch
+        if is_set(note_action.append):
+            append_text = note_action.append
+            # N1: empty append -> no-op
+            if append_text == "":
+                warnings.append(NOTE_APPEND_EMPTY)
+                return UNSET, True, warnings
+            # NOTE-04 / D-09: empty or whitespace-only note -> set directly (no separator)
+            if existing_stripped == "":
+                return append_text, False, warnings
+            # Normal concatenation
+            return existing + "\n\n" + append_text, False, warnings
+
+        # Replace branch (NoteAction validator guarantees either append or replace is set)
+        replace_val = note_action.replace
+        clearing = replace_val is None or replace_val == ""
+        target = replace_val if replace_val is not None else ""
+
+        # N3 takes precedence over N2 when both match (Pitfall 3)
+        if clearing and existing_stripped == "":
+            warnings.append(NOTE_ALREADY_EMPTY)
+            return UNSET, True, warnings
+
+        # N2: identical content
+        if target == existing:
+            warnings.append(NOTE_REPLACE_ALREADY_CONTENT)
+            return UNSET, True, warnings
+
+        # Real replace (includes clear of non-empty: target is "")
+        return target, False, warnings
 
     # -- Status warnings ---------------------------------------------------
 

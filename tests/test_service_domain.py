@@ -2483,10 +2483,14 @@ class TestProcessNoteAction:
         assert skip is False
         assert warns == []
 
-    # Branch 3 — append on None
+    # Branch 3 — append on empty note (note field is str, so empty = "" not None)
     def test_append_on_none_note_sets_directly(self) -> None:
+        # Task.note is str (not Optional[str]) — empty note is represented as "".
+        # The process_note_action logic uses `task.note or ""` so both "" and
+        # a hypothetical None would behave identically. This test exercises the
+        # empty-string path as the canonical "no existing note" case.
         domain = _domain()
-        task = self._task_with_note(None)
+        task = self._task_with_note("")
         cmd = EditTaskCommand(
             id="t1",
             actions=EditTaskActions(note=NoteAction(append="first text")),
@@ -2601,10 +2605,11 @@ class TestProcessNoteAction:
         assert skip is False
         assert warns == []
 
-    # Branch 12 — N3 no-op: clear already-None note
+    # Branch 12 — N3 no-op: clear already-empty note
     def test_replace_null_on_none_note_is_noop_with_n3_warning(self) -> None:
+        # Task.note is str — "empty note" is represented as "".
         domain = _domain()
-        task = self._task_with_note(None)
+        task = self._task_with_note("")
         cmd = EditTaskCommand(
             id="t1",
             actions=EditTaskActions(note=NoteAction(replace=None)),
