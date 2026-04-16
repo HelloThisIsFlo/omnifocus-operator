@@ -15,6 +15,7 @@ from unittest.mock import AsyncMock
 import pytest
 from pydantic import ValidationError
 
+from omnifocus_operator.agent_messages.warnings import NOTE_ALREADY_EMPTY
 from omnifocus_operator.bridge import BridgeError
 from omnifocus_operator.bridge.mtime import MtimeSource
 from omnifocus_operator.contracts.shared.actions import MoveAction, NoteAction, TagAction
@@ -1722,6 +1723,61 @@ class TestEditTask:
         # Different container move should not be a no-op
         if result.warnings:
             assert not any("No changes detected" in w for w in result.warnings)
+
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
+    async def test_note_action_alone(
+        self, service: OperatorService, repo: BridgeOnlyRepository
+    ) -> None:
+        """actions.note alone (no tags/move/lifecycle) is valid (spec line 195)."""
+        result = await service.edit_task(
+            EditTaskCommand(
+                id="task-001",
+                actions=EditTaskActions(note=NoteAction(append="Meeting notes")),
+            )
+        )
+        assert result.status == "success"
+        task = await repo.get_task("task-001")
+        assert task is not None
+        # Empty starting note + append -> set directly, no separator (NOTE-04)
+        assert task.note == "Meeting notes"
+
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="task-001", name="Task", note="Old")],
+        tags=[make_tag_dict(id="tag-work", name="Work")],
+    )
+    async def test_note_with_other_actions(
+        self, service: OperatorService, repo: BridgeOnlyRepository
+    ) -> None:
+        """actions.note composes with actions.tags in one call."""
+        result = await service.edit_task(
+            EditTaskCommand(
+                id="task-001",
+                actions=EditTaskActions(
+                    note=NoteAction(replace="Updated"),
+                    tags=TagAction(add=["Work"]),
+                ),
+            )
+        )
+        assert result.status == "success"
+        task = await repo.get_task("task-001")
+        assert task is not None
+        assert task.note == "Updated"
+        assert any(t.name == "Work" for t in task.tags)
+
+    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task", note="")])
+    async def test_note_noop_warning_surfaces_in_result(
+        self, service: OperatorService, repo: BridgeOnlyRepository
+    ) -> None:
+        """N3 no-op: clear-already-empty emits NOTE_ALREADY_EMPTY warning."""
+        result = await service.edit_task(
+            EditTaskCommand(
+                id="task-001",
+                actions=EditTaskActions(note=NoteAction(replace=None)),
+            )
+        )
+        assert result.status == "success"
+        assert result.warnings is not None
+        assert NOTE_ALREADY_EMPTY in result.warnings
 
 
 # ---------------------------------------------------------------------------

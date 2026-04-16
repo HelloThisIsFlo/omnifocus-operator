@@ -681,3 +681,14 @@ class TestWriteSchemaNoDateTimeFormat:
             "EditTaskCommand schema contains 'date-time' format -- "
             "this contradicts the naive-local contract. Date fields must be plain str."
         )
+
+    def test_edit_task_command_has_no_top_level_note(self) -> None:
+        """NOTE-01: top-level note was graduated to actions.note in Phase 55."""
+        schema = EditTaskCommand.model_json_schema()
+        properties = schema.get("properties", {})
+        assert "note" not in properties, (
+            "EditTaskCommand should not have a top-level 'note' property; "
+            "notes moved to actions.note in Phase 55 (NOTE-01)."
+        )
+        # actions should still exist as the path into NoteAction
+        assert "actions" in properties
