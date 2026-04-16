@@ -21,6 +21,9 @@ from omnifocus_operator.agent_messages.warnings import (
     EDIT_COMPLETED_TASK,
     LIFECYCLE_REPEATING_COMPLETE,
     LIFECYCLE_REPEATING_DROP,
+    NOTE_ALREADY_EMPTY,
+    NOTE_APPEND_EMPTY,
+    NOTE_REPLACE_ALREADY_CONTENT,
     REPETITION_AUTO_CLEAR_ON,
     REPETITION_AUTO_CLEAR_ON_DATES,
     REPETITION_EMPTY_ON,
@@ -2433,3 +2436,208 @@ class TestComputeTrueInheritance:
 
         # min -> 2029-12-31 (grandparent, soonest). Regression guard.
         assert result[0].inherited_due_date == datetime(2029, 12, 31, 0, 0, tzinfo=UTC)
+
+
+# ---------------------------------------------------------------------------
+# DomainLogic.process_note_action
+# ---------------------------------------------------------------------------
+
+
+class TestProcessNoteAction:
+    """Note composition + no-op detection. D-04, D-05, D-06, D-08, D-09."""
+
+    def _task_with_note(self, note: str | None) -> Task:
+        """Minimal Task fixture with only the note field populated."""
+        return _make_task(note=note)
+
+    # Branch 1 — UNSET (no actions at all)
+    def test_no_actions_returns_unset(self) -> None:
+        domain = _domain()
+        task = self._task_with_note("anything")
+        cmd = EditTaskCommand(id="t1")  # no actions at all
+        value, skip, warns = domain.process_note_action(cmd, task)
+        assert isinstance(value, _Unset)
+        assert skip is True
+        assert warns == []
+
+    def test_actions_without_note_returns_unset(self) -> None:
+        """actions present but note is UNSET inside it."""
+        domain = _domain()
+        task = self._task_with_note("anything")
+        cmd = EditTaskCommand(id="t1", actions=EditTaskActions(tags=TagAction(replace=["Work"])))
+        value, skip, warns = domain.process_note_action(cmd, task)
+        assert isinstance(value, _Unset)
+        assert skip is True
+        assert warns == []
+
+    # Branch 2 — append on non-empty note
+    def test_append_on_non_empty_note_concatenates_with_separator(self) -> None:
+        domain = _domain()
+        task = self._task_with_note("existing content")
+        cmd = EditTaskCommand(
+            id="t1",
+            actions=EditTaskActions(note=NoteAction(append="added")),
+        )
+        value, skip, warns = domain.process_note_action(cmd, task)
+        assert value == "existing content\n\nadded"
+        assert skip is False
+        assert warns == []
+
+    # Branch 3 — append on None
+    def test_append_on_none_note_sets_directly(self) -> None:
+        domain = _domain()
+        task = self._task_with_note(None)
+        cmd = EditTaskCommand(
+            id="t1",
+            actions=EditTaskActions(note=NoteAction(append="first text")),
+        )
+        value, skip, warns = domain.process_note_action(cmd, task)
+        assert value == "first text"
+        assert skip is False
+        assert warns == []
+
+    # Branch 4 — append on empty string
+    def test_append_on_empty_string_note_sets_directly(self) -> None:
+        domain = _domain()
+        task = self._task_with_note("")
+        cmd = EditTaskCommand(
+            id="t1",
+            actions=EditTaskActions(note=NoteAction(append="first text")),
+        )
+        value, skip, warns = domain.process_note_action(cmd, task)
+        assert value == "first text"
+        assert skip is False
+        assert warns == []
+
+    # Branch 5 — append on whitespace-only (NOTE-04 / D-09)
+    def test_append_on_whitespace_only_note_discards_whitespace(self) -> None:
+        domain = _domain()
+        task = self._task_with_note("   \n\t")
+        cmd = EditTaskCommand(
+            id="t1",
+            actions=EditTaskActions(note=NoteAction(append="first real text")),
+        )
+        value, skip, warns = domain.process_note_action(cmd, task)
+        assert value == "first real text"
+        assert skip is False
+        assert warns == []
+
+    # Branch 6 — empty append is N1 no-op
+    def test_append_empty_string_is_noop_with_n1_warning(self) -> None:
+        domain = _domain()
+        task = self._task_with_note("existing")
+        cmd = EditTaskCommand(
+            id="t1",
+            actions=EditTaskActions(note=NoteAction(append="")),
+        )
+        value, skip, warns = domain.process_note_action(cmd, task)
+        assert isinstance(value, _Unset)
+        assert skip is True
+        assert warns == [NOTE_APPEND_EMPTY]
+
+    # Branch 7 — whitespace-only append is NOT a no-op (pitfall 4)
+    def test_append_whitespace_only_is_not_noop(self) -> None:
+        """Whitespace-only append text is a real change — only empty string is N1."""
+        domain = _domain()
+        task = self._task_with_note("existing")
+        cmd = EditTaskCommand(
+            id="t1",
+            actions=EditTaskActions(note=NoteAction(append="   ")),
+        )
+        value, skip, warns = domain.process_note_action(cmd, task)
+        assert value == "existing\n\n   "
+        assert skip is False
+        assert warns == []
+
+    # Branch 8 — replace with new content
+    def test_replace_with_new_content_sets_note(self) -> None:
+        domain = _domain()
+        task = self._task_with_note("old content")
+        cmd = EditTaskCommand(
+            id="t1",
+            actions=EditTaskActions(note=NoteAction(replace="new content")),
+        )
+        value, skip, warns = domain.process_note_action(cmd, task)
+        assert value == "new content"
+        assert skip is False
+        assert warns == []
+
+    # Branch 9 — identical replace is N2 no-op
+    def test_replace_identical_content_is_noop_with_n2_warning(self) -> None:
+        domain = _domain()
+        task = self._task_with_note("same text")
+        cmd = EditTaskCommand(
+            id="t1",
+            actions=EditTaskActions(note=NoteAction(replace="same text")),
+        )
+        value, skip, warns = domain.process_note_action(cmd, task)
+        assert isinstance(value, _Unset)
+        assert skip is True
+        assert warns == [NOTE_REPLACE_ALREADY_CONTENT]
+
+    # Branch 10 — replace null clears non-empty note
+    def test_replace_null_clears_non_empty_note(self) -> None:
+        domain = _domain()
+        task = self._task_with_note("content")
+        cmd = EditTaskCommand(
+            id="t1",
+            actions=EditTaskActions(note=NoteAction(replace=None)),
+        )
+        value, skip, warns = domain.process_note_action(cmd, task)
+        assert value == ""
+        assert skip is False
+        assert warns == []
+
+    # Branch 11 — replace empty string clears non-empty note
+    def test_replace_empty_string_clears_non_empty_note(self) -> None:
+        domain = _domain()
+        task = self._task_with_note("content")
+        cmd = EditTaskCommand(
+            id="t1",
+            actions=EditTaskActions(note=NoteAction(replace="")),
+        )
+        value, skip, warns = domain.process_note_action(cmd, task)
+        assert value == ""
+        assert skip is False
+        assert warns == []
+
+    # Branch 12 — N3 no-op: clear already-None note
+    def test_replace_null_on_none_note_is_noop_with_n3_warning(self) -> None:
+        domain = _domain()
+        task = self._task_with_note(None)
+        cmd = EditTaskCommand(
+            id="t1",
+            actions=EditTaskActions(note=NoteAction(replace=None)),
+        )
+        value, skip, warns = domain.process_note_action(cmd, task)
+        assert isinstance(value, _Unset)
+        assert skip is True
+        assert warns == [NOTE_ALREADY_EMPTY]
+
+    # Branch 13 — N3 wins over N2 (pitfall 3) when both match
+    def test_replace_empty_on_empty_note_emits_n3_not_n2(self) -> None:
+        """Pitfall 3: N3 takes precedence over N2 when both match."""
+        domain = _domain()
+        task = self._task_with_note("")
+        cmd = EditTaskCommand(
+            id="t1",
+            actions=EditTaskActions(note=NoteAction(replace="")),
+        )
+        value, skip, warns = domain.process_note_action(cmd, task)
+        assert isinstance(value, _Unset)
+        assert skip is True
+        assert warns == [NOTE_ALREADY_EMPTY]
+        assert NOTE_REPLACE_ALREADY_CONTENT not in warns
+
+    # Branch 14 — whitespace-only note treated as empty for N3 (D-08)
+    def test_replace_null_on_whitespace_only_note_is_n3(self) -> None:
+        domain = _domain()
+        task = self._task_with_note("   \n\t")
+        cmd = EditTaskCommand(
+            id="t1",
+            actions=EditTaskActions(note=NoteAction(replace=None)),
+        )
+        value, skip, warns = domain.process_note_action(cmd, task)
+        assert isinstance(value, _Unset)
+        assert skip is True
+        assert warns == [NOTE_ALREADY_EMPTY]
