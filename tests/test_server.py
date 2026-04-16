@@ -16,6 +16,10 @@ import pytest
 from fastmcp import Client
 from fastmcp.exceptions import ToolError
 
+from omnifocus_operator.agent_messages.descriptions import (
+    ADD_TASKS_TOOL_DOC,
+    EDIT_TASKS_TOOL_DOC,
+)
 from omnifocus_operator.repository import BridgeOnlyRepository
 from omnifocus_operator.server import _register_tools, create_server
 from omnifocus_operator.service import OperatorService
@@ -2451,3 +2455,41 @@ class TestEditTasksBatch:
         """0 items rejected with ToolError — schema-level minItems enforcement."""
         with pytest.raises(ToolError):
             await client.call_tool("edit_tasks", {"items": []})
+
+
+# ---------------------------------------------------------------------------
+# BATCH-09: Cross-item reference limitation documented in tool descriptions
+# ---------------------------------------------------------------------------
+
+
+class TestBatchCrossItemDocumentation:
+    """Verify BATCH-09: cross-item reference limitation is documented in both tool descriptions.
+
+    BATCH-09 is a documentation-only requirement — the limitation is enforced by
+    the sequential execution model and communicated to agents via tool descriptions.
+    """
+
+    def test_add_tasks_tool_doc_contains_cross_item_limitation_note(self) -> None:
+        """add_tasks description states batch items cannot reference each other."""
+
+        assert "Items are independent" in ADD_TASKS_TOOL_DOC, (
+            "ADD_TASKS_TOOL_DOC must document the cross-item reference limitation "
+            "(BATCH-09): 'Items are independent: batch items cannot reference other "
+            "items created or edited in the same batch.'"
+        )
+        assert "cannot reference" in ADD_TASKS_TOOL_DOC, (
+            "ADD_TASKS_TOOL_DOC must state that items cannot reference each other in the same batch"
+        )
+
+    def test_edit_tasks_tool_doc_contains_cross_item_limitation_note(self) -> None:
+        """edit_tasks description states batch items cannot reference each other."""
+
+        assert "Items are independent" in EDIT_TASKS_TOOL_DOC, (
+            "EDIT_TASKS_TOOL_DOC must document the cross-item reference limitation "
+            "(BATCH-09): 'Items are independent: batch items cannot reference other "
+            "items created or edited in the same batch.'"
+        )
+        assert "cannot reference" in EDIT_TASKS_TOOL_DOC, (
+            "EDIT_TASKS_TOOL_DOC must state that items cannot reference "
+            "each other in the same batch"
+        )
