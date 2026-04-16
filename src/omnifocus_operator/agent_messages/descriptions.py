@@ -5,11 +5,6 @@ This makes it easy to review, audit, and maintain all agent-facing schema text
 in one place.
 """
 
-# Mirror of config.MAX_BATCH_SIZE — kept here to avoid a circular import
-# (descriptions <- config <- models.enums <- models.common <- descriptions).
-# If MAX_BATCH_SIZE changes in config.py, update this value too.
-_MAX_BATCH_SIZE = 50
-
 # --- Dates: Read-Side ---
 
 DUE_DATE = "Deadline with real consequences if missed."
@@ -73,8 +68,6 @@ _BATCH_RETURNS = (
     "id (success + edit errors/skips), name (success only), "
     "warnings (any status), error (error only)."
 )
-
-_BATCH_LIMIT_NOTE = f"Up to {_MAX_BATCH_SIZE} items per call."
 
 _BATCH_CROSS_ITEM_NOTE = (
     "Items are independent: batch items cannot reference "
@@ -510,7 +503,7 @@ Fields: availability, childrenAreMutuallyExclusive, parent {{id, name}}.
 childrenAreMutuallyExclusive: when true, child tags behave like radio buttons."""
 
 ADD_TASKS_TOOL_DOC = f"""\
-Create tasks in OmniFocus. {_BATCH_LIMIT_NOTE}
+Create tasks in OmniFocus.
 
 Best-effort: all items are processed regardless of earlier failures. \
 Each item gets its own status (success or error).
@@ -660,7 +653,7 @@ Key fields per perspective: id, name.
 The response uses camelCase field names."""
 
 EDIT_TASKS_TOOL_DOC = f"""\
-Edit existing tasks in OmniFocus using patch semantics. {_BATCH_LIMIT_NOTE}
+Edit existing tasks in OmniFocus using patch semantics.
 
 Fail-fast: processing stops at the first error. \
 Earlier items are committed; later items get status 'skipped' \
