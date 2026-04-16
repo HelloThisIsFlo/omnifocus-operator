@@ -47,6 +47,14 @@ TAG_REPLACE_WITH_ADD_REMOVE = (
 
 TAG_NO_OPERATION = "tags must specify at least one of: add, remove, replace"
 
+# --- Validation: NoteAction ---
+
+NOTE_APPEND_WITH_REPLACE = (
+    "Cannot use 'append' with 'replace' -- use either append mode or replace mode"
+)
+
+NOTE_NO_OPERATION = "note action must specify one of: append, replace"
+
 # --- Validation: MoveAction ---
 
 MOVE_EXACTLY_ONE_KEY = "moveTo must have exactly one key (beginning, ending, before, or after)"

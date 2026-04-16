@@ -90,8 +90,8 @@ class TestChangedFields:
         assert cmd.changed_fields() == {"id": "t1"}
 
     def test_required_plus_optional_fields(self) -> None:
-        cmd = EditTaskCommand(id="t1", name="x", note=None)
-        assert cmd.changed_fields() == {"id": "t1", "name": "x", "note": None}
+        cmd = EditTaskCommand(id="t1", name="x", due_date=None)
+        assert cmd.changed_fields() == {"id": "t1", "name": "x", "due_date": None}
 
     def test_tag_action_add(self) -> None:
         action = TagAction(add=["urgent"])

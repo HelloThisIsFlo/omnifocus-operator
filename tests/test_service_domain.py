@@ -11,7 +11,12 @@ from datetime import UTC, date, datetime
 from types import SimpleNamespace
 
 import pytest
+from pydantic import ValidationError
 
+from omnifocus_operator.agent_messages.errors import (
+    NOTE_APPEND_WITH_REPLACE,
+    NOTE_NO_OPERATION,
+)
 from omnifocus_operator.agent_messages.warnings import (
     EDIT_COMPLETED_TASK,
     LIFECYCLE_REPEATING_COMPLETE,
@@ -24,7 +29,7 @@ from omnifocus_operator.agent_messages.warnings import (
     REPETITION_FROM_COMPLETION_BYDAY,
 )
 from omnifocus_operator.contracts.base import UNSET, _Unset
-from omnifocus_operator.contracts.shared.actions import MoveAction, TagAction
+from omnifocus_operator.contracts.shared.actions import MoveAction, NoteAction, TagAction
 from omnifocus_operator.contracts.shared.repetition_rule import (
     FrequencyEditSpec,
     RepetitionRuleRepoPayload,
@@ -643,26 +648,48 @@ class TestCheckCycle:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# NoteAction — contract-level validator tests (exclusivity + at-least-one)
+# ---------------------------------------------------------------------------
+
+
+class TestNoteAction:
+    """Pydantic validator tests for contracts.shared.actions.NoteAction.
+
+    Covers D-01 (exclusivity + at-least-one) and D-02 (Patch[str] null rejection).
+    """
+
+    def test_empty_raises_no_operation(self) -> None:
+        """NoteAction() with no fields set raises ValidationError (NOTE_NO_OPERATION)."""
+        with pytest.raises(ValidationError) as exc_info:
+            NoteAction()
+        assert NOTE_NO_OPERATION in str(exc_info.value)
+
+    def test_both_modes_raises_append_with_replace(self) -> None:
+        """NoteAction(append=..., replace=...) raises ValidationError (NOTE_APPEND_WITH_REPLACE)."""
+        with pytest.raises(ValidationError) as exc_info:
+            NoteAction(append="x", replace="y")
+        assert NOTE_APPEND_WITH_REPLACE in str(exc_info.value)
+
+    def test_append_null_rejected_by_type(self) -> None:
+        """NoteAction(append=None) rejected by Patch[str] type machinery.
+
+        Pydantic raises ValidationError with its default type-error message;
+        we only assert a ValidationError is raised (custom text not required
+        per D-02 — the type alias alone is sufficient).
+        """
+        with pytest.raises(ValidationError):
+            NoteAction(append=None)
+
+    def test_replace_null_is_valid(self) -> None:
+        """NoteAction(replace=None) constructs successfully — null = clear intent (PatchOrClear)."""
+        action = NoteAction(replace=None)
+        # sanity: the field is set (not UNSET), value is None
+        assert action.replace is None
+
+
 class TestNormalizeClearIntents:
     """Null-means-clear normalization centralized in DomainLogic."""
-
-    def test_note_none_becomes_empty_string(self) -> None:
-        domain = _domain()
-        cmd = EditTaskCommand(id="t1", note=None)
-        result = domain.normalize_clear_intents(cmd)
-        assert result.note == ""
-
-    def test_note_with_value_unchanged(self) -> None:
-        domain = _domain()
-        cmd = EditTaskCommand(id="t1", note="Hello")
-        result = domain.normalize_clear_intents(cmd)
-        assert result.note == "Hello"
-
-    def test_note_unset_unchanged(self) -> None:
-        domain = _domain()
-        cmd = EditTaskCommand(id="t1")
-        result = domain.normalize_clear_intents(cmd)
-        assert isinstance(result.note, _Unset)
 
     def test_tags_replace_none_becomes_empty_list(self) -> None:
         domain = _domain()

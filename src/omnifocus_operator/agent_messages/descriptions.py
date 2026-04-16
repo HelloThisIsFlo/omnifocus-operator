@@ -178,8 +178,6 @@ NAME_EDIT_COMMAND = "New task name. Leading/trailing whitespace is stripped; emp
 
 NOTE_ADD_COMMAND = "Plain-text note attached to the task."
 
-NOTE_EDIT_COMMAND = "Plain-text note. Set to null to clear."
-
 ID_EDIT_COMMAND = "OmniFocus task ID to edit."
 
 ESTIMATED_MINUTES_EDIT = "Time estimate in minutes. Set to null to clear."
@@ -350,7 +348,25 @@ MOVE_BEFORE = "Sibling task to position relative to (task name/ID). Parent conta
 
 MOVE_AFTER = "Sibling task to position relative to (task name/ID). Parent container is inferred."
 
-EDIT_TASK_ACTIONS_DOC = "Lifecycle changes (complete/drop), tag edits, and task movement. All three can be combined freely in one call."
+NOTE_ACTION_DOC = """\
+Note operations for task editing.
+
+Either ``append`` (add text with blank-line separator) or ``replace`` \
+(set entire note content). The two modes are mutually exclusive."""
+
+NOTE_ACTION_APPEND = """\
+Text to append to the existing note. Joined with a blank-line (\\n\\n) \
+separator. If the note is empty or whitespace-only, the text is set \
+directly (no leading separator). Pass an empty string for a no-op."""
+
+NOTE_ACTION_REPLACE = """\
+Replace the entire note with this content. Pass null or '' to clear \
+the note."""
+
+EDIT_TASK_ACTIONS_DOC = (
+    "Lifecycle changes (complete/drop), tag edits, task movement, "
+    "and note operations (append/replace). All four can be combined freely in one call."
+)
 
 # --- Class Docstrings: Repetition Specs ---
 

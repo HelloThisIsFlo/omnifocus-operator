@@ -17,7 +17,7 @@ from pydantic import ValidationError
 
 from omnifocus_operator.bridge import BridgeError
 from omnifocus_operator.bridge.mtime import MtimeSource
-from omnifocus_operator.contracts.shared.actions import MoveAction, TagAction
+from omnifocus_operator.contracts.shared.actions import MoveAction, NoteAction, TagAction
 from omnifocus_operator.contracts.shared.repetition_rule import (
     EndByDateSpec,
     EndByOccurrencesSpec,
@@ -641,18 +641,6 @@ class TestEditTask:
         assert task is not None
         assert task.flagged is True  # unchanged
 
-    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task")])
-    async def test_patch_note_only(
-        self, service: OperatorService, repo: BridgeOnlyRepository
-    ) -> None:
-        """Editing only note leaves other fields unchanged."""
-
-        result = await service.edit_task(EditTaskCommand(id="task-001", note="New note"))
-        assert result.status == "success"
-        task = await repo.get_task("task-001")
-        assert task is not None
-        assert task.note == "New note"
-
     @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task", flagged=False)])
     async def test_patch_flagged_only(
         self, service: OperatorService, repo: BridgeOnlyRepository
@@ -959,18 +947,6 @@ class TestEditTask:
         result = await service.edit_task(EditTaskCommand(id="task-001", name="Updated"))
         assert result.warnings is None
 
-    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task", note="Some note")])
-    async def test_note_null_clears_note(
-        self, service: OperatorService, repo: BridgeOnlyRepository
-    ) -> None:
-        """note=None maps to empty string (null-means-clear)."""
-
-        result = await service.edit_task(EditTaskCommand(id="task-001", note=None))
-        assert result.status == "success"
-        task = await repo.get_task("task-001")
-        assert task is not None
-        assert task.note == ""
-
     @pytest.mark.snapshot(
         tasks=[make_task_dict(id="task-001", name="Task", tags=[{"id": "tag-a", "name": "A"}])],
         tags=[make_tag_dict(id="tag-a", name="A")],
@@ -1199,29 +1175,6 @@ class TestEditTask:
         assert task.planned_date is not None
         assert "2026-03-12" in task.planned_date.isoformat()
 
-    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Old")])
-    async def test_multi_field_edit(
-        self, service: OperatorService, repo: BridgeOnlyRepository
-    ) -> None:
-        """Edit task changing name, note, flagged, and estimated_minutes (UAT #5)."""
-
-        result = await service.edit_task(
-            EditTaskCommand(
-                id="task-001",
-                name="New Name",
-                note="New note",
-                flagged=True,
-                estimated_minutes=60.0,
-            )
-        )
-        assert result.status == "success"
-        task = await repo.get_task("task-001")
-        assert task is not None
-        assert task.name == "New Name"
-        assert task.note == "New note"
-        assert task.flagged is True
-        assert task.estimated_minutes == 60.0
-
     @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task", flagged=True)])
     async def test_unflag(self, service: OperatorService, repo: BridgeOnlyRepository) -> None:
         """Start with flagged=True, edit to flagged=False (UAT #6)."""
@@ -1231,18 +1184,6 @@ class TestEditTask:
         task = await repo.get_task("task-001")
         assert task is not None
         assert task.flagged is False
-
-    @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task", note="Some note")])
-    async def test_clear_note_with_empty_string(
-        self, service: OperatorService, repo: BridgeOnlyRepository
-    ) -> None:
-        """Edit task with note='' clears note (UAT #9)."""
-
-        result = await service.edit_task(EditTaskCommand(id="task-001", note=""))
-        assert result.status == "success"
-        task = await repo.get_task("task-001")
-        assert task is not None
-        assert task.note == ""
 
     @pytest.mark.snapshot(tasks=[make_task_dict(id="task-001", name="Task", estimatedMinutes=30.0)])
     async def test_clear_estimated_minutes(

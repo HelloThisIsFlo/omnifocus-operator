@@ -16,7 +16,6 @@ from omnifocus_operator.agent_messages.descriptions import (
     FLAGGED,
     ID_EDIT_COMMAND,
     NAME_EDIT_COMMAND,
-    NOTE_EDIT_COMMAND,
     PLANNED_DATE_WRITE,
 )
 from omnifocus_operator.agent_messages.errors import (
@@ -29,7 +28,7 @@ from omnifocus_operator.contracts.base import (
     Patch,
     PatchOrClear,
 )
-from omnifocus_operator.contracts.shared.actions import MoveAction, TagAction
+from omnifocus_operator.contracts.shared.actions import MoveAction, NoteAction, TagAction
 from omnifocus_operator.contracts.shared.dates import validate_date_string
 from omnifocus_operator.contracts.shared.repetition_rule import (
     RepetitionRuleEditSpec,
@@ -44,6 +43,7 @@ class EditTaskActions(CommandModel):
     tags: Patch[TagAction] = UNSET
     move: Patch[MoveAction] = UNSET
     lifecycle: Patch[Literal["complete", "drop"]] = UNSET
+    note: Patch[NoteAction] = UNSET
 
     @field_validator("lifecycle", mode="before")
     @classmethod
@@ -72,7 +72,6 @@ class EditTaskCommand(CommandModel):
         return v
 
     # Clearable fields (None = clear the value)
-    note: PatchOrClear[str] = Field(default=UNSET, description=NOTE_EDIT_COMMAND)
     due_date: PatchOrClear[str] = Field(
         default=UNSET,
         description=DUE_DATE_WRITE,

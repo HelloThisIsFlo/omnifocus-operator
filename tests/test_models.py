@@ -1122,7 +1122,6 @@ class TestCommandModelStrictness:
         assert command.id == "t1"
         assert isinstance(command.name, _Unset)
         assert isinstance(command.flagged, _Unset)
-        assert isinstance(command.note, _Unset)
         assert isinstance(command.due_date, _Unset)
         assert isinstance(command.actions, _Unset)
 
@@ -1163,9 +1162,7 @@ class TestCommandModelStrictness:
     def test_edit_command_schema_nullable_fields(self) -> None:
         """Nullable UNSET fields appear as anyOf[real_type, null] — exactly two branches."""
         props = EditTaskCommand.model_json_schema()["properties"]
-        assert len(props["note"]["anyOf"]) == 2
-        note_types = {b.get("type") for b in props["note"]["anyOf"]}
-        assert note_types == {"string", "null"}
+        assert "note" not in props  # note graduated to actions.note (Phase 55)
         assert len(props["dueDate"]["anyOf"]) == 2
         due_types = {b.get("type") for b in props["dueDate"]["anyOf"]}
         assert due_types == {"string", "null"}

@@ -475,15 +475,10 @@ class DomainLogic:
         """Normalize null-means-clear fields before payload construction.
 
         OmniFocus semantics:
-        - note=None -> note='' (bridge expects empty string to clear)
         - tags.replace=None -> tags.replace=[] (empty list clears all tags)
 
         Centralizes this pattern so PayloadBuilder stays pure construction.
         """
-        # note: None means "clear the note" -> empty string for bridge
-        if is_set(command.note) and command.note is None:
-            command = command.model_copy(update={"note": ""})
-
         # tags.replace: None means "clear all tags" -> empty list
         if is_set(command.actions) and is_set(command.actions.tags):
             tag_actions = command.actions.tags

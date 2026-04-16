@@ -74,7 +74,7 @@ class PayloadBuilder:
         kwargs: dict[str, object] = {"id": command.id}
 
         # Simple fields (name, note, flagged, estimated_minutes)
-        self._add_if_set(kwargs, command, "name", "note", "flagged", "estimated_minutes")
+        self._add_if_set(kwargs, command, "name", "flagged", "estimated_minutes")
 
         # Date fields -> ISO strings (None stays None = clear)
         self._add_dates_if_set(kwargs, command, "due_date", "defer_date", "planned_date")

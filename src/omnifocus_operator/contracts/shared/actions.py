@@ -1,4 +1,4 @@
-"""Shared value objects for the contracts layer: TagAction, MoveAction."""
+"""Shared value objects for the contracts layer: TagAction, MoveAction, NoteAction."""
 
 from __future__ import annotations
 
@@ -12,6 +12,9 @@ from omnifocus_operator.agent_messages.descriptions import (
     MOVE_BEFORE,
     MOVE_BEGINNING,
     MOVE_ENDING,
+    NOTE_ACTION_APPEND,
+    NOTE_ACTION_DOC,
+    NOTE_ACTION_REPLACE,
     TAG_ACTION_ADD,
     TAG_ACTION_DOC,
     TAG_ACTION_REMOVE,
@@ -21,6 +24,8 @@ from omnifocus_operator.agent_messages.errors import (
     MOVE_EXACTLY_ONE_KEY,
     MOVE_NULL_ANCHOR,
     MOVE_NULL_CONTAINER,
+    NOTE_APPEND_WITH_REPLACE,
+    NOTE_NO_OPERATION,
     TAG_NO_OPERATION,
     TAG_REPLACE_WITH_ADD_REMOVE,
 )
@@ -63,6 +68,25 @@ class TagAction(CommandModel):
         return self
 
 
+class NoteAction(CommandModel):
+    __doc__ = NOTE_ACTION_DOC
+
+    append: Patch[str] = Field(default=UNSET, description=NOTE_ACTION_APPEND)
+    replace: PatchOrClear[str] = Field(default=UNSET, description=NOTE_ACTION_REPLACE)
+
+    @model_validator(mode="after")
+    def _validate_incompatible_note_edit_modes(self) -> NoteAction:
+        has_append = is_set(self.append)
+        has_replace = is_set(self.replace)
+        if has_append and has_replace:
+            msg = NOTE_APPEND_WITH_REPLACE
+            raise ValueError(msg)
+        if not has_append and not has_replace:
+            msg = NOTE_NO_OPERATION
+            raise ValueError(msg)
+        return self
+
+
 class MoveAction(CommandModel):
     __doc__ = MOVE_ACTION_DOC
 
@@ -98,4 +122,4 @@ class MoveAction(CommandModel):
         return self
 
 
-__all__ = ["MoveAction", "TagAction"]
+__all__ = ["MoveAction", "NoteAction", "TagAction"]

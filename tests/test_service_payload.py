@@ -110,28 +110,6 @@ class TestBuildEdit:
         assert payload.note is None
         assert payload.flagged is None
 
-    def test_build_edit_note_null_clears(self) -> None:
-        """note='' (normalized from None by DomainLogic) passes through."""
-        builder = PayloadBuilder()
-        command = EditTaskCommand(id="t1", note="")  # was None, normalized upstream
-        payload = builder.build_edit(
-            command, lifecycle=None, add_tag_ids=None, remove_tag_ids=None, move_to=None
-        )
-
-        assert payload.note == ""
-
-    def test_build_edit_note_none_passes_through(self) -> None:
-        """PayloadBuilder does not interpret null semantics -- passes None through.
-        DomainLogic normalizes note=None to '' before PayloadBuilder sees it."""
-        builder = PayloadBuilder()
-        command = EditTaskCommand(id="t1", note=None)
-        payload = builder.build_edit(
-            command, lifecycle=None, add_tag_ids=None, remove_tag_ids=None, move_to=None
-        )
-
-        # PayloadBuilder no longer converts None->'' -- that's DomainLogic's job
-        assert payload.note is None
-
     def test_build_edit_dates(self) -> None:
         """String dates pass through, None stays None (clear)."""
         builder = PayloadBuilder()
@@ -227,16 +205,6 @@ class TestBuildEdit:
 
         assert payload.estimated_minutes is None
         assert "estimated_minutes" in payload.model_fields_set
-
-    def test_build_edit_note_with_value(self) -> None:
-        """note with a string value passes through."""
-        builder = PayloadBuilder()
-        command = EditTaskCommand(id="t1", note="Hello")
-        payload = builder.build_edit(
-            command, lifecycle=None, add_tag_ids=None, remove_tag_ids=None, move_to=None
-        )
-
-        assert payload.note == "Hello"
 
 
 # ---------------------------------------------------------------------------
