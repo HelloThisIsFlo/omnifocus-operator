@@ -587,6 +587,36 @@ class TestAddTaskRepetitionRule:
         if result.warnings:
             assert not any("from_completion" in w and "onDays" in w for w in result.warnings)
 
+    async def test_end_date_in_past_warns(self, service: OperatorService) -> None:
+        """ADD-15: end date in the past -> REPETITION_END_DATE_PAST warning."""
+        spec = RepetitionRuleAddSpec(
+            frequency=FrequencyAddSpec(type="daily"),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+            end={"date": "2020-01-01"},
+        )
+        result = await service.add_task(
+            AddTaskCommand(name="Past end", repetition_rule=spec, due_date="2025-01-01T09:00:00")
+        )
+        assert result.status == "success"
+        assert result.warnings is not None
+        assert any("2020-01-01" in w for w in result.warnings)
+
+    async def test_end_date_in_future_no_past_warn(self, service: OperatorService) -> None:
+        """ADD-15: end date in the future -> no REPETITION_END_DATE_PAST warning."""
+        spec = RepetitionRuleAddSpec(
+            frequency=FrequencyAddSpec(type="daily"),
+            schedule=Schedule.REGULARLY,
+            based_on=BasedOn.DUE_DATE,
+            end={"date": "2099-12-31"},
+        )
+        result = await service.add_task(
+            AddTaskCommand(name="Future end", repetition_rule=spec, due_date="2025-01-01T09:00:00")
+        )
+        assert result.status == "success"
+        if result.warnings:
+            assert not any("2099-12-31" in w for w in result.warnings)
+
 
 # ---------------------------------------------------------------------------
 # OperatorService.edit_task

@@ -628,6 +628,11 @@ class _AddTaskPipeline(_Pipeline):
             self._domain.check_from_completion_byday_warning(spec.schedule, self._frequency)
         )
 
+        # Check end date in past (VALID-05)
+        self._repetition_warnings.extend(
+            self._domain.check_repetition_warnings(end=self._end_condition)
+        )
+
     def _build_payload(self) -> None:
         repetition_payload = None
         if self._frequency is not None and self._command.repetition_rule is not None:

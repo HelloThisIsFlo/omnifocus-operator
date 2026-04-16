@@ -548,7 +548,7 @@ class DomainLogic:
     def check_repetition_warnings(
         self,
         end: object | None,
-        task: Task,
+        task: Task | None = None,
     ) -> list[str]:
         """Generate warnings for repetition rule edge cases.
 
