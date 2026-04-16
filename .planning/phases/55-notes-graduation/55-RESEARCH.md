@@ -525,22 +525,25 @@ async def test_patch_note_only(
 
 The only Claude's-discretion items (warning constant names, 3-tuple vs NamedTuple) are called out explicitly as such in CONTEXT §Claude's Discretion — they are not assumed facts but deferred decisions.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should Plan 01 or Plan 02 add the three new warning constants?**
    - What we know: D-15 puts `NOTE_ACTION_*` description constants in Plan 01 (contract layer). But the three no-op warning constants (N1/N2/N3) are *only* used by `process_note_action` in Plan 02.
    - What's unclear: Whether adding unused warning constants in Plan 01 triggers a test failure. The `test_all_description_constants_referenced_in_consumers` test only covers `descriptions.py`, not `warnings.py`. Grep shows no equivalent AST-enforced check for `warnings.py`.
    - Recommendation: Add warning constants in Plan 02 (where they're first consumed). Add error constants (`NOTE_APPEND_WITH_REPLACE`, `NOTE_NO_OPERATION`) in Plan 01 because they ARE consumed by the contract validator in Plan 01.
+   - **RESOLVED:** Plan 02 Task 1 adds `NOTE_APPEND_EMPTY`, `NOTE_REPLACE_ALREADY_CONTENT`, `NOTE_ALREADY_EMPTY` in `src/omnifocus_operator/agent_messages/warnings.py` (where `process_note_action` first consumes them). Plan 01 Task 1 adds `NOTE_APPEND_WITH_REPLACE` and `NOTE_NO_OPERATION` in `agent_messages/errors.py` (consumed by the `NoteAction` validator in the same plan). Matches the recommendation above.
 
 2. **Should Plan 03 split into 3a (mechanical) / 3b (new coverage) or stay monolithic?**
    - What we know: D-16 says "two-pass". Could be one plan with two sequential tasks or two plans.
    - What's unclear: GSD plan granularity policy — the phase's `config.json` has `"granularity": "coarse"`, suggesting fewer, larger plans.
    - Recommendation: Keep as one Plan 03 with Pass 1 and Pass 2 as distinct task groups inside it. Matches the coarse granularity signal.
+   - **RESOLVED:** Single Plan 03 with two tasks — Task 1 (tool description update, D-10/D-11) + Task 2 (integration tests + NOTE-01 schema regression + NOTE-05 regression verification). Pass 1 mechanical rewrites moved earlier (Plan 01 Task 2). Pass 2 contract-validator tests moved earlier as well (Plan 01 Task 1 in revision round 2). Plan 03 owns the remaining integration + tool-description surface. Matches coarse granularity.
 
 3. **Does `EditTaskCommand.actions.note = NoteAction(replace=None)` skip the bridge, or does it send `note: ""`?**
    - What we know: CONTEXT D-06 says N3 (clear on already-empty note) skips the bridge. D-14 says clearing a non-empty note sends `""` to the bridge.
    - What's unclear: Nothing — this IS answered by CONTEXT. Pseudocode in Pattern 2 implements correctly. Calling out here only as a sanity-check for the planner.
    - Recommendation: No ambiguity; pattern is correct as documented.
+   - **RESOLVED:** `DomainLogic.process_note_action` (Plan 02 Task 2) returns `""` (not UNSET) when clearing a non-empty note — the bridge receives `note: ""` via `PayloadBuilder.build_edit`'s new `note_value=""` kwarg path (Plan 02 Task 3). When the note is already empty (or whitespace-only, strip-and-check per D-08), the method returns UNSET so `PayloadBuilder` skips the `note` kwarg entirely and the bridge is not called for note; the N3 warning (`NOTE_ALREADY_EMPTY`) is surfaced in `EditTaskResult.warnings`. Pipeline wiring + precedence (N3 before N2 per Pitfall 3) is locked in Plan 02.
 
 ## Validation Architecture
 
