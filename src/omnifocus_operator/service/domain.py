@@ -545,23 +545,32 @@ class DomainLogic:
 
     # -- Repetition rule warnings -------------------------------------------
 
-    def check_repetition_warnings(
+    def collect_repetition_warnings(
         self,
         end: object | None,
-        task: Task | None = None,
+        based_on: BasedOn,
+        effective_dates: Mapping[str, object],
+        schedule: Schedule,
+        frequency: Frequency,
     ) -> list[str]:
-        """Generate warnings for repetition rule edge cases.
+        """Collect all repetition rule warnings in one call.
 
         Checks:
         - End date in the past (VALID-05)
+        - Anchor date not set for basedOn field
+        - from_completion + day-of-week edge cases
         """
         warnings: list[str] = []
-
-        # End date in past
-        if isinstance(end, EndByDate) and end.date < date_type.today():
-            warnings.append(REPETITION_END_DATE_PAST.format(date=end.date))
-
+        warnings.extend(self.check_repetition_warnings(end))
+        warnings.extend(self.check_anchor_date_warning(based_on, effective_dates))
+        warnings.extend(self.check_from_completion_byday_warning(schedule, frequency))
         return warnings
+
+    def check_repetition_warnings(self, end: object | None) -> list[str]:
+        """Check for end date in the past (VALID-05)."""
+        if isinstance(end, EndByDate) and end.date < date_type.today():
+            return [REPETITION_END_DATE_PAST.format(date=end.date)]
+        return []
 
     def check_anchor_date_warning(
         self,

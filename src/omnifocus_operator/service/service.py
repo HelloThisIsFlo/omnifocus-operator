@@ -613,24 +613,20 @@ class _AddTaskPipeline(_Pipeline):
         self._repetition_warnings.extend(spec_warns)
         self._frequency = normalized_freq
 
-        # Check anchor date warning (VALID-05)
+        # Collect all repetition warnings
         effective_dates = {
             "due_date": self._command.due_date,
             "defer_date": self._command.defer_date,
             "planned_date": self._command.planned_date,
         }
         self._repetition_warnings.extend(
-            self._domain.check_anchor_date_warning(spec.based_on, effective_dates)
-        )
-
-        # Warn about from_completion + BYDAY edge cases
-        self._repetition_warnings.extend(
-            self._domain.check_from_completion_byday_warning(spec.schedule, self._frequency)
-        )
-
-        # Check end date in past (VALID-05)
-        self._repetition_warnings.extend(
-            self._domain.check_repetition_warnings(end=self._end_condition)
+            self._domain.collect_repetition_warnings(
+                end=self._end_condition,
+                based_on=spec.based_on,
+                effective_dates=effective_dates,
+                schedule=spec.schedule,
+                frequency=self._frequency,
+            )
         )
 
     def _build_payload(self) -> None:
@@ -847,12 +843,7 @@ class _EditTaskPipeline(_Pipeline):
         )
         self._repetition_warns.extend(spec_warns)
 
-        # Check warnings (end date in past, completed/dropped task)
-        self._repetition_warns.extend(
-            self._domain.check_repetition_warnings(end=self._rr_end, task=self._task)
-        )
-
-        # Check anchor date warning (VALID-05)
+        # Collect all repetition warnings
         effective_dates = {
             "due_date": self._command.due_date
             if is_set(self._command.due_date)
@@ -865,12 +856,13 @@ class _EditTaskPipeline(_Pipeline):
             else self._task.planned_date,
         }
         self._repetition_warns.extend(
-            self._domain.check_anchor_date_warning(self._rr_based_on, effective_dates)
-        )
-
-        # Warn about from_completion + BYDAY edge cases
-        self._repetition_warns.extend(
-            self._domain.check_from_completion_byday_warning(self._rr_schedule, self._rr_frequency)
+            self._domain.collect_repetition_warnings(
+                end=self._rr_end,
+                based_on=self._rr_based_on,
+                effective_dates=effective_dates,
+                schedule=self._rr_schedule,
+                frequency=self._rr_frequency,
+            )
         )
 
     def _assemble_repetition_payload(self, existing: RepetitionRule | None) -> None:

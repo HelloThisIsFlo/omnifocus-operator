@@ -694,32 +694,22 @@ class TestRepetitionWarnings:
     def test_end_date_in_past_warns(self) -> None:
         """End date before now -> REPETITION_END_DATE_PAST warning."""
         domain = _domain()
-        task = _make_task()
         end = EndByDate(date=date(2020, 1, 1))
-        warnings = domain.check_repetition_warnings(end=end, task=task)
+        warnings = domain.check_repetition_warnings(end=end)
         assert len(warnings) == 1
         assert "2020-01-01" in warnings[0]
 
     def test_end_date_in_future_no_warn(self) -> None:
         """End date in future -> no warning."""
         domain = _domain()
-        task = _make_task()
         end = EndByDate(date=date(2099, 12, 31))
-        warnings = domain.check_repetition_warnings(end=end, task=task)
+        warnings = domain.check_repetition_warnings(end=end)
         assert warnings == []
 
     def test_no_end_no_warn(self) -> None:
         """No end condition -> no warning."""
         domain = _domain()
-        task = _make_task()
-        warnings = domain.check_repetition_warnings(end=None, task=task)
-        assert warnings == []
-
-    def test_available_task_no_warn(self) -> None:
-        """Available task -> no status warning."""
-        domain = _domain()
-        task = _make_task(availability="available")
-        warnings = domain.check_repetition_warnings(end=None, task=task)
+        warnings = domain.check_repetition_warnings(end=None)
         assert warnings == []
 
 
