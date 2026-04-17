@@ -61,7 +61,7 @@ Carried forward from v1.4:
 9. Add path field for hierarchical entities (models)
 10. Fix OrdinalWeekdaySpec -> OrdinalWeekday cross-layer coercion in edit pipeline (service)
 11. Golden master re-capture required after Phase 42 mapper rewrites (human-only per GOLD-01)
-12. Publish on PyPI and set up automated releases (tooling)
+12. Submit OmniFocus Operator to MCP registries — Smithery, mcp.so, Anthropic server list (tooling) — gated on landing page refresh
 13. Track upstream Claude Code CLI fix for MCP progress-notification stdio teardown (issues #47378/#47765) — root-caused 2026-04-17; progress emission disabled via `PROGRESS_NOTIFICATIONS_ENABLED=False` pending upstream fix
 
 ### Roadmap Evolution
