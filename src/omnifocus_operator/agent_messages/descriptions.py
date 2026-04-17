@@ -694,12 +694,9 @@ Examples (repetitionRule):
   Clear: null
 
 actions.move: one key (ending/beginning with '$inbox'/name/ID, or before/after).
-actions.lifecycle: "complete" or "drop". Repeating tasks: current
-occurrence only; next occurrence auto-created. Cannot drop an entire
-repeating sequence.
+actions.lifecycle: "complete" or "drop". Repeating tasks: current occurrence only; next occurrence auto-created. Cannot drop an entire repeating sequence.
 actions.tags: replace (standalone) or add/remove (combinable).
-actions.note: append adds text (blank-line separator; "" is a no-op).
-replace sets new content (null or "" clears). Modes are exclusive.
+actions.note: append or replace content (mutually exclusive)
 
 {_BATCH_CROSS_ITEM_NOTE}
 
