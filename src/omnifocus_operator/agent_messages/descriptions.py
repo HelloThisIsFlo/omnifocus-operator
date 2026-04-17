@@ -578,18 +578,20 @@ repetitionRule partial updates:
   - No existing rule: all root fields required (frequency, schedule, basedOn).
   - Has existing rule: omitted root fields preserved.
   - Same type: sub-fields preserved. Different type: full replacement.
+  - frequency.type omittable (inferred) unless changing type.
   - on/onDates mutually exclusive. null clears the rule.
 
 Examples (repetitionRule):
   Change interval: {{frequency: {{interval: 5}}}}
   Add days: {{frequency: {{onDays: ["MO", "WE", "FR"]}}}}
+  Remove days: {{frequency: {{onDays: null}}}}
   Change type: {{frequency: {{type: "weekly", onDays: ["MO", "FR"]}}}}
   Clear: null
 
 actions.move: one key (ending/beginning with '$inbox'/name/ID, or before/after).
 actions.lifecycle: "complete" or "drop". Repeating tasks: current occurrence only; next occurrence auto-created. Cannot drop an entire repeating sequence.
 actions.tags: replace (standalone) or add/remove (combinable).
-actions.note: append or replace content (mutually exclusive)
+actions.note: append or replace content (mutually exclusive).
 
 {_BATCH_CROSS_ITEM_NOTE}
 
