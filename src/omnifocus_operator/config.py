@@ -19,13 +19,23 @@ DEFAULT_LIST_LIMIT: int = 50
 MAX_BATCH_SIZE: int = 50
 
 # Minimum batch size to emit MCP progress notifications from write tools.
-# Below this threshold the handlers skip progress entirely. Rationale: for
-# fast (<100ms) batches the post-loop notification races the response over
-# stdin; the response wins, the client reaps the progressToken callback, and
-# the late progress notification arrives as an "unknown token" -- enough of
-# those and the client closes the transport. Large batches (>= threshold)
-# still emit intermediate progress since there is real bridge work between
-# each notification and the response.
+# Below this threshold the handlers skip progress entirely.
+#
+# Observed symptom: Claude Code's MCP client rejects every progress
+# notification the server emits with "unknown progressToken" -- even though
+# the client itself put that token in the request's _meta.progressToken.
+# After N such rejections, the client closes the stdio transport, breaking
+# every subsequent tool call in the session.
+#
+# Precise client-side mechanism NOT verified. It could be that Claude Code
+# doesn't register a callback for the tokens it sends, or that it cleans them
+# up too eagerly relative to when notifications get dispatched. We can't tell
+# from the outside without reading the client source. What we CAN verify:
+# fewer emitted notifications -> sessions stay alive longer.
+#
+# Chosen threshold: single-item calls (the dominant UAT/agent pattern) emit
+# zero progress and have zero strike exposure. Larger batches still emit
+# intermediate progress since they run long enough for progress UX to matter.
 PROGRESS_NOTIFICATION_MIN_BATCH_SIZE: int = 3
 
 # -- Fuzzy matching (used by DomainLogic.suggest_close_matches) ---------------

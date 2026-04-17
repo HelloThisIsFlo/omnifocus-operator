@@ -2496,26 +2496,33 @@ class TestBatchCrossItemDocumentation:
 
 
 # ---------------------------------------------------------------------------
-# Regression: MCP progress-notification race with response over stdio
+# Regression: bounded progress-notification emission from write tools
 # ---------------------------------------------------------------------------
 
 
-class TestProgressNotificationRaceCondition:
-    """Progress notifications must not race the response on fast write calls.
+class TestProgressNotificationEmission:
+    """Write tools must emit a bounded number of progress notifications.
 
-    Root cause: ``ctx.report_progress(progress=total, total=total)`` fired
-    right before ``return`` shares stdio with the response. For sub-second
-    batches the response wins the race; the client reaps the progressToken
-    callback before the late progress notification arrives, then logs
-    "unknown progressToken" warnings. Enough of those and the client closes
-    the transport -- breaking every subsequent tool call in the session.
+    Observed symptom (not a verified root cause): Claude Code's MCP client
+    rejects the server's progress notifications with "unknown progressToken"
+    warnings -- even though the tokens in question are ones the client
+    itself put in the request's ``_meta.progressToken``. After N rejections,
+    the client closes the stdio transport, breaking every subsequent tool
+    call in the session.
 
-    Mitigations (both tested here):
-      1. Skip progress entirely for batches smaller than
-         ``PROGRESS_NOTIFICATION_MIN_BATCH_SIZE`` (fast path -- no race exposure).
-      2. For larger batches, emit per-item progress but NEVER the post-loop
-         ``progress=total`` notification (it has no bridge work after it, so
-         it always races the response).
+    We don't know the exact client-side cause from the outside. It could be
+    missing callback registration on the client, or over-eager cleanup on
+    response arrival, or something else. What IS verified: reducing the
+    number of emitted progress notifications keeps sessions alive.
+
+    Empirically, the post-loop ``progress=total`` notification is the most
+    frequently rejected one (possibly because it fires right before return,
+    with no work between it and the response). So this test class locks in
+    two rules:
+
+      1. Below ``PROGRESS_NOTIFICATION_MIN_BATCH_SIZE``: skip progress entirely.
+      2. At/above threshold: intermediate per-item progress allowed, but the
+         post-loop ``progress=total`` notification is never emitted.
     """
 
     async def test_add_tasks_single_item_emits_no_progress(self, client: Any) -> None:
@@ -2556,9 +2563,9 @@ class TestProgressNotificationRaceCondition:
     ) -> None:
         """At/above threshold: intermediate progress allowed, final progress=total never emitted.
 
-        The post-loop ``progress=total`` notification is the one that always races
-        the response (no bridge work between it and return). In-loop notifications
-        have real bridge work after them and arrive at the client in time.
+        The post-loop ``progress=total`` is empirically the most frequently
+        rejected notification. Exact cause on the client side not verified --
+        see class docstring.
         """
         events: list[tuple[float, float | None, str | None]] = []
 
@@ -2572,12 +2579,12 @@ class TestProgressNotificationRaceCondition:
             progress_handler=collect,
         )
         assert len(result.structured_content["result"]) == 3
-        # No event should have progress == total (that's the race-prone final one)
+        # No event should have progress == total (that's the completion notification we skip)
         for progress, total, _message in events:
             assert total is not None
             assert progress < total, (
                 f"Unexpected final progress=total notification (progress={progress}, "
-                f"total={total}) -- this races the response over stdio"
+                f"total={total}) -- we deliberately skip this one"
             )
 
     async def test_edit_tasks_batch_emits_no_final_completion_notification(
@@ -2606,5 +2613,5 @@ class TestProgressNotificationRaceCondition:
             assert total is not None
             assert progress < total, (
                 f"Unexpected final progress=total notification (progress={progress}, "
-                f"total={total}) -- this races the response over stdio"
+                f"total={total}) -- we deliberately skip this one"
             )

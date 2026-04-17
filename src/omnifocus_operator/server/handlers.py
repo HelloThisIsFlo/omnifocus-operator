@@ -132,9 +132,11 @@ def _register_tools(mcp: FastMCP) -> None:
     ) -> list[AddTaskResult]:
         service: OperatorService = ctx.lifespan_context["service"]
         total = len(items)
-        # Below threshold, sub-second batches race the response over stdio -- skip
-        # progress entirely to avoid "unknown progressToken" errors closing the
-        # transport. See PROGRESS_NOTIFICATION_MIN_BATCH_SIZE in config.py.
+        # Skip progress for small batches. Claude Code's MCP client rejects
+        # our progress notifications with "unknown progressToken" (even tokens
+        # it included in the request) and eventually closes the transport.
+        # Exact client-side cause not verified -- see config.py for the
+        # diagnosis. Fewer notifications = sessions stay alive.
         should_emit_progress = total >= PROGRESS_NOTIFICATION_MIN_BATCH_SIZE
         results: list[AddTaskResult] = []
         for i, command in enumerate(items):
@@ -150,9 +152,11 @@ def _register_tools(mcp: FastMCP) -> None:
                         error=f"Task {i + 1}: {e}",
                     )
                 )
-        # Skipping final progress=total notification: it always races the
-        # response over stdio (no work between it and return), so the client
-        # reaps the progressToken before the notification arrives.
+        # Deliberately not emitting a final progress=total notification.
+        # Empirically this is the most frequently-rejected one (fires right
+        # before return, no bridge work after it). Exact client-side reason
+        # not verified -- see config.py. Whatever the mechanism, omitting this
+        # notification keeps the strike count down.
         return results
 
     @mcp.tool(
@@ -167,9 +171,11 @@ def _register_tools(mcp: FastMCP) -> None:
     ) -> list[EditTaskResult]:
         service: OperatorService = ctx.lifespan_context["service"]
         total = len(items)
-        # Below threshold, sub-second batches race the response over stdio -- skip
-        # progress entirely to avoid "unknown progressToken" errors closing the
-        # transport. See PROGRESS_NOTIFICATION_MIN_BATCH_SIZE in config.py.
+        # Skip progress for small batches. Claude Code's MCP client rejects
+        # our progress notifications with "unknown progressToken" (even tokens
+        # it included in the request) and eventually closes the transport.
+        # Exact client-side cause not verified -- see config.py for the
+        # diagnosis. Fewer notifications = sessions stay alive.
         should_emit_progress = total >= PROGRESS_NOTIFICATION_MIN_BATCH_SIZE
         results: list[EditTaskResult] = []
         failed_idx: int | None = None
@@ -197,9 +203,11 @@ def _register_tools(mcp: FastMCP) -> None:
                         error=f"Task {i + 1}: {e}",
                     )
                 )
-        # Skipping final progress=total notification: it always races the
-        # response over stdio (no work between it and return), so the client
-        # reaps the progressToken before the notification arrives.
+        # Deliberately not emitting a final progress=total notification.
+        # Empirically this is the most frequently-rejected one (fires right
+        # before return, no bridge work after it). Exact client-side reason
+        # not verified -- see config.py. Whatever the mechanism, omitting this
+        # notification keeps the strike count down.
         return results
 
     @mcp.tool(
