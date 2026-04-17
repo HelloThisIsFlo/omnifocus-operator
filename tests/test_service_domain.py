@@ -2479,7 +2479,7 @@ class TestProcessNoteAction:
             actions=EditTaskActions(note=NoteAction(append="added")),
         )
         value, skip, warns = domain.process_note_action(cmd, task)
-        assert value == "existing content\n\nadded"
+        assert value == "existing content\nadded"
         assert skip is False
         assert warns == []
 

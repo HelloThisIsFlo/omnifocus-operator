@@ -281,10 +281,10 @@ MOVE_AFTER = "Sibling task to position relative to (task name/ID). Parent contai
 NOTE_ACTION_DOC = """\
 Note operations for task editing.
 
-Either ``append`` (add text with blank-line separator) or ``replace`` (set entire note content). The two modes are mutually exclusive."""
+Either ``append`` (add text on a new line) or ``replace`` (set entire note content). The two modes are mutually exclusive."""
 
 NOTE_ACTION_APPEND = """\
-Text to append to the existing note. Joined with a blank-line (\\n\\n) separator. If the note is empty or whitespace-only, the text is set directly (no leading separator). Pass an empty string for a no-op."""
+Text to append to the existing note. Joined with a newline (\\n) separator; prepend your own \\n for a blank-line break. If the note is empty or whitespace-only, the text is set directly (no leading separator). Whitespace-only or empty text is a no-op (OmniFocus trims whitespace on write)."""
 
 NOTE_ACTION_REPLACE = """\
 Replace the entire note with this content. Pass null or '' to clear the note."""

@@ -573,7 +573,7 @@ class DomainLogic:
             if existing_stripped == "":
                 return append_text, False, warnings
             # Normal concatenation
-            return existing + "\n\n" + append_text, False, warnings
+            return existing + "\n" + append_text, False, warnings
 
         # Replace branch (NoteAction validator guarantees either append or replace is set)
         replace_val = note_action.replace
