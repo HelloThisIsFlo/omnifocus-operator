@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: UI & Perspectives
 status: planning
-stopped_at: v1.4 milestone archived — start v1.5 with /gsd-new-milestone
-last_updated: "2026-04-17T00:00:00.000Z"
+stopped_at: Milestone v1.4 summary generated (.planning/reports/MILESTONE_SUMMARY-v1.4.md)
+last_updated: "2026-04-17T21:00:00.000Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 0
@@ -78,5 +78,5 @@ _(cleared — v1.4 quick tasks archived to milestones/v1.4-ROADMAP.md)_
 
 ## Session Continuity
 
-Last activity: 2026-04-17 — v1.4 milestone archived and tagged
-Stopped at: Milestone complete — ready for /gsd-new-milestone
+Last activity: 2026-04-17 — v1.4 milestone summary generated for onboarding
+Stopped at: Milestone summary at .planning/reports/MILESTONE_SUMMARY-v1.4.md — ready for /gsd-new-milestone
