@@ -64,6 +64,7 @@ Carried forward from v1.3.3:
 11. Golden master re-capture required after Phase 42 mapper rewrites (human-only per GOLD-01)
 12. Publish on PyPI and set up automated releases (tooling)
 13. Compute true inherited fields by walking parent hierarchy (service)
+14. Strip batch result items in add_tasks and edit_tasks (server) — surfaced by v1.4 audit
 
 ### Roadmap Evolution
 
