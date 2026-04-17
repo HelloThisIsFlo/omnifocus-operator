@@ -61,7 +61,8 @@ TAG_NOT_ON_TASK = "Tag '{display}' ({tag_id}) is not on this task"
 # --- Note ---
 
 NOTE_APPEND_EMPTY = (
-    "Empty append is a no-op -- omit actions.note.append to skip, or pass non-empty text to append."
+    "Empty or whitespace-only append is a no-op (OmniFocus normalizes whitespace to empty) -- "
+    "omit actions.note.append to skip, or pass non-whitespace text to append."
 )
 
 NOTE_REPLACE_ALREADY_CONTENT = "Note already has this content -- omit actions.note.replace to skip."

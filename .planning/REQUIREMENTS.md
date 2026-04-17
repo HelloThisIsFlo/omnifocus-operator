@@ -70,7 +70,8 @@ Each inherited field uses a specific aggregation strategy when walking the ances
 ### Notes Graduation
 
 - [ ] **NOTE-01**: Top-level note removed from edit_tasks input schema
-- [ ] **NOTE-02**: actions.note.append (Patch[str] — null rejected, "" is no-op) adds text with \n\n paragraph separator
+- [ ] **NOTE-02**: actions.note.append (Patch[str] — null rejected, ~~`""` is no-op~~ `""` or whitespace-only is no-op) adds text with \n\n paragraph separator
+  - *Revised 2026-04-17 (UAT Phase 55):* OmniFocus normalizes whitespace-only notes to empty and trims trailing whitespace on write (verified via OmniJS — `"   "` stored as `""`, `"Existing\n\n   "` stored as `"Existing"`). `append="   "` was previously classified as a real change but was silently no-op'd by OmniFocus, giving agents no feedback. Now treated as an N1 no-op with `NOTE_APPEND_EMPTY` warning to match observable behavior.
 - [ ] **NOTE-03**: actions.note.replace (PatchOrClear[str] — null and "" both clear the note) replaces entire note content
 - [ ] **NOTE-04**: Append on empty/whitespace-only note sets directly (no leading separator)
 - [ ] **NOTE-05**: add_tasks retains top-level note field for initial content

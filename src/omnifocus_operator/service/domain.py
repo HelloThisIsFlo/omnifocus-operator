@@ -540,11 +540,14 @@ class DomainLogic:
         - str  => send this string to the bridge (empty string clears the note)
         - skip => True when the whole note operation is a no-op
 
-        D-04 N1: empty append -> no-op with NOTE_APPEND_EMPTY warning
+        D-04 N1: empty OR whitespace-only append -> no-op with NOTE_APPEND_EMPTY warning.
+            OmniFocus normalizes whitespace-only notes to empty and trims trailing
+            whitespace on write (verified via OmniJS UAT Phase 55), so a whitespace-only
+            append is invisible to the user end-to-end. Treating it as N1 matches
+            observable behavior and gives agents helpful feedback.
         D-05 N2: identical replace -> no-op with NOTE_REPLACE_ALREADY_CONTENT
         D-06 N3: clear on already-empty note -> no-op with NOTE_ALREADY_EMPTY
         D-08/D-09: strip-and-check; whitespace-only existing note treated as empty
-        D-07: append that duplicates existing content is a REAL change, not a no-op
         """
         warnings: list[str] = []
 
@@ -562,8 +565,8 @@ class DomainLogic:
         # Append branch
         if is_set(note_action.append):
             append_text = note_action.append
-            # N1: empty append -> no-op
-            if append_text == "":
+            # N1: empty or whitespace-only append -> no-op (see docstring D-04)
+            if append_text.strip() == "":
                 warnings.append(NOTE_APPEND_EMPTY)
                 return UNSET, True, warnings
             # NOTE-04 / D-09: empty or whitespace-only note -> set directly (no separator)

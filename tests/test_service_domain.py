@@ -2526,9 +2526,12 @@ class TestProcessNoteAction:
         assert skip is True
         assert warns == [NOTE_APPEND_EMPTY]
 
-    # Branch 7 — whitespace-only append is NOT a no-op (pitfall 4)
-    def test_append_whitespace_only_is_not_noop(self) -> None:
-        """Whitespace-only append text is a real change — only empty string is N1."""
+    # Branch 7 — whitespace-only append is an N1 no-op (matches OmniFocus normalization)
+    def test_append_whitespace_only_is_noop_with_n1_warning(self) -> None:
+        """Whitespace-only append fires N1. OmniFocus normalizes whitespace-only
+        notes to empty and trims trailing whitespace on write (verified via OmniJS
+        UAT Phase 55), so a whitespace-only append is invisible end-to-end.
+        Classifying as N1 gives the agent a helpful warning matching observable behavior."""
         domain = _domain()
         task = self._task_with_note("existing")
         cmd = EditTaskCommand(
@@ -2536,9 +2539,9 @@ class TestProcessNoteAction:
             actions=EditTaskActions(note=NoteAction(append="   ")),
         )
         value, skip, warns = domain.process_note_action(cmd, task)
-        assert value == "existing\n\n   "
-        assert skip is False
-        assert warns == []
+        assert isinstance(value, _Unset)
+        assert skip is True
+        assert warns == [NOTE_APPEND_EMPTY]
 
     # Branch 8 — replace with new content
     def test_replace_with_new_content_sets_note(self) -> None:
@@ -2648,9 +2651,9 @@ class TestProcessNoteAction:
         assert skip is True
         assert warns == [NOTE_ALREADY_EMPTY]
 
-    # Branch 16 — D-07 + D-09 combined (whitespace append on whitespace-only existing)
-    def test_append_whitespace_only_on_whitespace_only_note_sets_directly(self) -> None:
-        """Whitespace append is real (D-07); whitespace existing strips to empty (D-09)."""
+    # Branch 16 — whitespace-only append fires N1 regardless of existing note state
+    def test_append_whitespace_only_on_whitespace_only_note_is_n1_noop(self) -> None:
+        """N1 fires on whitespace-only append text before we check existing-note state."""
         domain = _domain()
         task = self._task_with_note("   \n\t")
         cmd = EditTaskCommand(
@@ -2658,6 +2661,6 @@ class TestProcessNoteAction:
             actions=EditTaskActions(note=NoteAction(append="   ")),
         )
         value, skip, warns = domain.process_note_action(cmd, task)
-        assert value == "   "
-        assert skip is False
-        assert warns == []
+        assert isinstance(value, _Unset)
+        assert skip is True
+        assert warns == [NOTE_APPEND_EMPTY]
