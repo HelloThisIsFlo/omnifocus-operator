@@ -2500,19 +2500,6 @@ class TestProcessNoteAction:
         assert skip is False
         assert warns == []
 
-    # Branch 4 — append on empty string
-    def test_append_on_empty_string_note_sets_directly(self) -> None:
-        domain = _domain()
-        task = self._task_with_note("")
-        cmd = EditTaskCommand(
-            id="t1",
-            actions=EditTaskActions(note=NoteAction(append="first text")),
-        )
-        value, skip, warns = domain.process_note_action(cmd, task)
-        assert value == "first text"
-        assert skip is False
-        assert warns == []
-
     # Branch 5 — append on whitespace-only (NOTE-04 / D-09)
     def test_append_on_whitespace_only_note_discards_whitespace(self) -> None:
         domain = _domain()
@@ -2646,3 +2633,31 @@ class TestProcessNoteAction:
         assert isinstance(value, _Unset)
         assert skip is True
         assert warns == [NOTE_ALREADY_EMPTY]
+
+    # Branch 15 — D-08 strip works for empty-string clear too (symmetric with Branch 14)
+    def test_replace_empty_string_on_whitespace_only_note_is_n3(self) -> None:
+        """Both replace=None and replace="" trigger clearing; D-08 strips either way."""
+        domain = _domain()
+        task = self._task_with_note("   \n\t")
+        cmd = EditTaskCommand(
+            id="t1",
+            actions=EditTaskActions(note=NoteAction(replace="")),
+        )
+        value, skip, warns = domain.process_note_action(cmd, task)
+        assert isinstance(value, _Unset)
+        assert skip is True
+        assert warns == [NOTE_ALREADY_EMPTY]
+
+    # Branch 16 — D-07 + D-09 combined (whitespace append on whitespace-only existing)
+    def test_append_whitespace_only_on_whitespace_only_note_sets_directly(self) -> None:
+        """Whitespace append is real (D-07); whitespace existing strips to empty (D-09)."""
+        domain = _domain()
+        task = self._task_with_note("   \n\t")
+        cmd = EditTaskCommand(
+            id="t1",
+            actions=EditTaskActions(note=NoteAction(append="   ")),
+        )
+        value, skip, warns = domain.process_note_action(cmd, task)
+        assert value == "   "
+        assert skip is False
+        assert warns == []
