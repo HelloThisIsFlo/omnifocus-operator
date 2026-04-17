@@ -471,6 +471,52 @@
 
 ---
 
+## Milestone: v1.4 — Response Shaping & Batch Processing
+
+**Shipped:** 2026-04-17
+**Phases:** 4 (53, 53.1, 54, 55) | **Plans:** 15 executed
+
+### What Was Built
+- Universal response stripping (null, `[]`, `""`, `false`, `"none"`) via `strip_entity` / `strip_batch_results` in `server/projection.py`; field groups centralized in `config.py`
+- `effective*` → `inherited*` rename across 6 field pairs; `server.py` → `server/` package with dedicated `projection.py`
+- Field selection via `include` (semantic groups) and `only` (individual fields) on list tools; count-only via `limit: 0`
+- True inheritance walk (Phase 53.1, INSERTED): `_walk_one` computes per-field aggregated values from ancestor chain with strategy constants (min/max/first-found/any-True)
+- Batch processing: add_tasks best-effort + edit_tasks fail-fast, up to 50 items, flat result array with status/id/name/error/warnings; `strip_batch_results` closes stripping asymmetry
+- Notes graduation: `actions.note.append`/`actions.note.replace` with 3 no-op warnings; top-level note removed from edit_tasks input schema
+
+### What Worked
+- **Phase 53.1 insertion was clean**: discovered during Phase 53 UAT that OmniFocus `inherited*` fields were self-echoes, not true inherited values. Decimal insertion pattern handled it without roadmap disruption — 4 plans, done in 2 days
+- **Quick task 260417-oiw**: batch stripping asymmetry caught during audit and fixed same-day as a quick task, then promoted to STRIP-04/BATCH-10 requirements. Two commits, live-verified via UAT
+- **Empirical inheritance research paid off**: `.research/deep-dives/omnifocus-inheritance-semantics/` proved min/max/first-found/any-True semantics before implementation — zero surprises in `_walk_one`
+- **NoteAction mirrors TagAction exactly**: zero design uncertainty — same model_validator, same constant-family, same placement. Pattern composability pays compound dividends
+- **Audit-driven workflow closed real gaps**: v1.4 audit found batch stripping asymmetry, NOTE-02 drift, and 32 stale checkboxes — all fixed same-day before archive
+
+### What Was Inefficient
+- **SUMMARY `one_liner` quality still poor**: gsd-tools extracted code review lint notes as "accomplishments" at archival, requiring full manual MILESTONES.md rewrite. Worth 30 seconds per plan to write a clean one-liner
+- **Phase 53.1 was a surprise insertion**: original Phase 53 scope covered inherited* fields but didn't account for OmniFocus self-echo behavior. Deeper pre-milestone research would have surfaced this
+- **MCP progress-notification bug latency**: C-3 had been present since v1.2.2 (`ctx.report_progress()` was added then). An empirical threshold mitigation was shipped in v1.4; the root cause investigation only happened during the audit. Should have been investigated when the mitigation was first needed
+
+### Patterns Established
+- `_is_strip_value` helper: `isinstance(v, (list, dict))` check before frozenset for unhashable types
+- `ancestor_vals` dict for inheritance walk: tracks actual computed values (dates/bools), not presence booleans; built bottom-up from root, overwritten per strategy
+- Strategy constants as frozensets (`_MIN_FIELDS`, `_MAX_FIELDS`, `_FIRST_FOUND_FIELDS`) for O(1) aggregation dispatch
+- `NoteAction` mirrors `TagAction`: actions block follows consistent model_validator + constant-family pattern — new action types have a clear template
+- `strip_batch_results`: sibling to `strip_entity` — same STRIP_VALUES rules, but `status` always preserved (required Literal, never matches strip set)
+
+### Key Lessons
+1. **Audit as quality gate works** — v1.4 audit found STRIP-04, NOTE-02 drift, and 32 stale checkboxes in one day. Zero post-ship surprises. The formalized audit step is worth it
+2. **Quick tasks beat scope creep** — batch stripping asymmetry could have derailed the milestone close; instead it was captured, shipped in 2 commits, and promoted to requirements. The pattern is reusable
+3. **Empirical research prevents silent wrong behavior** — without the OmniFocus inheritance semantics deep-dive, `_walk_one` would have silently shipped wrong date aggregation (e.g., max for due dates instead of min)
+4. **SUMMARY `one_liner` quality matters at archival** — noisy auto-extraction forces manual rewrite. 30 seconds per plan during execution saves 20 minutes at archival
+5. **Known-unresolved bugs need explicit acknowledgment** — C-3 (progress notification disconnect) had a threshold-tweak "mitigation" since v1.2.2 but was never root-caused. Making it explicit in the audit forced proper investigation and a principled fix (flag-gated disablement)
+
+### Cost Observations
+- Model mix: ~70% opus (research, planning, Phase 53.1), ~30% sonnet (execution, validation)
+- Sessions: ~8-10 across 6 days
+- Notable: 186 commits, 15 plans, 1 unplanned decimal insertion (53.1) that added 4 plans with zero disruption. Quick task 260417-oiw shipped in 2 commits and was live-verified via MCP UAT.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -487,6 +533,7 @@
 | v1.3.1 | 6 | 15 | Cleanest feature milestone -- 1 insertion, 3-day execution, null elimination across all surfaces |
 | v1.3.2 | 6 | 23 | Deep-dive driven milestone -- 3→6 phases from research, naive-local contract, OmniFocus settings API |
 | v1.3.3 | 2 | 4 | Smallest milestone -- 1-day execution, CTE infrastructure enabled move fix, UAT-driven requirement revision |
+| v1.4 | 4 (+1 inserted) | 15 | Response shaping milestone -- decimal insertion (53.1) for true inheritance, audit closed 32 stale checkboxes + batch stripping gap |
 
 ### Cumulative Quality
 
@@ -502,6 +549,7 @@
 | v1.3.1 | 1,719 (1,693 pytest + 26 vitest) | ~98% | 2 (golden master re-capture, SUMMARY frontmatter gaps) |
 | v1.3.2 | 1,977 (1,951 pytest + 26 vitest) | ~94% | 1 (pre-existing TODO(v1.5) in descriptions.py) |
 | v1.3.3 | 2,067 (2,041 pytest + 26 vitest) | ~94% | 2 (pre-existing TODO(v1.5), no direct repo tests for get_edge_child_id) |
+| v1.4 | 2,193 (2,167 pytest + 26 vitest) | ~97% | 2 (pre-existing Phase 30 TODO in handlers.py; MCP progress-notification upstream regression #47378) |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -519,3 +567,5 @@
 12. Cross-path equivalence as hard requirement catches real divergence (established v1.3 -- 32 parametrized tests, mandatory for new filters)
 13. Cross-path equivalence tests pay compound dividends during rewrites (verified v1.3.1 -- Phase 42 mapper rewrites caught 3 regressions)
 14. Manual requirement checkboxes drift systemically; automated enforcement works (verified across all milestones -- consider dropping checkboxes)
+15. Audit as quality gate catches real gaps that slipped through phase verification (established v1.4 -- batch stripping asymmetry + NOTE-02 drift found and closed same-day)
+16. Known-unresolved bugs need explicit acknowledgment, not threshold tweaks (established v1.4 -- C-3 mitigation was present 2 milestones before root-cause investigation happened)

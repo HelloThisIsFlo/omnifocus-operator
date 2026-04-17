@@ -1,5 +1,28 @@
 # Milestones
 
+## v1.4 Response Shaping & Batch Processing (Shipped: 2026-04-17)
+
+**Phases completed:** 4 phases (53, 53.1, 54, 55), 15 plans
+**Requirements:** 41/41 satisfied
+**Tests:** 2,167 pytest at milestone completion (up from 2,086)
+**Timeline:** 6 days (2026-04-12 → 2026-04-17) | 186 commits
+**LOC:** ~12,438 Python (src/)
+**Git range:** v1.3.3..v1.4
+
+**Key accomplishments:**
+
+1. Universal response stripping — null, `[]`, `""`, `false`, `"none"` stripped from all entity fields automatically; `availability` and envelope fields (`hasMore`/`total`/`status`) always preserved; `server.py` → `server/` package with dedicated `projection.py`
+2. `effective*` → `inherited*` rename across all 6 field pairs in all tool responses; `include`/`only` field selection on list tools; `limit: 0` count-only mode
+3. True inheritance walk — `inherited*` fields computed from genuine ancestor chain with per-field aggregation (min due, max defer, first-found planned/drop/completion, any-True flagged); projects structurally excluded via model surgery
+4. Batch processing — add_tasks best-effort + edit_tasks fail-fast, up to 50 items per call; flat result array with `status`/`id`/`name`/`error`/`warnings` per item; batch result stripping via `strip_batch_results`
+5. Notes graduation — `actions.note.append`/`actions.note.replace` in edit_tasks; `\n` separator; whitespace-only N1 no-op; top-level `note` removed from edit_tasks input schema
+
+**Delivered:** Agents receive clean, minimal responses by default. Multi-item writes in a single call. Full note editing with semantic actions. Genuine inherited field values from ancestor hierarchy.
+
+**Tech debt at close:** Pre-existing Phase 30 TODO in handlers.py (unrelated carry-over). MCP progress-notification transport disconnect root-caused as Claude Code CLI 2.1.105+ regression — progress notifications disabled server-side via `PROGRESS_NOTIFICATIONS_ENABLED=False` pending upstream fix (#47378).
+
+---
+
 ## v1.3.3 Ordering & Move Fix (Shipped: 2026-04-12)
 
 **Phases completed:** 2 phases, 4 plans, 6 tasks

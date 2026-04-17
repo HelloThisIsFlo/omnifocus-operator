@@ -8,18 +8,6 @@ A Python MCP server that exposes OmniFocus (macOS task manager) as structured ta
 
 Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
 
-## Current Milestone: v1.4 Response Shaping, Batch Processing & Notes Graduation
-
-**Goal:** Give agents control over response shape and lift write constraints — reduce token waste via stripping/projection, enable multi-item writes, graduate notes to actions block.
-
-**Target features:**
-- Universal response stripping (null, [], "", false, "none") on all entity fields
-- Inherited field rename (effective* → inherited*) across all tools
-- Field selection on list tools — `include` (semantic groups) and `only` (individual fields)
-- Count-only mode via `limit: 0`
-- Batch processing for add_tasks/edit_tasks (up to 50 items)
-- Notes graduation to `actions.note` block (append/replace semantics)
-
 ## Requirements
 
 ### Validated
@@ -120,7 +108,6 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 ### Active
 
-- [ ] Response shaping, batch processing, notes graduation (v1.4)
 - [ ] UI & Perspectives — show/get perspective, open_task, live UI reads (v1.5)
 - [ ] Production hardening — retry, crash recovery, serial execution (v1.6)
 - [ ] Project writes — add_projects, edit_projects (v1.7)
@@ -146,13 +133,17 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 ## Context
 
-Shipped v1.3.3 with ~11,600 LOC Python (src/), ~215k LOC JS (bridge + deps), ~28k TS (tests).
+Shipped v1.4 with ~12,438 LOC Python (src/), ~215k LOC JS (bridge + deps), ~28k TS (tests).
 Tech stack: Python 3.12, uv, Pydantic v2, FastMCP v3 (`fastmcp>=3.1.1`), pydantic-settings, OmniJS bridge, SQLite3 (stdlib).
-2,147 pytest tests, 26 Vitest tests, UAT passed on all phases.
+2,167 pytest tests, 26 Vitest tests, UAT passed on all phases.
 Real OmniFocus database: ~2,400 tasks, ~363 projects, ~64 tags, ~79 folders.
 Read path: SQLite (default, ~46ms for full snapshot, <6ms for filtered queries). Write path: OmniJS bridge with write-through guarantee.
 11 MCP tools: get_all, get_task, get_project, get_tag, add_tasks, edit_tasks, list_tasks, list_projects, list_tags, list_folders, list_perspectives.
-Architecture: service/ package (Resolver, DomainLogic, PayloadBuilder, orchestrator + read pipelines), contracts/ package (per-use-case packages: list/, add/, edit/), tests/doubles/ (InMemoryBridge, StubBridge, SimulatorBridge).
+Architecture: service/ package (Resolver, DomainLogic, PayloadBuilder, orchestrator + read pipelines), contracts/ package (per-use-case packages: list/, add/, edit/), server/ package (handlers, lifespan, projection), tests/doubles/ (InMemoryBridge, StubBridge, SimulatorBridge).
+Response shaping: universal null/empty/false stripping via projection.py; field groups (notes/metadata/hierarchy/time/*) in config.py; include/only on list tools; count-only via limit:0.
+Inherited fields: 6 inherited* fields (dueDate, deferDate, plannedDate, flagged, dropDate, completionDate) on Task only; computed from ancestor chain with per-field aggregation (min/max/first-found/any-True).
+Batch writes: add_tasks best-effort (up to 50), edit_tasks fail-fast (up to 50); per-item status/id/name/error/warnings; batch result stripping via strip_batch_results.
+Note editing: actions.note.append (\\n separator, whitespace-only no-op) / actions.note.replace on edit_tasks; top-level note on add_tasks only.
 Query infrastructure: typed query models → service resolution cascade → parameterized SQL builder → repository → ListResult[T] with total_count and warnings.
 Date filtering: 7-dimension date filters with discriminated union (ThisPeriod, LastPeriod, NextPeriod, AbsoluteRange), calendar-aware arithmetic, naive-local datetime contract.
 OmniFocus preferences: OmniFocusPreferences module reads user settings via OmniJS `settings.objectForKey()`, lazy-loaded with factory-default fallback.
@@ -162,6 +153,7 @@ Golden master: 43 scenarios in 7 categories, contract tests verify InMemoryBridg
 Logging: ToolLoggingMiddleware + ValidationReformatterMiddleware for automatic tool call logging and error formatting, dual-handler (stderr + rotating file) under `omnifocus_operator.*` namespace.
 System locations: `$inbox` system location with `$` prefix namespace, three-step resolver cascade (system location → ID → name). All output refs enriched to `{id, name}` objects.
 Patch semantics: all write fields and list query filters use `Patch[T]` — null eliminated from agent-facing schemas everywhere.
+Known upstream issue: MCP progress-notification transport disconnect (Claude Code CLI 2.1.105+ regression, #47378) — progress notifications disabled via `PROGRESS_NOTIFICATIONS_ENABLED=False` in config.py pending upstream fix.
 
 ## Constraints
 
@@ -237,6 +229,11 @@ Patch semantics: all write fields and list query filters use `Patch[T]` — null
 | Always-translate move pattern | `_process_container_move` always translates beginning/ending to before/after when container has children. No same-vs-different branching | ✓ Good — v1.3.3, simpler code path, fixes OmniFocus API quirk |
 | Move translation in domain.py | Translation lives in domain.py per architecture litmus test — product decision to fix OmniFocus API limitation, not universal plumbing | ✓ Good — v1.3.3, correct layer placement |
 | Position-specific no-op via self-reference | `anchor_id == task_id` detects no-op after translation. MOVE_ALREADY_AT_POSITION with `{position}` placeholder shows "already at beginning/ending" | ✓ Good — v1.3.3, actionable agent guidance |
+| `_is_strip_value` helper for STRIP_VALUES | `frozenset` can't contain `list` (unhashable). Pure `isinstance` check before frozenset lookup. `projection.py` is pure dict-transform on `model_dump(by_alias=True)` output | ✓ Good — v1.4, server-only concern, zero model coupling |
+| `ancestor_vals` dict for inheritance walk | Tracks actual computed values (dates/bools), not presence booleans. Strategy constants (`_MIN_FIELDS`, `_MAX_FIELDS`, `_FIRST_FOUND_FIELDS`) as frozensets for O(1) lookup | ✓ Good — v1.4, explicit per-field semantics, matches OmniFocus empirical behavior |
+| NoteAction mirrors TagAction exactly | Same file, same `model_validator`, same constant-family style. Exclusivity validator prevents append+replace in same call | ✓ Good — v1.4, consistent actions block pattern |
+| Batch result stripping via `strip_batch_results` | Separate helper from `strip_entity` — batch items are flat dicts not full entities; `status` always preserved | ✓ Good — v1.4, correct projection boundary, closed stripping asymmetry |
+| `\\n` separator in note append (not `\\n\\n`) | Minimal-useful-separator principle — agent can prepend own `\\n` for paragraph break; `\\n\\n` default couldn't be reduced. OmniFocus renders `\\n` as visible soft break | ✓ Good — v1.4, agent-controllable with sensible default |
 
 ---
 ## Evolution
@@ -257,4 +254,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-16 — Phase 55 (Notes Graduation) complete. actions.note block (append/replace) with three no-op warnings shipped; top-level note removed from edit_tasks. v1.4 phase work (53, 53.1, 54, 55) all complete — milestone awaits /gsd-complete-milestone.*
+*Last updated: 2026-04-17 after v1.4 milestone — Response Shaping, Batch Processing & Notes Graduation shipped. 41/41 requirements satisfied. Current milestone: v1.5 UI & Perspectives.*
