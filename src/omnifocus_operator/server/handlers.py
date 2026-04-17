@@ -62,6 +62,7 @@ from omnifocus_operator.server.projection import (
     shape_list_response,
     shape_list_response_strip_only,
     strip_all_entities,
+    strip_batch_results,
     strip_entity,
 )
 
@@ -129,7 +130,7 @@ def _register_tools(mcp: FastMCP) -> None:
     async def add_tasks(
         items: Annotated[list[AddTaskCommand], Field(min_length=1, max_length=MAX_BATCH_SIZE)],
         ctx: Context,
-    ) -> list[AddTaskResult]:
+    ) -> list[dict[str, Any]]:
         service: OperatorService = ctx.lifespan_context["service"]
         total = len(items)
         # Skip progress for small batches. Claude Code's MCP client rejects
@@ -157,7 +158,7 @@ def _register_tools(mcp: FastMCP) -> None:
         # before return, no bridge work after it). Exact client-side reason
         # not verified -- see config.py. Whatever the mechanism, omitting this
         # notification keeps the strike count down.
-        return results
+        return strip_batch_results(results)
 
     @mcp.tool(
         description=EDIT_TASKS_TOOL_DOC,
@@ -168,7 +169,7 @@ def _register_tools(mcp: FastMCP) -> None:
     async def edit_tasks(
         items: Annotated[list[EditTaskCommand], Field(min_length=1, max_length=MAX_BATCH_SIZE)],
         ctx: Context,
-    ) -> list[EditTaskResult]:
+    ) -> list[dict[str, Any]]:
         service: OperatorService = ctx.lifespan_context["service"]
         total = len(items)
         # Skip progress for small batches. Claude Code's MCP client rejects
@@ -208,7 +209,7 @@ def _register_tools(mcp: FastMCP) -> None:
         # before return, no bridge work after it). Exact client-side reason
         # not verified -- see config.py. Whatever the mechanism, omitting this
         # notification keeps the strike count down.
-        return results
+        return strip_batch_results(results)
 
     @mcp.tool(
         description=LIST_TASKS_TOOL_DOC,

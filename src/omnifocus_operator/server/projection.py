@@ -9,11 +9,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+# OmniFocusBaseModel is imported at runtime (not TYPE_CHECKING) because PEP 695
+# type parameter bounds (e.g. `[T: OmniFocusBaseModel]`) are evaluated at runtime.
+from omnifocus_operator.models.base import OmniFocusBaseModel
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from omnifocus_operator.contracts.use_cases.list.common import ListResult
-    from omnifocus_operator.models.base import OmniFocusBaseModel
 
 # -- Stripping constants (STRIP-01, STRIP-02) ---------------------------------
 
@@ -58,6 +61,15 @@ def strip_all_entities(data: dict[str, Any]) -> dict[str, Any]:
         else:
             result[key] = value
     return result
+
+
+def strip_batch_results[T: OmniFocusBaseModel](results: list[T]) -> list[dict[str, Any]]:
+    """Strip each batch result item (AddTaskResult / EditTaskResult).
+
+    Same strip semantics as strip_entity: null/""/false/[]/"none" removed.
+    status is a required Literal, so it's always preserved.
+    """
+    return [strip_entity(item.model_dump(by_alias=True)) for item in results]
 
 
 # -- Field projection (FSEL-01 through FSEL-08) -------------------------------
