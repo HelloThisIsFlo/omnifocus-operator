@@ -344,16 +344,19 @@ class TestTOOL03OutputSchema:
             get_all = next(t for t in tools if t.name == "get_all")
             assert get_all.outputSchema is not None
 
-    async def test_write_tools_retain_typed_output_schema(
+    async def test_write_tools_have_loose_output_schema(
         self,
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Any,
     ) -> None:
-        """Write tools (add/edit) return typed models with structured outputSchema.
+        """Write tools (add/edit) advertise a loose `array of object` outputSchema.
 
-        Read tools return dict[str, Any] after response shaping (D-09), so their
-        outputSchema is generic. This is an accepted trade-off per D-09:
-        "MCP clients strip outputSchema anyway; available fields documented in tool description."
+        Since response shaping strips null/empty fields from each batch result
+        item (matching list/entity tool semantics), the handler return annotation
+        is `list[dict[str, Any]]`. FastMCP advertises an `array of object` schema
+        — no typed `status`/`id` properties. This mirrors the list-tool precedent
+        per D-09: "MCP clients strip outputSchema anyway; available fields
+        documented in tool description."
         """
         bridge = SimulatorBridge(ipc_dir=tmp_path)
         repo = BridgeOnlyRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
@@ -368,13 +371,13 @@ class TestTOOL03OutputSchema:
             tools = await client.list_tools()
             add = next(t for t in tools if t.name == "add_tasks")
             edit = next(t for t in tools if t.name == "edit_tasks")
-            # Write tools still have typed outputSchema with properties
+            # Write tools now have loose outputSchema — no typed status/id props
             add_props = _extract_all_property_keys(add.outputSchema or {})
-            assert "status" in add_props
-            assert "id" in add_props
+            assert "status" not in add_props
+            assert "id" not in add_props
             edit_props = _extract_all_property_keys(edit.outputSchema or {})
-            assert "status" in edit_props
-            assert "id" in edit_props
+            assert "status" not in edit_props
+            assert "id" not in edit_props
 
 
 # ---------------------------------------------------------------------------
