@@ -14,6 +14,7 @@ import termios
 import tty
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 SERVER_KEY = "omnifocus-operator"
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -51,6 +52,16 @@ TARGETS = [
         absolute_command=True,
     ),
 ]
+
+
+# ── Source selection ────────────────────────────────────────────────────────
+
+
+@dataclass
+class Source:
+    kind: Literal["uvx", "local"]
+    project_dir: Path  # used when kind == "local"
+    version: str  # used when kind == "uvx"; empty = latest
 
 
 # ── Config file helpers ─────────────────────────────────────────────────────
@@ -158,14 +169,20 @@ def _prompt_worktree(worktrees: list[Path]) -> Path:
         # Ignore invalid keys
 
 
-def _gather_config() -> tuple[Path, dict[str, str]]:
-    """Return (project_dir, env_vars). project_dir may be a worktree."""
+def _gather_config() -> tuple[Source, dict[str, str]]:
+    """Return (source, env_vars) for the install."""
     print("Configuration (Enter = default):")
 
-    worktrees = _detect_worktrees()
-    project_dir = PROJECT_ROOT
-    if worktrees:
-        project_dir = _prompt_worktree(worktrees)
+    kind = _prompt_choice("Source", ["uvx", "local"], "local")
+    if kind == "uvx":
+        version = _prompt_value("Version (empty = latest)", "")
+        source = Source(kind="uvx", project_dir=PROJECT_ROOT, version=version)
+    else:
+        worktrees = _detect_worktrees()
+        project_dir = PROJECT_ROOT
+        if worktrees:
+            project_dir = _prompt_worktree(worktrees)
+        source = Source(kind="local", project_dir=project_dir, version="")
 
     env = {
         "OPERATOR_REPOSITORY": _prompt_choice("Repository", ["hybrid", "bridge-only"], "hybrid"),
@@ -174,7 +191,7 @@ def _gather_config() -> tuple[Path, dict[str, str]]:
         ),
         "OPERATOR_BRIDGE_TIMEOUT": _prompt_value("Bridge timeout in seconds", "30"),
     }
-    return project_dir, env
+    return source, env
 
 
 # ── Install / Uninstall ────────────────────────────────────────────────────
@@ -184,8 +201,10 @@ def install() -> None:
     print()
     print("OmniFocus Operator — MCP Setup")
     print("=" * 34)
-    project_dir, env = _gather_config()
+    source, env = _gather_config()
     print()
+
+    base_command = "uvx" if source.kind == "uvx" else "uv"
 
     for target in TARGETS:
         data = _load(target)
@@ -193,18 +212,33 @@ def install() -> None:
             print(f"  [{target.label}] Skipped — {target.path} not found")
             continue
 
-        command = "uv"
+        command = base_command
         if target.absolute_command:
-            resolved = shutil.which("uv")
+            resolved = shutil.which(base_command)
             if not resolved:
-                print(f"  [{target.label}] Skipped — 'uv' not found on PATH")
+                print(f"  [{target.label}] Skipped — '{base_command}' not found on PATH")
                 continue
             command = resolved
+
+        if source.kind == "uvx":
+            package_spec = (
+                f"omnifocus-operator@{source.version}" if source.version else "omnifocus-operator"
+            )
+            args = [package_spec]
+        else:
+            args = [
+                "run",
+                "--directory",
+                str(source.project_dir),
+                "python",
+                "-m",
+                "omnifocus_operator",
+            ]
 
         data.setdefault("mcpServers", {})
         data["mcpServers"][SERVER_KEY] = {
             "command": command,
-            "args": ["run", "--directory", str(project_dir), "python", "-m", "omnifocus_operator"],
+            "args": args,
             "env": env,
         }
         _save(target, data)
