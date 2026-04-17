@@ -64,6 +64,7 @@ Carried forward from v1.3.3:
 11. Golden master re-capture required after Phase 42 mapper rewrites (human-only per GOLD-01)
 12. Publish on PyPI and set up automated releases (tooling)
 13. Compute true inherited fields by walking parent hierarchy (service)
+14. Root-cause MCP progress-notification transport disconnect (server) — surfaced during v1.4 UAT; existing mitigation (PROGRESS_NOTIFICATION_MIN_BATCH_SIZE=3) is empirical, not verified
 
 ### Roadmap Evolution
 
@@ -71,7 +72,7 @@ Carried forward from v1.3.3:
 
 ### Blockers/Concerns
 
-(None)
+- **MCP progress-notification transport disconnect** (known-unresolved bug, mitigation shipped in 307136e7). v1.4 audit closes with this deferred to a fresh-context investigation — see `.planning/todos/pending/2026-04-17-root-cause-mcp-progress-notification-transport-disconnect.md`. Raising the threshold is not an acceptable fix.
 
 ### Quick Tasks Completed
 
