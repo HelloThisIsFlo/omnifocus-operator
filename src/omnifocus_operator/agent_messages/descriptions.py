@@ -34,14 +34,8 @@ INHERITED_COMPLETION_DATE = _INHERITED_FIELD_DESC
 _STRIPPING_NOTE = """\
 Response stripping: null values, empty arrays, empty strings, false booleans, and "none" urgency are omitted. Absent field = not set."""
 
-# FIXME: "The sooner date applies" is only correct for dueDate (min).
-# deferDate uses max (later wins), planned/drop/completion use first-found (nearest ancestor).
-# See: .research/deep-dives/omnifocus-inheritance-semantics/FINDINGS.md
 _INHERITED_TASKS_EXPLANATION = """\
-inherited* fields: value inherited from the hierarchy (parent task, project, folder). Both direct and inherited can coexist. The sooner date applies. inherited fields are read-only; to edit, use the direct field (dueDate, not inheritedDueDate)."""
-
-# _INHERITED_PROJECTS_EXPLANATION removed -- projects no longer have inherited fields.
-# Projects cannot meaningfully inherit dates/flags (folders have none).
+inherited* fields: OmniFocus's resolved value after applying inheritance from the ancestor chain (parent task -> project -> folder). Both direct and inherited can coexist. Resolution rules vary by field (dueDate = tightest, deferDate = latest, plannedDate/dropDate/completionDate = nearest ancestor). inherited fields are read-only; to edit, use the direct field (dueDate, not inheritedDueDate)."""
 
 _COUNT_ONLY_TIP = "Count-only: use limit: 0 to get {items: [], total: N} without fetching data."
 
