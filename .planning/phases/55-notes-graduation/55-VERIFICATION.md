@@ -20,7 +20,7 @@ overrides_applied: 0
 | # | Truth | Status | Evidence |
 |---|-------|--------|---------|
 | 1 | Top-level `note` absent from `EditTaskCommand` schema; `add_tasks` retains top-level `note` | VERIFIED | `contracts/use_cases/edit/tasks.py` has no `note: PatchOrClear[str]` on `EditTaskCommand`. `contracts/use_cases/add/tasks.py` line 81 has `note: str | None`. `test_edit_task_command_has_no_top_level_note` asserts schema `"note" not in properties` — passes. |
-| 2 | `actions.note.append` on non-empty note adds text with `\n\n` separator; on empty note sets directly | VERIFIED | `process_note_action` lines 562-573: separator path and direct-set path both present. `TestProcessNoteAction` 15 tests cover all branches including whitespace-only note (D-09). `test_note_action_alone` passes end-to-end (empty note → append → set directly, no separator). |
+| 2 | `actions.note.append` on non-empty note adds text with `\n` separator; `""` or whitespace-only append is N1 no-op with `NOTE_APPEND_EMPTY` warning; on empty/whitespace-only existing note sets directly (revised 2026-04-17 UAT — see REQUIREMENTS.md NOTE-02 revision notes) | VERIFIED | `process_note_action` in `service/domain.py` lines 566-576: separator literal is `"\n"`, N1 check uses `append_text.strip() == ""`, direct-set path uses `existing_stripped == ""`. `TestProcessNoteAction` Branches 2 / 7 / 16 assert revised behavior (single-`\n` concat; whitespace-only → NOTE_APPEND_EMPTY). `test_note_action_alone` passes end-to-end. Revised behavior landed in commits c9ad1329 (whitespace N1) + 0cb60e58 (separator tighten). |
 | 3 | `actions.note.replace` sets new content, or clears with null or "" | VERIFIED | `process_note_action` replace branch lines 575-591: clear path (`target=""`), N2 identical-replace no-op, N3 clear-already-empty no-op. `test_note_noop_warning_surfaces_in_result` confirms N3 warning reaches `EditTaskResult.warnings`. |
 
 **Requirement-level truths (NOTE-01 through NOTE-05):**
@@ -28,7 +28,7 @@ overrides_applied: 0
 | # | Truth | Status | Evidence |
 |---|-------|--------|---------|
 | NOTE-01 | Top-level `note` removed from `edit_tasks` input schema | VERIFIED | Schema regression `test_edit_task_command_has_no_top_level_note` in `TestWriteSchemaNoDateTimeFormat` — passes. `NOTE_EDIT_COMMAND` absent from entire `src/` tree (grep returns 0 matches). |
-| NOTE-02 | `append` adds with `\n\n`; `""` is N1 no-op | VERIFIED | `process_note_action` append branch. N1 check: `append_text == ""` → `NOTE_APPEND_EMPTY` warning + `UNSET` return. Separator path: `existing + "\n\n" + append_text`. 15 unit tests + 1 integration test green. |
+| NOTE-02 | `append` adds with `\n` (revised from `\n\n` on 2026-04-17 UAT); `""` or whitespace-only is N1 no-op (scope broadened 2026-04-17) | VERIFIED | `process_note_action` append branch. N1 check: `append_text.strip() == ""` → `NOTE_APPEND_EMPTY` warning + `UNSET` return. Separator path: `existing + "\n" + append_text`. 15 unit tests + 1 integration test green post-revision (commits c9ad1329 + 0cb60e58). |
 | NOTE-03 | `replace` sets/clears; identical content is N2 no-op | VERIFIED | Replace branch: N3 (clear-already-empty) checked before N2 (identical-content). `target == existing` → `NOTE_REPLACE_ALREADY_CONTENT`. Clear non-empty: `target=""` sent to bridge. All branches green. |
 | NOTE-04 | Append on empty/whitespace-only note sets directly (no separator) | VERIFIED | `existing_stripped == ""` → `return append_text, False, warnings` (no concatenation). `TestProcessNoteAction::test_append_on_whitespace_only_note_discards_whitespace` explicitly covers whitespace-only case. |
 | NOTE-05 | `add_tasks` retains top-level `note` field | VERIFIED | `AddTaskCommand.note: str | None` at line 81 unchanged. `TestAddTask` 19 tests green. Integration test at `test_service.py:247` uses `note="Some note"` in `AddTaskCommand`. |
@@ -88,7 +88,7 @@ overrides_applied: 0
 | Requirement | Source Plans | Description | Status | Evidence |
 |-------------|-------------|-------------|--------|---------|
 | NOTE-01 | Plan 01, Plan 03 | Top-level note removed from edit_tasks input schema | SATISFIED | `EditTaskCommand` has no top-level `note`; schema regression test passes |
-| NOTE-02 | Plan 01, Plan 02, Plan 03 | `append` adds with `\n\n`; `""` is N1 no-op | SATISFIED | `process_note_action` append branch + 15 unit tests + integration test |
+| NOTE-02 | Plan 01, Plan 02, Plan 03 | `append` adds with `\n` (revised from `\n\n` on 2026-04-17 UAT); `""` or whitespace-only is N1 no-op (scope broadened 2026-04-17) | SATISFIED | `process_note_action` append branch + 15 unit tests + integration test; revised behavior locked in by commits c9ad1329 (whitespace N1) + 0cb60e58 (separator tighten) |
 | NOTE-03 | Plan 01, Plan 02, Plan 03 | `replace` sets/clears; identical content is N2 no-op | SATISFIED | `process_note_action` replace branch, N3-before-N2 precedence |
 | NOTE-04 | Plan 02, Plan 03 | Append on empty/whitespace-only note sets directly | SATISFIED | Explicit branch in `process_note_action` + `test_note_action_alone` |
 | NOTE-05 | Plan 01, Plan 03 | `add_tasks` retains top-level note field | SATISFIED | `AddTaskCommand.note: str | None` unchanged; 19 TestAddTask tests green |

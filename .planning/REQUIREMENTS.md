@@ -9,29 +9,29 @@ Requirements for milestone v1.4: Response Shaping, Batch Processing & Notes Grad
 
 ### Response Stripping
 
-- [ ] **STRIP-01**: All tool responses strip null, [], "", false, and "none" from entity fields automatically
-- [ ] **STRIP-02**: availability field is never stripped from entity responses
-- [ ] **STRIP-03**: Result envelope fields (hasMore, total, status) are never stripped
+- [x] **STRIP-01**: All tool responses strip null, [], "", false, and "none" from entity fields automatically
+- [x] **STRIP-02**: availability field is never stripped from entity responses
+- [x] **STRIP-03**: Result envelope fields (hasMore, total, status) are never stripped
 
 ### Inherited Rename
 
-- [ ] **RENAME-01**: effective* fields renamed to inherited* across all tool responses (6 fields)
+- [x] **RENAME-01**: effective* fields renamed to inherited* across all tool responses (6 fields)
 
 ### Field Selection
 
-- [ ] **FSEL-01**: Agent can use `include` on list_tasks/list_projects to add semantic groups to curated defaults
-- [ ] **FSEL-02**: ~~Default task fields: id, name, availability, order, project, dueDate, inheritedDueDate, deferDate, inheritedDeferDate, plannedDate, inheritedPlannedDate, flagged, inheritedFlagged, urgency, tags (projects additionally: folder)~~ Default task fields: id, name, availability, order, project, dueDate, inheritedDueDate, deferDate, inheritedDeferDate, plannedDate, inheritedPlannedDate, flagged, inheritedFlagged, urgency, tags. Projects share the same defaults (folder moved to hierarchy group)
-- [ ] **FSEL-03**: Available include groups: notes, metadata, hierarchy, time, * (list_tasks); additionally review (list_projects)
-- [ ] **FSEL-04**: Invalid include group names produce validation error
-- [ ] **FSEL-05**: Agent can use `only` for individual field selection (id always included)
-- [ ] **FSEL-06**: include and only mutually exclusive — providing both produces validation error
-- [ ] **FSEL-07**: Invalid only field names produce warning in response (not error)
-- [ ] **FSEL-08**: include: ["*"] returns all fields
-- [ ] **FSEL-09**: get_task, get_project, get_tag, get_all return full stripped entities (no field selection)
-- [ ] **FSEL-10**: Group definitions centralized in config.py
-- [ ] **FSEL-11**: Projection is post-filter, pre-serialization — doesn't affect query behavior
-- [ ] **FSEL-12**: Service layer returns full Pydantic models; projection and stripping are server-layer concerns
-- [ ] **FSEL-13**: server.py becomes a server/ package containing existing server and middleware modules plus a new projection module
+- [x] **FSEL-01**: Agent can use `include` on list_tasks/list_projects to add semantic groups to curated defaults
+- [x] **FSEL-02**: ~~Default task fields: id, name, availability, order, project, dueDate, inheritedDueDate, deferDate, inheritedDeferDate, plannedDate, inheritedPlannedDate, flagged, inheritedFlagged, urgency, tags (projects additionally: folder)~~ Default task fields: id, name, availability, order, project, dueDate, inheritedDueDate, deferDate, inheritedDeferDate, plannedDate, inheritedPlannedDate, flagged, inheritedFlagged, urgency, tags. Projects share the same defaults (folder moved to hierarchy group)
+- [x] **FSEL-03**: Available include groups: notes, metadata, hierarchy, time, * (list_tasks); additionally review (list_projects)
+- [x] **FSEL-04**: Invalid include group names produce validation error
+- [x] **FSEL-05**: Agent can use `only` for individual field selection (id always included)
+- [x] **FSEL-06**: include and only mutually exclusive — providing both produces validation error
+- [x] **FSEL-07**: Invalid only field names produce warning in response (not error)
+- [x] **FSEL-08**: include: ["*"] returns all fields
+- [x] **FSEL-09**: get_task, get_project, get_tag, get_all return full stripped entities (no field selection)
+- [x] **FSEL-10**: Group definitions centralized in config.py
+- [x] **FSEL-11**: Projection is post-filter, pre-serialization — doesn't affect query behavior
+- [x] **FSEL-12**: Service layer returns full Pydantic models; projection and stripping are server-layer concerns
+- [x] **FSEL-13**: server.py becomes a server/ package containing existing server and middleware modules plus a new projection module
 
 ### True Inherited Fields
 
@@ -53,30 +53,30 @@ Each inherited field uses a specific aggregation strategy when walking the ances
 
 ### Count-Only
 
-- [ ] **COUNT-01**: limit: 0 returns count-only response ({items: [], total: N, hasMore: <total > 0>})
+- [x] **COUNT-01**: limit: 0 returns count-only response ({items: [], total: N, hasMore: <total > 0>})
 
 ### Batch Processing
 
-- [ ] **BATCH-01**: add_tasks and edit_tasks accept up to 50 items per call (Pydantic maxItems)
-- [ ] **BATCH-02**: add_tasks uses best-effort — all items processed regardless of earlier failures
-- [ ] **BATCH-03**: edit_tasks uses fail-fast — stop at first error, remaining items skipped
-- [ ] **BATCH-04**: Response is flat array with status: "success" | "error" | "skipped" per item
-- [ ] **BATCH-05**: name on success only; id on success and edit errors/skips; absent on failed add items
-- [ ] **BATCH-06**: warnings array available on all status types
-- [ ] **BATCH-07**: Items processed serially in array order within a batch
-- [ ] **BATCH-08**: Same-task edits allowed — each sees prior item's result
-- [ ] **BATCH-09**: Cross-item references not supported — batch items cannot reference other items in the same batch (documented in tool description)
+- [x] **BATCH-01**: add_tasks and edit_tasks accept up to 50 items per call (Pydantic maxItems)
+- [x] **BATCH-02**: add_tasks uses best-effort — all items processed regardless of earlier failures
+- [x] **BATCH-03**: edit_tasks uses fail-fast — stop at first error, remaining items skipped
+- [x] **BATCH-04**: Response is flat array with status: "success" | "error" | "skipped" per item
+- [x] **BATCH-05**: name on success only; id on success and edit errors/skips; absent on failed add items
+- [x] **BATCH-06**: warnings array available on all status types
+- [x] **BATCH-07**: Items processed serially in array order within a batch
+- [x] **BATCH-08**: Same-task edits allowed — each sees prior item's result
+- [x] **BATCH-09**: Cross-item references not supported — batch items cannot reference other items in the same batch (documented in tool description)
 
 ### Notes Graduation
 
-- [ ] **NOTE-01**: Top-level note removed from edit_tasks input schema
-- [ ] **NOTE-02**: actions.note.append (Patch[str] — null rejected, ~~`""` is no-op~~ `""` or whitespace-only is no-op) adds text with ~~\n\n paragraph separator~~ `\n` newline separator (agent prepends own `\n` for blank-line break)
+- [x] **NOTE-01**: Top-level note removed from edit_tasks input schema
+- [x] **NOTE-02**: actions.note.append (Patch[str] — null rejected, ~~`""` is no-op~~ `""` or whitespace-only is no-op) adds text with ~~\n\n paragraph separator~~ `\n` newline separator (agent prepends own `\n` for blank-line break)
   - *Revised 2026-04-17 (UAT Phase 55):* Two revisions from the original requirement:
     - **No-op scope broadened**: OmniFocus normalizes whitespace-only notes to empty and trims trailing whitespace on write (verified via OmniJS — `"   "` stored as `""`, `"Existing\n\n   "` stored as `"Existing"`). `append="   "` was previously classified as a real change but was silently no-op'd by OmniFocus, giving agents no feedback. Now treated as an N1 no-op with `NOTE_APPEND_EMPTY` warning to match observable behavior.
     - **Separator tightened** from `\n\n` to `\n`: agent-controllability argument — with `\n` as the default, agents can prepend their own `\n` to compose `\n\n` (paragraph break) when desired; but `\n\n` as default couldn't be unpacked to `\n`. Minimal-useful-separator principle. OmniFocus renders `\n` as a visible soft break in note text, so separation is preserved visually.
-- [ ] **NOTE-03**: actions.note.replace (PatchOrClear[str] — null and "" both clear the note) replaces entire note content
-- [ ] **NOTE-04**: Append on empty/whitespace-only note sets directly (no leading separator)
-- [ ] **NOTE-05**: add_tasks retains top-level note field for initial content
+- [x] **NOTE-03**: actions.note.replace (PatchOrClear[str] — null and "" both clear the note) replaces entire note content
+- [x] **NOTE-04**: Append on empty/whitespace-only note sets directly (no leading separator)
+- [x] **NOTE-05**: add_tasks retains top-level note field for initial content
 
 ## Future Requirements
 
@@ -116,38 +116,38 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| STRIP-01 | Phase 53 | Pending |
-| STRIP-02 | Phase 53 | Pending |
-| STRIP-03 | Phase 53 | Pending |
-| RENAME-01 | Phase 53 | Pending |
-| FSEL-01 | Phase 53 | Pending |
-| FSEL-02 | Phase 53 | Pending |
-| FSEL-03 | Phase 53 | Pending |
-| FSEL-04 | Phase 53 | Pending |
-| FSEL-05 | Phase 53 | Pending |
-| FSEL-06 | Phase 53 | Pending |
-| FSEL-07 | Phase 53 | Pending |
-| FSEL-08 | Phase 53 | Pending |
-| FSEL-09 | Phase 53 | Pending |
-| FSEL-10 | Phase 53 | Pending |
-| FSEL-11 | Phase 53 | Pending |
-| FSEL-12 | Phase 53 | Pending |
-| FSEL-13 | Phase 53 | Pending |
-| COUNT-01 | Phase 53 | Pending |
-| BATCH-01 | Phase 54 | Pending |
-| BATCH-02 | Phase 54 | Pending |
-| BATCH-03 | Phase 54 | Pending |
-| BATCH-04 | Phase 54 | Pending |
-| BATCH-05 | Phase 54 | Pending |
-| BATCH-06 | Phase 54 | Pending |
-| BATCH-07 | Phase 54 | Pending |
-| BATCH-08 | Phase 54 | Pending |
-| BATCH-09 | Phase 54 | Pending |
-| NOTE-01 | Phase 55 | Pending |
-| NOTE-02 | Phase 55 | Pending |
-| NOTE-03 | Phase 55 | Pending |
-| NOTE-04 | Phase 55 | Pending |
-| NOTE-05 | Phase 55 | Pending |
+| STRIP-01 | Phase 53 | Complete |
+| STRIP-02 | Phase 53 | Complete |
+| STRIP-03 | Phase 53 | Complete |
+| RENAME-01 | Phase 53 | Complete |
+| FSEL-01 | Phase 53 | Complete |
+| FSEL-02 | Phase 53 | Complete |
+| FSEL-03 | Phase 53 | Complete |
+| FSEL-04 | Phase 53 | Complete |
+| FSEL-05 | Phase 53 | Complete |
+| FSEL-06 | Phase 53 | Complete |
+| FSEL-07 | Phase 53 | Complete |
+| FSEL-08 | Phase 53 | Complete |
+| FSEL-09 | Phase 53 | Complete |
+| FSEL-10 | Phase 53 | Complete |
+| FSEL-11 | Phase 53 | Complete |
+| FSEL-12 | Phase 53 | Complete |
+| FSEL-13 | Phase 53 | Complete |
+| COUNT-01 | Phase 53 | Complete |
+| BATCH-01 | Phase 54 | Complete |
+| BATCH-02 | Phase 54 | Complete |
+| BATCH-03 | Phase 54 | Complete |
+| BATCH-04 | Phase 54 | Complete |
+| BATCH-05 | Phase 54 | Complete |
+| BATCH-06 | Phase 54 | Complete |
+| BATCH-07 | Phase 54 | Complete |
+| BATCH-08 | Phase 54 | Complete |
+| BATCH-09 | Phase 54 | Complete |
+| NOTE-01 | Phase 55 | Complete |
+| NOTE-02 | Phase 55 | Complete |
+| NOTE-03 | Phase 55 | Complete |
+| NOTE-04 | Phase 55 | Complete |
+| NOTE-05 | Phase 55 | Complete |
 | INHERIT-01 | Phase 53.1 | Complete |
 | INHERIT-02 | Phase 53.1 | Complete |
 | INHERIT-03 | Phase 53.1 | Complete |
