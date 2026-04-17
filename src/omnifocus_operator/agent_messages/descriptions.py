@@ -48,7 +48,8 @@ _COUNT_ONLY_TIP = "Count-only: use limit: 0 to get {items: [], total: N} without
 _FILTERS_AND_LOGIC = "All filters combine with AND logic."
 
 _LIFECYCLE_FILTER_NOTE = """\
-completed/dropped filters include those lifecycle states in results (excluded by default). All other filters only restrict. The 'soon' shortcut uses your OmniFocus due-soon threshold preference."""
+completed/dropped filters include those lifecycle states in results (excluded by default). All other filters only restrict.
+The 'soon' shortcut uses your OmniFocus due-soon threshold preference."""
 
 _TAGS_INPUT_NOTE = """\
 Tags accept names (case-insensitive) or IDs; you can mix both. Non-existent names are rejected. Ambiguous names (case-insensitive collision) return an error."""
@@ -390,7 +391,8 @@ WARNING: This is a last-resort/debugging tool. Prefer list_tasks or list_project
 
 {_STRIPPING_NOTE}
 
-Response contains: tasks, projects, tags, folders, perspectives arrays. Each task includes an order field (dotted notation like '2.3.1') showing hierarchical position within its project or inbox. The response uses camelCase field names."""
+Response contains: tasks, projects, tags, folders, perspectives arrays.
+Each task includes an order field (dotted notation like '2.3.1') showing hierarchical position within its project or inbox."""
 
 GET_TASK_TOOL_DOC = f"""\
 Look up a single task by its ID.
@@ -559,7 +561,7 @@ List perspectives. {_PERSPECTIVES_BUILTIN_NOTE}
 
 Response: {{items, total, hasMore}}
 
-Key fields per perspective: id, name. The response uses camelCase field names."""
+Key fields per perspective: id, name."""
 
 EDIT_TASKS_TOOL_DOC = f"""\
 Edit existing tasks in OmniFocus using patch semantics.
