@@ -655,13 +655,16 @@ class TestContractSchemaConstraints:
         )
 
 
-class TestWriteSchemaNoDateTimeFormat:
-    """Write tool date fields must NOT advertise format: 'date-time'.
+class TestWriteSchemaShape:
+    """Schema-shape invariants for write-side commands (AddTaskCommand, EditTaskCommand).
 
-    RFC 3339 (referenced by JSON Schema's 'date-time' format) requires a
-    timezone offset. The naive-local contract accepts naive strings, so
-    format: 'date-time' would contradict the contract. Using plain 'str'
-    drops the format constraint entirely.
+    Covers two kinds of schema-shape contracts:
+    1. Date fields must NOT advertise format: 'date-time'. RFC 3339 requires a
+       timezone offset; the naive-local contract accepts naive strings, so
+       'date-time' would contradict the contract. Plain 'str' drops the constraint.
+    2. Fields that have been deliberately removed or graduated to nested paths
+       must not reappear at the top level (e.g. NOTE-01: note graduated to
+       actions.note in Phase 55).
     """
 
     def test_add_task_command_no_date_time_format(self) -> None:

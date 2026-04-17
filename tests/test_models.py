@@ -1162,7 +1162,6 @@ class TestCommandModelStrictness:
     def test_edit_command_schema_nullable_fields(self) -> None:
         """Nullable UNSET fields appear as anyOf[real_type, null] — exactly two branches."""
         props = EditTaskCommand.model_json_schema()["properties"]
-        assert "note" not in props  # note graduated to actions.note (Phase 55)
         assert len(props["dueDate"]["anyOf"]) == 2
         due_types = {b.get("type") for b in props["dueDate"]["anyOf"]}
         assert due_types == {"string", "null"}
