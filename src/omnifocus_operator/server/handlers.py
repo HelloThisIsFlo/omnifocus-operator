@@ -37,6 +37,7 @@ from omnifocus_operator.agent_messages.descriptions import (
 )
 from omnifocus_operator.config import (
     MAX_BATCH_SIZE,
+    PROGRESS_NOTIFICATION_MIN_BATCH_SIZE,
     PROJECT_DEFAULT_FIELDS,
     PROJECT_FIELD_GROUPS,
     TASK_DEFAULT_FIELDS,
@@ -131,9 +132,14 @@ def _register_tools(mcp: FastMCP) -> None:
     ) -> list[AddTaskResult]:
         service: OperatorService = ctx.lifespan_context["service"]
         total = len(items)
+        # Below threshold, sub-second batches race the response over stdio -- skip
+        # progress entirely to avoid "unknown progressToken" errors closing the
+        # transport. See PROGRESS_NOTIFICATION_MIN_BATCH_SIZE in config.py.
+        should_emit_progress = total >= PROGRESS_NOTIFICATION_MIN_BATCH_SIZE
         results: list[AddTaskResult] = []
         for i, command in enumerate(items):
-            await ctx.report_progress(progress=i, total=total)
+            if should_emit_progress:
+                await ctx.report_progress(progress=i, total=total)
             try:
                 result = await service.add_task(command)
                 results.append(result)
@@ -144,7 +150,9 @@ def _register_tools(mcp: FastMCP) -> None:
                         error=f"Task {i + 1}: {e}",
                     )
                 )
-        await ctx.report_progress(progress=total, total=total)
+        # Skipping final progress=total notification: it always races the
+        # response over stdio (no work between it and return), so the client
+        # reaps the progressToken before the notification arrives.
         return results
 
     @mcp.tool(
@@ -159,10 +167,15 @@ def _register_tools(mcp: FastMCP) -> None:
     ) -> list[EditTaskResult]:
         service: OperatorService = ctx.lifespan_context["service"]
         total = len(items)
+        # Below threshold, sub-second batches race the response over stdio -- skip
+        # progress entirely to avoid "unknown progressToken" errors closing the
+        # transport. See PROGRESS_NOTIFICATION_MIN_BATCH_SIZE in config.py.
+        should_emit_progress = total >= PROGRESS_NOTIFICATION_MIN_BATCH_SIZE
         results: list[EditTaskResult] = []
         failed_idx: int | None = None
         for i, command in enumerate(items):
-            await ctx.report_progress(progress=i, total=total)
+            if should_emit_progress:
+                await ctx.report_progress(progress=i, total=total)
             if failed_idx is not None:
                 results.append(
                     EditTaskResult(
@@ -184,7 +197,9 @@ def _register_tools(mcp: FastMCP) -> None:
                         error=f"Task {i + 1}: {e}",
                     )
                 )
-        await ctx.report_progress(progress=total, total=total)
+        # Skipping final progress=total notification: it always races the
+        # response over stdio (no work between it and return), so the client
+        # reaps the progressToken before the notification arrives.
         return results
 
     @mcp.tool(

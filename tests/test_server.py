@@ -2493,3 +2493,118 @@ class TestBatchCrossItemDocumentation:
             "EDIT_TASKS_TOOL_DOC must state that items cannot reference "
             "each other in the same batch"
         )
+
+
+# ---------------------------------------------------------------------------
+# Regression: MCP progress-notification race with response over stdio
+# ---------------------------------------------------------------------------
+
+
+class TestProgressNotificationRaceCondition:
+    """Progress notifications must not race the response on fast write calls.
+
+    Root cause: ``ctx.report_progress(progress=total, total=total)`` fired
+    right before ``return`` shares stdio with the response. For sub-second
+    batches the response wins the race; the client reaps the progressToken
+    callback before the late progress notification arrives, then logs
+    "unknown progressToken" warnings. Enough of those and the client closes
+    the transport -- breaking every subsequent tool call in the session.
+
+    Mitigations (both tested here):
+      1. Skip progress entirely for batches smaller than
+         ``PROGRESS_NOTIFICATION_MIN_BATCH_SIZE`` (fast path -- no race exposure).
+      2. For larger batches, emit per-item progress but NEVER the post-loop
+         ``progress=total`` notification (it has no bridge work after it, so
+         it always races the response).
+    """
+
+    async def test_add_tasks_single_item_emits_no_progress(self, client: Any) -> None:
+        """Single-item add_tasks is below threshold -> zero progress notifications."""
+        events: list[tuple[float, float | None, str | None]] = []
+
+        async def collect(progress: float, total: float | None, message: str | None) -> None:
+            events.append((progress, total, message))
+
+        result = await client.call_tool(
+            "add_tasks",
+            {"items": [{"name": "Solo"}]},
+            progress_handler=collect,
+        )
+        assert result.structured_content["result"][0]["status"] == "success"
+        assert events == [], f"Expected no progress for 1-item batch, got {events}"
+
+    async def test_edit_tasks_single_item_emits_no_progress(self, client: Any) -> None:
+        """Single-item edit_tasks is below threshold -> zero progress notifications."""
+        add = await client.call_tool("add_tasks", {"items": [{"name": "To edit"}]})
+        task_id = add.structured_content["result"][0]["id"]
+
+        events: list[tuple[float, float | None, str | None]] = []
+
+        async def collect(progress: float, total: float | None, message: str | None) -> None:
+            events.append((progress, total, message))
+
+        result = await client.call_tool(
+            "edit_tasks",
+            {"items": [{"id": task_id, "name": "Edited"}]},
+            progress_handler=collect,
+        )
+        assert result.structured_content["result"][0]["status"] == "success"
+        assert events == [], f"Expected no progress for 1-item batch, got {events}"
+
+    async def test_add_tasks_batch_emits_no_final_completion_notification(
+        self, client: Any
+    ) -> None:
+        """At/above threshold: intermediate progress allowed, final progress=total never emitted.
+
+        The post-loop ``progress=total`` notification is the one that always races
+        the response (no bridge work between it and return). In-loop notifications
+        have real bridge work after them and arrive at the client in time.
+        """
+        events: list[tuple[float, float | None, str | None]] = []
+
+        async def collect(progress: float, total: float | None, message: str | None) -> None:
+            events.append((progress, total, message))
+
+        items = [{"name": f"Batch {i}"} for i in range(3)]  # exactly threshold
+        result = await client.call_tool(
+            "add_tasks",
+            {"items": items},
+            progress_handler=collect,
+        )
+        assert len(result.structured_content["result"]) == 3
+        # No event should have progress == total (that's the race-prone final one)
+        for progress, total, _message in events:
+            assert total is not None
+            assert progress < total, (
+                f"Unexpected final progress=total notification (progress={progress}, "
+                f"total={total}) -- this races the response over stdio"
+            )
+
+    async def test_edit_tasks_batch_emits_no_final_completion_notification(
+        self, client: Any
+    ) -> None:
+        """edit_tasks mirror of the above -- no final progress=total notification."""
+        # Seed three tasks
+        add = await client.call_tool(
+            "add_tasks",
+            {"items": [{"name": f"Seed {i}"} for i in range(3)]},
+        )
+        ids = [item["id"] for item in add.structured_content["result"]]
+
+        events: list[tuple[float, float | None, str | None]] = []
+
+        async def collect(progress: float, total: float | None, message: str | None) -> None:
+            events.append((progress, total, message))
+
+        result = await client.call_tool(
+            "edit_tasks",
+            {"items": [{"id": tid, "name": f"Renamed {i}"} for i, tid in enumerate(ids)]},
+            progress_handler=collect,
+        )
+        assert len(result.structured_content["result"]) == 3
+        for progress, total, _message in events:
+            assert total is not None
+            assert progress < total, (
+                f"Unexpected final progress=total notification (progress={progress}, "
+                f"total={total}) -- this races the response over stdio"
+            )

@@ -18,6 +18,16 @@ DEFAULT_LIST_LIMIT: int = 50
 # Maximum items accepted in a single add_tasks or edit_tasks call.
 MAX_BATCH_SIZE: int = 50
 
+# Minimum batch size to emit MCP progress notifications from write tools.
+# Below this threshold the handlers skip progress entirely. Rationale: for
+# fast (<100ms) batches the post-loop notification races the response over
+# stdin; the response wins, the client reaps the progressToken callback, and
+# the late progress notification arrives as an "unknown token" -- enough of
+# those and the client closes the transport. Large batches (>= threshold)
+# still emit intermediate progress since there is real bridge work between
+# each notification and the response.
+PROGRESS_NOTIFICATION_MIN_BATCH_SIZE: int = 3
+
 # -- Fuzzy matching (used by DomainLogic.suggest_close_matches) ---------------
 # Maximum number of suggestions returned for a failed name resolution.
 FUZZY_MATCH_MAX_SUGGESTIONS: int = 3
