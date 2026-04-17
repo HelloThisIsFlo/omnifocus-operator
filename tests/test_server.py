@@ -20,6 +20,7 @@ from omnifocus_operator.agent_messages.descriptions import (
     ADD_TASKS_TOOL_DOC,
     EDIT_TASKS_TOOL_DOC,
 )
+from omnifocus_operator.config import PROGRESS_NOTIFICATIONS_ENABLED
 from omnifocus_operator.repository import BridgeOnlyRepository
 from omnifocus_operator.server import _register_tools, create_server
 from omnifocus_operator.service import OperatorService
@@ -2499,37 +2500,30 @@ class TestBatchCrossItemDocumentation:
 
 
 # ---------------------------------------------------------------------------
-# Regression: bounded progress-notification emission from write tools
+# Invariant: progress notifications are disabled pending upstream fix
 # ---------------------------------------------------------------------------
 
 
-class TestProgressNotificationEmission:
-    """Write tools must emit a bounded number of progress notifications.
+class TestProgressNotificationsDisabled:
+    """Progress notifications from write tools are currently OFF.
 
-    Observed symptom (not a verified root cause): Claude Code's MCP client
-    rejects the server's progress notifications with "unknown progressToken"
-    warnings -- even though the tokens in question are ones the client
-    itself put in the request's ``_meta.progressToken``. After N rejections,
-    the client closes the stdio transport, breaking every subsequent tool
-    call in the session.
+    ``PROGRESS_NOTIFICATIONS_ENABLED`` is ``False`` pending the upstream
+    Claude Code CLI fix — see the comment block in ``config.py`` for the bug
+    link and the conditions for flipping it back on. This class locks in the
+    current invariant: no progress events are emitted from ``add_tasks`` or
+    ``edit_tasks`` at any batch size.
 
-    We don't know the exact client-side cause from the outside. It could be
-    missing callback registration on the client, or over-eager cleanup on
-    response arrival, or something else. What IS verified: reducing the
-    number of emitted progress notifications keeps sessions alive.
-
-    Empirically, the post-loop ``progress=total`` notification is the most
-    frequently rejected one (possibly because it fires right before return,
-    with no work between it and the response). So this test class locks in
-    two rules:
-
-      1. Below ``PROGRESS_NOTIFICATION_MIN_BATCH_SIZE``: skip progress entirely.
-      2. At/above threshold: intermediate per-item progress allowed, but the
-         post-loop ``progress=total`` notification is never emitted.
+    When the flag is flipped, these tests will fail — that failure is the
+    signal to UAT the re-enable, then delete both this class and the flag.
     """
 
-    async def test_add_tasks_single_item_emits_no_progress(self, client: Any) -> None:
-        """Single-item add_tasks is below threshold -> zero progress notifications."""
+    def test_flag_is_off(self) -> None:
+        assert PROGRESS_NOTIFICATIONS_ENABLED is False, (
+            "Re-enabling progress notifications requires confirming the upstream "
+            "Claude Code CLI fix has shipped. See config.py for the procedure."
+        )
+
+    async def test_add_tasks_emits_no_progress(self, client: Any) -> None:
         events: list[tuple[float, float | None, str | None]] = []
 
         async def collect(progress: float, total: float | None, message: str | None) -> None:
@@ -2537,67 +2531,16 @@ class TestProgressNotificationEmission:
 
         result = await client.call_tool(
             "add_tasks",
-            {"items": [{"name": "Solo"}]},
+            {"items": [{"name": f"Batch {i}"} for i in range(5)]},
             progress_handler=collect,
         )
-        assert result.structured_content["result"][0]["status"] == "success"
-        assert events == [], f"Expected no progress for 1-item batch, got {events}"
+        assert len(result.structured_content["result"]) == 5
+        assert events == [], f"Expected zero progress events, got {events}"
 
-    async def test_edit_tasks_single_item_emits_no_progress(self, client: Any) -> None:
-        """Single-item edit_tasks is below threshold -> zero progress notifications."""
-        add = await client.call_tool("add_tasks", {"items": [{"name": "To edit"}]})
-        task_id = add.structured_content["result"][0]["id"]
-
-        events: list[tuple[float, float | None, str | None]] = []
-
-        async def collect(progress: float, total: float | None, message: str | None) -> None:
-            events.append((progress, total, message))
-
-        result = await client.call_tool(
-            "edit_tasks",
-            {"items": [{"id": task_id, "name": "Edited"}]},
-            progress_handler=collect,
-        )
-        assert result.structured_content["result"][0]["status"] == "success"
-        assert events == [], f"Expected no progress for 1-item batch, got {events}"
-
-    async def test_add_tasks_batch_emits_no_final_completion_notification(
-        self, client: Any
-    ) -> None:
-        """At/above threshold: intermediate progress allowed, final progress=total never emitted.
-
-        The post-loop ``progress=total`` is empirically the most frequently
-        rejected notification. Exact cause on the client side not verified --
-        see class docstring.
-        """
-        events: list[tuple[float, float | None, str | None]] = []
-
-        async def collect(progress: float, total: float | None, message: str | None) -> None:
-            events.append((progress, total, message))
-
-        items = [{"name": f"Batch {i}"} for i in range(3)]  # exactly threshold
-        result = await client.call_tool(
-            "add_tasks",
-            {"items": items},
-            progress_handler=collect,
-        )
-        assert len(result.structured_content["result"]) == 3
-        # No event should have progress == total (that's the completion notification we skip)
-        for progress, total, _message in events:
-            assert total is not None
-            assert progress < total, (
-                f"Unexpected final progress=total notification (progress={progress}, "
-                f"total={total}) -- we deliberately skip this one"
-            )
-
-    async def test_edit_tasks_batch_emits_no_final_completion_notification(
-        self, client: Any
-    ) -> None:
-        """edit_tasks mirror of the above -- no final progress=total notification."""
-        # Seed three tasks
+    async def test_edit_tasks_emits_no_progress(self, client: Any) -> None:
         add = await client.call_tool(
             "add_tasks",
-            {"items": [{"name": f"Seed {i}"} for i in range(3)]},
+            {"items": [{"name": f"Seed {i}"} for i in range(5)]},
         )
         ids = [item["id"] for item in add.structured_content["result"]]
 
@@ -2611,10 +2554,5 @@ class TestProgressNotificationEmission:
             {"items": [{"id": tid, "name": f"Renamed {i}"} for i, tid in enumerate(ids)]},
             progress_handler=collect,
         )
-        assert len(result.structured_content["result"]) == 3
-        for progress, total, _message in events:
-            assert total is not None
-            assert progress < total, (
-                f"Unexpected final progress=total notification (progress={progress}, "
-                f"total={total}) -- we deliberately skip this one"
-            )
+        assert len(result.structured_content["result"]) == 5
+        assert events == [], f"Expected zero progress events, got {events}"

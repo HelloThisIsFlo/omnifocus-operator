@@ -18,25 +18,29 @@ DEFAULT_LIST_LIMIT: int = 50
 # Maximum items accepted in a single add_tasks or edit_tasks call.
 MAX_BATCH_SIZE: int = 50
 
-# Minimum batch size to emit MCP progress notifications from write tools.
-# Below this threshold the handlers skip progress entirely.
+# MCP progress notifications DISABLED pending upstream Claude Code CLI fix.
 #
-# Observed symptom: Claude Code's MCP client rejects every progress
-# notification the server emits with "unknown progressToken" -- even though
-# the client itself put that token in the request's _meta.progressToken.
-# After N such rejections, the client closes the stdio transport, breaking
-# every subsequent tool call in the session.
+# Bug: Claude Code CLI 2.1.105+ regression. The client sends ``progressToken``
+# in ``_meta``, then refuses to recognise its own token when the server echoes
+# it back in a ``notifications/progress``. Rejection = fatal stdio teardown;
+# one strike kills the pipe. Every subsequent tool call in the session fails
+# with ``-32000 Connection closed``.
 #
-# Precise client-side mechanism NOT verified. It could be that Claude Code
-# doesn't register a callback for the tokens it sends, or that it cleans them
-# up too eagerly relative to when notifications get dispatched. We can't tell
-# from the outside without reading the client source. What we CAN verify:
-# fewer emitted notifications -> sessions stay alive longer.
+# Verified 2026-04-17 via the reproducer at
+# ``.research/deep-dives/bugfix-progress-handler-stdio-disconnect/``. A single
+# ``emit_only_final`` call (one notification, zero intermediates) tore down
+# the transport. Log trail matched issue #47765 bit-for-bit.
 #
-# Chosen threshold: single-item calls (the dominant UAT/agent pattern) emit
-# zero progress and have zero strike exposure. Larger batches still emit
-# intermediate progress since they run long enough for progress UX to matter.
-PROGRESS_NOTIFICATION_MIN_BATCH_SIZE: int = 3
+# Upstream:
+# - https://github.com/anthropics/claude-code/issues/47378 (open — broader
+#   "stdio kills stdin after successful tool response" framing)
+# - https://github.com/anthropics/claude-code/issues/47765 (closed as dup of
+#   47378 — specifically diagnoses the unknown-progressToken dispatch path)
+#
+# When fixed upstream: flip to ``True``, re-run the reproducer to confirm the
+# transport survives, then DELETE this flag AND the guarded
+# ``ctx.report_progress`` calls in ``server/handlers.py``.
+PROGRESS_NOTIFICATIONS_ENABLED: bool = False
 
 # -- Fuzzy matching (used by DomainLogic.suggest_close_matches) ---------------
 # Maximum number of suggestions returned for a failed name resolution.

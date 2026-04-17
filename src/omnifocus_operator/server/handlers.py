@@ -37,7 +37,7 @@ from omnifocus_operator.agent_messages.descriptions import (
 )
 from omnifocus_operator.config import (
     MAX_BATCH_SIZE,
-    PROGRESS_NOTIFICATION_MIN_BATCH_SIZE,
+    PROGRESS_NOTIFICATIONS_ENABLED,
     PROJECT_DEFAULT_FIELDS,
     PROJECT_FIELD_GROUPS,
     TASK_DEFAULT_FIELDS,
@@ -133,15 +133,9 @@ def _register_tools(mcp: FastMCP) -> None:
     ) -> list[dict[str, Any]]:
         service: OperatorService = ctx.lifespan_context["service"]
         total = len(items)
-        # Skip progress for small batches. Claude Code's MCP client rejects
-        # our progress notifications with "unknown progressToken" (even tokens
-        # it included in the request) and eventually closes the transport.
-        # Exact client-side cause not verified -- see config.py for the
-        # diagnosis. Fewer notifications = sessions stay alive.
-        should_emit_progress = total >= PROGRESS_NOTIFICATION_MIN_BATCH_SIZE
         results: list[AddTaskResult] = []
         for i, command in enumerate(items):
-            if should_emit_progress:
+            if PROGRESS_NOTIFICATIONS_ENABLED:
                 await ctx.report_progress(progress=i, total=total)
             try:
                 result = await service.add_task(command)
@@ -153,11 +147,8 @@ def _register_tools(mcp: FastMCP) -> None:
                         error=f"Task {i + 1}: {e}",
                     )
                 )
-        # Deliberately not emitting a final progress=total notification.
-        # Empirically this is the most frequently-rejected one (fires right
-        # before return, no bridge work after it). Exact client-side reason
-        # not verified -- see config.py. Whatever the mechanism, omitting this
-        # notification keeps the strike count down.
+        if PROGRESS_NOTIFICATIONS_ENABLED:
+            await ctx.report_progress(progress=total, total=total)
         return strip_batch_results(results)
 
     @mcp.tool(
@@ -172,16 +163,10 @@ def _register_tools(mcp: FastMCP) -> None:
     ) -> list[dict[str, Any]]:
         service: OperatorService = ctx.lifespan_context["service"]
         total = len(items)
-        # Skip progress for small batches. Claude Code's MCP client rejects
-        # our progress notifications with "unknown progressToken" (even tokens
-        # it included in the request) and eventually closes the transport.
-        # Exact client-side cause not verified -- see config.py for the
-        # diagnosis. Fewer notifications = sessions stay alive.
-        should_emit_progress = total >= PROGRESS_NOTIFICATION_MIN_BATCH_SIZE
         results: list[EditTaskResult] = []
         failed_idx: int | None = None
         for i, command in enumerate(items):
-            if should_emit_progress:
+            if PROGRESS_NOTIFICATIONS_ENABLED:
                 await ctx.report_progress(progress=i, total=total)
             if failed_idx is not None:
                 results.append(
@@ -204,11 +189,8 @@ def _register_tools(mcp: FastMCP) -> None:
                         error=f"Task {i + 1}: {e}",
                     )
                 )
-        # Deliberately not emitting a final progress=total notification.
-        # Empirically this is the most frequently-rejected one (fires right
-        # before return, no bridge work after it). Exact client-side reason
-        # not verified -- see config.py. Whatever the mechanism, omitting this
-        # notification keeps the strike count down.
+        if PROGRESS_NOTIFICATIONS_ENABLED:
+            await ctx.report_progress(progress=total, total=total)
         return strip_batch_results(results)
 
     @mcp.tool(
