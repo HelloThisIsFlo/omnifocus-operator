@@ -12,6 +12,7 @@ Requirements for milestone v1.4: Response Shaping, Batch Processing & Notes Grad
 - [x] **STRIP-01**: All tool responses strip null, [], "", false, and "none" from entity fields automatically
 - [x] **STRIP-02**: availability field is never stripped from entity responses
 - [x] **STRIP-03**: Result envelope fields (hasMore, total, status) are never stripped
+- [x] **STRIP-04**: Batch result items (`AddTaskResult`, `EditTaskResult`) in add_tasks / edit_tasks responses are stripped using STRIP-01 rules — null/""/false/[]/"none" removed from each item. `status` field is always preserved (required Literal — never matches the strip set).
 
 ### Inherited Rename
 
@@ -66,6 +67,7 @@ Each inherited field uses a specific aggregation strategy when walking the ances
 - [x] **BATCH-07**: Items processed serially in array order within a batch
 - [x] **BATCH-08**: Same-task edits allowed — each sees prior item's result
 - [x] **BATCH-09**: Cross-item references not supported — batch items cannot reference other items in the same batch (documented in tool description)
+- [x] **BATCH-10**: Batch tools (`add_tasks`, `edit_tasks`) advertise a loose `array of object` outputSchema. Clients infer item shape from BATCH-04/05/06. Enforced by `tests/test_server.py::test_write_tools_have_loose_output_schema`.
 
 ### Notes Graduation
 
@@ -119,6 +121,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | STRIP-01 | Phase 53 | Complete |
 | STRIP-02 | Phase 53 | Complete |
 | STRIP-03 | Phase 53 | Complete |
+| STRIP-04 | Quick 260417-oiw | Complete |
 | RENAME-01 | Phase 53 | Complete |
 | FSEL-01 | Phase 53 | Complete |
 | FSEL-02 | Phase 53 | Complete |
@@ -143,6 +146,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BATCH-07 | Phase 54 | Complete |
 | BATCH-08 | Phase 54 | Complete |
 | BATCH-09 | Phase 54 | Complete |
+| BATCH-10 | Quick 260417-oiw | Complete |
 | NOTE-01 | Phase 55 | Complete |
 | NOTE-02 | Phase 55 | Complete |
 | NOTE-03 | Phase 55 | Complete |
@@ -160,10 +164,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INHERIT-10 | Phase 53.1 | Complete |
 
 **Coverage:**
-- v1.4 requirements: 39 total
-- Mapped to phases: 39
+- v1.4 requirements: 41 total
+- Mapped to phases: 41
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-14*
-*Last updated: 2026-04-14 after roadmap revision (merged Phases 53+54 into Phase 53)*
+*Last updated: 2026-04-17 — added STRIP-04 and BATCH-10 from Quick 260417-oiw (batch result stripping follow-up)*
