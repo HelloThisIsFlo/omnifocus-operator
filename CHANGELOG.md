@@ -11,6 +11,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versions follow 
 - Dynamic versioning with `hatch-vcs` (git tags as source of truth)
 - Platform check — non-macOS prints clear error and exits
 
+## [1.4] - Response Shaping & Batch Processing
+
+### Added
+- Response stripping — null/`[]`/`""`/`false`/`"none"` auto-removed from entity fields; `availability` and envelope fields always preserved
+- `include` on `list_tasks` / `list_projects` — add field groups to defaults: `notes`, `metadata`, `hierarchy`, `time`, `*` (projects also: `review`)
+- `only` on `list_tasks` / `list_projects` — return exactly named fields; `id` always included; mutually exclusive with `include`
+- `limit: 0` returns count-only: `{items: [], total: N, hasMore: ...}`
+- Batch processing — `add_tasks` / `edit_tasks` accept up to 50 items per call with per-item `status` / `warnings`; `add_tasks` best-effort, `edit_tasks` fail-fast
+- `actions.note.append` on `edit_tasks` — appends text with `\n` separator; whitespace-only is a no-op
+- `actions.note.replace` on `edit_tasks` — replaces full note; `null` or `""` clears
+
+### Changed
+- `effective*` → `inherited*` across all tool responses (6 fields: dueDate, deferDate, plannedDate, flagged, dropDate, completionDate) — **breaking rename**
+- `inherited*` fields now only appear when truly inherited from an ancestor — self-values stripped; per-field aggregation: min (dueDate), max (deferDate), OR (flagged), first-found (others)
+- Top-level `note` removed from `edit_tasks` input — use `actions.note.append` / `actions.note.replace` — **breaking**
+
 ## [1.3.3] - Ordering & Move Fix
 
 ### Added
