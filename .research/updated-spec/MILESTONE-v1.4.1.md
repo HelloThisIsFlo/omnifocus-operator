@@ -69,3 +69,34 @@ The filter approach is strictly additive: search behaviour stays lean, subtree r
 - **Default vs. opt-in for the new fields.** Presence flags are planned as default-included (strip-when-false). The two structural/behavioural fields (auto-complete, parallel/sequential) probably sit behind an include group — confirm during design.
 - **`parent` filter interaction with other filters.** Does `parent: "X"` compose with `project: "Y"`, `tags: [...]`, date filters, etc.? Presumably yes (AND-composed, same as everything else). Worth confirming the semantics for the "parent itself" inclusion — does the parent task still appear if it fails a sibling filter? (Probably yes — the parent is a structural anchor, not a filter match.)
 - **`hasAttachments` without full attachment support.** The flag can ship before attachment retrieval is implemented — it's useful on its own ("there's something here, go look in OmniFocus"). Decide whether to land the include group for attachments in this milestone or defer.
+
+## OmniJS Spike Results (2026-04-18)
+
+All properties needed for this milestone are confirmed available in OmniJS. Spike ran against a live OmniFocus database; write tests used scratch tasks/projects created and deleted within the script.
+
+### `completedByChildren` (spec: "auto-complete")
+
+- **OmniJS property name:** `task.completedByChildren` / `project.completedByChildren`
+- **Type:** Boolean, read/write on both Task and Project
+- **Read:** `t.completedByChildren` → `true` / `false`
+- **Write:** `task.completedByChildren = true` — confirmed works on Task and Project
+- **Note:** The spec calls this "auto-complete" but the OmniJS API name is `completedByChildren`. The exposed field name in the MCP response is a design decision (either follow OmniJS, or map to a more intuitive name).
+- **Observation:** In one real database sample, `completedByChildren: true` appeared on the vast majority of tasks — including leaf tasks with no children. This may affect the decision of whether to treat it as a rare presence flag (strip-when-false) or an always-included structural field.
+
+### `sequential` (spec: "parallel/sequential")
+
+- **OmniJS property name:** `task.sequential` / `project.sequential`
+- **Type:** Boolean, read/write on both Task and Project
+- **Read:** `t.sequential` → `true` (sequential) / `false` (parallel)
+- **Write:** `task.sequential = true` — confirmed works on Task and Project
+- **Note:** This property already flows through the bridge — it was being read but stripped in `_TASK_DEAD_FIELDS` in the adapter. Adding it back is a matter of removing it from the strip list and wiring up the model.
+- **Semantic:** `sequential: false` means parallel (children can be done in any order); `sequential: true` means ordered (each child is blocked until the previous completes).
+
+### `attachments` (spec: "hasAttachments")
+
+- **OmniJS property name:** `task.attachments` / `project.attachments`
+- **Type:** `Array<FileWrapper>`, read-only on both Task and Project
+- **Read:** `t.attachments.length > 0` → presence flag
+- **Write:** not applicable for the `hasAttachments` flag; full attachment add/remove is out of scope for this milestone
+- **Confirmed on projects:** `project.attachments` returns an empty array on a fresh project — same API as tasks.
+- **Implementation:** bridge reads `t.attachments.length`, emits `hasAttachments: true` only when non-zero (strip-when-false pattern).
