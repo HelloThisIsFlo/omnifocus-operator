@@ -165,7 +165,8 @@ All read tools are idempotent. Write tools reference projects and tags by name o
 | **v1.3.1** | First-Class References — name resolution, `$inbox`, rich refs ✅ |
 | **v1.3.2** | Date Filtering — 7 dimensions, shortcuts, calendar math ✅ |
 | **v1.3.3** | Task Ordering — dotted notation, outline order ✅ |
-| **v1.4** | Response Shaping & Batch Processing 🔧 |
+| **v1.4** | Response Shaping & Batch Processing ✅ |
+| **v1.4.1** | Task Properties & Subtree — presence flags, auto-complete, parallel/sequential, parent filter 🔧 |
 | **v1.5** | UI & Perspectives — perspective switching, deep links |
 | **v1.6** | Production Hardening — retry, crash recovery, serial execution |
 

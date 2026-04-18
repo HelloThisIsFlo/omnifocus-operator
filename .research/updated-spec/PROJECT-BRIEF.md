@@ -115,6 +115,7 @@ File-based JSON request/response via OmniFocus's sandbox directory. Both sides u
 | v1.2 | Writes & Lookups | 6 | Get-by-ID + task write pipeline |
 | v1.3 | Read Tools | 11 | SQL filtering, entity browsing |
 | v1.4 | Response Shaping & Notes Append | 11 | Field projection, compact output (CSV or null-stripping), notes append |
+| v1.4.1 | Task Properties & Subtree Retrieval | 11 | Presence flags (`hasNote`, `hasRepetition`, `hasAttachments`), auto-complete, parallel/sequential, `parent` filter |
 | v1.5 | UI & Perspectives | 14 | Perspective switching, deep link, UI data path |
 | v1.6 | Production Hardening | 14 | Retry, crash recovery, serial execution |
 | v1.7 | Project Writes | 16 | Project creation, editing, review marking |

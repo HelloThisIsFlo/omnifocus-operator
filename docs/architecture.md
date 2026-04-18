@@ -758,6 +758,31 @@ All agent-facing text is centralized in `agent_messages/` with AST-based test en
 - **Availability**: `available`, `blocked`, `completed`, `dropped` — lifecycle state
 - Replaces single-winner status enum from v1.0; matches OmniFocus internal representation
 
+## Presence Flags
+
+Lightweight booleans that signal "there's content here — ask for it via an include group if you want it." They appear in the default response only when `true`, stripped when `false` — so their presence IS the signal.
+
+> [!important] The rule
+>
+> **A presence flag earns a spot in the default response only when the `true` case is rare.**
+>
+> - Rare → usually absent, so stripping materially shrinks the default payload
+> - Common → present most of the time, signal dilutes, payload grows for nothing
+
+### Qualifying fields
+
+| Field | Signals | Why it qualifies |
+|-------|---------|------------------|
+| `hasNote` | A note exists — fetch via `include: ["notes"]` | Most tasks have no note |
+| `hasRepetition` | A repetition rule exists | Most tasks aren't recurring |
+| `hasAttachments` | Attachments exist | Most tasks have none; binary content never belongs in default |
+
+### Why `hasSubtasks` stays in the `hierarchy` include group
+
+`hasSubtasks` looks like it belongs with the family above, but it fails the rarity test — many tasks have children, so the flag would be `true` in a large share of responses. Stripping buys nothing, and the "presence IS the signal" model loses force when the field is present most of the time.
+
+Keeping it in the `hierarchy` include group gives the same information to agents who care about structure, without cluttering every default response with a flag that's almost always set.
+
 ## Repetition Rule: Structured Fields, Not RRULE Strings
 
 > **Status:** Read + write models implemented (v1.2.3) — flat `Frequency` model, `parse_rrule()`, `build_rrule()`. Type optional on edits.
