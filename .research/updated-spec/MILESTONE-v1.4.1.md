@@ -231,3 +231,79 @@ Both confirmed readable. Read once per server lifetime (cached), used by the ser
 ## Naming Revisit Candidates (before write implementation)
 
 - **`actionOrder`**: soft lock. Flo not firmly committed. Worth a naming pass before the write path is implemented.
+
+---
+
+## Spike Results (2026-04-18)
+
+Both pre-implementation spikes defined above are complete. **Design fully unblocked — no fields scoped out, no contract changes required.** This section summarises findings so the milestone is self-contained; full evidence tables, query plans, and benchmark data live in the linked FINDINGS docs.
+
+### Spike 1 — SQLite Cache Coverage: ✅ all three fields cache-backed
+
+Confirms that `completesWithChildren`, `actionOrder` (including the `singleActions` third state), and `hasAttachments` all read cleanly from the SQLite cache — no per-row OmniJS bridge fallback needed for any of them.
+
+**Read source per field (tasks + projects):**
+
+| Field | Task read source | Project read source | Verdict |
+|---|---|---|---|
+| `completesWithChildren` | `Task.completeWhenChildrenComplete` (INTEGER 0/1) | same column, via the project's Task row | ✅ Locked |
+| `actionOrder` parallel / sequential | `Task.sequential` (INTEGER 0/1) | same column, via the project's Task row | ✅ Locked |
+| `actionOrder` `singleActions` (projects only) | — (not applicable on tasks) | `ProjectInfo.containsSingletonActions` (INTEGER 0/1) | ✅ Locked |
+| `hasAttachments` | `EXISTS (SELECT 1 FROM Attachment WHERE task = ?)` with indexed `Attachment_task` | same shape — `Attachment.task` FK points at the project's Task row | ✅ Locked (default-response field) |
+
+**Project-level access model:** in OmniFocus's SQLite schema, every project is two rows — one in `Task` (the generic node) and one in `ProjectInfo` (project metadata). They join via `ProjectInfo.task = Task.persistentIdentifier`. So all `Task`-level columns (`completeWhenChildrenComplete`, `sequential`, and the Attachment FK pattern) apply automatically to projects. The only project-specific column is `ProjectInfo.containsSingletonActions`, which encodes the `singleActions` third state. Service layer collapses `(sequential, containsSingletonActions)` into the `ProjectActionOrder` enum.
+
+**Key evidence:**
+
+- **Attachment presence performance** — median **2.1 ms** over the full 3,426-row corpus using `EXISTS (SELECT 1 FROM Attachment WHERE task = ?)`. The `Attachment_task` index makes each lookup O(log n); growth at 25K is ~15 ms worst case. Well under any response-time budget.
+- **Population distribution** — `completeWhenChildrenComplete` is 62% true / 38% false on tasks (17.9% true on projects); `sequential` is 99% false on tasks, 88% false on projects; `containsSingletonActions` is 22% true on projects. Columns are populated, not schema-present-but-empty.
+- **OmniJS per-row cross-check** — 20 sampled task IDs × 3 fields = **60/60 matches** between the OmniFocus bridge and the SQLite cache. No identity drift between the two views.
+
+**Bonus — user-default settings:**
+
+- `OFMCompleteWhenLastItemComplete` lives in the `Setting` table as a 42-byte plist blob. Decoded via `plistlib.loads(valueData)` → native Python `bool`. Read once at server startup, cached for the process lifetime.
+- `OFMTaskDefaultSequential` is **not present in the cache** when the user hasn't changed it from the OF factory default. OmniFocus only materialises settings when explicitly set — absence = "user kept the documented default" (a valid signal, not an error). Service layer must implement: "row present → decode; row absent → use OF factory default".
+
+**Decisions unblocked:**
+
+- `hasAttachments` ships as a **default-response field** (not gated behind `include`).
+- Service layer reads app-level defaults cheaply from cache — no OmniJS round-trip at startup.
+- No v1.4.1 fields scoped out. The full design as specified above stands.
+
+→ Full details: [`.research/deep-dives/v1.4.1-cache-coverage/FINDINGS.md`](../deep-dives/v1.4.1-cache-coverage/FINDINGS.md)
+
+### Spike 2 — Python-Filter Benchmark: ✅ repo-layer unification viable
+
+Measures Python-side filtering cost for the new `parent` subtree filter across a 1K / 5K / 10K / 25K synthetic corpus sweep plus a live-DB cross-check.
+
+**Verdict:** Python warm-path p95 at 10K is **≤ 1.30 ms across all three scenarios** — 77× under the pre-declared 100 ms "viable" threshold. **Filter unification moves to the repo layer** (the "Fast enough" branch of the original decision framing).
+
+**Numbers at the 10K target scale:**
+
+| Scenario | SQL p95 | Python warm p95 | Python cold p95 |
+|---|---:|---:|---:|
+| parent only | 2.10 ms | **1.21 ms** | 27.90 ms |
+| parent + tag | 0.24 ms | 1.29 ms | 27.79 ms |
+| parent + date | 0.88 ms (median) | **1.30 ms** | 26.53 ms |
+
+"Warm" = pre-loaded snapshot (matches `BridgeOnlyRepository`'s amortised path — dominant case in production). "Cold" = snapshot load + children-map build + filter in one call (paid on `get_all()` cache-miss only).
+
+**Decisions unblocked:**
+
+- `HybridRepository` and `BridgeOnlyRepository` share a **Python-based filter pipeline** at the repo layer. Contract stays unchanged — this decision is purely about *where* the filter logic lives.
+- `HybridRepository` retains the option to push specific filters down to SQL as an opportunistic optimisation (the spike's recursive-CTE prototype at `.research/deep-dives/v1.4.1-filter-benchmark/experiments/sql_parent_filter.py` shows the shape).
+- `ListTasksRepoQuery` gets a new `parent_ids: list[str] | None` field. Filter logic lives at the repo layer, not service.
+- `collect_subtree(parent_id, snapshot) -> list[Task]` extracted as a shared helper (both repos use it).
+
+**Caveat (noted, but orthogonal):**
+
+- Cold-path on the live DB (3,426 rows, full ~60-column Task schema) is **50 ms** — higher than the synthetic 10K cold (24 ms) because real row width is ~4× larger. Extrapolating to 10K real-schema rows: cold ≈ 150 ms; at 25K, ≈ 375 ms.
+- Cold cost is **shared between SQL and Python paths** (both materialise via `get_all()`), so it doesn't affect the filter-unification choice. If cold ever becomes a concern, the response is snapshot optimisation (projection / lazy deserialisation) — not a change to the filter strategy.
+
+→ Full details: [`.research/deep-dives/v1.4.1-filter-benchmark/FINDINGS.md`](../deep-dives/v1.4.1-filter-benchmark/FINDINGS.md)
+
+### Combined status
+
+- **All pre-implementation blockers cleared.** v1.4.1 is ready for planning.
+- No changes to the scope defined in the sections above.
+- Two implementation pointers added by the spikes: (a) service layer reads user-default settings from `Setting` table with plist decode + absence-as-default fallback, (b) filter logic unifies at the repo layer with a shared `collect_subtree` helper.
