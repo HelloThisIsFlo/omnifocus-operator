@@ -119,14 +119,14 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 - ✓ Inbox-first ordering — inbox tasks sort before project tasks in get_all/list_tasks responses — v1.3.3
 - ✓ Same-container move fix — `moveTo beginning/ending` translates to `moveBefore`/`moveAfter` via `get_edge_child_id` when container has children — v1.3.3
 - ✓ Position-specific no-op detection — `anchor_id == task_id` self-reference check with `MOVE_ALREADY_AT_POSITION` warning — v1.3.3
+- ✓ Task property surface — writable `completesWithChildren`, per-type `type` enum on tasks with `Patch[bool]` / `Patch[TaskType]` semantics + create-default resolution from OF preferences — v1.4.1 Phase 56
+- ✓ Task presence flags — `hasNote`, `hasRepetition`, `hasAttachments`, `isSequential`, `dependsOnChildren` on default response, stripped-when-false — v1.4.1 Phase 56
+- ✓ Expanded `hierarchy` include group — `hasChildren`, `type`, `completesWithChildren` on tasks + projects with no-suppression invariant (default + hierarchy emit independently) — v1.4.1 Phase 56
+- ✓ `OmniFocusPreferences` extension — `OFMCompleteWhenLastItemComplete` / `OFMTaskDefaultSequential` via existing bridge-based lazy-load-once pattern — v1.4.1 Phase 56
 
 ### Active
 
-- [ ] Task property surface — writable `completesWithChildren`, per-type `type` enum on tasks (v1.4.1)
-- [ ] Task presence flags — `hasNote`, `hasRepetition`, `hasAttachments`, `isSequential`, `dependsOnChildren` on default response (v1.4.1)
-- [ ] Expanded `hierarchy` include group — `hasChildren`, `type`, `completesWithChildren` on tasks + projects (v1.4.1)
-- [ ] Subtree retrieval — `parent` filter on `list_tasks` with `collect_subtree` helper, repo-layer filter unification (v1.4.1)
-- [ ] `OmniFocusPreferences` extension — `OFMCompleteWhenLastItemComplete`, `OFMTaskDefaultSequential` create-defaults (v1.4.1)
+- [ ] Subtree retrieval — `parent` filter on `list_tasks` with `collect_subtree` helper, repo-layer filter unification (v1.4.1 Phase 57)
 - [ ] UI & Perspectives — show/get perspective, open_task, live UI reads (v1.5)
 - [ ] Production hardening — retry, crash recovery, serial execution (v1.6)
 - [ ] Project writes — add_projects, edit_projects (v1.7)
@@ -273,4 +273,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-19 — Milestone v1.4.1 Task Property Surface & Subtree Retrieval started. Design locked after 4-session interview + 2 pre-implementation spikes (cache coverage, Python-filter benchmark); no fields scoped out. Phase numbering continues from 55.*
+*Last updated: 2026-04-19 — Phase 56 (Task Property Surface) complete. Read + write surfaces shipped end-to-end for `completesWithChildren`, per-type `type`, presence flags, expanded `hierarchy` include group, no-suppression invariant, `OmniFocusPreferences` extension. 2 gaps logged in `56-HUMAN-UAT.md` for follow-up: (G1) hoist `isSequential` to projects + ActionableEntity, (G2) golden master via canonical `uat/capture_golden_master.py` pattern instead of 56-07's InMemoryBridge baseline. Phase 57 (Subtree retrieval) is next in this milestone.*
