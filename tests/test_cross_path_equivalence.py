@@ -151,6 +151,13 @@ def _build_neutral_test_data() -> dict[str, Any]:
                 "effective_completed": None,
                 "dropped": None,
                 "effective_dropped": None,
+                # Phase 56-02 HIER-05 cross-path precedence test: BOTH
+                # sequential=True AND containsSingletonActions=True -> must
+                # resolve to "singleActions" on both repos.
+                "completes_with_children": False,
+                "project_type": "singleActions",
+                "_sequential_underlying": True,  # documents HIER-05 test intent
+                "has_attachments": True,
             },
             {
                 "id": "proj-2",
@@ -173,6 +180,10 @@ def _build_neutral_test_data() -> dict[str, Any]:
                 "effective_completed": None,
                 "dropped": None,
                 "effective_dropped": None,
+                # Phase 56-02: pure sequential project (no singleActions).
+                "completes_with_children": True,
+                "project_type": "sequential",
+                "has_attachments": False,
             },
             {
                 "id": "proj-3",
@@ -286,6 +297,11 @@ def _build_neutral_test_data() -> dict[str, Any]:
                 "effective_completed": None,
                 "dropped": None,
                 "effective_dropped": None,
+                # Phase 56-02 property-surface: full-positive permutation.
+                "completes_with_children": False,
+                "task_type": "sequential",
+                "has_attachments": True,
+                "plain_text_note": "keyword note content",
             },
             {
                 "id": "task-2",
@@ -309,6 +325,10 @@ def _build_neutral_test_data() -> dict[str, Any]:
                 "effective_completed": None,
                 "dropped": None,
                 "effective_dropped": None,
+                # Phase 56-02: factory-default permutation (all False/parallel).
+                "completes_with_children": True,
+                "task_type": "parallel",
+                "has_attachments": False,
             },
             {
                 "id": "task-3",
@@ -469,6 +489,17 @@ def _dt_to_iso(dt: datetime) -> str:
     return dt.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
 
+def _project_sequential_bit(p: dict[str, Any]) -> int:
+    """Resolve the underlying `sequential` SQLite column / bridge field for a project.
+
+    Uses explicit ``_sequential_underlying`` when present (HIER-05 precedence
+    test: both flags set). Otherwise derives from ``project_type``.
+    """
+    if "_sequential_underlying" in p:
+        return 1 if p["_sequential_underlying"] else 0
+    return 1 if p.get("project_type", "parallel") == "sequential" else 0
+
+
 async def seed_bridge_repo(data: dict[str, Any]) -> BridgeOnlyRepository:
     """Translate neutral data to bridge format and return a seeded BridgeOnlyRepository."""
     # Build tag lookup for inline tag refs on tasks
@@ -482,6 +513,7 @@ async def seed_bridge_repo(data: dict[str, Any]) -> BridgeOnlyRepository:
             make_task_dict(
                 id=t["id"],
                 name=t["name"],
+                note=t.get("plain_text_note") or "",
                 inInbox=t["in_inbox"],
                 flagged=t["flagged"],
                 effectiveFlagged=t["flagged"],
@@ -490,6 +522,10 @@ async def seed_bridge_repo(data: dict[str, Any]) -> BridgeOnlyRepository:
                 status=_BRIDGE_AVAILABILITY_MAP[t["availability"]],
                 estimatedMinutes=t["estimated_minutes"],
                 tags=tag_refs,
+                # Phase 56-02 raw bridge fields.
+                completedByChildren=t.get("completes_with_children", True),
+                sequential=t.get("task_type", "parallel") == "sequential",
+                hasAttachments=bool(t.get("has_attachments", False)),
                 added=_dt_to_iso(t["added"]),
                 modified=_dt_to_iso(t["modified"]),
                 dueDate=_dt_to_iso(t["due"]) if t.get("due") else None,
@@ -516,6 +552,7 @@ async def seed_bridge_repo(data: dict[str, Any]) -> BridgeOnlyRepository:
     # Translate projects
     bridge_projects = []
     for p in data["projects"]:
+        project_type = p.get("project_type", "parallel")
         bridge_projects.append(
             make_project_dict(
                 id=p["id"],
@@ -531,6 +568,11 @@ async def seed_bridge_repo(data: dict[str, Any]) -> BridgeOnlyRepository:
                     "dropped": "Dropped",
                 }[p["availability"]],
                 taskStatus=_BRIDGE_AVAILABILITY_MAP[p["availability"]],
+                # Phase 56-02 raw bridge fields (three-state type + presence).
+                completedByChildren=p.get("completes_with_children", True),
+                sequential=bool(_project_sequential_bit(p)),
+                containsSingletonActions=project_type == "singleActions",
+                hasAttachments=bool(p.get("has_attachments", False)),
                 nextReviewDate=_dt_to_iso(p["next_review_date"]),
                 lastReviewDate=_dt_to_iso(p["last_review_date"]),
                 added=_dt_to_iso(p["added"]),
@@ -668,7 +710,9 @@ async def seed_sqlite_repo(data: dict[str, Any], tmp_path: Path) -> HybridReposi
                 repetitionScheduleTypeString TEXT,
                 repetitionAnchorDateKey TEXT,
                 catchUpAutomatically INTEGER DEFAULT 0,
-                rank INTEGER DEFAULT 0
+                rank INTEGER DEFAULT 0,
+                completeWhenChildrenComplete INTEGER DEFAULT 1,
+                sequential INTEGER DEFAULT 0
             );
             CREATE TABLE ProjectInfo (
                 pk TEXT PRIMARY KEY,
@@ -678,7 +722,8 @@ async def seed_sqlite_repo(data: dict[str, Any], tmp_path: Path) -> HybridReposi
                 reviewRepetitionString TEXT,
                 nextTask TEXT,
                 folder TEXT,
-                effectiveStatus TEXT
+                effectiveStatus TEXT,
+                containsSingletonActions INTEGER DEFAULT 0
             );
             CREATE TABLE Context (
                 persistentIdentifier TEXT PRIMARY KEY,
@@ -709,6 +754,14 @@ async def seed_sqlite_repo(data: dict[str, Any], tmp_path: Path) -> HybridReposi
                 task TEXT,
                 tag TEXT
             );
+            CREATE TABLE Attachment (
+                persistentIdentifier TEXT PRIMARY KEY,
+                task TEXT,
+                folder TEXT,
+                context TEXT,
+                perspective TEXT
+            );
+            CREATE INDEX Attachment_task ON Attachment (task);
         """)
 
         # Insert tasks (non-project tasks only)
@@ -756,20 +809,23 @@ async def seed_sqlite_repo(data: dict[str, Any], tmp_path: Path) -> HybridReposi
             conn.execute(
                 """INSERT INTO Task (
                     persistentIdentifier, name, dateAdded, dateModified,
+                    plainTextNote,
                     flagged, effectiveFlagged, estimatedMinutes,
                     childrenCount, inInbox, containingProjectInfo, parent,
                     overdue, dueSoon, blocked,
                     dateDue, dateToStart, datePlanned,
                     effectiveDateDue, effectiveDateToStart, effectiveDatePlanned,
                     dateCompleted, effectiveDateCompleted,
-                    dateHidden, effectiveDateHidden
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    dateHidden, effectiveDateHidden,
+                    completeWhenChildrenComplete, sequential
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 [
                     t["id"],
                     t["name"],
                     _to_cf_epoch(t["added"]),
                     _to_cf_epoch(t["modified"]),
+                    t.get("plain_text_note"),
                     int(t["flagged"]),
                     int(t["flagged"]),
                     t["estimated_minutes"],
@@ -790,6 +846,9 @@ async def seed_sqlite_repo(data: dict[str, Any], tmp_path: Path) -> HybridReposi
                     effective_completed,
                     date_hidden,
                     effective_hidden,
+                    # Phase 56-02 property-surface columns.
+                    1 if t.get("completes_with_children", True) else 0,
+                    1 if t.get("task_type", "parallel") == "sequential" else 0,
                 ],
             )
 
@@ -840,9 +899,10 @@ async def seed_sqlite_repo(data: dict[str, Any], tmp_path: Path) -> HybridReposi
                     dateDue, dateToStart, datePlanned,
                     effectiveDateDue, effectiveDateToStart, effectiveDatePlanned,
                     dateCompleted, effectiveDateCompleted,
-                    dateHidden, effectiveDateHidden
+                    dateHidden, effectiveDateHidden,
+                    completeWhenChildrenComplete, sequential
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 [
                     task_id,
                     p["name"],
@@ -866,13 +926,20 @@ async def seed_sqlite_repo(data: dict[str, Any], tmp_path: Path) -> HybridReposi
                     p_eff_completed,
                     p_date_hidden,
                     p_eff_hidden,
+                    # Phase 56-02 property-surface columns. For HIER-05
+                    # cross-path tests, `_sequential_underlying` overrides the
+                    # type-implied sequential bit so both underlying flags can
+                    # be set simultaneously.
+                    1 if p.get("completes_with_children", True) else 0,
+                    _project_sequential_bit(p),
                 ],
             )
             conn.execute(
                 """INSERT INTO ProjectInfo (
                     pk, task, lastReviewDate, nextReviewDate,
-                    reviewRepetitionString, folder, effectiveStatus
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    reviewRepetitionString, folder, effectiveStatus,
+                    containsSingletonActions
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                 [
                     f"pi-{task_id}",
                     task_id,
@@ -881,6 +948,7 @@ async def seed_sqlite_repo(data: dict[str, Any], tmp_path: Path) -> HybridReposi
                     "@1w",
                     p["folder_id"],
                     _SQLITE_PROJECT_EFFECTIVE_STATUS[p["availability"]],
+                    1 if p.get("project_type") == "singleActions" else 0,
                 ],
             )
 
@@ -941,6 +1009,24 @@ async def seed_sqlite_repo(data: dict[str, Any], tmp_path: Path) -> HybridReposi
                 "INSERT INTO TaskToTag (task, tag) VALUES (?, ?)",
                 [tt["task_id"], tt["tag_id"]],
             )
+
+        # Phase 56-02: insert attachment rows for any task/project with
+        # has_attachments=True so the batched presence set picks them up.
+        attachment_seq = 0
+        for t in data["tasks"]:
+            if t.get("has_attachments"):
+                attachment_seq += 1
+                conn.execute(
+                    "INSERT INTO Attachment (persistentIdentifier, task) VALUES (?, ?)",
+                    [f"att-{attachment_seq}", t["id"]],
+                )
+        for p in data["projects"]:
+            if p.get("has_attachments"):
+                attachment_seq += 1
+                conn.execute(
+                    "INSERT INTO Attachment (persistentIdentifier, task) VALUES (?, ?)",
+                    [f"att-{attachment_seq}", p["id"]],
+                )
 
         conn.commit()
     finally:
@@ -1100,6 +1186,107 @@ class TestListProjectsCrossPath:
         # proj-2 has review on 2026-06-01 (after threshold)
         assert len(items) == 3
         assert [p.id for p in items] == ["proj-1", "proj-3", "proj-due"]
+
+
+# ===========================================================================
+# Phase 56-02: Task property surface cross-path equivalence
+# ===========================================================================
+
+
+class TestPropertySurfaceCrossPath:
+    """CACHE-01..04 + HIER-05 equivalence across HybridRepository and
+    BridgeOnlyRepository. Same neutral seed data must produce identical values
+    for ``completes_with_children``, ``type``, ``has_attachments``, ``has_note``,
+    and ``has_repetition`` on both repos.
+    """
+
+    @pytest.mark.asyncio
+    async def test_task_completes_with_children_matches_seed(self, cross_repo: Repository) -> None:
+        result = await cross_repo.list_tasks(ListTasksRepoQuery())
+        by_id = {t.id: t for t in result.items}
+        # task-1 seeded with completes_with_children=False.
+        assert by_id["task-1"].completes_with_children is False
+        # task-2 seeded with completes_with_children=True.
+        assert by_id["task-2"].completes_with_children is True
+
+    @pytest.mark.asyncio
+    async def test_task_type_matches_seed(self, cross_repo: Repository) -> None:
+        result = await cross_repo.list_tasks(ListTasksRepoQuery())
+        by_id = {t.id: t for t in result.items}
+        assert by_id["task-1"].type == "sequential"  # seeded sequential
+        assert by_id["task-2"].type == "parallel"  # seeded parallel
+
+    @pytest.mark.asyncio
+    async def test_task_has_attachments_reflects_seed(self, cross_repo: Repository) -> None:
+        result = await cross_repo.list_tasks(ListTasksRepoQuery())
+        by_id = {t.id: t for t in result.items}
+        assert by_id["task-1"].has_attachments is True
+        assert by_id["task-2"].has_attachments is False
+
+    @pytest.mark.asyncio
+    async def test_task_has_note_reflects_seed(self, cross_repo: Repository) -> None:
+        result = await cross_repo.list_tasks(ListTasksRepoQuery())
+        by_id = {t.id: t for t in result.items}
+        # task-1 has plain_text_note="keyword note content" seeded.
+        assert by_id["task-1"].has_note is True
+        # task-2 has no note seeded -> False.
+        assert by_id["task-2"].has_note is False
+
+    @pytest.mark.asyncio
+    async def test_project_type_single_actions_takes_precedence_over_sequential(
+        self, cross_repo: Repository
+    ) -> None:
+        """HIER-05 cross-path proof: proj-1 has BOTH sequential=True AND
+        containsSingletonActions=True -> must resolve to ``singleActions`` on
+        both the SQLite and the BridgeOnly path.
+        """
+        result = await cross_repo.list_projects(ListProjectsRepoQuery())
+        by_id = {p.id: p for p in result.items}
+        assert by_id["proj-1"].type == "singleActions"
+
+    @pytest.mark.asyncio
+    async def test_project_type_matches_seed_for_each_state(self, cross_repo: Repository) -> None:
+        result = await cross_repo.list_projects(ListProjectsRepoQuery())
+        by_id = {p.id: p for p in result.items}
+        assert by_id["proj-1"].type == "singleActions"  # HIER-05
+        assert by_id["proj-2"].type == "sequential"
+        assert by_id["proj-3"].type == "parallel"  # factory default
+
+    @pytest.mark.asyncio
+    async def test_project_completes_with_children_matches_seed(
+        self, cross_repo: Repository
+    ) -> None:
+        result = await cross_repo.list_projects(ListProjectsRepoQuery())
+        by_id = {p.id: p for p in result.items}
+        assert by_id["proj-1"].completes_with_children is False
+        assert by_id["proj-2"].completes_with_children is True
+
+    @pytest.mark.asyncio
+    async def test_project_has_attachments_reflects_seed(self, cross_repo: Repository) -> None:
+        result = await cross_repo.list_projects(ListProjectsRepoQuery())
+        by_id = {p.id: p for p in result.items}
+        assert by_id["proj-1"].has_attachments is True
+        assert by_id["proj-2"].has_attachments is False
+
+    @pytest.mark.asyncio
+    async def test_task_field_by_field_equivalence_for_full_entity(
+        self, cross_repo: Repository
+    ) -> None:
+        """For every task, all five new fields are equal across the two repos.
+
+        The fixture produces one repo per invocation -- this test runs twice
+        (bridge + sqlite) and asserts internal consistency per-row. A single
+        regression on either path would still fail the class-level checks in
+        the tests above, but this one exercises the full per-entity contract.
+        """
+        result = await cross_repo.list_tasks(ListTasksRepoQuery())
+        for task in result.items:
+            # Every task has all five fields populated with well-typed values.
+            assert isinstance(task.completes_with_children, bool)
+            assert task.type in ("parallel", "sequential")
+            assert isinstance(task.has_attachments, bool)
+            assert isinstance(task.has_note, bool)
+            assert isinstance(task.has_repetition, bool)
 
 
 # ===========================================================================

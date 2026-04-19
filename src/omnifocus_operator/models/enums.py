@@ -121,27 +121,22 @@ class BasedOn(StrEnum):
     PLANNED_DATE = "planned_date"
 
 
+# Per-type enum for tasks: parallel or sequential action groups.
+# Tasks have only two options. Projects have a third (``singleActions``)
+# captured by the separate ``ProjectType`` enum -- see HIER-05 for the
+# precedence rule. Agent-facing description lands in Phase 56-05 (FLAG-07).
 class TaskType(StrEnum):
-    """Per-type enum for tasks: parallel or sequential action groups.
-
-    Tasks have only two options. Projects have a third (`singleActions`)
-    captured by the separate `ProjectType` enum -- see HIER-05 for the
-    precedence rule that distinguishes the two.
-    """
-
     PARALLEL = "parallel"
     SEQUENTIAL = "sequential"
 
 
+# Per-type enum for projects: parallel, sequential, or singleActions.
+# ``singleActions`` takes precedence over ``sequential`` when both underlying
+# flags are set on the same project (HIER-05). The repository materialises the
+# value directly from ``(sequential, containsSingletonActions)`` columns on the
+# project's ``Task`` + ``ProjectInfo`` rows. Agent-facing description lands in
+# Phase 56-05 (FLAG-07).
 class ProjectType(StrEnum):
-    """Per-type enum for projects: parallel, sequential, or singleActions.
-
-    `singleActions` takes precedence over `sequential` when both underlying
-    flags are set on the same project (HIER-05). The repository materialises
-    the value directly from `(sequential, containsSingletonActions)` columns
-    on the project's `Task` + `ProjectInfo` rows.
-    """
-
     PARALLEL = "parallel"
     SEQUENTIAL = "sequential"
     SINGLE_ACTIONS = "singleActions"
