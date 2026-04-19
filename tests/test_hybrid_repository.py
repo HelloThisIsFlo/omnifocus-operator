@@ -70,6 +70,7 @@ def create_test_db(
     folders: list[dict[str, Any]] | None = None,
     perspectives: list[dict[str, Any]] | None = None,
     task_tags: list[dict[str, Any]] | None = None,
+    attachments: list[dict[str, Any]] | None = None,
 ) -> Path:
     """Create a SQLite database with the OmniFocus schema and seed data.
 
@@ -110,7 +111,9 @@ def create_test_db(
                 repetitionScheduleTypeString TEXT,
                 repetitionAnchorDateKey TEXT,
                 catchUpAutomatically INTEGER DEFAULT 0,
-                rank INTEGER DEFAULT 0
+                rank INTEGER DEFAULT 0,
+                completeWhenChildrenComplete INTEGER DEFAULT 1,
+                sequential INTEGER DEFAULT 0
             );
 
             CREATE TABLE ProjectInfo (
@@ -121,7 +124,8 @@ def create_test_db(
                 reviewRepetitionString TEXT,
                 nextTask TEXT,
                 folder TEXT,
-                effectiveStatus TEXT
+                effectiveStatus TEXT,
+                containsSingletonActions INTEGER DEFAULT 0
             );
 
             CREATE TABLE Context (
@@ -156,6 +160,15 @@ def create_test_db(
                 task TEXT,
                 tag TEXT
             );
+
+            CREATE TABLE Attachment (
+                persistentIdentifier TEXT PRIMARY KEY,
+                task TEXT,
+                folder TEXT,
+                context TEXT,
+                perspective TEXT
+            );
+            CREATE INDEX Attachment_task ON Attachment (task);
         """)
 
         for task in tasks or []:
@@ -218,6 +231,15 @@ def create_test_db(
             conn.execute(
                 "INSERT INTO TaskToTag (task, tag) VALUES (?, ?)",
                 [tt["task"], tt["tag"]],
+            )
+
+        for att in attachments or []:
+            cols = list(att.keys())
+            placeholders = ", ".join(["?"] * len(cols))
+            col_names = ", ".join(cols)
+            conn.execute(
+                f"INSERT INTO Attachment ({col_names}) VALUES ({placeholders})",
+                [att[c] for c in cols],
             )
 
         conn.commit()
@@ -674,6 +696,225 @@ class TestTaskNotes:
     async def test_task_note_null(self, hybrid_repo: HybridRepository) -> None:
         result = await hybrid_repo.get_all()
         assert result.tasks[0].note == ""
+
+
+class TestTaskPropertySurface:
+    """Phase 56-02: CACHE-01/02/03/04 reads on HybridRepository."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t-cwcc-true",
+                    "completeWhenChildrenComplete": 1,
+                }
+            ),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t-cwcc-false",
+                    "completeWhenChildrenComplete": 0,
+                }
+            ),
+        ],
+    )
+    async def test_map_task_row_populates_completes_with_children(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        result = await hybrid_repo.get_all()
+        by_id = {t.id: t for t in result.tasks}
+        assert by_id["t-cwcc-true"].completes_with_children is True
+        assert by_id["t-cwcc-false"].completes_with_children is False
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(tasks=[_minimal_task({"sequential": 0})])
+    async def test_map_task_row_populates_type_parallel_when_sequential_zero(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        result = await hybrid_repo.get_all()
+        assert result.tasks[0].type == "parallel"
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(tasks=[_minimal_task({"sequential": 1})])
+    async def test_map_task_row_populates_type_sequential_when_sequential_one(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        result = await hybrid_repo.get_all()
+        assert result.tasks[0].type == "sequential"
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task({"persistentIdentifier": "t-attached"}),
+            _minimal_task({"persistentIdentifier": "t-no-attach"}),
+        ],
+        attachments=[
+            {"persistentIdentifier": "att-1", "task": "t-attached"},
+        ],
+    )
+    async def test_map_task_row_has_attachments_reflects_presence_set(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        result = await hybrid_repo.get_all()
+        by_id = {t.id: t for t in result.tasks}
+        assert by_id["t-attached"].has_attachments is True
+        assert by_id["t-no-attach"].has_attachments is False
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task({"persistentIdentifier": "t-note", "plainTextNote": "hello"}),
+            _minimal_task({"persistentIdentifier": "t-empty", "plainTextNote": ""}),
+            _minimal_task({"persistentIdentifier": "t-null"}),  # NULL plainTextNote
+        ],
+    )
+    async def test_has_note_reflects_plain_text_note_non_empty(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        result = await hybrid_repo.get_all()
+        by_id = {t.id: t for t in result.tasks}
+        assert by_id["t-note"].has_note is True
+        assert by_id["t-empty"].has_note is False
+        assert by_id["t-null"].has_note is False
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task(
+                {
+                    "persistentIdentifier": "t-rrule",
+                    "repetitionRuleString": "FREQ=DAILY",
+                    "repetitionScheduleTypeString": "fixed",
+                    "repetitionAnchorDateKey": "dateDue",
+                }
+            ),
+            _minimal_task({"persistentIdentifier": "t-no-rrule"}),
+        ],
+    )
+    async def test_has_repetition_reflects_repetition_rule_string_presence(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        result = await hybrid_repo.get_all()
+        by_id = {t.id: t for t in result.tasks}
+        assert by_id["t-rrule"].has_repetition is True
+        assert by_id["t-no-rrule"].has_repetition is False
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        projects=[
+            _minimal_project(
+                {
+                    "persistentIdentifier": "p-single",
+                    "sequential": 1,
+                    "project_info": {"containsSingletonActions": 1},
+                }
+            ),
+        ],
+    )
+    async def test_map_project_row_singleactions_takes_precedence_over_sequential(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """HIER-05 explicit test: containsSingletonActions=1 wins over sequential=1."""
+        result = await hybrid_repo.get_all()
+        assert len(result.projects) == 1
+        assert result.projects[0].type == "singleActions"
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        projects=[
+            _minimal_project(
+                {
+                    "persistentIdentifier": "p-seq",
+                    "sequential": 1,
+                    "project_info": {"containsSingletonActions": 0},
+                }
+            ),
+            _minimal_project(
+                {
+                    "persistentIdentifier": "p-par",
+                    "sequential": 0,
+                    "project_info": {"containsSingletonActions": 0},
+                }
+            ),
+            _minimal_project(
+                {
+                    "persistentIdentifier": "p-sa",
+                    "sequential": 0,
+                    "project_info": {"containsSingletonActions": 1},
+                }
+            ),
+        ],
+    )
+    async def test_map_project_row_type_covers_all_three_states(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        result = await hybrid_repo.get_all()
+        by_id = {p.id: p for p in result.projects}
+        assert by_id["p-seq"].type == "sequential"
+        assert by_id["p-par"].type == "parallel"
+        assert by_id["p-sa"].type == "singleActions"
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        projects=[
+            _minimal_project(
+                {
+                    "persistentIdentifier": "p-cwcc",
+                    "completeWhenChildrenComplete": 0,
+                }
+            ),
+        ],
+    )
+    async def test_map_project_row_populates_completes_with_children(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        result = await hybrid_repo.get_all()
+        assert result.projects[0].completes_with_children is False
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tasks=[_minimal_task({"persistentIdentifier": f"t-{i}"}) for i in range(10)],
+        attachments=[
+            {"persistentIdentifier": "att-0", "task": "t-0"},
+            {"persistentIdentifier": "att-1", "task": "t-1"},
+        ],
+    )
+    async def test_attachment_presence_single_batched_query(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """CACHE-04: ``_build_attachment_presence_set`` is called exactly ONCE
+        per ``get_all()`` (single batched query), regardless of task count --
+        no per-row EXISTS probes on the batch path.
+        """
+        from omnifocus_operator.repository.hybrid import (  # noqa: PLC0415
+            hybrid as hybrid_mod,
+        )
+
+        call_count = 0
+        original = hybrid_mod._build_attachment_presence_set
+
+        def counting_helper(conn):  # type: ignore[no-untyped-def]
+            nonlocal call_count
+            call_count += 1
+            return original(conn)
+
+        with patch.object(
+            hybrid_mod,
+            "_build_attachment_presence_set",
+            side_effect=counting_helper,
+        ):
+            result = await hybrid_repo.get_all()
+
+        assert len(result.tasks) == 10
+        # Exactly one batched call, regardless of how many tasks/projects exist.
+        assert call_count == 1, (
+            f"Expected exactly 1 batched attachment-presence query, got {call_count}"
+        )
+        # Spot-check the data flow: t-0 and t-1 attached, others not.
+        by_id = {t.id: t for t in result.tasks}
+        assert by_id["t-0"].has_attachments is True
+        assert by_id["t-1"].has_attachments is True
+        assert by_id["t-5"].has_attachments is False
 
 
 class TestTaskRelationships:

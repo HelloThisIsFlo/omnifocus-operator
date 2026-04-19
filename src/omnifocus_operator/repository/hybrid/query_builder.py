@@ -168,7 +168,7 @@ _TASKS_DATA_BASE = (
 _PROJECTS_BASE = (
     "SELECT t.*, pi.lastReviewDate, pi.nextReviewDate,\n"
     "       pi.reviewRepetitionString, pi.nextTask, pi.folder,\n"
-    "       pi.effectiveStatus\n"
+    "       pi.effectiveStatus, pi.containsSingletonActions\n"
     "FROM Task t\n"
     "JOIN ProjectInfo pi ON t.persistentIdentifier = pi.task"
 )

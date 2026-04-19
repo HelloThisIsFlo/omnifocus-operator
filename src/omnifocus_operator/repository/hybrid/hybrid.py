@@ -85,7 +85,7 @@ WHERE pi.task IS NULL
 _PROJECTS_SQL = """
 SELECT t.*, pi.lastReviewDate, pi.nextReviewDate,
        pi.reviewRepetitionString, pi.nextTask, pi.folder,
-       pi.effectiveStatus
+       pi.effectiveStatus, pi.containsSingletonActions
 FROM Task t
 JOIN ProjectInfo pi ON t.persistentIdentifier = pi.task
 """
@@ -397,10 +397,17 @@ def _map_task_row(
     tag_lookup: dict[str, list[dict[str, str]]],
     project_info_lookup: dict[str, dict[str, str]],
     task_name_lookup: dict[str, str],
+    attachment_presence: set[str],
     *,
     order: str | None = None,
 ) -> dict[str, Any]:
-    """Map a Task SQLite row to a dict matching the Task Pydantic model."""
+    """Map a Task SQLite row to a dict matching the Task Pydantic model.
+
+    ``attachment_presence`` is the batched set of task IDs that have at least
+    one attachment (CACHE-04). For single-entity reads, callers pass either an
+    empty set or a scoped ``{task_id}``-style set — no per-row EXISTS probe on
+    the batch path.
+    """
     task_id = row["persistentIdentifier"]
     parent_ref, project_ref = _build_parent_and_project(row, project_info_lookup, task_name_lookup)
     return {
@@ -425,6 +432,12 @@ def _map_task_row(
         "inherited_planned_date": _parse_timestamp(row["effectiveDatePlanned"]),
         "estimated_minutes": row["estimatedMinutes"],
         "has_children": (row["childrenCount"] or 0) > 0,
+        # Phase 56-02: CACHE-01/02/04 reads from Task/Attachment.
+        "has_note": bool(row["plainTextNote"]),
+        "has_repetition": bool(row["repetitionRuleString"]),
+        "has_attachments": task_id in attachment_presence,
+        "completes_with_children": bool(row["completeWhenChildrenComplete"]),
+        "type": "sequential" if row["sequential"] else "parallel",
         "parent": parent_ref,
         "project": project_ref,
         "urgency": _map_urgency(
@@ -446,9 +459,24 @@ def _map_project_row(
     tag_lookup: dict[str, list[dict[str, str]]],
     folder_name_lookup: dict[str, str],
     task_name_lookup: dict[str, str],
+    attachment_presence: set[str],
 ) -> dict[str, Any]:
-    """Map a Task+ProjectInfo joined row to a Project Pydantic model dict."""
+    """Map a Task+ProjectInfo joined row to a Project Pydantic model dict.
+
+    ``attachment_presence`` mirrors the ``_map_task_row`` parameter: batched
+    presence set for ``has_attachments``. Projects are Task rows too, so the
+    same set covers them.
+
+    Project ``type`` obeys HIER-05: ``containsSingletonActions`` takes
+    precedence over ``sequential``.
+    """
     task_id = row["persistentIdentifier"]
+    if row["containsSingletonActions"]:
+        project_type = "singleActions"
+    elif row["sequential"]:
+        project_type = "sequential"
+    else:
+        project_type = "parallel"
     return {
         "id": task_id,
         "name": row["name"],
@@ -464,6 +492,12 @@ def _map_project_row(
         "planned_date": _parse_local_datetime(row["datePlanned"]),
         "estimated_minutes": row["estimatedMinutes"],
         "has_children": (row["childrenCount"] or 0) > 0,
+        # Phase 56-02: CACHE-01/02/03/04 reads on projects.
+        "has_note": bool(row["plainTextNote"]),
+        "has_repetition": bool(row["repetitionRuleString"]),
+        "has_attachments": task_id in attachment_presence,
+        "completes_with_children": bool(row["completeWhenChildrenComplete"]),
+        "type": project_type,
         "urgency": _map_urgency(
             overdue=row["overdue"] or 0,
             due_soon=row["dueSoon"] or 0,
@@ -594,6 +628,21 @@ def _build_folder_name_lookup(conn: sqlite3.Connection) -> dict[str, str]:
     return {row["persistentIdentifier"]: row["name"] for row in rows}
 
 
+def _build_attachment_presence_set(conn: sqlite3.Connection) -> set[str]:
+    """Load the set of task/project IDs that have at least one attachment.
+
+    Single batched query (CACHE-04): one ``SELECT task FROM Attachment`` feeds
+    a Python ``set[str]`` for O(1) per-row ``has_attachments`` emission during
+    snapshot assembly. No per-row ``EXISTS`` probes on the batch path.
+
+    Attachment rows may have a non-null ``task`` column pointing at a task's
+    ``persistentIdentifier`` (projects are also Task rows in OF's schema, so
+    this set covers both tasks and projects uniformly).
+    """
+    rows = conn.execute("SELECT task FROM Attachment").fetchall()
+    return {row["task"] for row in rows if row["task"] is not None}
+
+
 # -- Repository --
 
 
@@ -703,6 +752,9 @@ class HybridRepository(BridgeWriteMixin, Repository):
             project_info_lookup = _build_project_info_lookup(conn)
             task_name_lookup = _build_task_name_lookup(conn)
             folder_name_lookup = _build_folder_name_lookup(conn)
+            # CACHE-04: single batched query feeds the per-row presence check
+            # for both tasks and projects (projects are Task rows too).
+            attachment_presence = _build_attachment_presence_set(conn)
 
             # 2. Read all entity types (tasks with CTE ordering)
             ordered_tasks_sql = (
@@ -721,12 +773,19 @@ class HybridRepository(BridgeWriteMixin, Repository):
                     task_tag_map,
                     project_info_lookup,
                     task_name_lookup,
+                    attachment_presence,
                     order=dotted_orders.get(row["persistentIdentifier"]),
                 )
                 for row in task_rows
             ]
             projects = [
-                _map_project_row(row, task_tag_map, folder_name_lookup, task_name_lookup)
+                _map_project_row(
+                    row,
+                    task_tag_map,
+                    folder_name_lookup,
+                    task_name_lookup,
+                    attachment_presence,
+                )
                 for row in conn.execute(_PROJECTS_SQL).fetchall()
             ]
             tag_rows = conn.execute(_TAGS_SQL).fetchall()
@@ -805,8 +864,20 @@ class HybridRepository(BridgeWriteMixin, Repository):
 
             # Compute dotted order for this task via scoped CTE
             order = self._compute_task_order(conn, row)
+            # Single-entity attachment lookup: scoped EXISTS probe (O(log n) on
+            # the indexed Attachment_task FK). Only the batch path uses the
+            # batched presence-set helper (CACHE-04).
+            has_attachment_row = conn.execute(
+                "SELECT 1 FROM Attachment WHERE task = ? LIMIT 1", (task_id,)
+            ).fetchone()
+            attachment_presence: set[str] = {task_id} if has_attachment_row else set()
             return _map_task_row(
-                row, task_tag_map, project_info_lookup, task_name_lookup, order=order
+                row,
+                task_tag_map,
+                project_info_lookup,
+                task_name_lookup,
+                attachment_presence,
+                order=order,
             )
         finally:
             conn.close()
@@ -899,7 +970,14 @@ class HybridRepository(BridgeWriteMixin, Repository):
                 if nt_row is not None:
                     task_name_lookup[next_task_id] = nt_row["name"]
 
-            return _map_project_row(row, task_tag_map, folder_name_lookup, task_name_lookup)
+            # Single-entity attachment lookup: scoped EXISTS probe.
+            has_attachment_row = conn.execute(
+                "SELECT 1 FROM Attachment WHERE task = ? LIMIT 1", (project_id,)
+            ).fetchone()
+            attachment_presence: set[str] = {project_id} if has_attachment_row else set()
+            return _map_project_row(
+                row, task_tag_map, folder_name_lookup, task_name_lookup, attachment_presence
+            )
         finally:
             conn.close()
 
@@ -962,6 +1040,7 @@ class HybridRepository(BridgeWriteMixin, Repository):
             task_tag_map = _build_task_tag_map(conn, tag_name_lookup)
             project_info_lookup = _build_project_info_lookup(conn)
             task_name_lookup = _build_task_name_lookup(conn)
+            attachment_presence = _build_attachment_presence_set(conn)
 
             # Build parameterized SQL
             data_q, count_q = build_list_tasks_sql(query)
@@ -982,6 +1061,7 @@ class HybridRepository(BridgeWriteMixin, Repository):
                         task_tag_map,
                         project_info_lookup,
                         task_name_lookup,
+                        attachment_presence,
                         order=dotted_orders.get(row["persistentIdentifier"]),
                     )
                 )
@@ -1010,6 +1090,7 @@ class HybridRepository(BridgeWriteMixin, Repository):
             task_tag_map = _build_task_tag_map(conn, tag_name_lookup)
             folder_name_lookup = _build_folder_name_lookup(conn)
             task_name_lookup = _build_task_name_lookup(conn)
+            attachment_presence = _build_attachment_presence_set(conn)
 
             # Build parameterized SQL
             data_q, count_q = build_list_projects_sql(query)
@@ -1021,7 +1102,13 @@ class HybridRepository(BridgeWriteMixin, Repository):
             # Map rows to Project models
             projects = [
                 Project.model_validate(
-                    _map_project_row(row, task_tag_map, folder_name_lookup, task_name_lookup)
+                    _map_project_row(
+                        row,
+                        task_tag_map,
+                        folder_name_lookup,
+                        task_name_lookup,
+                        attachment_presence,
+                    )
                 )
                 for row in data_rows
             ]
