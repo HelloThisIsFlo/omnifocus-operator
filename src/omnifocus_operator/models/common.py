@@ -5,9 +5,13 @@ from __future__ import annotations
 from pydantic import AwareDatetime, Field, model_validator
 
 from omnifocus_operator.agent_messages.descriptions import (
+    COMPLETES_WITH_CHILDREN_DESC,
     DEFER_DATE,
     DUE_DATE,
     FOLDER_REF_DOC,
+    HAS_ATTACHMENTS_DESC,
+    HAS_NOTE_DESC,
+    HAS_REPETITION_DESC,
     PARENT_REF_DOC,
     PARENT_REF_PROJECT_FIELD,
     PARENT_REF_TASK_FIELD,
@@ -116,10 +120,10 @@ class ActionableEntity(OmniFocusEntity):
     # Metadata
     estimated_minutes: float | None = None
     has_children: bool
-    has_note: bool
-    has_repetition: bool
-    has_attachments: bool
-    completes_with_children: bool
+    has_note: bool = Field(description=HAS_NOTE_DESC)
+    has_repetition: bool = Field(description=HAS_REPETITION_DESC)
+    has_attachments: bool = Field(description=HAS_ATTACHMENTS_DESC)
+    completes_with_children: bool = Field(description=COMPLETES_WITH_CHILDREN_DESC)
 
     # Relationships
     tags: list[TagRef] = Field(

@@ -8,6 +8,7 @@ from omnifocus_operator.agent_messages.descriptions import (
     NEXT_TASK,
     PROJECT_DOC,
     PROJECT_FOLDER_DESC,
+    PROJECT_TYPE_DESC,
 )
 from omnifocus_operator.models.common import (
     ActionableEntity,
@@ -25,7 +26,7 @@ class Project(ActionableEntity):
     # `singleActions` takes precedence over `sequential` when both underlying
     # flags are set; assembly happens at the repository or service layer
     # depending on the final placement chosen by Phase 56-03.
-    type: ProjectType
+    type: ProjectType = Field(description=PROJECT_TYPE_DESC)
 
     # Review (all required per BRIDGE-SPEC)
     last_review_date: AwareDatetime

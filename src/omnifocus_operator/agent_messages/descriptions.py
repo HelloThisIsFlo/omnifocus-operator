@@ -113,6 +113,62 @@ END_BY_DATE_DATE = "Repeat until this date."
 ORDER_FIELD = """\
 Hierarchical position among siblings (dotted notation like '2.3.1'). Each dot level is the 1-based position at that depth within the parent project or inbox. null when ordering data is unavailable (degraded mode)."""
 
+# --- Presence & derived flags (Phase 56-05 / FLAG-01..05, FLAG-07) ---
+
+HAS_NOTE_DESC = (
+    "True when this task/project has a non-empty note. Stripped when false. "
+    "Fetch the note via include=['notes']."
+)
+
+HAS_REPETITION_DESC = (
+    "True when this task/project has a repetition rule. Stripped when false. "
+    "Fetch the rule via include=['time']."
+)
+
+HAS_ATTACHMENTS_DESC = (
+    "True when this task/project has at least one attachment. Stripped when false. "
+    "Attachment binary content is never returned inline."
+)
+
+IS_SEQUENTIAL_DESC = (
+    "Tasks-only. True when type == 'sequential'. "
+    "Behavioral meaning: only the next-in-line child is available at any given "
+    "time — task #2 is blocked by task #1, task #3 by task #2, and so on. "
+    "Agents reasoning about actionability must not over-count: only one child "
+    "of a sequential parent is actionable, not all children in parallel. "
+    "Stripped when false."
+)
+
+DEPENDS_ON_CHILDREN_DESC = (
+    "Tasks-only. True when the task has children AND does NOT complete with "
+    "children (completesWithChildren == false). "
+    "Behavioral meaning: this is a real task waiting on children, not just a "
+    "container. It becomes completable only when its children are done — treat "
+    "as a discrete unit of work rather than a collapsible grouping. "
+    "Stripped when false."
+)
+
+COMPLETES_WITH_CHILDREN_DESC = (
+    "When true (OmniFocus factory default), this task/project auto-completes as "
+    "soon as its last child finishes — effectively a container. When false, "
+    "this is genuine work that waits on children. Always present on the "
+    "hierarchy include group; the task surface exposes the derivation via "
+    "dependsOnChildren on tasks with children."
+)
+
+TASK_TYPE_DESC = (
+    "parallel | sequential. Determines how children's availability is computed. "
+    "Use 'sequential' when children must be done in order. Projects also "
+    "support 'singleActions'; tasks do not."
+)
+
+PROJECT_TYPE_DESC = (
+    "parallel | sequential | singleActions. 'singleActions' takes precedence "
+    "when both sequential=true and singleActions=true are set at the storage "
+    "layer. A single-actions project holds independent items with no shared "
+    "intent."
+)
+
 # --- Entities ---
 
 PARENT = "Project or task ID to place this task under. Omit for inbox."
@@ -393,12 +449,17 @@ Look up a single task by its ID.
 
 {_STRIPPING_NOTE}
 
-Fields: urgency, availability, dueDate, deferDate, plannedDate, inheritedDueDate, flagged, inheritedFlagged, tags [{{id, name}}], parent (project {{id, name}} or task {{id, name}}), project {{id, name}}, order, repetitionRule.
+Fields: urgency, availability, dueDate, deferDate, plannedDate, inheritedDueDate, flagged, inheritedFlagged, hasNote, hasRepetition, hasAttachments, isSequential, dependsOnChildren, tags [{{id, name}}], parent (project {{id, name}} or task {{id, name}}), project {{id, name}}, order, repetitionRule.
 
 order: hierarchical position in dotted notation (e.g. '2.3.1'). Null in degraded mode.
 
 parent: direct container -- a project or parent task.
 project: containing project at any nesting depth, or $inbox.
+
+Behavioral flags (default response):
+  - isSequential: only the next-in-line child is available. Agents reasoning about actionability must NOT over-count -- a sequential parent's children are ordered, not all available in parallel.
+  - dependsOnChildren: this task is a real unit of work waiting on children, not a container. Treat as a discrete task rather than a collapsible grouping.
+
 {_INHERITED_TASKS_EXPLANATION}"""
 
 GET_PROJECT_TOOL_DOC = f"""\
@@ -479,26 +540,26 @@ List and filter tasks. {_FILTERS_AND_LOGIC}
 include: optional array of field groups, additive on top of defaults.
   - "notes": note
   - "metadata": added, modified, completionDate (+inherited), dropDate (+inherited), url
-  - "hierarchy": parent, hasChildren
+  - "hierarchy": parent, hasChildren, type, completesWithChildren
   - "time": estimatedMinutes, repetitionRule
   - "*": all fields
-Default fields (always returned): id, name, availability, order, project, dueDate, inheritedDueDate, deferDate, inheritedDeferDate, plannedDate, inheritedPlannedDate, flagged, inheritedFlagged, urgency, tags.
+Default fields: id, name, availability, order, project, dueDate, inheritedDueDate, deferDate, inheritedDeferDate, plannedDate, inheritedPlannedDate, flagged, inheritedFlagged, urgency, tags, hasNote, hasRepetition, hasAttachments, isSequential, dependsOnChildren.
+
+Behavioral flags (default response):
+  - isSequential: only the next-in-line child is available. Agents reasoning about actionability must NOT over-count -- a sequential parent's children are ordered.
+  - dependsOnChildren: this task is a real unit of work waiting on children, not a container. Treat as a discrete task, not a collapsible grouping.
 
 {_COUNT_ONLY_TIP}
 
 {_DATE_INPUT_NOTE}
 
-Returns a flat list. Reconstruct hierarchy using order (dotted notation, e.g. '2.3.1') and project {{id, name}}. Filtered results may have sparse order values because non-matching siblings are omitted. Inbox tasks use project id="$inbox".
+Flat list; reconstruct hierarchy via order (dotted, e.g. '2.3.1') and project {{id, name}}. Filtered results may have sparse order (non-matching siblings omitted). Inbox tasks use project id="$inbox".
 
-{_INHERITED_TASKS_EXPLANATION}
+inherited* fields: OmniFocus's resolved value from the ancestor chain (parent task -> project -> folder). Resolution rules vary by field (dueDate=tightest, deferDate=latest, others=nearest). Read-only; to edit, set the direct field.
 
-Response: {{items, total, hasMore, warnings?}}
+Response: {{items, total, hasMore, warnings?}}. Filters use inherited values.
 
-Filters use inherited (effective) values. Tasks inherit dates and flags from parent hierarchy.
-
-{_LIFECYCLE_FILTER_NOTE}
-
-availability vs defer: 'available'/'blocked' answers 'can I act on this?' (covers all blocking reasons). defer answers 'what becomes available when?' (timing only)."""
+{_LIFECYCLE_FILTER_NOTE}"""
 
 LIST_PROJECTS_TOOL_DOC = f"""\
 List and filter projects. {_FILTERS_AND_LOGIC}
@@ -508,11 +569,13 @@ List and filter projects. {_FILTERS_AND_LOGIC}
 include: optional array of field groups, additive on top of defaults.
   - "notes": note
   - "metadata": added, modified, completionDate, dropDate, url
-  - "hierarchy": folder, hasChildren
+  - "hierarchy": folder, hasChildren, type, completesWithChildren
   - "time": estimatedMinutes, repetitionRule
   - "review": nextReviewDate, reviewInterval, lastReviewDate, nextTask
   - "*": all fields
-Default fields (always returned): id, name, availability, dueDate, deferDate, plannedDate, flagged, urgency, tags.
+Default fields (always returned): id, name, availability, dueDate, deferDate, plannedDate, flagged, urgency, tags, hasNote, hasRepetition, hasAttachments.
+
+Note: isSequential and dependsOnChildren are tasks-only derived flags; projects surface the full type enum (parallel | sequential | singleActions) via the hierarchy include group.
 
 {_COUNT_ONLY_TIP}
 

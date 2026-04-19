@@ -17,8 +17,10 @@ from omnifocus_operator.agent_messages.descriptions import (
     AVAILABILITY_DOC,
     BASED_ON_DOC,
     FOLDER_AVAILABILITY_DOC,
+    PROJECT_TYPE_DESC,
     SCHEDULE_DOC,
     TAG_AVAILABILITY_DOC,
+    TASK_TYPE_DESC,
     URGENCY_DOC,
 )
 
@@ -124,8 +126,10 @@ class BasedOn(StrEnum):
 # Per-type enum for tasks: parallel or sequential action groups.
 # Tasks have only two options. Projects have a third (``singleActions``)
 # captured by the separate ``ProjectType`` enum -- see HIER-05 for the
-# precedence rule. Agent-facing description lands in Phase 56-05 (FLAG-07).
+# precedence rule.
 class TaskType(StrEnum):
+    __doc__ = TASK_TYPE_DESC
+
     PARALLEL = "parallel"
     SEQUENTIAL = "sequential"
 
@@ -134,9 +138,10 @@ class TaskType(StrEnum):
 # ``singleActions`` takes precedence over ``sequential`` when both underlying
 # flags are set on the same project (HIER-05). The repository materialises the
 # value directly from ``(sequential, containsSingletonActions)`` columns on the
-# project's ``Task`` + ``ProjectInfo`` rows. Agent-facing description lands in
-# Phase 56-05 (FLAG-07).
+# project's ``Task`` + ``ProjectInfo`` rows.
 class ProjectType(StrEnum):
+    __doc__ = PROJECT_TYPE_DESC
+
     PARALLEL = "parallel"
     SEQUENTIAL = "sequential"
     SINGLE_ACTIONS = "singleActions"
