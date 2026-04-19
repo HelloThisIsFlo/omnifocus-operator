@@ -169,6 +169,30 @@ PROJECT_TYPE_DESC = (
     "intent."
 )
 
+# --- Write-side descriptions (Phase 56-06 / PROP-01..06) ---
+#
+# Write-side phrasing differs from the read-side constants above: the write
+# side has to communicate the omit-behavior (resolved from OmniFocus
+# preferences when omitted) and the null-rejection contract. Separate
+# constants keep the agent-facing docs crisp for each direction.
+
+COMPLETES_WITH_CHILDREN_WRITE = (
+    "Bool. When true (OmniFocus factory default), this task auto-completes "
+    "as soon as its last child finishes. When false, the task becomes a real "
+    "unit of work waiting on children. Omit to use the user's OmniFocus "
+    "preference (OFMCompleteWhenLastItemComplete, factory default true). "
+    "Null rejected — omit for the preference default, set explicitly to "
+    "override."
+)
+
+TASK_TYPE_WRITE = (
+    "'parallel' | 'sequential'. Controls how children's availability is "
+    "computed. Use 'sequential' when children must be done in order. "
+    "'singleActions' is project-only (tasks reject it at the enum level). "
+    "Omit to use the user's OmniFocus preference (OFMTaskDefaultSequential, "
+    "factory default 'parallel'). Null rejected."
+)
+
 # --- Entities ---
 
 PARENT = "Project or task ID to place this task under. Omit for inbox."

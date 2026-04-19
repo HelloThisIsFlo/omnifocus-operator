@@ -13,10 +13,11 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from omnifocus_operator.contracts.base import UNSET
+from omnifocus_operator.contracts.base import UNSET, is_set
 from omnifocus_operator.contracts.shared.actions import MoveAction, TagAction
-from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskCommand
-from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskCommand
+from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskCommand, AddTaskRepoPayload
+from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskCommand, EditTaskRepoPayload
+from omnifocus_operator.models.enums import TaskType
 
 
 class TestNameConstraints:
@@ -277,25 +278,153 @@ class TestEditTaskCommandRejectsDerivedFlags:
         assert matching, f"Expected extra_forbidden error on {field_name!r}; got {errors}"
 
 
-class TestWave3BoundaryGuards:
-    """Sanity: writable fields (PROP-01/PROP-02) aren't live yet -- plan 56-06 opens them.
+# ---------------------------------------------------------------------------
+# Plan 56-06: new writable fields on AddTaskCommand / EditTaskCommand
+# ---------------------------------------------------------------------------
 
-    These two tests MUST BE DELETED / ADAPTED by plan 56-06 (Wave 3). They
-    exist as a Wave-boundary regression guard proving the ``extra='forbid'``
-    plumbing is working for the fields of interest.
+
+class TestAddTaskCommandAcceptsNewTypeFields:
+    """PROP-01/PROP-02: AddTaskCommand accepts `completesWithChildren` + `type`.
+
+    Patch semantics: omit = use preference default (service resolves), value =
+    use value. `null` rejected for both (booleans have no cleared state;
+    `type` = enum). `"singleActions"` rejected NATURALLY via the `TaskType`
+    enum -- no custom messaging (PROP-03 lock).
     """
 
-    def test_add_task_command_currently_rejects_completes_with_children_until_wave_3(
-        self,
-    ) -> None:  # REMOVE IN 56-06
-        with pytest.raises(ValidationError) as excinfo:
-            AddTaskCommand.model_validate({"name": "x", "completesWithChildren": True})
-        errors = excinfo.value.errors()
-        assert any(e.get("type") == "extra_forbidden" for e in errors)
+    def test_accepts_completes_with_children_true(self) -> None:
+        cmd = AddTaskCommand.model_validate({"name": "x", "completesWithChildren": True})
+        assert cmd.completes_with_children is True
 
-    def test_add_task_command_currently_rejects_type_until_wave_3(self) -> None:
-        # REMOVE IN 56-06
+    def test_accepts_completes_with_children_false(self) -> None:
+        cmd = AddTaskCommand.model_validate({"name": "x", "completesWithChildren": False})
+        assert cmd.completes_with_children is False
+
+    def test_rejects_completes_with_children_null(self) -> None:
+        with pytest.raises(ValidationError):
+            AddTaskCommand.model_validate({"name": "x", "completesWithChildren": None})
+
+    def test_accepts_type_parallel(self) -> None:
+        cmd = AddTaskCommand.model_validate({"name": "x", "type": "parallel"})
+        assert cmd.type == TaskType.PARALLEL
+
+    def test_accepts_type_sequential(self) -> None:
+        cmd = AddTaskCommand.model_validate({"name": "x", "type": "sequential"})
+        assert cmd.type == TaskType.SEQUENTIAL
+
+    def test_rejects_type_single_actions_via_enum_no_custom_message(self) -> None:
+        """singleActions is rejected by Pydantic's enum validator — no custom
+        messaging (PROP-03 lock). Must NOT leak task-vs-project derivation
+        logic into the error surface (T-56-20)."""
         with pytest.raises(ValidationError) as excinfo:
-            AddTaskCommand.model_validate({"name": "x", "type": "sequential"})
+            AddTaskCommand.model_validate({"name": "x", "type": "singleActions"})
         errors = excinfo.value.errors()
-        assert any(e.get("type") == "extra_forbidden" for e in errors)
+        types = {e.get("type") for e in errors}
+        assert any(t in types for t in ("enum", "literal_error")), (
+            f"Expected enum/literal_error; got {types}"
+        )
+        # Confirm no custom messaging planted (PROP-03 lock).
+        error_text = str(excinfo.value).lower()
+        forbidden_custom = [
+            "project only",
+            "use projects instead",
+            "only applies to projects",
+            "project-only",
+        ]
+        for phrase in forbidden_custom:
+            assert phrase not in error_text, (
+                f"Custom message {phrase!r} found — PROP-03 says no custom error."
+            )
+
+    def test_rejects_type_null(self) -> None:
+        with pytest.raises(ValidationError):
+            AddTaskCommand.model_validate({"name": "x", "type": None})
+
+    def test_omitting_both_fields_succeeds(self) -> None:
+        cmd = AddTaskCommand.model_validate({"name": "x"})
+        assert not is_set(cmd.completes_with_children)
+        assert not is_set(cmd.type)
+        assert cmd.completes_with_children is UNSET
+        assert cmd.type is UNSET
+
+
+class TestEditTaskCommandAcceptsNewTypeFields:
+    """PROP-01/PROP-02 on edit: standard Patch semantics (omit = no change)."""
+
+    def test_accepts_completes_with_children_patch_true(self) -> None:
+        cmd = EditTaskCommand.model_validate({"id": "t1", "completesWithChildren": True})
+        assert cmd.completes_with_children is True
+
+    def test_accepts_completes_with_children_patch_false(self) -> None:
+        cmd = EditTaskCommand.model_validate({"id": "t1", "completesWithChildren": False})
+        assert cmd.completes_with_children is False
+
+    def test_rejects_completes_with_children_null(self) -> None:
+        with pytest.raises(ValidationError):
+            EditTaskCommand.model_validate({"id": "t1", "completesWithChildren": None})
+
+    def test_accepts_type_parallel(self) -> None:
+        cmd = EditTaskCommand.model_validate({"id": "t1", "type": "parallel"})
+        assert cmd.type == TaskType.PARALLEL
+
+    def test_accepts_type_sequential(self) -> None:
+        cmd = EditTaskCommand.model_validate({"id": "t1", "type": "sequential"})
+        assert cmd.type == TaskType.SEQUENTIAL
+
+    def test_rejects_type_single_actions(self) -> None:
+        with pytest.raises(ValidationError) as excinfo:
+            EditTaskCommand.model_validate({"id": "t1", "type": "singleActions"})
+        errors = excinfo.value.errors()
+        types = {e.get("type") for e in errors}
+        assert any(t in types for t in ("enum", "literal_error")), (
+            f"Expected enum/literal_error; got {types}"
+        )
+
+    def test_rejects_type_null(self) -> None:
+        with pytest.raises(ValidationError):
+            EditTaskCommand.model_validate({"id": "t1", "type": None})
+
+    def test_omitting_both_fields_succeeds(self) -> None:
+        cmd = EditTaskCommand.model_validate({"id": "t1"})
+        assert not is_set(cmd.completes_with_children)
+        assert not is_set(cmd.type)
+
+
+class TestAddTaskRepoPayloadRequiresBothNewFields:
+    """AddTaskRepoPayload: service MUST resolve both fields before building."""
+
+    def test_accepts_both_fields_set(self) -> None:
+        payload = AddTaskRepoPayload(name="x", completes_with_children=True, type="parallel")
+        assert payload.completes_with_children is True
+        assert payload.type == "parallel"
+
+    def test_rejects_missing_completes_with_children(self) -> None:
+        with pytest.raises(ValidationError):
+            AddTaskRepoPayload(name="x", type="parallel")  # type: ignore[call-arg]
+
+    def test_rejects_missing_type(self) -> None:
+        with pytest.raises(ValidationError):
+            AddTaskRepoPayload(name="x", completes_with_children=True)  # type: ignore[call-arg]
+
+    def test_rejects_missing_both_new_fields(self) -> None:
+        with pytest.raises(ValidationError):
+            AddTaskRepoPayload(name="x")  # type: ignore[call-arg]
+
+
+class TestEditTaskRepoPayloadNewFieldsOptional:
+    """EditTaskRepoPayload: both fields optional (None = no change)."""
+
+    def test_accepts_neither_field(self) -> None:
+        payload = EditTaskRepoPayload(id="t1")
+        assert payload.completes_with_children is None
+        assert payload.type is None
+
+    def test_accepts_completes_with_children_only(self) -> None:
+        payload = EditTaskRepoPayload(id="t1", completes_with_children=False)
+        assert payload.completes_with_children is False
+        assert payload.type is None
+
+    def test_accepts_type_only(self) -> None:
+        payload = EditTaskRepoPayload(id="t1", type="sequential")
+        assert payload.type == "sequential"
+        assert payload.completes_with_children is None

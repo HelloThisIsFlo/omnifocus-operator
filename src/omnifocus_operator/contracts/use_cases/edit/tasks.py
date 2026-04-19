@@ -7,6 +7,7 @@ from typing import Literal
 from pydantic import Field, field_validator
 
 from omnifocus_operator.agent_messages.descriptions import (
+    COMPLETES_WITH_CHILDREN_WRITE,
     DATE_EXAMPLE,
     DEFER_DATE_WRITE,
     DUE_DATE_WRITE,
@@ -17,6 +18,7 @@ from omnifocus_operator.agent_messages.descriptions import (
     ID_EDIT_COMMAND,
     NAME_EDIT_COMMAND,
     PLANNED_DATE_WRITE,
+    TASK_TYPE_WRITE,
 )
 from omnifocus_operator.agent_messages.errors import (
     LIFECYCLE_INVALID_VALUE,
@@ -35,6 +37,7 @@ from omnifocus_operator.contracts.shared.repetition_rule import (
     RepetitionRuleRepoPayload,
 )
 from omnifocus_operator.models.base import OmniFocusBaseModel
+from omnifocus_operator.models.enums import TaskType
 
 
 class EditTaskActions(CommandModel):
@@ -60,6 +63,22 @@ class EditTaskCommand(CommandModel):
     # Value-only fields (no None -- these can't be "cleared")
     name: Patch[str] = Field(default=UNSET, description=NAME_EDIT_COMMAND)
     flagged: Patch[bool] = Field(default=UNSET, description=FLAGGED)
+
+    # PROP-01 / PROP-02 on edit (plan 56-06): Patch semantics — omit =
+    # leave unchanged, set = update. null rejected on both (no cleared
+    # state). `"singleActions"` rejected NATURALLY via TaskType enum.
+    completes_with_children: Patch[bool] = Field(
+        default=UNSET, description=COMPLETES_WITH_CHILDREN_WRITE
+    )
+    type: Patch[TaskType] = Field(default=UNSET, description=TASK_TYPE_WRITE)
+
+    @field_validator("completes_with_children", "type", mode="before")
+    @classmethod
+    def _reject_null_type_fields(cls, v: object) -> object:
+        if v is None:
+            msg = "This field cannot be null (no cleared state). Omit to leave unchanged."
+            raise ValueError(msg)
+        return v
 
     @field_validator("name", mode="before")
     @classmethod
@@ -124,7 +143,11 @@ class MoveToRepoPayload(CommandModel):
 
 
 class EditTaskRepoPayload(CommandModel):
-    """Bridge-ready payload for task editing. Only changed fields are set."""
+    """Bridge-ready payload for task editing. Only changed fields are set.
+
+    `completes_with_children` and `type` follow Patch semantics on edit:
+    None = no change (field not in model_fields_set), set to value = update.
+    """
 
     id: str
     name: str | None = None
@@ -134,6 +157,8 @@ class EditTaskRepoPayload(CommandModel):
     due_date: str | None = None
     defer_date: str | None = None
     planned_date: str | None = None
+    completes_with_children: bool | None = None  # None = no change (PROP-01)
+    type: str | None = None  # "parallel" | "sequential", None = no change (PROP-02)
     add_tag_ids: list[str] | None = None
     remove_tag_ids: list[str] | None = None
     move_to: MoveToRepoPayload | None = None
