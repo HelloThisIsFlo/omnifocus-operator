@@ -2010,6 +2010,105 @@ class TestResponseShaping:
 
 
 # ---------------------------------------------------------------------------
+# PHASE 56-04: Hierarchy include + no-suppression invariant (end-to-end)
+# ---------------------------------------------------------------------------
+
+
+_HIERARCHY_INCLUDE_SEED: dict[str, Any] = {
+    "tasks": [
+        # Sequential task with children, wait-on-children -> default flags AND
+        # hierarchy flags should emit side-by-side when hierarchy is requested.
+        make_task_dict(
+            id="t-seq-parent",
+            name="Sequential Parent",
+            sequential=True,
+            completedByChildren=False,
+            hasChildren=True,
+            hasAttachments=True,
+        ),
+        # Parallel leaf task that completes on its own -- default flags mostly
+        # stripped (False), hierarchy still emits additively.
+        make_task_dict(
+            id="t-parallel-leaf",
+            name="Parallel Leaf",
+            sequential=False,
+            completedByChildren=True,
+            hasChildren=False,
+        ),
+    ],
+    "projects": [
+        make_project_dict(id="proj-plain", name="Plain Project"),
+    ],
+    "tags": [],
+    "folders": [],
+    "perspectives": [],
+}
+
+
+@pytest.mark.snapshot(**_HIERARCHY_INCLUDE_SEED)
+class TestHierarchyIncludeNoSuppression:
+    """FLAG-06 / HIER-04 end-to-end: hierarchy include emits independently from default flags."""
+
+    async def test_list_tasks_default_response_emits_default_derived_flags(
+        self,
+        client: Any,
+    ) -> None:
+        """Default response surfaces isSequential / dependsOnChildren without requesting hierarchy."""
+        result = await client.call_tool("list_tasks", {"query": {}})
+        sc = result.structured_content
+        assert sc is not None
+        items = {item["id"]: item for item in sc["items"]}
+
+        seq_parent = items["t-seq-parent"]
+        # Default flags emit (both True)
+        assert seq_parent.get("isSequential") is True
+        assert seq_parent.get("dependsOnChildren") is True
+        assert seq_parent.get("hasAttachments") is True
+        # Hierarchy fields absent (not requested)
+        assert "type" not in seq_parent
+        assert "hasChildren" not in seq_parent
+        assert "completesWithChildren" not in seq_parent
+
+        parallel_leaf = items["t-parallel-leaf"]
+        # Default flags False -> stripped
+        assert "isSequential" not in parallel_leaf
+        assert "dependsOnChildren" not in parallel_leaf
+
+    async def test_list_tasks_with_hierarchy_include_emits_both_pipelines(
+        self,
+        client: Any,
+    ) -> None:
+        """FLAG-06: include=['hierarchy'] emits hierarchy group AND keeps default derived flags."""
+        result = await client.call_tool("list_tasks", {"query": {"include": ["hierarchy"]}})
+        sc = result.structured_content
+        assert sc is not None
+        items = {item["id"]: item for item in sc["items"]}
+
+        seq_parent = items["t-seq-parent"]
+        # Default-response derived flags MUST remain
+        assert seq_parent.get("isSequential") is True
+        assert seq_parent.get("dependsOnChildren") is True
+        # Hierarchy group MUST also emit
+        assert seq_parent.get("type") == "sequential"
+        assert seq_parent.get("hasChildren") is True
+        # PROP-08: completesWithChildren=False survives NEVER_STRIP protection
+        assert seq_parent.get("completesWithChildren") is False
+
+    async def test_get_task_hierarchy_surface_for_sequential_parent(
+        self,
+        client: Any,
+    ) -> None:
+        """get_task default response exposes the promoted derived flags end-to-end."""
+        result = await client.call_tool("get_task", {"id": "t-seq-parent"})
+        sc = result.structured_content
+        assert sc is not None
+        # Default-response derived flags emit
+        assert sc.get("isSequential") is True
+        assert sc.get("dependsOnChildren") is True
+        assert sc.get("hasAttachments") is True
+
+
+# ---------------------------------------------------------------------------
 # BATCH-ADD: add_tasks batch processing (best-effort semantics)
 # ---------------------------------------------------------------------------
 

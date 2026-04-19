@@ -608,3 +608,255 @@ class TestPhase5604DefaultFieldsAndHierarchy:
         assert "hasSubtasks" not in all_project_fields
 
 
+# ---------------------------------------------------------------------------
+# Phase 56-04: No-suppression invariant (FLAG-06 / HIER-04)
+# ---------------------------------------------------------------------------
+
+
+def _build_phase5604_task_dict(
+    *,
+    type_: str,
+    has_children: bool,
+    completes_with_children: bool,
+    is_sequential: bool,
+    depends_on_children: bool,
+    has_note: bool = False,
+    has_repetition: bool = False,
+    has_attachments: bool = False,
+) -> dict[str, Any]:
+    """Minimal task dict with the fields involved in the no-suppression invariant.
+
+    Matches the camelCase shape from `model_dump(by_alias=True)` but focuses on
+    the structural + derived fields the contract test exercises.
+    """
+    return {
+        "id": "t1",
+        "name": "Test task",
+        "type": type_,
+        "hasChildren": has_children,
+        "completesWithChildren": completes_with_children,
+        "isSequential": is_sequential,
+        "dependsOnChildren": depends_on_children,
+        "hasNote": has_note,
+        "hasRepetition": has_repetition,
+        "hasAttachments": has_attachments,
+    }
+
+
+def _build_phase5604_project_dict(
+    *,
+    type_: str,
+    has_children: bool,
+    completes_with_children: bool,
+    has_note: bool = False,
+    has_repetition: bool = False,
+    has_attachments: bool = False,
+) -> dict[str, Any]:
+    """Minimal project dict (no isSequential / dependsOnChildren — tasks-only)."""
+    return {
+        "id": "p1",
+        "name": "Test project",
+        "type": type_,
+        "hasChildren": has_children,
+        "completesWithChildren": completes_with_children,
+        "hasNote": has_note,
+        "hasRepetition": has_repetition,
+        "hasAttachments": has_attachments,
+    }
+
+
+class TestNoSuppressionInvariant:
+    """FLAG-06 / HIER-04: default-response flags and `hierarchy` include group emit INDEPENDENTLY.
+
+    When both apply, the agent sees BOTH — no de-duplication, no suppression.
+    Redundancy is the requirement (low-cost, high-value predictability).
+    """
+
+    def test_default_response_no_hierarchy_request_emits_only_default_flags(self) -> None:
+        """No include=['hierarchy']: derived default flags appear; type/hasChildren/completesWithChildren are absent."""
+        task_dict = _build_phase5604_task_dict(
+            type_="sequential",
+            has_children=True,
+            completes_with_children=False,
+            is_sequential=True,
+            depends_on_children=True,
+        )
+        stripped = strip_entity(task_dict)
+        allowed_fields, _ = resolve_fields(
+            include=[],
+            only=[],
+            default_fields=TASK_DEFAULT_FIELDS,
+            field_groups=TASK_FIELD_GROUPS,
+        )
+        projected = project_entity(stripped, allowed_fields)
+        # Default-response derived flags emit
+        assert projected.get("isSequential") is True
+        assert projected.get("dependsOnChildren") is True
+        # Hierarchy-group fields absent (not requested)
+        assert "type" not in projected
+        assert "hasChildren" not in projected
+        assert "completesWithChildren" not in projected
+
+    def test_hierarchy_request_emits_hierarchy_group_AND_keeps_default_derived_flags(
+        self,
+    ) -> None:
+        """FLAG-06: requesting `hierarchy` does NOT suppress isSequential / dependsOnChildren."""
+        task_dict = _build_phase5604_task_dict(
+            type_="sequential",
+            has_children=True,
+            completes_with_children=False,
+            is_sequential=True,
+            depends_on_children=True,
+        )
+        stripped = strip_entity(task_dict)
+        allowed_fields, _ = resolve_fields(
+            include=["hierarchy"],
+            only=[],
+            default_fields=TASK_DEFAULT_FIELDS,
+            field_groups=TASK_FIELD_GROUPS,
+        )
+        projected = project_entity(stripped, allowed_fields)
+        # Default-response derived flags MUST remain
+        assert projected.get("isSequential") is True
+        assert projected.get("dependsOnChildren") is True
+        # Hierarchy group MUST also emit
+        assert projected.get("type") == "sequential"
+        assert projected.get("hasChildren") is True
+        # NEVER_STRIP guarantees this even though the value is False
+        assert projected.get("completesWithChildren") is False
+
+    def test_hierarchy_request_completes_with_children_false_survives_never_strip(self) -> None:
+        """PROP-08 + HIER-04: completesWithChildren=False survives stripping AND hierarchy projection."""
+        task_dict = _build_phase5604_task_dict(
+            type_="parallel",
+            has_children=True,
+            completes_with_children=False,
+            is_sequential=False,
+            depends_on_children=True,
+        )
+        stripped = strip_entity(task_dict)
+        allowed_fields, _ = resolve_fields(
+            include=["hierarchy"],
+            only=[],
+            default_fields=TASK_DEFAULT_FIELDS,
+            field_groups=TASK_FIELD_GROUPS,
+        )
+        projected = project_entity(stripped, allowed_fields)
+        assert projected.get("completesWithChildren") is False
+
+    def test_no_suppression_invariant_for_parallel_no_depends_on_children(self) -> None:
+        """Symmetric: flags and hierarchy emit independently even when default flags are stripped."""
+        task_dict = _build_phase5604_task_dict(
+            type_="parallel",
+            has_children=True,
+            completes_with_children=True,
+            is_sequential=False,
+            depends_on_children=False,
+        )
+        stripped = strip_entity(task_dict)
+        allowed_fields, _ = resolve_fields(
+            include=["hierarchy"],
+            only=[],
+            default_fields=TASK_DEFAULT_FIELDS,
+            field_groups=TASK_FIELD_GROUPS,
+        )
+        projected = project_entity(stripped, allowed_fields)
+        # Default flags stripped (both False)
+        assert "isSequential" not in projected
+        assert "dependsOnChildren" not in projected
+        # Hierarchy group still emits independently
+        assert projected.get("type") == "parallel"
+        assert projected.get("hasChildren") is True
+        assert projected.get("completesWithChildren") is True
+
+    def test_default_response_emits_shared_presence_flags_when_true(self) -> None:
+        """FLAG-01..03: default response emits hasNote/hasRepetition/hasAttachments when True (no include needed)."""
+        task_dict = _build_phase5604_task_dict(
+            type_="parallel",
+            has_children=False,
+            completes_with_children=True,
+            is_sequential=False,
+            depends_on_children=False,
+            has_note=True,
+            has_repetition=True,
+            has_attachments=True,
+        )
+        stripped = strip_entity(task_dict)
+        allowed_fields, _ = resolve_fields(
+            include=[],
+            only=[],
+            default_fields=TASK_DEFAULT_FIELDS,
+            field_groups=TASK_FIELD_GROUPS,
+        )
+        projected = project_entity(stripped, allowed_fields)
+        assert projected.get("hasNote") is True
+        assert projected.get("hasRepetition") is True
+        assert projected.get("hasAttachments") is True
+
+
+class TestNoSuppressionInvariantForProjects:
+    """FLAG-06 / HIER-04 for projects (no isSequential / dependsOnChildren — tasks-only)."""
+
+    def test_default_response_emits_shared_presence_flags(self) -> None:
+        """Projects: FLAG-01..03 emit on default response when True."""
+        project_dict = _build_phase5604_project_dict(
+            type_="sequential",
+            has_children=True,
+            completes_with_children=False,
+            has_note=True,
+            has_repetition=False,
+            has_attachments=True,
+        )
+        stripped = strip_entity(project_dict)
+        allowed_fields, _ = resolve_fields(
+            include=[],
+            only=[],
+            default_fields=PROJECT_DEFAULT_FIELDS,
+            field_groups=PROJECT_FIELD_GROUPS,
+        )
+        projected = project_entity(stripped, allowed_fields)
+        assert projected.get("hasNote") is True
+        assert "hasRepetition" not in projected  # False stripped
+        assert projected.get("hasAttachments") is True
+        # Hierarchy fields absent (not requested)
+        assert "type" not in projected
+        assert "hasChildren" not in projected
+        assert "completesWithChildren" not in projected
+
+    def test_hierarchy_request_emits_hierarchy_group_for_project(self) -> None:
+        """HIER-02 + HIER-04: requesting `hierarchy` on projects emits type, hasChildren, completesWithChildren."""
+        project_dict = _build_phase5604_project_dict(
+            type_="singleActions",
+            has_children=True,
+            completes_with_children=False,
+        )
+        stripped = strip_entity(project_dict)
+        allowed_fields, _ = resolve_fields(
+            include=["hierarchy"],
+            only=[],
+            default_fields=PROJECT_DEFAULT_FIELDS,
+            field_groups=PROJECT_FIELD_GROUPS,
+        )
+        projected = project_entity(stripped, allowed_fields)
+        assert projected.get("type") == "singleActions"
+        assert projected.get("hasChildren") is True
+        # NEVER_STRIP keeps False alive
+        assert projected.get("completesWithChildren") is False
+
+    def test_project_no_tasks_only_flags_present(self) -> None:
+        """Projects must never expose isSequential / dependsOnChildren even when hierarchy is requested."""
+        project_dict = _build_phase5604_project_dict(
+            type_="sequential",
+            has_children=True,
+            completes_with_children=True,
+        )
+        stripped = strip_entity(project_dict)
+        allowed_fields, _ = resolve_fields(
+            include=["hierarchy"],
+            only=[],
+            default_fields=PROJECT_DEFAULT_FIELDS,
+            field_groups=PROJECT_FIELD_GROUPS,
+        )
+        projected = project_entity(stripped, allowed_fields)
+        assert "isSequential" not in projected
+        assert "dependsOnChildren" not in projected
