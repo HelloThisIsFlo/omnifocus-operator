@@ -10,6 +10,19 @@ import inspect
 import pathlib
 
 from omnifocus_operator.agent_messages import descriptions as desc_mod
+from omnifocus_operator.agent_messages.descriptions import (
+    COMPLETES_WITH_CHILDREN_DESC,
+    DEPENDS_ON_CHILDREN_DESC,
+    GET_TASK_TOOL_DOC,
+    HAS_ATTACHMENTS_DESC,
+    HAS_NOTE_DESC,
+    HAS_REPETITION_DESC,
+    IS_SEQUENTIAL_DESC,
+    LIST_PROJECTS_TOOL_DOC,
+    LIST_TASKS_TOOL_DOC,
+    PROJECT_TYPE_DESC,
+    TASK_TYPE_DESC,
+)
 from omnifocus_operator.contracts.shared import actions as contracts_actions
 from omnifocus_operator.contracts.shared import repetition_rule as contracts_repetition_rule
 from omnifocus_operator.contracts.use_cases.add import tasks as contracts_add_tasks
@@ -35,6 +48,10 @@ from omnifocus_operator.models import repetition_rule as models_repetition_rule
 from omnifocus_operator.models import snapshot as models_snapshot
 from omnifocus_operator.models import tag as models_tag
 from omnifocus_operator.models import task as models_task
+from omnifocus_operator.models.common import ActionableEntity
+from omnifocus_operator.models.enums import ProjectType, TaskType
+from omnifocus_operator.models.project import Project
+from omnifocus_operator.models.task import Task
 from omnifocus_operator.server import handlers as server_handlers_mod
 from tests.agent_messages_helpers import get_consumer_sources, get_upper_snake_constants
 
@@ -462,43 +479,27 @@ class TestPhase5605FieldDescriptionConstantsExist:
     """The five new derived flags + two new type enums get dedicated description constants."""
 
     def test_has_note_desc_exists(self) -> None:
-        from omnifocus_operator.agent_messages.descriptions import HAS_NOTE_DESC
-
         assert isinstance(HAS_NOTE_DESC, str) and HAS_NOTE_DESC
 
     def test_has_repetition_desc_exists(self) -> None:
-        from omnifocus_operator.agent_messages.descriptions import HAS_REPETITION_DESC
-
         assert isinstance(HAS_REPETITION_DESC, str) and HAS_REPETITION_DESC
 
     def test_has_attachments_desc_exists(self) -> None:
-        from omnifocus_operator.agent_messages.descriptions import HAS_ATTACHMENTS_DESC
-
         assert isinstance(HAS_ATTACHMENTS_DESC, str) and HAS_ATTACHMENTS_DESC
 
     def test_completes_with_children_desc_exists(self) -> None:
-        from omnifocus_operator.agent_messages.descriptions import COMPLETES_WITH_CHILDREN_DESC
-
         assert isinstance(COMPLETES_WITH_CHILDREN_DESC, str) and COMPLETES_WITH_CHILDREN_DESC
 
     def test_is_sequential_desc_exists(self) -> None:
-        from omnifocus_operator.agent_messages.descriptions import IS_SEQUENTIAL_DESC
-
         assert isinstance(IS_SEQUENTIAL_DESC, str) and IS_SEQUENTIAL_DESC
 
     def test_depends_on_children_desc_exists(self) -> None:
-        from omnifocus_operator.agent_messages.descriptions import DEPENDS_ON_CHILDREN_DESC
-
         assert isinstance(DEPENDS_ON_CHILDREN_DESC, str) and DEPENDS_ON_CHILDREN_DESC
 
     def test_task_type_desc_exists(self) -> None:
-        from omnifocus_operator.agent_messages.descriptions import TASK_TYPE_DESC
-
         assert isinstance(TASK_TYPE_DESC, str) and TASK_TYPE_DESC
 
     def test_project_type_desc_exists(self) -> None:
-        from omnifocus_operator.agent_messages.descriptions import PROJECT_TYPE_DESC
-
         assert isinstance(PROJECT_TYPE_DESC, str) and PROJECT_TYPE_DESC
 
 
@@ -506,15 +507,11 @@ class TestPhase5605BehavioralPhrasesLocked:
     """FLAG-07 behavioral phrases are verbatim-present in the description constants."""
 
     def test_depends_on_children_desc_contains_locked_behavioral_phrases(self) -> None:
-        from omnifocus_operator.agent_messages.descriptions import DEPENDS_ON_CHILDREN_DESC
-
         assert "Blocked until all children are done" in DEPENDS_ON_CHILDREN_DESC
         assert "must be completed manually" in DEPENDS_ON_CHILDREN_DESC
         assert "collapsible grouping" in DEPENDS_ON_CHILDREN_DESC
 
     def test_is_sequential_desc_contains_locked_behavioral_phrases(self) -> None:
-        from omnifocus_operator.agent_messages.descriptions import IS_SEQUENTIAL_DESC
-
         assert "next-in-line child is available" in IS_SEQUENTIAL_DESC
         assert "blocked until earlier ones complete" in IS_SEQUENTIAL_DESC
 
@@ -525,8 +522,6 @@ class TestPhase5605ToolDocsCarryBehavioralFlags:
     """
 
     def test_list_tasks_tool_doc_mentions_behavioral_flags(self) -> None:
-        from omnifocus_operator.agent_messages.descriptions import LIST_TASKS_TOOL_DOC
-
         assert "dependsOnChildren" in LIST_TASKS_TOOL_DOC
         assert "isSequential" in LIST_TASKS_TOOL_DOC
         # Behavioral meaning -- the locked phrases that teach actionability must appear.
@@ -534,8 +529,6 @@ class TestPhase5605ToolDocsCarryBehavioralFlags:
         assert "blocked until all children are done" in LIST_TASKS_TOOL_DOC
 
     def test_get_task_tool_doc_mentions_behavioral_flags(self) -> None:
-        from omnifocus_operator.agent_messages.descriptions import GET_TASK_TOOL_DOC
-
         assert "dependsOnChildren" in GET_TASK_TOOL_DOC
         assert "isSequential" in GET_TASK_TOOL_DOC
 
@@ -543,27 +536,19 @@ class TestPhase5605ToolDocsCarryBehavioralFlags:
         """isSequential is tasks-only (FLAG-04). Projects must not list it as a
         project field. A disambiguating 'tasks-only' mention is allowed.
         """
-        from omnifocus_operator.agent_messages.descriptions import LIST_PROJECTS_TOOL_DOC
-
         if "isSequential" in LIST_PROJECTS_TOOL_DOC:
             assert "tasks-only" in LIST_PROJECTS_TOOL_DOC
 
     def test_list_projects_tool_doc_mentions_shared_presence_flags(self) -> None:
-        from omnifocus_operator.agent_messages.descriptions import LIST_PROJECTS_TOOL_DOC
-
         for flag in ("hasNote", "hasRepetition", "hasAttachments"):
             assert flag in LIST_PROJECTS_TOOL_DOC, f"expected {flag!r} in LIST_PROJECTS_TOOL_DOC"
 
     def test_list_tasks_tool_doc_mentions_shared_presence_flags(self) -> None:
-        from omnifocus_operator.agent_messages.descriptions import LIST_TASKS_TOOL_DOC
-
         for flag in ("hasNote", "hasRepetition", "hasAttachments"):
             assert flag in LIST_TASKS_TOOL_DOC, f"expected {flag!r} in LIST_TASKS_TOOL_DOC"
 
     def test_list_tasks_hierarchy_include_mentions_type_and_completes_with_children(self) -> None:
         """HIER-01: hierarchy include now lists `type` and `completesWithChildren`."""
-        from omnifocus_operator.agent_messages.descriptions import LIST_TASKS_TOOL_DOC
-
         assert "type" in LIST_TASKS_TOOL_DOC
         assert "completesWithChildren" in LIST_TASKS_TOOL_DOC
 
@@ -571,8 +556,6 @@ class TestPhase5605ToolDocsCarryBehavioralFlags:
         self,
     ) -> None:
         """HIER-02: hierarchy include for projects lists `type` and `completesWithChildren`."""
-        from omnifocus_operator.agent_messages.descriptions import LIST_PROJECTS_TOOL_DOC
-
         assert "type" in LIST_PROJECTS_TOOL_DOC
         assert "completesWithChildren" in LIST_PROJECTS_TOOL_DOC
 
@@ -581,15 +564,9 @@ class TestPhase5605EnumsUseDocConstants:
     """TaskType / ProjectType enums use __doc__ = CONSTANT, not inline docstrings."""
 
     def test_task_type_has_task_type_desc_as_docstring(self) -> None:
-        from omnifocus_operator.agent_messages.descriptions import TASK_TYPE_DESC
-        from omnifocus_operator.models.enums import TaskType
-
         assert TaskType.__doc__ == TASK_TYPE_DESC
 
     def test_project_type_has_project_type_desc_as_docstring(self) -> None:
-        from omnifocus_operator.agent_messages.descriptions import PROJECT_TYPE_DESC
-        from omnifocus_operator.models.enums import ProjectType
-
         assert ProjectType.__doc__ == PROJECT_TYPE_DESC
 
 
@@ -597,57 +574,33 @@ class TestPhase5605ModelFieldsUseDescriptionConstants:
     """Model fields for the new flags are annotated via Field(description=CONSTANT)."""
 
     def test_actionable_entity_has_note_field_uses_constant(self) -> None:
-        from omnifocus_operator.agent_messages.descriptions import HAS_NOTE_DESC
-        from omnifocus_operator.models.common import ActionableEntity
-
         info = ActionableEntity.model_fields["has_note"]
         assert info.description == HAS_NOTE_DESC
 
     def test_actionable_entity_has_repetition_field_uses_constant(self) -> None:
-        from omnifocus_operator.agent_messages.descriptions import HAS_REPETITION_DESC
-        from omnifocus_operator.models.common import ActionableEntity
-
         info = ActionableEntity.model_fields["has_repetition"]
         assert info.description == HAS_REPETITION_DESC
 
     def test_actionable_entity_has_attachments_field_uses_constant(self) -> None:
-        from omnifocus_operator.agent_messages.descriptions import HAS_ATTACHMENTS_DESC
-        from omnifocus_operator.models.common import ActionableEntity
-
         info = ActionableEntity.model_fields["has_attachments"]
         assert info.description == HAS_ATTACHMENTS_DESC
 
     def test_actionable_entity_completes_with_children_field_uses_constant(self) -> None:
-        from omnifocus_operator.agent_messages.descriptions import COMPLETES_WITH_CHILDREN_DESC
-        from omnifocus_operator.models.common import ActionableEntity
-
         info = ActionableEntity.model_fields["completes_with_children"]
         assert info.description == COMPLETES_WITH_CHILDREN_DESC
 
     def test_task_is_sequential_field_uses_constant(self) -> None:
-        from omnifocus_operator.agent_messages.descriptions import IS_SEQUENTIAL_DESC
-        from omnifocus_operator.models.task import Task
-
         info = Task.model_fields["is_sequential"]
         assert info.description == IS_SEQUENTIAL_DESC
 
     def test_task_depends_on_children_field_uses_constant(self) -> None:
-        from omnifocus_operator.agent_messages.descriptions import DEPENDS_ON_CHILDREN_DESC
-        from omnifocus_operator.models.task import Task
-
         info = Task.model_fields["depends_on_children"]
         assert info.description == DEPENDS_ON_CHILDREN_DESC
 
     def test_task_type_field_uses_constant(self) -> None:
-        from omnifocus_operator.agent_messages.descriptions import TASK_TYPE_DESC
-        from omnifocus_operator.models.task import Task
-
         info = Task.model_fields["type"]
         assert info.description == TASK_TYPE_DESC
 
     def test_project_type_field_uses_constant(self) -> None:
-        from omnifocus_operator.agent_messages.descriptions import PROJECT_TYPE_DESC
-        from omnifocus_operator.models.project import Project
-
         info = Project.model_fields["type"]
         assert info.description == PROJECT_TYPE_DESC

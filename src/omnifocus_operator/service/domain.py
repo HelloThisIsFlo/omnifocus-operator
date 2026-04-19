@@ -319,7 +319,7 @@ class DomainLogic:
         """Compute tasks-only derived flags from structural fields.
 
         - ``is_sequential``       = ``task.type == TaskType.SEQUENTIAL`` (FLAG-04)
-        - ``depends_on_children`` = ``task.has_children AND NOT task.completes_with_children`` (FLAG-05)
+        - ``depends_on_children`` = ``has_children and not completes_with_children`` (FLAG-05)
 
         Both flags are tasks-only; Projects do not carry these fields.
         The domain owns this derivation so repositories stay ignorant of

@@ -2053,7 +2053,7 @@ class TestHierarchyIncludeNoSuppression:
         self,
         client: Any,
     ) -> None:
-        """Default response surfaces isSequential / dependsOnChildren without requesting hierarchy."""
+        """Default response surfaces isSequential / dependsOnChildren without hierarchy."""
         result = await client.call_tool("list_tasks", {"query": {}})
         sc = result.structured_content
         assert sc is not None

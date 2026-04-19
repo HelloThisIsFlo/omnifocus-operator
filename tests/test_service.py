@@ -32,6 +32,8 @@ from omnifocus_operator.contracts.use_cases.edit.tasks import (
     EditTaskActions,
     EditTaskCommand,
 )
+from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
+from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksQuery
 from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
     OrdinalWeekday,
@@ -302,12 +304,6 @@ class TestOperatorService:
         self, service: OperatorService
     ) -> None:
         """list_tasks enriches every task in `items` (FLAG-04 + FLAG-05)."""
-        from omnifocus_operator.contracts.use_cases.list._enums import (
-            AvailabilityFilter,
-        )
-        from omnifocus_operator.contracts.use_cases.list.tasks import (  # noqa: PLC0415
-            ListTasksQuery,
-        )
 
         # REMAINING expands to AVAILABLE + BLOCKED; all three tasks are
         # available in this fixture, so REMAINING returns all of them.

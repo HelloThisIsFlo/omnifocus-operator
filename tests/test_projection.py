@@ -483,7 +483,10 @@ class TestPhase5604StripRules:
         assert result == {"id": "t1", "completesWithChildren": True}
 
     def test_availability_no_longer_in_never_strip_but_enum_values_survive(self) -> None:
-        """STRIP-11: `availability` removed from NEVER_STRIP. Enum strings (truthy) still pass normal strip rules."""
+        """STRIP-11: `availability` removed from NEVER_STRIP.
+
+        Enum strings (truthy) still pass normal strip rules.
+        """
         # Truthy enum value passes
         result = strip_entity({"availability": "available"})
         assert result == {"availability": "available"}
@@ -584,13 +587,13 @@ class TestPhase5604DefaultFieldsAndHierarchy:
         assert "dependsOnChildren" not in PROJECT_DEFAULT_FIELDS
 
     def test_task_hierarchy_group_includes_type_and_completes_with_children(self) -> None:
-        """HIER-01: TASK_FIELD_GROUPS['hierarchy'] = {parent, hasChildren, type, completesWithChildren}."""
+        """HIER-01: TASK_FIELD_GROUPS['hierarchy'] carries the hierarchy set."""
         assert TASK_FIELD_GROUPS["hierarchy"] == frozenset(
             {"parent", "hasChildren", "type", "completesWithChildren"}
         )
 
     def test_project_hierarchy_group_includes_type_and_completes_with_children(self) -> None:
-        """HIER-02: PROJECT_FIELD_GROUPS['hierarchy'] = {folder, hasChildren, type, completesWithChildren}."""
+        """HIER-02: PROJECT_FIELD_GROUPS['hierarchy'] carries the hierarchy set."""
         assert PROJECT_FIELD_GROUPS["hierarchy"] == frozenset(
             {"folder", "hasChildren", "type", "completesWithChildren"}
         )
@@ -673,7 +676,7 @@ class TestNoSuppressionInvariant:
     """
 
     def test_default_response_no_hierarchy_request_emits_only_default_flags(self) -> None:
-        """No include=['hierarchy']: derived default flags appear; type/hasChildren/completesWithChildren are absent."""
+        """No include=['hierarchy']: derived flags appear; hierarchy fields absent."""
         task_dict = _build_phase5604_task_dict(
             type_="sequential",
             has_children=True,
@@ -697,7 +700,7 @@ class TestNoSuppressionInvariant:
         assert "hasChildren" not in projected
         assert "completesWithChildren" not in projected
 
-    def test_hierarchy_request_emits_hierarchy_group_AND_keeps_default_derived_flags(
+    def test_hierarchy_request_emits_hierarchy_group_and_keeps_default_derived_flags(
         self,
     ) -> None:
         """FLAG-06: requesting `hierarchy` does NOT suppress isSequential / dependsOnChildren."""
@@ -726,7 +729,7 @@ class TestNoSuppressionInvariant:
         assert projected.get("completesWithChildren") is False
 
     def test_hierarchy_request_completes_with_children_false_survives_never_strip(self) -> None:
-        """PROP-08 + HIER-04: completesWithChildren=False survives stripping AND hierarchy projection."""
+        """PROP-08 + HIER-04: completesWithChildren=False survives strip + hierarchy projection."""
         task_dict = _build_phase5604_task_dict(
             type_="parallel",
             has_children=True,
@@ -745,7 +748,7 @@ class TestNoSuppressionInvariant:
         assert projected.get("completesWithChildren") is False
 
     def test_no_suppression_invariant_for_parallel_no_depends_on_children(self) -> None:
-        """Symmetric: flags and hierarchy emit independently even when default flags are stripped."""
+        """Symmetric: flags and hierarchy emit independently even when defaults are stripped."""
         task_dict = _build_phase5604_task_dict(
             type_="parallel",
             has_children=True,
@@ -770,7 +773,7 @@ class TestNoSuppressionInvariant:
         assert projected.get("completesWithChildren") is True
 
     def test_default_response_emits_shared_presence_flags_when_true(self) -> None:
-        """FLAG-01..03: default response emits hasNote/hasRepetition/hasAttachments when True (no include needed)."""
+        """FLAG-01..03: default emits hasNote/hasRepetition/hasAttachments when True."""
         task_dict = _build_phase5604_task_dict(
             type_="parallel",
             has_children=False,
@@ -824,7 +827,7 @@ class TestNoSuppressionInvariantForProjects:
         assert "completesWithChildren" not in projected
 
     def test_hierarchy_request_emits_hierarchy_group_for_project(self) -> None:
-        """HIER-02 + HIER-04: requesting `hierarchy` on projects emits type, hasChildren, completesWithChildren."""
+        """HIER-02 + HIER-04: `hierarchy` on projects emits the hierarchy fields."""
         project_dict = _build_phase5604_project_dict(
             type_="singleActions",
             has_children=True,
@@ -844,7 +847,7 @@ class TestNoSuppressionInvariantForProjects:
         assert projected.get("completesWithChildren") is False
 
     def test_project_no_tasks_only_flags_present(self) -> None:
-        """Projects must never expose isSequential / dependsOnChildren even when hierarchy is requested."""
+        """Projects never expose isSequential / dependsOnChildren, even with hierarchy."""
         project_dict = _build_phase5604_project_dict(
             type_="sequential",
             has_children=True,
