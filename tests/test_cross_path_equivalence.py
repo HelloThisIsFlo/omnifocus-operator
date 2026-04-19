@@ -1699,3 +1699,453 @@ class TestEmptyAvailabilityCrossPath:
         result = await cross_repo.list_projects(ListProjectsRepoQuery(availability=[]))
         assert result.items == []
         assert result.total == 0
+
+
+# ===========================================================================
+# Phase 56-07: Wave 3 end-to-end round-trip on both repositories
+# ===========================================================================
+#
+# Writes through the full OperatorService stack, reads back via get_task +
+# list_tasks. Parametrized across both repository backends so PROP-01..06 are
+# proven uniformly:
+#
+#   - BridgeOnlyRepository + InMemoryBridge -- natural round-trip: writes
+#     mutate InMemoryBridge state; reads adapt the same snapshot.
+#
+#   - HybridRepository + InMemoryBridge + SQLite -- writes go through the
+#     bridge (as in production), then a test-only helper rehydrates the
+#     SQLite fixture from the bridge snapshot so subsequent reads see the
+#     written values. This stands in for OmniFocus's write-through to its
+#     SQLite cache. The InMemoryBridge + SQLite pairing is the functional
+#     analogue of OmniFocus's live write-through.
+#
+# The tests are gated on the post-56-06 write contract being present on
+# AddTaskCommand (the two Patch fields). When 56-06 has not yet landed
+# on the base branch, the fixture skips cleanly instead of failing -- both
+# plans run in parallel as Wave 3, and the combined surface only materializes
+# when both have merged. Once 56-06 lands, these tests become the final
+# end-to-end proof.
+
+
+def _post_56_06_write_surface_present() -> bool:
+    """Feature-detect post-56-06 AddTaskCommand fields.
+
+    Returns True when ``completes_with_children`` and ``type`` are both
+    declared on AddTaskCommand (56-06 Task 1 outcome).
+    """
+    from omnifocus_operator.contracts.use_cases.add.tasks import (  # noqa: PLC0415
+        AddTaskCommand,
+    )
+
+    fields = AddTaskCommand.model_fields
+    return "completes_with_children" in fields and "type" in fields
+
+
+async def _rehydrate_sqlite_from_bridge(
+    bridge: InMemoryBridge,
+    db_path: Path,
+) -> None:
+    """Rebuild the HybridRepository SQLite fixture from InMemoryBridge state.
+
+    Test-only stand-in for OmniFocus's write-through to the SQLite cache:
+    after every service write we replay the bridge snapshot into a fresh
+    database file so HybridRepository reads reflect the write. Only the
+    columns needed by the new property-surface read paths are populated --
+    date, availability, and tag-join concerns stay out of scope here.
+    """
+    snapshot = await bridge.send_command("get_all")
+    if db_path.exists():
+        db_path.unlink()
+    conn = sqlite3.connect(str(db_path))
+    try:
+        conn.executescript(
+            """
+            CREATE TABLE Task (
+                persistentIdentifier TEXT PRIMARY KEY,
+                name TEXT,
+                dateAdded REAL,
+                dateModified REAL,
+                noteXMLData BLOB,
+                plainTextNote TEXT,
+                flagged INTEGER DEFAULT 0,
+                effectiveFlagged INTEGER DEFAULT 0,
+                dateDue TEXT,
+                dateToStart TEXT,
+                datePlanned TEXT,
+                effectiveDateDue INTEGER,
+                effectiveDateToStart INTEGER,
+                effectiveDatePlanned INTEGER,
+                dateCompleted REAL,
+                effectiveDateCompleted REAL,
+                dateHidden REAL,
+                effectiveDateHidden REAL,
+                estimatedMinutes REAL,
+                childrenCount INTEGER DEFAULT 0,
+                inInbox INTEGER DEFAULT 0,
+                containingProjectInfo TEXT,
+                parent TEXT,
+                overdue INTEGER DEFAULT 0,
+                dueSoon INTEGER DEFAULT 0,
+                blocked INTEGER DEFAULT 0,
+                repetitionRuleString TEXT,
+                repetitionScheduleTypeString TEXT,
+                repetitionAnchorDateKey TEXT,
+                catchUpAutomatically INTEGER DEFAULT 0,
+                rank INTEGER DEFAULT 0,
+                completeWhenChildrenComplete INTEGER DEFAULT 1,
+                sequential INTEGER DEFAULT 0
+            );
+            CREATE TABLE ProjectInfo (
+                pk TEXT PRIMARY KEY,
+                task TEXT,
+                lastReviewDate REAL,
+                nextReviewDate REAL,
+                reviewRepetitionString TEXT,
+                nextTask TEXT,
+                folder TEXT,
+                effectiveStatus TEXT,
+                containsSingletonActions INTEGER DEFAULT 0
+            );
+            CREATE TABLE Context (
+                persistentIdentifier TEXT PRIMARY KEY,
+                name TEXT,
+                dateAdded REAL,
+                dateModified REAL,
+                allowsNextAction INTEGER DEFAULT 1,
+                dateHidden REAL,
+                childrenAreMutuallyExclusive INTEGER DEFAULT 0,
+                parent TEXT
+            );
+            CREATE TABLE Folder (
+                persistentIdentifier TEXT PRIMARY KEY,
+                name TEXT,
+                dateAdded REAL,
+                dateModified REAL,
+                dateHidden REAL,
+                parent TEXT
+            );
+            CREATE TABLE Perspective (
+                persistentIdentifier TEXT,
+                creationOrdinal INTEGER,
+                dateAdded REAL,
+                dateModified REAL,
+                valueData BLOB
+            );
+            CREATE TABLE TaskToTag (
+                task TEXT,
+                tag TEXT
+            );
+            CREATE TABLE Attachment (
+                persistentIdentifier TEXT PRIMARY KEY,
+                task TEXT,
+                folder TEXT,
+                context TEXT,
+                perspective TEXT
+            );
+            CREATE INDEX Attachment_task ON Attachment (task);
+            """
+        )
+        now = datetime.now(tz=UTC)
+        for t in snapshot["tasks"]:
+            conn.execute(
+                """INSERT INTO Task (
+                    persistentIdentifier, name, dateAdded, dateModified,
+                    plainTextNote,
+                    flagged, effectiveFlagged, estimatedMinutes,
+                    childrenCount, inInbox, containingProjectInfo, parent,
+                    overdue, dueSoon, blocked,
+                    completeWhenChildrenComplete, sequential
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                          ?, ?, ?, ?, ?)""",
+                [
+                    t["id"],
+                    t["name"],
+                    _to_cf_epoch(now),
+                    _to_cf_epoch(now),
+                    t.get("note") or None,
+                    1 if t.get("flagged") else 0,
+                    1 if t.get("effectiveFlagged") else 0,
+                    t.get("estimatedMinutes"),
+                    1 if t.get("hasChildren") else 0,
+                    1 if t.get("inInbox") else 0,
+                    None,
+                    t.get("parent"),
+                    0,
+                    0,
+                    0,
+                    # Post-56-06 raw fields: stored by InMemoryBridge as
+                    # completedByChildren / sequential.
+                    1 if t.get("completedByChildren", True) else 0,
+                    1 if t.get("sequential", False) else 0,
+                ],
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+@pytest.fixture(params=["bridge", "sqlite"])
+async def cross_service(
+    request: pytest.FixtureRequest,
+    tmp_path: Path,
+) -> dict[str, Any]:
+    """Parametrized fixture yielding a full OperatorService stack per repo.
+
+    Returns a dict with keys:
+      - ``service``    : OperatorService wrapping the repo under test
+      - ``bridge``     : the shared InMemoryBridge (use .configure_settings
+                         / ._settings.pop to drive PROP-05/06 preferences)
+      - ``repo``       : the repository instance (BridgeOnly or Hybrid)
+      - ``preferences``: OmniFocusPreferences wired to ``bridge``
+      - ``rehydrate``  : async callable that syncs the HybridRepository
+                         SQLite fixture from the bridge (no-op for bridge
+                         param). Call it between a write and a read when
+                         running against the sqlite backend.
+
+    The tests themselves stay backend-agnostic: BridgeOnlyRepository round-
+    trips naturally; HybridRepository reads from SQLite which the helper
+    re-derives from the bridge snapshot on demand.
+    """
+    from omnifocus_operator.service import OperatorService  # noqa: PLC0415
+    from omnifocus_operator.service.preferences import OmniFocusPreferences  # noqa: PLC0415
+
+    if not _post_56_06_write_surface_present():
+        pytest.skip(
+            "Post-56-06 write surface not yet present on AddTaskCommand. "
+            "This round-trip suite gates on 56-06 landing the Patch[bool] + "
+            "Patch[TaskType] fields. Plans 56-06 and 56-07 run as parallel "
+            "Wave 3 worktrees; once both merge, the skip condition clears "
+            "and these tests become the end-to-end Wave 3 proof."
+        )
+
+    bridge = InMemoryBridge()
+
+    if request.param == "bridge":
+        repo: Repository = BridgeOnlyRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
+
+        async def _rehydrate() -> None:
+            """Bridge path rehydration is a no-op -- reads share bridge state."""
+            return None
+
+    else:  # sqlite
+        db_path = tmp_path / "round_trip_hybrid.db"
+        # Seed an initially-empty database so HybridRepository has something
+        # to read on the first get_task / list_tasks call before any writes.
+        await _rehydrate_sqlite_from_bridge(bridge, db_path)
+        repo = HybridRepository(db_path=db_path, bridge=bridge)
+
+        async def _rehydrate() -> None:
+            await _rehydrate_sqlite_from_bridge(bridge, db_path)
+
+    preferences = OmniFocusPreferences(bridge)
+    service = OperatorService(repository=repo, preferences=preferences)
+
+    return {
+        "service": service,
+        "bridge": bridge,
+        "repo": repo,
+        "preferences": preferences,
+        "rehydrate": _rehydrate,
+    }
+
+
+class TestTaskPropertySurfaceRoundTrip:
+    """Wave 3 end-to-end: write -> read covers both repo paths.
+
+    Proves PROP-01..06 work uniformly across HybridRepository and
+    BridgeOnlyRepository. The agent-value path (command carries the new
+    fields) and the create-default path (omitted fields resolve to user
+    preferences) both land as explicit writes that the read path sees.
+    """
+
+    @pytest.mark.asyncio
+    async def test_round_trip_agent_value_completes_with_children_true(
+        self, cross_service: dict[str, Any]
+    ) -> None:
+        """PROP-01: agent sets completesWithChildren=True -> read back shows True."""
+        from omnifocus_operator.contracts.use_cases.add.tasks import (  # noqa: PLC0415
+            AddTaskCommand,
+        )
+        from omnifocus_operator.models.enums import TaskType  # noqa: PLC0415
+
+        service = cross_service["service"]
+        result = await service.add_task(
+            AddTaskCommand(
+                name="round-trip-1",
+                completes_with_children=True,
+                type=TaskType.PARALLEL,
+            )
+        )
+        assert result.status == "success"
+        await cross_service["rehydrate"]()
+
+        task = await service.get_task(result.id)
+        assert task is not None
+        assert task.completes_with_children is True
+        assert task.type == TaskType.PARALLEL
+        assert task.is_sequential is False  # derived: type != SEQUENTIAL
+        assert task.depends_on_children is False  # no children AND completes=True
+
+    @pytest.mark.asyncio
+    async def test_round_trip_agent_value_sequential_and_no_autocomplete(
+        self, cross_service: dict[str, Any]
+    ) -> None:
+        """PROP-01 + PROP-02: sequential task with completes=False."""
+        from omnifocus_operator.contracts.use_cases.add.tasks import (  # noqa: PLC0415
+            AddTaskCommand,
+        )
+        from omnifocus_operator.models.enums import TaskType  # noqa: PLC0415
+
+        service = cross_service["service"]
+        result = await service.add_task(
+            AddTaskCommand(
+                name="round-trip-2",
+                completes_with_children=False,
+                type=TaskType.SEQUENTIAL,
+            )
+        )
+        await cross_service["rehydrate"]()
+
+        task = await service.get_task(result.id)
+        assert task.completes_with_children is False
+        assert task.type == TaskType.SEQUENTIAL
+        assert task.is_sequential is True  # derived: type == SEQUENTIAL
+
+    @pytest.mark.asyncio
+    async def test_round_trip_edit_flips_completes_with_children(
+        self, cross_service: dict[str, Any]
+    ) -> None:
+        """PROP-02: edit_task flips completesWithChildren; read reflects the edit."""
+        from omnifocus_operator.contracts.use_cases.add.tasks import (  # noqa: PLC0415
+            AddTaskCommand,
+        )
+        from omnifocus_operator.contracts.use_cases.edit.tasks import (  # noqa: PLC0415
+            EditTaskCommand,
+        )
+        from omnifocus_operator.models.enums import TaskType  # noqa: PLC0415
+
+        service = cross_service["service"]
+        result = await service.add_task(
+            AddTaskCommand(
+                name="edit-flip",
+                completes_with_children=True,
+                type=TaskType.PARALLEL,
+            )
+        )
+        await cross_service["rehydrate"]()
+        await service.edit_task(
+            EditTaskCommand(id=result.id, completes_with_children=False),
+        )
+        await cross_service["rehydrate"]()
+
+        task = await service.get_task(result.id)
+        assert task.completes_with_children is False
+
+    @pytest.mark.asyncio
+    async def test_round_trip_edit_type_parallel_to_sequential(
+        self, cross_service: dict[str, Any]
+    ) -> None:
+        """PROP-02: edit_task flips type; derived is_sequential flips too."""
+        from omnifocus_operator.contracts.use_cases.add.tasks import (  # noqa: PLC0415
+            AddTaskCommand,
+        )
+        from omnifocus_operator.contracts.use_cases.edit.tasks import (  # noqa: PLC0415
+            EditTaskCommand,
+        )
+        from omnifocus_operator.models.enums import TaskType  # noqa: PLC0415
+
+        service = cross_service["service"]
+        result = await service.add_task(
+            AddTaskCommand(
+                name="type-flip",
+                completes_with_children=True,
+                type=TaskType.PARALLEL,
+            )
+        )
+        await cross_service["rehydrate"]()
+        await service.edit_task(EditTaskCommand(id=result.id, type=TaskType.SEQUENTIAL))
+        await cross_service["rehydrate"]()
+
+        task = await service.get_task(result.id)
+        assert task.type == TaskType.SEQUENTIAL
+        assert task.is_sequential is True
+
+    @pytest.mark.asyncio
+    async def test_round_trip_create_default_resolves_preference_values(
+        self, cross_service: dict[str, Any]
+    ) -> None:
+        """PROP-05/06: omitted fields resolve to user preferences, written explicitly."""
+        from omnifocus_operator.contracts.use_cases.add.tasks import (  # noqa: PLC0415
+            AddTaskCommand,
+        )
+        from omnifocus_operator.models.enums import TaskType  # noqa: PLC0415
+
+        service = cross_service["service"]
+        bridge = cross_service["bridge"]
+        bridge.configure_settings(
+            {
+                "OFMCompleteWhenLastItemComplete": False,
+                "OFMTaskDefaultSequential": True,
+            }
+        )
+
+        result = await service.add_task(AddTaskCommand(name="defaults-from-prefs"))
+        await cross_service["rehydrate"]()
+
+        task = await service.get_task(result.id)
+        assert task.completes_with_children is False  # from preference
+        assert task.type == TaskType.SEQUENTIAL  # from preference
+        assert task.is_sequential is True  # derived
+
+    @pytest.mark.asyncio
+    async def test_round_trip_factory_default_fallback_when_preference_keys_absent(
+        self, cross_service: dict[str, Any]
+    ) -> None:
+        """PROP-03: absence of preference key -> user kept OF factory default."""
+        from omnifocus_operator.contracts.use_cases.add.tasks import (  # noqa: PLC0415
+            AddTaskCommand,
+        )
+        from omnifocus_operator.models.enums import TaskType  # noqa: PLC0415
+
+        service = cross_service["service"]
+        bridge = cross_service["bridge"]
+        # Explicitly remove both keys so the bridge returns their absence.
+        bridge._settings.pop("OFMCompleteWhenLastItemComplete", None)
+        bridge._settings.pop("OFMTaskDefaultSequential", None)
+
+        result = await service.add_task(AddTaskCommand(name="factory-default-fallback"))
+        await cross_service["rehydrate"]()
+
+        task = await service.get_task(result.id)
+        assert task.completes_with_children is True  # OF factory default
+        assert task.type == TaskType.PARALLEL  # OF factory default
+
+    @pytest.mark.asyncio
+    async def test_round_trip_list_tasks_reflects_written_fields(
+        self, cross_service: dict[str, Any]
+    ) -> None:
+        """list_tasks exercises the cache-backed read path with the same values."""
+        from omnifocus_operator.contracts.use_cases.add.tasks import (  # noqa: PLC0415
+            AddTaskCommand,
+        )
+        from omnifocus_operator.contracts.use_cases.list.tasks import (  # noqa: PLC0415
+            ListTasksQuery,
+        )
+        from omnifocus_operator.models.enums import TaskType  # noqa: PLC0415
+
+        service = cross_service["service"]
+        result = await service.add_task(
+            AddTaskCommand(
+                name="list-rt",
+                completes_with_children=False,
+                type=TaskType.SEQUENTIAL,
+            )
+        )
+        await cross_service["rehydrate"]()
+
+        list_result = await service.list_tasks(ListTasksQuery(search="list-rt"))
+        matching = [t for t in list_result.items if t.id == result.id]
+        assert len(matching) == 1
+        assert matching[0].completes_with_children is False
+        assert matching[0].type == TaskType.SEQUENTIAL
+        assert matching[0].is_sequential is True
