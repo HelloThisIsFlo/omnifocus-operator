@@ -21,7 +21,11 @@ from omnifocus_operator.agent_messages.descriptions import (
     TAGS_ADD_COMMAND,
     TASK_TYPE_WRITE,
 )
-from omnifocus_operator.agent_messages.errors import ADD_PARENT_NULL
+from omnifocus_operator.agent_messages.errors import (
+    ADD_COMPLETES_WITH_CHILDREN_NULL,
+    ADD_PARENT_NULL,
+    ADD_TASK_TYPE_NULL,
+)
 from omnifocus_operator.contracts.base import UNSET, CommandModel, Patch
 from omnifocus_operator.contracts.shared.dates import validate_date_string
 from omnifocus_operator.contracts.shared.repetition_rule import (
@@ -97,10 +101,7 @@ class AddTaskCommand(CommandModel):
     @classmethod
     def _reject_null_completes_with_children(cls, v: object) -> object:
         if v is None:
-            msg = (
-                "'completesWithChildren' cannot be null (no cleared state for "
-                "booleans). Omit to use the user's preference default."
-            )
+            msg = ADD_COMPLETES_WITH_CHILDREN_NULL
             raise ValueError(msg)
         return v
 
@@ -108,7 +109,7 @@ class AddTaskCommand(CommandModel):
     @classmethod
     def _reject_null_task_type(cls, v: object) -> object:
         if v is None:
-            msg = "'type' cannot be null. Omit to use the user's preference default."
+            msg = ADD_TASK_TYPE_NULL
             raise ValueError(msg)
         return v
 

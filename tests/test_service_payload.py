@@ -29,7 +29,12 @@ class TestBuildAdd:
         """Name-only command produces payload with name and flagged=False."""
         builder = PayloadBuilder()
         command = AddTaskCommand(name="Buy milk")
-        payload = builder.build_add(command, resolved_tag_ids=None)
+        payload = builder.build_add(
+            command,
+            resolved_tag_ids=None,
+            resolved_completes_with_children=True,
+            resolved_type="parallel",
+        )
 
         assert payload.name == "Buy milk"
         assert payload.parent is None
@@ -56,7 +61,11 @@ class TestBuildAdd:
             note="Some note",
         )
         payload = builder.build_add(
-            command, resolved_tag_ids=["tag-work"], resolved_parent="proj-1"
+            command,
+            resolved_tag_ids=["tag-work"],
+            resolved_parent="proj-1",
+            resolved_completes_with_children=True,
+            resolved_type="parallel",
         )
 
         assert payload.name == "Full task"
@@ -70,7 +79,12 @@ class TestBuildAdd:
         """Resolved tag IDs are set on payload."""
         builder = PayloadBuilder()
         command = AddTaskCommand(name="Tagged", tags=["Work", "Home"])
-        payload = builder.build_add(command, resolved_tag_ids=["tag-1", "tag-2"])
+        payload = builder.build_add(
+            command,
+            resolved_tag_ids=["tag-1", "tag-2"],
+            resolved_completes_with_children=True,
+            resolved_type="parallel",
+        )
         assert payload.tag_ids == ["tag-1", "tag-2"]
 
     def test_build_add_dates_passthrough(self) -> None:
@@ -82,7 +96,12 @@ class TestBuildAdd:
             defer_date="2026-04-20T08:00:00",
             planned_date="2026-04-25T09:00:00",
         )
-        payload = builder.build_add(command, resolved_tag_ids=None)
+        payload = builder.build_add(
+            command,
+            resolved_tag_ids=None,
+            resolved_completes_with_children=True,
+            resolved_type="parallel",
+        )
 
         assert payload.due_date == "2026-05-01T10:00:00"
         assert payload.defer_date == "2026-04-20T08:00:00"
@@ -208,6 +227,190 @@ class TestBuildEdit:
 
 
 # ---------------------------------------------------------------------------
+# Plan 56-06: completesWithChildren + type on build_add / build_edit
+# ---------------------------------------------------------------------------
+
+
+class TestBuildAddTaskPropertySurface:
+    """PROP-05/06: build_add always populates resolved values explicitly.
+
+    Covers the resolved-value → repo-payload flow for completes_with_children
+    and type. The service pipeline's _resolve_type_defaults step is
+    responsible for producing the resolved values; PayloadBuilder is
+    responsible for writing them unconditionally.
+    """
+
+    def test_build_add_sets_completes_with_children_from_resolved_value_true(
+        self,
+    ) -> None:
+        builder = PayloadBuilder()
+        command = AddTaskCommand(name="x")
+        payload = builder.build_add(
+            command,
+            resolved_tag_ids=None,
+            resolved_completes_with_children=True,
+            resolved_type="parallel",
+        )
+        assert payload.completes_with_children is True
+
+    def test_build_add_sets_completes_with_children_from_resolved_value_false(
+        self,
+    ) -> None:
+        builder = PayloadBuilder()
+        command = AddTaskCommand(name="x")
+        payload = builder.build_add(
+            command,
+            resolved_tag_ids=None,
+            resolved_completes_with_children=False,
+            resolved_type="parallel",
+        )
+        assert payload.completes_with_children is False
+
+    def test_build_add_sets_type_from_resolved_value_parallel(self) -> None:
+        builder = PayloadBuilder()
+        command = AddTaskCommand(name="x")
+        payload = builder.build_add(
+            command,
+            resolved_tag_ids=None,
+            resolved_completes_with_children=True,
+            resolved_type="parallel",
+        )
+        assert payload.type == "parallel"
+
+    def test_build_add_sets_type_from_resolved_value_sequential(self) -> None:
+        builder = PayloadBuilder()
+        command = AddTaskCommand(name="x")
+        payload = builder.build_add(
+            command,
+            resolved_tag_ids=None,
+            resolved_completes_with_children=True,
+            resolved_type="sequential",
+        )
+        assert payload.type == "sequential"
+
+    def test_build_add_always_includes_both_fields_even_when_command_omits(
+        self,
+    ) -> None:
+        """Command has completes_with_children/type UNSET, but payload ALWAYS
+        carries explicit values (PROP-05/06 — server never relies on OF implicit
+        defaulting)."""
+        builder = PayloadBuilder()
+        command = AddTaskCommand(name="x")  # both fields omitted by agent
+        payload = builder.build_add(
+            command,
+            resolved_tag_ids=None,
+            resolved_completes_with_children=True,
+            resolved_type="parallel",
+        )
+        assert payload.completes_with_children is True
+        assert payload.type == "parallel"
+        assert "completes_with_children" in payload.model_fields_set
+        assert "type" in payload.model_fields_set
+
+    def test_build_add_agent_override_flows_through_when_service_resolves(
+        self,
+    ) -> None:
+        """Agent passes completesWithChildren=False; service computes
+        resolved_completes_with_children=False (same as agent value); payload
+        carries that value. Test validates the pass-through contract."""
+        builder = PayloadBuilder()
+        command = AddTaskCommand(name="x", completes_with_children=False, type="sequential")
+        payload = builder.build_add(
+            command,
+            resolved_tag_ids=None,
+            resolved_completes_with_children=False,
+            resolved_type="sequential",
+        )
+        assert payload.completes_with_children is False
+        assert payload.type == "sequential"
+
+
+class TestBuildEditTaskPropertySurface:
+    """PROP-01/PROP-02 on edit: Patch semantics via _add_if_set."""
+
+    def test_build_edit_omits_completes_with_children_when_command_omits(self) -> None:
+        builder = PayloadBuilder()
+        command = EditTaskCommand(id="t1")
+        payload = builder.build_edit(
+            command,
+            lifecycle=None,
+            add_tag_ids=None,
+            remove_tag_ids=None,
+            move_to=None,
+        )
+        assert "completes_with_children" not in payload.model_fields_set
+        assert payload.completes_with_children is None
+
+    def test_build_edit_includes_completes_with_children_when_command_sets(
+        self,
+    ) -> None:
+        builder = PayloadBuilder()
+        command = EditTaskCommand(id="t1", completes_with_children=False)
+        payload = builder.build_edit(
+            command,
+            lifecycle=None,
+            add_tag_ids=None,
+            remove_tag_ids=None,
+            move_to=None,
+        )
+        assert "completes_with_children" in payload.model_fields_set
+        assert payload.completes_with_children is False
+
+    def test_build_edit_omits_type_when_command_omits(self) -> None:
+        builder = PayloadBuilder()
+        command = EditTaskCommand(id="t1")
+        payload = builder.build_edit(
+            command,
+            lifecycle=None,
+            add_tag_ids=None,
+            remove_tag_ids=None,
+            move_to=None,
+        )
+        assert "type" not in payload.model_fields_set
+        assert payload.type is None
+
+    def test_build_edit_includes_type_when_command_sets_as_str_not_enum(self) -> None:
+        """TaskType on command -> raw str on repo payload (PROP-06 edit contract)."""
+        builder = PayloadBuilder()
+        command = EditTaskCommand(id="t1", type="sequential")
+        payload = builder.build_edit(
+            command,
+            lifecycle=None,
+            add_tag_ids=None,
+            remove_tag_ids=None,
+            move_to=None,
+        )
+        assert "type" in payload.model_fields_set
+        assert payload.type == "sequential"
+        assert isinstance(payload.type, str)  # not TaskType
+
+    def test_build_edit_type_parallel_as_str(self) -> None:
+        builder = PayloadBuilder()
+        command = EditTaskCommand(id="t1", type="parallel")
+        payload = builder.build_edit(
+            command,
+            lifecycle=None,
+            add_tag_ids=None,
+            remove_tag_ids=None,
+            move_to=None,
+        )
+        assert payload.type == "parallel"
+
+    def test_build_edit_both_new_fields_together(self) -> None:
+        builder = PayloadBuilder()
+        command = EditTaskCommand(id="t1", completes_with_children=True, type="sequential")
+        payload = builder.build_edit(
+            command,
+            lifecycle=None,
+            add_tag_ids=None,
+            remove_tag_ids=None,
+            move_to=None,
+        )
+        assert payload.completes_with_children is True
+        assert payload.type == "sequential"
+
+
+# ---------------------------------------------------------------------------
 # build_add: repetition rule
 # ---------------------------------------------------------------------------
 
@@ -219,7 +422,12 @@ class TestBuildAddRepetitionRule:
         """No repetition rule -> payload.repetition_rule is None."""
         builder = PayloadBuilder()
         command = AddTaskCommand(name="Plain task")
-        payload = builder.build_add(command, resolved_tag_ids=None)
+        payload = builder.build_add(
+            command,
+            resolved_tag_ids=None,
+            resolved_completes_with_children=True,
+            resolved_type="parallel",
+        )
         assert payload.repetition_rule is None
 
     def test_pre_built_payload_slotted(self) -> None:
@@ -232,7 +440,11 @@ class TestBuildAddRepetitionRule:
         )
         command = AddTaskCommand(name="Repeating")
         payload = builder.build_add(
-            command, resolved_tag_ids=None, repetition_rule_payload=repo_payload
+            command,
+            resolved_tag_ids=None,
+            repetition_rule_payload=repo_payload,
+            resolved_completes_with_children=True,
+            resolved_type="parallel",
         )
         assert payload.repetition_rule is repo_payload
 

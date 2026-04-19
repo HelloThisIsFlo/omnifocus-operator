@@ -375,6 +375,13 @@ class InMemoryBridge(Bridge):
         defer_date = params.get("deferDate")
         status = "Blocked" if defer_date is not None else "Available"
 
+        # Task-property surface defaults (PROP-05 / PROP-06, plan 56-06):
+        # the service ALWAYS resolves both fields on add, so params include
+        # them unconditionally. Fall back defensively if something bypasses
+        # the service (unit tests that build payloads manually).
+        completed_by_children = params.get("completesWithChildren", True)
+        sequential = params.get("type") == "sequential"
+
         task = make_task_dict(
             id=task_id,
             name=params["name"],
@@ -392,6 +399,8 @@ class InMemoryBridge(Bridge):
             estimatedMinutes=params.get("estimatedMinutes"),
             tags=tags,
             status=status,
+            completedByChildren=completed_by_children,
+            sequential=sequential,
         )
 
         # Compute effective fields via ancestor-chain inheritance
@@ -439,6 +448,14 @@ class InMemoryBridge(Bridge):
                 if key in date_keys:
                     value = _ensure_tz_aware(value)
                 task[key] = value
+
+        # Task-property surface patch semantics (plan 56-06):
+        # `completesWithChildren` (bool) -> raw `completedByChildren`.
+        # `type` ("parallel" | "sequential") -> raw `sequential` (bool).
+        if "completesWithChildren" in params:
+            task["completedByChildren"] = params["completesWithChildren"]
+        if "type" in params:
+            task["sequential"] = params["type"] == "sequential"
 
         # Sync effectiveFlagged when flagged is updated (ancestor-chain inheritance)
         if "flagged" in params:

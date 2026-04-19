@@ -552,8 +552,36 @@ class _AddTaskPipeline(_Pipeline):
         await self._resolve_parent()
         await self._resolve_tags()
         self._process_repetition_rule()
+        await self._resolve_type_defaults()  # PROP-05/06 (plan 56-06)
         self._build_payload()
         return await self._delegate()
+
+    async def _resolve_type_defaults(self) -> None:
+        """PROP-05 / PROP-06: resolve completes_with_children and type explicitly.
+
+        When the agent omits either field, read the user's OmniFocus preference
+        and write it EXPLICITLY onto the repo payload. The server NEVER relies
+        on OmniFocus's implicit defaulting — the bridge always receives a
+        concrete bool / str for both fields on add.
+
+        Falls back to OmniFocus factory defaults (True / "parallel") when the
+        preference key is absent; OmniFocusPreferences handles that cascade.
+        """
+        if is_set(self._command.completes_with_children):
+            self._resolved_completes_with_children: bool = self._command.completes_with_children
+        else:
+            self._resolved_completes_with_children = (
+                await self._preferences.get_complete_with_children_default()
+            )
+
+        if is_set(self._command.type):
+            # self._command.type is a TaskType enum when set; .value → str
+            self._resolved_type: str = self._command.type.value
+        else:
+            self._resolved_type = await self._preferences.get_task_type_default()
+
+        # Drain any late warnings emitted during preference lookup
+        self._preferences_warnings.extend(await self._preferences.get_warnings())
 
     async def _normalize_dates(self) -> None:
         """Normalize date inputs with user-configured default times from preferences."""
@@ -649,6 +677,8 @@ class _AddTaskPipeline(_Pipeline):
             self._resolved_tag_ids,
             resolved_parent=self._resolved_parent,
             repetition_rule_payload=repetition_payload,
+            resolved_completes_with_children=self._resolved_completes_with_children,
+            resolved_type=self._resolved_type,
         )
 
     async def _delegate(self) -> AddTaskResult:

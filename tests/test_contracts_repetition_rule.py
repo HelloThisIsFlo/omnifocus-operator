@@ -409,6 +409,8 @@ class TestRepoPayloadIntegration:
         payload = AddTaskRepoPayload(
             name="test",
             repetition_rule=self._make_repo_payload(),
+            completes_with_children=True,
+            type="parallel",
         )
         assert payload.repetition_rule is not None
 

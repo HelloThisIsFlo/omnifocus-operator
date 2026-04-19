@@ -21,6 +21,7 @@ from omnifocus_operator.agent_messages.descriptions import (
     TASK_TYPE_WRITE,
 )
 from omnifocus_operator.agent_messages.errors import (
+    EDIT_TYPE_FIELD_NULL,
     LIFECYCLE_INVALID_VALUE,
     TASK_NAME_EMPTY,
 )
@@ -76,7 +77,7 @@ class EditTaskCommand(CommandModel):
     @classmethod
     def _reject_null_type_fields(cls, v: object) -> object:
         if v is None:
-            msg = "This field cannot be null (no cleared state). Omit to leave unchanged."
+            msg = EDIT_TYPE_FIELD_NULL
             raise ValueError(msg)
         return v
 

@@ -1136,6 +1136,10 @@ class DomainLogic:
         via anchor_id == task_id (D-12, D-13).
         """
         _date_keys = {"due_date", "defer_date", "planned_date"}
+        # Plan 56-06: completes_with_children + type participate in no-op
+        # detection so a patch like `completes_with_children=False` on a task
+        # whose stored value is True actually flows to the bridge (not
+        # short-circuited as a no-op).
         field_comparisons: dict[str, object] = {
             "name": task.name,
             "note": task.note,
@@ -1144,6 +1148,8 @@ class DomainLogic:
             "due_date": task.due_date,
             "defer_date": task.defer_date,
             "planned_date": task.planned_date,
+            "completes_with_children": task.completes_with_children,
+            "type": task.type.value,
         }
 
         # Use model_fields_set to detect which fields were explicitly provided,

@@ -15,6 +15,7 @@ from omnifocus_operator.contracts.use_cases.edit.tasks import (
     EditTaskRepoPayload,
     MoveToRepoPayload,
 )
+from omnifocus_operator.models.enums import TaskType
 
 if TYPE_CHECKING:
     from omnifocus_operator.contracts.shared.repetition_rule import (
@@ -37,8 +38,18 @@ class PayloadBuilder:
         resolved_tag_ids: list[str] | None,
         resolved_parent: str | None = None,
         repetition_rule_payload: RepetitionRuleRepoPayload | None = None,
+        *,
+        resolved_completes_with_children: bool,
+        resolved_type: str,
     ) -> AddTaskRepoPayload:
-        """Build add-task payload. Only includes populated fields."""
+        """Build add-task payload. Service has resolved all defaults explicitly.
+
+        `resolved_completes_with_children` and `resolved_type` are keyword-only
+        and REQUIRED — the service pipeline's ``_resolve_type_defaults`` step
+        (PROP-05/06) is responsible for producing them (from the agent's value
+        or from OmniFocusPreferences). The bridge always receives concrete
+        values on add; the server never relies on OmniFocus implicit defaulting.
+        """
         kwargs: dict[str, object] = {"name": command.name}
         if resolved_parent is not None:
             kwargs["parent"] = resolved_parent
@@ -51,6 +62,8 @@ class PayloadBuilder:
         if command.planned_date is not None:
             kwargs["planned_date"] = command.planned_date
         kwargs["flagged"] = command.flagged
+        kwargs["completes_with_children"] = resolved_completes_with_children  # PROP-05
+        kwargs["type"] = resolved_type  # PROP-06
         if command.estimated_minutes is not None:
             kwargs["estimated_minutes"] = command.estimated_minutes
         if command.note is not None:
@@ -75,8 +88,20 @@ class PayloadBuilder:
         # --- 1. Extract command fields ---
         kwargs: dict[str, object] = {"id": command.id}
 
-        # Simple fields (name, flagged, estimated_minutes)
-        self._add_if_set(kwargs, command, "name", "flagged", "estimated_minutes")
+        # Simple fields (name, flagged, estimated_minutes, completes_with_children, type)
+        self._add_if_set(
+            kwargs,
+            command,
+            "name",
+            "flagged",
+            "estimated_minutes",
+            "completes_with_children",
+            "type",
+        )
+        # type arrives as a TaskType enum on the command; repo payload stores
+        # raw str to keep bridge-serialisation straightforward (PROP-06 edit).
+        if "type" in kwargs and isinstance(kwargs["type"], TaskType):
+            kwargs["type"] = kwargs["type"].value
 
         # Note enters via explicit note_value kwarg (composed by process_note_action)
         if is_set(note_value):

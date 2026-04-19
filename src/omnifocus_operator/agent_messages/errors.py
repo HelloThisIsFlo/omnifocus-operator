@@ -73,6 +73,20 @@ ADD_PARENT_NULL = """\
 parent cannot be null. Omit the field to create a task in the inbox, \
 or provide a project/task name or ID."""
 
+# Plan 56-06 (PROP-01/PROP-02): null rejection on the two new writable
+# task-property fields. Booleans and enums have no "cleared" state --
+# omit to use the user's preference default on add, omit to leave
+# unchanged on edit.
+
+ADD_COMPLETES_WITH_CHILDREN_NULL = (
+    "'completesWithChildren' cannot be null (no cleared state for "
+    "booleans). Omit to use the user's preference default."
+)
+
+ADD_TASK_TYPE_NULL = "'type' cannot be null. Omit to use the user's preference default."
+
+EDIT_TYPE_FIELD_NULL = "This field cannot be null (no cleared state). Omit to leave unchanged."
+
 # --- Repetition Rule ---
 
 REPETITION_NO_EXISTING_RULE = """\

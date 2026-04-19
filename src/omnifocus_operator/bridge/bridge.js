@@ -271,6 +271,12 @@ function handleAddTask(params) {
     if (params.hasOwnProperty("estimatedMinutes"))
         task.estimatedMinutes = params.estimatedMinutes;
     if (params.hasOwnProperty("note")) task.note = params.note;
+    // Task property surface (PROP-01/PROP-02/PROP-05/PROP-06, plan 56-06).
+    // Service always resolves both fields on add — present unconditionally.
+    if (params.hasOwnProperty("completesWithChildren"))
+        task.completedByChildren = params.completesWithChildren;
+    if (params.hasOwnProperty("type"))
+        task.sequential = (params.type === "sequential");
 
     // Tags -- resolved by ID (service already validated and resolved names to IDs)
     if (params.tagIds) {
@@ -306,6 +312,11 @@ function handleEditTask(params) {
     if (params.hasOwnProperty("flagged")) task.flagged = params.flagged;
     if (params.hasOwnProperty("estimatedMinutes"))
         task.estimatedMinutes = params.estimatedMinutes;
+    // Task property surface patch semantics (plan 56-06).
+    if (params.hasOwnProperty("completesWithChildren"))
+        task.completedByChildren = params.completesWithChildren;
+    if (params.hasOwnProperty("type"))
+        task.sequential = (params.type === "sequential");
     if (params.hasOwnProperty("dueDate"))
         task.dueDate = params.dueDate ? new Date(params.dueDate) : null;
     if (params.hasOwnProperty("deferDate"))

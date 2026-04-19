@@ -495,4 +495,42 @@ describe("handleEditTask", function () {
     expect(moveTasks).toHaveBeenCalledWith([mockTask], "proj-dest-ending");
     expect(result).toEqual({ id: "task-edit-001", name: "Renamed" });
   });
+
+  // --- Task property surface (plan 56-06: PROP-01/PROP-02 patch semantics) ---
+
+  it("writes task.completedByChildren when completesWithChildren is in params", function () {
+    mockTask.completedByChildren = true;
+    bridge.handleEditTask({ id: "task-edit-001", completesWithChildren: false });
+    expect(mockTask.completedByChildren).toBe(false);
+  });
+
+  it("writes task.completedByChildren true -> false via hasOwnProperty (falsy-safe)", function () {
+    mockTask.completedByChildren = true;
+    bridge.handleEditTask({ id: "task-edit-001", completesWithChildren: false });
+    expect(mockTask.completedByChildren).toBe(false);
+  });
+
+  it("leaves task.completedByChildren unchanged when completesWithChildren is absent", function () {
+    mockTask.completedByChildren = true;
+    bridge.handleEditTask({ id: "task-edit-001", name: "Renamed only" });
+    expect(mockTask.completedByChildren).toBe(true);
+  });
+
+  it("writes task.sequential = true when params.type === 'sequential'", function () {
+    mockTask.sequential = false;
+    bridge.handleEditTask({ id: "task-edit-001", type: "sequential" });
+    expect(mockTask.sequential).toBe(true);
+  });
+
+  it("writes task.sequential = false when params.type === 'parallel'", function () {
+    mockTask.sequential = true;
+    bridge.handleEditTask({ id: "task-edit-001", type: "parallel" });
+    expect(mockTask.sequential).toBe(false);
+  });
+
+  it("leaves task.sequential unchanged when type is absent (patch semantics)", function () {
+    mockTask.sequential = true;
+    bridge.handleEditTask({ id: "task-edit-001", name: "Renamed only" });
+    expect(mockTask.sequential).toBe(true);
+  });
 });

@@ -666,6 +666,27 @@ describe("handleAddTask", function () {
       bridge.handleAddTask({ name: "Bad tags", tagIds: ["missing-tag"] });
     }).toThrow("Tag not found: missing-tag");
   });
+
+  // Plan 56-06: task-property surface writes (PROP-01/02/05/06).
+  it("writes completedByChildren from completesWithChildren param (true)", function () {
+    bridge.handleAddTask({ name: "Container", completesWithChildren: true });
+    expect(createdTasks[0].completedByChildren).toBe(true);
+  });
+
+  it("writes completedByChildren from completesWithChildren param (false)", function () {
+    bridge.handleAddTask({ name: "Real work", completesWithChildren: false });
+    expect(createdTasks[0].completedByChildren).toBe(false);
+  });
+
+  it("writes task.sequential = true when params.type === 'sequential'", function () {
+    bridge.handleAddTask({ name: "Sequential task", type: "sequential" });
+    expect(createdTasks[0].sequential).toBe(true);
+  });
+
+  it("writes task.sequential = false when params.type === 'parallel'", function () {
+    bridge.handleAddTask({ name: "Parallel task", type: "parallel" });
+    expect(createdTasks[0].sequential).toBe(false);
+  });
 });
 
 describe("dispatch", function () {

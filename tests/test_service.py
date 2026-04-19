@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, date, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock
 
 import pytest
@@ -2725,6 +2725,196 @@ class TestAddTaskInboxPipeline:
         task = await repo.get_task(result.id)
         assert task is not None
         assert task.project.id != "$inbox"
+
+
+# ---------------------------------------------------------------------------
+# Plan 56-06: add_task / edit_task task-property surface end-to-end
+# ---------------------------------------------------------------------------
+
+
+class TestAddTaskResolvesTypeDefaults:
+    """PROP-05 / PROP-06 end-to-end: service resolves completesWithChildren +
+    type explicitly via OmniFocusPreferences when the agent omits them. The
+    stored task on the bridge matches the preference value — proving the
+    server never relies on OmniFocus's implicit defaulting.
+    """
+
+    async def test_add_task_resolves_completes_with_children_from_preferences_when_omitted(
+        self, service: OperatorService, bridge: Any, repo: BridgeOnlyRepository
+    ) -> None:
+        """Preference OFMCompleteWhenLastItemComplete=False → stored bridge
+        task has completedByChildren=False (service resolved explicitly)."""
+        bridge.configure_settings({"OFMCompleteWhenLastItemComplete": False})
+
+        result = await service.add_task(AddTaskCommand(name="Omit completesWithChildren"))
+        assert result.status == "success"
+
+        stored = next(t for t in bridge._tasks if t["id"] == result.id)
+        assert stored["completedByChildren"] is False
+
+    async def test_add_task_uses_factory_default_true_when_preference_absent(
+        self, service: OperatorService, bridge: Any
+    ) -> None:
+        """No preference key → factory default True. Stored task matches."""
+        bridge._settings.pop("OFMCompleteWhenLastItemComplete", None)
+
+        result = await service.add_task(AddTaskCommand(name="Factory default"))
+        assert result.status == "success"
+
+        stored = next(t for t in bridge._tasks if t["id"] == result.id)
+        assert stored["completedByChildren"] is True
+
+    async def test_add_task_resolves_type_from_preferences_when_omitted(
+        self, service: OperatorService, bridge: Any
+    ) -> None:
+        """Preference OFMTaskDefaultSequential=True → stored task sequential=True."""
+        bridge.configure_settings({"OFMTaskDefaultSequential": True})
+
+        result = await service.add_task(AddTaskCommand(name="Omit type"))
+        assert result.status == "success"
+
+        stored = next(t for t in bridge._tasks if t["id"] == result.id)
+        assert stored["sequential"] is True
+
+    async def test_add_task_uses_factory_default_parallel_when_type_preference_absent(
+        self, service: OperatorService, bridge: Any
+    ) -> None:
+        """No preference key → factory default 'parallel'. Stored sequential=False."""
+        bridge._settings.pop("OFMTaskDefaultSequential", None)
+
+        result = await service.add_task(AddTaskCommand(name="Factory type"))
+        assert result.status == "success"
+
+        stored = next(t for t in bridge._tasks if t["id"] == result.id)
+        assert stored["sequential"] is False
+
+    async def test_add_task_agent_value_overrides_preference(
+        self, service: OperatorService, bridge: Any
+    ) -> None:
+        """Preference=True; agent passes completesWithChildren=False; agent wins."""
+        bridge.configure_settings({"OFMCompleteWhenLastItemComplete": True})
+
+        result = await service.add_task(
+            AddTaskCommand(name="Override", completes_with_children=False)
+        )
+        assert result.status == "success"
+
+        stored = next(t for t in bridge._tasks if t["id"] == result.id)
+        assert stored["completedByChildren"] is False
+
+    async def test_add_task_agent_type_value_overrides_preference(
+        self, service: OperatorService, bridge: Any
+    ) -> None:
+        """Preference='parallel'; agent passes type='sequential'; agent wins."""
+        bridge.configure_settings({"OFMTaskDefaultSequential": False})
+
+        result = await service.add_task(AddTaskCommand(name="Override type", type="sequential"))
+        assert result.status == "success"
+
+        stored = next(t for t in bridge._tasks if t["id"] == result.id)
+        assert stored["sequential"] is True
+
+    async def test_add_task_both_fields_always_present_in_bridge_params(
+        self, service: OperatorService, bridge: Any
+    ) -> None:
+        """PROP-05/06 invariant: the bridge add_task call always carries
+        completesWithChildren + type. Server never relies on OmniFocus
+        implicit defaulting."""
+        await service.add_task(AddTaskCommand(name="Invariant check"))
+        add_call = next(call for call in bridge.calls if call.operation == "add_task")
+        assert "completesWithChildren" in add_call.params
+        assert "type" in add_call.params
+        assert add_call.params["type"] in ("parallel", "sequential")
+        assert isinstance(add_call.params["completesWithChildren"], bool)
+
+
+class TestEditTaskTaskPropertySurface:
+    """PROP-01 / PROP-02 edit-path: patch semantics on completesWithChildren + type."""
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t-edit",
+                name="Starts parallel, completes-with-children true",
+                completedByChildren=True,
+                sequential=False,
+            )
+        ]
+    )
+    async def test_edit_task_updates_completes_with_children(
+        self, service: OperatorService, bridge: Any
+    ) -> None:
+        result = await service.edit_task(
+            EditTaskCommand(id="t-edit", completes_with_children=False)
+        )
+        assert result.status == "success"
+        stored = next(t for t in bridge._tasks if t["id"] == "t-edit")
+        assert stored["completedByChildren"] is False
+        # type field not touched — still parallel (sequential=False)
+        assert stored["sequential"] is False
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t-edit",
+                name="Starts sequential",
+                completedByChildren=True,
+                sequential=True,
+            )
+        ]
+    )
+    async def test_edit_task_omitting_completes_with_children_leaves_unchanged(
+        self, service: OperatorService, bridge: Any
+    ) -> None:
+        result = await service.edit_task(EditTaskCommand(id="t-edit", name="Renamed"))
+        assert result.status == "success"
+        stored = next(t for t in bridge._tasks if t["id"] == "t-edit")
+        # Neither field appeared in the edit_task bridge call
+        edit_call = next(call for call in bridge.calls if call.operation == "edit_task")
+        assert "completesWithChildren" not in edit_call.params
+        assert "type" not in edit_call.params
+        # Stored values untouched
+        assert stored["completedByChildren"] is True
+        assert stored["sequential"] is True
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t-edit",
+                name="Starts parallel",
+                completedByChildren=True,
+                sequential=False,
+            )
+        ]
+    )
+    async def test_edit_task_updates_type_from_parallel_to_sequential(
+        self, service: OperatorService, bridge: Any
+    ) -> None:
+        result = await service.edit_task(EditTaskCommand(id="t-edit", type="sequential"))
+        assert result.status == "success"
+        stored = next(t for t in bridge._tasks if t["id"] == "t-edit")
+        assert stored["sequential"] is True
+        # completes_with_children untouched
+        assert stored["completedByChildren"] is True
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t-edit",
+                name="Starts sequential",
+                completedByChildren=False,
+                sequential=True,
+            )
+        ]
+    )
+    async def test_edit_task_type_crosses_wire_as_sequential_bool(
+        self, service: OperatorService, bridge: Any
+    ) -> None:
+        """Bridge params carry type='parallel'/'sequential' (str), not the enum."""
+        await service.edit_task(EditTaskCommand(id="t-edit", type="parallel"))
+        edit_call = next(call for call in bridge.calls if call.operation == "edit_task")
+        assert edit_call.params["type"] == "parallel"
+        assert isinstance(edit_call.params["type"], str)
 
 
 class TestEditTaskInboxPipeline:

@@ -1481,7 +1481,9 @@ class TestFreshness:
             wal_path.write_bytes(b"changed")
 
         task = asyncio.create_task(modify_wal())
-        result = await repo.add_task(AddTaskRepoPayload(name="Test"))
+        result = await repo.add_task(
+            AddTaskRepoPayload(name="Test", completes_with_children=True, type="parallel")
+        )
         await task
         assert result.id == "new-1"
 
@@ -1489,7 +1491,11 @@ class TestFreshness:
     @pytest.mark.parametrize(
         ("method", "arg"),
         [
-            pytest.param("add_task", AddTaskRepoPayload(name="Test"), id="add_task"),
+            pytest.param(
+                "add_task",
+                AddTaskRepoPayload(name="Test", completes_with_children=True, type="parallel"),
+                id="add_task",
+            ),
             pytest.param(
                 "edit_task", EditTaskRepoPayload(id="task-001", name="Edited"), id="edit_task"
             ),
@@ -1538,7 +1544,7 @@ class TestAddTask:
         bridge = StubBridge(data={"id": "new-task-1", "name": "Buy milk"}, wal_path=wal_path)
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
-        payload = AddTaskRepoPayload(name="Buy milk")
+        payload = AddTaskRepoPayload(name="Buy milk", completes_with_children=True, type="parallel")
         await repo.add_task(payload)
 
         assert bridge.call_count == 1
@@ -1554,7 +1560,7 @@ class TestAddTask:
         bridge = StubBridge(data={"id": "new-task-1", "name": "Buy milk"}, wal_path=wal_path)
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
-        payload = AddTaskRepoPayload(name="Buy milk")
+        payload = AddTaskRepoPayload(name="Buy milk", completes_with_children=True, type="parallel")
         result = await repo.add_task(payload)
 
         assert isinstance(result, AddTaskRepoResult)
@@ -1569,7 +1575,7 @@ class TestAddTask:
         bridge = StubBridge(data={"id": "t1", "name": "Test"}, wal_path=wal_path)
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
-        payload = AddTaskRepoPayload(name="Test")
+        payload = AddTaskRepoPayload(name="Test", completes_with_children=True, type="parallel")
         await repo.add_task(payload)
 
         params = bridge.calls[0].params
@@ -1578,6 +1584,9 @@ class TestAddTask:
         assert "dueDate" not in params
         assert "deferDate" not in params
         assert "parent" not in params
+        # Plan 56-06: task-property fields are always populated (PROP-05/06).
+        assert params["completesWithChildren"] is True
+        assert params["type"] == "parallel"
 
     @pytest.mark.asyncio
     async def test_add_task_with_tag_ids(self, tmp_path: Path) -> None:
@@ -1587,7 +1596,12 @@ class TestAddTask:
         bridge = StubBridge(data={"id": "t1", "name": "Test"}, wal_path=wal_path)
         repo = HybridRepository(db_path=db_path, bridge=bridge)
 
-        payload = AddTaskRepoPayload(name="Test", tag_ids=["tag-001", "tag-002"])
+        payload = AddTaskRepoPayload(
+            name="Test",
+            tag_ids=["tag-001", "tag-002"],
+            completes_with_children=True,
+            type="parallel",
+        )
         await repo.add_task(payload)
 
         params = bridge.calls[0].params
@@ -1605,6 +1619,8 @@ class TestAddTask:
             name="Test",
             due_date="2026-03-15T10:00:00+00:00",
             estimated_minutes=30.0,
+            completes_with_children=True,
+            type="parallel",
         )
         await repo.add_task(payload)
 
