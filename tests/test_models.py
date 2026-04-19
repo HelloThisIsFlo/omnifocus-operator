@@ -593,9 +593,10 @@ class TestTaskModel:
         assert task.tags[0].id == "t1"
         assert task.tags[1].name == "morning"
 
-        # Verify total field count (32 = 27 prior + 5 new from Phase 56-02:
-        # has_note, has_repetition, has_attachments, completes_with_children, type)
-        assert len(Task.model_fields) == 32
+        # Verify total field count (34 = 27 prior + 5 from Phase 56-02
+        # (has_note, has_repetition, has_attachments, completes_with_children, type)
+        # + 2 from Phase 56-03 (is_sequential, depends_on_children))
+        assert len(Task.model_fields) == 34
 
         # Serialize back to camelCase and verify round-trip
         dumped = task.model_dump(mode="json", by_alias=True)
@@ -741,6 +742,52 @@ class TestTaskPropertySurfaceFields:
         """HIER-03: `has_children` is NOT renamed to `has_subtasks`."""
         assert "has_children" in ActionableEntity.model_fields
         assert "has_subtasks" not in ActionableEntity.model_fields
+
+
+class TestTaskDerivedPresenceFlagFields:
+    """Phase 56-03: `is_sequential` + `depends_on_children` as defaulted Task fields.
+
+    These are *derived* flags (FLAG-04 / FLAG-05) — the service layer's
+    `DomainLogic.enrich_task_presence_flags` populates them. Defaults are
+    `False` so the fields stay safe if enrichment is bypassed.
+    """
+
+    def test_task_has_is_sequential_field_defaulting_false(self) -> None:
+        assert "is_sequential" in Task.model_fields
+        assert Task.model_fields["is_sequential"].default is False
+
+    def test_task_has_depends_on_children_field_defaulting_false(self) -> None:
+        assert "depends_on_children" in Task.model_fields
+        assert Task.model_fields["depends_on_children"].default is False
+
+    def test_task_is_sequential_field_annotation_is_bool(self) -> None:
+        assert Task.model_fields["is_sequential"].annotation is bool
+
+    def test_task_depends_on_children_field_annotation_is_bool(self) -> None:
+        assert Task.model_fields["depends_on_children"].annotation is bool
+
+    def test_task_construction_with_explicit_values_succeeds(self) -> None:
+        data = make_model_task_dict(isSequential=True, dependsOnChildren=True)
+        task = Task.model_validate(data)
+        assert task.is_sequential is True
+        assert task.depends_on_children is True
+
+    def test_task_construction_without_values_uses_defaults(self) -> None:
+        data = make_model_task_dict()
+        # Ensure factory doesn't supply these so defaults must fire.
+        data.pop("isSequential", None)
+        data.pop("dependsOnChildren", None)
+        task = Task.model_validate(data)
+        assert task.is_sequential is False
+        assert task.depends_on_children is False
+
+    def test_project_does_not_define_is_sequential_field(self) -> None:
+        """FLAG-04 tasks-only guard: projects MUST NOT carry is_sequential."""
+        assert "is_sequential" not in Project.model_fields
+
+    def test_project_does_not_define_depends_on_children_field(self) -> None:
+        """FLAG-05 tasks-only guard: projects MUST NOT carry depends_on_children."""
+        assert "depends_on_children" not in Project.model_fields
 
 
 # ---------------------------------------------------------------------------

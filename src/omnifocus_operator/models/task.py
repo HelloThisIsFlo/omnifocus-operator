@@ -34,6 +34,14 @@ class Task(ActionableEntity):
     # default from `OFMTaskDefaultSequential` (Phase 56-05).
     type: TaskType
 
+    # Derived presence flags (FLAG-04 / FLAG-05, task-only).
+    # Populated by `DomainLogic.enrich_task_presence_flags` on every read
+    # pipeline (get_all, get_task, list_tasks). Defaults are `False` so the
+    # model stays safe if enrichment is somehow bypassed -- neither flag
+    # triggers agent action on its own. Projects DO NOT carry these fields.
+    is_sequential: bool = False
+    depends_on_children: bool = False
+
     # Inherited fields (task-only -- projects cannot inherit)
     inherited_flagged: bool = Field(default=False, description=INHERITED_FLAGGED)
     inherited_due_date: AwareDatetime | None = Field(

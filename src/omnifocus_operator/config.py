@@ -106,6 +106,12 @@ TASK_FIELD_GROUPS: dict[str, frozenset[str]] = {
             "hasNote",
             "hasRepetition",
             "hasAttachments",
+            # Phase 56-03 Wave 1 placement: derived task-only flags live here
+            # for now (opt-in). Phase 56-04 will promote FLAG-04 (isSequential)
+            # and FLAG-05 (dependsOnChildren) to default-response with
+            # strip-when-false semantics.
+            "isSequential",
+            "dependsOnChildren",
         }
     ),
     # Phase 56-02: HIER-01 adds `type` and `completesWithChildren` here. Wave 2
