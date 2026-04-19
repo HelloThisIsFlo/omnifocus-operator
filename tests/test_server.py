@@ -2611,6 +2611,70 @@ class TestBatchCrossItemDocumentation:
 
 
 # ---------------------------------------------------------------------------
+# PROP-07: project writes for completesWithChildren / type are deferred to v1.7
+# ---------------------------------------------------------------------------
+
+
+# PROP-07 checkpoint: when Phase 60 (v1.7) introduces project writes, these tests
+# will fail -- update them to affirmatively test the project-write tools' handling
+# of completesWithChildren / type (which will need full PROP-01..06 parallel
+# coverage). The tests inspect the FastMCP server instance at runtime, so they
+# catch both source-level tool registration AND any runtime shim that might
+# accidentally expose a project-write tool.
+class TestPROP07ProjectWritesNotYetAvailable:
+    """PROP-07: project writes for `completesWithChildren` and `type` are deferred to v1.7.
+
+    v1.4.1 enforces this structurally -- no ``add_projects`` / ``edit_projects``
+    tools exist. The rejection isn't behavioural (a validator rejecting the
+    fields) -- it's structural (no tool to carry the payload). This class
+    affirms that structural absence so v1.7 Phase 60 lands with an explicit
+    signal: when project-write tools are introduced, these tests break, forcing
+    the author to parallel-cover PROP-01..06 on the new surface.
+    """
+
+    async def test_no_add_projects_tool_registered(self, client: Any) -> None:
+        """No ``add_projects*`` tools exist on the MCP server in v1.4.1."""
+        tools = await client.list_tools()
+        tool_names = [tool.name for tool in tools]
+        project_write_tools = [n for n in tool_names if n.startswith("add_projects")]
+        assert not project_write_tools, (
+            f"PROP-07: v1.4.1 defers project writes to v1.7. "
+            f"Unexpected project-write tools registered: {project_write_tools}"
+        )
+
+    async def test_no_edit_projects_tool_registered(self, client: Any) -> None:
+        """No ``edit_projects*`` tools exist on the MCP server in v1.4.1."""
+        tools = await client.list_tools()
+        tool_names = [tool.name for tool in tools]
+        project_edit_tools = [n for n in tool_names if n.startswith("edit_projects")]
+        assert not project_edit_tools, (
+            f"PROP-07: v1.4.1 defers project writes to v1.7. "
+            f"Unexpected project-edit tools registered: {project_edit_tools}"
+        )
+
+    async def test_task_write_tools_exist_but_no_project_write_tool_does(
+        self,
+        client: Any,
+    ) -> None:
+        """PROP-01/02 succeed on tasks (post-56-06), PROP-07 rejects projects (no tool exists).
+
+        Single integration assertion that locks the full v1.4.1 write surface:
+        two task-write tools, zero project-write tools. When v1.7 adds the
+        project-write tools, the last two assertions break together.
+        """
+        tools = await client.list_tools()
+        tool_names = [tool.name for tool in tools]
+        assert "add_tasks" in tool_names, "PROP-01: task creation tool must exist"
+        assert "edit_tasks" in tool_names, "PROP-02: task edit tool must exist"
+        assert not any(n.startswith("add_projects") for n in tool_names), (
+            "PROP-07: no add_projects tool in v1.4.1"
+        )
+        assert not any(n.startswith("edit_projects") for n in tool_names), (
+            "PROP-07: no edit_projects tool in v1.4.1"
+        )
+
+
+# ---------------------------------------------------------------------------
 # Invariant: progress notifications are disabled pending upstream fix
 # ---------------------------------------------------------------------------
 
