@@ -58,6 +58,11 @@ _BATCH_CONCURRENCY_NOTE = "Note: concurrent batch calls from separate agents are
 
 _WRITE_RETURNS = _BATCH_RETURNS
 
+_BEHAVIORAL_FLAGS_NOTE = """\
+Behavioral flags (default response):
+  - isSequential: only the next-in-line child is available; later children are blocked until earlier ones complete.
+  - dependsOnChildren: task is blocked until all children are done, then must be completed manually. Treat as discrete work, not a collapsible grouping."""
+
 # --- Dates: Write-Side ---
 
 DATE_EXAMPLE = "2026-03-15T17:00:00"
@@ -115,82 +120,52 @@ Hierarchical position among siblings (dotted notation like '2.3.1'). Each dot le
 
 # --- Presence & derived flags (Phase 56-05 / FLAG-01..05, FLAG-07) ---
 
-HAS_NOTE_DESC = (
-    "True when this task/project has a non-empty note. Stripped when false. "
-    "Fetch the note via include=['notes']."
-)
+HAS_NOTE_DESC = "True when the note is non-empty. Fetch via include=['notes']."
 
-HAS_REPETITION_DESC = (
-    "True when this task/project has a repetition rule. Stripped when false. "
-    "Fetch the rule via include=['time']."
-)
+HAS_REPETITION_DESC = "True when a repetition rule is set. Fetch via include=['time']."
 
 HAS_ATTACHMENTS_DESC = (
-    "True when this task/project has at least one attachment. Stripped when false. "
-    "Attachment binary content is never returned inline."
+    "True when at least one attachment is present. Attachment content is never returned inline."
 )
 
 IS_SEQUENTIAL_DESC = (
-    "Tasks-only. True when type == 'sequential'. "
-    "Behavioral meaning: only the next-in-line child is available at any given "
-    "time — task #2 is blocked by task #1, task #3 by task #2, and so on. "
-    "Agents reasoning about actionability must not over-count: only one child "
-    "of a sequential parent is actionable, not all children in parallel. "
-    "Stripped when false."
+    "Tasks-only. True when type == 'sequential'. Only the next-in-line child is "
+    "available; later children are blocked until earlier ones complete."
 )
 
 DEPENDS_ON_CHILDREN_DESC = (
-    "Tasks-only. True when the task has children AND does NOT complete with "
-    "children (completesWithChildren == false). "
-    "Behavioral meaning: this is a real task waiting on children, not just a "
-    "container. It becomes completable only when its children are done — treat "
-    "as a discrete unit of work rather than a collapsible grouping. "
-    "Stripped when false."
+    "Tasks-only. True when the task has children AND does not complete with children. "
+    "Blocked until all children are done, then must be completed manually. "
+    "Treat as discrete work, not a collapsible grouping."
 )
 
 COMPLETES_WITH_CHILDREN_DESC = (
-    "When true (OmniFocus factory default), this task/project auto-completes as "
-    "soon as its last child finishes — effectively a container. When false, "
-    "this is genuine work that waits on children. Always present on the "
-    "hierarchy include group; the task surface exposes the derivation via "
-    "dependsOnChildren on tasks with children."
+    "When true, auto-completes as soon as the last child finishes. "
+    "When false, this is genuine work waiting on children."
 )
 
-TASK_TYPE_DESC = (
-    "parallel | sequential. Determines how children's availability is computed. "
-    "Use 'sequential' when children must be done in order. Projects also "
-    "support 'singleActions'; tasks do not."
-)
+TASK_TYPE_DESC = "'parallel' | 'sequential'. Controls how children's availability is computed."
 
 PROJECT_TYPE_DESC = (
-    "parallel | sequential | singleActions. 'singleActions' takes precedence "
-    "when both sequential=true and singleActions=true are set at the storage "
-    "layer. A single-actions project holds independent items with no shared "
-    "intent."
+    "'parallel' | 'sequential' | 'singleActions'. "
+    "A 'singleActions' project is a flat bag of independent items with no shared intent."
 )
 
 # --- Write-side descriptions (Phase 56-06 / PROP-01..06) ---
 #
-# Write-side phrasing differs from the read-side constants above: the write
-# side has to communicate the omit-behavior (resolved from OmniFocus
-# preferences when omitted) and the null-rejection contract. Separate
-# constants keep the agent-facing docs crisp for each direction.
+# Write-side mirrors the read-side semantics, plus the omit-behavior
+# (resolved from the user's OmniFocus preference when omitted).
 
 COMPLETES_WITH_CHILDREN_WRITE = (
-    "Bool. When true (OmniFocus factory default), this task auto-completes "
-    "as soon as its last child finishes. When false, the task becomes a real "
-    "unit of work waiting on children. Omit to use the user's OmniFocus "
-    "preference (OFMCompleteWhenLastItemComplete, factory default true). "
-    "Null rejected — omit for the preference default, set explicitly to "
-    "override."
+    "When true, auto-completes as soon as the last child finishes. "
+    "When false, becomes a real unit of work waiting on children. "
+    "Omit to use the user's OmniFocus default."
 )
 
 TASK_TYPE_WRITE = (
-    "'parallel' | 'sequential'. Controls how children's availability is "
-    "computed. Use 'sequential' when children must be done in order. "
-    "'singleActions' is project-only (tasks reject it at the enum level). "
-    "Omit to use the user's OmniFocus preference (OFMTaskDefaultSequential, "
-    "factory default 'parallel'). Null rejected."
+    "'parallel' | 'sequential'. Controls how children's availability is computed. "
+    "Use 'sequential' when children must be done in order. "
+    "Omit to use the user's OmniFocus default."
 )
 
 # --- Entities ---
@@ -480,9 +455,7 @@ order: hierarchical position in dotted notation (e.g. '2.3.1'). Null in degraded
 parent: direct container -- a project or parent task.
 project: containing project at any nesting depth, or $inbox.
 
-Behavioral flags (default response):
-  - isSequential: only the next-in-line child is available. Agents reasoning about actionability must NOT over-count -- a sequential parent's children are ordered, not all available in parallel.
-  - dependsOnChildren: this task is a real unit of work waiting on children, not a container. Treat as a discrete task rather than a collapsible grouping.
+{_BEHAVIORAL_FLAGS_NOTE}
 
 {_INHERITED_TASKS_EXPLANATION}"""
 
@@ -516,9 +489,7 @@ Each item gets its own status (success or error).
 
 {_TAGS_INPUT_NOTE}
 
-repetitionRule requires all three root fields (frequency, schedule,
-basedOn) when creating. on and onDates within frequency are
-mutually exclusive.
+repetitionRule requires all three root fields (frequency, schedule, basedOn) when creating. on and onDates within frequency are mutually exclusive.
 
 Examples (repetitionRule):
   Every 3 days from completion:
@@ -569,9 +540,7 @@ include: optional array of field groups, additive on top of defaults.
   - "*": all fields
 Default fields: id, name, availability, order, project, dueDate, inheritedDueDate, deferDate, inheritedDeferDate, plannedDate, inheritedPlannedDate, flagged, inheritedFlagged, urgency, tags, hasNote, hasRepetition, hasAttachments, isSequential, dependsOnChildren.
 
-Behavioral flags (default response):
-  - isSequential: only the next-in-line child is available. Agents reasoning about actionability must NOT over-count -- a sequential parent's children are ordered.
-  - dependsOnChildren: this task is a real unit of work waiting on children, not a container. Treat as a discrete task, not a collapsible grouping.
+{_BEHAVIORAL_FLAGS_NOTE}
 
 {_COUNT_ONLY_TIP}
 
@@ -599,7 +568,7 @@ include: optional array of field groups, additive on top of defaults.
   - "*": all fields
 Default fields (always returned): id, name, availability, dueDate, deferDate, plannedDate, flagged, urgency, tags, hasNote, hasRepetition, hasAttachments.
 
-Note: isSequential and dependsOnChildren are tasks-only derived flags; projects surface the full type enum (parallel | sequential | singleActions) via the hierarchy include group.
+isSequential and dependsOnChildren are tasks-only; projects expose the full type enum via include=['hierarchy'].
 
 {_COUNT_ONLY_TIP}
 

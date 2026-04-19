@@ -508,14 +508,15 @@ class TestPhase5605BehavioralPhrasesLocked:
     def test_depends_on_children_desc_contains_locked_behavioral_phrases(self) -> None:
         from omnifocus_operator.agent_messages.descriptions import DEPENDS_ON_CHILDREN_DESC
 
-        assert "real task waiting on children" in DEPENDS_ON_CHILDREN_DESC
+        assert "Blocked until all children are done" in DEPENDS_ON_CHILDREN_DESC
+        assert "must be completed manually" in DEPENDS_ON_CHILDREN_DESC
         assert "collapsible grouping" in DEPENDS_ON_CHILDREN_DESC
 
     def test_is_sequential_desc_contains_locked_behavioral_phrases(self) -> None:
         from omnifocus_operator.agent_messages.descriptions import IS_SEQUENTIAL_DESC
 
-        assert "only the next-in-line child is available" in IS_SEQUENTIAL_DESC
-        assert "over-count" in IS_SEQUENTIAL_DESC
+        assert "next-in-line child is available" in IS_SEQUENTIAL_DESC
+        assert "blocked until earlier ones complete" in IS_SEQUENTIAL_DESC
 
 
 class TestPhase5605ToolDocsCarryBehavioralFlags:
@@ -528,11 +529,9 @@ class TestPhase5605ToolDocsCarryBehavioralFlags:
 
         assert "dependsOnChildren" in LIST_TASKS_TOOL_DOC
         assert "isSequential" in LIST_TASKS_TOOL_DOC
-        # Behavioral meaning -- at least one of the locked phrases must appear.
-        assert (
-            "real unit of work" in LIST_TASKS_TOOL_DOC
-            or "real task waiting on children" in LIST_TASKS_TOOL_DOC
-        )
+        # Behavioral meaning -- the locked phrases that teach actionability must appear.
+        assert "only the next-in-line child is available" in LIST_TASKS_TOOL_DOC
+        assert "blocked until all children are done" in LIST_TASKS_TOOL_DOC
 
     def test_get_task_tool_doc_mentions_behavioral_flags(self) -> None:
         from omnifocus_operator.agent_messages.descriptions import GET_TASK_TOOL_DOC
