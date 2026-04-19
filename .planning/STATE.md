@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.4.1
 milestone_name: Task Property Surface & Subtree Retrieval
 status: planning
-stopped_at: Defining requirements for v1.4.1
+stopped_at: Roadmap created (2-phase shape) — ready to plan Phase 56
 last_updated: "2026-04-19T00:00:00.000Z"
 last_activity: 2026-04-19
 progress:
-  total_phases: 0
+  total_phases: 2
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-19)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** v1.4.1 Task Property Surface & Subtree Retrieval — defining requirements
+**Current focus:** v1.4.1 Task Property Surface & Subtree Retrieval — Phase 56 (Task Property Surface)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 56 — Task Property Surface
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-19 — Milestone v1.4.1 started
+Status: Not started (roadmap created, ready for `/gsd-plan-phase 56`)
+Last activity: 2026-04-19 — Milestone v1.4.1 roadmap revised to 2-phase shape (Phase 56 merges prior 56+57+58 foundation/read/write; Phase 57 parent filter + unification; 51/51 REQs mapped)
 
-Progress: [░░░░░░░░░░] 0% (v1.4.1)
+Progress: [░░░░░░░░░░] 0% (v1.4.1 — 0/2 phases complete)
 
 ## Performance Metrics
 
@@ -63,7 +63,7 @@ Carried forward from v1.4:
 11. Golden master re-capture required after Phase 42 mapper rewrites (human-only per GOLD-01)
 12. Submit OmniFocus Operator to MCP registries — Smithery, mcp.so, Anthropic server list (tooling) — gated on landing page refresh
 13. Track upstream Claude Code CLI fix for MCP progress-notification stdio teardown (issues #47378/#47765) — root-caused 2026-04-17; progress emission disabled via `PROGRESS_NOTIFICATIONS_ENABLED=False` pending upstream fix
-14. Remove `availability` from `NEVER_STRIP` — defensive code with no actual purpose (v1.4.1, server)
+14. Remove `availability` from `NEVER_STRIP` — **scheduled for Phase 56 (STRIP-11)**
 
 ### Roadmap Evolution
 
@@ -79,5 +79,5 @@ _(cleared — v1.4 quick tasks archived to milestones/v1.4-ROADMAP.md)_
 
 ## Session Continuity
 
-Last activity: 2026-04-19 — Milestone v1.4.1 initialized from design-locked spec
-Stopped at: PROJECT.md + STATE.md updated — next is REQUIREMENTS.md + ROADMAP.md
+Last activity: 2026-04-19 — v1.4.1 roadmap revised to 2-phase shape (Phase 56 merges the prior 56+57+58 linear-dependency chain into a single Task Property Surface phase; Phase 57 covers parent filter + filter unification; 51/51 REQs mapped)
+Stopped at: Roadmap created (2-phase shape) — ready for `/gsd-plan-phase 56`

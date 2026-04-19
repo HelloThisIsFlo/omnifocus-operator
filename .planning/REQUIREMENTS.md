@@ -89,7 +89,66 @@ Requirements for milestone v1.4.1: Task Property Surface & Subtree Retrieval. St
 
 ## Traceability
 
-*(Filled by roadmapper — each REQ-ID mapped to exactly one phase.)*
+Every v1.4.1 requirement maps to exactly one phase. Coverage: **51/51 ✓**.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| PROP-01 | Phase 56 | Pending |
+| PROP-02 | Phase 56 | Pending |
+| PROP-03 | Phase 56 | Pending |
+| PROP-04 | Phase 56 | Pending |
+| PROP-05 | Phase 56 | Pending |
+| PROP-06 | Phase 56 | Pending |
+| PROP-07 | Phase 56 | Pending |
+| PROP-08 | Phase 56 | Pending |
+| FLAG-01 | Phase 56 | Pending |
+| FLAG-02 | Phase 56 | Pending |
+| FLAG-03 | Phase 56 | Pending |
+| FLAG-04 | Phase 56 | Pending |
+| FLAG-05 | Phase 56 | Pending |
+| FLAG-06 | Phase 56 | Pending |
+| FLAG-07 | Phase 56 | Pending |
+| FLAG-08 | Phase 56 | Pending |
+| HIER-01 | Phase 56 | Pending |
+| HIER-02 | Phase 56 | Pending |
+| HIER-03 | Phase 56 | Pending |
+| HIER-04 | Phase 56 | Pending |
+| HIER-05 | Phase 56 | Pending |
+| PARENT-01 | Phase 57 | Pending |
+| PARENT-02 | Phase 57 | Pending |
+| PARENT-03 | Phase 57 | Pending |
+| PARENT-04 | Phase 57 | Pending |
+| PARENT-05 | Phase 57 | Pending |
+| PARENT-06 | Phase 57 | Pending |
+| PARENT-07 | Phase 57 | Pending |
+| PARENT-08 | Phase 57 | Pending |
+| PARENT-09 | Phase 57 | Pending |
+| UNIFY-01 | Phase 57 | Pending |
+| UNIFY-02 | Phase 57 | Pending |
+| UNIFY-03 | Phase 57 | Pending |
+| UNIFY-04 | Phase 57 | Pending |
+| UNIFY-05 | Phase 57 | Pending |
+| UNIFY-06 | Phase 57 | Pending |
+| PREFS-01 | Phase 56 | Pending |
+| PREFS-02 | Phase 56 | Pending |
+| PREFS-03 | Phase 56 | Pending |
+| PREFS-04 | Phase 56 | Pending |
+| PREFS-05 | Phase 56 | Pending |
+| CACHE-01 | Phase 56 | Pending |
+| CACHE-02 | Phase 56 | Pending |
+| CACHE-03 | Phase 56 | Pending |
+| CACHE-04 | Phase 56 | Pending |
+| WARN-01 | Phase 57 | Pending |
+| WARN-02 | Phase 57 | Pending |
+| WARN-03 | Phase 57 | Pending |
+| WARN-04 | Phase 57 | Pending |
+| WARN-05 | Phase 57 | Pending |
+| STRIP-11 | Phase 56 | Pending |
+
+**Coverage by phase:**
+
+- Phase 56 (Task Property Surface): 31 REQs — PREFS-01..05, CACHE-01..04, FLAG-01..08, HIER-01..05, PROP-01..08, STRIP-11
+- Phase 57 (Parent Filter & Filter Unification): 20 REQs — PARENT-01..09, UNIFY-01..06, WARN-01..05
 
 ## Future Requirements
 
@@ -112,4 +171,4 @@ Deferred but captured:
 
 ---
 
-*Last updated: 2026-04-19 — initial draft for v1.4.1.*
+*Last updated: 2026-04-19 — Traceability revised after 2-phase roadmap reshape. 51/51 REQs mapped across Phases 56-57 (was Phases 56-59 in prior draft).*
