@@ -58,10 +58,29 @@ _BATCH_CONCURRENCY_NOTE = "Note: concurrent batch calls from separate agents are
 
 _WRITE_RETURNS = _BATCH_RETURNS
 
-_BEHAVIORAL_FLAGS_NOTE = """\
+# Behavioral semantics — single source of truth, reused across field
+# descriptions and tool-doc bullets.
+_IS_SEQUENTIAL_SEMANTIC = (
+    "Only the next-in-line child is available; later children are blocked "
+    "until earlier ones complete."
+)
+
+_DEPENDS_ON_CHILDREN_SEMANTIC = (
+    "Blocked until all children are done, then must be completed manually. "
+    "Treat as discrete work, not a collapsible grouping."
+)
+
+_TASK_TYPE_SEMANTIC = "'parallel' | 'sequential'. Controls how children's availability is computed."
+
+_COMPLETES_WITH_CHILDREN_SEMANTIC = (
+    "When true, auto-completes as soon as the last child finishes. "
+    "When false, this is genuine work waiting on children."
+)
+
+_BEHAVIORAL_FLAGS_NOTE = f"""\
 Behavioral flags (default response):
-  - isSequential: only the next-in-line child is available; later children are blocked until earlier ones complete.
-  - dependsOnChildren: task is blocked until all children are done, then must be completed manually. Treat as discrete work, not a collapsible grouping."""
+  - isSequential: {_IS_SEQUENTIAL_SEMANTIC}
+  - dependsOnChildren: {_DEPENDS_ON_CHILDREN_SEMANTIC}"""
 
 # --- Dates: Write-Side ---
 
@@ -128,23 +147,16 @@ HAS_ATTACHMENTS_DESC = (
     "True when at least one attachment is present. Attachment content is never returned inline."
 )
 
-IS_SEQUENTIAL_DESC = (
-    "Tasks-only. True when type == 'sequential'. Only the next-in-line child is "
-    "available; later children are blocked until earlier ones complete."
-)
+IS_SEQUENTIAL_DESC = f"Tasks-only. True when type == 'sequential'. {_IS_SEQUENTIAL_SEMANTIC}"
 
 DEPENDS_ON_CHILDREN_DESC = (
     "Tasks-only. True when the task has children AND does not complete with children. "
-    "Blocked until all children are done, then must be completed manually. "
-    "Treat as discrete work, not a collapsible grouping."
+    f"{_DEPENDS_ON_CHILDREN_SEMANTIC}"
 )
 
-COMPLETES_WITH_CHILDREN_DESC = (
-    "When true, auto-completes as soon as the last child finishes. "
-    "When false, this is genuine work waiting on children."
-)
+COMPLETES_WITH_CHILDREN_DESC = _COMPLETES_WITH_CHILDREN_SEMANTIC
 
-TASK_TYPE_DESC = "'parallel' | 'sequential'. Controls how children's availability is computed."
+TASK_TYPE_DESC = _TASK_TYPE_SEMANTIC
 
 PROJECT_TYPE_DESC = (
     "'parallel' | 'sequential' | 'singleActions'. "
@@ -157,14 +169,11 @@ PROJECT_TYPE_DESC = (
 # (resolved from the user's OmniFocus preference when omitted).
 
 COMPLETES_WITH_CHILDREN_WRITE = (
-    "When true, auto-completes as soon as the last child finishes. "
-    "When false, becomes a real unit of work waiting on children. "
-    "Omit to use the user's OmniFocus default."
+    f"{_COMPLETES_WITH_CHILDREN_SEMANTIC} Omit to use the user's OmniFocus default."
 )
 
 TASK_TYPE_WRITE = (
-    "'parallel' | 'sequential'. Controls how children's availability is computed. "
-    "Use 'sequential' when children must be done in order. "
+    f"{_TASK_TYPE_SEMANTIC} Use 'sequential' when children must be done in order. "
     "Omit to use the user's OmniFocus default."
 )
 

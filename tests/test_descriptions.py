@@ -525,8 +525,8 @@ class TestPhase5605ToolDocsCarryBehavioralFlags:
         assert "dependsOnChildren" in LIST_TASKS_TOOL_DOC
         assert "isSequential" in LIST_TASKS_TOOL_DOC
         # Behavioral meaning -- the locked phrases that teach actionability must appear.
-        assert "only the next-in-line child is available" in LIST_TASKS_TOOL_DOC
-        assert "blocked until all children are done" in LIST_TASKS_TOOL_DOC
+        assert "next-in-line child is available" in LIST_TASKS_TOOL_DOC
+        assert "Blocked until all children are done" in LIST_TASKS_TOOL_DOC
 
     def test_get_task_tool_doc_mentions_behavioral_flags(self) -> None:
         assert "dependsOnChildren" in GET_TASK_TOOL_DOC
