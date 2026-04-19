@@ -8,6 +8,20 @@ A Python MCP server that exposes OmniFocus (macOS task manager) as structured ta
 
 Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
 
+## Current Milestone: v1.4.1 Task Property Surface & Subtree Retrieval
+
+**Goal:** Expose OmniFocus task properties the server currently hides (auto-complete, parallel/sequential, presence of notes/repetition/attachments) and add a `parent` filter on `list_tasks` so agents can fetch a task's descendants in a single call. Strictly additive point release — same shape as v1.3.1/.2/.3; projects stay read-only (writes deferred to v1.7).
+
+**Target features:**
+- Writable `completesWithChildren: bool` and per-type `type` enum (`TaskType`: parallel/sequential; `ProjectType`: + singleActions) on tasks
+- Derived presence flags on task default response: `hasNote`, `hasRepetition`, `hasAttachments`, `isSequential` (tasks-only), `dependsOnChildren` (tasks-only) — all strip-when-false
+- Expanded `hierarchy` include group on tasks + projects: `hasChildren`, `type`, `completesWithChildren` (added to `NEVER_STRIP`)
+- `parent` filter on `list_tasks` — name/ID resolution, `$inbox` supported, filter unification at repo layer via `collect_subtree` helper, `ListTasksRepoQuery.parent_ids`
+- `OmniFocusPreferences` extended with `OFMCompleteWhenLastItemComplete` and `OFMTaskDefaultSequential` for create-defaults
+- New warnings: filtered-subtree (verbatim text locked), parent-resolves-to-project, parent+project combined
+
+**Key context:** Design locked 2026-04-19 after four-session interview + two pre-implementation spikes (SQLite cache coverage confirms all three read fields cache-backed; Python-filter benchmark confirms repo-layer unification viable at ≤1.30 ms p95 / 10K rows). No fields scoped out. Full spec: `.research/updated-spec/MILESTONE-v1.4.1.md`.
+
 ## Requirements
 
 ### Validated
@@ -108,6 +122,11 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 ### Active
 
+- [ ] Task property surface — writable `completesWithChildren`, per-type `type` enum on tasks (v1.4.1)
+- [ ] Task presence flags — `hasNote`, `hasRepetition`, `hasAttachments`, `isSequential`, `dependsOnChildren` on default response (v1.4.1)
+- [ ] Expanded `hierarchy` include group — `hasChildren`, `type`, `completesWithChildren` on tasks + projects (v1.4.1)
+- [ ] Subtree retrieval — `parent` filter on `list_tasks` with `collect_subtree` helper, repo-layer filter unification (v1.4.1)
+- [ ] `OmniFocusPreferences` extension — `OFMCompleteWhenLastItemComplete`, `OFMTaskDefaultSequential` create-defaults (v1.4.1)
 - [ ] UI & Perspectives — show/get perspective, open_task, live UI reads (v1.5)
 - [ ] Production hardening — retry, crash recovery, serial execution (v1.6)
 - [ ] Project writes — add_projects, edit_projects (v1.7)
@@ -254,4 +273,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-17 after v1.4 milestone — Response Shaping, Batch Processing & Notes Graduation shipped. 41/41 requirements satisfied. Current milestone: v1.5 UI & Perspectives.*
+*Last updated: 2026-04-19 — Milestone v1.4.1 Task Property Surface & Subtree Retrieval started. Design locked after 4-session interview + 2 pre-implementation spikes (cache coverage, Python-filter benchmark); no fields scoped out. Phase numbering continues from 55.*

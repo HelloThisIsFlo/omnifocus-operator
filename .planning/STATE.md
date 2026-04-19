@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.5
-milestone_name: UI & Perspectives
+milestone: v1.4.1
+milestone_name: Task Property Surface & Subtree Retrieval
 status: planning
-stopped_at: Milestone v1.4 summary generated (.planning/reports/MILESTONE_SUMMARY-v1.4.md)
-last_updated: "2026-04-17T21:00:00.000Z"
-last_activity: 2026-04-17
+stopped_at: Defining requirements for v1.4.1
+last_updated: "2026-04-19T00:00:00.000Z"
+last_activity: 2026-04-19
 progress:
   total_phases: 0
   completed_phases: 0
@@ -18,19 +18,19 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-17)
+See: .planning/PROJECT.md (updated 2026-04-19)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** v1.5 UI & Perspectives — not yet started
+**Current focus:** v1.4.1 Task Property Surface & Subtree Retrieval — defining requirements
 
 ## Current Position
 
-Phase: Not started
-Plan: Not started
-Status: v1.4 milestone complete — start v1.5 with `/gsd-new-milestone`
-Last activity: 2026-04-17
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-19 — Milestone v1.4.1 started
 
-Progress: [░░░░░░░░░░] 0% (v1.5)
+Progress: [░░░░░░░░░░] 0% (v1.4.1)
 
 ## Performance Metrics
 
@@ -79,5 +79,5 @@ _(cleared — v1.4 quick tasks archived to milestones/v1.4-ROADMAP.md)_
 
 ## Session Continuity
 
-Last activity: 2026-04-17 — v1.4 milestone summary generated for onboarding
-Stopped at: Milestone summary at .planning/reports/MILESTONE_SUMMARY-v1.4.md — ready for /gsd-new-milestone
+Last activity: 2026-04-19 — Milestone v1.4.1 initialized from design-locked spec
+Stopped at: PROJECT.md + STATE.md updated — next is REQUIREMENTS.md + ROADMAP.md
