@@ -157,6 +157,12 @@ function handleGetAll() {
                 effectiveDropDate: d(t.effectiveDropDate),
                 estimatedMinutes: t.estimatedMinutes,
                 hasChildren: t.hasChildren,
+                // Phase 56-02: task property surface (CACHE-01/02/04).
+                // Python adapter derives `completesWithChildren`, `type`,
+                // `hasAttachments` from these raw fields.
+                completedByChildren: t.completedByChildren,
+                sequential: t.sequential,
+                hasAttachments: t.attachments.length > 0,
                 inInbox: t.inInbox,
                 repetitionRule: rr(t.repetitionRule),
                 project: pk(t.containingProject),
@@ -191,6 +197,13 @@ function handleGetAll() {
                 effectiveDropDate: d(p.effectiveDropDate),
                 estimatedMinutes: p.estimatedMinutes,
                 hasChildren: p.hasChildren,
+                // Phase 56-02: project property surface (CACHE-01/02/03/04).
+                // Python adapter derives `completesWithChildren`, `type`
+                // (three-state incl. singleActions; HIER-05), `hasAttachments`.
+                completedByChildren: p.completedByChildren,
+                sequential: p.sequential,
+                containsSingletonActions: p.containsSingletonActions,
+                hasAttachments: p.attachments.length > 0,
                 repetitionRule: rr(p.repetitionRule),
                 lastReviewDate: d(p.lastReviewDate),
                 nextReviewDate: d(p.nextReviewDate),

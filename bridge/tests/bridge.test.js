@@ -63,6 +63,10 @@ vi.stubGlobal("flattenedTasks", [
     effectiveDropDate: null,
     estimatedMinutes: null,
     hasChildren: false,
+    // Phase 56-02 raw fields (task property surface).
+    completedByChildren: true,
+    sequential: false,
+    attachments: [{ id: "att-1" }],
     inInbox: false,
     repetitionRule: null,
     containingProject: { id: { primaryKey: "proj-001" } },
@@ -101,6 +105,11 @@ vi.stubGlobal("flattenedProjects", [
     effectiveDropDate: null,
     estimatedMinutes: null,
     hasChildren: true,
+    // Phase 56-02 raw fields (project property surface).
+    completedByChildren: false,
+    sequential: true,
+    containsSingletonActions: true,  // HIER-05 precedence test case
+    attachments: [],
     repetitionRule: null,
     lastReviewDate: null,
     nextReviewDate: null,
@@ -432,9 +441,11 @@ describe("handleGetAll", function () {
     expect(result.tasks[0]).not.toHaveProperty("active");
     expect(result.tasks[0]).not.toHaveProperty("effectiveActive");
     expect(result.tasks[0]).not.toHaveProperty("completed");
-    expect(result.tasks[0]).not.toHaveProperty("completedByChildren");
-    expect(result.tasks[0]).not.toHaveProperty("sequential");
     expect(result.tasks[0]).not.toHaveProperty("shouldUseFloatingTimeZone");
+    // Phase 56-02: these are now live raw fields emitted to Python.
+    expect(result.tasks[0]).toHaveProperty("completedByChildren");
+    expect(result.tasks[0]).toHaveProperty("sequential");
+    expect(result.tasks[0]).toHaveProperty("hasAttachments");
 
     // Projects
     expect(result.projects).toHaveLength(1);
@@ -446,10 +457,12 @@ describe("handleGetAll", function () {
     expect(result.projects[0]).not.toHaveProperty("active");
     expect(result.projects[0]).not.toHaveProperty("effectiveActive");
     expect(result.projects[0]).not.toHaveProperty("completed");
-    expect(result.projects[0]).not.toHaveProperty("completedByChildren");
-    expect(result.projects[0]).not.toHaveProperty("sequential");
-    expect(result.projects[0]).not.toHaveProperty("containsSingletonActions");
     expect(result.projects[0]).not.toHaveProperty("shouldUseFloatingTimeZone");
+    // Phase 56-02: these are now live raw fields emitted to Python.
+    expect(result.projects[0]).toHaveProperty("completedByChildren");
+    expect(result.projects[0]).toHaveProperty("sequential");
+    expect(result.projects[0]).toHaveProperty("containsSingletonActions");
+    expect(result.projects[0]).toHaveProperty("hasAttachments");
     expect(result.projects[0].added).toBe("2026-01-01T00:00:00.000Z");
     expect(result.projects[0].modified).toBe("2026-01-02T00:00:00.000Z");
 
@@ -478,6 +491,22 @@ describe("handleGetAll", function () {
     expect(result.perspectives[0].id).toBe("perspective-001");
     expect(result.perspectives[0].name).toBe("Forecast");
     expect(result.perspectives[0]).not.toHaveProperty("builtin");
+  });
+
+  // Phase 56-02: property-surface raw-field emission contract.
+  it("emits completedByChildren / sequential / hasAttachments on tasks", function () {
+    var result = bridge.handleGetAll();
+    expect(result.tasks[0].completedByChildren).toBe(true);
+    expect(result.tasks[0].sequential).toBe(false);
+    expect(result.tasks[0].hasAttachments).toBe(true); // 1 attachment stub
+  });
+
+  it("emits completedByChildren / sequential / containsSingletonActions / hasAttachments on projects", function () {
+    var result = bridge.handleGetAll();
+    expect(result.projects[0].completedByChildren).toBe(false);
+    expect(result.projects[0].sequential).toBe(true);
+    expect(result.projects[0].containsSingletonActions).toBe(true);
+    expect(result.projects[0].hasAttachments).toBe(false); // empty attachments
   });
 });
 

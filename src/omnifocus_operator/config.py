@@ -100,9 +100,17 @@ TASK_FIELD_GROUPS: dict[str, frozenset[str]] = {
             "inheritedCompletionDate",
             "inheritedDropDate",
             "url",
+            # Phase 56-02 Wave 1 placement: presence flags live in the opt-in
+            # `metadata` group so default-response behaviour is unchanged. Wave 2
+            # (FLAG-01..04) promotes them to the default response with strip-when-false.
+            "hasNote",
+            "hasRepetition",
+            "hasAttachments",
         }
     ),
-    "hierarchy": frozenset({"parent", "hasChildren"}),
+    # Phase 56-02: HIER-01 adds `type` and `completesWithChildren` here. Wave 2
+    # will further mark `completesWithChildren` NEVER_STRIP so `false` survives.
+    "hierarchy": frozenset({"parent", "hasChildren", "type", "completesWithChildren"}),
     "time": frozenset({"estimatedMinutes", "repetitionRule"}),
 }
 
@@ -122,8 +130,21 @@ PROJECT_DEFAULT_FIELDS: frozenset[str] = frozenset(
 
 PROJECT_FIELD_GROUPS: dict[str, frozenset[str]] = {
     "notes": frozenset({"note"}),
-    "metadata": frozenset({"added", "modified", "completionDate", "dropDate", "url"}),
-    "hierarchy": frozenset({"folder", "hasChildren"}),
+    "metadata": frozenset(
+        {
+            "added",
+            "modified",
+            "completionDate",
+            "dropDate",
+            "url",
+            # Phase 56-02 Wave 1 placement (see TASK_FIELD_GROUPS comment).
+            "hasNote",
+            "hasRepetition",
+            "hasAttachments",
+        }
+    ),
+    # Phase 56-02: HIER-02 adds `type` (incl. singleActions) and `completesWithChildren`.
+    "hierarchy": frozenset({"folder", "hasChildren", "type", "completesWithChildren"}),
     "time": frozenset({"estimatedMinutes", "repetitionRule"}),
     "review": frozenset({"nextReviewDate", "reviewInterval", "lastReviewDate", "nextTask"}),
 }

@@ -19,7 +19,11 @@ from omnifocus_operator.repository.bridge_only.adapter import adapt_snapshot
 
 
 def _old_task(**overrides: Any) -> dict[str, Any]:
-    """Build an old-format task dict (as bridge.js would produce)."""
+    """Build an old-format task dict (as bridge.js would produce).
+
+    Phase 56-02: ``completedByChildren``, ``sequential``, and ``hasAttachments``
+    are present here because they're *now live source fields* (not dead).
+    """
     defaults: dict[str, Any] = {
         "id": "task-001",
         "name": "Test Task",
@@ -35,6 +39,7 @@ def _old_task(**overrides: Any) -> dict[str, Any]:
         "flagged": False,
         "effectiveFlagged": False,
         "sequential": False,
+        "hasAttachments": False,
         "dueDate": None,
         "deferDate": None,
         "effectiveDueDate": None,
@@ -58,7 +63,12 @@ def _old_task(**overrides: Any) -> dict[str, Any]:
 
 
 def _old_project(**overrides: Any) -> dict[str, Any]:
-    """Build an old-format project dict (as bridge.js would produce)."""
+    """Build an old-format project dict (as bridge.js would produce).
+
+    Phase 56-02: ``completedByChildren``, ``sequential``,
+    ``containsSingletonActions``, and ``hasAttachments`` are *now live source
+    fields* (not dead).
+    """
     defaults: dict[str, Any] = {
         "id": "proj-001",
         "name": "Test Project",
@@ -76,6 +86,7 @@ def _old_project(**overrides: Any) -> dict[str, Any]:
         "effectiveFlagged": False,
         "sequential": False,
         "containsSingletonActions": False,
+        "hasAttachments": False,
         "dueDate": None,
         "deferDate": None,
         "effectiveDueDate": None,
@@ -184,12 +195,12 @@ class TestAdaptTask:
         raw = _old_task()
         snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
         adapt_snapshot(snapshot)
+        # Phase 56-02: completedByChildren + sequential are NO LONGER dead -- they
+        # become live source fields for completesWithChildren + type respectively.
         for field in (
             "active",
             "effectiveActive",
             "completed",
-            "completedByChildren",
-            "sequential",
             "shouldUseFloatingTimeZone",
         ):
             assert field not in raw, f"Dead field '{field}' should be removed"
@@ -262,14 +273,14 @@ class TestAdaptProject:
         raw = _old_project()
         snapshot = {"tasks": [], "projects": [raw], "tags": [], "folders": []}
         adapt_snapshot(snapshot)
+        # Phase 56-02: completedByChildren + sequential + containsSingletonActions
+        # are NO LONGER dead -- they become live source fields for
+        # completesWithChildren + type.
         for field in (
             "active",
             "effectiveActive",
             "completed",
-            "completedByChildren",
-            "sequential",
             "shouldUseFloatingTimeZone",
-            "containsSingletonActions",
             "effectiveCompletionDate",
         ):
             assert field not in raw, f"Dead field '{field}' should be removed"
@@ -285,6 +296,130 @@ class TestAdaptProject:
         snapshot = {"tasks": [], "projects": [raw], "tags": [], "folders": []}
         with pytest.raises(ValueError, match="BogusTaskStatus"):
             adapt_snapshot(snapshot)
+
+
+# ---------------------------------------------------------------------------
+# Phase 56-02: Task property surface adapter (presence flags + type enum)
+# ---------------------------------------------------------------------------
+
+
+class TestAdaptTaskPropertySurface:
+    """Adapter maps raw bridge fields to model-shape presence flags + type."""
+
+    @pytest.mark.parametrize(
+        ("raw_cwcc", "expected"),
+        [(True, True), (False, False)],
+    )
+    def test_task_completes_with_children_roundtrip(self, raw_cwcc: bool, expected: bool) -> None:
+        raw = _old_task(completedByChildren=raw_cwcc)
+        snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        assert raw["completesWithChildren"] is expected
+
+    def test_task_type_parallel_when_sequential_false(self) -> None:
+        raw = _old_task(sequential=False)
+        snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        assert raw["type"] == "parallel"
+
+    def test_task_type_sequential_when_sequential_true(self) -> None:
+        raw = _old_task(sequential=True)
+        snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        assert raw["type"] == "sequential"
+
+    @pytest.mark.parametrize(
+        ("note", "expected"),
+        [
+            ("some note", True),
+            ("", False),
+        ],
+    )
+    def test_task_has_note_derived_from_note_field(self, note: str, expected: bool) -> None:
+        raw = _old_task(note=note)
+        snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        assert raw["hasNote"] is expected
+
+    def test_task_has_repetition_false_when_no_rule(self) -> None:
+        raw = _old_task(repetitionRule=None)
+        snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        assert raw["hasRepetition"] is False
+
+    def test_task_has_repetition_true_when_rule_present(self) -> None:
+        rule = {
+            "ruleString": "FREQ=DAILY",
+            "scheduleType": "Regularly",
+            "anchorDateKey": "DueDate",
+            "catchUpAutomatically": False,
+        }
+        raw = _old_task(repetitionRule=rule)
+        snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        assert raw["hasRepetition"] is True
+
+    def test_task_has_attachments_passthrough_from_bridge(self) -> None:
+        raw = _old_task(hasAttachments=True)
+        snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        assert raw["hasAttachments"] is True
+
+    def test_task_completed_by_children_and_sequential_are_live(self) -> None:
+        """Phase 56-02 contract: these two raw fields are transformed, not stripped."""
+        raw = _old_task(completedByChildren=False, sequential=True)
+        snapshot = {"tasks": [raw], "projects": [], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        # Raw keys removed (popped during transform) but their meaning survives
+        # as the model-shape fields:
+        assert raw["completesWithChildren"] is False
+        assert raw["type"] == "sequential"
+
+
+class TestAdaptProjectPropertySurface:
+    """Adapter maps raw bridge fields to model-shape presence flags + three-state type."""
+
+    def test_project_type_single_actions_takes_precedence_over_sequential(self) -> None:
+        """HIER-05 cross-path: singleActions wins over sequential."""
+        raw = _old_project(sequential=True, containsSingletonActions=True)
+        snapshot = {"tasks": [], "projects": [raw], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        assert raw["type"] == "singleActions"
+
+    @pytest.mark.parametrize(
+        ("sequential", "contains_single", "expected"),
+        [
+            (False, False, "parallel"),
+            (True, False, "sequential"),
+            (False, True, "singleActions"),
+            (True, True, "singleActions"),  # HIER-05
+        ],
+    )
+    def test_project_type_all_three_states(
+        self, sequential: bool, contains_single: bool, expected: str
+    ) -> None:
+        raw = _old_project(sequential=sequential, containsSingletonActions=contains_single)
+        snapshot = {"tasks": [], "projects": [raw], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        assert raw["type"] == expected
+
+    def test_project_completes_with_children_roundtrip(self) -> None:
+        raw = _old_project(completedByChildren=False)
+        snapshot = {"tasks": [], "projects": [raw], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        assert raw["completesWithChildren"] is False
+
+    def test_project_has_note_derived_from_note(self) -> None:
+        raw = _old_project(note="project notes")
+        snapshot = {"tasks": [], "projects": [raw], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        assert raw["hasNote"] is True
+
+    def test_project_has_attachments_passthrough(self) -> None:
+        raw = _old_project(hasAttachments=True)
+        snapshot = {"tasks": [], "projects": [raw], "tags": [], "folders": []}
+        adapt_snapshot(snapshot)
+        assert raw["hasAttachments"] is True
 
 
 # ---------------------------------------------------------------------------

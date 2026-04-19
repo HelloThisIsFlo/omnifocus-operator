@@ -77,18 +77,19 @@ _INHERITED_FIELD_RENAMES: dict[str, str] = {
     "effectiveCompletionDate": "inheritedCompletionDate",
 }
 
-# Dead fields to remove from tasks and projects
+# Dead fields to remove from tasks and projects.
+# Phase 56-02: `completedByChildren`, `sequential`, and (for projects)
+# `containsSingletonActions` are NO LONGER dead -- they're transformed into
+# model-shape fields (`completesWithChildren`, `type`) by the per-entity
+# property-surface helpers.
 _TASK_DEAD_FIELDS = (
     "active",
     "effectiveActive",
     "completed",
-    "completedByChildren",
-    "sequential",
     "shouldUseFloatingTimeZone",
 )
 
 _PROJECT_EXTRA_DEAD_FIELDS = (
-    "containsSingletonActions",
     "effectiveCompletionDate",
     "effectiveFlagged",
     "effectiveDueDate",
@@ -224,6 +225,44 @@ def _rename_inherited_fields(raw: dict[str, Any]) -> None:
             raw[new_key] = raw.pop(old_key)
 
 
+def _adapt_task_property_surface(raw: dict[str, Any]) -> None:
+    """Phase 56-02: transform raw bridge keys into model-shape presence flags + type.
+
+    Inputs consumed (popped):
+        - completedByChildren -> completesWithChildren
+        - sequential -> type ("sequential" | "parallel")
+
+    Inputs derived (read, not popped):
+        - note (non-empty) -> hasNote
+        - repetitionRule (not None) -> hasRepetition
+        - hasAttachments -> hasAttachments (ensure bool)
+    """
+    raw["completesWithChildren"] = bool(raw.pop("completedByChildren", False))
+    raw["type"] = "sequential" if raw.pop("sequential", False) else "parallel"
+    raw["hasNote"] = bool(raw.get("note"))
+    raw["hasRepetition"] = raw.get("repetitionRule") is not None
+    raw["hasAttachments"] = bool(raw.get("hasAttachments", False))
+
+
+def _adapt_project_property_surface(raw: dict[str, Any]) -> None:
+    """Phase 56-02 (projects): three-state type via HIER-05 precedence.
+
+    ``containsSingletonActions`` takes precedence over ``sequential``.
+    """
+    raw["completesWithChildren"] = bool(raw.pop("completedByChildren", False))
+    is_sequential = bool(raw.pop("sequential", False))
+    is_single = bool(raw.pop("containsSingletonActions", False))
+    if is_single:
+        raw["type"] = "singleActions"
+    elif is_sequential:
+        raw["type"] = "sequential"
+    else:
+        raw["type"] = "parallel"
+    raw["hasNote"] = bool(raw.get("note"))
+    raw["hasRepetition"] = raw.get("repetitionRule") is not None
+    raw["hasAttachments"] = bool(raw.get("hasAttachments", False))
+
+
 def _adapt_task(raw: dict[str, Any]) -> None:
     """Map old TaskStatus -> urgency + availability, transform parent, remove dead fields.
 
@@ -242,6 +281,7 @@ def _adapt_task(raw: dict[str, Any]) -> None:
         raw.pop(key, None)
 
     _adapt_repetition_rule(raw)
+    _adapt_task_property_surface(raw)
     _adapt_parent_ref(raw)
     raw["order"] = None  # D-03: bridge path cannot compute order
 
@@ -273,6 +313,7 @@ def _adapt_project(raw: dict[str, Any]) -> None:
         raw.pop(key, None)
 
     _adapt_repetition_rule(raw)
+    _adapt_project_property_surface(raw)
 
 
 def _adapt_tag(raw: dict[str, Any]) -> None:
