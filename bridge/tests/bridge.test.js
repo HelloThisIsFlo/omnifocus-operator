@@ -784,3 +784,64 @@ describe("dispatch", function () {
     globalThis.Tag = origTag;
   });
 });
+
+describe("handleGetSettings", function () {
+  var originalSettings;
+
+  beforeEach(function () {
+    originalSettings = globalThis.settings;
+  });
+
+  afterEach(function () {
+    globalThis.settings = originalSettings;
+  });
+
+  it("returns all 7 keys when settings stub provides values for each", function () {
+    var stubValues = {
+      DefaultDueTime: "17:00:00",
+      DefaultStartTime: "00:00:00",
+      DefaultPlannedTime: "09:00:00",
+      DueSoonInterval: 172800,
+      DueSoonGranularity: 1,
+      OFMCompleteWhenLastItemComplete: true,
+      OFMTaskDefaultSequential: false,
+    };
+    vi.stubGlobal("settings", {
+      objectForKey: vi.fn(function (key) {
+        return stubValues[key];
+      }),
+    });
+
+    var result = bridge.handleGetSettings();
+
+    expect(result).toEqual(stubValues);
+    // All 7 keys must be present in the returned object.
+    expect(Object.keys(result)).toHaveLength(7);
+    expect(result).toHaveProperty("OFMCompleteWhenLastItemComplete", true);
+    expect(result).toHaveProperty("OFMTaskDefaultSequential", false);
+  });
+
+  it("preserves null values for the two new keys when settings stub returns null (absence surfaced to Python)", function () {
+    var stubValues = {
+      DefaultDueTime: "17:00:00",
+      DefaultStartTime: "00:00:00",
+      DefaultPlannedTime: "09:00:00",
+      DueSoonInterval: 172800,
+      DueSoonGranularity: 1,
+      OFMCompleteWhenLastItemComplete: null,
+      OFMTaskDefaultSequential: null,
+    };
+    vi.stubGlobal("settings", {
+      objectForKey: vi.fn(function (key) {
+        return stubValues[key];
+      }),
+    });
+
+    var result = bridge.handleGetSettings();
+
+    expect(Object.keys(result)).toHaveLength(7);
+    // Absence is preserved so Python-side can apply factory-default fallback.
+    expect(result).toHaveProperty("OFMCompleteWhenLastItemComplete", null);
+    expect(result).toHaveProperty("OFMTaskDefaultSequential", null);
+  });
+});

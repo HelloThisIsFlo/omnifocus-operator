@@ -379,7 +379,9 @@ function handleGetSettings() {
         "DefaultStartTime",
         "DefaultPlannedTime",
         "DueSoonInterval",
-        "DueSoonGranularity"
+        "DueSoonGranularity",
+        "OFMCompleteWhenLastItemComplete",
+        "OFMTaskDefaultSequential"
     ];
     for (var i = 0; i < keys.length; i++) {
         result[keys[i]] = settings.objectForKey(keys[i]);
@@ -447,6 +449,7 @@ if (typeof module !== "undefined") {
         handleGetAll: handleGetAll,
         handleAddTask: handleAddTask,
         handleEditTask: handleEditTask,
+        handleGetSettings: handleGetSettings,
         dispatch: dispatch,
         d: d,
         pk: pk,
