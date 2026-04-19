@@ -2,7 +2,7 @@
   "mode": "interactive",
   "parallelization": true,
   "commit_docs": true,
-  "model_profile": "balanced",
+  "model_profile": "quality",
   "workflow": {
     "research": true,
     "plan_check": true,
@@ -15,7 +15,7 @@
     "research_before_questions": true,
     "skip_discuss": false,
     "use_worktrees": true,
-    "_auto_chain_active": true
+    "_auto_chain_active": false
   },
   "git": {
     "branching_strategy": "none"
