@@ -460,3 +460,151 @@ class TestFieldGroupSync:
                     f"Project field '{field}' in both '{seen[field]}' and '{group_name}'"
                 )
                 seen[field] = group_name
+
+
+# ---------------------------------------------------------------------------
+# Phase 56-04: Strip rules + default-field promotion + hierarchy expansion
+# ---------------------------------------------------------------------------
+
+
+class TestPhase5604StripRules:
+    """STRIP-11 + PROP-08 + FLAG-01..05 strip-when-false coverage."""
+
+    # NEVER_STRIP membership (STRIP-11 + PROP-08)
+
+    def test_never_strip_preserves_completes_with_children_false(self) -> None:
+        """PROP-08: completesWithChildren=False survives default stripping."""
+        result = strip_entity({"id": "t1", "completesWithChildren": False})
+        assert result == {"id": "t1", "completesWithChildren": False}
+
+    def test_never_strip_preserves_completes_with_children_true(self) -> None:
+        """Sanity: True also passes (not a strip value)."""
+        result = strip_entity({"id": "t1", "completesWithChildren": True})
+        assert result == {"id": "t1", "completesWithChildren": True}
+
+    def test_availability_no_longer_in_never_strip_but_enum_values_survive(self) -> None:
+        """STRIP-11: `availability` removed from NEVER_STRIP. Enum strings (truthy) still pass normal strip rules."""
+        # Truthy enum value passes
+        result = strip_entity({"availability": "available"})
+        assert result == {"availability": "available"}
+
+        result = strip_entity({"availability": "blocked"})
+        assert result == {"availability": "blocked"}
+
+    # FLAG-04 / FLAG-05 strip-when-false (tasks-only derived flags)
+
+    def test_strip_removes_is_sequential_false(self) -> None:
+        """FLAG-04: isSequential=False stripped from default response."""
+        assert strip_entity({"id": "t1", "isSequential": False}) == {"id": "t1"}
+
+    def test_strip_preserves_is_sequential_true(self) -> None:
+        """FLAG-04: isSequential=True survives stripping."""
+        result = strip_entity({"id": "t1", "isSequential": True})
+        assert result == {"id": "t1", "isSequential": True}
+
+    def test_strip_removes_depends_on_children_false(self) -> None:
+        """FLAG-05: dependsOnChildren=False stripped from default response."""
+        assert strip_entity({"id": "t1", "dependsOnChildren": False}) == {"id": "t1"}
+
+    def test_strip_preserves_depends_on_children_true(self) -> None:
+        """FLAG-05: dependsOnChildren=True survives stripping."""
+        result = strip_entity({"id": "t1", "dependsOnChildren": True})
+        assert result == {"id": "t1", "dependsOnChildren": True}
+
+    # FLAG-01..03 strip-when-false (shared presence flags)
+
+    def test_strip_removes_has_note_false(self) -> None:
+        assert strip_entity({"id": "t1", "hasNote": False}) == {"id": "t1"}
+
+    def test_strip_preserves_has_note_true(self) -> None:
+        result = strip_entity({"id": "t1", "hasNote": True})
+        assert result == {"id": "t1", "hasNote": True}
+
+    def test_strip_removes_has_repetition_false(self) -> None:
+        assert strip_entity({"id": "t1", "hasRepetition": False}) == {"id": "t1"}
+
+    def test_strip_preserves_has_repetition_true(self) -> None:
+        result = strip_entity({"id": "t1", "hasRepetition": True})
+        assert result == {"id": "t1", "hasRepetition": True}
+
+    def test_strip_removes_has_attachments_false(self) -> None:
+        assert strip_entity({"id": "t1", "hasAttachments": False}) == {"id": "t1"}
+
+    def test_strip_preserves_has_attachments_true(self) -> None:
+        result = strip_entity({"id": "t1", "hasAttachments": True})
+        assert result == {"id": "t1", "hasAttachments": True}
+
+    # All five derived flags together — combined strip behaviour
+
+    def test_strip_removes_all_five_derived_flags_when_false(self) -> None:
+        """All FLAG-01..05 stripped together when False."""
+        entity: dict[str, Any] = {
+            "id": "t1",
+            "hasNote": False,
+            "hasRepetition": False,
+            "hasAttachments": False,
+            "isSequential": False,
+            "dependsOnChildren": False,
+        }
+        assert strip_entity(entity) == {"id": "t1"}
+
+    def test_strip_preserves_all_three_shared_flags_when_true(self) -> None:
+        """FLAG-01..03 all present when True."""
+        entity: dict[str, Any] = {
+            "id": "t1",
+            "hasNote": True,
+            "hasRepetition": True,
+            "hasAttachments": True,
+        }
+        assert strip_entity(entity) == entity
+
+
+class TestPhase5604DefaultFieldsAndHierarchy:
+    """Default-field promotion + hierarchy include-group expansion."""
+
+    def test_task_default_fields_include_new_derived_flags(self) -> None:
+        """FLAG-01..05 promoted into TASK_DEFAULT_FIELDS (Wave 2 placement)."""
+        expected = {
+            "hasNote",
+            "hasRepetition",
+            "hasAttachments",
+            "isSequential",
+            "dependsOnChildren",
+        }
+        assert expected <= TASK_DEFAULT_FIELDS
+
+    def test_project_default_fields_include_shared_derived_flags(self) -> None:
+        """FLAG-01..03 promoted into PROJECT_DEFAULT_FIELDS (shared presence flags)."""
+        expected = {"hasNote", "hasRepetition", "hasAttachments"}
+        assert expected <= PROJECT_DEFAULT_FIELDS
+
+    def test_project_default_fields_exclude_tasks_only_flags(self) -> None:
+        """FLAG-04/05 are tasks-only — must NOT appear in PROJECT_DEFAULT_FIELDS."""
+        assert "isSequential" not in PROJECT_DEFAULT_FIELDS
+        assert "dependsOnChildren" not in PROJECT_DEFAULT_FIELDS
+
+    def test_task_hierarchy_group_includes_type_and_completes_with_children(self) -> None:
+        """HIER-01: TASK_FIELD_GROUPS['hierarchy'] = {parent, hasChildren, type, completesWithChildren}."""
+        assert TASK_FIELD_GROUPS["hierarchy"] == frozenset(
+            {"parent", "hasChildren", "type", "completesWithChildren"}
+        )
+
+    def test_project_hierarchy_group_includes_type_and_completes_with_children(self) -> None:
+        """HIER-02: PROJECT_FIELD_GROUPS['hierarchy'] = {folder, hasChildren, type, completesWithChildren}."""
+        assert PROJECT_FIELD_GROUPS["hierarchy"] == frozenset(
+            {"folder", "hasChildren", "type", "completesWithChildren"}
+        )
+
+    def test_has_children_name_preserved_in_hierarchy_groups(self) -> None:
+        """HIER-03: `hasChildren` must NOT be renamed to `hasSubtasks`."""
+        assert "hasChildren" in TASK_FIELD_GROUPS["hierarchy"]
+        assert "hasChildren" in PROJECT_FIELD_GROUPS["hierarchy"]
+        # Guard against accidental rename
+        all_task_fields = TASK_DEFAULT_FIELDS | frozenset().union(*TASK_FIELD_GROUPS.values())
+        all_project_fields = PROJECT_DEFAULT_FIELDS | frozenset().union(
+            *PROJECT_FIELD_GROUPS.values()
+        )
+        assert "hasSubtasks" not in all_task_fields
+        assert "hasSubtasks" not in all_project_fields
+
+

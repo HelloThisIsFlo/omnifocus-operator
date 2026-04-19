@@ -86,6 +86,16 @@ TASK_DEFAULT_FIELDS: frozenset[str] = frozenset(
         "inheritedFlagged",
         "urgency",
         "tags",
+        # Phase 56-04 Wave 2 promotion: presence flags surface on the default
+        # response. Stripped-when-false by `strip_entity`, so False values do
+        # not clutter the payload; True values become a low-cost high-value
+        # signal to the agent.
+        "hasNote",  # FLAG-01
+        "hasRepetition",  # FLAG-02
+        "hasAttachments",  # FLAG-03
+        # Tasks-only derived flags (projects do not carry these).
+        "isSequential",  # FLAG-04
+        "dependsOnChildren",  # FLAG-05
     }
 )
 
@@ -100,22 +110,12 @@ TASK_FIELD_GROUPS: dict[str, frozenset[str]] = {
             "inheritedCompletionDate",
             "inheritedDropDate",
             "url",
-            # Phase 56-02 Wave 1 placement: presence flags live in the opt-in
-            # `metadata` group so default-response behaviour is unchanged. Wave 2
-            # (FLAG-01..04) promotes them to the default response with strip-when-false.
-            "hasNote",
-            "hasRepetition",
-            "hasAttachments",
-            # Phase 56-03 Wave 1 placement: derived task-only flags live here
-            # for now (opt-in). Phase 56-04 will promote FLAG-04 (isSequential)
-            # and FLAG-05 (dependsOnChildren) to default-response with
-            # strip-when-false semantics.
-            "isSequential",
-            "dependsOnChildren",
         }
     ),
-    # Phase 56-02: HIER-01 adds `type` and `completesWithChildren` here. Wave 2
-    # will further mark `completesWithChildren` NEVER_STRIP so `false` survives.
+    # Phase 56-04 (HIER-01): hierarchy emits `type`, `completesWithChildren`,
+    # and `hasChildren` additively alongside the default-response derived
+    # flags. Redundancy is the requirement (FLAG-06 / HIER-04) -- the two
+    # pipelines are independent by design.
     "hierarchy": frozenset({"parent", "hasChildren", "type", "completesWithChildren"}),
     "time": frozenset({"estimatedMinutes", "repetitionRule"}),
 }
@@ -131,6 +131,12 @@ PROJECT_DEFAULT_FIELDS: frozenset[str] = frozenset(
         "flagged",
         "urgency",
         "tags",
+        # Phase 56-04 Wave 2 promotion: shared presence flags surface on the
+        # default response (FLAG-01..03). Projects do NOT carry `isSequential`
+        # or `dependsOnChildren` (FLAG-04/05 are tasks-only).
+        "hasNote",
+        "hasRepetition",
+        "hasAttachments",
     }
 )
 
@@ -143,13 +149,12 @@ PROJECT_FIELD_GROUPS: dict[str, frozenset[str]] = {
             "completionDate",
             "dropDate",
             "url",
-            # Phase 56-02 Wave 1 placement (see TASK_FIELD_GROUPS comment).
-            "hasNote",
-            "hasRepetition",
-            "hasAttachments",
         }
     ),
-    # Phase 56-02: HIER-02 adds `type` (incl. singleActions) and `completesWithChildren`.
+    # Phase 56-04 (HIER-02): hierarchy emits `type` (incl. singleActions),
+    # `completesWithChildren`, and `hasChildren` additively alongside the
+    # default-response shared presence flags. Redundancy is the requirement
+    # (FLAG-06 / HIER-04).
     "hierarchy": frozenset({"folder", "hasChildren", "type", "completesWithChildren"}),
     "time": frozenset({"estimatedMinutes", "repetitionRule"}),
     "review": frozenset({"nextReviewDate", "reviewInterval", "lastReviewDate", "nextTask"}),

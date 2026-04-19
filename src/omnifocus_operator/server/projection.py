@@ -20,8 +20,18 @@ if TYPE_CHECKING:
 
 # -- Stripping constants (STRIP-01, STRIP-02) ---------------------------------
 
-NEVER_STRIP: frozenset[str] = frozenset({"availability"})
-"""Keys excluded from stripping regardless of value."""
+NEVER_STRIP: frozenset[str] = frozenset({"completesWithChildren"})
+"""Keys excluded from stripping regardless of value.
+
+``completesWithChildren`` (PROP-08): always surface on the hierarchy include
+group -- ``False`` carries information (the task is a real task, waits on
+children). Stripping it would erase the ``dependsOnChildren`` signal's
+counterpart when ``hierarchy`` is requested.
+
+Phase 56-04 (STRIP-11) removed the previous defensive ``availability`` entry:
+``availability`` is an enum string (truthy) in production, so normal strip
+rules leave it intact without the NEVER_STRIP protection.
+"""
 
 _STRIP_HASHABLE: frozenset[Any] = frozenset({None, "", False, "none"})
 """Hashable values that cause a key to be stripped."""
