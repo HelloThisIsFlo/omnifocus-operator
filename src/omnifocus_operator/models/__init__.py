@@ -21,8 +21,10 @@ from omnifocus_operator.models.enums import (
     Availability,
     BasedOn,
     FolderAvailability,
+    ProjectType,
     Schedule,
     TagAvailability,
+    TaskType,
     Urgency,
 )
 from omnifocus_operator.models.folder import Folder
@@ -54,6 +56,8 @@ _ns: dict[str, type] = {
     "FolderAvailability": FolderAvailability,
     "Schedule": Schedule,
     "BasedOn": BasedOn,
+    "TaskType": TaskType,
+    "ProjectType": ProjectType,
     "Task": Task,
     "Project": Project,
     "Tag": Tag,
@@ -83,6 +87,7 @@ __all__ = [
     "Perspective",
     "Project",
     "ProjectRef",
+    "ProjectType",
     "RepetitionRule",
     "ReviewInterval",
     "Schedule",
@@ -91,5 +96,6 @@ __all__ = [
     "TagRef",
     "Task",
     "TaskRef",
+    "TaskType",
     "Urgency",
 ]

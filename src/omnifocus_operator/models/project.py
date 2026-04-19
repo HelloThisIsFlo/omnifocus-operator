@@ -15,10 +15,17 @@ from omnifocus_operator.models.common import (
     ReviewInterval,
     TaskRef,
 )
+from omnifocus_operator.models.enums import ProjectType
 
 
 class Project(ActionableEntity):
     __doc__ = PROJECT_DOC
+
+    # Per-type enum (parallel | sequential | singleActions) -- HIER-02 / HIER-05.
+    # `singleActions` takes precedence over `sequential` when both underlying
+    # flags are set; assembly happens at the repository or service layer
+    # depending on the final placement chosen by Phase 56-03.
+    type: ProjectType
 
     # Review (all required per BRIDGE-SPEC)
     last_review_date: AwareDatetime

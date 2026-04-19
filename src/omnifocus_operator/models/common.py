@@ -116,6 +116,10 @@ class ActionableEntity(OmniFocusEntity):
     # Metadata
     estimated_minutes: float | None = None
     has_children: bool
+    has_note: bool
+    has_repetition: bool
+    has_attachments: bool
+    completes_with_children: bool
 
     # Relationships
     tags: list[TagRef] = Field(

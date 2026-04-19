@@ -29,6 +29,7 @@ from omnifocus_operator.models import (
     Perspective,
     Project,
     ProjectRef,
+    ProjectType,
     RepetitionRule,
     ReviewInterval,
     Schedule,
@@ -37,6 +38,7 @@ from omnifocus_operator.models import (
     TagRef,
     Task,
     TaskRef,
+    TaskType,
     Urgency,
 )
 
@@ -171,6 +173,35 @@ class TestBasedOn:
 
     def test_based_on_member_count(self) -> None:
         assert len(BasedOn) == 3
+
+
+class TestTaskType:
+    """TaskType enum has exactly 2 members: parallel + sequential (HIER-05)."""
+
+    def test_task_type_values(self) -> None:
+        assert TaskType.PARALLEL == "parallel"
+        assert TaskType.SEQUENTIAL == "sequential"
+
+    def test_task_type_member_count(self) -> None:
+        assert len(list(TaskType)) == 2
+
+    def test_task_type_is_str_enum(self) -> None:
+        assert isinstance(TaskType.PARALLEL, str)
+
+
+class TestProjectType:
+    """ProjectType enum has exactly 3 members including singleActions (HIER-05)."""
+
+    def test_project_type_values(self) -> None:
+        assert ProjectType.PARALLEL == "parallel"
+        assert ProjectType.SEQUENTIAL == "sequential"
+        assert ProjectType.SINGLE_ACTIONS == "singleActions"
+
+    def test_project_type_member_count(self) -> None:
+        assert len(list(ProjectType)) == 3
+
+    def test_project_type_is_str_enum(self) -> None:
+        assert isinstance(ProjectType.PARALLEL, str)
 
 
 class TestEnumValidation:
@@ -378,6 +409,10 @@ class TestActionableEntityDates:
             note="",
             flagged=False,
             has_children=False,
+            has_note=False,
+            has_repetition=False,
+            has_attachments=False,
+            completes_with_children=True,
             tags=[],
         )
         assert entity.due_date is None
@@ -427,6 +462,10 @@ class TestInheritanceHierarchy:
             flagged=True,
             due_date=dt,
             has_children=False,
+            has_note=True,
+            has_repetition=False,
+            has_attachments=False,
+            completes_with_children=True,
             tags=[TagRef(id="tag-001", name="errands")],
         )
         assert entity.due_date == dt
@@ -445,9 +484,9 @@ class TestFactoryFunctions:
     """Factory functions produce valid new-shape dicts with correct field counts."""
 
     def test_make_model_task_dict_field_count(self) -> None:
-        """make_model_task_dict returns exactly 27 fields (model shape + order)."""
+        """make_model_task_dict returns exactly 32 fields (27 + 5 from Phase 56-02)."""
         d = make_model_task_dict()
-        assert len(d) == 27
+        assert len(d) == 32
 
     def test_make_model_task_dict_overrides(self) -> None:
         """make_model_task_dict supports keyword overrides."""
@@ -456,9 +495,9 @@ class TestFactoryFunctions:
         assert d["urgency"] == "overdue"
 
     def test_make_model_project_dict_field_count(self) -> None:
-        """make_model_project_dict returns exactly 23 fields (no inherited fields)."""
+        """make_model_project_dict returns exactly 28 fields (23 + 5 from Phase 56-02)."""
         d = make_model_project_dict()
-        assert len(d) == 23
+        assert len(d) == 28
 
     def test_make_model_tag_dict_field_count(self) -> None:
         """make_model_tag_dict returns exactly 8 fields (new model shape)."""
@@ -554,8 +593,9 @@ class TestTaskModel:
         assert task.tags[0].id == "t1"
         assert task.tags[1].name == "morning"
 
-        # Verify total field count (27: parent+project replaced in_inbox, + order)
-        assert len(Task.model_fields) == 27
+        # Verify total field count (32 = 27 prior + 5 new from Phase 56-02:
+        # has_note, has_repetition, has_attachments, completes_with_children, type)
+        assert len(Task.model_fields) == 32
 
         # Serialize back to camelCase and verify round-trip
         dumped = task.model_dump(mode="json", by_alias=True)
@@ -633,6 +673,76 @@ class TestTaskModel:
         assert task.parent.task.id == "task-parent"
 
 
+class TestTaskPropertySurfaceFields:
+    """Phase 56-02: five new read-only fields + per-type enum on Task.
+
+    Covers FLAG-01..03 + FLAG-04 (isSequential is *derived* by the server
+    layer from `type`, but `type` itself is the model field added here).
+    Covers HIER-03 (preserved `has_children` name).
+    """
+
+    def test_task_construction_with_all_new_fields_succeeds(self) -> None:
+        data = make_model_task_dict(
+            hasNote=True,
+            hasRepetition=False,
+            hasAttachments=True,
+            completesWithChildren=False,
+            type="sequential",
+        )
+        task = Task.model_validate(data)
+        assert task.has_note is True
+        assert task.has_repetition is False
+        assert task.has_attachments is True
+        assert task.completes_with_children is False
+        assert task.type is TaskType.SEQUENTIAL
+
+    def test_task_missing_completes_with_children_raises(self) -> None:
+        """`completes_with_children` is required (no default)."""
+        data = make_model_task_dict()
+        del data["completesWithChildren"]
+        with pytest.raises(ValidationError):
+            Task.model_validate(data)
+
+    def test_task_missing_has_note_raises(self) -> None:
+        data = make_model_task_dict()
+        del data["hasNote"]
+        with pytest.raises(ValidationError):
+            Task.model_validate(data)
+
+    def test_task_missing_has_repetition_raises(self) -> None:
+        data = make_model_task_dict()
+        del data["hasRepetition"]
+        with pytest.raises(ValidationError):
+            Task.model_validate(data)
+
+    def test_task_missing_has_attachments_raises(self) -> None:
+        data = make_model_task_dict()
+        del data["hasAttachments"]
+        with pytest.raises(ValidationError):
+            Task.model_validate(data)
+
+    def test_task_missing_type_raises(self) -> None:
+        """`type` is required on Task."""
+        data = make_model_task_dict()
+        del data["type"]
+        with pytest.raises(ValidationError):
+            Task.model_validate(data)
+
+    def test_task_type_rejects_single_actions(self) -> None:
+        """TaskType has no SINGLE_ACTIONS member -- Pydantic rejects it (FLAG-08 precedent)."""
+        data = make_model_task_dict(type="singleActions")
+        with pytest.raises(ValidationError):
+            Task.model_validate(data)
+
+    def test_task_type_field_annotation_is_task_type(self) -> None:
+        assert Task.model_fields["type"].annotation is TaskType
+
+    def test_task_has_children_name_preserved_hier_03(self) -> None:
+        """HIER-03: `has_children` is NOT renamed to `has_subtasks`."""
+        assert "has_children" in ActionableEntity.model_fields
+        assert "has_subtasks" not in ActionableEntity.model_fields
+
+
 # ---------------------------------------------------------------------------
 # Project model tests (MODL-02)
 # ---------------------------------------------------------------------------
@@ -670,8 +780,9 @@ class TestProjectModel:
         assert project.folder is None
         assert project.tags == []
 
-        # Verify total field count (no inherited fields -- projects cannot inherit)
-        assert len(Project.model_fields) == 23
+        # Verify total field count (28 = 23 prior + 5 new from Phase 56-02:
+        # has_note, has_repetition, has_attachments, completes_with_children, type)
+        assert len(Project.model_fields) == 28
 
         # Serialize back and verify camelCase keys
         dumped = project.model_dump(mode="json", by_alias=True)
@@ -711,6 +822,57 @@ class TestProjectModel:
         assert project.review_interval is not None
         assert project.review_interval.steps == 14
         assert project.review_interval.unit == "days"
+
+
+class TestProjectPropertySurfaceFields:
+    """Phase 56-02: five new read-only fields + per-type enum on Project.
+
+    Project `type` includes the third state `singleActions` (HIER-05).
+    """
+
+    def test_project_construction_with_all_new_fields_succeeds(self) -> None:
+        data = make_model_project_dict(
+            hasNote=True,
+            hasRepetition=True,
+            hasAttachments=False,
+            completesWithChildren=True,
+            type="singleActions",
+        )
+        project = Project.model_validate(data)
+        assert project.has_note is True
+        assert project.has_repetition is True
+        assert project.has_attachments is False
+        assert project.completes_with_children is True
+        assert project.type is ProjectType.SINGLE_ACTIONS
+
+    def test_project_type_accepts_single_actions(self) -> None:
+        data = make_model_project_dict(type="singleActions")
+        project = Project.model_validate(data)
+        assert project.type == ProjectType.SINGLE_ACTIONS
+
+    def test_project_type_accepts_parallel_and_sequential(self) -> None:
+        for value, expected in [
+            ("parallel", ProjectType.PARALLEL),
+            ("sequential", ProjectType.SEQUENTIAL),
+        ]:
+            data = make_model_project_dict(type=value)
+            project = Project.model_validate(data)
+            assert project.type == expected
+
+    def test_project_missing_completes_with_children_raises(self) -> None:
+        data = make_model_project_dict()
+        del data["completesWithChildren"]
+        with pytest.raises(ValidationError):
+            Project.model_validate(data)
+
+    def test_project_missing_type_raises(self) -> None:
+        data = make_model_project_dict()
+        del data["type"]
+        with pytest.raises(ValidationError):
+            Project.model_validate(data)
+
+    def test_project_type_field_annotation_is_project_type(self) -> None:
+        assert Project.model_fields["type"].annotation is ProjectType
 
 
 # ---------------------------------------------------------------------------

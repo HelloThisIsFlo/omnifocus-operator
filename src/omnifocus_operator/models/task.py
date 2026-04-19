@@ -18,6 +18,7 @@ from omnifocus_operator.agent_messages.descriptions import (
     TASK_PROJECT_DESC,
 )
 from omnifocus_operator.models.common import ActionableEntity, ParentRef, ProjectRef
+from omnifocus_operator.models.enums import TaskType
 
 
 class Task(ActionableEntity):
@@ -25,6 +26,13 @@ class Task(ActionableEntity):
 
     # Ordering (read-only, populated by HybridRepository CTE)
     order: str | None = Field(default=None, description=ORDER_FIELD)
+
+    # Per-type enum (parallel | sequential) -- HIER-01 / HIER-05.
+    # Required: every task is one or the other; repository materialises from
+    # the underlying `Task.sequential` (0/1) column. No default at the model
+    # layer; the service layer's add_tasks pipeline resolves the create-time
+    # default from `OFMTaskDefaultSequential` (Phase 56-05).
+    type: TaskType
 
     # Inherited fields (task-only -- projects cannot inherit)
     inherited_flagged: bool = Field(default=False, description=INHERITED_FLAGGED)

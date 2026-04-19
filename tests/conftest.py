@@ -26,8 +26,10 @@ from omnifocus_operator.models.snapshot import AllEntities
 def make_task_dict(**overrides: Any) -> dict[str, Any]:
     """Factory for raw bridge-format task dict (camelCase keys).
 
-    Returns a complete task dict with all 26 bridge fields.
-    Uses flat parent/project string IDs (matching bridge.js output).
+    Returns a complete task dict with all bridge fields, including the four
+    Phase 56-02 raw bridge fields (`completedByChildren`, `sequential`,
+    `hasAttachments`, plus existing `repetitionRule`) that the adapter
+    transforms into the model-shape presence flags.
     """
     defaults: dict[str, Any] = {
         # Identity (3)
@@ -57,6 +59,10 @@ def make_task_dict(**overrides: Any) -> dict[str, Any]:
         # Metadata (2)
         "estimatedMinutes": None,
         "hasChildren": False,
+        # Phase 56-02 raw bridge fields (adapter -> model presence flags + type)
+        "completedByChildren": True,
+        "sequential": False,
+        "hasAttachments": False,
         # Relationships (4)
         "inInbox": True,
         "repetitionRule": None,
@@ -74,7 +80,10 @@ def make_task_dict(**overrides: Any) -> dict[str, Any]:
 def make_project_dict(**overrides: Any) -> dict[str, Any]:
     """Factory for raw bridge-format project dict (camelCase keys).
 
-    Returns a complete project dict with all 29 bridge fields.
+    Returns a complete project dict with all bridge fields, including the
+    four Phase 56-02 raw bridge fields (`completedByChildren`, `sequential`,
+    `containsSingletonActions`, `hasAttachments`) that the adapter transforms
+    into model-shape presence flags + `type`.
     """
     defaults: dict[str, Any] = {
         # Identity (3) + lifecycle
@@ -106,6 +115,11 @@ def make_project_dict(**overrides: Any) -> dict[str, Any]:
         # Metadata (2)
         "estimatedMinutes": None,
         "hasChildren": True,
+        # Phase 56-02 raw bridge fields (adapter -> model presence flags + type)
+        "completedByChildren": True,
+        "sequential": False,
+        "containsSingletonActions": False,
+        "hasAttachments": False,
         # Repetition (1)
         "repetitionRule": None,
         # Review (3)
@@ -231,6 +245,12 @@ def make_model_task_dict(**overrides: Any) -> dict[str, Any]:
         "estimatedMinutes": None,
         "hasChildren": False,
         "order": None,
+        # Phase 56-02 model-format presence flags + type
+        "hasNote": False,
+        "hasRepetition": False,
+        "hasAttachments": False,
+        "completesWithChildren": True,
+        "type": "parallel",
         # Relationships
         "repetitionRule": None,
         "parent": {"project": {"id": "$inbox", "name": "Inbox"}},
@@ -271,6 +291,12 @@ def make_model_project_dict(**overrides: Any) -> dict[str, Any]:
         # Metadata (2)
         "estimatedMinutes": None,
         "hasChildren": True,
+        # Phase 56-02 model-format presence flags + type
+        "hasNote": False,
+        "hasRepetition": False,
+        "hasAttachments": False,
+        "completesWithChildren": True,
+        "type": "parallel",
         # Repetition (1)
         "repetitionRule": None,
         # Review (3)
