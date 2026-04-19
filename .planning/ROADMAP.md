@@ -22,7 +22,7 @@
 
 ### 🚧 v1.4.1 Task Property Surface & Subtree Retrieval (In progress)
 
-- [ ] **Phase 56: Task Property Surface** — Preferences, cache reads, presence flags, expanded `hierarchy` group, writable `completesWithChildren` + `type` with preference-driven create-defaults, strip-rules cleanup
+- [x] **Phase 56: Task Property Surface** — Preferences, cache reads, presence flags, expanded `hierarchy` group, writable `completesWithChildren` + `type` with preference-driven create-defaults, strip-rules cleanup (completed 2026-04-19)
 - [ ] **Phase 57: Parent Filter & Filter Unification** — `parent` filter on `list_tasks`, shared `collect_subtree` helper, warnings
 
 ### 📋 v1.5 UI & Perspectives (Planned)
@@ -56,16 +56,16 @@
   6. Derived read-only flags (`hasNote`, `hasRepetition`, `hasAttachments`, `hasChildren`, `dependsOnChildren`, `isSequential`) are rejected by Pydantic `extra="forbid"` on `add_tasks`/`edit_tasks` (generic schema error, no custom messaging); `availability` removed from `NEVER_STRIP` as pre-existing defensive entry with no actual purpose
   7. Round-trip test on both `HybridRepository` and `BridgeOnlyRepository`: creating a task with `completesWithChildren` / `type` set, reading back via `get_task` and `list_tasks`, editing to flip each value, and verifying the expected cache-backed values — plus create-default paths (omit both fields, read back) verified end-to-end against a captured golden master
 
-**Plans:** 7 plans
+**Plans:** 7/7 plans complete
 
 Plans:
-- [ ] 56-01-PLAN.md — Preferences extension (bridge `handleGetSettings` + `OmniFocusPreferences` get_complete_with_children_default / get_task_type_default with lazy-load-once caching + fallback) [PREFS-01..05]
-- [ ] 56-02-PLAN.md — Cache read paths: TaskType/ProjectType enums + ActionableEntity presence fields + HybridRepository SQLite reads (batched attachment set) + BridgeOnlyRepository amortised enumeration + cross-path equivalence [CACHE-01..04, HIER-03]
-- [ ] 56-03-PLAN.md — Service-layer derived flags: `is_sequential` + `depends_on_children` fields on Task + `DomainLogic.enrich_task_presence_flags` + `assemble_project_type` with HIER-05 precedence wired into all three read pipelines [FLAG-01..05, HIER-05]
-- [ ] 56-04-PLAN.md — Projection reshape: `availability` out of NEVER_STRIP (STRIP-11), `completesWithChildren` in (PROP-08), hierarchy group expanded with `type`+`completesWithChildren`, TASK/PROJECT default fields include new flags, no-suppression invariant contract test [HIER-01, HIER-02, HIER-04, FLAG-06, PROP-08, STRIP-11]
-- [ ] 56-05-PLAN.md — Tool descriptions surface FLAG-07 behavioral meaning (`dependsOnChildren` = real task waiting on children; `isSequential` = only next-in-line available) + field-level Field(description=CONSTANT) wiring + FLAG-08 parametrized contract tests proving all 6 derived read-only flags are rejected by `extra="forbid"` [FLAG-07, FLAG-08]
-- [ ] 56-06-PLAN.md — Write surface: `Patch[bool]` / `Patch[TaskType]` on AddTask/EditTask commands + null rejection + natural `singleActions` enum rejection + `_resolve_type_defaults` service step reading preferences + bridge.js writes `completedByChildren` / `sequential` [PROP-01..06]
-- [ ] 56-07-PLAN.md — PROP-07 structural guardrail (no project-write tools registered) + round-trip tests on both repos for agent-value + create-default paths + golden master scaffolding (human-only capture) [PROP-07]
+- [x] 56-01-PLAN.md — Preferences extension (bridge `handleGetSettings` + `OmniFocusPreferences` get_complete_with_children_default / get_task_type_default with lazy-load-once caching + fallback) [PREFS-01..05]
+- [x] 56-02-PLAN.md — Cache read paths: TaskType/ProjectType enums + ActionableEntity presence fields + HybridRepository SQLite reads (batched attachment set) + BridgeOnlyRepository amortised enumeration + cross-path equivalence [CACHE-01..04, HIER-03]
+- [x] 56-03-PLAN.md — Service-layer derived flags: `is_sequential` + `depends_on_children` fields on Task + `DomainLogic.enrich_task_presence_flags` + `assemble_project_type` with HIER-05 precedence wired into all three read pipelines [FLAG-01..05, HIER-05]
+- [x] 56-04-PLAN.md — Projection reshape: `availability` out of NEVER_STRIP (STRIP-11), `completesWithChildren` in (PROP-08), hierarchy group expanded with `type`+`completesWithChildren`, TASK/PROJECT default fields include new flags, no-suppression invariant contract test [HIER-01, HIER-02, HIER-04, FLAG-06, PROP-08, STRIP-11]
+- [x] 56-05-PLAN.md — Tool descriptions surface FLAG-07 behavioral meaning (`dependsOnChildren` = real task waiting on children; `isSequential` = only next-in-line available) + field-level Field(description=CONSTANT) wiring + FLAG-08 parametrized contract tests proving all 6 derived read-only flags are rejected by `extra="forbid"` [FLAG-07, FLAG-08]
+- [x] 56-06-PLAN.md — Write surface: `Patch[bool]` / `Patch[TaskType]` on AddTask/EditTask commands + null rejection + natural `singleActions` enum rejection + `_resolve_type_defaults` service step reading preferences + bridge.js writes `completedByChildren` / `sequential` [PROP-01..06]
+- [x] 56-07-PLAN.md — PROP-07 structural guardrail (no project-write tools registered) + round-trip tests on both repos for agent-value + create-default paths + golden master scaffolding (human-only capture) [PROP-07]
 
 **Plan waves** (guidance for `/gsd-plan-phase 56`, not a hard split): given the phase breadth, consider decomposing internally as (1) preferences + cache foundation — bridge/settings extension, `OmniFocusPreferences` extension, cache read paths, cross-path equivalence; (2) read surface — default-response flags, expanded `hierarchy` group, `ProjectType` assembly, strip-rules cleanup (`NEVER_STRIP` additions + `availability` removal), `extra="forbid"` rejection of derived fields; (3) write surface — `Patch[bool]` / `Patch[TaskType]` on tasks, create-default resolution via preferences, project-write rejection, round-trip verification against golden master.
 
@@ -90,7 +90,7 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 56. Task Property Surface | v1.4.1 | 0/7 | Not started | — |
+| 56. Task Property Surface | v1.4.1 | 7/7 | Complete    | 2026-04-19 |
 | 57. Parent Filter & Filter Unification | v1.4.1 | 0/? | Not started | — |
 | 58. Perspective Tools | v1.5 | 0/? | Not started | — |
 | 59. Retry & Recovery | v1.6 | 0/? | Not started | — |
