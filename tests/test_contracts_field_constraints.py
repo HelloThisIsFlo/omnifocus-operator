@@ -206,3 +206,96 @@ class TestDateFieldStrType:
     def test_add_planned_date_naive_accepted(self) -> None:
         cmd = AddTaskCommand(name="Test", planned_date="2026-07-12T09:00:00")
         assert cmd.planned_date == "2026-07-12T09:00:00"
+
+
+# ---------------------------------------------------------------------------
+# FLAG-08: derived read-only flags rejected on write commands
+# ---------------------------------------------------------------------------
+
+_DERIVED_READONLY_FLAGS = (
+    "hasNote",
+    "hasRepetition",
+    "hasAttachments",
+    "hasChildren",
+    "dependsOnChildren",
+    "isSequential",
+)
+
+
+class TestAddTaskCommandRejectsDerivedFlags:
+    """FLAG-08: derived read-only flags MUST be rejected on AddTaskCommand.
+
+    Rejection is the generic Pydantic 'extra_forbidden' error -- no custom
+    educational messaging. JSON Schema already communicates which fields are
+    writable; a bespoke message on these six fields would leak the derivation
+    logic into the error surface for negligible agent-UX gain (T-56-15).
+    """
+
+    @pytest.mark.parametrize("field_name", _DERIVED_READONLY_FLAGS)
+    def test_add_task_command_rejects_derived_flag(self, field_name: str) -> None:
+        with pytest.raises(ValidationError) as excinfo:
+            AddTaskCommand.model_validate({"name": "hello", field_name: True})
+        errors = excinfo.value.errors()
+        matching = [
+            e
+            for e in errors
+            if e.get("type") == "extra_forbidden" and field_name in e.get("loc", ())
+        ]
+        assert matching, f"Expected extra_forbidden error on {field_name!r}; got {errors}"
+
+    def test_add_task_command_error_contains_no_custom_message_for_derived_flags(
+        self,
+    ) -> None:
+        """The rejection message is the generic Pydantic one -- not a custom string."""
+        with pytest.raises(ValidationError) as excinfo:
+            AddTaskCommand.model_validate({"name": "hello", "hasNote": True})
+        error_text = str(excinfo.value)
+        # Generic pydantic messaging must be present.
+        assert "Extra inputs" in error_text or "extra_forbidden" in error_text
+        # Negative assertion: no bespoke educational language planted for FLAG-08.
+        forbidden_custom_phrases = ["derived", "read-only", "cannot be written"]
+        for phrase in forbidden_custom_phrases:
+            assert phrase not in error_text.lower(), (
+                f"Unexpected custom educational text {phrase!r} in rejection -- "
+                "FLAG-08 locks the behavior to the generic Pydantic schema error."
+            )
+
+
+class TestEditTaskCommandRejectsDerivedFlags:
+    """FLAG-08: same rejection guarantee on EditTaskCommand."""
+
+    @pytest.mark.parametrize("field_name", _DERIVED_READONLY_FLAGS)
+    def test_edit_task_command_rejects_derived_flag(self, field_name: str) -> None:
+        with pytest.raises(ValidationError) as excinfo:
+            EditTaskCommand.model_validate({"id": "task-abc123", field_name: True})
+        errors = excinfo.value.errors()
+        matching = [
+            e
+            for e in errors
+            if e.get("type") == "extra_forbidden" and field_name in e.get("loc", ())
+        ]
+        assert matching, f"Expected extra_forbidden error on {field_name!r}; got {errors}"
+
+
+class TestWave3BoundaryGuards:
+    """Sanity: writable fields (PROP-01/PROP-02) aren't live yet -- plan 56-06 opens them.
+
+    These two tests MUST BE DELETED / ADAPTED by plan 56-06 (Wave 3). They
+    exist as a Wave-boundary regression guard proving the ``extra='forbid'``
+    plumbing is working for the fields of interest.
+    """
+
+    def test_add_task_command_currently_rejects_completes_with_children_until_wave_3(
+        self,
+    ) -> None:  # REMOVE IN 56-06
+        with pytest.raises(ValidationError) as excinfo:
+            AddTaskCommand.model_validate({"name": "x", "completesWithChildren": True})
+        errors = excinfo.value.errors()
+        assert any(e.get("type") == "extra_forbidden" for e in errors)
+
+    def test_add_task_command_currently_rejects_type_until_wave_3(self) -> None:
+        # REMOVE IN 56-06
+        with pytest.raises(ValidationError) as excinfo:
+            AddTaskCommand.model_validate({"name": "x", "type": "sequential"})
+        errors = excinfo.value.errors()
+        assert any(e.get("type") == "extra_forbidden" for e in errors)
