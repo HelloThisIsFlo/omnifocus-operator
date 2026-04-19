@@ -164,6 +164,166 @@ class TestOperatorService:
         task = await service.get_task("t1")
         assert task.inherited_flagged is False
 
+    # -- Phase 56-03 derived presence flags (FLAG-04 + FLAG-05) --
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t-seq",
+                name="Sequential task",
+                project="proj-1",
+                parent="proj-1",
+                sequential=True,
+                hasChildren=False,
+                completedByChildren=True,
+            ),
+        ],
+        projects=[make_project_dict(id="proj-1", name="Proj")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_get_task_returns_task_with_enriched_is_sequential(
+        self, service: OperatorService
+    ) -> None:
+        """get_task applies FLAG-04 enrichment: sequential type -> is_sequential True."""
+        task = await service.get_task("t-seq")
+        assert task.is_sequential is True
+        assert task.depends_on_children is False
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t-par-depends",
+                name="Parallel depends on children",
+                project="proj-1",
+                parent="proj-1",
+                sequential=False,
+                hasChildren=True,
+                completedByChildren=False,
+            ),
+        ],
+        projects=[make_project_dict(id="proj-1", name="Proj")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_get_task_returns_task_with_depends_on_children_when_has_children_and_no_auto_complete(  # noqa: E501
+        self, service: OperatorService
+    ) -> None:
+        """get_task applies FLAG-05 enrichment: hasChildren AND NOT completesWithChildren."""
+        task = await service.get_task("t-par-depends")
+        assert task.is_sequential is False
+        assert task.depends_on_children is True
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t1",
+                name="Sequential no children",
+                project="proj-1",
+                parent="proj-1",
+                sequential=True,
+                hasChildren=False,
+                completedByChildren=True,
+            ),
+            make_task_dict(
+                id="t2",
+                name="Parallel depends on children",
+                project="proj-1",
+                parent="proj-1",
+                sequential=False,
+                hasChildren=True,
+                completedByChildren=False,
+            ),
+            make_task_dict(
+                id="t3",
+                name="Sequential with children auto-complete",
+                project="proj-1",
+                parent="proj-1",
+                sequential=True,
+                hasChildren=True,
+                completedByChildren=True,
+            ),
+        ],
+        projects=[make_project_dict(id="proj-1", name="Proj")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_get_all_data_enriches_all_tasks(self, service: OperatorService) -> None:
+        """get_all_data enriches every task in the snapshot (FLAG-04 + FLAG-05)."""
+        result = await service.get_all_data()
+        by_id = {t.id: t for t in result.tasks}
+        assert by_id["t1"].is_sequential is True
+        assert by_id["t1"].depends_on_children is False
+        assert by_id["t2"].is_sequential is False
+        assert by_id["t2"].depends_on_children is True
+        assert by_id["t3"].is_sequential is True
+        # completes_with_children=True overrides has_children -> False
+        assert by_id["t3"].depends_on_children is False
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t1",
+                name="Sequential no children",
+                project="proj-1",
+                parent="proj-1",
+                sequential=True,
+                hasChildren=False,
+                completedByChildren=True,
+            ),
+            make_task_dict(
+                id="t2",
+                name="Parallel depends on children",
+                project="proj-1",
+                parent="proj-1",
+                sequential=False,
+                hasChildren=True,
+                completedByChildren=False,
+            ),
+            make_task_dict(
+                id="t3",
+                name="Parallel no children",
+                project="proj-1",
+                parent="proj-1",
+                sequential=False,
+                hasChildren=False,
+                completedByChildren=True,
+            ),
+        ],
+        projects=[make_project_dict(id="proj-1", name="Proj")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_list_tasks_enriches_every_task_in_response(
+        self, service: OperatorService
+    ) -> None:
+        """list_tasks enriches every task in `items` (FLAG-04 + FLAG-05)."""
+        from omnifocus_operator.contracts.use_cases.list._enums import (
+            AvailabilityFilter,
+        )
+        from omnifocus_operator.contracts.use_cases.list.tasks import (  # noqa: PLC0415
+            ListTasksQuery,
+        )
+
+        # REMAINING expands to AVAILABLE + BLOCKED; all three tasks are
+        # available in this fixture, so REMAINING returns all of them.
+        query = ListTasksQuery(
+            availability=[AvailabilityFilter.REMAINING],
+        )
+        result = await service.list_tasks(query)
+
+        by_id = {t.id: t for t in result.items}
+        assert by_id["t1"].is_sequential is True
+        assert by_id["t1"].depends_on_children is False
+        assert by_id["t2"].is_sequential is False
+        assert by_id["t2"].depends_on_children is True
+        assert by_id["t3"].is_sequential is False
+        assert by_id["t3"].depends_on_children is False
+
 
 # ---------------------------------------------------------------------------
 # OperatorService.add_task

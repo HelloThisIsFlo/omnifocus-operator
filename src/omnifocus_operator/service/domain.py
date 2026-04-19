@@ -62,7 +62,7 @@ from omnifocus_operator.contracts.base import UNSET, _Unset, is_set
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
 from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
 from omnifocus_operator.contracts.use_cases.list._validators import parse_duration
-from omnifocus_operator.models.enums import Availability, Schedule
+from omnifocus_operator.models.enums import Availability, ProjectType, Schedule, TaskType
 from omnifocus_operator.models.repetition_rule import (
     EndByDate,
     Frequency,
@@ -312,6 +312,54 @@ class DomainLogic:
             updates[inherited] = ancestor_vals[inherited]
 
         return task.model_copy(update=updates)
+
+    # -- Derived presence flags (Phase 56-03, FLAG-04 + FLAG-05) --------------
+
+    def enrich_task_presence_flags(self, task: Task) -> Task:
+        """Compute tasks-only derived flags from structural fields.
+
+        - ``is_sequential``       = ``task.type == TaskType.SEQUENTIAL`` (FLAG-04)
+        - ``depends_on_children`` = ``task.has_children AND NOT task.completes_with_children`` (FLAG-05)
+
+        Both flags are tasks-only; Projects do not carry these fields.
+        The domain owns this derivation so repositories stay ignorant of
+        product decisions.
+        """
+        is_sequential = task.type == TaskType.SEQUENTIAL
+        depends_on_children = task.has_children and not task.completes_with_children
+        return task.model_copy(
+            update={
+                "is_sequential": is_sequential,
+                "depends_on_children": depends_on_children,
+            }
+        )
+
+    def assemble_project_type(
+        self,
+        *,
+        sequential: bool,
+        contains_singleton_actions: bool,
+    ) -> ProjectType:
+        """HIER-05 precedence: ``singleActions`` beats ``sequential``.
+
+        Truth table:
+        - (True,  True)  -> SINGLE_ACTIONS (precedence)
+        - (False, True)  -> SINGLE_ACTIONS
+        - (True,  False) -> SEQUENTIAL
+        - (False, False) -> PARALLEL
+
+        Kept at the domain layer even though Phase 56-02 currently computes
+        ``ProjectType`` at the repository layer for cross-path self-check
+        ergonomics. The domain copy is the lock on HIER-05 precedence and
+        is reused by tests; if the repository computation is relocated to
+        the service layer in a later plan, this is the single source of
+        truth it should call.
+        """
+        if contains_singleton_actions:
+            return ProjectType.SINGLE_ACTIONS
+        if sequential:
+            return ProjectType.SEQUENTIAL
+        return ProjectType.PARALLEL
 
     # -- Date filter resolution ------------------------------------------------
 

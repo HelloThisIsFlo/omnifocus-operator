@@ -61,7 +61,9 @@ from omnifocus_operator.models.enums import (
     BasedOn,
     DueSoonSetting,
     EntityType,
+    ProjectType,
     Schedule,
+    TaskType,
 )
 from omnifocus_operator.models.project import Project
 from omnifocus_operator.models.repetition_rule import (
@@ -2664,3 +2666,140 @@ class TestProcessNoteAction:
         assert isinstance(value, _Unset)
         assert skip is True
         assert warns == [NOTE_APPEND_EMPTY]
+
+
+# ---------------------------------------------------------------------------
+# enrich_task_presence_flags (Phase 56-03, FLAG-04 + FLAG-05)
+# ---------------------------------------------------------------------------
+
+
+class TestDomainLogicEnrichTaskPresenceFlags:
+    """Truth-table for Task-only derived flags (FLAG-04 + FLAG-05).
+
+    - is_sequential        = (task.type == TaskType.SEQUENTIAL)
+    - depends_on_children  = (task.has_children AND NOT task.completes_with_children)
+
+    8 cases = 2 (type) x 2 (has_children) x 2 (completes_with_children).
+    """
+
+    @staticmethod
+    def _task(
+        task_type: TaskType,
+        has_children: bool,
+        completes_with_children: bool,
+    ) -> Task:
+        return _make_task(
+            type=task_type.value,
+            hasChildren=has_children,
+            completesWithChildren=completes_with_children,
+        )
+
+    def test_parallel_no_children_completes_with_children_true(self) -> None:
+        domain = _domain()
+        task = self._task(TaskType.PARALLEL, False, True)
+        result = domain.enrich_task_presence_flags(task)
+        assert result.is_sequential is False
+        assert result.depends_on_children is False
+
+    def test_parallel_no_children_completes_with_children_false(self) -> None:
+        domain = _domain()
+        task = self._task(TaskType.PARALLEL, False, False)
+        result = domain.enrich_task_presence_flags(task)
+        assert result.is_sequential is False
+        # has_children=False -> depends_on_children=False regardless of completes_with_children
+        assert result.depends_on_children is False
+
+    def test_parallel_has_children_completes_with_children_true(self) -> None:
+        domain = _domain()
+        task = self._task(TaskType.PARALLEL, True, True)
+        result = domain.enrich_task_presence_flags(task)
+        assert result.is_sequential is False
+        assert result.depends_on_children is False
+
+    def test_parallel_has_children_completes_with_children_false(self) -> None:
+        domain = _domain()
+        task = self._task(TaskType.PARALLEL, True, False)
+        result = domain.enrich_task_presence_flags(task)
+        assert result.is_sequential is False
+        assert result.depends_on_children is True
+
+    def test_sequential_no_children_completes_with_children_true(self) -> None:
+        domain = _domain()
+        task = self._task(TaskType.SEQUENTIAL, False, True)
+        result = domain.enrich_task_presence_flags(task)
+        assert result.is_sequential is True
+        assert result.depends_on_children is False
+
+    def test_sequential_no_children_completes_with_children_false(self) -> None:
+        domain = _domain()
+        task = self._task(TaskType.SEQUENTIAL, False, False)
+        result = domain.enrich_task_presence_flags(task)
+        assert result.is_sequential is True
+        assert result.depends_on_children is False
+
+    def test_sequential_has_children_completes_with_children_true(self) -> None:
+        domain = _domain()
+        task = self._task(TaskType.SEQUENTIAL, True, True)
+        result = domain.enrich_task_presence_flags(task)
+        assert result.is_sequential is True
+        assert result.depends_on_children is False
+
+    def test_sequential_has_children_completes_with_children_false(self) -> None:
+        domain = _domain()
+        task = self._task(TaskType.SEQUENTIAL, True, False)
+        result = domain.enrich_task_presence_flags(task)
+        assert result.is_sequential is True
+        assert result.depends_on_children is True
+
+    def test_returned_task_is_a_copy_not_mutation(self) -> None:
+        """Enrichment returns a new Task; input is not mutated in place."""
+        domain = _domain()
+        task = self._task(TaskType.SEQUENTIAL, True, False)
+        # Starting values are defaults (False, False) after construction
+        assert task.is_sequential is False
+        assert task.depends_on_children is False
+        result = domain.enrich_task_presence_flags(task)
+        # Returned copy carries computed values
+        assert result.is_sequential is True
+        assert result.depends_on_children is True
+        # Original input remains unchanged (defaults)
+        assert task.is_sequential is False
+        assert task.depends_on_children is False
+
+
+# ---------------------------------------------------------------------------
+# assemble_project_type (Phase 56-03, HIER-05)
+# ---------------------------------------------------------------------------
+
+
+class TestDomainLogicAssembleProjectType:
+    """HIER-05 precedence: `singleActions` beats `sequential` when both flags set."""
+
+    def test_sequential_true_singletons_true_returns_single_actions(self) -> None:
+        """HIER-05 precedence case: singleActions wins."""
+        domain = _domain()
+        assert (
+            domain.assemble_project_type(sequential=True, contains_singleton_actions=True)
+            is ProjectType.SINGLE_ACTIONS
+        )
+
+    def test_sequential_false_singletons_true_returns_single_actions(self) -> None:
+        domain = _domain()
+        assert (
+            domain.assemble_project_type(sequential=False, contains_singleton_actions=True)
+            is ProjectType.SINGLE_ACTIONS
+        )
+
+    def test_sequential_true_singletons_false_returns_sequential(self) -> None:
+        domain = _domain()
+        assert (
+            domain.assemble_project_type(sequential=True, contains_singleton_actions=False)
+            is ProjectType.SEQUENTIAL
+        )
+
+    def test_sequential_false_singletons_false_returns_parallel(self) -> None:
+        domain = _domain()
+        assert (
+            domain.assemble_project_type(sequential=False, contains_singleton_actions=False)
+            is ProjectType.PARALLEL
+        )

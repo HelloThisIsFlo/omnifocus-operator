@@ -148,14 +148,17 @@ class OperatorService(Service):  # explicitly implements Service protocol
         logger.debug("OperatorService.get_all_data: delegating to repository")
         raw = await self._repository.get_all()
         walked_tasks = await self._domain.compute_true_inheritance(raw.tasks)
-        return raw.model_copy(update={"tasks": walked_tasks})
+        # Phase 56-03: derive task-only presence flags (FLAG-04, FLAG-05).
+        enriched_tasks = [self._domain.enrich_task_presence_flags(t) for t in walked_tasks]
+        return raw.model_copy(update={"tasks": enriched_tasks})
 
     async def get_task(self, task_id: str) -> Task:
         """Return a single task by ID. Raises ValueError if not found."""
         logger.debug("OperatorService.get_task: id=%s", task_id)
         task = await self._resolver.lookup_task(task_id)
         walked = await self._domain.compute_true_inheritance([task])
-        return walked[0]
+        # Phase 56-03: derive task-only presence flags (FLAG-04, FLAG-05).
+        return self._domain.enrich_task_presence_flags(walked[0])
 
     async def get_project(self, project_id: str) -> Project:
         """Return a single project by ID. Raises ValueError if not found."""
@@ -454,8 +457,10 @@ class _ListTasksPipeline(_ReadPipeline):
     async def _delegate(self) -> ListResult[Task]:
         repo_result = await self._repository.list_tasks(self._repo_query)
         walked_items = await self._domain.compute_true_inheritance(repo_result.items)
-        walked_result = repo_result.model_copy(update={"items": walked_items})
-        return self._result_from_repo(walked_result)
+        # Phase 56-03: derive task-only presence flags (FLAG-04, FLAG-05).
+        enriched_items = [self._domain.enrich_task_presence_flags(t) for t in walked_items]
+        enriched_result = repo_result.model_copy(update={"items": enriched_items})
+        return self._result_from_repo(enriched_result)
 
 
 # -- list_projects pipeline (Method Object) ---------------------------------
