@@ -124,6 +124,11 @@ class InMemoryBridge(Bridge):
             "DefaultPlannedTime": "09:00",
             "DueSoonInterval": 172800,
             "DueSoonGranularity": 1,
+            # Task-property defaults (factory defaults: True / "parallel").
+            # Tests that don't configure these keys get factory-default
+            # behavior without hitting the absence-as-factory-default path.
+            "OFMCompleteWhenLastItemComplete": True,
+            "OFMTaskDefaultSequential": False,
         }
 
         self._calls: list[BridgeCall] = []

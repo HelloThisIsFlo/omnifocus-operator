@@ -236,12 +236,15 @@ class TestBridgeProtocol:
 class TestInMemoryBridgeGetSettings:
     """InMemoryBridge get_settings operation: factory defaults, overrides, isolation."""
 
-    FACTORY_DEFAULTS: ClassVar[dict[str, str | int]] = {
+    FACTORY_DEFAULTS: ClassVar[dict[str, str | int | bool]] = {
         "DefaultDueTime": "17:00",
         "DefaultStartTime": "00:00",
         "DefaultPlannedTime": "09:00",
         "DueSoonInterval": 172800,
         "DueSoonGranularity": 1,
+        # Task-property defaults added in phase 56-01 (PREFS-01/02).
+        "OFMCompleteWhenLastItemComplete": True,
+        "OFMTaskDefaultSequential": False,
     }
 
     async def test_get_settings_returns_factory_defaults(self) -> None:

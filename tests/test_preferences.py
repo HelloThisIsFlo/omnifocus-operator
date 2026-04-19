@@ -272,3 +272,119 @@ class TestPreferencesDefaultTimeMapping:
 
         with pytest.raises(ValueError, match="Unknown date field"):
             await prefs.get_default_time("unknown_field")
+
+
+# ---------------------------------------------------------------------------
+# Task-property preference keys: completesWithChildren + task type default
+# ---------------------------------------------------------------------------
+
+
+class TestPreferencesNewTaskPropertyKeys:
+    """OFMCompleteWhenLastItemComplete + OFMTaskDefaultSequential surface as
+    ``get_complete_with_children_default()`` / ``get_task_type_default()`` with
+    OF factory-default fallback when the bridge omits (or lacks) the key.
+    """
+
+    # --- OFMCompleteWhenLastItemComplete ----------------------------------
+
+    async def test_complete_with_children_true_when_bridge_returns_true(self) -> None:
+        """Bridge returns True -> getter returns True."""
+        bridge = InMemoryBridge()
+        bridge.configure_settings({"OFMCompleteWhenLastItemComplete": True})
+        prefs = OmniFocusPreferences(bridge)
+
+        assert await prefs.get_complete_with_children_default() is True
+
+    async def test_complete_with_children_false_when_bridge_returns_false(self) -> None:
+        """Bridge returns False -> getter returns False."""
+        bridge = InMemoryBridge()
+        bridge.configure_settings({"OFMCompleteWhenLastItemComplete": False})
+        prefs = OmniFocusPreferences(bridge)
+
+        assert await prefs.get_complete_with_children_default() is False
+
+    async def test_complete_with_children_factory_default_when_key_absent(self) -> None:
+        """Key absent (user kept factory default) -> True."""
+        bridge = InMemoryBridge()
+        bridge._settings.pop("OFMCompleteWhenLastItemComplete", None)
+        prefs = OmniFocusPreferences(bridge)
+
+        assert await prefs.get_complete_with_children_default() is True
+
+    async def test_complete_with_children_factory_default_when_key_none(self) -> None:
+        """Key present but ``None`` (bridge null) -> factory default True."""
+        bridge = InMemoryBridge()
+        bridge.configure_settings({"OFMCompleteWhenLastItemComplete": None})
+        prefs = OmniFocusPreferences(bridge)
+
+        assert await prefs.get_complete_with_children_default() is True
+
+    # --- OFMTaskDefaultSequential -----------------------------------------
+
+    async def test_task_type_sequential_when_bridge_returns_true(self) -> None:
+        """Bridge returns True -> 'sequential'."""
+        bridge = InMemoryBridge()
+        bridge.configure_settings({"OFMTaskDefaultSequential": True})
+        prefs = OmniFocusPreferences(bridge)
+
+        assert await prefs.get_task_type_default() == "sequential"
+
+    async def test_task_type_parallel_when_bridge_returns_false(self) -> None:
+        """Bridge returns False -> 'parallel'."""
+        bridge = InMemoryBridge()
+        bridge.configure_settings({"OFMTaskDefaultSequential": False})
+        prefs = OmniFocusPreferences(bridge)
+
+        assert await prefs.get_task_type_default() == "parallel"
+
+    async def test_task_type_factory_default_parallel_when_key_absent(self) -> None:
+        """Key absent (user kept factory default) -> 'parallel'."""
+        bridge = InMemoryBridge()
+        bridge._settings.pop("OFMTaskDefaultSequential", None)
+        prefs = OmniFocusPreferences(bridge)
+
+        assert await prefs.get_task_type_default() == "parallel"
+
+    async def test_task_type_factory_default_parallel_when_key_none(self) -> None:
+        """Key present but ``None`` (bridge null) -> factory default 'parallel'."""
+        bridge = InMemoryBridge()
+        bridge.configure_settings({"OFMTaskDefaultSequential": None})
+        prefs = OmniFocusPreferences(bridge)
+
+        assert await prefs.get_task_type_default() == "parallel"
+
+    # --- Lazy-load-once invariant (PREFS-04) ------------------------------
+
+    async def test_single_bridge_call_for_many_getter_invocations(self) -> None:
+        """All five preference getters share the same cached load: only one
+        ``get_settings`` bridge call regardless of invocation count/order.
+        """
+        bridge = InMemoryBridge()
+        prefs = OmniFocusPreferences(bridge)
+
+        await prefs.get_complete_with_children_default()
+        await prefs.get_task_type_default()
+        await prefs.get_due_soon_setting()
+        await prefs.get_default_time("due_date")
+        # Second round: still one load.
+        await prefs.get_complete_with_children_default()
+        await prefs.get_task_type_default()
+
+        settings_calls = [c for c in bridge.calls if c.operation == "get_settings"]
+        assert len(settings_calls) == 1
+
+    # --- Bridge failure fallback ------------------------------------------
+
+    async def test_fallback_to_factory_defaults_when_bridge_raises(self) -> None:
+        """Bridge raises -> both new getters return factory defaults
+        (True / 'parallel') and SETTINGS_FALLBACK_WARNING is emitted.
+        """
+        bridge = InMemoryBridge()
+        bridge.set_error(RuntimeError("OmniFocus not running"))
+        prefs = OmniFocusPreferences(bridge)
+
+        assert await prefs.get_complete_with_children_default() is True
+        assert await prefs.get_task_type_default() == "parallel"
+
+        warnings = await prefs.get_warnings()
+        assert SETTINGS_FALLBACK_WARNING in warnings

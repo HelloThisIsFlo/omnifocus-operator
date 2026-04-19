@@ -39,6 +39,12 @@ class OmniFocusPreferences:
         "DefaultPlannedTime": "09:00",
         "DueSoonInterval": 172800,
         "DueSoonGranularity": 1,
+        # Task-property defaults. Absence in the OF Setting store means the
+        # user kept the factory default — resolve to these explicit values.
+        # Raw bool storage; the task-type getter translates to "parallel" /
+        # "sequential" at read time.
+        "OFMCompleteWhenLastItemComplete": True,
+        "OFMTaskDefaultSequential": False,
     }
 
     # Maps (interval_seconds, granularity) -> DueSoonSetting enum member.
@@ -76,6 +82,14 @@ class OmniFocusPreferences:
         self._default_due_time = self._normalize_time(defaults["DefaultDueTime"])
         self._default_start_time = self._normalize_time(defaults["DefaultStartTime"])
         self._default_planned_time = self._normalize_time(defaults["DefaultPlannedTime"])
+
+        # Task-property defaults (stored as domain-ready values, not raw bools)
+        self._complete_with_children_default: bool = bool(
+            defaults["OFMCompleteWhenLastItemComplete"]
+        )
+        self._task_type_default: str = (
+            "sequential" if defaults["OFMTaskDefaultSequential"] else "parallel"
+        )
 
     @staticmethod
     def _normalize_time(raw: str) -> str:
@@ -138,6 +152,23 @@ class OmniFocusPreferences:
                 self._warnings.append(SETTINGS_UNKNOWN_DUE_SOON_PAIR)
                 # Keep factory default (TWO_DAYS)
 
+        # OFMCompleteWhenLastItemComplete — absence means user kept factory
+        # default (True). Type-coerce to bool to guard against garbage
+        # (T-56-01 tampering mitigation).
+        if (
+            "OFMCompleteWhenLastItemComplete" in raw
+            and raw["OFMCompleteWhenLastItemComplete"] is not None
+        ):
+            self._complete_with_children_default = bool(raw["OFMCompleteWhenLastItemComplete"])
+
+        # OFMTaskDefaultSequential — absence means user kept factory default
+        # ("parallel"). OF Setting store typically omits this key unless the
+        # user has flipped it away from factory default.
+        if "OFMTaskDefaultSequential" in raw and raw["OFMTaskDefaultSequential"] is not None:
+            self._task_type_default = (
+                "sequential" if bool(raw["OFMTaskDefaultSequential"]) else "parallel"
+            )
+
     async def get_due_soon_setting(self) -> DueSoonSetting:
         """Return the DueSoonSetting enum for the user's OmniFocus preference."""
         await self._ensure_loaded()
@@ -163,6 +194,27 @@ class OmniFocusPreferences:
             msg = f"Unknown date field: {field!r}. Expected one of: {', '.join(attr_map)}"
             raise ValueError(msg)
         return attr_map[field]
+
+    async def get_complete_with_children_default(self) -> bool:
+        """Return the user's ``OFMCompleteWhenLastItemComplete`` preference.
+
+        OmniFocus factory default is ``True``. When the OF Setting store
+        omits the key (user has not changed it from factory default) or
+        the bridge fails, this returns ``True``.
+        """
+        await self._ensure_loaded()
+        return self._complete_with_children_default
+
+    async def get_task_type_default(self) -> str:
+        """Return ``"parallel"`` or ``"sequential"`` per ``OFMTaskDefaultSequential``.
+
+        OmniFocus factory default is ``"parallel"`` (the Setting store
+        typically omits ``OFMTaskDefaultSequential`` until the user flips
+        it). When the key is absent or the bridge fails, returns
+        ``"parallel"``.
+        """
+        await self._ensure_loaded()
+        return self._task_type_default
 
     async def get_warnings(self) -> list[str]:
         """Return accumulated warnings from settings loading."""
