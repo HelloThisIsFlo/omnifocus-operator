@@ -10,7 +10,7 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 ## Current Milestone: v1.4.1 Task Property Surface & Subtree Retrieval
 
-**Goal:** Expose OmniFocus task properties the server currently hides (auto-complete, parallel/sequential, presence of notes/repetition/attachments) and add a `parent` filter on `list_tasks` so agents can fetch a task's descendants in a single call. Strictly additive point release — same shape as v1.3.1/.2/.3; projects stay read-only (writes deferred to v1.7).
+**Goal:** Expose OmniFocus task properties the server currently hides (auto-complete, parallel/sequential, presence of notes/repetition/attachments) and add a `parent` filter on `list_tasks` so agents can fetch a task's descendants in a single call. Strictly additive point release — same shape as v1.3.1/.2/.3; projects stay read-only (writes deferred to v1.5).
 
 **Target features:**
 - Writable `completesWithChildren: bool` and per-type `type` enum (`TaskType`: parallel/sequential; `ProjectType`: + singleActions) on tasks
@@ -127,9 +127,9 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 ### Active
 
 - [ ] Subtree retrieval — `parent` filter on `list_tasks` with `collect_subtree` helper, repo-layer filter unification (v1.4.1 Phase 57)
-- [ ] UI & Perspectives — show/get perspective, open_task, live UI reads (v1.5)
-- [ ] Production hardening — retry, crash recovery, serial execution (v1.6)
-- [ ] Project writes — add_projects, edit_projects (v1.7)
+- [ ] Project writes — add_projects, edit_projects (v1.5)
+- [ ] UI & Perspectives — show/get perspective, open_task, live UI reads (v1.6)
+- [ ] Production hardening — retry, crash recovery, serial execution (v1.7)
 
 ### Out of Scope
 

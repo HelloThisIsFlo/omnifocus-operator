@@ -2,7 +2,7 @@
 
 ## Goal
 
-Reliability and polish. No new tools -- the full API surface is complete from v1.5. This milestone makes the server robust enough for daily use without supervision.
+Reliability and polish. No new tools -- the full API surface is complete from v1.6. This milestone makes the server robust enough for daily use without supervision.
 
 ## What to Build
 
@@ -51,7 +51,7 @@ See: `2026-03-08-investigate-and-enforce-serial-execution-guarantee-for-bridge-c
 
 Scope is intentionally light. When we get here, evaluate:
 - Which of these items have become pain points in daily use?
-- Are there new issues discovered during v1.2-v1.5 that need hardening?
+- Are there new issues discovered during v1.2-v1.6 that need hardening?
 - What's the actual failure rate of bridge operations?
 
 Prioritize based on real-world usage data, not hypothetical concerns.
@@ -61,8 +61,8 @@ Prioritize based on real-world usage data, not hypothetical concerns.
 - Server recovers gracefully from OmniFocus crashes/restarts
 - Bridge timeouts produce actionable error messages with retry information
 - Server can run a full daily review session without manual intervention
-- No new tools -- same API surface as v1.5
+- No new tools -- same API surface as v1.6
 
 ## Tools After This Milestone
 
-Fourteen (unchanged from v1.5).
+Sixteen (unchanged from v1.6).

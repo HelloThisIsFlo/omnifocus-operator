@@ -7,7 +7,7 @@ Full design spec: `.research/updated-spec/MILESTONE-v1.4.1.md` (design locked af
 
 ## v1.4.1 Requirements
 
-Requirements for milestone v1.4.1: Task Property Surface & Subtree Retrieval. Strictly additive point release (same shape as v1.3.1/.2/.3). Projects stay read-only — writes deferred to v1.7.
+Requirements for milestone v1.4.1: Task Property Surface & Subtree Retrieval. Strictly additive point release (same shape as v1.3.1/.2/.3). Projects stay read-only — writes deferred to v1.5.
 
 ### Writable Task Properties
 
@@ -17,7 +17,7 @@ Requirements for milestone v1.4.1: Task Property Surface & Subtree Retrieval. St
 - [ ] **PROP-04**: `edit_tasks` accepts `type` with same constraints as PROP-03 (null rejected, `"singleActions"` rejected at type level)
 - [ ] **PROP-05**: When agent omits `completesWithChildren` on `add_tasks`, server writes the user's `OFMCompleteWhenLastItemComplete` preference explicitly (factory default fallback: `true`) — server never relies on OmniFocus's implicit defaulting
 - [ ] **PROP-06**: When agent omits `type` on `add_tasks`, server writes the user's `OFMTaskDefaultSequential` preference explicitly (factory default fallback: `"parallel"`)
-- [ ] **PROP-07**: **Writes** to `completesWithChildren` and `type` on projects are rejected in v1.4.1 (project writes deferred to v1.7, consistent with existing write surface). Read path for projects covered by HIER-02.
+- [ ] **PROP-07**: **Writes** to `completesWithChildren` and `type` on projects are rejected in v1.4.1 (project writes deferred to v1.5, consistent with existing write surface). Read path for projects covered by HIER-02.
 - [ ] **PROP-08**: `completesWithChildren` added to `NEVER_STRIP` so `false` values survive the default stripping pipeline
 
 ### Read-only Derived Presence Flags (default response)
@@ -161,7 +161,7 @@ Deferred but captured:
 
 ## Out of Scope
 
-- **Project writes for `completesWithChildren` / `type`** — deferred to v1.7 (consistent with existing write surface; project writes are their own milestone)
+- **Project writes for `completesWithChildren` / `type`** — deferred to v1.5 (consistent with existing write surface; project writes are their own milestone)
 - **Array of references on `parent`** — single reference only; substring matching handles multi-entity cases when matches share a substring
 - **Cache-direct settings access** — rejected in favor of architectural consistency (one settings pattern, no plistlib in service layer, uniform across repos)
 - **Custom educational errors for derived read-only fields** — JSON Schema tells agents which fields are writable; Pydantic `extra="forbid"` generic error is sufficient

@@ -35,4 +35,4 @@ Moving a project between folders via `edit_projects({ folder })` is deliberately
 
 ## Tools After This Milestone
 
-Sixteen: all fourteen from v1.6, plus `add_projects`, `edit_projects`.
+Thirteen: all eleven from v1.4.1, plus `add_projects`, `edit_projects`.

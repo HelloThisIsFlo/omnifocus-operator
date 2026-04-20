@@ -450,7 +450,7 @@ Folder ID or name. Names use case-insensitive substring matching -- if multiple 
 
 # --- Perspectives: Temporary Notes ---
 
-# TODO(v1.5): Remove when built-in perspectives are supported
+# TODO(v1.6): Remove when built-in perspectives are supported
 _PERSPECTIVES_BUILTIN_NOTE = (
     "Currently returns custom perspectives only; built-in perspectives are not yet available."
 )
