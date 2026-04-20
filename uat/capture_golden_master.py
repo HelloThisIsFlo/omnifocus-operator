@@ -47,6 +47,15 @@ GM_DATED_PROJECT_ID: str = ""
 GM_TAG1_ID: str = ""
 GM_TAG2_ID: str = ""
 
+# Phase 56 task-property-surface placeholders (09-task-property-surface/).
+# Three projects exercising the HIER-05 project.type precedence (parallel,
+# sequential, singleActions) and one pre-seeded task with an attachment
+# (attachments cannot be created via OmniJS — manual-drop required).
+GM_PHASE56_PARALLEL_PROJECT_ID: str = ""
+GM_PHASE56_SEQUENTIAL_PROJECT_ID: str = ""
+GM_PHASE56_SINGLE_ACTIONS_PROJECT_ID: str = ""
+GM_PHASE56_ATTACHED_TASK_ID: str = ""
+
 # Task IDs accumulated from add_task responses
 TASK_IDS: dict[str, str] = {}
 
@@ -54,6 +63,11 @@ TASK_IDS: dict[str, str] = {}
 known_task_ids: set[str] = set()
 known_project_ids: set[str] = set()
 known_tag_ids: set[str] = set()
+
+# Pre-seeded task IDs that must NOT be moved into the Phase 5 cleanup
+# container (e.g. GM-Phase56-Attached — the human invested manual effort
+# attaching a file; the next capture re-uses the same task in place).
+_preserved_task_ids: set[str] = set()
 
 # Symbolic ID map: real OmniFocus ID → stable symbolic ref (e.g. "$project:test_project").
 # Populated during Phase 2 (projects/tags/external refs) and Phase 4 (tasks).
@@ -1747,6 +1761,219 @@ def _build_scenarios() -> list[dict[str, Any]]:
                 },
             },
         },
+        # =================================================================
+        # 09-task-property-surface/ (Phase 56 — 8 scenarios)
+        #
+        # Covers the read surface added in Phase 56: raw bridge fields
+        # `completedByChildren`, `sequential`, `hasAttachments`,
+        # `containsSingletonActions` (projects), and `hasChildren` across
+        # the behavioral combinations that matter for the derived model-
+        # layer flags (`completesWithChildren`, `type`, `isSequential`,
+        # `dependsOnChildren`, `hasNote`, `hasRepetition`,
+        # `hasAttachments`).
+        #
+        # These scenarios rely on three pre-seeded projects (parallel,
+        # sequential, singleActions) and one pre-seeded task with an
+        # attachment (manual drag-drop in OmniFocus — OmniJS cannot create
+        # attachments). See `_phase_2_manual_setup` for the setup prompts.
+        # =================================================================
+        # --- 01: sequential parent task, completesWithChildren=false ---
+        # Create parent (type=sequential, completesWithChildren=false),
+        # then add first child. State after the FOLLOWUP captures the
+        # parent with its new sequential + !completesWithChildren flags
+        # plus hasChildren=true (a real child is present).
+        {
+            "folder": "09-task-property-surface",
+            "file": "01_sequential_no_autocomplete_parent",
+            "scenario": "09-task-property-surface/01_sequential_no_autocomplete_parent",
+            "description": (
+                "Sequential parent task with completesWithChildren=false — "
+                "covers isSequential, dependsOnChildren (true via children "
+                "present + no auto-complete), type=sequential, "
+                "completesWithChildren=false, hasChildren=true"
+            ),
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Phase56-SeqNoAutoParent",
+                "type": "sequential",
+                "completesWithChildren": False,
+            },
+            "capture_id_as": "phase56_seq_no_auto_parent",
+            "followup": {
+                "operation": "add_task",
+                "params_fn": lambda: {
+                    "name": "GM-Phase56-SeqNoAutoChild",
+                    "parent": TASK_IDS["phase56_seq_no_auto_parent"],
+                },
+                "capture_id_as": "phase56_seq_no_auto_child",
+            },
+        },
+        # --- 02: parallel parent task, completesWithChildren=true ---
+        # Auto-complete case: parent auto-completes when the last child
+        # completes, so `dependsOnChildren` (derived) resolves to false
+        # even with children present.
+        {
+            "folder": "09-task-property-surface",
+            "file": "02_parallel_autocomplete_parent",
+            "scenario": "09-task-property-surface/02_parallel_autocomplete_parent",
+            "description": (
+                "Parallel parent task with completesWithChildren=true — "
+                "covers the auto-complete case (dependsOnChildren=false "
+                "despite children present), completesWithChildren=true, "
+                "type=parallel, hasChildren=true"
+            ),
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Phase56-ParAutoParent",
+                "type": "parallel",
+                "completesWithChildren": True,
+            },
+            "capture_id_as": "phase56_par_auto_parent",
+            "followup": {
+                "operation": "add_task",
+                "params_fn": lambda: {
+                    "name": "GM-Phase56-ParAutoChild",
+                    "parent": TASK_IDS["phase56_par_auto_parent"],
+                },
+                "capture_id_as": "phase56_par_auto_child",
+            },
+        },
+        # --- 03: task with a note ---
+        # Note presence — adapter derives hasNote=true; raw `note` field
+        # carries the string directly so the replay comparison is on the
+        # raw note, not the derived flag.
+        {
+            "folder": "09-task-property-surface",
+            "file": "03_task_with_note",
+            "scenario": "09-task-property-surface/03_task_with_note",
+            "description": (
+                "Task with a non-empty note — covers hasNote=true "
+                "(derived from non-empty note string at adapter layer)"
+            ),
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Phase56-Noted",
+                "note": "GM-Phase56 note body.",
+            },
+            "capture_id_as": "phase56_noted",
+        },
+        # --- 04: attachment task (pre-seeded, attachment added manually) ---
+        # Attachments cannot be created via OmniJS. The human pre-seeds a
+        # task named 'GM-Phase56-Attached' with a drag-dropped file; this
+        # scenario touches it with a no-op-ish edit (set note) to trigger
+        # a state_after capture that includes the raw hasAttachments=true
+        # field. Task ID is discovered and registered in
+        # `_phase_2_manual_setup` so it lands in known_task_ids.
+        {
+            "folder": "09-task-property-surface",
+            "file": "04_task_with_attachment",
+            "scenario": "09-task-property-surface/04_task_with_attachment",
+            "description": (
+                "Pre-seeded task with an attachment (manual setup; OmniJS "
+                "cannot create attachments) — covers hasAttachments=true. "
+                "Scenario touches the pre-seeded task with a note edit to "
+                "trigger a state_after capture including the raw field."
+            ),
+            "operation": "edit_task",
+            "params_fn": lambda: {
+                "id": GM_PHASE56_ATTACHED_TASK_ID,
+                "note": "GM-Phase56 attachment touch.",
+            },
+        },
+        # --- 05: project-type matrix — parallel project ---
+        # Pre-seeded project: 🧪 GM-Phase56-ParallelProj (type=parallel,
+        # set in OmniFocus Inspector). Scenario adds a minimal task under
+        # it; state_after filters to the known project + new task, so the
+        # project's raw `sequential=false` / `containsSingletonActions=
+        # false` are exercised.
+        {
+            "folder": "09-task-property-surface",
+            "file": "05_project_type_parallel",
+            "scenario": "09-task-property-surface/05_project_type_parallel",
+            "description": (
+                "Task under a parallel project — captures project raw "
+                "sequential=false + containsSingletonActions=false "
+                "(HIER-05: project.type derives to 'parallel')"
+            ),
+            "operation": "add_task",
+            "params_fn": lambda: {
+                "name": "GM-Phase56-ParProjChild",
+                "parent": GM_PHASE56_PARALLEL_PROJECT_ID,
+            },
+            "capture_id_as": "phase56_par_proj_child",
+        },
+        # --- 06: project-type matrix — sequential project ---
+        # Pre-seeded project: 🧪 GM-Phase56-SequentialProj (type=
+        # sequential, containsSingletonActions=false).
+        {
+            "folder": "09-task-property-surface",
+            "file": "06_project_type_sequential",
+            "scenario": "09-task-property-surface/06_project_type_sequential",
+            "description": (
+                "Task under a sequential project — captures project raw "
+                "sequential=true + containsSingletonActions=false "
+                "(HIER-05: project.type derives to 'sequential'; also "
+                "flips project.isSequential via the 56-08 hoist)"
+            ),
+            "operation": "add_task",
+            "params_fn": lambda: {
+                "name": "GM-Phase56-SeqProjChild",
+                "parent": GM_PHASE56_SEQUENTIAL_PROJECT_ID,
+            },
+            "capture_id_as": "phase56_seq_proj_child",
+        },
+        # --- 07: project-type matrix — single-actions project ---
+        # Pre-seeded project: 🧪 GM-Phase56-SingleActionsProj
+        # (containsSingletonActions=true; sequential raw bit may be
+        # either value — HIER-05 says singleActions wins regardless).
+        {
+            "folder": "09-task-property-surface",
+            "file": "07_project_type_single_actions",
+            "scenario": "09-task-property-surface/07_project_type_single_actions",
+            "description": (
+                "Task under a single-actions project — captures project "
+                "raw containsSingletonActions=true (HIER-05: derives to "
+                "project.type='singleActions' regardless of the raw "
+                "sequential bit; project.isSequential resolves to false)"
+            ),
+            "operation": "add_task",
+            "params_fn": lambda: {
+                "name": "GM-Phase56-SAProjChild",
+                "parent": GM_PHASE56_SINGLE_ACTIONS_PROJECT_ID,
+            },
+            "capture_id_as": "phase56_sa_proj_child",
+        },
+        # --- 08: sequential parent flipped to parallel via edit ---
+        # Exercises the patch path for `type` on edit_task: create a
+        # sequential parent, then edit it to parallel. State after the
+        # followup captures sequential=false, locking the edit-side
+        # contract for PROP-06 against the real Bridge.
+        {
+            "folder": "09-task-property-surface",
+            "file": "08_edit_type_and_completes_flip",
+            "scenario": "09-task-property-surface/08_edit_type_and_completes_flip",
+            "description": (
+                "Edit a task's type + completesWithChildren fields — "
+                "covers the patch-semantics edit path for PROP-05 / "
+                "PROP-06 (sequential → parallel, "
+                "completesWithChildren false → true)"
+            ),
+            "operation": "add_task",
+            "params": {
+                "name": "GM-Phase56-EditTarget",
+                "type": "sequential",
+                "completesWithChildren": False,
+            },
+            "capture_id_as": "phase56_edit_target",
+            "followup": {
+                "operation": "edit_task",
+                "params_fn": lambda: {
+                    "id": TASK_IDS["phase56_edit_target"],
+                    "type": "parallel",
+                    "completesWithChildren": True,
+                },
+            },
+        },
     ]
 
 
@@ -1994,11 +2221,11 @@ def _phase_1_introduction() -> None:
     print("create golden master fixtures for contract tests.")
     print()
     print("What will happen:")
-    print("  1. You verify 3 projects and 2 tags exist in OmniFocus")
+    print("  1. You verify 6 projects, 2 tags, and 1 attached task exist in OmniFocus")
     print("  2. The script verifies each entity exists")
-    print("  3. Scenarios run automatically across 8 categories")
+    print("  3. Scenarios run automatically across 9 categories")
     print("  4. Fixture JSON files are written to tests/golden_master/snapshots/")
-    print("     organized in numbered subfolders (01-add/ through 08-repetition/)")
+    print("     organized in numbered subfolders (01-add/ through 09-task-property-surface/)")
     print("  5. Test tasks are consolidated for easy cleanup")
     print()
     print("Prerequisites:")
@@ -2167,13 +2394,181 @@ async def _phase_2_manual_setup(bridge: RealBridge) -> None:
     _populate_id_map_from_setup(full_state)
 
 
+async def _phase_2b_phase56_setup(bridge: RealBridge) -> None:
+    """Discover Phase 56 pre-seeded entities (project-type matrix + attached task).
+
+    The 09-task-property-surface scenarios exercise the raw bridge
+    `sequential` / `containsSingletonActions` / `hasAttachments` fields
+    that cannot be created via OmniJS (project type flags live in the
+    Inspector; attachments are drag-dropped only). The human pre-seeds
+    four entities once — this helper discovers them, registers their
+    IDs, and populates symbolic refs for stable fixture output.
+
+    Required pre-seeded entities (🧪 prefix + Phase56 tag for easy
+    filtering in the human's Inbox view):
+      - 🧪 GM-Phase56-ParallelProj        (project, type=parallel)
+      - 🧪 GM-Phase56-SequentialProj      (project, type=sequential)
+      - 🧪 GM-Phase56-SingleActionsProj   (project, containsSingletonActions=true)
+      - 🧪 GM-Phase56-Attached            (task, drag-dropped attachment)
+
+    The attached task MUST live somewhere stable (e.g. under
+    🧪 GM-TestProject or the inbox); its ID is registered in
+    `known_task_ids` AND `_preserved_task_ids` so it's included in
+    state_after for scenario 04 but NOT moved into the cleanup
+    container in Phase 5.
+    """
+    global GM_PHASE56_PARALLEL_PROJECT_ID, GM_PHASE56_SEQUENTIAL_PROJECT_ID
+    global GM_PHASE56_SINGLE_ACTIONS_PROJECT_ID, GM_PHASE56_ATTACHED_TASK_ID
+
+    print("-" * 60)
+    print("  Phase 2b: Manual Setup (Phase 56 extensions)")
+    print("-" * 60)
+    print()
+
+    required_projects: list[tuple[str, str]] = [
+        (
+            "🧪 GM-Phase56-ParallelProj",
+            "parallel project — Inspector: type=parallel, containsSingletonActions=false",
+        ),
+        (
+            "🧪 GM-Phase56-SequentialProj",
+            "sequential project — Inspector: type=sequential, containsSingletonActions=false",
+        ),
+        (
+            "🧪 GM-Phase56-SingleActionsProj",
+            "single-actions project — Inspector: containsSingletonActions=true",
+        ),
+    ]
+    attached_task_name = "🧪 GM-Phase56-Attached"
+
+    while True:
+        state = await _get_all_raw(bridge)
+        found_projects: dict[str, dict[str, Any]] = {}
+        missing: list[str] = []
+        for name, _ in required_projects:
+            project = _find_by_name(state.get("projects", []), name)
+            if project:
+                found_projects[name] = project
+            else:
+                missing.append(name)
+
+        attached_task = _find_by_name(state.get("tasks", []), attached_task_name)
+        if not attached_task:
+            missing.append(attached_task_name)
+
+        if not missing:
+            break
+
+        print("  Please create the following in OmniFocus:")
+        for name, instructions in required_projects:
+            if name in missing:
+                print(f"    - {name} ({instructions})")
+        if attached_task_name in missing:
+            print(
+                f"    - {attached_task_name} — task anywhere "
+                "(inbox or a sandbox project); drag-drop any small file "
+                "onto it as an attachment"
+            )
+        print()
+        input("  Press Enter when all entities exist... ")
+        print()
+
+    # Validate project type flags
+    problems: list[str] = []
+    parallel = found_projects["🧪 GM-Phase56-ParallelProj"]
+    sequential = found_projects["🧪 GM-Phase56-SequentialProj"]
+    single_actions = found_projects["🧪 GM-Phase56-SingleActionsProj"]
+    if parallel.get("sequential") is not False:
+        problems.append("🧪 GM-Phase56-ParallelProj: sequential should be false")
+    if parallel.get("containsSingletonActions") is not False:
+        problems.append("🧪 GM-Phase56-ParallelProj: containsSingletonActions should be false")
+    if sequential.get("sequential") is not True:
+        problems.append("🧪 GM-Phase56-SequentialProj: sequential should be true")
+    if sequential.get("containsSingletonActions") is not False:
+        problems.append("🧪 GM-Phase56-SequentialProj: containsSingletonActions should be false")
+    if single_actions.get("containsSingletonActions") is not True:
+        problems.append("🧪 GM-Phase56-SingleActionsProj: containsSingletonActions should be true")
+    if not attached_task.get("hasAttachments"):
+        problems.append(
+            f"{attached_task_name}: hasAttachments is not true "
+            "(drag-drop a file onto this task in OmniFocus)"
+        )
+
+    while problems:
+        print("  ⚠ Phase 56 entities have inspector-property problems:")
+        for p in problems:
+            print(f"    - {p}")
+        print()
+        print("  Fix in OmniFocus Inspector (type, containsSingletonActions)")
+        print("  or drag-drop an attachment, then press Enter to re-check.")
+        input("  Press Enter when fixed... ")
+
+        state = await _get_all_raw(bridge)
+        parallel = _find_by_name(state.get("projects", []), "🧪 GM-Phase56-ParallelProj") or {}
+        sequential = _find_by_name(state.get("projects", []), "🧪 GM-Phase56-SequentialProj") or {}
+        single_actions = (
+            _find_by_name(state.get("projects", []), "🧪 GM-Phase56-SingleActionsProj") or {}
+        )
+        attached_task = _find_by_name(state.get("tasks", []), attached_task_name) or {}
+        problems = []
+        if parallel.get("sequential") is not False:
+            problems.append("🧪 GM-Phase56-ParallelProj: sequential should be false")
+        if parallel.get("containsSingletonActions") is not False:
+            problems.append("🧪 GM-Phase56-ParallelProj: containsSingletonActions should be false")
+        if sequential.get("sequential") is not True:
+            problems.append("🧪 GM-Phase56-SequentialProj: sequential should be true")
+        if sequential.get("containsSingletonActions") is not False:
+            problems.append(
+                "🧪 GM-Phase56-SequentialProj: containsSingletonActions should be false"
+            )
+        if single_actions.get("containsSingletonActions") is not True:
+            problems.append(
+                "🧪 GM-Phase56-SingleActionsProj: containsSingletonActions should be true"
+            )
+        if not attached_task.get("hasAttachments"):
+            problems.append(
+                f"{attached_task_name}: hasAttachments is not true "
+                "(drag-drop a file onto this task in OmniFocus)"
+            )
+
+    # Register IDs and symbolic refs
+    GM_PHASE56_PARALLEL_PROJECT_ID = parallel["id"]
+    GM_PHASE56_SEQUENTIAL_PROJECT_ID = sequential["id"]
+    GM_PHASE56_SINGLE_ACTIONS_PROJECT_ID = single_actions["id"]
+    GM_PHASE56_ATTACHED_TASK_ID = attached_task["id"]
+    known_project_ids.update(
+        {
+            GM_PHASE56_PARALLEL_PROJECT_ID,
+            GM_PHASE56_SEQUENTIAL_PROJECT_ID,
+            GM_PHASE56_SINGLE_ACTIONS_PROJECT_ID,
+        }
+    )
+    known_task_ids.add(GM_PHASE56_ATTACHED_TASK_ID)
+    # Pre-seeded attached task stays in place across captures
+    _preserved_task_ids.add(GM_PHASE56_ATTACHED_TASK_ID)
+
+    _id_map[GM_PHASE56_PARALLEL_PROJECT_ID] = "$project:phase56_parallel"
+    _id_map[GM_PHASE56_SEQUENTIAL_PROJECT_ID] = "$project:phase56_sequential"
+    _id_map[GM_PHASE56_SINGLE_ACTIONS_PROJECT_ID] = "$project:phase56_single_actions"
+    _id_map[GM_PHASE56_ATTACHED_TASK_ID] = "$task:phase56_attached"
+
+    print(f"  Found: 🧪 GM-Phase56-ParallelProj (ID: {GM_PHASE56_PARALLEL_PROJECT_ID})")
+    print(f"  Found: 🧪 GM-Phase56-SequentialProj (ID: {GM_PHASE56_SEQUENTIAL_PROJECT_ID})")
+    print(f"  Found: 🧪 GM-Phase56-SingleActionsProj (ID: {GM_PHASE56_SINGLE_ACTIONS_PROJECT_ID})")
+    print(f"  Found: {attached_task_name} (ID: {GM_PHASE56_ATTACHED_TASK_ID})")
+    print("  ✓ All Phase 56 entities verified.")
+    print()
+
+
 async def _check_leftover_tasks(bridge: RealBridge) -> None:
     """Ensure no GM- tasks remain from a previous run."""
     state = await _get_all_raw(bridge)
     leftover = [
         t
         for t in state.get("tasks", [])
-        if t.get("name", "").startswith(("GM-", "🧪 GM-")) and t["id"] not in known_project_ids
+        if t.get("name", "").startswith(("GM-", "🧪 GM-"))
+        and t["id"] not in known_project_ids
+        and t["id"] not in known_task_ids
     ]
     if not leftover:
         return
@@ -2208,7 +2603,7 @@ def _phase_3_confirmation() -> bool:
     print("  Phase 3: Scenario Preview")
     print("-" * 60)
     print()
-    print("The following ~84 scenarios will be executed across 8 categories:")
+    print("The following ~92 scenarios will be executed across 9 categories:")
     print()
     print("  01-add/ (6 scenarios):")
     print("    01. Inbox task (minimal)")
@@ -2279,6 +2674,14 @@ def _phase_3_confirmation() -> bool:
     print("    35-37. SET → REPLACE → CLEAR lifecycle")
     print("    38.    SET rule + rename + flag combo")
     print()
+    print("  09-task-property-surface/ (8 scenarios):")
+    print("    01. Sequential parent, completesWithChildren=false (+ child)")
+    print("    02. Parallel parent, completesWithChildren=true (+ child)")
+    print("    03. Task with a note (hasNote)")
+    print("    04. Task with an attachment (pre-seeded, hasAttachments)")
+    print("    05-07. Project-type matrix (parallel / sequential / singleActions)")
+    print("    08. Edit flip: type + completesWithChildren via edit_task")
+    print()
 
     scenarios = _build_scenarios()
     answer = input(f"Ready to run {len(scenarios)} scenarios? [y/N] ").strip().lower()
@@ -2332,7 +2735,10 @@ async def _phase_5_consolidation(bridge: RealBridge) -> None:
     # Move all scenario tasks under the cleanup task.
     # Derived occurrence IDs (e.g. "abc123.0") are already in known_task_ids —
     # they were discovered during Phase 4 capture.
-    for task_id in known_task_ids:
+    # Preserved tasks (e.g. 🧪 GM-Phase56-Attached) stay in place — the human
+    # invested manual effort (attachment drag-drop) and the next capture
+    # re-discovers them in the same location.
+    for task_id in known_task_ids - _preserved_task_ids:
         await bridge.send_command(
             "edit_task",
             {"id": task_id, "moveTo": {"position": "ending", "containerId": cleanup_task_id}},
@@ -2402,6 +2808,11 @@ async def main() -> int:
     try:
         # Phase 2: Manual setup (creates project/tags, verifies they exist)
         await _phase_2_manual_setup(bridge)
+
+        # Phase 2b: Phase 56 extensions — project-type matrix + attached task.
+        # Registers Phase 56 pre-seeded entity IDs BEFORE _check_leftover_tasks
+        # so the pre-seeded attachment task isn't flagged as stale.
+        await _phase_2b_phase56_setup(bridge)
 
         # Check for leftover tasks before capturing initial state --
         # otherwise hasChildren etc. reflect stale data
