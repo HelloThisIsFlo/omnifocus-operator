@@ -82,6 +82,14 @@ Behavioral flags (default response):
   - isSequential: {_IS_SEQUENTIAL_SEMANTIC}
   - dependsOnChildren: {_DEPENDS_ON_CHILDREN_SEMANTIC}"""
 
+# Project-scoped behavioral flag note (Phase 56-08 / G1). Covers isSequential
+# only because dependsOnChildren stays tasks-only — projects are always
+# containers, so the "real unit of work waiting on children" semantic does
+# not apply to them.
+_PROJECT_BEHAVIORAL_FLAGS_NOTE = f"""\
+Behavioral flag (default response):
+  - isSequential: {_IS_SEQUENTIAL_SEMANTIC}"""
+
 # --- Dates: Write-Side ---
 
 DATE_EXAMPLE = "2026-03-15T17:00:00"
@@ -147,7 +155,7 @@ HAS_ATTACHMENTS_DESC = (
     "True when at least one attachment is present. Attachment content is never returned inline."
 )
 
-IS_SEQUENTIAL_DESC = f"Tasks-only. True when type == 'sequential'. {_IS_SEQUENTIAL_SEMANTIC}"
+IS_SEQUENTIAL_DESC = f"True when type == 'sequential'. {_IS_SEQUENTIAL_SEMANTIC}"
 
 DEPENDS_ON_CHILDREN_DESC = (
     "Tasks-only. True when the task has children AND does not complete with children. "
@@ -475,7 +483,9 @@ $inbox is not a real project and cannot be looked up here. It has no review sche
 
 {_STRIPPING_NOTE}
 
-Fields: urgency, availability, dueDate, deferDate, plannedDate, flagged, tags [{{id, name}}], nextTask {{id, name}}, folder {{id, name}}, reviewInterval, nextReviewDate.
+Fields: urgency, availability, dueDate, deferDate, plannedDate, flagged, tags [{{id, name}}], isSequential, nextTask {{id, name}}, folder {{id, name}}, reviewInterval, nextReviewDate.
+
+{_PROJECT_BEHAVIORAL_FLAGS_NOTE}
 
 nextTask: first available (unblocked) task. Useful for identifying what to work on next."""
 
@@ -575,9 +585,11 @@ include: optional array of field groups, additive on top of defaults.
   - "time": estimatedMinutes, repetitionRule
   - "review": nextReviewDate, reviewInterval, lastReviewDate, nextTask
   - "*": all fields
-Default fields (always returned): id, name, availability, dueDate, deferDate, plannedDate, flagged, urgency, tags, hasNote, hasRepetition, hasAttachments.
+Default fields (always returned): id, name, availability, dueDate, deferDate, plannedDate, flagged, urgency, tags, hasNote, hasRepetition, hasAttachments, isSequential.
 
-isSequential and dependsOnChildren are tasks-only; projects expose the full type enum via include=['hierarchy'].
+{_PROJECT_BEHAVIORAL_FLAGS_NOTE}
+
+dependsOnChildren is tasks-only (projects are always containers); projects expose the full type enum (incl. singleActions) via include=['hierarchy'].
 
 {_COUNT_ONLY_TIP}
 

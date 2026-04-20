@@ -33,6 +33,7 @@ from omnifocus_operator.contracts.use_cases.edit.tasks import (
     EditTaskCommand,
 )
 from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
+from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsQuery
 from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksQuery
 from omnifocus_operator.models.enums import BasedOn, Schedule
 from omnifocus_operator.models.repetition_rule import (
@@ -319,6 +320,145 @@ class TestOperatorService:
         assert by_id["t2"].depends_on_children is True
         assert by_id["t3"].is_sequential is False
         assert by_id["t3"].depends_on_children is False
+
+    # -- Phase 56-08 (G1) project-side enrichment ---------------------------
+
+    @pytest.mark.snapshot(
+        tasks=[],
+        projects=[
+            make_project_dict(
+                id="proj-seq",
+                name="Sequential project",
+                sequential=True,
+                containsSingletonActions=False,
+            ),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_get_project_returns_project_with_enriched_is_sequential_true(
+        self, service: OperatorService
+    ) -> None:
+        """get_project applies Phase 56-08 enrichment: sequential type -> is_sequential True."""
+        project = await service.get_project("proj-seq")
+        assert project.is_sequential is True
+
+    @pytest.mark.snapshot(
+        tasks=[],
+        projects=[
+            make_project_dict(
+                id="proj-par",
+                name="Parallel project",
+                sequential=False,
+                containsSingletonActions=False,
+            ),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_get_project_returns_project_with_enriched_is_sequential_false(
+        self, service: OperatorService
+    ) -> None:
+        """Parallel projects: is_sequential False."""
+        project = await service.get_project("proj-par")
+        assert project.is_sequential is False
+
+    @pytest.mark.snapshot(
+        tasks=[],
+        projects=[
+            make_project_dict(
+                id="proj-single",
+                name="Single-actions project",
+                sequential=False,
+                containsSingletonActions=True,
+            ),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_get_project_single_actions_is_not_sequential(
+        self, service: OperatorService
+    ) -> None:
+        """singleActions projects: is_sequential False (derived only from SEQUENTIAL type)."""
+        project = await service.get_project("proj-single")
+        assert project.is_sequential is False
+
+    @pytest.mark.snapshot(
+        tasks=[],
+        projects=[
+            make_project_dict(
+                id="p1",
+                name="Sequential",
+                sequential=True,
+                containsSingletonActions=False,
+            ),
+            make_project_dict(
+                id="p2",
+                name="Parallel",
+                sequential=False,
+                containsSingletonActions=False,
+            ),
+            make_project_dict(
+                id="p3",
+                name="Single actions",
+                sequential=False,
+                containsSingletonActions=True,
+            ),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_get_all_data_enriches_every_project_is_sequential(
+        self, service: OperatorService
+    ) -> None:
+        """get_all_data enriches every project (Phase 56-08)."""
+        result = await service.get_all_data()
+        by_id = {p.id: p for p in result.projects}
+        assert by_id["p1"].is_sequential is True
+        assert by_id["p2"].is_sequential is False
+        assert by_id["p3"].is_sequential is False
+
+    @pytest.mark.snapshot(
+        tasks=[],
+        projects=[
+            make_project_dict(
+                id="p1",
+                name="Sequential",
+                sequential=True,
+                containsSingletonActions=False,
+            ),
+            make_project_dict(
+                id="p2",
+                name="Parallel",
+                sequential=False,
+                containsSingletonActions=False,
+            ),
+            make_project_dict(
+                id="p3",
+                name="Single actions",
+                sequential=False,
+                containsSingletonActions=True,
+            ),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_list_projects_enriches_every_project_in_response(
+        self, service: OperatorService
+    ) -> None:
+        """list_projects enriches every project in `items` (Phase 56-08)."""
+        query = ListProjectsQuery()
+        result = await service.list_projects(query)
+
+        by_id = {p.id: p for p in result.items}
+        assert by_id["p1"].is_sequential is True
+        assert by_id["p2"].is_sequential is False
+        assert by_id["p3"].is_sequential is False
 
 
 # ---------------------------------------------------------------------------

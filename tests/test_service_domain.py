@@ -2768,6 +2768,55 @@ class TestDomainLogicEnrichTaskPresenceFlags:
 
 
 # ---------------------------------------------------------------------------
+# enrich_project_presence_flags (Phase 56-08, G1 — FLAG-04 applied to projects)
+# ---------------------------------------------------------------------------
+
+
+class TestDomainLogicEnrichProjectPresenceFlags:
+    """Truth table for project-side is_sequential enrichment (Phase 56-08).
+
+    - is_sequential = (project.type == ProjectType.SEQUENTIAL)
+
+    Projects do NOT carry depends_on_children (FLAG-05 stays tasks-only —
+    projects are always containers).
+    """
+
+    @staticmethod
+    def _project(project_type: ProjectType) -> Project:
+        return _make_project(type=project_type.value)
+
+    def test_parallel_project_is_not_sequential(self) -> None:
+        domain = _domain()
+        project = self._project(ProjectType.PARALLEL)
+        result = domain.enrich_project_presence_flags(project)
+        assert result.is_sequential is False
+
+    def test_sequential_project_is_sequential(self) -> None:
+        domain = _domain()
+        project = self._project(ProjectType.SEQUENTIAL)
+        result = domain.enrich_project_presence_flags(project)
+        assert result.is_sequential is True
+
+    def test_single_actions_project_is_not_sequential(self) -> None:
+        domain = _domain()
+        project = self._project(ProjectType.SINGLE_ACTIONS)
+        result = domain.enrich_project_presence_flags(project)
+        assert result.is_sequential is False
+
+    def test_returned_project_is_a_copy_not_mutation(self) -> None:
+        """Enrichment returns a new Project; input is not mutated in place."""
+        domain = _domain()
+        project = self._project(ProjectType.SEQUENTIAL)
+        # Starting value is default (False) after construction
+        assert project.is_sequential is False
+        result = domain.enrich_project_presence_flags(project)
+        # Returned copy carries computed value
+        assert result.is_sequential is True
+        # Original input remains unchanged (default)
+        assert project.is_sequential is False
+
+
+# ---------------------------------------------------------------------------
 # assemble_project_type (Phase 56-03, HIER-05)
 # ---------------------------------------------------------------------------
 

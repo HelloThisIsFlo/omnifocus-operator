@@ -14,7 +14,6 @@ from omnifocus_operator.agent_messages.descriptions import (
     INHERITED_DUE_DATE,
     INHERITED_FLAGGED,
     INHERITED_PLANNED_DATE,
-    IS_SEQUENTIAL_DESC,
     ORDER_FIELD,
     TASK_DOC,
     TASK_PROJECT_DESC,
@@ -37,12 +36,15 @@ class Task(ActionableEntity):
     # default from `OFMTaskDefaultSequential` (Phase 56-05).
     type: TaskType = Field(description=TASK_TYPE_DESC)
 
-    # Derived presence flags (FLAG-04 / FLAG-05, task-only).
+    # Derived presence flag (FLAG-05, tasks-only — projects are always
+    # containers, so "real unit of work waiting on children" does not apply).
     # Populated by `DomainLogic.enrich_task_presence_flags` on every read
-    # pipeline (get_all, get_task, list_tasks). Defaults are `False` so the
-    # model stays safe if enrichment is somehow bypassed -- neither flag
-    # triggers agent action on its own. Projects DO NOT carry these fields.
-    is_sequential: bool = Field(default=False, description=IS_SEQUENTIAL_DESC)
+    # pipeline (get_all, get_task, list_tasks). Default is `False` so the
+    # model stays safe if enrichment is somehow bypassed.
+    #
+    # `is_sequential` (FLAG-04) lives on ActionableEntity — Phase 56-08 hoisted
+    # it so both Task and Project expose the derived flag with the same
+    # semantic (next-in-line child is available; siblings blocked).
     depends_on_children: bool = Field(default=False, description=DEPENDS_ON_CHILDREN_DESC)
 
     # Inherited fields (task-only -- projects cannot inherit)

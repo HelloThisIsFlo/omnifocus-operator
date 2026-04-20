@@ -581,9 +581,15 @@ class TestPhase5604DefaultFieldsAndHierarchy:
         expected = {"hasNote", "hasRepetition", "hasAttachments"}
         assert expected <= PROJECT_DEFAULT_FIELDS
 
-    def test_project_default_fields_exclude_tasks_only_flags(self) -> None:
-        """FLAG-04/05 are tasks-only — must NOT appear in PROJECT_DEFAULT_FIELDS."""
-        assert "isSequential" not in PROJECT_DEFAULT_FIELDS
+    def test_project_default_fields_include_is_sequential(self) -> None:
+        """Phase 56-08 (G1): FLAG-04 hoisted — isSequential appears on project default."""
+        assert "isSequential" in PROJECT_DEFAULT_FIELDS
+
+    def test_project_default_fields_exclude_depends_on_children(self) -> None:
+        """FLAG-05 stays tasks-only — projects are always containers.
+
+        Only dependsOnChildren remains tasks-only after Phase 56-08.
+        """
         assert "dependsOnChildren" not in PROJECT_DEFAULT_FIELDS
 
     def test_task_hierarchy_group_includes_type_and_completes_with_children(self) -> None:
@@ -651,17 +657,23 @@ def _build_phase5604_project_dict(
     type_: str,
     has_children: bool,
     completes_with_children: bool,
+    is_sequential: bool = False,
     has_note: bool = False,
     has_repetition: bool = False,
     has_attachments: bool = False,
 ) -> dict[str, Any]:
-    """Minimal project dict (no isSequential / dependsOnChildren — tasks-only)."""
+    """Minimal project dict.
+
+    Phase 56-08 (G1): projects carry `isSequential` (default-stripped when False).
+    `dependsOnChildren` stays tasks-only — projects are always containers.
+    """
     return {
         "id": "p1",
         "name": "Test project",
         "type": type_,
         "hasChildren": has_children,
         "completesWithChildren": completes_with_children,
+        "isSequential": is_sequential,
         "hasNote": has_note,
         "hasRepetition": has_repetition,
         "hasAttachments": has_attachments,
@@ -798,7 +810,12 @@ class TestNoSuppressionInvariant:
 
 
 class TestNoSuppressionInvariantForProjects:
-    """FLAG-06 / HIER-04 for projects (no isSequential / dependsOnChildren — tasks-only)."""
+    """FLAG-06 / HIER-04 for projects.
+
+    Phase 56-08 (G1): `isSequential` now applies to projects too (hoisted to
+    ActionableEntity). `dependsOnChildren` stays tasks-only — projects are
+    always containers.
+    """
 
     def test_default_response_emits_shared_presence_flags(self) -> None:
         """Projects: FLAG-01..03 emit on default response when True."""
@@ -846,12 +863,60 @@ class TestNoSuppressionInvariantForProjects:
         # NEVER_STRIP keeps False alive
         assert projected.get("completesWithChildren") is False
 
-    def test_project_no_tasks_only_flags_present(self) -> None:
-        """Projects never expose isSequential / dependsOnChildren, even with hierarchy."""
+    def test_default_response_strips_is_sequential_when_false(self) -> None:
+        """Phase 56-08: isSequential=False on a project is stripped by default."""
+        project_dict = _build_phase5604_project_dict(
+            type_="parallel",
+            has_children=True,
+            completes_with_children=True,
+            is_sequential=False,
+        )
+        stripped = strip_entity(project_dict)
+        allowed_fields, _ = resolve_fields(
+            include=[],
+            only=[],
+            default_fields=PROJECT_DEFAULT_FIELDS,
+            field_groups=PROJECT_FIELD_GROUPS,
+        )
+        projected = project_entity(stripped, allowed_fields)
+        assert "isSequential" not in projected
+        # dependsOnChildren remains tasks-only — still absent on projects.
+        assert "dependsOnChildren" not in projected
+
+    def test_default_response_emits_is_sequential_when_true(self) -> None:
+        """Phase 56-08: isSequential=True survives stripping and appears on projects."""
         project_dict = _build_phase5604_project_dict(
             type_="sequential",
             has_children=True,
             completes_with_children=True,
+            is_sequential=True,
+        )
+        stripped = strip_entity(project_dict)
+        allowed_fields, _ = resolve_fields(
+            include=[],
+            only=[],
+            default_fields=PROJECT_DEFAULT_FIELDS,
+            field_groups=PROJECT_FIELD_GROUPS,
+        )
+        projected = project_entity(stripped, allowed_fields)
+        assert projected.get("isSequential") is True
+        # FLAG-05 stays tasks-only — projects never surface dependsOnChildren.
+        assert "dependsOnChildren" not in projected
+
+    def test_project_depends_on_children_absent_even_with_hierarchy(self) -> None:
+        """FLAG-05 stays tasks-only: projects never expose dependsOnChildren,
+        even when `hierarchy` include is requested.
+
+        Phase 56-08 changed the story for isSequential (it now appears on
+        projects), but dependsOnChildren remains tasks-only by design —
+        projects are always containers, so the "real unit of work waiting on
+        children" semantic does not apply.
+        """
+        project_dict = _build_phase5604_project_dict(
+            type_="sequential",
+            has_children=True,
+            completes_with_children=True,
+            is_sequential=True,
         )
         stripped = strip_entity(project_dict)
         allowed_fields, _ = resolve_fields(
@@ -861,5 +926,7 @@ class TestNoSuppressionInvariantForProjects:
             field_groups=PROJECT_FIELD_GROUPS,
         )
         projected = project_entity(stripped, allowed_fields)
-        assert "isSequential" not in projected
+        # isSequential now surfaces on projects (Phase 56-08)
+        assert projected.get("isSequential") is True
+        # dependsOnChildren remains tasks-only by design
         assert "dependsOnChildren" not in projected
