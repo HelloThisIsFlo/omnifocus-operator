@@ -94,10 +94,10 @@ def _seed_bridge(initial_state: dict[str, Any]) -> InMemoryBridge:
 def _extract_known_ids(
     initial_state: dict[str, Any],
 ) -> tuple[set[str], set[str], set[str]]:
-    known_project_ids = {p["id"] for p in initial_state.get("projects", []) if "id" in p}
+    known_project_id_set = {p["id"] for p in initial_state.get("projects", []) if "id" in p}
     known_tag_ids = {t["id"] for t in initial_state.get("tags", []) if "id" in t}
     known_task_ids = {t["id"] for t in initial_state.get("tasks", []) if "id" in t}
-    return known_task_ids, known_project_ids, known_tag_ids
+    return known_task_ids, known_project_id_set, known_tag_ids
 
 
 def _remap_ids(params: dict[str, Any], id_map: dict[str, str]) -> dict[str, Any]:
@@ -229,7 +229,7 @@ def _replay_all() -> dict[str, ScenarioResult]:
     initial_state = _load_initial_state()
     scenarios = _load_scenarios()
     bridge = _seed_bridge(initial_state)
-    known_task_ids, known_project_ids, known_tag_ids = _extract_known_ids(initial_state)
+    known_task_ids, known_project_id_set, known_tag_ids = _extract_known_ids(initial_state)
     id_map: dict[str, str] = {}
     results: dict[str, ScenarioResult] = {}
 
@@ -310,7 +310,7 @@ def _replay_all() -> dict[str, ScenarioResult]:
             filtered = filter_to_known_ids(
                 state,
                 known_task_ids,
-                known_project_ids,
+                known_project_id_set,
                 known_tag_ids,
             )
             actual_state = normalize_state(filtered)

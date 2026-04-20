@@ -224,8 +224,8 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
                 items = [t for t in items if t.project.id != inbox_id]
         if query.flagged is not None:
             items = [t for t in items if t.inherited_flagged == query.flagged]
-        if query.project_ids is not None:
-            pid_set = set(query.project_ids)
+        if query.task_id_scope is not None:
+            pid_set = set(query.task_id_scope)
             items = [t for t in items if t.project.id in pid_set]
         if query.tag_ids is not None:
             tid_set = set(query.tag_ids)

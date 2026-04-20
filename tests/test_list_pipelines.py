@@ -1646,10 +1646,10 @@ class TestListProjectsDateFiltering:
         result = await service.list_projects(
             ListProjectsQuery(due={"after": "2026-04-01", "before": "2026-04-14"})
         )
-        project_ids = {p.id for p in result.items}
-        assert "proj-due-soon" in project_ids  # 2026-04-08 in range
-        assert "proj-due-later" not in project_ids  # 2026-04-20 after range
-        assert "proj-no-due" not in project_ids  # NULL excluded
+        result_proj_id_set = {p.id for p in result.items}
+        assert "proj-due-soon" in result_proj_id_set  # 2026-04-08 in range
+        assert "proj-due-later" not in result_proj_id_set  # 2026-04-20 after range
+        assert "proj-no-due" not in result_proj_id_set  # NULL excluded
 
     @pytest.mark.snapshot(
         tasks=[],
@@ -1689,10 +1689,10 @@ class TestListProjectsDateFiltering:
         Lifecycle date filter is additive: remaining projects (NULL completion) pass through.
         """
         result = await service.list_projects(ListProjectsQuery(completed="today"))
-        project_ids = {p.id for p in result.items}
-        assert "proj-completed-today" in project_ids
-        assert "proj-completed-old" not in project_ids  # completed outside today
-        assert "proj-available" in project_ids  # remaining project preserved (additive)
+        result_proj_id_set = {p.id for p in result.items}
+        assert "proj-completed-today" in result_proj_id_set
+        assert "proj-completed-old" not in result_proj_id_set  # completed outside today
+        assert "proj-available" in result_proj_id_set  # remaining project preserved (additive)
 
     @pytest.mark.snapshot(
         tasks=[],
@@ -1727,7 +1727,9 @@ class TestListProjectsDateFiltering:
     ) -> None:
         """completed='all' adds lifecycle availability -- all completed projects appear."""
         result = await service.list_projects(ListProjectsQuery(completed="all"))
-        project_ids = {p.id for p in result.items}
-        assert "proj-completed-old" in project_ids
-        assert "proj-completed-recent" in project_ids
-        assert "proj-available" in project_ids  # default availability still includes available
+        result_proj_id_set = {p.id for p in result.items}
+        assert "proj-completed-old" in result_proj_id_set
+        assert "proj-completed-recent" in result_proj_id_set
+        assert (
+            "proj-available" in result_proj_id_set
+        )  # default availability still includes available

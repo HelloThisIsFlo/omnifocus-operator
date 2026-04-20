@@ -255,14 +255,14 @@ def build_list_tasks_sql(query: ListTasksRepoQuery) -> tuple[SqlQuery, SqlQuery]
         conditions.append("t.effectiveFlagged = ?")
         params.append(1 if query.flagged else 0)
 
-    if query.project_ids is not None and len(query.project_ids) > 0:
-        placeholders = ",".join("?" * len(query.project_ids))
+    if query.task_id_scope is not None and len(query.task_id_scope) > 0:
+        placeholders = ",".join("?" * len(query.task_id_scope))
         conditions.append(
             f"t.containingProjectInfo IN ("
             f"SELECT pi2.pk FROM ProjectInfo pi2 "
             f"WHERE pi2.task IN ({placeholders}))"
         )
-        params.extend(query.project_ids)
+        params.extend(query.task_id_scope)
 
     if query.tag_ids is not None and len(query.tag_ids) > 0:
         placeholders = ",".join("?" * len(query.tag_ids))

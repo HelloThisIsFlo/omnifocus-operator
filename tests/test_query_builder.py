@@ -111,16 +111,16 @@ class TestTasksFlaggedFilter:
 
 
 class TestTasksProjectFilter:
-    def test_project_ids_subquery(self):
-        query = ListTasksRepoQuery(project_ids=["proj-id-1"])
+    def test_task_id_scope_subquery(self):
+        query = ListTasksRepoQuery(task_id_scope=["proj-id-1"])
         data_q, _ = build_list_tasks_sql(query)
         assert "t.containingProjectInfo IN" in data_q.sql
         assert "ProjectInfo pi2" in data_q.sql
         assert "pi2.task IN (?)" in data_q.sql
         assert "proj-id-1" in data_q.params
 
-    def test_multiple_project_ids(self):
-        query = ListTasksRepoQuery(project_ids=["proj-1", "proj-2"])
+    def test_multiple_task_id_scope(self):
+        query = ListTasksRepoQuery(task_id_scope=["proj-1", "proj-2"])
         data_q, _ = build_list_tasks_sql(query)
         assert "pi2.task IN (?,?)" in data_q.sql
         assert "proj-1" in data_q.params
@@ -276,7 +276,7 @@ class TestTasksCombinedFilters:
     def test_multiple_filters_with_limit(self):
         query = ListTasksRepoQuery(
             flagged=True,
-            project_ids=["proj-id-1"],
+            task_id_scope=["proj-id-1"],
             search="urgent",
             limit=5,
         )
@@ -285,9 +285,9 @@ class TestTasksCombinedFilters:
         assert "pi2.task IN (?)" in data_q.sql
         assert "LIKE ? COLLATE NOCASE" in data_q.sql
         assert "LIMIT ?" in data_q.sql
-        # Verify param ordering: flagged, project_ids, search(x2), availability, limit
+        # Verify param ordering: flagged, task_id_scope, search(x2), availability, limit
         assert 1 in data_q.params  # flagged
-        assert "proj-id-1" in data_q.params  # project_ids
+        assert "proj-id-1" in data_q.params  # task_id_scope
         assert "%urgent%" in data_q.params  # search
         assert 5 in data_q.params  # limit
         # Count query should NOT have LIMIT
@@ -310,7 +310,7 @@ class TestTasksCombinedFilters:
         query = ListTasksRepoQuery(
             in_inbox=True,
             flagged=True,
-            project_ids=["proj-id-1"],
+            task_id_scope=["proj-id-1"],
             tag_ids=["tag1"],
             estimated_minutes_max=60,
             search="foo",

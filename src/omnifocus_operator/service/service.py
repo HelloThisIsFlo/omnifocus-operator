@@ -406,12 +406,12 @@ class _ListTasksPipeline(_ReadPipeline):
             )
 
     def _resolve_project(self) -> None:
-        self._project_ids: list[str] | None = None
+        self._project_scope: list[str] | None = None
         if self._project_to_resolve is None:
             return
         resolved = self._resolver.resolve_filter(self._project_to_resolve, self._projects)
         if resolved:
-            self._project_ids = resolved
+            self._project_scope = resolved
         self._warnings.extend(
             self._domain.check_filter_resolution(
                 self._project_to_resolve, resolved, self._projects, "project"
@@ -453,7 +453,7 @@ class _ListTasksPipeline(_ReadPipeline):
         self._repo_query = ListTasksRepoQuery(
             in_inbox=self._in_inbox,
             flagged=unset_to_none(self._query.flagged),
-            project_ids=self._project_ids,
+            task_id_scope=self._project_scope,
             tag_ids=self._tag_ids,
             estimated_minutes_max=unset_to_none(self._query.estimated_minutes_max),
             availability=expanded,

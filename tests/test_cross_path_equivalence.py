@@ -1096,7 +1096,7 @@ class TestListTasksCrossPath:
     @pytest.mark.asyncio
     async def test_list_tasks_by_project(self, cross_repo: Repository) -> None:
         """Project filter returns only tasks in that project."""
-        result = await cross_repo.list_tasks(ListTasksRepoQuery(project_ids=["proj-1"]))
+        result = await cross_repo.list_tasks(ListTasksRepoQuery(task_id_scope=["proj-1"]))
         items = sorted(result.items, key=lambda x: x.id)
         assert len(items) == 2
         assert [t.id for t in items] == ["task-2", "task-4"]

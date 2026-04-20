@@ -39,15 +39,15 @@ def expand_scope(
       projects are not ``list_tasks`` rows).
     - Otherwise returns ``set()`` (unknown ID or disallowed entity type).
     """
-    task_ids = {t.id for t in snapshot.tasks}
-    project_ids = {p.id for p in snapshot.projects}
+    known_task_ids = {t.id for t in snapshot.tasks}
+    known_project_id_set = {p.id for p in snapshot.projects}
 
-    if ref_id in task_ids and EntityType.TASK in accept_entity_types:
+    if ref_id in known_task_ids and EntityType.TASK in accept_entity_types:
         result = {ref_id}
         result |= _collect_task_descendants(ref_id, snapshot.tasks)
         return result
 
-    if ref_id in project_ids and EntityType.PROJECT in accept_entity_types:
+    if ref_id in known_project_id_set and EntityType.PROJECT in accept_entity_types:
         return {t.id for t in snapshot.tasks if t.project.id == ref_id}
 
     return set()

@@ -146,7 +146,7 @@ def normalize_state(state: dict[str, Any]) -> dict[str, Any]:
 def filter_to_known_ids(
     raw: dict[str, Any],
     known_task_ids: set[str],
-    known_project_ids: set[str],
+    known_project_id_set: set[str],
     known_tag_ids: set[str],
 ) -> dict[str, Any]:
     """Filter a full get_all response to only entities with known IDs.
@@ -156,6 +156,6 @@ def filter_to_known_ids(
     """
     return {
         "tasks": [t for t in raw.get("tasks", []) if t["id"] in known_task_ids],
-        "projects": [p for p in raw.get("projects", []) if p["id"] in known_project_ids],
+        "projects": [p for p in raw.get("projects", []) if p["id"] in known_project_id_set],
         "tags": [g for g in raw.get("tags", []) if g["id"] in known_tag_ids],
     }

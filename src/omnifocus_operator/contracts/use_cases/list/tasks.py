@@ -124,7 +124,7 @@ class ListTasksRepoQuery(QueryModel):
 
     in_inbox: bool | None = None
     flagged: bool | None = None
-    project_ids: list[str] | None = None
+    task_id_scope: list[str] | None = None
     tag_ids: list[str] | None = None
     estimated_minutes_max: int | None = None
     availability: list[Availability] = Field(default=[Availability.AVAILABLE, Availability.BLOCKED])

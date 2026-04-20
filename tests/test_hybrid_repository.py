@@ -2407,7 +2407,7 @@ class TestListTasks:
     )
     async def test_list_tasks_project_filter(self, hybrid_repo: HybridRepository) -> None:
         """TASK-03: project filter matches by project ID."""
-        result = await hybrid_repo.list_tasks(ListTasksRepoQuery(project_ids=["proj-work"]))
+        result = await hybrid_repo.list_tasks(ListTasksRepoQuery(task_id_scope=["proj-work"]))
         assert result.total == 1
         assert result.items[0].id == "t-in-proj"
 
@@ -2474,7 +2474,7 @@ class TestListTasks:
     ) -> None:
         """TASK-03: project filter matches multiple projects by ID list."""
         result = await hybrid_repo.list_tasks(
-            ListTasksRepoQuery(project_ids=["proj-work-lower", "proj-work-upper"])
+            ListTasksRepoQuery(task_id_scope=["proj-work-lower", "proj-work-upper"])
         )
         assert result.total == 2
         ids = {t.id for t in result.items}

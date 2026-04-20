@@ -388,7 +388,7 @@ class TestRepoQueryDefaults:
         query = ListTasksRepoQuery()
         assert query.in_inbox is None
         assert query.flagged is None
-        assert query.project_ids is None
+        assert query.task_id_scope is None
         assert query.tag_ids is None
         assert query.estimated_minutes_max is None
         assert query.search is None
@@ -439,7 +439,7 @@ class TestRepoQueryRejection:
 class TestRepoQueryFieldParity:
     """Verify RepoQuery models have correct field relationships to their Query counterparts.
 
-    After Phase 35.2, RepoQuery uses ID-list fields (project_ids, tag_ids, folder_ids)
+    After Phase 35.2, RepoQuery uses ID-list fields (task_id_scope, tag_ids, folder_ids)
     while Query uses name strings (project, tags, folder). Shared fields must still match.
     """
 
@@ -448,7 +448,7 @@ class TestRepoQueryFieldParity:
         query_fields = set(ListTasksQuery.model_fields.keys())
         repo_fields = set(ListTasksRepoQuery.model_fields.keys())
         # Fields that diverged:
-        # - Query has project/tags, RepoQuery has project_ids/tag_ids
+        # - Query has project/tags, RepoQuery has task_id_scope/tag_ids
         # - Query has 7 date fields (due, defer, planned, completed, dropped, added, modified)
         #   RepoQuery has 14 resolved _after/_before datetime fields
         # - Query has include/only (server-layer presentation concern, not passed to repo)
@@ -457,13 +457,13 @@ class TestRepoQueryFieldParity:
             f"{name}_{bound}" for name in _date_fields for bound in ("after", "before")
         }
         query_only = {"project", "tags", "include", "only"} | _date_fields
-        repo_only = {"project_ids", "tag_ids"} | _date_repo_fields
+        repo_only = {"task_id_scope", "tag_ids"} | _date_repo_fields
         assert query_fields - query_only == repo_fields - repo_only
 
     def test_tasks_repo_query_has_id_fields(self) -> None:
         """RepoQuery must have ID-list fields, not name fields."""
         repo_fields = set(ListTasksRepoQuery.model_fields.keys())
-        assert "project_ids" in repo_fields
+        assert "task_id_scope" in repo_fields
         assert "tag_ids" in repo_fields
         assert "project" not in repo_fields
         assert "tags" not in repo_fields

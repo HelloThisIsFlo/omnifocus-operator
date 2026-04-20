@@ -264,7 +264,7 @@ class InMemoryBridge(Bridge):
 
         Uses raw-format string parent IDs. Returns the project ID or None.
         """
-        project_ids = {p["id"] for p in self._projects}
+        known_project_id_set = {p["id"] for p in self._projects}
         task_index = {t["id"]: t for t in self._tasks}
         current_id: str | None = task_id
         visited: set[str] = set()
@@ -272,7 +272,7 @@ class InMemoryBridge(Bridge):
             if current_id in visited:
                 return None
             visited.add(current_id)
-            if current_id in project_ids:
+            if current_id in known_project_id_set:
                 return current_id
             task = task_index.get(current_id)
             if task is None:
