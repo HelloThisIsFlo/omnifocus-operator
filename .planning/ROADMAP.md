@@ -87,7 +87,7 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 57-01-PLAN.md — Unify repo primitive: ship `service/subtree.py::expand_scope`, retire `ListTasksRepoQuery.project_ids`, add `task_id_scope`, rewrite both repos to set-membership on task PKs, rewrite `_resolve_project` through `expand_scope`, migrate all existing `project_ids` tests [UNIFY-01, UNIFY-03, UNIFY-04, UNIFY-05, UNIFY-06, PARENT-03, PARENT-04]
+- [x] 57-01-PLAN.md — Unify repo primitive: ship `service/subtree.py::expand_scope`, retire `ListTasksRepoQuery.project_ids`, add `task_id_scope`, rewrite both repos to set-membership on task PKs, rewrite `_resolve_project` through `expand_scope`, migrate all existing `project_ids` tests [UNIFY-01, UNIFY-03, UNIFY-04, UNIFY-05, UNIFY-06, PARENT-03, PARENT-04]
 - [ ] 57-02-PLAN.md — Parent filter surface: `ListTasksQuery.parent: Patch[str]`, `PARENT_FILTER_DESC`, 3-arg `resolve_inbox(in_inbox, project, parent)`, `_resolve_parent` + `_check_inbox_parent_warning` pipeline steps, `PARENT_RESOLVES_TO_PROJECT_WARNING`, scope-set intersection in `_build_repo_query`, cross-filter equivalence contract test (UNIFY-02 / D-15) [PARENT-01, PARENT-02, PARENT-05, PARENT-06, PARENT-07, PARENT-08, PARENT-09, UNIFY-02, WARN-02, WARN-05]
 - [ ] 57-03-PLAN.md — Pipeline-level warnings: `FILTERED_SUBTREE_WARNING` (verbatim locked text) via `DomainLogic.check_filtered_subtree`; `PARENT_PROJECT_COMBINED_WARNING` via `DomainLogic.check_parent_project_combined`; both emitted from `_ListTasksPipeline.execute` after all resolutions (WARN-04 domain-layer placement) [WARN-01, WARN-03, WARN-04]
 
@@ -98,7 +98,7 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 56. Task Property Surface | v1.4.1 | 9/9 | Complete    | 2026-04-20 |
-| 57. Parent Filter & Filter Unification | v1.4.1 | 0/3 | Not started | — |
+| 57. Parent Filter & Filter Unification | v1.4.1 | 1/3 | In progress | — |
 | 58. Perspective Tools | v1.5 | 0/? | Not started | — |
 | 59. Retry & Recovery | v1.6 | 0/? | Not started | — |
 | 60. Project Write Tools | v1.7 | 0/? | Not started | — |
