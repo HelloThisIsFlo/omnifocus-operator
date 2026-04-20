@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.4.1
 milestone_name: Task Property Surface & Subtree Retrieval
-status: phase_complete
-stopped_at: Phase 56 complete (G1/G2 gap-closure verified on live wire; golden master baseline captured) — ready for `/gsd-plan-phase 57`
-last_updated: "2026-04-20T19:30:00Z"
-last_activity: 2026-04-20 -- Phase 56 closed after gap-closure verification
+status: planning
+stopped_at: Phase 57 context captured — D1+2a full unification locked, ready for /gsd-plan-phase 57
+last_updated: "2026-04-20T19:57:11.050Z"
+last_activity: 2026-04-20 -- Phase 56 closed (UAT complete; live wire verified)
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 9
   completed_plans: 9
-  percent: 50
+  percent: 100
 ---
 
 # Project State
@@ -79,4 +79,4 @@ _(cleared — v1.4 quick tasks archived to milestones/v1.4-ROADMAP.md)_
 ## Session Continuity
 
 Last activity: 2026-04-20 — Phase 56 complete. Gap-closure cycle (plans 56-08 + 56-09) resolved the two UAT gaps (G1: `is_sequential` hoisted to `ActionableEntity`, cross-entity projection on projects; G2: canonical golden-master scaffolding replacing 56-07's wrong-pattern artifacts). Human UAT closed 5/5 passed including live wire verification via MCP (`list_projects` / `list_tasks` on live OmniFocus confirmed no-suppression invariant and sequential-parent semantic end-to-end). Golden master baseline captured against real Bridge; 8 fixtures committed to `09-task-property-surface/`. Capture-script quality-of-life improvements: H-01 retry-loop fix + Ctrl+C cleanup handler + preserved-task note reset.
-Stopped at: Phase 56 complete — ready for `/gsd-plan-phase 57`
+Stopped at: Phase 57 context captured — D1+2a full unification locked, ready for /gsd-plan-phase 57
