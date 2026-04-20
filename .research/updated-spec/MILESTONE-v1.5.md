@@ -1,4 +1,4 @@
-# Milestone v1.7 -- Project Writes
+# Milestone v1.5 -- Project Writes
 
 ## Goal
 

@@ -1,4 +1,4 @@
-# Milestone v1.5.1 -- Smart Perspective Content
+# Milestone v1.6.1 -- Smart Perspective Content
 
 ## Status: Rough Intention
 

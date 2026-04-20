@@ -14,9 +14,9 @@
 - ✅ **v1.3.3 Ordering & Move Fix** — Phases 51-52 (shipped 2026-04-12) — [archive](milestones/v1.3.3-ROADMAP.md)
 - ✅ **v1.4 Response Shaping & Batch Processing** — Phases 53-55 (shipped 2026-04-17) — [archive](milestones/v1.4-ROADMAP.md)
 - 🚧 **v1.4.1 Task Property Surface & Subtree Retrieval** — Phases 56-57
-- 📋 **v1.5 UI & Perspectives** — Planned
-- 📋 **v1.6 Production Hardening** — Planned
-- 📋 **v1.7 Project Writes** — Planned
+- 📋 **v1.5 Project Writes** — see [MILESTONE-v1.5.md](../.research/updated-spec/MILESTONE-v1.5.md)
+- 📋 **v1.6 UI & Perspectives** — see [MILESTONE-v1.6.md](../.research/updated-spec/MILESTONE-v1.6.md)
+- 📋 **v1.7 Production Hardening** — see [MILESTONE-v1.7.md](../.research/updated-spec/MILESTONE-v1.7.md)
 
 ## Phases
 
@@ -24,18 +24,6 @@
 
 - [x] **Phase 56: Task Property Surface** — Preferences, cache reads, presence flags, expanded `hierarchy` group, writable `completesWithChildren` + `type` with preference-driven create-defaults, strip-rules cleanup (completed 2026-04-19)
 - [ ] **Phase 57: Parent Filter & Filter Unification** — `parent` filter on `list_tasks`, shared `collect_subtree` helper, warnings
-
-### 📋 v1.5 UI & Perspectives (Planned)
-
-- [ ] Phase 58: Perspective Tools — `show_perspective`, `get_current_perspective`, `open_task` deep links
-
-### 📋 v1.6 Production Hardening (Planned)
-
-- [ ] Phase 59: Retry & Recovery — retry logic for bridge timeouts, crash recovery with persistent state, serial execution guarantee
-
-### 📋 v1.7 Project Writes (Planned)
-
-- [ ] Phase 60: Project Write Tools — `add_projects`, `edit_projects`
 
 ## Phase Details
 
@@ -92,6 +80,3 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 56. Task Property Surface | v1.4.1 | 9/9 | Complete    | 2026-04-20 |
 | 57. Parent Filter & Filter Unification | v1.4.1 | 0/? | Not started | — |
-| 58. Perspective Tools | v1.5 | 0/? | Not started | — |
-| 59. Retry & Recovery | v1.6 | 0/? | Not started | — |
-| 60. Project Write Tools | v1.7 | 0/? | Not started | — |

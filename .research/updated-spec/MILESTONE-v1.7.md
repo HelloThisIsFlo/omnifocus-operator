@@ -1,4 +1,4 @@
-# Milestone v1.6 -- Production Hardening
+# Milestone v1.7 -- Production Hardening
 
 ## Goal
 

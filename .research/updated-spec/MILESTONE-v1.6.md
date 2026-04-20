@@ -1,4 +1,4 @@
-# Milestone v1.5 -- UI & Perspectives
+# Milestone v1.6 -- UI & Perspectives
 
 ## Goal
 
