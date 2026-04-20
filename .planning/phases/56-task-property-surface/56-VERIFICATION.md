@@ -1,8 +1,9 @@
 ---
 phase: 56-task-property-surface
 verified: 2026-04-20T12:00:00Z
-status: human_needed
+status: verified
 score: 9/9 must-haves verified
+human_verification_closed: 2026-04-20T19:30:00Z
 overrides_applied: 0
 re_verification:
   previous_status: human_needed
@@ -12,6 +13,22 @@ re_verification:
     - "G2 (scaffolding): 56-07 wrong-pattern artifacts deleted; canonical 09-task-property-surface/ subfolder + capture script scenarios in place"
   gaps_remaining: []
   regressions: []
+human_verification_results:
+  - item: 1
+    result: passed
+    notes: "Live wire verification via Claude Code MCP client; FLAG-07 phrases verbatim in list_tasks, list_projects, get_project descriptions; cross-entity isSequential surfaces on projects"
+  - item: 2
+    result: passed
+    notes: "Live add_tasks/get_task round-trip against real OmniFocus confirmed preference-resolved values (completesWithChildren=true, type=parallel) match user's OF behavior"
+  - item: 3
+    result: passed
+    notes: "Fresh sequential parent + 2 children created in GM-Phase56-ParallelProj; list_tasks emitted all 5 fields together; sequential semantic observed (child-1 available, child-2 blocked)"
+  - item: 4
+    result: passed
+    notes: "add_tasks with type='singleActions' returned generic Pydantic StrEnum error without custom messaging"
+  - item: 5
+    result: passed
+    notes: "Golden master capture against real Bridge (commit 19906902); 8 fixtures in 09-task-property-surface/; partial re-captures produced identical output confirming idempotency; capture script improvements (H-01 retry fix + Ctrl+C cleanup + preserved-task note reset) committed as 8f3ad11d + b1722f9d"
 human_verification:
   - test: "Open Claude Desktop or Claude Code and inspect the list_tasks tool description"
     expected: "The tool description mentions 'isSequential: only the next-in-line child is available' and 'dependsOnChildren: real task waiting on children' with behavioral meaning. Also confirm isSequential now appears in list_projects descriptions."

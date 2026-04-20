@@ -56,7 +56,7 @@
   6. Derived read-only flags (`hasNote`, `hasRepetition`, `hasAttachments`, `hasChildren`, `dependsOnChildren`, `isSequential`) are rejected by Pydantic `extra="forbid"` on `add_tasks`/`edit_tasks` (generic schema error, no custom messaging); `availability` removed from `NEVER_STRIP` as pre-existing defensive entry with no actual purpose
   7. Round-trip test on both `HybridRepository` and `BridgeOnlyRepository`: creating a task with `completesWithChildren` / `type` set, reading back via `get_task` and `list_tasks`, editing to flip each value, and verifying the expected cache-backed values — plus create-default paths (omit both fields, read back) verified end-to-end against a captured golden master
 
-**Plans:** 7/7 plans complete
+**Plans:** 9/9 plans complete
 
 Plans:
 - [x] 56-01-PLAN.md — Preferences extension (bridge `handleGetSettings` + `OmniFocusPreferences` get_complete_with_children_default / get_task_type_default with lazy-load-once caching + fallback) [PREFS-01..05]
@@ -90,7 +90,7 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 56. Task Property Surface | v1.4.1 | 7/7 | Complete    | 2026-04-19 |
+| 56. Task Property Surface | v1.4.1 | 9/9 | Complete    | 2026-04-20 |
 | 57. Parent Filter & Filter Unification | v1.4.1 | 0/? | Not started | — |
 | 58. Perspective Tools | v1.5 | 0/? | Not started | — |
 | 59. Retry & Recovery | v1.6 | 0/? | Not started | — |

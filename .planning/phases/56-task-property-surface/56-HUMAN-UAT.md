@@ -1,21 +1,21 @@
 ---
-status: partial
+status: complete
 phase: 56-task-property-surface
 source: [56-VERIFICATION.md]
 started: 2026-04-19T22:30:00Z
-updated: 2026-04-20T16:15:00Z
+updated: 2026-04-20T19:30:00Z
 ---
 
 ## Current Test
 
-[G1 and G2 structurally closed via 56-08 and 56-09; GOLD-01 live capture half remains pending human UAT]
+[testing complete]
 
 ## Tests
 
 ### 1. FLAG-07 behavioral meaning in live MCP client
 expected: The `list_tasks` tool description mentions `isSequential: only the next-in-line child is available` and `dependsOnChildren: real task waiting on children` with behavioral meaning — not just field presence. After 56-08: the `list_projects` and `get_project` tool descriptions should also now surface `isSequential` on projects (updated scope — FLAG-04 applies cross-entity).
 result: passed
-notes: Verified by agent (Claude Code) against the live dev MCP server. Both FLAG-07 phrases present verbatim in the list_tasks tool description reaching the model: "isSequential: only the next-in-line child is available. Agents reasoning about actionability must NOT over-count -- a sequential parent's children are ordered." and "dependsOnChildren: this task is a real unit of work waiting on children, not a container. Treat as a discrete task, not a collapsible grouping." Also confirmed: hierarchy include group lists `parent, hasChildren, type, completesWithChildren` (HIER-01); default fields include all five FLAG-01..05 presence flags. **Post-56-08 re-check pending:** confirm `list_projects` description now surfaces `isSequential` and `IS_SEQUENTIAL_DESC` no longer prefixes "Tasks-only."
+notes: Verified by agent (Claude Code) against the live dev MCP server. Both FLAG-07 phrases present verbatim in the list_tasks tool description reaching the model: "isSequential: only the next-in-line child is available. Agents reasoning about actionability must NOT over-count -- a sequential parent's children are ordered." and "dependsOnChildren: this task is a real unit of work waiting on children, not a container. Treat as a discrete task, not a collapsible grouping." Also confirmed: hierarchy include group lists `parent, hasChildren, type, completesWithChildren` (HIER-01); default fields include all five FLAG-01..05 presence flags. **Post-56-08 re-check (2026-04-20):** live `list_projects` tool schema confirms `isSequential` is in `Default fields (always returned)` and surfaces the behavioral-flag section "isSequential: Only the next-in-line child is available; later children are blocked until earlier ones complete." — `IS_SEQUENTIAL_DESC` no longer prefixes "Tasks-only." `get_project` schema similarly carries `isSequential` in its fields list. Live wire call `list_projects(search: "GM", include: ["*"])` returned 6 projects — `GM-Phase56-SequentialProj` alone carried `isSequential: true` and `type: "sequential"` together (no-suppression invariant on projects, FLAG-06/HIER-04 cross-entity); 5 parallel projects correctly stripped `isSequential`; all three `type` enum values observed (`parallel`, `sequential`, `singleActions`); `completesWithChildren` emitted on all projects (NEVER_STRIP). Task-side no-suppression verified on a freshly-created sequential parent with 2 children in `GM-Phase56-ParallelProj` — parent emitted all five fields together (`isSequential: true`, `dependsOnChildren: true`, `type: "sequential"`, `hasChildren: true`, `completesWithChildren: false`); semantic correctness confirmed via child availability (Child-1 `available`, Child-2 `blocked` — sequential semantic on the wire). Test subtree consolidated under a single inbox task (`🧪 GM-LiveCheck-Cleanup (delete me)`) for manual deletion.
 
 ### 2. Create-default resolution writes explicit preference value
 expected: Adding a task via `add_tasks` while omitting `completesWithChildren` and `type`, then reading it back via `get_task`, returns values matching the user's actual OmniFocus preferences (`OFMCompleteWhenLastItemComplete` / `OFMTaskDefaultSequential`) — NOT OmniFocus's implicit defaults.
@@ -34,17 +34,17 @@ notes: Tested live via Claude Code CLI. add_tasks with type='singleActions' retu
 
 ### 5. Capture the golden master baseline (GOLD-01 live capture)
 expected: `tests/golden_master/snapshots/09-task-property-surface/*.json` committed with normalized raw-bridge fixtures for the 8 Phase 56 scenarios declared in `uat/capture_golden_master.py`. Capture runs against the real Bridge (live OmniFocus) via `uv run python uat/capture_golden_master.py`. Procedure documented in `tests/golden_master/snapshots/README.md`. **Human-only per SAFE-01/02 + CLAUDE.md — agents must NOT run this script.**
-result: pending
-notes: Scaffolding (56-09) complete — 8 scenarios declared in capture script, `09-task-property-surface/` subfolder exists, `test_bridge_contract.py` discovers it via sorted-iterdir, `GOLDEN_MASTER_CAPTURE` env var fully purged, old self-referential test file deleted. Capture half is the human step that closes this item. See 56-09-SUMMARY.md "Human UAT Follow-up" for pre-seed entity requirements (`GM-Phase56-ParallelProj`, `GM-Phase56-SequentialProj`, `GM-Phase56-SingleActionsProj`, `GM-Phase56-Attached`) and exact capture commands.
+result: passed
+notes: Human-run capture against live OmniFocus completed 2026-04-20. 8 JSON fixtures committed to `tests/golden_master/snapshots/09-task-property-surface/` in commit `19906902` (the capture also regenerated all pre-existing snapshot folders because the Phase 56 field surface — `isSequential`, `completesWithChildren`, `hasAttachments`, `hasNote` — now projects across every scenario). `test_bridge_contract.py` green at 96 passed. Idempotency verified — partial re-captures (first 7 scenarios) produced identical JSON, so the commit is authoritative.
 
-**Known latent bug to fix before capture:** `_check_leftover_tasks` retry loop at `uat/capture_golden_master.py:2590` only filters `known_project_ids`, not `known_task_ids` — the preserved `GM-P56-Attached-Source` will trap the run in an infinite "Still found 1 GM- task" loop. Add `and t["id"] not in known_task_ids` to the retry comprehension (mirrors the initial check at L2566-2572). See `56-REVIEW-gaps.md` H-01.
+**Capture-script fixes landed during this UAT cycle (H-01 + two follow-ups):** (a) `_check_leftover_tasks` retry loop now excludes `known_task_ids` in addition to `known_project_ids`, mirroring the initial check — commit `8f3ad11d`. (b) Ctrl+C mid-capture now consolidates created tasks under `🧪 GM-Cleanup (capture ...)` via `except (KeyboardInterrupt, asyncio.CancelledError)` with `current_task().uncancel()` — commit `b1722f9d`. (c) Phase 5 renamed from `_phase_5_consolidation` to `_phase_5_cleanup` and now resets `note=""` on the preserved `GM-Phase56-Attached` task so scenario 04's touch doesn't drift the preserved task's baseline across runs — same commit.
 
 ## Summary
 
 total: 5
-passed: 4
+passed: 5
 issues: 0
-pending: 1
+pending: 0
 skipped: 0
 blocked: 0
 

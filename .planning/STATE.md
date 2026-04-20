@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.4.1
 milestone_name: Task Property Surface & Subtree Retrieval
-status: executing
-stopped_at: Roadmap created (2-phase shape) — ready for `/gsd-plan-phase 56`
-last_updated: "2026-04-20T14:24:56.177Z"
-last_activity: 2026-04-20 -- Phase 56 execution started
+status: phase_complete
+stopped_at: Phase 56 complete (G1/G2 gap-closure verified on live wire; golden master baseline captured) — ready for `/gsd-plan-phase 57`
+last_updated: "2026-04-20T19:30:00Z"
+last_activity: 2026-04-20 -- Phase 56 closed after gap-closure verification
 progress:
-  total_phases: 1
-  completed_phases: 0
+  total_phases: 2
+  completed_phases: 1
   total_plans: 9
-  completed_plans: 7
-  percent: 78
+  completed_plans: 9
+  percent: 50
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-19)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 56 — task-property-surface
+**Current focus:** Phase 57 — parent filter & filter unification
 
 ## Current Position
 
-Phase: 56 (task-property-surface) — EXECUTING
-Plan: 1 of 9
-Status: Executing Phase 56
-Last activity: 2026-04-20 -- Phase 56 execution started
+Phase: 57 (parent-filter-and-filter-unification)
+Plan: Not started
+Status: Ready to plan Phase 57
+Last activity: 2026-04-20 -- Phase 56 closed (UAT complete; live wire verified)
 
-Progress: [░░░░░░░░░░] 0% (v1.4.1 — 0/2 phases complete)
+Progress: [█████░░░░░] 50% (v1.4.1 — 1/2 phases complete)
 
 ## Performance Metrics
 
@@ -63,7 +63,6 @@ Carried forward from v1.4:
 11. Golden master re-capture required after Phase 42 mapper rewrites (human-only per GOLD-01)
 12. Submit OmniFocus Operator to MCP registries — Smithery, mcp.so, Anthropic server list (tooling) — gated on landing page refresh
 13. Track upstream Claude Code CLI fix for MCP progress-notification stdio teardown (issues #47378/#47765) — root-caused 2026-04-17; progress emission disabled via `PROGRESS_NOTIFICATIONS_ENABLED=False` pending upstream fix
-14. Remove `availability` from `NEVER_STRIP` — **scheduled for Phase 56 (STRIP-11)**
 
 ### Roadmap Evolution
 
@@ -79,5 +78,5 @@ _(cleared — v1.4 quick tasks archived to milestones/v1.4-ROADMAP.md)_
 
 ## Session Continuity
 
-Last activity: 2026-04-19 — v1.4.1 roadmap revised to 2-phase shape (Phase 56 merges the prior 56+57+58 linear-dependency chain into a single Task Property Surface phase; Phase 57 covers parent filter + filter unification; 51/51 REQs mapped)
-Stopped at: Roadmap created (2-phase shape) — ready for `/gsd-plan-phase 56`
+Last activity: 2026-04-20 — Phase 56 complete. Gap-closure cycle (plans 56-08 + 56-09) resolved the two UAT gaps (G1: `is_sequential` hoisted to `ActionableEntity`, cross-entity projection on projects; G2: canonical golden-master scaffolding replacing 56-07's wrong-pattern artifacts). Human UAT closed 5/5 passed including live wire verification via MCP (`list_projects` / `list_tasks` on live OmniFocus confirmed no-suppression invariant and sequential-parent semantic end-to-end). Golden master baseline captured against real Bridge; 8 fixtures committed to `09-task-property-surface/`. Capture-script quality-of-life improvements: H-01 retry-loop fix + Ctrl+C cleanup handler + preserved-task note reset.
+Stopped at: Phase 56 complete — ready for `/gsd-plan-phase 57`
