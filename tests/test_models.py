@@ -781,12 +781,18 @@ class TestTaskDerivedPresenceFlagFields:
         assert task.is_sequential is False
         assert task.depends_on_children is False
 
-    def test_project_does_not_define_is_sequential_field(self) -> None:
-        """FLAG-04 tasks-only guard: projects MUST NOT carry is_sequential."""
-        assert "is_sequential" not in Project.model_fields
+    def test_project_defines_is_sequential_field_with_false_default(self) -> None:
+        """Phase 56-08 (G1): FLAG-04 hoisted to ActionableEntity — projects inherit is_sequential."""
+        assert "is_sequential" in Project.model_fields
+        assert Project.model_fields["is_sequential"].default is False
 
     def test_project_does_not_define_depends_on_children_field(self) -> None:
-        """FLAG-05 tasks-only guard: projects MUST NOT carry depends_on_children."""
+        """FLAG-05 tasks-only guard: projects MUST NOT carry depends_on_children.
+
+        Projects are always containers; the "real unit of work waiting on
+        children" semantic does not apply. `dependsOnChildren` stays tasks-only
+        by explicit design (see Phase 56-08).
+        """
         assert "depends_on_children" not in Project.model_fields
 
 

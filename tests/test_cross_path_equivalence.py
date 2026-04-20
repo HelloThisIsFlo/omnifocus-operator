@@ -1288,6 +1288,77 @@ class TestPropertySurfaceCrossPath:
             assert isinstance(task.has_note, bool)
             assert isinstance(task.has_repetition, bool)
 
+    # -- Phase 56-08 (G1): project-side is_sequential via service enrichment --
+
+    @pytest.mark.asyncio
+    async def test_project_is_sequential_enriched_cross_path(self, cross_repo: Repository) -> None:
+        """Phase 56-08: service enrichment populates is_sequential on projects
+        equivalently for both HybridRepository and BridgeOnlyRepository.
+
+        Neutral test data seeds:
+          - proj-1: sequential + containsSingletonActions -> type singleActions -> is_sequential False
+          - proj-2: sequential only                        -> type sequential    -> is_sequential True
+          - proj-3: neither                                -> type parallel      -> is_sequential False
+
+        The derived flag is computed from final assembled ProjectType (after
+        HIER-05 precedence), not from the raw sequential bit — singleActions
+        beats sequential, so proj-1 is NOT is_sequential.
+        """
+        from omnifocus_operator.service import OperatorService  # noqa: PLC0415
+        from omnifocus_operator.service.preferences import OmniFocusPreferences  # noqa: PLC0415
+
+        # Build a service over the repo; preferences unused by list_projects.
+        service = OperatorService(
+            repository=cross_repo,
+            preferences=OmniFocusPreferences(InMemoryBridge()),
+        )
+
+        all_data = await service.get_all_data()
+        by_id = {p.id: p for p in all_data.projects}
+        assert by_id["proj-1"].is_sequential is False  # type singleActions
+        assert by_id["proj-2"].is_sequential is True  # type sequential
+        assert by_id["proj-3"].is_sequential is False  # type parallel
+
+    @pytest.mark.asyncio
+    async def test_list_projects_enriches_is_sequential_cross_path(
+        self, cross_repo: Repository
+    ) -> None:
+        """Phase 56-08: list_projects pipeline applies project enrichment across repos."""
+        from omnifocus_operator.contracts.use_cases.list.projects import (  # noqa: PLC0415
+            ListProjectsQuery,
+        )
+        from omnifocus_operator.service import OperatorService  # noqa: PLC0415
+        from omnifocus_operator.service.preferences import OmniFocusPreferences  # noqa: PLC0415
+
+        service = OperatorService(
+            repository=cross_repo,
+            preferences=OmniFocusPreferences(InMemoryBridge()),
+        )
+        result = await service.list_projects(ListProjectsQuery())
+        by_id = {p.id: p for p in result.items}
+        assert by_id["proj-1"].is_sequential is False
+        assert by_id["proj-2"].is_sequential is True
+        assert by_id["proj-3"].is_sequential is False
+
+    @pytest.mark.asyncio
+    async def test_get_project_enriches_is_sequential_cross_path(
+        self, cross_repo: Repository
+    ) -> None:
+        """Phase 56-08: get_project applies project enrichment across repos."""
+        from omnifocus_operator.service import OperatorService  # noqa: PLC0415
+        from omnifocus_operator.service.preferences import OmniFocusPreferences  # noqa: PLC0415
+
+        service = OperatorService(
+            repository=cross_repo,
+            preferences=OmniFocusPreferences(InMemoryBridge()),
+        )
+        proj_seq = await service.get_project("proj-2")
+        assert proj_seq.is_sequential is True
+        proj_par = await service.get_project("proj-3")
+        assert proj_par.is_sequential is False
+        proj_single = await service.get_project("proj-1")
+        assert proj_single.is_sequential is False
+
 
 # ===========================================================================
 # Tag cross-path equivalence tests
