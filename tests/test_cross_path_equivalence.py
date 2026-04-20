@@ -1095,8 +1095,14 @@ class TestListTasksCrossPath:
 
     @pytest.mark.asyncio
     async def test_list_tasks_by_project(self, cross_repo: Repository) -> None:
-        """Project filter returns only tasks in that project."""
-        result = await cross_repo.list_tasks(ListTasksRepoQuery(task_id_scope=["proj-1"]))
+        """task_id_scope filter returns only the tasks passed in (post-Phase 57).
+
+        Semantic shift: task_id_scope holds TASK PKs, not project PKs. The
+        service's expand_scope (unit-tested separately) is responsible for
+        producing this set from the user-facing ``project`` filter.
+        Agent-facing behavior via ``OperatorService.list_tasks`` is unchanged.
+        """
+        result = await cross_repo.list_tasks(ListTasksRepoQuery(task_id_scope=["task-2", "task-4"]))
         items = sorted(result.items, key=lambda x: x.id)
         assert len(items) == 2
         assert [t.id for t in items] == ["task-2", "task-4"]

@@ -225,8 +225,12 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
         if query.flagged is not None:
             items = [t for t in items if t.inherited_flagged == query.flagged]
         if query.task_id_scope is not None:
-            pid_set = set(query.task_id_scope)
-            items = [t for t in items if t.project.id in pid_set]
+            # Unified scope filter (UNIFY-01/D-05): task_id_scope is the fully
+            # resolved set of task PKs. Trivial set membership on task.id —
+            # service computed the expansion (project-members, subtree walk,
+            # intersection) before handing off.
+            scope_set = set(query.task_id_scope)
+            items = [t for t in items if t.id in scope_set]
         if query.tag_ids is not None:
             tid_set = set(query.tag_ids)
             items = [t for t in items if any(tag.id in tid_set for tag in t.tags)]

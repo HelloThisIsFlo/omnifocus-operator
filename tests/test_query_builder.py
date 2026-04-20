@@ -110,21 +110,37 @@ class TestTasksFlaggedFilter:
         assert 0 in data_q.params
 
 
-class TestTasksProjectFilter:
-    def test_task_id_scope_subquery(self):
-        query = ListTasksRepoQuery(task_id_scope=["proj-id-1"])
+class TestTasksScopeFilter:
+    """Post-Phase 57: task_id_scope is the unified scope primitive.
+
+    The list passed is the set of TASK PKs to keep — service layer
+    (expand_scope) handles project-to-tasks expansion before this point.
+    The old ``ProjectInfo pi2`` scope subquery is gone; this is a direct
+    indexed PK lookup (``t.persistentIdentifier IN (?, ...)``).
+
+    Note: an unrelated ``ProjectInfo pi2`` subquery persists in the outline
+    CTE for root-task detection — ``NOT EXISTS (SELECT 1 FROM ProjectInfo pi2 ...)``.
+    These tests assert on the scope-filter WHERE clause shape, not on the
+    absence of the literal string.
+    """
+
+    def test_task_id_scope_direct_in_clause(self):
+        query = ListTasksRepoQuery(task_id_scope=["task-id-1"])
         data_q, _ = build_list_tasks_sql(query)
-        assert "t.containingProjectInfo IN" in data_q.sql
-        assert "ProjectInfo pi2" in data_q.sql
-        assert "pi2.task IN (?)" in data_q.sql
-        assert "proj-id-1" in data_q.params
+        assert "t.persistentIdentifier IN (?)" in data_q.sql
+        assert "task-id-1" in data_q.params
+        # The retired scope-filter subquery is gone.
+        assert "pi2.task IN" not in data_q.sql
+        assert "t.containingProjectInfo IN" not in data_q.sql
 
     def test_multiple_task_id_scope(self):
-        query = ListTasksRepoQuery(task_id_scope=["proj-1", "proj-2"])
+        query = ListTasksRepoQuery(task_id_scope=["task-1", "task-2"])
         data_q, _ = build_list_tasks_sql(query)
-        assert "pi2.task IN (?,?)" in data_q.sql
-        assert "proj-1" in data_q.params
-        assert "proj-2" in data_q.params
+        assert "t.persistentIdentifier IN (?,?)" in data_q.sql
+        assert "task-1" in data_q.params
+        assert "task-2" in data_q.params
+        assert "pi2.task IN" not in data_q.sql
+        assert "t.containingProjectInfo IN" not in data_q.sql
 
 
 class TestTasksTagsFilter:
@@ -276,18 +292,18 @@ class TestTasksCombinedFilters:
     def test_multiple_filters_with_limit(self):
         query = ListTasksRepoQuery(
             flagged=True,
-            task_id_scope=["proj-id-1"],
+            task_id_scope=["task-id-1"],
             search="urgent",
             limit=5,
         )
         data_q, count_q = build_list_tasks_sql(query)
         assert "t.effectiveFlagged = ?" in data_q.sql
-        assert "pi2.task IN (?)" in data_q.sql
+        assert "t.persistentIdentifier IN (?)" in data_q.sql
         assert "LIKE ? COLLATE NOCASE" in data_q.sql
         assert "LIMIT ?" in data_q.sql
         # Verify param ordering: flagged, task_id_scope, search(x2), availability, limit
         assert 1 in data_q.params  # flagged
-        assert "proj-id-1" in data_q.params  # task_id_scope
+        assert "task-id-1" in data_q.params  # task_id_scope
         assert "%urgent%" in data_q.params  # search
         assert 5 in data_q.params  # limit
         # Count query should NOT have LIMIT

@@ -256,12 +256,11 @@ def build_list_tasks_sql(query: ListTasksRepoQuery) -> tuple[SqlQuery, SqlQuery]
         params.append(1 if query.flagged else 0)
 
     if query.task_id_scope is not None and len(query.task_id_scope) > 0:
+        # Unified scope filter (UNIFY-01/D-05): task_id_scope is the fully
+        # resolved set of task PKs the service computed via expand_scope.
+        # No subquery to ProjectInfo needed — direct indexed PK lookup.
         placeholders = ",".join("?" * len(query.task_id_scope))
-        conditions.append(
-            f"t.containingProjectInfo IN ("
-            f"SELECT pi2.pk FROM ProjectInfo pi2 "
-            f"WHERE pi2.task IN ({placeholders}))"
-        )
+        conditions.append(f"t.persistentIdentifier IN ({placeholders})")
         params.extend(query.task_id_scope)
 
     if query.tag_ids is not None and len(query.tag_ids) > 0:

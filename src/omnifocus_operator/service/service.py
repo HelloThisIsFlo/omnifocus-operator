@@ -11,7 +11,6 @@ delegate to repository. All heavy lifting lives in the extracted modules:
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, NoReturn
@@ -54,12 +53,18 @@ from omnifocus_operator.contracts.use_cases.list.tags import (
 from omnifocus_operator.contracts.use_cases.list.tasks import (
     ListTasksRepoQuery,
 )
-from omnifocus_operator.models.enums import Availability, FolderAvailability, TagAvailability
+from omnifocus_operator.models.enums import (
+    Availability,
+    EntityType,
+    FolderAvailability,
+    TagAvailability,
+)
 from omnifocus_operator.models.repetition_rule import Frequency
 from omnifocus_operator.service.convert import end_condition_from_spec, frequency_from_spec
 from omnifocus_operator.service.domain import DomainLogic, normalize_date_input
 from omnifocus_operator.service.payload import PayloadBuilder
 from omnifocus_operator.service.resolve import Resolver
+from omnifocus_operator.service.subtree import expand_scope
 from omnifocus_operator.service.validate import (
     validate_task_name,
     validate_task_name_if_set,
@@ -376,16 +381,15 @@ class _ListTasksPipeline(_ReadPipeline):
         """Run the full list-tasks pipeline."""
         self._query = query
 
-        tags_result, projects_result = await asyncio.gather(
-            self._repository.list_tags(
-                ListTagsRepoQuery(availability=list(TagAvailability), limit=None)
-            ),
-            self._repository.list_projects(
-                ListProjectsRepoQuery(availability=list(Availability), limit=None)
-            ),
-        )
-        self._tags = tags_result.items
-        self._projects = projects_result.items
+        # Single-snapshot entry point (D-01/UNIFY-01, RESEARCH Pitfall 3).
+        # expand_scope needs tasks + projects together, so we pull the full
+        # snapshot once instead of gathering tags + projects individually.
+        # Matches the compute_true_inheritance convention; the repo cache
+        # makes this free.
+        self._snapshot = await self._repository.get_all()
+        self._tags = list(self._snapshot.tags)
+        self._projects = list(self._snapshot.projects)
+        self._tasks = list(self._snapshot.tasks)
 
         self._in_inbox, self._project_to_resolve = self._resolver.resolve_inbox(
             unset_to_none(self._query.in_inbox), unset_to_none(self._query.project)
@@ -406,17 +410,25 @@ class _ListTasksPipeline(_ReadPipeline):
             )
 
     def _resolve_project(self) -> None:
-        self._project_scope: list[str] | None = None
+        # Scope-set shape (UNIFY-01/D-05): expand each resolved project ID
+        # into its task-ID scope via the shared expand_scope helper, then
+        # union. self._project_scope is a set[str] of TASK IDs (not project
+        # IDs). _build_repo_query sorts + assigns to task_id_scope for
+        # deterministic SQL placeholder order (RESEARCH Pitfall 5).
+        self._project_scope: set[str] | None = None
         if self._project_to_resolve is None:
             return
         resolved = self._resolver.resolve_filter(self._project_to_resolve, self._projects)
-        if resolved:
-            self._project_scope = resolved
         self._warnings.extend(
             self._domain.check_filter_resolution(
                 self._project_to_resolve, resolved, self._projects, "project"
             )
         )
+        if resolved:
+            scope: set[str] = set()
+            for pid in resolved:
+                scope |= expand_scope(pid, self._snapshot, frozenset({EntityType.PROJECT}))
+            self._project_scope = scope
 
     def _resolve_tags(self) -> None:
         self._tag_ids: list[str] | None = None
@@ -450,10 +462,16 @@ class _ListTasksPipeline(_ReadPipeline):
             date_kwargs[f"{name}_after"] = bounds.after
             date_kwargs[f"{name}_before"] = bounds.before
 
+        # Deterministic placeholder order (RESEARCH Pitfall 5). Plan 02 will
+        # extend this with parent scope + intersection logic.
+        task_id_scope: list[str] | None = None
+        if self._project_scope is not None:
+            task_id_scope = sorted(self._project_scope)
+
         self._repo_query = ListTasksRepoQuery(
             in_inbox=self._in_inbox,
             flagged=unset_to_none(self._query.flagged),
-            task_id_scope=self._project_scope,
+            task_id_scope=task_id_scope,
             tag_ids=self._tag_ids,
             estimated_minutes_max=unset_to_none(self._query.estimated_minutes_max),
             availability=expanded,
