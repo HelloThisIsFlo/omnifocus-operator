@@ -23,6 +23,7 @@ from omnifocus_operator.agent_messages.descriptions import (
     MODIFIED_FILTER_DESC,
     OFFSET_DESC,
     ONLY_FIELD_DESC,
+    PARENT_FILTER_DESC,
     PLANNED_FILTER_DESC,
     PROJECT_FILTER_DESC,
     SEARCH_FIELD_NAME_NOTES,
@@ -53,6 +54,7 @@ _PATCH_FIELDS = [
     "in_inbox",
     "flagged",
     "project",
+    "parent",
     "tags",
     "estimated_minutes_max",
     "search",
@@ -72,6 +74,7 @@ class ListTasksQuery(QueryModel):
     in_inbox: Patch[bool] = Field(default=UNSET, description=IN_INBOX_FILTER_DESC)
     flagged: Patch[bool] = Field(default=UNSET, description=FLAGGED_FILTER_DESC)
     project: Patch[str] = Field(default=UNSET, description=PROJECT_FILTER_DESC)
+    parent: Patch[str] = Field(default=UNSET, description=PARENT_FILTER_DESC)
     tags: Patch[list[str]] = Field(default=UNSET, description=TAGS_FILTER_DESC)
     estimated_minutes_max: Patch[int] = Field(default=UNSET, description=ESTIMATED_MINUTES_MAX_DESC)
     availability: list[AvailabilityFilter] = Field(default=[AvailabilityFilter.REMAINING])

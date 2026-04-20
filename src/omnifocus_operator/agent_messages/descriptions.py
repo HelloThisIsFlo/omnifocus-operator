@@ -443,6 +443,9 @@ REVIEW_DUE_WITHIN_DESC = f'Review due within this window. "now" or {_DURATION_FO
 PROJECT_FILTER_DESC = """\
 Project ID or name. Names use case-insensitive substring matching -- if multiple projects match, tasks from all are included."""
 
+PARENT_FILTER_DESC = """\
+Task or project ID or name. Names use case-insensitive substring matching -- returns the resolved entity's full descendant subtree (tasks at any depth). If multiple entities match, their subtrees are unioned."""
+
 TAGS_FILTER_DESC = "Tag names or IDs (OR logic). Names use case-insensitive substring matching."
 
 FOLDER_FILTER_DESC = """\

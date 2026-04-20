@@ -456,7 +456,7 @@ class TestRepoQueryFieldParity:
         _date_repo_fields = {
             f"{name}_{bound}" for name in _date_fields for bound in ("after", "before")
         }
-        query_only = {"project", "tags", "include", "only"} | _date_fields
+        query_only = {"project", "parent", "tags", "include", "only"} | _date_fields
         repo_only = {"task_id_scope", "tag_ids"} | _date_repo_fields
         assert query_fields - query_only == repo_fields - repo_only
 
@@ -824,3 +824,53 @@ class TestEmptyAvailabilityAcceptance:
             ValidationError, match=re.escape(AVAILABILITY_EMPTY.format(field="availability"))
         ):
             ListFoldersQuery(availability=[])
+
+
+# ---------------------------------------------------------------------------
+# Phase 57-02: parent filter on ListTasksQuery (PARENT-01 + PARENT-09 layers)
+# ---------------------------------------------------------------------------
+
+
+class TestListTasksParentField:
+    """Verify ``parent: Patch[str]`` field shape + four-layer validation (PARENT-09)."""
+
+    def test_parent_accepts_string_value(self) -> None:
+        """PARENT-01: plain string name is accepted."""
+        query = ListTasksQuery(parent="Work")
+        assert query.parent == "Work"
+
+    def test_parent_accepts_id_value(self) -> None:
+        """PARENT-01: ID-shaped string is accepted (resolver will ID-match later)."""
+        query = ListTasksQuery(parent="abc-123")
+        assert query.parent == "abc-123"
+
+    def test_parent_unset_by_default(self) -> None:
+        """PARENT-01: omitting the field leaves parent as UNSET (not None, not '')."""
+        query = ListTasksQuery()
+        assert query.parent is UNSET
+
+    def test_parent_rejects_list_array(self) -> None:
+        """PARENT-09 Layer 1: arrays are rejected with a Pydantic-generic schema error.
+
+        Per CLAUDE.md schema-violation-vs-semantic-misuse policy, no custom message.
+        """
+        with pytest.raises(ValidationError):
+            ListTasksQuery(parent=["Work"])
+
+    def test_parent_rejects_null(self) -> None:
+        """PARENT-09 Layer 2: null values produce the FILTER_NULL template error."""
+        with pytest.raises(ValidationError, match=re.escape(FILTER_NULL.format(field="parent"))):
+            ListTasksQuery(parent=None)
+
+    def test_parent_rejects_unknown_typo_field(self) -> None:
+        """PARENT-09 Layer 3: typo'd plural ``parents`` is rejected by extra=forbid."""
+        with pytest.raises(ValidationError):
+            ListTasksQuery(parents="Work")
+
+    def test_parent_in_patch_fields(self) -> None:
+        """Parity: ``parent`` appears in ``_PATCH_FIELDS`` so reject_null_filters fires."""
+        from omnifocus_operator.contracts.use_cases.list.tasks import (  # noqa: PLC0415
+            _PATCH_FIELDS,
+        )
+
+        assert "parent" in _PATCH_FIELDS
