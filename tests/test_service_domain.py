@@ -19,11 +19,13 @@ from omnifocus_operator.agent_messages.errors import (
 )
 from omnifocus_operator.agent_messages.warnings import (
     EDIT_COMPLETED_TASK,
+    FILTERED_SUBTREE_WARNING,
     LIFECYCLE_REPEATING_COMPLETE,
     LIFECYCLE_REPEATING_DROP,
     NOTE_ALREADY_EMPTY,
     NOTE_APPEND_EMPTY,
     NOTE_REPLACE_ALREADY_CONTENT,
+    PARENT_PROJECT_COMBINED_WARNING,
     REPETITION_AUTO_CLEAR_ON,
     REPETITION_AUTO_CLEAR_ON_DATES,
     REPETITION_EMPTY_ON,
@@ -55,6 +57,7 @@ from omnifocus_operator.contracts.use_cases.list._enums import (
     DueDateShortcut,
     LifecycleDateShortcut,
 )
+from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksQuery
 from omnifocus_operator.models.common import TagRef
 from omnifocus_operator.models.enums import (
     Availability,
@@ -1120,6 +1123,140 @@ class TestCheckFilterResolution:
         assert len(warnings) == 1
         assert "No project found" in warnings[0]
         assert "skipped" in warnings[0].lower()
+
+
+# ---------------------------------------------------------------------------
+# Cross-filter warning checks (WARN-01 FILTERED_SUBTREE, WARN-03
+# PARENT_PROJECT_COMBINED) -- pure DomainLogic methods introspecting
+# ListTasksQuery; no resolver or repo dependency.
+# ---------------------------------------------------------------------------
+
+
+class TestCheckFilteredSubtree:
+    """WARN-01: scope filter (project/parent) combined with any other dimensional filter.
+
+    The trigger is ``(is_set(project) or is_set(parent)) AND (any other dim is_set)``.
+    ``availability`` is EXCLUDED from the "other filter" predicate because it has a
+    non-empty default (REMAINING) -- including it would fire the warning on every
+    scope-filtered query, destroying signal (D-13).
+    """
+
+    def test_no_scope_no_other_no_warning(self) -> None:
+        """Empty query -> no warning."""
+        assert _domain().check_filtered_subtree(ListTasksQuery()) == []
+
+    def test_project_only_no_other_no_warning(self) -> None:
+        """project set, no other filter -> no warning."""
+        assert _domain().check_filtered_subtree(ListTasksQuery(project="Work")) == []
+
+    def test_parent_only_no_other_no_warning(self) -> None:
+        """parent set, no other filter -> no warning."""
+        assert _domain().check_filtered_subtree(ListTasksQuery(parent="Review")) == []
+
+    def test_project_with_flagged_fires(self) -> None:
+        """project + flagged -> FILTERED_SUBTREE_WARNING."""
+        query = ListTasksQuery(project="Work", flagged=True)
+        assert _domain().check_filtered_subtree(query) == [FILTERED_SUBTREE_WARNING]
+
+    def test_parent_with_flagged_fires(self) -> None:
+        """parent + flagged -> FILTERED_SUBTREE_WARNING."""
+        query = ListTasksQuery(parent="Review", flagged=True)
+        assert _domain().check_filtered_subtree(query) == [FILTERED_SUBTREE_WARNING]
+
+    def test_project_with_tags_fires(self) -> None:
+        """project + tags -> FILTERED_SUBTREE_WARNING."""
+        query = ListTasksQuery(project="Work", tags=["Urgent"])
+        assert _domain().check_filtered_subtree(query) == [FILTERED_SUBTREE_WARNING]
+
+    def test_project_with_search_fires(self) -> None:
+        """project + search -> FILTERED_SUBTREE_WARNING."""
+        query = ListTasksQuery(project="Work", search="draft")
+        assert _domain().check_filtered_subtree(query) == [FILTERED_SUBTREE_WARNING]
+
+    def test_project_with_due_filter_fires(self) -> None:
+        """project + due filter -> FILTERED_SUBTREE_WARNING (date dimension counts as 'other')."""
+        query = ListTasksQuery(project="Work", due="overdue")
+        assert _domain().check_filtered_subtree(query) == [FILTERED_SUBTREE_WARNING]
+
+    def test_project_with_completed_filter_fires(self) -> None:
+        """project + completed lifecycle date filter -> FILTERED_SUBTREE_WARNING."""
+        query = ListTasksQuery(project="Work", completed="today")
+        assert _domain().check_filtered_subtree(query) == [FILTERED_SUBTREE_WARNING]
+
+    def test_project_with_availability_does_not_fire(self) -> None:
+        """availability is EXCLUDED from the 'other filter' predicate (D-13).
+
+        A scope filter combined only with a non-default availability list must NOT
+        fire FILTERED_SUBTREE_WARNING. availability has a non-empty default; treating
+        it as 'other' would destroy the signal.
+        """
+        query = ListTasksQuery(project="Work", availability=[AvailabilityFilter.AVAILABLE])
+        assert _domain().check_filtered_subtree(query) == []
+
+    def test_availability_only_does_not_fire(self) -> None:
+        """availability set with no scope -> no warning (trivially: scope predicate false)."""
+        query = ListTasksQuery(availability=[AvailabilityFilter.AVAILABLE])
+        assert _domain().check_filtered_subtree(query) == []
+
+    def test_verbatim_text(self) -> None:
+        """The fired warning is byte-identical to the imported constant.
+
+        This is the in-module locked-text gate -- asserts the domain method returns
+        the exact constant, with no paraphrasing or dynamic formatting. The em-dash
+        fidelity gate (grep against the source-of-truth spec) lives in the plan's
+        acceptance-criteria block, not in this test.
+        """
+        query = ListTasksQuery(project="Work", flagged=True)
+        result = _domain().check_filtered_subtree(query)
+        assert len(result) == 1
+        assert result[0] == FILTERED_SUBTREE_WARNING
+
+    def test_both_project_and_parent_with_flagged_fires_once(self) -> None:
+        """Both project AND parent set + flagged -> fires EXACTLY ONCE.
+
+        The scope-set predicate is OR -- satisfied by either -- so the domain method
+        still returns a single-element list. (D-13: the warning is presence-based on
+        the scope-set, not counted per-set.)
+        """
+        query = ListTasksQuery(project="Work", parent="Review", flagged=True)
+        result = _domain().check_filtered_subtree(query)
+        assert result == [FILTERED_SUBTREE_WARNING]
+
+
+class TestCheckParentProjectCombined:
+    """WARN-03: both ``project`` and ``parent`` filters set together.
+
+    Presence-based (D-13): fires independent of whether the resolved scope-set
+    intersection is empty or not. The emptiness question is a runtime outcome;
+    this warning is a soft heads-up at the query-inspection layer.
+    """
+
+    def test_neither_set_no_warning(self) -> None:
+        """Empty query -> no warning."""
+        assert _domain().check_parent_project_combined(ListTasksQuery()) == []
+
+    def test_project_only_no_warning(self) -> None:
+        """project set, parent UNSET -> no warning."""
+        assert _domain().check_parent_project_combined(ListTasksQuery(project="Work")) == []
+
+    def test_parent_only_no_warning(self) -> None:
+        """parent set, project UNSET -> no warning."""
+        assert _domain().check_parent_project_combined(ListTasksQuery(parent="Review")) == []
+
+    def test_both_set_fires(self) -> None:
+        """project + parent set -> PARENT_PROJECT_COMBINED_WARNING."""
+        query = ListTasksQuery(project="Work", parent="Review")
+        assert _domain().check_parent_project_combined(query) == [PARENT_PROJECT_COMBINED_WARNING]
+
+    def test_both_set_different_filters_still_fires(self) -> None:
+        """project == parent (same string) -> fires (D-13 presence-based).
+
+        Even when both refs point to the same value, the warning fires because the
+        trigger is query-level presence, not intersection cardinality. Whether the
+        intersection is empty is an orthogonal outcome at the repo layer.
+        """
+        query = ListTasksQuery(project="X", parent="X")
+        assert _domain().check_parent_project_combined(query) == [PARENT_PROJECT_COMBINED_WARNING]
 
 
 # ---------------------------------------------------------------------------

@@ -36,6 +36,7 @@ from omnifocus_operator.agent_messages.warnings import (
     FILTER_DID_YOU_MEAN,
     FILTER_MULTI_MATCH,
     FILTER_NO_MATCH,
+    FILTERED_SUBTREE_WARNING,
     LIFECYCLE_ALREADY_IN_STATE,
     LIFECYCLE_CROSS_STATE,
     LIFECYCLE_REPEATING_COMPLETE,
@@ -44,6 +45,7 @@ from omnifocus_operator.agent_messages.warnings import (
     NOTE_ALREADY_EMPTY,
     NOTE_APPEND_EMPTY,
     NOTE_REPLACE_ALREADY_CONTENT,
+    PARENT_PROJECT_COMBINED_WARNING,
     REPETITION_ANCHOR_DATE_MISSING,
     REPETITION_AUTO_CLEAR_ON,
     REPETITION_AUTO_CLEAR_ON_DATES,
@@ -89,6 +91,7 @@ if TYPE_CHECKING:
         EditTaskCommand,
         EditTaskRepoPayload,
     )
+    from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksQuery
     from omnifocus_operator.models.common import TagRef
     from omnifocus_operator.models.enums import BasedOn, DueSoonSetting
     from omnifocus_operator.models.project import Project
@@ -535,6 +538,50 @@ class DomainLogic:
                     )
                 ]
             return [FILTER_NO_MATCH.format(entity_type=entity_type, value=value)]
+        return []
+
+    # -- Cross-filter warning checks (WARN-01, WARN-03) --------------------
+
+    def check_filtered_subtree(self, query: ListTasksQuery) -> list[str]:
+        """WARN-01: scope filter combined with any other dimensional filter.
+
+        Fires when ``(project or parent)`` is set AND at least one of the other
+        dimensional filters is set. ``availability`` is EXCLUDED from the
+        "other filter" predicate because it has a non-empty default
+        (``REMAINING``) -- including it would fire the warning on every
+        scope-filtered query, destroying signal (D-13).
+        """
+        scope_set = is_set(query.project) or is_set(query.parent)
+        if not scope_set:
+            return []
+        other_set = (
+            is_set(query.flagged)
+            or is_set(query.in_inbox)
+            or is_set(query.tags)
+            or is_set(query.estimated_minutes_max)
+            or is_set(query.search)
+            or is_set(query.due)
+            or is_set(query.defer)
+            or is_set(query.planned)
+            or is_set(query.completed)
+            or is_set(query.dropped)
+            or is_set(query.added)
+            or is_set(query.modified)
+        )
+        if other_set:
+            return [FILTERED_SUBTREE_WARNING]
+        return []
+
+    def check_parent_project_combined(self, query: ListTasksQuery) -> list[str]:
+        """WARN-03: both ``project`` and ``parent`` filters set together.
+
+        Presence-based (D-13): fires independent of whether the resolved
+        scope-set intersection is empty or not. The emptiness question is a
+        runtime outcome at the repo layer; this warning is a soft heads-up at
+        the query-inspection layer.
+        """
+        if is_set(query.project) and is_set(query.parent):
+            return [PARENT_PROJECT_COMBINED_WARNING]
         return []
 
     # -- Clear-intent normalization ----------------------------------------
