@@ -132,11 +132,17 @@ PROJECT_DEFAULT_FIELDS: frozenset[str] = frozenset(
         "urgency",
         "tags",
         # Phase 56-04 Wave 2 promotion: shared presence flags surface on the
-        # default response (FLAG-01..03). Projects do NOT carry `isSequential`
-        # or `dependsOnChildren` (FLAG-04/05 are tasks-only).
+        # default response (FLAG-01..03).
         "hasNote",
         "hasRepetition",
         "hasAttachments",
+        # Phase 56-08 (G1): FLAG-04 hoisted to ActionableEntity — projects
+        # carry `isSequential` with the same semantic (only next-in-line
+        # child is available; siblings blocked). Strip-when-false. FLAG-05
+        # (`dependsOnChildren`) stays tasks-only — projects are always
+        # containers, so the "real unit of work waiting on children"
+        # semantic does not apply.
+        "isSequential",
     }
 )
 
