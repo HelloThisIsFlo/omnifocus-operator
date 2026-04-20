@@ -363,6 +363,13 @@ Replace the entire note with this content. Pass null or '' to clear the note."""
 
 EDIT_TASK_ACTIONS_DOC = "Lifecycle changes (complete/drop), tag edits, task movement, and note operations (append/replace). All four can be combined freely in one call."
 
+LIFECYCLE_ACTION_DESC = (
+    '"complete" = I did this task. "drop" = I\'m intentionally not doing this; '
+    "the task stays in OmniFocus marked as dropped (not deleted). "
+    "Repeating tasks: drop applies to the current occurrence only; next occurrence auto-created. "
+    "Deletion and dropping an entire repeating series are intentionally not exposed."
+)
+
 # --- Class Docstrings: Repetition Specs ---
 
 FREQUENCY_ADD_SPEC_DOC = "Frequency specification for creating a repetition rule."
@@ -660,7 +667,6 @@ Examples (repetitionRule):
   Clear: null
 
 actions.move: one key (ending/beginning with '$inbox'/name/ID, or before/after).
-actions.lifecycle: "complete" or "drop". Repeating tasks: current occurrence only; next occurrence auto-created. Cannot drop an entire repeating sequence.
 actions.tags: replace (standalone) or add/remove (combinable).
 actions.note: append or replace content (mutually exclusive).
 

@@ -16,6 +16,7 @@ from omnifocus_operator.agent_messages.descriptions import (
     ESTIMATED_MINUTES_EDIT,
     FLAGGED,
     ID_EDIT_COMMAND,
+    LIFECYCLE_ACTION_DESC,
     NAME_EDIT_COMMAND,
     PLANNED_DATE_WRITE,
     TASK_TYPE_WRITE,
@@ -46,7 +47,9 @@ class EditTaskActions(CommandModel):
 
     tags: Patch[TagAction] = UNSET
     move: Patch[MoveAction] = UNSET
-    lifecycle: Patch[Literal["complete", "drop"]] = UNSET
+    lifecycle: Patch[Literal["complete", "drop"]] = Field(
+        default=UNSET, description=LIFECYCLE_ACTION_DESC
+    )
     note: Patch[NoteAction] = UNSET
 
     @field_validator("lifecycle", mode="before")
