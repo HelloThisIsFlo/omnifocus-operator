@@ -13,6 +13,7 @@ from omnifocus_operator.agent_messages import descriptions as desc_mod
 from omnifocus_operator.agent_messages.descriptions import (
     COMPLETES_WITH_CHILDREN_DESC,
     DEPENDS_ON_CHILDREN_DESC,
+    GET_PROJECT_TOOL_DOC,
     GET_TASK_TOOL_DOC,
     HAS_ATTACHMENTS_DESC,
     HAS_NOTE_DESC,
@@ -515,6 +516,17 @@ class TestPhase5605BehavioralPhrasesLocked:
         assert "next-in-line child is available" in IS_SEQUENTIAL_DESC
         assert "blocked until earlier ones complete" in IS_SEQUENTIAL_DESC
 
+    def test_is_sequential_desc_drops_tasks_only_prefix_after_phase_5608(self) -> None:
+        """Phase 56-08 (G1): IS_SEQUENTIAL_DESC no longer claims tasks-only.
+
+        The field now applies to both tasks and projects via ActionableEntity.
+        The tasks-only prefix that the original Phase 56-03 copy carried must
+        be removed from the description so the field description is accurate
+        on Project too.
+        """
+        assert "Tasks-only" not in IS_SEQUENTIAL_DESC
+        assert "tasks-only" not in IS_SEQUENTIAL_DESC
+
 
 class TestPhase5605ToolDocsCarryBehavioralFlags:
     """FLAG-07: tool descriptions for list_tasks and get_task explicitly describe
@@ -532,16 +544,32 @@ class TestPhase5605ToolDocsCarryBehavioralFlags:
         assert "dependsOnChildren" in GET_TASK_TOOL_DOC
         assert "isSequential" in GET_TASK_TOOL_DOC
 
-    def test_list_projects_tool_doc_does_not_claim_is_sequential_on_projects(self) -> None:
-        """isSequential is tasks-only (FLAG-04). Projects must not list it as a
-        project field. A disambiguating 'tasks-only' mention is allowed.
+    def test_list_projects_tool_doc_surfaces_is_sequential(self) -> None:
+        """Phase 56-08 (G1): FLAG-04 applies to projects — tool doc surfaces isSequential.
+
+        The behavioral meaning (next-in-line child is available; siblings
+        blocked) is the same as for tasks, and the tool doc must teach that
+        actionability signal on the project surface too. dependsOnChildren
+        stays tasks-only and the doc must still disambiguate that.
         """
-        if "isSequential" in LIST_PROJECTS_TOOL_DOC:
-            assert "tasks-only" in LIST_PROJECTS_TOOL_DOC
+        assert "isSequential" in LIST_PROJECTS_TOOL_DOC
+        # Behavioral meaning teaches actionability — locked phrase must appear.
+        assert "next-in-line child is available" in LIST_PROJECTS_TOOL_DOC
+        # dependsOnChildren stays tasks-only — doc must still scope that caveat.
+        assert "dependsOnChildren" in LIST_PROJECTS_TOOL_DOC
+        assert "tasks-only" in LIST_PROJECTS_TOOL_DOC
 
     def test_list_projects_tool_doc_mentions_shared_presence_flags(self) -> None:
         for flag in ("hasNote", "hasRepetition", "hasAttachments"):
             assert flag in LIST_PROJECTS_TOOL_DOC, f"expected {flag!r} in LIST_PROJECTS_TOOL_DOC"
+
+    def test_get_project_tool_doc_surfaces_is_sequential(self) -> None:
+        """Phase 56-08 (G1): get_project fields list surfaces isSequential.
+
+        The same actionability signal the tool gives agents on tasks must
+        surface on projects too.
+        """
+        assert "isSequential" in GET_PROJECT_TOOL_DOC
 
     def test_list_tasks_tool_doc_mentions_shared_presence_flags(self) -> None:
         for flag in ("hasNote", "hasRepetition", "hasAttachments"):
