@@ -1296,9 +1296,9 @@ class TestPropertySurfaceCrossPath:
         equivalently for both HybridRepository and BridgeOnlyRepository.
 
         Neutral test data seeds:
-          - proj-1: sequential + containsSingletonActions -> type singleActions -> is_sequential False
-          - proj-2: sequential only                        -> type sequential    -> is_sequential True
-          - proj-3: neither                                -> type parallel      -> is_sequential False
+          - proj-1: sequential + containsSingletonActions -> singleActions -> is_sequential False
+          - proj-2: sequential only                        -> sequential   -> is_sequential True
+          - proj-3: neither                                -> parallel     -> is_sequential False
 
         The derived flag is computed from final assembled ProjectType (after
         HIER-05 precedence), not from the raw sequential bit — singleActions

@@ -782,7 +782,7 @@ class TestTaskDerivedPresenceFlagFields:
         assert task.depends_on_children is False
 
     def test_project_defines_is_sequential_field_with_false_default(self) -> None:
-        """Phase 56-08 (G1): FLAG-04 hoisted to ActionableEntity — projects inherit is_sequential."""
+        """Phase 56-08 (G1): FLAG-04 hoisted to ActionableEntity; projects inherit is_sequential."""
         assert "is_sequential" in Project.model_fields
         assert Project.model_fields["is_sequential"].default is False
 
