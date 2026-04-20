@@ -2717,10 +2717,10 @@ async def _phase_4_capture(bridge: RealBridge) -> None:
     print()
 
 
-async def _phase_5_consolidation(bridge: RealBridge) -> None:
+async def _phase_5_cleanup(bridge: RealBridge) -> None:
     """Create a cleanup task in inbox and move all scenario tasks under it."""
     print("-" * 60)
-    print("  Phase 5: Consolidation")
+    print("  Phase 5: Cleanup")
     print("-" * 60)
     print()
 
@@ -2745,6 +2745,17 @@ async def _phase_5_consolidation(bridge: RealBridge) -> None:
             "edit_task",
             {"id": task_id, "moveTo": {"position": "ending", "containerId": cleanup_task_id}},
         )
+
+    # Reset mutations applied to preserved tasks during capture so the next run
+    # starts from the same baseline. Currently only scenario 04 touches a
+    # preserved task (clears note on 🧪 GM-Phase56-Attached). Expand this block
+    # if more preserved-task mutations are added.
+    if GM_PHASE56_ATTACHED_TASK_ID:
+        await bridge.send_command(
+            "edit_task",
+            {"id": GM_PHASE56_ATTACHED_TASK_ID, "note": ""},
+        )
+        print("  Reset note on preserved attached task.")
 
     print("  All test tasks consolidated under the cleanup task.")
     print()
@@ -2831,8 +2842,38 @@ async def main() -> int:
         # Phase 4: Capture
         await _phase_4_capture(bridge)
 
-        # Phase 5: Consolidation
-        await _phase_5_consolidation(bridge)
+        # Phase 5: Cleanup
+        await _phase_5_cleanup(bridge)
+
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        # User hit Ctrl+C partway through — run Phase 5 cleanup on whatever
+        # tasks have been created so far so they end up under a single
+        # 🧪 GM-Cleanup task in the inbox (same deletion UX as a full run).
+        #
+        # We catch BOTH exceptions because Ctrl+C behaves differently
+        # depending on where it lands:
+        #   - During a sync blocking call (e.g. input() in Phase 3),
+        #     Python raises KeyboardInterrupt directly.
+        #   - During an asyncio await (e.g. bridge.send_command), asyncio's
+        #     SIGINT handler cancels the main task, which propagates
+        #     CancelledError up through the awaits.
+        #
+        # Once the main task is cancelled, subsequent awaits in the same
+        # task re-raise CancelledError immediately — so we must
+        # current_task().uncancel() before awaiting the cleanup, otherwise
+        # Phase 5 can't run a single bridge call.
+        print()
+        print()
+        print("  Capture interrupted — running partial cleanup...")
+        current = asyncio.current_task()
+        if current is not None:
+            current.uncancel()
+        try:
+            await _phase_5_cleanup(bridge)
+        except Exception as cleanup_exc:
+            print(f"  Partial cleanup failed: {cleanup_exc}")
+            _report_cleanup_info()
+        return 130  # conventional exit code for SIGINT
 
     except Exception as exc:
         # Phase 6: Error handling
