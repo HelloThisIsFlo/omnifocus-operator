@@ -71,7 +71,7 @@ Plans:
 
 ### Phase 57: Parent Filter & Filter Unification
 
-**Goal**: Agents can fetch a task's full descendant subtree through `list_tasks` with a single call using the new `parent` filter — sharing the same resolver and filter pipeline as `project` at the repo layer, with the full warning surface guiding correct usage.
+**Goal**: Agents can fetch a task's full descendant subtree through `list_tasks` with a single call using the new `parent` filter — sharing one service-layer `expand_scope` helper and one repo-layer `task_id_scope` primitive with the existing `project` filter, with the full warning surface guiding correct usage.
 
 **Depends on**: Phase 56 (stable cache read path for the children structure)
 
@@ -80,18 +80,25 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. `list_tasks` accepts a single `parent` reference (name substring or ID) resolved via the standard three-step resolver (`$` prefix → exact ID → name substring); array references rejected at validation time; `parent: "$inbox"` is accepted and produces the identical result set to `project: "$inbox"` with the same contradiction rules (e.g., `parent: "$inbox"` + `inInbox=false` → error)
   2. The `parent` filter returns all descendants of the resolved reference at any depth, AND-composes with every other filter (project, tags, dates, etc.) with no special precedence, preserves outline order, and paginates via the existing limit + cursor mechanism; resolved task is included as anchor; resolved project produces no anchor (projects are not rows in `list_tasks`)
-  3. `project` and `parent` filters share one underlying mechanism — `collect_subtree(parent_id, snapshot) -> list[Task]` shared helper used by both `HybridRepository` and `BridgeOnlyRepository`, `ListTasksRepoQuery.parent_ids: list[str] | None` as the wire-level input, conditional anchor injection at the repo layer; same entity resolved via either filter produces byte-identical results (proven by cross-filter equivalence test)
-  4. Filter logic lives at the repo layer (Python-filter benchmark locked p95 ≤ 1.30 ms at 10K — 77× under the viable threshold); contract unchanged whether `HybridRepository` later pushes the filter down to SQL opportunistically
-  5. Five warnings surface correctly: new filtered-subtree warning (locked verbatim text) fires when `project` or `parent` is combined with any other filter; new `parent` + `project` combined warning fires when both are specified; new parent-resolves-to-project warning fires when all matches are projects; existing multi-match and inbox-name-substring warnings trigger on `parent` resolution via the same infrastructure used by other substring-resolving filters; all warnings live in the domain layer (filter-semantics advice), not projection
+  3. `project` and `parent` filters share one service-layer mechanism — `expand_scope(ref_id, snapshot, accept_entity_types) -> set[str]` shared helper in `service/subtree.py` used by both `_resolve_project()` and `_resolve_parent()` pipeline steps, `ListTasksRepoQuery.task_id_scope: list[str] | None` as the unified wire-level primitive (retiring the old `project_ids` field), conditional anchor injection inside `expand_scope` branching on the resolved entity's type; same entity resolved via either filter produces byte-identical results (proven by cross-filter equivalence contract test)
+  4. Scope-expansion logic lives at the service layer; primitive set-membership filter application stays at the repo (Python-filter benchmark locked p95 ≤ 1.30 ms at 10K — 77× under the viable threshold); HybridRepository uses indexed `WHERE t.persistentIdentifier IN (?, ?, ...)`; BridgeOnlyRepository uses `items = [t for t in items if t.id in scope_set]`; single code path across both repos (no divergent subtree implementations)
+  5. Five warnings surface correctly: new filtered-subtree warning (locked verbatim text) fires when `project` or `parent` is combined with any other dimensional filter; new `parent` + `project` combined warning fires when both are specified; new parent-resolves-to-project warning fires when all matches are projects; existing multi-match and inbox-name-substring warnings trigger on `parent` resolution via the same infrastructure used by other substring-resolving filters; all warnings live in the domain layer (filter-semantics advice), not projection
 
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 57-01-PLAN.md — Unify repo primitive: ship `service/subtree.py::expand_scope`, retire `ListTasksRepoQuery.project_ids`, add `task_id_scope`, rewrite both repos to set-membership on task PKs, rewrite `_resolve_project` through `expand_scope`, migrate all existing `project_ids` tests [UNIFY-01, UNIFY-03, UNIFY-04, UNIFY-05, UNIFY-06, PARENT-03, PARENT-04]
+- [ ] 57-02-PLAN.md — Parent filter surface: `ListTasksQuery.parent: Patch[str]`, `PARENT_FILTER_DESC`, 3-arg `resolve_inbox(in_inbox, project, parent)`, `_resolve_parent` + `_check_inbox_parent_warning` pipeline steps, `PARENT_RESOLVES_TO_PROJECT_WARNING`, scope-set intersection in `_build_repo_query`, cross-filter equivalence contract test (UNIFY-02 / D-15) [PARENT-01, PARENT-02, PARENT-05, PARENT-06, PARENT-07, PARENT-08, PARENT-09, UNIFY-02, WARN-02, WARN-05]
+- [ ] 57-03-PLAN.md — Pipeline-level warnings: `FILTERED_SUBTREE_WARNING` (verbatim locked text) via `DomainLogic.check_filtered_subtree`; `PARENT_PROJECT_COMBINED_WARNING` via `DomainLogic.check_parent_project_combined`; both emitted from `_ListTasksPipeline.execute` after all resolutions (WARN-04 domain-layer placement) [WARN-01, WARN-03, WARN-04]
+
+**Plan waves:** Plan 01 (Wave 1) → Plan 02 (Wave 2) → Plan 03 (Wave 3). Sequential because Plan 02 depends on Plan 01's `expand_scope` + `task_id_scope`, and Plan 03 depends on Plan 02's `parent` field on `ListTasksQuery`. All three plans modify `service/service.py` at the `_ListTasksPipeline` level, which forbids parallel execution.
 
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 56. Task Property Surface | v1.4.1 | 9/9 | Complete    | 2026-04-20 |
-| 57. Parent Filter & Filter Unification | v1.4.1 | 0/? | Not started | — |
+| 57. Parent Filter & Filter Unification | v1.4.1 | 0/3 | Not started | — |
 | 58. Perspective Tools | v1.5 | 0/? | Not started | — |
 | 59. Retry & Recovery | v1.6 | 0/? | Not started | — |
 | 60. Project Write Tools | v1.7 | 0/? | Not started | — |
