@@ -1,10 +1,11 @@
 ---
 phase: 57
 slug: parent-filter-filter-unification
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: approved
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-04-20
+approved: 2026-04-20
 ---
 
 # Phase 57 — Validation Strategy
@@ -18,27 +19,38 @@ created: 2026-04-20
 | Property | Value |
 |----------|-------|
 | **Framework** | pytest 8.x (existing) |
-| **Config file** | `pyproject.toml` (pytest section) + `conftest.py` |
-| **Quick run command** | `uv run pytest tests/contracts/use_cases/list/ tests/service/ -x -q` |
+| **Config file** | `pyproject.toml` (pytest section) + `tests/conftest.py` |
+| **Quick run command** | `uv run pytest tests/test_list_contracts.py tests/test_service_resolve.py tests/test_list_pipelines.py tests/test_service_domain.py tests/test_query_builder.py tests/test_bridge_only_repository.py tests/test_hybrid_repository.py -x -q` |
 | **Full suite command** | `uv run pytest -x -q` |
-| **Estimated runtime** | Quick: ~15s; Full: ~90s |
+| **Schema guard (mandatory post-contract change)** | `uv run pytest tests/test_output_schema.py -x -q` |
+| **Estimated runtime** | Quick: ~10s; Full: ~90s |
 
 ---
 
 ## Sampling Rate
 
-- **After every task commit:** Run `uv run pytest tests/contracts/use_cases/list/ tests/service/ -x -q`
-- **After every plan wave:** Run `uv run pytest -x -q`
-- **Before `/gsd-verify-work`:** Full suite must be green + `uv run pytest tests/test_output_schema.py -x -q` must pass
-- **Max feedback latency:** 15 seconds (quick); 90 seconds (full)
+- **After every task commit:** Run the Quick command above.
+- **After any task touching `contracts/use_cases/list/tasks.py` or other output-boundary models:** Also run the Schema guard command (mandatory per project `CLAUDE.md`).
+- **After every plan wave:** Run the Full suite.
+- **Before `/gsd-verify-work`:** Full suite green + Schema guard green.
+- **Max feedback latency:** ~10s (quick); ~90s (full).
 
 ---
 
 ## Per-Task Verification Map
 
-| Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
-|---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| (Populated by planner — one row per task the planner produces. All tasks must map to a REQ-ID and have an automated verify command using the frameworks above.) | | | | | | | | | ⬜ pending |
+Plans (`57-01`, `57-02`, `57-03`) populate this through their `<verify><automated>` blocks. Each task gets its own automated pytest target, and every task maps to at least one REQ-ID in its plan's `requirements` frontmatter.
+
+| Task ID | Plan | Wave | Requirements | Test Type | Automated Command | Status |
+|---------|------|------|--------------|-----------|-------------------|--------|
+| 57-01-01 | 01 | 1 | UNIFY-01, UNIFY-03, PARENT-03, PARENT-04 | unit | `uv run pytest tests/test_service_subtree.py -x -q` | ⬜ pending |
+| 57-01-02 | 01 | 1 | UNIFY-04, UNIFY-05, UNIFY-06 | unit+integration | `uv run pytest tests/test_list_contracts.py tests/test_query_builder.py tests/test_bridge_only_repository.py tests/test_hybrid_repository.py tests/test_list_pipelines.py tests/test_output_schema.py -x -q` | ⬜ pending |
+| 57-02-01 | 02 | 2 | PARENT-01, PARENT-02, PARENT-05, PARENT-06, PARENT-07, PARENT-08, PARENT-09 | unit | `uv run pytest tests/test_list_contracts.py tests/test_descriptions.py tests/test_output_schema.py -x -q` | ⬜ pending |
+| 57-02-02 | 02 | 2 | UNIFY-02, WARN-02, WARN-05 | unit+integration | `uv run pytest tests/test_service_resolve.py tests/test_list_pipelines.py -x -q` | ⬜ pending |
+| 57-03-01 | 03 | 3 | WARN-01, WARN-04 | unit | `uv run pytest tests/test_service_domain.py tests/test_list_pipelines.py -x -q` | ⬜ pending |
+| 57-03-02 | 03 | 3 | WARN-03 | unit | `uv run pytest tests/test_service_domain.py tests/test_list_pipelines.py -x -q` | ⬜ pending |
+
+*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky · (task IDs are indicative; plan may further split — see Blocker #5 revision)*
 
 ---
 
@@ -46,11 +58,11 @@ created: 2026-04-20
 
 *Existing infrastructure covers all phase requirements — no Wave 0 test-scaffolding needed. Reasoning:*
 
-- pytest is established with full service/, repository/, and contracts/ coverage.
-- Existing `project_ids` tests in `tests/repository/hybrid/` and `tests/repository/bridge_only/` migrate mechanically to `task_id_scope` — no new framework setup.
+- pytest is established; project uses a **flat `tests/` layout** (no `tests/service/` or `tests/contracts/` subdirectories — tests live as `tests/test_*.py` files).
+- Existing `project_ids` tests in `tests/test_query_builder.py`, `tests/test_bridge_only_repository.py`, `tests/test_hybrid_repository.py`, and `tests/test_list_contracts.py` migrate mechanically to `task_id_scope` — no new framework setup.
 - `tests/test_output_schema.py` already runs the contract-level JSON Schema guard (mandatory per `CLAUDE.md`).
-- New files needed by the refactor (e.g., `tests/service/test_subtree.py`, `tests/service/test_resolve_parent.py`, cross-filter equivalence test) are new test files within the existing pytest tree — no infra work.
-- **If** the planner decides to introduce a new test file for cross-filter equivalence (UNIFY-02 / D-15), it's a plain pytest module — no conftest changes, no fixture additions beyond existing ones.
+- The shared expansion function's new test file (e.g., `tests/test_service_subtree.py`) is a plain pytest module within the existing flat tree — no conftest changes, no fixture additions beyond existing ones.
+- Cross-filter equivalence (UNIFY-02 / D-15) extends `tests/test_list_pipelines.py` per planner decision — no new file needed.
 
 ---
 
@@ -65,12 +77,12 @@ created: 2026-04-20
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references (none required here)
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s (quick) / 90s (full)
-- [ ] `nyquist_compliant: true` set in frontmatter
-- [ ] `test_output_schema.py` included in pre-verification command (mandatory per `CLAUDE.md`)
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (none required here)
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s (quick) / 90s (full)
+- [x] `nyquist_compliant: true` set in frontmatter
+- [x] `test_output_schema.py` included in pre-verification command (mandatory per `CLAUDE.md`)
 
-**Approval:** pending
+**Approval:** approved 2026-04-20
