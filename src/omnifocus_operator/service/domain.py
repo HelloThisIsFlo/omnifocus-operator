@@ -316,14 +316,16 @@ class DomainLogic:
     # -- Derived presence flags (Phase 56-03, FLAG-04 + FLAG-05) --------------
 
     def enrich_task_presence_flags(self, task: Task) -> Task:
-        """Compute tasks-only derived flags from structural fields.
+        """Compute task-side derived flags from structural fields.
 
         - ``is_sequential``       = ``task.type == TaskType.SEQUENTIAL`` (FLAG-04)
         - ``depends_on_children`` = ``has_children and not completes_with_children`` (FLAG-05)
 
-        Both flags are tasks-only; Projects do not carry these fields.
-        The domain owns this derivation so repositories stay ignorant of
-        product decisions.
+        Phase 56-08 hoisted ``is_sequential`` to ActionableEntity — it now
+        applies to both tasks and projects. ``depends_on_children`` stays
+        tasks-only (projects are always containers; the semantic does not
+        apply). The domain owns this derivation so repositories stay
+        ignorant of product decisions.
         """
         is_sequential = task.type == TaskType.SEQUENTIAL
         depends_on_children = task.has_children and not task.completes_with_children
@@ -333,6 +335,21 @@ class DomainLogic:
                 "depends_on_children": depends_on_children,
             }
         )
+
+    def enrich_project_presence_flags(self, project: Project) -> Project:
+        """Compute project-side derived flag from structural fields (Phase 56-08).
+
+        - ``is_sequential`` = ``project.type == ProjectType.SEQUENTIAL`` (FLAG-04)
+
+        Mirrors ``enrich_task_presence_flags`` for the project read path.
+        ``dependsOnChildren`` (FLAG-05) does not apply to projects — they
+        are always containers, so the "real unit of work waiting on
+        children" semantic is not meaningful. ``singleActions`` projects
+        resolve to is_sequential=False (HIER-05 precedence: only the final
+        assembled type of SEQUENTIAL yields True).
+        """
+        is_sequential = project.type == ProjectType.SEQUENTIAL
+        return project.model_copy(update={"is_sequential": is_sequential})
 
     def assemble_project_type(
         self,

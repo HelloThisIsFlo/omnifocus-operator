@@ -833,9 +833,10 @@ class TestProjectModel:
         assert project.folder is None
         assert project.tags == []
 
-        # Verify total field count (28 = 23 prior + 5 new from Phase 56-02:
-        # has_note, has_repetition, has_attachments, completes_with_children, type)
-        assert len(Project.model_fields) == 28
+        # Verify total field count (29 = 23 prior + 5 new from Phase 56-02:
+        # has_note, has_repetition, has_attachments, completes_with_children, type
+        # + 1 new from Phase 56-08: is_sequential hoisted to ActionableEntity)
+        assert len(Project.model_fields) == 29
 
         # Serialize back and verify camelCase keys
         dumped = project.model_dump(mode="json", by_alias=True)

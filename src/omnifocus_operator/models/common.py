@@ -12,6 +12,7 @@ from omnifocus_operator.agent_messages.descriptions import (
     HAS_ATTACHMENTS_DESC,
     HAS_NOTE_DESC,
     HAS_REPETITION_DESC,
+    IS_SEQUENTIAL_DESC,
     PARENT_REF_DOC,
     PARENT_REF_PROJECT_FIELD,
     PARENT_REF_TASK_FIELD,
@@ -124,6 +125,14 @@ class ActionableEntity(OmniFocusEntity):
     has_repetition: bool = Field(description=HAS_REPETITION_DESC)
     has_attachments: bool = Field(description=HAS_ATTACHMENTS_DESC)
     completes_with_children: bool = Field(description=COMPLETES_WITH_CHILDREN_DESC)
+
+    # Derived presence flag (FLAG-04 — applies to tasks AND projects).
+    # Populated by `DomainLogic.enrich_task_presence_flags` (tasks) or
+    # `DomainLogic.enrich_project_presence_flags` (projects). Default is
+    # `False` so the field stays safe if enrichment is somehow bypassed.
+    # Projects with `type == 'singleActions'` resolve to is_sequential=False
+    # (HIER-05 precedence); only `type == 'sequential'` yields True.
+    is_sequential: bool = Field(default=False, description=IS_SEQUENTIAL_DESC)
 
     # Relationships
     tags: list[TagRef] = Field(

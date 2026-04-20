@@ -148,9 +148,11 @@ class OperatorService(Service):  # explicitly implements Service protocol
         logger.debug("OperatorService.get_all_data: delegating to repository")
         raw = await self._repository.get_all()
         walked_tasks = await self._domain.compute_true_inheritance(raw.tasks)
-        # Phase 56-03: derive task-only presence flags (FLAG-04, FLAG-05).
+        # Phase 56-03: derive task-side presence flags (FLAG-04, FLAG-05).
         enriched_tasks = [self._domain.enrich_task_presence_flags(t) for t in walked_tasks]
-        return raw.model_copy(update={"tasks": enriched_tasks})
+        # Phase 56-08 (G1): derive project-side is_sequential (FLAG-04).
+        enriched_projects = [self._domain.enrich_project_presence_flags(p) for p in raw.projects]
+        return raw.model_copy(update={"tasks": enriched_tasks, "projects": enriched_projects})
 
     async def get_task(self, task_id: str) -> Task:
         """Return a single task by ID. Raises ValueError if not found."""
@@ -161,9 +163,16 @@ class OperatorService(Service):  # explicitly implements Service protocol
         return self._domain.enrich_task_presence_flags(walked[0])
 
     async def get_project(self, project_id: str) -> Project:
-        """Return a single project by ID. Raises ValueError if not found."""
+        """Return a single project by ID with derived flag enrichment.
+
+        Raises ValueError if not found. Phase 56-08 extends this from a
+        pure pass-through to apply `enrich_project_presence_flags`, mirroring
+        how 56-03 extended `get_task` with `enrich_task_presence_flags`.
+        """
         logger.debug("OperatorService.get_project: id=%s", project_id)
-        return await self._resolver.lookup_project(project_id)
+        project = await self._resolver.lookup_project(project_id)
+        # Phase 56-08 (G1): derive project-side is_sequential (FLAG-04).
+        return self._domain.enrich_project_presence_flags(project)
 
     async def get_tag(self, tag_id: str) -> Tag:
         """Return a single tag by ID. Raises ValueError if not found."""
@@ -532,7 +541,11 @@ class _ListProjectsPipeline(_ReadPipeline):
 
     async def _delegate(self) -> ListResult[Project]:
         repo_result = await self._repository.list_projects(self._repo_query)
-        return self._result_from_repo(repo_result)
+        # Phase 56-08 (G1): derive project-side is_sequential (FLAG-04).
+        # Mirror the exact pattern from _ListTasksPipeline._delegate.
+        enriched_items = [self._domain.enrich_project_presence_flags(p) for p in repo_result.items]
+        enriched_result = repo_result.model_copy(update={"items": enriched_items})
+        return self._result_from_repo(enriched_result)
 
 
 # -- add_task pipeline (Method Object) -------------------------------------
