@@ -391,8 +391,14 @@ class _ListTasksPipeline(_ReadPipeline):
         self._projects = list(self._snapshot.projects)
         self._tasks = list(self._snapshot.tasks)
 
-        self._in_inbox, self._project_to_resolve = self._resolver.resolve_inbox(
-            unset_to_none(self._query.in_inbox), unset_to_none(self._query.project)
+        (
+            self._in_inbox,
+            self._project_to_resolve,
+            self._parent_to_resolve,
+        ) = self._resolver.resolve_inbox(
+            unset_to_none(self._query.in_inbox),
+            unset_to_none(self._query.project),
+            unset_to_none(self._query.parent),
         )
 
         self._check_inbox_project_warning()

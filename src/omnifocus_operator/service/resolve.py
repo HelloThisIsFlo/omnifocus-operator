@@ -215,28 +215,61 @@ class Resolver:
     # -- Read-side resolution (inbox normalization) ----------------------------
 
     def resolve_inbox(
-        self, in_inbox: bool | None, project: str | None
-    ) -> tuple[bool | None, str | None]:
-        """Resolve inbox filter state from in_inbox and project filter params.
+        self,
+        in_inbox: bool | None,
+        project: str | None,
+        parent: str | None,
+    ) -> tuple[bool | None, str | None, str | None]:
+        """Resolve inbox filter state from (in_inbox, project, parent) filter params.
 
-        Returns (effective_in_inbox, remaining_project_to_resolve).
-        If project is "$inbox", it is consumed: returns (True, None).
-        Unknown $-prefix raises. Contradictory combos raise.
+        Returns (effective_in_inbox, remaining_project, remaining_parent).
+
+        Phase 57-02 (D-09): single consolidation point for all ``$inbox``
+        semantics across both surface filters.
+
+        Consumption rules:
+        - ``project`` is ``"$inbox"`` -> project consumed (returns ``None``);
+          ``in_inbox`` becomes ``True``.
+        - ``parent`` is ``"$inbox"`` -> parent consumed (returns ``None``);
+          ``in_inbox`` becomes ``True``.
+        - Both ``"$inbox"`` is allowed (both consume independently).
+
+        Contradiction rules:
+        - Either side's ``"$inbox"`` + ``in_inbox=False`` -> CONTRADICTORY_INBOX_FALSE.
+        - After consumption, ``in_inbox=True`` with any non-None real (non-"$inbox")
+          ref on either side -> CONTRADICTORY_INBOX_PROJECT.
+
+        Unknown $-prefix on either side raises via ``_resolve_system_location``.
+        The parent-side lookup accepts both PROJECT and TASK (parent is a
+        two-type filter); the ``$inbox`` sentinel is registered as PROJECT
+        and resolves successfully against either accept set.
         """
+        # Consume $inbox from project (legacy 2-arg path -- accept=[PROJECT]).
         if project is not None and project.startswith(SYSTEM_LOCATION_PREFIX):
             self._resolve_system_location(project, [EntityType.PROJECT])
-            # $inbox + inInbox=false -> contradictory
             if in_inbox is False:
                 raise ValueError(CONTRADICTORY_INBOX_FALSE)
-            # $inbox consumed -> in_inbox=True
-            return (True, None)
+            in_inbox = True
+            project = None
 
-        # inInbox=true + real project -> contradictory
-        if in_inbox is True and project is not None:
+        # Consume $inbox from parent (accept=[PROJECT, TASK] since parent
+        # accepts both entity types; the $inbox sentinel is type=PROJECT
+        # and resolves successfully against either set).
+        if parent is not None and parent.startswith(SYSTEM_LOCATION_PREFIX):
+            self._resolve_system_location(parent, [EntityType.PROJECT, EntityType.TASK])
+            if in_inbox is False:
+                raise ValueError(CONTRADICTORY_INBOX_FALSE)
+            in_inbox = True
+            parent = None
+
+        # Post-consumption: in_inbox=True with any real ref remaining is contradictory.
+        # Note the semantic shift vs the old 2-arg form: before, $inbox consumption
+        # returned (True, None) directly without a post-check; now we flow through a
+        # unified gate so e.g. project="$inbox", parent="SomeTask" raises correctly.
+        if in_inbox is True and (project is not None or parent is not None):
             raise ValueError(CONTRADICTORY_INBOX_PROJECT)
 
-        # Pass through unchanged
-        return (in_inbox, project)
+        return (in_inbox, project, parent)
 
     # -- Read-side resolution (filter cascade) --------------------------------
 

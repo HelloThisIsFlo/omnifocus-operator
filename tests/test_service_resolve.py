@@ -573,54 +573,169 @@ class TestLookupProjectInboxGuard:
 
 
 class TestResolveInbox:
-    """resolve_inbox normalizes $inbox in project filter to in_inbox=True."""
+    """resolve_inbox normalizes $inbox in project/parent filters to in_inbox=True.
+
+    Phase 57-02 (D-09): extended to 3-arg ``resolve_inbox(in_inbox, project, parent)``.
+    $inbox on EITHER project or parent consumes into ``in_inbox=True``; contradiction
+    rules apply symmetrically. Existing 2-arg call patterns are migrated mechanically
+    by passing ``parent=None``; the two ``test_resolve_inbox_3arg_existing_*`` tests
+    below lock the pre-existing error contracts verbatim.
+    """
 
     def test_no_filters_pass_through(self, resolver: Resolver) -> None:
-        """No filters at all: both None, pass through unchanged."""
-        result = resolver.resolve_inbox(None, None)
-        assert result == (None, None)
+        """No filters at all: all three None, pass through unchanged."""
+        result = resolver.resolve_inbox(None, None, None)
+        assert result == (None, None, None)
 
     def test_real_project_pass_through(self, resolver: Resolver) -> None:
         """Real project name, no inbox filter: pass through unchanged."""
-        result = resolver.resolve_inbox(None, "Work")
-        assert result == (None, "Work")
+        result = resolver.resolve_inbox(None, "Work", None)
+        assert result == (None, "Work", None)
 
     def test_in_inbox_true_only(self, resolver: Resolver) -> None:
-        """inInbox=true, no project: pass through unchanged."""
-        result = resolver.resolve_inbox(True, None)
-        assert result == (True, None)
+        """inInbox=true, no project/parent: pass through unchanged."""
+        result = resolver.resolve_inbox(True, None, None)
+        assert result == (True, None, None)
 
     def test_in_inbox_false_only(self, resolver: Resolver) -> None:
-        """inInbox=false, no project: pass through unchanged."""
-        result = resolver.resolve_inbox(False, None)
-        assert result == (False, None)
+        """inInbox=false, no project/parent: pass through unchanged."""
+        result = resolver.resolve_inbox(False, None, None)
+        assert result == (False, None, None)
 
     def test_dollar_inbox_consumed(self, resolver: Resolver) -> None:
-        """$inbox as project is consumed: returns (True, None)."""
-        result = resolver.resolve_inbox(None, "$inbox")
-        assert result == (True, None)
+        """$inbox as project is consumed: returns (True, None, None)."""
+        result = resolver.resolve_inbox(None, "$inbox", None)
+        assert result == (True, None, None)
 
     def test_dollar_inbox_with_in_inbox_true_redundant(self, resolver: Resolver) -> None:
         """$inbox + inInbox=true is redundant but accepted silently (D-08/FILT-04)."""
-        result = resolver.resolve_inbox(True, "$inbox")
-        assert result == (True, None)
+        result = resolver.resolve_inbox(True, "$inbox", None)
+        assert result == (True, None, None)
 
     def test_dollar_inbox_with_in_inbox_false_contradictory(self, resolver: Resolver) -> None:
         """$inbox + inInbox=false is contradictory (D-06/FILT-03)."""
         with pytest.raises(ValueError, match=r"Contradictory filters.*project.*\$inbox"):
-            resolver.resolve_inbox(False, "$inbox")
+            resolver.resolve_inbox(False, "$inbox", None)
 
     def test_in_inbox_true_with_real_project_contradictory(self, resolver: Resolver) -> None:
         """inInbox=true + real project name is contradictory (D-07/FILT-05)."""
         with pytest.raises(ValueError, match=r"Contradictory filters.*inInbox=true"):
-            resolver.resolve_inbox(True, "Work")
+            resolver.resolve_inbox(True, "Work", None)
 
     def test_in_inbox_true_with_project_id_contradictory(self, resolver: Resolver) -> None:
         """inInbox=true + project ID-like value is still contradictory."""
         with pytest.raises(ValueError, match=r"Contradictory filters.*inInbox=true"):
-            resolver.resolve_inbox(True, "proj-1")
+            resolver.resolve_inbox(True, "proj-1", None)
 
     def test_dollar_trash_unknown_system_location(self, resolver: Resolver) -> None:
         """$trash delegates to _resolve_system_location which raises for unknown locations."""
         with pytest.raises(ValueError, match="reserved for system locations"):
-            resolver.resolve_inbox(None, "$trash")
+            resolver.resolve_inbox(None, "$trash", None)
+
+
+class TestResolveInbox3Arg:
+    """Phase 57-02 (D-09): 3-arg resolve_inbox semantics — parent mirror + cross-side rules.
+
+    Consolidation rules:
+    - parent "$inbox" consumes identically to project "$inbox".
+    - Either side's "$inbox" + in_inbox=False raises CONTRADICTORY_INBOX_FALSE.
+    - After consumption, any surviving real ref alongside in_inbox=True raises
+      CONTRADICTORY_INBOX_PROJECT.
+    """
+
+    def test_resolve_inbox_3arg_all_none(self, resolver: Resolver) -> None:
+        result = resolver.resolve_inbox(None, None, None)
+        assert result == (None, None, None)
+
+    def test_resolve_inbox_3arg_project_inbox_sentinel(self, resolver: Resolver) -> None:
+        result = resolver.resolve_inbox(None, "$inbox", None)
+        assert result == (True, None, None)
+
+    def test_resolve_inbox_3arg_parent_inbox_sentinel(self, resolver: Resolver) -> None:
+        """PARENT-07 gate at the resolver layer: parent '$inbox' consumes to
+        (True, None, None) identically to the project side."""
+        result = resolver.resolve_inbox(None, None, "$inbox")
+        assert result == (True, None, None)
+
+    def test_resolve_inbox_3arg_both_inbox_sentinels(self, resolver: Resolver) -> None:
+        """Both '$inbox' sentinels are allowed and both consume."""
+        result = resolver.resolve_inbox(None, "$inbox", "$inbox")
+        assert result == (True, None, None)
+
+    def test_resolve_inbox_3arg_parent_inbox_with_in_inbox_false(self, resolver: Resolver) -> None:
+        """PARENT-08: parent '$inbox' + inInbox=false raises CONTRADICTORY_INBOX_FALSE."""
+        import re as _re  # noqa: PLC0415
+
+        from omnifocus_operator.agent_messages.errors import (
+            CONTRADICTORY_INBOX_FALSE,
+        )
+
+        with pytest.raises(ValueError, match=_re.escape(CONTRADICTORY_INBOX_FALSE)):
+            resolver.resolve_inbox(False, None, "$inbox")
+
+    def test_resolve_inbox_3arg_in_inbox_true_with_parent_real_ref(
+        self, resolver: Resolver
+    ) -> None:
+        """inInbox=true + parent real ref raises CONTRADICTORY_INBOX_PROJECT
+        (the same contradiction as the project-side; consolidated at D-09)."""
+        import re as _re  # noqa: PLC0415
+
+        from omnifocus_operator.agent_messages.errors import (  # noqa: PLC0415
+            CONTRADICTORY_INBOX_PROJECT,
+        )
+
+        with pytest.raises(ValueError, match=_re.escape(CONTRADICTORY_INBOX_PROJECT)):
+            resolver.resolve_inbox(True, None, "RealTask")
+
+    def test_resolve_inbox_3arg_project_real_ref_passthrough(self, resolver: Resolver) -> None:
+        result = resolver.resolve_inbox(None, "Work", None)
+        assert result == (None, "Work", None)
+
+    def test_resolve_inbox_3arg_parent_real_ref_passthrough(self, resolver: Resolver) -> None:
+        result = resolver.resolve_inbox(None, None, "SomeTask")
+        assert result == (None, None, "SomeTask")
+
+    def test_resolve_inbox_3arg_parent_inbox_with_real_project(self, resolver: Resolver) -> None:
+        """parent='$inbox' consumes to in_inbox=True; the surviving project='Work'
+        then trips CONTRADICTORY_INBOX_PROJECT in the post-consumption check
+        (single consolidation site per D-09)."""
+        with pytest.raises(ValueError, match=r"Contradictory filters.*inInbox=true"):
+            resolver.resolve_inbox(None, "Work", "$inbox")
+
+    def test_resolve_inbox_3arg_project_inbox_with_real_parent(self, resolver: Resolver) -> None:
+        """Symmetric case: project='$inbox' consumes; parent='SomeTask' surviving
+        + resulting in_inbox=True trips CONTRADICTORY_INBOX_PROJECT."""
+        with pytest.raises(ValueError, match=r"Contradictory filters.*inInbox=true"):
+            resolver.resolve_inbox(None, "$inbox", "SomeTask")
+
+    # -- Regression tests: pre-existing 2-arg error contracts survive verbatim. --
+
+    def test_resolve_inbox_3arg_existing_project_inbox_in_inbox_false_still_raises(
+        self, resolver: Resolver
+    ) -> None:
+        """Pre-existing 2-arg path: resolve_inbox(False, "$inbox") raised
+        CONTRADICTORY_INBOX_FALSE. Mechanical migration to 3-arg (parent=None)
+        MUST raise the SAME constant with the SAME message verbatim."""
+        import re as _re  # noqa: PLC0415
+
+        from omnifocus_operator.agent_messages.errors import (
+            CONTRADICTORY_INBOX_FALSE,
+        )
+
+        with pytest.raises(ValueError, match=_re.escape(CONTRADICTORY_INBOX_FALSE)):
+            resolver.resolve_inbox(False, "$inbox", None)
+
+    def test_resolve_inbox_3arg_existing_in_inbox_true_real_project_still_raises(
+        self, resolver: Resolver
+    ) -> None:
+        """Pre-existing 2-arg path: resolve_inbox(True, "RealProject") raised
+        CONTRADICTORY_INBOX_PROJECT. Mechanical migration to 3-arg (parent=None)
+        MUST raise the SAME constant with the SAME message verbatim."""
+        import re as _re  # noqa: PLC0415
+
+        from omnifocus_operator.agent_messages.errors import (  # noqa: PLC0415
+            CONTRADICTORY_INBOX_PROJECT,
+        )
+
+        with pytest.raises(ValueError, match=_re.escape(CONTRADICTORY_INBOX_PROJECT)):
+            resolver.resolve_inbox(True, "SomeRealProject", None)
