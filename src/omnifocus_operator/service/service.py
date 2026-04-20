@@ -409,6 +409,16 @@ class _ListTasksPipeline(_ReadPipeline):
         self._resolve_tags()
         await self._resolve_date_filters()
         self._build_repo_query()
+
+        # Phase 57-03: pipeline-level cross-filter warnings (WARN-01, WARN-03).
+        # Placement is post-resolution, pre-_delegate per RESEARCH Pattern 3 --
+        # FILTERED_SUBTREE needs visibility into all other filters, and
+        # PARENT_PROJECT_COMBINED co-locates here for symmetry. Both methods
+        # introspect self._query directly and return list[str]; the pipeline
+        # just extends self._warnings.
+        self._warnings.extend(self._domain.check_filtered_subtree(self._query))
+        self._warnings.extend(self._domain.check_parent_project_combined(self._query))
+
         return await self._delegate()
 
     def _check_inbox_project_warning(self) -> None:

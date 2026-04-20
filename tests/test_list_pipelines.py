@@ -17,6 +17,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from omnifocus_operator.agent_messages.warnings import (
+    FILTERED_SUBTREE_WARNING,
+    PARENT_PROJECT_COMBINED_WARNING,
+)
 from omnifocus_operator.contracts.base import UNSET
 from omnifocus_operator.contracts.use_cases.list._enums import (
     AvailabilityFilter,
@@ -2148,3 +2152,249 @@ class TestListTasksParentProjectEquivalence:
         assert project_dump == parent_dump
         assert project_result.total == parent_result.total
         assert project_result.has_more == parent_result.has_more
+
+
+# ---------------------------------------------------------------------------
+# Pipeline-level cross-filter warnings (WARN-01 FILTERED_SUBTREE,
+# WARN-03 PARENT_PROJECT_COMBINED, Phase 57-03)
+#
+# These fire from _ListTasksPipeline.execute after all resolutions and before
+# _delegate. The domain methods (check_filtered_subtree,
+# check_parent_project_combined) own the trigger logic; this test surface
+# proves the emission site is wired in and correct.
+# ---------------------------------------------------------------------------
+
+
+def _warnings_list(warnings: list[str] | None) -> list[str]:
+    """Normalize result.warnings (may be None) into a list for in-checks."""
+    return warnings or []
+
+
+class TestListTasksFilteredSubtreeWarning:
+    """WARN-01 pipeline emission: scope filter + other dimensional filter."""
+
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="t1", name="Task", project="proj-work", inInbox=False)],
+        projects=[make_project_dict(id="proj-work", name="Work Projects")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_filtered_subtree_warning_project_only_no_other(
+        self, service: OperatorService
+    ) -> None:
+        """project alone (no other dim filter) -> WARN-01 does NOT fire."""
+        result = await service.list_tasks(ListTasksQuery(project="Work"))
+        assert FILTERED_SUBTREE_WARNING not in _warnings_list(result.warnings)
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="anchor", name="Review", project="proj-work", inInbox=False),
+            make_task_dict(
+                id="child", name="Draft", project="proj-work", parent="anchor", inInbox=False
+            ),
+        ],
+        projects=[make_project_dict(id="proj-work", name="Work Projects")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_filtered_subtree_warning_parent_only_no_other(
+        self, service: OperatorService
+    ) -> None:
+        """parent alone (no other dim filter) -> WARN-01 does NOT fire."""
+        result = await service.list_tasks(ListTasksQuery(parent="Review"))
+        assert FILTERED_SUBTREE_WARNING not in _warnings_list(result.warnings)
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t1", name="Task", project="proj-work", flagged=True, inInbox=False),
+        ],
+        projects=[make_project_dict(id="proj-work", name="Work Projects")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_filtered_subtree_warning_project_and_flagged(
+        self, service: OperatorService
+    ) -> None:
+        """project + flagged -> WARN-01 fires EXACTLY ONCE."""
+        result = await service.list_tasks(ListTasksQuery(project="Work", flagged=True))
+        warnings = _warnings_list(result.warnings)
+        assert warnings.count(FILTERED_SUBTREE_WARNING) == 1
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="anchor",
+                name="Review",
+                project="proj-work",
+                tags=[{"id": "tag-1", "name": "Urgent"}],
+                inInbox=False,
+            ),
+        ],
+        projects=[make_project_dict(id="proj-work", name="Work Projects")],
+        tags=[make_tag_dict(id="tag-1", name="Urgent")],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_filtered_subtree_warning_parent_and_tags(self, service: OperatorService) -> None:
+        """parent + tags -> WARN-01 fires EXACTLY ONCE."""
+        result = await service.list_tasks(ListTasksQuery(parent="Review", tags=["Urgent"]))
+        warnings = _warnings_list(result.warnings)
+        assert warnings.count(FILTERED_SUBTREE_WARNING) == 1
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="anchor",
+                name="Review",
+                project="proj-work",
+                dueDate="2020-01-01T12:00:00.000Z",
+                inInbox=False,
+            ),
+        ],
+        projects=[make_project_dict(id="proj-work", name="Work Projects")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_filtered_subtree_warning_parent_and_due_filter(
+        self, service: OperatorService
+    ) -> None:
+        """parent + due filter -> WARN-01 fires EXACTLY ONCE (date dim counts)."""
+        result = await service.list_tasks(ListTasksQuery(parent="Review", due="overdue"))
+        warnings = _warnings_list(result.warnings)
+        assert warnings.count(FILTERED_SUBTREE_WARNING) == 1
+
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="t1", name="Task", project="proj-work", inInbox=False)],
+        projects=[make_project_dict(id="proj-work", name="Work Projects")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_filtered_subtree_warning_availability_only_does_not_fire(
+        self, service: OperatorService
+    ) -> None:
+        """project + non-default availability -> WARN-01 does NOT fire (D-13).
+
+        availability is excluded from the "other filter" predicate because its
+        default is non-empty. Including it would make the warning fire on every
+        scope-filtered query, destroying signal.
+        """
+        result = await service.list_tasks(
+            ListTasksQuery(project="Work", availability=[AvailabilityFilter.AVAILABLE])
+        )
+        assert FILTERED_SUBTREE_WARNING not in _warnings_list(result.warnings)
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t1", name="Task", project="proj-work", flagged=True, inInbox=False),
+        ],
+        projects=[make_project_dict(id="proj-work", name="Work Projects")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_filtered_subtree_warning_no_scope_only_dimensional(
+        self, service: OperatorService
+    ) -> None:
+        """flagged alone (no scope filter) -> WARN-01 does NOT fire."""
+        result = await service.list_tasks(ListTasksQuery(flagged=True))
+        assert FILTERED_SUBTREE_WARNING not in _warnings_list(result.warnings)
+
+
+class TestListTasksParentProjectCombinedWarning:
+    """WARN-03 pipeline emission: both project AND parent set."""
+
+    @pytest.mark.snapshot(
+        tasks=[make_task_dict(id="t1", name="Task", project="proj-work", inInbox=False)],
+        projects=[make_project_dict(id="proj-work", name="Work Projects")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_parent_project_combined_project_only(self, service: OperatorService) -> None:
+        """project only -> WARN-03 does NOT fire."""
+        result = await service.list_tasks(ListTasksQuery(project="Work"))
+        assert PARENT_PROJECT_COMBINED_WARNING not in _warnings_list(result.warnings)
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="anchor", name="Review", project="proj-work", inInbox=False),
+        ],
+        projects=[make_project_dict(id="proj-work", name="Work Projects")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_parent_project_combined_parent_only(self, service: OperatorService) -> None:
+        """parent only -> WARN-03 does NOT fire."""
+        result = await service.list_tasks(ListTasksQuery(parent="Review"))
+        assert PARENT_PROJECT_COMBINED_WARNING not in _warnings_list(result.warnings)
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="anchor", name="Review", project="proj-work", inInbox=False),
+        ],
+        projects=[make_project_dict(id="proj-work", name="Work Projects")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_parent_project_combined_both_set_fires(self, service: OperatorService) -> None:
+        """project + parent -> WARN-03 fires EXACTLY ONCE."""
+        result = await service.list_tasks(ListTasksQuery(project="Work", parent="Review"))
+        warnings = _warnings_list(result.warnings)
+        assert warnings.count(PARENT_PROJECT_COMBINED_WARNING) == 1
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="anchor", name="X", project="proj-x", inInbox=False),
+        ],
+        projects=[make_project_dict(id="proj-x", name="X")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_parent_project_combined_both_same_value_still_fires(
+        self, service: OperatorService
+    ) -> None:
+        """project='X' + parent='X' -> WARN-03 fires (D-13: presence-based)."""
+        result = await service.list_tasks(ListTasksQuery(project="X", parent="X"))
+        warnings = _warnings_list(result.warnings)
+        assert warnings.count(PARENT_PROJECT_COMBINED_WARNING) == 1
+
+
+class TestListTasksCrossFilterWarningsTogether:
+    """Co-occurrence gate: both warnings fire together without interference."""
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="anchor",
+                name="Review",
+                project="proj-work",
+                flagged=True,
+                inInbox=False,
+            ),
+        ],
+        projects=[make_project_dict(id="proj-work", name="Work Projects")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_both_warnings_together(self, service: OperatorService) -> None:
+        """project + parent + flagged -> both WARN-01 and WARN-03 fire (each once).
+
+        FILTERED_SUBTREE fires ONCE even though both scope filters are set
+        (scope predicate is OR -- single-element return). PARENT_PROJECT_COMBINED
+        fires because both project and parent are present.
+        """
+        result = await service.list_tasks(
+            ListTasksQuery(project="Work", parent="Review", flagged=True)
+        )
+        warnings = _warnings_list(result.warnings)
+        assert warnings.count(FILTERED_SUBTREE_WARNING) == 1
+        assert warnings.count(PARENT_PROJECT_COMBINED_WARNING) == 1
