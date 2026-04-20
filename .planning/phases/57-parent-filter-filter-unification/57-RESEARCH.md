@@ -604,32 +604,36 @@ Note the SQL simplification: the old `project_ids` clause needed a join-through 
 
 **None of these assumptions are user-decision-eligible.** They are verified codebase facts or cited from CONTEXT.md.
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> All five open questions were resolved by the planner during Plan-Phase iteration 1 (2026-04-20). The resolutions are captured inside the individual plan files (`57-01-PLAN.md`, `57-02-PLAN.md`, `57-03-PLAN.md`) and the checked `57-VALIDATION.md`. Q5 (agent-facing wording) remains escalation-eligible — flagged below.
 
 1. **Does `_ListTasksPipeline` switch from `gather(list_tags, list_projects)` to a single `get_all()` call?**
    - What we know: The pipeline currently avoids a full `get_all` because it only needs tasks for date filtering (via the repo-side `list_tasks`) — projects and tags suffice for filter resolution. Adding `expand_scope` changes this: for parent filtering, we need the task list too.
-   - What's unclear: Do we switch to `get_all()` (cleaner, one snapshot) or add a third `list_tasks` stub call (more async machinery) or accept that `HybridRepository` serves `list_tasks` with one query and we re-load tasks for `expand_scope`?
-   - Recommendation: **Use `get_all()`**. It's the canonical single-snapshot call, matches `DomainLogic.compute_true_inheritance`'s precedent (which runs AFTER `list_tasks`), and HybridRepository caches well enough that cost is minimal. The pipeline plan should explicitly call this out and update any test stubs.
+   - Recommendation: **Use `get_all()`**. Canonical single-snapshot call, matches `DomainLogic.compute_true_inheritance`'s precedent, HybridRepository caches well enough that cost is minimal.
+   - **RESOLVED — accept recommendation.** Plan `57-01-PLAN.md` Task 2 restructures `_ListTasksPipeline.execute` to `await self._repository.get_all()` once at pipeline start. Existing test stubs that mock `list_tags`/`list_projects` are migrated as part of the same task.
 
 2. **Should `expand_scope()` accept the snapshot or the task+project lists separately?**
    - What we know: `AllEntities` is the standard snapshot type. `DomainLogic.compute_true_inheritance` takes a `list[Task]` and builds maps from `get_all` internally.
-   - What's unclear: Signature ergonomics — `expand_scope(ref_id, snapshot: AllEntities, accept: frozenset[EntityType])` vs `expand_scope(ref_id, tasks: list[Task], projects: list[Project], accept: frozenset[EntityType])`.
-   - Recommendation: **Take `AllEntities` (snapshot)**. Tighter signature, matches the `compute_true_inheritance` pattern (though that one takes raw lists because it's called from pipeline code that already has them). Caller does `await self._repo.get_all()` once and passes the snapshot. If the planner prefers to pass tasks/projects separately (to avoid the AllEntities import), that's also defensible.
+   - Recommendation: Take `AllEntities` (snapshot). Tighter signature, matches the `compute_true_inheritance` pattern.
+   - **RESOLVED — accept recommendation.** Plan `57-01-PLAN.md` Task 1 defines `expand_scope(ref_id: str, snapshot: AllEntities, accept_entity_types: frozenset[EntityType]) -> set[str]` in `service/subtree.py`.
 
 3. **Is `accept_entity_types` a `frozenset[EntityType]` or a positional boolean `allow_tasks: bool`?**
    - What we know: CONTEXT.md D-16 leaves this as Claude's Discretion. Current code uses `accept: list[EntityType]` in `Resolver._resolve`.
-   - What's unclear: Consistency vs simplicity. A `frozenset[EntityType]` matches the resolver convention; a `bool` is simpler for the current two-case use.
-   - Recommendation: **`frozenset[EntityType]`**. Matches the resolver's existing `accept` parameter shape, extends cleanly to a future `folder` filter (add `EntityType.FOLDER` to the set), and is self-documenting at the call site (`frozenset({EntityType.PROJECT, EntityType.TASK})` vs `True`). Slight ceremony cost, large future-proofing gain.
+   - Recommendation: `frozenset[EntityType]`. Matches resolver's existing `accept` parameter shape, extends cleanly to a future `folder` filter.
+   - **RESOLVED — accept recommendation.** Plan `57-01-PLAN.md` Task 1 uses `accept_entity_types: frozenset[EntityType]` as the canonical signature. `project` filter passes `frozenset({EntityType.PROJECT})`; `parent` filter passes `frozenset({EntityType.PROJECT, EntityType.TASK})`.
 
 4. **Where does the cross-filter equivalence test (UNIFY-02 / D-15) live?**
    - What we know: CONTEXT.md line 104 says "tests/service/ vs tests/contracts/ — Claude's Discretion." Current `tests/` is flat (no subdirectories).
-   - What's unclear: File placement within the flat structure.
-   - Recommendation: Add a new file `tests/test_list_pipelines_scope_unification.py` (or extend `tests/test_list_pipelines.py`). The test builds a `ListTasksPipeline` with a synthetic snapshot, calls `execute(ListTasksQuery(project="X"))` and `execute(ListTasksQuery(parent="X"))` where X is the name of a project, and asserts `result.items == other_result.items` field-by-field (or via `model_dump()` comparison). Test-file organization is planner's call; the test *content* is load-bearing.
+   - Recommendation: Extend `tests/test_list_pipelines.py` (test content is load-bearing, not file structure).
+   - **RESOLVED — accept recommendation.** Plan `57-02-PLAN.md` Task 2 adds `test_parent_and_project_byte_identical_for_same_project` to the existing `tests/test_list_pipelines.py`, using `model_dump(mode="json", by_alias=True)` equality.
 
 5. **Should PARENT_FILTER_DESC mirror PROJECT_FILTER_DESC phrasing exactly?**
-   - What we know: `PROJECT_FILTER_DESC` is `"Project ID or name. Names use case-insensitive substring matching -- if multiple projects match, tasks from all are included."` (descriptions.py:443-444). `TAGS_FILTER_DESC` has similar shape. `FOLDER_FILTER_DESC` also parallel.
-   - What's unclear: Exact wording for parent. Parent differs — matches projects AND tasks, returns descendants, not just direct members.
-   - Recommendation: **Mirror PROJECT_FILTER_DESC shape but disclose the descendant semantic** — e.g., "Task or project ID or name. Names use case-insensitive substring matching -- returns the resolved entity's full descendant subtree (tasks at any depth). If multiple entities match, their subtrees are unioned." Final wording is agent-facing-messaging concern; recommend the plan task that adds it runs the wording by the user if uncertain.
+   - What we know: `PROJECT_FILTER_DESC` is `"Project ID or name. Names use case-insensitive substring matching -- if multiple projects match, tasks from all are included."` (descriptions.py:443-444).
+   - Recommendation: Mirror PROJECT_FILTER_DESC shape but disclose the descendant semantic.
+   - **RESOLVED — provisional.** Plan `57-02-PLAN.md` Task 1 Step 2 locks provisional wording:
+     > "Task or project ID or name. Names use case-insensitive substring matching -- returns the resolved entity's full descendant subtree (tasks at any depth). If multiple entities match, their subtrees are unioned."
+   - **Escalation note for executor / user:** This is user-visible agent-facing copy. If Flo wants to review/refine wording before execution, raise it before Plan 02 Task 1 runs. Otherwise, proceed with the provisional wording and revisit during UAT if it doesn't read well to agents in practice.
 
 ## Environment Availability
 
