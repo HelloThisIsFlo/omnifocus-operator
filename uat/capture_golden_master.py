@@ -2587,7 +2587,9 @@ async def _check_leftover_tasks(bridge: RealBridge) -> None:
         remaining = [
             t
             for t in state.get("tasks", [])
-            if t.get("name", "").startswith(("GM-", "🧪 GM-")) and t["id"] not in known_project_ids
+            if t.get("name", "").startswith(("GM-", "🧪 GM-"))
+            and t["id"] not in known_project_ids
+            and t["id"] not in known_task_ids
         ]
         if not remaining:
             print("  All clear -- no leftover tasks found.")
