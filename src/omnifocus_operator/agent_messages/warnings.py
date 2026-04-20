@@ -174,6 +174,13 @@ but the Inbox is a virtual location, not a named project. \
 Inbox tasks are not included in these results. \
 Use 'inInbox=true' to query them."""
 
+# --- Task Tool: Parent Filter (Phase 57-02) ---
+
+PARENT_RESOLVES_TO_PROJECT_WARNING = """\
+The 'parent="{value}"' filter resolved only to projects. \
+Consider using 'project' instead -- it's the canonical filter for \
+project-level scoping and makes intent clearer."""
+
 # --- Availability Filter ---
 
 AVAILABILITY_MIXED_ALL = (

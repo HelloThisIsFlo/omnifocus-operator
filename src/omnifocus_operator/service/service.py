@@ -25,6 +25,7 @@ from omnifocus_operator.agent_messages.warnings import (
     AVAILABILITY_MIXED_ALL,
     LIST_PROJECTS_INBOX_WARNING,
     LIST_TASKS_INBOX_PROJECT_WARNING,
+    PARENT_RESOLVES_TO_PROJECT_WARNING,
     REPETITION_NO_OP,
 )
 from omnifocus_operator.config import get_week_start, local_now
@@ -402,7 +403,9 @@ class _ListTasksPipeline(_ReadPipeline):
         )
 
         self._check_inbox_project_warning()
+        self._check_inbox_parent_warning()
         self._resolve_project()
+        self._resolve_parent()
         self._resolve_tags()
         await self._resolve_date_filters()
         self._build_repo_query()
@@ -413,6 +416,19 @@ class _ListTasksPipeline(_ReadPipeline):
         if matches_inbox_name(self._project_to_resolve):
             self._warnings.append(
                 LIST_TASKS_INBOX_PROJECT_WARNING.format(value=self._project_to_resolve)
+            )
+
+    def _check_inbox_parent_warning(self) -> None:
+        """Warn if parent filter matches the inbox name (but $inbox was already consumed).
+
+        Phase 57-02 (D-14): reuses LIST_TASKS_INBOX_PROJECT_WARNING verbatim per the
+        design decision to avoid a new constant. The message text says
+        ``'project="..."'`` -- a documented minor agent-UX wart accepted in trade
+        for the no-new-code path (WARN-05 reuse).
+        """
+        if matches_inbox_name(self._parent_to_resolve):
+            self._warnings.append(
+                LIST_TASKS_INBOX_PROJECT_WARNING.format(value=self._parent_to_resolve)
             )
 
     def _resolve_project(self) -> None:
@@ -435,6 +451,45 @@ class _ListTasksPipeline(_ReadPipeline):
             for pid in resolved:
                 scope |= expand_scope(pid, self._snapshot, frozenset({EntityType.PROJECT}))
             self._project_scope = scope
+
+    def _resolve_parent(self) -> None:
+        """Resolve ``parent`` filter into a task-ID scope set.
+
+        Mirrors ``_resolve_project`` (D-05/D-11/D-12). Differences:
+
+        - Resolves against ``[*self._projects, *self._tasks]`` so parent
+          accepts both entity types (D-11).
+        - Expansion passes ``frozenset({EntityType.PROJECT, EntityType.TASK})``
+          so ``expand_scope`` injects the task as its own anchor (D-12) when
+          the resolved ref is a task.
+        - When ALL resolved matches are projects (not mixed project+task),
+          emit the WARN-02 pedagogical hint suggesting ``project=`` instead.
+        """
+        self._parent_scope: set[str] | None = None
+        if self._parent_to_resolve is None:
+            return
+        combined = [*self._projects, *self._tasks]
+        resolved = self._resolver.resolve_filter(self._parent_to_resolve, combined)
+        self._warnings.extend(
+            self._domain.check_filter_resolution(
+                self._parent_to_resolve, resolved, combined, "parent"
+            )
+        )
+        if resolved:
+            project_id_set = {p.id for p in self._projects}
+            # WARN-02: fires only when EVERY resolved match is a project (not mixed).
+            if all(rid in project_id_set for rid in resolved):
+                self._warnings.append(
+                    PARENT_RESOLVES_TO_PROJECT_WARNING.format(value=self._parent_to_resolve)
+                )
+            parent_scope: set[str] = set()
+            for rid in resolved:
+                parent_scope |= expand_scope(
+                    rid,
+                    self._snapshot,
+                    frozenset({EntityType.PROJECT, EntityType.TASK}),
+                )
+            self._parent_scope = parent_scope
 
     def _resolve_tags(self) -> None:
         self._tag_ids: list[str] | None = None
@@ -468,11 +523,18 @@ class _ListTasksPipeline(_ReadPipeline):
             date_kwargs[f"{name}_after"] = bounds.after
             date_kwargs[f"{name}_before"] = bounds.before
 
-        # Deterministic placeholder order (RESEARCH Pitfall 5). Plan 02 will
-        # extend this with parent scope + intersection logic.
+        # Deterministic placeholder order (RESEARCH Pitfall 5).
+        # Phase 57-02 (D-05): intersect project_scope & parent_scope when both
+        # present -- AND semantics at the service layer before flattening into
+        # the single task_id_scope primitive at the repo layer. If only one is
+        # set, use it alone; if neither is set, stay None (no scope filter).
         task_id_scope: list[str] | None = None
-        if self._project_scope is not None:
+        if self._project_scope is not None and self._parent_scope is not None:
+            task_id_scope = sorted(self._project_scope & self._parent_scope)
+        elif self._project_scope is not None:
             task_id_scope = sorted(self._project_scope)
+        elif self._parent_scope is not None:
+            task_id_scope = sorted(self._parent_scope)
 
         self._repo_query = ListTasksRepoQuery(
             in_inbox=self._in_inbox,

@@ -1733,3 +1733,418 @@ class TestListProjectsDateFiltering:
         assert (
             "proj-available" in result_proj_id_set
         )  # default availability still includes available
+
+
+# ---------------------------------------------------------------------------
+# Phase 57-02: parent filter pipeline tests
+# ---------------------------------------------------------------------------
+#
+# Shared shape: tasks wired by `parent="<task-id>"` form a parent-child chain
+# in the raw bridge format (see tests/conftest.py::make_task_dict). The
+# repository adapter turns those into `parent.task.id` references, which
+# service/subtree.py::expand_scope walks for subtree collection.
+
+
+class TestListTasksParentFilter:
+    """PARENT-01..06 pipeline coverage for ``list_tasks(parent=...)``."""
+
+    @pytest.mark.snapshot(
+        tasks=[
+            # Anchor task with two children under proj-work.
+            make_task_dict(id="anchor", name="Review Q3", project="proj-work", inInbox=False),
+            make_task_dict(
+                id="child-1",
+                name="Draft section 1",
+                project="proj-work",
+                parent="anchor",
+                inInbox=False,
+            ),
+            make_task_dict(
+                id="child-2",
+                name="Draft section 2",
+                project="proj-work",
+                parent="anchor",
+                inInbox=False,
+            ),
+            # Unrelated sibling at project root.
+            make_task_dict(id="unrelated", name="Other task", project="proj-work", inInbox=False),
+        ],
+        projects=[make_project_dict(id="proj-work", name="Work Projects")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_list_tasks_parent_filter_by_task_name(self, service: OperatorService) -> None:
+        """PARENT-01/04: resolving by task name returns anchor + descendants."""
+        result = await service.list_tasks(ListTasksQuery(parent="Review Q3"))
+        ids = {t.id for t in result.items}
+        assert ids == {"anchor", "child-1", "child-2"}
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="anchor", name="Review Q3", project="proj-work", inInbox=False),
+            make_task_dict(
+                id="child-1",
+                name="Draft section 1",
+                project="proj-work",
+                parent="anchor",
+                inInbox=False,
+            ),
+        ],
+        projects=[make_project_dict(id="proj-work", name="Work Projects")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_list_tasks_parent_filter_by_task_id(self, service: OperatorService) -> None:
+        """PARENT-01: resolving by task ID returns the same result as by name."""
+        result = await service.list_tasks(ListTasksQuery(parent="anchor"))
+        ids = {t.id for t in result.items}
+        assert ids == {"anchor", "child-1"}
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t1", name="A", project="proj-work", inInbox=False),
+            make_task_dict(id="t2", name="B", project="proj-work", inInbox=False),
+            make_task_dict(id="t3", name="Inbox only"),
+        ],
+        projects=[make_project_dict(id="proj-work", name="Work Projects")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_list_tasks_parent_filter_by_project_name(self, service: OperatorService) -> None:
+        """PARENT-04: project-resolved ref returns project tasks WITHOUT the project ID."""
+        result = await service.list_tasks(ListTasksQuery(parent="Work"))
+        ids = {t.id for t in result.items}
+        # Only tasks under the project appear; project ID itself is never a row.
+        assert ids == {"t1", "t2"}
+        assert "proj-work" not in ids
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="top", name="Top anchor", project="proj-work", inInbox=False),
+            make_task_dict(
+                id="mid",
+                name="Middle",
+                project="proj-work",
+                parent="top",
+                inInbox=False,
+            ),
+            make_task_dict(
+                id="leaf",
+                name="Leaf",
+                project="proj-work",
+                parent="mid",
+                inInbox=False,
+            ),
+        ],
+        projects=[make_project_dict(id="proj-work", name="Work Projects")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_list_tasks_parent_filter_includes_deep_descendants(
+        self, service: OperatorService
+    ) -> None:
+        """PARENT-03: descendants at any depth are included."""
+        result = await service.list_tasks(ListTasksQuery(parent="Top anchor"))
+        ids = {t.id for t in result.items}
+        assert ids == {"top", "mid", "leaf"}
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t1", name="Something", project="proj-work", inInbox=False),
+        ],
+        projects=[make_project_dict(id="proj-work", name="Work")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_list_tasks_parent_filter_no_match(self, service: OperatorService) -> None:
+        """No-match: filter is skipped + FILTER_NO_MATCH-style warning."""
+        result = await service.list_tasks(ListTasksQuery(parent="NoSuchThing"))
+        # Filter skipped -> full result set returned.
+        assert {t.id for t in result.items} == {"t1"}
+        assert result.warnings is not None
+        assert any("NoSuchThing" in w for w in result.warnings)
+        assert any("skipped" in w.lower() for w in result.warnings)
+
+    @pytest.mark.snapshot(
+        tasks=[
+            # Two tasks that both contain "Review" as a substring of their name.
+            make_task_dict(
+                id="task-review-a", name="Review Q3 plan", project="proj-work", inInbox=False
+            ),
+            make_task_dict(
+                id="task-review-b",
+                name="Review Q4 plan",
+                project="proj-work",
+                inInbox=False,
+            ),
+            # Child under task-review-a to prove union-of-subtrees.
+            make_task_dict(
+                id="child-a",
+                name="Child of A",
+                project="proj-work",
+                parent="task-review-a",
+                inInbox=False,
+            ),
+        ],
+        projects=[make_project_dict(id="proj-work", name="Work Projects")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_list_tasks_parent_multi_match_warning(self, service: OperatorService) -> None:
+        """WARN-05 reuse: multi-match warning fires; subtrees are unioned."""
+        result = await service.list_tasks(ListTasksQuery(parent="Review"))
+        ids = {t.id for t in result.items}
+        # Both anchors + child-a.
+        assert ids == {"task-review-a", "task-review-b", "child-a"}
+        assert result.warnings is not None
+        assert any("task-review-a" in w and "task-review-b" in w for w in result.warnings)
+        assert any("filter by ID" in w for w in result.warnings)
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t-inbox", name="Inbox task"),
+            make_task_dict(id="t-project", name="Project task", project="proj-work", inInbox=False),
+        ],
+        projects=[make_project_dict(id="proj-work", name="Work")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_list_tasks_parent_inbox_sentinel_equivalence(
+        self, service: OperatorService
+    ) -> None:
+        """PARENT-07: parent='$inbox' produces byte-identical results to project='$inbox'."""
+        result_parent = await service.list_tasks(ListTasksQuery(parent="$inbox"))
+        result_project = await service.list_tasks(ListTasksQuery(project="$inbox"))
+
+        dump_parent = [t.model_dump(mode="json", by_alias=True) for t in result_parent.items]
+        dump_project = [t.model_dump(mode="json", by_alias=True) for t in result_project.items]
+        assert dump_parent == dump_project
+        assert result_parent.total == result_project.total
+        assert result_parent.has_more == result_project.has_more
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t-inbox", name="Inbox task"),
+        ],
+        projects=[],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_list_tasks_parent_inbox_with_in_inbox_false_raises(
+        self, service: OperatorService
+    ) -> None:
+        """PARENT-08: parent='$inbox' + inInbox=false raises CONTRADICTORY_INBOX_FALSE."""
+        with pytest.raises(ValueError, match=r"Contradictory filters"):
+            await service.list_tasks(ListTasksQuery(parent="$inbox", in_inbox=False))
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t-project", name="Project task", project="proj-inbox", inInbox=False
+            ),
+        ],
+        projects=[make_project_dict(id="proj-inbox", name="inbox style")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_list_tasks_parent_inbox_name_substring_warning(
+        self, service: OperatorService
+    ) -> None:
+        """WARN-05 reuse: parent='inb' (substring of Inbox) emits LIST_TASKS_INBOX_PROJECT_WARNING.
+
+        The reused warning text says 'project="..."' -- documented agent-UX wart
+        per D-14; the warning text is not parent-specific.
+        """
+        result = await service.list_tasks(ListTasksQuery(parent="inb"))
+        assert result.warnings is not None
+        assert any('project="inb"' in w for w in result.warnings)
+
+    @pytest.mark.snapshot(
+        tasks=[
+            # Parent anchor has 3 children under proj-work. Two of them have tag 'Urgent'.
+            make_task_dict(id="anchor", name="Big feature", project="proj-work", inInbox=False),
+            make_task_dict(
+                id="c1",
+                name="Step 1",
+                project="proj-work",
+                parent="anchor",
+                tags=[{"id": "tag-urgent", "name": "Urgent"}],
+                inInbox=False,
+            ),
+            make_task_dict(
+                id="c2",
+                name="Step 2",
+                project="proj-work",
+                parent="anchor",
+                inInbox=False,
+            ),
+            make_task_dict(
+                id="c3",
+                name="Step 3",
+                project="proj-work",
+                parent="anchor",
+                tags=[{"id": "tag-urgent", "name": "Urgent"}],
+                inInbox=False,
+            ),
+        ],
+        projects=[make_project_dict(id="proj-work", name="Work Projects")],
+        tags=[make_tag_dict(id="tag-urgent", name="Urgent")],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_list_tasks_parent_and_tags_filter_and_composition(
+        self, service: OperatorService
+    ) -> None:
+        """PARENT-05: parent AND-composes with tags via scope-set intersection."""
+        result = await service.list_tasks(ListTasksQuery(parent="Big feature", tags=["Urgent"]))
+        assert {t.id for t in result.items} == {"c1", "c3"}
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t1", name="Task A", project="proj-work", inInbox=False),
+            make_task_dict(id="t2", name="Task B", project="proj-work", inInbox=False),
+        ],
+        projects=[make_project_dict(id="proj-work", name="Work Projects")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_list_tasks_parent_resolves_to_project_warning(
+        self, service: OperatorService
+    ) -> None:
+        """WARN-02: all resolved matches are projects -> PARENT_RESOLVES_TO_PROJECT fires."""
+        result = await service.list_tasks(ListTasksQuery(parent="Work Projects"))
+        assert result.warnings is not None
+        assert any(
+            "resolved only to projects" in w and 'parent="Work Projects"' in w
+            for w in result.warnings
+        )
+
+    @pytest.mark.snapshot(
+        tasks=[
+            # A task whose name contains the project's name -- mixed match.
+            make_task_dict(id="task-mix", name="Work review", project="proj-work", inInbox=False),
+            make_task_dict(id="other", name="Other", project="proj-work", inInbox=False),
+        ],
+        projects=[make_project_dict(id="proj-work", name="Work")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_list_tasks_parent_resolves_mixed_no_project_warning(
+        self, service: OperatorService
+    ) -> None:
+        """WARN-02 negative: mixed project+task matches -> WARN-02 does NOT fire."""
+        result = await service.list_tasks(ListTasksQuery(parent="Work"))
+        if result.warnings is not None:
+            assert not any("resolved only to projects" in w for w in result.warnings)
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="anchor", name="Big anchor", project="proj-work", inInbox=False),
+            *[
+                make_task_dict(
+                    id=f"c{i}",
+                    name=f"child {i}",
+                    project="proj-work",
+                    parent="anchor",
+                    inInbox=False,
+                )
+                for i in range(1, 20)
+            ],
+        ],
+        projects=[make_project_dict(id="proj-work", name="Work Projects")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_list_tasks_parent_pagination(self, service: OperatorService) -> None:
+        """PARENT-06: subtree result paginates correctly (limit + offset)."""
+        result = await service.list_tasks(ListTasksQuery(parent="Big anchor", limit=5, offset=10))
+        assert len(result.items) == 5
+        assert result.has_more is True
+
+    @pytest.mark.snapshot(
+        tasks=[
+            # Task under proj-1 AND child of parent-anchor under proj-2 is structurally
+            # impossible, so we verify intersection via: task X is under proj-1 AND
+            # matches the parent-anchor subtree (which is also under proj-1).
+            make_task_dict(id="anchor", name="Parent anchor", project="proj-1", inInbox=False),
+            make_task_dict(
+                id="in-both",
+                name="Under both",
+                project="proj-1",
+                parent="anchor",
+                inInbox=False,
+            ),
+            make_task_dict(
+                id="not-in-subtree", name="Project only", project="proj-1", inInbox=False
+            ),
+            make_task_dict(
+                id="wrong-project", name="Other project", project="proj-2", inInbox=False
+            ),
+        ],
+        projects=[
+            make_project_dict(id="proj-1", name="Primary"),
+            make_project_dict(id="proj-2", name="Secondary"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_list_tasks_parent_and_project_intersection(
+        self, service: OperatorService
+    ) -> None:
+        """D-05: project_scope ∩ parent_scope produces the AND-composed task set."""
+        result = await service.list_tasks(ListTasksQuery(project="Primary", parent="Parent anchor"))
+        # parent subtree = {anchor, in-both}; project scope = {anchor, in-both, not-in-subtree}
+        # intersection = {anchor, in-both}.
+        assert {t.id for t in result.items} == {"anchor", "in-both"}
+
+
+class TestListTasksParentProjectEquivalence:
+    """UNIFY-02 / D-15: cross-filter equivalence contract gate."""
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t1", name="Task one", project="proj-work", inInbox=False),
+            make_task_dict(id="t2", name="Task two", project="proj-work", inInbox=False),
+            make_task_dict(id="unrelated", name="Unrelated", project="proj-other", inInbox=False),
+        ],
+        projects=[
+            make_project_dict(id="proj-work", name="Work Projects"),
+            make_project_dict(id="proj-other", name="Other"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_parent_and_project_byte_identical_for_same_project(
+        self, service: OperatorService
+    ) -> None:
+        """list_tasks(project='Work Projects') == list_tasks(parent='Work Projects')
+        byte-identically when the value resolves to the same project. This is the
+        UNIFY-02 / D-15 contract gate -- the load-bearing proof that the
+        unification architecture works end-to-end."""
+        project_result = await service.list_tasks(ListTasksQuery(project="Work Projects"))
+        parent_result = await service.list_tasks(ListTasksQuery(parent="Work Projects"))
+
+        project_dump = [t.model_dump(mode="json", by_alias=True) for t in project_result.items]
+        parent_dump = [t.model_dump(mode="json", by_alias=True) for t in parent_result.items]
+
+        # WARN-02 fires only on the parent path -- strip warnings from the byte
+        # comparison since they're not part of the task list shape. The contract
+        # under D-15 is that the task payload itself is byte-identical; the
+        # parent-only warning surface is an orthogonal concern.
+        assert project_dump == parent_dump
+        assert project_result.total == parent_result.total
+        assert project_result.has_more == parent_result.has_more
