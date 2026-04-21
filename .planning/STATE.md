@@ -50,8 +50,8 @@ _(cleared — v1.4 decisions archived to milestones/v1.4-ROADMAP.md and PROJECT.
 
 Carried forward from v1.4:
 
-1. Add retry logic for OmniFocus bridge timeouts (v1.6)
-2. Investigate macOS App Nap impact on OmniFocus responsiveness (v1.6)
+1. Add retry logic for OmniFocus bridge timeouts (v1.7)
+2. Investigate macOS App Nap impact on OmniFocus responsiveness (v1.7)
 3. Make UAT folder discoverable for verification agents
 4. Investigate `replace: []` bug in production (may not be staleness-related)
 5. Remove misleading "single runtime dependency" messaging from README + landing page

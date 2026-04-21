@@ -14,10 +14,10 @@ no bridge — pure function testing (SAFE-01 compliant by construction).
 from __future__ import annotations
 
 import pytest
-from omnifocus_operator.service.subtree import expand_scope
 
 from omnifocus_operator.models.enums import EntityType
 from omnifocus_operator.models.snapshot import AllEntities
+from omnifocus_operator.service.subtree import expand_scope
 from tests.conftest import make_model_project_dict, make_model_task_dict
 
 # ---------------------------------------------------------------------------

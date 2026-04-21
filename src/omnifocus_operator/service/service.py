@@ -55,7 +55,6 @@ from omnifocus_operator.contracts.use_cases.list.tasks import (
     ListTasksRepoQuery,
 )
 from omnifocus_operator.models.enums import (
-    Availability,
     EntityType,
     FolderAvailability,
     TagAvailability,

@@ -94,13 +94,13 @@ File-based JSON request/response via OmniFocus's sandbox directory. Both sides u
 ### Writes
 - `add_tasks([...])` -- task creation (v1.2)
 - `edit_tasks([{ id, changes }])` -- task editing with patch semantics (v1.2)
-- `add_projects([...])` -- project creation (v1.7)
-- `edit_projects([{ id, changes }])` -- project editing (v1.7)
+- `add_projects([...])` -- project creation (v1.5)
+- `edit_projects([{ id, changes }])` -- project editing (v1.5)
 
 ### UI
-- `show_perspective(name)` -- switches OmniFocus UI perspective (v1.5)
-- `get_current_perspective()` -- returns active perspective name (v1.5)
-- `open_task(id)` -- opens task in OmniFocus UI (v1.5)
+- `show_perspective(name)` -- switches OmniFocus UI perspective (v1.6)
+- `get_current_perspective()` -- returns active perspective name (v1.6)
+- `open_task(id)` -- opens task in OmniFocus UI (v1.6)
 
 ### Not in Scope
 - Tag writes, folder writes, task reordering, undo/dry run, full-text indexing
@@ -116,9 +116,9 @@ File-based JSON request/response via OmniFocus's sandbox directory. Both sides u
 | v1.3 | Read Tools | 11 | SQL filtering, entity browsing |
 | v1.4 | Response Shaping & Notes Append | 11 | Field projection, compact output (CSV or null-stripping), notes append |
 | v1.4.1 | Task Properties & Subtree Retrieval | 11 | Presence flags (`hasNote`, `hasRepetition`, `hasAttachments`), auto-complete, parallel/sequential, `parent` filter |
-| v1.5 | UI & Perspectives | 14 | Perspective switching, deep link, UI data path |
-| v1.6 | Production Hardening | 14 | Retry, crash recovery, serial execution |
-| v1.7 | Project Writes | 16 | Project creation, editing, review marking |
+| v1.5 | Project Writes | 13 | Project creation, editing, review marking |
+| v1.6 | UI & Perspectives | 16 | Perspective switching, deep link, UI data path |
+| v1.7 | Production Hardening | 16 | Retry, crash recovery, serial execution |
 
 Each milestone has its own detailed spec file.
 

@@ -1178,7 +1178,7 @@ class HybridRepository(BridgeWriteMixin, Repository):
 
         Known gap: only returns custom perspectives. Built-in perspectives
         (Inbox, Projects, Tags, Forecast, Flagged, Review) live in the OmniJS
-        runtime, not the SQLite cache. This will be resolved in v1.5 via a
+        runtime, not the SQLite cache. This will be resolved in v1.6 via a
         BridgePerspectiveMixin that merges bridge-sourced built-ins with
         SQLite custom perspectives.
         """

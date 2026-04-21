@@ -164,7 +164,7 @@ Flat array of per-item results. `status` enum replaces `success: bool`:
 
 #### Concurrency
 
-Concurrent batch calls from separate agent threads are not serialized at the server level. Items within a single batch are serial; interleaving across batches is possible. Document as a known limitation — serial execution guarantee is a v1.6 concern.
+Concurrent batch calls from separate agent threads are not serialized at the server level. Items within a single batch are serial; interleaving across batches is possible. Document as a known limitation — serial execution guarantee is a v1.7 concern.
 
 ### Notes Graduation
 

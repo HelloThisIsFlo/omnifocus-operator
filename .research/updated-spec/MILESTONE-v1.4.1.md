@@ -21,7 +21,7 @@ Same pattern as v1.3.1 / v1.3.2 / v1.3.3 after v1.3. Narrow field additions and 
 
 ### New Writable Fields (tasks)
 
-Two new fields are writable on tasks via `add_tasks` and `edit_tasks`. Both are read-only on projects in v1.4.1 (project writes stay deferred to v1.7, consistent with the existing write surface).
+Two new fields are writable on tasks via `add_tasks` and `edit_tasks`. Both are read-only on projects in v1.4.1 (project writes stay deferred to v1.5, consistent with the existing write surface).
 
 #### `completesWithChildren: bool`
 
