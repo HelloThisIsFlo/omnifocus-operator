@@ -6,8 +6,14 @@ BridgeOnlyRepository + InMemoryBridge (per D-11), validation tests are pure.
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
+from omnifocus_operator.agent_messages.errors import (
+    CONTRADICTORY_INBOX_FALSE,
+    CONTRADICTORY_INBOX_PROJECT,
+)
 from omnifocus_operator.contracts.base import UNSET
 from omnifocus_operator.models.enums import EntityType
 from omnifocus_operator.models.project import Project
@@ -664,13 +670,7 @@ class TestResolveInbox3Arg:
 
     def test_resolve_inbox_3arg_parent_inbox_with_in_inbox_false(self, resolver: Resolver) -> None:
         """PARENT-08: parent '$inbox' + inInbox=false raises CONTRADICTORY_INBOX_FALSE."""
-        import re as _re  # noqa: PLC0415
-
-        from omnifocus_operator.agent_messages.errors import (
-            CONTRADICTORY_INBOX_FALSE,
-        )
-
-        with pytest.raises(ValueError, match=_re.escape(CONTRADICTORY_INBOX_FALSE)):
+        with pytest.raises(ValueError, match=re.escape(CONTRADICTORY_INBOX_FALSE)):
             resolver.resolve_inbox(False, None, "$inbox")
 
     def test_resolve_inbox_3arg_in_inbox_true_with_parent_real_ref(
@@ -678,13 +678,7 @@ class TestResolveInbox3Arg:
     ) -> None:
         """inInbox=true + parent real ref raises CONTRADICTORY_INBOX_PROJECT
         (the same contradiction as the project-side; consolidated at D-09)."""
-        import re as _re  # noqa: PLC0415
-
-        from omnifocus_operator.agent_messages.errors import (  # noqa: PLC0415
-            CONTRADICTORY_INBOX_PROJECT,
-        )
-
-        with pytest.raises(ValueError, match=_re.escape(CONTRADICTORY_INBOX_PROJECT)):
+        with pytest.raises(ValueError, match=re.escape(CONTRADICTORY_INBOX_PROJECT)):
             resolver.resolve_inbox(True, None, "RealTask")
 
     def test_resolve_inbox_3arg_project_real_ref_passthrough(self, resolver: Resolver) -> None:
@@ -716,13 +710,7 @@ class TestResolveInbox3Arg:
         """Pre-existing 2-arg path: resolve_inbox(False, "$inbox") raised
         CONTRADICTORY_INBOX_FALSE. Mechanical migration to 3-arg (parent=None)
         MUST raise the SAME constant with the SAME message verbatim."""
-        import re as _re  # noqa: PLC0415
-
-        from omnifocus_operator.agent_messages.errors import (
-            CONTRADICTORY_INBOX_FALSE,
-        )
-
-        with pytest.raises(ValueError, match=_re.escape(CONTRADICTORY_INBOX_FALSE)):
+        with pytest.raises(ValueError, match=re.escape(CONTRADICTORY_INBOX_FALSE)):
             resolver.resolve_inbox(False, "$inbox", None)
 
     def test_resolve_inbox_3arg_existing_in_inbox_true_real_project_still_raises(
@@ -731,11 +719,5 @@ class TestResolveInbox3Arg:
         """Pre-existing 2-arg path: resolve_inbox(True, "RealProject") raised
         CONTRADICTORY_INBOX_PROJECT. Mechanical migration to 3-arg (parent=None)
         MUST raise the SAME constant with the SAME message verbatim."""
-        import re as _re  # noqa: PLC0415
-
-        from omnifocus_operator.agent_messages.errors import (  # noqa: PLC0415
-            CONTRADICTORY_INBOX_PROJECT,
-        )
-
-        with pytest.raises(ValueError, match=_re.escape(CONTRADICTORY_INBOX_PROJECT)):
+        with pytest.raises(ValueError, match=re.escape(CONTRADICTORY_INBOX_PROJECT)):
             resolver.resolve_inbox(True, "SomeRealProject", None)

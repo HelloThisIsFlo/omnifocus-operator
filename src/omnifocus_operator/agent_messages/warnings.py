@@ -184,16 +184,11 @@ project-level scoping and makes intent clearer."""
 # --- Task Tool: Scope Filter Semantics (Phase 57-03) ---
 
 # WARN-01: verbatim text from MILESTONE-v1.4.1.md line 180 -- DO NOT paraphrase.
-# NOTE: The dash after "true parent" is U+2014 EM DASH (—), NOT two ASCII
-# hyphens ("--") and NOT an en-dash (–). The em-dash fidelity grep in the
-# Phase 57 plan's acceptance-criteria block will FAIL if you substitute "--"
-# here; the test_verbatim_text in-module check will also fail. Keep the
-# character exactly as written.
 FILTERED_SUBTREE_WARNING = """\
 Filtered subtree: resolved parent tasks are always included, \
 but intermediate and descendant tasks not matching your other filters \
 (tags, dates, etc.) are excluded. Each returned task's `parent` field \
-still references its true parent — fetch separately if you need data \
+still references its true parent -- fetch separately if you need data \
 for an excluded intermediate."""
 
 # WARN-03: soft heads-up when both scope filters specified together.

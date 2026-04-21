@@ -20,9 +20,13 @@ ancestors UP, this one walks descendants DOWN.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from omnifocus_operator.models.enums import EntityType
-from omnifocus_operator.models.snapshot import AllEntities
-from omnifocus_operator.models.task import Task
+
+if TYPE_CHECKING:
+    from omnifocus_operator.models.snapshot import AllEntities
+    from omnifocus_operator.models.task import Task
 
 
 def expand_scope(
