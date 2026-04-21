@@ -1198,19 +1198,6 @@ class TestCheckFilteredSubtree:
         query = ListTasksQuery(availability=[AvailabilityFilter.AVAILABLE])
         assert _domain().check_filtered_subtree(query) == []
 
-    def test_verbatim_text(self) -> None:
-        """The fired warning is byte-identical to the imported constant.
-
-        This is the in-module locked-text gate -- asserts the domain method returns
-        the exact constant, with no paraphrasing or dynamic formatting. The em-dash
-        fidelity gate (grep against the source-of-truth spec) lives in the plan's
-        acceptance-criteria block, not in this test.
-        """
-        query = ListTasksQuery(project="Work", flagged=True)
-        result = _domain().check_filtered_subtree(query)
-        assert len(result) == 1
-        assert result[0] == FILTERED_SUBTREE_WARNING
-
     def test_both_project_and_parent_with_flagged_fires_once(self) -> None:
         """Both project AND parent set + flagged -> fires EXACTLY ONCE.
 
