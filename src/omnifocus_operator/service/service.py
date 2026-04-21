@@ -70,6 +70,8 @@ from omnifocus_operator.service.validate import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from omnifocus_operator.contracts.shared.repetition_rule import (
         FrequencyEditSpec,
         RepetitionRuleEditSpec,
@@ -91,6 +93,7 @@ if TYPE_CHECKING:
     from omnifocus_operator.models.task import Task
     from omnifocus_operator.repository import Repository
     from omnifocus_operator.service.preferences import OmniFocusPreferences
+    from omnifocus_operator.service.resolve import _HasIdAndName
 
 __all__ = ["ErrorOperatorService", "OperatorService"]
 
@@ -400,8 +403,7 @@ class _ListTasksPipeline(_ReadPipeline):
             unset_to_none(self._query.parent),
         )
 
-        self._check_inbox_project_warning()
-        self._check_inbox_parent_warning()
+        self._check_inbox_name_warnings()
         self._resolve_project()
         self._resolve_parent()
         self._resolve_tags()
@@ -419,25 +421,54 @@ class _ListTasksPipeline(_ReadPipeline):
 
         return await self._delegate()
 
-    def _check_inbox_project_warning(self) -> None:
-        """Warn if project filter matches the inbox name (but $inbox was already consumed)."""
-        if matches_inbox_name(self._project_to_resolve):
-            self._warnings.append(
-                LIST_TASKS_INBOX_PROJECT_WARNING.format(value=self._project_to_resolve)
-            )
+    def _check_inbox_name_warnings(self) -> None:
+        """Warn if ``project`` or ``parent`` substring-matches the inbox name.
 
-    def _check_inbox_parent_warning(self) -> None:
-        """Warn if parent filter matches the inbox name (but $inbox was already consumed).
-
-        Phase 57-02 (D-14): reuses LIST_TASKS_INBOX_PROJECT_WARNING verbatim per the
-        design decision to avoid a new constant. The message text says
-        ``'project="..."'`` -- a documented minor agent-UX wart accepted in trade
-        for the no-new-code path (WARN-05 reuse).
+        The ``$inbox`` sentinel is already consumed by ``resolve_inbox``; this
+        catches the plain-name case (``parent="Inbox"``). Both filters reuse
+        ``LIST_TASKS_INBOX_PROJECT_WARNING`` verbatim per Phase 57-02 D-14 —
+        accepted UX wart: the message text says ``'project="..."'`` even for
+        the parent filter, traded for the no-new-constant path (WARN-05 reuse).
         """
-        if matches_inbox_name(self._parent_to_resolve):
-            self._warnings.append(
-                LIST_TASKS_INBOX_PROJECT_WARNING.format(value=self._parent_to_resolve)
-            )
+        for value in (self._project_to_resolve, self._parent_to_resolve):
+            if matches_inbox_name(value):
+                self._warnings.append(LIST_TASKS_INBOX_PROJECT_WARNING.format(value=value))
+
+    def _resolve_scope_filter(
+        self,
+        value: str | None,
+        entities: Sequence[_HasIdAndName],
+        label: str,
+    ) -> tuple[set[str] | None, list[str]]:
+        """Shared resolve → warn → expand core for ``project`` + ``parent`` filters.
+
+        Per MILESTONE-v1.4.1 "ONE shared mechanism" (interview-notes session 2):
+        both surface filters flow through this helper; they differ only by the
+        accepted entity-type-set (``entities``) and the warning label. The
+        shared pipeline is:
+
+        1. Resolve the value against ``entities`` via ``Resolver.resolve_filter``.
+        2. Emit multi-match / no-match / did-you-mean warnings.
+        3. Union ``expand_scope`` over each resolved ID into a task-ID scope set.
+
+        Returns ``(scope_set, resolved_ids)``:
+        - ``scope_set`` is ``None`` when ``value`` is ``None`` or no entities
+          matched; otherwise the union of task-ID scopes.
+        - ``resolved_ids`` exposes the raw resolver output so filter-specific
+          callers can do post-processing (e.g. WARN-02 for ``parent``).
+        """
+        if value is None:
+            return None, []
+        resolved = self._resolver.resolve_filter(value, entities)
+        self._warnings.extend(
+            self._domain.check_filter_resolution(value, resolved, entities, label)
+        )
+        if not resolved:
+            return None, resolved
+        scope: set[str] = set()
+        for rid in resolved:
+            scope |= expand_scope(rid, self._snapshot)
+        return scope, resolved
 
     def _resolve_project(self) -> None:
         # Scope-set shape (UNIFY-01/D-05): expand each resolved project ID
@@ -445,54 +476,34 @@ class _ListTasksPipeline(_ReadPipeline):
         # union. self._project_scope is a set[str] of TASK IDs (not project
         # IDs). _build_repo_query sorts + assigns to task_id_scope for
         # deterministic SQL placeholder order (RESEARCH Pitfall 5).
-        self._project_scope: set[str] | None = None
-        if self._project_to_resolve is None:
-            return
-        resolved = self._resolver.resolve_filter(self._project_to_resolve, self._projects)
-        self._warnings.extend(
-            self._domain.check_filter_resolution(
-                self._project_to_resolve, resolved, self._projects, "project"
-            )
+        self._project_scope, _ = self._resolve_scope_filter(
+            self._project_to_resolve, self._projects, "project"
         )
-        if resolved:
-            scope: set[str] = set()
-            for pid in resolved:
-                scope |= expand_scope(pid, self._snapshot)
-            self._project_scope = scope
 
     def _resolve_parent(self) -> None:
         """Resolve ``parent`` filter into a task-ID scope set.
 
-        Mirrors ``_resolve_project`` (D-05/D-11/D-12). Differences:
+        Delegates the shared resolve → warn → expand pipeline to
+        ``_resolve_scope_filter`` (D-05/D-11/D-12). The two filter-specific
+        differences are:
 
-        - Resolves against ``[*self._projects, *self._tasks]`` so parent
-          accepts both entity types (D-11). ``expand_scope`` dispatches on
-          the resolved ID's type so tasks inject themselves as anchors
-          (D-12) and projects do not.
+        - ``entities`` is ``[*self._projects, *self._tasks]`` so parent accepts
+          both types (D-11). ``expand_scope`` dispatches on the resolved ID's
+          type so tasks inject themselves as anchors (D-12), projects do not.
         - When ALL resolved matches are projects (not mixed project+task),
           emit the WARN-02 pedagogical hint suggesting ``project=`` instead.
         """
-        self._parent_scope: set[str] | None = None
-        if self._parent_to_resolve is None:
-            return
         combined = [*self._projects, *self._tasks]
-        resolved = self._resolver.resolve_filter(self._parent_to_resolve, combined)
-        self._warnings.extend(
-            self._domain.check_filter_resolution(
-                self._parent_to_resolve, resolved, combined, "parent"
-            )
+        self._parent_scope, resolved = self._resolve_scope_filter(
+            self._parent_to_resolve, combined, "parent"
         )
+        # WARN-02: fires only when EVERY resolved match is a project (not mixed).
         if resolved:
-            project_id_set = {p.id for p in self._projects}
-            # WARN-02: fires only when EVERY resolved match is a project (not mixed).
-            if all(rid in project_id_set for rid in resolved):
+            project_ids = {p.id for p in self._projects}
+            if all(rid in project_ids for rid in resolved):
                 self._warnings.append(
                     PARENT_RESOLVES_TO_PROJECT_WARNING.format(value=self._parent_to_resolve)
                 )
-            parent_scope: set[str] = set()
-            for rid in resolved:
-                parent_scope |= expand_scope(rid, self._snapshot)
-            self._parent_scope = parent_scope
 
     def _resolve_tags(self) -> None:
         self._tag_ids: list[str] | None = None
