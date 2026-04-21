@@ -43,12 +43,12 @@ Plans (`57-01`, `57-02`, `57-03`) populate this through their `<verify><automate
 
 | Task ID | Plan | Wave | Requirements | Test Type | Automated Command | Status |
 |---------|------|------|--------------|-----------|-------------------|--------|
-| 57-01-01 | 01 | 1 | UNIFY-01, UNIFY-03, PARENT-03, PARENT-04 | unit | `uv run pytest tests/test_service_subtree.py -x -q` | ⬜ pending |
-| 57-01-02 | 01 | 1 | UNIFY-04, UNIFY-05, UNIFY-06 | unit+integration | `uv run pytest tests/test_list_contracts.py tests/test_query_builder.py tests/test_bridge_only_repository.py tests/test_hybrid_repository.py tests/test_list_pipelines.py tests/test_output_schema.py -x -q` | ⬜ pending |
-| 57-02-01 | 02 | 2 | PARENT-01, PARENT-02, PARENT-05, PARENT-06, PARENT-07, PARENT-08, PARENT-09 | unit | `uv run pytest tests/test_list_contracts.py tests/test_descriptions.py tests/test_output_schema.py -x -q` | ⬜ pending |
-| 57-02-02 | 02 | 2 | UNIFY-02, WARN-02, WARN-05 | unit+integration | `uv run pytest tests/test_service_resolve.py tests/test_list_pipelines.py -x -q` | ⬜ pending |
-| 57-03-01 | 03 | 3 | WARN-01, WARN-04 | unit | `uv run pytest tests/test_service_domain.py tests/test_list_pipelines.py -x -q` | ⬜ pending |
-| 57-03-02 | 03 | 3 | WARN-03 | unit | `uv run pytest tests/test_service_domain.py tests/test_list_pipelines.py -x -q` | ⬜ pending |
+| 57-01-01 | 01 | 1 | UNIFY-01, UNIFY-03, PARENT-03, PARENT-04 | unit | `uv run pytest tests/test_service_subtree.py -x -q` | ✅ green |
+| 57-01-02 | 01 | 1 | UNIFY-04, UNIFY-05, UNIFY-06 | unit+integration | `uv run pytest tests/test_list_contracts.py tests/test_query_builder.py tests/test_bridge_only_repository.py tests/test_hybrid_repository.py tests/test_list_pipelines.py tests/test_output_schema.py -x -q` | ✅ green |
+| 57-02-01 | 02 | 2 | PARENT-01, PARENT-02, PARENT-05, PARENT-06, PARENT-07, PARENT-08, PARENT-09 | unit | `uv run pytest tests/test_list_contracts.py tests/test_descriptions.py tests/test_output_schema.py -x -q` | ✅ green |
+| 57-02-02 | 02 | 2 | UNIFY-02, WARN-02, WARN-05 | unit+integration | `uv run pytest tests/test_service_resolve.py tests/test_list_pipelines.py -x -q` | ✅ green |
+| 57-03-01 | 03 | 3 | WARN-01, WARN-04 | unit | `uv run pytest tests/test_service_domain.py tests/test_list_pipelines.py -x -q` | ✅ green |
+| 57-03-02 | 03 | 3 | WARN-03 | unit | `uv run pytest tests/test_service_domain.py tests/test_list_pipelines.py -x -q` | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky · (task IDs are indicative; plan may further split — see Blocker #5 revision)*
 
@@ -86,3 +86,23 @@ Plans (`57-01`, `57-02`, `57-03`) populate this through their `<verify><automate
 - [x] `test_output_schema.py` included in pre-verification command (mandatory per `CLAUDE.md`)
 
 **Approval:** approved 2026-04-20
+
+---
+
+## Validation Audit 2026-04-21
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+**Audit summary:** All 6 task rows in the Per-Task Verification Map map to existing, green automated tests. Per-command run results on audit date:
+
+- `tests/test_service_subtree.py` — **10 passed**
+- `tests/test_list_contracts.py + test_query_builder.py + test_bridge_only_repository.py + test_hybrid_repository.py + test_list_pipelines.py + test_output_schema.py` — **486 passed**
+- `tests/test_list_contracts.py + test_descriptions.py + test_output_schema.py` — **184 passed**
+- `tests/test_service_resolve.py + test_list_pipelines.py` — **177 passed** (incl. D-15 cross-filter equivalence gate)
+- `tests/test_service_domain.py + test_list_pipelines.py` — **294 passed** (incl. em-dash U+2014 fidelity gates for WARN-01)
+
+All 20 Phase 57 requirements (PARENT-01..09, UNIFY-01..06, WARN-01..05) are COVERED — no PARTIAL, no MISSING, no Manual-Only additions needed beyond those already captured at approval time (RealBridge-backed UAT, WARN-01 agent-UX wording review). `nyquist_compliant: true` reaffirmed.
