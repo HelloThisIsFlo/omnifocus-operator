@@ -4,8 +4,8 @@ Phase 57 unifies the ``project`` and ``parent`` ``list_tasks`` filters on a
 single repo primitive (``ListTasksRepoQuery.task_id_scope``) and a single
 service-layer expansion helper defined here.
 
-``expand_scope`` takes a resolved entity ID plus a frozenset of accepted
-entity types and returns the set of task IDs the entity scopes:
+``expand_scope`` takes a resolved entity ID and returns the set of task IDs
+the entity scopes — dispatching on whether the ID is a task or a project:
 
 - Task anchor → ``{ref_id} | {descendants}`` (the task itself is included
   because tasks are ``list_tasks`` rows).
@@ -16,42 +16,34 @@ The helper is a pure, synchronous function: the caller passes in the snapshot,
 so no repository round-trip happens here. This matches the
 ``compute_true_inheritance`` neighbour in ``domain.py`` — that one walks
 ancestors UP, this one walks descendants DOWN.
+
+Callers are trusted to pass IDs that came from the resolver (i.e. the ID is
+known to be a project or task). Unknown IDs return ``set()``.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from omnifocus_operator.models.enums import EntityType
-
 if TYPE_CHECKING:
     from omnifocus_operator.models.snapshot import AllEntities
     from omnifocus_operator.models.task import Task
 
 
-def expand_scope(
-    ref_id: str,
-    snapshot: AllEntities,
-    accept_entity_types: frozenset[EntityType],
-) -> set[str]:
+def expand_scope(ref_id: str, snapshot: AllEntities) -> set[str]:
     """Expand a resolved entity ID to the set of task IDs it scopes.
 
-    - If ``ref_id`` is a task AND ``EntityType.TASK in accept_entity_types``:
-      returns ``{ref_id} | {all descendant task ids}`` (task acts as anchor).
-    - If ``ref_id`` is a project AND ``EntityType.PROJECT in accept_entity_types``:
-      returns ``{task ids whose containing project is ref_id}`` (no anchor;
+    Dispatches on ``ref_id``'s type in the snapshot:
+
+    - Task → ``{ref_id} | {all descendant task ids}`` (task is its own anchor).
+    - Project → ``{task ids whose containing project is ref_id}`` (no anchor;
       projects are not ``list_tasks`` rows).
-    - Otherwise returns ``set()`` (unknown ID or disallowed entity type).
+    - Unknown → ``set()``.
     """
-    known_task_ids = {t.id for t in snapshot.tasks}
-    known_project_id_set = {p.id for p in snapshot.projects}
+    if any(t.id == ref_id for t in snapshot.tasks):
+        return {ref_id} | _collect_task_descendants(ref_id, snapshot.tasks)
 
-    if ref_id in known_task_ids and EntityType.TASK in accept_entity_types:
-        result = {ref_id}
-        result |= _collect_task_descendants(ref_id, snapshot.tasks)
-        return result
-
-    if ref_id in known_project_id_set and EntityType.PROJECT in accept_entity_types:
+    if any(p.id == ref_id for p in snapshot.projects):
         return {t.id for t in snapshot.tasks if t.project.id == ref_id}
 
     return set()

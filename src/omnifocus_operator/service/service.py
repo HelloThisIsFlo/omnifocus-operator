@@ -55,7 +55,6 @@ from omnifocus_operator.contracts.use_cases.list.tasks import (
     ListTasksRepoQuery,
 )
 from omnifocus_operator.models.enums import (
-    EntityType,
     FolderAvailability,
     TagAvailability,
 )
@@ -458,7 +457,7 @@ class _ListTasksPipeline(_ReadPipeline):
         if resolved:
             scope: set[str] = set()
             for pid in resolved:
-                scope |= expand_scope(pid, self._snapshot, frozenset({EntityType.PROJECT}))
+                scope |= expand_scope(pid, self._snapshot)
             self._project_scope = scope
 
     def _resolve_parent(self) -> None:
@@ -467,10 +466,9 @@ class _ListTasksPipeline(_ReadPipeline):
         Mirrors ``_resolve_project`` (D-05/D-11/D-12). Differences:
 
         - Resolves against ``[*self._projects, *self._tasks]`` so parent
-          accepts both entity types (D-11).
-        - Expansion passes ``frozenset({EntityType.PROJECT, EntityType.TASK})``
-          so ``expand_scope`` injects the task as its own anchor (D-12) when
-          the resolved ref is a task.
+          accepts both entity types (D-11). ``expand_scope`` dispatches on
+          the resolved ID's type so tasks inject themselves as anchors
+          (D-12) and projects do not.
         - When ALL resolved matches are projects (not mixed project+task),
           emit the WARN-02 pedagogical hint suggesting ``project=`` instead.
         """
@@ -493,11 +491,7 @@ class _ListTasksPipeline(_ReadPipeline):
                 )
             parent_scope: set[str] = set()
             for rid in resolved:
-                parent_scope |= expand_scope(
-                    rid,
-                    self._snapshot,
-                    frozenset({EntityType.PROJECT, EntityType.TASK}),
-                )
+                parent_scope |= expand_scope(rid, self._snapshot)
             self._parent_scope = parent_scope
 
     def _resolve_tags(self) -> None:

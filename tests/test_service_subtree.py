@@ -4,7 +4,6 @@ Covers PARENT-03, PARENT-04, UNIFY-01, UNIFY-03:
 - Task-as-anchor (PARENT-04, UNIFY-03): resolved task is included in the set.
 - Descendant-at-any-depth (PARENT-03): BFS returns all descendants.
 - Project-no-anchor (PARENT-04, UNIFY-03): project ID is NOT in the set.
-- accept_entity_types gating (UNIFY-01): gating via frozenset.
 - Disjoint-subtree isolation (UNIFY-03): unrelated branches are excluded.
 
 Tests build synthetic ``AllEntities`` directly. No repository, no async,
@@ -15,7 +14,6 @@ from __future__ import annotations
 
 import pytest
 
-from omnifocus_operator.models.enums import EntityType
 from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.service.subtree import expand_scope
 from tests.conftest import make_model_project_dict, make_model_task_dict
@@ -66,9 +64,6 @@ def _snapshot(tasks: list[dict], projects: list[dict]) -> AllEntities:
             "perspectives": [],
         }
     )
-
-
-_ACCEPT_BOTH = frozenset({EntityType.TASK, EntityType.PROJECT})
 
 
 # ---------------------------------------------------------------------------
@@ -161,19 +156,19 @@ class TestExpandScope:
 
     def test_task_anchor_includes_self(self, snapshot_two_level: AllEntities) -> None:
         """PARENT-04 / UNIFY-03: task resolution injects the anchor into the set."""
-        result = expand_scope("root", snapshot_two_level, _ACCEPT_BOTH)
+        result = expand_scope("root", snapshot_two_level)
         assert "root" in result
 
     def test_task_anchor_includes_direct_children(self, snapshot_two_level: AllEntities) -> None:
         """PARENT-03: direct children of the anchor task are included."""
-        result = expand_scope("root", snapshot_two_level, _ACCEPT_BOTH)
+        result = expand_scope("root", snapshot_two_level)
         assert result == {"root", "child-1", "child-2"}
 
     def test_task_anchor_includes_descendants_any_depth(
         self, snapshot_three_level: AllEntities
     ) -> None:
         """PARENT-03: descendants at any depth are included (BFS walks whole subtree)."""
-        result = expand_scope("top", snapshot_three_level, _ACCEPT_BOTH)
+        result = expand_scope("top", snapshot_three_level)
         assert result == {"top", "mid", "leaf"}
 
     def test_project_returns_no_anchor(self, snapshot_with_project: AllEntities) -> None:
@@ -181,43 +176,23 @@ class TestExpandScope:
 
         Projects are not list_tasks rows, so they never appear as anchors.
         """
-        result = expand_scope("proj-a", snapshot_with_project, _ACCEPT_BOTH)
+        result = expand_scope("proj-a", snapshot_with_project)
         assert "proj-a" not in result
 
     def test_project_returns_all_project_tasks(self, snapshot_with_project: AllEntities) -> None:
         """PARENT-03: project branch returns all tasks whose containing project matches."""
-        result = expand_scope("proj-a", snapshot_with_project, _ACCEPT_BOTH)
+        result = expand_scope("proj-a", snapshot_with_project)
         # a-root, a-child, and a-other all have project.id == "proj-a"
         assert result == {"a-root", "a-child", "a-other"}
 
-    def test_accept_type_restriction_task_id_with_project_only(
-        self, snapshot_two_level: AllEntities
-    ) -> None:
-        """UNIFY-01: task ID with accept={PROJECT} only → empty set.
-
-        project-only accept set short-circuits the task-anchor branch.
-        """
-        result = expand_scope("root", snapshot_two_level, frozenset({EntityType.PROJECT}))
-        assert result == set()
-
-    def test_accept_type_restriction_project_id_with_task_only(
-        self, snapshot_with_project: AllEntities
-    ) -> None:
-        """UNIFY-01: project ID with accept={TASK} only → empty set.
-
-        task-only accept set short-circuits the project branch.
-        """
-        result = expand_scope("proj-a", snapshot_with_project, frozenset({EntityType.TASK}))
-        assert result == set()
-
     def test_unknown_ref_id_returns_empty(self, snapshot_two_level: AllEntities) -> None:
         """Edge: ID not in tasks or projects → empty set."""
-        result = expand_scope("does-not-exist", snapshot_two_level, _ACCEPT_BOTH)
+        result = expand_scope("does-not-exist", snapshot_two_level)
         assert result == set()
 
     def test_task_with_no_children_returns_only_self(self, snapshot_leaf_only: AllEntities) -> None:
         """Leaf task (no descendants) → result contains only the anchor."""
-        result = expand_scope("leaf", snapshot_leaf_only, _ACCEPT_BOTH)
+        result = expand_scope("leaf", snapshot_leaf_only)
         assert result == {"leaf"}
 
     def test_disjoint_subtrees_not_included(self, snapshot_disjoint: AllEntities) -> None:
@@ -225,7 +200,7 @@ class TestExpandScope:
 
         Siblings at the project root must not leak across subtrees.
         """
-        result = expand_scope("a-root", snapshot_disjoint, _ACCEPT_BOTH)
+        result = expand_scope("a-root", snapshot_disjoint)
         assert result == {"a-root", "a-child"}
         # Explicit isolation assertions
         assert "b-root" not in result

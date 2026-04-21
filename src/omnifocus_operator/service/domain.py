@@ -131,6 +131,30 @@ _FIRST_FOUND_FIELDS: frozenset[str] = frozenset(
 
 
 # ---------------------------------------------------------------------------
+# Cross-filter warning fields (WARN-01)
+# ---------------------------------------------------------------------------
+# Patch fields on ListTasksQuery (excluding scope fields ``project`` and
+# ``parent``) whose presence triggers FILTERED_SUBTREE_WARNING when combined
+# with a scope filter. ``availability`` is intentionally excluded because it
+# has a non-empty default (REMAINING) -- including it would fire on every
+# scope-filtered query, destroying signal (D-13).
+_SCOPE_WARN_DIMENSIONAL_FIELDS: tuple[str, ...] = (
+    "flagged",
+    "in_inbox",
+    "tags",
+    "estimated_minutes_max",
+    "search",
+    "due",
+    "defer",
+    "planned",
+    "completed",
+    "dropped",
+    "added",
+    "modified",
+)
+
+
+# ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
 
@@ -545,30 +569,12 @@ class DomainLogic:
     def check_filtered_subtree(self, query: ListTasksQuery) -> list[str]:
         """WARN-01: scope filter combined with any other dimensional filter.
 
-        Fires when ``(project or parent)`` is set AND at least one of the other
-        dimensional filters is set. ``availability`` is EXCLUDED from the
-        "other filter" predicate because it has a non-empty default
-        (``REMAINING``) -- including it would fire the warning on every
-        scope-filtered query, destroying signal (D-13).
+        Fires when ``(project or parent)`` is set AND at least one of the
+        fields in ``_SCOPE_WARN_DIMENSIONAL_FIELDS`` is set.
         """
-        scope_set = is_set(query.project) or is_set(query.parent)
-        if not scope_set:
+        if not (is_set(query.project) or is_set(query.parent)):
             return []
-        other_set = (
-            is_set(query.flagged)
-            or is_set(query.in_inbox)
-            or is_set(query.tags)
-            or is_set(query.estimated_minutes_max)
-            or is_set(query.search)
-            or is_set(query.due)
-            or is_set(query.defer)
-            or is_set(query.planned)
-            or is_set(query.completed)
-            or is_set(query.dropped)
-            or is_set(query.added)
-            or is_set(query.modified)
-        )
-        if other_set:
+        if any(is_set(getattr(query, f)) for f in _SCOPE_WARN_DIMENSIONAL_FIELDS):
             return [FILTERED_SUBTREE_WARNING]
         return []
 
