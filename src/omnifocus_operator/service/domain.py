@@ -133,12 +133,13 @@ _FIRST_FOUND_FIELDS: frozenset[str] = frozenset(
 # ---------------------------------------------------------------------------
 # Cross-filter warning fields (WARN-01)
 # ---------------------------------------------------------------------------
-# Patch fields on ListTasksQuery (excluding scope fields ``project`` and
-# ``parent``) whose presence triggers FILTERED_SUBTREE_WARNING when combined
-# with a scope filter. ``availability`` is intentionally excluded because it
-# has a non-empty default (REMAINING) -- including it would fire on every
+# Patch fields on ListTasksQuery that prune the subtree when combined with a
+# scope filter: each is a task-attribute predicate that can exclude intermediate
+# or descendant tasks from the scope's result set. Their presence alongside
+# ``project``/``parent`` triggers FILTERED_SUBTREE_WARNING. ``availability`` is
+# NOT listed: its non-empty default (REMAINING) would fire the warning on every
 # scope-filtered query, destroying signal (D-13).
-_SCOPE_WARN_DIMENSIONAL_FIELDS: tuple[str, ...] = (
+_SUBTREE_PRUNING_FIELDS: tuple[str, ...] = (
     "flagged",
     "in_inbox",
     "tags",
@@ -152,6 +153,14 @@ _SCOPE_WARN_DIMENSIONAL_FIELDS: tuple[str, ...] = (
     "added",
     "modified",
 )
+
+# Patch fields on ListTasksQuery that do NOT prune the subtree -- they define
+# WHICH subtree to look at, not which tasks within it to include. Kept as a
+# separate set so every Patch field on ListTasksQuery can be classified as
+# exactly one of {_SUBTREE_PRUNING_FIELDS, _NON_SUBTREE_PRUNING_FIELDS}, and a
+# future non-pruning Patch field (e.g. ``sort_by``) is a deliberate decision
+# rather than an accidental warning-predicate inclusion.
+_NON_SUBTREE_PRUNING_FIELDS: frozenset[str] = frozenset({"project", "parent"})
 
 
 # ---------------------------------------------------------------------------
@@ -567,14 +576,14 @@ class DomainLogic:
     # -- Cross-filter warning checks (WARN-01, WARN-03) --------------------
 
     def check_filtered_subtree(self, query: ListTasksQuery) -> list[str]:
-        """WARN-01: scope filter combined with any other dimensional filter.
+        """WARN-01: scope filter combined with any subtree-pruning filter.
 
         Fires when ``(project or parent)`` is set AND at least one of the
-        fields in ``_SCOPE_WARN_DIMENSIONAL_FIELDS`` is set.
+        fields in ``_SUBTREE_PRUNING_FIELDS`` is set.
         """
         if not (is_set(query.project) or is_set(query.parent)):
             return []
-        if any(is_set(getattr(query, f)) for f in _SCOPE_WARN_DIMENSIONAL_FIELDS):
+        if any(is_set(getattr(query, f)) for f in _SUBTREE_PRUNING_FIELDS):
             return [FILTERED_SUBTREE_WARNING]
         return []
 

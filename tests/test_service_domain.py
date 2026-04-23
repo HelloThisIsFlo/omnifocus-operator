@@ -57,7 +57,7 @@ from omnifocus_operator.contracts.use_cases.list._enums import (
     DueDateShortcut,
     LifecycleDateShortcut,
 )
-from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksQuery
+from omnifocus_operator.contracts.use_cases.list.tasks import _PATCH_FIELDS, ListTasksQuery
 from omnifocus_operator.models.common import TagRef
 from omnifocus_operator.models.enums import (
     Availability,
@@ -76,7 +76,13 @@ from omnifocus_operator.models.repetition_rule import (
 )
 from omnifocus_operator.models.snapshot import AllEntities
 from omnifocus_operator.models.task import Task
-from omnifocus_operator.service.domain import DomainLogic, _to_utc_ts, normalize_date_input
+from omnifocus_operator.service.domain import (
+    _NON_SUBTREE_PRUNING_FIELDS,
+    _SUBTREE_PRUNING_FIELDS,
+    DomainLogic,
+    _to_utc_ts,
+    normalize_date_input,
+)
 from omnifocus_operator.service.errors import EntityTypeMismatchError
 from tests.conftest import make_snapshot_dict
 from tests.doubles import InMemoryBridge
@@ -1244,6 +1250,52 @@ class TestCheckParentProjectCombined:
         """
         query = ListTasksQuery(project="X", parent="X")
         assert _domain().check_parent_project_combined(query) == [PARENT_PROJECT_COMBINED_WARNING]
+
+
+class TestSubtreePruningFieldsDrift:
+    """Every Patch filter on ListTasksQuery must be classified as either
+    subtree-pruning (fires WARN-01 with scope) or non-pruning (scope field).
+
+    If this test fails, someone added a new Patch[T] filter to ListTasksQuery
+    without deciding whether it should contribute to FILTERED_SUBTREE_WARNING.
+    Add the new field to exactly one of the two sets in service/domain.py.
+
+    Intentionally decoupled from ``_PATCH_FIELDS`` (which exists for null
+    rejection, not warning semantics) -- the overlap today is coincidence,
+    not contract. This test enforces the classification decision at CI time
+    so a future non-pruning Patch field (e.g. ``sort_by``) can't slip into
+    the warning predicate silently.
+    """
+
+    def test_every_patch_field_is_classified(self) -> None:
+        classified = set(_SUBTREE_PRUNING_FIELDS) | _NON_SUBTREE_PRUNING_FIELDS
+        unclassified = set(_PATCH_FIELDS) - classified
+        assert not unclassified, (
+            f"Patch filter(s) {sorted(unclassified)} on ListTasksQuery are not "
+            f"classified. Add each to exactly one of:\n"
+            f"  - _SUBTREE_PRUNING_FIELDS (task-attribute filters that could "
+            f"exclude descendants from a scope filter)\n"
+            f"  - _NON_SUBTREE_PRUNING_FIELDS (scope filters themselves -- "
+            f"currently project, parent)"
+        )
+
+    def test_no_overlap_between_classifications(self) -> None:
+        """A field can't be both subtree-pruning AND a scope field."""
+        overlap = set(_SUBTREE_PRUNING_FIELDS) & _NON_SUBTREE_PRUNING_FIELDS
+        assert not overlap, f"Fields classified as both pruning and scope: {overlap}"
+
+    def test_no_unknown_fields_in_classifications(self) -> None:
+        """Both classifications must reference real Patch fields on ListTasksQuery."""
+        patch_set = set(_PATCH_FIELDS)
+        unknown_pruning = set(_SUBTREE_PRUNING_FIELDS) - patch_set
+        unknown_non_pruning = _NON_SUBTREE_PRUNING_FIELDS - patch_set
+        assert not unknown_pruning, (
+            f"_SUBTREE_PRUNING_FIELDS references non-Patch field(s): {sorted(unknown_pruning)}"
+        )
+        assert not unknown_non_pruning, (
+            f"_NON_SUBTREE_PRUNING_FIELDS references non-Patch field(s): "
+            f"{sorted(unknown_non_pruning)}"
+        )
 
 
 # ---------------------------------------------------------------------------
