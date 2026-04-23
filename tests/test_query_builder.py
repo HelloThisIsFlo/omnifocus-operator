@@ -114,7 +114,7 @@ class TestTasksScopeFilter:
     """Post-Phase 57: task_id_scope is the unified scope primitive.
 
     The list passed is the set of TASK PKs to keep — service layer
-    (expand_scope) handles project-to-tasks expansion before this point.
+    (get_tasks_subtree) handles project-to-tasks expansion before this point.
     The old ``ProjectInfo pi2`` scope subquery is gone; this is a direct
     indexed PK lookup (``t.persistentIdentifier IN (?, ...)``).
 

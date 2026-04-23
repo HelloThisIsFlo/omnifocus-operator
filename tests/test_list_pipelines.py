@@ -1746,7 +1746,7 @@ class TestListProjectsDateFiltering:
 # Shared shape: tasks wired by `parent="<task-id>"` form a parent-child chain
 # in the raw bridge format (see tests/conftest.py::make_task_dict). The
 # repository adapter turns those into `parent.task.id` references, which
-# service/subtree.py::expand_scope walks for subtree collection.
+# service/subtree.py::get_tasks_subtree walks for subtree collection.
 
 
 class TestListTasksParentFilter:

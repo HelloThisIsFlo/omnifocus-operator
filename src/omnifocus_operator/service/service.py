@@ -63,7 +63,7 @@ from omnifocus_operator.service.convert import end_condition_from_spec, frequenc
 from omnifocus_operator.service.domain import DomainLogic, normalize_date_input
 from omnifocus_operator.service.payload import PayloadBuilder
 from omnifocus_operator.service.resolve import Resolver
-from omnifocus_operator.service.subtree import expand_scope
+from omnifocus_operator.service.subtree import get_tasks_subtree
 from omnifocus_operator.service.validate import (
     validate_task_name,
     validate_task_name_if_set,
@@ -384,7 +384,7 @@ class _ListTasksPipeline(_ReadPipeline):
         self._query = query
 
         # Single-snapshot entry point (D-01/UNIFY-01, RESEARCH Pitfall 3).
-        # expand_scope needs tasks + projects together, so we pull the full
+        # get_tasks_subtree needs tasks + projects together, so we pull the full
         # snapshot once instead of gathering tags + projects individually.
         # Matches the compute_true_inheritance convention; the repo cache
         # makes this free.
@@ -449,7 +449,7 @@ class _ListTasksPipeline(_ReadPipeline):
 
         1. Resolve the value against ``entities`` via ``Resolver.resolve_filter``.
         2. Emit multi-match / no-match / did-you-mean warnings.
-        3. Union ``expand_scope`` over each resolved ID into a task-ID scope set.
+        3. Union ``get_tasks_subtree`` over each resolved ID into a task-ID scope set.
 
         Returns ``(scope_set, resolved_ids)``:
         - ``scope_set`` is ``None`` when ``value`` is ``None`` or no entities
@@ -467,12 +467,12 @@ class _ListTasksPipeline(_ReadPipeline):
             return None, resolved
         scope: set[str] = set()
         for rid in resolved:
-            scope |= expand_scope(rid, self._snapshot)
+            scope |= get_tasks_subtree(rid, self._snapshot)
         return scope, resolved
 
     def _resolve_project(self) -> None:
         # Scope-set shape (UNIFY-01/D-05): expand each resolved project ID
-        # into its task-ID scope via the shared expand_scope helper, then
+        # into its task-ID scope via the shared get_tasks_subtree helper, then
         # union. self._project_scope is a set[str] of TASK IDs (not project
         # IDs). _build_repo_query sorts + assigns to task_id_scope for
         # deterministic SQL placeholder order (RESEARCH Pitfall 5).
@@ -488,7 +488,7 @@ class _ListTasksPipeline(_ReadPipeline):
         differences are:
 
         - ``entities`` is ``[*self._projects, *self._tasks]`` so parent accepts
-          both types (D-11). ``expand_scope`` dispatches on the resolved ID's
+          both types (D-11). ``get_tasks_subtree`` dispatches on the resolved ID's
           type so tasks inject themselves as anchors (D-12), projects do not.
         - When ALL resolved matches are projects (not mixed project+task),
           emit the WARN-02 pedagogical hint suggesting ``project=`` instead.

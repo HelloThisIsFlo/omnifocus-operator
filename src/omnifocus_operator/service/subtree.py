@@ -4,7 +4,7 @@ Phase 57 unifies the ``project`` and ``parent`` ``list_tasks`` filters on a
 single repo primitive (``ListTasksRepoQuery.task_id_scope``) and a single
 service-layer expansion helper defined here.
 
-``expand_scope`` takes a resolved entity ID and returns the set of task IDs
+``get_tasks_subtree`` takes a resolved entity ID and returns the set of task IDs
 the entity scopes — dispatching on whether the ID is a task or a project:
 
 - Task anchor → ``{ref_id} | {descendants}`` (the task itself is included
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from omnifocus_operator.models.task import Task
 
 
-def expand_scope(ref_id: str, snapshot: AllEntities) -> set[str]:
+def get_tasks_subtree(ref_id: str, snapshot: AllEntities) -> set[str]:
     """Expand a resolved entity ID to the set of task IDs it scopes.
 
     Dispatches on ``ref_id``'s type in the snapshot:
