@@ -27,7 +27,7 @@ This file is the output of a research session that analyzed what v1.4 + v1.4.1 (
 
 ## Progress
 
-- [ ] Chunk 1 — Inherited field rename + true-inheritance semantics (6 suites touched)
+- [x] Chunk 1 — Inherited field rename + true-inheritance semantics (6 suites touched)
 - [ ] Chunk 2 — NEW `response-shaping.md` suite + SKILL.md + reads-combined registration
 - [ ] Chunk 3 — Presence flags + hierarchy include group (read-side, 3 suites)
 - [ ] Chunk 4 — Notes graduation: top-level-note removal + new note action coverage
