@@ -1,7 +1,7 @@
 ---
 suite: validation-errors
 display: Validation & Errors
-test_count: 35
+test_count: 37
 
 setup: |
   ### Task Hierarchy
@@ -68,6 +68,14 @@ Run each test INDIVIDUALLY (will error):
 #### Test 2d: Batch limit
 1. `edit_tasks` with `items: [{ id: "<temp-id>", name: "A" }, { id: "<temp-id>", name: "B" }]`
 2. PASS if: error about "currently accepts exactly 1 item, got 2"; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+#### Test 2e: Note action — append and replace both set
+1. `edit_tasks` with `items: [{ id: "<temp-id>", actions: { note: { append: "foo", replace: "bar" } } }]`
+2. PASS if: error mentions the two note operations are mutually exclusive (fluent from an agent's perspective — names both `append` and `replace` and explains only one may be set); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+#### Test 2f: Note action — neither operation set
+1. `edit_tasks` with `items: [{ id: "<temp-id>", actions: { note: {} } }]`
+2. PASS if: error mentions the note action requires at least one operation (fluent; mentions `append` or `replace` as the valid operations); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
 
 ### 3. List Tool Validation
 
@@ -217,6 +225,8 @@ Run each test INDIVIDUALLY (will error):
 | 2b | edit_tasks: invalid lifecycle | Invalid lifecycle → clean error, no enum internals | |
 | 2c | edit_tasks: empty name | Empty string name → clean error | |
 | 2d | edit_tasks: batch limit | 2 items → clean "exactly 1 item" error | |
+| 2e | Note action: append + replace | Both `append` and `replace` set → mutually-exclusive error, fluent | |
+| 2f | Note action: no operation | Empty `actions.note: {}` → "at least one operation required" error, fluent | |
 | 3a | list_tasks: offset w/o limit | Offset without limit → "offset requires limit" | |
 | 3b | list_tasks: invalid availability | Bad enum value → clean error listing available/blocked/remaining | |
 | 3c | list_projects: invalid review_due_within | Bad format → error with valid examples | |

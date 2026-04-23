@@ -30,7 +30,8 @@ End-to-end flows verifying write-through guarantees and data consistency across 
 - **Inbox only.** Never create tasks in projects. Every task goes to inbox (no `parent` for top-level, or under the test parent task).
 - **Timezone required.** Date fields need timezone info in ISO 8601 (e.g., `+01:00` or `Z`). Without it, Pydantic rejects the value.
 - **Tags by ID.** Some tag names are ambiguous. Discover tags via `get_all` first, then use IDs where names might collide.
-- **1-item limit.** Both `add_tasks` and `edit_tasks` currently accept exactly 1 item per call.
+- **One item per call here.** This suite uses 1-item calls even though `add_tasks`/`edit_tasks` accept batches up to 50 items post-Phase 54 — sequential single-item calls keep each assertion focused on one round-trip.
+- **Note operations via `actions.note`.** Top-level `note:` on `edit_tasks` was removed in Phase 55. Use `actions: { note: { replace: ... } }` or `actions: { note: { append: "..." } }`. `add_tasks` still accepts top-level `note:` as initial content.
 - **Sequential tests.** Tests in this suite build on each other (G-1 creates the task, G-2 through G-7 modify and verify it). Run them in order.
 
 ## Tests
@@ -48,7 +49,7 @@ End-to-end flows verifying write-through guarantees and data consistency across 
 3. PASS if: all fields match — name, `parent: {"task": {"id": "<UAT-id>", "name": "UAT-Integration"}}`, tag-a present, dueDate set, flagged true, estimatedMinutes 25, note contains "integration test"
 
 ### G-2: Edit fields → read-back
-1. `edit_tasks` on G1's task: `name: "G1-Edited", flagged: false, note: null`
+1. `edit_tasks` on G1's task: `name: "G1-Edited", flagged: false` plus `actions: { note: { replace: null } }` (top-level name/flagged combined with the note-clear action in one call)
 2. `get_task` to verify
 3. PASS if: name is "G1-Edited", flagged is false, note is empty/cleared
 
