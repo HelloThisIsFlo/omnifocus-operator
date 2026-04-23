@@ -32,9 +32,11 @@ This file is the output of a research session that analyzed what v1.4 + v1.4.1 (
 - [x] Chunk 3 — Presence flags + hierarchy include group (read-side, 3 suites)
 - [x] Chunk 4 — Notes graduation: top-level-note removal + new note action coverage
 - [x] Chunk 5 — Writable `type` + `completesWithChildren` + create-defaults + derived-field rejection
-- [ ] Chunk 6 — Batch processing: per-item result envelope + fail-modes
+- [x] Chunk 6 — Batch processing: per-item result envelope + fail-modes
 - [ ] Chunk 7 — Phase 57: `parent` filter + filter unification + 5 new warnings
 - [ ] **Delete this file** (all chunks done, everything merged)
+
+> **⚠️ Before closing out / archiving this file (Completion mode):** Chunk 6 self-verification uncovered a spec-vs-implementation drift in Phase 54's `_BATCH_CROSS_ITEM_NOTE`. Cross-item name-refs actually DO work (serial execution + per-item name resolution); only ID-refs are unsupported. A todo was filed to rewrite the tool description — `.planning/todos/pending/2026-04-23-clarify-cross-item-reference-contract-in-batch-tool-descript.md`. **Do not just archive this file and close the UAT-suite-updater session** — also follow up on that todo before considering the v1.4/v1.4.1 UAT rollout truly done.
 
 ---
 
