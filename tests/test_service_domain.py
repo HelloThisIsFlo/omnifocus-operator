@@ -1184,10 +1184,39 @@ class TestCheckFilteredSubtree:
         query = ListTasksQuery(project="Work", due="overdue")
         assert _domain().check_filtered_subtree(query) == [FILTERED_SUBTREE_WARNING]
 
-    def test_project_with_completed_filter_fires(self) -> None:
-        """project + completed lifecycle date filter -> FILTERED_SUBTREE_WARNING."""
+    def test_project_with_completed_does_not_fire(self) -> None:
+        """project + completed -> NO warning. completed is an INCLUSION filter,
+        not pruning (UAT-57 Case 1). It adds completed tasks on top of the
+        default 'remaining' bucket; it never excludes tasks already in it.
+        Live-verified: completed={"before": "2020-01-01"} returns the baseline
+        unchanged rather than restricting it to zero."""
         query = ListTasksQuery(project="Work", completed="today")
-        assert _domain().check_filtered_subtree(query) == [FILTERED_SUBTREE_WARNING]
+        assert _domain().check_filtered_subtree(query) == []
+
+    def test_project_with_completed_all_does_not_fire(self) -> None:
+        """project + completed='all' -> NO warning. 'all' is the most inclusive
+        value; it adds every completed task regardless of date. Baseline
+        remaining tasks are unchanged."""
+        query = ListTasksQuery(project="Work", completed="all")
+        assert _domain().check_filtered_subtree(query) == []
+
+    def test_project_with_completed_zero_match_date_does_not_fire(self) -> None:
+        """project + completed={"before": "<far past>"} -> NO warning.
+
+        Regression lock for UAT-57 Case 1: the decisive live probe that proved
+        completed is additive, not pruning. Zero completed tasks match the
+        date range, so the filter adds zero tasks to the baseline. If the
+        predicate treated completed as pruning, the baseline remaining tasks
+        would be wrongly implicated; it isn't, so no warning.
+        """
+        query = ListTasksQuery(project="Work", completed={"before": "2020-01-01"})
+        assert _domain().check_filtered_subtree(query) == []
+
+    def test_project_with_dropped_does_not_fire(self) -> None:
+        """project + dropped -> NO warning. Same inclusion-filter semantics
+        as completed (UAT-57 Case 1)."""
+        query = ListTasksQuery(project="Work", dropped="today")
+        assert _domain().check_filtered_subtree(query) == []
 
     def test_project_with_availability_does_not_fire(self) -> None:
         """availability is EXCLUDED from the 'other filter' predicate (D-13).

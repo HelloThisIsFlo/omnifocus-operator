@@ -136,9 +136,18 @@ _FIRST_FOUND_FIELDS: frozenset[str] = frozenset(
 # Patch fields on ListTasksQuery that prune the subtree when combined with a
 # scope filter: each is a task-attribute predicate that can exclude intermediate
 # or descendant tasks from the scope's result set. Their presence alongside
-# ``project``/``parent`` triggers FILTERED_SUBTREE_WARNING. ``availability`` is
-# NOT listed: its non-empty default (REMAINING) would fire the warning on every
-# scope-filtered query, destroying signal (D-13).
+# ``project``/``parent`` triggers FILTERED_SUBTREE_WARNING.
+#
+# Explicitly NOT listed:
+#   - ``availability``: non-empty default (REMAINING) -- including it would
+#     fire on every scope-filtered query, destroying signal (D-13). Non-default
+#     availability IS pruning, but the predicate would need value-awareness to
+#     handle that distinction (deferred -- see UAT-57 Case 2).
+#   - ``completed``/``dropped``: **inclusion** filters, not pruning. They ADD
+#     completed/dropped tasks to the default ``remaining`` bucket; they never
+#     exclude tasks already in it. A value like ``{"before": "2020-01-01"}``
+#     adds zero tasks (returning baseline unchanged) rather than restricting
+#     to zero. Live-verified in UAT-57 Case 1.
 _SUBTREE_PRUNING_FIELDS: tuple[str, ...] = (
     "flagged",
     "in_inbox",
@@ -148,19 +157,25 @@ _SUBTREE_PRUNING_FIELDS: tuple[str, ...] = (
     "due",
     "defer",
     "planned",
-    "completed",
-    "dropped",
     "added",
     "modified",
 )
 
-# Patch fields on ListTasksQuery that do NOT prune the subtree -- they define
-# WHICH subtree to look at, not which tasks within it to include. Kept as a
-# separate set so every Patch field on ListTasksQuery can be classified as
-# exactly one of {_SUBTREE_PRUNING_FIELDS, _NON_SUBTREE_PRUNING_FIELDS}, and a
-# future non-pruning Patch field (e.g. ``sort_by``) is a deliberate decision
-# rather than an accidental warning-predicate inclusion.
-_NON_SUBTREE_PRUNING_FIELDS: frozenset[str] = frozenset({"project", "parent"})
+# Patch fields on ListTasksQuery that do NOT prune the subtree. Two flavors,
+# both legitimate members of this set:
+#   - Scope filters (``project``, ``parent``): define WHICH subtree to look
+#     at. Not dimensional filters -- they ARE the scope the warning is about.
+#   - Inclusion filters (``completed``, ``dropped``): ADD lifecycle states
+#     to the default ``remaining`` bucket. Live-verified (UAT-57 Case 1):
+#     ``completed={"before": "2020-01-01"}`` returns the baseline unchanged,
+#     never restricting it -- so they're purely additive, never pruning.
+#
+# Kept disjoint from _SUBTREE_PRUNING_FIELDS so every Patch field on
+# ListTasksQuery is classified as exactly one of the two, enforced by
+# TestSubtreePruningFieldsDrift at CI time.
+_NON_SUBTREE_PRUNING_FIELDS: frozenset[str] = frozenset(
+    {"project", "parent", "completed", "dropped"},
+)
 
 
 # ---------------------------------------------------------------------------
