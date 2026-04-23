@@ -2012,6 +2012,69 @@ class TestListTasksParentFilter:
         result = await service.list_tasks(ListTasksQuery(parent="Big feature", tags=["Urgent"]))
         assert {t.id for t in result.items} == {"c1", "c3"}
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "Gap surfaced in UAT-57 Test 6: FILTERED_SUBTREE_WARNING claims 'resolved "
+            "parent tasks are always included', but the current repo-layer AND composition "
+            "prunes the anchor when it doesn't match a subtree-pruning filter. Spec "
+            "(Reading B, chosen): anchor must be preserved as context, even when it "
+            "doesn't satisfy the pruning predicate. Implementation TBD -- likely needs "
+            "the repo to OR the anchor IDs with the pruned predicate, or the service "
+            "to post-assemble the result. Remove this xfail when the fix lands."
+        ),
+    )
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="anchor",
+                name="Build feature",
+                project="proj-work",
+                flagged=False,
+                inInbox=False,
+            ),
+            make_task_dict(
+                id="child-flagged",
+                name="Flagged step",
+                project="proj-work",
+                parent="anchor",
+                flagged=True,
+                inInbox=False,
+            ),
+            make_task_dict(
+                id="child-unflagged",
+                name="Unflagged step",
+                project="proj-work",
+                parent="anchor",
+                flagged=False,
+                inInbox=False,
+            ),
+        ],
+        projects=[make_project_dict(id="proj-work", name="Work Projects")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_list_tasks_parent_with_pruning_filter_preserves_anchor(
+        self,
+        service: OperatorService,
+    ) -> None:
+        """XFAIL: anchor must survive AND-composition with a subtree-pruning filter.
+
+        The FILTERED_SUBTREE_WARNING text promises "resolved parent tasks are always
+        included" -- meaning the anchor is context, not a filter match. When the
+        anchor doesn't satisfy the pruning predicate (flagged=True here), the current
+        implementation drops it via the repo's flat IN + AND effectiveFlagged clause.
+
+        Expected behavior once fixed: result contains {anchor, child-flagged} --
+        the anchor is preserved as context, and the pruning filter only narrows
+        non-anchor descendants.
+        """
+        result = await service.list_tasks(
+            ListTasksQuery(parent="Build feature", flagged=True),
+        )
+        assert {t.id for t in result.items} == {"anchor", "child-flagged"}
+
     @pytest.mark.snapshot(
         tasks=[
             make_task_dict(id="t1", name="Task A", project="proj-work", inInbox=False),
