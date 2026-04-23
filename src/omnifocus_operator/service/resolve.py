@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Never, Protocol, runtime_checkable
 
 from omnifocus_operator.agent_messages.errors import (
     CONTRADICTORY_INBOX_FALSE,
-    CONTRADICTORY_INBOX_PROJECT,
+    CONTRADICTORY_INBOX_WITH_REF,
     GET_PROJECT_INBOX_ERROR,
     NAME_NOT_FOUND,
     PROJECT_NOT_FOUND,
@@ -237,7 +237,7 @@ class Resolver:
         Contradiction rules:
         - Either side's ``"$inbox"`` + ``in_inbox=False`` -> CONTRADICTORY_INBOX_FALSE.
         - After consumption, ``in_inbox=True`` with any non-None real (non-"$inbox")
-          ref on either side -> CONTRADICTORY_INBOX_PROJECT.
+          ref on either side -> CONTRADICTORY_INBOX_WITH_REF.
 
         Unknown $-prefix on either side raises via ``_resolve_system_location``.
         The parent-side lookup accepts both PROJECT and TASK (parent is a
@@ -248,7 +248,7 @@ class Resolver:
         if project is not None and project.startswith(SYSTEM_LOCATION_PREFIX):
             self._resolve_system_location(project, [EntityType.PROJECT])
             if in_inbox is False:
-                raise ValueError(CONTRADICTORY_INBOX_FALSE)
+                raise ValueError(CONTRADICTORY_INBOX_FALSE.format(filter="project"))
             in_inbox = True
             project = None
 
@@ -258,16 +258,17 @@ class Resolver:
         if parent is not None and parent.startswith(SYSTEM_LOCATION_PREFIX):
             self._resolve_system_location(parent, [EntityType.PROJECT, EntityType.TASK])
             if in_inbox is False:
-                raise ValueError(CONTRADICTORY_INBOX_FALSE)
+                raise ValueError(CONTRADICTORY_INBOX_FALSE.format(filter="parent"))
             in_inbox = True
             parent = None
 
         # Post-consumption: in_inbox=True with any real ref remaining is contradictory.
-        # Note the semantic shift vs the old 2-arg form: before, $inbox consumption
-        # returned (True, None) directly without a post-check; now we flow through a
-        # unified gate so e.g. project="$inbox", parent="SomeTask" raises correctly.
+        # The error text interpolates whichever filter supplied the residual real ref,
+        # so the agent sees the exact filter it wrote (project OR parent), not a
+        # generic "project" message regardless of which side tripped the gate.
         if in_inbox is True and (project is not None or parent is not None):
-            raise ValueError(CONTRADICTORY_INBOX_PROJECT)
+            residual = "project" if project is not None else "parent"
+            raise ValueError(CONTRADICTORY_INBOX_WITH_REF.format(filter=residual))
 
         return (in_inbox, project, parent)
 

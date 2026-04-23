@@ -197,13 +197,18 @@ If your entity name starts with '{prefix}', refer to it by ID instead."""
 
 # --- Filter: Contradictory Inbox ---
 
+# Both templates interpolate the offending filter name ("project" or "parent")
+# so the error text matches the filter the agent actually set. Callers format
+# with filter=... at the raise site based on which side tripped the gate.
 CONTRADICTORY_INBOX_FALSE = """\
-Contradictory filters: 'project="$inbox"' selects inbox tasks, \
+Contradictory filters: '{filter}="$inbox"' selects inbox tasks, \
 but 'inInbox=false' excludes them. Use one or the other."""
 
-CONTRADICTORY_INBOX_PROJECT = """\
+# Name kept neutral (WITH_REF) because either `project` or `parent` can be the
+# residual real reference after $inbox consumption.
+CONTRADICTORY_INBOX_WITH_REF = """\
 Contradictory filters: 'inInbox=true' selects tasks with no project. \
-Combining with a 'project' filter always yields nothing. Use one or the other."""
+Combining with a '{filter}' filter always yields nothing. Use one or the other."""
 
 # --- Project Tool: Inbox Guard ---
 

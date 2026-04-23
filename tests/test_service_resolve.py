@@ -12,7 +12,7 @@ import pytest
 
 from omnifocus_operator.agent_messages.errors import (
     CONTRADICTORY_INBOX_FALSE,
-    CONTRADICTORY_INBOX_PROJECT,
+    CONTRADICTORY_INBOX_WITH_REF,
 )
 from omnifocus_operator.contracts.base import UNSET
 from omnifocus_operator.models.enums import EntityType
@@ -646,7 +646,11 @@ class TestResolveInbox3Arg:
     - parent "$inbox" consumes identically to project "$inbox".
     - Either side's "$inbox" + in_inbox=False raises CONTRADICTORY_INBOX_FALSE.
     - After consumption, any surviving real ref alongside in_inbox=True raises
-      CONTRADICTORY_INBOX_PROJECT.
+      CONTRADICTORY_INBOX_WITH_REF.
+
+    Both error templates interpolate `{filter}` with the offending filter name
+    ("project" or "parent") so the agent sees the filter it actually set, not
+    a generic message that only covers the project branch.
     """
 
     def test_resolve_inbox_3arg_all_none(self, resolver: Resolver) -> None:
@@ -669,16 +673,21 @@ class TestResolveInbox3Arg:
         assert result == (True, None, None)
 
     def test_resolve_inbox_3arg_parent_inbox_with_in_inbox_false(self, resolver: Resolver) -> None:
-        """PARENT-08: parent '$inbox' + inInbox=false raises CONTRADICTORY_INBOX_FALSE."""
-        with pytest.raises(ValueError, match=re.escape(CONTRADICTORY_INBOX_FALSE)):
+        """PARENT-08: parent '$inbox' + inInbox=false raises CONTRADICTORY_INBOX_FALSE
+        with filter='parent' interpolated (the raised text names the filter the
+        agent actually set, not a generic 'project=$inbox' message)."""
+        expected = CONTRADICTORY_INBOX_FALSE.format(filter="parent")
+        with pytest.raises(ValueError, match=re.escape(expected)):
             resolver.resolve_inbox(False, None, "$inbox")
 
     def test_resolve_inbox_3arg_in_inbox_true_with_parent_real_ref(
         self, resolver: Resolver
     ) -> None:
-        """inInbox=true + parent real ref raises CONTRADICTORY_INBOX_PROJECT
-        (the same contradiction as the project-side; consolidated at D-09)."""
-        with pytest.raises(ValueError, match=re.escape(CONTRADICTORY_INBOX_PROJECT)):
+        """inInbox=true + parent real ref raises CONTRADICTORY_INBOX_WITH_REF with
+        filter='parent' interpolated (same contradiction as the project-side,
+        consolidated at D-09, but the message names the filter that tripped it)."""
+        expected = CONTRADICTORY_INBOX_WITH_REF.format(filter="parent")
+        with pytest.raises(ValueError, match=re.escape(expected)):
             resolver.resolve_inbox(True, None, "RealTask")
 
     def test_resolve_inbox_3arg_project_real_ref_passthrough(self, resolver: Resolver) -> None:
@@ -691,15 +700,18 @@ class TestResolveInbox3Arg:
 
     def test_resolve_inbox_3arg_parent_inbox_with_real_project(self, resolver: Resolver) -> None:
         """parent='$inbox' consumes to in_inbox=True; the surviving project='Work'
-        then trips CONTRADICTORY_INBOX_PROJECT in the post-consumption check
-        (single consolidation site per D-09)."""
-        with pytest.raises(ValueError, match=r"Contradictory filters.*inInbox=true"):
+        then trips CONTRADICTORY_INBOX_WITH_REF in the post-consumption check,
+        interpolated with filter='project' (the surviving side)."""
+        expected = CONTRADICTORY_INBOX_WITH_REF.format(filter="project")
+        with pytest.raises(ValueError, match=re.escape(expected)):
             resolver.resolve_inbox(None, "Work", "$inbox")
 
     def test_resolve_inbox_3arg_project_inbox_with_real_parent(self, resolver: Resolver) -> None:
         """Symmetric case: project='$inbox' consumes; parent='SomeTask' surviving
-        + resulting in_inbox=True trips CONTRADICTORY_INBOX_PROJECT."""
-        with pytest.raises(ValueError, match=r"Contradictory filters.*inInbox=true"):
+        + resulting in_inbox=True trips CONTRADICTORY_INBOX_WITH_REF, interpolated
+        with filter='parent' (the surviving side)."""
+        expected = CONTRADICTORY_INBOX_WITH_REF.format(filter="parent")
+        with pytest.raises(ValueError, match=re.escape(expected)):
             resolver.resolve_inbox(None, "$inbox", "SomeTask")
 
     # -- Regression tests: pre-existing 2-arg error contracts survive verbatim. --
@@ -708,16 +720,20 @@ class TestResolveInbox3Arg:
         self, resolver: Resolver
     ) -> None:
         """Pre-existing 2-arg path: resolve_inbox(False, "$inbox") raised
-        CONTRADICTORY_INBOX_FALSE. Mechanical migration to 3-arg (parent=None)
-        MUST raise the SAME constant with the SAME message verbatim."""
-        with pytest.raises(ValueError, match=re.escape(CONTRADICTORY_INBOX_FALSE)):
+        CONTRADICTORY_INBOX_FALSE with 'project="$inbox"' wording. After templating,
+        the project-side call still produces byte-identical text via
+        .format(filter="project")."""
+        expected = CONTRADICTORY_INBOX_FALSE.format(filter="project")
+        with pytest.raises(ValueError, match=re.escape(expected)):
             resolver.resolve_inbox(False, "$inbox", None)
 
     def test_resolve_inbox_3arg_existing_in_inbox_true_real_project_still_raises(
         self, resolver: Resolver
     ) -> None:
         """Pre-existing 2-arg path: resolve_inbox(True, "RealProject") raised
-        CONTRADICTORY_INBOX_PROJECT. Mechanical migration to 3-arg (parent=None)
-        MUST raise the SAME constant with the SAME message verbatim."""
-        with pytest.raises(ValueError, match=re.escape(CONTRADICTORY_INBOX_PROJECT)):
+        CONTRADICTORY_INBOX_PROJECT with 'project' filter wording. After templating
+        and renaming to CONTRADICTORY_INBOX_WITH_REF, the project-side call still
+        produces byte-identical text via .format(filter='project')."""
+        expected = CONTRADICTORY_INBOX_WITH_REF.format(filter="project")
+        with pytest.raises(ValueError, match=re.escape(expected)):
             resolver.resolve_inbox(True, "SomeRealProject", None)
