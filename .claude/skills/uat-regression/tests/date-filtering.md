@@ -40,7 +40,7 @@ setup: |
 
   Batch B — Inheritance chain (parent: UAT-DateFiltering):
     DF-InheritParent    (dueDate: OVERDUE_DUE — same overdue date)
-      DF-InheritChild   (no dates — inherits effectiveDueDate from parent)
+      DF-InheritChild   (no dates — inherits inheritedDueDate from parent)
 
   ### Post-Create
   1. complete: DF-Completed
@@ -52,7 +52,7 @@ setup: |
   ### Verify
   DF-Completed: availability=completed
   DF-Dropped: availability=dropped
-  DF-InheritChild: dueDate=null, effectiveDueDate=OVERDUE_DUE
+  DF-InheritChild: no own dueDate; inheritedDueDate=OVERDUE_DUE (from DF-InheritParent)
   DF-Overdue: flagged=true
   DF-DueToday: flagged=true
   DF-DueSoon: plannedDate=TODAY_DATE_STR
@@ -60,7 +60,7 @@ setup: |
 
 # Date Filtering Test Suite
 
-Tests `list_tasks` date filtering — due date shortcuts (overdue, soon, today), lifecycle date filters (completed, dropped with auto-inclusion), shorthand period syntax (this/last/next), absolute date bounds (before/after/range), combo filters (date + base filter AND logic), defer hint warnings (W022/W023), other date fields (modified, planned, defer, added), edge cases (no-date exclusion, round-trip), and inherited effective dates.
+Tests `list_tasks` date filtering — due date shortcuts (overdue, soon, today), lifecycle date filters (completed, dropped with auto-inclusion), shorthand period syntax (this/last/next), absolute date bounds (before/after/range), combo filters (date + base filter AND logic), defer hint warnings (W022/W023), other date fields (modified, planned, defer, added), edge cases (no-date exclusion, round-trip), and inherited dates (filters resolve direct-or-inherited values).
 
 ## Conventions
 
@@ -77,11 +77,11 @@ Tests `list_tasks` date filtering — due date shortcuts (overdue, soon, today),
 
 #### Test 1a: due: "overdue"
 1. `list_tasks` with `due: "overdue", search: "DF-"`
-2. PASS if: DF-Overdue, DF-InheritParent, and DF-InheritChild all appear (all have overdue effective due dates); DF-Future does NOT appear; DF-NoDue does NOT appear; DF-DueSoon does NOT appear (its dueDate is after now); DF-DueToday does NOT appear (also after now)
+2. PASS if: DF-Overdue, DF-InheritParent, and DF-InheritChild all appear (all have overdue due dates, direct or inherited — date filters resolve both); DF-Future does NOT appear; DF-NoDue does NOT appear; DF-DueSoon does NOT appear (its dueDate is after now); DF-DueToday does NOT appear (also after now)
 
 #### Test 1b: due: "soon"
 1. `list_tasks` with `due: "soon", search: "DF-"`
-2. PASS if: DF-DueSoon appears (within threshold, after now); DF-Overdue ALSO appears (overdue is a subset of "soon" — "soon" means `effectiveDueDate < now + threshold`); DF-Future does NOT appear; DF-NoDue does NOT appear. DF-DueToday appears if its dueDate falls within the threshold (depends on setting — always true for 2+ day thresholds)
+2. PASS if: DF-DueSoon appears (within threshold, after now); DF-Overdue ALSO appears (overdue is a subset of "soon" — "soon" resolves the task's direct `dueDate` or `inheritedDueDate` and matches when it's before `now + threshold`); DF-Future does NOT appear; DF-NoDue does NOT appear. DF-DueToday appears if its dueDate falls within the threshold (depends on setting — always true for 2+ day thresholds)
 
 #### Test 1c: due: "today"
 1. `list_tasks` with `due: "today", search: "DF-"`
@@ -139,15 +139,15 @@ Tests `list_tasks` date filtering — due date shortcuts (overdue, soon, today),
 
 #### Test 4a: due: "soon" includes overdue tasks
 1. `list_tasks` with `due: "soon", search: "DF-Overdue"`
-2. PASS if: DF-Overdue appears — "soon" means `effectiveDueDate < now + threshold`, and since overdue tasks have `effectiveDueDate < now`, they satisfy `effectiveDueDate < now < now + threshold`
+2. PASS if: DF-Overdue appears — "soon" resolves a task's direct `dueDate` or `inheritedDueDate` and matches when it's before `now + threshold`. Since overdue tasks resolve to a date before now, they satisfy `resolved-due < now < now + threshold` and fall inside the "soon" window.
 
-#### Test 4b: due: "overdue" on inherited effective date
+#### Test 4b: due: "overdue" on inherited dueDate
 1. `list_tasks` with `due: "overdue", search: "DF-InheritChild"`
-2. PASS if: DF-InheritChild appears — it has no direct dueDate but inherits an overdue effectiveDueDate from DF-InheritParent. Date filters operate on effective (inherited) values.
+2. PASS if: DF-InheritChild appears — it has no direct dueDate but exposes `inheritedDueDate` from DF-InheritParent (which is overdue). Date filters resolve direct-or-inherited values, so inherited-only tasks still match.
 
 #### Test 4c: Absolute filter on inherited date
 1. `list_tasks` with `due: {before: "FUTURE_DUE_DATE"}, search: "DF-InheritChild"` (use the FUTURE_DUE date value from setup, formatted as date-only YYYY-MM-DD)
-2. PASS if: DF-InheritChild appears — its inherited effectiveDueDate (overdue) is well before the given future date. Absolute date filters also work on inherited values.
+2. PASS if: DF-InheritChild appears — its `inheritedDueDate` (overdue) is well before the given future date. Absolute date filters also resolve direct-or-inherited values.
 
 ### 5. Absolute Date Bounds
 
@@ -173,15 +173,15 @@ Tests `list_tasks` date filtering — due date shortcuts (overdue, soon, today),
 
 #### Test 5f: `before` boundary is inclusive — date-only
 1. `list_tasks` with `due: {before: "TODAY_DATE"}, search: "DF-"` (substitute today's YYYY-MM-DD)
-2. PASS if: DF-Overdue appears (due 2h ago — on today's date, proving `before` includes the boundary day); DF-DueToday appears (due later today — still on the boundary day); DF-InheritParent and DF-InheritChild appear (effective due date is today); DF-DueSoon appears if SOON_DUE is today (threshold-dependent — always true for "today" threshold). DF-Future does NOT appear (30 days out). DF-NoDue does NOT appear. Key signal: if `before` were exclusive on date-only, NO tasks due today would appear — they all do.
+2. PASS if: DF-Overdue appears (due 2h ago — on today's date, proving `before` includes the boundary day); DF-DueToday appears (due later today — still on the boundary day); DF-InheritParent and DF-InheritChild appear (inheritedDueDate is today, inherited from DF-InheritParent); DF-DueSoon appears if SOON_DUE is today (threshold-dependent — always true for "today" threshold). DF-Future does NOT appear (30 days out). DF-NoDue does NOT appear. Key signal: if `before` were exclusive on date-only, NO tasks due today would appear — they all do.
 
 #### Test 5g: `after` boundary is inclusive — date-only
 1. `list_tasks` with `due: {after: "TODAY_DATE"}, search: "DF-"` (substitute today's YYYY-MM-DD)
-2. PASS if: DF-Overdue appears (due 2h ago — on today's date, proving `after` includes the boundary day); DF-DueToday appears (due later today); DF-DueSoon appears (due today or later — always after TODAY_DATE midnight); DF-Future appears (30 days out); DF-InheritParent and DF-InheritChild appear (effective due date is today). DF-NoDue does NOT appear. Key signal: if `after` were exclusive on date-only, tasks due exactly on TODAY_DATE at 00:00 would be excluded — but all today's tasks appear.
+2. PASS if: DF-Overdue appears (due 2h ago — on today's date, proving `after` includes the boundary day); DF-DueToday appears (due later today); DF-DueSoon appears (due today or later — always after TODAY_DATE midnight); DF-Future appears (30 days out); DF-InheritParent and DF-InheritChild appear (inheritedDueDate is today, inherited from DF-InheritParent). DF-NoDue does NOT appear. Key signal: if `after` were exclusive on date-only, tasks due exactly on TODAY_DATE at 00:00 would be excluded — but all today's tasks appear.
 
 #### Test 5h: Same-day range — both bounds equal
 1. `list_tasks` with `due: {after: "TODAY_DATE", before: "TODAY_DATE"}, search: "DF-"` (both set to today's YYYY-MM-DD)
-2. PASS if: DF-Overdue and DF-DueToday appear (both due today — within the single-day window); DF-InheritParent and DF-InheritChild appear (effective due date is today); DF-DueSoon appears if SOON_DUE is today (threshold-dependent). DF-Future does NOT appear (30 days out — outside the single day). DF-NoDue does NOT appear. This proves the spec guarantee: equal date-only bounds match exactly one day.
+2. PASS if: DF-Overdue and DF-DueToday appear (both due today — within the single-day window); DF-InheritParent and DF-InheritChild appear (inheritedDueDate is today, inherited from DF-InheritParent); DF-DueSoon appears if SOON_DUE is today (threshold-dependent). DF-Future does NOT appear (30 days out — outside the single day). DF-NoDue does NOT appear. This proves the spec guarantee: equal date-only bounds match exactly one day.
 
 ### 6. Combo Filters (Date + Base)
 
@@ -259,8 +259,8 @@ Tests `list_tasks` date filtering — due date shortcuts (overdue, soon, today),
 | 3d | Non-due: defer today | Tasks with today's defer date only; others excluded | |
 | 3e | Non-due: added today | All today's tasks returned; no lifecycle auto-include for `added` | |
 | 4a | Soon ⊃ overdue | Overdue task explicitly found in "soon" results | |
-| 4b | Inherited: overdue | No direct dueDate; found by overdue filter via inherited effective date | |
-| 4c | Inherited: absolute | Inherited effective date caught by absolute {before} filter | |
+| 4b | Inherited: overdue | No direct dueDate; found by overdue filter via inheritedDueDate | |
+| 4c | Inherited: absolute | inheritedDueDate caught by absolute {before} filter | |
 | 5a | Absolute: before tomorrow | Near-term tasks returned; 30-day future excluded; no-due excluded | |
 | 5b | Absolute: after yesterday | All dated tasks returned; no-due excluded | |
 | 5c | Absolute: range [now, tomorrow] | Future-today window; overdue and far-future both excluded | |

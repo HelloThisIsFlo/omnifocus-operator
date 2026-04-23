@@ -205,7 +205,7 @@ Run INDIVIDUALLY (will error):
 
 #### Test 7b: Response shape + camelCase
 1. Use the result from any previous test (e.g., test 3a)
-2. PASS if: response has top-level fields `items` (array), `total` (number), `hasMore` (boolean — not `has_more`); project objects use camelCase: `lastReviewDate`, `nextReviewDate`, `reviewInterval`, `nextTask`, `dueDate`, `deferDate`, `effectiveFlagged`, `effectiveDueDate`, `effectiveDeferDate` — no snake_case leaks; `folder` is `{id, name}` or null (enriched reference, not a bare ID string); `nextTask` is `{id, name}` or null (enriched reference, not a bare ID string)
+2. PASS if: response has top-level fields `items` (array), `total` (number), `hasMore` (boolean — not `has_more`); project objects use camelCase: `lastReviewDate`, `nextReviewDate`, `reviewInterval`, `nextTask`, `dueDate`, `deferDate` — no snake_case leaks; no `inherited*` fields on projects (Phase 53.1 moved those to tasks only — see inheritance.md Test 9); `folder` is `{id, name}` or null (enriched reference, not a bare ID string); `nextTask` is `{id, name}` or null (enriched reference, not a bare ID string)
 
 ### 8. $inbox Guard
 

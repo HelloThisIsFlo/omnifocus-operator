@@ -61,8 +61,8 @@ Tests field editing, patch semantics, no-op warnings, status warnings, error han
 #### Test 2a: Patch semantics
 1. Set `name: "T2-Updated", flagged: true, note: "test note", estimatedMinutes: 30` on T2
 2. Edit only `flagged: false` on T2
-3. `get_task` T2 and verify: name still "T2-Updated", note still "test note", estimatedMinutes still 30, `effectiveFlagged: false` matches `flagged: false`
-4. PASS if: untouched fields preserved, effective fields mirror base fields
+3. `get_task` T2 and verify: name still "T2-Updated", note still "test note", estimatedMinutes still 30, `flagged` absent from response (false → stripped), `inheritedFlagged` absent (T2 is in inbox — no ancestor to inherit from)
+4. PASS if: untouched fields preserved; flagged=false self-stripped from output; no inheritedFlagged leaks in on inbox tasks
 
 #### Test 2b: Date fields set + clear
 1. `dueDate: "2026-03-15T17:00:00+01:00", deferDate: "2026-03-10T09:00:00+01:00"` on T2
@@ -83,14 +83,14 @@ Tests field editing, patch semantics, no-op warnings, status warnings, error han
 
 #### Test 2e: Multi-field single call
 1. `flagged: true, note: "multi", estimatedMinutes: 60, dueDate: "2026-03-20T12:00:00+01:00"` on T2
-2. `get_task` to verify all four fields, plus `effectiveFlagged: true` and `effectiveDueDate` matches dueDate
-3. PASS if: all four applied in one call, effective fields mirror base fields
+2. `get_task` to verify all four direct fields are set (name/note/estimatedMinutes/dueDate/flagged=true), plus `inheritedFlagged` absent (T2 sets its own flagged → self-shadowed) and `inheritedDueDate` absent (T2 sets its own dueDate → self-shadowed)
+3. PASS if: all four direct fields applied in one call; inherited* counterparts are absent (self-shadow)
 
 #### Test 2f: plannedDate set + clear
 1. `plannedDate: "2026-03-12T10:00:00+01:00"` on T2
-2. `get_task` to verify `plannedDate` is set and `effectivePlannedDate` matches
+2. `get_task` to verify `plannedDate` is set AND `inheritedPlannedDate` is absent (self-shadowed since T2 sets its own plannedDate)
 3. `plannedDate: null` on T2
-4. PASS if: both set and clear succeed, effective field mirrors base field when set
+4. PASS if: both set and clear succeed; when set, the own field is present and its inherited* counterpart is absent (self-shadow)
 
 #### Test 2g: Naive datetime on edit
 1. `dueDate: "2026-07-15T14:00:00"` on T2 (no Z, no offset — naive local)
@@ -186,12 +186,12 @@ Run each INDIVIDUALLY (they will error):
 |---|------|-------------|--------|
 | 1a | note: null | Setting note to null clears the note without error | |
 | 1b | note: "" | Setting note to empty string clears the note; returns `""` not `null` | |
-| 2a | Patch semantics | Editing one field preserves others; effective fields mirror base | |
+| 2a | Patch semantics | Editing one field preserves others; flagged=false self-strips; no inheritedFlagged on inbox tasks | |
 | 2b | Date set + clear | Setting dueDate and deferDate, then clearing both with null | |
 | 2c | estimatedMinutes set + clear | Setting estimatedMinutes, then clearing with null | |
 | 2d | Name change | Renaming a task; response reflects the new name | |
-| 2e | Multi-field single call | 4 fields in one call; all applied; effective fields mirror | |
-| 2f | plannedDate set + clear | Set plannedDate; effectivePlannedDate mirrors; then clear | |
+| 2e | Multi-field single call | 4 fields in one call; all direct fields applied; inherited* counterparts absent (self-shadow) | |
+| 2f | plannedDate set + clear | Set plannedDate; inheritedPlannedDate self-shadowed (absent); then clear | |
 | 2g | Naive datetime on edit | Naive local datetime (no Z) accepted; dueDate set correctly | |
 | 3a | No-op: empty edit | Sending only an ID with no fields returns "no changes specified" | |
 | 3b | No-op: same flagged | Setting flagged to its current value returns "no changes detected" | |

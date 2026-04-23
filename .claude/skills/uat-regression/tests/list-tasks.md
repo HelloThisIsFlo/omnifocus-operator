@@ -227,7 +227,7 @@ Run INDIVIDUALLY (will error):
 
 #### Test 6d: Response shape and camelCase
 1. Use the result from any previous test (e.g., test 4a)
-2. PASS if: response has top-level fields `items` (array), `total` (number), `hasMore` (boolean — not `has_more`); task objects use camelCase field names (`estimatedMinutes`, `dueDate`, `effectiveFlagged` — no snake_case leaks); `parent` is a tagged wrapper with exactly one key (`project` or `task`), each containing `{id, name}`; `project` is always present as `{id, name}` (inbox tasks show `{id: "$inbox", name: "Inbox"}`); there is NO `inInbox` field
+2. PASS if: response has top-level fields `items` (array), `total` (number), `hasMore` (boolean — not `has_more`); task objects use camelCase field names (`estimatedMinutes`, `dueDate`, `inheritedFlagged` or `inheritedDueDate` if present — no snake_case leaks); `parent` is a tagged wrapper with exactly one key (`project` or `task`), each containing `{id, name}`; `project` is always present as `{id, name}` (inbox tasks show `{id: "$inbox", name: "Inbox"}`); there is NO `inInbox` field
 
 #### Test 6e: Tags partial resolution — one resolves, one doesn't
 1. `list_tasks` with `tags: ["<tag-a-name>", "xyzzy_nonexistent_99"], search: "LT-"`
