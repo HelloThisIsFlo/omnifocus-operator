@@ -118,7 +118,7 @@ All read tools are idempotent. Write tools reference projects and tags by name o
 {
   "items": [{
     "name": "Review Q3 roadmap",
-    "parent": {"project": {"name": "Work Projects"}},
+    "parent": "Work Projects",
     "tags": ["Planning"],
     "dueDate": "2026-03-15T17:00:00",
     "flagged": true,
@@ -134,9 +134,11 @@ All read tools are idempotent. Write tools reference projects and tags by name o
 {
   "items": [{
     "id": "oRx3bL_UYq7",
-    "addTags": ["Urgent"],
     "dueDate": null,
-    "moveTo": {"ending": {"project": {"name": "Work Projects"}}}
+    "actions": {
+      "tags": {"add": ["Urgent"]},
+      "move": {"ending": "Work Projects"}
+    }
   }]
 }
 ```
