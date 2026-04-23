@@ -1,7 +1,7 @@
 ---
 suite: read-lookups
 display: Read Lookups
-test_count: 8
+test_count: 9
 
 discovery:
   needs:
@@ -15,7 +15,7 @@ discovery:
 setup: |
   ### Tasks
   UAT-ReadLookups (inbox parent)
-    T1-LookupTarget
+    T1-LookupTarget    (note: "phase-56 parity fixture")
 ---
 
 # Read Lookups Test Suite
@@ -80,6 +80,17 @@ Run INDIVIDUALLY (will error):
 1. `get_project` with ID `"$inbox"`
 2. PASS if: error mentions "The '$inbox' appears as a project on tasks but is not a real OmniFocus project" and suggests using `list_tasks` with `inInbox=true`
 
+### 5. Phase 56 Property Surface
+
+#### Test 5a: get_task parity with list_tasks — presence flags agree (L-GetTaskNewFlags)
+1. `list_tasks` with `search: "T1-LookupTarget"` — capture the matching item from the response
+2. `get_task` with T1's ID
+3. PASS if: the Phase 56 presence flags (`hasNote`, `hasRepetition`, `hasAttachments`, `isSequential`, `dependsOnChildren`) agree between both responses for the same task:
+   - Any flag present in the `list_tasks` item with value `true` is also present in the `get_task` response with value `true`
+   - Any flag absent from the `list_tasks` item (stripped because `false`) is also absent from `get_task` (not present as `false` either — strip-when-false must apply to both surfaces)
+4. Given the setup note on T1-LookupTarget, at minimum `hasNote: true` should appear identically on both surfaces.
+5. Notes: `list_tasks` and `get_task` are separate code paths through the projection pipeline. This test protects against one surface drifting from the other on the Phase 56 flag set. For this session the hierarchy include group is NOT part of this parity check — it's exercised in list-tasks.md tests 9f/9g/9h.
+
 ## Report Table Rows
 
 | # | Test | Description | Result |
@@ -92,3 +103,4 @@ Run INDIVIDUALLY (will error):
 | 3a | get_tag: existing | Tag by ID returns enriched parent ({id, name} or null) | |
 | 3b | get_tag: not found | Fake tag ID returns "not found" error | |
 | 4a | get_project: $inbox | `get_project("$inbox")` returns educational error about virtual location | |
+| 5a | get_task parity: Phase 56 flags | Phase 56 presence flags agree between `list_tasks` and `get_task` on the same task — no surface drift | |

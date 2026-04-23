@@ -1,7 +1,7 @@
 ---
 suite: list-projects
 display: List Projects
-test_count: 33
+test_count: 39
 
 discovery:
   needs:
@@ -20,6 +20,15 @@ discovery:
     - type: project
       label: proj-review-soon
       filters: [active, review_soon]
+    - type: project
+      label: proj-sequential
+      filters: [active]
+    - type: project
+      label: proj-singleactions
+      filters: [active]
+    - type: project
+      label: proj-with-flags
+      filters: [active]
     - type: folder
       label: folder-a
       filters: [available]
@@ -38,6 +47,10 @@ setup: |
 
 manual_actions:
   - "If any project or folder profile is missing, tell user exactly what to create or configure and wait for confirmation."
+  - "proj-sequential: in OmniFocus project inspector, set Project Type to `Sequential` (Phase 56 tests 10d and 10e)."
+  - "proj-singleactions: in the project inspector, set Project Type to `Single Actions` — this is the `singleActions` flag at the OF layer (Phase 56 test 10f, HIER-05 precedence)."
+  - "proj-with-flags: ensure this project has ALL THREE — (a) a non-empty note; (b) a repetition rule (Review tab → set a review interval, OR set a repeat on the project task itself); (c) any attachment dragged into the project. Covers Phase 56 tests 10a / 10b / 10c. If a single project can't hold all three, file it as a multi-project substitution with the agent before running the section."
+  - "For test 10e (hierarchy fields on project): proj-sequential should have at least one task underneath it so `hasChildren: true` can be verified. If proj-sequential is empty, add one task to it or pick a different sequential project."
 ---
 
 # List Projects Test Suite
@@ -229,6 +242,49 @@ Run each INDIVIDUALLY (they will error):
 1. `list_projects` with `availability: []`
 2. PASS if: error says "'availability' cannot be empty" and mentions using `["ALL"]` as an alternative
 
+### 10. Presence Flags & Hierarchy Include Group (Phase 56)
+
+> **Phase 56 on the project surface.** Default response gains derived presence flags on projects — `hasNote`, `hasRepetition`, `hasAttachments`, `isSequential`. All strip-when-false. The `hierarchy` include group exposes `hasChildren`, `type` (full `ProjectType` enum with `"singleActions"`), and `completesWithChildren`. `isSequential` was hoisted from task-only to `ActionableEntity` in Phase 56-08 — projects now share this agent-behavior signal with tasks ("only the next-in-line child is available"). `dependsOnChildren` stays task-only by explicit design (projects are always containers).
+>
+> Assertions below are behavioral, not exact-text.
+
+#### Test 10a: Project presence flag — hasNote (P-HasNote)
+1. `list_projects` with `search: "<proj-with-flags-name-substring>", limit: 3`
+2. PASS if: proj-with-flags has `hasNote: true` in its response object
+3. `list_projects` with `search: "<proj-a-name-substring>", limit: 3` (proj-a should be note-free — if not, pick another project that you know is plain)
+4. PASS if: the plain project does NOT have a `hasNote` field (strip-when-false)
+
+#### Test 10b: Project presence flag — hasRepetition (P-HasRepetition)
+1. `list_projects` with `search: "<proj-with-flags-name-substring>", limit: 3`
+2. PASS if: proj-with-flags has `hasRepetition: true` (review interval set, OR repeating project task)
+3. PASS also if: a project without a repetition rule in the result set does NOT carry a `hasRepetition` field
+
+#### Test 10c: Project presence flag — hasAttachments (P-HasAttachments)
+1. Precondition: the attachment manual action on proj-with-flags was completed
+2. `list_projects` with `search: "<proj-with-flags-name-substring>", limit: 3`
+3. PASS if: proj-with-flags has `hasAttachments: true`
+4. Notes: cache-backed via the same batched snapshot-load as tasks (CACHE-04). If the flag is missing despite an attachment being present, a snapshot refresh may be needed.
+
+#### Test 10d: Project presence flag — isSequential (P-IsSequential)
+1. `list_projects` with `search: "<proj-sequential-name-substring>", limit: 3`
+2. PASS if: proj-sequential has `isSequential: true` in the default response (no `include` needed — it's a default flag)
+3. `list_projects` with `search: "<proj-a-name-substring>", limit: 3` (assuming proj-a is parallel; if not, pick a confirmed parallel project)
+4. PASS if: the parallel project does NOT have an `isSequential` field (strip-when-false)
+5. Notes: `isSequential` was hoisted from `Task` to `ActionableEntity` in Phase 56-08 so projects emit it with the same semantic as tasks. `dependsOnChildren` does NOT apply to projects (stays tasks-only) — a project version of this test would be wrong.
+
+#### Test 10e: Hierarchy include group (project) — structural fields on demand (P-HierarchyProject)
+1. `list_projects` with `search: "<proj-sequential-name-substring>", include: ["hierarchy"], limit: 3`
+2. PASS if: proj-sequential response includes all three hierarchy fields:
+   - `hasChildren: true` (proj-sequential should have at least one task per manual action setup; if not, this test needs a project with children)
+   - `type: "sequential"` (full ProjectType enum, always present)
+   - `completesWithChildren: <bool>` (always present, including when `false`)
+3. Notes: same contract shape as task-side (Test 9f), but `type` uses the full ProjectType enum which includes `"singleActions"`.
+
+#### Test 10f: ProjectType enum — singleActions precedence (P-ProjectTypeEnum)
+1. `list_projects` with `search: "<proj-singleactions-name-substring>", include: ["hierarchy"], limit: 3`
+2. PASS if: proj-singleactions has `type: "singleActions"` in the response (not `"parallel"`, not `"sequential"`)
+3. Notes: HIER-05 precedence rule — `singleActions` takes precedence over `sequential` over `parallel`. Assembly happens at the service layer from the `(sequential, containsSingletonActions)` tuple. The singleActions flag wins even if the project also has `sequential=true` internally at the OF row level.
+
 ## Report Table Rows
 
 | # | Test | Description | Result |
@@ -266,3 +322,9 @@ Run each INDIVIDUALLY (they will error):
 | 9a | Null: folder | `folder: null` → cannot be null, suggests omitting | |
 | 9b | Null: flagged | `flagged: null` → cannot be null, suggests omitting | |
 | 9c | Empty: availability | `availability: []` → cannot be empty, mentions `["ALL"]` | |
+| 10a | Presence: hasNote (project) | Project with non-empty note emits `hasNote: true`; plain project omits (strip-when-false) | |
+| 10b | Presence: hasRepetition (project) | Project with a repetition rule emits `hasRepetition: true`; non-repeating omits | |
+| 10c | Presence: hasAttachments (project) | Project with an attachment emits `hasAttachments: true` (cache-backed) | |
+| 10d | Presence: isSequential (project) | Sequential project emits `isSequential: true` (56-08: hoisted to ActionableEntity; projects share the flag with tasks); parallel project omits | |
+| 10e | Hierarchy: include group (project) | `include: ["hierarchy"]` adds `hasChildren`, `type` (full enum), `completesWithChildren` to project | |
+| 10f | Hierarchy: singleActions precedence | Project with Single Actions flag → `type: "singleActions"` (beats sequential/parallel; HIER-05 service-layer assembly) | |

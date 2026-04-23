@@ -1,7 +1,7 @@
 ---
 suite: list-tasks
 display: List Tasks
-test_count: 46
+test_count: 54
 
 discovery:
   needs:
@@ -41,6 +41,16 @@ setup: |
     LT-ProjTask2       (flagged: true)
     LT-ProjTask3       (plain)
 
+  Batch C — Phase 56 presence flags + hierarchy (parent: UAT-ListTasks):
+    LT-SeqParent       (type: "sequential", completesWithChildren: false)
+    LT-SeqChild1       (parent: LT-SeqParent)
+    LT-SeqChild2       (parent: LT-SeqParent)
+    LT-Parallel        (type: "parallel" — leaf, no children)
+    LT-AutoComplete    (completesWithChildren: true)
+    LT-ACChild         (parent: LT-AutoComplete)
+    LT-Repeating       (dueDate: "2099-06-01T12:00:00Z", repetitionRule: { frequency: { type: "daily" }, schedule: "regularly", basedOn: "due_date" })
+    LT-Attached        (plain — attachment added manually, see manual_actions)
+
   ### Post-Create
   1. complete: LT-Completed
   2. drop: LT-Dropped
@@ -49,9 +59,13 @@ setup: |
   LT-Completed: availability=completed
   LT-Dropped: availability=dropped
   LT-Deferred: availability=blocked
+  LT-SeqParent: type=sequential, completesWithChildren=false, hasChildren=true
+  LT-Parallel: type=parallel, hasChildren=false
+  LT-AutoComplete: completesWithChildren=true, hasChildren=true
 
 manual_actions:
   - "If no ambiguous project or tag substrings found in discovery, tell user what's needed for tests 3a and 3e (project/tag names matching multiple entities) and ask them to create duplicates."
+  - "In OmniFocus, drag any file onto `LT-Attached` to add an attachment — required for test 9c (hasAttachments). The flag is cache-backed (snapshot-loaded), so ensure the attachment is in place BEFORE running the suite; a mid-suite attach may not be reflected until the next snapshot refresh."
 ---
 
 # List Tasks Test Suite
@@ -273,6 +287,65 @@ Run each INDIVIDUALLY (they will error):
 1. `list_tasks` with `tags: []`
 2. PASS if: error says "'tags' cannot be empty" and suggests omitting the field
 
+### 9. Presence Flags & Hierarchy Include Group (Phase 56)
+
+> **Phase 56 surface.** Default response now includes derived presence flags: `hasNote`, `hasRepetition`, `hasAttachments`, `isSequential`, `dependsOnChildren` — all strip-when-false. The `hierarchy` include group exposes structural detail on demand (`hasChildren`, `type`, `completesWithChildren`). See 56-CONTEXT.md FLAG-01..05 and HIER-01..05. Assertions below are behavioral — specific field shapes, never exact warning text.
+
+#### Test 9a: Presence flag — hasNote (T-HasNote)
+1. `list_tasks` with `search: "LT-"`
+2. PASS if:
+   - LT-SearchNote has `hasNote: true` in its response object (it was created with `note: "unicorn_xK7_marker"`)
+   - LT-Inbox1 (created plain) does NOT have a `hasNote` field at all — strip-when-false applies
+
+#### Test 9b: Presence flag — hasRepetition (T-HasRepetition)
+1. `list_tasks` with `search: "LT-"`
+2. PASS if:
+   - LT-Repeating has `hasRepetition: true` (a daily repetition rule was set in setup)
+   - LT-Inbox1 does NOT have a `hasRepetition` field
+
+#### Test 9c: Presence flag — hasAttachments (T-HasAttachments)
+1. Precondition: the attachment manual action has been completed (any file dragged onto `LT-Attached` in OmniFocus)
+2. `list_tasks` with `search: "LT-"`
+3. PASS if:
+   - LT-Attached has `hasAttachments: true`
+   - LT-Inbox1 does NOT have a `hasAttachments` field
+4. Notes: `hasAttachments` is cache-backed (batched snapshot load per CACHE-04). If the flag is missing despite an attachment being present, a snapshot refresh may be needed — retry after any other read tool call.
+
+#### Test 9d: Presence flag — isSequential (T-IsSequential)
+1. `list_tasks` with `search: "LT-"`
+2. PASS if:
+   - LT-SeqParent has `isSequential: true` (created with `type: "sequential"`)
+   - LT-Parallel (created with `type: "parallel"`) does NOT have an `isSequential` field — strip-when-false
+3. Notes: `isSequential` is an agent-behavior signal — "only the next-in-line child is available; agents reasoning about actionability must not over-count."
+
+#### Test 9e: Presence flag — dependsOnChildren (T-DependsOnChildren)
+1. `list_tasks` with `search: "LT-"`
+2. PASS if:
+   - LT-SeqParent has `dependsOnChildren: true` — it has children AND `completesWithChildren: false`, so the task itself is a real unit of work waiting on its children
+   - LT-AutoComplete does NOT have a `dependsOnChildren` field — it has children BUT `completesWithChildren: true`, so it auto-completes when its children do (container, not waiting)
+   - LT-Parallel does NOT have a `dependsOnChildren` field — leaf task, no children at all
+3. Notes: Contract is `hasChildren AND NOT completesWithChildren` → flag emitted. Tasks-only; projects never emit this flag (projects are always containers — FLAG-05).
+
+#### Test 9f: Hierarchy include group — structural fields appear on demand (T-HierarchyTask)
+1. `list_tasks` with `search: "LT-SeqParent", include: ["hierarchy"]`
+2. PASS if: the matched LT-SeqParent item includes all three hierarchy fields:
+   - `hasChildren: true`
+   - `type: "sequential"` (full enum string, not a boolean)
+   - `completesWithChildren: false` (always present, including when `false`)
+3. PASS also if: LT-Parallel in a separate call with the same include shows `hasChildren` absent (stripped when false), `type: "parallel"`, `completesWithChildren: <bool>` (always present).
+
+#### Test 9g: No-suppression invariant — default flags AND hierarchy fields emit together (T-NoSuppressionInvariant)
+1. `list_tasks` with `search: "LT-SeqParent", include: ["hierarchy"]`
+2. PASS if: the LT-SeqParent response contains ALL FIVE fields together, no de-duplication:
+   - Default-response derived flags: `isSequential: true`, `dependsOnChildren: true`
+   - Hierarchy group fields: `hasChildren: true`, `type: "sequential"`, `completesWithChildren: false`
+3. Notes: This is Phase 56 SC-4 — the two emission pipelines run independently. Redundancy is the contract, not a bug. If the hierarchy fields suppress the default flags (or vice versa), it's a regression.
+
+#### Test 9h: completesWithChildren: false survives stripping (T-CompletesWithChildrenInNeverStrip)
+1. `list_tasks` with `search: "LT-SeqParent", include: ["hierarchy"]`
+2. PASS if: response contains `completesWithChildren: false` as a literal `false` value — the key IS present with value `false`, not absent
+3. Notes: `completesWithChildren` is in `NEVER_STRIP` per PROP-08. The default stripping pipeline would normally drop `false` values, but this field is exempted because the distinction between "auto-completes" and "doesn't auto-complete" is load-bearing for agent reasoning — silence would be ambiguous.
+
 ## Report Table Rows
 
 | # | Test | Description | Result |
@@ -323,3 +396,11 @@ Run each INDIVIDUALLY (they will error):
 | 8a | Null: project | `project: null` → cannot be null, suggests omitting | |
 | 8b | Null: flagged | `flagged: null` → cannot be null, suggests omitting | |
 | 8c | Empty: tags | `tags: []` → cannot be empty, suggests omitting | |
+| 9a | Presence: hasNote | Task with non-empty note emits `hasNote: true`; no-note task omits the field (strip-when-false) | |
+| 9b | Presence: hasRepetition | Repeating task emits `hasRepetition: true`; non-repeating task omits | |
+| 9c | Presence: hasAttachments | Task with attachment emits `hasAttachments: true` (cache-backed; requires manual attach before run) | |
+| 9d | Presence: isSequential | `type: "sequential"` task emits `isSequential: true`; parallel task omits | |
+| 9e | Presence: dependsOnChildren | Sequential parent w/ children + `completesWithChildren: false` emits the flag; auto-complete parent and leaf task both omit | |
+| 9f | Hierarchy: include group (task) | `include: ["hierarchy"]` adds `hasChildren`, `type` (enum), `completesWithChildren` (always present) | |
+| 9g | Hierarchy: no-suppression invariant | Default flags AND hierarchy fields emit together on the same task — redundancy is the contract (SC-4) | |
+| 9h | Hierarchy: completesWithChildren false survives stripping | `completesWithChildren` in NEVER_STRIP — literal `false` appears in response (PROP-08) | |
