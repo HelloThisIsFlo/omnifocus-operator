@@ -177,7 +177,7 @@ Warnings live in the domain layer (filter-semantics advice), not projection (fie
 
 **Filtered-subtree warning text (locked verbatim):**
 
-> *"Filtered subtree: resolved parent tasks are always included, but intermediate and descendant tasks not matching your other filters (tags, dates, etc.) are excluded. Each returned task's `parent` field still references its true parent — fetch separately if you need data for an excluded intermediate."*
+> *"Filtered subtree: resolved parent tasks are always included, but intermediate and descendant tasks not matching your other filters (tags, dates, etc.) are excluded. Each returned task's `parent` field still references its true parent -- fetch separately if you need data for an excluded intermediate."*
 
 ---
 

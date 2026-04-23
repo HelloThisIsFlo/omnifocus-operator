@@ -165,7 +165,7 @@
 
 From `MILESTONE-v1.4.1.md` line 180:
 
-> "Filtered subtree: resolved parent tasks are always included, but intermediate and descendant tasks not matching your other filters (tags, dates, etc.) are excluded. Each returned task's `parent` field still references its true parent — fetch separately if you need data for an excluded intermediate."
+> "Filtered subtree: resolved parent tasks are always included, but intermediate and descendant tasks not matching your other filters (tags, dates, etc.) are excluded. Each returned task's `parent` field still references its true parent -- fetch separately if you need data for an excluded intermediate."
 
 Text is locked — do not paraphrase or adjust wording.
 
