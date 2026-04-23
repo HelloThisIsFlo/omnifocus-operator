@@ -1,7 +1,7 @@
 ---
 suite: edit-operations
 display: Edit Operations
-test_count: 29
+test_count: 34
 
 setup: |
   ### Task Hierarchy
@@ -212,6 +212,39 @@ Run each INDIVIDUALLY (they will error):
 1. `flagged: true` on T4 (already completed, already flagged from Test 4a)
 2. PASS if: only "no changes detected" warning — the status warning ("your changes were applied") must NOT appear since nothing changed
 
+### 7. Task Property Surface (Phase 56)
+
+New writable task fields — `completesWithChildren: Patch[bool]` and `type: Patch[TaskType]` where `TaskType = "parallel" | "sequential"`. Both reject `null` (Patch[bool]/Patch[enum] have no cleared state); `"singleActions"` is rejected naturally via the TaskType enum.
+
+#### Test 7a: Edit completesWithChildren
+1. `edit_tasks` on T2 with `completesWithChildren: true`
+2. `get_task` T2 with `include: ["hierarchy"]` and verify `completesWithChildren: true`
+3. `edit_tasks` on T2 with `completesWithChildren: false`
+4. `get_task` T2 with `include: ["hierarchy"]` and verify `completesWithChildren: false` (always present in hierarchy group, including when false — PROP-08 / NEVER_STRIP)
+5. PASS if: both set-true and set-false succeed; hierarchy response shows the written value each time
+
+#### Test 7b: Edit type
+1. `edit_tasks` on T2 with `type: "sequential"`
+2. `get_task` T2 with `include: ["hierarchy"]` and verify `type: "sequential"`
+3. `edit_tasks` on T2 with `type: "parallel"`
+4. `get_task` T2 with `include: ["hierarchy"]` and verify `type: "parallel"`
+5. PASS if: both flips succeed and round-trip correctly
+
+#### Test 7c: completesWithChildren: null rejected
+Run INDIVIDUALLY (will error):
+1. `edit_tasks` on T6 with `completesWithChildren: null`
+2. PASS if: error — fluent from an agent's perspective (explains booleans have no cleared state / omit instead of null); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+#### Test 7d: type: null rejected
+Run INDIVIDUALLY (will error):
+1. `edit_tasks` on T6 with `type: null`
+2. PASS if: error — fluent (same shape as 7c: null not valid for `type`; omit to leave unchanged); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+#### Test 7e: type="singleActions" rejected
+Run INDIVIDUALLY (will error):
+1. `edit_tasks` on T6 with `type: "singleActions"`
+2. PASS if: error — valid values are `parallel` and `sequential` (enum validation; `singleActions` is projects-only and not writable on tasks); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
 ## Report Table Rows
 
 | # | Test | Description | Result |
@@ -245,3 +278,8 @@ Run each INDIVIDUALLY (they will error):
 | 5b | Error: empty name | Setting name to "" returns a validation error | |
 | 6a | Combo: note clear via actions + field | `actions.note.replace: null` + `flagged: true` in one call; both applied | |
 | 6b | No-op on completed | No-op suppresses status warning, shows only "no changes" | |
+| 7a | Edit: completesWithChildren | Set-true and set-false both round-trip via hierarchy include (`false` always present per PROP-08) | |
+| 7b | Edit: type | Flip `parallel` ↔ `sequential`; both round-trip via hierarchy include | |
+| 7c | Error: completesWithChildren: null | `null` rejected; fluent error (Patch[bool] has no cleared state); no pydantic internals | |
+| 7d | Error: type: null | `null` rejected; fluent error (omit to leave unchanged); no pydantic internals | |
+| 7e | Error: type="singleActions" | Enum rejects `singleActions`; valid values are `parallel`/`sequential`; no pydantic internals | |
