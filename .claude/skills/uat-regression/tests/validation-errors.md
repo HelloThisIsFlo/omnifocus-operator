@@ -1,7 +1,7 @@
 ---
 suite: validation-errors
 display: Validation & Errors
-test_count: 40
+test_count: 42
 
 setup: |
   ### Task Hierarchy
@@ -231,6 +231,20 @@ Run each test INDIVIDUALLY (will error):
 1. `edit_tasks` with `items: [{ id: "<temp-id>", hasChildren: true }]`
 2. PASS if: error rejects `hasChildren` as an unknown/forbidden field (same `extra="forbid"` mechanism on edit-side — one representative is sufficient since the rejection is shared infra); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
 
+### 11. v1.4 Phase 54 Batch Limit
+
+Phase 54 lifted the 1-item constraint on `add_tasks` and `edit_tasks` and set a new ceiling of 50 items per call, enforced via Pydantic `max_length` on the `items` list. Exceeding the ceiling produces a generic schema-level error — no custom educational message. These tests spot-check the limit on both write tools.
+
+Run each test INDIVIDUALLY (will error):
+
+#### Test 11a: add_tasks rejects 51-item batch
+1. `add_tasks` with 51 items (each a minimal valid task, e.g., `{ name: "VE-11a-N" }` for N = 1..51)
+2. PASS if: error rejects the batch at schema level (generic Pydantic `max_length` message — no custom constant); mentions the items array length or maximum; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+#### Test 11b: edit_tasks rejects 51-item batch
+1. `edit_tasks` with 51 items (each `{ id: "<temp-id>", name: "VE-11b-N" }` for N = 1..51 — reusing the same id is fine since the validation error fires before any items are dispatched to the service layer)
+2. PASS if: error rejects the batch at schema level (generic Pydantic `max_length` message — cross-tool consistency with 11a); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
 ## Report Table Rows
 
 | # | Test | Description | Result |
@@ -275,3 +289,5 @@ Run each test INDIVIDUALLY (will error):
 | 10b | add_tasks: rejects isSequential | Derived read-only flag rejected; same shape as 10a; no pydantic internals | |
 | 10c | add_tasks: rejects dependsOnChildren | Derived read-only flag rejected; no pydantic internals | |
 | 10d | edit_tasks: rejects hasChildren | Edit-side representative — same `extra="forbid"` mechanism rejects derived fields; no pydantic internals | |
+| 11a | add_tasks: 51-item batch | Pydantic `max_length` rejects 51-item `add_tasks`; generic schema error; no pydantic internals | |
+| 11b | edit_tasks: 51-item batch | Pydantic `max_length` rejects 51-item `edit_tasks`; cross-tool consistency with 11a; no pydantic internals | |

@@ -13,8 +13,8 @@ Run these base suites in order. Each suite keeps its own parent task, setup, and
 | C | Response Shaping | `response-shaping.md` | 14 |
 | D | List Projects | `list-projects.md` | 39 |
 | E | Simple List Tools | `simple-list-tools.md` | 23 |
-| F | Validation & Errors | `validation-errors.md` | 35 |
+| F | Validation & Errors | `validation-errors.md` | 42 |
 
-**Total: 202 tests**
+**Total: 209 tests**
 
 Report table rows use section prefixes (A-1a, B-2a, C-1, D-1a, ...) with bold section-header rows between suites. Each suite's `## Report Table Rows` section provides the row definitions.

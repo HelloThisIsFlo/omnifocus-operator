@@ -14,8 +14,8 @@ Run UAT regression tests for OmniFocus Operator MCP tools against live OmniFocus
 | Suite | File | Tests | Covers |
 |-------|------|------:|--------|
 | **Writes Combined** *(composite)* | `tests/writes-combined.md` | 155 | **Full write-side regression** — lookups, creation, edits, tags, moves, lifecycle, integration, inheritance, repetition rules |
-| **Reads Combined** *(composite)* | `tests/reads-combined.md` | 202 | **Full read-side regression** — list tasks, date filtering, response shaping, list projects, simple list tools, validation & error formatting |
-| **Batch Processing** *(standalone)* | `tests/batch-processing.md` | 2 | **50-item mega-batch** — create 50 flat inbox tasks, reorganize into 4-level hierarchy inside a GM project in a single call, verify all 50 succeed and `list_tasks` shows `estimatedMinutes` 1→50 in depth-first outline order |
+| **Reads Combined** *(composite)* | `tests/reads-combined.md` | 209 | **Full read-side regression** — list tasks, date filtering, response shaping, list projects, simple list tools, validation & error formatting |
+| **Batch Processing** *(standalone)* | `tests/batch-processing.md` | 12 | **Batch processing contracts** — 50-item mega-batch hero's journey (Test 1) plus per-item semantics (Test 2): `add_tasks` best-effort vs `edit_tasks` fail-fast, response envelope shape, `id`-absence on failed adds, `Task N:` error prefix, skipped-item warnings, sequential commit, cross-item name-ref resolution, per-item field stripping |
 | Read Lookups | `tests/read-lookups.md` | 9 | get_task, get_project, get_tag — happy path, not-found errors, $inbox guard, enriched references, Phase 56 presence-flag parity |
 | Task Creation | `tests/task-creation.md` | 19 | add_tasks — inbox, $inbox parent, all fields, tag resolution, null/system-location errors, batch limit, enriched response shape |
 | Integration Flows | `tests/integration-flows.md` | 8 | End-to-end write-through: create→edit→move→tags→lifecycle→get_all |
@@ -30,7 +30,7 @@ Run UAT regression tests for OmniFocus Operator MCP tools against live OmniFocus
 | Response Shaping | `tests/response-shaping.md` | 14 | Universal stripping (null/`[]`/`""`/`false`/`"none"`; `availability` never stripped), `include` semantic groups, `only` field selection, `include`+`only` conflict warning, `limit: 0` count-only mode, batch per-item absence semantics |
 | List Projects | `tests/list-projects.md` | 39 | list_projects — folder filter, review_due_within duration, flagged, availability, ALL shorthand, $inbox warning, null/empty rejection, search, folder resolution warnings, pagination, combos, enriched response shape, Phase 56 presence flags + hierarchy include group (projects emit isSequential per 56-08) |
 | Simple List Tools | `tests/simple-list-tools.md` | 23 | list_tags, list_folders, list_perspectives — availability defaults (tags vs folders), ALL shorthand, null/empty rejection, search, pagination, parent hierarchy, builtin flag, cross-tool consistency, enriched references |
-| Validation & Errors | `tests/validation-errors.md` | 35 | Cross-tool error formatting — unknown fields, invalid types, batch limits, filter null/empty, $inbox guard, system locations, reserved prefix, middleware reformatting, no pydantic internals, camelCase in errors, DateFilter validation, breaking change rejections |
+| Validation & Errors | `tests/validation-errors.md` | 42 | Cross-tool error formatting — unknown fields, invalid types, batch limits, filter null/empty, $inbox guard, system locations, reserved prefix, middleware reformatting, no pydantic internals, camelCase in errors, DateFilter validation, breaking change rejections, derived-field rejection (Phase 56), batch-limit schema errors (Phase 54) |
 
 ## Flow
 
