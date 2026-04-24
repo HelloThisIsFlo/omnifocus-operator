@@ -637,9 +637,7 @@ class _ListTasksPipeline(_ReadPipeline):
         pinned_empty = q.pinned_task_ids is None or len(q.pinned_task_ids) == 0
         if candidate_empty and pinned_empty:
             return True
-        if q.tag_ids is not None and len(q.tag_ids) == 0:
-            return True
-        return False
+        return q.tag_ids is not None and len(q.tag_ids) == 0
 
     def _emit_empty_intersection_warning_if_applicable(self) -> None:
         """Phase 57-04 (G2): fire EMPTY_SCOPE_INTERSECTION_WARNING alongside

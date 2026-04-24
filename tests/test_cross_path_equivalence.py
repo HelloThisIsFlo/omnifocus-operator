@@ -1123,7 +1123,7 @@ class TestListTasksCrossPath:
     async def test_pinned_cross_path_equivalence(self, cross_repo: Repository) -> None:
         """Phase 57-04 D-15: hybrid + bridge_only produce identical results
         under the new OR-with-pinned semantic. Pinned anchor is OUTSIDE the
-        candidate set; both repos must return {candidate ∪ pinned}.
+        candidate set; both repos must return {candidate | pinned}.
         """
         result = await cross_repo.list_tasks(
             ListTasksRepoQuery(

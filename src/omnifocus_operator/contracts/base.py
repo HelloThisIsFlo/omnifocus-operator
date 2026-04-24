@@ -114,7 +114,7 @@ def is_non_default(model: BaseModel, field_name: str) -> bool:
         baseline = field_info.default_factory()  # type: ignore[call-arg]
     else:
         baseline = field_info.default
-    return value != baseline
+    return bool(value != baseline)
 
 
 def unset_to_none[T](value: T | _Unset) -> T | None:
