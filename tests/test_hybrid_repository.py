@@ -2406,12 +2406,12 @@ class TestListTasks:
         ],
     )
     async def test_list_tasks_project_filter(self, hybrid_repo: HybridRepository) -> None:
-        """TASK-03: task_id_scope filter matches by task PK (post-Phase 57).
+        """TASK-03: candidate_task_ids filter matches by task PK (post-Phase 57).
 
         Service layer (get_tasks_subtree) resolves project-to-tasks before this
         point — here we pass the tasks directly to prove the SQL clause works.
         """
-        result = await hybrid_repo.list_tasks(ListTasksRepoQuery(task_id_scope=["t-in-proj"]))
+        result = await hybrid_repo.list_tasks(ListTasksRepoQuery(candidate_task_ids=["t-in-proj"]))
         assert result.total == 1
         assert result.items[0].id == "t-in-proj"
 
@@ -2476,18 +2476,72 @@ class TestListTasks:
     async def test_list_tasks_project_filter_multiple_ids(
         self, hybrid_repo: HybridRepository
     ) -> None:
-        """TASK-03: task_id_scope filter matches multiple task PKs (post-Phase 57).
+        """TASK-03: candidate_task_ids filter matches multiple task PKs (post-Phase 57).
 
         Agent-facing behavior is unchanged — the service's get_tasks_subtree walks
         each resolved project and produces the union of task PKs; the repo
         sees the flat task-PK list.
         """
         result = await hybrid_repo.list_tasks(
-            ListTasksRepoQuery(task_id_scope=["t-work-lower", "t-work-upper"])
+            ListTasksRepoQuery(candidate_task_ids=["t-work-lower", "t-work-upper"])
         )
         assert result.total == 2
         ids = {t.id for t in result.items}
         assert ids == {"t-work-lower", "t-work-upper"}
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task({"persistentIdentifier": "t-a"}),
+            _minimal_task({"persistentIdentifier": "t-b"}),
+            _minimal_task({"persistentIdentifier": "t-c"}),
+        ],
+    )
+    async def test_pinned_task_ids_returns_anchor_outside_candidate_set(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """Phase 57-04 G1: pinned tasks return even when they're NOT in candidate_task_ids."""
+        result = await hybrid_repo.list_tasks(
+            ListTasksRepoQuery(
+                candidate_task_ids=["t-a"],
+                pinned_task_ids=["t-b"],
+            )
+        )
+        ids = {t.id for t in result.items}
+        # t-a via candidate branch; t-b via pinned branch.
+        assert ids == {"t-a", "t-b"}
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task(
+                {
+                    "persistentIdentifier": "anchor",
+                    "effectiveFlagged": 0,
+                }
+            ),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "child-flagged",
+                    "effectiveFlagged": 1,
+                }
+            ),
+        ],
+    )
+    async def test_pinned_with_other_pruning_filters(self, hybrid_repo: HybridRepository) -> None:
+        """Phase 57-04 G1: pinned anchor bypasses flagged=True predicate that
+        would otherwise prune it.
+        """
+        result = await hybrid_repo.list_tasks(
+            ListTasksRepoQuery(
+                candidate_task_ids=["anchor", "child-flagged"],
+                pinned_task_ids=["anchor"],
+                flagged=True,
+            )
+        )
+        ids = {t.id for t in result.items}
+        # anchor via pinned; child-flagged via candidate + flagged=True.
+        assert ids == {"anchor", "child-flagged"}
 
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(

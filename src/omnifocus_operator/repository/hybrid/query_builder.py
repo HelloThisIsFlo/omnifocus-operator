@@ -255,13 +255,13 @@ def build_list_tasks_sql(query: ListTasksRepoQuery) -> tuple[SqlQuery, SqlQuery]
         conditions.append("t.effectiveFlagged = ?")
         params.append(1 if query.flagged else 0)
 
-    if query.task_id_scope is not None and len(query.task_id_scope) > 0:
-        # Unified scope filter (UNIFY-01/D-05): task_id_scope is the fully
+    if query.candidate_task_ids is not None and len(query.candidate_task_ids) > 0:
+        # Unified scope filter (UNIFY-01/D-05): candidate_task_ids is the fully
         # resolved set of task PKs the service computed via get_tasks_subtree.
         # No subquery to ProjectInfo needed — direct indexed PK lookup.
-        placeholders = ",".join("?" * len(query.task_id_scope))
+        placeholders = ",".join("?" * len(query.candidate_task_ids))
         conditions.append(f"t.persistentIdentifier IN ({placeholders})")
-        params.extend(query.task_id_scope)
+        params.extend(query.candidate_task_ids)
 
     if query.tag_ids is not None and len(query.tag_ids) > 0:
         placeholders = ",".join("?" * len(query.tag_ids))
@@ -290,16 +290,39 @@ def build_list_tasks_sql(query: ListTasksRepoQuery) -> tuple[SqlQuery, SqlQuery]
     _add_date_conditions(conditions, params, query)
 
     # -- Build WHERE clause --
+    # Phase 57-04 (G1 Option A): when `pinned_task_ids` is set, wrap the
+    # existing AND-chain of conditions in parens and OR it with a pinned-IDs
+    # IN clause. This preserves `WHERE pi.task IS NULL` (from _TASKS_DATA_BASE)
+    # as a top-level invariant applying to BOTH branches -- projects are never
+    # returned as tasks. The pinned branch bypasses all other predicates,
+    # honoring FILTERED_SUBTREE_WARNING's "always included" promise.
+    pinned = query.pinned_task_ids or []
     where_suffix = ""
-    if conditions:
+    where_params: list[Any] = []
+    if pinned:
+        pinned_placeholders = ",".join("?" * len(pinned))
+        pinned_params: list[Any] = list(pinned)
+        if conditions:
+            inner_and = " AND ".join(conditions)
+            where_suffix = (
+                f" AND ((t.persistentIdentifier IN ({pinned_placeholders})) OR ({inner_and}))"
+            )
+        else:
+            # Degenerate: pinned set, no other filters -- just include pinned.
+            where_suffix = f" AND t.persistentIdentifier IN ({pinned_placeholders})"
+        # Placeholder order: pinned placeholders FIRST (they appear at the start
+        # of the OR expression), then conditions params.
+        where_params = pinned_params + list(params)
+    elif conditions:
         where_suffix = " AND " + " AND ".join(conditions)
+        where_params = list(params)
 
     # -- Data query (with CTE for outline ordering) --
     data_sql = _TASKS_DATA_BASE + where_suffix
 
     # Outline ordering via CTE sort_path (ORDER-04), ID tiebreaker for deterministic pagination
     data_sql += " ORDER BY o.sort_path, t.persistentIdentifier"
-    data_params = list(params)
+    data_params = list(where_params)
 
     if query.limit is not None:
         data_sql += " LIMIT ?"
@@ -310,10 +333,11 @@ def build_list_tasks_sql(query: ListTasksRepoQuery) -> tuple[SqlQuery, SqlQuery]
 
     # -- Count query --
     count_sql = _TASKS_COUNT_BASE + where_suffix
+    count_params = list(where_params)
 
     return (
         SqlQuery(sql=data_sql, params=tuple(data_params)),
-        SqlQuery(sql=count_sql, params=tuple(params)),
+        SqlQuery(sql=count_sql, params=tuple(count_params)),
     )
 
 

@@ -111,7 +111,7 @@ class TestTasksFlaggedFilter:
 
 
 class TestTasksScopeFilter:
-    """Post-Phase 57: task_id_scope is the unified scope primitive.
+    """Post-Phase 57: candidate_task_ids is the unified scope primitive.
 
     The list passed is the set of TASK PKs to keep — service layer
     (get_tasks_subtree) handles project-to-tasks expansion before this point.
@@ -124,8 +124,8 @@ class TestTasksScopeFilter:
     absence of the literal string.
     """
 
-    def test_task_id_scope_direct_in_clause(self):
-        query = ListTasksRepoQuery(task_id_scope=["task-id-1"])
+    def test_candidate_task_ids_direct_in_clause(self):
+        query = ListTasksRepoQuery(candidate_task_ids=["task-id-1"])
         data_q, _ = build_list_tasks_sql(query)
         assert "t.persistentIdentifier IN (?)" in data_q.sql
         assert "task-id-1" in data_q.params
@@ -133,14 +133,95 @@ class TestTasksScopeFilter:
         assert "pi2.task IN" not in data_q.sql
         assert "t.containingProjectInfo IN" not in data_q.sql
 
-    def test_multiple_task_id_scope(self):
-        query = ListTasksRepoQuery(task_id_scope=["task-1", "task-2"])
+    def test_multiple_candidate_task_ids(self):
+        query = ListTasksRepoQuery(candidate_task_ids=["task-1", "task-2"])
         data_q, _ = build_list_tasks_sql(query)
         assert "t.persistentIdentifier IN (?,?)" in data_q.sql
         assert "task-1" in data_q.params
         assert "task-2" in data_q.params
         assert "pi2.task IN" not in data_q.sql
         assert "t.containingProjectInfo IN" not in data_q.sql
+
+
+class TestTasksPinnedFilter:
+    """Phase 57-04 (G1 Option A): pinned_task_ids produces the OR-with-pinned
+    WHERE clause -- pinned IDs are unconditionally included alongside the
+    filterable-candidate branch.
+
+    Note: the default availability filter is [AVAILABLE, BLOCKED] which always
+    contributes an availability clause to the WHERE chain. That clause goes
+    into the candidate branch of the OR; the pinned branch bypasses it.
+    Tests below compose against realistic queries that always include this
+    default.
+    """
+
+    def test_pinned_task_ids_direct_or_shape(self):
+        """Pinned only (+ default availability): OR-with-pinned wraps the availability clause."""
+        query = ListTasksRepoQuery(pinned_task_ids=["p1"])
+        data_q, _ = build_list_tasks_sql(query)
+        # Pinned clause appears in the SQL.
+        assert "t.persistentIdentifier IN (?)" in data_q.sql
+        assert "p1" in data_q.params
+        # OR wrapper present because default availability fills the candidate branch.
+        assert "OR" in data_q.sql
+        # Pinned param appears first in the params tuple.
+        assert data_q.params[0] == "p1"
+
+    def test_pinned_with_candidate_or_shape(self):
+        """Pinned + candidate + flagged: full OR-with-pinned shape."""
+        query = ListTasksRepoQuery(
+            pinned_task_ids=["p1"],
+            candidate_task_ids=["c1", "c2"],
+            flagged=True,
+        )
+        data_q, _ = build_list_tasks_sql(query)
+        # OR structure: (pinned IN) OR (flagged AND candidate IN AND <availability>)
+        assert "OR" in data_q.sql
+        assert "(t.persistentIdentifier IN (?))" in data_q.sql
+        assert "t.persistentIdentifier IN (?,?)" in data_q.sql
+        assert "t.effectiveFlagged = ?" in data_q.sql
+
+    def test_pinned_params_come_first(self):
+        """Pinned params appear BEFORE the candidate-branch params (placeholder order)."""
+        query = ListTasksRepoQuery(
+            pinned_task_ids=["p1"],
+            candidate_task_ids=["c1", "c2"],
+            flagged=True,
+        )
+        data_q, _ = build_list_tasks_sql(query)
+        # Pinned at position 0; then the conditions params in their insertion
+        # order (flagged first, then candidate_task_ids, then availability has
+        # no params, plus possibly LIMIT at the end).
+        params = list(data_q.params)
+        assert params[0] == "p1"
+        assert params[1] == 1  # flagged
+        assert params[2] == "c1"
+        assert params[3] == "c2"
+
+    def test_no_pinned_preserves_current_shape(self):
+        """pinned=None produces the existing AND-chain WHERE shape (regression lock)."""
+        q_none = ListTasksRepoQuery(candidate_task_ids=["c1"], flagged=True)
+        d1, _ = build_list_tasks_sql(q_none)
+        # No OR-wrapping of candidate + flagged (but availability OR chain
+        # contributes OR tokens too, so we check the specific pattern).
+        sql = d1.sql.replace("\n", " ")
+        # Candidate clause and flagged clause are joined by AND (not OR).
+        assert "t.effectiveFlagged = ? AND t.persistentIdentifier IN (?)" in sql
+
+    def test_pinned_count_query_matches_data_where(self):
+        """Count query uses the same WHERE (including OR-with-pinned) as data query."""
+        query = ListTasksRepoQuery(
+            pinned_task_ids=["p1"],
+            candidate_task_ids=["c1"],
+            flagged=True,
+        )
+        data_q, count_q = build_list_tasks_sql(query)
+        assert "OR" in data_q.sql
+        assert "OR" in count_q.sql
+        # Count params exclude LIMIT/OFFSET; data params include LIMIT last.
+        # Shape prefix: [pinned, flagged, candidate]
+        assert list(count_q.params)[:3] == ["p1", 1, "c1"]
+        assert list(data_q.params)[:3] == ["p1", 1, "c1"]
 
 
 class TestTasksTagsFilter:
@@ -292,7 +373,7 @@ class TestTasksCombinedFilters:
     def test_multiple_filters_with_limit(self):
         query = ListTasksRepoQuery(
             flagged=True,
-            task_id_scope=["task-id-1"],
+            candidate_task_ids=["task-id-1"],
             search="urgent",
             limit=5,
         )
@@ -301,9 +382,9 @@ class TestTasksCombinedFilters:
         assert "t.persistentIdentifier IN (?)" in data_q.sql
         assert "LIKE ? COLLATE NOCASE" in data_q.sql
         assert "LIMIT ?" in data_q.sql
-        # Verify param ordering: flagged, task_id_scope, search(x2), availability, limit
+        # Verify param ordering: flagged, candidate_task_ids, search(x2), availability, limit
         assert 1 in data_q.params  # flagged
-        assert "task-id-1" in data_q.params  # task_id_scope
+        assert "task-id-1" in data_q.params  # candidate_task_ids
         assert "%urgent%" in data_q.params  # search
         assert 5 in data_q.params  # limit
         # Count query should NOT have LIMIT
@@ -326,7 +407,7 @@ class TestTasksCombinedFilters:
         query = ListTasksRepoQuery(
             in_inbox=True,
             flagged=True,
-            task_id_scope=["proj-id-1"],
+            candidate_task_ids=["proj-id-1"],
             tag_ids=["tag1"],
             estimated_minutes_max=60,
             search="foo",

@@ -1095,14 +1095,16 @@ class TestListTasksCrossPath:
 
     @pytest.mark.asyncio
     async def test_list_tasks_by_project(self, cross_repo: Repository) -> None:
-        """task_id_scope filter returns only the tasks passed in (post-Phase 57).
+        """candidate_task_ids filter returns only the tasks passed in (post-Phase 57).
 
-        Semantic shift: task_id_scope holds TASK PKs, not project PKs. The
+        Semantic shift: candidate_task_ids holds TASK PKs, not project PKs. The
         service's get_tasks_subtree (unit-tested separately) is responsible for
         producing this set from the user-facing ``project`` filter.
         Agent-facing behavior via ``OperatorService.list_tasks`` is unchanged.
         """
-        result = await cross_repo.list_tasks(ListTasksRepoQuery(task_id_scope=["task-2", "task-4"]))
+        result = await cross_repo.list_tasks(
+            ListTasksRepoQuery(candidate_task_ids=["task-2", "task-4"])
+        )
         items = sorted(result.items, key=lambda x: x.id)
         assert len(items) == 2
         assert [t.id for t in items] == ["task-2", "task-4"]
@@ -1116,6 +1118,39 @@ class TestListTasksCrossPath:
         items = sorted(result.items, key=lambda x: x.id)
         assert len(items) == 2
         assert [t.id for t in items] == ["task-1", "task-2"]
+
+    @pytest.mark.asyncio
+    async def test_pinned_cross_path_equivalence(self, cross_repo: Repository) -> None:
+        """Phase 57-04 D-15: hybrid + bridge_only produce identical results
+        under the new OR-with-pinned semantic. Pinned anchor is OUTSIDE the
+        candidate set; both repos must return {candidate ∪ pinned}.
+        """
+        result = await cross_repo.list_tasks(
+            ListTasksRepoQuery(
+                candidate_task_ids=["task-2"],
+                pinned_task_ids=["task-4"],
+            )
+        )
+        ids = {t.id for t in result.items}
+        # task-2 via candidate branch, task-4 via pinned branch.
+        assert ids == {"task-2", "task-4"}
+
+    @pytest.mark.asyncio
+    async def test_pinned_bypasses_pruning_cross_path(self, cross_repo: Repository) -> None:
+        """Phase 57-04 G1 D-15: pinned anchor bypasses the flagged=True predicate
+        in BOTH repos. task-2 (unflagged) is pinned; task-4 (flagged) also passes
+        via the candidate branch.
+        """
+        result = await cross_repo.list_tasks(
+            ListTasksRepoQuery(
+                candidate_task_ids=["task-2", "task-4"],
+                pinned_task_ids=["task-2"],
+                flagged=True,
+            )
+        )
+        ids = {t.id for t in result.items}
+        # task-2 via pinned (unflagged); task-4 via candidate + flagged.
+        assert ids == {"task-2", "task-4"}
 
     @pytest.mark.asyncio
     async def test_list_tasks_inbox(self, cross_repo: Repository) -> None:

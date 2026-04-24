@@ -388,7 +388,8 @@ class TestRepoQueryDefaults:
         query = ListTasksRepoQuery()
         assert query.in_inbox is None
         assert query.flagged is None
-        assert query.task_id_scope is None
+        assert query.candidate_task_ids is None
+        assert query.pinned_task_ids is None
         assert query.tag_ids is None
         assert query.estimated_minutes_max is None
         assert query.search is None
@@ -439,8 +440,9 @@ class TestRepoQueryRejection:
 class TestRepoQueryFieldParity:
     """Verify RepoQuery models have correct field relationships to their Query counterparts.
 
-    After Phase 35.2, RepoQuery uses ID-list fields (task_id_scope, tag_ids, folder_ids)
-    while Query uses name strings (project, tags, folder). Shared fields must still match.
+    After Phase 57-04, RepoQuery uses ID-list fields (candidate_task_ids,
+    pinned_task_ids, tag_ids, folder_ids) while Query uses name strings
+    (project, tags, folder). Shared fields must still match.
     """
 
     def test_tasks_shared_fields_match(self) -> None:
@@ -448,7 +450,7 @@ class TestRepoQueryFieldParity:
         query_fields = set(ListTasksQuery.model_fields.keys())
         repo_fields = set(ListTasksRepoQuery.model_fields.keys())
         # Fields that diverged:
-        # - Query has project/tags, RepoQuery has task_id_scope/tag_ids
+        # - Query has project/parent/tags, RepoQuery has candidate_task_ids/pinned_task_ids/tag_ids
         # - Query has 7 date fields (due, defer, planned, completed, dropped, added, modified)
         #   RepoQuery has 14 resolved _after/_before datetime fields
         # - Query has include/only (server-layer presentation concern, not passed to repo)
@@ -457,16 +459,34 @@ class TestRepoQueryFieldParity:
             f"{name}_{bound}" for name in _date_fields for bound in ("after", "before")
         }
         query_only = {"project", "parent", "tags", "include", "only"} | _date_fields
-        repo_only = {"task_id_scope", "tag_ids"} | _date_repo_fields
+        repo_only = {"candidate_task_ids", "pinned_task_ids", "tag_ids"} | _date_repo_fields
         assert query_fields - query_only == repo_fields - repo_only
 
     def test_tasks_repo_query_has_id_fields(self) -> None:
         """RepoQuery must have ID-list fields, not name fields."""
         repo_fields = set(ListTasksRepoQuery.model_fields.keys())
-        assert "task_id_scope" in repo_fields
+        assert "candidate_task_ids" in repo_fields
+        assert "pinned_task_ids" in repo_fields
         assert "tag_ids" in repo_fields
         assert "project" not in repo_fields
         assert "tags" not in repo_fields
+        # Phase 57-04: rename is complete.
+        assert "task_id_scope" not in repo_fields
+
+    def test_pinned_task_ids_field_present(self) -> None:
+        """Phase 57-04 (G1 Option A): pinned_task_ids is the anchor-preservation primitive."""
+        assert "pinned_task_ids" in ListTasksRepoQuery.model_fields
+        assert ListTasksRepoQuery().pinned_task_ids is None
+
+    def test_candidate_task_ids_field_present(self) -> None:
+        """Phase 57-04: task_id_scope renamed to candidate_task_ids.
+
+        The repo layer has no 'anchor' concept; the field names describe the
+        two logical roles: candidate (filterable pool) + pinned (anchors).
+        """
+        assert "candidate_task_ids" in ListTasksRepoQuery.model_fields
+        assert "task_id_scope" not in ListTasksRepoQuery.model_fields
+        assert ListTasksRepoQuery().candidate_task_ids is None
 
     def test_projects_shared_fields_match(self) -> None:
         """Non-filter fields must match between Query and RepoQuery."""

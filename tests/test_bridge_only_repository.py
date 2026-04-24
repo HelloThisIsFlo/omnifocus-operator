@@ -535,3 +535,58 @@ class TestProjectRootTaskExclusion:
 
         assert "proj-001" not in task_ids
         assert "task-x" in task_ids
+
+
+class TestPinnedTaskIds:
+    """Phase 57-04 (G1 Option A): bridge_only mirrors the hybrid OR-with-pinned
+    shape -- pinned task IDs are unioned into the result even if the sequential
+    filter chain would have excluded them.
+    """
+
+    async def test_pinned_task_ids_returns_anchor_outside_candidate_set(self) -> None:
+        """Pinned tasks return even when they're NOT in candidate_task_ids."""
+        data = make_snapshot_dict(
+            tasks=[
+                make_task_dict(id="t-a", name="A"),
+                make_task_dict(id="t-b", name="B"),
+                make_task_dict(id="t-c", name="C"),
+            ],
+        )
+        repo = BridgeOnlyRepository(
+            bridge=InMemoryBridge(data=data),
+            mtime_source=FakeMtimeSource(mtime_ns=1),
+        )
+        result = await repo.list_tasks(
+            ListTasksRepoQuery(
+                candidate_task_ids=["t-a"],
+                pinned_task_ids=["t-b"],
+            )
+        )
+        ids = {t.id for t in result.items}
+        # t-a via candidate branch; t-b via pinned branch.
+        assert ids == {"t-a", "t-b"}
+
+    async def test_pinned_with_other_pruning_filters(self) -> None:
+        """Pinned anchor bypasses flagged=True predicate that would otherwise prune it."""
+        data = make_snapshot_dict(
+            tasks=[
+                make_task_dict(id="anchor", name="Anchor", flagged=False, effectiveFlagged=False),
+                make_task_dict(
+                    id="child-flagged", name="Flagged child", flagged=True, effectiveFlagged=True
+                ),
+            ],
+        )
+        repo = BridgeOnlyRepository(
+            bridge=InMemoryBridge(data=data),
+            mtime_source=FakeMtimeSource(mtime_ns=1),
+        )
+        result = await repo.list_tasks(
+            ListTasksRepoQuery(
+                candidate_task_ids=["anchor", "child-flagged"],
+                pinned_task_ids=["anchor"],
+                flagged=True,
+            )
+        )
+        ids = {t.id for t in result.items}
+        # anchor via pinned; child-flagged via candidate + flagged=True.
+        assert ids == {"anchor", "child-flagged"}
