@@ -64,6 +64,7 @@ Carried forward from v1.4:
 12. Submit OmniFocus Operator to MCP registries — Smithery, mcp.so, Anthropic server list (tooling) — gated on landing page refresh
 13. Track upstream Claude Code CLI fix for MCP progress-notification stdio teardown (issues #47378/#47765) — root-caused 2026-04-17; progress emission disabled via `PROGRESS_NOTIFICATIONS_ENABLED=False` pending upstream fix
 14. Clarify cross-item reference contract in batch tool descriptions — name-refs to same-batch items work (serial resolution), only ID-refs don't; rewrite `_BATCH_CROSS_ITEM_NOTE` (server)
+15. Unify empty-result warning surface — one parameterized "filters resolved to zero tasks" warning, retire `EMPTY_SCOPE_INTERSECTION_WARNING` + `FILTER_NO_MATCH`; surfaced during Phase 57 post-resolution gap audit (service)
 
 ### Roadmap Evolution
 
