@@ -35,7 +35,6 @@ from omnifocus_operator.agent_messages.warnings import (
     EDIT_NO_CHANGES_SPECIFIED,
     FILTER_DID_YOU_MEAN,
     FILTER_MULTI_MATCH,
-    FILTER_NO_MATCH,
     FILTERED_SUBTREE_WARNING,
     LIFECYCLE_ALREADY_IN_STATE,
     LIFECYCLE_CROSS_STATE,
@@ -564,8 +563,12 @@ class DomainLogic:
 
         Returns 0 or 1 warnings:
         - Multiple matches → FILTER_MULTI_MATCH with IDs and names
-        - No match with close names → FILTER_DID_YOU_MEAN
-        - No match, no suggestions → FILTER_NO_MATCH
+        - No match with close names → FILTER_DID_YOU_MEAN (standalone; quick
+          task 260424-j63 reworded to stand alone without FILTER_NO_MATCH
+          prefix).
+        - No match, no suggestions → [] (the unified EMPTY_RESULT_WARNING
+          emitted by _ListTasksPipeline.execute covers the silent-empty case
+          uniformly; quick task 260424-j63 retires FILTER_NO_MATCH).
         - Single match → no warning
         """
         if len(resolved_ids) > 1:
@@ -590,7 +593,7 @@ class DomainLogic:
                         suggestions=", ".join(suggestions),
                     )
                 ]
-            return [FILTER_NO_MATCH.format(entity_type=entity_type, value=value)]
+            return []
         return []
 
     # -- Cross-filter warning checks (WARN-01, WARN-03) --------------------

@@ -23,14 +23,15 @@ from omnifocus_operator.agent_messages.errors import (
 )
 from omnifocus_operator.agent_messages.warnings import (
     AVAILABILITY_MIXED_ALL,
-    EMPTY_SCOPE_INTERSECTION_WARNING,
+    EMPTY_RESULT_WARNING_MULTI,
+    EMPTY_RESULT_WARNING_SINGLE,
     LIST_PROJECTS_INBOX_WARNING,
     LIST_TASKS_INBOX_PROJECT_WARNING,
     PARENT_RESOLVES_TO_PROJECT_WARNING,
     REPETITION_NO_OP,
 )
 from omnifocus_operator.config import get_week_start, local_now
-from omnifocus_operator.contracts.base import UNSET, _Unset, is_set, unset_to_none
+from omnifocus_operator.contracts.base import UNSET, _Unset, is_non_default, is_set, unset_to_none
 from omnifocus_operator.contracts.protocols import Service
 from omnifocus_operator.contracts.shared.repetition_rule import RepetitionRuleRepoPayload
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskResult
@@ -53,6 +54,7 @@ from omnifocus_operator.contracts.use_cases.list.tags import (
     ListTagsRepoQuery,
 )
 from omnifocus_operator.contracts.use_cases.list.tasks import (
+    ListTasksQuery,
     ListTasksRepoQuery,
 )
 from omnifocus_operator.models.enums import (
@@ -83,7 +85,6 @@ if TYPE_CHECKING:
     from omnifocus_operator.contracts.use_cases.list.perspectives import ListPerspectivesQuery
     from omnifocus_operator.contracts.use_cases.list.projects import ListProjectsQuery
     from omnifocus_operator.contracts.use_cases.list.tags import ListTagsQuery
-    from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksQuery
     from omnifocus_operator.models.enums import BasedOn, DueSoonSetting, Schedule
     from omnifocus_operator.models.folder import Folder
     from omnifocus_operator.models.perspective import Perspective
@@ -420,10 +421,6 @@ class _ListTasksPipeline(_ReadPipeline):
         self._warnings.extend(self._domain.check_filtered_subtree(self._query))
         self._warnings.extend(self._domain.check_parent_project_combined(self._query))
 
-        # Phase 57-04 (G2): disjoint-scope warning must fire AFTER
-        # _build_repo_query populates candidate_task_ids / pinned_task_ids.
-        self._emit_empty_intersection_warning_if_applicable()
-
         # Phase 57-04 (G2/G3): short-circuit when scope resolved to empty-by-
         # construction; the repo would either return the wrong answer (hybrid
         # `len > 0` guard treats []==no-filter) or burn cycles computing zero.
@@ -432,14 +429,15 @@ class _ListTasksPipeline(_ReadPipeline):
             # equivalent to `ListResult[Task]` at runtime (generic alias is
             # resolved via the function annotation). Use the unparameterized
             # constructor to avoid the NameError.
-            return ListResult(
+            empty_result: ListResult[Task] = ListResult(
                 items=[],
                 total=0,
                 has_more=False,
                 warnings=self._warnings or None,
             )
+            return self._emit_empty_result_warning(empty_result)
 
-        return await self._delegate()
+        return self._emit_empty_result_warning(await self._delegate())
 
     def _check_inbox_name_warnings(self) -> None:
         """Warn if ``project`` or ``parent`` substring-matches the inbox name.
@@ -639,25 +637,45 @@ class _ListTasksPipeline(_ReadPipeline):
             return True
         return q.tag_ids is not None and len(q.tag_ids) == 0
 
-    def _emit_empty_intersection_warning_if_applicable(self) -> None:
-        """Phase 57-04 (G2): fire EMPTY_SCOPE_INTERSECTION_WARNING alongside
-        PARENT_PROJECT_COMBINED when both scopes were explicitly set AND
-        the resolved intersection is empty AND no pinned anchors remain.
+    def _active_filter_names(self) -> list[str]:
+        """Return camelCase aliases of non-default filter fields, alphabetically sorted.
 
-        The warning fires only when the agent actually set both filters --
-        a single-scope filter that resolves to zero descendants doesn't need
-        an extra warning (the 0-item result speaks for itself).
+        Quick task 260424-j63: single-source-of-truth for the unified
+        ``EMPTY_RESULT_WARNING``. Iterates every field on ``ListTasksQuery``,
+        keeps the ones where ``is_non_default(query, field) is True``, and
+        surfaces each via its JSON-schema alias (what the agent actually sent
+        over MCP) with snake_case fallback. Alphabetical order is a stable
+        deterministic choice — agents don't semantically parse order, and
+        pedagogical grouping has no payoff (CONTEXT.md §decisions).
         """
-        if (
-            self._repo_query.candidate_task_ids == []
-            and (
-                self._repo_query.pinned_task_ids is None
-                or len(self._repo_query.pinned_task_ids) == 0
+        query = self._query
+        names = [
+            (ListTasksQuery.model_fields[name].alias or name)
+            for name in ListTasksQuery.model_fields
+            if is_non_default(query, name)
+        ]
+        return sorted(names)
+
+    def _emit_empty_result_warning(self, result: ListResult[Task]) -> ListResult[Task]:
+        """Append EMPTY_RESULT_WARNING when items == [] AND any filter is active.
+
+        Quick task 260424-j63: single emit site covering both the short-circuit
+        (``_is_empty_scope_query``) return and the post-``_delegate`` return.
+        Zero-filter empty results are skipped per CONTEXT.md §zero-filter case.
+        """
+        if result.items:
+            return result
+        active = self._active_filter_names()
+        if not active:
+            return result
+        if len(active) == 1:
+            text = EMPTY_RESULT_WARNING_SINGLE.format(filters=active[0])
+        else:
+            text = EMPTY_RESULT_WARNING_MULTI.format(
+                filters=", ".join(f"'{name}'" for name in active)
             )
-            and is_set(self._query.project)
-            and is_set(self._query.parent)
-        ):
-            self._warnings.append(EMPTY_SCOPE_INTERSECTION_WARNING)
+        warnings = [*(result.warnings or []), text]
+        return result.model_copy(update={"warnings": warnings})
 
     async def _delegate(self) -> ListResult[Task]:
         repo_result = await self._repository.list_tasks(self._repo_query)

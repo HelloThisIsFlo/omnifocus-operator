@@ -157,8 +157,6 @@ FILTER_MULTI_MATCH = (
     "Filter '{value}' matched {count} {entity_type}s: {matches}. For exact results, filter by ID."
 )
 
-FILTER_NO_MATCH = "No {entity_type} found matching '{value}'."
-
 # --- Project Tool: Inbox Search ---
 
 LIST_PROJECTS_INBOX_WARNING = """\
@@ -197,13 +195,17 @@ Both 'project' and 'parent' filters are set. \
 Results are the intersection of their task scopes. \
 If you meant only one scope, omit the other."""
 
-# Phase 57-04 (G2): fires alongside PARENT_PROJECT_COMBINED when the resolved
-# scopes are disjoint and there are no parent anchors inside the project scope
-# to preserve. Signals "your filters are self-contradictory" so the 0-item
-# result isn't mistaken for a data problem.
-EMPTY_SCOPE_INTERSECTION_WARNING = """\
-The 'project' and 'parent' filters resolved to disjoint task scopes; \
-their intersection is empty. No tasks can match both."""
+# Quick task 260424-j63 (2026-04-24): supersedes EMPTY_SCOPE_INTERSECTION_WARNING
+# and FILTER_NO_MATCH. Fires whenever ``list_tasks`` resolves to zero items AND
+# at least one query field is non-default. Parameterized by the active-filter
+# names the agent sent (camelCase aliases, alphabetically sorted). See
+# .planning/quick/260424-j63-unify-empty-result-warning-surface/ for the
+# two-layer model and the 8-case test matrix.
+EMPTY_RESULT_WARNING_SINGLE = "The '{filters}' filter resolved to zero tasks. No results."
+
+EMPTY_RESULT_WARNING_MULTI = (
+    "The combination of filters {filters} resolved to zero tasks. No results."
+)
 
 # --- Availability Filter ---
 
@@ -219,6 +221,4 @@ AVAILABILITY_REMAINING_INCLUDES_BLOCKED = (
     "'remaining' already includes 'blocked' -- no need to combine them."
 )
 
-FILTER_DID_YOU_MEAN = """\
-No {entity_type} found matching '{value}'. \
-Did you mean: {suggestions}?"""
+FILTER_DID_YOU_MEAN = "Did you mean: {suggestions}? (no {entity_type} matched '{value}')"
