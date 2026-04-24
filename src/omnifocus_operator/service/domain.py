@@ -563,12 +563,10 @@ class DomainLogic:
 
         Returns 0 or 1 warnings:
         - Multiple matches → FILTER_MULTI_MATCH with IDs and names
-        - No match with close names → FILTER_DID_YOU_MEAN (standalone; quick
-          task 260424-j63 reworded to stand alone without FILTER_NO_MATCH
-          prefix).
-        - No match, no suggestions → [] (the unified EMPTY_RESULT_WARNING
-          emitted by _ListTasksPipeline.execute covers the silent-empty case
-          uniformly; quick task 260424-j63 retires FILTER_NO_MATCH).
+        - No match with close names → FILTER_DID_YOU_MEAN (standalone, no
+          "No X found matching" prefix).
+        - No match, no suggestions → [] (EMPTY_RESULT_WARNING emitted by
+          _ListTasksPipeline.execute covers the silent-empty case).
         - Single match → no warning
         """
         if len(resolved_ids) > 1:

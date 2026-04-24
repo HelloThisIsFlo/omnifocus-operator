@@ -23,15 +23,14 @@ from omnifocus_operator.agent_messages.errors import (
 )
 from omnifocus_operator.agent_messages.warnings import (
     AVAILABILITY_MIXED_ALL,
-    EMPTY_RESULT_WARNING_MULTI,
-    EMPTY_RESULT_WARNING_SINGLE,
+    EMPTY_RESULT_WARNING,
     LIST_PROJECTS_INBOX_WARNING,
     LIST_TASKS_INBOX_PROJECT_WARNING,
     PARENT_RESOLVES_TO_PROJECT_WARNING,
     REPETITION_NO_OP,
 )
 from omnifocus_operator.config import get_week_start, local_now
-from omnifocus_operator.contracts.base import UNSET, _Unset, is_non_default, is_set, unset_to_none
+from omnifocus_operator.contracts.base import UNSET, _Unset, is_set, unset_to_none
 from omnifocus_operator.contracts.protocols import Service
 from omnifocus_operator.contracts.shared.repetition_rule import RepetitionRuleRepoPayload
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskResult
@@ -637,44 +636,16 @@ class _ListTasksPipeline(_ReadPipeline):
             return True
         return q.tag_ids is not None and len(q.tag_ids) == 0
 
-    def _active_filter_names(self) -> list[str]:
-        """Return camelCase aliases of non-default filter fields, alphabetically sorted.
-
-        Quick task 260424-j63: single-source-of-truth for the unified
-        ``EMPTY_RESULT_WARNING``. Iterates every field on ``ListTasksQuery``,
-        keeps the ones where ``is_non_default(query, field) is True``, and
-        surfaces each via its JSON-schema alias (what the agent actually sent
-        over MCP) with snake_case fallback. Alphabetical order is a stable
-        deterministic choice — agents don't semantically parse order, and
-        pedagogical grouping has no payoff (CONTEXT.md §decisions).
-        """
-        query = self._query
-        names = [
-            (ListTasksQuery.model_fields[name].alias or name)
-            for name in ListTasksQuery.model_fields
-            if is_non_default(query, name)
-        ]
-        return sorted(names)
-
     def _emit_empty_result_warning(self, result: ListResult[Task]) -> ListResult[Task]:
-        """Append EMPTY_RESULT_WARNING when items == [] AND any filter is active.
+        """Append EMPTY_RESULT_WARNING when items == [].
 
-        Quick task 260424-j63: single emit site covering both the short-circuit
-        (``_is_empty_scope_query``) return and the post-``_delegate`` return.
-        Zero-filter empty results are skipped per CONTEXT.md §zero-filter case.
+        Quick task 260424-kd0 (2026-04-24): collapses the prior parameterized
+        surface. Fires unconditionally on empty results — zero-filter empty DB
+        is no longer special-cased.
         """
         if result.items:
             return result
-        active = self._active_filter_names()
-        if not active:
-            return result
-        if len(active) == 1:
-            text = EMPTY_RESULT_WARNING_SINGLE.format(filters=active[0])
-        else:
-            text = EMPTY_RESULT_WARNING_MULTI.format(
-                filters=", ".join(f"'{name}'" for name in active)
-            )
-        warnings = [*(result.warnings or []), text]
+        warnings = [*(result.warnings or []), EMPTY_RESULT_WARNING]
         return result.model_copy(update={"warnings": warnings})
 
     async def _delegate(self) -> ListResult[Task]:

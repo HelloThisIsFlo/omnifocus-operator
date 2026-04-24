@@ -195,17 +195,9 @@ Both 'project' and 'parent' filters are set. \
 Results are the intersection of their task scopes. \
 If you meant only one scope, omit the other."""
 
-# Quick task 260424-j63 (2026-04-24): supersedes EMPTY_SCOPE_INTERSECTION_WARNING
-# and FILTER_NO_MATCH. Fires whenever ``list_tasks`` resolves to zero items AND
-# at least one query field is non-default. Parameterized by the active-filter
-# names the agent sent (camelCase aliases, alphabetically sorted). See
-# .planning/quick/260424-j63-unify-empty-result-warning-surface/ for the
-# two-layer model and the 8-case test matrix.
-EMPTY_RESULT_WARNING_SINGLE = "The '{filters}' filter resolved to zero tasks. No results."
-
-EMPTY_RESULT_WARNING_MULTI = (
-    "The combination of filters {filters} resolved to zero tasks. No results."
-)
+# Quick task 260424-kd0 (2026-04-24): collapses EMPTY_RESULT_WARNING_{SINGLE,MULTI}
+# to one static nudge. Fires whenever list_tasks resolves to zero items.
+EMPTY_RESULT_WARNING = "The filters you selected didn't yield any results. Try widening the search."
 
 # --- Availability Filter ---
 

@@ -1117,9 +1117,8 @@ class TestCheckFilterResolution:
     def test_no_match_with_suggestion(self) -> None:
         """No match with a close name -> FILTER_DID_YOU_MEAN.
 
-        Quick task 260424-j63: DYM is reworded to stand alone without the
-        retired FILTER_NO_MATCH prefix. Text now reads:
-        ``Did you mean: X? (no <entity> matched 'Y')``.
+        DYM is reworded to stand alone without the retired FILTER_NO_MATCH
+        prefix. Text reads: ``Did you mean: X? (no <entity> matched 'Y')``.
         """
         entities = [_StubEntity("p1", "Personal"), _StubEntity("p2", "Work")]
         warnings = _domain().check_filter_resolution("Personl", [], entities, "project")
@@ -1129,10 +1128,10 @@ class TestCheckFilterResolution:
     def test_no_match_no_suggestion(self) -> None:
         """No match, no close names -> returns [].
 
-        Quick task 260424-j63: FILTER_NO_MATCH is retired; the unified
-        EMPTY_RESULT_WARNING emitted by _ListTasksPipeline.execute covers the
-        silent-empty case, so ``check_filter_resolution`` returns no warning
-        when the no-match branch has no fuzzy candidates.
+        FILTER_NO_MATCH is retired; EMPTY_RESULT_WARNING emitted by
+        _ListTasksPipeline.execute covers the silent-empty case, so
+        ``check_filter_resolution`` returns no warning when the no-match
+        branch has no fuzzy candidates.
         """
         entities = [_StubEntity("p1", "Work"), _StubEntity("p2", "Home")]
         warnings = _domain().check_filter_resolution("zzzzz", [], entities, "project")

@@ -363,3 +363,16 @@ Decision: **#1 — do nothing**. Output is already deterministic; the append-vs-
   - **Layer 2** — reworded DYM on top when the name had fuzzy candidates.
 - **Scope guard:** service-layer only; no contract or repo changes. `list_projects` / `list_folders` / `list_tags` are intentionally out of scope — extending the unified surface to them is a follow-up captured in the quick task SUMMARY.
 - **Implementation:** `.planning/quick/260424-j63-unify-empty-result-warning-surface/` (Task 1 commit for src, Task 2 commit for tests). Alphabetical ordering locked by `TestEmptyResultWarning::test_three_plus_active_filters_alphabetical` in `tests/test_list_pipelines.py`.
+
+### G2 — Second iteration (2026-04-24, kd0)
+
+- **What surfaced in live-probe:** Running `list_tasks` against the real OmniFocus MCP surface revealed that pagination and response-shaping fields (`limit`, `offset`, `include`, `only`) were being enumerated by `_active_filter_names` as "filters" in the parameterized warning. Setting `limit=10` on an otherwise-empty query produced a warning text listing `'limit'` as the active filter that resolved to zero tasks — pagination/envelope fields incorrectly classified as scope filters.
+- **Decision (2026-04-24):** Collapse the entire parameterization machinery to a single static nudge rather than patching the field-classification predicate. The static text reads: `"The filters you selected didn't yield any results. Try widening the search."`
+- **Rationale:** Parameterization carried ~70 LOC of complexity (`_active_filter_names`, two templated constants, `is_non_default` iteration, camelCase alias lookups, alphabetical sort, zero-filter skip, and the 9-case test matrix that locked it all). The agent never semantically parsed the filter list — it saw items=[] and adjusted regardless of which filters were listed. The static nudge is equivalent from the agent's perspective and eliminates the whole field-classification surface. Patching which fields count as "real filters" would have reintroduced the same classification problem whenever a new response-shaping field gets added.
+- **Retired (second pass):**
+  - `EMPTY_RESULT_WARNING_SINGLE` / `EMPTY_RESULT_WARNING_MULTI` → replaced by single static `EMPTY_RESULT_WARNING`.
+  - `_ListTasksPipeline._active_filter_names` helper → deleted.
+  - `is_non_default` import in `service.py` → dropped (predicate itself stays — still used by `check_filtered_subtree` for subtree pruning).
+  - 8-case parameterized test matrix in `TestEmptyResultWarning` → collapsed to 3 tests (static fires + composes with PARENT_PROJECT, non-empty guard, composes with DYM).
+- **Behavior change:** The "zero filters + empty DB" edge case now gets the static nudge too (previously silent). Deliberate loosening — near-impossible in practice, and the uniform signal is simpler than special-casing.
+- **Reference:** `.planning/quick/260424-kd0-simplify-empty-result-warning-to-single-/` for full rationale trail (CONTEXT.md §decisions, RESEARCH.md dead-code sweep, PLAN.md single-atomic-task execution).
