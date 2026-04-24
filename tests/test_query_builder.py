@@ -143,6 +143,87 @@ class TestTasksScopeFilter:
         assert "t.containingProjectInfo IN" not in data_q.sql
 
 
+class TestTasksPinnedFilter:
+    """Phase 57-04 (G1 Option A): pinned_task_ids produces the OR-with-pinned
+    WHERE clause -- pinned IDs are unconditionally included alongside the
+    filterable-candidate branch.
+
+    Note: the default availability filter is [AVAILABLE, BLOCKED] which always
+    contributes an availability clause to the WHERE chain. That clause goes
+    into the candidate branch of the OR; the pinned branch bypasses it.
+    Tests below compose against realistic queries that always include this
+    default.
+    """
+
+    def test_pinned_task_ids_direct_or_shape(self):
+        """Pinned only (+ default availability): OR-with-pinned wraps the availability clause."""
+        query = ListTasksRepoQuery(pinned_task_ids=["p1"])
+        data_q, _ = build_list_tasks_sql(query)
+        # Pinned clause appears in the SQL.
+        assert "t.persistentIdentifier IN (?)" in data_q.sql
+        assert "p1" in data_q.params
+        # OR wrapper present because default availability fills the candidate branch.
+        assert "OR" in data_q.sql
+        # Pinned param appears first in the params tuple.
+        assert data_q.params[0] == "p1"
+
+    def test_pinned_with_candidate_or_shape(self):
+        """Pinned + candidate + flagged: full OR-with-pinned shape."""
+        query = ListTasksRepoQuery(
+            pinned_task_ids=["p1"],
+            candidate_task_ids=["c1", "c2"],
+            flagged=True,
+        )
+        data_q, _ = build_list_tasks_sql(query)
+        # OR structure: (pinned IN) OR (flagged AND candidate IN AND <availability>)
+        assert "OR" in data_q.sql
+        assert "(t.persistentIdentifier IN (?))" in data_q.sql
+        assert "t.persistentIdentifier IN (?,?)" in data_q.sql
+        assert "t.effectiveFlagged = ?" in data_q.sql
+
+    def test_pinned_params_come_first(self):
+        """Pinned params appear BEFORE the candidate-branch params (placeholder order)."""
+        query = ListTasksRepoQuery(
+            pinned_task_ids=["p1"],
+            candidate_task_ids=["c1", "c2"],
+            flagged=True,
+        )
+        data_q, _ = build_list_tasks_sql(query)
+        # Pinned at position 0; then the conditions params in their insertion
+        # order (flagged first, then candidate_task_ids, then availability has
+        # no params, plus possibly LIMIT at the end).
+        params = list(data_q.params)
+        assert params[0] == "p1"
+        assert params[1] == 1  # flagged
+        assert params[2] == "c1"
+        assert params[3] == "c2"
+
+    def test_no_pinned_preserves_current_shape(self):
+        """pinned=None produces the existing AND-chain WHERE shape (regression lock)."""
+        q_none = ListTasksRepoQuery(candidate_task_ids=["c1"], flagged=True)
+        d1, _ = build_list_tasks_sql(q_none)
+        # No OR-wrapping of candidate + flagged (but availability OR chain
+        # contributes OR tokens too, so we check the specific pattern).
+        sql = d1.sql.replace("\n", " ")
+        # Candidate clause and flagged clause are joined by AND (not OR).
+        assert "t.effectiveFlagged = ? AND t.persistentIdentifier IN (?)" in sql
+
+    def test_pinned_count_query_matches_data_where(self):
+        """Count query uses the same WHERE (including OR-with-pinned) as data query."""
+        query = ListTasksRepoQuery(
+            pinned_task_ids=["p1"],
+            candidate_task_ids=["c1"],
+            flagged=True,
+        )
+        data_q, count_q = build_list_tasks_sql(query)
+        assert "OR" in data_q.sql
+        assert "OR" in count_q.sql
+        # Count params exclude LIMIT/OFFSET; data params include LIMIT last.
+        # Shape prefix: [pinned, flagged, candidate]
+        assert list(count_q.params)[:3] == ["p1", 1, "c1"]
+        assert list(data_q.params)[:3] == ["p1", 1, "c1"]
+
+
 class TestTasksTagsFilter:
     def test_single_tag(self):
         query = ListTasksRepoQuery(tag_ids=["id1"])

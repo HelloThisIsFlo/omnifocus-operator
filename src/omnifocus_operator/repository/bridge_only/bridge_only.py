@@ -254,6 +254,19 @@ class BridgeOnlyRepository(BridgeWriteMixin, Repository):
         # Date filters (all 7 dimensions)
         items = _apply_date_filters(items, query, _BRIDGE_FIELD_MAP)
 
+        # Phase 57-04 (G1 Option A): pinned_task_ids are unconditionally
+        # included. Union pinned tasks from the full task list -- even if they
+        # were filtered out by the sequential chain above -- mirroring the
+        # hybrid SQL `(t.id IN pinned) OR (<candidate AND chain>)` semantic.
+        # When pinned is None/empty, this branch is a no-op.
+        if query.pinned_task_ids:
+            pinned_set = set(query.pinned_task_ids)
+            existing_ids = {t.id for t in items}
+            pinned_tasks = [
+                t for t in all_entities.tasks if t.id in pinned_set and t.id not in existing_ids
+            ]
+            items = items + pinned_tasks
+
         # Deterministic ordering for pagination
         items.sort(key=lambda t: t.id)
 

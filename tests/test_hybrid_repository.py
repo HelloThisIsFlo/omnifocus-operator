@@ -2492,6 +2492,60 @@ class TestListTasks:
     @pytest.mark.asyncio
     @pytest.mark.hybrid_db(
         tasks=[
+            _minimal_task({"persistentIdentifier": "t-a"}),
+            _minimal_task({"persistentIdentifier": "t-b"}),
+            _minimal_task({"persistentIdentifier": "t-c"}),
+        ],
+    )
+    async def test_pinned_task_ids_returns_anchor_outside_candidate_set(
+        self, hybrid_repo: HybridRepository
+    ) -> None:
+        """Phase 57-04 G1: pinned tasks return even when they're NOT in candidate_task_ids."""
+        result = await hybrid_repo.list_tasks(
+            ListTasksRepoQuery(
+                candidate_task_ids=["t-a"],
+                pinned_task_ids=["t-b"],
+            )
+        )
+        ids = {t.id for t in result.items}
+        # t-a via candidate branch; t-b via pinned branch.
+        assert ids == {"t-a", "t-b"}
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tasks=[
+            _minimal_task(
+                {
+                    "persistentIdentifier": "anchor",
+                    "effectiveFlagged": 0,
+                }
+            ),
+            _minimal_task(
+                {
+                    "persistentIdentifier": "child-flagged",
+                    "effectiveFlagged": 1,
+                }
+            ),
+        ],
+    )
+    async def test_pinned_with_other_pruning_filters(self, hybrid_repo: HybridRepository) -> None:
+        """Phase 57-04 G1: pinned anchor bypasses flagged=True predicate that
+        would otherwise prune it.
+        """
+        result = await hybrid_repo.list_tasks(
+            ListTasksRepoQuery(
+                candidate_task_ids=["anchor", "child-flagged"],
+                pinned_task_ids=["anchor"],
+                flagged=True,
+            )
+        )
+        ids = {t.id for t in result.items}
+        # anchor via pinned; child-flagged via candidate + flagged=True.
+        assert ids == {"anchor", "child-flagged"}
+
+    @pytest.mark.asyncio
+    @pytest.mark.hybrid_db(
+        tasks=[
             _minimal_task({"persistentIdentifier": "t1"}),
             _minimal_task({"persistentIdentifier": "t2"}),
         ],

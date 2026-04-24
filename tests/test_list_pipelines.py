@@ -2025,9 +2025,15 @@ class TestListTasksParentFilter:
     async def test_list_tasks_parent_and_tags_filter_and_composition(
         self, service: OperatorService
     ) -> None:
-        """PARENT-05: parent AND-composes with tags via scope-set intersection."""
+        """PARENT-05: parent AND-composes with tags via scope-set intersection.
+
+        Phase 57-04 (G1 fix): the anchor is preserved as context even though it
+        doesn't carry the Urgent tag, honoring FILTERED_SUBTREE_WARNING's
+        "always included" promise. Descendants are still pruned by the tag
+        predicate -- c2 (no Urgent) stays excluded.
+        """
         result = await service.list_tasks(ListTasksQuery(parent="Big feature", tags=["Urgent"]))
-        assert {t.id for t in result.items} == {"c1", "c3"}
+        assert {t.id for t in result.items} == {"anchor", "c1", "c3"}
 
     @pytest.mark.snapshot(
         tasks=[
