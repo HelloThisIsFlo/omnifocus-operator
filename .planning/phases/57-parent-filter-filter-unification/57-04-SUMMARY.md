@@ -59,7 +59,7 @@ patterns-established:
   - "Empty-vs-None distinction in service scope returns: None = 'filter not set'; set() = 'filter set but resolved to zero'. The downstream short-circuit catches the latter before repo dispatch."
   - "Cross-path symmetry: any new primitive on ListTasksRepoQuery must ship equivalent wiring in hybrid SQL + bridge_only Python and be locked by at least one cross_path_equivalence test."
 
-requirements-completed: [UNIFY-02, PARENT-04, PARENT-05, WARN-01, WARN-05]
+requirements-completed: [UNIFY-02, UNIFY-07, UNIFY-08, PARENT-04, PARENT-05, WARN-01, WARN-05, WARN-06]
 
 # Metrics
 duration: 16min
