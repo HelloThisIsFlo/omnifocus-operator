@@ -44,8 +44,8 @@ Requirements for milestone v1.4.1: Task Property Surface & Subtree Retrieval. St
 - [ ] **PARENT-01**: `list_tasks` accepts a `parent` filter with single reference — name (case-insensitive substring) or ID
 - [ ] **PARENT-02**: `parent` filter resolves via the same three-step resolver as every other entity reference (`$` prefix → exact ID → name substring)
 - [ ] **PARENT-03**: `parent` filter returns all descendants of the resolved reference at any depth. When the resolved entity is a project, descendant semantics match the existing `project` filter (all tasks within the project at any depth)
-- [ ] **PARENT-04**: Resolved task is included as anchor in result set; projects produce no anchor (projects are not rows in `list_tasks`)
-- [ ] **PARENT-05**: `parent` filter AND-composes with all other filters (project, tags, dates, etc.) — no special precedence
+- [ ] **PARENT-04**: ~~Resolved task is included as anchor in result set; projects produce no anchor (projects are not rows in `list_tasks`)~~ **REVISED (Phase 57 UAT / G1):** Resolved task is included as anchor in result set **and preserved unconditionally — the anchor is NOT subject to AND-composition with subtree-pruning filters (it bypasses the pruning predicates)**. Projects produce no anchor (projects are not rows in `list_tasks`). Implemented via repo-layer `pinned_task_ids` primitive on `ListTasksRepoQuery` (Option A). Honors the promise in `FILTERED_SUBTREE_WARNING`'s text ("resolved parent tasks are always included").
+- [ ] **PARENT-05**: ~~`parent` filter AND-composes with all other filters (project, tags, dates, etc.) — no special precedence~~ **REVISED (Phase 57 UAT / G1):** `parent` filter's **non-anchor descendants** AND-compose with all other filters (project, tags, dates, etc.) — no special precedence among them. The resolved task **anchor** is the sole exception: preserved unconditionally per PARENT-04 (anchor bypass at the repo layer via `pinned_task_ids` OR-clause, not a precedence rule among AND-composed filters).
 - [ ] **PARENT-06**: Standard pagination (limit + cursor) applies over the flat result set; outline order preserved
 - [ ] **PARENT-07**: `parent: "$inbox"` is accepted and produces identical result to `project: "$inbox"` (both surface inbox tasks)
 - [ ] **PARENT-08**: Same contradiction rules as `project: "$inbox"` apply to `parent: "$inbox"` (e.g., `parent: "$inbox"` + `inInbox=false` → error)
@@ -58,7 +58,9 @@ Requirements for milestone v1.4.1: Task Property Surface & Subtree Retrieval. St
 - [ ] **UNIFY-03**: Conditional anchor injection — task-as-anchor if resolved entity is a task; no anchor if it's a project
 - [ ] **UNIFY-04**: ~~Filter logic lives at repo layer~~ **Scope-expansion logic lives at service layer; primitive filter application (set-membership) stays at repo** (Python-filter benchmark confirmed p95 ≤ 1.30 ms at 10K rows — 77× under threshold). *Why: interview intent ("ONE shared mechanism", anchor injection "inside the shared function") + matches existing `<noun>Filter` → primitive pattern (model-taxonomy.md §131-133) + maintainability rule (single code path across all scope filters). See Phase 57 CONTEXT D-04.*
 - [ ] **UNIFY-05**: ~~`collect_subtree(parent_id, snapshot) -> list[Task]` extracted as shared helper used by both `HybridRepository` and `BridgeOnlyRepository`~~ **Shared `get_tasks_subtree(ref_id, snapshot, accept_entity_types) -> set[str]` helper at service layer; used by both `_resolve_project()` and `_resolve_parent()` pipeline steps. Repos consume only the resolved `task_id_scope` primitive.** *Why: helper follows UNIFY-04 to service layer; signature gains `accept_entity_types` so the same function serves both filters; returns ID set (not Task list) because repos filter by membership. See Phase 57 CONTEXT D-02.*
-- [ ] **UNIFY-06**: ~~`ListTasksRepoQuery` gains `parent_ids: list[str] | None` field~~ **`ListTasksRepoQuery` gains `task_id_scope: list[str] | None` unified scope primitive; existing `project_ids: list[str] | None` field is retired. Both `project` and `parent` surface filters route through the unified primitive.** *Why: per UNIFY-01 "same core mechanism", keeping `project_ids` alongside a new parent-specific field would put two similar scope-filter fields on the repo contract — the exact divergence the maintainability rule forbids. One primitive, one repo clause, one code path. See Phase 57 CONTEXT D-05/D-07.*
+- [ ] **UNIFY-06**: ~~`ListTasksRepoQuery` gains `parent_ids: list[str] | None` field~~ ~~`ListTasksRepoQuery` gains `task_id_scope: list[str] | None` unified scope primitive; existing `project_ids: list[str] | None` field is retired. Both `project` and `parent` surface filters route through the unified primitive.~~ **REVISED (Phase 57 UAT / G1+G2):** `ListTasksRepoQuery` has two disjoint task-ID primitives: **`candidate_task_ids: list[str] | None`** (filterable pool — set-membership narrowed by all other predicates) and **`pinned_task_ids: list[str] | None`** (unconditionally included — bypass all predicates; used for parent-filter anchor preservation per PARENT-04). The old `task_id_scope` name is renamed; the old `project_ids` field stays retired. Repo-level WHERE: `(t.id IN pinned_task_ids) OR (t.id IN candidate_task_ids AND <other predicates>)`. Both `project` and `parent` still route through `candidate_task_ids`; only `parent`'s resolved task anchors populate `pinned_task_ids`. *Why: field name `scope` was abstract; `candidate` communicates the repo-level semantic (filterable candidates) clearly. `pinned_task_ids` keeps the "anchor" concept at the service layer — the repo sees only "always include these" without a `parent`-specific coupling. See Phase 57 UAT G1 and 57-04 plan.*
+- [ ] **UNIFY-07** *(new, Phase 57 UAT / G3 — supersedes Phase 35.2 D-02e)*: Name-resolver filters (`project`, `parent`, `tags`) that resolve to **zero matches** return an **empty result set** + `FILTER_NO_MATCH` warning (optionally extended with "did you mean: X, Y, Z" suggestions when close matches exist via the fuzzy-suggest cascade). Applies uniformly across all three filters. Did-you-mean pedagogical hints are **preserved**; the historical "skip filter + return all tasks" fallback is **removed**. *Why: Phase 35.2 DISCUSSION-LOG bundled two UX choices ("did-you-mean" and "skip+return-all fallback") into one option; Flo's intent was only did-you-mean. Live UAT probes against disjoint scopes exposed the fallback as agent-confusing (e.g., `list_tasks(project="Nonexistent")` returning 1624 items made agents build wrong mental models of result cardinality).*
+- [ ] **UNIFY-08** *(new, Phase 57 UAT / G2)*: **Empty `candidate_task_ids`** (from either disjoint `project ∩ parent` intersection OR single-scope resolving to zero tasks, e.g., an empty project) short-circuits to an empty result set at the **service layer** — neither `HybridRepository` nor `BridgeOnlyRepository` sees an empty list. Cross-path equivalence (UNIFY-02) restored by construction rather than by patching individual repo guards. *Why: previous hybrid behavior `len > 0` guard silently skipped the filter on empty list (returning all tasks); bridge_only correctly returned 0. Live repro: `list_tasks(project="Migrate...", parent="Build...")` with disjoint scopes returned 1624 items. Fix: one service-layer rule, both repos uniformly correct.*
 
 ### OmniFocusPreferences Extension
 
@@ -77,11 +79,12 @@ Requirements for milestone v1.4.1: Task Property Surface & Subtree Retrieval. St
 
 ### Warnings
 
-- [ ] **WARN-01**: Filtered-subtree warning fires when `project` or `parent` filter combined with any other filter; uses locked verbatim text (see MILESTONE-v1.4.1.md)
+- [ ] **WARN-01**: ~~Filtered-subtree warning fires when `project` or `parent` filter combined with any other filter; uses locked verbatim text (see MILESTONE-v1.4.1.md)~~ **REVISED (Phase 57 UAT / G4 + completed/dropped reclassification):** Filtered-subtree warning fires when `project` or `parent` filter is combined with any **subtree-pruning filter** — a task-attribute predicate that can exclude intermediate/descendant tasks from the scope's result set. Pruning filters: `flagged`, `in_inbox`, `tags`, `estimated_minutes_max`, `search`, `due`, `defer`, `planned`, `added`, `modified`, and `availability` **when set to a non-default value** (default `['remaining']` does NOT fire — preserves D-13's "don't spam on default"). Non-pruning filters that do NOT fire: `completed`, `dropped` (inclusion filters — they ADD lifecycle states to the result, never prune), pagination, and output-shape fields. Text is locked verbatim (see MILESTONE-v1.4.1.md line 180, currently uses ASCII `--` after intentional ruff cleanup; spec and code aligned per UAT Test 1).
 - [ ] **WARN-02**: parent-resolves-to-project warning fires when all matches from `parent` are projects (not mixed) — soft "consider using `project`" hint
 - [ ] **WARN-03**: parent+project combined warning fires when both filters specified (soft hint, rare combination)
 - [ ] **WARN-04**: Warnings live in the domain layer (filter-semantics advice), not projection (field formatting/stripping)
 - [ ] **WARN-05**: Existing `multi-match` and `inbox-name-substring` warnings trigger on `parent` filter resolution, reusing the same warning infrastructure used by other substring-resolving filters (no new warning code paths for the existing cases)
+- [ ] **WARN-06** *(new, Phase 57 UAT / G2)*: `EMPTY_SCOPE_INTERSECTION_WARNING` fires when **both** `project` and `parent` filters are set **AND** their scope-set intersection is empty (zero tasks in both scopes simultaneously). Pedagogical hint explaining why the result is empty. Distinct from `PARENT_PROJECT_COMBINED_WARNING` (WARN-03, presence-based — fires whenever both filters are set regardless of intersection cardinality): this warning is **emptiness-based** and specifically tells the agent that the two scopes don't overlap. Fires alongside WARN-03 in the disjoint-scope case.
 
 ### Incidental Cleanup
 
@@ -89,7 +92,7 @@ Requirements for milestone v1.4.1: Task Property Surface & Subtree Retrieval. St
 
 ## Traceability
 
-Every v1.4.1 requirement maps to exactly one phase. Coverage: **51/51 ✓**.
+Every v1.4.1 requirement maps to exactly one phase. Coverage: **54/54 ✓** (51 original + 3 added during Phase 57 UAT gap-closure: UNIFY-07, UNIFY-08, WARN-06).
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
@@ -129,6 +132,8 @@ Every v1.4.1 requirement maps to exactly one phase. Coverage: **51/51 ✓**.
 | UNIFY-04 | Phase 57 | Pending |
 | UNIFY-05 | Phase 57 | Pending |
 | UNIFY-06 | Phase 57 | Pending |
+| UNIFY-07 | Phase 57 | Pending *(added 2026-04-24 from Phase 57 UAT / G3)* |
+| UNIFY-08 | Phase 57 | Pending *(added 2026-04-24 from Phase 57 UAT / G2)* |
 | PREFS-01 | Phase 56 | Pending |
 | PREFS-02 | Phase 56 | Pending |
 | PREFS-03 | Phase 56 | Pending |
@@ -143,12 +148,13 @@ Every v1.4.1 requirement maps to exactly one phase. Coverage: **51/51 ✓**.
 | WARN-03 | Phase 57 | Pending |
 | WARN-04 | Phase 57 | Pending |
 | WARN-05 | Phase 57 | Pending |
+| WARN-06 | Phase 57 | Pending *(added 2026-04-24 from Phase 57 UAT / G2)* |
 | STRIP-11 | Phase 56 | Pending |
 
 **Coverage by phase:**
 
 - Phase 56 (Task Property Surface): 31 REQs — PREFS-01..05, CACHE-01..04, FLAG-01..08, HIER-01..05, PROP-01..08, STRIP-11
-- Phase 57 (Parent Filter & Filter Unification): 20 REQs — PARENT-01..09, UNIFY-01..06, WARN-01..05
+- Phase 57 (Parent Filter & Filter Unification): 23 REQs — PARENT-01..09, UNIFY-01..08, WARN-01..06
 
 ## Future Requirements
 
