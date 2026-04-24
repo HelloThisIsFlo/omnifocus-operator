@@ -76,11 +76,13 @@ _(cleared — v1.4 insertions archived to milestones/v1.4-ROADMAP.md)_
 
 ### Quick Tasks Completed
 
-_(cleared — v1.4 quick tasks archived to milestones/v1.4-ROADMAP.md)_
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260424-j63 | Unify empty-result warning surface | 2026-04-24 | d44e4742 | [260424-j63-unify-empty-result-warning-surface](./quick/260424-j63-unify-empty-result-warning-surface/) |
 
 ## Session Continuity
 
-Last activity: 2026-04-20 — Phase 56 complete. Gap-closure cycle (plans 56-08 + 56-09) resolved the two UAT gaps (G1: `is_sequential` hoisted to `ActionableEntity`, cross-entity projection on projects; G2: canonical golden-master scaffolding replacing 56-07's wrong-pattern artifacts). Human UAT closed 5/5 passed including live wire verification via MCP (`list_projects` / `list_tasks` on live OmniFocus confirmed no-suppression invariant and sequential-parent semantic end-to-end). Golden master baseline captured against real Bridge; 8 fixtures committed to `09-task-property-surface/`. Capture-script quality-of-life improvements: H-01 retry-loop fix + Ctrl+C cleanup handler + preserved-task note reset.
+Last activity: 2026-04-24 — Completed quick task 260424-j63: unified empty-result warning surface. Retired `EMPTY_SCOPE_INTERSECTION_WARNING` and `FILTER_NO_MATCH`; added `EMPTY_RESULT_WARNING_SINGLE` / `EMPTY_RESULT_WARNING_MULTI` parameterized by active-filter names (camelCase aliases, alphabetically sorted). Single emit point in `_ListTasksPipeline.execute()` covers both short-circuit and delegated paths via `is_non_default` detection (no `$inbox` special-casing). DYM reworded to stand alone. 9 new tests in `TestEmptyResultWarning`, full suite 2559/2559 green. Supersession recorded in 57-UAT Post-Resolution Gap Audit.
 Stopped at: Phase 57 context captured — D1+2a full unification locked, ready for /gsd-plan-phase 57
 
 **Planned Phase:** 57 (Parent Filter & Filter Unification) — 3 plans — 2026-04-20T20:57:25.723Z
