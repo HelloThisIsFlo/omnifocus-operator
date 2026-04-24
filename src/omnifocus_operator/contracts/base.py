@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from typing import Any, TypeGuard, TypeVar, Union
 
-from pydantic import ConfigDict, GetCoreSchemaHandler
-from pydantic_core import CoreSchema, core_schema
+from pydantic import BaseModel, ConfigDict, GetCoreSchemaHandler
+from pydantic_core import CoreSchema, PydanticUndefined, core_schema
 
 from omnifocus_operator.models.base import OmniFocusBaseModel
 
@@ -70,6 +70,53 @@ def is_set[T](value: T | _Unset) -> TypeGuard[T]:
     return not isinstance(value, _Unset)
 
 
+def is_non_default(model: BaseModel, field_name: str) -> bool:
+    """True if the named field has a value differing from its declared default.
+
+    Value-aware predicate that dispatches on field type:
+    - ``Patch[T]`` field (default=UNSET) -> equivalent to ``is_set``: a value
+      that is not the ``_Unset`` sentinel is non-default.
+    - Regular field with a concrete ``Field(default=...)`` -> compares
+      ``getattr(model, field_name)`` against ``model_fields[field_name].default``
+      via stdlib ``!=``.
+    - Regular field with ``Field(default_factory=...)`` -> calls the factory
+      once to produce a fresh baseline instance and compares against it.
+    - Required field (no default, no factory) -> always non-default (if the
+      field were unset, Pydantic validation would have rejected the model).
+
+    Reads the default from Pydantic's ``model_fields``. Pydantic v2 stores the
+    literal default on ``FieldInfo.default`` for ``Field(default=[...])``,
+    which makes mutable-default comparison correct out of the box
+    (e.g. ``Field(default=[AvailabilityFilter.REMAINING])`` produces a
+    FieldInfo whose ``.default`` is the literal list).
+
+    **List equality is order-sensitive** -- stdlib ``==`` on lists compares
+    element-wise in order. This is intentional and is the contract. For
+    single-element defaults (like the current ``availability=[REMAINING]``)
+    ordering is moot. If a future default is a multi-element list,
+    reordering it at the contract level would be an API-breaking change
+    (schema version bump), not a runtime concern -- the drift test at CI
+    gates any classification/default mismatch.
+
+    Introduced in Phase 57-05 (UAT-57 G4 fix) so ``_SUBTREE_PRUNING_FIELDS``
+    can classify non-Patch filter fields (e.g. ``availability``) alongside
+    Patch fields under a single value-aware predicate.
+    """
+    value = getattr(model, field_name)
+    if isinstance(value, _Unset):
+        return False
+    field_info = type(model).model_fields[field_name]
+    if field_info.default is PydanticUndefined:
+        # default_factory path, or a required field.
+        if field_info.default_factory is None:
+            # Required field (no default, no factory) -- always set.
+            return True
+        baseline = field_info.default_factory()  # type: ignore[call-arg]
+    else:
+        baseline = field_info.default
+    return value != baseline
+
+
 def unset_to_none[T](value: T | _Unset) -> T | None:
     """Convert UNSET to None for service/repo boundary translation."""
     if isinstance(value, _Unset):
@@ -105,6 +152,7 @@ __all__ = [
     "QueryModel",
     "StrictModel",
     "_Unset",
+    "is_non_default",
     "is_set",
     "unset_to_none",
 ]
