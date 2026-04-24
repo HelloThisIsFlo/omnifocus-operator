@@ -52,7 +52,7 @@ _BATCH_RETURNS = """\
 Returns: array of per-item results. Each item: status ('success' | 'error' | 'skipped'), id (success + edit errors/skips), name (success only), warnings (any status), error (error only)."""
 
 _BATCH_CROSS_ITEM_NOTE = """\
-Items are independent: batch items cannot reference other items created or edited in the same batch. For hierarchies (parent-child), use sequential calls."""
+Cross-item references: items can reference earlier items by name (not by ID — IDs don't exist yet). Use the full exact name; matching is case-insensitive substring, so short names collide. Define parents before children, otherwise the child may silently attach to a pre-existing task with the same name elsewhere."""
 
 _BATCH_CONCURRENCY_NOTE = "Note: concurrent batch calls from separate agents are not serialized."
 

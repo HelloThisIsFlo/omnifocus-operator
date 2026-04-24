@@ -131,6 +131,7 @@ No new tools. No service-layer architecture changes — pipelines are already st
 - **Return full task object in edit response** — intentionally unmapped todo. Waiting for real-world usage data. Current minimal response (`id`, `name`, `warnings`) is fine with write-through sync making follow-up `get_task` fast.
 - **Serial execution guarantee across concurrent batch calls** — v1.6 concern. Documented as known limitation in tool description.
 - **Cross-item references in batch** — documented as unsupported. If agent needs 4-level hierarchy, it makes 4 sequential calls.
+  - **Post-ship clarification (2026-04-24):** name-refs *are* a supported sub-case — items can reference earlier items by name via serial execution + per-item resolution. ID-refs remain unsupported. Contract locked with `TestBatchCrossItemNameRefs` in `tests/test_server.py`; docstring rewritten at `descriptions.py:_BATCH_CROSS_ITEM_NOTE`. Pre-pass validation of forward-refs was considered and rejected (per-item pipeline not batch-aware; edit_tasks move-ref surface too broad). Ordering rule ("define parents before children") is documented, not enforced — footgun is narrow and recoverable.
 
 ### Reviewed Todos (not folded)
 - "Consider returning full task object in edit_tasks response" — intentionally unmapped; waiting for real-world usage data (see decision in todo file)
