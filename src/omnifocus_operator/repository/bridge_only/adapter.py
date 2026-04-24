@@ -225,31 +225,33 @@ def _rename_inherited_fields(raw: dict[str, Any]) -> None:
             raw[new_key] = raw.pop(old_key)
 
 
-def _adapt_task_property_surface(raw: dict[str, Any]) -> None:
-    """Phase 56-02: transform raw bridge keys into model-shape presence flags + type.
+def _adapt_common_entity_property_surface(raw: dict[str, Any]) -> None:
+    """Phase 56-02: property-surface bits shared by tasks and projects.
 
-    Inputs consumed (popped):
-        - completedByChildren -> completesWithChildren
-        - sequential -> type ("sequential" | "parallel")
+    Pops ``completedByChildren`` into ``completesWithChildren`` and derives
+    ``hasNote`` / ``hasRepetition`` / ``hasAttachments`` from raw fields.
 
-    Inputs derived (read, not popped):
-        - note (non-empty) -> hasNote
-        - repetitionRule (not None) -> hasRepetition
-        - hasAttachments -> hasAttachments (ensure bool)
+    Type resolution stays in the entity-specific callers — tasks use a
+    two-state rule, projects use a three-state rule with HIER-05 precedence.
     """
     raw["completesWithChildren"] = bool(raw.pop("completedByChildren", False))
-    raw["type"] = "sequential" if raw.pop("sequential", False) else "parallel"
     raw["hasNote"] = bool(raw.get("note"))
     raw["hasRepetition"] = raw.get("repetitionRule") is not None
     raw["hasAttachments"] = bool(raw.get("hasAttachments", False))
 
 
+def _adapt_task_property_surface(raw: dict[str, Any]) -> None:
+    """Phase 56-02: task property surface — two-state type + shared flags."""
+    _adapt_common_entity_property_surface(raw)
+    raw["type"] = "sequential" if raw.pop("sequential", False) else "parallel"
+
+
 def _adapt_project_property_surface(raw: dict[str, Any]) -> None:
-    """Phase 56-02 (projects): three-state type via HIER-05 precedence.
+    """Phase 56-02 (projects): three-state type via HIER-05 precedence + shared flags.
 
     ``containsSingletonActions`` takes precedence over ``sequential``.
     """
-    raw["completesWithChildren"] = bool(raw.pop("completedByChildren", False))
+    _adapt_common_entity_property_surface(raw)
     is_sequential = bool(raw.pop("sequential", False))
     is_single = bool(raw.pop("containsSingletonActions", False))
     if is_single:
@@ -258,9 +260,6 @@ def _adapt_project_property_surface(raw: dict[str, Any]) -> None:
         raw["type"] = "sequential"
     else:
         raw["type"] = "parallel"
-    raw["hasNote"] = bool(raw.get("note"))
-    raw["hasRepetition"] = raw.get("repetitionRule") is not None
-    raw["hasAttachments"] = bool(raw.get("hasAttachments", False))
 
 
 def _adapt_task(raw: dict[str, Any]) -> None:
