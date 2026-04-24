@@ -192,12 +192,6 @@ but intermediate and descendant tasks not matching your other filters \
 still references its true parent -- fetch separately if you need data \
 for an excluded intermediate."""
 
-# WARN-03: soft heads-up when both scope filters specified together.
-PARENT_PROJECT_COMBINED_WARNING = """\
-Both 'project' and 'parent' filters are set. \
-Results are the intersection of their task scopes. \
-If you meant only one scope, omit the other."""
-
 # Quick task 260424-kd0 (2026-04-24): collapses EMPTY_RESULT_WARNING_{SINGLE,MULTI}
 # to one static nudge. Fires whenever list_tasks resolves to zero items.
 EMPTY_RESULT_WARNING = "The filters you selected didn't yield any results. Try widening the search."

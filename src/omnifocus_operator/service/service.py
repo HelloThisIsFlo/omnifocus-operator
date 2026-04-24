@@ -418,7 +418,6 @@ class _ListTasksPipeline(_ReadPipeline):
         # introspect self._query directly and return list[str]; the pipeline
         # just extends self._warnings.
         self._warnings.extend(self._domain.check_filtered_subtree(self._query))
-        self._warnings.extend(self._domain.check_parent_project_combined(self._query))
 
         # Phase 57-04 (G2/G3): short-circuit when scope resolved to empty-by-
         # construction; the repo would either return the wrong answer (hybrid

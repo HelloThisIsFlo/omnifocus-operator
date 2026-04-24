@@ -44,7 +44,6 @@ from omnifocus_operator.agent_messages.warnings import (
     NOTE_ALREADY_EMPTY,
     NOTE_APPEND_EMPTY,
     NOTE_REPLACE_ALREADY_CONTENT,
-    PARENT_PROJECT_COMBINED_WARNING,
     REPETITION_ANCHOR_DATE_MISSING,
     REPETITION_AUTO_CLEAR_ON,
     REPETITION_AUTO_CLEAR_ON_DATES,
@@ -617,18 +616,6 @@ class DomainLogic:
             return []
         if any(is_non_default(query, f) for f in _SUBTREE_PRUNING_FIELDS):
             return [FILTERED_SUBTREE_WARNING]
-        return []
-
-    def check_parent_project_combined(self, query: ListTasksQuery) -> list[str]:
-        """WARN-03: both ``project`` and ``parent`` filters set together.
-
-        Presence-based (D-13): fires independent of whether the resolved
-        scope-set intersection is empty or not. The emptiness question is a
-        runtime outcome at the repo layer; this warning is a soft heads-up at
-        the query-inspection layer.
-        """
-        if is_set(query.project) and is_set(query.parent):
-            return [PARENT_PROJECT_COMBINED_WARNING]
         return []
 
     # -- Clear-intent normalization ----------------------------------------

@@ -20,7 +20,6 @@ import pytest
 from omnifocus_operator.agent_messages.warnings import (
     EMPTY_RESULT_WARNING,
     FILTERED_SUBTREE_WARNING,
-    PARENT_PROJECT_COMBINED_WARNING,
 )
 from omnifocus_operator.contracts.base import UNSET
 from omnifocus_operator.contracts.use_cases.list._enums import (
@@ -2224,13 +2223,12 @@ class TestEmptyResultWarning:
     zero items. No parameterization, no filter enumeration, no active-filter
     check — the warning is a simple nudge appended on any empty result.
 
-    Composition with other warnings (PARENT_PROJECT_COMBINED_WARNING, DYM) is
-    preserved: they stack alongside the static nudge without interference.
+    Composition with DYM is preserved: warnings stack alongside the static
+    nudge without interference.
     """
 
-    # Empty + filters active -> static warning fires AND composes with
-    # PARENT_PROJECT_COMBINED_WARNING. The disjoint project + parent snapshot
-    # gives maximum coverage (multi-filter empty intersection + composition).
+    # Empty + filters active -> static warning fires. The disjoint
+    # project + parent snapshot gives maximum coverage.
     @pytest.mark.snapshot(
         tasks=[
             make_task_dict(id="t-p1", name="Task in P1", project="proj-1", inInbox=False),
@@ -2244,19 +2242,14 @@ class TestEmptyResultWarning:
         folders=[],
         perspectives=[],
     )
-    async def test_empty_with_filters_fires_static_warning_and_composes_with_parent_project(
-        self, service: OperatorService
-    ) -> None:
-        """Empty result with project + parent filters: static nudge fires AND
-        PARENT_PROJECT_COMBINED_WARNING still composes alongside.
-        """
+    async def test_empty_with_filters_fires_static_warning(self, service: OperatorService) -> None:
+        """Empty result with project + parent filters: static nudge fires."""
         result = await service.list_tasks(
             ListTasksQuery(project="Project One", parent="Task in P2")
         )
         assert len(result.items) == 0
         assert result.warnings is not None
         assert EMPTY_RESULT_WARNING in result.warnings
-        assert PARENT_PROJECT_COMBINED_WARNING in result.warnings
 
     # Non-empty result -> no static warning (regression guard).
     @pytest.mark.snapshot(
@@ -2611,13 +2604,11 @@ class TestListTasksParentProjectEquivalence:
 
 
 # ---------------------------------------------------------------------------
-# Pipeline-level cross-filter warnings (WARN-01 FILTERED_SUBTREE,
-# WARN-03 PARENT_PROJECT_COMBINED, Phase 57-03)
+# Pipeline-level cross-filter warnings (WARN-01 FILTERED_SUBTREE, Phase 57-03)
 #
 # These fire from _ListTasksPipeline.execute after all resolutions and before
-# _delegate. The domain methods (check_filtered_subtree,
-# check_parent_project_combined) own the trigger logic; this test surface
-# proves the emission site is wired in and correct.
+# _delegate. The domain method check_filtered_subtree owns the trigger logic;
+# this test surface proves the emission site is wired in and correct.
 # ---------------------------------------------------------------------------
 
 
@@ -2815,70 +2806,8 @@ class TestListTasksFilteredSubtreeWarning:
         assert FILTERED_SUBTREE_WARNING not in _warnings_list(result.warnings)
 
 
-class TestListTasksParentProjectCombinedWarning:
-    """WARN-03 pipeline emission: both project AND parent set."""
-
-    @pytest.mark.snapshot(
-        tasks=[make_task_dict(id="t1", name="Task", project="proj-work", inInbox=False)],
-        projects=[make_project_dict(id="proj-work", name="Work Projects")],
-        tags=[],
-        folders=[],
-        perspectives=[],
-    )
-    async def test_parent_project_combined_project_only(self, service: OperatorService) -> None:
-        """project only -> WARN-03 does NOT fire."""
-        result = await service.list_tasks(ListTasksQuery(project="Work"))
-        assert PARENT_PROJECT_COMBINED_WARNING not in _warnings_list(result.warnings)
-
-    @pytest.mark.snapshot(
-        tasks=[
-            make_task_dict(id="anchor", name="Review", project="proj-work", inInbox=False),
-        ],
-        projects=[make_project_dict(id="proj-work", name="Work Projects")],
-        tags=[],
-        folders=[],
-        perspectives=[],
-    )
-    async def test_parent_project_combined_parent_only(self, service: OperatorService) -> None:
-        """parent only -> WARN-03 does NOT fire."""
-        result = await service.list_tasks(ListTasksQuery(parent="Review"))
-        assert PARENT_PROJECT_COMBINED_WARNING not in _warnings_list(result.warnings)
-
-    @pytest.mark.snapshot(
-        tasks=[
-            make_task_dict(id="anchor", name="Review", project="proj-work", inInbox=False),
-        ],
-        projects=[make_project_dict(id="proj-work", name="Work Projects")],
-        tags=[],
-        folders=[],
-        perspectives=[],
-    )
-    async def test_parent_project_combined_both_set_fires(self, service: OperatorService) -> None:
-        """project + parent -> WARN-03 fires EXACTLY ONCE."""
-        result = await service.list_tasks(ListTasksQuery(project="Work", parent="Review"))
-        warnings = _warnings_list(result.warnings)
-        assert warnings.count(PARENT_PROJECT_COMBINED_WARNING) == 1
-
-    @pytest.mark.snapshot(
-        tasks=[
-            make_task_dict(id="anchor", name="X", project="proj-x", inInbox=False),
-        ],
-        projects=[make_project_dict(id="proj-x", name="X")],
-        tags=[],
-        folders=[],
-        perspectives=[],
-    )
-    async def test_parent_project_combined_both_same_value_still_fires(
-        self, service: OperatorService
-    ) -> None:
-        """project='X' + parent='X' -> WARN-03 fires (D-13: presence-based)."""
-        result = await service.list_tasks(ListTasksQuery(project="X", parent="X"))
-        warnings = _warnings_list(result.warnings)
-        assert warnings.count(PARENT_PROJECT_COMBINED_WARNING) == 1
-
-
 class TestListTasksCrossFilterWarningsTogether:
-    """Co-occurrence gate: both warnings fire together without interference."""
+    """WARN-01 single-fire regression: both scope filters + pruning filter set."""
 
     @pytest.mark.snapshot(
         tasks=[
@@ -2895,16 +2824,17 @@ class TestListTasksCrossFilterWarningsTogether:
         folders=[],
         perspectives=[],
     )
-    async def test_both_warnings_together(self, service: OperatorService) -> None:
-        """project + parent + flagged -> both WARN-01 and WARN-03 fire (each once).
+    async def test_warn01_fires_exactly_once_when_both_scopes_set(
+        self, service: OperatorService
+    ) -> None:
+        """project + parent + flagged -> WARN-01 fires EXACTLY ONCE.
 
-        FILTERED_SUBTREE fires ONCE even though both scope filters are set
-        (scope predicate is OR -- single-element return). PARENT_PROJECT_COMBINED
-        fires because both project and parent are present.
+        The scope predicate is ``is_set(project) or is_set(parent)``; both
+        being set could naively fire the warning twice. This test locks the
+        single-fire semantic.
         """
         result = await service.list_tasks(
             ListTasksQuery(project="Work", parent="Review", flagged=True)
         )
         warnings = _warnings_list(result.warnings)
         assert warnings.count(FILTERED_SUBTREE_WARNING) == 1
-        assert warnings.count(PARENT_PROJECT_COMBINED_WARNING) == 1

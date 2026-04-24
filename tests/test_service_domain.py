@@ -25,7 +25,6 @@ from omnifocus_operator.agent_messages.warnings import (
     NOTE_ALREADY_EMPTY,
     NOTE_APPEND_EMPTY,
     NOTE_REPLACE_ALREADY_CONTENT,
-    PARENT_PROJECT_COMBINED_WARNING,
     REPETITION_AUTO_CLEAR_ON,
     REPETITION_AUTO_CLEAR_ON_DATES,
     REPETITION_EMPTY_ON,
@@ -1316,42 +1315,6 @@ class TestCheckFilteredSubtree:
         query = ListTasksQuery(project="Work", parent="Review", flagged=True)
         result = _domain().check_filtered_subtree(query)
         assert result == [FILTERED_SUBTREE_WARNING]
-
-
-class TestCheckParentProjectCombined:
-    """WARN-03: both ``project`` and ``parent`` filters set together.
-
-    Presence-based (D-13): fires independent of whether the resolved scope-set
-    intersection is empty or not. The emptiness question is a runtime outcome;
-    this warning is a soft heads-up at the query-inspection layer.
-    """
-
-    def test_neither_set_no_warning(self) -> None:
-        """Empty query -> no warning."""
-        assert _domain().check_parent_project_combined(ListTasksQuery()) == []
-
-    def test_project_only_no_warning(self) -> None:
-        """project set, parent UNSET -> no warning."""
-        assert _domain().check_parent_project_combined(ListTasksQuery(project="Work")) == []
-
-    def test_parent_only_no_warning(self) -> None:
-        """parent set, project UNSET -> no warning."""
-        assert _domain().check_parent_project_combined(ListTasksQuery(parent="Review")) == []
-
-    def test_both_set_fires(self) -> None:
-        """project + parent set -> PARENT_PROJECT_COMBINED_WARNING."""
-        query = ListTasksQuery(project="Work", parent="Review")
-        assert _domain().check_parent_project_combined(query) == [PARENT_PROJECT_COMBINED_WARNING]
-
-    def test_both_set_different_filters_still_fires(self) -> None:
-        """project == parent (same string) -> fires (D-13 presence-based).
-
-        Even when both refs point to the same value, the warning fires because the
-        trigger is query-level presence, not intersection cardinality. Whether the
-        intersection is empty is an orthogonal outcome at the repo layer.
-        """
-        query = ListTasksQuery(project="X", parent="X")
-        assert _domain().check_parent_project_combined(query) == [PARENT_PROJECT_COMBINED_WARNING]
 
 
 class TestIsNonDefault:
