@@ -1115,21 +1115,28 @@ class TestCheckFilterResolution:
         assert "matched 2 projects" in warnings[0]
 
     def test_no_match_with_suggestion(self) -> None:
-        """No match with a close name -> FILTER_DID_YOU_MEAN."""
+        """No match with a close name -> FILTER_DID_YOU_MEAN.
+
+        Quick task 260424-j63: DYM is reworded to stand alone without the
+        retired FILTER_NO_MATCH prefix. Text now reads:
+        ``Did you mean: X? (no <entity> matched 'Y')``.
+        """
         entities = [_StubEntity("p1", "Personal"), _StubEntity("p2", "Work")]
         warnings = _domain().check_filter_resolution("Personl", [], entities, "project")
         assert len(warnings) == 1
-        assert "Did you mean" in warnings[0]
-        assert "Personal" in warnings[0]
+        assert warnings[0] == "Did you mean: Personal? (no project matched 'Personl')"
 
     def test_no_match_no_suggestion(self) -> None:
-        """No match, no close names -> FILTER_NO_MATCH (no 'skipped' wording, Phase 57-04)."""
+        """No match, no close names -> returns [].
+
+        Quick task 260424-j63: FILTER_NO_MATCH is retired; the unified
+        EMPTY_RESULT_WARNING emitted by _ListTasksPipeline.execute covers the
+        silent-empty case, so ``check_filter_resolution`` returns no warning
+        when the no-match branch has no fuzzy candidates.
+        """
         entities = [_StubEntity("p1", "Work"), _StubEntity("p2", "Home")]
         warnings = _domain().check_filter_resolution("zzzzz", [], entities, "project")
-        assert len(warnings) == 1
-        assert "No project found" in warnings[0]
-        # Phase 57-04 G3: 'skipped' wording dropped from FILTER_NO_MATCH.
-        assert "skipped" not in warnings[0].lower()
+        assert warnings == []
 
 
 # ---------------------------------------------------------------------------

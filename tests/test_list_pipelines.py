@@ -130,13 +130,14 @@ class TestListTasksResolution:
     async def test_unresolved_project_returns_empty_with_warning(
         self, service: OperatorService
     ) -> None:
-        """G3 fix (Phase 57-04): project='Nonexistent' returns 0 items + 'no match' warning.
+        """Unresolved project returns 0 items + unified empty-result warning.
 
-        Prior behavior (superseded): filter was silently skipped, all tasks
-        returned, warning said 'This filter was skipped.' The 'skipped' fallback
-        was a Phase 35.2 D-02e packaging artifact that bundled two UX choices
-        into one option. Post-57-04: no-match returns an empty result and the
-        warning drops 'skipped' while preserving did-you-mean suggestions.
+        Prior behavior (pre-57-04): filter was silently skipped, all tasks
+        returned, warning said 'This filter was skipped.' 57-04 G3 fixed that
+        to return an empty result with a 'No project found' warning. Quick
+        task 260424-j63 retires FILTER_NO_MATCH in favor of the unified
+        EMPTY_RESULT_WARNING — the agent still sees a clear signal, just in
+        the same shape used for every other empty-result case.
         """
         result = await service.list_tasks(ListTasksQuery(project="Nonexistent"))
         # Filter resolved to zero matches -> empty result.
@@ -144,9 +145,10 @@ class TestListTasksResolution:
         assert result.total == 0
         assert result.has_more is False
         assert result.warnings is not None
-        assert len(result.warnings) == 1
-        assert "Nonexistent" in result.warnings[0]
-        assert "skipped" not in result.warnings[0].lower()
+        # Exactly one unified empty-result warning (no DYM because no close match).
+        assert result.warnings == ["The 'project' filter resolved to zero tasks. No results."]
+        # Retired FILTER_NO_MATCH "skipped" wording must not appear.
+        assert all("skipped" not in w.lower() for w in result.warnings)
 
     @pytest.mark.snapshot(
         tasks=[
@@ -232,9 +234,20 @@ class TestListTasksResolution:
         perspectives=[],
     )
     async def test_single_match_no_multi_match_warning(self, service: OperatorService) -> None:
-        """Single match produces no multi-match warning (no regression)."""
+        """Single match produces no multi-match warning (no regression).
+
+        Quick task 260424-j63: "Home" resolves uniquely, so FILTER_MULTI_MATCH
+        does NOT fire. "Home" has zero descendants in this snapshot, so the
+        unified EMPTY_RESULT_WARNING fires instead — which is the whole point
+        of the new surface (agent gets a signal instead of ``warnings=None``
+        silence on a non-empty filter that resolved cleanly to an empty scope).
+        """
         result = await service.list_tasks(ListTasksQuery(project="Home"))
-        assert result.warnings is None
+        # No multi-match warning (single resolution).
+        if result.warnings is not None:
+            assert not any("matched" in w and "projects:" in w for w in result.warnings)
+        # Empty result with an active filter -> unified warning DOES fire.
+        assert result.warnings == ["The 'project' filter resolved to zero tasks. No results."]
 
 
 # ---------------------------------------------------------------------------
@@ -507,12 +520,23 @@ class TestListProjectsResolution:
         ],
         perspectives=[],
     )
-    async def test_unresolved_folder_warns(self, service: OperatorService) -> None:
-        """Pass folder='Nonexistent', verify warning."""
+    async def test_unresolved_folder_no_suggestions_silent(self, service: OperatorService) -> None:
+        """Unresolved folder with no fuzzy candidates -> no warning.
+
+        Quick task 260424-j63 retires FILTER_NO_MATCH. ``list_projects`` is
+        outside the scope of the unified EMPTY_RESULT_WARNING (which is
+        wired only in ``_ListTasksPipeline``), so this case is now silent.
+
+        Pre-existing ``_resolve_folder`` behavior: when the name does not
+        resolve, ``self._folder_ids`` stays ``None`` and the filter is
+        silently skipped — all projects flow through unfiltered. This is
+        not a regression introduced by the quick task; it is a documented
+        follow-up (extend the unified warning surface to list_projects /
+        list_folders / list_tags).
+        """
         result = await service.list_projects(ListProjectsQuery(folder="Nonexistent"))
-        assert result.warnings is not None
-        assert len(result.warnings) == 1
-        assert "Nonexistent" in result.warnings[0]
+        # No warning (no fuzzy match, unified warning not wired for list_projects).
+        assert result.warnings is None
 
     @pytest.mark.snapshot(
         tasks=[],
@@ -1877,18 +1901,22 @@ class TestListTasksParentFilter:
     async def test_list_tasks_parent_filter_no_match_returns_empty(
         self, service: OperatorService
     ) -> None:
-        """G3 fix (Phase 57-04): parent='NoSuchThing' returns 0 items + 'no match' warning.
+        """parent='NoSuchThing' returns 0 items + unified empty-result warning.
 
-        Prior behavior (superseded): filter silently skipped, all tasks
-        returned, warning said 'skipped'. Post-57-04: no-match returns empty
-        + reworded warning (no 'skipped' wording; did-you-mean preserved).
+        Prior behavior (pre-57-04): filter silently skipped, all tasks returned.
+        57-04 G3 fixed to return empty + reworded FILTER_NO_MATCH. Quick task
+        260424-j63 retires FILTER_NO_MATCH in favor of the unified
+        EMPTY_RESULT_WARNING — the specific value is no longer echoed back
+        when there's no fuzzy candidate, but the agent still gets a clear
+        "parent filter resolved to zero tasks" signal.
         """
         result = await service.list_tasks(ListTasksQuery(parent="NoSuchThing"))
         # Filter resolved to zero matches -> empty result.
         assert {t.id for t in result.items} == set()
         assert result.total == 0
         assert result.warnings is not None
-        assert any("NoSuchThing" in w for w in result.warnings)
+        assert "The 'parent' filter resolved to zero tasks. No results." in result.warnings
+        # Retired FILTER_NO_MATCH "skipped" wording must not appear.
         assert not any("skipped" in w.lower() for w in result.warnings)
 
     @pytest.mark.snapshot(
@@ -2189,16 +2217,40 @@ class TestListTasksParentFilter:
         assert {t.id for t in result.items} == {"anchor", "in-both"}
 
 
-class TestEmptyScopeShortCircuit:
-    """G2 regression tests (Phase 57-04): empty candidate scope short-circuits at service.
+class TestEmptyResultWarning:
+    """Quick task 260424-j63: unified EMPTY_RESULT_WARNING fires whenever
+    ``list_tasks`` returns zero items AND at least one query field is non-default.
 
-    Live repros from UAT-57 Test 10:
-    - list_tasks(project='Migrate...', parent='Build...') with disjoint scopes
-      previously returned 1624 items (hybrid) vs 0 items (bridge_only) -- D-15
-      violation. Service-layer short-circuit closes this by construction: both
-      repos never see empty candidate_task_ids + no pinned.
+    Supersedes the retired ``TestEmptyScopeShortCircuit`` (EMPTY_SCOPE_INTERSECTION_WARNING)
+    and ``TestFilterNoMatchWarningText`` (FILTER_NO_MATCH) suites. Covers the
+    8-case matrix from CONTEXT.md plus the alphabetical-ordering invariant.
+
+    Filter names in the warning text are **camelCase aliases** (what the agent
+    sent over MCP, via ``ListTasksQuery.model_fields[name].alias``),
+    **alphabetically sorted**.
     """
 
+    # Case 1: scope resolves to a real-but-empty entity (single filter).
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="other", name="Other", project="proj-other", inInbox=False),
+        ],
+        projects=[
+            make_project_dict(id="proj-empty", name="EmptyPlan"),
+            make_project_dict(id="proj-other", name="Other"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_scope_empty_fires_single_filter_warning(self, service: OperatorService) -> None:
+        """Case 1: project with no descendants -> single-filter warning."""
+        result = await service.list_tasks(ListTasksQuery(project="EmptyPlan"))
+        assert len(result.items) == 0
+        assert result.warnings is not None
+        assert "The 'project' filter resolved to zero tasks. No results." in result.warnings
+
+    # Case 2: project ∩ parent disjoint (two filters).
     @pytest.mark.snapshot(
         tasks=[
             make_task_dict(id="t-p1", name="Task in P1", project="proj-1", inInbox=False),
@@ -2212,117 +2264,174 @@ class TestEmptyScopeShortCircuit:
         folders=[],
         perspectives=[],
     )
-    async def test_project_and_parent_disjoint_returns_empty(
+    async def test_intersection_empty_fires_two_filter_warning(
         self, service: OperatorService
     ) -> None:
-        """G2 fix: disjoint project + parent scopes return 0 items + two warnings."""
-        # parent 'Task in P2' resolves to task in proj-2; project 'Project One'
-        # resolves to proj-1. Their task-scope intersection is empty.
+        """Case 2: disjoint project + parent -> multi-filter warning with
+        alphabetically sorted names, alongside PARENT_PROJECT_COMBINED_WARNING.
+        """
         result = await service.list_tasks(
             ListTasksQuery(project="Project One", parent="Task in P2")
         )
         assert len(result.items) == 0
-        assert result.total == 0
-        assert result.has_more is False
         assert result.warnings is not None
-        # WARN-03 (PARENT_PROJECT_COMBINED) fires because both scopes set.
-        assert any("project" in w.lower() and "parent" in w.lower() for w in result.warnings)
-        # G2 new: EMPTY_SCOPE_INTERSECTION_WARNING fires alongside.
-        assert any(
-            "disjoint" in w.lower() or "intersection is empty" in w.lower() for w in result.warnings
+        # The unified warning with alphabetically sorted camelCase names.
+        expected = (
+            "The combination of filters 'parent', 'project' resolved to zero tasks. No results."
         )
+        assert expected in result.warnings
+        # PARENT_PROJECT_COMBINED_WARNING still fires alongside.
+        assert PARENT_PROJECT_COMBINED_WARNING in result.warnings
 
+    # Case 3: pruning filter collapses the snapshot (single filter).
     @pytest.mark.snapshot(
         tasks=[
-            make_task_dict(id="t-p1", name="Task in P1", project="proj-1", inInbox=False),
             make_task_dict(
-                id="t-p2", name="Task in P2", project="proj-2", flagged=True, inInbox=False
+                id="t1", name="Unflagged", project="proj-1", flagged=False, inInbox=False
             ),
         ],
-        projects=[
-            make_project_dict(id="proj-1", name="Project One"),
-            make_project_dict(id="proj-2", name="Project Two"),
-        ],
+        projects=[make_project_dict(id="proj-1", name="Proj")],
         tags=[],
         folders=[],
         perspectives=[],
     )
-    async def test_project_and_parent_disjoint_plus_flagged_returns_empty(
+    async def test_pruning_empty_fires_single_filter_warning(
         self, service: OperatorService
     ) -> None:
-        """G2 + WARN-01 interaction: disjoint scopes + flagged pruning -> 0 items."""
-        result = await service.list_tasks(
-            ListTasksQuery(project="Project One", parent="Task in P2", flagged=True)
-        )
+        """Case 3: flagged=true with no flagged tasks -> single-filter warning."""
+        result = await service.list_tasks(ListTasksQuery(flagged=True))
         assert len(result.items) == 0
         assert result.warnings is not None
-        warning_text = "\n".join(result.warnings)
-        # PARENT_PROJECT_COMBINED (WARN-03).
-        assert "project" in warning_text.lower() and "parent" in warning_text.lower()
-        # EMPTY_SCOPE_INTERSECTION (Phase 57-04 G2).
-        assert "disjoint" in warning_text.lower() or "intersection is empty" in warning_text.lower()
-        # FILTERED_SUBTREE (WARN-01) fires because scope + pruning predicate.
-        assert "filtered subtree" in warning_text.lower() or "always included" in warning_text
+        assert "The 'flagged' filter resolved to zero tasks. No results." in result.warnings
 
-    @pytest.mark.snapshot(
-        tasks=[
-            # Only task lives in a different project; EmptyPlan has no descendants.
-            make_task_dict(id="other", name="Other", project="proj-other", inInbox=False),
-        ],
-        projects=[
-            make_project_dict(id="proj-empty", name="EmptyPlan"),
-            make_project_dict(id="proj-other", name="Other"),
-        ],
-        tags=[],
-        folders=[],
-        perspectives=[],
-    )
-    async def test_parent_on_empty_project_returns_empty(self, service: OperatorService) -> None:
-        """G2: single scope resolves to zero tasks (empty project) -> 0 items,
-        NO EMPTY_SCOPE_INTERSECTION_WARNING (only one scope was set), NO
-        'no match' warning (the name resolved fine -- project just has zero descendants).
-        """
-        result = await service.list_tasks(ListTasksQuery(parent="EmptyPlan"))
-        assert len(result.items) == 0
-        assert result.total == 0
-        if result.warnings is not None:
-            # WARN-02 may fire (parent resolves to a project) -- that's fine.
-            assert not any("disjoint" in w.lower() for w in result.warnings)
-            assert not any("intersection is empty" in w.lower() for w in result.warnings)
-            # Filter name resolved fine; no "no match" warning.
-            assert not any("no match" in w.lower() for w in result.warnings)
-
-
-class TestFilterNoMatchWarningText:
-    """G3 rewording tests (Phase 57-04): 'skipped' wording dropped from FILTER_NO_MATCH
-    and FILTER_DID_YOU_MEAN; did-you-mean suggestions preserved.
-    """
-
+    # Case 4a: name no-match with fuzzy candidates -> both unified + DYM fire.
     @pytest.mark.snapshot(
         tasks=[
             make_task_dict(id="t1", name="Task A", project="proj-personal", inInbox=False),
         ],
-        projects=[
-            make_project_dict(id="proj-personal", name="Personal"),
-        ],
+        projects=[make_project_dict(id="proj-personal", name="Personal")],
         tags=[],
         folders=[],
         perspectives=[],
     )
-    async def test_unresolved_project_did_you_mean_preserved(
+    async def test_no_match_name_fires_single_filter_warning_with_dym(
         self, service: OperatorService
     ) -> None:
-        """G3 + WARN-05: did-you-mean suggestion preserved; 'skipped' wording gone."""
+        """Case 4a: project="Persinal" (misspelling with fuzzy match) -> single-filter
+        unified warning AND reworded DYM warning both fire.
+        """
         result = await service.list_tasks(ListTasksQuery(project="Persinal"))
         assert len(result.items) == 0
         assert result.warnings is not None
-        assert len(result.warnings) == 1
-        warning = result.warnings[0]
-        assert "Persinal" in warning
-        assert "Did you mean" in warning
-        assert "Personal" in warning
-        assert "skipped" not in warning.lower()
+        # Unified empty-result warning fires.
+        assert "The 'project' filter resolved to zero tasks. No results." in result.warnings
+        # Reworded DYM fires alongside, standalone (no 'No project found' prefix).
+        dym_warnings = [w for w in result.warnings if "Did you mean" in w]
+        assert len(dym_warnings) == 1
+        dym = dym_warnings[0]
+        assert "Personal" in dym
+        assert "Persinal" in dym
+        assert "matched 'Persinal'" in dym
+        # The old prefix must NOT appear.
+        assert "No project found matching" not in dym
 
+    # Case 4b: name no-match with NO fuzzy candidates -> unified fires, DYM does NOT.
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t1", name="Task A", project="proj-1", inInbox=False),
+        ],
+        projects=[make_project_dict(id="proj-1", name="Work")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_no_match_name_no_suggestion_fires_only_unified(
+        self, service: OperatorService
+    ) -> None:
+        """Case 4b: project with no fuzzy match -> only unified warning, no DYM,
+        no retired FILTER_NO_MATCH ("No <entity> found matching") text.
+        """
+        result = await service.list_tasks(ListTasksQuery(project="zzzzzz"))
+        assert len(result.items) == 0
+        assert result.warnings is not None
+        assert "The 'project' filter resolved to zero tasks. No results." in result.warnings
+        # FILTER_NO_MATCH text retired: no "No project found matching" anywhere.
+        assert not any("No project found matching" in w for w in result.warnings)
+        # No DYM either (no close candidates).
+        assert not any("Did you mean" in w for w in result.warnings)
+
+    # Case 5 (LOCK TEST): 3+ active filters -> alphabetical camelCase order.
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t1", name="Only task", project="proj-1", flagged=False, inInbox=False
+            ),
+        ],
+        projects=[make_project_dict(id="proj-1", name="Work")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_three_plus_active_filters_alphabetical(self, service: OperatorService) -> None:
+        """Case 5 (ALPHABETICAL LOCK): verify filter names are camelCase aliases
+        in ascending alphabetical order. This is the canonical regression guard —
+        its failure signals either ordering drift or an alias-generator regression.
+
+        Active filters: due='today', estimated_minutes_max=30, flagged=true,
+        parent='Work'. Locks both alphabetical ordering AND the camelCase alias
+        surface (``estimatedMinutesMax``, not ``estimated_minutes_max``).
+        """
+        result = await service.list_tasks(
+            ListTasksQuery(due="today", estimated_minutes_max=30, flagged=True, parent="Work")
+        )
+        assert len(result.items) == 0
+        assert result.warnings is not None
+        expected = (
+            "The combination of filters 'due', 'estimatedMinutesMax', 'flagged', "
+            "'parent' resolved to zero tasks. No results."
+        )
+        assert expected in result.warnings
+
+    # Case 6: default-valued availability does NOT count as an active filter.
+    @pytest.mark.snapshot(
+        tasks=[],
+        projects=[],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_default_availability_does_not_count_as_filter(
+        self, service: OperatorService
+    ) -> None:
+        """Case 6: only availability=[REMAINING] (the default) with empty snapshot
+        -> NO unified warning. Locks the ``is_non_default`` semantic for regular
+        fields (default value does not count as "active").
+        """
+        result = await service.list_tasks(ListTasksQuery())
+        assert len(result.items) == 0
+        # No unified warning because availability is at its default.
+        if result.warnings is not None:
+            assert not any("resolved to zero tasks" in w for w in result.warnings)
+
+    # Case 7: zero active filters, empty result -> NO warning (same as case 6
+    # but explicitly locks the zero-filter skip).
+    @pytest.mark.snapshot(
+        tasks=[],
+        projects=[],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_zero_filters_empty_result_no_warning(self, service: OperatorService) -> None:
+        """Case 7: every field at default, empty snapshot -> NO unified warning
+        (per CONTEXT.md §zero-filter case: skip entirely).
+        """
+        result = await service.list_tasks(ListTasksQuery())
+        assert len(result.items) == 0
+        if result.warnings is not None:
+            assert not any("resolved to zero tasks" in w for w in result.warnings)
+
+    # Case 8: DYM standalone reword check — assert the new DYM text structure.
     @pytest.mark.snapshot(
         tasks=[
             make_task_dict(
@@ -2338,14 +2447,23 @@ class TestFilterNoMatchWarningText:
         folders=[],
         perspectives=[],
     )
-    async def test_list_tasks_tags_no_match_returns_empty(self, service: OperatorService) -> None:
-        """G3: tags filter with no matches returns 0 items + reworded warning."""
-        result = await service.list_tasks(ListTasksQuery(tags=["Nonexistent"]))
+    async def test_dym_standalone_with_unified_warning(self, service: OperatorService) -> None:
+        """Case 8: tag no-match with fuzzy candidate -> BOTH unified and reworded
+        DYM fire. DYM text is standalone (no "No tag found matching" prefix).
+        """
+        result = await service.list_tasks(ListTasksQuery(tags=["Wrk"]))
         assert len(result.items) == 0
-        assert result.total == 0
         assert result.warnings is not None
-        assert any("Nonexistent" in w for w in result.warnings)
-        assert not any("skipped" in w.lower() for w in result.warnings)
+        # Unified warning (tags is the only active filter -> single form).
+        assert "The 'tags' filter resolved to zero tasks. No results." in result.warnings
+        # Reworded DYM fires standalone.
+        dym_warnings = [w for w in result.warnings if "Did you mean" in w]
+        assert len(dym_warnings) == 1
+        dym = dym_warnings[0]
+        assert "Work" in dym
+        assert "Wrk" in dym
+        assert "matched 'Wrk'" in dym
+        assert "No tag found matching" not in dym
 
 
 class TestParentAnchorPreservation:
@@ -2513,21 +2631,26 @@ class TestParentAnchorPreservation:
     async def test_parent_anchor_outside_project_scope_not_preserved(
         self, service: OperatorService
     ) -> None:
-        """G1 + G2: anchor outside the project scope is NOT preserved (D-05 AND).
+        """G1 + G2 (updated by quick task 260424-j63): anchor outside the project
+        scope is NOT preserved (D-05 AND).
 
         When project and parent both set, anchor must be inside project scope
         for preservation to apply. Here parent resolves to task in proj-2 but
         project scope is proj-1 -- anchor is filtered out of pinned_task_ids
-        before reaching the repo, so the result is empty + short-circuit
-        (EMPTY_SCOPE_INTERSECTION_WARNING fires).
+        before reaching the repo, so the result is empty + short-circuit.
+        The unified ``EMPTY_RESULT_WARNING`` fires (superseding the retired
+        EMPTY_SCOPE_INTERSECTION_WARNING).
         """
         result = await service.list_tasks(
             ListTasksQuery(project="Project One", parent="Task in P2")
         )
         assert len(result.items) == 0
         assert result.warnings is not None
-        warning_text = "\n".join(result.warnings)
-        assert "disjoint" in warning_text.lower() or "intersection is empty" in warning_text.lower()
+        # Unified empty-result warning with alphabetical camelCase filter names.
+        assert (
+            "The combination of filters 'parent', 'project' resolved to "
+            "zero tasks. No results." in result.warnings
+        )
 
     @pytest.mark.snapshot(
         tasks=[
