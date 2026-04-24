@@ -3,7 +3,7 @@ status: resolved
 phase: 57-parent-filter-filter-unification
 source: [57-01-SUMMARY.md, 57-02-SUMMARY.md, 57-03-SUMMARY.md]
 started: 2026-04-23T12:00:00Z
-updated: 2026-04-24T01:05:00Z
+updated: 2026-04-24T01:45:00Z
 gaps_resolved_by: [57-04, 57-05]
 ---
 
@@ -324,3 +324,42 @@ _All design discussions resolved. UAT complete._
 | em-dash positive gate (U+2014 in warnings.py) | no longer applicable — em-dash de-locked intentionally (Test 1) |
 | em-dash negative gate (no `--` in warnings.py) | no longer applicable — same |
 | Verification report (57-VERIFICATION.md) | 5/5 truths verified; 20/20 requirements satisfied |
+
+## Post-Resolution Gap Audit (2026-04-24)
+
+Retroactive walkthrough confirming the G1–G4 deliveries from 57-04 / 57-05 match the gap descriptions — both behavior and the implementation details agreed in the gap write-ups.
+
+### G1 — Anchor preservation (OR-with-pinned)
+
+Code shape verified:
+- `contracts/use_cases/list/tasks.py:130-131` — two-field split: `candidate_task_ids` (filterable pool) + `pinned_task_ids` (unconditional). ✓
+- `repository/hybrid/query_builder.py:299-318` — `WHERE pi.task IS NULL AND ((t.id IN <pinned>) OR (<inner_and>))`. Base invariant (`pi.task IS NULL`) sits outside the OR so projects never leak into task results via either branch. ✓
+- `repository/bridge_only/bridge_only.py:262-268` — pinned union after the sequential filter chain. ✓
+
+Open discussion — bridge_only ordering:
+
+Initial concern: bridge_only line 268 appends (`items = items + pinned_tasks`) where the hybrid OR puts pinned placeholders first in the params tuple (query_builder.py:315). Closer inspection of line 271 shows `items.sort(key=lambda t: t.id)` runs downstream, so prepend vs append is cosmetic — no user-visible behavioral difference.
+
+Options under consideration:
+1. Do nothing — the asymmetry is cosmetic; behavior already deterministic.
+2. Prepend for expressive symmetry with hybrid — still a runtime no-op.
+3. Remove the `t.id` sort; honor outline order from `all_entities.tasks` — real semantic change: bridge_only would then mirror hybrid's outline ordering more faithfully (not just its membership).
+
+Decision: **#1 — do nothing**. Output is already deterministic; the append-vs-prepend distinction has no observable effect thanks to the downstream `t.id` sort.
+
+### G2 — Empty-scope intersection warning — SUPERSEDED (2026-04-24)
+
+- **What G2 shipped (57-04):** `EMPTY_SCOPE_INTERSECTION_WARNING` — fired only on the narrow `project ∩ parent` disjoint case. See `agent_messages/warnings.py` (pre-retirement) and `service.py::_emit_empty_intersection_warning_if_applicable` (pre-retirement).
+- **Why it was incomplete:**
+  - Single-scope-empty stayed silent — `list_tasks(parent="EmptyProject")` returned `items=[], warnings=None`, agent couldn't distinguish "filter matched nothing" from "filter matched an empty entity".
+  - No-match name cases leaned on `FILTER_NO_MATCH` as a separate narrow warning.
+  - Every empty-result shape had its own sibling warning — N narrow warnings, no uniform signal.
+- **Decision (2026-04-24):** Unify the entire empty-result warning surface into one parameterized `EMPTY_RESULT_WARNING`. Fires when `items == []` AND any `ListTasksQuery` field is non-default; text is parameterized by active-filter count and lists camelCase aliases alphabetically.
+- **Retired:**
+  - `EMPTY_SCOPE_INTERSECTION_WARNING` → subsumed.
+  - `FILTER_NO_MATCH` → subsumed; `FILTER_DID_YOU_MEAN` reworded to stand alone when fuzzy candidates exist.
+- **Two-layer model:**
+  - **Layer 1** — unified empty-result warning (this quick task).
+  - **Layer 2** — reworded DYM on top when the name had fuzzy candidates.
+- **Scope guard:** service-layer only; no contract or repo changes. `list_projects` / `list_folders` / `list_tags` are intentionally out of scope — extending the unified surface to them is a follow-up captured in the quick task SUMMARY.
+- **Implementation:** `.planning/quick/260424-j63-unify-empty-result-warning-surface/` (Task 1 commit for src, Task 2 commit for tests). Alphabetical ordering locked by `TestEmptyResultWarning::test_three_plus_active_filters_alphabetical` in `tests/test_list_pipelines.py`.
