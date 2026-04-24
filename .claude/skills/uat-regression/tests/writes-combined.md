@@ -8,7 +8,7 @@ Run these base suites in order. Each suite keeps its own parent task, setup, and
 
 | Prefix | Suite | File | Tests |
 |--------|-------|------|------:|
-| A | Read Lookups | `read-lookups.md` | 8 |
+| A | Read Lookups | `read-lookups.md` | 9 |
 | B | Task Creation | `task-creation.md` | 17 |
 | C | Edit Operations | `edit-operations.md` | 23 |
 | D | Tag Operations | `tag-operations.md` | 15 |
@@ -18,6 +18,6 @@ Run these base suites in order. Each suite keeps its own parent task, setup, and
 | H | Integration Flows | `integration-flows.md` | 8 |
 | I | Repetition Rules | `repetition-rules.md` | 40 |
 
-**Total: 154 tests**
+**Total: 155 tests**
 
 Report table rows use section prefixes (A-1, B-2a, C-3, ...) with bold section-header rows between suites. Each suite's `## Report Table Rows` section provides the row definitions.

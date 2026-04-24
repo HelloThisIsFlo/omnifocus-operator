@@ -1,7 +1,7 @@
 ---
 suite: task-creation
 display: Task Creation
-test_count: 19
+test_count: 23
 
 discovery:
   needs:
@@ -17,9 +17,26 @@ discovery:
   ambiguous:
     tags: 3
 
+user_prompts:
+  - key: cwc-default
+    question: "OmniFocus preference: 'Complete projects and groups when their last action is completed' (Preferences → Organization). Is it ON or OFF?"
+    options: ["ON", "OFF"]
+    default: "ON"
+  - key: task-type-default
+    question: "OmniFocus preference: default group type for new action groups (Preferences → Organization). Parallel or Sequential?"
+    options: ["parallel", "sequential"]
+    default: "parallel"
+
+computed_values:
+  CWC_DEFAULT: "preference-dependent: true if cwc-default=ON, false if OFF"
+  TYPE_DEFAULT: "preference-dependent: matches task-type-default answer verbatim"
+
 setup: |
   ### Tasks
   UAT-TaskCreation (inbox parent)
+
+  ### Preference Capture
+  The create-default tests (8c, 8d) are preference-dependent — same pattern as `SOON_DUE` in date-filtering.md. During discovery the tester is asked for their two OmniFocus preference values; the suite stores them as `CWC_DEFAULT` and `TYPE_DEFAULT` placeholders. Tests 8c/8d use these placeholders instead of hard-coded values.
 
 manual_actions:
   - "If no ambiguous tag name found in discovery, ask user to create two tags with the same name (e.g., 'TestDupe') under different parent tags for test 5c. Otherwise test 5c will be skipped."
@@ -118,10 +135,6 @@ Run each INDIVIDUALLY (they will error):
 1. `add_tasks` with `name: "T5e-BadTag", tags: ["definitely-not-a-real-tag-xyz"]`
 2. PASS if: error about tag not found
 
-#### Test 5f: Batch limit
-1. `add_tasks` with 2 items: `[{name: "T5f-A"}, {name: "T5f-B"}]`
-2. PASS if: error about 1-item limit
-
 ### 6. $inbox & System Locations
 
 #### Test 6a: parent: "$inbox" creates in inbox
@@ -151,6 +164,35 @@ Run INDIVIDUALLY (will error):
 2. `get_task` on the returned ID
 3. PASS if: task created; `dueDate` in response is NOT `T00:00:00` (midnight) — proves enrichment with user's DefaultDueTime (typically 17:00). The exact time depends on user's OmniFocus preferences, but it must NOT be midnight.
 
+### 8. Task Property Surface (Phase 56)
+
+New writable task fields — `completesWithChildren` and `type` — plus create-default resolution from user preferences and natural enum rejection of `"singleActions"`.
+
+#### Test 8a: Add with completesWithChildren=true
+1. `add_tasks` with `name: "T8a-CWCTrue", parent: "<UAT-TaskCreation-id>", completesWithChildren: true`
+2. `get_task` on returned ID with `include: ["hierarchy"]`
+3. PASS if: success; response shows `completesWithChildren: true` (visible in hierarchy include group)
+
+#### Test 8b: Add with type=sequential
+1. `add_tasks` with `name: "T8b-SeqType", parent: "<UAT-TaskCreation-id>", type: "sequential"`
+2. `get_task` on returned ID with `include: ["hierarchy"]`
+3. PASS if: success; response shows `type: "sequential"` in the hierarchy include group
+
+#### Test 8c: Create-default completesWithChildren (preference-dependent)
+1. `add_tasks` with `name: "T8c-CWCDefault", parent: "<UAT-TaskCreation-id>"` — `completesWithChildren` intentionally omitted
+2. `get_task` on returned ID with `include: ["hierarchy"]`
+3. PASS if: response shows `completesWithChildren` equal to `CWC_DEFAULT` (preference-dependent — service resolves the user's `OFMCompleteWhenLastItemComplete` preference and writes it explicitly, never relying on OmniFocus implicit defaulting)
+
+#### Test 8d: Create-default type (preference-dependent)
+1. `add_tasks` with `name: "T8d-TypeDefault", parent: "<UAT-TaskCreation-id>"` — `type` intentionally omitted
+2. `get_task` on returned ID with `include: ["hierarchy"]`
+3. PASS if: response shows `type` equal to `TYPE_DEFAULT` (preference-dependent — service resolves `OFMTaskDefaultSequential` and writes it explicitly)
+
+#### Test 8e: type="singleActions" rejected
+Run INDIVIDUALLY (will error):
+1. `add_tasks` with `name: "T8e-SingleActionsBad", type: "singleActions"`
+2. PASS if: error — valid values are `parallel` and `sequential` (enum validation; `singleActions` is not a writable task type); error is fluent from an agent's perspective; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
 ## Report Table Rows
 
 | # | Test | Description | Result |
@@ -168,9 +210,13 @@ Run INDIVIDUALLY (will error):
 | 5c | Error: ambiguous tag | Ambiguous tag name returns error with IDs | SKIP? |
 | 5d | Error: bad parent | Nonexistent parent returns "not found" | |
 | 5e | Error: bad tag | Nonexistent tag returns "not found" | |
-| 5f | Error: batch limit | 2-item array returns 1-item limit error | |
 | 6a | $inbox parent | `parent: "$inbox"` creates task in inbox, same as omitting parent | |
 | 6b | Error: null parent | `parent: null` returns educational error about inbox syntax | |
 | 6c | Error: system location | `parent: "$trash"` returns reserved prefix error listing valid locations | |
 | 7a | Create: naive datetime | Naive datetime (no Z) accepted; task created with correct dueDate | |
 | 7b | Create: date-only | Date-only enriched with DefaultDueTime (not midnight); proves PREF-04 | |
+| 8a | Add: completesWithChildren=true | `completesWithChildren: true` round-trips; visible in hierarchy include | |
+| 8b | Add: type=sequential | `type: "sequential"` round-trips; visible in hierarchy include | |
+| 8c | Add: create-default completesWithChildren | Omitted field resolved from `OFMCompleteWhenLastItemComplete` preference (preference-dependent; matches `CWC_DEFAULT`) | |
+| 8d | Add: create-default type | Omitted field resolved from `OFMTaskDefaultSequential` preference (preference-dependent; matches `TYPE_DEFAULT`) | |
+| 8e | Error: type="singleActions" | `singleActions` rejected via enum validation; valid values are `parallel`/`sequential`; no pydantic internals | |

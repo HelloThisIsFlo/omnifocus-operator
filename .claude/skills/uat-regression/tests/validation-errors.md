@@ -1,7 +1,7 @@
 ---
 suite: validation-errors
 display: Validation & Errors
-test_count: 35
+test_count: 44
 
 setup: |
   ### Task Hierarchy
@@ -65,9 +65,13 @@ Run each test INDIVIDUALLY (will error):
 1. `edit_tasks` with `items: [{ id: "<temp-id>", name: "" }]`
 2. PASS if: error about name being empty; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
 
-#### Test 2d: Batch limit
-1. `edit_tasks` with `items: [{ id: "<temp-id>", name: "A" }, { id: "<temp-id>", name: "B" }]`
-2. PASS if: error about "currently accepts exactly 1 item, got 2"; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+#### Test 2d: Note action — append and replace both set
+1. `edit_tasks` with `items: [{ id: "<temp-id>", actions: { note: { append: "foo", replace: "bar" } } }]`
+2. PASS if: error mentions the two note operations are mutually exclusive (fluent from an agent's perspective — names both `append` and `replace` and explains only one may be set); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+#### Test 2e: Note action — neither operation set
+1. `edit_tasks` with `items: [{ id: "<temp-id>", actions: { note: {} } }]`
+2. PASS if: error mentions the note action requires at least one operation (fluent; mentions `append` or `replace` as the valid operations); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
 
 ### 3. List Tool Validation
 
@@ -205,6 +209,56 @@ Run each test INDIVIDUALLY (will error):
 1. `list_tasks` with `completed: true`
 2. PASS if: error rejects boolean; the `completed` field expects a string shortcut or DateFilter object, not a boolean; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
 
+### 10. v1.4.1 Phase 56 Derived-Field Rejection
+
+Phase 56 introduced six derived read-only flags on the read side: `hasNote`, `hasRepetition`, `hasAttachments`, `hasChildren`, `isSequential`, `dependsOnChildren`. The write-side contracts (`add_tasks` / `edit_tasks`) reject all six via Pydantic `extra="forbid"` — generic schema error, no custom educational message (FLAG-08 lock). These tests spot-check that the structural guarantee holds on both tools.
+
+Run each test INDIVIDUALLY (will error):
+
+#### Test 10a: add_tasks rejects hasNote
+1. `add_tasks` with `items: [{ name: "VE-10a", hasNote: true }]`
+2. PASS if: error rejects `hasNote` as an unknown/forbidden field (generic Pydantic schema error — no custom message expected); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+#### Test 10b: add_tasks rejects isSequential
+1. `add_tasks` with `items: [{ name: "VE-10b", isSequential: true }]`
+2. PASS if: error rejects `isSequential` as an unknown/forbidden field; same shape as 10a (cross-field consistency); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+#### Test 10c: add_tasks rejects dependsOnChildren
+1. `add_tasks` with `items: [{ name: "VE-10c", dependsOnChildren: true }]`
+2. PASS if: error rejects `dependsOnChildren` as an unknown/forbidden field; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+#### Test 10d: edit_tasks rejects derived field (hasChildren)
+1. `edit_tasks` with `items: [{ id: "<temp-id>", hasChildren: true }]`
+2. PASS if: error rejects `hasChildren` as an unknown/forbidden field (same `extra="forbid"` mechanism on edit-side — one representative is sufficient since the rejection is shared infra); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+### 11. v1.4 Phase 54 Batch Limit
+
+Phase 54 lifted the 1-item constraint on `add_tasks` and `edit_tasks` and set a new ceiling of 50 items per call, enforced via Pydantic `max_length` on the `items` list. Exceeding the ceiling produces a generic schema-level error — no custom educational message. These tests spot-check the limit on both write tools.
+
+Run each test INDIVIDUALLY (will error):
+
+#### Test 11a: add_tasks rejects 51-item batch
+1. `add_tasks` with 51 items (each a minimal valid task, e.g., `{ name: "VE-11a-N" }` for N = 1..51)
+2. PASS if: error rejects the batch at schema level (generic Pydantic `max_length` message — no custom constant); mentions the items array length or maximum; does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+#### Test 11b: edit_tasks rejects 51-item batch
+1. `edit_tasks` with 51 items (each `{ id: "<temp-id>", name: "VE-11b-N" }` for N = 1..51 — reusing the same id is fine since the validation error fires before any items are dispatched to the service layer)
+2. PASS if: error rejects the batch at schema level (generic Pydantic `max_length` message — cross-tool consistency with 11a); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+### 12. v1.4.1 Phase 57 Parent Filter
+
+Phase 57 adds `parent: Patch[str]` to `list_tasks` — a single-reference filter (accepts `$inbox`, exact task/project IDs, and name substrings). Array references are rejected at schema validation time (PARENT-09). `parent: "$inbox"` shares the same contradiction rules as `project: "$inbox"`. These tests lock the schema and contradiction surfaces; the positive behavior (resolution, descendants, warnings) is covered in `list-tasks.md` section 10.
+
+Run each test INDIVIDUALLY (will error):
+
+#### Test 12a: parent filter — array value rejected (PARENT-09)
+1. `list_tasks` with `parent: ["LT-P57-Root", "LT-P57-Child1"]`
+2. PASS if: schema-level validation error — the `parent` field accepts a single reference, not a list; arrays are explicitly rejected per PARENT-09; error is clean (field name appears as `parent`, fluent from an agent's perspective, points toward passing a single string); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
+#### Test 12b: parent: "$inbox" + inInbox: false — contradiction error
+1. `list_tasks` with `parent: "$inbox", inInbox: false`
+2. PASS if: contradiction error — same rule as `project: "$inbox" + inInbox: false` (see list-tasks.md test 7d); error explains that `$inbox` selects inbox tasks while `inInbox=false` excludes them; **error wording references `parent` (the filter that triggered it), not `project`** — wording adapts to the triggering filter; proves the 3-arg `resolve_inbox` applies unified contradiction semantics across `project` and `parent` (D-09); does NOT contain `type=`, `pydantic`, `input_value`, or `_Unset`
+
 ## Report Table Rows
 
 | # | Test | Description | Result |
@@ -216,7 +270,8 @@ Run each test INDIVIDUALLY (will error):
 | 2a | edit_tasks: unknown field | Unknown field → clean "Unknown field" error | |
 | 2b | edit_tasks: invalid lifecycle | Invalid lifecycle → clean error, no enum internals | |
 | 2c | edit_tasks: empty name | Empty string name → clean error | |
-| 2d | edit_tasks: batch limit | 2 items → clean "exactly 1 item" error | |
+| 2d | Note action: append + replace | Both `append` and `replace` set → mutually-exclusive error, fluent | |
+| 2e | Note action: no operation | Empty `actions.note: {}` → "at least one operation required" error, fluent | |
 | 3a | list_tasks: offset w/o limit | Offset without limit → "offset requires limit" | |
 | 3b | list_tasks: invalid availability | Bad enum value → clean error listing available/blocked/remaining | |
 | 3c | list_projects: invalid review_due_within | Bad format → error with valid examples | |
@@ -244,3 +299,11 @@ Run each test INDIVIDUALLY (will error):
 | 9a | Breaking: availability "all" | Removed value → error listing available/blocked/remaining | |
 | 9b | Breaking: availability "completed" | Removed value → same guidance as 9a | |
 | 9c | Breaking: boolean completed | `completed: true` → expects string shortcut or DateFilter | |
+| 10a | add_tasks: rejects hasNote | Derived read-only flag rejected via `extra="forbid"`; generic schema error; no pydantic internals | |
+| 10b | add_tasks: rejects isSequential | Derived read-only flag rejected; same shape as 10a; no pydantic internals | |
+| 10c | add_tasks: rejects dependsOnChildren | Derived read-only flag rejected; no pydantic internals | |
+| 10d | edit_tasks: rejects hasChildren | Edit-side representative — same `extra="forbid"` mechanism rejects derived fields; no pydantic internals | |
+| 11a | add_tasks: 51-item batch | Pydantic `max_length` rejects 51-item `add_tasks`; generic schema error; no pydantic internals | |
+| 11b | edit_tasks: 51-item batch | Pydantic `max_length` rejects 51-item `edit_tasks`; cross-tool consistency with 11a; no pydantic internals | |
+| 12a | list_tasks: parent array rejected | `parent: ["X", "Y"]` → schema error; `parent` is single-reference per PARENT-09; no pydantic internals | |
+| 12b | list_tasks: parent `$inbox` + inInbox:false contradiction | `parent: "$inbox", inInbox: false` → contradiction error, same rule as project-side (D-09 unified resolve_inbox); no pydantic internals | |

@@ -63,6 +63,7 @@ Carried forward from v1.4:
 11. Golden master re-capture required after Phase 42 mapper rewrites (human-only per GOLD-01)
 12. Submit OmniFocus Operator to MCP registries — Smithery, mcp.so, Anthropic server list (tooling) — gated on landing page refresh
 13. Track upstream Claude Code CLI fix for MCP progress-notification stdio teardown (issues #47378/#47765) — root-caused 2026-04-17; progress emission disabled via `PROGRESS_NOTIFICATIONS_ENABLED=False` pending upstream fix
+14. Clarify cross-item reference contract in batch tool descriptions — name-refs to same-batch items work (serial resolution), only ID-refs don't; rewrite `_BATCH_CROSS_ITEM_NOTE` (server)
 
 ### Roadmap Evolution
 

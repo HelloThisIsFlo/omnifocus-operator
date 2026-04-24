@@ -271,7 +271,7 @@ Run INDIVIDUALLY:
 #### Test 11a: Set rule + field edit in same call
 1. Edit T13-Combos: `repetitionRule: { frequency: { type: "daily" }, schedule: "regularly", basedOn: "due_date" }`, `flagged: true`, `dueDate: "2026-06-15T12:00:00Z"`
 2. `get_task` T13 to verify both rule and flagged
-3. PASS if: `repetitionRule` present AND `effectiveFlagged: true`
+3. PASS if: `repetitionRule` present AND `flagged: true` (direct value — `inheritedFlagged` is absent on this inbox task since no ancestor flags it)
 
 #### Test 11b: No-op repetition + name change
 1. Edit T13 with same rule: `repetitionRule: { frequency: { type: "daily" }, schedule: "regularly", basedOn: "due_date" }`, `name: "T13-CombosRenamed"`
