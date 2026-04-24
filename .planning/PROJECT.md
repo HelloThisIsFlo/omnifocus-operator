@@ -8,19 +8,9 @@ A Python MCP server that exposes OmniFocus (macOS task manager) as structured ta
 
 Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
 
-## Current Milestone: v1.4.1 Task Property Surface & Subtree Retrieval
+## Current State
 
-**Goal:** Expose OmniFocus task properties the server currently hides (auto-complete, parallel/sequential, presence of notes/repetition/attachments) and add a `parent` filter on `list_tasks` so agents can fetch a task's descendants in a single call. Strictly additive point release — same shape as v1.3.1/.2/.3; projects stay read-only (writes deferred to v1.5).
-
-**Target features:**
-- Writable `completesWithChildren: bool` and per-type `type` enum (`TaskType`: parallel/sequential; `ProjectType`: + singleActions) on tasks
-- Derived presence flags on task default response: `hasNote`, `hasRepetition`, `hasAttachments`, `isSequential` (tasks-only), `dependsOnChildren` (tasks-only) — all strip-when-false
-- Expanded `hierarchy` include group on tasks + projects: `hasChildren`, `type`, `completesWithChildren` (added to `NEVER_STRIP`)
-- `parent` filter on `list_tasks` — name/ID resolution, `$inbox` supported, filter unification at repo layer via `collect_subtree` helper, `ListTasksRepoQuery.parent_ids`
-- `OmniFocusPreferences` extended with `OFMCompleteWhenLastItemComplete` and `OFMTaskDefaultSequential` for create-defaults
-- New warnings: filtered-subtree (verbatim text locked), parent-resolves-to-project, parent+project combined
-
-**Key context:** Design locked 2026-04-19 after four-session interview + two pre-implementation spikes (SQLite cache coverage confirms all three read fields cache-backed; Python-filter benchmark confirms repo-layer unification viable at ≤1.30 ms p95 / 10K rows). No fields scoped out. Full spec: `.research/updated-spec/MILESTONE-v1.4.1.md`.
+v1.4.1 shipped 2026-04-24. Next milestone not yet scoped — use `/gsd-new-milestone` to start v1.5 (Project Writes).
 
 ## Requirements
 
@@ -123,10 +113,12 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 - ✓ Task presence flags — `hasNote`, `hasRepetition`, `hasAttachments`, `isSequential`, `dependsOnChildren` on default response, stripped-when-false — v1.4.1 Phase 56
 - ✓ Expanded `hierarchy` include group — `hasChildren`, `type`, `completesWithChildren` on tasks + projects with no-suppression invariant (default + hierarchy emit independently) — v1.4.1 Phase 56
 - ✓ `OmniFocusPreferences` extension — `OFMCompleteWhenLastItemComplete` / `OFMTaskDefaultSequential` via existing bridge-based lazy-load-once pattern — v1.4.1 Phase 56
+- ✓ `parent` filter on `list_tasks` — single-ref resolution, descendants at any depth, AND-composes with other filters, anchor preservation via repo-layer `pinned_task_ids` OR-clause, `$inbox` parity with `project` — v1.4.1 Phase 57
+- ✓ Filter unification — `project` and `parent` share `service/subtree.py::get_tasks_subtree` helper and `ListTasksRepoQuery.candidate_task_ids` primitive (retired `project_ids`); byte-identical results via either filter — v1.4.1 Phase 57
+- ✓ Six new domain-layer warnings — `FILTERED_SUBTREE_WARNING` (locked verbatim, value-aware for `availability`), `PARENT_PROJECT_COMBINED_WARNING`, `PARENT_RESOLVES_TO_PROJECT_WARNING`, `EMPTY_SCOPE_INTERSECTION_WARNING`, plus multi-match + inbox-substring reused — v1.4.1 Phase 57
 
 ### Active
 
-- [ ] Subtree retrieval — `parent` filter on `list_tasks` with `collect_subtree` helper, repo-layer filter unification (v1.4.1 Phase 57)
 - [ ] Project writes — add_projects, edit_projects (v1.5)
 - [ ] UI & Perspectives — show/get perspective, open_task, live UI reads (v1.6)
 - [ ] Production hardening — retry, crash recovery, serial execution (v1.7)
@@ -152,9 +144,9 @@ Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive
 
 ## Context
 
-Shipped v1.4 with ~12,438 LOC Python (src/), ~215k LOC JS (bridge + deps), ~28k TS (tests).
+Shipped v1.4.1 with ~13,500 LOC Python (src/), ~215k LOC JS (bridge + deps), ~28k TS (tests).
 Tech stack: Python 3.12, uv, Pydantic v2, FastMCP v3 (`fastmcp>=3.1.1`), pydantic-settings, OmniJS bridge, SQLite3 (stdlib).
-2,167 pytest tests, 26 Vitest tests, UAT passed on all phases.
+2,558 pytest tests, 26 Vitest tests, 97.52% coverage, UAT passed on all phases.
 Real OmniFocus database: ~2,400 tasks, ~363 projects, ~64 tags, ~79 folders.
 Read path: SQLite (default, ~46ms for full snapshot, <6ms for filtered queries). Write path: OmniJS bridge with write-through guarantee.
 11 MCP tools: get_all, get_task, get_project, get_tag, add_tasks, edit_tasks, list_tasks, list_projects, list_tags, list_folders, list_perspectives.
@@ -253,6 +245,15 @@ Known upstream issue: MCP progress-notification transport disconnect (Claude Cod
 | NoteAction mirrors TagAction exactly | Same file, same `model_validator`, same constant-family style. Exclusivity validator prevents append+replace in same call | ✓ Good — v1.4, consistent actions block pattern |
 | Batch result stripping via `strip_batch_results` | Separate helper from `strip_entity` — batch items are flat dicts not full entities; `status` always preserved | ✓ Good — v1.4, correct projection boundary, closed stripping asymmetry |
 | `\\n` separator in note append (not `\\n\\n`) | Minimal-useful-separator principle — agent can prepend own `\\n` for paragraph break; `\\n\\n` default couldn't be reduced. OmniFocus renders `\\n` as visible soft break | ✓ Good — v1.4, agent-controllable with sensible default |
+| Cache-backed task property surface — no per-row bridge fallback | `HybridRepository` reads new fields via `Task.completeWhenChildrenComplete`/`Task.sequential`/`ProjectInfo.containsSingletonActions` + batched `SELECT task FROM Attachment`; `BridgeOnlyRepository` uses inline `completedByChildren`/`sequential`/`attachments.length` during existing snapshot enumeration. Both paths amortized O(1) per row | ✓ Good — v1.4.1, cross-path equivalence preserved |
+| Write never relies on OmniFocus implicit defaulting | When agent omits `completesWithChildren`/`type` on `add_tasks`, server writes resolved preference value explicitly (factory default `true`/`"parallel"` when OF Setting store empty). Never "let OmniFocus pick" | ✓ Good — v1.4.1, deterministic create-time behavior |
+| `ProjectType.from_flags` as single source of truth | HIER-05 truth table (`(sequential, containsSingletonActions)` → parallel/sequential/singleActions with singleActions precedence) consolidated to classmethod on `ProjectType` enum; both repos and `DomainLogic.assemble_project_type` delegate. Avoids service → repo dependency inversion | ✓ Good — v1.4.1, eliminated 3-way drift risk (IN-01 fix during audit) |
+| `candidate_task_ids` as unified wire-level primitive | Retired `ListTasksRepoQuery.project_ids`; both `project` and `parent` filters route through a single `list[str] \| None` primitive on the repo query. Set-membership filter application at repo, scope expansion at service | ✓ Good — v1.4.1, single code path across both repos, no divergent subtree implementations |
+| Anchor preservation via repo-layer `pinned_task_ids` OR-clause (Option A) | Parent filter's resolved task is preserved unconditionally via disjoint repo primitive: `WHERE (id IN pinned_task_ids) OR (id IN candidate_task_ids AND <other predicates>)`. Chosen after G1 UAT gap exposed anchor loss under AND composition; service-layer alternatives rejected for breaking cross-path equivalence | ✓ Good — v1.4.1, honors `FILTERED_SUBTREE_WARNING` promise ("resolved parent tasks always included") |
+| `get_tasks_subtree` at service layer, set-membership at repo | Shared `get_tasks_subtree(ref_id, snapshot, accept_entity_types) -> set[str]` in `service/subtree.py`; repos consume resolved ID set. Python-filter benchmark p95 ≤ 1.30 ms @ 10K rows (77× under viable threshold) validated repo-layer simplicity | ✓ Good — v1.4.1, scope logic lives where domain knowledge is, primitives stay dumb |
+| `OmniFocusPreferences` lazy-load-once pattern extension | Two new keys (`OFMCompleteWhenLastItemComplete`, `OFMTaskDefaultSequential`) slot into existing bridge-based pattern; absence-as-factory-default semantic (missing key OR null value resolves to OF factory default); no plistlib in service layer | ✓ Good — v1.4.1, architectural consistency with v1.3.2 preferences module |
+| `extra="forbid"` rejects all 6 derived read-only flags on write tools | `hasNote`, `hasRepetition`, `hasAttachments`, `hasChildren`, `dependsOnChildren`, `isSequential` blocked via generic Pydantic schema error. No custom educational messaging — JSON Schema tells agents which fields are writable | ✓ Good — v1.4.1, minimal surface, zero new error-string maintenance |
+| No-suppression invariant (default + hierarchy pipelines independent) | When `hierarchy` is requested, `hasChildren`, `type`, `completesWithChildren` emit per strip rules even when a default-response derived flag (`dependsOnChildren`, `isSequential`) already conveys overlapping signal. Redundant emission is intentional — low-cost redundancy, high-value predictability | ✓ Good — v1.4.1, proven by contract test, agents never have to reason about include-group precedence |
 
 ---
 ## Evolution
@@ -273,4 +274,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-19 — Phase 56 (Task Property Surface) complete. Read + write surfaces shipped end-to-end for `completesWithChildren`, per-type `type`, presence flags, expanded `hierarchy` include group, no-suppression invariant, `OmniFocusPreferences` extension. 2 gaps logged in `56-HUMAN-UAT.md` for follow-up: (G1) hoist `isSequential` to projects + ActionableEntity, (G2) golden master via canonical `uat/capture_golden_master.py` pattern instead of 56-07's InMemoryBridge baseline. Phase 57 (Subtree retrieval) is next in this milestone.*
+*Last updated: 2026-04-24 — v1.4.1 milestone shipped. Task Property Surface + Subtree Retrieval complete (Phases 56 + 57, 14 plans, 55/55 requirements satisfied, 2,558 tests @ 97.52% coverage). Next milestone v1.5 (Project Writes) not yet scoped — use `/gsd-new-milestone` to start.*

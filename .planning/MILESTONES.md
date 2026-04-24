@@ -1,5 +1,32 @@
 # Milestones
 
+## v1.4.1 Task Property Surface & Subtree Retrieval (Shipped: 2026-04-24)
+
+**Phases completed:** 2 phases (56, 57), 14 plans (9 on Phase 56 including 2 gap-closure; 5 on Phase 57 including 2 gap-closure)
+**Requirements:** 55/55 satisfied (51 original + 3 added during Phase 57 UAT gap-closure: UNIFY-07, UNIFY-08, WARN-06; + 1 added during milestone audit: GOLD-01)
+**Tests:** 2,558 pytest at milestone completion (up from 2,167) | 97.52% coverage
+**Timeline:** 7 days (2026-04-17 → 2026-04-24) | 167 commits
+**LOC delta:** +9,869 / -334 across 68 Python + JS files
+**Git range:** v1.4..v1.4.1
+
+**Key accomplishments:**
+
+1. **Task property surface** — writable `completesWithChildren: bool` and per-type `type` (`TaskType = "parallel" | "sequential"`) on tasks with `Patch[bool]` / `Patch[TaskType]` semantics; create-defaults resolved from `OmniFocusPreferences` (new keys: `OFMCompleteWhenLastItemComplete`, `OFMTaskDefaultSequential`); project writes rejected at tool surface (deferred to v1.5)
+2. **Presence flags on default response** — tasks emit `hasNote`, `hasRepetition`, `hasAttachments`, `isSequential`, `dependsOnChildren`; projects emit `hasNote`, `hasRepetition`, `hasAttachments`, `isSequential` (all strip-when-false); `isSequential` hoisted to `ActionableEntity` so projects surface the same semantic (56-08 gap closure)
+3. **Expanded `hierarchy` include group** — `hasChildren`, `type`, `completesWithChildren` on tasks + projects with no-suppression invariant (default + hierarchy emit independently); `completesWithChildren` added to `NEVER_STRIP`, `availability` removed as dead defensive entry
+4. **`parent` filter on `list_tasks`** — single-ref resolution via three-step resolver (`$` prefix → exact ID → name substring), descendants at any depth, AND-composes with other filters, anchor preservation via repo-layer `pinned_task_ids` OR-clause (Option A), full `$inbox` / contradiction-rule parity with `project`
+5. **Filter unification** — `project` and `parent` share one service helper (`service/subtree.py::get_tasks_subtree`) and one repo primitive (`ListTasksRepoQuery.candidate_task_ids`, renamed from `task_id_scope` in 57-04); byte-identical results when same entity resolved via either filter (cross-filter equivalence contract test)
+6. **Six new warnings** — `FILTERED_SUBTREE_WARNING` (locked verbatim), `PARENT_PROJECT_COMBINED_WARNING`, `PARENT_RESOLVES_TO_PROJECT_WARNING`, `EMPTY_SCOPE_INTERSECTION_WARNING`, plus multi-match + inbox-substring via shared infrastructure; all warnings live in domain layer
+7. **Gap closure (4 UAT-discovered gaps)** — G1 anchor preservation under AND composition (57-04), G2 empty-scope cross-path divergence (57-04 service short-circuit), G3 no-match resolver fallback unbundled from Phase 35.2 D-02e (57-04), G4 value-aware `availability` under-alerting in `FILTERED_SUBTREE_WARNING` (57-05)
+
+**Delivered:** Agents can read + write the new task property surface end-to-end (cache-backed, no per-row bridge fallback), get a task's descendant subtree in a single `list_tasks(parent=...)` call, and combine `parent` with any other filter with full warning coverage for edge cases.
+
+**Tech debt at close:** Minor — WR-01 duplicate preference-warning drain in `AddTaskResult` on bridge-failure path accepted as-is (cosmetic, bridge-failure-only). Two code-level items (IN-01 HIER-05 truth-table triplication, IN-03 adapter property-surface duplication) resolved during the milestone audit itself.
+
+**Known deferred items at close:** 18 (1 false-positive UAT gap, 7 completed quick tasks awaiting archival, 5 todos carried forward to v1.7, 5 dormant seeds planted for v1.5/v1.6/v1.7 + landing-page milestone — see STATE.md Deferred Items)
+
+---
+
 ## v1.4 Response Shaping & Batch Processing (Shipped: 2026-04-17)
 
 **Phases completed:** 4 phases (53, 53.1, 54, 55), 15 plans

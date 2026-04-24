@@ -517,6 +517,57 @@
 
 ---
 
+## Milestone: v1.4.1 — Task Property Surface & Subtree Retrieval
+
+**Shipped:** 2026-04-24
+**Phases:** 2 (56, 57) | **Plans:** 14 (9 + 5, 4 of which gap-closure)
+
+### What Was Built
+
+- Writable `completesWithChildren` + per-type `type` on tasks with `Patch[bool]`/`Patch[TaskType]` semantics; explicit create-default resolution from `OmniFocusPreferences` (never relies on OF implicit defaulting)
+- Presence flags on default response: `hasNote`, `hasRepetition`, `hasAttachments`, `isSequential` (tasks + projects after 56-08 hoist), `dependsOnChildren` (tasks-only)
+- Expanded `hierarchy` include group (`hasChildren`, `type`, `completesWithChildren`) with no-suppression invariant — default + hierarchy pipelines emit independently
+- `parent` filter on `list_tasks` with single-ref resolution, descendants at any depth, anchor preservation via repo-layer `pinned_task_ids` OR-clause, full `$inbox` parity with `project`
+- Filter unification: `service/subtree.py::get_tasks_subtree` shared helper + `ListTasksRepoQuery.candidate_task_ids` unified primitive (retired `project_ids`); cross-filter equivalence proven via contract test
+- Six new domain-layer warnings: `FILTERED_SUBTREE_WARNING` (locked verbatim, value-aware for `availability`), `PARENT_PROJECT_COMBINED_WARNING`, `PARENT_RESOLVES_TO_PROJECT_WARNING`, `EMPTY_SCOPE_INTERSECTION_WARNING`, plus multi-match + inbox-substring reused
+
+### What Worked
+
+- **Design locked before execution** — 4-session interview + 2 pre-implementation spikes produced a spec so concrete that Phase 56 shipped 7 plans in 1 day without mid-phase redesign. SQLite cache coverage spike confirmed all three read fields cache-backed; filter benchmark spike confirmed repo-layer unification viable at ≤1.30 ms p95 / 10K rows. The spikes paid for themselves within the first phase.
+- **`HIER-05` precedence locked at the service layer early** — putting `ProjectType` assembly at service layer (from `(sequential, containsSingletonActions)` tuple with `singleActions` precedence) meant neither repo had to encode the truth table. Milestone audit later found the truth table *had* been open-coded in 3 places anyway (IN-01); consolidation to `ProjectType.from_flags` fixed it in one shot.
+- **No-suppression invariant as explicit design constraint** — calling out the "default + hierarchy pipelines emit independently" rule in the spec (not just as a test) prevented the reflex to de-duplicate. Redundant emission looked wrong until the contract test made it load-bearing.
+- **Repo-layer `pinned_task_ids` OR-clause (Option A) for anchor preservation** — the obvious first fix was a service-layer bypass, but G1 UAT showed it broke cross-path equivalence. Stepping back to disjoint repo primitives (`candidate_task_ids` AND-composed, `pinned_task_ids` unconditionally OR'd) honored the warning text's promise without special-casing.
+
+### What Was Inefficient
+
+- **4 of 14 plans were gap-closure** — 56-08, 56-09, 57-04, 57-05 all added during execution to close UAT-discovered gaps (29% of the plans). This is unusually high for a locked-spec milestone. Three patterns drove it:
+  - 56-07's golden-master approach used InMemoryBridge as baseline instead of the canonical `uat/capture_golden_master.py` pattern — required a full redo (56-09). Lesson: golden-master = canonical pattern, no "reasonable alternatives"; the pattern itself *is* the requirement.
+  - `isSequential` originally tasks-only on `Task` model. UAT revealed projects have the same semantic — hoist to `ActionableEntity` (56-08) was obvious in hindsight. Lesson: "field lives on entity X" needs a sanity check against entity Y before locking.
+  - G1 anchor preservation + G2 empty-scope divergence + G3 no-match fallback all surfaced from *live repro* against real OF database, not from contract tests. Lesson: cross-path equivalence tests don't catch semantic gaps; live-database probes catch them fast.
+- **Mid-phase rename of `task_id_scope` → `candidate_task_ids`** — shipped in 57-04 along with 3 other gap fixes. Renaming load-bearing identifiers mid-phase is expensive; would have been cheaper if `candidate_task_ids` had been the original name. Lesson: when naming a new primitive, ask "what would I call this if I were reading it cold?" — `task_id_scope` was abstract, `candidate_task_ids` communicates the repo-level semantic (filterable candidates).
+- **Empty-result warning surface rebuilt twice post-phase** — shipped parameterized (j63) then simplified to static (kd0) within 2 hours after live probe surfaced `limit`/`offset`/`include`/`only` misclassification. Parameterized approach looked more general but had a field-classification surface that couldn't hold up. Lesson: when a warning tries to enumerate *what caused it*, check every caller path; static "this happened" nudges are often stronger than dynamic "this caused it" ones.
+
+### Patterns Established
+
+- **Design-locked phases merge linear dependencies** — Flo's feedback memory already has this pattern (`feedback_locked-spec-merge-phases.md`); v1.4.1 validated it. Originally spec had Phases 56-58-59; collapsed to 56+57 after the spikes proved the dependency chain linear. Rule: after multi-session interview + spikes, phase ceremony becomes friction — merge linearly-dependent phases.
+- **Gap-closure as plan-level decimals (not decimal phases)** — 56-08, 56-09, 57-04, 57-05 added as plans within existing phases rather than inserted phases (56.1, 57.1). Works when the gap is scoped tight enough to be one plan; keeps the phase boundary meaningful.
+- **Value-aware predicates for default-value warnings** — `FILTERED_SUBTREE_WARNING` was `is_set`-based initially, but `availability=['remaining']` (default value) technically counted as "set." G4 closure introduced `is_non_default` as a service-layer predicate: distinguishes "agent explicitly passed the default" from "agent passed a non-default value." Reusable pattern for any warning that fires on filter presence.
+- **`ProjectType.from_flags` delegation pattern** — when a domain rule needs to be invoked from multiple layers (repos + service), encode it on the enum itself as a classmethod. Avoids service→repo dependency inversion and keeps the truth table in one place.
+
+### Key Lessons
+
+- **Golden-master pattern is not negotiable** — "reasonable alternative" golden-master approaches (like 56-07's InMemoryBridge baseline) produce the *shape* of golden-master without the *substance*. If the pattern says "capture RealBridge with `uat/capture_golden_master.py` and commit fixtures," any deviation breaks GOLD-01. Keep the pattern strict.
+- **Live-database probes catch what contract tests miss** — G1/G2/G3 were all semantic gaps that cross-path equivalence tests passed through. The cheap version is a few `list_tasks(project=X, parent=Y)` probes against real data during UAT. Worth building into the human-UAT checklist.
+- **Anchor/scope separation is a repo-level concept** — Option A (disjoint repo primitives `candidate_task_ids` + `pinned_task_ids`) was correct because it kept the anchor concept at the repo layer where filter composition happens. Service-layer bypasses would have forked the code path. When a rule says "always include X regardless of other predicates," encode it as a disjoint OR-primitive.
+- **Naming a new primitive happens before it ships, not mid-phase** — `task_id_scope` → `candidate_task_ids` rename was a load-bearing identifier change. If the first reviewer would ask "what's the semantic?", the name is wrong.
+
+### Cost Observations
+
+- Sessions: ~10 (interview: 4, spikes: 2, implementation: 4)
+- Notable: Interview + spikes = 6 sessions = ~60% of milestone. Execution was fast because of it. This ratio is probably the sweet spot for design-heavy point releases where the API shape matters more than the code.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -534,6 +585,7 @@
 | v1.3.2 | 6 | 23 | Deep-dive driven milestone -- 3→6 phases from research, naive-local contract, OmniFocus settings API |
 | v1.3.3 | 2 | 4 | Smallest milestone -- 1-day execution, CTE infrastructure enabled move fix, UAT-driven requirement revision |
 | v1.4 | 4 (+1 inserted) | 15 | Response shaping milestone -- decimal insertion (53.1) for true inheritance, audit closed 32 stale checkboxes + batch stripping gap |
+| v1.4.1 | 2 | 14 (4 gap-closure) | Design-locked point release — 4-session interview + 2 spikes, 29% gap-closure rate from live-DB UAT probes, `candidate_task_ids` unification |
 
 ### Cumulative Quality
 
@@ -550,6 +602,7 @@
 | v1.3.2 | 1,977 (1,951 pytest + 26 vitest) | ~94% | 1 (pre-existing TODO(v1.5) in descriptions.py) |
 | v1.3.3 | 2,067 (2,041 pytest + 26 vitest) | ~94% | 2 (pre-existing TODO(v1.5), no direct repo tests for get_edge_child_id) |
 | v1.4 | 2,193 (2,167 pytest + 26 vitest) | ~97% | 2 (pre-existing Phase 30 TODO in handlers.py; MCP progress-notification upstream regression #47378) |
+| v1.4.1 | 2,584 (2,558 pytest + 26 vitest) | 97.52% | 1 (WR-01 duplicate preference-warning drain accepted as cosmetic; bridge-failure-only path) |
 
 ### Top Lessons (Verified Across Milestones)
 

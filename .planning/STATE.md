@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.4.1
 milestone_name: Task Property Surface & Subtree Retrieval
-status: executing
-stopped_at: Phase 57 context captured — D1+2a full unification locked, ready for /gsd-plan-phase 57
-last_updated: "2026-04-20T20:58:24.785Z"
-last_activity: 2026-04-20 -- Phase 57 execution started
+status: complete
+stopped_at: Milestone v1.4.1 complete; ready for /gsd-new-milestone to start v1.5
+last_updated: "2026-04-24T00:00:00.000Z"
+last_activity: 2026-04-24 -- Milestone v1.4.1 archived
 progress:
   total_phases: 2
-  completed_phases: 1
-  total_plans: 12
-  completed_plans: 9
-  percent: 75
+  completed_phases: 2
+  total_plans: 14
+  completed_plans: 14
+  percent: 100
 ---
 
 # Project State
@@ -84,7 +84,34 @@ _(cleared — v1.4 insertions archived to milestones/v1.4-ROADMAP.md)_
 
 ## Session Continuity
 
-Last activity: 2026-04-24 — Completed quick task 260424-kd0: collapsed the parameterized `EMPTY_RESULT_WARNING_{SINGLE,MULTI}` surface (shipped 2h earlier in j63) to a single static `EMPTY_RESULT_WARNING`. Live-probe surfaced `limit`/`offset`/`include`/`only` being misclassified as filters in the parameterized warning — static nudge eliminates the field-classification surface by construction. Deleted `_active_filter_names` helper + `is_non_default` iteration at the warning call site (predicate stays live for subtree pruning in domain.py). Collapsed 9-case test matrix to 3 (composition, non-empty, DYM). Updated 4 collateral assertions outside the main matrix. Net -189 LOC. 328 passed in affected test files; full suite untouched elsewhere. j63 SUMMARY annotated SUPERSEDED.
-Stopped at: Phase 57 context captured — D1+2a full unification locked, ready for /gsd-plan-phase 57
+Last activity: 2026-04-24 — Milestone v1.4.1 closed. Archive files written, git tag pending user approval for push.
+Stopped at: Milestone v1.4.1 complete; ready for /gsd-new-milestone to start v1.5.
 
-**Planned Phase:** 57 (Parent Filter & Filter Unification) — 3 plans — 2026-04-20T20:57:25.723Z
+## Deferred Items
+
+Items acknowledged and deferred at milestone v1.4.1 close on 2026-04-24:
+
+| Category | Item | Status |
+|----------|------|--------|
+| uat_gap | 57-UAT.md (0 open scenarios — false positive) | resolved |
+| quick_task | 260328-sh9-fix-bysetpos-repetition-rule-parsing-bug | missing |
+| quick_task | 260411-fv2-make-date-filter-before-after-bounds-inc | missing |
+| quick_task | 260411-h2p-add-date-filters-to-list-projects | missing |
+| quick_task | 260411-uf3-surface-preferences-warnings-to-agent-re | missing |
+| quick_task | 260417-oiw-strip-batch-result-items-in-add-tasks-an | missing |
+| quick_task | 260424-j63-unify-empty-result-warning-surface | missing |
+| quick_task | 260424-kd0-simplify-empty-result-warning-to-single- | missing |
+| todo | 2026-03-06-add-retry-logic-for-omnifocus-bridge-timeouts.md | pending (low / bridge) |
+| todo | 2026-03-08-enforce-mutually-exclusive-tags-at-service-layer.md | pending (low / service) |
+| todo | 2026-03-08-investigate-and-enforce-serial-execution-guarantee-for-bridge-calls.md | pending (medium / bridge) |
+| todo | 2026-03-08-return-full-task-object-in-edit-tasks-response.md | pending (low / service) |
+| todo | 2026-03-30-reorganize-test-suite-into-unit-integration-golden-master-folders.md | pending (testing) |
+| seed | SEED-001-dropped-repeating-warning-accuracy | dormant |
+| seed | SEED-003-bridge-protocol-review-for-direct-calls | dormant |
+| seed | SEED-004-adapter-silent-noop-violates-fail-fast | dormant |
+| seed | SEED-005-cli-adapter-and-marketing-reframe | dormant |
+| seed | SEED-006-marketing-landing-page-milestone | dormant |
+
+Notes:
+- Quick-task "missing" status = completion marker absent in GSD tracking schema; all 7 directories exist with real commit SHAs. Carry-over from earlier milestones that didn't archive their quick-task folders.
+- Todos + seeds are deliberately carried forward (todos → v1.7; seeds → v1.5/v1.6/v1.7 + landing-page milestone).
