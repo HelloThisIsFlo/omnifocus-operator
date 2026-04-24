@@ -29,6 +29,7 @@ from omnifocus_operator.contracts.protocols import Repository
 from omnifocus_operator.contracts.use_cases.add.tasks import AddTaskRepoResult
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskRepoResult
 from omnifocus_operator.contracts.use_cases.list.common import ListRepoResult
+from omnifocus_operator.models.enums import ProjectType
 from omnifocus_operator.repository.bridge_write_mixin import BridgeWriteMixin
 from omnifocus_operator.repository.hybrid.query_builder import (
     TASK_ORDER_CTE,
@@ -471,12 +472,10 @@ def _map_project_row(
     precedence over ``sequential``.
     """
     task_id = row["persistentIdentifier"]
-    if row["containsSingletonActions"]:
-        project_type = "singleActions"
-    elif row["sequential"]:
-        project_type = "sequential"
-    else:
-        project_type = "parallel"
+    project_type = ProjectType.from_flags(
+        sequential=bool(row["sequential"]),
+        contains_singleton_actions=bool(row["containsSingletonActions"]),
+    )
     return {
         "id": task_id,
         "name": row["name"],

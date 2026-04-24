@@ -145,3 +145,22 @@ class ProjectType(StrEnum):
     PARALLEL = "parallel"
     SEQUENTIAL = "sequential"
     SINGLE_ACTIONS = "singleActions"
+
+    @classmethod
+    def from_flags(
+        cls,
+        *,
+        sequential: bool,
+        contains_singleton_actions: bool,
+    ) -> "ProjectType":
+        """Resolve the HIER-05 truth table: ``singleActions`` beats ``sequential``.
+
+        Single source of truth for the ``(sequential, containsSingletonActions)``
+        → ProjectType mapping. Used by both repository adapters (HybridRepository
+        SQL path, BridgeOnlyRepository Python path) and the service domain layer.
+        """
+        if contains_singleton_actions:
+            return cls.SINGLE_ACTIONS
+        if sequential:
+            return cls.SEQUENTIAL
+        return cls.PARALLEL

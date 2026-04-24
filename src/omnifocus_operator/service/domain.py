@@ -413,24 +413,16 @@ class DomainLogic:
     ) -> ProjectType:
         """HIER-05 precedence: ``singleActions`` beats ``sequential``.
 
-        Truth table:
-        - (True,  True)  -> SINGLE_ACTIONS (precedence)
-        - (False, True)  -> SINGLE_ACTIONS
-        - (True,  False) -> SEQUENTIAL
-        - (False, False) -> PARALLEL
-
-        Kept at the domain layer even though Phase 56-02 currently computes
-        ``ProjectType`` at the repository layer for cross-path self-check
-        ergonomics. The domain copy is the lock on HIER-05 precedence and
-        is reused by tests; if the repository computation is relocated to
-        the service layer in a later plan, this is the single source of
-        truth it should call.
+        Delegates to ``ProjectType.from_flags`` — the single source of truth
+        shared with both repository adapters (HybridRepository SQL path and
+        BridgeOnlyRepository Python path). Kept as a domain-layer method so
+        callers can reach the rule through ``DomainLogic`` alongside other
+        domain operations.
         """
-        if contains_singleton_actions:
-            return ProjectType.SINGLE_ACTIONS
-        if sequential:
-            return ProjectType.SEQUENTIAL
-        return ProjectType.PARALLEL
+        return ProjectType.from_flags(
+            sequential=sequential,
+            contains_singleton_actions=contains_singleton_actions,
+        )
 
     # -- Date filter resolution ------------------------------------------------
 

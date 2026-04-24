@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Any
 
 from omnifocus_operator.config import SYSTEM_LOCATIONS
+from omnifocus_operator.models.enums import ProjectType
 from omnifocus_operator.repository.rrule import derive_schedule, parse_end_condition, parse_rrule
 
 # ---------------------------------------------------------------------------
@@ -252,14 +253,10 @@ def _adapt_project_property_surface(raw: dict[str, Any]) -> None:
     ``containsSingletonActions`` takes precedence over ``sequential``.
     """
     _adapt_common_entity_property_surface(raw)
-    is_sequential = bool(raw.pop("sequential", False))
-    is_single = bool(raw.pop("containsSingletonActions", False))
-    if is_single:
-        raw["type"] = "singleActions"
-    elif is_sequential:
-        raw["type"] = "sequential"
-    else:
-        raw["type"] = "parallel"
+    raw["type"] = ProjectType.from_flags(
+        sequential=bool(raw.pop("sequential", False)),
+        contains_singleton_actions=bool(raw.pop("containsSingletonActions", False)),
+    )
 
 
 def _adapt_task(raw: dict[str, Any]) -> None:
