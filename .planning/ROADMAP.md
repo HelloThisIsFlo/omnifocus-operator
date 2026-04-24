@@ -61,7 +61,7 @@ Plans:
 
 ### Phase 57: Parent Filter & Filter Unification
 
-**Goal**: Agents can fetch a task's full descendant subtree through `list_tasks` with a single call using the new `parent` filter — sharing one service-layer `get_tasks_subtree` helper and one repo-layer `task_id_scope` primitive with the existing `project` filter, with the full warning surface guiding correct usage.
+**Goal**: Agents can fetch a task's full descendant subtree through `list_tasks` with a single call using the new `parent` filter — sharing one service-layer `get_tasks_subtree` helper and one repo-layer `candidate_task_ids` primitive with the existing `project` filter, with the full warning surface guiding correct usage.
 
 **Depends on**: Phase 56 (stable cache read path for the children structure)
 
@@ -71,26 +71,26 @@ Plans:
 
   1. `list_tasks` accepts a single `parent` reference (name substring or ID) resolved via the standard three-step resolver (`$` prefix → exact ID → name substring); array references rejected at validation time; `parent: "$inbox"` is accepted and produces the identical result set to `project: "$inbox"` with the same contradiction rules (e.g., `parent: "$inbox"` + `inInbox=false` → error)
   2. The `parent` filter returns all descendants of the resolved reference at any depth, AND-composes with every other filter (project, tags, dates, etc.) with no special precedence, preserves outline order, and paginates via the existing limit + cursor mechanism; resolved task is included as anchor; resolved project produces no anchor (projects are not rows in `list_tasks`)
-  3. `project` and `parent` filters share one service-layer mechanism — `get_tasks_subtree(ref_id, snapshot, accept_entity_types) -> set[str]` shared helper in `service/subtree.py` used by both `_resolve_project()` and `_resolve_parent()` pipeline steps, `ListTasksRepoQuery.task_id_scope: list[str] | None` as the unified wire-level primitive (retiring the old `project_ids` field), conditional anchor injection inside `get_tasks_subtree` branching on the resolved entity's type; same entity resolved via either filter produces byte-identical results (proven by cross-filter equivalence contract test)
+  3. `project` and `parent` filters share one service-layer mechanism — `get_tasks_subtree(ref_id, snapshot, accept_entity_types) -> set[str]` shared helper in `service/subtree.py` used by both `_resolve_project()` and `_resolve_parent()` pipeline steps, `ListTasksRepoQuery.candidate_task_ids: list[str] | None` as the unified wire-level primitive (retiring the old `project_ids` field; renamed from `task_id_scope` in 57-04), conditional anchor injection inside `get_tasks_subtree` branching on the resolved entity's type; same entity resolved via either filter produces byte-identical results (proven by cross-filter equivalence contract test)
   4. Scope-expansion logic lives at the service layer; primitive set-membership filter application stays at the repo (Python-filter benchmark locked p95 ≤ 1.30 ms at 10K — 77× under the viable threshold); HybridRepository uses indexed `WHERE t.persistentIdentifier IN (?, ?, ...)`; BridgeOnlyRepository uses `items = [t for t in items if t.id in scope_set]`; single code path across both repos (no divergent subtree implementations)
   5. Five warnings surface correctly: new filtered-subtree warning (locked verbatim text) fires when `project` or `parent` is combined with any other dimensional filter; new `parent` + `project` combined warning fires when both are specified; new parent-resolves-to-project warning fires when all matches are projects; existing multi-match and inbox-name-substring warnings trigger on `parent` resolution via the same infrastructure used by other substring-resolving filters; all warnings live in the domain layer (filter-semantics advice), not projection
 
-**Plans:** 3 plans
+**Plans:** 5 plans (3 original + 2 gap-closure)
 
 Plans:
 
 - [x] 57-01-PLAN.md — Unify repo primitive: ship `service/subtree.py::get_tasks_subtree`, retire `ListTasksRepoQuery.project_ids`, add `task_id_scope`, rewrite both repos to set-membership on task PKs, rewrite `_resolve_project` through `get_tasks_subtree`, migrate all existing `project_ids` tests [UNIFY-01, UNIFY-03, UNIFY-04, UNIFY-05, UNIFY-06, PARENT-03, PARENT-04]
 - [x] 57-02-PLAN.md — Parent filter surface: `ListTasksQuery.parent: Patch[str]`, `PARENT_FILTER_DESC`, 3-arg `resolve_inbox(in_inbox, project, parent)`, `_resolve_parent` + `_check_inbox_parent_warning` pipeline steps, `PARENT_RESOLVES_TO_PROJECT_WARNING`, scope-set intersection in `_build_repo_query`, cross-filter equivalence contract test (UNIFY-02 / D-15) [PARENT-01, PARENT-02, PARENT-05, PARENT-06, PARENT-07, PARENT-08, PARENT-09, UNIFY-02, WARN-02, WARN-05]
 - [x] 57-03-PLAN.md — Pipeline-level warnings: `FILTERED_SUBTREE_WARNING` (verbatim locked text) via `DomainLogic.check_filtered_subtree`; `PARENT_PROJECT_COMBINED_WARNING` via `DomainLogic.check_parent_project_combined`; both emitted from `_ListTasksPipeline.execute` after all resolutions (WARN-04 domain-layer placement) [WARN-01, WARN-03, WARN-04]
-- [ ] 57-04-PLAN.md — Gap closure (G1 + G2 + G3): empty-scope short-circuit + no-match resolver flip (did-you-mean preserved, "skipped" wording dropped) + parent-anchor preservation via new `pinned_task_ids` primitive (Option A: repo-layer OR-with-pinned); rename `task_id_scope` → `candidate_task_ids`. Supersedes Phase 35.2 D-02e. [PARENT-04, PARENT-05, UNIFY-02, WARN-01, WARN-05]
-- [ ] 57-05-PLAN.md — Gap closure (G4): value-aware `is_non_default` helper + `availability` added to `_SUBTREE_PRUNING_FIELDS` + `check_filtered_subtree` switches to value-aware predicate for the pruning iteration (scope check keeps `is_set`). [WARN-01]
+- [x] 57-04-PLAN.md — Gap closure (G1 + G2 + G3): empty-scope short-circuit + no-match resolver flip (did-you-mean preserved, "skipped" wording dropped) + parent-anchor preservation via new `pinned_task_ids` primitive (Option A: repo-layer OR-with-pinned); rename `task_id_scope` → `candidate_task_ids`. Supersedes Phase 35.2 D-02e. [PARENT-04, PARENT-05, UNIFY-02, WARN-01, WARN-05]
+- [x] 57-05-PLAN.md — Gap closure (G4): value-aware `is_non_default` helper + `availability` added to `_SUBTREE_PRUNING_FIELDS` + `check_filtered_subtree` switches to value-aware predicate for the pruning iteration (scope check keeps `is_set`). [WARN-01]
 
 **Plan waves:** Plan 01 → 02 → 03 sequential (Wave 1→2→3) because each depends on the previous one's pipeline state. Gap-closure plans 57-04 and 57-05 run in parallel (Wave 4) — they modify disjoint file sets: 57-04 touches `service/service.py` + repos + `contracts/use_cases/list/tasks.py`; 57-05 touches `service/domain.py` + `contracts/base.py`. Both are `autonomous: true`.
 
 **Gaps closed (from Phase 57 UAT)**:
 
 1. **G1** — Anchor preservation under AND composition (closed by 57-04 via Option A: repo-layer OR-with-`pinned_task_ids`; existing xfail test promoted to pass)
-2. **G2** — Empty `task_id_scope` cross-path divergence (closed by 57-04 via service-layer short-circuit; both repos never see empty scope)
+2. **G2** — Empty `candidate_task_ids` cross-path divergence (closed by 57-04 via service-layer short-circuit; both repos never see empty scope)
 3. **G3** — No-match resolver fallback (closed by 57-04; Phase 35.2 D-02e's bundled "skip filter + return all" fallback unbundled — did-you-mean stays, permissive fallback removed; applies to project, parent, tags uniformly)
 4. **G4** — Non-default `availability` under-alerting (closed by 57-05 via value-aware `is_non_default` predicate)
 
@@ -99,4 +99,4 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 56. Task Property Surface | v1.4.1 | 9/9 | Complete    | 2026-04-20 |
-| 57. Parent Filter & Filter Unification | v1.4.1 | 3/3 (+ 0/2 gap-closure) | UAT complete — gap-closure plans 57-04 / 57-05 planned | — |
+| 57. Parent Filter & Filter Unification | v1.4.1 | 5/5 (3/3 + 2/2 gap-closure) | Complete    | 2026-04-24 |

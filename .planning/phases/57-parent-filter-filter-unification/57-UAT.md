@@ -1,9 +1,10 @@
 ---
-status: complete
+status: resolved
 phase: 57-parent-filter-filter-unification
 source: [57-01-SUMMARY.md, 57-02-SUMMARY.md, 57-03-SUMMARY.md]
 started: 2026-04-23T12:00:00Z
-updated: 2026-04-23T16:00:00Z
+updated: 2026-04-24T01:05:00Z
+gaps_resolved_by: [57-04, 57-05]
 ---
 
 ## Current Test
@@ -181,7 +182,7 @@ blocked: 0
 ## Gaps
 
 - truth: "FILTERED_SUBTREE_WARNING guarantees 'resolved parent tasks are always included' — anchor must survive AND-composition with subtree-pruning filters"
-  status: failed
+  status: resolved
   reason: "live repro: list_tasks(parent='Build and Ship OmniFocus', flagged=true) returned 1 item (the flagged leaf); anchor absent despite warning text's promise"
   severity: major
   test: 6
@@ -203,7 +204,7 @@ blocked: 0
   fix_phase: TBD (not in phase 57 scope; design decision for a follow-up)
 
 - truth: "Empty task_id_scope must produce empty result (0 items), not silently fall back to returning all remaining tasks"
-  status: failed
+  status: resolved
   reason: "live repro: list_tasks(project='Migrate to Omnifocus', parent='Build and Ship OmniFocus') — two known entities with disjoint scope sets — returned 1624 items (entire remaining task set) instead of 0; WARN-03 fired but the result was catastrophically wrong. Second probe adding flagged=true returned 3 unrelated flagged items from across the database, proving both scope filters were skipped."
   severity: major
   test: 10
@@ -231,7 +232,7 @@ blocked: 0
   related: G3 (unified no-match = empty semantic) — same short-circuit mechanism may serve both gaps.
 
 - truth: "Name-resolver filters (project, parent, tags) that fail to resolve to any entity must return empty result + 'did you mean?' warning; skip-filter-and-return-all fallback must be removed"
-  status: failed
+  status: resolved
   reason: "Current behavior (locked by tests test_unresolved_project_skips_filter_with_warning at line 130 and test_list_tasks_parent_filter_no_match at line 1868): when an entity-resolver filter can't find a match, the filter is silently dropped and all tasks are returned with a 'filter skipped' warning. This conflates 'unknown entity' with 'no filter specified' and produces agent-confusing result sizes. Flo intends the UX to be: no match → 0 results + pedagogical 'did you mean?' hint."
   severity: major
   test: 10
@@ -271,7 +272,7 @@ blocked: 0
   related: G2 (empty task_id_scope from intersection or empty scope) — shares the fix mechanism; this gap additionally requires flipping the resolver's empty-match return value and rewording the warning.
 
 - truth: "Non-default `availability` filter (e.g. `['available']`, `['blocked']`) must fire FILTERED_SUBTREE_WARNING when combined with scope; it genuinely prunes the subtree by excluding task-lifecycle states from the 'remaining' bucket"
-  status: failed
+  status: resolved
   reason: "Current behavior: `list_tasks(project=X, availability=['available'])` narrows the result by excluding blocked tasks, but WARN-01 does not fire. The D-13 exclusion was designed to avoid spamming the warning on the default value (`['remaining']`), but the same exclusion also silences the non-default (actually-pruning) case. Result: agents combining scope + narrowed availability get no pedagogical hint that they may be missing intermediate parents."
   severity: minor
   test: 10
