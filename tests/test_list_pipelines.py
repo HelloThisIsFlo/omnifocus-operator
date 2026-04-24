@@ -2764,23 +2764,54 @@ class TestListTasksFilteredSubtreeWarning:
         assert warnings.count(FILTERED_SUBTREE_WARNING) == 1
 
     @pytest.mark.snapshot(
-        tasks=[make_task_dict(id="t1", name="Task", project="proj-work", inInbox=False)],
+        tasks=[
+            make_task_dict(id="t1", name="T1", project="proj-work", inInbox=False),
+        ],
         projects=[make_project_dict(id="proj-work", name="Work Projects")],
         tags=[],
         folders=[],
         perspectives=[],
     )
-    async def test_filtered_subtree_warning_availability_only_does_not_fire(
+    async def test_filtered_subtree_warning_project_and_narrower_availability_fires(
         self, service: OperatorService
     ) -> None:
-        """project + non-default availability -> WARN-01 does NOT fire (D-13).
+        """Phase 57-05 / G4 fix: project + non-default availability -> WARN-01 FIRES.
 
-        availability is excluded from the "other filter" predicate because its
-        default is non-empty. Including it would make the warning fire on every
-        scope-filtered query, destroying signal.
+        Locks the end-to-end behavior the UAT-57 Test 9 probe (c) was looking
+        for. Non-default availability (e.g. ``[AVAILABLE]``) narrows the
+        lifecycle bucket below the default ``[REMAINING]`` -- genuinely
+        pruning. Value-aware ``is_non_default`` predicate in
+        ``check_filtered_subtree`` correctly distinguishes this from the
+        default-value case (next test).
         """
         result = await service.list_tasks(
             ListTasksQuery(project="Work", availability=[AvailabilityFilter.AVAILABLE])
+        )
+        warnings = _warnings_list(result.warnings)
+        assert warnings.count(FILTERED_SUBTREE_WARNING) == 1
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t1", name="T1", project="proj-work", inInbox=False),
+        ],
+        projects=[make_project_dict(id="proj-work", name="Work Projects")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_filtered_subtree_warning_project_and_default_availability_does_not_fire(
+        self, service: OperatorService
+    ) -> None:
+        """Phase 57-05 / G4: project + explicit default availability -> NO warning.
+
+        Locks D-13's "don't spam the warning on the default value" intent at
+        the pipeline layer: passing ``[REMAINING]`` explicitly (same as the
+        declared default) must not fire FILTERED_SUBTREE_WARNING, even after
+        the G4 broadening. Guards against future regressions of the
+        default-check branch in ``is_non_default``.
+        """
+        result = await service.list_tasks(
+            ListTasksQuery(project="Work", availability=[AvailabilityFilter.REMAINING])
         )
         assert FILTERED_SUBTREE_WARNING not in _warnings_list(result.warnings)
 
@@ -2798,6 +2829,29 @@ class TestListTasksFilteredSubtreeWarning:
     ) -> None:
         """flagged alone (no scope filter) -> WARN-01 does NOT fire."""
         result = await service.list_tasks(ListTasksQuery(flagged=True))
+        assert FILTERED_SUBTREE_WARNING not in _warnings_list(result.warnings)
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t1", name="T1", project="proj-work", inInbox=False),
+        ],
+        projects=[make_project_dict(id="proj-work", name="Work Projects")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_filtered_subtree_warning_availability_only_no_scope_does_not_fire(
+        self, service: OperatorService
+    ) -> None:
+        """Non-default availability with no scope -> NO warning (scope predicate gates).
+
+        Phase 57-05 / G4: the scope predicate (``project`` or ``parent``
+        set) still gates the warning. Availability alone does not fire --
+        pruning requires a bounded subtree to prune.
+        """
+        result = await service.list_tasks(
+            ListTasksQuery(availability=[AvailabilityFilter.AVAILABLE])
+        )
         assert FILTERED_SUBTREE_WARNING not in _warnings_list(result.warnings)
 
 

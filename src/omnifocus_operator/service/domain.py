@@ -60,7 +60,7 @@ from omnifocus_operator.agent_messages.warnings import (
     TAGS_ALREADY_MATCH,
 )
 from omnifocus_operator.config import SYSTEM_LOCATIONS
-from omnifocus_operator.contracts.base import UNSET, _Unset, is_set
+from omnifocus_operator.contracts.base import UNSET, _Unset, is_non_default, is_set
 from omnifocus_operator.contracts.use_cases.edit.tasks import EditTaskResult
 from omnifocus_operator.contracts.use_cases.list._enums import AvailabilityFilter
 from omnifocus_operator.contracts.use_cases.list._validators import parse_duration
@@ -133,16 +133,20 @@ _FIRST_FOUND_FIELDS: frozenset[str] = frozenset(
 # ---------------------------------------------------------------------------
 # Cross-filter warning fields (WARN-01)
 # ---------------------------------------------------------------------------
-# Patch fields on ListTasksQuery that prune the subtree when combined with a
-# scope filter: each is a task-attribute predicate that can exclude intermediate
-# or descendant tasks from the scope's result set. Their presence alongside
-# ``project``/``parent`` triggers FILTERED_SUBTREE_WARNING.
+# Filter fields on ListTasksQuery (Patch or non-Patch) that prune the subtree
+# when combined with a scope filter: each is a task-attribute predicate that
+# can exclude intermediate or descendant tasks from the scope's result set.
+# Their presence alongside ``project``/``parent`` triggers
+# FILTERED_SUBTREE_WARNING.
+#
+# The pruning iteration in ``check_filtered_subtree`` uses ``is_non_default``
+# (value-aware) rather than ``is_set`` (Patch-only), so non-Patch fields with
+# a concrete default (e.g. ``availability`` defaulting to ``[REMAINING]``)
+# are classified correctly: the default value is NOT pruning (avoids firing
+# on every scope-filtered query, preserving D-13's "don't spam on the
+# default" intent), but any different value IS pruning and fires the warning.
 #
 # Explicitly NOT listed:
-#   - ``availability``: non-empty default (REMAINING) -- including it would
-#     fire on every scope-filtered query, destroying signal (D-13). Non-default
-#     availability IS pruning, but the predicate would need value-awareness to
-#     handle that distinction (deferred -- see UAT-57 Case 2).
 #   - ``completed``/``dropped``: **inclusion** filters, not pruning. They ADD
 #     completed/dropped tasks to the default ``remaining`` bucket; they never
 #     exclude tasks already in it. A value like ``{"before": "2020-01-01"}``
@@ -159,6 +163,7 @@ _SUBTREE_PRUNING_FIELDS: tuple[str, ...] = (
     "planned",
     "added",
     "modified",
+    "availability",  # Phase 57-05 / G4 fix: non-Patch pruning field.
 )
 
 # Patch fields on ListTasksQuery that do NOT prune the subtree. Two flavors,
@@ -594,11 +599,22 @@ class DomainLogic:
         """WARN-01: scope filter combined with any subtree-pruning filter.
 
         Fires when ``(project or parent)`` is set AND at least one of the
-        fields in ``_SUBTREE_PRUNING_FIELDS`` is set.
+        fields in ``_SUBTREE_PRUNING_FIELDS`` has a non-default value.
+
+        Uses ``is_non_default`` (value-aware predicate) for the pruning
+        iteration so non-Patch fields like ``availability`` (default
+        ``[REMAINING]``) distinguish "default value, not pruning" from
+        "non-default value, pruning" correctly. Phase 57-05 / G4 fix:
+        this closes the under-alerting gap where ``availability=[AVAILABLE]``
+        with a scope filter previously produced no warning.
+
+        Scope predicate (``is_set`` on ``project``/``parent``) is unchanged:
+        both are Patch fields, ``is_set`` is sufficient and more specific
+        for that membership check.
         """
         if not (is_set(query.project) or is_set(query.parent)):
             return []
-        if any(is_set(getattr(query, f)) for f in _SUBTREE_PRUNING_FIELDS):
+        if any(is_non_default(query, f) for f in _SUBTREE_PRUNING_FIELDS):
             return [FILTERED_SUBTREE_WARNING]
         return []
 

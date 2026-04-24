@@ -33,7 +33,7 @@ from omnifocus_operator.agent_messages.warnings import (
     REPETITION_EMPTY_ON_DAYS,
     REPETITION_FROM_COMPLETION_BYDAY,
 )
-from omnifocus_operator.contracts.base import UNSET, _Unset
+from omnifocus_operator.contracts.base import UNSET, _Unset, is_non_default
 from omnifocus_operator.contracts.shared.actions import MoveAction, NoteAction, TagAction
 from omnifocus_operator.contracts.shared.repetition_rule import (
     FrequencyEditSpec,
@@ -1219,20 +1219,85 @@ class TestCheckFilteredSubtree:
         query = ListTasksQuery(project="Work", dropped="today")
         assert _domain().check_filtered_subtree(query) == []
 
-    def test_project_with_availability_does_not_fire(self) -> None:
-        """availability is EXCLUDED from the 'other filter' predicate (D-13).
+    # -- Availability coverage matrix (Phase 57-05 / G4 fix) -----------------
+    # The old predicate ``is_set(getattr(query, f))`` treated every Patch field
+    # uniformly and omitted ``availability`` entirely (D-13 "don't spam on the
+    # default" implemented by omission). The new value-aware ``is_non_default``
+    # predicate lets us classify ``availability`` correctly: the default value
+    # does NOT fire (preserves D-13), any non-default value DOES fire.
 
-        A scope filter combined only with a non-default availability list must NOT
-        fire FILTERED_SUBTREE_WARNING. availability has a non-empty default; treating
-        it as 'other' would destroy the signal.
+    def test_project_with_default_availability_implicit_no_fire(self) -> None:
+        """project + implicit default availability -> NO warning (D-13 preserved).
+
+        Implicit default means the caller never set ``availability`` -- the
+        field holds its declared default ``[REMAINING]``. Warning must not fire.
+        """
+        query = ListTasksQuery(project="Work")
+        assert _domain().check_filtered_subtree(query) == []
+
+    def test_project_with_default_availability_explicit_no_fire(self) -> None:
+        """project + explicit default availability -> NO warning (D-13 preserved).
+
+        Caller explicitly passes ``[REMAINING]`` (same value as the declared
+        default). Value-equality with the default means "not pruning".
+        """
+        query = ListTasksQuery(project="Work", availability=[AvailabilityFilter.REMAINING])
+        assert _domain().check_filtered_subtree(query) == []
+
+    def test_project_with_narrower_availability_fires(self) -> None:
+        """project + non-default availability=[AVAILABLE] -> FIRES (G4 fix).
+
+        ``[AVAILABLE]`` narrows the lifecycle bucket below the default
+        ``[REMAINING]`` -- genuinely pruning. This is the case UAT-57 Test 9
+        probe (c) was looking for.
         """
         query = ListTasksQuery(project="Work", availability=[AvailabilityFilter.AVAILABLE])
-        assert _domain().check_filtered_subtree(query) == []
+        assert _domain().check_filtered_subtree(query) == [FILTERED_SUBTREE_WARNING]
 
-    def test_availability_only_does_not_fire(self) -> None:
-        """availability set with no scope -> no warning (trivially: scope predicate false)."""
+    def test_project_with_blocked_availability_fires(self) -> None:
+        """project + non-default availability=[BLOCKED] -> FIRES (G4 fix)."""
+        query = ListTasksQuery(project="Work", availability=[AvailabilityFilter.BLOCKED])
+        assert _domain().check_filtered_subtree(query) == [FILTERED_SUBTREE_WARNING]
+
+    def test_project_with_empty_availability_fires(self) -> None:
+        """project + availability=[] -> FIRES (empty list != default, genuinely prunes)."""
+        query = ListTasksQuery(project="Work", availability=[])
+        assert _domain().check_filtered_subtree(query) == [FILTERED_SUBTREE_WARNING]
+
+    def test_project_with_multi_value_availability_fires(self) -> None:
+        """project + availability=[REMAINING, AVAILABLE] -> FIRES.
+
+        Any multi-element list differing from the single-element default
+        ``[REMAINING]`` is non-default. Pairing REMAINING with AVAILABLE
+        (a redundant combo flagged elsewhere by the expansion layer) is
+        still non-default from a value-equality standpoint -- predicate
+        correctly identifies "pruning".
+        """
+        query = ListTasksQuery(
+            project="Work",
+            availability=[AvailabilityFilter.REMAINING, AvailabilityFilter.AVAILABLE],
+        )
+        assert _domain().check_filtered_subtree(query) == [FILTERED_SUBTREE_WARNING]
+
+    def test_project_with_narrower_availability_and_flagged_fires_once(self) -> None:
+        """project + non-default availability + flagged -> FIRES EXACTLY ONCE."""
+        query = ListTasksQuery(
+            project="Work",
+            availability=[AvailabilityFilter.AVAILABLE],
+            flagged=True,
+        )
+        result = _domain().check_filtered_subtree(query)
+        assert result == [FILTERED_SUBTREE_WARNING]
+
+    def test_narrower_availability_alone_no_fire(self) -> None:
+        """Non-default availability with no scope -> NO warning (scope predicate gates)."""
         query = ListTasksQuery(availability=[AvailabilityFilter.AVAILABLE])
         assert _domain().check_filtered_subtree(query) == []
+
+    def test_parent_with_narrower_availability_fires(self) -> None:
+        """parent + non-default availability -> FIRES (parent scope triggers same rule)."""
+        query = ListTasksQuery(parent="Review", availability=[AvailabilityFilter.AVAILABLE])
+        assert _domain().check_filtered_subtree(query) == [FILTERED_SUBTREE_WARNING]
 
     def test_both_project_and_parent_with_flagged_fires_once(self) -> None:
         """Both project AND parent set + flagged -> fires EXACTLY ONCE.
@@ -1282,19 +1347,78 @@ class TestCheckParentProjectCombined:
         assert _domain().check_parent_project_combined(query) == [PARENT_PROJECT_COMBINED_WARNING]
 
 
+class TestIsNonDefault:
+    """``is_non_default(model, field_name)`` -- value-aware predicate dispatching
+    on field type (Patch vs. regular field with a concrete default).
+
+    Phase 57-05 / G4 fix: the predicate lets ``_SUBTREE_PRUNING_FIELDS``
+    classify non-Patch filter fields (e.g. ``availability``) so the default
+    value does not fire FILTERED_SUBTREE_WARNING but any non-default value
+    does.
+    """
+
+    # -- Patch fields (equivalent to is_set) -------------------------------
+
+    def test_is_non_default_patch_field_unset(self) -> None:
+        """Patch[T] field with UNSET default -> not set -> False."""
+        q = ListTasksQuery()
+        assert is_non_default(q, "flagged") is False
+
+    def test_is_non_default_patch_field_set_to_true(self) -> None:
+        """Patch[bool] field set to True (distinct from UNSET) -> True."""
+        q = ListTasksQuery(flagged=True)
+        assert is_non_default(q, "flagged") is True
+
+    def test_is_non_default_patch_field_set_to_false(self) -> None:
+        """Patch[bool] field set to False -> True (False != UNSET)."""
+        q = ListTasksQuery(flagged=False)
+        assert is_non_default(q, "flagged") is True
+
+    # -- Regular fields with a concrete default ----------------------------
+
+    def test_is_non_default_regular_field_matches_default(self) -> None:
+        """Regular field left at implicit declared default -> False."""
+        q = ListTasksQuery()
+        # availability defaults to [AvailabilityFilter.REMAINING]
+        assert is_non_default(q, "availability") is False
+
+    def test_is_non_default_regular_field_explicit_default(self) -> None:
+        """Regular field explicitly set to the declared default value -> False."""
+        q = ListTasksQuery(availability=[AvailabilityFilter.REMAINING])
+        assert is_non_default(q, "availability") is False
+
+    def test_is_non_default_regular_field_different_value(self) -> None:
+        """Regular field set to a value != default -> True."""
+        q = ListTasksQuery(availability=[AvailabilityFilter.AVAILABLE])
+        assert is_non_default(q, "availability") is True
+
+    def test_is_non_default_regular_field_empty_list(self) -> None:
+        """Regular field set to empty list != declared default list -> True."""
+        q = ListTasksQuery(availability=[])
+        assert is_non_default(q, "availability") is True
+
+    def test_is_non_default_regular_field_multi_value(self) -> None:
+        """Regular field set to a multi-element list != default -> True (list equality)."""
+        q = ListTasksQuery(
+            availability=[AvailabilityFilter.REMAINING, AvailabilityFilter.AVAILABLE]
+        )
+        assert is_non_default(q, "availability") is True
+
+
 class TestSubtreePruningFieldsDrift:
-    """Every Patch filter on ListTasksQuery must be classified as either
-    subtree-pruning (fires WARN-01 with scope) or non-pruning (scope field).
+    """Every filter field on ListTasksQuery contributing to FILTERED_SUBTREE_WARNING
+    must be classified as either subtree-pruning (fires WARN-01 with scope) or
+    non-pruning (scope field / inclusion filter).
 
     If this test fails, someone added a new Patch[T] filter to ListTasksQuery
     without deciding whether it should contribute to FILTERED_SUBTREE_WARNING.
     Add the new field to exactly one of the two sets in service/domain.py.
 
-    Intentionally decoupled from ``_PATCH_FIELDS`` (which exists for null
-    rejection, not warning semantics) -- the overlap today is coincidence,
-    not contract. This test enforces the classification decision at CI time
-    so a future non-pruning Patch field (e.g. ``sort_by``) can't slip into
-    the warning predicate silently.
+    Phase 57-05 / G4 broadening: the classification can now include non-Patch
+    fields with a concrete default (e.g. ``availability``). The Patch-only
+    assumption of the original drift test is superseded -- membership must
+    still couple to real fields on ``ListTasksQuery``, checked via
+    ``ListTasksQuery.model_fields`` rather than ``_PATCH_FIELDS``.
     """
 
     def test_every_patch_field_is_classified(self) -> None:
@@ -1315,16 +1439,39 @@ class TestSubtreePruningFieldsDrift:
         assert not overlap, f"Fields classified as both pruning and scope: {overlap}"
 
     def test_no_unknown_fields_in_classifications(self) -> None:
-        """Both classifications must reference real Patch fields on ListTasksQuery."""
-        patch_set = set(_PATCH_FIELDS)
-        unknown_pruning = set(_SUBTREE_PRUNING_FIELDS) - patch_set
-        unknown_non_pruning = _NON_SUBTREE_PRUNING_FIELDS - patch_set
+        """Both classifications must reference real fields on ListTasksQuery.
+
+        Phase 57-05 broadening: reference set is ``ListTasksQuery.model_fields``
+        (Patch OR regular with default), not ``_PATCH_FIELDS``. A non-Patch
+        classified field like ``availability`` is legitimate when paired with
+        the value-aware predicate ``is_non_default``.
+        """
+        real_fields = set(ListTasksQuery.model_fields.keys())
+        unknown_pruning = set(_SUBTREE_PRUNING_FIELDS) - real_fields
+        unknown_non_pruning = _NON_SUBTREE_PRUNING_FIELDS - real_fields
         assert not unknown_pruning, (
-            f"_SUBTREE_PRUNING_FIELDS references non-Patch field(s): {sorted(unknown_pruning)}"
+            f"_SUBTREE_PRUNING_FIELDS references non-existent field(s) on ListTasksQuery: "
+            f"{sorted(unknown_pruning)}. Typo or stale classification?"
         )
         assert not unknown_non_pruning, (
-            f"_NON_SUBTREE_PRUNING_FIELDS references non-Patch field(s): "
-            f"{sorted(unknown_non_pruning)}"
+            f"_NON_SUBTREE_PRUNING_FIELDS references non-existent field(s) on ListTasksQuery: "
+            f"{sorted(unknown_non_pruning)}. Typo or stale classification?"
+        )
+
+    def test_every_classified_field_exists_on_query(self) -> None:
+        """Every name in the two classifications must be a real field on ListTasksQuery.
+
+        Catches typos (e.g. ``"avilability"``) and stale classifications for
+        BOTH Patch and non-Patch classified fields (Phase 57-05 / G4). This
+        complements ``test_no_unknown_fields_in_classifications`` with a
+        single explicit membership check against ``model_fields``.
+        """
+        classified = set(_SUBTREE_PRUNING_FIELDS) | _NON_SUBTREE_PRUNING_FIELDS
+        real_fields = set(ListTasksQuery.model_fields.keys())
+        unknown = classified - real_fields
+        assert not unknown, (
+            f"Classification references non-existent field(s) on ListTasksQuery: "
+            f"{sorted(unknown)}. Typo or stale classification after a rename?"
         )
 
 
