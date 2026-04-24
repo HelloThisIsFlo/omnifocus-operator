@@ -2573,40 +2573,347 @@ class TestEditTasksBatch:
 
 
 # ---------------------------------------------------------------------------
-# BATCH-09: Cross-item reference limitation documented in tool descriptions
+# Cross-item name-ref contract (promoted 2026-04-24)
+# ---------------------------------------------------------------------------
+
+
+class TestBatchCrossItemNameRefs:
+    """Lock in the cross-item name-ref contract for add_tasks and edit_tasks.
+
+    Promoted 2026-04-24 from "not supported" to "supported via serial execution +
+    per-item name resolution." Contract:
+
+      - Items can reference earlier items in the same batch BY NAME (not by ID).
+      - Name resolution is case-insensitive substring match — short names collide.
+      - Parents must be defined before children; forward-refs are unpredictable.
+      - On ambiguity / resolution failure: item errors; add_tasks continues
+        (best-effort), edit_tasks fails fast.
+      - ID-refs to not-yet-created items are NOT supported (contract boundary).
+    """
+
+    # -- Happy path --
+
+    async def test_cross_item_name_ref_creates_hierarchy(self, client: Any) -> None:
+        """2-item batch: child references parent by name — resolves to batch-created parent's id."""
+        result = await client.call_tool(
+            "add_tasks",
+            {
+                "items": [
+                    {"name": "UniqParent-NameRef"},
+                    {"name": "UniqChild-NameRef", "parent": "UniqParent-NameRef"},
+                ]
+            },
+        )
+        items = result.structured_content["result"]
+        assert items[0]["status"] == "success"
+        assert items[1]["status"] == "success"
+        parent_id = items[0]["id"]
+        child_id = items[1]["id"]
+        child_detail = await client.call_tool("get_task", {"id": child_id})
+        assert child_detail.structured_content["parent"]["task"]["id"] == parent_id
+
+    async def test_cross_item_name_ref_deep_hierarchy(self, client: Any) -> None:
+        """5-level hierarchy built in one batch — deepest level resolves through the chain."""
+        result = await client.call_tool(
+            "add_tasks",
+            {
+                "items": [
+                    {"name": "DeepHier-L1"},
+                    {"name": "DeepHier-L2", "parent": "DeepHier-L1"},
+                    {"name": "DeepHier-L3", "parent": "DeepHier-L2"},
+                    {"name": "DeepHier-L4", "parent": "DeepHier-L3"},
+                    {"name": "DeepHier-L5", "parent": "DeepHier-L4"},
+                ]
+            },
+        )
+        items = result.structured_content["result"]
+        assert all(item["status"] == "success" for item in items), items
+        # Deepest item's parent chain must stitch to L4, then L4.parent to L3, etc.
+        l4_id = items[3]["id"]
+        l5_id = items[4]["id"]
+        l5_detail = await client.call_tool("get_task", {"id": l5_id})
+        assert l5_detail.structured_content["parent"]["task"]["id"] == l4_id
+
+    async def test_cross_item_name_ref_multiple_children_same_parent(self, client: Any) -> None:
+        """Parent + 2 children both referring to parent by name — both parented correctly."""
+        result = await client.call_tool(
+            "add_tasks",
+            {
+                "items": [
+                    {"name": "MultiKids-Parent"},
+                    {"name": "MultiKids-ChildA", "parent": "MultiKids-Parent"},
+                    {"name": "MultiKids-ChildB", "parent": "MultiKids-Parent"},
+                ]
+            },
+        )
+        items = result.structured_content["result"]
+        assert all(item["status"] == "success" for item in items), items
+        parent_id = items[0]["id"]
+        for child in items[1:]:
+            detail = await client.call_tool("get_task", {"id": child["id"]})
+            assert detail.structured_content["parent"]["task"]["id"] == parent_id
+
+    # -- Ambiguity errors (item errors, best-effort continues) --
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="dbcol-1", name="DbCollide"),
+            make_task_dict(id="dbcol-2", name="DbCollide"),
+        ],
+        projects=[],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_cross_item_name_ref_db_collision_errors_item_continues_batch(
+        self, client: Any
+    ) -> None:
+        """Child refs a name matching 2 pre-existing DB tasks — item errors, batch continues."""
+        result = await client.call_tool(
+            "add_tasks",
+            {
+                "items": [
+                    {"name": "DbCol-NewChild", "parent": "DbCollide"},
+                    {"name": "DbCol-Other"},
+                ]
+            },
+        )
+        items = result.structured_content["result"]
+        assert items[0]["status"] == "error"
+        assert "Ambiguous" in items[0]["error"]
+        assert "dbcol-1" in items[0]["error"]
+        assert "dbcol-2" in items[0]["error"]
+        assert items[1]["status"] == "success"  # best-effort continues past the error
+
+    async def test_cross_item_name_ref_intra_batch_duplicate_parent_errors(
+        self, client: Any
+    ) -> None:
+        """Batch creates 2 same-named parents then child refs them — child errors on ambiguity."""
+        result = await client.call_tool(
+            "add_tasks",
+            {
+                "items": [
+                    {"name": "IntraDup-Parent"},
+                    {"name": "IntraDup-Parent"},
+                    {"name": "IntraDup-Child", "parent": "IntraDup-Parent"},
+                ]
+            },
+        )
+        items = result.structured_content["result"]
+        assert items[0]["status"] == "success"
+        assert items[1]["status"] == "success"
+        assert items[2]["status"] == "error"
+        assert "Ambiguous" in items[2]["error"]
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="sub-1", name="SubCollOne"),
+            make_task_dict(id="sub-2", name="SubCollTwo"),
+        ],
+        projects=[],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_cross_item_name_ref_substring_collision_errors(self, client: Any) -> None:
+        """Short name 'SubColl' substring-matches 'SubCollOne' and 'SubCollTwo' — errors."""
+        result = await client.call_tool(
+            "add_tasks",
+            {"items": [{"name": "SubCol-NewChild", "parent": "SubColl"}]},
+        )
+        items = result.structured_content["result"]
+        assert items[0]["status"] == "error"
+        assert "Ambiguous" in items[0]["error"]
+        assert "sub-1" in items[0]["error"]
+        assert "sub-2" in items[0]["error"]
+
+    # -- Resolution failures --
+
+    async def test_cross_item_name_ref_unresolvable_errors_item_continues_batch(
+        self, client: Any
+    ) -> None:
+        """Child refs a typo'd name with no match — item errors, batch continues."""
+        result = await client.call_tool(
+            "add_tasks",
+            {
+                "items": [
+                    {"name": "TypoFixture-Parent"},
+                    {"name": "TypoFixture-Child", "parent": "TypoFixture-Parnet"},
+                ]
+            },
+        )
+        items = result.structured_content["result"]
+        assert items[0]["status"] == "success"
+        assert items[1]["status"] == "error"
+        assert "TypoFixture-Parnet" in items[1]["error"]
+
+    async def test_cross_item_name_ref_id_to_pending_item_errors(self, client: Any) -> None:
+        """ID-ref to a non-existent id fails — regression guard: ID-refs to batch items unsupported.
+
+        An agent cannot reference a batch-created item by its (not-yet-existing) id; only
+        name-refs work for cross-item references.
+        """
+        result = await client.call_tool(
+            "add_tasks",
+            {
+                "items": [
+                    {"name": "IdRefGuard-Parent"},
+                    {"name": "IdRefGuard-Child", "parent": "fake-pending-id-xyz-no-match"},
+                ]
+            },
+        )
+        items = result.structured_content["result"]
+        assert items[0]["status"] == "success"
+        assert items[1]["status"] == "error"
+
+    # -- Resilience: name-ref resolves correctly after an earlier item errored --
+
+    async def test_cross_item_name_ref_resolves_after_earlier_item_errored(
+        self, client: Any
+    ) -> None:
+        """Failure-isolation: later item's name-ref still resolves after an earlier item errored.
+
+        Mirrors the live-verified scenario: Golf resolves Delta by name even though item 3
+        (Charlie) errored with an unresolvable parent.
+        """
+        result = await client.call_tool(
+            "add_tasks",
+            {
+                "items": [
+                    {"name": "Resilience-Alpha"},
+                    {"name": "Resilience-Bravo", "parent": "Resilience-Alpha"},
+                    {
+                        "name": "Resilience-Charlie",
+                        "parent": "resilience-nonexistent-xyz",
+                    },
+                    {"name": "Resilience-Delta", "parent": "Resilience-Alpha"},
+                    {"name": "Resilience-Echo", "parent": "Resilience-Bravo"},
+                    {
+                        "name": "Resilience-Foxtrot",
+                        "parent": "resilience-also-nonexistent-abc",
+                    },
+                    {"name": "Resilience-Golf", "parent": "Resilience-Delta"},
+                ]
+            },
+        )
+        items = result.structured_content["result"]
+        assert items[0]["status"] == "success"
+        assert items[1]["status"] == "success"
+        assert items[2]["status"] == "error"
+        assert items[3]["status"] == "success"
+        assert items[4]["status"] == "success"
+        assert items[5]["status"] == "error"
+        assert items[6]["status"] == "success"
+        # Golf's parent should be Delta's id (cross-item name-ref survived the earlier errors)
+        delta_id = items[3]["id"]
+        golf_id = items[6]["id"]
+        golf_detail = await client.call_tool("get_task", {"id": golf_id})
+        assert golf_detail.structured_content["parent"]["task"]["id"] == delta_id
+
+    # -- Edit-side: cross-item name-ref survives a rename within the batch --
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="edit-t1", name="EditNameRef-Old"),
+            make_task_dict(id="edit-t2", name="EditNameRef-Other"),
+        ],
+        projects=[],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_edit_cross_item_name_ref_resolves_renamed_task_in_later_item(
+        self, client: Any
+    ) -> None:
+        """edit_tasks: edit 1 renames task, edit 2 moves another task referencing the new name.
+
+        Load-bearing for edit_tasks: sequential commits make cross-item name-refs work on
+        the edit side too (fail-fast semantics don't change the resolution model).
+        """
+        result = await client.call_tool(
+            "edit_tasks",
+            {
+                "items": [
+                    {"id": "edit-t1", "name": "EditNameRef-BrandNew"},
+                    {
+                        "id": "edit-t2",
+                        "actions": {"move": {"ending": "EditNameRef-BrandNew"}},
+                    },
+                ]
+            },
+        )
+        items = result.structured_content["result"]
+        assert items[0]["status"] == "success"
+        assert items[1]["status"] == "success"
+        # edit-t2 should now be a child of edit-t1 (moved via the new name)
+        t2_detail = await client.call_tool("get_task", {"id": "edit-t2"})
+        assert t2_detail.structured_content["parent"]["task"]["id"] == "edit-t1"
+
+
+# ---------------------------------------------------------------------------
+# BATCH-09: Cross-item reference contract documented in tool descriptions
 # ---------------------------------------------------------------------------
 
 
 class TestBatchCrossItemDocumentation:
-    """Verify BATCH-09: cross-item reference limitation is documented in both tool descriptions.
+    """Verify BATCH-09: cross-item reference contract is documented in both tool descriptions.
 
-    BATCH-09 is a documentation-only requirement — the limitation is enforced by
-    the sequential execution model and communicated to agents via tool descriptions.
+    Post-ship clarification (2026-04-24): name-refs *are* a supported sub-case —
+    items can reference earlier items by exact name via serial execution + per-item
+    resolution. ID-refs remain unsupported. The three load-bearing docstring phrases
+    asserted below encode the contract agents need to know:
+
+      - name-refs are officially supported ('reference earlier items by name')
+      - substring matching means short names collide ('case-insensitive substring')
+      - order matters ('Define parents before children')
     """
 
-    def test_add_tasks_tool_doc_contains_cross_item_limitation_note(self) -> None:
-        """add_tasks description states batch items cannot reference each other."""
+    def test_add_tasks_tool_doc_declares_name_refs_supported(self) -> None:
+        """add_tasks description states items can reference earlier items by name."""
 
-        assert "Items are independent" in ADD_TASKS_TOOL_DOC, (
-            "ADD_TASKS_TOOL_DOC must document the cross-item reference limitation "
-            "(BATCH-09): 'Items are independent: batch items cannot reference other "
-            "items created or edited in the same batch.'"
-        )
-        assert "cannot reference" in ADD_TASKS_TOOL_DOC, (
-            "ADD_TASKS_TOOL_DOC must state that items cannot reference each other in the same batch"
+        assert "reference earlier items by name" in ADD_TASKS_TOOL_DOC, (
+            "ADD_TASKS_TOOL_DOC must document the name-ref contract (BATCH-09): "
+            "items CAN reference earlier items by name within the same batch."
         )
 
-    def test_edit_tasks_tool_doc_contains_cross_item_limitation_note(self) -> None:
-        """edit_tasks description states batch items cannot reference each other."""
+    def test_add_tasks_tool_doc_warns_about_substring_matching(self) -> None:
+        """add_tasks description warns that short names collide via substring match."""
 
-        assert "Items are independent" in EDIT_TASKS_TOOL_DOC, (
-            "EDIT_TASKS_TOOL_DOC must document the cross-item reference limitation "
-            "(BATCH-09): 'Items are independent: batch items cannot reference other "
-            "items created or edited in the same batch.'"
+        assert "case-insensitive substring" in ADD_TASKS_TOOL_DOC, (
+            "ADD_TASKS_TOOL_DOC must warn that name resolution uses "
+            "case-insensitive substring matching — short names will collide."
         )
-        assert "cannot reference" in EDIT_TASKS_TOOL_DOC, (
-            "EDIT_TASKS_TOOL_DOC must state that items cannot reference "
-            "each other in the same batch"
+
+    def test_add_tasks_tool_doc_requires_parents_before_children(self) -> None:
+        """add_tasks description requires parents to be defined before children."""
+
+        assert "Define parents before children" in ADD_TASKS_TOOL_DOC, (
+            "ADD_TASKS_TOOL_DOC must state the ordering rule: parents before children. "
+            "Forward-refs risk silently matching a pre-existing task elsewhere."
+        )
+
+    def test_edit_tasks_tool_doc_declares_name_refs_supported(self) -> None:
+        """edit_tasks description states items can reference earlier items by name."""
+
+        assert "reference earlier items by name" in EDIT_TASKS_TOOL_DOC, (
+            "EDIT_TASKS_TOOL_DOC must document the name-ref contract (BATCH-09): "
+            "items CAN reference earlier items by name within the same batch."
+        )
+
+    def test_edit_tasks_tool_doc_warns_about_substring_matching(self) -> None:
+        """edit_tasks description warns that short names collide via substring match."""
+
+        assert "case-insensitive substring" in EDIT_TASKS_TOOL_DOC, (
+            "EDIT_TASKS_TOOL_DOC must warn that name resolution uses "
+            "case-insensitive substring matching — short names will collide."
+        )
+
+    def test_edit_tasks_tool_doc_requires_parents_before_children(self) -> None:
+        """edit_tasks description requires parents to be defined before children."""
+
+        assert "Define parents before children" in EDIT_TASKS_TOOL_DOC, (
+            "EDIT_TASKS_TOOL_DOC must state the ordering rule: parents before children. "
+            "Forward-refs risk silently matching a pre-existing task elsewhere."
         )
 
 
