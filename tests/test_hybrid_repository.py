@@ -2406,12 +2406,12 @@ class TestListTasks:
         ],
     )
     async def test_list_tasks_project_filter(self, hybrid_repo: HybridRepository) -> None:
-        """TASK-03: task_id_scope filter matches by task PK (post-Phase 57).
+        """TASK-03: candidate_task_ids filter matches by task PK (post-Phase 57).
 
         Service layer (get_tasks_subtree) resolves project-to-tasks before this
         point — here we pass the tasks directly to prove the SQL clause works.
         """
-        result = await hybrid_repo.list_tasks(ListTasksRepoQuery(task_id_scope=["t-in-proj"]))
+        result = await hybrid_repo.list_tasks(ListTasksRepoQuery(candidate_task_ids=["t-in-proj"]))
         assert result.total == 1
         assert result.items[0].id == "t-in-proj"
 
@@ -2476,14 +2476,14 @@ class TestListTasks:
     async def test_list_tasks_project_filter_multiple_ids(
         self, hybrid_repo: HybridRepository
     ) -> None:
-        """TASK-03: task_id_scope filter matches multiple task PKs (post-Phase 57).
+        """TASK-03: candidate_task_ids filter matches multiple task PKs (post-Phase 57).
 
         Agent-facing behavior is unchanged — the service's get_tasks_subtree walks
         each resolved project and produces the union of task PKs; the repo
         sees the flat task-PK list.
         """
         result = await hybrid_repo.list_tasks(
-            ListTasksRepoQuery(task_id_scope=["t-work-lower", "t-work-upper"])
+            ListTasksRepoQuery(candidate_task_ids=["t-work-lower", "t-work-upper"])
         )
         assert result.total == 2
         ids = {t.id for t in result.items}

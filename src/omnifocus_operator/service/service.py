@@ -474,7 +474,7 @@ class _ListTasksPipeline(_ReadPipeline):
         # Scope-set shape (UNIFY-01/D-05): expand each resolved project ID
         # into its task-ID scope via the shared get_tasks_subtree helper, then
         # union. self._project_scope is a set[str] of TASK IDs (not project
-        # IDs). _build_repo_query sorts + assigns to task_id_scope for
+        # IDs). _build_repo_query sorts + assigns to candidate_task_ids for
         # deterministic SQL placeholder order (RESEARCH Pitfall 5).
         self._project_scope, _ = self._resolve_scope_filter(
             self._project_to_resolve, self._projects, "project"
@@ -540,20 +540,20 @@ class _ListTasksPipeline(_ReadPipeline):
         # Deterministic placeholder order (RESEARCH Pitfall 5).
         # Phase 57-02 (D-05): intersect project_scope & parent_scope when both
         # present -- AND semantics at the service layer before flattening into
-        # the single task_id_scope primitive at the repo layer. If only one is
-        # set, use it alone; if neither is set, stay None (no scope filter).
-        task_id_scope: list[str] | None = None
+        # the single candidate_task_ids primitive at the repo layer. If only one
+        # is set, use it alone; if neither is set, stay None (no scope filter).
+        candidate_task_ids: list[str] | None = None
         if self._project_scope is not None and self._parent_scope is not None:
-            task_id_scope = sorted(self._project_scope & self._parent_scope)
+            candidate_task_ids = sorted(self._project_scope & self._parent_scope)
         elif self._project_scope is not None:
-            task_id_scope = sorted(self._project_scope)
+            candidate_task_ids = sorted(self._project_scope)
         elif self._parent_scope is not None:
-            task_id_scope = sorted(self._parent_scope)
+            candidate_task_ids = sorted(self._parent_scope)
 
         self._repo_query = ListTasksRepoQuery(
             in_inbox=self._in_inbox,
             flagged=unset_to_none(self._query.flagged),
-            task_id_scope=task_id_scope,
+            candidate_task_ids=candidate_task_ids,
             tag_ids=self._tag_ids,
             estimated_minutes_max=unset_to_none(self._query.estimated_minutes_max),
             availability=expanded,

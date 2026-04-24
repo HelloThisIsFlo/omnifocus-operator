@@ -1,7 +1,7 @@
 """Service-layer scope expansion for project + parent filters (UNIFY-01/D-02).
 
 Phase 57 unifies the ``project`` and ``parent`` ``list_tasks`` filters on a
-single repo primitive (``ListTasksRepoQuery.task_id_scope``) and a single
+single repo primitive (``ListTasksRepoQuery.candidate_task_ids``) and a single
 service-layer expansion helper defined here.
 
 ``get_tasks_subtree`` takes a resolved entity ID and returns the set of task IDs

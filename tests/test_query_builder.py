@@ -111,7 +111,7 @@ class TestTasksFlaggedFilter:
 
 
 class TestTasksScopeFilter:
-    """Post-Phase 57: task_id_scope is the unified scope primitive.
+    """Post-Phase 57: candidate_task_ids is the unified scope primitive.
 
     The list passed is the set of TASK PKs to keep — service layer
     (get_tasks_subtree) handles project-to-tasks expansion before this point.
@@ -124,8 +124,8 @@ class TestTasksScopeFilter:
     absence of the literal string.
     """
 
-    def test_task_id_scope_direct_in_clause(self):
-        query = ListTasksRepoQuery(task_id_scope=["task-id-1"])
+    def test_candidate_task_ids_direct_in_clause(self):
+        query = ListTasksRepoQuery(candidate_task_ids=["task-id-1"])
         data_q, _ = build_list_tasks_sql(query)
         assert "t.persistentIdentifier IN (?)" in data_q.sql
         assert "task-id-1" in data_q.params
@@ -133,8 +133,8 @@ class TestTasksScopeFilter:
         assert "pi2.task IN" not in data_q.sql
         assert "t.containingProjectInfo IN" not in data_q.sql
 
-    def test_multiple_task_id_scope(self):
-        query = ListTasksRepoQuery(task_id_scope=["task-1", "task-2"])
+    def test_multiple_candidate_task_ids(self):
+        query = ListTasksRepoQuery(candidate_task_ids=["task-1", "task-2"])
         data_q, _ = build_list_tasks_sql(query)
         assert "t.persistentIdentifier IN (?,?)" in data_q.sql
         assert "task-1" in data_q.params
@@ -292,7 +292,7 @@ class TestTasksCombinedFilters:
     def test_multiple_filters_with_limit(self):
         query = ListTasksRepoQuery(
             flagged=True,
-            task_id_scope=["task-id-1"],
+            candidate_task_ids=["task-id-1"],
             search="urgent",
             limit=5,
         )
@@ -301,9 +301,9 @@ class TestTasksCombinedFilters:
         assert "t.persistentIdentifier IN (?)" in data_q.sql
         assert "LIKE ? COLLATE NOCASE" in data_q.sql
         assert "LIMIT ?" in data_q.sql
-        # Verify param ordering: flagged, task_id_scope, search(x2), availability, limit
+        # Verify param ordering: flagged, candidate_task_ids, search(x2), availability, limit
         assert 1 in data_q.params  # flagged
-        assert "task-id-1" in data_q.params  # task_id_scope
+        assert "task-id-1" in data_q.params  # candidate_task_ids
         assert "%urgent%" in data_q.params  # search
         assert 5 in data_q.params  # limit
         # Count query should NOT have LIMIT
@@ -326,7 +326,7 @@ class TestTasksCombinedFilters:
         query = ListTasksRepoQuery(
             in_inbox=True,
             flagged=True,
-            task_id_scope=["proj-id-1"],
+            candidate_task_ids=["proj-id-1"],
             tag_ids=["tag1"],
             estimated_minutes_max=60,
             search="foo",
