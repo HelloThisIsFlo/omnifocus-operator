@@ -157,7 +157,7 @@ FILTER_MULTI_MATCH = (
     "Filter '{value}' matched {count} {entity_type}s: {matches}. For exact results, filter by ID."
 )
 
-FILTER_NO_MATCH = "No {entity_type} found matching '{value}'. This filter was skipped."
+FILTER_NO_MATCH = "No {entity_type} found matching '{value}'."
 
 # --- Project Tool: Inbox Search ---
 
@@ -197,6 +197,14 @@ Both 'project' and 'parent' filters are set. \
 Results are the intersection of their task scopes. \
 If you meant only one scope, omit the other."""
 
+# Phase 57-04 (G2): fires alongside PARENT_PROJECT_COMBINED when the resolved
+# scopes are disjoint and there are no parent anchors inside the project scope
+# to preserve. Signals "your filters are self-contradictory" so the 0-item
+# result isn't mistaken for a data problem.
+EMPTY_SCOPE_INTERSECTION_WARNING = """\
+The 'project' and 'parent' filters resolved to disjoint task scopes; \
+their intersection is empty. No tasks can match both."""
+
 # --- Availability Filter ---
 
 AVAILABILITY_MIXED_ALL = (
@@ -213,5 +221,4 @@ AVAILABILITY_REMAINING_INCLUDES_BLOCKED = (
 
 FILTER_DID_YOU_MEAN = """\
 No {entity_type} found matching '{value}'. \
-Did you mean: {suggestions}? \
-This filter was skipped."""
+Did you mean: {suggestions}?"""

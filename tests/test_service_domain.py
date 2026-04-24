@@ -1123,12 +1123,13 @@ class TestCheckFilterResolution:
         assert "Personal" in warnings[0]
 
     def test_no_match_no_suggestion(self) -> None:
-        """No match, no close names -> FILTER_NO_MATCH."""
+        """No match, no close names -> FILTER_NO_MATCH (no 'skipped' wording, Phase 57-04)."""
         entities = [_StubEntity("p1", "Work"), _StubEntity("p2", "Home")]
         warnings = _domain().check_filter_resolution("zzzzz", [], entities, "project")
         assert len(warnings) == 1
         assert "No project found" in warnings[0]
-        assert "skipped" in warnings[0].lower()
+        # Phase 57-04 G3: 'skipped' wording dropped from FILTER_NO_MATCH.
+        assert "skipped" not in warnings[0].lower()
 
 
 # ---------------------------------------------------------------------------

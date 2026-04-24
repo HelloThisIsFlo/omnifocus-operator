@@ -127,17 +127,26 @@ class TestListTasksResolution:
         folders=[],
         perspectives=[],
     )
-    async def test_unresolved_project_skips_filter_with_warning(
+    async def test_unresolved_project_returns_empty_with_warning(
         self, service: OperatorService
     ) -> None:
-        """Pass project='Nonexistent', verify all tasks returned + warning."""
+        """G3 fix (Phase 57-04): project='Nonexistent' returns 0 items + 'no match' warning.
+
+        Prior behavior (superseded): filter was silently skipped, all tasks
+        returned, warning said 'This filter was skipped.' The 'skipped' fallback
+        was a Phase 35.2 D-02e packaging artifact that bundled two UX choices
+        into one option. Post-57-04: no-match returns an empty result and the
+        warning drops 'skipped' while preserving did-you-mean suggestions.
+        """
         result = await service.list_tasks(ListTasksQuery(project="Nonexistent"))
-        # Filter was skipped -> all tasks returned
-        assert len(result.items) == 2
+        # Filter resolved to zero matches -> empty result.
+        assert len(result.items) == 0
+        assert result.total == 0
+        assert result.has_more is False
         assert result.warnings is not None
         assert len(result.warnings) == 1
         assert "Nonexistent" in result.warnings[0]
-        assert "skipped" in result.warnings[0].lower()
+        assert "skipped" not in result.warnings[0].lower()
 
     @pytest.mark.snapshot(
         tasks=[
@@ -1865,14 +1874,22 @@ class TestListTasksParentFilter:
         folders=[],
         perspectives=[],
     )
-    async def test_list_tasks_parent_filter_no_match(self, service: OperatorService) -> None:
-        """No-match: filter is skipped + FILTER_NO_MATCH-style warning."""
+    async def test_list_tasks_parent_filter_no_match_returns_empty(
+        self, service: OperatorService
+    ) -> None:
+        """G3 fix (Phase 57-04): parent='NoSuchThing' returns 0 items + 'no match' warning.
+
+        Prior behavior (superseded): filter silently skipped, all tasks
+        returned, warning said 'skipped'. Post-57-04: no-match returns empty
+        + reworded warning (no 'skipped' wording; did-you-mean preserved).
+        """
         result = await service.list_tasks(ListTasksQuery(parent="NoSuchThing"))
-        # Filter skipped -> full result set returned.
-        assert {t.id for t in result.items} == {"t1"}
+        # Filter resolved to zero matches -> empty result.
+        assert {t.id for t in result.items} == set()
+        assert result.total == 0
         assert result.warnings is not None
         assert any("NoSuchThing" in w for w in result.warnings)
-        assert any("skipped" in w.lower() for w in result.warnings)
+        assert not any("skipped" in w.lower() for w in result.warnings)
 
     @pytest.mark.snapshot(
         tasks=[
@@ -2012,18 +2029,6 @@ class TestListTasksParentFilter:
         result = await service.list_tasks(ListTasksQuery(parent="Big feature", tags=["Urgent"]))
         assert {t.id for t in result.items} == {"c1", "c3"}
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "Gap surfaced in UAT-57 Test 6: FILTERED_SUBTREE_WARNING claims 'resolved "
-            "parent tasks are always included', but the current repo-layer AND composition "
-            "prunes the anchor when it doesn't match a subtree-pruning filter. Spec "
-            "(Reading B, chosen): anchor must be preserved as context, even when it "
-            "doesn't satisfy the pruning predicate. Implementation TBD -- likely needs "
-            "the repo to OR the anchor IDs with the pruned predicate, or the service "
-            "to post-assemble the result. Remove this xfail when the fix lands."
-        ),
-    )
     @pytest.mark.snapshot(
         tasks=[
             make_task_dict(
@@ -2059,16 +2064,16 @@ class TestListTasksParentFilter:
         self,
         service: OperatorService,
     ) -> None:
-        """XFAIL: anchor must survive AND-composition with a subtree-pruning filter.
+        """G1 fix (Phase 57-04): anchor survives AND-composition with a
+        subtree-pruning filter.
 
-        The FILTERED_SUBTREE_WARNING text promises "resolved parent tasks are always
-        included" -- meaning the anchor is context, not a filter match. When the
-        anchor doesn't satisfy the pruning predicate (flagged=True here), the current
-        implementation drops it via the repo's flat IN + AND effectiveFlagged clause.
+        The FILTERED_SUBTREE_WARNING text promises "resolved parent tasks are
+        always included" -- the anchor is context, not a filter match. The
+        service-layer ``pinned_task_ids`` wiring + repo-layer OR-with-pinned
+        WHERE clause honor this promise.
 
-        Expected behavior once fixed: result contains {anchor, child-flagged} --
-        the anchor is preserved as context, and the pruning filter only narrows
-        non-anchor descendants.
+        Result contains {anchor, child-flagged} -- anchor preserved as context,
+        pruning filter narrows only non-anchor descendants.
         """
         result = await service.list_tasks(
             ListTasksQuery(parent="Build feature", flagged=True),
@@ -2176,6 +2181,428 @@ class TestListTasksParentFilter:
         # parent subtree = {anchor, in-both}; project scope = {anchor, in-both, not-in-subtree}
         # intersection = {anchor, in-both}.
         assert {t.id for t in result.items} == {"anchor", "in-both"}
+
+
+class TestEmptyScopeShortCircuit:
+    """G2 regression tests (Phase 57-04): empty candidate scope short-circuits at service.
+
+    Live repros from UAT-57 Test 10:
+    - list_tasks(project='Migrate...', parent='Build...') with disjoint scopes
+      previously returned 1624 items (hybrid) vs 0 items (bridge_only) -- D-15
+      violation. Service-layer short-circuit closes this by construction: both
+      repos never see empty candidate_task_ids + no pinned.
+    """
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t-p1", name="Task in P1", project="proj-1", inInbox=False),
+            make_task_dict(id="t-p2", name="Task in P2", project="proj-2", inInbox=False),
+        ],
+        projects=[
+            make_project_dict(id="proj-1", name="Project One"),
+            make_project_dict(id="proj-2", name="Project Two"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_project_and_parent_disjoint_returns_empty(
+        self, service: OperatorService
+    ) -> None:
+        """G2 fix: disjoint project + parent scopes return 0 items + two warnings."""
+        # parent 'Task in P2' resolves to task in proj-2; project 'Project One'
+        # resolves to proj-1. Their task-scope intersection is empty.
+        result = await service.list_tasks(
+            ListTasksQuery(project="Project One", parent="Task in P2")
+        )
+        assert len(result.items) == 0
+        assert result.total == 0
+        assert result.has_more is False
+        assert result.warnings is not None
+        # WARN-03 (PARENT_PROJECT_COMBINED) fires because both scopes set.
+        assert any("project" in w.lower() and "parent" in w.lower() for w in result.warnings)
+        # G2 new: EMPTY_SCOPE_INTERSECTION_WARNING fires alongside.
+        assert any(
+            "disjoint" in w.lower() or "intersection is empty" in w.lower() for w in result.warnings
+        )
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t-p1", name="Task in P1", project="proj-1", inInbox=False),
+            make_task_dict(
+                id="t-p2", name="Task in P2", project="proj-2", flagged=True, inInbox=False
+            ),
+        ],
+        projects=[
+            make_project_dict(id="proj-1", name="Project One"),
+            make_project_dict(id="proj-2", name="Project Two"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_project_and_parent_disjoint_plus_flagged_returns_empty(
+        self, service: OperatorService
+    ) -> None:
+        """G2 + WARN-01 interaction: disjoint scopes + flagged pruning -> 0 items."""
+        result = await service.list_tasks(
+            ListTasksQuery(project="Project One", parent="Task in P2", flagged=True)
+        )
+        assert len(result.items) == 0
+        assert result.warnings is not None
+        warning_text = "\n".join(result.warnings)
+        # PARENT_PROJECT_COMBINED (WARN-03).
+        assert "project" in warning_text.lower() and "parent" in warning_text.lower()
+        # EMPTY_SCOPE_INTERSECTION (Phase 57-04 G2).
+        assert "disjoint" in warning_text.lower() or "intersection is empty" in warning_text.lower()
+        # FILTERED_SUBTREE (WARN-01) fires because scope + pruning predicate.
+        assert "filtered subtree" in warning_text.lower() or "always included" in warning_text
+
+    @pytest.mark.snapshot(
+        tasks=[
+            # Only task lives in a different project; EmptyPlan has no descendants.
+            make_task_dict(id="other", name="Other", project="proj-other", inInbox=False),
+        ],
+        projects=[
+            make_project_dict(id="proj-empty", name="EmptyPlan"),
+            make_project_dict(id="proj-other", name="Other"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_parent_on_empty_project_returns_empty(self, service: OperatorService) -> None:
+        """G2: single scope resolves to zero tasks (empty project) -> 0 items,
+        NO EMPTY_SCOPE_INTERSECTION_WARNING (only one scope was set), NO
+        'no match' warning (the name resolved fine -- project just has zero descendants).
+        """
+        result = await service.list_tasks(ListTasksQuery(parent="EmptyPlan"))
+        assert len(result.items) == 0
+        assert result.total == 0
+        if result.warnings is not None:
+            # WARN-02 may fire (parent resolves to a project) -- that's fine.
+            assert not any("disjoint" in w.lower() for w in result.warnings)
+            assert not any("intersection is empty" in w.lower() for w in result.warnings)
+            # Filter name resolved fine; no "no match" warning.
+            assert not any("no match" in w.lower() for w in result.warnings)
+
+
+class TestFilterNoMatchWarningText:
+    """G3 rewording tests (Phase 57-04): 'skipped' wording dropped from FILTER_NO_MATCH
+    and FILTER_DID_YOU_MEAN; did-you-mean suggestions preserved.
+    """
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t1", name="Task A", project="proj-personal", inInbox=False),
+        ],
+        projects=[
+            make_project_dict(id="proj-personal", name="Personal"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_unresolved_project_did_you_mean_preserved(
+        self, service: OperatorService
+    ) -> None:
+        """G3 + WARN-05: did-you-mean suggestion preserved; 'skipped' wording gone."""
+        result = await service.list_tasks(ListTasksQuery(project="Persinal"))
+        assert len(result.items) == 0
+        assert result.warnings is not None
+        assert len(result.warnings) == 1
+        warning = result.warnings[0]
+        assert "Persinal" in warning
+        assert "Did you mean" in warning
+        assert "Personal" in warning
+        assert "skipped" not in warning.lower()
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="t1",
+                name="Task A",
+                tags=[{"id": "tag-work", "name": "Work"}],
+                project="proj-1",
+                inInbox=False,
+            ),
+        ],
+        projects=[make_project_dict(id="proj-1", name="Proj")],
+        tags=[make_tag_dict(id="tag-work", name="Work")],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_list_tasks_tags_no_match_returns_empty(self, service: OperatorService) -> None:
+        """G3: tags filter with no matches returns 0 items + reworded warning."""
+        result = await service.list_tasks(ListTasksQuery(tags=["Nonexistent"]))
+        assert len(result.items) == 0
+        assert result.total == 0
+        assert result.warnings is not None
+        assert any("Nonexistent" in w for w in result.warnings)
+        assert not any("skipped" in w.lower() for w in result.warnings)
+
+
+class TestParentAnchorPreservation:
+    """G1 regression tests (Phase 57-04): parent anchors preserved under AND-composition
+    with subtree-pruning filters. Option A (pinned_task_ids) wired through service
+    into repo-layer OR-with-pinned WHERE clause.
+
+    The FILTERED_SUBTREE_WARNING text promises "resolved parent tasks are always
+    included"; these tests lock the honoring of that promise in code.
+    """
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="anchor", name="Build feature", project="proj-work", flagged=False, inInbox=False
+            ),
+            make_task_dict(
+                id="child-tagged",
+                name="Tagged step",
+                project="proj-work",
+                parent="anchor",
+                flagged=False,
+                tags=[{"id": "tag-urgent", "name": "Urgent"}],
+                inInbox=False,
+            ),
+            make_task_dict(
+                id="child-untagged",
+                name="Untagged step",
+                project="proj-work",
+                parent="anchor",
+                flagged=False,
+                inInbox=False,
+            ),
+        ],
+        projects=[make_project_dict(id="proj-work", name="Work Projects")],
+        tags=[make_tag_dict(id="tag-urgent", name="Urgent")],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_parent_anchor_preserved_with_tags_filter(self, service: OperatorService) -> None:
+        """G1: anchor (no Urgent tag) preserved when AND-composed with tags=['Urgent']."""
+        result = await service.list_tasks(ListTasksQuery(parent="Build feature", tags=["Urgent"]))
+        assert {t.id for t in result.items} == {"anchor", "child-tagged"}
+
+    @pytest.mark.snapshot(
+        tasks=[
+            # Anchor is blocked (sequential project w/ an incomplete sibling before it)
+            # vs. child-available. For simplicity we just use a status marker.
+            make_task_dict(
+                id="anchor",
+                name="Build feature",
+                project="proj-work",
+                status="Blocked",
+                inInbox=False,
+            ),
+            make_task_dict(
+                id="child-available",
+                name="Available step",
+                project="proj-work",
+                parent="anchor",
+                status="Available",
+                inInbox=False,
+            ),
+        ],
+        projects=[make_project_dict(id="proj-work", name="Work Projects")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_parent_anchor_preserved_with_availability_filter(
+        self, service: OperatorService
+    ) -> None:
+        """G1: anchor (blocked) preserved when AND-composed with availability=[AVAILABLE]."""
+        result = await service.list_tasks(
+            ListTasksQuery(
+                parent="Build feature",
+                availability=[AvailabilityFilter.AVAILABLE],
+            )
+        )
+        # Anchor preserved despite being Blocked; child-available matches predicate.
+        assert {t.id for t in result.items} == {"anchor", "child-available"}
+
+    @pytest.mark.snapshot(
+        tasks=[
+            # Two tasks named "Review" anchor -- both in the same project.
+            make_task_dict(
+                id="a-anchor", name="Review Q3", project="proj-work", flagged=False, inInbox=False
+            ),
+            make_task_dict(
+                id="a-child",
+                name="A sub flagged",
+                project="proj-work",
+                parent="a-anchor",
+                flagged=True,
+                inInbox=False,
+            ),
+            make_task_dict(
+                id="b-anchor", name="Review Q4", project="proj-work", flagged=False, inInbox=False
+            ),
+            make_task_dict(
+                id="b-child",
+                name="B sub flagged",
+                project="proj-work",
+                parent="b-anchor",
+                flagged=True,
+                inInbox=False,
+            ),
+        ],
+        projects=[make_project_dict(id="proj-work", name="Work Projects")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_multi_parent_anchors_all_preserved(self, service: OperatorService) -> None:
+        """G1: when parent resolves to multiple tasks, ALL anchors preserved."""
+        # 'Review' substring matches both anchors; each subtree has one flagged child.
+        result = await service.list_tasks(ListTasksQuery(parent="Review", flagged=True))
+        assert {t.id for t in result.items} == {"a-anchor", "a-child", "b-anchor", "b-child"}
+
+    @pytest.mark.snapshot(
+        tasks=[
+            # Project A
+            make_task_dict(id="a-anchor", name="Review Q3", project="proj-a", inInbox=False),
+            make_task_dict(
+                id="a-child", name="A1 sub", project="proj-a", parent="a-anchor", inInbox=False
+            ),
+            # Project B
+            make_task_dict(id="b-anchor", name="Review Q4", project="proj-b", inInbox=False),
+            make_task_dict(
+                id="b-child", name="B1 sub", project="proj-b", parent="b-anchor", inInbox=False
+            ),
+        ],
+        projects=[
+            make_project_dict(id="proj-a", name="Project A"),
+            make_project_dict(id="proj-b", name="Project B"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_multi_parent_anchors_across_projects_outline_order(
+        self, service: OperatorService
+    ) -> None:
+        """G1 + B3 insurance: multi-match parent across projects -- all anchors
+        and their subtrees present. This exercises the pipeline through both
+        service and repo layers; outline-order specifics are hybrid-only so we
+        just lock the set identity here (bridge_only sorts by task id).
+        """
+        result = await service.list_tasks(ListTasksQuery(parent="Review"))
+        assert {t.id for t in result.items} == {"a-anchor", "a-child", "b-anchor", "b-child"}
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(id="t-p1", name="Task in P1", project="proj-1", inInbox=False),
+            make_task_dict(id="t-p2", name="Task in P2", project="proj-2", inInbox=False),
+        ],
+        projects=[
+            make_project_dict(id="proj-1", name="Project One"),
+            make_project_dict(id="proj-2", name="Project Two"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_parent_anchor_outside_project_scope_not_preserved(
+        self, service: OperatorService
+    ) -> None:
+        """G1 + G2: anchor outside the project scope is NOT preserved (D-05 AND).
+
+        When project and parent both set, anchor must be inside project scope
+        for preservation to apply. Here parent resolves to task in proj-2 but
+        project scope is proj-1 -- anchor is filtered out of pinned_task_ids
+        before reaching the repo, so the result is empty + short-circuit
+        (EMPTY_SCOPE_INTERSECTION_WARNING fires).
+        """
+        result = await service.list_tasks(
+            ListTasksQuery(project="Project One", parent="Task in P2")
+        )
+        assert len(result.items) == 0
+        assert result.warnings is not None
+        warning_text = "\n".join(result.warnings)
+        assert "disjoint" in warning_text.lower() or "intersection is empty" in warning_text.lower()
+
+    @pytest.mark.snapshot(
+        tasks=[
+            make_task_dict(
+                id="anchor", name="Build feature", project="proj-work", flagged=False, inInbox=False
+            ),
+            make_task_dict(
+                id="child-flagged",
+                name="Flagged step",
+                project="proj-work",
+                parent="anchor",
+                flagged=True,
+                inInbox=False,
+            ),
+            make_task_dict(
+                id="other-in-proj",
+                name="Other in proj",
+                project="proj-work",
+                flagged=False,
+                inInbox=False,
+            ),
+            make_task_dict(
+                id="task-other-proj",
+                name="Other",
+                project="proj-other",
+                flagged=True,
+                inInbox=False,
+            ),
+        ],
+        projects=[
+            make_project_dict(id="proj-work", name="Work Projects"),
+            make_project_dict(id="proj-other", name="Other"),
+        ],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_parent_anchor_inside_project_scope_preserved_with_pruning(
+        self, service: OperatorService
+    ) -> None:
+        """G1: project=P + parent=T_in_P + flagged=True keeps the anchor (unflagged)
+        alongside the flagged descendant.
+        """
+        result = await service.list_tasks(
+            ListTasksQuery(project="Work Projects", parent="Build feature", flagged=True)
+        )
+        assert {t.id for t in result.items} == {"anchor", "child-flagged"}
+
+    @pytest.mark.snapshot(
+        tasks=[
+            # No task named "Work Projects"; parent resolves only to the project.
+            make_task_dict(
+                id="t-flagged",
+                name="Flagged leaf",
+                project="proj-work",
+                flagged=True,
+                inInbox=False,
+            ),
+            make_task_dict(
+                id="t-unflagged",
+                name="Unflagged leaf",
+                project="proj-work",
+                flagged=False,
+                inInbox=False,
+            ),
+        ],
+        projects=[make_project_dict(id="proj-work", name="Work Projects")],
+        tags=[],
+        folders=[],
+        perspectives=[],
+    )
+    async def test_parent_project_anchor_no_preservation(self, service: OperatorService) -> None:
+        """G1 scope-limit: when parent resolves to a PROJECT (not a task), no
+        anchor is injected (projects aren't list_tasks rows). Subtree-pruning
+        filter applies normally; WARN-02 fires.
+        """
+        result = await service.list_tasks(ListTasksQuery(parent="Work Projects", flagged=True))
+        # Only flagged descendant survives; no project-anchor injected.
+        assert {t.id for t in result.items} == {"t-flagged"}
+        assert result.warnings is not None
+        assert any("resolved only to projects" in w for w in result.warnings)
 
 
 class TestListTasksParentProjectEquivalence:

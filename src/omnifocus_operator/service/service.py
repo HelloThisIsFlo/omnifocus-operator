@@ -23,6 +23,7 @@ from omnifocus_operator.agent_messages.errors import (
 )
 from omnifocus_operator.agent_messages.warnings import (
     AVAILABILITY_MIXED_ALL,
+    EMPTY_SCOPE_INTERSECTION_WARNING,
     LIST_PROJECTS_INBOX_WARNING,
     LIST_TASKS_INBOX_PROJECT_WARNING,
     PARENT_RESOLVES_TO_PROJECT_WARNING,
@@ -419,6 +420,25 @@ class _ListTasksPipeline(_ReadPipeline):
         self._warnings.extend(self._domain.check_filtered_subtree(self._query))
         self._warnings.extend(self._domain.check_parent_project_combined(self._query))
 
+        # Phase 57-04 (G2): disjoint-scope warning must fire AFTER
+        # _build_repo_query populates candidate_task_ids / pinned_task_ids.
+        self._emit_empty_intersection_warning_if_applicable()
+
+        # Phase 57-04 (G2/G3): short-circuit when scope resolved to empty-by-
+        # construction; the repo would either return the wrong answer (hybrid
+        # `len > 0` guard treats []==no-filter) or burn cycles computing zero.
+        if self._is_empty_scope_query():
+            # `Task` lives behind TYPE_CHECKING; the parameterization is
+            # equivalent to `ListResult[Task]` at runtime (generic alias is
+            # resolved via the function annotation). Use the unparameterized
+            # constructor to avoid the NameError.
+            return ListResult(
+                items=[],
+                total=0,
+                has_more=False,
+                warnings=self._warnings or None,
+            )
+
         return await self._delegate()
 
     def _check_inbox_name_warnings(self) -> None:
@@ -452,8 +472,10 @@ class _ListTasksPipeline(_ReadPipeline):
         3. Union ``get_tasks_subtree`` over each resolved ID into a task-ID scope set.
 
         Returns ``(scope_set, resolved_ids)``:
-        - ``scope_set`` is ``None`` when ``value`` is ``None`` or no entities
-          matched; otherwise the union of task-ID scopes.
+        - ``scope_set`` is ``None`` when ``value`` is ``None`` (filter not set);
+          an empty ``set()`` when the value was set but the resolver produced
+          zero matches (G3 fix — distinguishes "no filter" from "filter
+          resolved to nothing"); otherwise the union of task-ID scopes.
         - ``resolved_ids`` exposes the raw resolver output so filter-specific
           callers can do post-processing (e.g. WARN-02 for ``parent``).
         """
@@ -464,7 +486,10 @@ class _ListTasksPipeline(_ReadPipeline):
             self._domain.check_filter_resolution(value, resolved, entities, label)
         )
         if not resolved:
-            return None, resolved
+            # Phase 57-04 G3 fix: filter was set but resolver found nothing.
+            # Return empty set (scope-resolves-to-empty) rather than None
+            # (scope-not-set); downstream short-circuit catches this.
+            return set(), resolved
         scope: set[str] = set()
         for rid in resolved:
             scope |= get_tasks_subtree(rid, self._snapshot)
@@ -492,11 +517,24 @@ class _ListTasksPipeline(_ReadPipeline):
           type so tasks inject themselves as anchors (D-12), projects do not.
         - When ALL resolved matches are projects (not mixed project+task),
           emit the WARN-02 pedagogical hint suggesting ``project=`` instead.
+
+        Phase 57-04 (G1 Option A): task-type resolutions are tracked separately
+        into ``self._parent_anchor_ids`` so ``_build_repo_query`` can wire
+        them as ``pinned_task_ids``. Projects resolved via the parent filter
+        are excluded -- projects are not ``list_tasks`` rows, so there's no
+        anchor to preserve.
         """
+        # Defensive init so _build_repo_query always sees a defined attribute,
+        # even when parent filter is unset or produces zero matches.
+        self._parent_anchor_ids: set[str] = set()
         combined = [*self._projects, *self._tasks]
         self._parent_scope, resolved = self._resolve_scope_filter(
             self._parent_to_resolve, combined, "parent"
         )
+        # G1 (Phase 57-04): track TASK-type anchors only. Projects resolved via
+        # parent are not ``list_tasks`` rows -- no anchor injection.
+        task_ids = {t.id for t in self._tasks}
+        self._parent_anchor_ids = {rid for rid in resolved if rid in task_ids}
         # WARN-02: fires only when EVERY resolved match is a project (not mixed).
         if resolved:
             project_ids = {p.id for p in self._projects}
@@ -521,8 +559,11 @@ class _ListTasksPipeline(_ReadPipeline):
             self._warnings.extend(
                 self._domain.check_filter_resolution(value, resolved, self._tags, "tag")
             )
-        if all_resolved:
-            self._tag_ids = all_resolved
+        # Phase 57-04 G3 fix: unconditionally assign. When no values resolved,
+        # all_resolved is [] -- that empty list propagates to the repo query
+        # and the short-circuit in execute() catches it. Previously this
+        # stayed None, silently dropping the tag filter.
+        self._tag_ids = all_resolved
 
     def _build_repo_query(self) -> None:
         # Expand availability + merge lifecycle additions via domain
@@ -550,10 +591,23 @@ class _ListTasksPipeline(_ReadPipeline):
         elif self._parent_scope is not None:
             candidate_task_ids = sorted(self._parent_scope)
 
+        # Phase 57-04 (G1 Option A): pinned_task_ids = parent anchors filtered
+        # through project_scope (when set). When both project and parent are
+        # set, the anchor must be INSIDE the project scope for preservation to
+        # apply (D-05 AND semantics). When only parent is set, all task anchors
+        # pass through. When parent is unset, _parent_anchor_ids is empty.
+        pinned_task_ids: list[str] | None = None
+        anchors = self._parent_anchor_ids
+        if self._project_scope is not None:
+            anchors = anchors & self._project_scope
+        if anchors:
+            pinned_task_ids = sorted(anchors)
+
         self._repo_query = ListTasksRepoQuery(
             in_inbox=self._in_inbox,
             flagged=unset_to_none(self._query.flagged),
             candidate_task_ids=candidate_task_ids,
+            pinned_task_ids=pinned_task_ids,
             tag_ids=self._tag_ids,
             estimated_minutes_max=unset_to_none(self._query.estimated_minutes_max),
             availability=expanded,
@@ -562,6 +616,50 @@ class _ListTasksPipeline(_ReadPipeline):
             offset=self._query.offset,
             **date_kwargs,
         )
+
+    def _is_empty_scope_query(self) -> bool:
+        """Phase 57-04 (G2/G3): detect queries whose resolved scope is
+        empty-by-construction, so we can short-circuit before hitting the repo.
+
+        Returns True when:
+        - BOTH ``candidate_task_ids`` is ``[]`` AND ``pinned_task_ids`` is
+          ``None``/empty -- the filterable pool collapsed AND there are no
+          anchors to resurrect. Covers: empty project ∩ parent intersection,
+          single scope that resolved to zero tasks, no-match name resolution.
+        - ``tag_ids`` is ``[]`` -- no-match tags (G3).
+
+        IMPORTANT: candidate=[] with non-empty pinned is NOT empty -- the
+        pinned anchors still return via the repo-layer OR branch. Only when
+        BOTH are empty does the query short-circuit.
+        """
+        q = self._repo_query
+        candidate_empty = q.candidate_task_ids is not None and len(q.candidate_task_ids) == 0
+        pinned_empty = q.pinned_task_ids is None or len(q.pinned_task_ids) == 0
+        if candidate_empty and pinned_empty:
+            return True
+        if q.tag_ids is not None and len(q.tag_ids) == 0:
+            return True
+        return False
+
+    def _emit_empty_intersection_warning_if_applicable(self) -> None:
+        """Phase 57-04 (G2): fire EMPTY_SCOPE_INTERSECTION_WARNING alongside
+        PARENT_PROJECT_COMBINED when both scopes were explicitly set AND
+        the resolved intersection is empty AND no pinned anchors remain.
+
+        The warning fires only when the agent actually set both filters --
+        a single-scope filter that resolves to zero descendants doesn't need
+        an extra warning (the 0-item result speaks for itself).
+        """
+        if (
+            self._repo_query.candidate_task_ids == []
+            and (
+                self._repo_query.pinned_task_ids is None
+                or len(self._repo_query.pinned_task_ids) == 0
+            )
+            and is_set(self._query.project)
+            and is_set(self._query.parent)
+        ):
+            self._warnings.append(EMPTY_SCOPE_INTERSECTION_WARNING)
 
     async def _delegate(self) -> ListResult[Task]:
         repo_result = await self._repository.list_tasks(self._repo_query)
