@@ -79,11 +79,12 @@ _(cleared — v1.4 insertions archived to milestones/v1.4-ROADMAP.md)_
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
-| 260424-j63 | Unify empty-result warning surface | 2026-04-24 | d44e4742 | [260424-j63-unify-empty-result-warning-surface](./quick/260424-j63-unify-empty-result-warning-surface/) |
+| 260424-j63 | Unify empty-result warning surface (superseded by 260424-kd0) | 2026-04-24 | d44e4742 | [260424-j63-unify-empty-result-warning-surface](./quick/260424-j63-unify-empty-result-warning-surface/) |
+| 260424-kd0 | Simplify empty-result warning to single static message | 2026-04-24 | 74fbf6ad | [260424-kd0-simplify-empty-result-warning-to-single-](./quick/260424-kd0-simplify-empty-result-warning-to-single-/) |
 
 ## Session Continuity
 
-Last activity: 2026-04-24 — Completed quick task 260424-j63: unified empty-result warning surface. Retired `EMPTY_SCOPE_INTERSECTION_WARNING` and `FILTER_NO_MATCH`; added `EMPTY_RESULT_WARNING_SINGLE` / `EMPTY_RESULT_WARNING_MULTI` parameterized by active-filter names (camelCase aliases, alphabetically sorted). Single emit point in `_ListTasksPipeline.execute()` covers both short-circuit and delegated paths via `is_non_default` detection (no `$inbox` special-casing). DYM reworded to stand alone. 9 new tests in `TestEmptyResultWarning`, full suite 2559/2559 green. Supersession recorded in 57-UAT Post-Resolution Gap Audit.
+Last activity: 2026-04-24 — Completed quick task 260424-kd0: collapsed the parameterized `EMPTY_RESULT_WARNING_{SINGLE,MULTI}` surface (shipped 2h earlier in j63) to a single static `EMPTY_RESULT_WARNING`. Live-probe surfaced `limit`/`offset`/`include`/`only` being misclassified as filters in the parameterized warning — static nudge eliminates the field-classification surface by construction. Deleted `_active_filter_names` helper + `is_non_default` iteration at the warning call site (predicate stays live for subtree pruning in domain.py). Collapsed 9-case test matrix to 3 (composition, non-empty, DYM). Updated 4 collateral assertions outside the main matrix. Net -189 LOC. 328 passed in affected test files; full suite untouched elsewhere. j63 SUMMARY annotated SUPERSEDED.
 Stopped at: Phase 57 context captured — D1+2a full unification locked, ready for /gsd-plan-phase 57
 
 **Planned Phase:** 57 (Parent Filter & Filter Unification) — 3 plans — 2026-04-20T20:57:25.723Z
