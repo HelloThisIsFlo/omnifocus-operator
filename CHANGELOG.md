@@ -11,6 +11,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versions follow 
 - Dynamic versioning with `hatch-vcs` (git tags as source of truth)
 - Platform check — non-macOS prints clear error and exits
 
+## [1.4.1] - Task Properties & Subtree
+
+### Added
+- `completesWithChildren` and `type` (`"parallel" | "sequential"`) writable on `add_tasks` / `edit_tasks` with patch semantics — `null` rejected on `type`
+- Omitted `completesWithChildren` / `type` on `add_tasks` resolve to the user's OmniFocus preference explicitly (factory fallbacks: `true` / `"parallel"`) — server never relies on OmniFocus implicit defaulting
+- Derived presence flags on default task/project responses — `hasNote`, `hasRepetition`, `hasAttachments` (strip when false)
+- `isSequential` on tasks and projects; `dependsOnChildren` on tasks (`hasChildren AND NOT completesWithChildren`)
+- `hierarchy` include group extended — adds `hasChildren`, `type`, `completesWithChildren` on tasks and projects (`type` on projects includes `"singleActions"`)
+- `parent` filter on `list_tasks` — single reference (name or ID); returns all descendants at any depth; resolved task preserved as anchor (bypasses subtree-pruning filters)
+- `parent: "$inbox"` supported as equivalent to `project: "$inbox"`
+- New warnings: empty-scope-intersection when `project` + `parent` are disjoint; parent-resolves-to-project hint; filtered-subtree warning now also fires on `parent`
+
+### Changed
+- Name-resolver filters (`project`, `parent`, `tags`) resolving to zero matches now return empty results + `FILTER_NO_MATCH` warning — previously `project` silently skipped the filter and returned all tasks — **breaking behavior change**
+- `availability` removed from `NEVER_STRIP` — now stripped per default rules
+
 ## [1.4] - Response Shaping & Batch Processing
 
 ### Added
