@@ -164,10 +164,13 @@ The '$inbox' appears as a project on tasks but is not a real OmniFocus project \
 and won't appear in results. \
 To query inbox tasks, use list_tasks with 'inInbox=true'."""
 
-# --- Task Tool: Inbox Project Filter ---
+# --- Task Tool: Inbox Name Filter ---
 
-LIST_TASKS_INBOX_PROJECT_WARNING = """\
-The 'project="{value}"' filter also matches the OmniFocus Inbox by name, \
+# Templated with ``{filter}`` ("project" | "parent") and ``{value}`` — caller
+# formats based on which side tripped the substring match. Pattern mirrors
+# ``CONTRADICTORY_INBOX_WITH_REF`` from Phase 57-02; retires the D-14 wart.
+LIST_TASKS_INBOX_NAME_WARNING = """\
+The '{filter}="{value}"' filter also matches the OmniFocus Inbox by name, \
 but the Inbox is a virtual location, not a named project. \
 Inbox tasks are not included in these results. \
 Use 'inInbox=true' to query them."""

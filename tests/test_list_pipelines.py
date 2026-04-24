@@ -2009,14 +2009,15 @@ class TestListTasksParentFilter:
     async def test_list_tasks_parent_inbox_name_substring_warning(
         self, service: OperatorService
     ) -> None:
-        """WARN-05 reuse: parent='inb' (substring of Inbox) emits LIST_TASKS_INBOX_PROJECT_WARNING.
+        """parent='inb' (substring of Inbox) emits LIST_TASKS_INBOX_NAME_WARNING.
 
-        The reused warning text says 'project="..."' -- documented agent-UX wart
-        per D-14; the warning text is not parent-specific.
+        The warning text is templated with the filter name ('parent' here), so
+        the message surfaces ``parent="..."`` — the D-14 wart from Phase 57-02
+        is retired.
         """
         result = await service.list_tasks(ListTasksQuery(parent="inb"))
         assert result.warnings is not None
-        assert any('project="inb"' in w for w in result.warnings)
+        assert any('parent="inb"' in w for w in result.warnings)
 
     @pytest.mark.snapshot(
         tasks=[

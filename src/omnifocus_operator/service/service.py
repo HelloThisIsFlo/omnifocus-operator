@@ -25,7 +25,7 @@ from omnifocus_operator.agent_messages.warnings import (
     AVAILABILITY_MIXED_ALL,
     EMPTY_RESULT_WARNING,
     LIST_PROJECTS_INBOX_WARNING,
-    LIST_TASKS_INBOX_PROJECT_WARNING,
+    LIST_TASKS_INBOX_NAME_WARNING,
     PARENT_RESOLVES_TO_PROJECT_WARNING,
     REPETITION_NO_OP,
 )
@@ -442,14 +442,18 @@ class _ListTasksPipeline(_ReadPipeline):
         """Warn if ``project`` or ``parent`` substring-matches the inbox name.
 
         The ``$inbox`` sentinel is already consumed by ``resolve_inbox``; this
-        catches the plain-name case (``parent="Inbox"``). Both filters reuse
-        ``LIST_TASKS_INBOX_PROJECT_WARNING`` verbatim per Phase 57-02 D-14 —
-        accepted UX wart: the message text says ``'project="..."'`` even for
-        the parent filter, traded for the no-new-constant path (WARN-05 reuse).
+        catches the plain-name case (``parent="Inbox"``). The warning text is
+        templated with the filter name so each side gets a correctly-worded
+        message (retires the D-14 wart from Phase 57-02).
         """
-        for value in (self._project_to_resolve, self._parent_to_resolve):
+        for filter_name, value in (
+            ("project", self._project_to_resolve),
+            ("parent", self._parent_to_resolve),
+        ):
             if matches_inbox_name(value):
-                self._warnings.append(LIST_TASKS_INBOX_PROJECT_WARNING.format(value=value))
+                self._warnings.append(
+                    LIST_TASKS_INBOX_NAME_WARNING.format(filter=filter_name, value=value)
+                )
 
     def _resolve_scope_filter(
         self,
