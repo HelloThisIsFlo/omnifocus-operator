@@ -1118,12 +1118,13 @@ class TestCheckFilterResolution:
         """No match with a close name -> FILTER_DID_YOU_MEAN.
 
         DYM is reworded to stand alone without the retired FILTER_NO_MATCH
-        prefix. Text reads: ``Did you mean: X? (no <entity> matched 'Y')``.
+        prefix. Text reads: ``Did you mean: 'X'? (no <entity> matched 'Y')``
+        with each suggestion wrapped in single quotes for crisp boundaries.
         """
         entities = [_StubEntity("p1", "Personal"), _StubEntity("p2", "Work")]
         warnings = _domain().check_filter_resolution("Personl", [], entities, "project")
         assert len(warnings) == 1
-        assert warnings[0] == "Did you mean: Personal? (no project matched 'Personl')"
+        assert warnings[0] == "Did you mean: 'Personal'? (no project matched 'Personl')"
 
     def test_no_match_no_suggestion(self) -> None:
         """No match, no close names -> returns [].

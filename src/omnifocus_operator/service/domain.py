@@ -588,7 +588,7 @@ class DomainLogic:
                     FILTER_DID_YOU_MEAN.format(
                         entity_type=entity_type,
                         value=value,
-                        suggestions=", ".join(suggestions),
+                        suggestions=", ".join(f"'{s}'" for s in suggestions),
                     )
                 ]
             return []
