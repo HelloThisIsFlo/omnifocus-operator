@@ -3,7 +3,7 @@ status: resolved
 phase: 57-parent-filter-filter-unification
 source: [57-01-SUMMARY.md, 57-02-SUMMARY.md, 57-03-SUMMARY.md]
 started: 2026-04-23T12:00:00Z
-updated: 2026-04-24T01:45:00Z
+updated: 2026-04-24T16:00:00Z
 gaps_resolved_by: [57-04, 57-05]
 ---
 
@@ -376,3 +376,76 @@ Decision: **#1 — do nothing**. Output is already deterministic; the append-vs-
   - 8-case parameterized test matrix in `TestEmptyResultWarning` → collapsed to 3 tests (static fires + composes with PARENT_PROJECT, non-empty guard, composes with DYM).
 - **Behavior change:** The "zero filters + empty DB" edge case now gets the static nudge too (previously silent). Deliberate loosening — near-impossible in practice, and the uniform signal is simpler than special-casing.
 - **Reference:** `.planning/quick/260424-kd0-simplify-empty-result-warning-to-single-/` for full rationale trail (CONTEXT.md §decisions, RESEARCH.md dead-code sweep, PLAN.md single-atomic-task execution).
+
+### G2 — Third iteration: retire WARN-03 (2026-04-24, `08e94d9a`)
+
+- **What surfaced:** Live-probe on the kd0 landing showed two warnings firing together on the `project + parent` disjoint case: `PARENT_PROJECT_COMBINED_WARNING` (WARN-03) alongside the new static `EMPTY_RESULT_WARNING`. Flo recognized WARN-03's original intent was wrong: combining `project + parent` has a legitimate use case (subtree of a specific parent task, disambiguated by project — same task name may exist in multiple projects).
+- **Decision (2026-04-24):** Retire WARN-03 entirely. The actual mistake it was nominally trying to catch (typing a project name into `parent=`) is already handled by `PARENT_RESOLVES_TO_PROJECT_WARNING` (WARN-02), which fires when the parent filter resolves only to projects.
+- **Retired:** `PARENT_PROJECT_COMBINED_WARNING` constant; `DomainLogic.check_parent_project_combined`; pipeline call site in `_ListTasksPipeline.execute`; `TestCheckParentProjectCombined` (5 tests); `TestListTasksParentProjectCombinedWarning` (4 tests); WARN-03 assertion in the surviving co-occurrence test (renamed to reflect it's a WARN-01 single-fire regression guard).
+- **Commit:** `08e94d9a refactor(warnings): retire PARENT_PROJECT_COMBINED_WARNING (WARN-03)`. Full suite 2544 passed (was 2555; −11 matches 9 deleted tests + 2 inline-assertion removals).
+
+### G1 — Live behavior verification (2026-04-24)
+
+The 57-04 fix landed with unit tests (`TestParentAnchorPreservation`, 7 cases). Live probes confirmed end-to-end behavior against real OmniFocus.
+
+**Original UAT Test 6 repro** — `list_tasks(parent="Build and Ship OmniFocus", flagged=true)`:
+- Pre-fix: 1 item (flagged leaf only, anchor dropped)
+- Post-fix: 2 items — anchor (unflagged, `order: 3.7`, via pinned OR-branch) + flagged leaf (`order: 3.7.2.1`, via candidate AND-chain). Warning's "always included" promise now enforceable.
+
+**Cross-pruning-filter matrix** — anchor preservation held for `flagged=true`, `availability=["available"]`, and combined `flagged=true ∧ availability=["available"]`. Different predicates, same architectural guarantee.
+
+**Pagination under OR-with-pinned** — built a 4-level test hierarchy (9 tasks) and probed boundary limits:
+
+| Probe | Result | Signal |
+|---|---|---|
+| baseline | 9 items, DFS order 60 → 60.1 → 60.1.1 → 60.1.1.1 → 60.1.2 → 60.2 → 60.2.1 → 60.3 → 60.4 | 4-level outline sort works across OR branches |
+| `limit=1` | anchor only (`order: 60`), `total=9`, `hasMore=true` | Anchor ranks first by outline sort — pagination honors it |
+| `limit=3` | anchor + A + A.1, `total=9`, `hasMore=true` | DFS order preserved at pagination boundary |
+| `flagged=true, limit=2` | anchor + A, **`total=6`**, `hasMore=true` | 5 effectively-flagged descendants + anchor = 6. No phantom duplicates; anchor is a first-class participant in the single OR-composed query, not a post-hoc staple |
+
+Verdict: G1's "resolved parent tasks are always included" promise is an enforceable guarantee across arbitrary AND-composed pruning filters, with pagination math honest by construction.
+
+### G3 — Name-resolver no-match flip (non-warning parts, live-verified 2026-04-24)
+
+**Resolver return contract:**
+- `_resolve_scope_filter` (project), `_resolve_parent` (task-type path), and tags resolver all return empty set on no-match instead of `None`. Service-layer short-circuit catches empty set and returns `items=[]`.
+- Live probes: `project="NonexistentProjectFooBar"`, `tags=["NonexistentTagFooBar"]`, `parent="NonexistentXYZ"` — all return 0 items uniformly.
+- D-02e (Phase 35.2 "skip filter + return all" policy) supersession note present at `.planning/milestones/v1.3-phases/35.2-.../35.2-CONTEXT.md`.
+
+**DYM layer** (live-verified):
+- Fuzzy input `project="Migart to Omnifocus"` correctly triggered DYM suggestion `"🌟✅ Migrate to Omnifocus (or not) "` — substring-miss → fuzzy-match path works.
+- Multi-candidate DYM (`parent="To Reveiw"` → three `"To review #N"` suggestions) surfaced a readability issue: comma-separated suggestions blended with `#N` suffixes for entity names containing commas/spaces/emoji. **Fixed inline** — each suggestion now wrapped in single quotes: `'To review #8', 'To review #7', ...`. Commit: `cb01b8fa fix(warnings): wrap DYM suggestions in single quotes`. Scope: `FILTER_DID_YOU_MEAN` only; parallel `NAME_NOT_FOUND` error path (parenthesized format) unchanged.
+
+**D-14 wart** (surfaced during G3 audit, fixed inline):
+- Probe `parent="Inbox"` reproduced the Phase 57-02 D-14 wart: `LIST_TASKS_INBOX_PROJECT_WARNING` hard-coded `'project="..."'` wording even when the filter that tripped the substring match was `parent=`.
+- **Fixed inline** using the template pattern from `CONTRADICTORY_INBOX_WITH_REF`: constant renamed to `LIST_TASKS_INBOX_NAME_WARNING`, added `{filter}` placeholder, caller iterates `(("project", ...), ("parent", ...))` pairs and formats per side. Commit: `5687a80e fix(warnings): template filter name into inbox-name warning`.
+
+### G4 — Non-default availability fires FILTERED_SUBTREE_WARNING (live-verified 2026-04-24)
+
+6-case live matrix against real project "🌟✅ Migrate to Omnifocus (or not)":
+
+| # | Probe | Expected | Actual | ✓ |
+|---|---|---|---|---|
+| A | scope only | no WARN-01 | no warnings | ✓ |
+| B | scope + explicit `["remaining"]` | no WARN-01 (D-13) | no warnings | ✓ |
+| C | scope + `["available"]` | WARN-01 fires | `FILTERED_SUBTREE_WARNING` | ✓ |
+| D | scope + `["blocked"]` | WARN-01 fires | `FILTERED_SUBTREE_WARNING` | ✓ |
+| E | scope + `[]` + `completed=all` | WARN-01 fires | `FILTERED_SUBTREE_WARNING` | ✓ |
+| F | `["available"]` no scope | no WARN-01 (scope gate) | no warnings | ✓ |
+
+Key evidence: probe B (explicit default) produced byte-identical warnings-free output to probe A (implicit default). `is_non_default` correctly compares value against default — "explicit default" is semantically equivalent to "unset" for the predicate. D-13's "don't spam on the default" intent preserved.
+
+Verdict: G4 delivery matches design; no follow-ups.
+
+### Audit closure (2026-04-24)
+
+All four gaps from the original UAT are now resolved AND live-verified:
+
+| Gap | Shipped via | Live verification |
+|---|---|---|
+| G1 | 57-04 (`pinned_task_ids` + OR-with-pinned) | flagged / availability / pagination probes ✓ |
+| G2 | 57-04 → 260424-j63 → 260424-kd0 → `08e94d9a` (WARN-03 retired) | probes confirmed static nudge + no redundant warnings ✓ |
+| G3 | 57-04 (resolver flip + supersession note) | no-match probes + DYM fuzzy ✓ |
+| G4 | 57-05 (`is_non_default` + `_SUBTREE_PRUNING_FIELDS`) | 6/6 live probes ✓ |
+
+Three follow-up fixes surfaced during the audit itself and shipped inline: `cb01b8fa` (DYM quote-wrap), `5687a80e` (D-14 templating), `08e94d9a` (WARN-03 retirement).
