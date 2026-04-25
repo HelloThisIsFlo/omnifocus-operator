@@ -38,6 +38,7 @@ email = "flo@kempenich.ai"
 
 [project.urls]
 Homepage = "https://hellothisisflo.github.io/omnifocus-operator"
+Documentation = "https://hellothisisflo.github.io/omnifocus-operator"
 Repository = "https://github.com/HelloThisIsFlo/omnifocus-operator"
 Issues = "https://github.com/HelloThisIsFlo/omnifocus-operator/issues"
 

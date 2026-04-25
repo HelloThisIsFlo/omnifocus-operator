@@ -3,11 +3,12 @@
 **The last OmniFocus MCP Server you'll ever need.**
 
 ![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue?logo=python&logoColor=white)
-![Tests 2086](https://img.shields.io/badge/tests-2086-brightgreen)
+[![PyPI](https://img.shields.io/pypi/v/omnifocus-operator?logo=pypi&logoColor=white&color=blue)](https://pypi.org/project/omnifocus-operator/)
+![Tests 2558](https://img.shields.io/badge/tests-2558-brightgreen)
 ![Coverage 97%](https://img.shields.io/badge/coverage-97%25-brightgreen)
 ![macOS only](https://img.shields.io/badge/platform-macOS-lightgrey?logo=apple)
 
-Production-grade MCP server exposing OmniFocus as structured task infrastructure for AI agents. Agent-first design, SQLite-cached performance, 2,086 tests.
+Production-grade MCP server exposing OmniFocus as structured task infrastructure for AI agents. Agent-first design, SQLite-cached performance, 2,558 tests.
 
 ### [**→ See the full landing page**](https://hellothisisflo.github.io/omnifocus-operator) — features, architecture, benchmarks, and comparison
 
@@ -56,7 +57,7 @@ See [CONTRIBUTING.md](https://github.com/HelloThisIsFlo/omnifocus-operator/blob/
 - ⚡ **46ms reads** — SQLite caching gives 30–60x faster reads than bridge-only servers
 - 🛠️ **11 MCP tools** — lookups, filtered lists, task creation & editing
 - 🤖 **Agent-first design** — warnings that teach, errors that educate, guidance in every response
-- 🧪 **2,086 tests, 97% coverage** — strict mypy, no corners cut
+- 🧪 **2,558 tests, 97% coverage** — strict mypy, no corners cut
 - 🛡️ **Graceful degradation** — server stays alive no matter what, always recoverable
 - 🔄 **Automatic fallback** — SQLite → OmniJS bridge when needed
 
@@ -79,7 +80,7 @@ See the [full documentation](https://hellothisisflo.github.io/omnifocus-operator
 
 | Tool | Description |
 |------|-------------|
-| `list_tasks` | Filter by date, availability, flags, tags, project, search — with pagination and field selection |
+| `list_tasks` | Filter by date, availability, flags, tags, project, parent subtree, search — with pagination, field selection, and presence-flag derivation |
 | `list_projects` | Filter by status, folder, review schedule, flags |
 | `list_tags` | List tags with parent hierarchy |
 | `list_folders` | List folders with parent hierarchy |
@@ -89,8 +90,8 @@ See the [full documentation](https://hellothisisflo.github.io/omnifocus-operator
 
 | Tool | Description |
 |------|-------------|
-| `add_tasks` | Create tasks with full field control — parent, tags, dates, flags, notes, repetition rules |
-| `edit_tasks` | Patch semantics — update fields, move tasks, complete/drop, manage tags and repetition rules |
+| `add_tasks` | Create tasks with full field control — parent, tags, dates, flags, notes, repetition rules, parallel/sequential, completes-with-children |
+| `edit_tasks` | Patch semantics — update fields, move tasks, complete/drop, manage tags, repetition rules, and hierarchy properties |
 
 All read tools are idempotent. Write tools reference projects and tags by name or ID.
 
@@ -168,7 +169,7 @@ All read tools are idempotent. Write tools reference projects and tags by name o
 | **v1.3.2** | Date Filtering — 7 dimensions, shortcuts, calendar math ✅ |
 | **v1.3.3** | Task Ordering — dotted notation, outline order ✅ |
 | **v1.4** | Response Shaping & Batch Processing ✅ |
-| **v1.4.1** | Task Properties & Subtree — presence flags, auto-complete, parallel/sequential, parent filter 🔧 |
+| **v1.4.1** | Task Properties & Subtree — presence flags, auto-complete, parallel/sequential, parent filter ✅ |
 | **v1.5** | Project Writes — add/edit projects, review marking |
 | **v1.6** | UI & Perspectives — perspective switching, deep links |
 | **v1.7** | Production Hardening — retry, crash recovery, serial execution |

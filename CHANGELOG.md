@@ -6,10 +6,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versions follow 
 
 ## [Unreleased]
 
-### Added
-- PyPI publishing via `uvx omnifocus-operator`
-- Dynamic versioning with `hatch-vcs` (git tags as source of truth)
-- Platform check — non-macOS prints clear error and exits
+_(no changes)_
 
 ## [1.4.1] - Task Properties & Subtree
 
@@ -25,7 +22,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versions follow 
 
 ### Changed
 - Name-resolver filters (`project`, `parent`, `tags`) resolving to zero matches now return empty results + `FILTER_NO_MATCH` warning — previously `project` silently skipped the filter and returned all tasks — **breaking behavior change**
-- `availability` removed from `NEVER_STRIP` — now stripped per default rules
+
+### Infrastructure
+- PyPI publishing via `uvx omnifocus-operator`
+- Dynamic versioning with `hatch-vcs` (git tags as source of truth)
+- Platform check — non-macOS prints clear error and exits
 
 ## [1.4] - Response Shaping & Batch Processing
 
