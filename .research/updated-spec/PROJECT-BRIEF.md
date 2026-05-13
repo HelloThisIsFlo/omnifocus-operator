@@ -118,7 +118,8 @@ File-based JSON request/response via OmniFocus's sandbox directory. Both sides u
 | v1.4.1 | Task Properties & Subtree Retrieval | 11 | Presence flags (`hasNote`, `hasRepetition`, `hasAttachments`), auto-complete, parallel/sequential, `parent` filter |
 | v1.5 | Project Writes | 13 | Project creation, editing, review marking |
 | v1.6 | UI & Perspectives | 16 | Perspective switching, deep link, UI data path |
-| v1.7 | Production Hardening | 16 | Retry, crash recovery, serial execution |
+| v1.7 | Smart Perspective Content | 16 | Perspective-aware response shapes (projects/tags grouping) |
+| v1.8 | Production Hardening | 16 | Retry, crash recovery, serial execution |
 
 Each milestone has its own detailed spec file.
 
