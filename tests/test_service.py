@@ -2237,7 +2237,7 @@ class TestEditTaskRepetitionRule:
                 id="t1",
                 name="Repeating",
                 repetitionRule={
-                    "ruleString": "FREQ=DAILY;UNTIL=20261231T000000Z",
+                    "ruleString": "FREQ=DAILY;UNTIL=20261231",
                     "scheduleType": "Regularly",
                     "anchorDateKey": "DueDate",
                     "catchUpAutomatically": False,

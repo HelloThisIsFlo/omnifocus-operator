@@ -28,7 +28,7 @@ class TestEndByDateTypeNormalization:
         assert schema["properties"]["date"]["format"] == "date"
 
     def test_parser_returns_date_object(self):
-        result = parse_end_condition("FREQ=MONTHLY;UNTIL=20261231T000000Z")
+        result = parse_end_condition("FREQ=MONTHLY;UNTIL=20261231")
         assert isinstance(result, EndByDate)
         assert result.date == date(2026, 12, 31)
         assert isinstance(result.date, date)
