@@ -16,7 +16,8 @@
 - ✅ **v1.4.1 Task Property Surface & Subtree Retrieval** — Phases 56-57 (shipped 2026-04-24) — [archive](milestones/v1.4.1-ROADMAP.md)
 - 📋 **v1.5 Project Writes** — see [MILESTONE-v1.5.md](../.research/updated-spec/MILESTONE-v1.5.md)
 - 📋 **v1.6 UI & Perspectives** — see [MILESTONE-v1.6.md](../.research/updated-spec/MILESTONE-v1.6.md)
-- 📋 **v1.7 Production Hardening** — see [MILESTONE-v1.7.md](../.research/updated-spec/MILESTONE-v1.7.md)
+- 📋 **v1.7 Smart Perspective Content** — see [MILESTONE-v1.7.md](../.research/updated-spec/MILESTONE-v1.7.md)
+- 📋 **v1.8 Production Hardening** — see [MILESTONE-v1.8.md](../.research/updated-spec/MILESTONE-v1.8.md)
 
 ## Phases
 
