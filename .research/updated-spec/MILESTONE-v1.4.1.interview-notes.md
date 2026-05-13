@@ -49,7 +49,7 @@ No open items remaining — both spikes complete, spec updated, ready for planni
   - `ProjectActionOrder = "parallel" | "sequential" | "singleActions"`
   - Defined separately on Task and Project (type asymmetry).
   - Matches existing `availability` per-type precedent. Write-path validation comes free.
-- **All writes deferred to v1.7** ✅ consistent with README roadmap. No partial project-write surface in v1.4.1.
+- **All writes deferred to ~~v1.7~~ v1.5** ✅ consistent with README roadmap. No partial project-write surface in v1.4.1.
 
 ### Thread 5 — `parent` filter behavioral semantics
 
@@ -86,7 +86,7 @@ No open items remaining — both spikes complete, spec updated, ready for planni
 - **Precondition**: SQLite cache exposes attachment presence cheaply. Per-row bridge fallback would erase the 30-60x read-path speedup — unacceptable.
 - **Fallback**: scope `hasAttachments` out of v1.4.1 if the spike reveals no cache support; defer with the rest of the attachment story.
 
-#### Thread 8 — write-path contract (tasks only; projects deferred to v1.7)
+#### Thread 8 — write-path contract (tasks only; projects deferred to ~~v1.7~~ v1.5)
 
 **Q1 — edit semantics:**
 - `completesWithChildren: Patch[bool]` — omit = no change, `null` rejected, value = update. Same treatment as `flagged`.

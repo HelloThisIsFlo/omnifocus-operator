@@ -20,7 +20,7 @@
 - **v1.4 shipped** ✅ (this milestone) — response shaping, true inheritance, batch writes, notes graduation
 - v1.5 planning 🔧 — UI & Perspectives (perspective switching, deep links)
 - v1.6 planned — production hardening (retry, crash recovery, serial execution)
-- v1.7 planned — project writes (add/edit projects)
+- ~~v1.7~~ v1.5 planned — project writes (add/edit projects)
 
 ---
 
