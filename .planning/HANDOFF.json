@@ -1,0 +1,116 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-05-13T16:28:23.932Z",
+  "phase": null,
+  "phase_name": "milestone-edge (between renumber and v1.4.2 hotfix)",
+  "phase_dir": null,
+  "plan": null,
+  "task": null,
+  "total_tasks": null,
+  "status": "complete",
+  "context_type": "ad-hoc plan execution (not phase/spike/sketch work)",
+  "completed_tasks": [
+    {"id": 1, "name": "Add versioning policy doc (CONTRIBUTING.md + CLAUDE.md pointer)", "status": "done", "commit": "16f6b44f"},
+    {"id": 2, "name": "Pure rename MILESTONE-v1.7.md → v1.8.md", "status": "done", "commit": "a0938427"},
+    {"id": 3, "name": "Pure rename MILESTONE-v1.6.1.md → v1.7.md", "status": "done", "commit": "66095097"},
+    {"id": 4, "name": "Content update MILESTONE-v1.8.md heading", "status": "done", "commit": "7854feb8"},
+    {"id": 5, "name": "Content update MILESTONE-v1.7.md heading", "status": "done", "commit": "973af3c8"},
+    {"id": 6, "name": "Update .planning/ROADMAP.md milestone list", "status": "done", "commit": "8e63b740"},
+    {"id": 7, "name": "Update .planning/PROJECT.md active feature list", "status": "done", "commit": "3641fe55"},
+    {"id": 8, "name": "Update .planning/STATE.md pending todos & deferred items", "status": "done", "commit": "46785f7c"},
+    {"id": 9, "name": "Update .planning/MILESTONES.md carry-over note", "status": "done", "commit": "54b4e6cd"},
+    {"id": 10, "name": "Update README.md roadmap table", "status": "done", "commit": "dbda0af1"},
+    {"id": 11, "name": "Update PROJECT-BRIEF.md roadmap reference", "status": "done", "commit": "690e38db"},
+    {"id": 12, "name": "Add Sync Trigger scope to v1.6 + postpone-review design question to v1.5", "status": "done", "commit": "832d17de"},
+    {"id": 13, "name": "Update seeds (SEED-005 CLI fit reference)", "status": "done", "commit": "d350db87"},
+    {"id": 14, "name": "Refactor PROP-07 tests: 'deferred to v1.7' → 'deferred to v1.5' (correct domain)", "status": "done", "commit": "39ca9a68"},
+    {"id": 15, "name": "Strikethrough Phase 56 archive artifacts (7 files)", "status": "done", "commit": "0a147570"},
+    {"id": 16, "name": "Strikethrough v1.4-era archive material (mixed v1.5/v1.8 per domain)", "status": "done", "commit": "19dfa646"},
+    {"id": 17, "name": "Update pending todos to reference Hardening as v1.8", "status": "done", "commit": "92318cdc"},
+    {"id": 18, "name": "Free v1.4.2 slot (TaskPaper relocated to MAYBE-IDEAS.md, no version slot)", "status": "done", "commit": "d57b12e7"},
+    {"id": 19, "name": "Capture 'run plugin action' as MAYBE-IDEA", "status": "done", "commit": "8ef71aa0"},
+    {"id": 20, "name": "Post-audit cleanup: docs/index.html landing page roadmap", "status": "done", "commit": "9515f099"},
+    {"id": 21, "name": "Run full check-all (2558 pytest + 85 vitest + ruff + mypy)", "status": "done", "commit": null},
+    {"id": 22, "name": "Push main to origin (6aa2c382..9515f099)", "status": "done", "commit": null},
+    {"id": 23, "name": "Mark OmniFocus subtask cvk9dw989E3 complete", "status": "done", "commit": null}
+  ],
+  "remaining_tasks": [],
+  "blockers": [],
+  "human_actions_pending": [],
+  "decisions": [
+    {
+      "decision": "Strict semver from v1.5 onward: X.Y.0 features, X.Y.Z true patches only, X.0.0 breaking",
+      "rationale": "Pre-v1.4.1 used .Z slots loosely for themed feature increments. Confused future agents. Strict convention going forward.",
+      "phase": "renumber"
+    },
+    {
+      "decision": "Shipped milestones (v1.0..v1.4.1) NOT retroactively renumbered",
+      "rationale": "Git tags + CHANGELOG + PyPI history are sacred. Renaming retroactively would break references.",
+      "phase": "renumber"
+    },
+    {
+      "decision": "Audit trail via markdown strikethrough in archives: ~~v1.7~~ v1.5 / ~~v1.7~~ v1.8 per domain",
+      "rationale": "Preserves historical decision context for future agents reading planning material chronologically. CommonMark renders consistently across GitHub/VS Code.",
+      "phase": "renumber"
+    },
+    {
+      "decision": "PROP-07 test refs go to v1.5 (project-writes domain), NOT v1.8 as plan literally said",
+      "rationale": "Plan's mechanical 'v1.7 → v1.8' substitution was domain-wrong. Project writes land at v1.5 in the new ordering. User confirmed v1.5. Lesson: mechanical rename plans need a domain-check pass.",
+      "phase": "renumber"
+    },
+    {
+      "decision": "Pure rename commits MUST contain zero content edits",
+      "rationale": "Preserves git's 50%-similarity rename heuristic so `git log --follow` traces history cleanly. Verified R100 on both renames.",
+      "phase": "renumber"
+    },
+    {
+      "decision": "Sync Trigger folded into v1.6 (not standalone)",
+      "rationale": "Same bridge surface as UI ops. Domain-related. Avoids slot proliferation.",
+      "phase": "renumber"
+    },
+    {
+      "decision": "Smart Perspective Content demoted to v1.7 (after UI), not promoted before",
+      "rationale": "Two-step (show_perspective then list_tasks) is sufficient for review workflow. Rule-parsing risk doesn't justify pulling forward.",
+      "phase": "renumber"
+    },
+    {
+      "decision": "Postpone-review API shape deferred — captured as open design question in MILESTONE-v1.5.md",
+      "rationale": "Actions block vs. editable nextReviewDate field. Both have trade-offs. Resolve during v1.5 planning, not now.",
+      "phase": "renumber"
+    },
+    {
+      "decision": "Versioning policy lives in two places: CONTRIBUTING.md (canonical) + CLAUDE.md (one-liner pointer)",
+      "rationale": "Human contributors read CONTRIBUTING; agents read CLAUDE.md. One-liner pointer ensures agent discovery without prompting.",
+      "phase": "renumber"
+    },
+    {
+      "decision": "TaskPaper Output stays in MAYBE-IDEAS.md without a version slot",
+      "rationale": "Freed v1.4.2 slot for the upcoming UNTIL-serialization hotfix. TaskPaper not committed-grade; future direction.",
+      "phase": "renumber"
+    }
+  ],
+  "uncommitted_files": [],
+  "next_action": "Fix the 'UNTIL must match YYYYMMDDTHHMMSSZ format, got 20260516' repetitionRule bug. repetitionRule.end.date serializes as date-only instead of full UTC datetime. Ship as v1.4.2 hotfix. OmniFocus task ID: hJqHF2GJAG3 (parent mm_b-pw4bYq is sequential; sibling cvk9dw989E3 complete, so this is now unblocked).",
+  "context_notes": "Renumber session is fully shipped (pushed to origin/main). Next work block is a SEPARATE session for the v1.4.2 hotfix. All planning material, source code, and tests already agree on the new ordering (v1.5 Project Writes / v1.6 UI+Sync / v1.7 Smart Perspective / v1.8 Hardening). The v1.4.2 slot is reserved and empty, ready for the hotfix to drop in.",
+  "milestone_state": {
+    "v1.4.2": "RESERVED for UNTIL-serialization hotfix (next session)",
+    "v1.5": "Project Writes — needs planning (postpone-review API shape is the live design question)",
+    "v1.6": "UI & Perspectives + Sync Trigger folded scope",
+    "v1.7": "Smart Perspective Content (rough intention)",
+    "v1.8": "Production Hardening"
+  },
+  "git_state": {
+    "branch": "main",
+    "head": "9515f099",
+    "pushed": true,
+    "ahead_of_origin": 0,
+    "working_tree": "clean"
+  },
+  "verification_summary": {
+    "pytest": "2558 passed, 97.52% coverage",
+    "vitest": "85 passed",
+    "ruff": "all checks passed",
+    "mypy": "no issues in 80 source files",
+    "subagent_audits": "cavecrew-investigator + cavecrew-reviewer both clean after docs/index.html fix"
+  }
+}
