@@ -172,7 +172,8 @@ All read tools are idempotent. Write tools reference projects and tags by name o
 | **v1.4.1** | Task Properties & Subtree — presence flags, auto-complete, parallel/sequential, parent filter ✅ |
 | **v1.5** | Project Writes — add/edit projects, review marking |
 | **v1.6** | UI & Perspectives — perspective switching, deep links |
-| **v1.7** | Production Hardening — retry, crash recovery, serial execution |
+| **v1.7** | Smart Perspective Content — perspective-aware response shapes |
+| **v1.8** | Production Hardening — retry, crash recovery, serial execution |
 
 ---
 
