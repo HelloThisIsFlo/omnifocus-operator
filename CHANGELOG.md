@@ -14,7 +14,7 @@ _(no changes)_
 - RRULE parser now accepts both RFC 5545 §3.3.10 UNTIL forms — DATE (`YYYYMMDD`) and DATE-TIME (`YYYYMMDDTHHMMSSZ`). Prior versions rejected the DATE form, causing `list_tasks` / `get_all` / `get_task` to fail with `UNTIL must match YYYYMMDDTHHMMSSZ format` whenever the OmniFocus database contained a task with an end-by-date repetition rule created via the OmniFocus UI (the UI emits DATE form; pre-1.4.2 server writes emitted DATE-TIME form). One bad row poisoned every snapshot read.
 
 ### Changed
-- RRULE builder now emits UNTIL in DATE form (`YYYYMMDD`), matching OmniFocus's own UI serializer. Pre-1.4.2 rules already stored in user databases (`UNTIL=YYYYMMDDT000000Z`) continue to round-trip cleanly via the new parser tolerance; no migration required. First edit of a legacy rule naturally rewrites it to the canonical form.
+- RRULE builder now emits UNTIL in DATE form (`YYYYMMDD`), matching OmniFocus's own UI serializer. Pre-1.4.2 rules already stored in user databases (`UNTIL=YYYYMMDDT000000Z`) continue to round-trip cleanly via the new parser tolerance; no migration required. Editing a legacy rule's repetition spec rewrites it to the canonical DATE form on write; edits that don't touch the repetition spec leave the legacy form in place.
 
 ## [1.4.1] - Task Properties & Subtree
 

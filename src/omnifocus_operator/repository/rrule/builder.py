@@ -153,7 +153,7 @@ def _build_byday_positional(on: OrdinalWeekday) -> str:
 
 
 def _convert_date_to_until(d: date_type) -> str:
-    """Convert a date object to RRULE compact UNTIL format.
+    """Convert a date object to RRULE UNTIL DATE form.
 
     Emits the RFC 5545 §3.3.10 DATE form, matching the shape OmniFocus's
     own UI writes. The parser accepts both DATE and DATE-TIME forms, so
