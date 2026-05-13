@@ -4,6 +4,11 @@ Parses the OmniFocus RRULE subset into flat Frequency model instances
 with 6 frequency types. Supports MINUTELY, HOURLY, and BYDAY positional
 prefix parsing.
 
+Accepts the RFC 5545 §3.3.10 UNTIL subset (both DATE form `YYYYMMDD` and
+DATE-TIME form `YYYYMMDDTHHMMSSZ`), not only the shape this server emits.
+OmniFocus's UI writes DATE form; this server's pre-1.4.2 builder wrote
+DATE-TIME form. Both round-trip cleanly.
+
 Public functions:
     parse_rrule(rule_string) -> Frequency model instance
     parse_end_condition(rule_string) -> EndByDate | EndByOccurrences | None
@@ -24,7 +29,7 @@ from omnifocus_operator.models.repetition_rule import (
 # ── Mapping Tables ───────────────────────────────────────────────────────
 
 _BYDAY_PATTERN = re.compile(r"^(-?\d+)?(MO|TU|WE|TH|FR|SA|SU)$")
-_UNTIL_PATTERN = re.compile(r"^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$")
+_UNTIL_PATTERN = re.compile(r"^(\d{4})(\d{2})(\d{2})(?:T\d{6}Z)?$")
 
 _POS_TO_ORDINAL: dict[int, str] = {
     1: "first",
@@ -265,12 +270,17 @@ def _parse_monthly_bymonthday(
 
 
 def _convert_until_to_date(raw: str) -> date_type:
-    """Convert RRULE compact UNTIL format to a date object.
+    """Convert RRULE UNTIL value to a date object.
 
-    Input:  YYYYMMDDTHHMMSSZ (e.g., 20261231T000000Z)
-    Output: date(2026, 12, 31)
+    Accepts RFC 5545 §3.3.10 UNTIL forms:
+      - DATE form:      YYYYMMDD          (e.g. 20261231)        — OmniFocus UI emits this
+      - DATE-TIME form: YYYYMMDDTHHMMSSZ  (e.g. 20261231T000000Z) — this server's pre-1.4.2 builder
+
+    The time-of-day component is intentionally discarded because EndByDate
+    semantics are date-only; UNTIL bounds the inclusive last calendar day
+    of the recurrence.
     """
     m = _UNTIL_PATTERN.match(raw)
     if not m:
-        raise ValueError(f"UNTIL must match YYYYMMDDTHHMMSSZ format, got {raw!r}")
+        raise ValueError(f"UNTIL must match YYYYMMDD or YYYYMMDDTHHMMSSZ format, got {raw!r}")
     return date_type(int(m.group(1)), int(m.group(2)), int(m.group(3)))

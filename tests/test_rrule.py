@@ -391,7 +391,13 @@ class TestParseRruleEndConditions:
         result = parse_end_condition("FREQ=WEEKLY;COUNT=10")
         assert result == EndByOccurrences(occurrences=10)
 
-    def test_until(self):
+    def test_until_date_form(self):
+        """RFC 5545 DATE form (OmniFocus UI emits this)."""
+        result = parse_end_condition("FREQ=MONTHLY;UNTIL=20261231")
+        assert result == EndByDate(date=date(2026, 12, 31))
+
+    def test_until_datetime_form(self):
+        """RFC 5545 DATE-TIME form (pre-1.4.2 server emitted this)."""
         result = parse_end_condition("FREQ=MONTHLY;UNTIL=20261231T000000Z")
         assert result == EndByDate(date=date(2026, 12, 31))
 
@@ -429,7 +435,7 @@ class TestParseRruleErrors:
 
     def test_count_and_until_mutually_exclusive(self):
         with pytest.raises(ValueError, match="mutually exclusive"):
-            parse_rrule("FREQ=DAILY;COUNT=5;UNTIL=20261231T000000Z")
+            parse_rrule("FREQ=DAILY;COUNT=5;UNTIL=20261231")
 
     def test_whitespace_only(self):
         with pytest.raises(ValueError, match="must not be empty"):
@@ -438,6 +444,11 @@ class TestParseRruleErrors:
     def test_missing_freq(self):
         with pytest.raises(ValueError, match="FREQ is required"):
             parse_rrule("INTERVAL=3")
+
+    def test_until_bad_format_message_mentions_both_forms(self):
+        """Educational error names both accepted forms."""
+        with pytest.raises(ValueError, match="YYYYMMDD or YYYYMMDDTHHMMSSZ"):
+            parse_end_condition("FREQ=DAILY;UNTIL=2026-12-31")
 
 
 # ── Parser: BYSETPOS (Multi-Day Positional) ─────────────────────────────
@@ -550,7 +561,14 @@ class TestBuildRrule:
 
     def test_with_end_until(self):
         result = build_rrule(Frequency(type="monthly"), end=EndByDate(date=date(2026, 12, 31)))
-        assert result == "FREQ=MONTHLY;UNTIL=20261231T000000Z"
+        assert result == "FREQ=MONTHLY;UNTIL=20261231"
+
+    def test_build_then_parse_end_by_date_round_trip(self):
+        """v1.4.2: builder emits DATE form; parser accepts it."""
+        end = EndByDate(date=date(2026, 12, 31))
+        rule = build_rrule(Frequency(type="daily"), end=end)
+        assert rule == "FREQ=DAILY;UNTIL=20261231"
+        assert parse_end_condition(rule) == end
 
 
 # ── Round Trip ───────────────────────────────────────────────────────────
@@ -590,7 +608,7 @@ class TestRoundTrip:
         "rrule_string",
         [
             "FREQ=WEEKLY;COUNT=10",
-            "FREQ=MONTHLY;UNTIL=20261231T000000Z",
+            "FREQ=MONTHLY;UNTIL=20261231",
         ],
     )
     def test_round_trip_with_end_condition(self, rrule_string: str):
