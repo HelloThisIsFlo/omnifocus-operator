@@ -17,7 +17,6 @@ Ideas that might be worth exploring but need more thought before committing.
 - **What:** Alternative serialization for ~5x token reduction. Hierarchy via indentation, TaskPaper tag syntax for fields.
 - **Why maybe:** Field selection + null-stripping (v1.4) solve ~80% of the token problem. TaskPaper's marginal benefit on top is ~1.5-2x, but adds: tree reconstruction from flat data, a whole parallel serialization format to maintain, and format duality where agents read TaskPaper but write JSON. The complexity-to-benefit ratio is poor.
 - **Complexity:** Tree reconstruction, TaskPaper tag syntax, interaction with field selection, server-wide vs per-tool config.
-- **Former milestone:** v1.4.2 (full spec archived)
 
 ## Mutually exclusive tag enforcement
 - **What:** Validate or warn when agents assign multiple mutually exclusive sibling tags to a task

@@ -41,7 +41,7 @@ Raw `rank` values (e.g. -1,069,498,304) are not human-friendly. The 0-based ordi
 
 ## Extra Context
 
-- TaskPaper output (v1.4.2) naturally shows hierarchy and order via indentation — complementary to `order` field
+- TaskPaper output (~~v1.4.2~~ — see MAYBE-IDEAS.md) naturally shows hierarchy and order via indentation — complementary to `order` field
 - `order` is for programmatic use, TaskPaper for full-hierarchy comprehension
 
 ## Sequencing
