@@ -18,7 +18,7 @@
 
 **Explicitly out of scope (Phase 57)** — `parent` filter, filter unification, new warnings, `collect_subtree` helper. Do NOT start any of PARENT-*, UNIFY-*, WARN-* in this phase.
 
-**Explicitly deferred (v1.7)** — project writes for `completesWithChildren` / `type`. Projects stay read-only for the new writable fields in v1.4.1; writes on projects must be rejected at the tool surface.
+**Explicitly deferred (~~v1.7~~ v1.5)** — project writes for `completesWithChildren` / `type`. Projects stay read-only for the new writable fields in v1.4.1; writes on projects must be rejected at the tool surface.
 
 **Additive-only** — no breaking changes to existing fields, tools, or contracts. Same shape as v1.3.1/.2/.3 point releases.
 
@@ -106,7 +106,7 @@ All five strip-when-false. Stripped values MUST NOT appear in output.
 - **PROP-03 / PROP-04** `type` on `add_tasks` and `edit_tasks`:
   - `Patch[TaskType]` where `TaskType = "parallel" | "sequential"`.
   - Null rejected. `"singleActions"` rejected **naturally via TaskType enum validation** — no custom messaging; generic schema error is sufficient.
-- **PROP-07**: Writes to `completesWithChildren` / `type` on projects rejected at the tool surface. Read path for projects is covered (HIER-01/02); write path deferred to v1.7.
+- **PROP-07**: Writes to `completesWithChildren` / `type` on projects rejected at the tool surface. Read path for projects is covered (HIER-01/02); write path deferred to ~~v1.7~~ v1.5.
 
 ### Create-default resolution (add_tasks)
 
@@ -243,7 +243,7 @@ Dependency flow: Wave 2 depends on Wave 1 (needs cache paths). Wave 3 depends on
 Explicitly out of scope for Phase 56; captured in REQUIREMENTS.md "Future Requirements" or routed to another phase/milestone:
 
 - **`parent` filter + filter unification** (PARENT-*, UNIFY-*, WARN-*) → Phase 57.
-- **Project writes for `completesWithChildren` / `type`** → v1.7 (consistent with existing write surface).
+- **Project writes for `completesWithChildren` / `type`** → ~~v1.7~~ v1.5 (consistent with existing write surface).
 - **Cache-direct settings access** (plist decode in service layer) → rejected for architectural consistency; future optimization if bridge startup cost ever becomes meaningful.
 - **Custom educational errors for derived-field rejection** → rejected; generic Pydantic schema error is sufficient.
 - **`hasChildren` rename to `hasSubtasks`** → rejected; would ripple to projects where "subtasks" doesn't apply.

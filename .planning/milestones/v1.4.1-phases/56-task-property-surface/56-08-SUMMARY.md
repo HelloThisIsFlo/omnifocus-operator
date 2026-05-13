@@ -247,7 +247,7 @@ None — the plan's `<interfaces>` section was precise enough that no re-explora
 ## Next Phase Readiness
 
 - **Phase 57 (Subtree retrieval)** unaffected by this plan — the hoist is strictly additive on the read surface.
-- **v1.7 (project writes)** will inherit the hoist naturally — when project writes land, `is_sequential` will be derived from the write-side `type` field just like it is on tasks today.
+- **~~v1.7~~ v1.5 (project writes)** will inherit the hoist naturally — when project writes land, `is_sequential` will be derived from the write-side `type` field just like it is on tasks today.
 - Human UAT **G2** (golden master via `uat/capture_golden_master.py`) is **NOT** addressed by this plan and remains pending in `56-HUMAN-UAT.md`.
 
 ## Self-Check: PASSED

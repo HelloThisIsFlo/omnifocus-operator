@@ -49,7 +49,7 @@ human_verification:
 
 # Phase 56: Task Property Surface — Re-Verification Report (Post Gap-Closure)
 
-**Phase Goal:** Surface task properties (completesWithChildren, type, hasAttachments, hasNote, hasRepetition, isSequential, dependsOnChildren) across both repositories with cache-backed reads, correct projection, and agent-facing contracts. Open write paths for completesWithChildren and type on tasks only (not projects, per PROP-07 deferral to v1.7).
+**Phase Goal:** Surface task properties (completesWithChildren, type, hasAttachments, hasNote, hasRepetition, isSequential, dependsOnChildren) across both repositories with cache-backed reads, correct projection, and agent-facing contracts. Open write paths for completesWithChildren and type on tasks only (not projects, per PROP-07 deferral to ~~v1.7~~ v1.5).
 
 **Verified:** 2026-04-20T12:00:00Z
 **Status:** human_needed (G1 and G2 scaffolding gaps closed; 5 items remain human-only by design)

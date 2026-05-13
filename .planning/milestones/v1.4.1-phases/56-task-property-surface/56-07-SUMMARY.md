@@ -23,7 +23,7 @@ provides:
   - "A test-only SQLite rehydration helper `_rehydrate_sqlite_from_bridge` that mirrors OmniFocus's write-through to the cache (Hybrid round-trip tests call it between writes and reads)"
 
 affects:
-  - "v1.7 Phase 60 (project writes): PROP-07 tests WILL FAIL when `add_projects` / `edit_projects` tools land — that failure is the intended checkpoint forcing v1.7 authors to parallel-cover PROP-01..06 on the new surface."
+  - "~~v1.7~~ v1.5 Phase 60 (project writes): PROP-07 tests WILL FAIL when `add_projects` / `edit_projects` tools land — that failure is the intended checkpoint forcing ~~v1.7~~ v1.5 authors to parallel-cover PROP-01..06 on the new surface."
 
 tech-stack:
   added: []
@@ -74,7 +74,7 @@ completed: 2026-04-19
 
 ## Accomplishments
 
-- **PROP-07 locked structurally.** Three tests in `tests/test_server.py::TestPROP07ProjectWritesNotYetAvailable` enumerate the registered MCP tools at runtime and assert no tool name starts with `add_projects` or `edit_projects`. The integration assertion locks the full v1.4.1 write surface (2 task tools, 0 project tools). A comment block above the class explicitly calls out v1.7 Phase 60 as the point at which these tests MUST be updated to parallel-cover PROP-01..06 on the new tools.
+- **PROP-07 locked structurally.** Three tests in `tests/test_server.py::TestPROP07ProjectWritesNotYetAvailable` enumerate the registered MCP tools at runtime and assert no tool name starts with `add_projects` or `edit_projects`. The integration assertion locks the full v1.4.1 write surface (2 task tools, 0 project tools). A comment block above the class explicitly calls out ~~v1.7~~ v1.5 Phase 60 as the point at which these tests MUST be updated to parallel-cover PROP-01..06 on the new tools.
 - **End-to-end round-trip coverage.** `tests/test_cross_path_equivalence.py::TestTaskPropertySurfaceRoundTrip` — 7 test methods parametrized across both repositories (`bridge` + `sqlite`) for 14 passing executions. Covers: PROP-01 agent-value (completes + type written explicitly), PROP-02 edit (patch flips both fields independently), PROP-05/06 create-default (preferences-resolved on both), PROP-03 factory-default fallback (absent preference keys), and `list_tasks` cache-backed read.
 - **Golden master scaffolding.** `tests/golden_master/test_task_property_surface_golden.py` compares the normalized serialized `list_tasks` payload against a baseline file that the human captures manually. Opt-in `GOLDEN_MASTER_CAPTURE=1` env var triggers the capture branch; a sibling invariant test fails loudly if that env var is set during a regular run.
 - **Parallel-wave-safe execution.** Both round-trip and golden-master tests feature-detect the post-56-06 `AddTaskCommand` surface and skip cleanly when it's absent, so 56-07 runs green regardless of which parallel Wave-3 plan lands first.
@@ -85,7 +85,7 @@ completed: 2026-04-19
 1. **Task 1: PROP-07 structural guardrail** — `3ddf9b01` (test)
    - `TestPROP07ProjectWritesNotYetAvailable` class (3 tests) in `tests/test_server.py`.
    - Uses the existing `client` fixture (FastMCP in-process) + `client.list_tools()` pattern.
-   - Structural-checkpoint comment explicitly names Phase 60 / v1.7 as the update point.
+   - Structural-checkpoint comment explicitly names Phase 60 / ~~v1.7~~ v1.5 as the update point.
 
 2. **Task 2: Round-trip tests on both repositories** — `9c2bc0ec` (test)
    - Parametrized `cross_service` fixture yields full `OperatorService` stack for both repo types.
@@ -181,7 +181,7 @@ No new security-relevant surface introduced. The threat register entries for thi
 - FOUND: commit `9c2bc0ec` (Task 2 — round-trip)
 - FOUND: commit `9b6b9060` (Task 3 — golden master scaffolding)
 - VERIFIED: `grep "TestPROP07ProjectWritesNotYetAvailable\|test_no_add_projects_tool_registered\|test_no_edit_projects_tool_registered" tests/test_server.py` -- 3 matches (class + 2 test methods; third test lives under the integration-assertion name).
-- VERIFIED: `grep "Phase 60\|v1.7" tests/test_server.py` -- 7 matches, all in the PROP-07 class comment + docstrings (structural-checkpoint signal).
+- VERIFIED: `grep "Phase 60\|~~v1.7~~ v1.5" tests/test_server.py` -- 7 matches, all in the PROP-07 class comment + docstrings (structural-checkpoint signal).
 - VERIFIED: `grep "TestTaskPropertySurfaceRoundTrip" tests/test_cross_path_equivalence.py` -- 1 class match.
 - VERIFIED: `grep "test_round_trip_create_default_resolves_preference_values\|test_round_trip_factory_default_fallback" tests/test_cross_path_equivalence.py` -- 2 matches.
 - VERIFIED: `uv run pytest tests/test_cross_path_equivalence.py::TestTaskPropertySurfaceRoundTrip --no-cov -q` -- 14 passed.

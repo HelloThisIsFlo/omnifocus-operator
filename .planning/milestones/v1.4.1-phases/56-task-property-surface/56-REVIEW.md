@@ -61,7 +61,7 @@ status: issues_found
 
 ## Summary
 
-Phase 56 delivers the task property surface end-to-end: bridge preference extension, cache-backed reads on both repos, derived presence flags, expanded `hierarchy` include group, and writable `completesWithChildren` / `type` on tasks. Implementation quality is high — SAFE-01/02 preserved across all new tests, FLAG-08 rejection is strict without leaking custom messaging, HIER-05 precedence is proven cross-path, and the PROP-07 guardrail is structural rather than behavioural (clean signal for v1.7).
+Phase 56 delivers the task property surface end-to-end: bridge preference extension, cache-backed reads on both repos, derived presence flags, expanded `hierarchy` include group, and writable `completesWithChildren` / `type` on tasks. Implementation quality is high — SAFE-01/02 preserved across all new tests, FLAG-08 rejection is strict without leaking custom messaging, HIER-05 precedence is proven cross-path, and the PROP-07 guardrail is structural rather than behavioural (clean signal for ~~v1.7~~ v1.5).
 
 One correctness issue: preferences warnings are drained twice in `_AddTaskPipeline.execute`, producing duplicate `SETTINGS_FALLBACK_WARNING` / `SETTINGS_UNKNOWN_DUE_SOON_PAIR` in `AddTaskResult.warnings` when the bridge fails or returns an unknown DueSoon pair. Three Info items cover acknowledged duplication and minor consistency notes.
 
