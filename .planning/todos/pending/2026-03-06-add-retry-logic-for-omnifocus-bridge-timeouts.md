@@ -20,4 +20,4 @@ Consider adding a configurable retry (e.g., 1 automatic retry on timeout before 
 
 ## Target Milestone
 
-v1.7 Production Hardening. See `.research/updated-spec/MILESTONE-v1.7.md`, section "Retry Logic for Bridge Timeouts".
+v1.8 Production Hardening. See `.research/updated-spec/MILESTONE-v1.8.md`, section "Retry Logic for Bridge Timeouts".
