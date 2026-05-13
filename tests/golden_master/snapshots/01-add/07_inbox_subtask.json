@@ -244,7 +244,7 @@
       },
       {
         "name": "\ud83e\uddea GM-Phase56-Attached",
-        "note": "",
+        "note": "\n",
         "flagged": false,
         "effectiveFlagged": false,
         "dueDate": null,
@@ -290,11 +290,11 @@
         "sequential": false,
         "containsSingletonActions": false,
         "hasAttachments": false,
-        "lastReviewDate": "2026-04-19T23:00:00.000Z",
-        "nextReviewDate": "2026-04-26T23:00:00.000Z",
+        "lastReviewDate": "2026-05-04T16:17:39.820Z",
+        "nextReviewDate": "2126-05-03T23:00:00.000Z",
         "reviewInterval": {
-          "steps": 1,
-          "unit": "weeks"
+          "steps": 100,
+          "unit": "years"
         },
         "folder": "$folder:operator_gm_tests",
         "tags": []
@@ -320,7 +320,7 @@
         "containsSingletonActions": false,
         "hasAttachments": false,
         "lastReviewDate": "2026-04-19T23:00:00.000Z",
-        "nextReviewDate": "2026-04-26T23:00:00.000Z",
+        "nextReviewDate": "2026-05-10T23:00:00.000Z",
         "reviewInterval": {
           "steps": 1,
           "unit": "weeks"
@@ -349,7 +349,7 @@
         "containsSingletonActions": true,
         "hasAttachments": false,
         "lastReviewDate": "2026-04-19T23:00:00.000Z",
-        "nextReviewDate": "2026-04-26T23:00:00.000Z",
+        "nextReviewDate": "2026-05-10T23:00:00.000Z",
         "reviewInterval": {
           "steps": 1,
           "unit": "weeks"
@@ -377,7 +377,7 @@
         "sequential": false,
         "containsSingletonActions": false,
         "hasAttachments": false,
-        "lastReviewDate": "2026-04-19T19:13:47.170Z",
+        "lastReviewDate": "2026-04-19T19:13:47.171Z",
         "nextReviewDate": "2326-04-18T23:00:00.000Z",
         "reviewInterval": {
           "steps": 300,
@@ -393,11 +393,11 @@
         "flagged": true,
         "effectiveFlagged": true,
         "dueDate": "2036-03-01T19:00:00.000Z",
-        "deferDate": "2026-03-21T08:00:00.000Z",
+        "deferDate": "2026-05-13T07:00:00.000Z",
         "effectiveDueDate": "2036-03-01T19:00:00.000Z",
-        "effectiveDeferDate": "2026-03-21T08:00:00.000Z",
-        "plannedDate": "2026-03-25T09:00:00.000Z",
-        "effectivePlannedDate": "2026-03-25T09:00:00.000Z",
+        "effectiveDeferDate": "2026-05-13T07:00:00.000Z",
+        "plannedDate": null,
+        "effectivePlannedDate": null,
         "dropDate": null,
         "effectiveDropDate": null,
         "estimatedMinutes": null,
@@ -407,7 +407,7 @@
         "containsSingletonActions": false,
         "hasAttachments": false,
         "lastReviewDate": "2026-03-22T00:00:00.000Z",
-        "nextReviewDate": "2026-04-29T23:00:00.000Z",
+        "nextReviewDate": "2026-05-13T23:00:00.000Z",
         "reviewInterval": {
           "steps": 1,
           "unit": "weeks"
@@ -435,11 +435,11 @@
         "sequential": false,
         "containsSingletonActions": false,
         "hasAttachments": false,
-        "lastReviewDate": "2026-04-19T19:12:39.641Z",
-        "nextReviewDate": "2026-04-25T23:00:00.000Z",
+        "lastReviewDate": "2026-05-04T16:17:49.417Z",
+        "nextReviewDate": "2126-05-03T23:00:00.000Z",
         "reviewInterval": {
-          "steps": 1,
-          "unit": "weeks"
+          "steps": 100,
+          "unit": "years"
         },
         "folder": "$folder:operator_gm_tests",
         "tags": []
