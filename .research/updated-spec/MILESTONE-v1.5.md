@@ -33,6 +33,10 @@ Moving a project between folders via `edit_projects({ folder })` is deliberately
 - Patch semantics work identically to `edit_tasks`
 - All existing task tools remain unaffected
 
+## Open Design Questions
+
+- **Postpone-review API shape**: actions block (`actions.review.postpone: <date>`) vs. editable `nextReviewDate` field. The actions-block approach groups the operation with other lifecycle actions (`reviewed`, `lifecycle`); the editable-field approach treats review schedule as ordinary patchable state. Trade-offs: discoverability vs. consistency with other write surfaces. Resolve during v1.5 planning.
+
 ## Tools After This Milestone
 
 Thirteen: all eleven from v1.4.1, plus `add_projects`, `edit_projects`.

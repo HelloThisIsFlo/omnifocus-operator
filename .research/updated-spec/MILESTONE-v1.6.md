@@ -54,6 +54,19 @@ These bypass the repository. The service layer needs bridge access for these —
 
 This allows agents to say "here, look at this task" and navigate the user directly to it. Natural complement to `show_perspective`.
 
+### Sync Trigger (folded scope)
+
+**Pain point:** SQLite snapshot can be ~45s stale when used remotely (mobile edits not yet synced down). Agent queries return outdated state, agent acts on it, surprises follow.
+
+**What's needed:** A way for the agent (or a tool call) to nudge OmniFocus to sync before reading. Same bridge surface as perspective UI ops (live UI / app-level concerns) — naturally folds into this milestone rather than standing alone.
+
+**Shape options (TBD during v1.6 planning):**
+- **Dedicated tool** — e.g., `sync_omnifocus()` returns when sync completes (or after timeout). Explicit, agent-driven.
+- **Argument on read tools** — e.g., `list_tasks(force_sync=true)` triggers a sync before the read. Implicit, attached to the read path.
+- **Auto-detect** — server detects staleness (timestamp delta) and triggers sync transparently. Magic, harder to predict.
+
+**Shape decision:** TBD during v1.6 planning. Each option has trade-offs around explicitness, latency cost, and agent UX.
+
 ## Key Acceptance Criteria
 
 - `show_perspective` visibly switches the OmniFocus perspective (built-in and custom)
