@@ -2004,6 +2004,11 @@ def _validate_dated_project(project: dict[str, Any]) -> list[str]:
         problems.append("deferDate is not set (needed for effectiveDeferDate inheritance)")
     if not project.get("flagged"):
         problems.append("flagged is not true (needed for effectiveFlagged inheritance)")
+    if project.get("completedByChildren"):
+        problems.append(
+            "'Complete with last action' is ON in Inspector — needs to be OFF "
+            "(raw bridge field: completedByChildren=true)"
+        )
     return problems
 
 
@@ -2293,16 +2298,16 @@ async def _phase_2_manual_setup(bridge: RealBridge) -> None:
                 else:
                     GM_DATED_PROJECT_ID = dated_project["id"]
                     print(
-                        "  ✓ 🧪 GM-TestProject-Dated verified: dueDate, deferDate, flagged all set."
+                        "  ✓ 🧪 GM-TestProject-Dated verified: dueDate, deferDate, flagged, "
+                        "'Complete with last action' OFF."
                     )
             print()
         else:
-            print("  ✓ GM-TestProject-Dated verified: dueDate, deferDate, flagged set.")
+            print(
+                "  ✓ GM-TestProject-Dated verified: dueDate, deferDate, flagged set, "
+                "'Complete with last action' OFF."
+            )
             print()
-
-        print("  NOTE: Also ensure 'Complete with last action' is OFF for this project")
-        print("  (not exposed via bridge -- cannot verify automatically).")
-        print()
     else:
         # Guide through each missing entity
         entities = [
@@ -2369,16 +2374,16 @@ async def _phase_2_manual_setup(bridge: RealBridge) -> None:
                 else:
                     found_entities["🧪 GM-TestProject-Dated"] = dated
                     print(
-                        "  ✓ 🧪 GM-TestProject-Dated verified: dueDate, deferDate, flagged all set."
+                        "  ✓ 🧪 GM-TestProject-Dated verified: dueDate, deferDate, flagged, "
+                        "'Complete with last action' OFF."
                     )
             print()
         else:
-            print("  ✓ GM-TestProject-Dated verified: dueDate, deferDate, flagged set.")
+            print(
+                "  ✓ GM-TestProject-Dated verified: dueDate, deferDate, flagged set, "
+                "'Complete with last action' OFF."
+            )
             print()
-
-        print("  NOTE: Also ensure 'Complete with last action' is OFF for this project")
-        print("  (not exposed via bridge -- cannot verify automatically).")
-        print()
 
         GM_PROJECT_ID = found_entities["🧪 GM-TestProject"]["id"]
         GM_PROJECT2_ID = found_entities["🧪 GM-TestProject2"]["id"]
