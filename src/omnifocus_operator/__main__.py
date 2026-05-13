@@ -7,6 +7,7 @@ import os
 import sys
 from logging.handlers import RotatingFileHandler
 
+from omnifocus_operator import __version__
 from omnifocus_operator.config import get_settings
 from omnifocus_operator.server import create_server
 
@@ -57,6 +58,7 @@ def main() -> None:
         )
         sys.exit(1)
     _configure_logging()
+    logging.getLogger("omnifocus_operator").info("omnifocus-operator v%s starting", __version__)
     server = create_server()
     server.run(transport="stdio")
 

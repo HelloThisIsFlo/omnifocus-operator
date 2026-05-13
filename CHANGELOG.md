@@ -6,7 +6,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versions follow 
 
 ## [Unreleased]
 
-_(no changes)_
+### Added
+- Startup log line: `omnifocus-operator v<X.Y.Z> starting` — visible in Claude Desktop's MCP log page and in `~/Library/Logs/omnifocus-operator.log`. Makes the running version obvious without inspecting process arguments or package metadata.
 
 ## [1.4.2] - UNTIL Format Hotfix
 
