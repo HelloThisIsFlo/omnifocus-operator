@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": ".claude/worktrees"
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "omnifocus-operator",
+		"liveServer.settings.port": 1235
+	}
+}
