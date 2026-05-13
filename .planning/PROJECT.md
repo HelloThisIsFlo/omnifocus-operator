@@ -121,7 +121,8 @@ v1.4.1 shipped 2026-04-24. Next milestone not yet scoped — use `/gsd-new-miles
 
 - [ ] Project writes — add_projects, edit_projects (v1.5)
 - [ ] UI & Perspectives — show/get perspective, open_task, live UI reads (v1.6)
-- [ ] Production hardening — retry, crash recovery, serial execution (v1.7)
+- [ ] Smart Perspective Content — perspective-aware response shapes (v1.7)
+- [ ] Production hardening — retry, crash recovery, serial execution (v1.8)
 
 ### Out of Scope
 
