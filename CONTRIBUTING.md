@@ -26,6 +26,18 @@ src/omnifocus_operator/
 
 Three-layer architecture: **MCP Server → Service → Repository**. All layers communicate through typed contracts.
 
+## Versioning
+
+OmniFocus Operator uses [semantic versioning](https://semver.org/) going forward from **v1.5**:
+
+- **`X.Y.0`** — minor bump for any feature work (new tools, new behavior, new response fields, scope additions)
+- **`X.Y.Z`** — patch bump reserved for **true bug fixes only** (no new behavior, no API changes)
+- **`X.0.0`** — major bump for breaking changes (renamed/removed tools, response shape breaks, dropped platform support)
+
+**Historical note:** Releases through **v1.4.1** use a looser convention where `.Z` slots sometimes carried themed feature increments (e.g. v1.4.1 added presence flags and a new filter — feature work, not a bug fix). These are **not retroactively renumbered** — the git tags and release history are preserved as shipped. The strict convention above applies to v1.5 onward.
+
+**Strikethrough convention in planning docs:** When milestone numbers shift in `.planning/` or `.research/`, historical references use markdown strikethrough to preserve audit trail: `~~v1.7~~ v1.8`. New material uses the new number plainly. Future agents reading archive material can see both the old and new identity at a glance.
+
 ## Running Tests
 
 ```bash

@@ -20,6 +20,10 @@ See @README.md for project overview.
   - In comments and docstrings, write `the real Bridge` (two words) instead of `RealBridge` — CI greps for the literal class name and will flag it.
 - **SAFE-02**: `RealBridge` interaction is manual UAT only, performed by the human user against their live OmniFocus database. UAT scripts live in `uat/` and must NEVER be run by agents or CI. The `uat/` directory is excluded from pytest discovery and CI execution.
 
+## Versioning
+
+See [CONTRIBUTING.md § Versioning](CONTRIBUTING.md#versioning) — `X.Y.0` for features, `X.Y.Z` reserved for true patches only. Pre-v1.5 used looser convention; not retroactively renumbered.
+
 ## Service Layer Convention
 
 - All service use cases use the **Method Object pattern** — see `docs/architecture.md` "Method Object Pattern" for full details
