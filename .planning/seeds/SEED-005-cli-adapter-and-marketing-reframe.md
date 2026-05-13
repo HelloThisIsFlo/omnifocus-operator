@@ -59,7 +59,7 @@ Related code and decisions found in the current codebase:
 - `.research/page/PAGE.md` — Full landing page copy, MCP-focused throughout
 
 **Roadmap context:**
-- `.planning/ROADMAP.md` — v1.3-v1.6 planned; CLI fits as v1.7 or v2.0
+- `.planning/ROADMAP.md` — v1.3-v1.6 planned; CLI fits as ~~v1.7~~ v1.8 or v2.0
 - README roadmap table lists v1.3-v1.6; CLI would extend this
 
 ## Notes
