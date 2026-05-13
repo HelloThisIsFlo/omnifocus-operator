@@ -50,8 +50,8 @@ _(cleared — v1.4 decisions archived to milestones/v1.4-ROADMAP.md and PROJECT.
 
 Carried forward from v1.4:
 
-1. Add retry logic for OmniFocus bridge timeouts (v1.7)
-2. Investigate macOS App Nap impact on OmniFocus responsiveness (v1.7)
+1. Add retry logic for OmniFocus bridge timeouts (v1.8)
+2. Investigate macOS App Nap impact on OmniFocus responsiveness (v1.8)
 3. Make UAT folder discoverable for verification agents
 4. Investigate `replace: []` bug in production (may not be staleness-related)
 5. Remove misleading "single runtime dependency" messaging from README + landing page
@@ -114,4 +114,4 @@ Items acknowledged and deferred at milestone v1.4.1 close on 2026-04-24:
 
 Notes:
 - Quick-task "missing" status = completion marker absent in GSD tracking schema; all 7 directories exist with real commit SHAs. Carry-over from earlier milestones that didn't archive their quick-task folders.
-- Todos + seeds are deliberately carried forward (todos → v1.7; seeds → v1.5/v1.6/v1.7 + landing-page milestone).
+- Todos + seeds are deliberately carried forward (todos → v1.8; seeds → v1.5/v1.6/v1.8 + landing-page milestone).
