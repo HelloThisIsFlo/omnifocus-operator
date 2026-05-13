@@ -23,7 +23,7 @@
 
 **Tech debt at close:** Minor — WR-01 duplicate preference-warning drain in `AddTaskResult` on bridge-failure path accepted as-is (cosmetic, bridge-failure-only). Two code-level items (IN-01 HIER-05 truth-table triplication, IN-03 adapter property-surface duplication) resolved during the milestone audit itself.
 
-**Known deferred items at close:** 18 (1 false-positive UAT gap, 7 completed quick tasks awaiting archival, 5 todos carried forward to v1.7, 5 dormant seeds planted for v1.5/v1.6/v1.7 + landing-page milestone — see STATE.md Deferred Items)
+**Known deferred items at close:** 18 (1 false-positive UAT gap, 7 completed quick tasks awaiting archival, 5 todos carried forward to v1.8, 5 dormant seeds planted for v1.5/v1.6/v1.8 + landing-page milestone — see STATE.md Deferred Items)
 
 ---
 
