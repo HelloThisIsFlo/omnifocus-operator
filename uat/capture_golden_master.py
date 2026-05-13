@@ -1158,13 +1158,13 @@ def _build_scenarios() -> list[dict[str, Any]]:
             "folder": "08-repetition",
             "file": "14_with_until",
             "scenario": "08-repetition/14_with_until",
-            "description": "FREQ=MONTHLY;UNTIL=20261231T000000Z repetition rule (end by date)",
+            "description": "FREQ=MONTHLY;UNTIL=20261231 repetition rule (end by date)",
             "operation": "add_task",
             "params": {
                 "name": "GM-Repeat-WithUntil",
                 "dueDate": "2026-12-01T10:00:00.000Z",
                 "repetitionRule": {
-                    "ruleString": "FREQ=MONTHLY;UNTIL=20261231T000000Z",
+                    "ruleString": "FREQ=MONTHLY;UNTIL=20261231",
                     "scheduleType": "Regularly",
                     "anchorDateKey": "DueDate",
                     "catchUpAutomatically": True,
@@ -1175,7 +1175,7 @@ def _build_scenarios() -> list[dict[str, Any]]:
                 "operation": "edit_task",
                 "params_fn": lambda: {
                     "id": TASK_IDS["repeat_with_until"],
-                    "note": "FREQ=MONTHLY;UNTIL=20261231T000000Z",
+                    "note": "FREQ=MONTHLY;UNTIL=20261231",
                 },
             },
         },
