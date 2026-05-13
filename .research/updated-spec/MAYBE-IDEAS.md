@@ -28,3 +28,9 @@ Ideas that might be worth exploring but need more thought before committing.
 - **What:** Expose server configuration (due-soon threshold, repository type, SQLite path, server status) as MCP Resources instead of baking into tool responses
 - **Why maybe:** Looked into the MCP Resources spec — it's a bit niche. Unclear if the value justifies the implementation effort. Resources are better suited for larger, more complex servers.
 - **Complexity:** Low implementation effort, but unclear demand.
+
+## Run plugin action via OmniJS
+- **What:** Expose a tool that lets the agent invoke the user's installed OmniFocus plugins (e.g. note-to-subtask, detach-repeatedly, custom user automations) via `Plugin.invokeAction()` or similar OmniJS surface.
+- **Why valuable:** Composes the agent with the user's existing automation library. Anything the user already automated via plugins becomes agent-available for free — no need to re-implement plugin logic server-side.
+- **Why maybe:** Requires plugin discovery API (enumerate available actions, their parameters, their docstrings) which may or may not exist in the OmniJS surface. Security model unclear — plugins can do anything the user could, and exposing them widens the agent's blast radius significantly. No current pull from real workflows; speculative direction.
+- **Complexity:** Discovery API spike needed first. Then surface design (one tool with `plugin_id` + `action_id` parameters? Tool-per-plugin via dynamic registration?). Security/permission model is the hard part.
