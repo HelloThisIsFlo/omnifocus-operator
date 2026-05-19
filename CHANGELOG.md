@@ -6,8 +6,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versions follow 
 
 ## [Unreleased]
 
+## [1.4.3] - First-Run UX
+
 ### Added
-- Startup log line: `omnifocus-operator v<X.Y.Z> starting` — visible in Claude Desktop's MCP log page and in `~/Library/Logs/omnifocus-operator.log`. Makes the running version obvious without inspecting process arguments or package metadata.
+- First-run welcome banners in `bridge.js` — frame OmniFocus's one-time permission dialog with two-click instructions, sized to its ~11-line preview viewport
+- Startup log line — `omnifocus-operator v<X.Y.Z> starting` to stderr + `~/Library/Logs/omnifocus-operator.log`
 
 ## [1.4.2] - UNTIL Format Hotfix
 
