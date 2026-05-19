@@ -69,3 +69,9 @@ Related code and decisions found in the current codebase:
 - Consider: comparison with other OmniFocus MCP servers / automation tools to back up the "last you'll ever need" claim
 - The landing page should tell a story: problem (OmniFocus is hard to automate) → solution (structured MCP server) → proof (tests, benchmarks, architecture)
 - Badge updates: test count, coverage %, dependency count should be dynamic or at least current
+  - Mechanism options (pick one when surfaced):
+    - **`just bump-docs` recipe** — script reads pytest count + coverage, rewrites both `README.md` badges/prose and `docs/index.html` (badge, hero, stats bar, comparison table, testing subtitle). Run manually before each release tag. Lowest magic, fits existing justfile-driven workflow.
+    - **Pre-commit hook** — auto-rewrites on every commit. Cleanest but noisy (hook touches files on unrelated commits); risks fighting with manual edits.
+    - **CI workflow on tag push** — bumps after tag, so the tagged commit itself stays stale. Only works if release flow is "PR bumps stats → merge → tag from main".
+  - Drift fossil example: v1.4.2 shipped with landing page still showing `2,086 tests` + `v1.4 — Response Shaping` (numbers from v1.2.1 era, version from v1.4.0). Two milestones of drift before anyone noticed. See commit `2ae0de35` for the manual catch-up.
+  - Also worth bumping in the same recipe: hero version badge string, comparison-table cells, meta description tag.
