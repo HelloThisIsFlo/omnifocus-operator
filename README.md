@@ -18,7 +18,11 @@ Production-grade MCP server exposing OmniFocus as structured task infrastructure
 
 **Prerequisites:** macOS, OmniFocus 4, Python 3.12+
 
-**Claude Desktop config** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+> 🪄 **Not sure where this config goes?** The [setup wizard](https://hellothisisflo.github.io/omnifocus-operator) on the landing page walks you through it step-by-step — including auto-merging with your existing config.
+
+### For Claude Desktop
+
+Paste this into `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
@@ -31,7 +35,7 @@ Production-grade MCP server exposing OmniFocus as structured task infrastructure
 }
 ```
 
-That's it. No install step — `uvx` downloads, isolates, and runs the server automatically.
+`uvx` downloads, isolates, and runs the server automatically. No install step.
 
 > **First run:** OmniFocus shows a one-time permission dialog. Tick the box, click **Run Script**. You won't see it again.
 
@@ -40,9 +44,20 @@ That's it. No install step — `uvx` downloads, isolates, and runs the server au
   <img src="docs/images/first-run-light.png" alt="OmniFocus first-run permission dialog showing OmniFocus Operator's welcome banner with two steps: tick the 'Automatically run' checkbox, then click Run Script" width="600">
 </picture>
 
-**Or just ask your agent:**
+### For Claude Code, OpenCode, Cursor…
 
-> Set up the OmniFocus Operator MCP server for me — uvx omnifocus-operator
+Ask your agent — copy this prompt:
+
+> Add this MCP server to my client config. Just edit the config file — don't install anything, don't run any scripts.
+>
+> ```json
+> "omnifocus-operator": {
+>   "command": "uvx",
+>   "args": ["omnifocus-operator"]
+> }
+> ```
+
+> ⚠️ This doesn't work with Claude Desktop — Desktop has no config-editing tools. Use the manual paste above.
 
 <details>
 <summary><strong>Development install (contributors)</strong></summary>
