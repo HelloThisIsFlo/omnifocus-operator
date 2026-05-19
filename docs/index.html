@@ -442,12 +442,15 @@ nav.scrolled {
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   font-family: var(--font-mono);
-  font-size: 12.5px;
+  font-size: 16px;
   color: var(--text-primary);
   line-height: 1.55;
   resize: vertical;
   outline: none;
   transition: border-color 0.2s;
+}
+@media (min-width: 641px) {
+  .merger-input { font-size: 12.5px; }
 }
 .merger-input:focus {
   border-color: var(--accent-gold);
@@ -570,7 +573,7 @@ nav.scrolled {
 @media (max-width: 640px) {
   .merger { padding: 22px 20px 20px; }
   .merger-title { font-size: 20px; }
-  .merger-input { min-height: 130px; font-size: 12px; }
+  .merger-input { min-height: 130px; }
   .merger-result { font-size: 11.5px; }
   .merger-result-actions { flex-direction: column; }
   .merger-btn { width: 100%; }
@@ -1996,7 +1999,6 @@ footer p {
       <div class="hero-options">
         <div class="hero-config" onclick="copyConfig(this)" title="Click to copy">
           <div class="hero-config-label">For Claude Desktop <span class="hero-install-copy">Copy</span></div>
-          <code class="hero-config-path">~/Library/Application Support/Claude/claude_desktop_config.json</code>
           <pre class="hero-config-code">{
   "mcpServers": {
     "omnifocus-operator": {
@@ -2005,11 +2007,10 @@ footer p {
     }
   }
 }</pre>
-          <p class="hero-config-help">Already have other MCP servers? Add the <code>omnifocus-operator</code> entry to your existing <code>mcpServers</code> block. <button type="button" class="hero-config-merger-trigger" onclick="openConfigMerger(event)">Or auto-merge it for me →</button></p>
         </div>
         <div class="hero-or">or</div>
         <div class="hero-prompt" onclick="copyPrompt(this)" title="Click to copy">
-          <div class="hero-config-label">For Claude Code, Cursor, Cline… <span class="hero-install-copy">Copy</span></div>
+          <div class="hero-config-label">For Claude Code, OpenCode, Cursor… <span class="hero-install-copy">Copy</span></div>
           <blockquote class="hero-prompt-text">Add this MCP server to my client config. Just edit the config file — don't install anything, don't run any scripts.</blockquote>
           <pre class="hero-prompt-snippet">"omnifocus-operator": {
   "command": "uvx",
@@ -2676,7 +2677,6 @@ footer p {
       <p class="final-sub">macOS, OmniFocus 4, Python 3.12+. That's all you need.</p>
       <div class="hero-config" onclick="copyConfig(this)" title="Click to copy" style="margin-bottom: 24px;">
         <div class="hero-config-label">For Claude Desktop <span class="hero-install-copy">Copy</span></div>
-        <code class="hero-config-path">~/Library/Application Support/Claude/claude_desktop_config.json</code>
         <pre class="hero-config-code">{
   "mcpServers": {
     "omnifocus-operator": {
@@ -2685,7 +2685,6 @@ footer p {
     }
   }
 }</pre>
-        <p class="hero-config-help">Already have other MCP servers? Add the <code>omnifocus-operator</code> entry to your existing <code>mcpServers</code> block. <button type="button" class="hero-config-merger-trigger" onclick="openConfigMerger(event)">Or auto-merge it for me →</button></p>
       </div>
       <div class="final-links">
         <a href="https://github.com/HelloThisIsFlo/omnifocus-operator">GitHub</a>
