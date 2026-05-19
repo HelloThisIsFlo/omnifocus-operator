@@ -1,4 +1,15 @@
-// OmniFocus Operator Bridge Script
+// =================================================================
+//   👋  Welcome to OmniFocus Operator
+//
+//   ✨  One-time permission check. Two steps to finish:
+//        1. ⬇️ Scroll all the way down  ↓↓↓
+//        2. ✅ Then tick the box & click "Run Script"
+//
+//   🎉  After that, OmniFocus won't ask again on this machine.
+//
+//   🔗  github.com/HelloThisIsFlo/omnifocus-operator
+// =================================================================
+//
 // Runs inside OmniFocus's Omni Automation (JavaScriptCore) runtime.
 // IPC dir is derived from URL.documentsDirectory at runtime (sandbox-safe).
 //
@@ -489,3 +500,11 @@ if (typeof module !== "undefined") {
         reverseAdk: reverseAdk,
     };
 }
+
+// =================================================================
+//   🏆  You made it to the bottom!
+//        1. ✅ Tick the "Automatically run..." box  ↓↓↓
+//        2. ➡️ Click "Run Script"
+//
+//   🎉  Welcome aboard. The "argument" below is just runtime info.
+// =================================================================
