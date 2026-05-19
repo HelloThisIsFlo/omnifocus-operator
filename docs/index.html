@@ -733,6 +733,52 @@ nav.scrolled {
 .wizard-merge-link:hover {
   color: var(--accent-gold);
 }
+.wizard-snippet-disclosure {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px dashed var(--border-subtle);
+}
+.wizard-snippet-disclosure summary {
+  cursor: pointer;
+  font-size: 13.5px;
+  color: var(--accent-teal);
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  transition: color 0.2s;
+  user-select: none;
+}
+.wizard-snippet-disclosure summary::-webkit-details-marker { display: none; }
+.wizard-snippet-disclosure summary:hover { color: var(--accent-gold); }
+.wizard-snippet-disclosure summary::before {
+  content: "▶";
+  font-size: 9px;
+  transition: transform 0.2s;
+  display: inline-block;
+}
+.wizard-snippet-disclosure[open] summary::before {
+  transform: rotate(90deg);
+}
+.wizard-snippet-disclosure[open] summary {
+  margin-bottom: 12px;
+}
+.wizard-snippet-disclosure .wizard-snippet {
+  margin-bottom: 12px;
+}
+.wizard-step-restart {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.wizard-step-restart strong {
+  color: var(--accent-gold);
+  font-weight: 600;
+}
 .wizard-footer {
   display: flex;
   justify-content: space-between;
@@ -3341,6 +3387,11 @@ function openSetupWizard(ev) {
   if (ev) ev.stopPropagation();
   wizardState.step = 1;
   renderWizardStep();
+  const input = document.getElementById('merger-input');
+  if (input) input.value = '';
+  const out = document.getElementById('merger-output');
+  if (out) { out.innerHTML = ''; out.classList.remove('has-result'); }
+  window.__mergedConfig = null;
   document.getElementById('setup-wizard').showModal();
 }
 
@@ -3380,11 +3431,6 @@ function renderWizardStep() {
   next.textContent = wizardState.step === wizardState.total ? 'Done ✓' : 'Next ▶';
 }
 
-function openMergerFromWizard() {
-  closeSetupWizard();
-  openConfigMerger();
-}
-
 function copyWizardSnippet(btn) {
   const text = `{\n  "mcpServers": {\n    "omnifocus-operator": {\n      "command": "uvx",\n      "args": ["omnifocus-operator"]\n    }\n  }\n}`;
   navigator.clipboard.writeText(text).then(() => {
@@ -3406,36 +3452,21 @@ function escapeHtml(text) {
   }[c]));
 }
 
-function openConfigMerger(ev) {
-  if (ev) ev.stopPropagation();
-  const dialog = document.getElementById('config-merger');
-  document.getElementById('merger-input').value = '';
-  document.getElementById('merger-output').innerHTML = '';
-  document.getElementById('merger-output').classList.remove('has-result');
-  window.__mergedConfig = null;
-  dialog.showModal();
-}
-
-function closeConfigMerger() {
-  document.getElementById('config-merger').close();
-}
-
 function mergeConfig() {
   const input = document.getElementById('merger-input').value.trim();
   const output = document.getElementById('merger-output');
   output.classList.add('has-result');
 
-  if (!input) {
-    output.innerHTML = '<p class="merger-msg merger-msg-error">Paste your existing config above first.</p>';
-    return;
-  }
-
   let userConfig;
-  try {
-    userConfig = JSON.parse(input);
-  } catch (e) {
-    output.innerHTML = '<p class="merger-msg merger-msg-error">Couldn\'t parse that as JSON: ' + escapeHtml(e.message) + '</p><p class="merger-msg-hint">Make sure your file has matching braces and no trailing commas. JSON5 / comments aren\'t supported.</p>';
-    return;
+  if (!input) {
+    userConfig = {};
+  } else {
+    try {
+      userConfig = JSON.parse(input);
+    } catch (e) {
+      output.innerHTML = '<p class="merger-msg merger-msg-error">Couldn\'t parse that as JSON: ' + escapeHtml(e.message) + '</p><p class="merger-msg-hint">Make sure your file has matching braces and no trailing commas. JSON5 / comments aren\'t supported.</p>';
+      return;
+    }
   }
 
   if (typeof userConfig !== 'object' || userConfig === null || Array.isArray(userConfig)) {
@@ -3486,7 +3517,6 @@ function mergeConfig() {
     '<pre class="merger-result">' + html + '</pre>' +
     '<div class="merger-result-actions">' +
     '<button class="merger-btn merger-btn-primary" onclick="copyMerged(this)">Copy merged config</button>' +
-    '<button class="merger-btn merger-btn-secondary" onclick="closeConfigMerger()">Close</button>' +
     '</div>';
 }
 
@@ -3569,9 +3599,24 @@ function copyMerged(btn) {
 
     <div class="wizard-step" data-step="4">
       <div class="wizard-step-label">Step 4 of 4</div>
-      <h4 class="wizard-step-heading">Paste the config, save, restart</h4>
-      <p class="wizard-step-body">Paste this entry into the config file. Save it, then restart Claude Desktop. That's it.</p>
-      <pre class="wizard-snippet">{
+      <h4 class="wizard-step-heading">Merge OmniFocus Operator into your config</h4>
+      <p class="wizard-step-body">Your config file is now open in your editor. Copy everything from it, paste it below, and we'll add the OmniFocus Operator entry for you.</p>
+
+      <p class="merger-privacy">🔒 Your config never leaves this browser — runs in JavaScript only.</p>
+
+      <label class="merger-label" for="merger-input">Paste your config (or leave blank if the file is empty)</label>
+      <textarea class="merger-input" id="merger-input" spellcheck="false" placeholder='{
+  "mcpServers": {
+    "some-other-server": { ... }
+  }
+}'></textarea>
+      <button class="merger-btn merger-btn-primary merger-btn-merge" type="button" onclick="mergeConfig()">Merge it</button>
+
+      <div id="merger-output" class="merger-output"></div>
+
+      <details class="wizard-snippet-disclosure">
+        <summary>Or just give me the snippet — I'll merge it myself</summary>
+        <pre class="wizard-snippet">{
   "mcpServers": {
     "omnifocus-operator": {
       "command": "uvx",
@@ -3579,10 +3624,10 @@ function copyMerged(btn) {
     }
   }
 }</pre>
-      <div class="wizard-step-actions">
         <button class="merger-btn merger-btn-primary" type="button" onclick="copyWizardSnippet(this)">Copy snippet</button>
-        <button class="wizard-merge-link" type="button" onclick="openMergerFromWizard()">Or auto-merge with your existing config →</button>
-      </div>
+      </details>
+
+      <p class="wizard-step-restart">When you've replaced your config with the merged version, <strong>save the file and restart Claude Desktop</strong>. You're done.</p>
     </div>
 
   </div>
@@ -3591,26 +3636,6 @@ function copyMerged(btn) {
     <button class="merger-btn merger-btn-secondary" type="button" id="wizard-back" onclick="wizardBack()">◀ Back</button>
     <button class="merger-btn merger-btn-primary" type="button" id="wizard-next" onclick="wizardNext()">Next ▶</button>
   </div>
-</dialog>
-
-<dialog id="config-merger" class="merger" aria-labelledby="merger-title">
-  <button class="merger-close" onclick="closeConfigMerger()" aria-label="Close">×</button>
-  <h3 class="merger-title" id="merger-title">Config merger</h3>
-  <p class="merger-privacy">🔒 Your config never leaves this browser — runs in JavaScript only.</p>
-
-  <label class="merger-label" for="merger-input">Paste your existing claude_desktop_config.json</label>
-  <textarea class="merger-input" id="merger-input" spellcheck="false" placeholder='{
-  "mcpServers": {
-    "some-other-server": {
-      "command": "...",
-      "args": ["..."]
-    }
-  }
-}'></textarea>
-
-  <button class="merger-btn merger-btn-primary merger-btn-merge" onclick="mergeConfig()">Merge</button>
-
-  <div id="merger-output" class="merger-output"></div>
 </dialog>
 
 </body>
