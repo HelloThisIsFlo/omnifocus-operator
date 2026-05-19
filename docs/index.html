@@ -377,6 +377,388 @@ nav.scrolled {
   text-decoration-color: var(--accent-gold);
 }
 
+/* ─── Wizard CTA card in hero ─────────────────────── */
+.wizard-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+  width: auto;
+  max-width: 560px;
+  margin: 4px auto 18px;
+  padding: 18px 26px 18px 22px;
+  background: linear-gradient(135deg, rgba(240, 168, 48, 0.18), rgba(240, 168, 48, 0.05));
+  border: 1px solid var(--accent-gold);
+  border-radius: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  color: var(--text-primary);
+  box-shadow: 0 0 28px var(--accent-gold-glow);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+}
+.wizard-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 36px rgba(240, 168, 48, 0.42);
+  background: linear-gradient(135deg, rgba(240, 168, 48, 0.26), rgba(240, 168, 48, 0.08));
+}
+.wizard-cta-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+.wizard-cta-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+.wizard-cta-title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--accent-gold);
+  line-height: 1.3;
+}
+.wizard-cta-sub {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+.wizard-cta-arrow {
+  font-size: 22px;
+  color: var(--accent-gold);
+  flex-shrink: 0;
+  transition: transform 0.25s ease;
+}
+.wizard-cta:hover .wizard-cta-arrow {
+  transform: translateX(4px);
+}
+.hero-or-manual {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  opacity: 0.75;
+}
+
+/* ─── Setup Wizard Modal ──────────────────────────── */
+.wizard {
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-radius: 16px;
+  padding: 0;
+  max-width: 640px;
+  width: 92vw;
+  max-height: 88vh;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  margin: auto;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.wizard::backdrop {
+  background: rgba(6, 10, 20, 0.78);
+  backdrop-filter: blur(6px);
+}
+.wizard-close {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 8px;
+  z-index: 2;
+  transition: color 0.2s;
+}
+.wizard-close:hover { color: var(--accent-gold); }
+.wizard-header {
+  padding: 22px 28px 18px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.015);
+}
+.wizard-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.wizard-title-icon {
+  font-size: 22px;
+}
+.wizard-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0;
+}
+.wizard-progress {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.wizard-dot {
+  width: 24px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-medium);
+  transition: background 0.25s ease, width 0.25s ease;
+}
+.wizard-dot.active {
+  background: var(--accent-gold);
+  width: 36px;
+}
+.wizard-dot.done {
+  background: var(--accent-green);
+}
+.wizard-body {
+  padding: 24px 28px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 280px;
+}
+.wizard-step {
+  display: none;
+  animation: wizardStepIn 0.35s ease;
+}
+.wizard-step.active {
+  display: block;
+}
+@keyframes wizardStepIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.wizard-step-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--accent-gold);
+  margin-bottom: 8px;
+}
+.wizard-step-heading {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0 0 12px;
+  color: var(--text-primary);
+}
+.wizard-step-body {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 0 0 20px;
+}
+.wizard-step-body strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.wizard-step-body code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--accent-teal);
+  background: var(--accent-teal-soft);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.wizard-kbd-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 18px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+}
+.wizard-kbd-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+.wizard-kbd {
+  display: inline-block;
+  min-width: 26px;
+  padding: 3px 9px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: center;
+  line-height: 1;
+}
+.wizard-kbd-sep {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.wizard-kbd-os {
+  margin-left: 6px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.wizard-mockup {
+  background: var(--bg-deep);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.wizard-mockup-frame-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  opacity: 0.7;
+}
+.wizard-mockup-sidebar-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 8px 0;
+}
+.wizard-mockup-section-heading {
+  font-family: var(--font-body);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 4px 14px 8px;
+}
+.wizard-mockup-item {
+  padding: 9px 14px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.wizard-mockup-item-active {
+  background: var(--accent-gold-soft);
+  color: var(--accent-gold);
+  font-weight: 600;
+  border-left: 3px solid var(--accent-gold);
+  padding-left: 11px;
+}
+.wizard-mockup-arrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--accent-gold);
+  margin-left: auto;
+  letter-spacing: 0.5px;
+}
+.wizard-mockup-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.wizard-mockup-panel-heading {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+.wizard-mockup-panel-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+.wizard-mockup-button-wrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.wizard-mockup-button {
+  padding: 9px 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: default;
+  pointer-events: none;
+  box-shadow: 0 0 0 3px var(--accent-gold-soft);
+}
+.wizard-snippet {
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.55;
+  white-space: pre;
+  overflow-x: auto;
+}
+.wizard-step-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.wizard-merge-link {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--accent-teal);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: rgba(56, 189, 248, 0.4);
+  text-underline-offset: 3px;
+  transition: color 0.2s;
+}
+.wizard-merge-link:hover {
+  color: var(--accent-gold);
+}
+.wizard-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px 20px;
+  border-top: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.015);
+}
+@media (max-width: 640px) {
+  .wizard { padding: 0; }
+  .wizard-header { padding: 18px 20px 14px; }
+  .wizard-body { padding: 18px 20px; }
+  .wizard-footer { padding: 14px 18px 16px; }
+  .wizard-title { font-size: 19px; }
+  .wizard-step-heading { font-size: 19px; }
+  .wizard-step-body { font-size: 14px; }
+  .wizard-snippet { font-size: 11.5px; }
+  .wizard-step-actions { flex-direction: column; align-items: stretch; }
+  .wizard-step-actions .merger-btn { width: 100%; }
+  .wizard-cta { padding: 16px 18px; gap: 14px; }
+  .wizard-cta-title { font-size: 15.5px; }
+  .wizard-cta-sub { font-size: 12.5px; }
+  .wizard-cta-icon { font-size: 24px; }
+  .wizard-cta-arrow { font-size: 18px; }
+}
+
 /* ─── Config Merger Modal ─────────────────────────── */
 .merger {
   background: var(--bg-card);
@@ -1996,6 +2378,15 @@ footer p {
         <span class="hero-step"><span class="hero-step-num">03</span> Ask</span>
         <span class="hero-steps-hint">↓</span>
       </a>
+      <button class="wizard-cta" type="button" onclick="openSetupWizard(event)">
+        <span class="wizard-cta-icon">🪄</span>
+        <span class="wizard-cta-text">
+          <span class="wizard-cta-title">Step-by-step Claude Desktop setup</span>
+          <span class="wizard-cta-sub">We show you exactly where to click — no path-hunting required.</span>
+        </span>
+        <span class="wizard-cta-arrow">→</span>
+      </button>
+      <div class="hero-or-manual">or set it up yourself ↓</div>
       <div class="hero-options">
         <div class="hero-config" onclick="copyConfig(this)" title="Click to copy">
           <div class="hero-config-label">For Claude Desktop <span class="hero-install-copy">Copy</span></div>
@@ -2943,6 +3334,67 @@ document.querySelectorAll('a[href^="#"]').forEach(a => {
   });
 });
 
+// ─── Setup Wizard ───────────────────────────────────
+const wizardState = { step: 1, total: 4 };
+
+function openSetupWizard(ev) {
+  if (ev) ev.stopPropagation();
+  wizardState.step = 1;
+  renderWizardStep();
+  document.getElementById('setup-wizard').showModal();
+}
+
+function closeSetupWizard() {
+  document.getElementById('setup-wizard').close();
+}
+
+function wizardNext() {
+  if (wizardState.step < wizardState.total) {
+    wizardState.step++;
+    renderWizardStep();
+  } else {
+    closeSetupWizard();
+  }
+}
+
+function wizardBack() {
+  if (wizardState.step > 1) {
+    wizardState.step--;
+    renderWizardStep();
+  }
+}
+
+function renderWizardStep() {
+  document.querySelectorAll('.wizard-step').forEach((el) => {
+    el.classList.toggle('active', Number(el.dataset.step) === wizardState.step);
+  });
+  document.querySelectorAll('.wizard-dot').forEach((el) => {
+    const d = Number(el.dataset.dot);
+    el.classList.toggle('active', d === wizardState.step);
+    el.classList.toggle('done', d < wizardState.step);
+  });
+  const back = document.getElementById('wizard-back');
+  back.disabled = wizardState.step === 1;
+  back.style.visibility = wizardState.step === 1 ? 'hidden' : 'visible';
+  const next = document.getElementById('wizard-next');
+  next.textContent = wizardState.step === wizardState.total ? 'Done ✓' : 'Next ▶';
+}
+
+function openMergerFromWizard() {
+  closeSetupWizard();
+  openConfigMerger();
+}
+
+function copyWizardSnippet(btn) {
+  const text = `{\n  "mcpServers": {\n    "omnifocus-operator": {\n      "command": "uvx",\n      "args": ["omnifocus-operator"]\n    }\n  }\n}`;
+  navigator.clipboard.writeText(text).then(() => {
+    const original = btn.textContent;
+    btn.textContent = '✓ Copied';
+    btn.disabled = true;
+    setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 2000);
+  });
+}
+
 // ─── Config Merger ──────────────────────────────────
 function escapeHtml(text) {
   return text.replace(/[&<>"']/g, (c) => ({
@@ -3050,6 +3502,97 @@ function copyMerged(btn) {
 </script>
 
 <!-- ═══ Config Merger Modal ═══ -->
+<dialog id="setup-wizard" class="wizard" aria-labelledby="wizard-title">
+  <button class="wizard-close" onclick="closeSetupWizard()" aria-label="Close">×</button>
+  <div class="wizard-header">
+    <div class="wizard-title-row">
+      <span class="wizard-title-icon">🪄</span>
+      <h3 class="wizard-title" id="wizard-title">Setup wizard</h3>
+    </div>
+    <div class="wizard-progress" aria-hidden="true">
+      <span class="wizard-dot" data-dot="1"></span>
+      <span class="wizard-dot" data-dot="2"></span>
+      <span class="wizard-dot" data-dot="3"></span>
+      <span class="wizard-dot" data-dot="4"></span>
+    </div>
+  </div>
+
+  <div class="wizard-body">
+
+    <div class="wizard-step" data-step="1">
+      <div class="wizard-step-label">Step 1 of 4</div>
+      <h4 class="wizard-step-heading">Open Claude Desktop's Settings</h4>
+      <p class="wizard-step-body">Launch Claude Desktop, then open Settings.</p>
+      <div class="wizard-kbd-row">
+        <span class="wizard-kbd-label">Shortcut:</span>
+        <span class="wizard-kbd">⌘</span>
+        <span class="wizard-kbd-sep">+</span>
+        <span class="wizard-kbd">,</span>
+        <span class="wizard-kbd-os">on macOS</span>
+      </div>
+    </div>
+
+    <div class="wizard-step" data-step="2">
+      <div class="wizard-step-label">Step 2 of 4</div>
+      <h4 class="wizard-step-heading">Find the Developer section</h4>
+      <p class="wizard-step-body">In the Settings sidebar on the left, scroll to the bottom. You'll find a <strong>Desktop app</strong> section with three items — click <strong>Developer</strong>.</p>
+      <div class="wizard-mockup wizard-mockup-sidebar">
+        <div class="wizard-mockup-frame-label">Settings sidebar (bottom of the list)</div>
+        <div class="wizard-mockup-sidebar-section">
+          <div class="wizard-mockup-section-heading">Desktop app</div>
+          <div class="wizard-mockup-item">General</div>
+          <div class="wizard-mockup-item">Extensions</div>
+          <div class="wizard-mockup-item wizard-mockup-item-active">
+            Developer
+            <span class="wizard-mockup-arrow">← click this</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wizard-step" data-step="3">
+      <div class="wizard-step-label">Step 3 of 4</div>
+      <h4 class="wizard-step-heading">Click "Edit Config"</h4>
+      <p class="wizard-step-body">On the Developer panel, click the <strong>Edit Config</strong> button. Your <code>claude_desktop_config.json</code> file opens in your default text editor.</p>
+      <div class="wizard-mockup wizard-mockup-button-row">
+        <div class="wizard-mockup-frame-label">Developer panel — top of the page</div>
+        <div class="wizard-mockup-panel">
+          <div class="wizard-mockup-panel-heading">Local MCP servers</div>
+          <div class="wizard-mockup-panel-sub">Add and manage MCP servers that you're working on.</div>
+          <div class="wizard-mockup-button-wrap">
+            <button class="wizard-mockup-button" type="button" tabindex="-1">Edit Config</button>
+            <span class="wizard-mockup-arrow">← click this</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wizard-step" data-step="4">
+      <div class="wizard-step-label">Step 4 of 4</div>
+      <h4 class="wizard-step-heading">Paste the config, save, restart</h4>
+      <p class="wizard-step-body">Paste this entry into the config file. Save it, then restart Claude Desktop. That's it.</p>
+      <pre class="wizard-snippet">{
+  "mcpServers": {
+    "omnifocus-operator": {
+      "command": "uvx",
+      "args": ["omnifocus-operator"]
+    }
+  }
+}</pre>
+      <div class="wizard-step-actions">
+        <button class="merger-btn merger-btn-primary" type="button" onclick="copyWizardSnippet(this)">Copy snippet</button>
+        <button class="wizard-merge-link" type="button" onclick="openMergerFromWizard()">Or auto-merge with your existing config →</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="wizard-footer">
+    <button class="merger-btn merger-btn-secondary" type="button" id="wizard-back" onclick="wizardBack()">◀ Back</button>
+    <button class="merger-btn merger-btn-primary" type="button" id="wizard-next" onclick="wizardNext()">Next ▶</button>
+  </div>
+</dialog>
+
 <dialog id="config-merger" class="merger" aria-labelledby="merger-title">
   <button class="merger-close" onclick="closeConfigMerger()" aria-label="Close">×</button>
   <h3 class="merger-title" id="merger-title">Config merger</h3>
