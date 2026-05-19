@@ -357,6 +357,224 @@ nav.scrolled {
   padding: 1px 6px;
   border-radius: 4px;
 }
+.hero-config-merger-trigger {
+  display: inline;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--accent-teal);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: rgba(56, 189, 248, 0.4);
+  text-underline-offset: 3px;
+  transition: color 0.2s, text-decoration-color 0.2s;
+}
+.hero-config-merger-trigger:hover {
+  color: var(--accent-gold);
+  text-decoration-color: var(--accent-gold);
+}
+
+/* ─── Config Merger Modal ─────────────────────────── */
+.merger {
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-radius: 16px;
+  padding: 28px 32px 24px;
+  max-width: 640px;
+  width: 92vw;
+  max-height: 86vh;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  margin: auto;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+  overflow-y: auto;
+}
+.merger::backdrop {
+  background: rgba(6, 10, 20, 0.78);
+  backdrop-filter: blur(6px);
+}
+.merger-close {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: color 0.2s;
+}
+.merger-close:hover { color: var(--accent-gold); }
+.merger-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.merger-privacy {
+  font-size: 12.5px;
+  color: var(--accent-teal);
+  background: var(--accent-teal-soft);
+  padding: 9px 13px;
+  border-radius: 8px;
+  margin-bottom: 22px;
+  line-height: 1.5;
+}
+.merger-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.merger-input {
+  width: 100%;
+  min-height: 150px;
+  padding: 12px 14px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-primary);
+  line-height: 1.55;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.merger-input:focus {
+  border-color: var(--accent-gold);
+}
+.merger-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+.merger-btn {
+  padding: 9px 22px;
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border-medium);
+  transition: filter 0.2s, color 0.2s, border-color 0.2s, background 0.2s;
+}
+.merger-btn-primary {
+  background: var(--accent-gold);
+  color: var(--bg-deep);
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 16px var(--accent-gold-glow);
+}
+.merger-btn-primary:hover { filter: brightness(1.06); }
+.merger-btn-primary:disabled { opacity: 0.7; cursor: default; filter: none; }
+.merger-btn-secondary {
+  background: transparent;
+  color: var(--text-secondary);
+}
+.merger-btn-secondary:hover {
+  border-color: var(--border-medium);
+  color: var(--text-primary);
+}
+.merger-btn-merge {
+  margin-top: 14px;
+}
+.merger-output {
+  margin-top: 0;
+}
+.merger-output.has-result {
+  margin-top: 22px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border-subtle);
+}
+.merger-result-label {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.merger-result-hint {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--accent-green);
+  font-weight: 500;
+}
+.merger-result {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-primary);
+  background: var(--bg-deep);
+  padding: 14px 16px;
+  border-radius: 8px;
+  line-height: 1.6;
+  white-space: pre;
+  overflow-x: auto;
+  margin: 0 0 14px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.merger-added {
+  display: inline-block;
+  width: 100%;
+  background: var(--accent-green-soft);
+  color: var(--accent-green);
+  margin: 0 -16px;
+  padding: 0 16px;
+}
+.merger-msg {
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.merger-msg code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.merger-msg-info {
+  background: var(--accent-green-soft);
+  color: var(--accent-green);
+}
+.merger-msg-info code {
+  background: rgba(52, 211, 153, 0.18);
+  color: var(--accent-green);
+}
+.merger-msg-error {
+  background: rgba(248, 113, 113, 0.08);
+  color: var(--accent-red);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+.merger-msg-hint {
+  margin-top: 8px;
+  padding: 0 16px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.merger-result-actions {
+  display: flex;
+  gap: 10px;
+}
+@media (max-width: 640px) {
+  .merger { padding: 22px 20px 20px; }
+  .merger-title { font-size: 20px; }
+  .merger-input { min-height: 130px; font-size: 12px; }
+  .merger-result { font-size: 11.5px; }
+  .merger-result-actions { flex-direction: column; }
+  .merger-btn { width: 100%; }
+}
 .hero-config:hover .hero-install-copy {
   color: var(--accent-gold);
   border-color: rgba(240, 168, 48, 0.3);
@@ -1787,7 +2005,7 @@ footer p {
     }
   }
 }</pre>
-          <p class="hero-config-help">Already have other MCP servers? Add the <code>omnifocus-operator</code> entry to your existing <code>mcpServers</code> block.</p>
+          <p class="hero-config-help">Already have other MCP servers? Add the <code>omnifocus-operator</code> entry to your existing <code>mcpServers</code> block. <button type="button" class="hero-config-merger-trigger" onclick="openConfigMerger(event)">Or auto-merge it for me →</button></p>
         </div>
         <div class="hero-or">or</div>
         <div class="hero-prompt" onclick="copyPrompt(this)" title="Click to copy">
@@ -2723,7 +2941,133 @@ document.querySelectorAll('a[href^="#"]').forEach(a => {
     }
   });
 });
+
+// ─── Config Merger ──────────────────────────────────
+function escapeHtml(text) {
+  return text.replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[c]));
+}
+
+function openConfigMerger(ev) {
+  if (ev) ev.stopPropagation();
+  const dialog = document.getElementById('config-merger');
+  document.getElementById('merger-input').value = '';
+  document.getElementById('merger-output').innerHTML = '';
+  document.getElementById('merger-output').classList.remove('has-result');
+  window.__mergedConfig = null;
+  dialog.showModal();
+}
+
+function closeConfigMerger() {
+  document.getElementById('config-merger').close();
+}
+
+function mergeConfig() {
+  const input = document.getElementById('merger-input').value.trim();
+  const output = document.getElementById('merger-output');
+  output.classList.add('has-result');
+
+  if (!input) {
+    output.innerHTML = '<p class="merger-msg merger-msg-error">Paste your existing config above first.</p>';
+    return;
+  }
+
+  let userConfig;
+  try {
+    userConfig = JSON.parse(input);
+  } catch (e) {
+    output.innerHTML = '<p class="merger-msg merger-msg-error">Couldn\'t parse that as JSON: ' + escapeHtml(e.message) + '</p><p class="merger-msg-hint">Make sure your file has matching braces and no trailing commas. JSON5 / comments aren\'t supported.</p>';
+    return;
+  }
+
+  if (typeof userConfig !== 'object' || userConfig === null || Array.isArray(userConfig)) {
+    output.innerHTML = '<p class="merger-msg merger-msg-error">That doesn\'t look like a Claude Desktop config — expected a top-level object.</p>';
+    return;
+  }
+
+  if (!userConfig.mcpServers || typeof userConfig.mcpServers !== 'object') {
+    userConfig.mcpServers = {};
+  }
+
+  if (userConfig.mcpServers['omnifocus-operator']) {
+    output.innerHTML = '<p class="merger-msg merger-msg-info">✅ <code>omnifocus-operator</code> is already in your config — you\'re all set.</p>';
+    return;
+  }
+
+  userConfig.mcpServers['omnifocus-operator'] = {
+    command: 'uvx',
+    args: ['omnifocus-operator']
+  };
+
+  const merged = JSON.stringify(userConfig, null, 2);
+  window.__mergedConfig = merged;
+
+  const lines = merged.split('\n');
+  let inNewEntry = false;
+  let braceDepth = 0;
+  const html = lines.map((line) => {
+    if (!inNewEntry && line.includes('"omnifocus-operator"')) {
+      inNewEntry = true;
+      braceDepth = 0;
+    }
+
+    if (inNewEntry) {
+      braceDepth += (line.match(/\{/g) || []).length;
+      braceDepth -= (line.match(/\}/g) || []).length;
+      const html = '<span class="merger-added">' + escapeHtml(line) + '</span>';
+      if (braceDepth <= 0 && line.includes('}')) {
+        inNewEntry = false;
+      }
+      return html;
+    }
+    return escapeHtml(line);
+  }).join('\n');
+
+  output.innerHTML =
+    '<div class="merger-result-label">Merged config <span class="merger-result-hint">(highlighted = newly added)</span></div>' +
+    '<pre class="merger-result">' + html + '</pre>' +
+    '<div class="merger-result-actions">' +
+    '<button class="merger-btn merger-btn-primary" onclick="copyMerged(this)">Copy merged config</button>' +
+    '<button class="merger-btn merger-btn-secondary" onclick="closeConfigMerger()">Close</button>' +
+    '</div>';
+}
+
+function copyMerged(btn) {
+  if (!window.__mergedConfig) return;
+  navigator.clipboard.writeText(window.__mergedConfig).then(() => {
+    const original = btn.textContent;
+    btn.textContent = 'Copied ✓';
+    btn.disabled = true;
+    setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 2000);
+  });
+}
 </script>
+
+<!-- ═══ Config Merger Modal ═══ -->
+<dialog id="config-merger" class="merger" aria-labelledby="merger-title">
+  <button class="merger-close" onclick="closeConfigMerger()" aria-label="Close">×</button>
+  <h3 class="merger-title" id="merger-title">Config merger</h3>
+  <p class="merger-privacy">🔒 Your config never leaves this browser — runs in JavaScript only.</p>
+
+  <label class="merger-label" for="merger-input">Paste your existing claude_desktop_config.json</label>
+  <textarea class="merger-input" id="merger-input" spellcheck="false" placeholder='{
+  "mcpServers": {
+    "some-other-server": {
+      "command": "...",
+      "args": ["..."]
+    }
+  }
+}'></textarea>
+
+  <button class="merger-btn merger-btn-primary merger-btn-merge" onclick="mergeConfig()">Merge</button>
+
+  <div id="merger-output" class="merger-output"></div>
+</dialog>
 
 </body>
 </html>
