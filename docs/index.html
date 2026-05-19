@@ -730,6 +730,128 @@ nav.scrolled {
 }
 
 /* ─── Task Arrangement Section ───────────────────── */
+/* ─── First Run ────────────────────────────────────── */
+.first-run {
+  padding-bottom: var(--section-gap);
+}
+.first-run-demo {
+  max-width: 720px;
+  margin: 48px auto 0;
+}
+.first-run-dialog {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+.first-run-dialog-warning {
+  padding: 18px 22px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.02);
+}
+.first-run-dialog-script {
+  margin: 0;
+  padding: 18px 22px;
+  background: var(--bg-deep);
+  border-bottom: 1px solid var(--border-subtle);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--text-primary);
+  white-space: pre;
+  overflow-x: auto;
+}
+.first-run-dialog-controls {
+  padding: 18px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.first-run-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: default;
+}
+.first-run-checkbox-box {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid var(--border-medium);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.first-run-checkbox-box-checked {
+  background: var(--accent-teal);
+  border-color: var(--accent-teal);
+  position: relative;
+}
+.first-run-checkbox-box-checked::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 5px;
+  height: 9px;
+  border: solid var(--bg-deep);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.first-run-checkbox-label {
+  line-height: 1.4;
+}
+.first-run-dialog-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.first-run-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border-medium);
+  transition: all 0.2s ease;
+}
+.first-run-btn-secondary {
+  background: transparent;
+  color: var(--text-secondary);
+}
+.first-run-btn-primary {
+  background: var(--accent-gold);
+  color: var(--bg-deep);
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 16px var(--accent-gold-glow);
+}
+.first-run-explainer {
+  max-width: 600px;
+  margin: 32px auto 0;
+  text-align: center;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.first-run-explainer strong {
+  color: var(--text-primary);
+}
+@media (max-width: 640px) {
+  .first-run-dialog-script {
+    font-size: 11px;
+    padding: 14px 16px;
+  }
+  .first-run-dialog-warning {
+    font-size: 12px;
+  }
+}
+
 .arrangement {
   padding-bottom: var(--section-gap);
 }
@@ -1623,14 +1745,56 @@ footer p {
       </div>
       <div class="step reveal" style="transition-delay: 0.1s">
         <div class="step-number">02</div>
-        <h3>Grant access</h3>
-        <p>OmniFocus will ask you to allow automation access on first launch. One click, never again.</p>
+        <h3>Allow the script</h3>
+        <p>OmniFocus asks once. Tick the box, click Run Script — you're done.</p>
       </div>
       <div class="step reveal" style="transition-delay: 0.2s">
         <div class="step-number">03</div>
         <h3>Ask Claude</h3>
         <p>"Show me my OmniFocus tasks." That's it. Full read/write access to your OmniFocus database.</p>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ First Run ═══ -->
+<section class="first-run">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-label">First run</div>
+      <h2 class="section-title">Here's what you'll see.</h2>
+      <p class="section-subtitle">OmniFocus's permission dialog. Looks scary; isn't.</p>
+    </div>
+    <div class="first-run-demo reveal" style="transition-delay: 0.1s">
+      <div class="first-run-dialog">
+        <p class="first-run-dialog-warning">
+          An unknown application is attempting to run an Omni Automation Script in OmniFocus. Only run scripts if you understand them and trust their source.
+        </p>
+        <pre class="first-run-dialog-script"><code>// =================================================================
+//   👋  Welcome to OmniFocus Operator
+//
+//   ✨  One-time permission check. Two steps to finish:
+//        1. ⬇️ Scroll all the way down  ↓↓↓
+//        2. ✅ Then tick the box &amp; click "Run Script"
+//
+//   🎉  After that, OmniFocus won't ask again on this machine.
+//
+//   🔗  github.com/HelloThisIsFlo/omnifocus-operator
+// =================================================================</code></pre>
+        <div class="first-run-dialog-controls">
+          <label class="first-run-checkbox">
+            <span class="first-run-checkbox-box first-run-checkbox-box-checked"></span>
+            <span class="first-run-checkbox-label">Automatically run this script when sent by this or any other unknown application</span>
+          </label>
+          <div class="first-run-dialog-buttons">
+            <button class="first-run-btn first-run-btn-secondary">Cancel</button>
+            <button class="first-run-btn first-run-btn-primary">Run Script</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="first-run-explainer reveal" style="transition-delay: 0.2s">
+      <p>The dialog above is OmniFocus's standard security check — it appears any time an unknown script wants to run. We embed onboarding instructions right at the top of the script so you know exactly what to click. Two clicks and you're done; you'll never see this dialog again.</p>
     </div>
   </div>
 </section>
