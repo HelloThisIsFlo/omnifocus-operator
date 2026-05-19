@@ -365,6 +365,56 @@ nav.scrolled {
   color: var(--accent-green);
   border-color: rgba(52, 211, 153, 0.3);
 }
+.hero-steps {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 18px;
+  margin: 8px auto 28px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: border-color 0.25s ease, background 0.25s ease;
+}
+.hero-steps:hover {
+  border-color: var(--border-medium);
+  background: var(--bg-card-hover);
+  color: var(--text-secondary);
+}
+.hero-step {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--text-muted);
+  letter-spacing: 0.3px;
+}
+.hero-step-num {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.hero-step.active,
+.hero-step.active .hero-step-num {
+  color: var(--accent-gold);
+}
+.hero-step-arrow {
+  color: var(--text-muted);
+  opacity: 0.5;
+  font-size: 12px;
+}
+.hero-steps-hint {
+  margin-left: 4px;
+  color: var(--text-muted);
+  opacity: 0.6;
+  font-size: 12px;
+}
+.hero-steps:hover .hero-steps-hint {
+  opacity: 1;
+  color: var(--accent-gold);
+}
 .hero-options {
   display: flex;
   align-items: center;
@@ -1697,6 +1747,14 @@ footer p {
       </div>
       <h1>The OmniFocus MCP server your agent can <em>actually</em> depend on.</h1>
       <p class="hero-sub">Production-grade infrastructure for AI agents. 46ms reads. 2,561 tests. Your tasks deserve a bridge that won't break under pressure.</p>
+      <a class="hero-steps" href="#getting-started" title="See the full 3-step setup below">
+        <span class="hero-step active"><span class="hero-step-num">01</span> Configure</span>
+        <span class="hero-step-arrow">→</span>
+        <span class="hero-step"><span class="hero-step-num">02</span> Allow</span>
+        <span class="hero-step-arrow">→</span>
+        <span class="hero-step"><span class="hero-step-num">03</span> Ask</span>
+        <span class="hero-steps-hint">↓</span>
+      </a>
       <div class="hero-options">
         <div class="hero-config" onclick="copyConfig(this)" title="Click to copy">
           <div class="hero-config-label">Paste into Claude Desktop config <span class="hero-install-copy">Copy</span></div>
@@ -1763,7 +1821,7 @@ footer p {
 </section>
 
 <!-- ═══ How It Works ═══ -->
-<section class="how-it-works">
+<section class="how-it-works" id="getting-started">
   <div class="container">
     <div class="reveal">
       <div class="section-label">Getting Started</div>
