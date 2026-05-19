@@ -784,6 +784,19 @@ nav.scrolled {
   color: var(--accent-gold);
   font-weight: 600;
 }
+.wizard-step-celebrate {
+  margin-top: 24px;
+  padding: 16px 18px;
+  background: var(--accent-green-soft);
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--accent-green);
+}
+.wizard-step-celebrate em {
+  font-style: italic;
+  color: var(--text-primary);
+}
 .wizard-footer {
   display: flex;
   justify-content: space-between;
@@ -3426,7 +3439,7 @@ document.querySelectorAll('a[href^="#"]').forEach(a => {
 });
 
 // ─── Setup Wizard ───────────────────────────────────
-const wizardState = { step: 1, total: 4 };
+const wizardState = { step: 1, total: 5 };
 
 function openSetupWizard(ev) {
   if (ev) ev.stopPropagation();
@@ -3582,13 +3595,14 @@ window.mergeConfig = mergeConfig;
       <span class="wizard-dot" data-dot="2"></span>
       <span class="wizard-dot" data-dot="3"></span>
       <span class="wizard-dot" data-dot="4"></span>
+      <span class="wizard-dot" data-dot="5"></span>
     </div>
   </div>
 
   <div class="wizard-body">
 
     <div class="wizard-step" data-step="1">
-      <div class="wizard-step-label">Step 1 of 4</div>
+      <div class="wizard-step-label">Step 1 of 5</div>
       <h4 class="wizard-step-heading">Open Claude Desktop's Settings</h4>
       <p class="wizard-step-body">Launch Claude Desktop, then open Settings.</p>
       <div class="wizard-kbd-row">
@@ -3601,7 +3615,7 @@ window.mergeConfig = mergeConfig;
     </div>
 
     <div class="wizard-step" data-step="2">
-      <div class="wizard-step-label">Step 2 of 4</div>
+      <div class="wizard-step-label">Step 2 of 5</div>
       <h4 class="wizard-step-heading">Find the Developer section</h4>
       <p class="wizard-step-body">In the Settings sidebar on the left, scroll to the bottom. You'll find a <strong>Desktop app</strong> section with three items — click <strong>Developer</strong>.</p>
       <div class="wizard-mockup wizard-mockup-sidebar">
@@ -3619,7 +3633,7 @@ window.mergeConfig = mergeConfig;
     </div>
 
     <div class="wizard-step" data-step="3">
-      <div class="wizard-step-label">Step 3 of 4</div>
+      <div class="wizard-step-label">Step 3 of 5</div>
       <h4 class="wizard-step-heading">Click "Edit Config"</h4>
       <p class="wizard-step-body">On the Developer panel, click the <strong>Edit Config</strong> button. Your <code>claude_desktop_config.json</code> file opens in your default text editor.</p>
       <div class="wizard-mockup wizard-mockup-button-row">
@@ -3636,7 +3650,7 @@ window.mergeConfig = mergeConfig;
     </div>
 
     <div class="wizard-step" data-step="4">
-      <div class="wizard-step-label">Step 4 of 4</div>
+      <div class="wizard-step-label">Step 4 of 5</div>
       <h4 class="wizard-step-heading">Merge OmniFocus Operator into your config</h4>
       <p class="wizard-step-body">Your config file is now open in your editor. Copy everything from it, paste it below, and we'll add the OmniFocus Operator entry for you.</p>
 
@@ -3665,7 +3679,21 @@ window.mergeConfig = mergeConfig;
         <button class="merger-btn merger-btn-primary" type="button" onclick="copyWizardSnippet(this)">Copy snippet</button>
       </details>
 
-      <p class="wizard-step-restart">When you've replaced your config with the merged version, <strong>save the file and restart Claude Desktop</strong>. You're done.</p>
+      <p class="wizard-step-restart">Replace your config with the merged version, then <strong>save the file</strong>. One more step coming up.</p>
+    </div>
+
+    <div class="wizard-step" data-step="5">
+      <div class="wizard-step-label">Step 5 of 5</div>
+      <h4 class="wizard-step-heading">Restart Claude Desktop</h4>
+      <p class="wizard-step-body">Quit Claude Desktop completely (not just close the window), then reopen it. OmniFocus Operator will appear in your MCP servers list.</p>
+      <div class="wizard-kbd-row">
+        <span class="wizard-kbd-label">Quit shortcut:</span>
+        <span class="wizard-kbd">⌘</span>
+        <span class="wizard-kbd-sep">+</span>
+        <span class="wizard-kbd">Q</span>
+        <span class="wizard-kbd-os">on macOS</span>
+      </div>
+      <p class="wizard-step-celebrate">🎉 That's it. You're done — try asking your agent: <em>"Show me my OmniFocus tasks."</em></p>
     </div>
 
   </div>
