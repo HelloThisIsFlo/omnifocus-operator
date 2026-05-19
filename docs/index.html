@@ -305,7 +305,7 @@ nav.scrolled {
   cursor: pointer;
   transition: all 0.25s ease;
   text-align: left;
-  max-width: 420px;
+  max-width: 500px;
 }
 .hero-config:hover {
   border-color: var(--accent-gold);
@@ -319,6 +319,19 @@ nav.scrolled {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
+}
+.hero-config-path {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--accent-teal);
+  background: var(--accent-teal-soft);
+  padding: 6px 10px;
+  border-radius: 6px;
+  margin-bottom: 14px;
+  word-break: break-all;
+  line-height: 1.4;
 }
 .hero-config-code {
   font-family: var(--font-mono);
@@ -327,6 +340,22 @@ nav.scrolled {
   line-height: 1.6;
   margin: 0;
   white-space: pre;
+}
+.hero-config-help {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border-subtle);
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+.hero-config-help code {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--accent-gold);
+  background: var(--accent-gold-soft);
+  padding: 1px 6px;
+  border-radius: 4px;
 }
 .hero-config:hover .hero-install-copy {
   color: var(--accent-gold);
@@ -1670,7 +1699,8 @@ footer p {
       <p class="hero-sub">Production-grade infrastructure for AI agents. 46ms reads. 2,561 tests. Your tasks deserve a bridge that won't break under pressure.</p>
       <div class="hero-options">
         <div class="hero-config" onclick="copyConfig(this)" title="Click to copy">
-          <div class="hero-config-label">Paste into Claude Desktop config <span class="hero-install-copy">Copy</span></div>
+          <div class="hero-config-label">Paste into your Claude Desktop config <span class="hero-install-copy">Copy</span></div>
+          <code class="hero-config-path">~/Library/Application Support/Claude/claude_desktop_config.json</code>
           <pre class="hero-config-code">{
   "mcpServers": {
     "omnifocus-operator": {
@@ -1679,6 +1709,7 @@ footer p {
     }
   }
 }</pre>
+          <p class="hero-config-help">Already using other MCP servers? Add the <code>omnifocus-operator</code> entry alongside them inside your existing <code>mcpServers</code> block.</p>
         </div>
         <div class="hero-or">or</div>
         <div class="hero-prompt" onclick="copyPrompt(this)" title="Click to copy">
