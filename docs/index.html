@@ -438,7 +438,7 @@ nav.scrolled {
   cursor: pointer;
   transition: all 0.25s ease;
   text-align: left;
-  max-width: 380px;
+  max-width: 500px;
 }
 .hero-prompt:hover {
   border-color: var(--accent-teal);
@@ -454,14 +454,34 @@ nav.scrolled {
 }
 .hero-prompt-text {
   font-family: var(--font-body);
-  font-size: 16px;
+  font-size: 14.5px;
   font-style: italic;
   color: var(--text-primary);
-  line-height: 1.6;
+  line-height: 1.55;
   margin: 0;
-  padding: 12px 0 0 16px;
+  padding: 10px 0 0 14px;
   border-left: 2px solid var(--accent-teal);
   opacity: 0.9;
+}
+.hero-prompt-snippet {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  background: var(--bg-deep);
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-primary);
+  line-height: 1.55;
+  white-space: pre;
+  overflow-x: auto;
+}
+.hero-prompt-help {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border-subtle);
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.55;
 }
 
 /* ─── Stats Bar ──────────────────────────────────── */
@@ -1757,7 +1777,7 @@ footer p {
       </a>
       <div class="hero-options">
         <div class="hero-config" onclick="copyConfig(this)" title="Click to copy">
-          <div class="hero-config-label">Paste into Claude Desktop config <span class="hero-install-copy">Copy</span></div>
+          <div class="hero-config-label">For Claude Desktop <span class="hero-install-copy">Copy</span></div>
           <code class="hero-config-path">~/Library/Application Support/Claude/claude_desktop_config.json</code>
           <pre class="hero-config-code">{
   "mcpServers": {
@@ -1771,8 +1791,13 @@ footer p {
         </div>
         <div class="hero-or">or</div>
         <div class="hero-prompt" onclick="copyPrompt(this)" title="Click to copy">
-          <div class="hero-config-label">Ask your agent <span class="hero-install-copy">Copy</span></div>
-          <blockquote class="hero-prompt-text">Set up the OmniFocus Operator MCP server for me — uvx omnifocus-operator</blockquote>
+          <div class="hero-config-label">For Claude Code, Cursor, Cline… <span class="hero-install-copy">Copy</span></div>
+          <blockquote class="hero-prompt-text">Add this MCP server to my client config. Just edit the config file — don't install anything, don't run any scripts.</blockquote>
+          <pre class="hero-prompt-snippet">"omnifocus-operator": {
+  "command": "uvx",
+  "args": ["omnifocus-operator"]
+}</pre>
+          <p class="hero-prompt-help">⚠️ Claude Desktop has no config-editing tools — use the box on the left.</p>
         </div>
       </div>
     </div>
@@ -2482,7 +2507,12 @@ function copyConfig(el) {
 }
 
 function copyPrompt(el) {
-  const text = 'Set up the OmniFocus Operator MCP server for me — uvx omnifocus-operator';
+  const text = `Add this MCP server to my client config. Just edit the config file — don't install anything, don't run any scripts.
+
+"omnifocus-operator": {
+  "command": "uvx",
+  "args": ["omnifocus-operator"]
+}`;
   navigator.clipboard.writeText(text).then(() => {
     el.classList.add('copied');
     const btn = el.querySelector('.hero-install-copy');
