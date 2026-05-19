@@ -46,3 +46,6 @@ justfile.local
 # OS
 .DS_Store
 .claude/worktrees/
+
+# Playwright MCP browser-session output (screenshots, snapshots, logs)
+.playwright-mcp/
