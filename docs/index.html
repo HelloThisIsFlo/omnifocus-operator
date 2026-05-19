@@ -797,6 +797,20 @@ nav.scrolled {
   font-style: italic;
   color: var(--text-primary);
 }
+.wizard-nudge {
+  margin: 0 0 18px;
+  padding: 12px 16px;
+  background: var(--accent-gold-soft);
+  border-radius: 10px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--accent-gold);
+}
+.wizard-kbd-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 .wizard-footer {
   display: flex;
   justify-content: space-between;
@@ -3439,7 +3453,7 @@ document.querySelectorAll('a[href^="#"]').forEach(a => {
 });
 
 // ─── Setup Wizard ───────────────────────────────────
-const wizardState = { step: 1, total: 5 };
+const wizardState = { step: 1, total: 6 };
 
 function openSetupWizard(ev) {
   if (ev) ev.stopPropagation();
@@ -3450,6 +3464,7 @@ function openSetupWizard(ev) {
   const out = document.getElementById('merger-output');
   if (out) { out.innerHTML = ''; out.classList.remove('has-result'); }
   window.__mergedConfig = null;
+  window.__wizardCopied = false;
   document.getElementById('setup-wizard').showModal();
 }
 
@@ -3487,6 +3502,10 @@ function renderWizardStep() {
   back.style.visibility = wizardState.step === 1 ? 'hidden' : 'visible';
   const next = document.getElementById('wizard-next');
   next.textContent = wizardState.step === wizardState.total ? 'Done ✓' : 'Next ▶';
+  const pasteNudge = document.getElementById('wizard-paste-nudge');
+  if (pasteNudge) {
+    pasteNudge.hidden = !(wizardState.step === 5 && !window.__wizardCopied);
+  }
 }
 
 function copyWizardSnippet(btn) {
@@ -3495,7 +3514,11 @@ function copyWizardSnippet(btn) {
     const original = btn.textContent;
     btn.textContent = '✓ Copied';
     btn.disabled = true;
+    window.__wizardCopied = true;
     setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 2000);
+    if (typeof wizardState !== 'undefined' && wizardState.step === 4) {
+      setTimeout(() => wizardNext(), 650);
+    }
   });
 }
 
@@ -3518,7 +3541,11 @@ function copyMerged(btn) {
     const original = btn.textContent;
     btn.textContent = 'Copied ✓';
     btn.disabled = true;
+    window.__wizardCopied = true;
     setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 2000);
+    if (typeof wizardState !== 'undefined' && wizardState.step === 4) {
+      setTimeout(() => wizardNext(), 650);
+    }
   });
 }
 // Expose helpers used by the module-typed merger glue below.
@@ -3596,13 +3623,14 @@ window.mergeConfig = mergeConfig;
       <span class="wizard-dot" data-dot="3"></span>
       <span class="wizard-dot" data-dot="4"></span>
       <span class="wizard-dot" data-dot="5"></span>
+      <span class="wizard-dot" data-dot="6"></span>
     </div>
   </div>
 
   <div class="wizard-body">
 
     <div class="wizard-step" data-step="1">
-      <div class="wizard-step-label">Step 1 of 5</div>
+      <div class="wizard-step-label">Step 1 of 6</div>
       <h4 class="wizard-step-heading">Open Claude Desktop's Settings</h4>
       <p class="wizard-step-body">Launch Claude Desktop, then open Settings.</p>
       <div class="wizard-kbd-row">
@@ -3615,7 +3643,7 @@ window.mergeConfig = mergeConfig;
     </div>
 
     <div class="wizard-step" data-step="2">
-      <div class="wizard-step-label">Step 2 of 5</div>
+      <div class="wizard-step-label">Step 2 of 6</div>
       <h4 class="wizard-step-heading">Find the Developer section</h4>
       <p class="wizard-step-body">In the Settings sidebar on the left, scroll to the bottom. You'll find a <strong>Desktop app</strong> section with three items — click <strong>Developer</strong>.</p>
       <div class="wizard-mockup wizard-mockup-sidebar">
@@ -3633,9 +3661,9 @@ window.mergeConfig = mergeConfig;
     </div>
 
     <div class="wizard-step" data-step="3">
-      <div class="wizard-step-label">Step 3 of 5</div>
+      <div class="wizard-step-label">Step 3 of 6</div>
       <h4 class="wizard-step-heading">Click "Edit Config"</h4>
-      <p class="wizard-step-body">On the Developer panel, click the <strong>Edit Config</strong> button. Your <code>claude_desktop_config.json</code> file opens in your default text editor.</p>
+      <p class="wizard-step-body">On the Developer panel, click the <strong>Edit Config</strong> button. Finder opens with <code>claude_desktop_config.json</code> highlighted — <strong>double-click it</strong> to open in your default text editor.</p>
       <div class="wizard-mockup wizard-mockup-button-row">
         <div class="wizard-mockup-frame-label">Developer panel — top of the page</div>
         <div class="wizard-mockup-panel">
@@ -3650,7 +3678,7 @@ window.mergeConfig = mergeConfig;
     </div>
 
     <div class="wizard-step" data-step="4">
-      <div class="wizard-step-label">Step 4 of 5</div>
+      <div class="wizard-step-label">Step 4 of 6</div>
       <h4 class="wizard-step-heading">Merge OmniFocus Operator into your config</h4>
       <p class="wizard-step-body">Your config file is now open in your editor. Copy everything from it, paste it below, and we'll add the OmniFocus Operator entry for you.</p>
 
@@ -3679,11 +3707,40 @@ window.mergeConfig = mergeConfig;
         <button class="merger-btn merger-btn-primary" type="button" onclick="copyWizardSnippet(this)">Copy snippet</button>
       </details>
 
-      <p class="wizard-step-restart">Replace your config with the merged version, then <strong>save the file</strong>. One more step coming up.</p>
+      <p class="wizard-step-restart">Hit <strong>Copy merged config</strong> above when you're ready, then click Next.</p>
     </div>
 
     <div class="wizard-step" data-step="5">
-      <div class="wizard-step-label">Step 5 of 5</div>
+      <div class="wizard-step-label">Step 5 of 6</div>
+      <h4 class="wizard-step-heading">Paste it back &amp; save</h4>
+      <p class="wizard-nudge" id="wizard-paste-nudge" hidden>
+        ⚠️ Looks like you haven't copied anything yet — go back to step 4 first.
+      </p>
+      <p class="wizard-step-body">Switch back to your text editor (the one Finder opened). Select everything in the file, paste the merged config you just copied, then save.</p>
+      <div class="wizard-kbd-stack">
+        <div class="wizard-kbd-row">
+          <span class="wizard-kbd-label">Select all:</span>
+          <span class="wizard-kbd">⌘</span>
+          <span class="wizard-kbd-sep">+</span>
+          <span class="wizard-kbd">A</span>
+        </div>
+        <div class="wizard-kbd-row">
+          <span class="wizard-kbd-label">Paste:</span>
+          <span class="wizard-kbd">⌘</span>
+          <span class="wizard-kbd-sep">+</span>
+          <span class="wizard-kbd">V</span>
+        </div>
+        <div class="wizard-kbd-row">
+          <span class="wizard-kbd-label">Save:</span>
+          <span class="wizard-kbd">⌘</span>
+          <span class="wizard-kbd-sep">+</span>
+          <span class="wizard-kbd">S</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="wizard-step" data-step="6">
+      <div class="wizard-step-label">Step 6 of 6</div>
       <h4 class="wizard-step-heading">Restart Claude Desktop</h4>
       <p class="wizard-step-body">Quit Claude Desktop completely (not just close the window), then reopen it. OmniFocus Operator will appear in your MCP servers list.</p>
       <div class="wizard-kbd-row">
