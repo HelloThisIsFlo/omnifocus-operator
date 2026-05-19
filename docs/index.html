@@ -3487,6 +3487,8 @@ function copyWizardSnippet(btn) {
 }
 
 // ─── Config Merger ──────────────────────────────────
+// Pure merge logic lives in docs/js/config-merger.js (also tested from web/tests/).
+// docstring for the function contract. This script handles only DOM I/O.
 function escapeHtml(text) {
   return text.replace(/[&<>"']/g, (c) => ({
     '&': '&amp;',
@@ -3495,74 +3497,6 @@ function escapeHtml(text) {
     '"': '&quot;',
     "'": '&#39;'
   }[c]));
-}
-
-function mergeConfig() {
-  const input = document.getElementById('merger-input').value.trim();
-  const output = document.getElementById('merger-output');
-  output.classList.add('has-result');
-
-  let userConfig;
-  if (!input) {
-    userConfig = {};
-  } else {
-    try {
-      userConfig = JSON.parse(input);
-    } catch (e) {
-      output.innerHTML = '<p class="merger-msg merger-msg-error">Couldn\'t parse that as JSON: ' + escapeHtml(e.message) + '</p><p class="merger-msg-hint">Make sure your file has matching braces and no trailing commas. JSON5 / comments aren\'t supported.</p>';
-      return;
-    }
-  }
-
-  if (typeof userConfig !== 'object' || userConfig === null || Array.isArray(userConfig)) {
-    output.innerHTML = '<p class="merger-msg merger-msg-error">That doesn\'t look like a Claude Desktop config — expected a top-level object.</p>';
-    return;
-  }
-
-  if (!userConfig.mcpServers || typeof userConfig.mcpServers !== 'object') {
-    userConfig.mcpServers = {};
-  }
-
-  if (userConfig.mcpServers['omnifocus-operator']) {
-    output.innerHTML = '<p class="merger-msg merger-msg-info">✅ <code>omnifocus-operator</code> is already in your config — you\'re all set.</p>';
-    return;
-  }
-
-  userConfig.mcpServers['omnifocus-operator'] = {
-    command: 'uvx',
-    args: ['omnifocus-operator']
-  };
-
-  const merged = JSON.stringify(userConfig, null, 2);
-  window.__mergedConfig = merged;
-
-  const lines = merged.split('\n');
-  let inNewEntry = false;
-  let braceDepth = 0;
-  const html = lines.map((line) => {
-    if (!inNewEntry && line.includes('"omnifocus-operator"')) {
-      inNewEntry = true;
-      braceDepth = 0;
-    }
-
-    if (inNewEntry) {
-      braceDepth += (line.match(/\{/g) || []).length;
-      braceDepth -= (line.match(/\}/g) || []).length;
-      const html = '<span class="merger-added">' + escapeHtml(line) + '</span>';
-      if (braceDepth <= 0 && line.includes('}')) {
-        inNewEntry = false;
-      }
-      return html;
-    }
-    return escapeHtml(line);
-  }).join('\n');
-
-  output.innerHTML =
-    '<div class="merger-result-label">Merged config <span class="merger-result-hint">(highlighted = newly added)</span></div>' +
-    '<pre class="merger-result">' + html + '</pre>' +
-    '<div class="merger-result-actions">' +
-    '<button class="merger-btn merger-btn-primary" onclick="copyMerged(this)">Copy merged config</button>' +
-    '</div>';
 }
 
 function copyMerged(btn) {
@@ -3574,6 +3508,65 @@ function copyMerged(btn) {
     setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 2000);
   });
 }
+// Expose helpers used by the module-typed merger glue below.
+window.__escapeHtml = escapeHtml;
+window.copyMerged = copyMerged;
+</script>
+
+<script type="module">
+// ─── Config Merger glue ─────────────────────────────
+// Imports the pure merge logic and wires the DOM. Inline-script `mergeConfig`
+// is re-exposed via window so the existing onclick handler keeps working.
+import { mergeOmnifocusOperator } from './js/config-merger.js';
+
+const escapeHtml = window.__escapeHtml;
+
+function mergeConfig() {
+  const input = document.getElementById('merger-input').value;
+  const output = document.getElementById('merger-output');
+  output.classList.add('has-result');
+
+  const result = mergeOmnifocusOperator(input);
+
+  if (!result.ok) {
+    if (result.status === 'parse-error') {
+      output.innerHTML =
+        '<p class="merger-msg merger-msg-error">Couldn\'t parse that as JSON: ' +
+        escapeHtml(result.error) +
+        '</p><p class="merger-msg-hint">Make sure your file has matching braces and no trailing commas. JSON5 / comments aren\'t supported.</p>';
+    } else {
+      output.innerHTML =
+        '<p class="merger-msg merger-msg-error">' + escapeHtml(result.error) + '</p>';
+    }
+    return;
+  }
+
+  if (result.status === 'already-configured') {
+    output.innerHTML =
+      '<p class="merger-msg merger-msg-info">✅ <code>omnifocus-operator</code> is already in your config — you\'re all set.</p>';
+    return;
+  }
+
+  window.__mergedConfig = result.merged;
+
+  const html = result.lines
+    .map((l) =>
+      l.added
+        ? '<span class="merger-added">' + escapeHtml(l.text) + '</span>'
+        : escapeHtml(l.text),
+    )
+    .join('\n');
+
+  output.innerHTML =
+    '<div class="merger-result-label">Merged config <span class="merger-result-hint">(highlighted = newly added)</span></div>' +
+    '<pre class="merger-result">' + html + '</pre>' +
+    '<div class="merger-result-actions">' +
+    '<button class="merger-btn merger-btn-primary" onclick="copyMerged(this)">Copy merged config</button>' +
+    '</div>';
+}
+
+// Re-expose for the inline onclick handler on the "Merge it" button.
+window.mergeConfig = mergeConfig;
 </script>
 
 <!-- ═══ Config Merger Modal ═══ -->

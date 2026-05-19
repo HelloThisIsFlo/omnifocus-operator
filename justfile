@@ -10,6 +10,7 @@ default:
 setup:
     uv sync
     cd bridge && npm install
+    cd web && npm install
     uv run pre-commit install
 
 # ─── MCP Install ──────────────────────────────────────────────────────────────
@@ -26,8 +27,8 @@ mcp-uninstall:
 test-kw *expr:
     uv run pytest --no-cov -x -k "{{ expr }}"
 
-# Run all tests (Python + JS)
-test-all: test-python test-js
+# Run all tests (Python + JS + Web)
+test-all: test-python test-js test-web
     @echo "All tests passed."
 
 # Run Python tests (extra args forwarded: just test-python -k "foo" -v)
@@ -37,6 +38,10 @@ test-python *args='tests/ -x':
 # Run JS bridge tests
 test-js:
     cd bridge && npm test
+
+# Run web (docs/landing-page) JS tests
+test-web:
+    cd web && npm test
 
 # Run a single test file without coverage
 test-one *args:
@@ -153,6 +158,7 @@ clean:
 setup-ci:
     uv sync --locked --dev
     cd bridge && npm ci
+    cd web && npm ci
 
 # SAFE-01: No test may reference RealBridge outside allowed files
 safety:
@@ -167,7 +173,7 @@ safety:
     fi
 
 # Replicate CI pipeline locally (lint/typecheck first = fail fast)
-ci: setup-ci lint typecheck safety test-js
+ci: setup-ci lint typecheck safety test-js test-web
     uv run pytest --cov-fail-under=80
     @echo "CI pipeline passed."
 
