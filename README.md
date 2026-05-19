@@ -33,6 +33,13 @@ Production-grade MCP server exposing OmniFocus as structured task infrastructure
 
 That's it. No install step — `uvx` downloads, isolates, and runs the server automatically.
 
+> **First run:** OmniFocus shows a one-time permission dialog. Tick the box, click **Run Script**. You won't see it again.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/first-run-dark.png">
+  <img src="docs/images/first-run-light.png" alt="OmniFocus first-run permission dialog showing OmniFocus Operator's welcome banner with two steps: tick the 'Automatically run' checkbox, then click Run Script" width="600">
+</picture>
+
 **Or just ask your agent:**
 
 > Set up the OmniFocus Operator MCP server for me — uvx omnifocus-operator
