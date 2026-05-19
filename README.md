@@ -4,11 +4,11 @@
 
 ![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue?logo=python&logoColor=white)
 [![PyPI](https://img.shields.io/pypi/v/omnifocus-operator?logo=pypi&logoColor=white&color=blue)](https://pypi.org/project/omnifocus-operator/)
-![Tests 2558](https://img.shields.io/badge/tests-2558-brightgreen)
+![Tests 2561](https://img.shields.io/badge/tests-2561-brightgreen)
 ![Coverage 97%](https://img.shields.io/badge/coverage-97%25-brightgreen)
 ![macOS only](https://img.shields.io/badge/platform-macOS-lightgrey?logo=apple)
 
-Production-grade MCP server exposing OmniFocus as structured task infrastructure for AI agents. Agent-first design, SQLite-cached performance, 2,558 tests.
+Production-grade MCP server exposing OmniFocus as structured task infrastructure for AI agents. Agent-first design, SQLite-cached performance, 2,561 tests.
 
 ### [**→ See the full landing page**](https://hellothisisflo.github.io/omnifocus-operator) — features, architecture, benchmarks, and comparison
 
@@ -57,7 +57,7 @@ See [CONTRIBUTING.md](https://github.com/HelloThisIsFlo/omnifocus-operator/blob/
 - ⚡ **46ms reads** — SQLite caching gives 30–60x faster reads than bridge-only servers
 - 🛠️ **11 MCP tools** — lookups, filtered lists, task creation & editing
 - 🤖 **Agent-first design** — warnings that teach, errors that educate, guidance in every response
-- 🧪 **2,558 tests, 97% coverage** — strict mypy, no corners cut
+- 🧪 **2,561 tests, 97% coverage** — strict mypy, no corners cut
 - 🛡️ **Graceful degradation** — server stays alive no matter what, always recoverable
 - 🔄 **Automatic fallback** — SQLite → OmniJS bridge when needed
 
