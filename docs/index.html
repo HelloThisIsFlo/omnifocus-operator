@@ -43,6 +43,7 @@ html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip;
 }
 
 body {
@@ -51,7 +52,8 @@ body {
   color: var(--text-primary);
   line-height: 1.7;
   font-size: 16px;
-  overflow-x: hidden;
+  overflow-x: clip;
+  max-width: 100vw;
 }
 
 ::selection {
@@ -788,7 +790,15 @@ nav.scrolled {
   background: rgba(255, 255, 255, 0.015);
 }
 @media (max-width: 640px) {
-  .wizard { padding: 0; }
+  .wizard {
+    padding: 0;
+    max-width: 100vw;
+    width: 100vw;
+    max-height: 100vh;
+    height: 100vh;
+    border-radius: 0;
+    margin: 0;
+  }
   .wizard-header { padding: 18px 20px 14px; }
   .wizard-body { padding: 18px 20px; }
   .wizard-footer { padding: 14px 18px 16px; }
@@ -1101,22 +1111,25 @@ nav.scrolled {
   color: var(--accent-green);
   border-color: rgba(52, 211, 153, 0.3);
 }
+.hero-prompt-quote {
+  margin-top: 10px;
+  padding: 4px 0 4px 14px;
+  border-left: 2px solid var(--accent-teal);
+}
 .hero-prompt-text {
   font-family: var(--font-body);
   font-size: 14.5px;
   font-style: italic;
   color: var(--text-primary);
   line-height: 1.55;
-  margin: 0;
-  padding: 10px 0 0 14px;
-  border-left: 2px solid var(--accent-teal);
+  margin: 0 0 12px;
   opacity: 0.9;
 }
 .hero-prompt-snippet {
-  margin: 14px 0 0;
-  padding: 12px 14px;
+  margin: 0;
+  padding: 10px 12px;
   background: var(--bg-deep);
-  border-radius: 8px;
+  border-radius: 6px;
   font-family: var(--font-mono);
   font-size: 12.5px;
   color: var(--text-primary);
@@ -1131,6 +1144,22 @@ nav.scrolled {
   font-size: 12.5px;
   color: var(--text-muted);
   line-height: 1.55;
+}
+.hero-prompt-wizard-link {
+  display: inline;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--accent-gold);
+  text-decoration: underline;
+  text-decoration-color: rgba(240, 168, 48, 0.4);
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.hero-prompt-wizard-link:hover {
+  color: var(--accent-teal);
 }
 
 /* ─── Stats Bar ──────────────────────────────────── */
@@ -2448,12 +2477,14 @@ footer p {
         <div class="hero-or">or</div>
         <div class="hero-prompt" onclick="copyPrompt(this)" title="Click to copy">
           <div class="hero-config-label">For Claude Code, OpenCode, Cursor… <span class="hero-install-copy">Copy</span></div>
-          <blockquote class="hero-prompt-text">Add this MCP server to my client config. Just edit the config file — don't install anything, don't run any scripts.</blockquote>
-          <pre class="hero-prompt-snippet">"omnifocus-operator": {
+          <div class="hero-prompt-quote">
+            <p class="hero-prompt-text">Add this MCP server to my client config. Just edit the config file — don't install anything, don't run any scripts.</p>
+            <pre class="hero-prompt-snippet">"omnifocus-operator": {
   "command": "uvx",
   "args": ["omnifocus-operator"]
 }</pre>
-          <p class="hero-prompt-help">⚠️ Claude Desktop has no config-editing tools — use the box on the left.</p>
+          </div>
+          <p class="hero-prompt-help">⚠️ Doesn't work with Claude Desktop. Use the <button type="button" class="hero-prompt-wizard-link" onclick="event.stopPropagation(); openSetupWizard(event)">setup wizard</button> instead.</p>
         </div>
       </div>
     </div>
@@ -3112,6 +3143,15 @@ footer p {
     <div class="reveal">
       <h2>Ready to try it?</h2>
       <p class="final-sub">macOS, OmniFocus 4, Python 3.12+. That's all you need.</p>
+      <button class="wizard-cta" type="button" onclick="openSetupWizard(event)" style="margin: 0 auto 20px;">
+        <span class="wizard-cta-icon">🪄</span>
+        <span class="wizard-cta-text">
+          <span class="wizard-cta-title">Step-by-step Claude Desktop setup</span>
+          <span class="wizard-cta-sub">We show you exactly where to click — no path-hunting required.</span>
+        </span>
+        <span class="wizard-cta-arrow">→</span>
+      </button>
+      <div class="hero-or-manual" style="margin-bottom: 12px;">or paste it yourself ↓</div>
       <div class="hero-config" onclick="copyConfig(this)" title="Click to copy" style="margin-bottom: 24px;">
         <div class="hero-config-label">For Claude Desktop <span class="hero-install-copy">Copy</span></div>
         <pre class="hero-config-code">{
