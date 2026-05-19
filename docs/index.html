@@ -446,22 +446,22 @@ nav.scrolled {
 .how-it-works {
   padding-bottom: var(--section-gap);
 }
-.steps {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+.step-bands {
+  display: flex;
+  flex-direction: column;
   gap: 24px;
   margin-top: 48px;
 }
-.step {
+.step-band {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: 16px;
-  padding: 32px 28px;
-  transition: all 0.3s ease;
+  padding: 32px 36px;
+  transition: border-color 0.3s ease, background 0.3s ease, transform 0.3s ease;
   position: relative;
   overflow: hidden;
 }
-.step::before {
+.step-band::before {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0;
@@ -470,12 +470,20 @@ nav.scrolled {
   opacity: 0;
   transition: opacity 0.3s;
 }
-.step:hover {
+.step-band:hover {
   border-color: var(--border-medium);
   background: var(--bg-card-hover);
   transform: translateY(-2px);
 }
-.step:hover::before { opacity: 1; }
+.step-band:hover::before { opacity: 1; }
+.step-band-feature {
+  display: grid;
+  grid-template-columns: 0.85fr 1fr;
+  gap: 48px;
+  align-items: center;
+  padding: 40px 40px;
+}
+.step-band-feature > * { min-width: 0; }
 .step-number {
   font-family: var(--font-mono);
   font-size: 12px;
@@ -484,20 +492,31 @@ nav.scrolled {
   margin-bottom: 16px;
   letter-spacing: 1px;
 }
-.step h3 {
+.step-band-text h3 {
   font-family: var(--font-display);
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 600;
   margin-bottom: 12px;
 }
-.step p {
-  font-size: 14px;
+.step-band-text p {
+  font-size: 15px;
   color: var(--text-secondary);
   line-height: 1.7;
 }
-.step code {
+.step-band-text p + p {
+  margin-top: 14px;
+}
+.step-band-text strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.step-band-aside {
+  font-size: 13.5px !important;
+  color: var(--text-muted) !important;
+}
+.step-band-text p code {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--accent-teal);
   background: var(--accent-teal-soft);
   padding: 2px 8px;
@@ -730,14 +749,7 @@ nav.scrolled {
 }
 
 /* ─── Task Arrangement Section ───────────────────── */
-/* ─── First Run ────────────────────────────────────── */
-.first-run {
-  padding-bottom: var(--section-gap);
-}
-.first-run-demo {
-  max-width: 720px;
-  margin: 48px auto 0;
-}
+/* ─── First-Run Dialog Mockup (embedded in step 02) ─── */
 .first-run-dialog {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
@@ -831,18 +843,7 @@ nav.scrolled {
   border-color: var(--accent-gold);
   box-shadow: 0 0 16px var(--accent-gold-glow);
 }
-.first-run-explainer {
-  max-width: 600px;
-  margin: 32px auto 0;
-  text-align: center;
-  font-size: 15px;
-  line-height: 1.6;
-  color: var(--text-secondary);
-}
-.first-run-explainer strong {
-  color: var(--text-primary);
-}
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .first-run-dialog-script {
     font-size: 11px;
     padding: 14px 16px;
@@ -1605,10 +1606,10 @@ footer p {
 /* ─── Responsive ─────────────────────────────────── */
 @media (max-width: 900px) {
   :root { --section-gap: 100px; }
-  .steps,
   .reliability-features,
   .testing-strategies,
   .tools-grid { grid-template-columns: 1fr; }
+  .step-band-feature { grid-template-columns: 1fr; gap: 28px; padding: 32px 28px; }
   .agent-cards,
   .examples,
   .speed-grid,
@@ -1737,40 +1738,27 @@ footer p {
       <div class="section-label">Getting Started</div>
       <h2 class="section-title">Three steps. No configuration.</h2>
     </div>
-    <div class="steps">
-      <div class="step reveal">
-        <div class="step-number">01</div>
-        <h3>Configure</h3>
-        <p>Paste the config JSON into Claude Desktop. <code>uvx</code> downloads, isolates, and runs the server automatically — no install step.</p>
+    <div class="step-bands">
+      <div class="step-band reveal">
+        <div class="step-band-text">
+          <div class="step-number">01</div>
+          <h3>Configure</h3>
+          <p>Paste the config JSON into Claude Desktop. <code>uvx</code> downloads, isolates, and runs the server automatically — no install step.</p>
+        </div>
       </div>
-      <div class="step reveal" style="transition-delay: 0.1s">
-        <div class="step-number">02</div>
-        <h3>Allow the script</h3>
-        <p>OmniFocus asks once. Tick the box, click Run Script — you're done.</p>
-      </div>
-      <div class="step reveal" style="transition-delay: 0.2s">
-        <div class="step-number">03</div>
-        <h3>Ask Claude</h3>
-        <p>"Show me my OmniFocus tasks." That's it. Full read/write access to your OmniFocus database.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══ First Run ═══ -->
-<section class="first-run">
-  <div class="container">
-    <div class="reveal">
-      <div class="section-label">First run</div>
-      <h2 class="section-title">Here's what you'll see.</h2>
-      <p class="section-subtitle">OmniFocus's permission dialog. Looks scary; isn't.</p>
-    </div>
-    <div class="first-run-demo reveal" style="transition-delay: 0.1s">
-      <div class="first-run-dialog">
-        <p class="first-run-dialog-warning">
-          An unknown application is attempting to run an Omni Automation Script in OmniFocus. Only run scripts if you understand them and trust their source.
-        </p>
-        <pre class="first-run-dialog-script"><code>// =================================================================
+      <div class="step-band step-band-feature reveal" style="transition-delay: 0.1s">
+        <div class="step-band-text">
+          <div class="step-number">02</div>
+          <h3>Allow the script</h3>
+          <p>OmniFocus asks once. Tick the box, click <strong>Run Script</strong> — you're done.</p>
+          <p class="step-band-aside">The script ships with onboarding baked into the top, so you know exactly what to click. After this, OmniFocus won't ask again on this machine.</p>
+        </div>
+        <div class="step-band-visual">
+          <div class="first-run-dialog">
+            <p class="first-run-dialog-warning">
+              An unknown application is attempting to run an Omni Automation Script in OmniFocus. Only run scripts if you understand them and trust their source.
+            </p>
+            <pre class="first-run-dialog-script"><code>// =================================================================
 //   👋  Welcome to OmniFocus Operator
 //
 //   ✨  One-time permission check. Two steps to finish:
@@ -1781,20 +1769,26 @@ footer p {
 //
 //   🔗  github.com/HelloThisIsFlo/omnifocus-operator
 // =================================================================</code></pre>
-        <div class="first-run-dialog-controls">
-          <label class="first-run-checkbox">
-            <span class="first-run-checkbox-box first-run-checkbox-box-checked"></span>
-            <span class="first-run-checkbox-label">Automatically run this script when sent by this or any other unknown application</span>
-          </label>
-          <div class="first-run-dialog-buttons">
-            <button class="first-run-btn first-run-btn-secondary">Cancel</button>
-            <button class="first-run-btn first-run-btn-primary">Run Script</button>
+            <div class="first-run-dialog-controls">
+              <label class="first-run-checkbox">
+                <span class="first-run-checkbox-box first-run-checkbox-box-checked"></span>
+                <span class="first-run-checkbox-label">Automatically run this script when sent by this or any other unknown application</span>
+              </label>
+              <div class="first-run-dialog-buttons">
+                <button class="first-run-btn first-run-btn-secondary">Cancel</button>
+                <button class="first-run-btn first-run-btn-primary">Run Script</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-    <div class="first-run-explainer reveal" style="transition-delay: 0.2s">
-      <p>The dialog above is OmniFocus's standard security check — it appears any time an unknown script wants to run. We embed onboarding instructions right at the top of the script so you know exactly what to click. Two clicks and you're done; you'll never see this dialog again.</p>
+      <div class="step-band reveal" style="transition-delay: 0.2s">
+        <div class="step-band-text">
+          <div class="step-number">03</div>
+          <h3>Ask Claude</h3>
+          <p>"Show me my OmniFocus tasks." That's it. Full read/write access to your OmniFocus database.</p>
+        </div>
+      </div>
     </div>
   </div>
 </section>
