@@ -2675,7 +2675,8 @@ footer p {
       <h2>Ready to try it?</h2>
       <p class="final-sub">macOS, OmniFocus 4, Python 3.12+. That's all you need.</p>
       <div class="hero-config" onclick="copyConfig(this)" title="Click to copy" style="margin-bottom: 24px;">
-        <div class="hero-config-label">Claude Desktop config <span class="hero-install-copy">Copy</span></div>
+        <div class="hero-config-label">For Claude Desktop <span class="hero-install-copy">Copy</span></div>
+        <code class="hero-config-path">~/Library/Application Support/Claude/claude_desktop_config.json</code>
         <pre class="hero-config-code">{
   "mcpServers": {
     "omnifocus-operator": {
@@ -2684,6 +2685,7 @@ footer p {
     }
   }
 }</pre>
+        <p class="hero-config-help">Already have other MCP servers? Add the <code>omnifocus-operator</code> entry to your existing <code>mcpServers</code> block. <button type="button" class="hero-config-merger-trigger" onclick="openConfigMerger(event)">Or auto-merge it for me →</button></p>
       </div>
       <div class="final-links">
         <a href="https://github.com/HelloThisIsFlo/omnifocus-operator">GitHub</a>
