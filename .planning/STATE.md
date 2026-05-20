@@ -58,6 +58,7 @@ Carried forward from v1.4:
 6. Reorganize test suite into unit/integration/golden-master folders
 7. Add built-in perspectives to list_perspectives (repository — needs design discussion)
 8. Return full inbox hierarchy from inInbox query (repository)
+9. Fix recurring macOS permission prompt on Claude Desktop launch (tooling — gated on 2 validations; issue #2)
 9. Add path field for hierarchical entities (models)
 10. Fix OrdinalWeekdaySpec -> OrdinalWeekday cross-layer coercion in edit pipeline (service)
 11. Golden master re-capture required after Phase 42 mapper rewrites (human-only per GOLD-01)
