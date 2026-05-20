@@ -444,6 +444,64 @@ nav.scrolled {
   opacity: 0.75;
 }
 
+/* ─── Hero "Set up" CTA (glowing) ──────────────────── */
+.hero-setup-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 34px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--accent-gold), #ffc862);
+  color: var(--bg-deep);
+  font-family: var(--font-body);
+  font-size: 18px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 10px 34px rgba(240, 168, 48, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.hero-setup-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 48px rgba(240, 168, 48, 0.45);
+  color: var(--bg-deep);
+}
+.hero-setup-cta-arrow { font-size: 20px; transition: transform 0.2s ease; }
+.hero-setup-cta:hover .hero-setup-cta-arrow { transform: translateY(2px); }
+.hero-setup-sub {
+  margin-top: 14px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* Nav "Setup" pill */
+.nav-setup {
+  color: var(--accent-gold) !important;
+  background: var(--accent-gold-soft);
+  border: 1px solid var(--accent-gold-glow);
+  border-radius: 8px;
+  padding: 6px 14px !important;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.nav-setup:hover {
+  background: var(--accent-gold);
+  color: var(--bg-deep) !important;
+}
+
+/* Step 1 — configure tools (wizard + snippet boxes) */
+.setup-configure { margin-top: 28px; }
+.setup-configure .wizard-cta { width: 100%; max-width: 560px; }
+.setup-configure .hero-options { justify-content: flex-start; margin-top: 20px; flex-wrap: wrap; }
+.setup-configure .hero-config,
+.setup-configure .hero-prompt { cursor: pointer; }
+
+/* Step 2 glow when the wizard hands off */
+.step-glow { animation: stepGlow 2.4s ease-out; }
+@keyframes stepGlow {
+  0% { box-shadow: 0 0 0 0 rgba(240, 168, 48, 0); }
+  14% { box-shadow: 0 0 0 4px rgba(240, 168, 48, 0.28), 0 0 44px rgba(240, 168, 48, 0.22); border-color: var(--accent-gold); }
+  100% { box-shadow: 0 0 0 0 rgba(240, 168, 48, 0); }
+}
+
 /* ─── Setup Wizard Modal ──────────────────────────── */
 .wizard {
   background: var(--bg-card);
@@ -463,6 +521,9 @@ nav.scrolled {
 .wizard[open] {
   display: flex;
   flex-direction: column;
+  position: fixed;
+  inset: 0;
+  margin: auto;
 }
 .wizard::backdrop {
   background: rgba(6, 10, 20, 0.78);
@@ -1056,56 +1117,6 @@ nav.scrolled {
   color: var(--accent-green);
   border-color: rgba(52, 211, 153, 0.3);
 }
-.hero-steps {
-  display: inline-flex;
-  align-items: center;
-  gap: 14px;
-  padding: 8px 18px;
-  margin: 8px auto 28px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: 999px;
-  font-family: var(--font-mono);
-  font-size: 12.5px;
-  color: var(--text-muted);
-  text-decoration: none;
-  transition: border-color 0.25s ease, background 0.25s ease;
-}
-.hero-steps:hover {
-  border-color: var(--border-medium);
-  background: var(--bg-card-hover);
-  color: var(--text-secondary);
-}
-.hero-step {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  color: var(--text-muted);
-  letter-spacing: 0.3px;
-}
-.hero-step-num {
-  font-weight: 600;
-  color: var(--text-muted);
-}
-.hero-step.active,
-.hero-step.active .hero-step-num {
-  color: var(--accent-gold);
-}
-.hero-step-arrow {
-  color: var(--text-muted);
-  opacity: 0.5;
-  font-size: 12px;
-}
-.hero-steps-hint {
-  margin-left: 4px;
-  color: var(--text-muted);
-  opacity: 0.6;
-  font-size: 12px;
-}
-.hero-steps:hover .hero-steps-hint {
-  opacity: 1;
-  color: var(--accent-gold);
-}
 .hero-options {
   display: flex;
   align-items: center;
@@ -1331,6 +1342,20 @@ nav.scrolled {
   padding: 2px 8px;
   border-radius: 4px;
 }
+
+/* Green "it's safe" reassurance callout */
+.step-band-safe {
+  background: var(--accent-green-soft);
+  border-left: 3px solid var(--accent-green);
+  border-radius: 8px;
+  padding: 14px 16px !important;
+  color: var(--text-secondary) !important;
+}
+.step-band-safe strong { color: var(--text-primary); }
+
+/* Anchored sections clear the fixed nav when jumped to */
+section[id],
+.step-band[id] { scroll-margin-top: 96px; }
 
 /* ─── Speed Section ──────────────────────────────── */
 .speed {
@@ -1660,6 +1685,155 @@ nav.scrolled {
   .first-run-dialog-warning {
     font-size: 12px;
   }
+}
+
+/* macOS alert recreation (Step 2 — the "Allow uvx" prompt) */
+.tcc-dialog {
+  width: 300px;
+  background: rgba(38, 40, 46, 0.94);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 26px 22px 18px;
+  text-align: center;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+}
+.tcc-icon {
+  width: 76px;
+  height: 76px;
+  margin: 0 auto 18px;
+  position: relative;
+}
+.tcc-icon-folder {
+  width: 72px;
+  height: 56px;
+  border-radius: 11px;
+  background: linear-gradient(160deg, #4aa6f5, #2a7fd4);
+  position: relative;
+  margin-top: 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.tcc-icon-folder::before {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: 7px;
+  width: 28px;
+  height: 11px;
+  border-radius: 6px 6px 0 0;
+  background: #4aa6f5;
+}
+.tcc-icon-badge {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(160deg, #3b9bf0, #1f6fc8);
+  border: 3px solid rgba(38, 40, 46, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  line-height: 1;
+}
+.tcc-title {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  color: #f5f6f8;
+  line-height: 1.45;
+  margin-bottom: 18px;
+}
+.tcc-title .tcc-quote { font-family: var(--font-mono); font-size: 0.92em; }
+.tcc-buttons { display: flex; gap: 10px; }
+.tcc-btn {
+  flex: 1;
+  padding: 7px 0;
+  border-radius: 9px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  cursor: default;
+}
+.tcc-btn-secondary { background: rgba(255, 255, 255, 0.1); color: #e8ecf4; }
+.tcc-btn-primary {
+  background: #3b82f6;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.45);
+}
+
+/* FDA progressive disclosure */
+.fda-disclosure {
+  margin-top: 26px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--bg-card);
+  overflow: hidden;
+}
+.fda-disclosure summary {
+  cursor: pointer;
+  padding: 16px 20px;
+  font-weight: 600;
+  color: var(--accent-gold);
+  font-size: 15px;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.fda-disclosure summary::-webkit-details-marker { display: none; }
+.fda-disclosure summary::before {
+  content: "▸";
+  transition: transform 0.2s ease;
+  display: inline-block;
+}
+.fda-disclosure[open] summary::before { transform: rotate(90deg); }
+.fda-body { padding: 0 20px 20px; }
+.fda-body p { color: var(--text-secondary); font-size: 14.5px; line-height: 1.65; }
+.fda-body code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--accent-gold-soft);
+  color: var(--accent-gold);
+  padding: 1px 5px;
+  border-radius: 5px;
+}
+.fda-steps { margin: 14px 0 0; padding: 0; list-style: none; counter-reset: fda; }
+.fda-steps li {
+  position: relative;
+  padding: 8px 0 8px 34px;
+  color: var(--text-secondary);
+  font-size: 14.5px;
+  line-height: 1.5;
+  counter-increment: fda;
+}
+.fda-steps li::before {
+  content: counter(fda);
+  position: absolute;
+  left: 0;
+  top: 5px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent-gold-soft);
+  color: var(--accent-gold);
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.fda-steps strong { color: var(--text-primary); }
+.fda-caveat {
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+  border-left: 2px solid var(--border-medium);
+  padding-left: 12px;
+  line-height: 1.5;
 }
 
 .arrangement {
@@ -2451,6 +2625,7 @@ footer p {
       OmniFocus Operator
     </div>
     <ul class="nav-links">
+      <li class="nav-setup-li"><a href="#setup" class="nav-setup">Setup</a></li>
       <li><a href="#speed">Speed</a></li>
       <li><a href="#agent-first">Agent-First</a></li>
       <li><a href="#arrangement">Arrangement</a></li>
@@ -2477,48 +2652,11 @@ footer p {
       </div>
       <h1>The OmniFocus MCP server your agent can <em>actually</em> depend on.</h1>
       <p class="hero-sub">Production-grade infrastructure for AI agents. 46ms reads. 2,561 tests. Your tasks deserve a bridge that won't break under pressure.</p>
-      <a class="hero-steps" href="#getting-started" title="See the full 3-step setup below">
-        <span class="hero-step active"><span class="hero-step-num">01</span> Configure</span>
-        <span class="hero-step-arrow">→</span>
-        <span class="hero-step"><span class="hero-step-num">02</span> Allow</span>
-        <span class="hero-step-arrow">→</span>
-        <span class="hero-step"><span class="hero-step-num">03</span> Ask</span>
-        <span class="hero-steps-hint">↓</span>
+      <a class="hero-setup-cta" href="#setup">
+        <span class="hero-setup-cta-text">Set up — takes 2 minutes</span>
+        <span class="hero-setup-cta-arrow">↓</span>
       </a>
-      <button class="wizard-cta" type="button" onclick="openSetupWizard(event)">
-        <span class="wizard-cta-icon">🪄</span>
-        <span class="wizard-cta-text">
-          <span class="wizard-cta-title">Step-by-step Claude Desktop setup</span>
-          <span class="wizard-cta-sub">We show you exactly where to click — no path-hunting required.</span>
-        </span>
-        <span class="wizard-cta-arrow">→</span>
-      </button>
-      <div class="hero-or-manual">or set it up yourself ↓</div>
-      <div class="hero-options">
-        <div class="hero-config" onclick="copyConfig(this)" title="Click to copy">
-          <div class="hero-config-label">For Claude Desktop <span class="hero-install-copy">Copy</span></div>
-          <pre class="hero-config-code">{
-  "mcpServers": {
-    "omnifocus-operator": {
-      "command": "uvx",
-      "args": ["omnifocus-operator"]
-    }
-  }
-}</pre>
-        </div>
-        <div class="hero-or">or</div>
-        <div class="hero-prompt" onclick="copyPrompt(this)" title="Click to copy">
-          <div class="hero-config-label">For Claude Code, OpenCode, Cursor… <span class="hero-install-copy">Copy</span></div>
-          <div class="hero-prompt-quote">
-            <p class="hero-prompt-text">Add this MCP server to my client config. Just edit the config file — don't install anything, don't run any scripts.</p>
-            <pre class="hero-prompt-snippet">"omnifocus-operator": {
-  "command": "uvx",
-  "args": ["omnifocus-operator"]
-}</pre>
-          </div>
-          <p class="hero-prompt-help">⚠️ Doesn't work with Claude Desktop. Use the <button type="button" class="hero-prompt-wizard-link" onclick="event.stopPropagation(); openSetupWizard(event)">setup wizard</button> instead.</p>
-        </div>
-      </div>
+      <p class="hero-setup-sub">Wizard or copy-paste. No install, no terminal.</p>
     </div>
   </div>
 </section>
@@ -2564,27 +2702,103 @@ footer p {
   </div>
 </section>
 
-<!-- ═══ How It Works ═══ -->
-<section class="how-it-works" id="getting-started">
+<!-- ═══ Setup ═══ -->
+<section class="how-it-works" id="setup">
   <div class="container">
     <div class="reveal">
-      <div class="section-label">Getting Started</div>
+      <div class="section-label">Setup</div>
       <h2 class="section-title">Three steps. No install.</h2>
+      <p class="section-subtitle">Everything's right here — configure, restart, use it. Two quick permission prompts come up along the way; we show you exactly what to click.</p>
     </div>
     <div class="step-bands">
+
+      <!-- Step 1 — Configure -->
       <div class="step-band reveal">
         <div class="step-band-text">
-          <div class="step-number">01</div>
+          <div class="step-number">Step 1</div>
           <h3>Configure</h3>
-          <p>Paste the config JSON into Claude Desktop. <code>uvx</code> downloads, isolates, and runs the server automatically — no install step.</p>
+          <p>Add OmniFocus Operator to your client config. <code>uvx</code> downloads and runs the server automatically — nothing to install. Use the wizard, or paste it yourself.</p>
+        </div>
+        <div class="setup-configure">
+          <button class="wizard-cta" type="button" onclick="openSetupWizard(event)">
+            <span class="wizard-cta-icon">🪄</span>
+            <span class="wizard-cta-text">
+              <span class="wizard-cta-title">Step-by-step Claude Desktop setup</span>
+              <span class="wizard-cta-sub">We show you exactly where to click — no path-hunting required.</span>
+            </span>
+            <span class="wizard-cta-arrow">→</span>
+          </button>
+          <div class="hero-or-manual">or paste it yourself ↓</div>
+          <div class="hero-options">
+            <div class="hero-config" onclick="copyConfig(this)" title="Click to copy">
+              <div class="hero-config-label">For Claude Desktop <span class="hero-install-copy">Copy</span></div>
+              <pre class="hero-config-code">{
+  "mcpServers": {
+    "omnifocus-operator": {
+      "command": "uvx",
+      "args": ["omnifocus-operator"]
+    }
+  }
+}</pre>
+            </div>
+            <div class="hero-or">or</div>
+            <div class="hero-prompt" onclick="copyPrompt(this)" title="Click to copy">
+              <div class="hero-config-label">For Claude Code, OpenCode, Cursor… <span class="hero-install-copy">Copy</span></div>
+              <div class="hero-prompt-quote">
+                <p class="hero-prompt-text">Add this MCP server to my client config. Just edit the config file — don't install anything, don't run any scripts.</p>
+                <pre class="hero-prompt-snippet">"omnifocus-operator": {
+  "command": "uvx",
+  "args": ["omnifocus-operator"]
+}</pre>
+              </div>
+              <p class="hero-prompt-help">⚠️ Doesn't work with Claude Desktop. Use the <button type="button" class="hero-prompt-wizard-link" onclick="event.stopPropagation(); openSetupWizard(event)">setup wizard</button> instead.</p>
+            </div>
+          </div>
         </div>
       </div>
+
+      <!-- Step 2 — Restart + macOS prompt -->
+      <div class="step-band step-band-feature reveal" id="step-restart" style="transition-delay: 0.05s">
+        <div class="step-band-text">
+          <div class="step-number">Step 2</div>
+          <h3>Restart Claude — allow it once</h3>
+          <p>Quit Claude Desktop completely (<strong>⌘Q</strong>), then reopen it. On first launch, macOS shows this prompt:</p>
+          <p class="step-band-safe">🛡️ <strong>It's safe — just click Allow.</strong> <code>uvx</code> reads your OmniFocus data, which lives in OmniFocus's private folder, so macOS double-checks first. The server only reads your local database; nothing leaves your Mac.</p>
+          <details class="fda-disclosure">
+            <summary>Tired of allowing this on every restart?</summary>
+            <div class="fda-body">
+              <p>macOS forgets the approval because <code>uvx</code> runs from a fresh temporary location each time. Grant Claude Desktop <strong>Full Disk Access</strong> once and the prompt stops nagging you:</p>
+              <ol class="fda-steps">
+                <li>Open <strong>System Settings → Privacy &amp; Security → Full Disk Access</strong></li>
+                <li>Click <strong>+</strong> and add <strong>Claude</strong> from your Applications folder</li>
+                <li>Toggle it <strong>on</strong>, then fully quit and reopen Claude Desktop</li>
+              </ol>
+              <p class="fda-caveat">You may still see the prompt once more after this — Claude starts some servers lazily — but it stops coming back on every launch.</p>
+            </div>
+          </details>
+        </div>
+        <div class="step-band-visual">
+          <div class="tcc-dialog">
+            <div class="tcc-icon">
+              <div class="tcc-icon-folder"></div>
+              <div class="tcc-icon-badge">✋</div>
+            </div>
+            <div class="tcc-title"><span class="tcc-quote">"uvx"</span> would like to access data from other apps.</div>
+            <div class="tcc-buttons">
+              <button class="tcc-btn tcc-btn-secondary" type="button" tabindex="-1">Don't Allow</button>
+              <button class="tcc-btn tcc-btn-primary" type="button" tabindex="-1">Allow</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3 — First use + OmniFocus prompt -->
       <div class="step-band step-band-feature reveal" style="transition-delay: 0.1s">
         <div class="step-band-text">
-          <div class="step-number">02</div>
-          <h3>Allow the script</h3>
-          <p>OmniFocus asks once. Tick the box, click <strong>Run Script</strong> — you're done.</p>
-          <p class="step-band-aside">The script ships with onboarding baked into the top, so you know exactly what to click. After this, OmniFocus won't ask again on this machine.</p>
+          <div class="step-number">Step 3</div>
+          <h3>Use it — "Show me my tasks"</h3>
+          <p>Ask Claude anything about OmniFocus. The very first request — even a simple read — pops this prompt in OmniFocus, just once:</p>
+          <p class="step-band-safe">🛡️ <strong>Tick the box, click Run Script — done.</strong> The script ships with onboarding baked into the top, so you know exactly what to click. OmniFocus won't ask again on this machine.</p>
         </div>
         <div class="step-band-visual">
           <div class="first-run-dialog">
@@ -2615,13 +2829,7 @@ footer p {
           </div>
         </div>
       </div>
-      <div class="step-band reveal" style="transition-delay: 0.2s">
-        <div class="step-band-text">
-          <div class="step-number">03</div>
-          <h3>Ask Claude</h3>
-          <p>"Show me my OmniFocus tasks." That's it. Full read/write access to your OmniFocus database.</p>
-        </div>
-      </div>
+
     </div>
   </div>
 </section>
@@ -3175,26 +3383,10 @@ footer p {
     <div class="reveal">
       <h2>Ready to try it?</h2>
       <p class="final-sub">macOS, OmniFocus 4, Python 3.12+. That's all you need.</p>
-      <button class="wizard-cta" type="button" onclick="openSetupWizard(event)" style="margin: 0 auto 20px;">
-        <span class="wizard-cta-icon">🪄</span>
-        <span class="wizard-cta-text">
-          <span class="wizard-cta-title">Step-by-step Claude Desktop setup</span>
-          <span class="wizard-cta-sub">We show you exactly where to click — no path-hunting required.</span>
-        </span>
-        <span class="wizard-cta-arrow">→</span>
-      </button>
-      <div class="hero-or-manual" style="margin-bottom: 12px;">or paste it yourself ↓</div>
-      <div class="hero-config" onclick="copyConfig(this)" title="Click to copy" style="margin-bottom: 24px;">
-        <div class="hero-config-label">For Claude Desktop <span class="hero-install-copy">Copy</span></div>
-        <pre class="hero-config-code">{
-  "mcpServers": {
-    "omnifocus-operator": {
-      "command": "uvx",
-      "args": ["omnifocus-operator"]
-    }
-  }
-}</pre>
-      </div>
+      <a class="hero-setup-cta" href="#setup" style="margin: 0 auto 28px;">
+        <span class="hero-setup-cta-text">Set up — takes 2 minutes</span>
+        <span class="hero-setup-cta-arrow">↑</span>
+      </a>
       <div class="final-links">
         <a href="https://github.com/HelloThisIsFlo/omnifocus-operator">GitHub</a>
         <a href="https://github.com/HelloThisIsFlo/omnifocus-operator/issues">Issues</a>
@@ -3441,19 +3633,8 @@ if (speedSection) speedObserver.observe(speedSection);
   }
 })();
 
-// ─── Smooth anchor scroll ───────────────────────────
-document.querySelectorAll('a[href^="#"]').forEach(a => {
-  a.addEventListener('click', (e) => {
-    e.preventDefault();
-    const target = document.querySelector(a.getAttribute('href'));
-    if (target) {
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  });
-});
-
 // ─── Setup Wizard ───────────────────────────────────
-const wizardState = { step: 1, total: 6 };
+const wizardState = { step: 1, total: 5 };
 
 function openSetupWizard(ev) {
   if (ev) ev.stopPropagation();
@@ -3477,8 +3658,58 @@ function wizardNext() {
     wizardState.step++;
     renderWizardStep();
   } else {
-    closeSetupWizard();
+    closeWizardAndGlowRestart();
   }
+}
+
+// Momentum scroll — rAF easing, independent of CSS scroll-behavior
+// (which `overflow-x: clip` on the root suppresses).
+function smoothScrollTo(targetY, duration = 650) {
+  const startY = window.scrollY;
+  const dist = targetY - startY;
+  if (Math.abs(dist) < 2) return;
+  const start = performance.now();
+  const ease = (t) => 1 - Math.pow(1 - t, 3); // easeOutCubic
+  function step(now) {
+    const t = Math.min(1, (now - start) / duration);
+    window.scrollTo(0, startY + dist * ease(t));
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function elementScrollTarget(el) {
+  const margin = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
+  return window.scrollY + el.getBoundingClientRect().top - margin;
+}
+
+// Intercept in-page anchor links so they glide instead of jumping.
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a[href^="#"]');
+  if (!a) return;
+  const hash = a.getAttribute('href');
+  if (hash.length < 2) return;
+  const el = document.querySelector(hash);
+  if (!el) return;
+  e.preventDefault();
+  smoothScrollTo(elementScrollTarget(el), 700);
+  history.pushState(null, '', hash);
+});
+
+// Wizard finish: stay anchored in the config, gently reveal Step 2 (Restart)
+// at the lower part of the viewport so Step 1 stays in view, and glow it.
+function closeWizardAndGlowRestart() {
+  closeSetupWizard();
+  const target = document.getElementById('step-restart');
+  if (!target) return;
+  window.setTimeout(() => {
+    const y = window.scrollY + target.getBoundingClientRect().top - (window.innerHeight * 0.42);
+    smoothScrollTo(Math.max(0, y), 750);
+    target.classList.remove('step-glow');
+    void target.offsetWidth;
+    target.classList.add('step-glow');
+    window.setTimeout(() => target.classList.remove('step-glow'), 2400);
+  }, 220);
 }
 
 function wizardBack() {
@@ -3623,14 +3854,13 @@ window.mergeConfig = mergeConfig;
       <span class="wizard-dot" data-dot="3"></span>
       <span class="wizard-dot" data-dot="4"></span>
       <span class="wizard-dot" data-dot="5"></span>
-      <span class="wizard-dot" data-dot="6"></span>
     </div>
   </div>
 
   <div class="wizard-body">
 
     <div class="wizard-step" data-step="1">
-      <div class="wizard-step-label">Step 1 of 6</div>
+      <div class="wizard-step-label">Step 1 of 5</div>
       <h4 class="wizard-step-heading">Open Claude Desktop's Settings</h4>
       <p class="wizard-step-body">Launch Claude Desktop, then open Settings.</p>
       <div class="wizard-kbd-row">
@@ -3643,7 +3873,7 @@ window.mergeConfig = mergeConfig;
     </div>
 
     <div class="wizard-step" data-step="2">
-      <div class="wizard-step-label">Step 2 of 6</div>
+      <div class="wizard-step-label">Step 2 of 5</div>
       <h4 class="wizard-step-heading">Find the Developer section</h4>
       <p class="wizard-step-body">In the Settings sidebar on the left, scroll to the bottom. You'll find a <strong>Desktop app</strong> section with three items — click <strong>Developer</strong>.</p>
       <div class="wizard-mockup wizard-mockup-sidebar">
@@ -3661,7 +3891,7 @@ window.mergeConfig = mergeConfig;
     </div>
 
     <div class="wizard-step" data-step="3">
-      <div class="wizard-step-label">Step 3 of 6</div>
+      <div class="wizard-step-label">Step 3 of 5</div>
       <h4 class="wizard-step-heading">Click "Edit Config"</h4>
       <p class="wizard-step-body">On the Developer panel, click the <strong>Edit Config</strong> button. Finder opens with <code>claude_desktop_config.json</code> highlighted — <strong>double-click it</strong> to open in your default text editor.</p>
       <div class="wizard-mockup wizard-mockup-button-row">
@@ -3678,7 +3908,7 @@ window.mergeConfig = mergeConfig;
     </div>
 
     <div class="wizard-step" data-step="4">
-      <div class="wizard-step-label">Step 4 of 6</div>
+      <div class="wizard-step-label">Step 4 of 5</div>
       <h4 class="wizard-step-heading">Merge OmniFocus Operator into your config</h4>
       <p class="wizard-step-body">Your config file is now open in your editor. Copy everything from it, paste it below, and we'll add the OmniFocus Operator entry for you.</p>
 
@@ -3711,7 +3941,7 @@ window.mergeConfig = mergeConfig;
     </div>
 
     <div class="wizard-step" data-step="5">
-      <div class="wizard-step-label">Step 5 of 6</div>
+      <div class="wizard-step-label">Step 5 of 5</div>
       <h4 class="wizard-step-heading">Paste it back &amp; save</h4>
       <p class="wizard-nudge" id="wizard-paste-nudge" hidden>
         ⚠️ Looks like you haven't copied anything yet — go back to step 4 first.
@@ -3737,20 +3967,7 @@ window.mergeConfig = mergeConfig;
           <span class="wizard-kbd">S</span>
         </div>
       </div>
-    </div>
-
-    <div class="wizard-step" data-step="6">
-      <div class="wizard-step-label">Step 6 of 6</div>
-      <h4 class="wizard-step-heading">Restart Claude Desktop</h4>
-      <p class="wizard-step-body">Quit Claude Desktop completely (not just close the window), then reopen it. OmniFocus Operator will appear in your MCP servers list.</p>
-      <div class="wizard-kbd-row">
-        <span class="wizard-kbd-label">Quit shortcut:</span>
-        <span class="wizard-kbd">⌘</span>
-        <span class="wizard-kbd-sep">+</span>
-        <span class="wizard-kbd">Q</span>
-        <span class="wizard-kbd-os">on macOS</span>
-      </div>
-      <p class="wizard-step-celebrate">🎉 That's it. You're done — try asking your agent: <em>"Show me my OmniFocus tasks."</em></p>
+      <p class="wizard-step-celebrate">🎉 Config saved! Hit <em>Done</em> — Step 2 (restart) is waiting for you.</p>
     </div>
 
   </div>
