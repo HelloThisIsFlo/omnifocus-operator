@@ -3,7 +3,7 @@ created: 2026-05-20T18:04:28.908Z
 title: Fix recurring macOS permission prompt on Claude Desktop launch
 area: tooling
 files:
-  - scratch/tcc-validation/ (test scaffolding, gitignored)
+  - .research/deep-dives/macos-tcc-permission-persistence/ (full deep dive + rig)
   - GitHub issue #2
 ---
 
@@ -33,4 +33,6 @@ On macOS, the prompt **`"uvx" would like to access data from other apps`** reapp
 
 **Open risks (note, don't block):** app may need to live in `/Applications`; hardened-runtime entitlements when spawning uv/python (likely fine); `uvx` caching means the launcher must use `@latest`/`--refresh` to guarantee freshness; the OmniFocus "Run Script" first-run prompt is a separate mechanism not addressed here.
 
-**Artifacts:** validation guide at Obsidian `_AgentSandbox_/tcc-validation/GUIDE.md`; test scaffolding (`trigger.c`, `build.sh`, `Info.plist`, built `.app`) in repo `scratch/tcc-validation/` (gitignored).
+**Full deep dive (canonical record):** `.research/deep-dives/macos-tcc-permission-persistence/` — `README.md` (verdict + tables + how-to-rerun), `FINDINGS.md` (daemon-log proof, TCC.db evidence, route research, sources), and the runnable rig (`rig/identity-test/`, `rig/attribution-test/`).
+
+**Also:** step-by-step validation guide at Obsidian `_AgentSandbox_/tcc-validation/GUIDE.md` (with filled observations).

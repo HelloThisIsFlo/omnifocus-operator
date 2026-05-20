@@ -1,0 +1,4 @@
+# Build artifacts — rebuild from the rig sources via build.sh
+*.app/
+of-reader
+*.o
