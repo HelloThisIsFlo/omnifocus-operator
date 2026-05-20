@@ -52,7 +52,9 @@ Which day starts the week for `{this: "w"}` date filter alignment.
 
 Directory for bridge IPC files. Only relevant when using the bridge.
 
-**Default:** System temp directory (`/tmp` on macOS).
+**Default:** `~/Library/Containers/com.omnigroup.OmniFocus4/Data/Documents/omnifocus-operator/ipc`
+
+This must live inside OmniFocus's sandbox (`URL.documentsDirectory`) — URL-scheme scripts can only write there via `FileWrapper.write()`. Overriding it to a path outside that container breaks bridge writes.
 
 ### `OPERATOR_BRIDGE_TIMEOUT`
 
