@@ -28,8 +28,8 @@ On macOS, the prompt **`"uvx" would like to access data from other apps`** reapp
 
 **DECIDED next action — two cheap validation gates BEFORE building any signing/notarization/distribution pipeline** (explicit goal: do not spend a day on a pipeline that might not work):
 
-1. **Free, now:** modify the test so the launcher *spawns a child* that reads OmniFocus's container (mimics launcher → uv → python) and confirm the prompt still attributes to the launcher's identity, not the child. *(Validates the attribution architecture — currently only inferred.)*
-2. **After buying an Apple Developer ID cert (~£99/yr):** re-sign the existing throwaway test app with it, confirm the grant now persists (`auth_value=2`, no re-prompt across runs). *(Validates the core bet — currently only inferred from the Bartender control.)*
+1. ✅ **PASSED (2026-05-20).** Launcher spawns a child (`of-reader`) that reads OmniFocus; tccd set `responsible = launcher` and keyed the AppData request to the launcher's identity (`dev.kempenich.oftest`), prompt named "OmniFocus Operator". Attribution architecture confirmed at the daemon level (`scratch/tcc-validation/gate1/`).
+2. ⏳ **PENDING — needs Apple Developer ID cert (~£99/yr).** Re-sign the throwaway test app with it, confirm the grant now persists (`auth_value=2`, no re-prompt across runs). *(Validates the core bet — currently only inferred from the Bartender control. Cheap once the cert exists; do NOT build the pipeline before this passes.)*
 
 **Open risks (note, don't block):** app may need to live in `/Applications`; hardened-runtime entitlements when spawning uv/python (likely fine); `uvx` caching means the launcher must use `@latest`/`--refresh` to guarantee freshness; the OmniFocus "Run Script" first-run prompt is a separate mechanism not addressed here.
 
