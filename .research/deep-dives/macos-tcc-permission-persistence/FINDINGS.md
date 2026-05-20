@@ -113,18 +113,43 @@ Dialog named **"OmniFocus Operator"**. ✅ **The child's read attributes to the 
 
 ---
 
-## Gate 2 — does Developer ID persist? (PENDING)
+## Gate 2 — does Developer ID make AppData persist? **FAILED**
 
-Cheap once the cert exists; gates all pipeline work:
+Re-signed the rig with a real Developer ID (Florian Kempenich, Team `7T6UW39FB3`). DR became Team-ID-based and chains to Apple Root CA:
+```
+Authority = Developer ID Application: Florian Kempenich (7T6UW39FB3) → Developer ID CA → Apple Root CA
+designated => identifier "dev.kempenich.oftest" and anchor apple generic and …leaf[subject.OU] = "7T6UW39FB3"
+```
+Registered (`lsregister`), reset, ran via `disclaimer`, Allow, re-ran.
 
-1. `cd rig/identity-test && bash build.sh`
-2. `codesign --force --options runtime --sign "Developer ID Application: <you> (TEAMID)" "OmniFocus Operator.app"`
-3. `tccutil reset All dev.kempenich.oftest` → run via `disclaimer` → Allow once → run again.
-4. Expect: no re-prompt; `TCC.db` `auth_value=2`.
+**Result: still re-prompts. `TCC.db` `auth_value=5`, unchanged.** Trusted signing alone does **not** make the AppData grant persist — identical to self-signed.
 
-**No notarization needed for this test** — a Developer ID cert chains to Apple's root (already in the system trust store), so `tccd`'s validity check passes locally. Notarization only matters for Gatekeeper on *other* machines.
+→ **`SystemPolicyAppData` does not persist for this process class, regardless of signing.**
 
-If it sticks → green light. If not → we learned it for ~10 minutes, not a wasted day.
+## Breakthrough — Full Disk Access is the real lever
+
+Closest public match: [claude-code #24162](https://github.com/anthropics/claude-code/issues/24162) (same `auth_value=5` + `SystemPolicyAppData`, Claude's own embedded CLI). The reframe: every run does an `AllFiles` (FDA) preflight **before** the AppData path — see the original run's log (`Handling access request to kTCCServiceSystemPolicyAllFiles … Denied`). Grant FDA → that preflight passes → the AppData prompt never fires.
+
+Test: System Settings → Privacy & Security → Full Disk Access → add the signed `.app` → run via `disclaimer` → **SILENT.** ✅ The only variable changed was the FDA grant (no reset needed — it nagged every run before).
+
+## Gate 3 — does the FDA grant survive updates? **PASSED**
+
+Rebuilt the app (new cdhash) + re-signed with the same Developer ID, **without re-granting FDA** → ran → **still silent.** The grant is keyed to the **Team ID** (designated requirement), not the cdhash → survives every release. An *unsigned* binary's FDA grant would be path/cdhash-pinned and break on update — so the cert is required, for **durability**.
+
+> FDA grants live in the **SIP-protected system TCC.db**, so a user-db `sqlite3` read shows no `AllFiles` row (only the dead `AppData|5`). Durability was verified **behaviorally** (rebuild → still silent), not by reading the DB.
+
+## Corrections to earlier reasoning
+
+- **"Bartender persists"** was its **ScreenCapture (System Set)** grant — *not* a prompted AppData grant. We never actually had evidence any app persists a *prompted* AppData grant; Gate 2 confirms they don't.
+- **"Full Disk Access doesn't fix it"** (early conclusion) was about FDA on **`Claude.app`** (wrong target — attribution lands below Claude). FDA on the **server's own signed binary** *is* the fix.
+
+## The fix (validated) + open items
+
+✅ **Developer-ID-signed app + user grants Full Disk Access once → silent forever, survives updates.**
+
+Open:
+- **UX:** FDA is a *broad* permission and a *manual* System-Settings grant (one-time, can't be auto-prompted) — heavier than a dialog click.
+- **Untested:** does **notarized + /Applications** let the *narrow* AppData grant persist (`auth_value=2`), avoiding the FDA ask entirely?
 
 ---
 

@@ -17,19 +17,24 @@ On macOS, the prompt **`"uvx" would like to access data from other apps`** reapp
 
 **Disproven (ruled out):**
 - Claude Desktop's `disclaimer` helper does NOT break attribution — our app is correctly its own responsible process.
-- Full Disk Access does NOT fix it (different TCC service: `AllFiles` ≠ `AppData`).
+- Full Disk Access on **Claude.app** does NOT fix it (attribution lands below Claude). *(But FDA on the server's own signed binary DOES — see Solution.)*
 - A self-signed identity is NOT enough — stable but untrusted, so the grant isn't honored.
 
 **Decided separately:** the dialog NAME is fixable on its own — a `.app` bundle with `CFBundleDisplayName` made the prompt read "OmniFocus Operator" even while unsigned (no Apple account needed).
 
 ## Solution
 
-**Leading candidate (NOT yet committed):** a Developer-ID-signed + notarized launcher as the MCP config `command`, bundling `uv` and still fetching the server from PyPI at runtime (preserves the CI→PyPI auto-update flow). Distribution method undecided (Homebrew Cask / Sparkle DMG / Claude Desktop `.mcpb` extension).
+**✅ SOLVED (2026-05-20):** ship a **Developer-ID-signed app** + have the user grant it **Full Disk Access** once → prompt gone, and it **survives updates** (grant keyed to Team ID — proven by rebuild). FDA's `AllFiles` preflight passes *before* the AppData path, so the prompt never fires. Key surprise: `SystemPolicyAppData` itself **never persists** (`auth_value=5`) regardless of signing — **FDA is the lever; the cert just makes the FDA grant durable.**
 
-**DECIDED next action — two cheap validation gates BEFORE building any signing/notarization/distribution pipeline** (explicit goal: do not spend a day on a pipeline that might not work):
+**Validation gates (all run on the rig):**
+1. ✅ **Gate 1 — attribution.** Launcher spawns a child (`of-reader`) that reads OmniFocus; tccd set `responsible = launcher`, prompt named "OmniFocus Operator". Architecture sound.
+2. ❌ **Gate 2 — does Developer ID make AppData persist? NO.** Re-signed with a real Developer ID (Team `7T6UW39FB3`) → still `auth_value=5`, still re-prompts.
+3. ✅ **Fix + Gate 3 — FDA + durability.** Grant FDA to the signed `.app` → silent. Rebuild (new cdhash, same Dev ID), no re-grant → still silent → survives updates.
 
-1. ✅ **PASSED (2026-05-20).** Launcher spawns a child (`of-reader`) that reads OmniFocus; tccd set `responsible = launcher` and keyed the AppData request to the launcher's identity (`dev.kempenich.oftest`), prompt named "OmniFocus Operator". Attribution architecture confirmed at the daemon level (`scratch/tcc-validation/gate1/`).
-2. ⏳ **PENDING — needs Apple Developer ID cert (~£99/yr).** Re-sign the throwaway test app with it, confirm the grant now persists (`auth_value=2`, no re-prompt across runs). *(Validates the core bet — currently only inferred from the Bartender control. Cheap once the cert exists; do NOT build the pipeline before this passes.)*
+**Open before shipping:**
+- ⚠️ **UX** — FDA is a *broad* permission + a *manual* System-Settings grant (one-time, can't auto-prompt). Heavier ask than a dialog click.
+- ❓ **Untested** — does **notarized + /Applications** make the *narrow* AppData grant persist (`auth_value=2`), avoiding the FDA ask?
+- **Distribution** undecided (Homebrew Cask / Sparkle DMG / `.mcpb`). Launcher should bundle `uv` (fixes uvx-not-found too) + use `uvx …@latest`.
 
 **Open risks (note, don't block):** app may need to live in `/Applications`; hardened-runtime entitlements when spawning uv/python (likely fine); `uvx` caching means the launcher must use `@latest`/`--refresh` to guarantee freshness; the OmniFocus "Run Script" first-run prompt is a separate mechanism not addressed here.
 

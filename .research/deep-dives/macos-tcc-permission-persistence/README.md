@@ -2,26 +2,31 @@
 
 Why the **`"uvx" would like to access data from other apps`** prompt recurs on **every** Claude Desktop launch — and what actually fixes it. Tracked as GitHub issue #2.
 
-## Verdict (2026-05-20)
+## Verdict (2026-05-20) — SOLVED
 
-**Root cause: untrusted code identity.** The `uvx → uv → python` launch chain is ad-hoc / self-signed — no Apple-anchored identity. macOS *records* the user's "Allow" (a `TCC.db` row is written) but stores it in a **non-honored state (`auth_value=5`)**, so on the next launch `tccd` treats it as `Unknown` and re-prompts. Forever.
+**Root cause:** `kTCCServiceSystemPolicyAppData` ("access data from other apps") **does not persist** for this process class (a CLI spawned behind Claude's `disclaimer`). macOS writes the user's "Allow" but parks it at **`auth_value=5` (not honored)** → re-prompts every launch, **regardless of signing** — self-signed *and* a real Developer ID both fail identically. The prompt only appears because the binary lacks **Full Disk Access**: each run does an `AllFiles` (FDA) preflight first; it's denied, so macOS falls back to the non-persistent AppData prompt.
 
-**Fix direction:** set Claude's config `command` to a **Developer-ID-signed launcher** (trusted identity → grant persists, even across updates, because TCC keys on the Team ID, not the file hash). Launcher bundles `uv` and still fetches the server from PyPI at runtime, so the existing CI→PyPI auto-update flow is preserved.
+**Fix (validated, update-durable):** ship a **Developer-ID-signed app** and have the user grant it **Full Disk Access** once. FDA's `AllFiles` preflight then passes → the AppData prompt never fires. The FDA grant is keyed to the **Team ID**, so it **survives app updates** — proven by rebuilding with a new cdhash (same Developer ID, no re-grant) → still silent. An *unsigned* binary's FDA grant would break every release, so the cert is required — for **durability**, not for AppData.
 
-> **Status:** root cause + attribution proven. The signed-launcher fix is **validated up to Gate 1**; Gate 2 (does a real Developer ID persist?) is pending an Apple Developer cert. **Do not build the signing/notarization/distribution pipeline until Gate 2 passes.**
+> **Status: solved.** Confirmed working + survives updates. Open items:
+> 1. **UX cost** — FDA is a *broad* permission and a *manual* System-Settings grant (one-time, can't be auto-prompted). Heavier ask than a dialog click.
+> 2. **Untested nicer path** — whether a **notarized** app in `/Applications` lets the *narrow* AppData grant persist (`auth_value=2`), which would avoid asking for FDA at all.
 
 ## What was proven vs ruled out
 
 | Claim | Result | Evidence |
 |---|---|---|
-| The `disclaimer` helper breaks attribution | ❌ **Ruled out** | tccd sets `responsible = our app`; FDA-on-Claude failed because attribution is *below* Claude |
-| Full Disk Access fixes it | ❌ **Ruled out** | Different TCC service (`AllFiles` ≠ `AppData`); confirmed by hand |
-| Self-signed identity is enough | ❌ **Ruled out** | Grant written but `auth_value=5`, never honored; re-prompts |
-| Trusting the self-signed cert helps | ❌ **Ruled out** | `tccd` runs as root, ignores the user-keychain trust override |
-| **Trusted (Developer ID) identity required** | ✅ **Confirmed (indirect)** | Bartender (Developer-ID) persists in the same log; ours doesn't |
-| Dialog name fixable via bundle alone | ✅ **Confirmed** | `.app` + `CFBundleDisplayName` → shows "OmniFocus Operator" even unsigned |
-| **Gate 1:** child's read attributes to launcher | ✅ **Confirmed** | tccd: `responsible = launcher`, `subject = dev.kempenich.oftest`, when child `of-reader` reads |
-| **Gate 2:** Developer ID actually persists | ⏳ **Pending** | needs the cert; re-sign rig + confirm `auth_value=2` |
+| The `disclaimer` helper breaks attribution | ❌ **Ruled out** | tccd sets `responsible = our app` (Gate 1) |
+| FDA **on Claude.app** fixes it | ❌ **Ruled out** | attribution is *below* Claude; wrong target |
+| `AppData` grant persists (any signing) | ❌ **Ruled out** | `auth_value=5` for self-signed **and** Developer ID (Gate 2 failed) |
+| Trusting the self-signed cert helps | ❌ **Ruled out** | `tccd` runs as root, ignores login-keychain trust |
+| Dialog name fixable via bundle alone | ✅ **Confirmed** | `.app` + `CFBundleDisplayName` → "OmniFocus Operator" even unsigned |
+| **Gate 1:** child's read attributes to launcher | ✅ **Confirmed** | tccd: `responsible = launcher` when child `of-reader` reads |
+| **FDA on the launcher binary fixes it** | ✅ **Confirmed** | grant FDA → `AllFiles` preflight passes → AppData prompt never fires |
+| **FDA grant survives updates** | ✅ **Confirmed** | rebuilt (new cdhash, same Dev ID), no re-grant → still silent |
+| Notarized → *narrow* AppData persists | ❓ **Untested** | would avoid the broad FDA ask |
+
+> ⚠️ Earlier mis-read (corrected): "Bartender persists" was its **ScreenCapture (System Set)** grant — *not* a user-prompted AppData grant. We never had proof any app persists a prompted AppData grant; Gate 2 confirms they don't.
 
 ## The fix, decoupled (why auto-update still works)
 
@@ -47,17 +52,26 @@ tccutil reset All dev.kempenich.oftest
 # run the printed: disclaimer "<launcher>" "<of-reader>"  → prompt should name "OmniFocus Operator"
 ```
 
-**Gate 2 (persistence, needs Developer ID cert):**
+**Gate 2 + the fix (needs Developer ID cert):**
 ```sh
 cd rig/identity-test && bash build.sh
 codesign --force --options runtime --sign "Developer ID Application: <you> (TEAMID)" "OmniFocus Operator.app"
-tccutil reset All dev.kempenich.oftest
-# run via disclaimer, Allow once, run again → expect NO re-prompt
-sqlite3 "$HOME/Library/Application Support/com.apple.TCC/TCC.db" \
-  "SELECT service,client,auth_value FROM access WHERE client='dev.kempenich.oftest';"   # want auth_value=2
+# register so Settings/tccutil can resolve the bundle id:
+/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister -f "OmniFocus Operator.app"
+
+# Gate 2 — does AppData persist? Run via disclaimer, Allow once, run again:
+#   → STILL re-prompts; TCC.db auth_value stays 5. AppData never persists. (Gate 2 FAILS.)
+
+# THE FIX — grant Full Disk Access to the .app:
+#   System Settings → Privacy & Security → Full Disk Access → + → add "OmniFocus Operator.app"
+#   then run via disclaimer → SILENT (the AllFiles preflight now passes).
+
+# Durability — simulate an update: rebuild + re-sign (new cdhash, same Dev ID), do NOT re-grant:
+cd rig/identity-test && bash build.sh && codesign --force --options runtime --sign "Developer ID Application: <you> (TEAMID)" "OmniFocus Operator.app"
+#   run via disclaimer → STILL SILENT → grant is Team-ID-based, survives updates. ✅
 ```
 
-(Reading `TCC.db` needs Full Disk Access on the terminal running `sqlite3`.)
+(FDA grants live in the SIP-protected *system* TCC.db, not the user one — so they don't show up in a `sqlite3` read of `~/Library/.../TCC.db`. Verify durability behaviorally, as above.)
 
 ## Files
 
@@ -68,5 +82,5 @@ sqlite3 "$HOME/Library/Application Support/com.apple.TCC/TCC.db" \
 
 - GitHub issue #2 (recurring prompt) + the uvx-not-found issue (separate bug, separate root cause: Claude Desktop's minimal PATH).
 - Todo: `.planning/todos/pending/2026-05-20-fix-recurring-macos-permission-prompt-on-claude-desktop-laun.md`
-- Step-by-step validation guide (Obsidian): `_AgentSandbox_/tcc-validation/GUIDE.md`
-- Docs to correct: landing page (`docs/index.html` ~L2770) wrongly says Full Disk Access stops the prompt.
+- Step-by-step validation guide: `GUIDE.md` (this folder) — with filled-in observations from the live run.
+- Docs to correct: landing page (`docs/index.html` ~L2770) says grant **Claude Desktop** Full Disk Access — wrong *target*. FDA is the right lever, but it must be granted to the **server's own signed app**, not `Claude.app` (attribution lands below Claude).
