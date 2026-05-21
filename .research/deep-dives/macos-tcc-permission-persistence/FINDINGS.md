@@ -183,9 +183,22 @@ After signed + notarized + /Applications + user-launched (`open`) ALL still gave
 
 ✅ **Developer-ID-signed app + user grants Full Disk Access once → silent forever, survives updates.**
 
-Open:
-- **UX:** FDA is a *broad* permission and a *manual* System-Settings grant (one-time, can't be auto-prompted) — heavier than a dialog click.
-- **Untested:** does **notarized + /Applications** let the *narrow* AppData grant persist (`auth_value=2`), avoiding the FDA ask entirely?
+### Productization decisions (2026-05-21)
+
+- **Notarized + /Applications → AppData persist?** TESTED → **No** (still `auth_value=5`). Notarization does nothing for the prompt; it's only for Gatekeeper on downloaded apps.
+- **Architecture:** dropping the SQLite fast-read path is OFF the table (it's the product's whole value). So the real choice is **prompt-every-time** vs **Full Disk Access**.
+- **Q1 — does durable FDA require notarization?** **No. Signing (Developer ID) is the only irreducible requirement.** Durability (FDA grant survives updates) was proven on a signed-but-NOT-notarized app (the grant keys to Team ID). The current `uvx`/python chain is unsigned + version-pinned paths → an FDA grant on it would be path-based → breaks on updates + invisible in Settings. So: durable FDA ⇒ a Developer-ID-signed launcher. Notarization deferred to distribution.
+- **Q2 — cheap UX win (lazy defer):** the SQLite reads are **already lazy** (fresh read-only connection per query, nothing in repo `__init__`). The ONLY eager startup touch is `sweep_orphaned_files(DEFAULT_IPC_DIR)` at `server/lifespan.py:36` — it hits OmniFocus's container at boot, which is what fires the prompt on *every Claude Desktop launch*. Defer that sweep to first tool call (or first write) → prompt moves to **first OmniFocus tool use**, never on Claude boot. Small, localized change; do regardless of the FDA decision. (NOT yet implemented — captured as direction.)
+
+### Open: minimal-setup + durable FDA (research in progress, 2026-05-21)
+
+Goal: simplest setup for a non-technical user that yields a *durable* FDA grant. Ideal = edit one config file; even better = double-click Claude Desktop Extension. **4 background agents dispatched:**
+1. Can FDA persist **unsigned** via stable paths alone? (what breaks a path-based grant)
+2. Lightest **Python → Developer-ID-signable binary** route (PyInstaller/Nuitka/py2app/briefcase vs a signed stub that re-signs a copy of `uv`).
+3. **`.mcpb` Claude Desktop Extension** bundling a signed binary — does the signature/path survive extraction so FDA persists? (the dream double-click path)
+4. Full **distribution decision matrix** (setup steps × FDA-persist × signing/notarization × auto-update × friction).
+
+→ Synthesis + recommendation to land here when agents return.
 
 ---
 

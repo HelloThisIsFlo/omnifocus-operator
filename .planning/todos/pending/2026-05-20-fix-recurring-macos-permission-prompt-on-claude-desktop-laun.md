@@ -31,10 +31,13 @@ On macOS, the prompt **`"uvx" would like to access data from other apps`** reapp
 2. ❌ **Gate 2 — does Developer ID make AppData persist? NO.** Re-signed with a real Developer ID (Team `7T6UW39FB3`) → still `auth_value=5`, still re-prompts.
 3. ✅ **Fix + Gate 3 — FDA + durability.** Grant FDA to the signed `.app` → silent. Rebuild (new cdhash, same Dev ID), no re-grant → still silent → survives updates.
 
-**Open before shipping:**
-- ⚠️ **UX** — FDA is a *broad* permission + a *manual* System-Settings grant (one-time, can't auto-prompt). Heavier ask than a dialog click.
-- ❓ **Untested** — does **notarized + /Applications** make the *narrow* AppData grant persist (`auth_value=2`), avoiding the FDA ask?
-- **Distribution** undecided (Homebrew Cask / Sparkle DMG / `.mcpb`). Launcher should bundle `uv` (fixes uvx-not-found too) + use `uvx …@latest`.
+**Decisions (2026-05-21):**
+- Dropping the SQLite cache is OFF the table → the real choice is **prompt-every-time** vs **Full Disk Access**.
+- **Notarized + /Applications tested → does NOT make AppData persist** (still `5`). Notarization is only for Gatekeeper/distribution.
+- **Durable FDA requires a Developer-ID-SIGNED launcher; notarization NOT needed for persistence** (proven on signed-not-notarized). Unsigned FDA = path-based, breaks on updates.
+- 🥇 **Cheap win to do first (Q2 lazy defer):** move `sweep_orphaned_files(DEFAULT_IPC_DIR)` out of eager startup (`server/lifespan.py:36`) → first tool call. SQLite reads are already lazy. Moves prompt from "every Claude launch" to "first OmniFocus tool use". (Not yet implemented.)
+
+**In progress (4 background research agents, 2026-05-21):** minimal-setup path for a durable FDA grant — (1) unsigned/stable-path viability, (2) lightest Python→signable-binary, (3) `.mcpb` extension bundling a signed binary (double-click), (4) distribution decision matrix. Synthesis → deep dive.
 
 **Open risks (note, don't block):** app may need to live in `/Applications`; hardened-runtime entitlements when spawning uv/python (likely fine); `uvx` caching means the launcher must use `@latest`/`--refresh` to guarantee freshness; the OmniFocus "Run Script" first-run prompt is a separate mechanism not addressed here.
 
