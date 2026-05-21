@@ -82,5 +82,5 @@ cd rig/identity-test && bash build.sh && codesign --force --options runtime --si
 
 - GitHub issue #2 (recurring prompt) + the uvx-not-found issue (separate bug, separate root cause: Claude Desktop's minimal PATH).
 - Todo: `.planning/todos/pending/2026-05-20-fix-recurring-macos-permission-prompt-on-claude-desktop-laun.md`
-- Step-by-step validation guide: `GUIDE.md` (this folder) — with filled-in observations from the live run.
+- Step-by-step working guide (live, in Obsidian while the notarization experiment is active): `_AgentSandbox_/tcc-validation/GUIDE.md`. Folds back into this folder once the investigation is fully closed.
 - Docs to correct: landing page (`docs/index.html` ~L2770) says grant **Claude Desktop** Full Disk Access — wrong *target*. FDA is the right lever, but it must be granted to the **server's own signed app**, not `Claude.app` (attribution lands below Claude).
