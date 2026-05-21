@@ -198,7 +198,45 @@ Goal: simplest setup for a non-technical user that yields a *durable* FDA grant.
 3. **`.mcpb` Claude Desktop Extension** bundling a signed binary — does the signature/path survive extraction so FDA persists? (the dream double-click path)
 4. Full **distribution decision matrix** (setup steps × FDA-persist × signing/notarization × auto-update × friction).
 
-→ Synthesis + recommendation to land here when agents return.
+### Distribution synthesis (4-agent research complete, 2026-05-21)
+
+**Universal fact (all 4 agents):** durable FDA ⟺ the *launched* artifact carries a stable **Developer-ID (Team-ID)** identity. No-signing = impossible (path churn on uv/python bumps + cdhash churn on rebuilds + path-based entries invisible in Settings). Notarization = mandatory for any *downloaded* artifact (quarantine → Gatekeeper), independent of TCC.
+
+**"One config edit" AND durable FDA are mutually exclusive** — durable FDA needs a signed download, not a hand-edited config pointing at PyPI bits.
+
+**Form matters — ship a signed `.app`, not a bare CLI binary.** We already proved FDA on our hand-built signed **`.app`** survives a rebuild (Gate 3). Bare CLI binaries are documented-fragile for FDA (even a timestamp change can force re-grant); `.app` bundles hold it. So the durable artifact is a `.app`.
+
+**Subprocess caveat — mostly retired by our own data.** Agents 2 & 4 flagged "does the launcher's FDA cover the *spawned* python child?" → our **Gate 1** already showed a spawned child's OF access attributes to the **launcher** (responsible process). One combined spike remains (below).
+
+**Lightest build:** **PyApp** (`PYAPP_UV_ENABLED`) — a signed Rust launcher that `uv`-bootstraps the server from PyPI (server keeps auto-updating; launcher signed once). Wrap it in a `.app`. Heavier fallback if the spawn-spike fails: **Nuitka `--standalone`** (frozen in-process python → no separate child).
+
+**Delivery matrix:**
+| Method | Setup steps (non-tech) | Durable FDA | Signing | Notarize | Server auto-update | Friction |
+|---|---|---|---|---|---|---|
+| `uvx` (status quo) | 1 (config) | ❌ | no | no | ✅ PyPI | 1 setup / ∞ prompts |
+| `uv tool install` + FDA | 2 | ❌ (unsigned) | no | no | ~ | 3 |
+| **Homebrew cask** (signed) | 2 | ✅ | yes | yes | ✅ (shim) | 2 |
+| signed DMG + Sparkle | 3–4 | ✅ | yes | yes | ✅ (shim) | 4 |
+| **`.mcpb`** (signed binary) | 1 (double-click) | ⚠️ conditional | yes | yes | ✅ (if launcher) | 1 |
+
+**`.mcpb` two unverified blockers (Agent 3):** (1) is Claude's extension *extraction path* stable across updates? (2) does macOS honor Team-ID csreq for a *disclaimed bare CLI* binary? → The **split-identity pattern** (macuse-mcp) sidesteps both: ship a signed `.app` to `/Applications` (stable path, robust FDA), `.mcpb` is a thin wrapper that spawns it.
+
+### Recommended plan
+
+- **Tier 1 (now, free, no Apple):** keep `uvx` + **Q2 lazy-defer** → prompt fires only on first OmniFocus tool use, not every Claude launch. The acceptable default.
+- **Tier 2 (durable opt-out):** signed + notarized **`.app`** (PyApp-built launcher inside), delivered as a **`.mcpb` double-click**, using the **split-identity pattern** (signed `.app` in `/Applications` + thin `.mcpb` wrapper) for FDA robustness. **Homebrew cask** = fallback. User grants FDA once → durable across updates.
+- **Gate before building Tier 2:** spike — FDA on a signed `.app` that *spawns* the python child → child's OF read silent + survives rebuild. (Combines the proven Gate 1 attribution + Gate 3 durability into the real architecture.) High prior it passes.
+
+### Sources (distribution research)
+- Apple DTS — stable signing identity ⇒ TCC persistence: https://developer.apple.com/forums/thread/678819 · https://developer.apple.com/forums/thread/730043
+- Bare-CLI FDA fragility: https://n8henrie.com/2018/11/how-to-give-full-disk-access-to-a-binary-in-macos-mojave/ · https://mjtsai.com/blog/2021/06/01/macos-11-4-breaks-full-disk-access-for-helper-tools/
+- PyApp (signed launcher, uv bootstrap, self-update): https://ofek.dev/pyapp/
+- Gatekeeper/quarantine = notarization mandatory on download: https://support.apple.com/en-us/102445
+- Homebrew 5.0 signing+notarization mandate: https://workbrew.com/blog/homebrew-5-0-0
+- `.mcpb` format + `binary` server type: https://github.com/modelcontextprotocol/mcpb/blob/main/MANIFEST.md · https://www.anthropic.com/engineering/desktop-extensions
+- Split-identity pattern (signed .app + thin mcpb wrapper): https://github.com/macuse-app/macuse-mcp
+- disclaimer = self-responsible child (helps FDA-on-binary): https://github.com/anthropics/claude-code/issues/43597 · https://mjtsai.com/blog/2025/07/07/the-curious-case-of-the-responsible-process/
+- Sparkle auto-update: https://sparkle-project.org/documentation/
 
 ---
 

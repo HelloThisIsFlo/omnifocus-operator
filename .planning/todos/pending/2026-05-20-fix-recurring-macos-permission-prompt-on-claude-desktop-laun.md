@@ -37,7 +37,11 @@ On macOS, the prompt **`"uvx" would like to access data from other apps`** reapp
 - **Durable FDA requires a Developer-ID-SIGNED launcher; notarization NOT needed for persistence** (proven on signed-not-notarized). Unsigned FDA = path-based, breaks on updates.
 - 🥇 **Cheap win to do first (Q2 lazy defer):** move `sweep_orphaned_files(DEFAULT_IPC_DIR)` out of eager startup (`server/lifespan.py:36`) → first tool call. SQLite reads are already lazy. Moves prompt from "every Claude launch" to "first OmniFocus tool use". (Not yet implemented.)
 
-**In progress (4 background research agents, 2026-05-21):** minimal-setup path for a durable FDA grant — (1) unsigned/stable-path viability, (2) lightest Python→signable-binary, (3) `.mcpb` extension bundling a signed binary (double-click), (4) distribution decision matrix. Synthesis → deep dive.
+**Distribution research DONE (4 agents, 2026-05-21) → full matrix + sources in deep-dive FINDINGS.** Conclusions:
+- Durable FDA requires a Developer-ID-signed launcher; "one config edit + durable FDA" is impossible (needs a signed download). Notarization mandatory for any download (Gatekeeper).
+- Ship a signed **`.app`** (proven to survive rebuild), not a bare CLI binary (FDA-fragile). Lightest build = **PyApp** (signed launcher, uv-bootstraps server from PyPI → keeps auto-update).
+- **Recommended two-tier:** (1) NOW free — keep `uvx` + Q2 lazy-defer (prompt → first OF use); (2) durable opt-out — signed+notarized `.app` via `.mcpb` double-click using the **split-identity pattern** (signed `.app` in /Applications + thin `.mcpb` wrapper); Homebrew cask = fallback.
+- **Next spike before any pipeline:** FDA on signed `.app` that *spawns* the python child → child read silent + survives rebuild (combines proven Gate 1 + Gate 3).
 
 **Open risks (note, don't block):** app may need to live in `/Applications`; hardened-runtime entitlements when spawning uv/python (likely fine); `uvx` caching means the launcher must use `@latest`/`--refresh` to guarantee freshness; the OmniFocus "Run Script" first-run prompt is a separate mechanism not addressed here.
 
