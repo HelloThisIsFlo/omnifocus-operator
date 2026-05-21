@@ -143,6 +143,42 @@ Rebuilt the app (new cdhash) + re-signed with the same Developer ID, **without r
 - **"Bartender persists"** was its **ScreenCapture (System Set)** grant — *not* a prompted AppData grant. We never actually had evidence any app persists a *prompted* AppData grant; Gate 2 confirms they don't.
 - **"Full Disk Access doesn't fix it"** (early conclusion) was about FDA on **`Claude.app`** (wrong target — attribution lands below Claude). FDA on the **server's own signed binary** *is* the fix.
 
+## Definitive root cause (4-agent deep research, 2026-05-21)
+
+After signed + notarized + /Applications + user-launched (`open`) ALL still gave `auth_value=5`, four independent research agents converged on the same answer:
+
+**`kTCCServiceSystemPolicyAppData` is a *transient, process-lifetime* permission — non-persistent by design.** Apple DTS (Quinn), Forums thread 742147:
+> TCC privileges fall into groups: Persistent system-wide; Persistent per-user; **Transient, process lifetime**. The privilege to access other apps' containers falls into that third group. **If granted, that consent applies only for the duration of that app instance.** Every time the pid changes will trigger a new prompt. This is as expected.
+
+- The transience is a property of the **service**, not the **client** — which is exactly why no identity/notarization/location/launch-context change moved it.
+- **Why us specifically:** the file is in OmniGroup's **Group Container** (`34YW5XSRB7.com.omnigroup.OmniFocus`). Since macOS 15, accessing another team's group container without the transient prompt requires legitimate **membership** — group ID prefixed with *your* Team ID, or provisioning/App-Store. Our team `7T6UW39FB3` ≠ `34YW5XSRB7` → membership structurally impossible → always the transient path. (Per-app Container protection: CVE-2023-42929, Sonoma; Group Container protection: Sequoia 15.)
+- **`auth_value=5`:** a live `tccd` disassembly (Tahoe) revealed a *session-scoped authorization* subsystem (`Session scoped auth is valid/invalid for client`, keyed to `session_pid`/`pid_version`/`boot_uuid`) and proved the enum extends past the classic `0–3` (e.g. `auth_value=4` for Calendar add-only). So `5` ≈ a **session-scoped allow** valid only for the granted pid. (Exact integer undocumented publicly; the *behavior* is Apple-documented.)
+- **Not just us:** identical "re-prompts every launch" reported for claude-code #36832, openai/codex #11027, ghostty #4496, Adobe Illustrator/InDesign 2026, ACDSee — all resolve to **grant Full Disk Access**.
+
+**How other apps "do it" (none of which is persisting a prompted foreign-container grant — that isn't a thing):** read their *own* data; same-vendor App Group; have Full Disk Access; or use the other app's **API** (AppleScript/automation → `AppleEvents` TCC, which *does* persist).
+
+**Verdict matrix:**
+| Option | Verdict |
+|---|---|
+| Persistent prompted `AppData=2` (foreign Group Container) | ❌ Impossible by design |
+| **Full Disk Access** (user-granted) | ✅ Works, persists, industry standard |
+| OmniFocus automation API instead of raw reads | ✅ Persists (AppleEvents), Omni-supported, but an architecture change |
+| App Group | ❌ same-vendor only |
+| PPPC pre-grant of `SystemPolicyAppData` | ❌ not a valid PPPC key (FDA-via-PPPC works, MDM-only) |
+
+> Side note from research: third-party OmniFocus integrations (rubyfocus, of-store) use the **automation API / `.ofocus` transaction store**, not raw SQLite. Worth weighing for the project long-term — but the current SQLite read demonstrably works with FDA, so this is a strategic note, not a blocker.
+
+### Sources (deep research)
+- Apple DTS (Quinn) — transient/process-lifetime classification: https://developer.apple.com/forums/thread/742147
+- Apple DTS (Quinn) — Group Container membership criteria + "consent applies only for the duration of that app instance": https://developer.apple.com/forums/thread/721701 · https://developer.apple.com/forums/thread/801461
+- CVE-2023-42929 (container protection origin): https://jhftss.github.io/CVE-2023-42929-Why-Do-We-Need-The-App-Container-Protection/
+- Mark Rowe — TCC & the platform sandbox policy (AppData is a per-access up-call): https://bdash.net.nz/posts/tcc-and-the-platform-sandbox-policy/
+- Same-symptom reports: claude-code [#36832](https://github.com/anthropics/claude-code/issues/36832) · codex [#11027](https://github.com/openai/codex/issues/11027) · ghostty [#4496](https://github.com/ghostty-org/ghostty/discussions/4496)
+- App Groups (same-team only): https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.security.application-groups
+- FDA = standard answer (Carbon Copy Cloner, Retrospect): https://bombich.com/en/kb/ccc/6/granting-full-disk-access-ccc-and-its-helper-tool
+- PPPC has no `SystemPolicyAppData` key: https://support.apple.com/guide/deployment/privacy-preferences-policy-control-payload-dep38df53c2a/web
+- OmniFocus automation: https://omni-automation.com/ · https://github.com/jyruzicka/rubyfocus
+
 ## The fix (validated) + open items
 
 ✅ **Developer-ID-signed app + user grants Full Disk Access once → silent forever, survives updates.**

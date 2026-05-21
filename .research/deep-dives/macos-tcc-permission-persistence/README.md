@@ -4,7 +4,7 @@ Why the **`"uvx" would like to access data from other apps`** prompt recurs on *
 
 ## Verdict (2026-05-20) — SOLVED
 
-**Root cause:** `kTCCServiceSystemPolicyAppData` ("access data from other apps") **does not persist** for this process class (a CLI spawned behind Claude's `disclaimer`). macOS writes the user's "Allow" but parks it at **`auth_value=5` (not honored)** → re-prompts every launch, **regardless of signing** — self-signed *and* a real Developer ID both fail identically. The prompt only appears because the binary lacks **Full Disk Access**: each run does an `AllFiles` (FDA) preflight first; it's denied, so macOS falls back to the non-persistent AppData prompt.
+**Root cause (definitive — confirmed by 4-agent research + Apple DTS):** `kTCCServiceSystemPolicyAppData` ("access data from other apps") is a **transient, process-lifetime permission *by design*.** A granted "Allow" is valid only for that one running process (`auth_value=5` = a session-scoped allow keyed to pid/boot), so every relaunch re-prompts. The transience is a property of the **service, not the app** — which is why *nothing* we changed moved it: ad-hoc → self-signed → Developer ID → **notarized + stapled + /Applications**, and **both** Claude-spawned **and** user-launched (`open`) — all `auth_value=5`. **Why us specifically:** the data is in OmniGroup's **Group Container**; only a *legitimate group member* (an app whose own Team ID prefixes the group) escapes the transient prompt — a different vendor structurally never can. (Full story + Apple quotes: `FINDINGS.md`.)
 
 **Fix (validated, update-durable):** ship a **Developer-ID-signed app** and have the user grant it **Full Disk Access** once. FDA's `AllFiles` preflight then passes → the AppData prompt never fires. The FDA grant is keyed to the **Team ID**, so it **survives app updates** — proven by rebuilding with a new cdhash (same Developer ID, no re-grant) → still silent. An *unsigned* binary's FDA grant would break every release, so the cert is required — for **durability**, not for AppData.
 
@@ -19,6 +19,9 @@ Why the **`"uvx" would like to access data from other apps`** prompt recurs on *
 | The `disclaimer` helper breaks attribution | ❌ **Ruled out** | tccd sets `responsible = our app` (Gate 1) |
 | FDA **on Claude.app** fixes it | ❌ **Ruled out** | attribution is *below* Claude; wrong target |
 | `AppData` grant persists (any signing) | ❌ **Ruled out** | `auth_value=5` for self-signed **and** Developer ID (Gate 2 failed) |
+| `AppData` persists when **notarized + /Applications** | ❌ **Ruled out** | still `auth_value=5` |
+| `AppData` persists when **user-launched** (`open`) vs spawned | ❌ **Ruled out** | both `5` — not a launch-context issue |
+| `AppData` is **transient/process-lifetime by design** | ✅ **Confirmed** | Apple DTS: "consent applies only for the duration of that app instance" |
 | Trusting the self-signed cert helps | ❌ **Ruled out** | `tccd` runs as root, ignores login-keychain trust |
 | Dialog name fixable via bundle alone | ✅ **Confirmed** | `.app` + `CFBundleDisplayName` → "OmniFocus Operator" even unsigned |
 | **Gate 1:** child's read attributes to launcher | ✅ **Confirmed** | tccd: `responsible = launcher` when child `of-reader` reads |
