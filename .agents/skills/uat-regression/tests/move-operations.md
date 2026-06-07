@@ -42,7 +42,7 @@ setup: |
 
 # Move Operations Test Suite
 
-Tests task movement including all 5 move modes, cross-level moves, circular reference detection, completed/dropped task movement, cross-parent moves, and known same-parent limitations.
+Tests task movement including all 5 move modes, cross-level moves, circular reference detection, completed/dropped task movement, cross-parent moves, and same-parent repositioning.
 
 ## Conventions
 
@@ -51,7 +51,7 @@ Tests task movement including all 5 move modes, cross-level moves, circular refe
 - **Inbox move syntax.** To move a task to inbox, use `$inbox` as the container — e.g., `{"actions": {"move": {"ending": "$inbox"}}}`. Setting `ending` or `beginning` to `null` is an error (use `"$inbox"` instead).
 - **1-item limit.** `edit_tasks` currently accepts exactly 1 item per call.
 
-**Known issue — spurious "no changes" warning:** When a move action results in a no-op (e.g., same-parent move) AND no field edits are in the request, a spurious "No changes specified/detected" warning fires alongside the specific move warning. Document in the report's Observations section if encountered.
+**Regression note — same-parent repositioning:** `beginning`/`ending` moves within the same parent should reorder the task. They should NOT return "already a child" or "no changes" warnings for a valid same-parent reposition.
 
 ## Tests
 
@@ -66,8 +66,8 @@ Run sequentially on T1:
 5. `actions: { move: {"ending": "$inbox"} }` — PASS if success (moves to inbox)
 6. `get_task` T1 and verify `project.id == "$inbox"`
 7. `actions: { move: {"beginning": "<UAT-id>"} }` — restore
-8. `get_task` T1 and verify `project.id != "$inbox"` (parent is task wrapper)
-9. PASS if: all move calls succeed, `project.id` flips correctly (`"$inbox"` after move to inbox, project/task parent after move back)
+8. `get_task` T1 and verify `parent.task.id == "<UAT-id>"` and `project.id == "$inbox"` (task is nested under an inbox task)
+9. PASS if: all move calls succeed, the direct parent flips from `$inbox` back to UAT-MoveOps, and `project.id` remains `"$inbox"` throughout the inbox hierarchy
 
 #### Test 1b: Move carries children
 1. `actions: { move: {"ending": "$inbox"} }` on T2 (to inbox)
@@ -99,7 +99,7 @@ Run each INDIVIDUALLY (they will error):
 #### Test 1f: Tags survive movement
 1. Discover tag IDs from `get_all` if not already available — pick one unambiguous tag
 2. `actions: { tags: { add: [<tag>] } }` on T1
-3. `actions: { move: {"ending": null} }` on T1 (move to inbox)
+3. `actions: { move: {"ending": "$inbox"} }` on T1 (move to inbox)
 4. `get_task` T1 and verify tag is still present
 5. `actions: { move: {"beginning": "<UAT-id>"} }` on T1 (move back)
 6. Clean up: `actions: { tags: { remove: [<tag>] } }` on T1
@@ -161,19 +161,23 @@ Run INDIVIDUALLY (will error):
 3. Restore: `actions: { move: {"ending": "<UAT-id>"} }` on T5
 4. PASS if: task successfully moved between different parents
 
-### 8. Same-Parent Reposition (KNOWN BUG)
+### 8. Same-Parent Reposition
 
-**Known limitation:** When a task is already a child of a parent, `beginning`/`ending` moves within that same parent do NOT reposition the task. The API returns success with a warning "Task is already a child of this parent" but the task stays in its original position. Workaround: use `before`/`after` with a specific sibling.
+Regression coverage for the old same-parent no-op bug. When a task is already a child of the target parent, `beginning`/`ending` should reposition it within that parent, not warn that it is already a child.
 
-#### Test 8a: Same-parent beginning (known no-op)
-1. `actions: { move: {"beginning": "<UAT-id>"} }` on T6 (already a child, not at beginning)
-2. PASS if: success with warning about task already being a child
-3. Note: task will NOT actually move to the beginning — this is the known bug
+#### Test 8a: Same-parent beginning
+1. `get_task` T6; record its `order`
+2. `actions: { move: {"beginning": "<UAT-id>"} }` on T6 (already a child, not at beginning)
+3. `list_tasks` with `parent: "<UAT-id>"` and `include: ["hierarchy"]`
+4. From the results, compare direct children only (`parent.task.id == "<UAT-id>"`)
+5. PASS if: success, T6's `order` changed and T6 is now the first direct child under UAT-MoveOps, and no same-parent/no-change warning was returned
 
-#### Test 8b: Same-parent ending (known no-op)
-1. `actions: { move: {"ending": "<UAT-id>"} }` on T7 (already a child, not at ending)
-2. PASS if: success with warning about task already being a child
-3. Note: task will NOT actually move to the ending — this is the known bug
+#### Test 8b: Same-parent ending
+1. `get_task` T7; record its `order`
+2. `actions: { move: {"ending": "<UAT-id>"} }` on T7 (already a child, not at ending)
+3. `list_tasks` with `parent: "<UAT-id>"` and `include: ["hierarchy"]`
+4. From the results, compare direct children only (`parent.task.id == "<UAT-id>"`)
+5. PASS if: success, T7's `order` changed and T7 is now the last direct child under UAT-MoveOps, and no same-parent/no-change warning was returned
 
 ### 9. $inbox Move
 
@@ -219,7 +223,7 @@ For tests that need order verification, assign `estimatedMinutes` = 1, 2, 3... t
 
 | # | Test | Description | Result |
 |---|------|-------------|--------|
-| 1a | Move: all 5 modes | after, before, beginning, ending, $inbox — all succeed; `project.id` flips | |
+| 1a | Move: all 5 modes | after, before, beginning, ending, $inbox — all succeed; direct parent flips while inbox hierarchy stays in `$inbox` | |
 | 1b | Move: carries children | Parent move preserves children; `hasChildren: true` confirmed | |
 | 1c | Move: cross-level | Grandchild to direct child and back | |
 | 1d | Move: circular ref (3) | Parent into child, ancestor into descendant, self — all blocked | |
@@ -233,8 +237,8 @@ For tests that need order verification, assign `estimatedMinutes` = 1, 2, 3... t
 | 6a | Anchor: completed task | Using completed task as before/after anchor | |
 | 6b | Anchor: dropped task | Using dropped task as before/after anchor | |
 | 7 | Cross-parent move | Move task between different parent tasks | |
-| 8a | Same-parent beginning | Known bug: beginning in same parent is no-op | |
-| 8b | Same-parent ending | Known bug: ending in same parent is no-op | |
+| 8a | Same-parent beginning | `beginning` within same parent repositions to first child without stale no-op warning | |
+| 8b | Same-parent ending | `ending` within same parent repositions to last child without stale no-op warning | |
 | 9a | $inbox: beginning | `beginning: "$inbox"` moves task to inbox; `project.id == "$inbox"` | |
 | 10a | Error: ending null | `ending: null` returns error mentioning $inbox | |
 | 10b | Error: beginning null | `beginning: null` returns error mentioning $inbox | |
