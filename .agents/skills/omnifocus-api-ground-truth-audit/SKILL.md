@@ -1,9 +1,6 @@
 ---
 name: omnifocus-api-ground-truth-audit
-description: >
-  Guide through the OmniFocus API Ground Truth audit. Runs 24 Omni Automation
-  scripts in sequence against a live OmniFocus database to empirically verify
-  every field on every entity type. Use when starting or resuming the audit session.
+description: Manual-only repo workflow. Use only when explicitly invoked as omnifocus-api-ground-truth-audit or by SKILL.md path; do not auto-select from related requests.
 disable-model-invocation: true
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 ---

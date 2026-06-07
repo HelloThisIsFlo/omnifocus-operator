@@ -1,6 +1,6 @@
 ---
 name: uat-gm-cross-coverage-audit
-description: Audit coverage gaps between golden master contract tests and UAT regression suites. Use when the user says "audit test coverage", "cross-reference tests", "reconcile UAT and golden master", "coverage gaps", "test coverage audit", "what's missing from UAT", "what's missing from golden master", "GM vs UAT", "bridge coverage", or wants to find untested behaviors across test systems.
+description: Manual-only repo workflow. Use only when explicitly invoked as uat-gm-cross-coverage-audit or by SKILL.md path; do not auto-select from related requests.
 ---
 
 # Test Coverage Audit

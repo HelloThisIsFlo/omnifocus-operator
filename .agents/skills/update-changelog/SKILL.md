@@ -1,6 +1,6 @@
 ---
 name: update-changelog
-description: Update CHANGELOG.md with the latest completed milestone. Reads milestone specs and audit reports, generates a changelog entry in Keep a Changelog format. Trigger on "update changelog", "changelog", "update the changelog".
+description: Manual-only repo workflow. Use only when explicitly invoked as update-changelog or by SKILL.md path; do not auto-select from related requests.
 ---
 
 # Update Changelog

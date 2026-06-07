@@ -1,6 +1,6 @@
 ---
 name: doc-regression
-description: Regression-test whether MCP tool documentation (descriptions + JSON Schema) is clear enough for LLMs to construct correct payloads. Give a model ONLY the tool docs + a tricky scenario prompt, grade the output. Trigger on "doc regression", "run doc tests", "test tool docs", "schema regression", "add doc scenarios", "brainstorm scenarios", "new doc test cases".
+description: Manual-only repo workflow. Use only when explicitly invoked as doc-regression or by SKILL.md path; do not auto-select from related requests.
 ---
 
 # Doc Regression

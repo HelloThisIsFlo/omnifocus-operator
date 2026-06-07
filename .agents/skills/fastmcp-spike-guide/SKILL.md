@@ -1,6 +1,6 @@
 ---
 name: fastmcp-spike-guide
-description: Guide through FastMCP v3 spike experiments interactively. Walks through each experiment, explains what to look for, helps record observations and build up FINDINGS.md. Use when the user says "fastmcp spike", "run experiments", "spike guide", "explore fastmcp", or wants to work through the FastMCP v3 migration experiments.
+description: Manual-only repo workflow. Use only when explicitly invoked as fastmcp-spike-guide or by SKILL.md path; do not auto-select from related requests.
 ---
 
 # FastMCP v3 Spike Guide

@@ -1,6 +1,6 @@
 ---
 name: doc-suite-updater
-description: Create or update doc-regression scenario suites for OmniFocus Operator. Two-phase workflow — initialization (deep research → seed file) then collaborative worker (pick up chunk → co-write scenarios with user). Use when the user says "update doc scenarios", "doc suite update", "update doc regression", "doc gap analysis", "new doc scenarios for [tool]", "doc-suite-updater", "pick up doc chunk", "initialize doc analysis", "doc scenario seed", "run doc chunk", or wants to add/expand doc-regression coverage after shipping a milestone. Also handles ad-hoc single-suite edits.
+description: Manual-only repo workflow. Use only when explicitly invoked as doc-suite-updater or by SKILL.md path; do not auto-select from related requests.
 ---
 
 # Doc Suite Updater

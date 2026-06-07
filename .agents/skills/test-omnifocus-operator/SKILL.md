@@ -1,12 +1,6 @@
 ---
 name: test-omnifocus-operator
-description: >
-  Test the OmniFocus Operator MCP server end-to-end. Calls get_all against the
-  live database, builds a minimal coverage snapshot in .sandbox/, and reports
-  field/boolean/enum gaps. Use this after any model change, bridge change, or
-  schema migration to confirm the live output matches expectations. Also use when
-  the user says "test the operator", "check if get_all works", "update the
-  snapshot", or "verify the MCP server".
+description: Manual-only repo workflow. Use only when explicitly invoked as test-omnifocus-operator or by SKILL.md path; do not auto-select from related requests.
 disable-model-invocation: true
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, mcp__omnifocus-operator__get_all
 ---

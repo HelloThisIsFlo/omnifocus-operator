@@ -1,6 +1,6 @@
 ---
 name: uat-suite-updater
-description: Create or update UAT regression test suites for OmniFocus Operator. Two-phase workflow — initialization (deep research → seed file) and worker (pick up chunk → execute). Use when the user says "add UAT suite", "new UAT tests", "update UAT tests", "UAT for [feature]", "add tests to [suite]", "create regression tests", "update UAT suites", "uat suite updater", "pick up UAT chunk", "initialize UAT analysis", "UAT gap analysis", "UAT seed", "run UAT chunk", or wants to add/expand test coverage. Also handles ad-hoc single-suite edits.
+description: Manual-only repo workflow. Use only when explicitly invoked as uat-suite-updater or by SKILL.md path; do not auto-select from related requests.
 ---
 
 # UAT Suite Updater
