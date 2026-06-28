@@ -4,8 +4,8 @@ milestone: v1.4.1
 milestone_name: Task Property Surface & Subtree Retrieval
 status: complete
 stopped_at: Milestone v1.4.1 complete; ready for /gsd-new-milestone to start v1.5
-last_updated: "2026-04-24T00:00:00.000Z"
-last_activity: 2026-04-24 -- Milestone v1.4.1 archived
+last_updated: "2026-06-28T13:20:36.000Z"
+last_activity: 2026-06-28 - Completed quick task 260628-jrk: increase batch limit from 50 to 150 and release as v1.4.4
 progress:
   total_phases: 2
   completed_phases: 2
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-19)
 Phase: 57 (Parent Filter & Filter Unification) — EXECUTING
 Plan: 1 of 3
 Status: Executing Phase 57
-Last activity: 2026-04-20 -- Phase 57 execution started
+Last activity: 2026-06-28 - Completed quick task 260628-jrk: increase batch limit from 50 to 150 and release as v1.4.4
 
 Progress: [█████░░░░░] 50% (v1.4.1 — 1/2 phases complete)
 
@@ -78,14 +78,15 @@ _(cleared — v1.4 insertions archived to milestones/v1.4-ROADMAP.md)_
 
 ### Quick Tasks Completed
 
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 260424-j63 | Unify empty-result warning surface (superseded by 260424-kd0) | 2026-04-24 | d44e4742 | [260424-j63-unify-empty-result-warning-surface](./quick/260424-j63-unify-empty-result-warning-surface/) |
-| 260424-kd0 | Simplify empty-result warning to single static message | 2026-04-24 | 74fbf6ad | [260424-kd0-simplify-empty-result-warning-to-single-](./quick/260424-kd0-simplify-empty-result-warning-to-single-/) |
+| # | Description | Date | Commit | Status | Directory |
+|---|-------------|------|--------|--------|-----------|
+| 260424-j63 | Unify empty-result warning surface (superseded by 260424-kd0) | 2026-04-24 | d44e4742 |  | [260424-j63-unify-empty-result-warning-surface](./quick/260424-j63-unify-empty-result-warning-surface/) |
+| 260424-kd0 | Simplify empty-result warning to single static message | 2026-04-24 | 74fbf6ad |  | [260424-kd0-simplify-empty-result-warning-to-single-](./quick/260424-kd0-simplify-empty-result-warning-to-single-/) |
+| 260628-jrk | increase batch limit from 50 to 150 and release as v1.4.4 | 2026-06-28 | a68e7109 | Verified | [260628-jrk-increase-batch-limit-from-50-to-150-and-](./quick/260628-jrk-increase-batch-limit-from-50-to-150-and-/) |
 
 ## Session Continuity
 
-Last activity: 2026-04-24 — Milestone v1.4.1 closed. Archive files written, git tag pending user approval for push.
+Last activity: 2026-06-28 - Completed quick task 260628-jrk: increase batch limit from 50 to 150 and release as v1.4.4.
 Stopped at: Milestone v1.4.1 complete; ready for /gsd-new-milestone to start v1.5.
 
 ## Deferred Items
