@@ -6,6 +6,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versions follow 
 
 ## [Unreleased]
 
+## [1.4.4] - Batch Limit Increase
+
+### Changed
+- Batch processing limit increased from 50 to 150 items per `add_tasks` / `edit_tasks` call.
+
 ## [1.4.3] - First-Run UX
 
 ### Added

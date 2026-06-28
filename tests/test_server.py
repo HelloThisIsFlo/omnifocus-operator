@@ -2282,16 +2282,16 @@ class TestAddTasksBatch:
 
     # -- Batch size limits (BATCH-01, BATCH-02) --
 
-    async def test_batch_50_items_accepted(self, client: Any) -> None:
-        """50 items accepted — no validation error at max batch size."""
-        items_payload = [{"name": f"Task {i}"} for i in range(50)]
+    async def test_batch_150_items_accepted(self, client: Any) -> None:
+        """150 items accepted — no validation error at max batch size."""
+        items_payload = [{"name": f"Task {i}"} for i in range(150)]
         result = await client.call_tool("add_tasks", {"items": items_payload})
         result_items = result.structured_content["result"]
-        assert len(result_items) == 50
+        assert len(result_items) == 150
 
-    async def test_batch_51_items_rejected_at_schema_level(self, client: Any) -> None:
-        """51 items rejected with ToolError — schema-level maxItems enforcement."""
-        items_payload = [{"name": f"Task {i}"} for i in range(51)]
+    async def test_batch_151_items_rejected_at_schema_level(self, client: Any) -> None:
+        """151 items rejected with ToolError — schema-level maxItems enforcement."""
+        items_payload = [{"name": f"Task {i}"} for i in range(151)]
         with pytest.raises(ToolError):
             await client.call_tool("add_tasks", {"items": items_payload})
 
@@ -2547,22 +2547,22 @@ class TestEditTasksBatch:
 
     # -- Batch size limits (BATCH-01, BATCH-02) --
 
-    async def test_batch_50_items_accepted(self, client: Any) -> None:
-        """50 items accepted — no validation error at max batch size.
+    async def test_batch_150_items_accepted(self, client: Any) -> None:
+        """150 items accepted — no validation error at max batch size.
 
         Items may fail individually (bad IDs) but the batch itself is not rejected.
         """
-        items_payload = [{"id": f"task-{i}", "name": f"Edit {i}"} for i in range(50)]
+        items_payload = [{"id": f"task-{i}", "name": f"Edit {i}"} for i in range(150)]
         # These IDs don't exist in InMemoryBridge — each will return error status
         # but the batch size limit is not triggered.
         result = await client.call_tool("edit_tasks", {"items": items_payload})
         result_items = result.structured_content["result"]
-        # 50 items returned: first is error, rest are skipped (fail-fast from first failure)
-        assert len(result_items) == 50
+        # 150 items returned: first is error, rest are skipped (fail-fast from first failure)
+        assert len(result_items) == 150
 
-    async def test_batch_51_items_rejected_at_schema_level(self, client: Any) -> None:
-        """51 items rejected with ToolError — schema-level maxItems enforcement."""
-        items_payload = [{"id": f"task-{i}", "name": f"Edit {i}"} for i in range(51)]
+    async def test_batch_151_items_rejected_at_schema_level(self, client: Any) -> None:
+        """151 items rejected with ToolError — schema-level maxItems enforcement."""
+        items_payload = [{"id": f"task-{i}", "name": f"Edit {i}"} for i in range(151)]
         with pytest.raises(ToolError):
             await client.call_tool("edit_tasks", {"items": items_payload})
 

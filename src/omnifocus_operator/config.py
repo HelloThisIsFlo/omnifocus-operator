@@ -16,7 +16,7 @@ DEFAULT_LIST_LIMIT: int = 50
 
 # -- Batch processing ----------------------------------------------------------
 # Maximum items accepted in a single add_tasks or edit_tasks call.
-MAX_BATCH_SIZE: int = 50
+MAX_BATCH_SIZE: int = 150
 
 # MCP progress notifications DISABLED pending upstream Claude Code CLI fix.
 #
