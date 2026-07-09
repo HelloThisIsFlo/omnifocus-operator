@@ -100,6 +100,37 @@ _PERSPECTIVES_SQL = "SELECT * FROM Perspective"
 _TASK_TO_TAG_SQL = "SELECT task, tag FROM TaskToTag"
 
 
+# -- Schema compatibility helpers --
+
+
+def _get_table_columns(conn: sqlite3.Connection, table: str) -> frozenset[str]:
+    """Return the set of column names for *table* in this database.
+
+    Used to detect older OmniFocus database schemas that are missing columns
+    added in newer versions (e.g. ``datePlanned``, ``repetitionScheduleTypeString``).
+    Returns an empty frozenset if the table does not exist.
+    """
+    try:
+        rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+        return frozenset(row[1] for row in rows)
+    except sqlite3.OperationalError:
+        return frozenset()
+
+
+def _row_get(row: sqlite3.Row, key: str, default: Any = None) -> Any:
+    """Safely retrieve *key* from a sqlite3.Row, returning *default* if absent.
+
+    OmniFocus adds new columns in database schema upgrades.  Older installs
+    (e.g. those on macOS versions that cannot run the latest OmniFocus) will
+    not have these columns.  Using this helper instead of ``row[key]`` prevents
+    ``IndexError: No item with that key`` crashes on those schemas.
+    """
+    try:
+        return row[key]
+    except IndexError:
+        return default
+
+
 # -- Timezone --
 
 
@@ -237,9 +268,9 @@ def _build_repetition_rule(row: sqlite3.Row) -> dict[str, Any] | None:
     rule_string = row["repetitionRuleString"]
     if not rule_string:
         return None
-    schedule_type_raw = row["repetitionScheduleTypeString"]
-    catch_up = bool(row["catchUpAutomatically"])
-    anchor_key = _ANCHOR_DATE_MAP.get(row["repetitionAnchorDateKey"], "due_date")
+    schedule_type_raw = _row_get(row, "repetitionScheduleTypeString")
+    catch_up = bool(_row_get(row, "catchUpAutomatically", False))
+    anchor_key = _ANCHOR_DATE_MAP.get(_row_get(row, "repetitionAnchorDateKey"), "due_date")
     schedule_type = _SCHEDULE_TYPE_MAP.get(schedule_type_raw, schedule_type_raw)
 
     frequency = parse_rrule(rule_string)
@@ -429,8 +460,8 @@ def _map_task_row(
         "inherited_completion_date": _parse_timestamp(row["effectiveDateCompleted"]),
         "drop_date": _parse_timestamp(row["dateHidden"]),
         "inherited_drop_date": _parse_timestamp(row["effectiveDateHidden"]),
-        "planned_date": _parse_local_datetime(row["datePlanned"]),
-        "inherited_planned_date": _parse_timestamp(row["effectiveDatePlanned"]),
+        "planned_date": _parse_local_datetime(_row_get(row, "datePlanned")),
+        "inherited_planned_date": _parse_timestamp(_row_get(row, "effectiveDatePlanned")),
         "estimated_minutes": row["estimatedMinutes"],
         "has_children": (row["childrenCount"] or 0) > 0,
         # Phase 56-02: CACHE-01/02/04 reads from Task/Attachment.
@@ -488,7 +519,7 @@ def _map_project_row(
         "defer_date": _parse_local_datetime(row["dateToStart"]),
         "completion_date": _parse_timestamp(row["dateCompleted"]),
         "drop_date": _parse_timestamp(row["dateHidden"]),
-        "planned_date": _parse_local_datetime(row["datePlanned"]),
+        "planned_date": _parse_local_datetime(_row_get(row, "datePlanned")),
         "estimated_minutes": row["estimatedMinutes"],
         "has_children": (row["childrenCount"] or 0) > 0,
         # Phase 56-02: CACHE-01/02/03/04 reads on projects.
@@ -534,13 +565,15 @@ def _map_tag_row(row: sqlite3.Row, tag_name_lookup: dict[str, str]) -> dict[str,
         "added": _parse_timestamp(row["dateAdded"]),
         "modified": _parse_timestamp(row["dateModified"]),
         "availability": _map_tag_availability(
-            allows_next_action=row["allowsNextAction"],
-            date_hidden=row["dateHidden"],
+            allows_next_action=_row_get(row, "allowsNextAction", True),
+            date_hidden=_row_get(row, "dateHidden"),
         ),
-        "children_are_mutually_exclusive": bool(row["childrenAreMutuallyExclusive"]),
+        "children_are_mutually_exclusive": bool(
+            _row_get(row, "childrenAreMutuallyExclusive", False)
+        ),
         "parent": (
             {"id": row["parent"], "name": tag_name_lookup.get(row["parent"], "")}
-            if row["parent"] is not None
+            if _row_get(row, "parent") is not None
             else None
         ),
     }
