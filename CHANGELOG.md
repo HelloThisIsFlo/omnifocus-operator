@@ -6,6 +6,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versions follow 
 
 ## [Unreleased]
 
+## [1.4.7] - FastMCP 4
+
+### Changed
+- Now runs on FastMCP 4 (`fastmcp>=4,<5`), replacing the temporary `<3.4` cap from 1.4.5. FastMCP 3.x is no longer supported.
+
+### Fixed
+- Validation errors are rewritten into agent-facing messages again on current FastMCP (e.g. `Unknown field 'bogusField'`). Since FastMCP 3.4 they arrive wrapped in FastMCP's own error type, which the reformatter did not recognise.
+
 ## [1.4.6] - Startup Access Errors
 
 ### Fixed

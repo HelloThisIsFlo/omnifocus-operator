@@ -205,6 +205,7 @@ All read tools are idempotent. Write tools reference projects and tags by name o
 | **v1.4.4** | Batch Limit Increase — `add_tasks` / `edit_tasks` accept up to 150 items per call ✅ |
 | **v1.4.5** | FastMCP Version Cap — dependency capped below 3.4 to restore agent-facing validation errors ✅ |
 | **v1.4.6** | Startup Access Errors — macOS privacy blocks no longer crash the server; tool calls explain the fix ✅ |
+| **v1.4.7** | FastMCP 4 — runs on FastMCP 4; agent-facing validation errors restored on current FastMCP ✅ |
 | **v1.5** | Project Writes — add/edit projects, review marking |
 | **v1.6** | UI & Perspectives — perspective switching, deep links |
 | **v1.7** | Smart Perspective Content — perspective-aware response shapes |
