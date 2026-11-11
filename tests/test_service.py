@@ -47,6 +47,8 @@ from tests.doubles import ConstantMtimeSource
 from .conftest import make_project_dict, make_tag_dict, make_task_dict
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from omnifocus_operator.repository import BridgeOnlyRepository
 
 # ---------------------------------------------------------------------------
@@ -2707,6 +2709,101 @@ class TestErrorOperatorServiceMacOSAccessDenied:
 
         assert 'realpath "$(which uvx)"' in msg
         assert "mise which uvx" in msg
+
+
+def _make_executable(path: Path) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("#!/bin/sh\n")
+    return path
+
+
+def _eperm() -> PermissionError:
+    return PermissionError(errno.EPERM, "Operation not permitted", _BLOCKED_IPC_DIR)
+
+
+class TestErrorOperatorServiceUvxDiscovery:
+    """The Full Disk Access step names the real uvx found via uv's UV variable."""
+
+    def test_sibling_uvx_is_named(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        uv = _make_executable(tmp_path / "bin" / "uv")
+        uvx = _make_executable(tmp_path / "bin" / "uvx")
+        monkeypatch.setenv("UV", str(uv))
+
+        msg = _error_mode_message(_eperm())
+
+        assert f"launches this server: {uvx.resolve()} (" in msg
+        assert "which uvx" not in msg
+
+    def test_symlinked_uv_names_resolved_real_uvx(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        real_uv = _make_executable(tmp_path / "real" / "uv")
+        real_uvx = _make_executable(tmp_path / "real" / "uvx")
+        link_dir = tmp_path / "link"
+        link_dir.mkdir()
+        (link_dir / "uv").symlink_to(real_uv)
+        monkeypatch.setenv("UV", str(link_dir / "uv"))
+
+        msg = _error_mode_message(_eperm())
+
+        assert str(real_uvx.resolve()) in msg
+        assert str(link_dir) not in msg
+
+    def test_uv_without_sibling_uvx_falls_back(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        uv = _make_executable(tmp_path / "bin" / "uv")
+        monkeypatch.setenv("UV", str(uv))
+
+        msg = _error_mode_message(_eperm())
+
+        assert 'realpath "$(which uvx)"' in msg
+        assert str(tmp_path.resolve()) not in msg
+
+    def test_uv_pointing_nowhere_falls_back(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setenv("UV", str(tmp_path / "gone" / "uv"))
+
+        msg = _error_mode_message(_eperm())
+
+        assert 'realpath "$(which uvx)"' in msg
+
+    def test_uv_unset_falls_back(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("UV", raising=False)
+
+        msg = _error_mode_message(_eperm())
+
+        assert 'realpath "$(which uvx)"' in msg
+
+    def test_both_variants_share_parts_and_order(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        _make_executable(tmp_path / "bin" / "uv")
+        _make_executable(tmp_path / "bin" / "uvx")
+        monkeypatch.setenv("UV", str(tmp_path / "bin" / "uv"))
+        discovered = _error_mode_message(_eperm())
+        monkeypatch.delenv("UV")
+        fallback = _error_mode_message(_eperm())
+
+        _assert_teaching_message_in_order(discovered)
+        _assert_teaching_message_in_order(fallback)
+        # Identical apart from the Full Disk Access target.
+        head = "add the program that launches this server: "
+        tail = "\n\nGranting Full Disk Access to Claude itself"
+        assert discovered.split(head)[0] == fallback.split(head)[0]
+        assert discovered.split(tail)[1] == fallback.split(tail)[1]
+
+    def test_discovery_skipped_for_generic_errors(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        _make_executable(tmp_path / "bin" / "uv")
+        _make_executable(tmp_path / "bin" / "uvx")
+        monkeypatch.setenv("UV", str(tmp_path / "bin" / "uv"))
+
+        msg = _error_mode_message(ValueError("bad config"))
+
+        assert "uvx" not in msg
 
 
 # ---------------------------------------------------------------------------

@@ -15,6 +15,7 @@ import errno
 import logging
 import os
 from enum import StrEnum
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, NoReturn
 
 if TYPE_CHECKING:
@@ -24,6 +25,7 @@ from omnifocus_operator.agent_messages.errors import (
     REPETITION_NO_EXISTING_RULE,
     STARTUP_FAILED,
     STARTUP_FDA_TARGET_FALLBACK,
+    STARTUP_FDA_TARGET_UVX_PATH,
     STARTUP_MACOS_ACCESS_DENIED,
     STARTUP_MACOS_BLOCKED_PATH,
 )
@@ -1255,9 +1257,34 @@ def _find_macos_access_denial(error: BaseException) -> PermissionError | None:
     return None
 
 
+def _discover_real_uvx() -> Path | None:
+    """Find the real ``uvx`` binary through the ``UV`` variable uv exports.
+
+    uv sets ``UV`` to its own executable in every process it spawns, and
+    ``uvx`` sits next to it. Resolving symlinks gives the path macOS checks
+    (e.g. mise's ``latest`` symlink becomes the versioned folder). Never
+    falls back to PATH: with mise shims ``which uvx`` is the ``mise`` binary.
+    Never raises; returns ``None`` when nothing usable is found.
+    """
+    uv = os.environ.get("UV")
+    if not uv:
+        return None
+    try:
+        uvx = Path(uv).resolve(strict=True).parent / "uvx"
+        if not uvx.is_file():
+            return None
+        return uvx.resolve(strict=True)
+    except (OSError, ValueError, RuntimeError):
+        # RuntimeError: symlink loop on some Python versions.
+        return None
+
+
 def _fda_target() -> str:
     """Name the program to add under Full Disk Access."""
-    return STARTUP_FDA_TARGET_FALLBACK
+    uvx = _discover_real_uvx()
+    if uvx is None:
+        return STARTUP_FDA_TARGET_FALLBACK
+    return STARTUP_FDA_TARGET_UVX_PATH.format(uvx_path=uvx)
 
 
 def _startup_error_message(error: Exception) -> str:

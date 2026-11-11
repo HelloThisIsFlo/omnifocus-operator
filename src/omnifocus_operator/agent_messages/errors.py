@@ -275,6 +275,10 @@ Desktop) so the server starts again."""
 
 STARTUP_MACOS_BLOCKED_PATH = " (blocked path: {path})"
 
+# Used when the real uvx path is discovered from uv's UV variable.
+STARTUP_FDA_TARGET_UVX_PATH = """\
+{uvx_path} (in the file picker, press Cmd+Shift+G and paste the path)."""
+
 # Used when the real uvx path cannot be discovered from uv's UV variable.
 # Mise shims make `which uvx` resolve to the mise binary, hence the hint.
 STARTUP_FDA_TARGET_FALLBACK = """\
