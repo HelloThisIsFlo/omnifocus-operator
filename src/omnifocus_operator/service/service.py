@@ -11,7 +11,9 @@ delegate to repository. All heavy lifting lives in the extracted modules:
 
 from __future__ import annotations
 
+import errno
 import logging
+import os
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, NoReturn
 
@@ -20,6 +22,10 @@ if TYPE_CHECKING:
 
 from omnifocus_operator.agent_messages.errors import (
     REPETITION_NO_EXISTING_RULE,
+    STARTUP_FAILED,
+    STARTUP_FDA_TARGET_FALLBACK,
+    STARTUP_MACOS_ACCESS_DENIED,
+    STARTUP_MACOS_BLOCKED_PATH,
 )
 from omnifocus_operator.agent_messages.warnings import (
     AVAILABILITY_MIXED_ALL,
@@ -1231,22 +1237,65 @@ class _EditTaskPipeline(_Pipeline):
         )
 
 
+def _find_macos_access_denial(error: BaseException) -> PermissionError | None:
+    """Return the macOS privacy block behind *error*, if there is one.
+
+    macOS's sandbox and privacy controls (TCC) refuse access with ``EPERM``
+    ("Operation not permitted"). Ordinary Unix permission bits give ``EACCES``
+    instead, which is not a macOS block. Checks *error* and its explicit
+    ``__cause__`` chain, so a startup site may wrap the ``PermissionError``.
+    """
+    seen: set[int] = set()
+    current: BaseException | None = error
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, PermissionError) and current.errno == errno.EPERM:
+            return current
+        current = current.__cause__
+    return None
+
+
+def _fda_target() -> str:
+    """Name the program to add under Full Disk Access."""
+    return STARTUP_FDA_TARGET_FALLBACK
+
+
+def _startup_error_message(error: Exception) -> str:
+    """Build the message served on every tool call in error mode."""
+    denial = _find_macos_access_denial(error)
+    if denial is None:
+        return STARTUP_FAILED.format(error=error)
+
+    blocked_path = ""
+    filename = denial.filename
+    if filename is not None:
+        if isinstance(filename, str | bytes | os.PathLike):
+            filename = os.fsdecode(filename)
+        blocked_path = STARTUP_MACOS_BLOCKED_PATH.format(path=filename)
+    return STARTUP_MACOS_ACCESS_DENIED.format(
+        blocked_path=blocked_path,
+        fda_target=_fda_target(),
+    )
+
+
 class ErrorOperatorService(OperatorService):
     """Stand-in service that raises on every attribute access.
 
     Used when the server fails to start (e.g. missing OmniFocus database).
     Instead of crashing, the MCP server stays alive in degraded mode and
     serves the startup error through tool responses.
+
+    A macOS privacy block (``PermissionError`` with ``EPERM``, on the error or
+    its ``__cause__`` chain) gets a teaching message instead of the raw error:
+    how to allow access, which program needs Full Disk Access, and that the
+    client must be fully restarted afterwards.
     """
 
     def __init__(self, error: Exception) -> None:
         # Bypass OperatorService.__init__ -- we have no repository.
         # Use object.__setattr__ to avoid triggering __getattr__.
-        object.__setattr__(
-            self,
-            "_error_message",
-            f"OmniFocus Operator failed to start:\n\n{error!s}\n\nRestart the server after fixing.",
-        )
+        # The message is built once here; construction never raises.
+        object.__setattr__(self, "_error_message", _startup_error_message(error))
 
     def __getattr__(self, name: str) -> NoReturn:
         """Intercept every attribute access and raise with the startup error."""

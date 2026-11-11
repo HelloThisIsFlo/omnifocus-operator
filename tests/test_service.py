@@ -7,6 +7,7 @@ factory function (creates the appropriate bridge implementation).
 
 from __future__ import annotations
 
+import errno
 import logging
 from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING, Any
@@ -2608,6 +2609,104 @@ class TestErrorOperatorService:
         service = ErrorOperatorService(ValueError("x"))
 
         assert "_repository" not in service.__dict__
+
+
+def _error_mode_message(error: Exception) -> str:
+    """Return the message ErrorOperatorService serves on every tool call."""
+    service = ErrorOperatorService(error)
+    with pytest.raises(RuntimeError) as exc_info:
+        _ = service._repository
+    return str(exc_info.value)
+
+
+def _assert_teaching_message_in_order(msg: str) -> None:
+    """The macOS teaching message: lead-in, cause, two routes, caveat, restart."""
+    anchors = [
+        "failed to start",
+        "macOS is blocking",
+        "click Allow",
+        "Full Disk Access",
+        "Claude itself does not help",
+        "fully quit and reopen",
+    ]
+    positions = [msg.index(anchor) for anchor in anchors]
+    assert positions == sorted(positions), f"Parts out of order in:\n{msg}"
+    assert "Restart the server after fixing" not in msg
+
+
+_BLOCKED_IPC_DIR = "/Users/someone/Library/Containers/com.omnigroup.OmniFocus4/ipc"
+
+
+class TestErrorOperatorServiceMacOSAccessDenied:
+    """A macOS privacy block (EPERM) at startup becomes a teaching message."""
+
+    def test_eperm_gives_teaching_message_in_order(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("UV", raising=False)
+        error = PermissionError(errno.EPERM, "Operation not permitted", _BLOCKED_IPC_DIR)
+
+        msg = _error_mode_message(error)
+
+        _assert_teaching_message_in_order(msg)
+
+    def test_eperm_names_blocked_path(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("UV", raising=False)
+        error = PermissionError(errno.EPERM, "Operation not permitted", _BLOCKED_IPC_DIR)
+
+        msg = _error_mode_message(error)
+
+        assert f"(blocked path: {_BLOCKED_IPC_DIR})" in msg
+
+    def test_eperm_without_filename_drops_path_clause(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("UV", raising=False)
+        error = PermissionError(errno.EPERM, "Operation not permitted")
+
+        msg = _error_mode_message(error)
+
+        _assert_teaching_message_in_order(msg)
+        assert "blocked path" not in msg
+
+    def test_eperm_as_cause_gives_teaching_message(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("UV", raising=False)
+        denial = PermissionError(errno.EPERM, "Operation not permitted", _BLOCKED_IPC_DIR)
+        try:
+            raise RuntimeError("could not prepare IPC directory") from denial
+        except RuntimeError as wrapped:
+            error = wrapped
+
+        msg = _error_mode_message(error)
+
+        _assert_teaching_message_in_order(msg)
+        assert _BLOCKED_IPC_DIR in msg
+
+    def test_eacces_keeps_generic_message(self) -> None:
+        error = PermissionError(errno.EACCES, "Permission denied", "/tmp/locked.db")
+
+        msg = _error_mode_message(error)
+
+        assert msg.startswith("OmniFocus Operator failed to start:")
+        assert "Restart the server after fixing" in msg
+        assert "/tmp/locked.db" in msg
+        assert "Full Disk Access" not in msg
+
+    def test_generic_message_text_is_unchanged(self) -> None:
+        msg = _error_mode_message(ValueError("bad config"))
+
+        assert msg == (
+            "OmniFocus Operator failed to start:\n\nbad config\n\nRestart the server after fixing."
+        )
+
+    def test_fallback_names_realpath_command_and_mise_hint(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("UV", raising=False)
+        error = PermissionError(errno.EPERM, "Operation not permitted", _BLOCKED_IPC_DIR)
+
+        msg = _error_mode_message(error)
+
+        assert 'realpath "$(which uvx)"' in msg
+        assert "mise which uvx" in msg
 
 
 # ---------------------------------------------------------------------------
