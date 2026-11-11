@@ -78,7 +78,7 @@ def _register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool(
         description=GET_ALL_TOOL_DOC,
-        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     )
     async def get_all(ctx: Context) -> dict[str, Any]:
         service: OperatorService = ctx.lifespan_context["service"]
@@ -93,7 +93,7 @@ def _register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool(
         description=GET_TASK_TOOL_DOC,
-        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     )
     async def get_task(id: str, ctx: Context) -> dict[str, Any]:
         service: OperatorService = ctx.lifespan_context["service"]
@@ -103,7 +103,7 @@ def _register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool(
         description=GET_PROJECT_TOOL_DOC,
-        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     )
     async def get_project(id: str, ctx: Context) -> dict[str, Any]:
         service: OperatorService = ctx.lifespan_context["service"]
@@ -113,7 +113,7 @@ def _register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool(
         description=GET_TAG_TOOL_DOC,
-        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     )
     async def get_tag(id: str, ctx: Context) -> dict[str, Any]:
         service: OperatorService = ctx.lifespan_context["service"]
@@ -124,7 +124,7 @@ def _register_tools(mcp: FastMCP) -> None:
     @mcp.tool(
         description=ADD_TASKS_TOOL_DOC,
         annotations=ToolAnnotations(
-            readOnlyHint=False, destructiveHint=False, idempotentHint=False
+            read_only_hint=False, destructive_hint=False, idempotent_hint=False
         ),
     )
     async def add_tasks(
@@ -154,7 +154,7 @@ def _register_tools(mcp: FastMCP) -> None:
     @mcp.tool(
         description=EDIT_TASKS_TOOL_DOC,
         annotations=ToolAnnotations(
-            readOnlyHint=False, destructiveHint=False, idempotentHint=False
+            read_only_hint=False, destructive_hint=False, idempotent_hint=False
         ),
     )
     async def edit_tasks(
@@ -195,7 +195,7 @@ def _register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool(
         description=LIST_TASKS_TOOL_DOC,
-        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     )
     async def list_tasks(query: ListTasksQuery, ctx: Context) -> dict[str, Any]:
         service: OperatorService = ctx.lifespan_context["service"]
@@ -210,7 +210,7 @@ def _register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool(
         description=LIST_PROJECTS_TOOL_DOC,
-        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     )
     async def list_projects(query: ListProjectsQuery, ctx: Context) -> dict[str, Any]:
         service: OperatorService = ctx.lifespan_context["service"]
@@ -225,7 +225,7 @@ def _register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool(
         description=LIST_TAGS_TOOL_DOC,
-        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     )
     async def list_tags(query: ListTagsQuery, ctx: Context) -> dict[str, Any]:
         service: OperatorService = ctx.lifespan_context["service"]
@@ -234,7 +234,7 @@ def _register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool(
         description=LIST_FOLDERS_TOOL_DOC,
-        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     )
     async def list_folders(query: ListFoldersQuery, ctx: Context) -> dict[str, Any]:
         service: OperatorService = ctx.lifespan_context["service"]
@@ -243,7 +243,7 @@ def _register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool(
         description=LIST_PERSPECTIVES_TOOL_DOC,
-        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     )
     async def list_perspectives(query: ListPerspectivesQuery, ctx: Context) -> dict[str, Any]:
         service: OperatorService = ctx.lifespan_context["service"]
