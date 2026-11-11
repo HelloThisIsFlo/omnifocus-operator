@@ -6,6 +6,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versions follow 
 
 ## [Unreleased]
 
+## [1.4.5] - FastMCP Version Cap
+
+### Fixed
+- Validation errors lost their agent-facing wording (e.g. `Unknown field 'bogusField'`) on FastMCP 3.4 and newer, which `uvx` installs pulled in automatically. The dependency is now capped at `fastmcp>=3.1.1,<3.4`, the range the full test suite passes on, until the migration to newer FastMCP lands.
+
+### Added
+- README: temporary Full Disk Access step for Claude Desktop on recent macOS.
+
 ## [1.4.4] - Batch Limit Increase
 
 ### Changed
