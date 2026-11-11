@@ -311,7 +311,7 @@ class TestTOOL02Annotations:
             tools = await client.list_tools()
             get_all = next(t for t in tools if t.name == "get_all")
             assert get_all.annotations is not None
-            assert get_all.annotations.readOnlyHint is True
+            assert get_all.annotations.read_only_hint is True
 
     async def test_get_all_has_idempotent_hint(
         self,
@@ -331,7 +331,7 @@ class TestTOOL02Annotations:
             tools = await client.list_tools()
             get_all = next(t for t in tools if t.name == "get_all")
             assert get_all.annotations is not None
-            assert get_all.annotations.idempotentHint is True
+            assert get_all.annotations.idempotent_hint is True
 
 
 # ---------------------------------------------------------------------------
@@ -359,7 +359,7 @@ class TestTOOL03OutputSchema:
         async with Client(server) as client:
             tools = await client.list_tools()
             get_all = next(t for t in tools if t.name == "get_all")
-            assert get_all.outputSchema is not None
+            assert get_all.output_schema is not None
 
     async def test_write_tools_have_loose_output_schema(
         self,
@@ -389,10 +389,10 @@ class TestTOOL03OutputSchema:
             add = next(t for t in tools if t.name == "add_tasks")
             edit = next(t for t in tools if t.name == "edit_tasks")
             # Write tools now have loose outputSchema — no typed status/id props
-            add_props = _extract_all_property_keys(add.outputSchema or {})
+            add_props = _extract_all_property_keys(add.output_schema or {})
             assert "status" not in add_props
             assert "id" not in add_props
-            edit_props = _extract_all_property_keys(edit.outputSchema or {})
+            edit_props = _extract_all_property_keys(edit.output_schema or {})
             assert "status" not in edit_props
             assert "id" not in edit_props
 
@@ -713,22 +713,22 @@ class TestGetByIdTools:
         tools = await client.list_tools()
         tool = next(t for t in tools if t.name == "get_task")
         assert tool.annotations is not None
-        assert tool.annotations.readOnlyHint is True
-        assert tool.annotations.idempotentHint is True
+        assert tool.annotations.read_only_hint is True
+        assert tool.annotations.idempotent_hint is True
 
     async def test_get_project_has_annotations(self, client: Any) -> None:
         tools = await client.list_tools()
         tool = next(t for t in tools if t.name == "get_project")
         assert tool.annotations is not None
-        assert tool.annotations.readOnlyHint is True
-        assert tool.annotations.idempotentHint is True
+        assert tool.annotations.read_only_hint is True
+        assert tool.annotations.idempotent_hint is True
 
     async def test_get_tag_has_annotations(self, client: Any) -> None:
         tools = await client.list_tools()
         tool = next(t for t in tools if t.name == "get_tag")
         assert tool.annotations is not None
-        assert tool.annotations.readOnlyHint is True
-        assert tool.annotations.idempotentHint is True
+        assert tool.annotations.read_only_hint is True
+        assert tool.annotations.idempotent_hint is True
 
 
 # ---------------------------------------------------------------------------
@@ -750,9 +750,9 @@ class TestAddTasks:
         tools = await client.list_tools()
         tool = next(t for t in tools if t.name == "add_tasks")
         assert tool.annotations is not None
-        assert tool.annotations.readOnlyHint is False
-        assert tool.annotations.destructiveHint is False
-        assert tool.annotations.idempotentHint is False
+        assert tool.annotations.read_only_hint is False
+        assert tool.annotations.destructive_hint is False
+        assert tool.annotations.idempotent_hint is False
 
     # -- Happy path --
 
@@ -1084,9 +1084,9 @@ class TestEditTasks:
         tools = await client.list_tools()
         tool = next(t for t in tools if t.name == "edit_tasks")
         assert tool.annotations is not None
-        assert tool.annotations.readOnlyHint is False
-        assert tool.annotations.destructiveHint is False
-        assert tool.annotations.idempotentHint is False
+        assert tool.annotations.read_only_hint is False
+        assert tool.annotations.destructive_hint is False
+        assert tool.annotations.idempotent_hint is False
 
     # -- Clean validation error messages --
 
@@ -1731,7 +1731,7 @@ class TestSchemaRichness:
         """WRIT-01: add_tasks inputSchema contains typed fields with camelCase aliases."""
         tools = await client.list_tools()
         add_tool = next(t for t in tools if t.name == "add_tasks")
-        schema_json = __import__("json").dumps(add_tool.inputSchema)
+        schema_json = __import__("json").dumps(add_tool.input_schema)
 
         # Schema should be substantial (rich, not just {"items": {}})
         assert len(schema_json) > 500, f"Schema too small ({len(schema_json)} chars)"
@@ -1744,7 +1744,7 @@ class TestSchemaRichness:
         # Note: "due_date" etc. appear legitimately as enum values in basedOn,
         # so we check for JSON property keys ('"key":' pattern) not bare strings.
 
-        schema = add_tool.inputSchema
+        schema = add_tool.input_schema
         property_keys = set(_extract_all_property_keys(schema))
         for snake in ("due_date", "defer_date", "estimated_minutes", "planned_date"):
             assert snake not in property_keys, (
@@ -1755,7 +1755,7 @@ class TestSchemaRichness:
         """WRIT-02: edit_tasks inputSchema contains typed fields with camelCase aliases."""
         tools = await client.list_tools()
         edit_tool = next(t for t in tools if t.name == "edit_tasks")
-        schema_json = __import__("json").dumps(edit_tool.inputSchema)
+        schema_json = __import__("json").dumps(edit_tool.input_schema)
 
         # Schema should be substantial
         assert len(schema_json) > 500, f"Schema too small ({len(schema_json)} chars)"
@@ -1773,7 +1773,7 @@ class TestSchemaRichness:
             assert field in schema_json, f"Missing field '{field}' in edit_tasks inputSchema"
 
         # WRIT-03: No snake_case leakage in property names
-        schema = edit_tool.inputSchema
+        schema = edit_tool.input_schema
         property_keys = set(_extract_all_property_keys(schema))
         for snake in ("due_date", "defer_date", "estimated_minutes", "planned_date"):
             assert snake not in property_keys, (
@@ -1792,10 +1792,12 @@ class TestCanaryMiddleware:
     async def test_canary_middleware_catches_validation_error(self, client: Any) -> None:
         """Guard: FastMCP validation must happen inside call_next() so middleware can catch it.
 
-        This test verifies that ValidationReformatterMiddleware catches ValidationError
-        raised by FastMCP's internal type_adapter.validate_python() during tool dispatch.
-        If this test fails after a FastMCP upgrade, it means validation moved BEFORE the
-        middleware chain -- the middleware architecture needs rethinking.
+        This test verifies that ValidationReformatterMiddleware catches the
+        fastmcp.exceptions.ValidationError that FastMCP's FunctionTool raises during tool
+        dispatch, and unwraps the Pydantic ValidationError carried on its __cause__.
+        If this test fails after a FastMCP upgrade, either validation moved BEFORE the
+        middleware chain, or FastMCP changed how it wraps the Pydantic error -- the
+        middleware architecture needs rethinking.
 
         What to do if this fails:
         1. Check FastMCP changelog for validation pipeline changes
@@ -1871,8 +1873,8 @@ class TestListTasks:
         tools = await client.list_tools()
         tool = next(t for t in tools if t.name == "list_tasks")
         assert tool.annotations is not None
-        assert tool.annotations.readOnlyHint is True
-        assert tool.annotations.idempotentHint is True
+        assert tool.annotations.read_only_hint is True
+        assert tool.annotations.idempotent_hint is True
 
     async def test_list_tasks_response_uses_camelcase(self, client: Any) -> None:
         result = await client.call_tool("list_tasks", {"query": {}})
@@ -1916,8 +1918,8 @@ class TestListProjects:
         tools = await client.list_tools()
         tool = next(t for t in tools if t.name == "list_projects")
         assert tool.annotations is not None
-        assert tool.annotations.readOnlyHint is True
-        assert tool.annotations.idempotentHint is True
+        assert tool.annotations.read_only_hint is True
+        assert tool.annotations.idempotent_hint is True
 
 
 @pytest.mark.snapshot(**_LIST_SEED_DATA)
@@ -1944,8 +1946,8 @@ class TestListTags:
         tools = await client.list_tools()
         tool = next(t for t in tools if t.name == "list_tags")
         assert tool.annotations is not None
-        assert tool.annotations.readOnlyHint is True
-        assert tool.annotations.idempotentHint is True
+        assert tool.annotations.read_only_hint is True
+        assert tool.annotations.idempotent_hint is True
 
 
 @pytest.mark.snapshot(**_LIST_SEED_DATA)
@@ -1972,8 +1974,8 @@ class TestListFolders:
         tools = await client.list_tools()
         tool = next(t for t in tools if t.name == "list_folders")
         assert tool.annotations is not None
-        assert tool.annotations.readOnlyHint is True
-        assert tool.annotations.idempotentHint is True
+        assert tool.annotations.read_only_hint is True
+        assert tool.annotations.idempotent_hint is True
 
 
 @pytest.mark.snapshot(**_LIST_SEED_DATA)
@@ -2000,8 +2002,8 @@ class TestListPerspectives:
         tools = await client.list_tools()
         tool = next(t for t in tools if t.name == "list_perspectives")
         assert tool.annotations is not None
-        assert tool.annotations.readOnlyHint is True
-        assert tool.annotations.idempotentHint is True
+        assert tool.annotations.read_only_hint is True
+        assert tool.annotations.idempotent_hint is True
 
 
 # ---------------------------------------------------------------------------
