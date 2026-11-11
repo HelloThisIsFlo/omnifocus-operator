@@ -1,17 +1,20 @@
 ---
-gsd_state_version: 1.0
+gsd_state_version: "1.0"
 milestone: v1.4.1
-milestone_name: Task Property Surface & Subtree Retrieval
+current_phase_name: "last: 57 — Parent Filter & Filter Unification, complete"
 status: complete
 stopped_at: Milestone v1.4.1 complete; ready for /gsd-new-milestone to start v1.5
-last_updated: "2026-06-28T13:20:36.000Z"
-last_activity: 2026-06-28 - Completed quick task 260628-jrk: increase batch limit from 50 to 150 and release as v1.4.4
+last_updated: "2026-11-11T20:41:23.163Z"
+last_activity: 2026-11-11 - Completed quick task 261111-s5c: Serve macOS access-denied startup failures through error mode with a teaching message
+last_activity_desc: "Completed quick task 260628-jrk: increase batch limit from 50 to 150 and release as v1.4.4"
+state_head: b23288817124371195b0977b69109c300f19b3d4
 progress:
   total_phases: 2
   completed_phases: 2
   total_plans: 14
   completed_plans: 14
   percent: 100
+milestone_name: Task Property Surface & Subtree Retrieval
 ---
 
 # Project State
@@ -28,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-04-19)
 Phase: none active (last: 57 — Parent Filter & Filter Unification, complete)
 Plan: none active
 Status: Milestone v1.4.1 complete; ready for /gsd-new-milestone to start v1.5
-Last activity: 2026-06-28 - Completed quick task 260628-jrk: increase batch limit from 50 to 150 and release as v1.4.4
+Last activity: 2026-11-11 - Completed quick task 261111-s5c: Serve macOS access-denied startup failures through error mode with a teaching message
 
 Progress: [██████████] 100% (v1.4.1 — 2/2 phases complete)
 
@@ -77,6 +80,7 @@ _(cleared — v1.4 insertions archived to milestones/v1.4-ROADMAP.md)_
 | 260424-j63 | Unify empty-result warning surface (superseded by 260424-kd0) | 2026-04-24 | d44e4742 |  | [260424-j63-unify-empty-result-warning-surface](./quick/260424-j63-unify-empty-result-warning-surface/) |
 | 260424-kd0 | Simplify empty-result warning to single static message | 2026-04-24 | 74fbf6ad |  | [260424-kd0-simplify-empty-result-warning-to-single-](./quick/260424-kd0-simplify-empty-result-warning-to-single-/) |
 | 260628-jrk | increase batch limit from 50 to 150 and release as v1.4.4 | 2026-06-28 | a68e7109 | Verified | [260628-jrk-increase-batch-limit-from-50-to-150-and-](./quick/260628-jrk-increase-batch-limit-from-50-to-150-and-/) |
+| 261111-s5c | Serve macOS access-denied startup failures through error mode with a teaching message | 2026-11-11 | b2328881 | — | [261111-s5c-serve-macos-access-denied-startup-failur](./quick/261111-s5c-serve-macos-access-denied-startup-failur/) |
 
 ## Session Continuity
 
