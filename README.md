@@ -47,7 +47,7 @@ Paste this into `~/Library/Application Support/Claude/claude_desktop_config.json
 > ⚠️ **Claude Desktop on recent macOS — temporary extra step.** macOS may block the server from reading OmniFocus's data. From v1.4.6 the server stays up and every tool call tells you exactly what to do, including the path to add. In short:
 >
 > 1. If macOS asks whether `uvx` may access data from other apps, click **Allow** (it asks again on each launch).
-> 2. To stop being asked, or if no prompt appears: open **System Settings → Privacy & Security → Full Disk Access**, click **+**, press **⌘⇧G**, and add the real `uvx` binary. Find it with `realpath "$(which uvx)"` (if that prints a path ending in `mise`, use `mise which uvx` instead).
+> 2. To stop being asked, or if no prompt appears: open **System Settings → Privacy & Security → Full Disk Access**, click **+**, press **⌘⇧G**, and add the real `uvx` binary. The server's error message names its exact path.
 > 3. Quit Claude Desktop completely (**⌘Q**) and reopen it.
 >
 > Granting Full Disk Access to Claude itself does **not** help — Claude Desktop launches MCP servers as their own responsible process. The grant applies to everything you run through `uvx`, not only OmniFocus Operator. Terminal clients such as Claude Code are not affected. A proper installer that removes this step is planned.
