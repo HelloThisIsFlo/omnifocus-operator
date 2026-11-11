@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-19)
 
 **Core value:** Reliable, simple, debuggable access to OmniFocus data for AI agents -- executive function infrastructure that works at 7:30am.
-**Current focus:** Phase 57 — Parent Filter & Filter Unification
+**Current focus:** Between milestones — v1.4.1 complete; next is `/gsd-new-milestone` for v1.5
 
 ## Current Position
 
-Phase: 57 (Parent Filter & Filter Unification) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 57
+Phase: none active (last: 57 — Parent Filter & Filter Unification, complete)
+Plan: none active
+Status: Milestone v1.4.1 complete; ready for /gsd-new-milestone to start v1.5
 Last activity: 2026-06-28 - Completed quick task 260628-jrk: increase batch limit from 50 to 150 and release as v1.4.4
 
-Progress: [█████░░░░░] 50% (v1.4.1 — 1/2 phases complete)
+Progress: [██████████] 100% (v1.4.1 — 2/2 phases complete)
 
 ## Performance Metrics
 
