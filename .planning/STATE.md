@@ -48,31 +48,18 @@ _(cleared — v1.4 decisions archived to milestones/v1.4-ROADMAP.md and PROJECT.
 
 ### Pending Todos
 
-Carried forward from v1.4:
-
-1. Add retry logic for OmniFocus bridge timeouts (v1.8)
-2. Investigate macOS App Nap impact on OmniFocus responsiveness (v1.8)
-3. Make UAT folder discoverable for verification agents
-4. Investigate `replace: []` bug in production (may not be staleness-related)
-5. Remove misleading "single runtime dependency" messaging from README + landing page
-6. Reorganize test suite into unit/integration/golden-master folders
-7. Add built-in perspectives to list_perspectives (repository — needs design discussion)
-8. Return full inbox hierarchy from inInbox query (repository)
-9. Fix recurring macOS permission prompt on Claude Desktop launch (tooling — gated on 2 validations; issue #2)
-9. Add path field for hierarchical entities (models)
-10. Fix OrdinalWeekdaySpec -> OrdinalWeekday cross-layer coercion in edit pipeline (service)
-11. Golden master re-capture required after Phase 42 mapper rewrites (human-only per GOLD-01)
-12. Submit OmniFocus Operator to MCP registries — Smithery, mcp.so, Anthropic server list (tooling) — gated on landing page refresh
-13. Track upstream Claude Code CLI fix for MCP progress-notification stdio teardown (issues #47378/#47765) — root-caused 2026-04-17; progress emission disabled via `PROGRESS_NOTIFICATIONS_ENABLED=False` pending upstream fix
-14. Clarify cross-item reference contract in batch tool descriptions — name-refs to same-batch items work (serial resolution), only ID-refs don't; rewrite `_BATCH_CROSS_ITEM_NOTE` (server)
-15. Unify empty-result warning surface — one parameterized "filters resolved to zero tasks" warning, retire `EMPTY_SCOPE_INTERSECTION_WARNING` + `FILTER_NO_MATCH`; surfaced during Phase 57 post-resolution gap audit (service)
-16. Simplify empty-result warning to a single static message — supersedes #15's parameterized approach after live probe surfaced `limit` bug; collapses to one static nudge, deletes `_active_filter_names` helper + two constants (service)
-
-Captured 2026-11-11:
-
-17. Finish structured-content dedup middleware — parked on branch `structured-content-dedup`; needs real-client check + FastMCP 4 fix (server, minor)
-18. Migrate to FastMCP 3.4+ and 4 and lift the `<3.4` pin — validation reformatter breaks from 3.4; MCP SDK 2 renames on 4 (server, major)
-19. Update website install guide for Claude Desktop Full Disk Access — README has a temporary note; landing page untouched (docs, major)
+- [2026-03-06] [bridge] Add retry logic for OmniFocus bridge timeouts — [todo file](.planning/todos/pending/2026-03-06-add-retry-logic-for-omnifocus-bridge-timeouts.md)
+- [2026-03-08] [service] Enforce mutually exclusive tags at service layer — [todo file](.planning/todos/pending/2026-03-08-enforce-mutually-exclusive-tags-at-service-layer.md)
+- [2026-03-08] [bridge] Investigate and enforce serial execution guarantee for bridge calls — [todo file](.planning/todos/pending/2026-03-08-investigate-and-enforce-serial-execution-guarantee-for-bridge-calls.md)
+- [2026-03-08] [service] Consider returning full task object in edit_tasks response — [todo file](.planning/todos/pending/2026-03-08-return-full-task-object-in-edit-tasks-response.md)
+- [2026-03-30] [testing] Reorganize test suite into unit/integration/golden-master folders — [todo file](.planning/todos/pending/2026-03-30-reorganize-test-suite-into-unit-integration-golden-master-folders.md)
+- [2026-04-04] [models] Add path field for hierarchical entities — [todo file](.planning/todos/pending/2026-04-04-add-path-field-for-hierarchical-entities.md)
+- [2026-04-06] [testing] Extend golden master to capture SQLite path output — [todo file](.planning/todos/pending/2026-04-06-extend-golden-master-to-capture-sqlite-path-output.md)
+- [2026-04-17] [tooling] Submit OmniFocus Operator to MCP registries — [todo file](.planning/todos/pending/2026-04-17-submit-omnifocus-operator-to-mcp-registries.md) — Needs ### Prerequisites.
+- [2026-05-20] [tooling] Fix recurring macOS permission prompt on Claude Desktop launch — [todo file](.planning/todos/pending/2026-05-20-fix-recurring-macos-permission-prompt-on-claude-desktop-laun.md)
+- [2026-11-11] [server] Finish structured-content dedup middleware — [todo file](.planning/todos/pending/2026-11-11-finish-structured-content-dedup-middleware.md)
+- [2026-11-11] [server] Migrate to FastMCP 3.4+ and 4 and lift the pin — [todo file](.planning/todos/pending/2026-11-11-migrate-to-fastmcp-3-4-and-4-and-lift-the-pin.md)
+- [2026-11-11] [docs] Update website install guide for Claude Desktop Full Disk Access — [todo file](.planning/todos/pending/2026-11-11-update-website-install-guide-for-claude-desktop-full-disk-ac.md)
 
 ### Roadmap Evolution
 
