@@ -57,6 +57,7 @@ _(cleared — v1.4 decisions archived to milestones/v1.4-ROADMAP.md and PROJECT.
 - [2026-04-06] [testing] Extend golden master to capture SQLite path output — [todo file](.planning/todos/pending/2026-04-06-extend-golden-master-to-capture-sqlite-path-output.md)
 - [2026-04-17] [tooling] Submit OmniFocus Operator to MCP registries — [todo file](.planning/todos/pending/2026-04-17-submit-omnifocus-operator-to-mcp-registries.md) — Needs ### Prerequisites.
 - [2026-05-20] [tooling] Fix recurring macOS permission prompt on Claude Desktop launch — [todo file](.planning/todos/pending/2026-05-20-fix-recurring-macos-permission-prompt-on-claude-desktop-laun.md)
+- [2026-11-11] [server] Defer OmniFocus folder access to first tool call — [todo file](.planning/todos/pending/2026-11-11-defer-omnifocus-folder-access-to-first-tool-call.md)
 - [2026-11-11] [server] Finish structured-content dedup middleware — [todo file](.planning/todos/pending/2026-11-11-finish-structured-content-dedup-middleware.md)
 - [2026-11-11] [server] Migrate to FastMCP 3.4+ and 4 and lift the pin — [todo file](.planning/todos/pending/2026-11-11-migrate-to-fastmcp-3-4-and-4-and-lift-the-pin.md)
 - [2026-11-11] [docs] Update website install guide for Claude Desktop Full Disk Access — [todo file](.planning/todos/pending/2026-11-11-update-website-install-guide-for-claude-desktop-full-disk-ac.md)
