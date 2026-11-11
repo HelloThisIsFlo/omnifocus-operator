@@ -6,6 +6,7 @@ import time
 from typing import TYPE_CHECKING, Any
 
 from fastmcp.exceptions import ToolError
+from fastmcp.exceptions import ValidationError as FastMCPValidationError
 from fastmcp.server.middleware import Middleware, MiddlewareContext
 from pydantic import ValidationError
 
@@ -150,7 +151,13 @@ def _format_validation_errors(exc: ValidationError) -> list[str]:
 
 
 class ValidationReformatterMiddleware(Middleware):
-    """Catch Pydantic ValidationError from typed tool params, reformat to clean ToolError.
+    """Turn FastMCP's wrapped argument-validation error into a clean ToolError.
+
+    FastMCP 4's FunctionTool raises ``fastmcp.exceptions.ValidationError`` when
+    tool arguments fail validation, with the original Pydantic ``ValidationError``
+    as ``__cause__``. This middleware unwraps that Pydantic cause and formats it
+    into agent-facing messages. A FastMCP ``ValidationError`` with any other
+    cause (or none) passes through untouched.
 
     Registered INSIDE ToolLoggingMiddleware (added first = innermost) so that
     the logging middleware sees the reformatted ToolError and logs what the
@@ -160,6 +167,9 @@ class ValidationReformatterMiddleware(Middleware):
     async def on_call_tool(self, context: MiddlewareContext, call_next: Any) -> Any:
         try:
             return await call_next(context)
-        except ValidationError as exc:
-            messages = _format_validation_errors(exc)
+        except FastMCPValidationError as exc:
+            cause = exc.__cause__
+            if not isinstance(cause, ValidationError):
+                raise
+            messages = _format_validation_errors(cause)
             raise ToolError("; ".join(messages) or INVALID_INPUT) from None

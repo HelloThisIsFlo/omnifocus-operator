@@ -14,7 +14,7 @@ Requires: Python 3.12+, [uv](https://docs.astral.sh/uv/), [just](https://just.sy
 
 ```
 src/omnifocus_operator/
-├── server/          # MCP tool definitions (FastMCP v3)
+├── server/          # MCP tool definitions (FastMCP 4)
 ├── service/         # Business logic — method object pipelines
 ├── repository/      # Data access — SQLite cache + OmniJS bridge
 ├── contracts/       # Write-side Pydantic models (Command, Result, etc.)
