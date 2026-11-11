@@ -6,6 +6,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versions follow 
 
 ## [Unreleased]
 
+## [1.4.6] - Startup Access Errors
+
+### Fixed
+- Server no longer crashes at startup when macOS blocks access to OmniFocus's folders (seen with Claude Desktop on recent macOS, where the client only reported "Connection closed"). The startup sweep now runs inside error mode, so the server stays up and every tool call explains the fix: the Allow prompt, or Full Disk Access for the launching program, naming the resolved `uvx` path when it can be found.
+- A database or `.ofocus` path that macOS refuses to show is no longer reported as "not found".
+
+### Changed
+- README: the temporary Full Disk Access note now covers both routes and mise-shim setups.
+
 ## [1.4.5] - FastMCP Version Cap
 
 ### Fixed
