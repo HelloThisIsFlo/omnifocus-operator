@@ -4,10 +4,10 @@ milestone: v1.4.1
 current_phase_name: "last: 57 — Parent Filter & Filter Unification, complete"
 status: complete
 stopped_at: Milestone v1.4.1 complete; ready for /gsd-new-milestone to start v1.5
-last_updated: "2026-11-11T20:41:23.163Z"
-last_activity: 2026-11-11 - Completed quick task 261111-s5c: Serve macOS access-denied startup failures through error mode with a teaching message
+last_updated: "2026-11-11T23:46:18.925Z"
+last_activity: 2026-11-11 - Completed quick task 261111-wdz: Support FastMCP 4: unwrap wrapped validation errors and require fastmcp>=4,<5
 last_activity_desc: "Completed quick task 260628-jrk: increase batch limit from 50 to 150 and release as v1.4.4"
-state_head: b23288817124371195b0977b69109c300f19b3d4
+state_head: 52141856472f01006a10dbc9d6bd2a30aa720f44
 progress:
   total_phases: 2
   completed_phases: 2
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-04-19)
 Phase: none active (last: 57 — Parent Filter & Filter Unification, complete)
 Plan: none active
 Status: Milestone v1.4.1 complete; ready for /gsd-new-milestone to start v1.5
-Last activity: 2026-11-11 - Completed quick task 261111-s5c: Serve macOS access-denied startup failures through error mode with a teaching message
+Last activity: 2026-11-11 - Completed quick task 261111-wdz: Support FastMCP 4: unwrap wrapped validation errors and require fastmcp>=4,<5
 
 Progress: [██████████] 100% (v1.4.1 — 2/2 phases complete)
 
@@ -62,7 +62,6 @@ _(cleared — v1.4 decisions archived to milestones/v1.4-ROADMAP.md and PROJECT.
 - [2026-05-20] [tooling] Fix recurring macOS permission prompt on Claude Desktop launch — [todo file](.planning/todos/pending/2026-05-20-fix-recurring-macos-permission-prompt-on-claude-desktop-laun.md)
 - [2026-11-11] [server] Defer OmniFocus folder access to first tool call — [todo file](.planning/todos/pending/2026-11-11-defer-omnifocus-folder-access-to-first-tool-call.md)
 - [2026-11-11] [server] Finish structured-content dedup middleware — [todo file](.planning/todos/pending/2026-11-11-finish-structured-content-dedup-middleware.md)
-- [2026-11-11] [server] Migrate to FastMCP 3.4+ and 4 and lift the pin — [todo file](.planning/todos/pending/2026-11-11-migrate-to-fastmcp-3-4-and-4-and-lift-the-pin.md)
 - [2026-11-11] [docs] Update website install guide for Claude Desktop Full Disk Access — [todo file](.planning/todos/pending/2026-11-11-update-website-install-guide-for-claude-desktop-full-disk-ac.md)
 
 ### Roadmap Evolution
@@ -81,6 +80,7 @@ _(cleared — v1.4 insertions archived to milestones/v1.4-ROADMAP.md)_
 | 260424-kd0 | Simplify empty-result warning to single static message | 2026-04-24 | 74fbf6ad |  | [260424-kd0-simplify-empty-result-warning-to-single-](./quick/260424-kd0-simplify-empty-result-warning-to-single-/) |
 | 260628-jrk | increase batch limit from 50 to 150 and release as v1.4.4 | 2026-06-28 | a68e7109 | Verified | [260628-jrk-increase-batch-limit-from-50-to-150-and-](./quick/260628-jrk-increase-batch-limit-from-50-to-150-and-/) |
 | 261111-s5c | Serve macOS access-denied startup failures through error mode with a teaching message | 2026-11-11 | b2328881 | — | [261111-s5c-serve-macos-access-denied-startup-failur](./quick/261111-s5c-serve-macos-access-denied-startup-failur/) |
+| 261111-wdz | Support FastMCP 4: unwrap wrapped validation errors and require fastmcp>=4,<5 | 2026-11-11 | 52141856 | — | [261111-wdz-support-fastmcp-4-unwrap-wrapped-validat](./quick/261111-wdz-support-fastmcp-4-unwrap-wrapped-validat/) |
 
 ## Session Continuity
 
