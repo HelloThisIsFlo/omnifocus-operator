@@ -7,6 +7,7 @@ import logging
 from fastmcp import FastMCP
 
 from omnifocus_operator.middleware import (
+    StructuredContentDeduplicationMiddleware,
     ToolLoggingMiddleware,
     ValidationReformatterMiddleware,
 )
@@ -27,5 +28,6 @@ def create_server() -> FastMCP:
     mcp = FastMCP("omnifocus-operator", lifespan=app_lifespan)
     _register_tools(mcp)
     mcp.add_middleware(ValidationReformatterMiddleware())  # innermost (added first)
+    mcp.add_middleware(StructuredContentDeduplicationMiddleware())
     mcp.add_middleware(ToolLoggingMiddleware(logger))  # outermost (added second)
     return mcp

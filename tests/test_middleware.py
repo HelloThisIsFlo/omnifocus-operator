@@ -1,4 +1,4 @@
-"""Unit tests for ToolLoggingMiddleware, ValidationReformatterMiddleware helpers, and logging setup.
+"""Unit tests for OmniFocus Operator middleware and logging setup.
 
 Tests verify that the middleware logs tool entry, exit (with timing),
 and errors correctly. Uses mock MiddlewareContext and call_next to
@@ -25,10 +25,13 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastmcp.exceptions import ToolError
+from fastmcp.tools import ToolResult
+from mcp.types import TextContent
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from omnifocus_operator.__main__ import _configure_logging
 from omnifocus_operator.middleware import (
+    StructuredContentDeduplicationMiddleware,
     ToolLoggingMiddleware,
     _clean_loc,
     _extract_error_field_name,
@@ -43,6 +46,13 @@ def _make_context(tool_name: str, arguments: dict[str, object] | None = None) ->
     ctx = MagicMock()
     ctx.message.name = tool_name
     ctx.message.arguments = arguments
+    return ctx
+
+
+def _make_protocol_context(protocol_version: str) -> MagicMock:
+    """Create a tool-call context with an initialized MCP protocol version."""
+    ctx = _make_context("list_tasks")
+    ctx.fastmcp_context.session.client_params.protocolVersion = protocol_version
     return ctx
 
 
@@ -169,6 +179,77 @@ async def test_returns_result_from_call_next(
         result = await middleware.on_call_tool(ctx, call_next)
 
     assert result is expected_result
+
+
+# ── Structured-content deduplication ──────────────────────────────────
+
+
+class TestStructuredContentDeduplicationMiddleware:
+    """Remove only redundant JSON fallbacks for structured-capable clients."""
+
+    async def test_removes_matching_object_fallback_for_modern_protocol(self) -> None:
+        middleware = StructuredContentDeduplicationMiddleware()
+        context = _make_protocol_context("2025-11-25")
+        result = ToolResult(
+            content=[TextContent(type="text", text='{"items":[],"total":0}')],
+            structured_content={"items": [], "total": 0},
+        )
+
+        actual = await middleware.on_call_tool(context, AsyncMock(return_value=result))
+
+        assert actual.content == []
+        assert actual.structured_content == result.structured_content
+
+    async def test_removes_wrapped_list_fallback_for_modern_protocol(self) -> None:
+        middleware = StructuredContentDeduplicationMiddleware()
+        context = _make_protocol_context("2025-06-18")
+        result = ToolResult(
+            content=[TextContent(type="text", text='[{"status":"success"}]')],
+            structured_content={"result": [{"status": "success"}]},
+        )
+
+        actual = await middleware.on_call_tool(context, AsyncMock(return_value=result))
+
+        assert actual.content == []
+        assert actual.structured_content == result.structured_content
+
+    async def test_keeps_fallback_for_legacy_protocol(self) -> None:
+        middleware = StructuredContentDeduplicationMiddleware()
+        context = _make_protocol_context("2025-03-26")
+        result = ToolResult(
+            content=[TextContent(type="text", text='{"value":42}')],
+            structured_content={"value": 42},
+        )
+
+        actual = await middleware.on_call_tool(context, AsyncMock(return_value=result))
+
+        assert actual.content == result.content
+        assert actual.structured_content == result.structured_content
+
+    async def test_keeps_nonduplicate_human_readable_content(self) -> None:
+        middleware = StructuredContentDeduplicationMiddleware()
+        context = _make_protocol_context("2025-11-25")
+        result = ToolResult(
+            content=[TextContent(type="text", text="Created one task")],
+            structured_content={"status": "success"},
+        )
+
+        actual = await middleware.on_call_tool(context, AsyncMock(return_value=result))
+
+        assert actual.content == result.content
+        assert actual.structured_content == result.structured_content
+
+    async def test_keeps_unstructured_error_content(self) -> None:
+        middleware = StructuredContentDeduplicationMiddleware()
+        context = _make_protocol_context("2025-11-25")
+        result = ToolResult(
+            content=[TextContent(type="text", text="Task not found: missing")],
+        )
+
+        actual = await middleware.on_call_tool(context, AsyncMock(return_value=result))
+
+        assert actual.content == result.content
+        assert actual.structured_content is None
 
 
 # ── Logging setup tests ──────────────────────────────────────────────

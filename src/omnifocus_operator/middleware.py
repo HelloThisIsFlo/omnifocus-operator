@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import time
 from typing import TYPE_CHECKING, Any
 
 from fastmcp.exceptions import ToolError
 from fastmcp.server.middleware import Middleware, MiddlewareContext
+from mcp.types import TextContent
 from pydantic import ValidationError
 
 from omnifocus_operator.agent_messages.errors import INVALID_INPUT, UNKNOWN_FIELD
@@ -14,7 +16,15 @@ from omnifocus_operator.agent_messages.errors import INVALID_INPUT, UNKNOWN_FIEL
 if TYPE_CHECKING:
     import logging
 
-__all__ = ["ToolLoggingMiddleware", "ValidationReformatterMiddleware"]
+    from fastmcp.tools import ToolResult
+
+__all__ = [
+    "StructuredContentDeduplicationMiddleware",
+    "ToolLoggingMiddleware",
+    "ValidationReformatterMiddleware",
+]
+
+_STRUCTURED_CONTENT_PROTOCOL = "2025-06-18"
 
 
 class ToolLoggingMiddleware(Middleware):
@@ -45,6 +55,64 @@ class ToolLoggingMiddleware(Middleware):
             elapsed_ms = (time.monotonic() - start) * 1000
             self._log.error("!!! %s -- %.1fms FAILED: %s", tool_name, elapsed_ms, e)
             raise
+
+
+class StructuredContentDeduplicationMiddleware(Middleware):
+    """Remove FastMCP's redundant JSON text for structured-capable clients.
+
+    FastMCP serializes every structured tool result twice: once in
+    ``structuredContent`` and again as JSON in a text content block.  MCP
+    clients using protocol revision 2025-06-18 or newer understand structured
+    tool output directly, so the text copy only increases the token payload.
+
+    Older clients retain the compatibility fallback.  Custom text and errors
+    are also preserved because only machine-equivalent JSON is removed.
+    """
+
+    async def on_call_tool(
+        self,
+        context: MiddlewareContext,
+        call_next: Any,
+    ) -> ToolResult:
+        result: ToolResult = await call_next(context)
+        if not self._supports_structured_content(context):
+            return result
+        if not self._is_redundant_json_fallback(result):
+            return result
+        return result.model_copy(update={"content": []})
+
+    @staticmethod
+    def _supports_structured_content(context: MiddlewareContext) -> bool:
+        fastmcp_context = context.fastmcp_context
+        if fastmcp_context is None:
+            return False
+        try:
+            client_params = fastmcp_context.session.client_params
+        except (AttributeError, RuntimeError):
+            return False
+        if client_params is None:
+            return False
+        protocol_version = client_params.protocolVersion
+        return (
+            isinstance(protocol_version, str) and protocol_version >= _STRUCTURED_CONTENT_PROTOCOL
+        )
+
+    @staticmethod
+    def _is_redundant_json_fallback(result: ToolResult) -> bool:
+        structured = result.structured_content
+        if structured is None or len(result.content) != 1:
+            return False
+
+        content = result.content[0]
+        if not isinstance(content, TextContent):
+            return False
+
+        try:
+            serialized = json.loads(content.text)
+        except (json.JSONDecodeError, TypeError):
+            return False
+
+        return serialized == structured or structured == {"result": serialized}
 
 
 def _clean_loc(loc: tuple[str | int, ...]) -> tuple[str | int, ...]:

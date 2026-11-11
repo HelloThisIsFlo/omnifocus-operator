@@ -553,6 +553,7 @@ class TestGetByIdTools:
 
     async def test_get_task_returns_task(self, client: Any) -> None:
         result = await client.call_tool("get_task", {"id": "task-001"})
+        assert result.content == []
         assert result.structured_content is not None
         assert result.structured_content["id"] == "task-001"
         assert result.structured_content["name"] == "Test Task"
@@ -560,6 +561,18 @@ class TestGetByIdTools:
     async def test_get_task_not_found_returns_error(self, client: Any) -> None:
         with pytest.raises(ToolError, match="Task not found: nonexistent"):
             await client.call_tool("get_task", {"id": "nonexistent"})
+
+    async def test_get_task_error_keeps_human_readable_content(self, client: Any) -> None:
+        result = await client.call_tool(
+            "get_task",
+            {"id": "nonexistent"},
+            raise_on_error=False,
+        )
+
+        assert result.is_error is True
+        assert result.structured_content is None
+        assert len(result.content) == 1
+        assert "Task not found: nonexistent" in result.content[0].text
 
     async def test_get_project_returns_project(self, client: Any) -> None:
         result = await client.call_tool("get_project", {"id": "proj-001"})
@@ -631,6 +644,7 @@ class TestAddTasks:
     async def test_add_tasks_minimal(self, client: Any) -> None:
         """Create a task with only a name."""
         result = await client.call_tool("add_tasks", {"items": [{"name": "Buy milk"}]})
+        assert result.content == []
         assert result.structured_content is not None
         # FastMCP wraps list return in {"result": [...]}
         items = result.structured_content["result"]
@@ -1724,6 +1738,7 @@ class TestListTasks:
 
     async def test_list_tasks_returns_structured_content(self, client: Any) -> None:
         result = await client.call_tool("list_tasks", {"query": {}})
+        assert result.content == []
         assert result.structured_content is not None
         sc = result.structured_content
         assert "items" in sc

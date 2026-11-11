@@ -477,6 +477,7 @@ def server(service: Any) -> Any:
     from fastmcp import FastMCP  # noqa: PLC0415
 
     from omnifocus_operator.middleware import (  # noqa: PLC0415
+        StructuredContentDeduplicationMiddleware,
         ToolLoggingMiddleware,
         ValidationReformatterMiddleware,
     )
@@ -489,6 +490,7 @@ def server(service: Any) -> Any:
     srv = FastMCP("omnifocus-operator", lifespan=_patched_lifespan)
     _register_tools(srv)
     srv.add_middleware(ValidationReformatterMiddleware())
+    srv.add_middleware(StructuredContentDeduplicationMiddleware())
     srv.add_middleware(ToolLoggingMiddleware(logging.getLogger("omnifocus_operator.server")))
     return srv
 
