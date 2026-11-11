@@ -81,13 +81,31 @@ def create_repository(bridge: Bridge, repo_type: str | None = None) -> Repositor
             raise ValueError(msg)
 
 
+def _path_exists(path: str) -> bool:
+    """Metadata-only existence check that tells "missing" apart from "refused".
+
+    Unlike ``os.path.exists``, which reports every ``OSError`` as "missing",
+    only a path that genuinely does not exist returns ``False``. A refused
+    path (``PermissionError`` -- e.g. ``EPERM`` from a macOS privacy block)
+    or any other ``OSError`` propagates as itself, ``errno`` and ``filename``
+    intact, so error mode can tell the user how to grant access. Never opens
+    or reads the file.
+    """
+    try:
+        os.stat(path)
+    except (FileNotFoundError, NotADirectoryError, ValueError):
+        # ValueError: e.g. an embedded null byte -- os.path.exists treats it as missing too.
+        return False
+    return True
+
+
 def _create_hybrid_repository(bridge: Bridge) -> Repository:
     """Create a HybridRepository with path validation."""
     from omnifocus_operator.repository.hybrid import HybridRepository
 
     db_path = get_settings().sqlite_path or _DEFAULT_DB_PATH
 
-    if not os.path.exists(db_path):
+    if not _path_exists(db_path):
         msg = (
             f"OmniFocus SQLite database not found at:\n"
             f"  {db_path}\n"
@@ -115,7 +133,7 @@ def _create_bridge_repository(bridge: Bridge) -> Repository:  # pragma: no cover
 
     mtime_source: MtimeSource
     ofocus_path = get_settings().ofocus_path or str(DEFAULT_OFOCUS_PATH)
-    if not os.path.exists(ofocus_path):
+    if not _path_exists(ofocus_path):
         logger.error(
             "OmniFocus .ofocus bundle not found at: %s — "
             "set OPERATOR_OFOCUS_PATH or verify OmniFocus 4 is installed.",

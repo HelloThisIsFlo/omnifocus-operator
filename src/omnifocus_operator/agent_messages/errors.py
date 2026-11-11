@@ -238,3 +238,50 @@ INCLUDE_INVALID_TASK = (
 INCLUDE_INVALID_PROJECT = (
     "Unknown field group(s): {groups}. Valid groups: notes, metadata, hierarchy, time, review, *"
 )
+
+# --- Startup (error mode) ---
+# Served on every tool call by ErrorOperatorService when the server fails to
+# start. Both templates share the "OmniFocus Operator failed to start:" lead-in.
+
+STARTUP_FAILED = """\
+OmniFocus Operator failed to start:
+
+{error}
+
+Restart the server after fixing."""
+
+# macOS privacy block (PermissionError with errno EPERM). Replaces both the raw
+# error text and the generic restart line: the last paragraph is the precise
+# restart instruction. {blocked_path} is STARTUP_MACOS_BLOCKED_PATH or "";
+# {fda_target} is one of the STARTUP_FDA_TARGET_* variants below.
+STARTUP_MACOS_ACCESS_DENIED = """\
+OmniFocus Operator failed to start: macOS is blocking this server from reading \
+OmniFocus's data{blocked_path}.
+
+The user needs to fix this on their Mac. There are two ways:
+
+1. If macOS shows a prompt asking whether "uvx" may access data from other apps, \
+click Allow. macOS asks again every time the server launches.
+2. To stop being asked, or if no prompt appears: open System Settings → \
+Privacy & Security → Full Disk Access, click +, and add the program that \
+launches this server: {fda_target}
+
+Granting Full Disk Access to Claude itself does not help: Claude Desktop launches \
+MCP servers as their own responsible process, so macOS checks the launching \
+program, not Claude.
+
+After either step, fully quit and reopen the MCP client (for example Claude \
+Desktop) so the server starts again."""
+
+STARTUP_MACOS_BLOCKED_PATH = " (blocked path: {path})"
+
+# Used when the real uvx path is discovered from uv's UV variable.
+STARTUP_FDA_TARGET_UVX_PATH = """\
+{uvx_path} (in the file picker, press Cmd+Shift+G and paste the path)."""
+
+# Used when the real uvx path cannot be discovered from uv's UV variable.
+# Mise shims make `which uvx` resolve to the mise binary, hence the hint.
+STARTUP_FDA_TARGET_FALLBACK = """\
+uvx. To find its real path, run `realpath "$(which uvx)"` in Terminal \
+(if the printed path ends in "mise", use the output of `mise which uvx` instead). \
+In the file picker, press Cmd+Shift+G and paste that path."""

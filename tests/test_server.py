@@ -6,6 +6,7 @@ FastMCP's Client(server) pattern -- no network sockets or subprocesses needed.
 
 from __future__ import annotations
 
+import errno
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -31,6 +32,7 @@ from tests.conftest import (
     make_project_dict,
     make_tag_dict,
     make_task_dict,
+    refuse_stat,
 )
 from tests.doubles import ConstantMtimeSource, InMemoryBridge, SimulatorBridge
 
@@ -163,6 +165,8 @@ class TestARCH02RepositoryInjection:
                 await client.call_tool("get_all")
             assert "OPERATOR_SQLITE_PATH" in str(exc_info.value)
             assert "OPERATOR_REPOSITORY=bridge-only" in str(exc_info.value)
+            # A genuinely missing database is not a macOS privacy block.
+            assert "Full Disk Access" not in str(exc_info.value)
 
 
 # ---------------------------------------------------------------------------
@@ -456,6 +460,31 @@ class TestIPC06OrphanSweepWiring:
 
         mock_sweep.assert_called_once()
 
+    async def test_sweep_runs_before_repository_creation(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Any,
+    ) -> None:
+        """On a successful startup the sweep still runs first, before the repository."""
+        calls: list[str] = []
+        bridge = SimulatorBridge(ipc_dir=tmp_path)
+        repo = BridgeOnlyRepository(bridge=bridge, mtime_source=ConstantMtimeSource())
+
+        def _create_repository(*_a: Any, **_kw: Any) -> BridgeOnlyRepository:
+            calls.append("create_repository")
+            return repo
+
+        monkeypatch.setattr("omnifocus_operator.repository.create_repository", _create_repository)
+        mock_sweep = AsyncMock(side_effect=lambda *_a: calls.append("sweep"))
+
+        with patch("omnifocus_operator.bridge.real.sweep_orphaned_files", mock_sweep):
+            server = create_server()
+
+            async with Client(server) as _client:
+                pass  # Connection triggers lifespan
+
+        assert calls == ["sweep", "create_repository"]
+
     async def test_sweep_runs_in_sqlite_mode(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -541,6 +570,105 @@ class TestDegradedMode:
                         await client.call_tool("get_all")
 
         assert any("error mode" in r.message.lower() for r in caplog.records)
+
+
+# ---------------------------------------------------------------------------
+# ERR: macOS privacy block at startup -> teaching message (never a crash)
+# ---------------------------------------------------------------------------
+
+
+def _assert_macos_teaching_message(msg: str, blocked_path: str) -> None:
+    """Teaching message parts appear in order and name the blocked path."""
+    anchors = [
+        "failed to start",
+        "macOS is blocking",
+        "click Allow",
+        "Full Disk Access",
+        "Claude itself does not help",
+        "fully quit and reopen",
+    ]
+    positions = [msg.index(anchor) for anchor in anchors]
+    assert positions == sorted(positions), f"Parts out of order in:\n{msg}"
+    assert f"(blocked path: {blocked_path})" in msg
+    assert "Restart the server after fixing" not in msg
+
+
+class TestStartupMacOSAccessDenied:
+    """EPERM from any startup site keeps the server alive with a teaching message."""
+
+    async def test_blocked_ipc_sweep_serves_teaching_message(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The sweep's PermissionError no longer kills the server ("Connection closed")."""
+        monkeypatch.delenv("UV", raising=False)
+        from omnifocus_operator.bridge.real import DEFAULT_IPC_DIR  # noqa: PLC0415
+
+        blocked = str(DEFAULT_IPC_DIR)
+        mock_sweep = AsyncMock(
+            side_effect=PermissionError(errno.EPERM, "Operation not permitted", blocked)
+        )
+
+        with patch("omnifocus_operator.bridge.real.sweep_orphaned_files", mock_sweep):
+            server = create_server()
+
+            async with Client(server) as client:  # entering proves the server stayed alive
+                calls: list[tuple[str, dict[str, Any]]] = [
+                    ("get_all", {}),
+                    ("get_tag", {"id": "x"}),
+                ]
+                for tool, args in calls:
+                    with pytest.raises(ToolError) as exc_info:
+                        await client.call_tool(tool, args)
+                    _assert_macos_teaching_message(str(exc_info.value), blocked)
+
+    async def test_blocked_bridge_construction_serves_teaching_message(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Any,
+    ) -> None:
+        """Stands in for the real Bridge's constructor mkdir being refused."""
+        monkeypatch.delenv("UV", raising=False)
+        blocked = str(tmp_path / "ipc")
+
+        def _refused_bridge() -> Any:
+            raise PermissionError(errno.EPERM, "Operation not permitted", blocked)
+
+        monkeypatch.setattr("omnifocus_operator.repository.create_real_bridge", _refused_bridge)
+
+        with patch("omnifocus_operator.bridge.real.sweep_orphaned_files", AsyncMock()):
+            server = create_server()
+
+            async with Client(server) as client:
+                with pytest.raises(ToolError) as exc_info:
+                    await client.call_tool("get_all")
+
+        _assert_macos_teaching_message(str(exc_info.value), blocked)
+
+    async def test_blocked_database_serves_teaching_message_not_missing(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """A refused OmniFocus database is never reported as 'not found'."""
+        monkeypatch.delenv("UV", raising=False)
+        db_file = tmp_path / "OmniFocusDatabase.db"
+        db_file.touch()
+        monkeypatch.setenv("OPERATOR_REPOSITORY", "hybrid")
+        monkeypatch.setenv("OPERATOR_SQLITE_PATH", str(db_file))
+        refuse_stat(monkeypatch, db_file)
+
+        with patch("omnifocus_operator.bridge.real.sweep_orphaned_files", AsyncMock()):
+            server = create_server()
+
+            async with Client(server) as client:
+                with pytest.raises(ToolError) as exc_info:
+                    await client.call_tool("get_all")
+
+        msg = str(exc_info.value)
+        _assert_macos_teaching_message(msg, str(db_file))
+        assert "not found" not in msg
+        assert "OPERATOR_SQLITE_PATH" not in msg
 
 
 # ---------------------------------------------------------------------------

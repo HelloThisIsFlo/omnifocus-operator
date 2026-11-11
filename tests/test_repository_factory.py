@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import logging
 from typing import TYPE_CHECKING
 
@@ -9,6 +10,7 @@ import pytest
 
 from omnifocus_operator.repository import BridgeOnlyRepository, HybridRepository
 from omnifocus_operator.repository.factory import create_repository
+from tests.conftest import refuse_stat
 from tests.doubles import SimulatorBridge
 
 if TYPE_CHECKING:
@@ -148,3 +150,74 @@ class TestCreateRepositoryErrors:
         fix_pos = msg.index("To fix")
         workaround_pos = msg.index("workaround")
         assert fix_pos < workaround_pos
+
+    def test_hybrid_missing_db_message_is_unchanged(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        missing_path = tmp_path / "nonexistent.db"
+        monkeypatch.setenv("OPERATOR_SQLITE_PATH", str(missing_path))
+
+        with pytest.raises(FileNotFoundError) as exc_info:
+            create_repository(_make_bridge(tmp_path), "hybrid")
+
+        assert str(exc_info.value) == (
+            f"OmniFocus SQLite database not found at:\n"
+            f"  {missing_path}\n"
+            f"\n"
+            f"To fix this:\n"
+            f"  Set OPERATOR_SQLITE_PATH to the correct database location.\n"
+            f"\n"
+            f"As a temporary workaround:\n"
+            f"  Set OPERATOR_REPOSITORY=bridge-only to use the OmniJS bridge\n"
+            f"  (slower, no 'blocked' availability)."
+        )
+
+
+class TestCreateRepositoryAccessRefused:
+    """A path macOS refuses (EPERM) is not reported as missing."""
+
+    def test_hybrid_refused_db_raises_eperm_permission_error(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        db_file = tmp_path / "OmniFocusDatabase.db"
+        db_file.touch()
+        monkeypatch.setenv("OPERATOR_SQLITE_PATH", str(db_file))
+        refuse_stat(monkeypatch, db_file)
+
+        with pytest.raises(PermissionError) as exc_info:
+            create_repository(_make_bridge(tmp_path), "hybrid")
+
+        assert exc_info.value.errno == errno.EPERM
+        assert exc_info.value.filename == str(db_file)
+        assert not isinstance(exc_info.value, FileNotFoundError)
+
+    def test_bridge_only_refused_ofocus_raises_eperm_permission_error(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        ofocus_bundle = tmp_path / "OmniFocus.ofocus"
+        ofocus_bundle.mkdir()
+        monkeypatch.setenv("OPERATOR_OFOCUS_PATH", str(ofocus_bundle))
+        refuse_stat(monkeypatch, ofocus_bundle)
+
+        with pytest.raises(PermissionError) as exc_info:
+            create_repository(_make_bridge(tmp_path), "bridge-only")
+
+        assert exc_info.value.errno == errno.EPERM
+        assert exc_info.value.filename == str(ofocus_bundle)
+
+    def test_bridge_only_missing_ofocus_raises_file_not_found(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+        tmp_path: Path,
+    ) -> None:
+        missing_bundle = tmp_path / "missing.ofocus"
+        monkeypatch.setenv("OPERATOR_OFOCUS_PATH", str(missing_bundle))
+
+        with (
+            caplog.at_level(logging.ERROR),
+            pytest.raises(FileNotFoundError, match=r"\.ofocus bundle not found"),
+        ):
+            create_repository(_make_bridge(tmp_path), "bridge-only")
+
+        assert any("OPERATOR_OFOCUS_PATH" in r.getMessage() for r in caplog.records)

@@ -1,8 +1,10 @@
 """Lifespan context manager for the FastMCP server.
 
 Creates the service stack (repository + preferences -> OperatorService)
-and yields it for tool handlers.  Falls back to ErrorOperatorService
-on startup failure so the server can still serve diagnostic responses.
+and yields it for tool handlers.  Every startup step, the IPC sweep
+included, runs inside the error-mode safety net: on any startup failure
+the lifespan falls back to ErrorOperatorService, so the server stays alive
+and serves the diagnostic through tool responses instead of crashing.
 """
 
 from __future__ import annotations
@@ -26,17 +28,20 @@ async def app_lifespan(app: FastMCP) -> AsyncIterator[dict[str, object]]:
     1. IPC sweep runs first (always, regardless of repository mode).
     2. ``create_repository()`` selects the repository based on
        ``OPERATOR_REPOSITORY`` env var (default ``"hybrid"``).
-    3. Startup errors are caught and served through ``ErrorOperatorService``.
+    3. Any startup error -- sweep, bridge or repository creation -- is caught
+       and served through ``ErrorOperatorService`` (e.g. a macOS privacy block
+       on OmniFocus's folders becomes a teaching message, not a crash).
     """
-    # IPC sweep always runs -- cleans orphaned files from dead processes.
-    # This is safe even when using sqlite mode (sweep handles missing dirs).
-    from omnifocus_operator.bridge.real import DEFAULT_IPC_DIR, sweep_orphaned_files
-
-    logger.info("Sweeping orphaned IPC files...")
-    await sweep_orphaned_files(DEFAULT_IPC_DIR)
-    logger.info("IPC sweep complete")
-
     try:
+        # IPC sweep always runs -- cleans orphaned files from dead processes.
+        # Safe in sqlite mode too (sweep handles missing dirs). Imported here,
+        # not at module level, so tests can patch it on the bridge module.
+        from omnifocus_operator.bridge.real import DEFAULT_IPC_DIR, sweep_orphaned_files
+
+        logger.info("Sweeping orphaned IPC files...")
+        await sweep_orphaned_files(DEFAULT_IPC_DIR)
+        logger.info("IPC sweep complete")
+
         from omnifocus_operator.config import get_settings
         from omnifocus_operator.repository import create_real_bridge, create_repository
         from omnifocus_operator.service import OperatorService
