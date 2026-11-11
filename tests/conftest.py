@@ -9,10 +9,13 @@ Two sets of factories:
 
 from __future__ import annotations
 
+import errno
+import os
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
+    from pathlib import Path
 
 import pytest
 
@@ -374,6 +377,28 @@ def make_snapshot(**overrides: Any) -> AllEntities:
 # ---------------------------------------------------------------------------
 # Settings cache reset -- ensures monkeypatched env vars take effect
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# macOS privacy block simulation
+# ---------------------------------------------------------------------------
+
+
+def refuse_stat(monkeypatch: pytest.MonkeyPatch, target: Path) -> None:
+    """Make ``os.stat`` on *target* fail like a macOS privacy block (EPERM).
+
+    Path-scoped: every other path delegates to the real ``os.stat``. chmod is
+    no substitute -- it yields EACCES, not the macOS signal.
+    """
+    real_stat = os.stat
+    target_str = os.fspath(target)
+
+    def _stat(path: Any, *args: Any, **kwargs: Any) -> os.stat_result:
+        if isinstance(path, str | bytes | os.PathLike) and os.fspath(path) == target_str:
+            raise PermissionError(errno.EPERM, "Operation not permitted", target_str)
+        return real_stat(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "stat", _stat)
 
 
 @pytest.fixture(autouse=True)

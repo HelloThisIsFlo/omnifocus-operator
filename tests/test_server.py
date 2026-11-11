@@ -32,6 +32,7 @@ from tests.conftest import (
     make_project_dict,
     make_tag_dict,
     make_task_dict,
+    refuse_stat,
 )
 from tests.doubles import ConstantMtimeSource, InMemoryBridge, SimulatorBridge
 
@@ -164,6 +165,8 @@ class TestARCH02RepositoryInjection:
                 await client.call_tool("get_all")
             assert "OPERATOR_SQLITE_PATH" in str(exc_info.value)
             assert "OPERATOR_REPOSITORY=bridge-only" in str(exc_info.value)
+            # A genuinely missing database is not a macOS privacy block.
+            assert "Full Disk Access" not in str(exc_info.value)
 
 
 # ---------------------------------------------------------------------------
@@ -641,6 +644,31 @@ class TestStartupMacOSAccessDenied:
                     await client.call_tool("get_all")
 
         _assert_macos_teaching_message(str(exc_info.value), blocked)
+
+    async def test_blocked_database_serves_teaching_message_not_missing(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """A refused OmniFocus database is never reported as 'not found'."""
+        monkeypatch.delenv("UV", raising=False)
+        db_file = tmp_path / "OmniFocusDatabase.db"
+        db_file.touch()
+        monkeypatch.setenv("OPERATOR_REPOSITORY", "hybrid")
+        monkeypatch.setenv("OPERATOR_SQLITE_PATH", str(db_file))
+        refuse_stat(monkeypatch, db_file)
+
+        with patch("omnifocus_operator.bridge.real.sweep_orphaned_files", AsyncMock()):
+            server = create_server()
+
+            async with Client(server) as client:
+                with pytest.raises(ToolError) as exc_info:
+                    await client.call_tool("get_all")
+
+        msg = str(exc_info.value)
+        _assert_macos_teaching_message(msg, str(db_file))
+        assert "not found" not in msg
+        assert "OPERATOR_SQLITE_PATH" not in msg
 
 
 # ---------------------------------------------------------------------------
