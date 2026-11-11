@@ -68,6 +68,12 @@ Carried forward from v1.4:
 15. Unify empty-result warning surface — one parameterized "filters resolved to zero tasks" warning, retire `EMPTY_SCOPE_INTERSECTION_WARNING` + `FILTER_NO_MATCH`; surfaced during Phase 57 post-resolution gap audit (service)
 16. Simplify empty-result warning to a single static message — supersedes #15's parameterized approach after live probe surfaced `limit` bug; collapses to one static nudge, deletes `_active_filter_names` helper + two constants (service)
 
+Captured 2026-11-11:
+
+17. Finish structured-content dedup middleware — parked on branch `structured-content-dedup`; needs real-client check + FastMCP 4 fix (server, minor)
+18. Migrate to FastMCP 3.4+ and 4 and lift the `<3.4` pin — validation reformatter breaks from 3.4; MCP SDK 2 renames on 4 (server, major)
+19. Update website install guide for Claude Desktop Full Disk Access — README has a temporary note; landing page untouched (docs, major)
+
 ### Roadmap Evolution
 
 _(cleared — v1.4 insertions archived to milestones/v1.4-ROADMAP.md)_

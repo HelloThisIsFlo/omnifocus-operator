@@ -48,3 +48,23 @@ On macOS, the prompt **`"uvx" would like to access data from other apps`** reapp
 **Full deep dive (canonical record):** `.research/deep-dives/macos-tcc-permission-persistence/` — `README.md` (verdict + tables + how-to-rerun), `FINDINGS.md` (daemon-log proof, TCC.db evidence, route research, sources), and the runnable rig (`rig/identity-test/`, `rig/attribution-test/`).
 
 **Also:** step-by-step validation guide at Obsidian `_AgentSandbox_/tcc-validation/GUIDE.md` (with filled observations).
+
+## Update 2026-11-10 — macOS 27 changes the picture
+
+**Observed on macOS 27.2.1, Claude Desktop, uv 0.13.7, operator v1.4.4:**
+- **No prompt appears any more.** The read is denied silently: `(Sandbox) System Policy: python3.14 deny(1) file-read-data …/omnifocus-operator/ipc` in the system log.
+- **The server now crashes at boot** — the eager `sweep_orphaned_files(DEFAULT_IPC_DIR)` (`server/lifespan.py:36`) raises `PermissionError: [Errno 1]`, Desktop reports "Couldn't start … Connection closed", tools never register. On macOS 26 the same line only caused the recurring prompt.
+- `tccutil reset SystemPolicyAppData` — targeted at `com.anthropic.claudefordesktop`, `sh.astral.uvx`, or the uvx path — did **not** bring the prompt back. (Category-wide reset untested.)
+- **Fix that worked:** Full Disk Access granted to the real `uvx` binary (`~/.local/share/mise/installs/uv/0.13.7/uv-aarch64-apple-darwin/uvx`). FDA on Claude.app does nothing (still true — `disclaimer` makes `uvx` the responsible process).
+- Claude Code CLI sessions are unaffected (no `disclaimer`; they inherit the terminal's grants).
+
+**New fact vs May:** `uvx` is now **Developer-ID signed by Astral** (`Identifier=sh.astral.uvx`, Team `2DC432GLL2`); it was ad-hoc in uv 0.11.3. An FDA grant on `uvx` may therefore be durable across uv upgrades. **Unverified** — check after the next uv bump (mise installs each version in a new folder; bare CLI binaries were flagged FDA-fragile in FINDINGS).
+
+**Direction confirmed with Flo (2026-11-10):** FDA-for-`uvx` is too broad to ask of users (every `uvx`-launched tool gets the whole disk) → the signed `.app` launcher (Tier 2) stays the goal. Sequence:
+1. Lazy-defer the sweep + teaching error on `PermissionError` (name the resolved `uvx` path and the FDA steps). Now a crash fix, not just a UX win. Quick-task sized.
+2. Spike: signed `.app` that spawns the python child, FDA granted — **rerun on macOS 27**, all May evidence is macOS 26.
+3. Launcher + signing/notarization pipeline + delivery (`.mcpb` / Homebrew) as its own milestone.
+4. Install guide rewrite (separate todo: website guide).
+
+**Interim user guidance:** README → "Claude Desktop on recent macOS: Full Disk Access" (temporary section).
+
