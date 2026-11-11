@@ -25,11 +25,13 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastmcp.exceptions import ToolError
+from fastmcp.exceptions import ValidationError as FastMCPValidationError
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from omnifocus_operator.__main__ import _configure_logging
 from omnifocus_operator.middleware import (
     ToolLoggingMiddleware,
+    ValidationReformatterMiddleware,
     _clean_loc,
     _extract_error_field_name,
     _extract_item_index,
@@ -368,6 +370,76 @@ class TestFormatValidationErrors:
         assert any("bogus" in m for m in unknown_msgs), (
             f"Expected field name 'bogus' in message, got: {unknown_msgs}"
         )
+
+
+# ── ValidationReformatterMiddleware (FastMCP 4 wrapped form) ───────────
+
+
+def _wrapped_in_fastmcp_error(cause: BaseException | None, message: str) -> FastMCPValidationError:
+    """Build a FastMCP ValidationError chained from ``cause``, as FunctionTool raises it.
+
+    FastMCP 4's FunctionTool does ``raise ValidationError(str(e), ...) from e``
+    when argument validation fails, so the Pydantic error rides on ``__cause__``.
+    """
+    try:
+        if cause is None:
+            raise FastMCPValidationError(message)
+        raise FastMCPValidationError(message) from cause
+    except FastMCPValidationError as exc:
+        return exc
+
+
+class TestValidationReformatterMiddleware:
+    """The middleware unwraps FastMCP's wrapped validation error into a clean ToolError."""
+
+    @pytest.mark.asyncio
+    async def test_fastmcp_wrapped_pydantic_error_becomes_clean_tool_error(self) -> None:
+        """FastMCP ValidationError with a Pydantic __cause__ -> formatted ToolError."""
+        pydantic_error = _capture_validation_error(
+            _TestListWrapper, {"items": [{"name": "x", "bogus": 1}]}
+        )
+        wrapped = _wrapped_in_fastmcp_error(pydantic_error, str(pydantic_error))
+        call_next = AsyncMock(side_effect=wrapped)
+
+        expected = "; ".join(_format_validation_errors(pydantic_error))
+        assert expected == "Task 1: Unknown field 'bogus'"
+
+        with pytest.raises(ToolError, match=re.escape(expected)) as exc_info:
+            await ValidationReformatterMiddleware().on_call_tool(
+                _make_context("add_tasks"), call_next
+            )
+
+        assert str(exc_info.value) == expected
+        assert "validation error" not in str(exc_info.value).lower()
+        assert exc_info.value.__suppress_context__ is True
+        assert exc_info.value.__cause__ is None
+
+    @pytest.mark.asyncio
+    async def test_fastmcp_wrapped_error_without_cause_propagates_unchanged(self) -> None:
+        """FastMCP ValidationError with no cause -> the very same object escapes."""
+        original = _wrapped_in_fastmcp_error(None, "plain")
+        call_next = AsyncMock(side_effect=original)
+
+        with pytest.raises(FastMCPValidationError) as exc_info:
+            await ValidationReformatterMiddleware().on_call_tool(
+                _make_context("add_tasks"), call_next
+            )
+
+        assert exc_info.value is original
+
+    @pytest.mark.asyncio
+    async def test_fastmcp_wrapped_non_pydantic_cause_propagates_unchanged(self) -> None:
+        """FastMCP ValidationError chained from a non-Pydantic error -> same object escapes."""
+        original = _wrapped_in_fastmcp_error(ValueError("not pydantic"), "wrapped value error")
+        call_next = AsyncMock(side_effect=original)
+
+        with pytest.raises(FastMCPValidationError) as exc_info:
+            await ValidationReformatterMiddleware().on_call_tool(
+                _make_context("add_tasks"), call_next
+            )
+
+        assert exc_info.value is original
+        assert isinstance(exc_info.value.__cause__, ValueError)
 
 
 # ── UNSET filtering (WRIT-05) ─────────────────────────────────────────
