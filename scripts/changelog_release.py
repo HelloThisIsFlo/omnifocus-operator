@@ -34,8 +34,10 @@ FOOTER = (
 EXPECTED_HEADING = "## [X.Y.Z] - <Title>"
 
 _TAG_RE = re.compile(r"^v(\d+)\.(\d+)(?:\.(\d+))?$")
-_HEADING_RE = re.compile(r"^## \[(?P<version>[^\]]+)\] - (?P<title>.+)$", re.MULTILINE)
+# Only dotted-numeric versions are candidates, so [Unreleased] never matches.
+_HEADING_RE = re.compile(r"^## \[(?P<version>\d+(?:\.\d+)*)\] - (?P<title>.+)$", re.MULTILINE)
 _NEXT_SECTION_RE = re.compile(r"^## ", re.MULTILINE)
+_LINK_REFERENCE_RE = re.compile(r"^\[[^\]]+\]:\s", re.MULTILINE)
 
 
 class ChangelogError(Exception):
@@ -67,23 +69,61 @@ def classify_tag(tag: str) -> Literal["patch", "milestone"]:
     return "milestone"
 
 
+def _normalize(parts: Sequence[int]) -> tuple[int, ...]:
+    """Drop trailing zeros so 1.4, 1.4.0 and v1.4 compare equal (but never 1.4.1 or 1.40)."""
+    normalized = list(parts)
+    while normalized and normalized[-1] == 0:
+        normalized.pop()
+    return tuple(normalized)
+
+
+def _clean_body(section: str) -> str:
+    """Strip Keep a Changelog footers: link-reference definitions and a trailing ``---``."""
+    link_reference = _LINK_REFERENCE_RE.search(section)
+    if link_reference:
+        section = section[: link_reference.start()]
+    lines = section.strip().split("\n")
+    if lines[-1].strip() == "---":
+        lines.pop()
+    return "\n".join(lines).strip()
+
+
 def release_for_tag(changelog: str, tag: str) -> ReleaseNotes:
-    """Build the Release title and body for ``tag`` from the CHANGELOG text."""
-    parts = _parse_tag(tag)
-    version = ".".join(str(part) for part in parts)
+    """Build the Release title and body for ``tag`` from the CHANGELOG text.
+
+    Independent of :func:`classify_tag`: milestone tags extract just like patches.
+    """
+    wanted = _normalize(_parse_tag(tag))
+    version = tag.removeprefix("v")
     expected = f"expected a heading like '{EXPECTED_HEADING}' for {version}"
 
-    for heading in _HEADING_RE.finditer(changelog):
-        if heading["version"] != version:
-            continue
-        start = heading.end()
-        next_section = _NEXT_SECTION_RE.search(changelog, start)
-        end = next_section.start() if next_section else len(changelog)
-        body = changelog[start:end].strip()
-        title = f"{tag} — {heading['title'].rstrip()}"
-        return ReleaseNotes(title=title, body=body + FOOTER)
+    matches = [
+        heading
+        for heading in _HEADING_RE.finditer(changelog)
+        if _normalize([int(part) for part in heading["version"].split(".")]) == wanted
+    ]
+    if not matches:
+        raise ChangelogError(f"no CHANGELOG section for tag {tag}: {expected}")
+    if len(matches) > 1:
+        found = ", ".join(f"[{heading['version']}]" for heading in matches)
+        raise ChangelogError(
+            f"ambiguous CHANGELOG sections for tag {tag}: {found} all match; "
+            f"keep exactly one ({expected})"
+        )
 
-    raise ChangelogError(f"no CHANGELOG section for tag {tag}: {expected}")
+    heading = matches[0]
+    start = heading.end()
+    next_section = _NEXT_SECTION_RE.search(changelog, start)
+    end = next_section.start() if next_section else len(changelog)
+    body = _clean_body(changelog[start:end])
+    if not body:
+        raise ChangelogError(
+            f"CHANGELOG section [{heading['version']}] for tag {tag} is empty: "
+            f"{expected} followed by release notes"
+        )
+
+    title = f"{tag} \u2014 {heading['title'].rstrip()}"
+    return ReleaseNotes(title=title, body=body + FOOTER)
 
 
 def _milestone_line(tag: str) -> str:
