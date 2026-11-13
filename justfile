@@ -72,9 +72,9 @@ fix:
     uv run ruff check --fix
     uv run ruff format
 
-# Run mypy type checking
+# Run mypy type checking (src/ and the release scripts/)
 typecheck:
-    uv run mypy src/
+    uv run mypy src/ scripts/
 
 # Run full quality suite: test + lint + typecheck
 check-all: test-all lint typecheck
