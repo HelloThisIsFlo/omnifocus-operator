@@ -42,7 +42,7 @@ What's left from the original PyPI publish todo (Phase 5 — deferred): getting 
 - Choose and add proper license — originally flagged to explore BSL (Business Source License). Current state: `license = "LicenseRef-Proprietary"` in pyproject.toml, "all rights reserved" in README. Goal: free to use, not to commercialize.
 - GitHub Pages landing page refresh — update roadmap (v1.4 done), test count (2086 → 2167), install instructions (verify uvx block), tools section (confirm 11 tools still accurate)
 - README badge update — test count badge drift (2086 → 2167)
-- Automated CHANGELOG generation skill — currently `/update-changelog` runs manually after archive; consider wiring into the archive-milestone workflow
+- Automated CHANGELOG generation skill — currently `/release-milestone` runs manually after `/gsd-complete-milestone` (CHANGELOG, README/landing housekeeping, GitHub Release); consider wiring into the archive-milestone workflow
 
 ## Context
 - Original todo (now completed): `.planning/todos/completed/2026-04-14-publish-on-pypi-and-set-up-automated-releases.md` — captures all decisions made during the PyPI publish journey
