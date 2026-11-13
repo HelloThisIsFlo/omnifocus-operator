@@ -4,10 +4,10 @@ milestone: v1.4.1
 current_phase_name: "last: 57 — Parent Filter & Filter Unification, complete"
 status: complete
 stopped_at: Milestone v1.4.1 complete; ready for /gsd-new-milestone to start v1.5
-last_updated: "2026-11-11T23:46:18.925Z"
-last_activity: 2026-11-11 - Completed quick task 261111-wdz: Support FastMCP 4: unwrap wrapped validation errors and require fastmcp>=4,<5
+last_updated: "2026-11-13T21:16:03.241Z"
+last_activity: 2026-11-11
 last_activity_desc: "Completed quick task 260628-jrk: increase batch limit from 50 to 150 and release as v1.4.4"
-state_head: 52141856472f01006a10dbc9d6bd2a30aa720f44
+state_head: 46808cc93810c23d5adb1052382aef62332de805
 progress:
   total_phases: 2
   completed_phases: 2
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-04-19)
 Phase: none active (last: 57 — Parent Filter & Filter Unification, complete)
 Plan: none active
 Status: Milestone v1.4.1 complete; ready for /gsd-new-milestone to start v1.5
-Last activity: 2026-11-11 - Completed quick task 261111-wdz: Support FastMCP 4: unwrap wrapped validation errors and require fastmcp>=4,<5
+Last activity: 2026-11-13 - Completed quick task 261113-qbo: Auto-create GitHub Release in publish workflow (patch tags only)
 
 Progress: [██████████] 100% (v1.4.1 — 2/2 phases complete)
 
@@ -81,6 +81,7 @@ _(cleared — v1.4 insertions archived to milestones/v1.4-ROADMAP.md)_
 | 260628-jrk | increase batch limit from 50 to 150 and release as v1.4.4 | 2026-06-28 | a68e7109 | Verified | [260628-jrk-increase-batch-limit-from-50-to-150-and-](./quick/260628-jrk-increase-batch-limit-from-50-to-150-and-/) |
 | 261111-s5c | Serve macOS access-denied startup failures through error mode with a teaching message | 2026-11-11 | b2328881 | — | [261111-s5c-serve-macos-access-denied-startup-failur](./quick/261111-s5c-serve-macos-access-denied-startup-failur/) |
 | 261111-wdz | Support FastMCP 4: unwrap wrapped validation errors and require fastmcp>=4,<5 | 2026-11-11 | 52141856 | — | [261111-wdz-support-fastmcp-4-unwrap-wrapped-validat](./quick/261111-wdz-support-fastmcp-4-unwrap-wrapped-validat/) |
+| 261113-qbo | Auto-create GitHub Release in publish workflow (patch tags only; milestones via release-milestone) | 2026-11-13 | 46808cc9 | — | [261113-qbo-auto-create-github-release-in-publish-wo](./quick/261113-qbo-auto-create-github-release-in-publish-wo/) |
 
 ## Session Continuity
 
