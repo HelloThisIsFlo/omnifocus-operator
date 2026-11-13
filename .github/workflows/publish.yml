@@ -10,6 +10,23 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # Patch tags (vX.Y.Z, Z > 0) must have their CHANGELOG section before
+      # anything reaches PyPI. Milestone tags skip: their section is written
+      # after the tag, during the milestone ceremony.
+      - name: Classify release tag
+        id: kind
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          kind=$(python3 scripts/changelog_release.py "$TAG" --classify)
+          echo "kind=$kind" >> "$GITHUB_OUTPUT"
+
+      - name: Preflight CHANGELOG section (patch tags)
+        if: steps.kind.outputs.kind == 'patch'
+        env:
+          TAG: ${{ github.ref_name }}
+        run: python3 scripts/changelog_release.py "$TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
+
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -47,3 +64,31 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      # Only patch tags get an automatic Release; milestone Releases come from
+      # the release-milestone skill once their CHANGELOG section is written.
+      - name: Classify release tag
+        id: kind
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          kind=$(python3 scripts/changelog_release.py "$TAG" --classify)
+          echo "kind=$kind" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release from CHANGELOG (patch tags)
+        if: steps.kind.outputs.kind == 'patch'
+        env:
+          TAG: ${{ github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="$RUNNER_TEMP/release-notes.md"
+          title=$(python3 scripts/changelog_release.py "$TAG" --notes-file "$notes")
+          gh release create "$TAG" --verify-tag --title "$title" --notes-file "$notes"

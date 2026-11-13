@@ -36,6 +36,8 @@ OmniFocus Operator uses [semantic versioning](https://semver.org/) going forward
 
 **Historical note:** Releases through **v1.4.1** use a looser convention where `.Z` slots sometimes carried themed feature increments (e.g. v1.4.1 added presence flags and a new filter — feature work, not a bug fix). These are **not retroactively renumbered** — the git tags and release history are preserved as shipped. The strict convention above applies to v1.5 onward.
 
+**GitHub Releases** are generated from `CHANGELOG.md`: patch tags (`vX.Y.Z`, Z > 0) get theirs automatically from CI after PyPI publishes, so the version's `## [X.Y.Z] - <Title>` section must exist before you tag (CI refuses to publish without it); milestone releases are created by the release-milestone skill after `/gsd-complete-milestone`.
+
 **Strikethrough convention in planning docs:** When milestone numbers shift in `.planning/` or `.research/`, historical references use markdown strikethrough to preserve audit trail: `~~v1.7~~ v1.8`. New material uses the new number plainly. Future agents reading archive material can see both the old and new identity at a glance.
 
 ## Running Tests
