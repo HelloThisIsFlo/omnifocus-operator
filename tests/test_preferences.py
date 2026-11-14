@@ -150,6 +150,17 @@ class TestPreferencesFallback:
 
         assert SETTINGS_FALLBACK_WARNING in warnings
 
+    async def test_get_warnings_does_not_trigger_bridge(self) -> None:
+        """get_warnings() alone must not cause a bridge call (lazy-load guard)."""
+        bridge = InMemoryBridge()
+        prefs = OmniFocusPreferences(bridge)
+
+        warnings = await prefs.get_warnings()
+
+        assert warnings == []
+        settings_calls = [c for c in bridge.calls if c.operation == "get_settings"]
+        assert len(settings_calls) == 0
+
     async def test_bridge_error_does_not_retry(self) -> None:
         """After failure, _loaded stays True -- no re-entry."""
         bridge = InMemoryBridge()

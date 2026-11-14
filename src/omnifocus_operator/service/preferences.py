@@ -217,6 +217,9 @@ class OmniFocusPreferences:
         return self._task_type_default
 
     async def get_warnings(self) -> list[str]:
-        """Return accumulated warnings from settings loading."""
-        await self._ensure_loaded()
+        """Return accumulated warnings from settings loading.
+
+        Does NOT trigger a bridge load — if no getter was called yet, returns
+        empty. Warnings are only meaningful after a load occurs.
+        """
         return list(self._warnings)
