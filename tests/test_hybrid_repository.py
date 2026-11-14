@@ -3798,3 +3798,152 @@ class TestTaskOrdering:
         assert tasks_by_name["Child of First"].order == "1.1"
         assert tasks_by_name["Second"].order == "2"
         assert tasks_by_name["Inbox Task"].order == "1"
+
+
+class TestOlderSchemaCompatibility:
+    """Verify graceful handling of older OmniFocus database schemas.
+
+    OmniFocus adds new columns across database schema versions.  Users on older
+    macOS releases may be stuck on an earlier schema that lacks columns such as
+    ``datePlanned``, ``repetitionScheduleTypeString``, ``catchUpAutomatically``,
+    ``repetitionAnchorDateKey``, ``allowsNextAction``, and
+    ``childrenAreMutuallyExclusive``.
+
+    The repository must not raise ``IndexError: No item with that key`` when
+    those columns are absent; it should fall back to ``None`` / sensible
+    defaults instead.
+    """
+
+    # A CF-epoch float corresponding to a fixed timestamp used in seeded rows.
+    _CF_NOW = _cf_epoch(datetime(2024, 6, 1, 12, 0, 0, tzinfo=UTC))
+
+    def _create_older_schema_db(self, tmp_path: Path) -> Path:
+        """Create a minimal SQLite DB that omits columns added in newer OmniFocus schemas.
+
+        Intentionally absent columns (to simulate an older OmniFocus DB):
+          Task:    datePlanned, effectiveDatePlanned,
+                   repetitionScheduleTypeString, catchUpAutomatically,
+                   repetitionAnchorDateKey
+          Context: allowsNextAction, childrenAreMutuallyExclusive, parent
+        """
+        db_path = tmp_path / "older_schema.db"
+        conn = sqlite3.connect(str(db_path))
+        try:
+            conn.executescript("""
+                CREATE TABLE Task (
+                    persistentIdentifier TEXT PRIMARY KEY,
+                    name TEXT,
+                    dateAdded REAL NOT NULL,
+                    dateModified REAL NOT NULL,
+                    plainTextNote TEXT,
+                    flagged INTEGER DEFAULT 0,
+                    effectiveFlagged INTEGER DEFAULT 0,
+                    dateDue TEXT,
+                    dateToStart TEXT,
+                    effectiveDateDue TEXT,
+                    effectiveDateToStart TEXT,
+                    dateCompleted REAL,
+                    effectiveDateCompleted REAL,
+                    dateHidden REAL,
+                    effectiveDateHidden REAL,
+                    estimatedMinutes REAL,
+                    childrenCount INTEGER DEFAULT 0,
+                    inInbox INTEGER DEFAULT 0,
+                    containingProjectInfo TEXT,
+                    parent TEXT,
+                    overdue INTEGER DEFAULT 0,
+                    dueSoon INTEGER DEFAULT 0,
+                    blocked INTEGER DEFAULT 0,
+                    repetitionRuleString TEXT,
+                    rank INTEGER DEFAULT 0,
+                    completeWhenChildrenComplete INTEGER DEFAULT 1,
+                    sequential INTEGER DEFAULT 0
+                );
+
+                CREATE TABLE ProjectInfo (
+                    pk TEXT PRIMARY KEY,
+                    task TEXT,
+                    lastReviewDate REAL,
+                    nextReviewDate REAL,
+                    reviewRepetitionString TEXT,
+                    nextTask TEXT,
+                    folder TEXT,
+                    effectiveStatus TEXT,
+                    containsSingletonActions INTEGER DEFAULT 0
+                );
+
+                CREATE TABLE Context (
+                    persistentIdentifier TEXT PRIMARY KEY,
+                    name TEXT,
+                    dateAdded REAL NOT NULL,
+                    dateModified REAL NOT NULL,
+                    dateHidden REAL
+                );
+
+                CREATE TABLE Folder (
+                    persistentIdentifier TEXT PRIMARY KEY,
+                    name TEXT,
+                    dateAdded REAL NOT NULL,
+                    dateModified REAL NOT NULL,
+                    parent TEXT,
+                    rank INTEGER DEFAULT 0
+                );
+
+                CREATE TABLE TaskToTag (task TEXT, tag TEXT);
+                CREATE TABLE Attachment (task TEXT);
+                CREATE TABLE Perspective (persistentIdentifier TEXT PRIMARY KEY, plist BLOB);
+            """)
+
+            conn.execute(
+                """INSERT INTO Task
+                   (persistentIdentifier, name, dateAdded, dateModified, inInbox, rank)
+                   VALUES ('task-1', 'A waiting task', ?, ?, 1, 0)""",
+                (self._CF_NOW, self._CF_NOW),
+            )
+
+            conn.execute(
+                """INSERT INTO Context
+                   (persistentIdentifier, name, dateAdded, dateModified)
+                   VALUES ('tag-1', 'Waiting', ?, ?)""",
+                (self._CF_NOW, self._CF_NOW),
+            )
+
+            conn.commit()
+        finally:
+            conn.close()
+        return db_path
+
+    @pytest.mark.asyncio
+    async def test_list_tasks_succeeds_on_older_schema(self, tmp_path: Path) -> None:
+        """list_tasks must not raise IndexError when datePlanned and related columns are absent."""
+        db_path = self._create_older_schema_db(tmp_path)
+        repo = HybridRepository(bridge=StubBridge(), db_path=str(db_path))
+        query = ListTasksRepoQuery(availability=["available", "blocked"])
+        result = await repo.list_tasks(query)
+        assert result.items, "Expected at least one task from the older-schema DB"
+        task = result.items[0]
+        assert task.name == "A waiting task"
+        assert task.planned_date is None  # Column absent → graceful None
+
+    @pytest.mark.asyncio
+    async def test_list_tags_succeeds_on_older_schema(self, tmp_path: Path) -> None:
+        """list_tags must not raise IndexError when allowsNextAction /
+        childrenAreMutuallyExclusive are absent."""
+        db_path = self._create_older_schema_db(tmp_path)
+        repo = HybridRepository(bridge=StubBridge(), db_path=str(db_path))
+        query = ListTagsRepoQuery()
+        result = await repo.list_tags(query)
+        assert result.items, "Expected at least one tag from the older-schema DB"
+        tag = result.items[0]
+        assert tag.name == "Waiting"
+        assert tag.children_are_mutually_exclusive is False  # Column absent → default False
+
+    @pytest.mark.asyncio
+    async def test_get_all_succeeds_on_older_schema(self, tmp_path: Path) -> None:
+        """get_all must not raise IndexError on an older schema missing multiple columns."""
+        db_path = self._create_older_schema_db(tmp_path)
+        repo = HybridRepository(bridge=StubBridge(), db_path=str(db_path))
+        result = await repo.get_all()
+        assert isinstance(result, AllEntities)
+        task_names = [t.name for t in result.tasks]
+        assert "A waiting task" in task_names
