@@ -104,9 +104,14 @@ _TASK_TO_TAG_SQL = "SELECT task, tag FROM TaskToTag"
 
 
 def _get_local_tz() -> ZoneInfo:
-    """Get system timezone as ZoneInfo from /etc/localtime symlink (macOS)."""
+    """Get system timezone as ZoneInfo from /etc/localtime symlink (macOS).
+
+    /etc/localtime resolves through /var/db/timezone/zoneinfo, but fully
+    resolving symlinks can land on /usr/share/zoneinfo.default instead of
+    /usr/share/zoneinfo depending on macOS build, so match either variant.
+    """
     tz_path = pathlib.Path("/etc/localtime").resolve()
-    tz_name = str(tz_path).split("zoneinfo/")[-1]
+    tz_name = re.sub(r".*/zoneinfo(?:\.default)?/", "", str(tz_path))
     return ZoneInfo(tz_name)
 
 
