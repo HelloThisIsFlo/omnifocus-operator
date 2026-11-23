@@ -68,3 +68,44 @@ On macOS, the prompt **`"uvx" would like to access data from other apps`** reapp
 
 **Interim user guidance:** README → "Claude Desktop on recent macOS: Full Disk Access" (temporary section).
 
+## Update 2026-11-23 — what Apple documents for macOS 27, and the `.mcpb` bug
+
+Both quotes are verbatim from Apple's [macOS 27 release notes](https://developer.apple.com/documentation/macos-release-notes/macos-27-release-notes), read on 2026-11-23.
+
+**1. The prompt is gone by design** (section "System Integrity Protection", New Features):
+
+> Accessing files in other developer teams’ app data containers and app group containers no longer prompts the user for authorization; such accesses are denied by default and can be managed by the user in Privacy & Security settings. (161835690)
+
+- Explains the silent denial seen on 27.2.1. No `tccutil reset` brings the prompt back.
+- Applies to every app, signed or not: the spike no longer needs to ask "does a real app get a prompt?".
+
+**2. A grant narrower than Full Disk Access exists, but not for a bare binary** (section "Privacy & Security Settings", Known Issues):
+
+> In the Files & Folders pane, a process without a bundle ID cannot be granted access to specific app data containers or app group containers owned by other developer teams. (184660124)
+>
+> Workaround: Consider if the access is necessary. If required, grant Full Disk Access to the process for the duration of the requirement.
+
+- `uvx` has no bundle ID, so Full Disk Access on `uvx` is Apple's documented workaround, not a quirk of this machine.
+- A signed `.app` has a bundle ID. It may only need a Files & Folders grant for OmniFocus's containers. **Untested**: the pane has not been looked at, and nothing has been tried through Claude Desktop's `disclaimer` chain.
+- New spike question: with no Full Disk Access, does that grant alone make the read work? How does the app get listed, and does one grant cover both the database folder (group container) and the IPC folder (app container)?
+
+**3. A binary packed inside a `.mcpb` cannot start on macOS** ([modelcontextprotocol/mcpb#294](https://github.com/modelcontextprotocol/mcpb/issues/294), open since 2026-07-16):
+
+- Claude Desktop extracts every file of an extension at mode `0600`, so a `type: "binary"` server fails with `Permission denied` on every launch. Reported with a signed, notarized app (Fantastical).
+- Consequence for delivery: the signed `.app` lives in `/Applications`. A `.mcpb` can at most be a thin wrapper that starts it; it cannot contain it.
+
+**4. The Full Disk Access grant on `uvx` does not survive a uv update** (settles the "Unverified" line in the 2026-11-10 update):
+
+- mise moved uv from `0.13.7` to `0.13.9` on 2026-11-19, each version in its own folder (`~/.local/share/mise/installs/uv/<version>/…/uvx`); the `0.13.7` folder is gone. Flo had to add the new binary to Full Disk Access again.
+- The signature was not the problem: `uvx` 0.13.9 is Developer-ID signed (`Identifier=sh.astral.uvx`, Team `2DC432GLL2`, designated requirement on identifier + Team ID).
+- `codesign` reports `Info.plist=not bound`: no bundle ID, so the grant is filed under the binary's path, and the path changes with every version.
+
+**5. macOS 27.3 changes the Full Disk Access flow** ([27.3 beta 2 release notes](https://developer.apple.com/documentation/macos-release-notes/macos-27_3-release-notes), section "Privacy & Security", read on 2026-11-23; beta, may still change):
+
+> Guidance to encourage users to grant access to just the specific apps (for System & App Protection Override) or folders (for Full Disk Access) that are required for their workflows
+
+> All app permissions previously granted by users will remain in effect.
+
+- Also listed: granting by "selecting the requesting app from a list", and an option to make an app "ask every time".
+- Apple tells developers to "be prepared to adjust how you onboard users". Any install guide or setup screen written before 27.3 ships will need a second pass.
+- Unknown: whether the folder choice accepts another vendor's container folders.
