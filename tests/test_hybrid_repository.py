@@ -8,6 +8,7 @@ XML note extraction, plist perspective parsing, and connection semantics.
 from __future__ import annotations
 
 import asyncio
+import pathlib
 import plistlib
 import sqlite3
 import time
@@ -32,7 +33,11 @@ from omnifocus_operator.contracts.use_cases.list.tags import ListTagsRepoQuery
 from omnifocus_operator.contracts.use_cases.list.tasks import ListTasksRepoQuery
 from omnifocus_operator.models.enums import Availability, FolderAvailability, TagAvailability
 from omnifocus_operator.models.snapshot import AllEntities
-from omnifocus_operator.repository.hybrid.hybrid import _FRESHNESS_TIMEOUT, HybridRepository
+from omnifocus_operator.repository.hybrid.hybrid import (
+    _FRESHNESS_TIMEOUT,
+    HybridRepository,
+    _get_local_tz,
+)
 from tests.doubles import InMemoryBridge, StubBridge
 
 # Core Foundation epoch: Jan 1, 2001 00:00:00 UTC
@@ -1922,6 +1927,30 @@ class TestPlainTextNoteEncoding:
 # ============================================================================
 # GAP CLOSURE: Local datetime parsing (DST-aware)
 # ============================================================================
+
+
+class TestGetLocalTz:
+    """_get_local_tz() derives an IANA ZoneInfo name from the /etc/localtime symlink."""
+
+    @pytest.mark.parametrize(
+        "resolved_path",
+        [
+            "/usr/share/zoneinfo/Australia/Sydney",
+            "/usr/share/zoneinfo.default/Australia/Sydney",
+            "/var/db/timezone/zoneinfo/Australia/Sydney",
+        ],
+    )
+    def test_resolves_tz_name_across_symlink_variants(self, resolved_path: str) -> None:
+        """Regression: some macOS builds resolve /etc/localtime through
+        /usr/share/zoneinfo.default rather than /usr/share/zoneinfo, which used to
+        break naive `.split("zoneinfo/")` parsing and raise
+        `ZoneInfo keys may not be absolute paths`.
+        """
+        with patch(
+            "pathlib.Path.resolve",
+            return_value=pathlib.PosixPath(resolved_path),
+        ):
+            assert _get_local_tz() == ZoneInfo("Australia/Sydney")
 
 
 class TestLocalDatetimeParsing:
